@@ -1,0 +1,59 @@
+using UnityEngine;
+
+public enum GameState { Idle, Playing, Paused, GameOver, LevelComplete }
+
+public class GameManager : Singleton<GameManager>
+{
+    public GameState CurrentState { get; private set; } = GameState.Idle;
+
+    protected override void Awake() => base.Awake();
+
+    private void OnEnable()
+    {
+        EventBus.OnGameOver += HandleGameOver;
+        EventBus.OnLevelComplete += HandleLevelComplete;
+    }
+
+    private void OnDisable()
+    {
+        EventBus.OnGameOver -= HandleGameOver;
+        EventBus.OnLevelComplete -= HandleLevelComplete;
+    }
+
+    public void StartGame()
+    {
+        Time.timeScale = 1f;
+        SetState(GameState.Playing);
+    }
+
+    public void PauseGame()
+    {
+        if (CurrentState != GameState.Playing) return;
+        Time.timeScale = 0f;
+        SetState(GameState.Paused);
+    }
+
+    public void ResumeGame()
+    {
+        if (CurrentState != GameState.Paused) return;
+        Time.timeScale = 1f;
+        SetState(GameState.Playing);
+    }
+
+    private void HandleGameOver()
+    {
+        SetState(GameState.GameOver);
+        SceneLoader.Instance.LoadGameOver();
+    }
+
+    private void HandleLevelComplete()
+    {
+        SetState(GameState.LevelComplete);
+    }
+
+    private void SetState(GameState newState)
+    {
+        CurrentState = newState;
+        DebugLogger.Log($"GameState -> {newState}");
+    }
+}
