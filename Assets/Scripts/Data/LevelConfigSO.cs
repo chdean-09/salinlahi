@@ -14,7 +14,7 @@ public class LevelConfigSO : ScriptableObject
 
     [Header("Characters")]
     [Tooltip("Master list of characters allowed in this level. WaveConfigs draw from this.")]
-    public List<BaybayanCharacterSO> allowedCharacters;
+    public List<BaybayinCharacterSO> allowedCharacters;
 
     [Header("Build Flags")]
     public bool isAvailableInLite = true;

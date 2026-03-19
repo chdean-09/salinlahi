@@ -21,7 +21,7 @@ public class AudioManager : Singleton<AudioManager>
     }
 
     // Sprint 2: Replace stubs with real implementations
-    private void PlayPronunciationClip(BaybayanCharacterSO character)
+    private void PlayPronunciationClip(BaybayinCharacterSO character)
     {
         if (character?.pronunciationClip != null)
             _sfxSource.PlayOneShot(character.pronunciationClip);
