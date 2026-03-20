@@ -10,7 +10,7 @@ public class WaveConfigSO : ScriptableObject
 
     [Header("Spawn Settings")]
     [Tooltip("Baybayin characters that can appear in this wave")]
-    public List<BaybayanCharacterSO> charactersInWave;
+    public List<BaybayinCharacterSO> charactersInWave;
 
     [Tooltip("Total enemies to spawn across this wave")]
     public int enemyCount = 5;

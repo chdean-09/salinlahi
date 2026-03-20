@@ -11,7 +11,7 @@ public class Enemy : MonoBehaviour
     private EnemyMover _mover;
     private SpriteRenderer _renderer;
 
-    public BaybayanCharacterSO Character => _data?.assignedCharacter;
+    public BaybayinCharacterSO Character => _data?.assignedCharacter;
     public string EnemyID => _data?.enemyID;
 
     private void Awake()

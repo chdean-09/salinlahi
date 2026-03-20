@@ -5,13 +5,13 @@
 public static class EventBus
 {
     // ── Enemy Events ─────────────────────────────────────────────
-    public static event Action<BaybayanCharacterSO> OnEnemyDefeated;
+    public static event Action<BaybayinCharacterSO> OnEnemyDefeated;
     public static event Action OnBaseHit;
 
     // ── Game State Events ────────────────────────────────────────
     public static event Action OnGameOver;
     public static event Action OnLevelComplete;
-    public static event Action<int> OnWaveStarted;    // int = wave index
+    public static event Action<int> OnWaveStarted; // int = wave index
 
     // ── Recognition Events ───────────────────────────────────────
     public static event Action<string> OnCharacterRecognized; // string = characterID
@@ -19,10 +19,10 @@ public static class EventBus
     public static event Action OnDrawingStarted;
 
     // ── UI Events ────────────────────────────────────────────────
-    public static event Action<int> OnHeartsChanged;  // int = current hearts
+    public static event Action<int> OnHeartsChanged; // int = current hearts
 
     // ── Raisers ──────────────────────────────────────────────────
-    public static void RaiseEnemyDefeated(BaybayanCharacterSO c) => OnEnemyDefeated?.Invoke(c);
+    public static void RaiseEnemyDefeated(BaybayinCharacterSO c) => OnEnemyDefeated?.Invoke(c);
     public static void RaiseBaseHit() => OnBaseHit?.Invoke();
     public static void RaiseGameOver() => OnGameOver?.Invoke();
     public static void RaiseLevelComplete() => OnLevelComplete?.Invoke();

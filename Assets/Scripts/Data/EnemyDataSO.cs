@@ -16,5 +16,5 @@ public class EnemyDataSO : ScriptableObject
 
     [Header("Character")]
     [Tooltip("The Baybayin character this enemy displays and requires to be defeated")]
-    public BaybayanCharacterSO assignedCharacter;
+    public BaybayinCharacterSO assignedCharacter;
 }
