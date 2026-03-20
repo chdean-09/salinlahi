@@ -124,10 +124,12 @@ All the following must be true before UAT begins:
 
 | Tool | Purpose | Source |
 |------|---------|--------|
+| System Usability Scale (SUS) | Measures whether drawing input feels natural and usable under real gameplay conditions | Salinlahi.md §3.5.2 |
 | Game Experience Questionnaire (GEQ) core module | Measures player enjoyment and engagement | Salinlahi.md §3.5.1 |
 | Pre/post Baybayin character recall test | Measures learning outcome | Salinlahi.md — educational objective |
 | Session completion rate | % of participants who finish Level 1 | Engagement proxy |
 | Crash / error log review | Technical stability | Sprint 5 QA |
 
+[EVIDENCE: docs/capstone/Salinlahi.md, §3.5.2 — "participants complete the System Usability Scale (SUS) after playing through the first two levels"]
 [EVIDENCE: docs/capstone/Salinlahi.md, §3.5.1 — "Game Experience Questionnaire core module during user testing"]
 [EVIDENCE: docs/capstone/GDD.md, §6.1 Sprint 5 — "User Acceptance Testing with 50–100 participants"]

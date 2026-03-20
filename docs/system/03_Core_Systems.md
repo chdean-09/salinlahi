@@ -50,10 +50,11 @@ Wraps `SceneManager.LoadSceneAsync` in coroutines. Single source of truth for al
 ### 2.3 Scene Name Constants (internal)
 
 ```csharp
-private const string SCENE_BOOTSTRAP = "Bootstrap";
-private const string SCENE_MAIN_MENU = "MainMenu";
-private const string SCENE_GAMEPLAY  = "Gameplay";
-private const string SCENE_GAME_OVER = "GameOver";
+private const string SCENE_BOOTSTRAP    = "Bootstrap";
+private const string SCENE_MAIN_MENU    = "MainMenu";
+private const string SCENE_LEVEL_SELECT = "LevelSelect";   // PLANNED — GDD §5.1, TDD §1.1
+private const string SCENE_GAMEPLAY     = "Gameplay";
+private const string SCENE_GAME_OVER    = "GameOver";
 ```
 
 ### 2.4 Public API
@@ -61,6 +62,7 @@ private const string SCENE_GAME_OVER = "GameOver";
 | Method | Loads Scene |
 |--------|-------------|
 | `LoadMainMenu()` | `MainMenu` |
+| `LoadLevelSelect()` | `LevelSelect` (PLANNED) |
 | `LoadGameplay()` | `Gameplay` |
 | `LoadGameOver()` | `GameOver` |
 | `ReloadCurrentScene()` | Active scene (name retrieved at call time) |
@@ -86,7 +88,7 @@ Owns two `AudioSource` components: `_bgmSource` (background music, looped) and `
 
 | Event | Handler | Behavior |
 |-------|---------|----------|
-| `OnEnemyDefeated(BaybayanCharacterSO)` | `PlayPronunciationClip` | Plays `character.pronunciationClip` via `_sfxSource.PlayOneShot` |
+| `OnEnemyDefeated(BaybayinCharacterSO)` | `PlayPronunciationClip` | Plays `character.pronunciationClip` via `_sfxSource.PlayOneShot` |
 | `OnBaseHit` | `PlayBaseHitSound` | **STUB** — Sprint 2 will assign a clip via Inspector |
 
 ### 3.4 Public API
@@ -117,8 +119,9 @@ Owns two `AudioSource` components: `_bgmSource` (background music, looped) and `
 
 | Category | Event | Raise Method | Payload Type |
 |----------|-------|-------------|-------------|
-| Enemy | `OnEnemyDefeated` | `RaiseEnemyDefeated(BaybayanCharacterSO)` | `BaybayanCharacterSO` |
+| Enemy | `OnEnemyDefeated` | `RaiseEnemyDefeated(BaybayinCharacterSO)` | `BaybayinCharacterSO` |
 | Enemy | `OnBaseHit` | `RaiseBaseHit()` | none |
+| Enemy | `OnAOETriggered` | `RaiseAOETriggered(List<BaybayinCharacterSO>)` | `List<BaybayinCharacterSO>` |
 | Game State | `OnGameOver` | `RaiseGameOver()` | none |
 | Game State | `OnLevelComplete` | `RaiseLevelComplete()` | none |
 | Game State | `OnWaveStarted` | `RaiseWaveStarted(int)` | `int` waveIndex |
@@ -126,6 +129,11 @@ Owns two `AudioSource` components: `_bgmSource` (background music, looped) and `
 | Recognition | `OnDrawingFailed` | `RaiseDrawingFailed()` | none |
 | Recognition | `OnDrawingStarted` | `RaiseDrawingStarted()` | none |
 | UI | `OnHeartsChanged` | `RaiseHeartsChanged(int)` | `int` currentHearts |
+| Combo | `OnComboChanged` | `RaiseComboChanged(int)` | `int` currentStreak |
+| Combo | `OnComboRewardTriggered` | `RaiseComboRewardTriggered()` | none |
+| Boss | `OnBossSpawned` | `RaiseBossSpawned(BossConfigSO)` | `BossConfigSO` |
+| Boss | `OnBossPhaseCleared` | `RaiseBossPhaseCleared()` | none |
+| Boss | `OnBossDefeated` | `RaiseBossDefeated()` | none |
 
 ### 4.4 Usage Rules
 1. **Subscribe only in `OnEnable`.** Never subscribe in `Start` or `Awake`.

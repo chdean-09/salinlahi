@@ -55,7 +55,7 @@
 | REQ-30 | The HUD shall display current heart count and wave number | GDD §5.1; TDD §7.4 | P1 | ❌ HUD.cs not implemented | WV-05, WV-01 | ❌ NOT FOUND | 🟠 P1 |
 | REQ-31 | Failed strokes shall show a red flash and X mark | GDD §5.4 | P1 | ❌ HUD.cs not implemented | RC-02 | ❌ NOT FOUND | 🟠 P1 |
 | REQ-32 | The Tracing Dojo shall allow zero-pressure practice of all 17 characters | GDD §2.4; §5.4 | P2 | ❌ Tracing Dojo scene not implemented | — | ❌ NOT FOUND | 🟡 P2 |
-| REQ-33 | Endless Mode shall activate after Story Mode completion with high-score tracking | GDD §2.4 | P2 | ❌ Not implemented | — | ❌ NOT FOUND | 🟡 P2 |
+| REQ-33 | Endless Mode shall activate after completing Story Mode or defeating the final boss, with high-score tracking (waves survived, enemies defeated, longest combo) | GDD §2.4; Team README §9 | P2 | ❌ Not implemented | — | ❌ NOT FOUND | 🟡 P2 |
 | REQ-34 | Cross-system communication shall use EventBus exclusively | TDD §1; EventBus.cs comment | P0 | All systems use EventBus; no direct cross-manager calls observed | CS-03 | ✅ Implemented | None |
 | REQ-35 | EventBus subscriptions shall be in OnEnable and unsubscribed in OnDisable | EventBus.cs comment | P0 | `GameManager`, `AudioManager` — OnEnable/OnDisable confirmed | CS-03 | ✅ Implemented | None |
 

@@ -11,6 +11,7 @@
 | Version | Date | Author | Summary | Impacted Documents |
 |---------|------|--------|---------|-------------------|
 | 1.0 | 2026-03-19 | Jon Wayne Cabusbusan (Claude Code) | Initial generation of complete documentation suite from repository inventory, Salinlahi.md, GDD.md, TDD.md, and all C# implementation files as of Sprint 1 end. 35 requirements traced. 9 P0 gaps identified. | All (00–13) |
+| 1.1 | 2026-03-21 | Chad Andrada (Claude Code) | Alignment pass: reconciled system docs against GDD, TDD, Salinlahi.md, and Team README. Fixed Endless Mode unlock condition, kudlit non-goal, missing LevelSelect scene, missing EventBus events (combo/boss/AOE), separated Fast and Sprinter enemy types, added full 9-type enemy roster, added missing SO fields (hitsRequired, isBossLevel, bossConfig, baseSpawnDelay), updated BossConfigSO spec, added Credits to Main Menu, added Combo counter and Pause button to HUD, fixed chapter era names, set PPU to 32, added SUS to UAT instruments. | 01, 02, 03, 04, 05, 06, 07, 09, 10, 13 |
 
 ---
 
@@ -36,7 +37,7 @@ When updating any document in `docs/system/`:
 | Trigger Event | Documents to Update |
 |--------------|---------------------|
 | Sprint 2 complete (recognition + WaveManager implemented) | 03, 04, 09, 10, 11 |
-| BaybayanCharacterSO assets authored (all 17) | 05, 07, 10 |
+| BaybayinCharacterSO assets authored (all 17) | 05, 07, 10 |
 | HUD implemented | 06, 09, 10 |
 | HeartSystem implemented | 04, 09, 10 |
 | Boss system implemented (Sprint 3) | 04, 05, 07, 10 |

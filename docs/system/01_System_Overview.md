@@ -26,7 +26,7 @@ Salinlahi is a 2D pixel art mobile defense game whose core mechanic is drawing B
 | Portrait-mode vertical defense gameplay on Android and iOS | GDD §1.3 Platforms |
 | $P Point-Cloud gesture recognition for 17 Baybayin consonant characters | Salinlahi.md §3.3.3; RecognitionConfigSO.cs |
 | Story Mode: 15 levels across 3 chapters, boss encounters at levels 5, 10, 15 | GDD §2.4 |
-| Endless Mode: Unlocked after story completion, random characters, high-score tracking | GDD §2.4 |
+| Endless Mode: Unlocked after completing Story Mode or defeating the final boss, random characters, high-score tracking | GDD §2.4 |
 | Tracing Dojo: Pressure-free practice mode for all 17 characters, no enemies | GDD §2.4 |
 | Enemy wave system driven by ScriptableObject data (LevelConfigSO, WaveConfigSO) | Salinlahi.md §3.5.1; LevelConfigSO.cs |
 | Two-build split: Salinlahi Lite (free, levels 1–3) and Salinlahi Full (PHP 149, all content) | TDD §7.2; Salinlahi.md §3.4 |
@@ -45,7 +45,7 @@ Salinlahi is a 2D pixel art mobile defense game whose core mechanic is drawing B
 | Machine learning / CNN-based recognition | Requires training data and model binary; not in scope |
 | Android/iOS cloud save | Not specified in any source document |
 | In-app purchases or advertising | Business model is premium + lite; no IAP or ads |
-| Diacritical marks (kudlit) recognition | Scope limited to 17 consonant base characters |
+| Diacritical marks (kudlit) recognition in MVP | Recognition scope limited to 17 consonant base characters; kudlit modifier mechanic is a Should Ship feature that may be deferred post-launch (GDD §3.3 Chapter 2; Team README Feature Priority Matrix) |
 | Roman-alphabet romanization input | Drawing is the only combat input; no alternative input path |
 | 3D geometry or 3D renderer | URP 2D only; no 3D geometry anywhere in project |
 

@@ -19,7 +19,7 @@
 | RISK-07 | `BossConfigSO` and boss phase system require significant design time; Sprint 3 scope may slip | Medium | Medium | Chad | Stub boss encounter as "extended wave" in Sprint 3 if full phase system is not ready; delay boss phases to Sprint 4 | Sprint 3 end without working boss encounter at Level 5 |
 | RISK-08 | iOS build submission requires paid Apple Developer account; not confirmed provisioned | Unknown | High | Ian Clyde | Confirm Apple Developer account status before Sprint 4; if unavailable, submit Android only for Sprint 4 testing | Sprint 4 build target requires iOS IPA |
 | RISK-09 | Duplicate event subscriptions cause double-firing (e.g., scene reload without OnDisable cleanup) | Medium | Medium | All | Enforce OnEnable/OnDisable pattern strictly; add CS-03 regression test to every sprint checklist | Console shows duplicate event handler errors |
-| RISK-10 | `ScriptableObjects/Characters/` folder empty — no BaybayanCharacterSO assets authored | High | Critical | Chad | Character SO authoring is Sprint 1 content deliverable; Chad must author all 17 SOs by end of Sprint 1 | Sprint 2 enemy spawning fails due to null assignedCharacter |
+| RISK-10 | `ScriptableObjects/Characters/` folder empty — no BaybayinCharacterSO assets authored | High | Critical | Chad | Character SO authoring is Sprint 1 content deliverable; Chad must author all 17 SOs by end of Sprint 1 | Sprint 2 enemy spawning fails due to null assignedCharacter |
 | RISK-11 | GC spikes on low-RAM Android (1–2 GB) from non-obvious allocations in hot paths | Low | Medium | Jon Wayne | Run Memory Profiler in Sprint 4; audit all `Update()` paths for hidden allocations (string interpolation, LINQ, boxing) | Frame time chart shows irregular spikes > 3ms |
 | RISK-12 | `Time.timeScale = 0` persists into next scene if SceneLoader is bypassed (e.g., direct `SceneManager.LoadScene` call) | Low | High | Jon Wayne | Never call `SceneManager.LoadScene` directly; all scene loads must go through `SceneLoader` — enforced by code review | MainMenu scene loads but game appears frozen |
 
@@ -29,9 +29,9 @@
 
 | Dep ID | Dependency | Type | Owner | Required By | Status |
 |--------|-----------|------|-------|------------|--------|
-| DEP-01 | All 17 BaybayanCharacterSO assets authored with valid `characterID`, `syllable`, `displaySprite` | Content | Chad | Sprint 2 integration | NOT CONFIRMED |
+| DEP-01 | All 17 BaybayinCharacterSO assets authored with valid `characterID`, `syllable`, `displaySprite` | Content | Chad | Sprint 2 integration | NOT CONFIRMED |
 | DEP-02 | All 17 recognition template `.txt` files in `Assets/Resources/Templates/` | Content | Chad | Sprint 2 DollarPRecognizer | NOT CONFIRMED |
-| DEP-03 | All 17 pronunciation `AudioClip` assets assigned in `BaybayanCharacterSO` | Content/Audio | Ian Clyde | Sprint 2 audio integration | NOT CONFIRMED |
+| DEP-03 | All 17 pronunciation `AudioClip` assets assigned in `BaybayinCharacterSO` | Content/Audio | Ian Clyde | Sprint 2 audio integration | NOT CONFIRMED |
 | DEP-04 | `[Enemy] Standard.prefab` has `EnemyDataSO` assigned in Inspector | Configuration | Chad | Sprint 1 wave testing | LIKELY DONE — prefab exists |
 | DEP-05 | PlayerBase `GameObject` exists in Gameplay scene with tag `"PlayerBase"` | Scene setup | Jon Wayne | Sprint 2 `EnemyMover` base-hit test | NOT CONFIRMED |
 | DEP-06 | Android keystore signed and configured | Build | Ian Clyde | Sprint 1 Android build (confirmed via git commit) | ✅ DONE — commit `ddc6ea3` |
@@ -45,7 +45,7 @@
 ## 3. Dependency Graph (Critical Path)
 
 ```
-BaybayanCharacterSO assets (DEP-01)
+BaybayinCharacterSO assets (DEP-01)
   └─ DollarPRecognizer integration (REQ-10, REQ-11, REQ-12)
        └─ WaveManager + WaveSpawner (REQ-26, REQ-27)
             └─ HeartSystem (REQ-15, REQ-16, REQ-17)

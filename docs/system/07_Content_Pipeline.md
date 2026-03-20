@@ -19,14 +19,14 @@ The game covers **17 Baybayin consonant base characters** only. Diacritical mark
 
 | Asset | File Type | Location | Required By |
 |-------|-----------|----------|-------------|
-| `BaybayanCharacterSO` asset | `.asset` | `Assets/ScriptableObjects/Characters/Char_[ID].asset` | All gameplay systems |
+| `BaybayinCharacterSO` asset | `.asset` | `Assets/ScriptableObjects/Characters/Char_[ID].asset` | All gameplay systems |
 | Display sprite (glyph) | `.png` | `Assets/Art/UI/` or `Assets/Art/Characters/` | Enemy renderer; Tracing Dojo |
 | Pronunciation audio clip | `.wav` / `.mp3` | `Assets/Audio/` | AudioManager |
 | Recognition template file | `.txt` (point coordinates) | `Assets/Resources/Templates/[ID]_template.txt` | DollarPRecognizer (PLANNED) |
 
 ### 1.3 Current Status
 
-As of Sprint 1: **placeholder assets only**. No BaybayanCharacterSO assets have been confirmed in `Assets/ScriptableObjects/Characters/`. No template `.txt` files have been confirmed in `Assets/Resources/Templates/`.
+As of Sprint 1: **placeholder assets only**. No BaybayinCharacterSO assets have been confirmed in `Assets/ScriptableObjects/Characters/`. No template `.txt` files have been confirmed in `Assets/Resources/Templates/`.
 
 [EVIDENCE: Assets/Art/Characters/ — placeholder sprites only confirmed]
 [EVIDENCE: Assets/ScriptableObjects/Characters/ — folder exists, asset contents unverified]
@@ -37,16 +37,21 @@ As of Sprint 1: **placeholder assets only**. No BaybayanCharacterSO assets have 
 
 ### 2.1 Enemy Types
 
-| Enemy Type | `enemyID` | Asset File | Prefab | Status |
-|------------|-----------|-----------|--------|--------|
-| Standard | `"standard"` | `Enemy_Standard.asset` (implied) | `[Enemy] Standard.prefab` | Prefab exists; SO unverified |
-| Fast/Sprinter | `"fast"` | (PLANNED) | (PLANNED) | NOT FOUND |
-| Shielded | `"shielded"` | (PLANNED) | (PLANNED) | NOT FOUND |
-| Chain | `"chain"` | (PLANNED) | (PLANNED) | NOT FOUND |
+| Enemy Type | `enemyID` | Chapter | First Appears | Priority | Prefab | Status |
+|------------|-----------|---------|--------------|----------|--------|--------|
+| Standard | `"standard"` | 1 | Level 1 | Must Ship | `[Enemy] Standard.prefab` | Prefab exists; SO unverified |
+| Fast | `"fast"` | 1 | Level 2 | Must Ship | (PLANNED) | NOT FOUND |
+| Chain | `"chain"` | 1 | Level 3 | Should Ship | (PLANNED) | NOT FOUND |
+| Shielded | `"shielded"` | 2 | Level 6 | Should Ship | (PLANNED) | NOT FOUND |
+| Sprinter | `"sprinter"` | 2 | Level 7 | Should Ship | (PLANNED) | NOT FOUND |
+| Phaser | `"phaser"` | 2 | Level 8 | Nice to Have | (PLANNED) | NOT FOUND |
+| Decoy | `"decoy"` | 3 | Level 11 | Nice to Have | (PLANNED) | NOT FOUND |
+| Zigzagger | `"zigzagger"` | 3 | Level 12 | Nice to Have | (PLANNED) | NOT FOUND |
+| Healer | `"healer"` | 3 | Level 13 | Nice to Have | (PLANNED) | NOT FOUND |
 
 [EVIDENCE: Assets/Prefabs/Enemies/[Enemy] Standard.prefab — confirmed]
-[EVIDENCE: Assets/Scripts/Data/EnemyDataSO.cs — enemyID comment lists three types]
-[EVIDENCE: docs/capstone/GDD.md, §6.1 Sprint 3 — "new enemy types (Shielded, Sprinter, Chain)"]
+[EVIDENCE: docs/capstone/GDD.md, §4.3 Enemies — full roster with priority]
+[EVIDENCE: Team README §9 — Enemy Type Roster with introduction levels]
 
 ### 2.2 Walk Frame Animation Convention
 
@@ -63,13 +68,14 @@ As of Sprint 1: **placeholder assets only**. No BaybayanCharacterSO assets have 
 
 ### 3.1 Level Structure
 
-| Chapter | Levels | Era | Boss Level |
-|---------|--------|-----|------------|
-| Chapter 1 | 1–5 | Philippine history era 1 | Level 5 |
-| Chapter 2 | 6–10 | Philippine history era 2 | Level 10 |
-| Chapter 3 | 11–15 | Philippine history era 3 | Level 15 |
+| Chapter | Name | Levels | Era | Gameplay Theme | Boss Level |
+|---------|------|--------|-----|---------------|------------|
+| Chapter 1 | Liwanag (Light) | 1–5 | Spanish Colonization | Drawing mastery | Level 5 |
+| Chapter 2 | Paglaban (Resistance) | 6–10 | American Occupation | Tactical thinking | Level 10 |
+| Chapter 3 | Pagbalik (Reclamation) | 11–15 | Japanese Occupation | Mastery and chaos | Level 15 |
 
-[EVIDENCE: docs/capstone/GDD.md, §2.4 — "Three chapters of 5 levels each. Each chapter covers a different era of Philippine history."]
+[EVIDENCE: docs/capstone/GDD.md, §4.1 Levels/Maps — chapter names and historical eras]
+[EVIDENCE: Team README §9 — chapter gameplay themes]
 
 ### 3.2 Level Asset Naming
 
@@ -109,7 +115,7 @@ Templates are loaded via `Resources.Load<TextAsset>` at startup by `TemplateLoad
 
 Example: `BA_template.txt`, `KA_template.txt`
 
-The `characterID` must match `BaybayanCharacterSO.characterID` exactly (case-sensitive).
+The `characterID` must match `BaybayinCharacterSO.characterID` exactly (case-sensitive).
 
 ### 4.3 File Content Format
 
@@ -156,7 +162,7 @@ x32,y32
 
 All gameplay sprites must use:
 - Filter Mode: Point (no filter) — enforces pixel art fidelity
-- PPU (Pixels Per Unit): consistent across the project (exact value NOT FOUND in source documents)
+- PPU (Pixels Per Unit): **32** — consistent across the project (base pixel resolution 32×32 per tile/character unit)
 - Compression: None or lossless for pixel art
 
 [EVIDENCE: git commit `d718060` — "art(placeholders): import placeholder sprites with correct PPU and filter settings"]
@@ -199,18 +205,18 @@ All gameplay sprites must use:
 ```
 LevelConfigSO
   └─ List<WaveConfigSO>
-        └─ List<BaybayanCharacterSO>
+        └─ List<BaybayinCharacterSO>
               ├─ displaySprite (Sprite)
               ├─ pronunciationClip (AudioClip)
               └─ templateFileName → Resources/Templates/[file].txt
 
 LevelConfigSO
-  └─ List<BaybayanCharacterSO> (allowedCharacters)
+  └─ List<BaybayinCharacterSO> (allowedCharacters)
 
 EnemyDataSO
   ├─ walkFrames (Sprite[])
   ├─ animatorController (RuntimeAnimatorController)
-  └─ assignedCharacter → BaybayanCharacterSO
+  └─ assignedCharacter → BaybayinCharacterSO
 
 EnemyPool
   └─ _enemyPrefab → [Enemy] Standard.prefab

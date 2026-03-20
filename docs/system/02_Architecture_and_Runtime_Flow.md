@@ -12,11 +12,13 @@
 |------------|------|------|
 | Bootstrap | `Assets/_Scenes/Bootstrap.unity` | Instantiates all manager singletons; auto-transitions to MainMenu |
 | MainMenu | `Assets/_Scenes/MainMenu.unity` | Entry point for user: Play, Endless, Tracing Dojo, Settings |
+| LevelSelect | `Assets/_Scenes/LevelSelect.unity` | 15 level buttons grouped by chapter; unlock progression (PLANNED) |
 | Gameplay | `Assets/_Scenes/Gameplay.unity` | Core defense loop: enemies, drawing canvas, HUD |
 | GameOver | `Assets/_Scenes/GameOver.unity` | Post-defeat stats; Retry and Return-to-Menu actions |
 
 [EVIDENCE: Assets/_Scenes/ directory listing]
 [EVIDENCE: docs/capstone/GDD.md, §5.1 Player Journey]
+[EVIDENCE: docs/capstone/TDD.md, §1.1 — five scenes specified]
 
 ---
 
@@ -104,7 +106,7 @@ All cross-system communication uses `EventBus.cs`. No direct manager-to-manager 
 
 | Event | Raised By | Subscriber(s) | Payload |
 |-------|-----------|---------------|---------|
-| `OnEnemyDefeated` | `Enemy.Defeat()` | `AudioManager` | `BaybayanCharacterSO` |
+| `OnEnemyDefeated` | `Enemy.Defeat()` | `AudioManager` | `BaybayinCharacterSO` |
 | `OnBaseHit` | `EnemyMover.OnTriggerEnter2D()` | `HeartSystem` (PLANNED) | none |
 | `OnGameOver` | `HeartSystem` (PLANNED) | `GameManager` | none |
 | `OnLevelComplete` | `WaveManager` (PLANNED) | `GameManager` | none |

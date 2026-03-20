@@ -82,7 +82,7 @@
 
 | Rule | Pattern | Example |
 |------|---------|---------|
-| `BaybayanCharacterSO` assets | `Char_[ID]` | `Char_BA`, `Char_KA` |
+| `BaybayinCharacterSO` assets | `Char_[ID]` | `Char_BA`, `Char_KA` |
 | `EnemyDataSO` assets | `Enemy_[Type]` | `Enemy_Standard` |
 | `LevelConfigSO` assets | `Level_[##]` (zero-padded) | `Level_01`, `Level_10` |
 | `WaveConfigSO` assets | `L[level]_W[wave]` | `L1_W1`, `L10_W3` |
@@ -110,7 +110,7 @@
 | Rule | Pattern | Example |
 |------|---------|---------|
 | Recognition templates | `[CharacterID]_template.txt` | `BA_template.txt` |
-| CharacterID case must match `BaybayanCharacterSO.characterID` exactly | — | If SO has `"BA"`, file must be `BA_template.txt` |
+| CharacterID case must match `BaybayinCharacterSO.characterID` exactly | — | If SO has `"BA"`, file must be `BA_template.txt` |
 
 ---
 

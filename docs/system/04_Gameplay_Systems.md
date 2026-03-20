@@ -58,7 +58,7 @@ OnDisable() called on either path:
 
 | Member | Type | Description |
 |--------|------|-------------|
-| `Character` | `BaybayanCharacterSO` (get) | Baybayin character this enemy carries; sourced from `_data.assignedCharacter` |
+| `Character` | `BaybayinCharacterSO` (get) | Baybayin character this enemy carries; sourced from `_data.assignedCharacter` |
 | `EnemyID` | `string` (get) | Enemy type identifier; sourced from `_data.enemyID` |
 | `Initialize(EnemyDataSO, IObjectPool<Enemy>)` | method | Called by EnemyPool; sets data and speed |
 | `Defeat()` | method | Raises defeated event and returns to pool |
@@ -127,7 +127,7 @@ transform.Translate(Vector2.down * _speed * Time.deltaTime, Space.World);
 
 | Step | Evidence |
 |------|----------|
-| Enemy carries `BaybayanCharacterSO` | `Enemy.Character` property; `EnemyDataSO.assignedCharacter` |
+| Enemy carries `BaybayinCharacterSO` | `Enemy.Character` property; `EnemyDataSO.assignedCharacter` |
 | Enemy defeat raises `OnEnemyDefeated` | `Enemy.Defeat()` → `EventBus.RaiseEnemyDefeated()` |
 | Audio plays on defeat | `AudioManager.OnEnemyDefeated` → `PlayPronunciationClip()` |
 | Base hit raises `OnBaseHit` | `EnemyMover.OnTriggerEnter2D()` → `EventBus.RaiseBaseHit()` |
@@ -162,7 +162,7 @@ transform.Translate(Vector2.down * _speed * Time.deltaTime, Space.World);
 | Condition | Trigger |
 |-----------|---------|
 | No win condition | Game runs until hearts reach 0 |
-| Score | Based on waves survived + enemies defeated |
+| Score | Based on waves survived, enemies defeated, and longest combo |
 
 ### 5.3 Heart System Specification (PLANNED)
 
@@ -198,7 +198,7 @@ transform.Translate(Vector2.down * _speed * Time.deltaTime, Space.World);
 |-------|------|---------|
 | `waveID` | `string` | Unique identifier for debug logging |
 | `waveNumber` | `int` | Display index in HUD |
-| `charactersInWave` | `List<BaybayanCharacterSO>` | Pool of characters enemies can carry |
+| `charactersInWave` | `List<BaybayinCharacterSO>` | Pool of characters enemies can carry |
 | `enemyCount` | `int` | Total enemies spawned in this wave (default: 5) |
 | `spawnInterval` | `float` | Seconds between spawns (default: 3f) |
 | `waveStartDelay` | `float` | Seconds before first spawn in wave (default: 1f) |
@@ -211,14 +211,20 @@ transform.Translate(Vector2.down * _speed * Time.deltaTime, Space.World);
 
 ## 7. Enemy Types (Content Specification)
 
-The following enemy types are specified in `EnemyDataSO.enemyID` comments and the GDD. Implementation status for Sprinter, Shielded, and Chain variants is NOT FOUND.
+The following enemy types are specified in `EnemyDataSO.enemyID` comments, the GDD §4.3, and the Team README §9.
 
-| Enemy ID | Movement | Special Rule | Sprint Target |
-|----------|----------|--------------|--------------|
-| `"standard"` | Straight, `moveSpeed = 1.5f` | None | Sprint 1 ✓ |
-| `"fast"` / `"sprinter"` | Straight, higher speed | None | Sprint 3 |
-| `"shielded"` | Straight | Requires 2 correct drawings to defeat | Sprint 3 |
-| `"chain"` | Straight | Defeating it triggers next linked enemy | Sprint 3 |
+| Enemy ID | Movement | Special Rule | First Appears | Priority | Sprint Target |
+|----------|----------|--------------|--------------|----------|--------------|
+| `"standard"` | Straight, `moveSpeed = 1.5f` | None | Level 1 | Must Ship | Sprint 1 ✓ |
+| `"fast"` | Straight, 1.3× base speed | None | Level 2 | Must Ship | Sprint 3 |
+| `"chain"` | Straight, linked word formation | Must defeat front-to-back in order | Level 3 | Should Ship | Sprint 3 |
+| `"shielded"` | Straight | Requires 2 correct drawings to defeat (`hitsRequired = 2`) | Level 6 | Should Ship | Sprint 3 |
+| `"sprinter"` | Pauses mid-screen, then rushes toward base | None | Level 7 | Should Ship | Sprint 3 |
+| `"phaser"` | Straight | Blinks displayed character on and off | Level 8 | Nice to Have | Sprint 4 |
+| `"decoy"` | Straight | Damages player if killed; must be ignored | Level 11 | Nice to Have | Sprint 4 |
+| `"zigzagger"` | Sine wave lateral pattern while descending | None | Level 12 | Nice to Have | Sprint 4 |
+| `"healer"` | Straight | Restores 1 heart when defeated | Level 13 | Nice to Have | Sprint 4 |
 
 [EVIDENCE: Assets/Scripts/Data/EnemyDataSO.cs — enemyID comment: `"standard", "fast", "chain"`]
-[EVIDENCE: docs/capstone/GDD.md, §6.1 Milestones — Sprint 3: new enemy types]
+[EVIDENCE: docs/capstone/GDD.md, §4.3 Enemies — full roster]
+[EVIDENCE: Team README §9 — Enemy Type Roster with introduction levels]

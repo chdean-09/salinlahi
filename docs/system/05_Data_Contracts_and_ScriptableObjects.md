@@ -17,10 +17,10 @@ All game content is defined in ScriptableObject assets. Level designers can crea
 
 ## 2. ScriptableObject Schemas
 
-### 2.1 `BaybayanCharacterSO`
+### 2.1 `BaybayinCharacterSO`
 
 **Menu path:** `Salinlahi/Baybayin Character`
-**File:** `Assets/Scripts/Data/BaybayanCharacterSO.cs`
+**File:** `Assets/Scripts/Data/BaybayinCharacterSO.cs`
 **Asset folder:** `Assets/ScriptableObjects/Characters/`
 
 | Field | Type | Header | Required | Invariants |
@@ -32,12 +32,12 @@ All game content is defined in ScriptableObject assets. Level designers can crea
 | `templateFileName` | `string` | Recognition | YES | Filename in `Assets/Resources/Templates/` without extension. Example: `"BA_template"`. Must match a file loadable via `Resources.Load<TextAsset>`. |
 
 **Validation Rules:**
-- `characterID` must be unique across all `BaybayanCharacterSO` assets in the project.
+- `characterID` must be unique across all `BaybayinCharacterSO` assets in the project.
 - `templateFileName` must reference a file that exists in `Assets/Resources/Templates/`.
 - `pronunciationClip` must be assigned before Sprint 2 UAT.
 - 17 total assets must exist at content-complete milestone (one per Baybayin consonant).
 
-[EVIDENCE: Assets/Scripts/Data/BaybayanCharacterSO.cs]
+[EVIDENCE: Assets/Scripts/Data/BaybayinCharacterSO.cs]
 [EVIDENCE: docs/capstone/TDD.md, §5 Data Layer — BaybayinCharacterSO row]
 
 ---
@@ -50,11 +50,12 @@ All game content is defined in ScriptableObject assets. Level designers can crea
 
 | Field | Type | Header | Required | Invariants |
 |-------|------|--------|----------|------------|
-| `enemyID` | `string` | Identity | YES | Unique type identifier. Canonical values: `"standard"`, `"fast"`, `"chain"`, `"shielded"`. Must be lowercase. |
+| `enemyID` | `string` | Identity | YES | Unique type identifier. Canonical values: `"standard"`, `"fast"`, `"chain"`, `"shielded"`, `"sprinter"`, `"phaser"`, `"decoy"`, `"zigzagger"`, `"healer"`. Must be lowercase. |
 | `moveSpeed` | `float` | Stats | YES | World units per second toward the base. Default `1.5f`. Must be > 0. |
+| `hitsRequired` | `int` | Stats | YES | Number of correct drawings needed to defeat. Default `1`. Shielded enemies use `2`. |
 | `walkFrames` | `Sprite[]` | Visuals | YES | Animation frames for walking. At least 1 frame required (index 0 set as initial sprite). Null array or zero length is tolerated by code but produces invisible enemy — authoring error. |
 | `animatorController` | `RuntimeAnimatorController` | Visuals | NO | Optional animator override. May be null for static sprite enemies. |
-| `assignedCharacter` | `BaybayanCharacterSO` | Character | YES | The Baybayin character this enemy carries and requires drawn to be defeated. Must not be null at runtime. |
+| `assignedCharacter` | `BaybayinCharacterSO` | Character | YES | The Baybayin character this enemy carries and requires drawn to be defeated. Must not be null at runtime. |
 
 **Validation Rules:**
 - `moveSpeed` must be > 0. Value ≤ 0 causes the enemy to never move (not crash-safe, but functionally broken).
@@ -76,7 +77,10 @@ All game content is defined in ScriptableObject assets. Level designers can crea
 | `levelName` | `string` | Identity | YES | Human-readable display name. Example: `"Chapter 1 - Level 1"`. |
 | `levelNumber` | `int` | Identity | YES | 1-indexed. Story Mode range: 1–15. Must be globally unique. |
 | `waves` | `List<WaveConfigSO>` | Waves | YES | Ordered list of waves played in index order. Must not be empty. |
-| `allowedCharacters` | `List<BaybayanCharacterSO>` | Characters | YES | Master allowed-character list for this level. All `WaveConfigSO.charactersInWave` entries must be a subset of this list. |
+| `allowedCharacters` | `List<BaybayinCharacterSO>` | Characters | YES | Master allowed-character list for this level. All `WaveConfigSO.charactersInWave` entries must be a subset of this list. |
+| `baseSpawnDelay` | `float` | Spawn Settings | YES | Base delay between enemy spawns for this level. |
+| `isBossLevel` | `bool` | Boss | YES | `true` for levels 5, 10, 15. When true, `LevelFlowController` activates `BossController` instead of `WaveManager` after final wave. |
+| `bossConfig` | `BossConfigSO` | Boss | NO | Reference to boss configuration. Null for non-boss levels. Required for boss levels (5, 10, 15). |
 | `isAvailableInLite` | `bool` | Build Flags | YES | `true` for levels 1–3 (Salinlahi Lite). `false` for levels 4–15 (Full only). |
 
 **Validation Rules:**
@@ -101,7 +105,7 @@ All game content is defined in ScriptableObject assets. Level designers can crea
 |-------|------|--------|----------|------------|
 | `waveID` | `string` | Identity | YES | Unique string identifier. Example: `"L1_W1"`. Used for debug logging and potential save-state keying. |
 | `waveNumber` | `int` | Identity | YES | 1-indexed within the level. Used for HUD display. |
-| `charactersInWave` | `List<BaybayanCharacterSO>` | Spawn Settings | YES | Baybayin characters that can appear on enemies in this wave. WaveManager draws from this list when assigning characters to spawned enemies. Must not be empty. |
+| `charactersInWave` | `List<BaybayinCharacterSO>` | Spawn Settings | YES | Baybayin characters that can appear on enemies in this wave. WaveManager draws from this list when assigning characters to spawned enemies. Must not be empty. |
 | `enemyCount` | `int` | Spawn Settings | YES | Total enemies spawned in this wave. Default `5`. Must be ≥ 1. |
 | `spawnInterval` | `float` | Spawn Settings | YES | Seconds between consecutive enemy spawns. Default `3f`. Must be > 0. |
 | `waveStartDelay` | `float` | Spawn Settings | YES | Seconds of delay before first enemy spawns in this wave. Default `1f`. May be 0. |
@@ -140,18 +144,21 @@ All game content is defined in ScriptableObject assets. Level designers can crea
 
 `BossConfigSO` is specified in `TDD.md §5 Data Layer` and is referenced in `LevelConfigSO` design for boss levels (5, 10, 15). **No implementation file exists in `Assets/Scripts/Data/`.**
 
-Required fields (from TDD spec):
+Required fields (from TDD spec and Team README §4):
 
 | Field | Type | Description |
 |-------|------|-------------|
-| Boss health pool | `int` | Total health points of the boss |
-| Phase count | `int` | Number of distinct phases |
-| Mini-game type per phase | Enum or `string` | Phase-specific mechanic descriptor |
-| Timing windows | `float[]` | Per-phase timing constraints |
+| `bossName` | `string` | Display name of the boss |
+| `totalPhases` | `int` | Number of distinct phases |
+| `phaseCharacters` | `List<BaybayinCharacterSO>` | Characters required per phase |
+| `timeLimitPerPhase` | `float` | Seconds allowed per phase |
+| `bossSprites` | `Sprite[]` | Visual sprites for boss states |
+| `bossThemeClip` | `AudioClip` | Boss encounter background music |
 
 Status: **NOT FOUND** — P1 gap, required Sprint 3.
 
 [EVIDENCE: docs/capstone/TDD.md, §5 Data Layer — BossConfigSO row]
+[EVIDENCE: Team README §4 — BossConfigSO code sample]
 
 ---
 
@@ -161,7 +168,7 @@ Status: **NOT FOUND** — P1 gap, required Sprint 3.
 
 | Asset Type | Pattern | Example |
 |------------|---------|---------|
-| `BaybayanCharacterSO` | `Char_[ID]` | `Char_BA`, `Char_KA` |
+| `BaybayinCharacterSO` | `Char_[ID]` | `Char_BA`, `Char_KA` |
 | `EnemyDataSO` | `Enemy_[type]` | `Enemy_Standard`, `Enemy_Fast` |
 | `LevelConfigSO` | `Level_[number]` | `Level_01`, `Level_10` |
 | `WaveConfigSO` | `L[level]_W[wave]` | `L1_W1`, `L3_W2` |
@@ -171,7 +178,7 @@ Status: **NOT FOUND** — P1 gap, required Sprint 3.
 
 | Asset Type | Folder |
 |------------|--------|
-| `BaybayanCharacterSO` | `Assets/ScriptableObjects/Characters/` |
+| `BaybayinCharacterSO` | `Assets/ScriptableObjects/Characters/` |
 | `LevelConfigSO` | `Assets/ScriptableObjects/Levels/` |
 | `WaveConfigSO` | `Assets/ScriptableObjects/Waves/` |
 | `EnemyDataSO` | `Assets/ScriptableObjects/` (confirm with Designer) |
@@ -182,6 +189,6 @@ Status: **NOT FOUND** — P1 gap, required Sprint 3.
 
 ### 3.3 Template File Format
 
-Each `BaybayanCharacterSO.templateFileName` references a plain-text coordinate file in `Assets/Resources/Templates/`. Format is determined by the `TemplateLoader.cs` implementation (NOT FOUND). Expected content per `Salinlahi.md §3.3.3`: comma-separated 2D point coordinates representing the resampled $P point cloud for that character.
+Each `BaybayinCharacterSO.templateFileName` references a plain-text coordinate file in `Assets/Resources/Templates/`. Format is determined by the `TemplateLoader.cs` implementation (NOT FOUND). Expected content per `Salinlahi.md §3.3.3`: comma-separated 2D point coordinates representing the resampled $P point cloud for that character.
 
 Authoring rule: Template files must be validated against `RecognitionConfigSO.resamplePointCount` (default 32 points). A template with a different point count will cause a recognition error.

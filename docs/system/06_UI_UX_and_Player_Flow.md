@@ -66,8 +66,9 @@ App Launch
 | Endless Mode | Navigate to Endless Gameplay | NOT FOUND |
 | Tracing Dojo | Navigate to Tracing Dojo scene | NOT FOUND |
 | Settings | Open Settings screen | NOT FOUND |
+| Credits | Display credits screen | NOT FOUND |
 
-[EVIDENCE: docs/capstone/GDD.md, §5.1 — "Main Menu: Play (Story Mode), Endless Mode, Tracing Dojo, Settings"]
+[EVIDENCE: docs/capstone/GDD.md, §5.3 — "Play, Endless Mode, Tracing Dojo, Settings, Credits"]
 
 ---
 
@@ -79,6 +80,8 @@ The HUD is specified in the GDD and TDD but **has no implementation file**. All 
 |-------------|-------------|-----------------|
 | Heart display | Shows current heart count (0–3 icons) | `OnHeartsChanged(int)` |
 | Wave indicator | Shows "Wave X of Y" | `OnWaveStarted(int)` |
+| Combo counter | Shows current streak count; appears only when active, fades when streak breaks | `OnComboChanged(int)` |
+| Pause button | Top corner; opens Pause Menu overlay | (UI tap) |
 | Drawing canvas | Full-screen transparent touch surface for drawing | `OnDrawingStarted`, `OnDrawingFailed` |
 | Rejection feedback | Red flash + X mark on failed stroke | `OnDrawingFailed` |
 | Success feedback | Visual burst on correct recognition | (PLANNED) |
@@ -101,7 +104,7 @@ The HUD is specified in the GDD and TDD but **has no implementation file**. All 
 
 | Element | Description | Status |
 |---------|-------------|--------|
-| Final stats display | Enemies killed, accuracy, waves cleared | NOT FOUND |
+| Final stats display | Waves survived, enemies defeated, accuracy % | NOT FOUND |
 | Retry button | Reloads current level gameplay scene | Implemented (LoadGameplay stub) |
 | Return to Level Select | Returns to level select | Partial (returns to MainMenu currently) |
 
