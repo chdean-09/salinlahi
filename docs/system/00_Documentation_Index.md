@@ -1,7 +1,7 @@
 # 00 — Documentation Index
 **Project:** Salinlahi
-**Version:** 1.0
-**Date:** 2026-03-19
+**Version:** 1.2
+**Date:** 2026-03-25
 **Owner:** Jon Wayne Cabusbusan (Systems Lead)
 **Review Cadence:** End of each sprint (every two weeks)
 

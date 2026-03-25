@@ -12,13 +12,13 @@ March 2026
 
 **Development Team**
 
-Andrada, Chad
+Chad (Product Owner / Designer)
 
-Cabusbusan, Jon Wayne
+Jon Wayne (Core Systems)
 
-Millan, Jeff Andre
+Jeff Andre (UI/UX)
 
-Tejada, Ian Clyde
+Ian Clyde (Audio / Polish / Build)
 
 # 1. Overview
 
@@ -112,10 +112,12 @@ Enemy movement types:
 
 | **Movement Type** | **Behavior** |
 | --- | --- |
-| Standard (Straight) | Moves in a straight vertical line from top to bottom at a consistent speed. |
-| Chain Movement | Multiple enemies forming a Baybayin word maintain a fixed distance from each other while traveling as a group. The player must defeat them in sequence. |
-| Sprinter | Moves at 1.5x to 2x the speed of a Standard enemy. Forces the player to prioritize fast targets. |
-| Zigzagger (Nice to Have) | Moves in a lateral zigzag pattern while descending, making it harder to visually track which character it carries. |
+| Standard (Straight) | Soldado, Soldier, Heitai. Moves in a straight vertical line from top to bottom. Heitai is inherently 1.2x faster than the other regulars. |
+| Fast (Guardia) | Moves at 1.5x the speed of Soldado. Colonial police patrol speed. |
+| Sprinter (Kisha) | Walks at normal speed, pauses briefly mid-screen, then charges at 2.5x speed toward the base. |
+| Zigzagger (Pensionado) | Moves in a lateral zigzag pattern while descending, making it harder to visually track which character it carries. |
+| Glide (Fraile) | Robe glides smoothly downward with no visible leg movement. Faster than Soldado. Baybayin label fades in and out (phaser mechanic). |
+| Commander (General) | Moves slowly (0.7x) but while alive, all nearby American enemies move 1.3x faster. |
 
 ## 3.2 Combat
 
@@ -170,7 +172,7 @@ There is no machine learning, no difficulty adaptation, and no procedural genera
 | Enemy speed | Chapter 1 is slow. Chapter 2 is medium. Chapter 3 is fast. Exact values tuned during playtesting. |
 | Spawn rate | Increases per wave within a level and per level within a chapter. Late Chapter 3 levels should feel chaotic. |
 | Active character count | Chapter 1 levels start with 3 and build to 8. Chapter 2 adds 6 more. Chapter 3 uses all 17. |
-| Enemy variety | Chapter 1 has Standard, Fast, and Chain enemies. Chapter 2 adds Shielded and Sprinter. Chapter 3 adds Decoy, Zigzagger, and Healer (if implemented). |
+| Enemy variety | Chapter 1 has Soldado, Fraile (phaser), Guardia (fast), and Capitan (shielded elite). Chapter 2 has Soldier, Maestro (decoy), Pensionado (zigzag), and General (commander elite). Chapter 3 has Heitai (fast regular), Kisha (sprinter), Kempei (censor), and Shokan (shielded + corruption veil elite). |
 | Hearts | Default is 3 hearts per level. No extra lives, no health pickups. The pressure must feel real. |
 | Recognition threshold | Fixed at 0.60 confidence across all levels. The difficulty comes from time pressure and character volume, not from stricter recognition. |
 
@@ -178,37 +180,62 @@ There is no machine learning, no difficulty adaptation, and no procedural genera
 
 ## 4.1 Levels / Maps
 
-The game has 15 story mode levels divided into 3 chapters of 5 levels each. Each chapter takes place in a different era of Philippine history, which changes the visual theme of the backgrounds, enemies, and narrative framing.
+The game has 15 story mode levels divided into 3 chapters of 5 levels each. Each chapter takes place in a different era of Philippine history, which changes the visual theme of the top-down tileset maps, enemies, and narrative framing. The camera is bird's eye / top-down. No sky is visible during gameplay.
 
 | **Chapter** | **Era** | **Levels** | **Theme** |
 | --- | --- | --- | --- |
-| 1: Liwanag | Spanish Colonization | 1 to 5 | Colonial forces suppress Baybayin and burn manuscripts. You fight to keep the script alive in the shadows. Background: lush forests, burning villages, hidden shrines. |
-| 2: Paglaban | American Occupation | 6 to 10 | A new system replaces the old tongue with a foreign language. You battle to preserve what was nearly lost. Background: schoolhouses, government buildings, crumbling ruins. |
-| 3: Pagbalik | Japanese Occupation | 11 to 15 | Another wave of occupation and cultural disruption. You make your final stand as the last guardian. Background: dark fortresses, war-torn landscapes, the final shrine. |
+| 1: Liwanag | Spanish Colonization | 1 to 5 | Colonial forces suppress Baybayin and burn manuscripts. You fight to keep the script alive in the shadows. Map: top-down jungle path with bahay kubo rooftops, torches, dense foliage canopy. |
+| 2: Paglaban | American Occupation | 6 to 10 | A new system replaces the old tongue with a foreign language. You battle to preserve what was nearly lost. Map: top-down cold grey cobblestone street with colonial buildings, lamp posts, American flags. |
+| 3: Pagbalik | Japanese Occupation | 11 to 15 | Another wave of occupation and cultural disruption. You make your final stand as the last guardian. Map: top-down bombed cobblestone (Map 2 destroyed), bombed buildings, fires in rubble, ash particles, rising sun flags. |
 
-Boss encounters happen at Level 5, Level 10, and Level 15. The final boss at Level 15 is Kadiliman (Darkness itself), the embodiment of cultural erasure. Defeating Kadiliman requires the player to draw all 17 Baybayin characters in a timed sequence.
+Boss encounters happen at Level 5 (El Inquisidor), Level 10 (The Superintendent), and Level 15 (Kadiliman). The final boss is Kadiliman (Darkness itself), the embodiment of cultural erasure. Defeating Kadiliman requires the player to draw all 17 Baybayin characters in a timed sequence.
+
+Each era has its own shrine/base structure at 64x96: Baybayin Altar (Spanish), Ancestral Door (American), Scroll Shrine (Japanese). Each shrine has 4 visual damage states (full, crack 1, crack 2, destroyed).
 
 ## 4.2 Characters
 
-The player character is Salinlahi, visible only as a narrative presence in story panels and dialogue. There is no on-screen avatar during gameplay. The player's presence is their finger on the screen.
+The player character is Salinlahi, visible on screen during gameplay as a top-down sprite. The protagonist has 3 era designs: Kuya (Village Boy) for the Spanish era, Laban (Fighter Youth) for the Japanese era, and Manong (Young Adult) for the American era. Each design has idle, draw gesture, victory, and collapse animations at 32x32 px. The protagonist's draw gesture animation plays while the player is drawing on screen.
 
 Supporting narrative characters include the Spirit Guide who appears in the opening and between chapters to deliver story context, and Kadiliman, the antagonist force representing cultural erasure, manifested as shadow entities.
 
 ## 4.3 Enemies
 
-All enemies are shadow creatures themed to the era of the current chapter. In Chapter 1, they look like Spanish soldiers corrupted by shadow. In Chapter 2, American administrators. In Chapter 3, Japanese occupation forces. Regardless of visual theme, all enemies function the same way: they carry a Baybayin character and walk toward the Shrine.
+All enemies are era-themed historical figures corrupted by shadow. Each era has 4 enemy types: 1 Regular (32x32), 2 Variants with unique mechanics (32x32), and 1 Elite (48x48). Bosses are separate 64x64 entities. All enemies carry a Baybayin character and walk toward the Shrine.
 
-| **Enemy Type** | **Priority** | **Behavior** | **First Appears** |
+**Spanish Era (Chapter 1):**
+
+| **Enemy Type** | **Tier** | **Behavior** | **First Appears** |
 | --- | --- | --- | --- |
-| Standard | Must Ship | Walks straight down at base speed. The default enemy. | Level 1 |
-| Fast | Must Ship | Same as Standard but moves at 1.3x speed. | Level 2 |
-| Chain (Word) | Should Ship | Multiple enemies linked as a Baybayin word. Must be killed in order. | Level 3 |
-| Shielded | Should Ship | Requires two correct drawings to defeat. First hit breaks the shield. | Level 6 |
-| Sprinter | Should Ship | Moves at 2x speed. Appears suddenly and demands instant reaction. | Level 7 |
-| Phaser/Blinker | Nice to Have | Flickers in and out of visibility. The character label disappears periodically. | Level 11 |
-| Decoy | Nice to Have | Displays a wrong character. Drawing it triggers a penalty. Must be ignored. | Level 12 |
-| Zigzagger | Nice to Have | Moves in a lateral zigzag while descending. | Level 13 |
-| Healer | Nice to Have | Slowly restores health to nearby shielded enemies if not killed quickly. | Level 14 |
+| Soldado | Regular | Walks straight down at base speed. The default enemy. | Level 1 |
+| Fraile | Variant | Phaser. Baybayin label fades in and out on a timer. Player must memorize the character. Robe glides smoothly. | Level 2 |
+| Guardia | Variant | Fast. Moves at 1.5x Soldado speed. Aggressive patrol stride. | Level 3 |
+| Capitan | Elite (48x48) | Shielded. Requires 2 correct drawings. First hit breaks visible armor layer. Slower than Soldado (0.7x). | Level 4 |
+
+**American Era (Chapter 2):**
+
+| **Enemy Type** | **Tier** | **Behavior** | **First Appears** |
+| --- | --- | --- | --- |
+| Soldier | Regular | Walks straight at base speed. Military march. | Level 6 |
+| Maestro | Variant | Decoy. Displays a Baybayin character but drawing it penalizes the player (lose 1 heart). Must be ignored. Visually subtly warmer than real enemies. | Level 7 |
+| Pensionado | Variant | Zigzag. Moves in a sine wave pattern while descending. | Level 8 |
+| General | Elite (48x48) | Commander. While alive, all nearby American enemies move 1.3x faster. General moves slowly (0.7x). Kill the General to remove the speed buff. | Level 9 |
+
+**Japanese Era (Chapter 3):**
+
+| **Enemy Type** | **Tier** | **Behavior** | **First Appears** |
+| --- | --- | --- | --- |
+| Heitai | Regular | Walks straight but inherently 1.2x faster than Soldado/Soldier. | Level 11 |
+| Kisha | Variant | Sprinter. Walks normally, pauses briefly, then charges at 2.5x speed. | Level 12 |
+| Kempei | Variant | Censor. While alive, scrambles the Baybayin labels on all nearby enemies to show wrong characters. Kill the Kempei first to restore correct labels. | Level 13 |
+| Shokan | Elite (48x48) | Shielded + Corruption Veil. Requires 2 hits. All three era corruption colors swirl around the sprite, making the Baybayin label harder to read. | Level 14 |
+
+**Bosses (64x64):**
+
+| **Boss** | **Era** | **Level** | **Mechanic** |
+| --- | --- | --- | --- |
+| El Inquisidor | Spanish | 5 | Phase-based. Can summon Soldado reinforcements during phases. |
+| The Superintendent | American | 10 | Phase-based. Decree ability temporarily scrambles nearby Baybayin labels. |
+| Kadiliman | Final | 15 | Phase-based. Formless shadow entity. Summons enemies from all three eras. Drawing all 17 characters defeats it. |
 
 ## 4.4 Items
 
@@ -222,11 +249,11 @@ The story is delivered through short dialogue panels that appear at the start an
 | --- | --- |
 | Opening | The player finds a bamboo scroll covered in Baybayin. A spirit appears and says: "You are Salinlahi, the inheritor. The script is not dead. Reclaim it." |
 | Chapter 1 Intro | The spirit explains: colonizers are burning the manuscripts. The Baybayin characters are being erased. You must fight back using the very script they are trying to destroy. |
-| Chapter 1 Boss | A corrupted Spanish captain empowered by Kadiliman. Defeating it proves the script still has power. |
+| Chapter 1 Boss | El Inquisidor, a corrupted high-ranking friar-inquisitor who oversaw the burning of Baybayin manuscripts. Defeating him proves the script still has power. |
 | Chapter 2 Intro | A new era. A new occupier. The old tongue is being replaced by a foreign language. The script is fading from memory. |
-| Chapter 2 Boss | An American administrator wielding the power of institutional erasure. |
+| Chapter 2 Boss | The Superintendent, an American colonial education administrator wielding the power of institutional erasure. |
 | Chapter 3 Intro | The final stand. Another wave of occupation. The script is almost gone. You are the last one who can bring it back. |
-| Final Boss | Kadiliman, the Darkness itself. The embodiment of cultural forgetting. Drawing all 17 characters in a timed sequence restores Baybayin to the world. |
+| Final Boss | Kadiliman, the Darkness itself. The embodiment of cultural forgetting. A formless shadow entity combining all three eras of corruption. Drawing all 17 characters in a timed sequence restores Baybayin to the world. |
 | Ending | The script returns. The world remembers. Endless Mode unlocks. |
 
 # 5. UX and UI
@@ -296,8 +323,8 @@ Development follows Agile Scrum with 2-week sprints. Total development timeline 
 | --- | --- | --- |
 | Sprint 1 | Mar 16 to 27 | Core loop skeleton. Enemy walks, player draws, system logs recognition. First Android build launches and does not crash. |
 | Sprint 2 | Mar 30 to Apr 10 | Full recognition and feedback. Correct drawing defeats enemy. Audio pronunciation plays. Incorrect drawing rejected with visual feedback. Game is playable in simplest form. |
-| Sprint 3 | Apr 13 to 24 | Levels 1 through 10 playable. Chapter 1 boss encounter. Dialogue system. Level select with progress saving. New enemy types (Shielded, Sprinter, Chain). |
-| Sprint 4 | Apr 27 to May 8 | Levels 11 through 15 playable. Bosses at Levels 10 and 15. Endless Mode. Lite/Full build split. In-game questionnaire for testing. |
+| Sprint 3 | Apr 13 to 24 | Levels 1 through 10 playable. El Inquisidor boss encounter (Level 5). Dialogue system. Level select with progress saving. Spanish era enemies (Soldado, Fraile, Guardia, Capitan). |
+| Sprint 4 | Apr 27 to May 8 | Levels 11 through 15 playable. The Superintendent (Level 10) and Kadiliman (Level 15) bosses. American and Japanese era enemies. Endless Mode. Lite/Full build split. In-game questionnaire. |
 | Sprint 5 | May 11 to 22 | Polish, playtesting, and User Acceptance Testing with 50 to 100 participants. All art finalized. All audio finalized. Bug fixing. |
 | Sprint 6 | May 25 to 29 | Final bug fixes, store submission, project documentation. Safety buffer week. |
 
@@ -307,7 +334,7 @@ Development follows Agile Scrum with 2-week sprints. Total development timeline 
 | --- | --- | --- | --- |
 | $P recognizer accuracy is too low for visually similar characters (BA vs HA) | Medium | High | Multi-template support (multiple reference samples per character). Tune threshold. If still failing, add visual hint system. |
 | Art delivery from pixel artist falls behind schedule | Medium | Medium | Use placeholder sprites from free asset packs. All code is art-independent. Swap assets when delivered. |
-| Sprint 3/4 scope is too large for 2-week sprint | High | High | Feature priority matrix defines cut order. Nice-to-Have enemies cut first. Levels reduced from 15 to 10 if needed, never below 5. |
+| Sprint 3/4 scope is too large for 2-week sprint | High | High | Feature priority matrix defines cut order. Variant enemy mechanics simplified to regular enemies first. Levels reduced from 15 to 10 if needed, never below 5. |
 | Edge-of-screen strokes clipped by OS gestures | High | Medium | Test early on real devices. Add a small dead zone at screen edges. Document as known limitation. |
 | Team burnout during final weeks | Medium | High | Sprint 6 exists as a buffer. Realistic scope from Day 1. Daily standups catch problems early. |
 
@@ -315,10 +342,10 @@ Development follows Agile Scrum with 2-week sprints. Total development timeline 
 
 | **Dependency** | **Needed By** | **Fallback** |
 | --- | --- | --- |
-| Art Batch 1 (Standard enemy, shrine, overlays, forest bg) | End of Week 3 | Continue with placeholder sprites from Kenney.nl or itch.io free packs |
-| Art Batch 2 (Sprinter, Shielded, Chain enemies) | End of Week 5 | Recolor Standard sprites as temporary substitutes |
-| Art Batch 3 (UI, portraits, ruins bg, dialogue panel, boss arena) | End of Week 7 | Plain Unity UI, text-only dialogue |
-| Art Batch 4 (Phaser, Zigzagger, Healer, boss sprites, FX, icon) | End of Week 8 | Cut enemies that lack art, use placeholder boss |
+| Art Batch 1 (Soldado, Fraile, Guardia, Kuya protagonist, Spanish shrine, Map 1 tileset) | End of Week 3 | Continue with placeholder sprites from Kenney.nl or itch.io free packs |
+| Art Batch 2 (Capitan, all American + Japanese enemies, remaining protagonists, El Inquisidor boss) | End of Week 5 | Recolor Soldado sprites as temporary substitutes |
+| Art Batch 3 (UI, portraits, Map 2 + Map 3 tilesets, dialogue panel, Superintendent + Kadiliman bosses) | End of Week 7 | Plain Unity UI, text-only dialogue |
+| Art Batch 4 (Spawn/hurt anims, FX polish, app icon) | End of Week 8 | Ship without spawn/hurt anims, use placeholder icon |
 | Pronunciation audio clips (17 characters) | End of Week 3 | Team records their own voices, replace later if professional clips are commissioned |
 | Boss theme BGM (1 to 3 tracks) | End of Week 7 | Use modified gameplay BGM as placeholder |
 | UAT participants (50 to 100 people) | Week 9 | Start recruiting in Week 6, confirm in Week 8 |

@@ -1,7 +1,7 @@
 # 05 — Data Contracts and ScriptableObjects
 **Project:** Salinlahi
-**Version:** 1.0
-**Date:** 2026-03-19
+**Version:** 1.2
+**Date:** 2026-03-25
 **Owner:** Chad Andrada (Product Owner / Designer)
 
 ---
@@ -50,12 +50,17 @@ All game content is defined in ScriptableObject assets. Level designers can crea
 
 | Field | Type | Header | Required | Invariants |
 |-------|------|--------|----------|------------|
-| `enemyID` | `string` | Identity | YES | Unique type identifier. Canonical values: `"standard"`, `"fast"`, `"chain"`, `"shielded"`, `"sprinter"`, `"phaser"`, `"decoy"`, `"zigzagger"`, `"healer"`. Must be lowercase. |
+| `enemyID` | `string` | Identity | YES | Unique type identifier. Canonical values: `"soldado"`, `"fraile"`, `"guardia"`, `"capitan"`, `"soldier"`, `"maestro"`, `"pensionado"`, `"general"`, `"heitai"`, `"kisha"`, `"kempei"`, `"shokan"`. Must be lowercase. |
 | `moveSpeed` | `float` | Stats | YES | World units per second toward the base. Default `1.5f`. Must be > 0. |
 | `hitsRequired` | `int` | Stats | YES | Number of correct drawings needed to defeat. Default `1`. Shielded enemies use `2`. |
 | `walkFrames` | `Sprite[]` | Visuals | YES | Animation frames for walking. At least 1 frame required (index 0 set as initial sprite). Null array or zero length is tolerated by code but produces invisible enemy — authoring error. |
 | `animatorController` | `RuntimeAnimatorController` | Visuals | NO | Optional animator override. May be null for static sprite enemies. |
 | `assignedCharacter` | `BaybayinCharacterSO` | Character | YES | The Baybayin character this enemy carries and requires drawn to be defeated. Must not be null at runtime. |
+| `isDecoy` | `bool` | Special | NO | `true` for Maestro enemies. Drawing their character penalizes the player. Default `false`. |
+| `isPhaser` | `bool` | Special | NO | `true` for Fraile enemies. Baybayin label fades in/out on timer. Default `false`. |
+| `phaserInterval` | `float` | Special | NO | Seconds between phaser label visibility toggles. Only used when `isPhaser = true`. |
+| `hasCorruptionVeil` | `bool` | Special | NO | `true` for Shokan enemies. All three era corruption colors swirl around sprite. Default `false`. |
+| `commanderSpeedBuff` | `float` | Special | NO | Speed multiplier applied to nearby same-era enemies while this enemy is alive. Only used for General (`1.3f`). Default `0f` (inactive). |
 
 **Validation Rules:**
 - `moveSpeed` must be > 0. Value ≤ 0 causes the enemy to never move (not crash-safe, but functionally broken).

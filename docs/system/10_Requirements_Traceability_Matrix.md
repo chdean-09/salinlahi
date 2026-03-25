@@ -1,7 +1,7 @@
 # 10 — Requirements Traceability Matrix
 **Project:** Salinlahi
-**Version:** 1.0
-**Date:** 2026-03-19
+**Version:** 1.2
+**Date:** 2026-03-25
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -58,6 +58,13 @@
 | REQ-33 | Endless Mode shall activate after completing Story Mode or defeating the final boss, with high-score tracking (waves survived, enemies defeated, longest combo) | GDD §2.4; Team README §9 | P2 | ❌ Not implemented | — | ❌ NOT FOUND | 🟡 P2 |
 | REQ-34 | Cross-system communication shall use EventBus exclusively | TDD §1; EventBus.cs comment | P0 | All systems use EventBus; no direct cross-manager calls observed | CS-03 | ✅ Implemented | None |
 | REQ-35 | EventBus subscriptions shall be in OnEnable and unsubscribed in OnDisable | EventBus.cs comment | P0 | `GameManager`, `AudioManager` — OnEnable/OnDisable confirmed | CS-03 | ✅ Implemented | None |
+| REQ-36 | Protagonist shall be visible on screen during gameplay as a 32×32 sprite with 3 era-specific designs | GDD §4.2 | P1 | ❌ Not implemented | — | ❌ NOT FOUND | 🟠 P1 |
+| REQ-37 | 12 enemy types shall be era-themed (4 per era: Soldado/Fraile/Guardia/Capitan, Soldier/Maestro/Pensionado/General, Heitai/Kisha/Kempei/Shokan) | GDD §4.3 | P1 | ❌ Only standard enemy implemented | EN-07–EN-11 | ⚠ Partial | 🟠 P1 |
+| REQ-38 | Combo system shall track consecutive correct draws; 5-streak triggers 3-second slow effect | GDD §3.2; Team README §9 | P1 | ❌ Not implemented | — | ❌ NOT FOUND | 🟠 P1 |
+| REQ-39 | Dialogue panels (Type A) shall appear before/after levels with typewriter effect | GDD §4.5; Team README §12 | P1 | ❌ Not implemented | DL-01, DL-02 | ❌ NOT FOUND | 🟠 P1 |
+| REQ-40 | Each era shall have a unique shrine design at 64×96 px with 4 damage states | GDD §4.1 | P2 | ❌ Not implemented | — | ❌ NOT FOUND | 🟡 P2 |
+| REQ-41 | Boss encounters shall use phase-based system with BossConfigSO data | GDD §4.3; TDD §3.2 | P1 | ❌ Not implemented | BS-01–BS-04 | ❌ NOT FOUND | 🟠 P1 |
+| REQ-42 | Baybayin character set shall include 14 consonants and 3 vowels (A, E/I, O/U) totaling 17 | GDD §3.3 | P0 | `RecognitionConfigSO` implies 17; character type not distinguished | RC-07 | ⚠ Partial | 🟠 P1 |
 
 ---
 
@@ -66,12 +73,12 @@
 | Status | Count |
 |--------|-------|
 | ✅ Implemented | 9 |
-| ⚠ Partial | 12 |
-| ❌ NOT FOUND | 14 |
-| **Total requirements** | **35** |
+| ⚠ Partial | 14 |
+| ❌ NOT FOUND | 19 |
+| **Total requirements** | **42** |
 
 | Severity | Count |
 |----------|-------|
 | 🔴 P0 gaps | 9 |
-| 🟠 P1 gaps | 10 |
-| 🟡 P2 gaps | 3 |
+| 🟠 P1 gaps | 16 |
+| 🟡 P2 gaps | 4 |

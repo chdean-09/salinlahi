@@ -1,7 +1,7 @@
 # 03 — Core Systems
 **Project:** Salinlahi
-**Version:** 1.0
-**Date:** 2026-03-19
+**Version:** 1.2
+**Date:** 2026-03-25
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -203,5 +203,12 @@ The following systems are specified in `TDD.md` and `GDD.md` but have **no imple
 | `LevelSelect.cs` | TDD §7.4; GDD §5.1 | NOT FOUND |
 | `PauseMenu.cs` | TDD §7.4 | NOT FOUND |
 | `BossConfigSO.cs` | TDD §5 Data Layer | NOT FOUND |
+| `ComboManager.cs` | GDD §3.2; Team README §4 | NOT FOUND |
+| `DialogueController.cs` | GDD §4.5; Team README §12 | NOT FOUND |
+| `LevelFlowController.cs` | Team README §12; §4 | NOT FOUND |
+| `InWavePopupController.cs` | Team README §12 | NOT FOUND |
+| `BossController.cs` | GDD §4.3; TDD §3.2 | NOT FOUND |
+| `BossPhaseManager.cs` | GDD §4.3; TDD §3.2 | NOT FOUND |
+| `StreakDisplay.cs` | GDD §5.2 | NOT FOUND |
 
 These gaps are P0/P1 items in the Traceability Matrix and Remediation Backlog.

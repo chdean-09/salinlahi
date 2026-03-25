@@ -1,7 +1,7 @@
 # 09 — Test Strategy and Acceptance Criteria
 **Project:** Salinlahi
-**Version:** 1.0
-**Date:** 2026-03-19
+**Version:** 1.2
+**Date:** 2026-03-25
 **Owner:** Whole Team (QA responsibility shared)
 
 ---
@@ -39,7 +39,12 @@ Salinlahi has no automated unit test suite in its current implementation. All te
 | EN-03 | Enemy returns to pool on base hit | Allow 5 enemies to reach PlayerBase | Enemies deactivated after base hit; no null reference errors | P0 |
 | EN-04 | EnemyMover stops on `OnDisable` | Force-deactivate an active enemy | `_active = false`; no further `transform.Translate` calls | P1 |
 | EN-05 | EnemyPool default capacity pre-warms correctly | Inspect pool at game start | Pool contains `defaultCapacity` (10) inactive enemies after Bootstrap | P2 |
-| EN-06 | `Enemy.Initialize` sets correct speed and sprite | Spawn enemy with known EnemyDataSO | Enemy speed matches `EnemyDataSO.moveSpeed`; sprite matches `walkFrames[0]` | P1 |
+| EN-06 | `Enemy.Initialize` sets correct speed and sprite | Spawn Soldado with known EnemyDataSO | Enemy speed matches `EnemyDataSO.moveSpeed`; sprite matches `walkFrames[0]` | P1 |
+| EN-07 | Fraile phaser label fades in/out on timer | Spawn Fraile enemy; observe 10 seconds | Baybayin label alternates between visible and hidden at `phaserInterval` rate | P1 |
+| EN-08 | Maestro decoy penalizes player when drawn | Spawn Maestro; draw its displayed character | Player loses 1 heart; Maestro remains active | P1 |
+| EN-09 | General commander aura buffs nearby American enemies | Spawn General with 3 Soldiers nearby | Soldiers move at 1.3× speed while General alive; normal speed after General defeated | P1 |
+| EN-10 | Kempei censor scrambles nearby labels | Spawn Kempei with 3 enemies nearby | Nearby enemy labels show wrong characters while Kempei alive; correct labels restored after Kempei defeated | P1 |
+| EN-11 | Capitan/Shokan require 2 hits to defeat | Spawn Capitan; draw correct character once | Capitan shows armor break but remains active; second correct draw defeats it | P1 |
 
 ### 2.3 Recognition System (PLANNED — verify in Sprint 2)
 
@@ -73,6 +78,23 @@ Salinlahi has no automated unit test suite in its current implementation. All te
 | PF-03 | APK size < 100 MB | Check final build size | APK ≤ 100 MB | P1 |
 | PF-04 | Zero runtime Instantiate/Destroy in game loop | Profile wave gameplay | Unity Profiler shows 0 `Instantiate`/`Destroy` calls during active wave | P0 |
 
+### 2.7 Boss System (PLANNED — verify in Sprint 3)
+
+| Test ID | Requirement | Test Procedure | Pass Criterion | Priority |
+|---------|-------------|---------------|---------------|----------|
+| BS-01 | Boss spawns at boss level (5, 10, 15) | Play Level 5 to final wave completion | Boss encounter activates after waves; `OnBossSpawned` fires | P0 |
+| BS-02 | Boss phase transitions work | Defeat boss phase 1 requirement | `OnBossPhaseCleared` fires; boss transitions to phase 2 | P0 |
+| BS-03 | Boss defeat triggers level complete | Clear all boss phases | `OnBossDefeated` fires; `OnLevelComplete` fires | P0 |
+| BS-04 | Kadiliman requires all 17 characters | Play Level 15 boss | Player must draw all 17 characters to defeat Kadiliman | P1 |
+
+### 2.8 Dialogue System (PLANNED — verify in Sprint 3)
+
+| Test ID | Requirement | Test Procedure | Pass Criterion | Priority |
+|---------|-------------|---------------|---------------|----------|
+| DL-01 | Type A dialogue pauses gameplay | Trigger pre-level dialogue | Time.timeScale == 0; enemies do not move; typewriter text plays | P1 |
+| DL-02 | Tap skips typewriter then advances line | During Type A dialogue, tap once then again | First tap completes line; second tap advances to next line | P1 |
+| DL-03 | Type B popup does not pause gameplay | Trigger in-wave popup | Enemies continue moving; popup shows for 3-4 seconds then fades | P2 |
+
 ### 2.6 Platform / Offline
 
 | Test ID | Requirement | Test Procedure | Pass Criterion | Priority |
@@ -100,6 +122,9 @@ Salinlahi has no automated unit test suite in its current implementation. All te
 - [ ] Audio plays on enemy defeat (Sprint 2+)
 - [ ] Time.timeScale = 1f on scene load
 - [ ] App runs offline (airplane mode test)
+- [ ] Combo counter increments on consecutive correct draws (Sprint 2+)
+- [ ] Combo resets on miss or base hit (Sprint 2+)
+- [ ] Type A dialogue panels pause and resume correctly (Sprint 3+)
 
 ---
 

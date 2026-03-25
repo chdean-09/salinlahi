@@ -1,7 +1,7 @@
 # 07 — Content Pipeline
 **Project:** Salinlahi
-**Version:** 1.0
-**Date:** 2026-03-19
+**Version:** 1.2
+**Date:** 2026-03-25
 **Owner:** Chad Andrada (Product Owner / Designer)
 
 ---
@@ -10,7 +10,7 @@
 
 ### 1.1 Character Set Scope
 
-The game covers **17 Baybayin consonant base characters** only. Diacritical marks (kudlit) are explicitly out of scope.
+The game covers **17 Baybayin characters: 14 consonants (BA, KA, DA, GA, HA, LA, MA, NA, NGA, PA, SA, TA, WA, YA) and 3 vowels (A, E/I, O/U)**. Diacritical marks (kudlit) are explicitly out of MVP scope (Should Ship, may be deferred post-launch).
 
 [EVIDENCE: docs/capstone/Salinlahi.md, §1.5.1 Scope — "17 Baybayin consonant characters"; §3.3.3]
 [EVIDENCE: Assets/Scripts/Data/RecognitionConfigSO.cs — context implies 17 templates]
@@ -37,17 +37,20 @@ As of Sprint 1: **placeholder assets only**. No BaybayinCharacterSO assets have 
 
 ### 2.1 Enemy Types
 
-| Enemy Type | `enemyID` | Chapter | First Appears | Priority | Prefab | Status |
-|------------|-----------|---------|--------------|----------|--------|--------|
-| Standard | `"standard"` | 1 | Level 1 | Must Ship | `[Enemy] Standard.prefab` | Prefab exists; SO unverified |
-| Fast | `"fast"` | 1 | Level 2 | Must Ship | (PLANNED) | NOT FOUND |
-| Chain | `"chain"` | 1 | Level 3 | Should Ship | (PLANNED) | NOT FOUND |
-| Shielded | `"shielded"` | 2 | Level 6 | Should Ship | (PLANNED) | NOT FOUND |
-| Sprinter | `"sprinter"` | 2 | Level 7 | Should Ship | (PLANNED) | NOT FOUND |
-| Phaser | `"phaser"` | 2 | Level 8 | Nice to Have | (PLANNED) | NOT FOUND |
-| Decoy | `"decoy"` | 3 | Level 11 | Nice to Have | (PLANNED) | NOT FOUND |
-| Zigzagger | `"zigzagger"` | 3 | Level 12 | Nice to Have | (PLANNED) | NOT FOUND |
-| Healer | `"healer"` | 3 | Level 13 | Nice to Have | (PLANNED) | NOT FOUND |
+| Enemy Type | `enemyID` | Era | Tier | First Appears | Priority | Prefab | Status |
+|------------|-----------|-----|------|--------------|----------|--------|--------|
+| Soldado | `"soldado"` | Spanish | Regular (32×32) | Level 1 | Must Ship | `Enemy_Standard.prefab` | Prefab exists; SO unverified |
+| Fraile | `"fraile"` | Spanish | Variant (32×32) | Level 2 | Must Ship | (PLANNED) | NOT FOUND |
+| Guardia | `"guardia"` | Spanish | Variant (32×32) | Level 3 | Must Ship | (PLANNED) | NOT FOUND |
+| Capitan | `"capitan"` | Spanish | Elite (48×48) | Level 4 | Must Ship | (PLANNED) | NOT FOUND |
+| Soldier | `"soldier"` | American | Regular (32×32) | Level 6 | Must Ship | (PLANNED) | NOT FOUND |
+| Maestro | `"maestro"` | American | Variant (32×32) | Level 7 | Should Ship | (PLANNED) | NOT FOUND |
+| Pensionado | `"pensionado"` | American | Variant (32×32) | Level 8 | Should Ship | (PLANNED) | NOT FOUND |
+| General | `"general"` | American | Elite (48×48) | Level 9 | Should Ship | (PLANNED) | NOT FOUND |
+| Heitai | `"heitai"` | Japanese | Regular (32×32) | Level 11 | Must Ship | (PLANNED) | NOT FOUND |
+| Kisha | `"kisha"` | Japanese | Variant (32×32) | Level 12 | Should Ship | (PLANNED) | NOT FOUND |
+| Kempei | `"kempei"` | Japanese | Variant (32×32) | Level 13 | Should Ship | (PLANNED) | NOT FOUND |
+| Shokan | `"shokan"` | Japanese | Elite (48×48) | Level 14 | Should Ship | (PLANNED) | NOT FOUND |
 
 [EVIDENCE: Assets/Prefabs/Enemies/[Enemy] Standard.prefab — confirmed]
 [EVIDENCE: docs/capstone/GDD.md, §4.3 Enemies — full roster with priority]
@@ -61,6 +64,21 @@ As of Sprint 1: **placeholder assets only**. No BaybayinCharacterSO assets have 
 
 [EVIDENCE: Assets/Scripts/Data/EnemyDataSO.cs — walkFrames, animatorController]
 [EVIDENCE: Assets/Art/Characters/Enemies/placeholder_enemy_standard.png — confirmed]
+
+### 2.3 Sprite Size Specifications
+
+| Entity Type | Size | PPU | Examples |
+|-------------|------|-----|----------|
+| Regular enemies | 32×32 px | 32 | Soldado, Soldier, Heitai |
+| Variant enemies | 32×32 px | 32 | Fraile, Guardia, Maestro, Pensionado, Kisha, Kempei |
+| Elite enemies | 48×48 px | 32 | Capitan, General, Shokan |
+| Bosses | 64×64 px | 32 | El Inquisidor, The Superintendent, Kadiliman |
+| Protagonist | 32×32 px | 32 | Kuya, Laban, Manong |
+| Shrines | 64×96 px | 32 | Baybayin Altar (Spanish), Ancestral Door (American), Scroll Shrine (Japanese) |
+| Dialogue portraits | 96×96 px | 32 | All speaking characters |
+
+[EVIDENCE: docs/capstone/GDD.md, §4.2 Characters; §4.3 Enemies]
+[EVIDENCE: Team README §6 — Technical Specifications for pixel artist]
 
 ---
 
@@ -144,7 +162,7 @@ x32,y32
 | Folder | Contents |
 |--------|----------|
 | `Assets/Art/Characters/Enemies/` | Enemy sprites (placeholder: `placeholder_enemy_standard.png`) |
-| `Assets/Art/Characters/Player/` | Player-related art (NOT FOUND — no avatar during gameplay) |
+| `Assets/Art/Characters/Player/` | Protagonist sprites: Kuya (Spanish era), Laban (Japanese era), Manong (American era) at 32×32. Idle, draw gesture, victory, collapse animations. |
 | `Assets/Art/Environment/Background/` | Scene backgrounds |
 | `Assets/Art/Environment/` | `placeholder_shrine.png` — PlayerBase visual |
 | `Assets/Art/Environment/Tileset/` | Tile art |
@@ -179,6 +197,18 @@ All gameplay sprites must use:
 | Audio — BGM | NOT CONFIRMED |
 | Audio — SFX (base hit, game over, spawn) | NOT CONFIRMED |
 | Baybayin template .txt files (17) | NOT CONFIRMED |
+
+### 5.4 Shrine Variants
+
+Each era has its own shrine/base structure at 64×96 px with 4 visual damage states (full, crack 1, crack 2, destroyed):
+
+| Shrine | Era | Chapter |
+|--------|-----|---------|
+| Baybayin Altar | Spanish | 1 |
+| Ancestral Door | American | 2 |
+| Scroll Shrine | Japanese | 3 |
+
+[EVIDENCE: docs/capstone/GDD.md, §4.1 Levels/Maps]
 
 ---
 

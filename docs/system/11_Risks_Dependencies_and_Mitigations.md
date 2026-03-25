@@ -1,7 +1,7 @@
 # 11 — Risks, Dependencies, and Mitigations
 **Project:** Salinlahi
-**Version:** 1.0
-**Date:** 2026-03-19
+**Version:** 1.2
+**Date:** 2026-03-25
 **Owner:** Jon Wayne Cabusbusan (Scrum Master)
 
 ---
@@ -22,6 +22,8 @@
 | RISK-10 | `ScriptableObjects/Characters/` folder empty — no BaybayinCharacterSO assets authored | High | Critical | Chad | Character SO authoring is Sprint 1 content deliverable; Chad must author all 17 SOs by end of Sprint 1 | Sprint 2 enemy spawning fails due to null assignedCharacter |
 | RISK-11 | GC spikes on low-RAM Android (1–2 GB) from non-obvious allocations in hot paths | Low | Medium | Jon Wayne | Run Memory Profiler in Sprint 4; audit all `Update()` paths for hidden allocations (string interpolation, LINQ, boxing) | Frame time chart shows irregular spikes > 3ms |
 | RISK-12 | `Time.timeScale = 0` persists into next scene if SceneLoader is bypassed (e.g., direct `SceneManager.LoadScene` call) | Low | High | Jon Wayne | Never call `SceneManager.LoadScene` directly; all scene loads must go through `SceneLoader` — enforced by code review | MainMenu scene loads but game appears frozen |
+| RISK-13 | Dialogue system scope creep — Type A panels and Type B popups may consume more Sprint 3 time than budgeted | Medium | Medium | Chad | Dialogue is Moderate scope per Team README §12. Type B popups are explicitly cuttable. If behind, scale to Minimal (text crawl only). | Sprint 3 Day 5 with no working Type A panel |
+| RISK-14 | Boss battle balancing — too hard frustrates, too easy feels anticlimactic | Medium | Medium | Chad | Start boss phase timers generous; tighten based on playtest feedback. Playtest bosses separately and early. | Internal playtest shows > 80% fail rate or < 20% fail rate on boss |
 
 ---
 
@@ -39,6 +41,9 @@
 | DEP-08 | Levels 1–3 LevelConfigSO and WaveConfigSO assets fully authored | Content | Chad | Sprint 1–2 wave system | NOT CONFIRMED |
 | DEP-09 | BGM audio clip for Gameplay scene | Audio | Ian Clyde | Sprint 2 audio integration | NOT CONFIRMED |
 | DEP-10 | Base hit and game over SFX clips | Audio | Ian Clyde | Sprint 2 audio stubs replaced | NOT CONFIRMED |
+| DEP-11 | DialogueSequence ScriptableObjects (30–40 assets, 2 per level + boss intros/outros) | Content | Chad | Sprint 3 dialogue integration | NOT CONFIRMED |
+| DEP-12 | Dialogue portrait sprites (6–10 total, 96×96 px) | Art | Pixel Artist | Sprint 3 (Art Batch 3) | NOT CONFIRMED |
+| DEP-13 | 3 shrine sprite variants (Baybayin Altar, Ancestral Door, Scroll Shrine) at 64×96 px with 4 damage states each | Art | Pixel Artist | Sprint 2 (Art Batch 1 for Spanish shrine) | NOT CONFIRMED |
 
 ---
 
@@ -81,7 +86,7 @@ Pronunciation clips (DEP-03)
 |--------|----------|---------------------|----------------|
 | Sprint 1 | 2026-03-27 | Core loop skeleton; first Android build | All subsequent sprints slip |
 | Sprint 2 | 2026-04-10 | Full recognition + feedback; playable game | UAT preparation blocked |
-| Sprint 3 | 2026-04-24 | Levels 1–10; Chapter 1 boss; new enemy types | Scope reduction required |
+| Sprint 3 | 2026-04-24 | Levels 1–10; Chapter 1 boss; era-themed enemy types; dialogue system (Type A panels) | Scope reduction required |
 | Sprint 4 | 2026-05-08 | Levels 11–15; Endless Mode; Lite/Full split | Store submission at risk |
 | Sprint 5 | 2026-05-22 | UAT with 50–100 participants; art final | Academic evaluation affected |
 | Sprint 6 | 2026-05-29 | Store submission; final docs | Project incomplete |
