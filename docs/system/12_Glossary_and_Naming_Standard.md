@@ -1,7 +1,7 @@
 # 12 — Glossary and Naming Standard
 **Project:** Salinlahi
-**Version:** 1.0
-**Date:** 2026-03-19
+**Version:** 1.2
+**Date:** 2026-03-25
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -31,6 +31,10 @@
 | **Multi-stroke Window** | The 1.5-second timer that begins after a finger lifts, during which additional strokes are accepted as part of the same drawing before recognition is submitted. | RecognitionConfigSO.cs |
 | **Pool** | Unity `ObjectPool<T>` instance managing enemy `GameObject` recycling. Prevents runtime `Instantiate`/`Destroy` calls in the game loop. | EnemyPool.cs |
 | **DontDestroyOnLoad** | Unity API call that marks a `GameObject` to persist across scene loads. Applied to all manager prefabs by `Singleton<T>.Awake()`. | Singleton.cs |
+| **Protagonist** | The player character Salinlahi, visible on screen during gameplay as a 32×32 top-down sprite. Has 3 era-specific designs: Kuya (Village Boy, Spanish era), Laban (Fighter Youth, Japanese era), Manong (Young Adult, American era). Each has idle, draw gesture, victory, and collapse animations. | GDD §4.2 |
+| **Dialogue Sequence** | A ScriptableObject asset containing an ordered list of dialogue lines (speaker, portrait, text, optional voice clip) for one story moment. Two types: Type A (gated, pauses gameplay) and Type B (in-wave popup, does not pause). | Team README §12 |
+| **Era** | One of three historical periods represented in the game's chapters: Spanish Colonization (Chapter 1), American Occupation (Chapter 2), Japanese Occupation (Chapter 3). Each era has 4 unique enemy types, a unique shrine design, and a unique tileset. | GDD §4.1 |
+| **Combo Streak** | A counter tracking consecutive correct drawings without a miss. At 5 consecutive successes, a combo reward triggers: all on-screen enemies slow down for 3 seconds. Resets on any miss or base hit. | GDD §3.2; Team README §9 |
 
 ---
 
@@ -43,11 +47,11 @@
 | Enemy destroy | Enemy returned to pool / released | `Destroy` is not called on enemies during gameplay. |
 | Create enemy | Get enemy from pool | Same as above. |
 | Base health | Shrine hearts | The health mechanic uses discrete hearts, not a numeric health value. |
-| Player character | Salinlahi (narrative presence only) | There is no on-screen player avatar during gameplay. The player's presence is their finger. |
+| Player character (generic) | Protagonist / Salinlahi | Use 'protagonist' or the era-specific name (Kuya, Laban, Manong) when referring to the on-screen character. The protagonist IS visible during gameplay as a 32×32 sprite. |
 | Drawing attack | Character drawing / stroke | Prefer "draw the Baybayin character" over "attack" in user-facing copy. |
 | Dollar sign P | $P algorithm | Use `$P` in technical documents; spell out "Dollar-P" only in prose for non-technical readers. |
 
-[EVIDENCE: docs/capstone/Salinlahi.md, §4.2 Characters — "no on-screen avatar during gameplay"]
+[EVIDENCE: GDD §4.2 — protagonist is visible as 32×32 sprite during gameplay]
 [EVIDENCE: Expert consultation noted in Salinlahi.md — Alibata is not the correct term]
 
 ---
@@ -72,11 +76,12 @@
 
 | Rule | Pattern | Example |
 |------|---------|---------|
-| Manager prefabs | `[Manager] ClassName` | `[Manager] GameManager` |
-| Enemy prefabs | `[Enemy] TypeName` | `[Enemy] Standard` |
-| UI prefabs | `[UI] ScreenName` | `[UI] HUD` (planned) |
+| Manager prefabs | `Manager_[Name]` | `Manager_Audio`, `Manager_GameManager` |
+| Enemy prefabs | `Enemy_[Type]` | `Enemy_Standard`, `Enemy_Fast` |
+| Boss prefabs | `Boss_[Chapter]` | `Boss_Chapter1` |
+| UI prefabs | `UI_[Name]` | `UI_HUD`, `UI_HeartIcon` |
 
-[EVIDENCE: Assets/Prefabs/ — bracket convention observed]
+[EVIDENCE: Team README §5 — underscore convention is the target standard]
 
 ### 3.3 ScriptableObjects
 
@@ -99,11 +104,13 @@
 
 | Asset Type | Pattern | Example |
 |------------|---------|---------|
-| Enemy sprites | `enemy_[type]_[state]_[frame]` | `enemy_standard_walk_01` |
-| UI sprites | `ui_[element]_[state]` | `ui_button_play_normal` |
-| Background | `bg_[chapter]_[level]` | `bg_ch1_l1` |
-| SFX clips | `sfx_[description]` | `sfx_base_hit`, `sfx_BA` |
-| BGM tracks | `bgm_[context]` | `bgm_gameplay_ch1` |
+| Enemy sprites | `enemy_[type]_[state].png` | `enemy_standard_walk.png`, `enemy_standard_death.png` |
+| Boss sprites | `boss_[chapter]_[state].png` | `boss_chapter1_idle.png` |
+| UI sprites | `ui_[element]_[state].png` | `ui_button_normal.png` |
+| Background | `bg_[scene]_[layer].png` | `bg_gameplay_layer1.png` |
+| SFX clips | `sfx_[description].wav` | `sfx_enemy_defeat.wav`, `sfx_base_hit.wav` |
+| BGM tracks | `bgm_[context].ogg` | `bgm_gameplay.ogg`, `bgm_boss.ogg` |
+| Pronunciation | `pronunciation_[syllable].wav` | `pronunciation_ba.wav`, `pronunciation_ka.wav` |
 
 ### 3.6 Template Files
 
@@ -111,6 +118,14 @@
 |------|---------|---------|
 | Recognition templates | `[CharacterID]_template.txt` | `BA_template.txt` |
 | CharacterID case must match `BaybayinCharacterSO.characterID` exactly | — | If SO has `"BA"`, file must be `BA_template.txt` |
+
+### 3.7 Animations
+
+| Rule | Pattern | Example |
+|------|---------|---------|
+| Enemy animations | `enemy_[type]_[state].anim` | `enemy_standard_walk.anim`, `enemy_standard_death.anim` |
+| Boss animations | `boss_[chapter]_[phase].anim` | `boss_chapter1_phase1.anim` |
+| UI animations | `ui_[element]_[state].anim` | `ui_heart_break.anim` |
 
 ---
 

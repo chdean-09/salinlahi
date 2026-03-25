@@ -1,7 +1,7 @@
 # 06 — UI/UX and Player Flow
 **Project:** Salinlahi
-**Version:** 1.0
-**Date:** 2026-03-19
+**Version:** 1.2
+**Date:** 2026-03-25
 **Owner:** Jeff Andre Millan (UI/UX Developer)
 
 ---
@@ -19,6 +19,9 @@
 | Game Over | `GameOver.unity` | `GameOverUI.cs` | Partial (stub) |
 | Tracing Dojo | (NOT FOUND — no scene) | (PLANNED) | NOT FOUND |
 | Settings | (NOT FOUND — no scene) | (PLANNED) | NOT FOUND |
+| Dialogue Panel (Type A) | (overlay in Gameplay) | `DialogueController.cs` (PLANNED) | NOT FOUND |
+| In-Wave Popup (Type B) | (overlay in Gameplay) | `InWavePopupController.cs` (PLANNED) | NOT FOUND |
+| Level Complete | (overlay or separate scene) | (PLANNED) | NOT FOUND |
 
 [EVIDENCE: Assets/_Scenes/ — only Bootstrap, MainMenu, Gameplay, GameOver scenes exist]
 [EVIDENCE: docs/capstone/GDD.md, §5.1 Player Journey]
@@ -33,6 +36,8 @@ App Launch
         └─ Auto → Main Menu
               ├─ [Play] → Level Select (PLANNED)
               │     └─ [Select Level] → Gameplay Scene
+              │           ├─ Type A Intro Dialogue (if configured) → draws from DialogueSequence SO
+              │           ├─ Waves begin after dialogue ends
               │           ├─ Pause → Pause Menu (PLANNED)
               │           │     ├─ [Resume] → Gameplay
               │           │     └─ [Quit] → Main Menu
@@ -109,6 +114,37 @@ The HUD is specified in the GDD and TDD but **has no implementation file**. All 
 | Return to Level Select | Returns to level select | Partial (returns to MainMenu currently) |
 
 [EVIDENCE: docs/capstone/GDD.md, §5.1 — "Game Over: Shows final stats. Retry button. Return to Level Select button."]
+
+---
+
+## 5.5 Dialogue System (PLANNED)
+
+### Type A — Gated Story Panels
+
+Appear at fixed moments: before a level starts, after a boss is defeated, or when a chapter ends. Player reads text, then taps to continue. These carry the main plot beats.
+
+- Time.timeScale set to 0 during Type A panels
+- Typewriter text effect with punctuation-aware pauses (0.12s for `.?!`, 0.06s for `,`, 0.03s for other characters)
+- First tap completes the current line instantly; second tap advances to next line
+- Character portraits displayed on left or right side of panel
+- Uses `WaitForSecondsRealtime` (not `WaitForSeconds`) so typewriter runs correctly at timeScale 0
+
+### Type B — In-Wave Popups
+
+Small atmospheric flavor lines that appear during gameplay. Do not pause gameplay.
+
+- Appear at top or bottom edge of screen, away from drawing area
+- Show for 3–4 seconds, fade out automatically
+- Triggered by EventBus subscriptions, not by LevelFlowController
+- If a new popup triggers while one is showing, old one fades immediately and new one replaces it
+- Optional per wave; can be safely cut if behind schedule
+
+### Data Architecture
+
+All dialogue content stored in `DialogueSequence` ScriptableObjects containing ordered lists of `DialogueLine` entries (speaker name, portrait, portrait side, text, optional voice clip).
+
+[EVIDENCE: Team README §12 — Cutscenes, Dialogue, and Story Bits]
+[EVIDENCE: docs/capstone/GDD.md, §4.5 Narrative Beats]
 
 ---
 

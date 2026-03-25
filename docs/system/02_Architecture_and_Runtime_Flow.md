@@ -1,7 +1,7 @@
 # 02 — Architecture and Runtime Flow
 **Project:** Salinlahi
-**Version:** 1.0
-**Date:** 2026-03-19
+**Version:** 1.2
+**Date:** 2026-03-25
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -12,7 +12,7 @@
 |------------|------|------|
 | Bootstrap | `Assets/_Scenes/Bootstrap.unity` | Instantiates all manager singletons; auto-transitions to MainMenu |
 | MainMenu | `Assets/_Scenes/MainMenu.unity` | Entry point for user: Play, Endless, Tracing Dojo, Settings |
-| LevelSelect | `Assets/_Scenes/LevelSelect.unity` | 15 level buttons grouped by chapter; unlock progression (PLANNED) |
+| LevelSelect | `Assets/_Scenes/LevelSelect.unity` | 15 level buttons grouped by chapter; unlock progression; 3 shrines per era |
 | Gameplay | `Assets/_Scenes/Gameplay.unity` | Core defense loop: enemies, drawing canvas, HUD |
 | GameOver | `Assets/_Scenes/GameOver.unity` | Post-defeat stats; Retry and Return-to-Menu actions |
 
@@ -41,6 +41,9 @@ Cold Start
 │
 ├─ Gameplay.unity loads
 │     └─ GameManager.StartGame() called → GameState.Playing
+│     └─ LevelFlowController checks LevelConfigSO.isBossLevel
+│           ├─ false → WaveManager drives waves (with optional Type A dialogue panels before/after)
+│           └─ true → BossController activates boss encounter
 │     └─ WaveManager (PLANNED) loads LevelConfigSO → drives WaveSpawner
 │     └─ EnemyPool.Get(data) → enemy active in scene
 │     └─ [Player draws] → RecognitionManager (PLANNED) → EventBus.RaiseCharacterRecognized()
@@ -93,6 +96,8 @@ protected virtual void Awake()
 | `[Manager] SceneLoader.prefab` | `SceneLoader.cs` | Bootstrap scene |
 | `[Manager] AudioManager.prefab` | `AudioManager.cs` | Bootstrap scene |
 | `[Manager] EnemyPool.prefab` | `EnemyPool.cs` | Bootstrap scene |
+| `[Manager] WaveManager.prefab` | `WaveManager.cs` | Bootstrap scene (PLANNED) |
+| `[Manager] ComboManager.prefab` | `ComboManager.cs` | Bootstrap scene (PLANNED) |
 
 [EVIDENCE: Assets/Prefabs/Managers/ directory]
 

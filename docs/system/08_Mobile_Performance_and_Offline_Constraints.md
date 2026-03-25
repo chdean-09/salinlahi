@@ -1,7 +1,7 @@
 # 08 — Mobile Performance and Offline Constraints
 **Project:** Salinlahi
-**Version:** 1.0
-**Date:** 2026-03-19
+**Version:** 1.2
+**Date:** 2026-03-25
 **Owner:** Jon Wayne Cabusbusan (Systems Lead)
 
 ---
@@ -164,8 +164,8 @@ Both builds use **one Unity codebase**. The split is controlled by a **scripting
 
 | Build | App Identifier | Price | Content |
 |-------|---------------|-------|---------|
-| Salinlahi Lite | `com.team.salinlahi.lite` (exact ID NOT FOUND) | Free | Levels 1–3 only; no Endless Mode |
-| Salinlahi Full | `com.team.salinlahi` (exact ID NOT FOUND) | PHP 149 | All 15 levels, Endless Mode, all bosses |
+| Salinlahi Lite | `com.salinlahi.game.lite` | Free | Levels 1–3 only; no Endless Mode |
+| Salinlahi Full | `com.salinlahi.game` | PHP 149 | All 15 levels, Endless Mode, all bosses |
 
 [EVIDENCE: docs/capstone/TDD.md, §7.2 Lite/Full Build Split]
 [EVIDENCE: docs/capstone/Salinlahi.md, §3.4 Business Model]

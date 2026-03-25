@@ -14,17 +14,13 @@ Version 1.0 | March 2026
 
 **Team**
 
-Andrada, Chad
+Chad (Product Owner / Designer) | Jon Wayne (Core Systems)
 
-Cabusbusan, Jon Wayne
-
-Millan, Jeff Andre
-
-Tejada, Ian Clyde
+Jeff Andre (UI/UX) | Ian Clyde (Audio / Polish / Build)
 
 # 1. Architecture Overview
 
-Salinlahi is a single-codebase Unity 6 LTS project targeting Android and iOS in portrait orientation. The rendering pipeline is Universal Render Pipeline (URP) configured for 2D. No 3D geometry exists anywhere in the project. The entire game runs offline with zero network calls.
+Salinlahi is a single-codebase Unity 6 LTS project targeting Android and iOS in portrait orientation. The rendering pipeline is Universal Render Pipeline (URP) configured for 2D. The camera is top-down / bird's eye orthographic at 32 PPU. No 3D geometry exists anywhere in the project. The entire game runs offline with zero network calls. Maps use top-down tilesets (not parallax layers). The protagonist is visible on screen during gameplay as a 32x32 sprite with era-specific designs (Kuya, Laban, Manong). Enemy sprites are 32x32 (regular/variant), 48x48 (elite), and 64x64 (boss).
 
 The architecture follows three core principles:
 
@@ -78,7 +74,7 @@ The algorithm normalizes each drawing in four steps before matching:
 
 - **Match **against all 17 stored Baybayin templates using a greedy approximation of the Hungarian algorithm to find the minimum total pairwise Euclidean distance
 
-The template with the lowest distance wins. A confidence score at or above 0.60 is required. Templates are stored as plain text coordinate files in Resources/Templates/ and loaded at startup via TemplateLoader. They can be revised or expanded without recompiling the project. Multiple templates per character are supported (e.g., BA_template_01.txt, BA_template_02.txt) to handle handwriting variation.
+The template with the lowest distance wins. A confidence score at or above 0.60 is required. Templates are stored as plain text coordinate files in Resources/Templates/ and loaded at startup via TemplateLoader. They can be revised or expanded without recompiling the project. Multiple templates per character are supported (e.g., BA_template_01.txt, BA_template_02.txt) to handle handwriting variation. The full character set is 17: 14 consonants (BA, KA, DA, GA, HA, LA, MA, NA, NGA, PA, SA, TA, WA, YA) and 3 vowels (A, E/I, O/U).
 
 *Figure 3. $P recognition pipeline*
 
@@ -98,7 +94,7 @@ Enemies are managed through Unity's built-in ObjectPool<T> class. At scene load,
 
 WaveManager reads a LevelConfigSO at level load, which defines the sequence of WaveConfigSO assets for that level. Each WaveConfigSO specifies the enemy types, spawn count, spawn delay, and spawn positions for one wave. WaveManager triggers WaveSpawner per wave and fires OnWaveStarted and OnWaveCleared events so the HUD and GameManager can track progress.
 
-For boss levels (5, 10, 15), a BossConfigSO defines the boss encounter that activates after the final wave clears. Bosses use a phase-based system with distinct mini-game mechanics per phase.
+For boss levels (5, 10, 15), a BossConfigSO defines the boss encounter. Boss enemies are 64x64 sprites: El Inquisidor (Spanish, summons Soldados), The Superintendent (American, decree-scrambles labels), and Kadiliman (Final, summons enemies from all eras). Bosses use a phase-based system with distinct mechanics per phase.
 
 ## 3.3 Combat Resolution
 
@@ -122,9 +118,9 @@ All game content is defined in ScriptableObject assets. This means that level de
 | --- | --- |
 | LevelConfigSO | Chapter assignment, background theme, ordered list of WaveConfigSO references for that level. |
 | WaveConfigSO | Enemy types to spawn, count per type, spawn delay between enemies, spawn position columns. |
-| EnemyDataSO | Movement speed, movement pattern (straight, zigzag, chain), health (for shielded types), reference to a BaybayinCharacterSO. |
+| EnemyDataSO | Era assignment, movement speed, movement pattern (straight, fast, glide, zigzag, sprinter/charge, commander aura, censor), health / hits required (for shielded types like Capitan and Shokan), isDecoy flag (for Maestro), isPhaser flag and interval (for Fraile), corruption veil flag (for Shokan), reference to a BaybayinCharacterSO. |
 | BaybayinCharacterSO | Character ID string, display name, template file references, AudioClip for pronunciation. |
-| BossConfigSO | Boss health pool, number of phases, mini-game type per phase, timing windows. |
+| BossConfigSO | Boss name (El Inquisidor, The Superintendent, Kadiliman), boss health pool, number of phases, required characters per phase, timing windows, summon ability configuration, special ability (decree scramble for Superintendent). |
 | RecognitionConfigSO | Confidence threshold (0.60), resample point count (32), scale square size (250), idle timer duration (1.5s). |
 
 # 6. Audio Feedback System

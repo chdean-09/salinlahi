@@ -1,7 +1,7 @@
 # 01 — System Overview
 **Project:** Salinlahi
-**Version:** 1.0
-**Date:** 2026-03-19
+**Version:** 1.2
+**Date:** 2026-03-25
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -24,7 +24,7 @@ Salinlahi is a 2D pixel art mobile defense game whose core mechanic is drawing B
 | In Scope | Evidence |
 |----------|----------|
 | Portrait-mode vertical defense gameplay on Android and iOS | GDD §1.3 Platforms |
-| $P Point-Cloud gesture recognition for 17 Baybayin consonant characters | Salinlahi.md §3.3.3; RecognitionConfigSO.cs |
+| $P Point-Cloud gesture recognition for 17 Baybayin characters (14 consonants + 3 vowels) | Salinlahi.md §3.3.3; RecognitionConfigSO.cs |
 | Story Mode: 15 levels across 3 chapters, boss encounters at levels 5, 10, 15 | GDD §2.4 |
 | Endless Mode: Unlocked after completing Story Mode or defeating the final boss, random characters, high-score tracking | GDD §2.4 |
 | Tracing Dojo: Pressure-free practice mode for all 17 characters, no enemies | GDD §2.4 |
@@ -34,6 +34,9 @@ Salinlahi is a 2D pixel art mobile defense game whose core mechanic is drawing B
 | Singleton manager architecture with DontDestroyOnLoad | GameManager.cs; Singleton.cs |
 | Unity Object Pool for enemy recycling (no runtime Instantiate/Destroy in game loop) | EnemyPool.cs |
 | Audio feedback: pronunciation clip plays on every successful character recognition | TDD §6; AudioManager.cs |
+| Dialogue system: gated story panels (Type A) before/after levels and in-wave popups (Type B) for atmospheric flavor | GDD §4.5; Team README §12 |
+| Protagonist visible on screen during gameplay as a 32x32 sprite with 3 era-specific designs (Kuya, Laban, Manong) | GDD §4.2 |
+| Combo system: consecutive correct draws build streak; 5-streak triggers 3-second enemy slow effect | GDD §3.2; Team README §9 |
 
 ---
 
@@ -45,7 +48,7 @@ Salinlahi is a 2D pixel art mobile defense game whose core mechanic is drawing B
 | Machine learning / CNN-based recognition | Requires training data and model binary; not in scope |
 | Android/iOS cloud save | Not specified in any source document |
 | In-app purchases or advertising | Business model is premium + lite; no IAP or ads |
-| Diacritical marks (kudlit) recognition in MVP | Recognition scope limited to 17 consonant base characters; kudlit modifier mechanic is a Should Ship feature that may be deferred post-launch (GDD §3.3 Chapter 2; Team README Feature Priority Matrix) |
+| Diacritical marks (kudlit) recognition in MVP | Recognition scope limited to 17 base characters (14 consonants + 3 vowels); kudlit modifier mechanic is a Should Ship feature that may be deferred post-launch (GDD §3.3 Chapter 2; Team README Feature Priority Matrix) |
 | Roman-alphabet romanization input | Drawing is the only combat input; no alternative input path |
 | 3D geometry or 3D renderer | URP 2D only; no 3D geometry anywhere in project |
 

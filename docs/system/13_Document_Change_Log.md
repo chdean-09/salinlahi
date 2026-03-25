@@ -1,7 +1,7 @@
 # 13 — Document Change Log
 **Project:** Salinlahi
-**Version:** 1.0
-**Date:** 2026-03-19
+**Version:** 1.2
+**Date:** 2026-03-25
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -12,6 +12,7 @@
 |---------|------|--------|---------|-------------------|
 | 1.0 | 2026-03-19 | Jon Wayne Cabusbusan (Claude Code) | Initial generation of complete documentation suite from repository inventory, Salinlahi.md, GDD.md, TDD.md, and all C# implementation files as of Sprint 1 end. 35 requirements traced. 9 P0 gaps identified. | All (00–13) |
 | 1.1 | 2026-03-21 | Chad Andrada (Claude Code) | Alignment pass: reconciled system docs against GDD, TDD, Salinlahi.md, and Team README. Fixed Endless Mode unlock condition, kudlit non-goal, missing LevelSelect scene, missing EventBus events (combo/boss/AOE), separated Fast and Sprinter enemy types, added full 9-type enemy roster, added missing SO fields (hitsRequired, isBossLevel, bossConfig, baseSpawnDelay), updated BossConfigSO spec, added Credits to Main Menu, added Combo counter and Pause button to HUD, fixed chapter era names, set PPU to 32, added SUS to UAT instruments. | 01, 02, 03, 04, 05, 06, 07, 09, 10, 13 |
+| 1.2 | 2026-03-25 | Chad Andrada (Claude Code) | GDD/TDD alignment pass v2: replaced generic enemy roster with era-themed enemies (Soldado, Fraile, Guardia, Capitan, Soldier, Maestro, Pensionado, General, Heitai, Kisha, Kempei, Shokan), corrected character set to 14 consonants + 3 vowels, added protagonist visibility (32×32 with 3 era designs), added dialogue system (Type A/B), added combo streak reward (5-streak slow), added shrine variants per era, updated naming conventions per Team README, added boss and dialogue test cases, added 7 new requirements (REQ-36 through REQ-42), added 2 new risks and 3 new dependencies. | All (00–13) |
 
 ---
 
@@ -44,3 +45,5 @@ When updating any document in `docs/system/`:
 | Lite/Full build split implemented | 08, 10 |
 | UAT completed (Sprint 5) | 09, 10, 11 |
 | Store submission (Sprint 6) | 08, 11, 13 |
+| Dialogue system implemented (Sprint 3) | 03, 06, 09, 10 |
+| Era-themed enemies implemented | 04, 07, 09, 10 |

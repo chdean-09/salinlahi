@@ -1,7 +1,7 @@
 # 04 — Gameplay Systems
 **Project:** Salinlahi
-**Version:** 1.0
-**Date:** 2026-03-19
+**Version:** 1.2
+**Date:** 2026-03-25
 **Owner:** Gameplay Developer (Jon Wayne Cabusbusan / Chad Andrada)
 
 ---
@@ -143,6 +143,7 @@ transform.Translate(Vector2.down * _speed * Time.deltaTime, Space.World);
 | `HeartSystem` decrements hearts on `OnBaseHit`; fires `OnGameOver` at 0 | TDD §3.3; GDD §2.3 | NOT FOUND |
 | Combo counter tracks consecutive correct drawings | TDD §3.3 | NOT FOUND |
 | AOE burst mechanic (3+ same-character enemies on screen) | TDD §3.3 | NOT FOUND |
+| Combo system: 5-streak triggers 3-second slow effect on all enemies | GDD §3.2; Team README §9 | NOT FOUND |
 
 [EVIDENCE: docs/capstone/TDD.md, §3.3 Combat Resolution]
 
@@ -211,20 +212,42 @@ transform.Translate(Vector2.down * _speed * Time.deltaTime, Space.World);
 
 ## 7. Enemy Types (Content Specification)
 
-The following enemy types are specified in `EnemyDataSO.enemyID` comments, the GDD §4.3, and the Team README §9.
+The following enemy types are specified in the GDD §4.3 and the Team README §9. Enemies are organized by historical era with three tiers per era: Regular (32×32), Variant (32×32, unique mechanic), and Elite (48×48). Bosses are 64×64.
 
-| Enemy ID | Movement | Special Rule | First Appears | Priority | Sprint Target |
-|----------|----------|--------------|--------------|----------|--------------|
-| `"standard"` | Straight, `moveSpeed = 1.5f` | None | Level 1 | Must Ship | Sprint 1 ✓ |
-| `"fast"` | Straight, 1.3× base speed | None | Level 2 | Must Ship | Sprint 3 |
-| `"chain"` | Straight, linked word formation | Must defeat front-to-back in order | Level 3 | Should Ship | Sprint 3 |
-| `"shielded"` | Straight | Requires 2 correct drawings to defeat (`hitsRequired = 2`) | Level 6 | Should Ship | Sprint 3 |
-| `"sprinter"` | Pauses mid-screen, then rushes toward base | None | Level 7 | Should Ship | Sprint 3 |
-| `"phaser"` | Straight | Blinks displayed character on and off | Level 8 | Nice to Have | Sprint 4 |
-| `"decoy"` | Straight | Damages player if killed; must be ignored | Level 11 | Nice to Have | Sprint 4 |
-| `"zigzagger"` | Sine wave lateral pattern while descending | None | Level 12 | Nice to Have | Sprint 4 |
-| `"healer"` | Straight | Restores 1 heart when defeated | Level 13 | Nice to Have | Sprint 4 |
+### 7.1 Spanish Era (Chapter 1)
 
-[EVIDENCE: Assets/Scripts/Data/EnemyDataSO.cs — enemyID comment: `"standard", "fast", "chain"`]
-[EVIDENCE: docs/capstone/GDD.md, §4.3 Enemies — full roster]
-[EVIDENCE: Team README §9 — Enemy Type Roster with introduction levels]
+| Enemy ID | Tier | Movement / Behavior | First Appears | Priority |
+|----------|------|---------------------|--------------|----------|
+| `"soldado"` | Regular | Walks straight down at base speed | Level 1 | Must Ship |
+| `"fraile"` | Variant | Phaser: Baybayin label fades in and out on a timer. Player must memorize the character. Robe glides smoothly. | Level 2 | Must Ship |
+| `"guardia"` | Variant | Fast: moves at 1.5× Soldado speed | Level 3 | Must Ship |
+| `"capitan"` | Elite (48×48) | Shielded: requires 2 correct drawings (`hitsRequired = 2`). First hit breaks visible armor. Moves at 0.7× speed. | Level 4 | Must Ship |
+
+### 7.2 American Era (Chapter 2)
+
+| Enemy ID | Tier | Movement / Behavior | First Appears | Priority |
+|----------|------|---------------------|--------------|----------|
+| `"soldier"` | Regular | Walks straight at base speed | Level 6 | Must Ship |
+| `"maestro"` | Variant | Decoy: displays a Baybayin character but drawing it PENALIZES the player (lose 1 heart). Must be ignored. Visually subtly warmer than real enemies. | Level 7 | Should Ship |
+| `"pensionado"` | Variant | Zigzag: moves in a sine wave pattern while descending | Level 8 | Should Ship |
+| `"general"` | Elite (48×48) | Commander: while alive, all nearby American enemies move 1.3× faster. General moves slowly (0.7×). Kill the General to remove the speed buff. | Level 9 | Should Ship |
+
+### 7.3 Japanese Era (Chapter 3)
+
+| Enemy ID | Tier | Movement / Behavior | First Appears | Priority |
+|----------|------|---------------------|--------------|----------|
+| `"heitai"` | Regular | Walks straight but inherently 1.2× faster than Soldado/Soldier | Level 11 | Must Ship |
+| `"kisha"` | Variant | Sprinter: walks normally, pauses briefly, then charges at 2.5× speed | Level 12 | Should Ship |
+| `"kempei"` | Variant | Censor: while alive, scrambles the Baybayin labels on all nearby enemies to show wrong characters. Kill Kempei first to restore correct labels. | Level 13 | Should Ship |
+| `"shokan"` | Elite (48×48) | Shielded + Corruption Veil: requires 2 hits like Capitan, plus all three era corruption colors swirl around sprite creating visual noise. | Level 14 | Should Ship |
+
+### 7.4 Bosses (64×64)
+
+| Boss ID | Era | Level | Mechanic |
+|---------|-----|-------|----------|
+| `"el_inquisidor"` | Spanish | 5 | Phase-based. Can summon Soldado reinforcements during phases. |
+| `"superintendent"` | American | 10 | Phase-based. Decree ability temporarily scrambles nearby Baybayin labels. |
+| `"kadiliman"` | Final | 15 | Phase-based. Formless shadow entity. Summons enemies from all three eras. Drawing all 17 characters defeats it. |
+
+[EVIDENCE: docs/capstone/GDD.md, §4.3 Enemies — full era-themed roster]
+[EVIDENCE: Team README §9 — Enemy Type Roster with introduction levels and historical context]
