@@ -1,87 +1,119 @@
 # Epic: Release & Technical Quality (SALIN-8)
 
-**Status:** To Do | **Priority:** Medium | **Assignee:** Unassigned
+**Status:** ⚠️ Build Config Complete — Performance Work Not Started | **Priority:** High
 
-Android build configuration, tech debt cleanup, performance profiling, crash/memory stability, accessibility, multi-device testing, and Google Play Store submission.
+Android build configuration, performance profiling, crash/memory stability, multi-device testing, and Google Play Store submission.
 
 ---
 
 ## SALIN-25 — Configure Android Build Settings and Apply for Developer Account
 
-| Field | Value |
-|-------|-------|
+| Field      | Value |
+|------------|-------|
 | **Status** | Done |
-| **Priority** | Medium |
-| **Assignee** | Unassigned |
+| **Assignee** | — |
+| **Priority** | High |
+| **Sprint** | Sprint 1 |
+| **Blocks** | SALIN-71, SALIN-72, SALIN-73 |
+| **Blocked By** | — |
 
-Configure Unity Player Settings for Android deployment and apply for a Google Play Developer account.
+Unity Player Settings configured for Android: package name set per `com.<studio>.<game>` convention, minimum API Level 26 (Android 8.0 Oreo), target architecture ARM64, IL2CPP scripting backend. Debug keystore active. Signed APK builds and installs on a physical Android device. Google Play Developer account applied.
 
 **Acceptance Criteria:**
-- Package name follows `com.<studio>.<game>` convention and is unique
-- Minimum API Level set to 26 (Android 8.0 Oreo)
-- Target architecture is ARM64 (IL2CPP scripting backend)
-- A debug keystore is configured and a signed APK can be built without errors
-- The APK installs and launches successfully on at least one physical Android device
-- Google Play Developer account application is submitted (or confirmed active)
+- Package name unique and follows convention
+- Minimum API Level 26; target architecture ARM64 (IL2CPP)
+- Debug keystore configured; signed APK builds without errors
+- APK installs and launches on at least one physical Android device
+- Google Play Developer account application submitted (or confirmed active)
 
 ---
 
 ## SALIN-59 — Implement Lite/Full Build Flag and Level Filtering
 
-| Field | Value |
-|-------|-------|
+| Field      | Value |
+|------------|-------|
 | **Status** | To Do |
+| **Assignee** | Clyde |
 | **Priority** | Medium |
-| **Assignee** | Unassigned |
+| **Sprint** | Sprint 4 |
+| **Blocks** | SALIN-79 |
+| **Blocked By** | SALIN-22, SALIN-43 |
+
+Add a `LITE_BUILD` scripting define symbol. `LevelConfigSO.isAvailableInLite` (field already exists) used to filter levels at Level Select in Lite mode. In Lite mode, only Levels 1–5 are accessible. Build pipeline documentation updated with instructions for building each variant.
+
+**Acceptance Criteria:**
+- `LITE_BUILD` scripting define symbol toggleable in Build Settings
+- Level Select filters to Levels 1–5 when `LITE_BUILD` is active
+- Full build shows all 15 levels as normal
+- Both build variants compile and install without errors
+- Build documentation updated in `CONTRIBUTING.md`
 
 ---
 
 ## SALIN-64 — Android Permissions Handling (Storage, Network)
 
-| Field | Value |
-|-------|-------|
+| Field      | Value |
+|------------|-------|
 | **Status** | To Do |
+| **Assignee** | Clyde |
 | **Priority** | Medium |
-| **Assignee** | Unassigned |
+| **Sprint** | Sprint 4 |
+| **Blocks** | SALIN-79 |
+| **Blocked By** | SALIN-35 |
+
+Runtime permission requests for external storage (if exporting recognition CSVs to Downloads) and internet (if analytics or error reporting is added). Handle denial gracefully: fall back to `Application.persistentDataPath` for CSV storage if storage permission is denied. No hard crashes on deny.
+
+**Acceptance Criteria:**
+- Storage permission requested before first CSV export attempt
+- Denial handled: app falls back to persistent data path silently
+- Permission request dialog shown at most once per session
+- No crash on any permission denial path
+- Tested on Android 11+ (scoped storage) and Android 8–9
 
 ---
 
-## SALIN-71 — Frame Rate Profiling — Verify 60fps Target on Mid-Range Android
+## SALIN-71 — Frame Rate Profiling — Verify 60fps on Mid-Range Android
 
-| Field | Value |
-|-------|-------|
+| Field      | Value |
+|------------|-------|
 | **Status** | To Do |
-| **Priority** | Medium |
-| **Assignee** | Unassigned |
+| **Assignee** | Clyde |
+| **Priority** | High |
+| **Sprint** | Sprint 4 |
+| **Blocks** | SALIN-79 |
+| **Blocked By** | SALIN-25, SALIN-66 (Polish must be applied before final profiling) |
 
-Profile and verify the game maintains a stable 60fps on a mid-range Android device (Snapdragon 600-series or equivalent, 3GB RAM) during active gameplay.
+Profile a 5-enemy wave on a physical mid-range Android device (Snapdragon 600-series or equivalent, 3GB RAM). Target: stable 60fps throughout.
 
 **Acceptance Criteria:**
-- Using Unity Profiler on a physical mid-range Android device, average frame time during a 5-enemy wave is ≤ 16.67ms (60fps)
-- No frame takes longer than 33ms (30fps threshold) during the profiling session
-- GPU and CPU profiler data is captured and attached as a screenshot to this ticket
-- If 60fps is not achieved, a performance optimization task is created with specific hot-path findings
-- Target device spec and Unity version are documented in a comment on this ticket
+- Average frame time ≤ 16.67ms (60fps) during active 5-enemy wave
+- No single frame exceeds 33ms (30fps threshold)
+- Unity Profiler GPU and CPU screenshots attached to Jira ticket
+- If 60fps not achieved: create an optimization ticket with specific hot-path findings before proceeding to store submission
+- Target device spec and Unity version documented in ticket comment
 
 **Req IDs:** TDD-REQ-005
 
 ---
 
-## SALIN-72 — Cold-Start Benchmark — Verify App Launches to Gameplay in Under 5 Seconds
+## SALIN-72 — Cold-Start Benchmark — Verify App Launches Under 5 Seconds
 
-| Field | Value |
-|-------|-------|
+| Field      | Value |
+|------------|-------|
 | **Status** | To Do |
-| **Priority** | Medium |
-| **Assignee** | Unassigned |
+| **Assignee** | Clyde |
+| **Priority** | High |
+| **Sprint** | Sprint 4 |
+| **Blocks** | SALIN-79 |
+| **Blocked By** | SALIN-25 |
 
-Measure and verify the app's cold-start time — from OS launch tap to the first interactive frame of the Main Menu — on a mid-range Android device.
+Measure cold-start time (OS launch tap → first interactive MainMenu frame) on a mid-range Android device.
 
 **Acceptance Criteria:**
-- Cold-start time (tap-to-interactive Main Menu) is ≤ 5 seconds on the target mid-range Android device
-- Measurement is taken 5 times and the average is ≤ 5 seconds
-- Timing results (5 runs) are documented in a comment on this ticket
-- If target is not met, BootstrapLoader asset loading is profiled and a specific optimization is identified
+- Average of 5 timed runs ≤ 5 seconds
+- All 5 run times documented in Jira ticket comment
+- If target not met: profile `BootstrapLoader` asset loading and identify specific bottleneck before re-measuring
+- Device spec and Unity version documented
 
 **Req IDs:** TDD-REQ-005
 
@@ -89,18 +121,53 @@ Measure and verify the app's cold-start time — from OS launch tap to the first
 
 ## SALIN-73 — APK Size Verification — Confirm Release Build Under 100 MB
 
-| Field | Value |
-|-------|-------|
+| Field      | Value |
+|------------|-------|
 | **Status** | To Do |
-| **Priority** | Medium |
-| **Assignee** | Unassigned |
+| **Assignee** | Clyde |
+| **Priority** | High |
+| **Sprint** | Sprint 4 |
+| **Blocks** | SALIN-79 |
+| **Blocked By** | SALIN-25, SALIN-32, SALIN-33, SALIN-34 |
 
-Verify the release APK (or AAB) does not exceed 100 MB as required by TDD §7.3.
+Build a release APK/AAB and verify size ≤ 100 MB. If over the limit, apply ASTC texture compression and Vorbis audio compression before re-measuring.
 
 **Acceptance Criteria:**
-- Release APK/AAB size is ≤ 100 MB before Google Play asset delivery
-- APK size is documented with a breakdown by asset type from the Unity Build Report
-- If size exceeds 100 MB, texture compression is set to ASTC and audio files are compressed to Vorbis before re-measuring
-- Final confirmed size is ≤ 100 MB with ASTC textures and compressed audio applied
+- Release APK/AAB ≤ 100 MB
+- Unity Build Report breakdown (textures, audio, scripts, etc.) attached as comment
+- If over limit: ASTC textures and Vorbis audio applied, size re-measured and documented
+- Final confirmed size ≤ 100 MB
+- `TemplateRecorder.cs` (Debug tool) excluded from release build
 
 **Req IDs:** TDD-REQ-005
+
+---
+
+## SALIN-79 — Google Play Store Submission Prep
+
+| Field      | Value |
+|------------|-------|
+| **Status** | To Do |
+| **Assignee** | Clyde |
+| **Priority** | Medium |
+| **Sprint** | Sprint 4 |
+| **Blocks** | — |
+| **Blocked By** | SALIN-59, SALIN-64, SALIN-71, SALIN-72, SALIN-73 |
+
+Prepare and submit the Google Play Store listing. Required for capstone delivery and public access.
+
+**Tasks:**
+- Store description (short ≤ 80 chars, long ≤ 4000 chars)
+- 8 minimum screenshots (portrait, Android, 1080×1920 or similar)
+- Feature graphic (1024×500)
+- Content rating questionnaire (IARC)
+- Privacy policy URL (required — app collects research data: recognition logs, questionnaire responses)
+- Upload signed AAB (from SALIN-73)
+- Submit for review
+
+**Acceptance Criteria:**
+- Store listing published and visible in Play Console
+- All required assets (screenshots, feature graphic) uploaded
+- Privacy policy URL linked in store listing
+- AAB uploaded and approved by Google Play review
+- App live or in review by end of Sprint 4
