@@ -25,6 +25,11 @@ public class WaveManager : MonoBehaviour
         EventBus.OnBaseHit -= OnEnemyRemoved;
     }
 
+    private void Start()
+    {
+        StartWaves();
+    }
+
     public void StartWaves()
     {
         if (_levelConfig == null)
