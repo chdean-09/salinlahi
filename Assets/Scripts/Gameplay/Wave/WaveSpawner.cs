@@ -9,22 +9,26 @@ public class WaveSpawner : MonoBehaviour
     [Tooltip("Top-of-screen positions where enemies appear. Add 3-5 evenly spaced.")]
     [SerializeField] private Transform[] _spawnPoints;
 
-    private int _spawnIndex = 0;
-
+    // Spawn points define horizontal bounds (left/right edges).
+    // X position is randomized between bounds for natural spawn spread.
     public Enemy SpawnEnemy(EnemyDataSO data)
     {
-        if (_spawnPoints == null || _spawnPoints.Length == 0)
+        if (_spawnPoints == null || _spawnPoints.Length < 2)
         {
-            DebugLogger.LogError("WaveSpawner: No spawn points assigned!");
+            DebugLogger.LogError("WaveSpawner: Need at least 2 spawn points for min/max X!");
             return null;
         }
 
         Enemy enemy = EnemyPool.Instance.Get(data);
-        Transform spawnPoint = _spawnPoints[_spawnIndex % _spawnPoints.Length];
-        enemy.transform.position = spawnPoint.position;
 
-        // Cycle through spawn points so enemies stagger horizontally
-        _spawnIndex++;
+        // Use first and last spawn points as left/right bounds
+        float minX = _spawnPoints[0].position.x;
+        float maxX = _spawnPoints[_spawnPoints.Length - 1].position.x;
+        float spawnY = _spawnPoints[0].position.y;
+
+        float randomX = Random.Range(minX, maxX);
+        enemy.transform.position = new Vector3(randomX, spawnY, 0f);
+
         return enemy;
     }
 }
