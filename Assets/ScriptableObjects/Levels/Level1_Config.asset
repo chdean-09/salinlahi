@@ -1,3 +1,25 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:662af3a11e6c03bb661307ab77ce12f9807b7e90db5948738aadfd6a51a74440
-size 955
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 98c3e4f7bd9686740a8cd775acf3cbef, type: 3}
+  m_Name: Level1_Config
+  m_EditorClassIdentifier: Assembly-CSharp::LevelConfigSO
+  levelName: Level 1
+  levelNumber: 1
+  waves:
+  - {fileID: 11400000, guid: 47bebcef7fb6e0345910b40b0aa930bb, type: 2}
+  - {fileID: 11400000, guid: bf32af93e1222db4a9cc91f6598361ab, type: 2}
+  - {fileID: 11400000, guid: 055149baf1c38044fb25d210a0055d1f, type: 2}
+  allowedCharacters:
+  - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+  - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+  - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
+  isAvailableInLite: 1
