@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Pool;
+using System.Collections;
 
 // Attach to Enemy prefab root. Holds data reference and returns itself to pool.
 [RequireComponent(typeof(EnemyMover))]
@@ -10,6 +11,7 @@ public class Enemy : MonoBehaviour
     private IObjectPool<Enemy> _pool;
     private EnemyMover _mover;
     private SpriteRenderer _renderer;
+    private int _currentHealth;
 
     public BaybayinCharacterSO Character => _data?.assignedCharacter;
     public string EnemyID => _data?.enemyID;
@@ -25,20 +27,46 @@ public class Enemy : MonoBehaviour
     {
         _data = data;
         _pool = pool;
+        _currentHealth = _data.maxHealth;
         _mover.SetSpeed(_data.moveSpeed);
         if (_data.walkFrames != null && _data.walkFrames.Length > 0)
             _renderer.sprite = _data.walkFrames[0];
+        ActiveEnemyTracker.Instance?.Register(this);
     }
+
+    public void TakeDamage(int amount)
+    {
+        _currentHealth -= amount;
+        DebugLogger.Log(
+            $"Enemy [{Character?.characterID}] took {amount} damage. "
+            + $"HP: {_currentHealth}");
+
+        if (_currentHealth <= 0)
+        {
+            Defeat();
+        }
+        // else: shield-break effect can go here!
+    }
+
 
     // Call this to defeat the enemy and return it to the pool
     public void Defeat()
     {
+        ActiveEnemyTracker.Instance?.Unregister(this);
         EventBus.RaiseEnemyDefeated(Character);
+        _mover?.Stop();
+        StartCoroutine(DefeatRoutine());
+    }
+
+    private IEnumerator DefeatRoutine()
+    {
+        yield return new WaitForSeconds(0.3f);
         ReturnToPool();
     }
 
     public void ReturnToPool()
     {
+        ActiveEnemyTracker.Instance?.Unregister(this);
         _pool?.Release(this);
     }
 
