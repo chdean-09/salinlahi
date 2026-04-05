@@ -15,8 +15,13 @@ public class RecognitionManager : Singleton<RecognitionManager>
     {
         var loader = new TemplateLoader();
         var templates = loader.LoadAll();
-        _recognizer.SetTemplates(templates);
-        DebugLogger.Log($"RecognitionManager: {templates.Count} templates loaded.");
+        _recognizer.SetTemplateVariants(templates);
+
+        int variantCount = 0;
+        foreach (var kvp in templates)
+            variantCount += kvp.Value.Count;
+
+        DebugLogger.Log($"RecognitionManager: {templates.Count} characters loaded across {variantCount} template variants.");
     }
     public void Recognize(List<Vector2> points)
     {
