@@ -13,6 +13,7 @@ public class ComboManager : Singleton<ComboManager>
 
     public int CurrentStreak => _currentStreak;
     public bool IsFocusModeActive => _focusModeActive;
+    public float FocusSpeedMultiplier => _config.focusModeSpeedMultiplier;
 
     private void OnEnable()
     {
