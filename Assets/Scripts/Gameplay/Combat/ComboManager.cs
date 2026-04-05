@@ -42,10 +42,23 @@ public class ComboManager : Singleton<ComboManager>
         DebugLogger.Log(
             $"ComboManager: Streak = {_currentStreak}");
 
-        if (_currentStreak >= _config.focusModeThreshold
-            && !_focusModeActive)
+        if (_currentStreak >= _config.focusModeThreshold)
         {
-            ActivateFocusMode();
+            if (!_focusModeActive)
+            {
+                // First time hitting threshold
+                ActivateFocusMode();
+            }
+            else
+            {
+                // Already in Focus Mode — restart the timer
+                if (_focusRoutine != null)
+                    StopCoroutine(_focusRoutine);
+                _focusRoutine = StartCoroutine(
+                    FocusModeTimerRoutine());
+                DebugLogger.Log(
+                    "ComboManager: Focus Mode timer reset");
+            }
         }
     }
 
