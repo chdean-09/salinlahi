@@ -105,10 +105,11 @@ public static class BaybayinTemplateValidator
             }
             else
             {
-                string templateName = Path.GetFileNameWithoutExtension(so.templateFileName.Trim());
-                string resourcePath = templateName.StartsWith("Templates/", StringComparison.OrdinalIgnoreCase)
-                    ? templateName
-                    : $"Templates/{templateName}";
+                string normalizedTemplatePath = so.templateFileName.Trim().Replace('\\', '/');
+                string templatePathWithoutExtension = Path.ChangeExtension(normalizedTemplatePath, null)?.TrimStart('/');
+                string resourcePath = templatePathWithoutExtension.StartsWith("Templates/", StringComparison.OrdinalIgnoreCase)
+                    ? templatePathWithoutExtension
+                    : $"Templates/{templatePathWithoutExtension}";
 
                 TextAsset loaded = Resources.Load<TextAsset>(resourcePath);
                 if (loaded == null)
