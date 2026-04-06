@@ -40,6 +40,8 @@ public class StrokeCapture : MonoBehaviour
         _currentPoints.Clear();
         EventBus.RaiseDrawingStarted();
         _canvas.BeginStroke();
+        _currentPoints.Add(finger.screenPosition);
+        _canvas.AddPoint(finger.screenPosition);
     }
 
     private void OnFingerMove(Finger finger)
