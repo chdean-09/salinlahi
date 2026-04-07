@@ -18,7 +18,7 @@ public class SceneLoader : Singleton<SceneLoader>
     protected override void Awake()
     {
         base.Awake();
-        
+
         // Create fade CanvasGroup if not assigned
         if (_fadeCanvasGroup == null)
         {
@@ -75,7 +75,7 @@ public class SceneLoader : Singleton<SceneLoader>
         _isLoading = false;
     }
 
-    // Fade stub - alpha 0 to 1
+    // Fade stub for SALIN-44 - alpha 0 to 1
     private IEnumerator FadeIn()
     {
         if (_fadeCanvasGroup == null) yield break;
@@ -94,7 +94,7 @@ public class SceneLoader : Singleton<SceneLoader>
         _fadeCanvasGroup.alpha = 1f;
     }
 
-    // Fade stub - alpha 1 to 0
+    // Fade stub for SALIN-44 - alpha 1 to 0
     private IEnumerator FadeOut()
     {
         if (_fadeCanvasGroup == null) yield break;
