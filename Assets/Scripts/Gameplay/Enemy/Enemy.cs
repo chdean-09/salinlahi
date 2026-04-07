@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.Pool;
-using System.Collections;
 
 // Attach to Enemy prefab root. Holds data reference and returns itself to pool.
 [RequireComponent(typeof(EnemyMover))]
@@ -55,12 +54,6 @@ public class Enemy : MonoBehaviour
         ActiveEnemyTracker.Instance?.Unregister(this);
         EventBus.RaiseEnemyDefeated(Character);
         _mover?.Stop();
-        StartCoroutine(DefeatRoutine());
-    }
-
-    private IEnumerator DefeatRoutine()
-    {
-        yield return new WaitForSeconds(0.3f);
         ReturnToPool();
     }
 
@@ -72,7 +65,6 @@ public class Enemy : MonoBehaviour
 
     private void OnDisable()
     {
-        StopAllCoroutines();
         _mover?.Stop();
     }
 }

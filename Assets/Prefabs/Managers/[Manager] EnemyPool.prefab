@@ -47,3 +47,13 @@ MonoBehaviour:
   _enemyPrefab: {fileID: 8037671833055544141, guid: 7d0626488d0ea194db35b08de3fba50b, type: 3}
   _defaultCapacity: 10
   _maxSize: 20
+  _registeredEnemyPrefabs:
+  - enemyID: soldado
+    prefab: {fileID: 8037671833055544141, guid: 7d0626488d0ea194db35b08de3fba50b, type: 3}
+    defaultCapacity: 10
+    maxSize: 20
+  - enemyID: sprinter
+    prefab: {fileID: 8037671833055544141, guid: 43217bd7f21c474ea553c2206be5e444, type: 3}
+    defaultCapacity: 10
+    maxSize: 20
+
