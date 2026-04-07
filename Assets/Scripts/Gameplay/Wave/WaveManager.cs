@@ -6,7 +6,7 @@ public class WaveManager : MonoBehaviour
 {
     [Header("Configuration")]
     [SerializeField] private LevelConfigSO _levelConfig;
-    [SerializeField] private EnemyDataSO _defaultEnemyData; // Sprint 1 only
+    [SerializeField] private EnemyDataSO _defaultEnemyData;
     [SerializeField] private WaveSpawner _spawner;
 
     private int _currentWaveIndex = 0;
@@ -72,12 +72,24 @@ public class WaveManager : MonoBehaviour
         {
             if (!_running) yield break;
 
-            // Sprint 1: use default enemy data for all spawns.
-            // Sprint 2: map wave.charactersInWave to specific EnemyDataSO assets.
-            Enemy enemy = _spawner.SpawnEnemy(_defaultEnemyData);
+            EnemyDataSO enemyData = SelectEnemyDataForWave(wave);
+            Enemy enemy = _spawner.SpawnEnemy(enemyData);
             if (enemy != null) _activeEnemyCount++;
             yield return new WaitForSeconds(wave.spawnInterval);
         }
+    }
+
+    private EnemyDataSO SelectEnemyDataForWave(WaveConfigSO wave)
+    {
+        if (wave != null && wave.enemyTypesInWave != null && wave.enemyTypesInWave.Count > 0)
+        {
+            int index = Random.Range(0, wave.enemyTypesInWave.Count);
+            EnemyDataSO selected = wave.enemyTypesInWave[index];
+            if (selected != null)
+                return selected;
+        }
+
+        return _defaultEnemyData;
     }
 
     // One handler for both defeat and base-hit -- both remove from active count
