@@ -23,8 +23,8 @@ public class StrokeCapture : MonoBehaviour
     private List<Vector2> _currentPoints = new List<Vector2>();
     private Coroutine _timerRoutine;
     private float _strokeStartTime;
-    private int _activeTouchCount;
     private Coroutine _strokeTimeoutRoutine;
+    private bool _isDrawing;
 
     private void OnEnable()
     {
@@ -48,17 +48,24 @@ public class StrokeCapture : MonoBehaviour
         if (GameManager.Instance.CurrentState
             != GameState.Playing) return;
 
-        _activeTouchCount++;
-
-        // Reject multitouch: only process single-finger strokes
-        if (_activeTouchCount > 1)
+        // Only accept the primary finger (index 0).
+        // On desktop, mouse buttons beyond left-click create
+        // higher-index fingers via touch simulation.
+        // On mobile, index > 0 means genuine multitouch.
+        if (finger.index != 0)
         {
-            DebugLogger.Log(
-                "StrokeCapture: Multitouch detected, "
-                + "rejecting stroke");
-            CancelCurrentStroke();
+            if (_isDrawing)
+            {
+                DebugLogger.Log(
+                    "StrokeCapture: Multitouch detected, "
+                    + "rejecting stroke");
+                _isDrawing = false;
+                CancelCurrentStroke();
+            }
             return;
         }
+
+        _isDrawing = true;
 
         // Cancel the pending multi-stroke timer
         if (_timerRoutine != null)
@@ -96,8 +103,7 @@ public class StrokeCapture : MonoBehaviour
         if (GameManager.Instance.CurrentState
             != GameState.Playing) return;
 
-        // Ignore if multitouch is active
-        if (_activeTouchCount > 1) return;
+        if (finger.index != 0 || !_isDrawing) return;
 
         Vector2 pos = finger.screenPosition;
 
@@ -124,10 +130,9 @@ public class StrokeCapture : MonoBehaviour
         if (GameManager.Instance.CurrentState
             != GameState.Playing) return;
 
-        _activeTouchCount = Mathf.Max(0, _activeTouchCount - 1);
+        if (finger.index != 0 || !_isDrawing) return;
 
-        // If other fingers are still down, ignore this lift
-        if (_activeTouchCount > 0) return;
+        _isDrawing = false;
 
         // Stop the stroke timeout timer
         if (_strokeTimeoutRoutine != null)
@@ -150,6 +155,7 @@ public class StrokeCapture : MonoBehaviour
                 $"StrokeCapture: Stroke too short "
                 + $"({duration:F3}s), discarding");
             _canvas.EndStroke();
+            _canvas.ClearCanvas();
             _currentPoints.Clear();
             return;
         }
@@ -162,6 +168,7 @@ public class StrokeCapture : MonoBehaviour
                 + $"points (min: {_config.minimumPointCount}), "
                 + $"discarding");
             _canvas.EndStroke();
+            _canvas.ClearCanvas();
             _currentPoints.Clear();
             return;
         }
