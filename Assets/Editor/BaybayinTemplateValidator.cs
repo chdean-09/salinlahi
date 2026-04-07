@@ -50,9 +50,12 @@ public static class BaybayinTemplateValidator
             string resourcePath = $"Templates/{fileNameNoExt}";
             TextAsset loaded = Resources.Load<TextAsset>(resourcePath);
             if (loaded == null)
+            {
                 errors.Add($"Resources.Load failed for '{resourcePath}'.");
+                continue;
+            }
 
-            int validPairs = CountValidCoordinatePairs(File.ReadAllText(filePath));
+            int validPairs = CountValidCoordinatePairs(loaded.text);
             if (validPairs < 32)
                 errors.Add($"Template '{fileNameNoExt}' has {validPairs} valid coordinate pairs. AC-2 requires at least 32.");
         }
@@ -105,10 +108,11 @@ public static class BaybayinTemplateValidator
             }
             else
             {
-                string templateName = Path.GetFileNameWithoutExtension(so.templateFileName.Trim());
-                string resourcePath = templateName.StartsWith("Templates/", StringComparison.OrdinalIgnoreCase)
-                    ? templateName
-                    : $"Templates/{templateName}";
+                string normalizedTemplatePath = so.templateFileName.Trim().Replace('\\', '/');
+                string templatePathWithoutExtension = Path.ChangeExtension(normalizedTemplatePath, null)?.TrimStart('/');
+                string resourcePath = templatePathWithoutExtension.StartsWith("Templates/", StringComparison.OrdinalIgnoreCase)
+                    ? templatePathWithoutExtension
+                    : $"Templates/{templatePathWithoutExtension}";
 
                 TextAsset loaded = Resources.Load<TextAsset>(resourcePath);
                 if (loaded == null)
