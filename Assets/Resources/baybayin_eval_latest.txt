@@ -1,0 +1,64 @@
+[BaybayinEval] Top-1 accuracy: 85.00% (17/20)
+[BaybayinEval] Per-character accuracy (expectedID -> accuracy, evaluated draws, loaded template count):
+[BaybayinEval] A: 100.00% (1/1) templates=5
+[BaybayinEval] BA: 100.00% (1/1) templates=6
+[BaybayinEval] DA: 100.00% (1/1) templates=5
+[BaybayinEval] EI: 100.00% (1/1) templates=5
+[BaybayinEval] GA: 100.00% (1/1) templates=6
+[BaybayinEval] HA: 100.00% (1/1) templates=5
+[BaybayinEval] KA: 100.00% (1/1) templates=6
+[BaybayinEval] LA: 100.00% (1/1) templates=5
+[BaybayinEval] MA: 100.00% (1/1) templates=5
+[BaybayinEval] NA: 100.00% (1/1) templates=5
+[BaybayinEval] NGA: 100.00% (1/1) templates=5
+[BaybayinEval] OU: 100.00% (1/1) templates=5
+[BaybayinEval] PA: 100.00% (1/1) templates=5
+[BaybayinEval] RA: 0.00% (0/3) templates=5
+[BaybayinEval] SA: 100.00% (1/1) templates=5
+[BaybayinEval] TA: 100.00% (1/1) templates=5
+[BaybayinEval] WA: 100.00% (1/1) templates=5
+[BaybayinEval] YA: 100.00% (1/1) templates=5
+[BaybayinEval] Per-character predicted template-variant accuracy (winner variant index):
+[BaybayinEval] A: loadedVariants=5
+[BaybayinEval]   predictedVariant=1: 100.00% (1/1)
+[BaybayinEval] BA: loadedVariants=6
+[BaybayinEval]   predictedVariant=2: 100.00% (1/1)
+[BaybayinEval] DA: loadedVariants=5
+[BaybayinEval]   predictedVariant=2: 100.00% (1/1)
+[BaybayinEval] EI: loadedVariants=5
+[BaybayinEval]   predictedVariant=1: 100.00% (1/1)
+[BaybayinEval] GA: loadedVariants=6
+[BaybayinEval]   predictedVariant=3: 100.00% (1/1)
+[BaybayinEval] HA: loadedVariants=5
+[BaybayinEval]   predictedVariant=1: 100.00% (1/1)
+[BaybayinEval] KA: loadedVariants=6
+[BaybayinEval]   predictedVariant=2: 100.00% (1/1)
+[BaybayinEval] LA: loadedVariants=5
+[BaybayinEval]   predictedVariant=3: 100.00% (1/1)
+[BaybayinEval] MA: loadedVariants=5
+[BaybayinEval]   predictedVariant=2: 100.00% (1/1)
+[BaybayinEval] NA: loadedVariants=5
+[BaybayinEval]   predictedVariant=4: 100.00% (1/1)
+[BaybayinEval] NGA: loadedVariants=5
+[BaybayinEval]   predictedVariant=1: 100.00% (1/1)
+[BaybayinEval] OU: loadedVariants=5
+[BaybayinEval]   predictedVariant=4: 100.00% (1/1)
+[BaybayinEval] PA: loadedVariants=5
+[BaybayinEval]   predictedVariant=2: 100.00% (1/1)
+[BaybayinEval] RA: loadedVariants=5
+[BaybayinEval]   predictedVariant=3: 0.00% (0/1)
+[BaybayinEval]   predictedVariant=4: 0.00% (0/1)
+[BaybayinEval]   predictedVariant=5: 0.00% (0/1)
+[BaybayinEval] SA: loadedVariants=5
+[BaybayinEval]   predictedVariant=4: 100.00% (1/1)
+[BaybayinEval] TA: loadedVariants=5
+[BaybayinEval]   predictedVariant=5: 100.00% (1/1)
+[BaybayinEval] WA: loadedVariants=5
+[BaybayinEval]   predictedVariant=4: 100.00% (1/1)
+[BaybayinEval] YA: loadedVariants=5
+[BaybayinEval]   predictedVariant=1: 100.00% (1/1)
+[BaybayinEval] Expected-template variant report skipped. Add sample names like BA_template_03_draw_01.txt to enable it.
+[BaybayinEval] Top 10 confusions (expected->predicted):
+[BaybayinEval]   RA->KA: 3
+[BaybayinEval] Evaluated 20 samples. AC-4 expects 90 (5 draws x 18 characters).
+[BaybayinEval] PASS: Accuracy meets AC-4 (>= 80%).
