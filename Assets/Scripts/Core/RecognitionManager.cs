@@ -33,10 +33,17 @@ public class RecognitionManager : Singleton<RecognitionManager>
         }
         RecognitionResult result = _recognizer.Recognize(points);
         DebugLogger.Log(
-            $"Recognized: {result.characterID} Score: {result.score:F3} "
-            + $"Second: {result.secondBestID} ({result.secondBestScore:F3}) "
+            $"Recognized: {result.characterID} "
+            + $"Score: {result.score:F3} "
+            + $"Second: {result.secondBestID} "
+            + $"({result.secondBestScore:F3}) "
             + $"Gap: {result.scoreGap:F3} "
             + $"Threshold: {_config.minimumConfidence:F2}");
+
+        RecognitionLogger.LogAttempt(
+            result,
+            TestSessionController.IntendedCharacterID);
+
         if (result.score >= _config.minimumConfidence)
             EventBus.RaiseCharacterRecognized(result.characterID);
         else
