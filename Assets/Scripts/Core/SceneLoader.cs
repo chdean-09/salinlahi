@@ -28,10 +28,16 @@ public class SceneLoader : Singleton<SceneLoader>
     {
         Time.timeScale = 1f; // Always reset before scene change
         AsyncOperation op = SceneManager.LoadSceneAsync(sceneName);
+        op.allowSceneActivation = true;
+        
         while (!op.isDone)
         {
-            DebugLogger.Log($"Loading {sceneName}: {(op.progress * 100f):F0}%");
+            // Progress stops at 0.9 (90%) until scene activation
+            float progress = Mathf.Clamp01(op.progress / 0.9f);
+            DebugLogger.Log($"Loading {sceneName}: {(progress * 100f):F0}%");
             yield return null;
         }
+        
+        DebugLogger.Log($"Loading {sceneName}: Complete");
     }
 }
