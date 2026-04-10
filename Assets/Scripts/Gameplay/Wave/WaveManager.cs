@@ -100,6 +100,14 @@ public class WaveManager : MonoBehaviour
             DebugLogger.LogError("WaveManager: No LevelConfigSO assigned!");
             return;
         }
+
+        // Ensure GameManager is in Playing state so input is not blocked
+        if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
+        {
+            GameManager.Instance.StartGame();
+            DebugLogger.Log("WaveManager: Auto-started GameManager.");
+        }
+
         _running = true;
         _currentWaveIndex = 0;
         StartCoroutine(RunAllWavesRoutine());
