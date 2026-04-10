@@ -14,7 +14,10 @@ public class MainMenuUI : MonoBehaviour
     public void OnPlayButtonPressed()
     {
         DebugLogger.Log("MainMenuUI: Play button pressed");
-        SceneLoader.Instance.LoadLevelSelect();
+        // Default to Level 1 when pressing Play
+        PlayerPrefs.SetInt("SelectedLevel", 1);
+        PlayerPrefs.Save();
+        SceneLoader.Instance.LoadGameplay();
     }
 
     public void OnEndlessModePressed()

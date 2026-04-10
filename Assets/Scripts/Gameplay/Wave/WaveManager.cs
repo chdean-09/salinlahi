@@ -9,6 +9,10 @@ public class WaveManager : MonoBehaviour
     [SerializeField] private EnemyDataSO _defaultEnemyData;
     [SerializeField] private WaveSpawner _spawner;
 
+    [Header("Level Registry")]
+    [Tooltip("All level configs that can be loaded at runtime. Index 0 = Level 1, etc.")]
+    [SerializeField] private LevelConfigSO[] _levelConfigs;
+
     private int _currentWaveIndex = 0;
     private bool _running = false;
     private int _activeEnemyCount = 0;
@@ -27,7 +31,66 @@ public class WaveManager : MonoBehaviour
 
     private void Start()
     {
+        // Try to load level from PlayerPrefs (set by LevelSelectUI)
+        int selectedLevel = PlayerPrefs.GetInt("SelectedLevel", 1);
+        LoadLevelConfig(selectedLevel);
         StartWaves();
+    }
+
+    /// <summary>
+    /// Starts a level with the specified config. This is the runtime API required by AC-4.
+    /// </summary>
+    /// <param name="levelConfigSO">The level configuration to use</param>
+    public void StartLevel(LevelConfigSO levelConfigSO)
+    {
+        if (levelConfigSO == null)
+        {
+            DebugLogger.LogError("WaveManager.StartLevel: levelConfigSO is null!");
+            return;
+        }
+
+        // Stop any current waves
+        if (_running)
+        {
+            StopAllCoroutines();
+            _running = false;
+        }
+
+        _levelConfig = levelConfigSO;
+        StartWaves();
+    }
+
+    private void LoadLevelConfig(int levelNumber)
+    {
+        // Try to find config in the registry array first
+        if (_levelConfigs != null && _levelConfigs.Length > 0)
+        {
+            int index = levelNumber - 1; // Level 1 is at index 0
+            if (index >= 0 && index < _levelConfigs.Length && _levelConfigs[index] != null)
+            {
+                _levelConfig = _levelConfigs[index];
+                DebugLogger.Log($"WaveManager: Loaded Level {levelNumber} from registry.");
+                return;
+            }
+        }
+
+        // Fallback: Try to load from Resources
+        LevelConfigSO loadedConfig = Resources.Load<LevelConfigSO>($"LevelConfigs/Level{levelNumber}_Config");
+        if (loadedConfig != null)
+        {
+            _levelConfig = loadedConfig;
+            DebugLogger.Log($"WaveManager: Loaded Level {levelNumber} from Resources.");
+            return;
+        }
+
+        // If we already have a config assigned in inspector, use that
+        if (_levelConfig != null)
+        {
+            DebugLogger.LogWarning($"WaveManager: Could not find Level {levelNumber} config. Using inspector-assigned config: {_levelConfig.name}");
+            return;
+        }
+
+        DebugLogger.LogError($"WaveManager: Could not load Level {levelNumber} config and no fallback assigned!");
     }
 
     public void StartWaves()
