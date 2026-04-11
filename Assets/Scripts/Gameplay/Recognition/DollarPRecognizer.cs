@@ -5,21 +5,23 @@ public struct RecognitionResult
     public string characterID;
     public float score; // 0..1, higher = better match
     public int templateVariantIndex; // 1-based index among the matched character variants
+    public string secondBestID;
+    public float secondBestScore;
+    public float scoreGap;
 
-    public RecognitionResult(string id, float s)
-    {
-        characterID = id;
-        score = s;
-        templateVariantIndex = -1;
-    }
-
-    public RecognitionResult(string id, float s, int variantIndex)
+    public RecognitionResult(
+        string id, float s, int variantIndex,
+        string secondId, float secondS)
     {
         characterID = id;
         score = s;
         templateVariantIndex = variantIndex;
+        secondBestID = secondId;
+        secondBestScore = secondS;
+        scoreGap = s - secondS;
     }
 }
+
 public class DollarPRecognizer
 {
     private readonly int _n; // resample point count
@@ -59,12 +61,16 @@ public class DollarPRecognizer
     public RecognitionResult Recognize(List<Vector2> points)
     {
         if (_templates.Count == 0)
-            return new RecognitionResult("NONE", 0f, -1);
+            return new RecognitionResult("NONE", 0f, -1, "NONE", float.MinValue);
 
         List<Vector2> candidate = Preprocess(new List<Vector2>(points));
+
         string bestID = "NONE";
         float bestScore = float.MinValue;
         int bestVariantIndex = -1;
+        string secondID = "NONE";
+        float secondScore = float.MinValue;
+
         foreach (var kvp in _templates)
         {
             for (int i = 0; i < kvp.Value.Count; i++)
@@ -72,16 +78,30 @@ public class DollarPRecognizer
                 List<Vector2> template = kvp.Value[i];
                 float d = GreedyCloudMatch(candidate, template);
                 float score = 1f - d / (0.5f * Mathf.Sqrt(2f));
+
                 if (score > bestScore)
                 {
+                    // Current best becomes second-best
+                    secondScore = bestScore;
+                    secondID = bestID;
+
                     bestScore = score;
                     bestID = kvp.Key;
                     bestVariantIndex = i + 1;
                 }
+                else if (score > secondScore)
+                {
+                    secondScore = score;
+                    secondID = kvp.Key;
+                }
             }
         }
-        return new RecognitionResult(bestID, bestScore, bestVariantIndex);
+
+        return new RecognitionResult(
+            bestID, bestScore, bestVariantIndex,
+            secondID, secondScore);
     }
+
     // ── PREPROCESSING ────────────────────────────────────────────────
     private List<Vector2> Preprocess(List<Vector2> pts)
     {
