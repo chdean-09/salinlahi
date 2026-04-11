@@ -16,3 +16,6 @@ Thumbs.db
 *.userprefs
 .idea/
 .plastic/
+.vscode/extensions.json
+.vscode/launch.json
+.vscode/settings.json
