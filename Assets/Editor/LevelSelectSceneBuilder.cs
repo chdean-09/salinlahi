@@ -275,6 +275,11 @@ public static class LevelSelectSceneBuilder
         for (int i = 0; i < LevelCount; i++)
         {
             int n = i + 1;
+            var config = AssetDatabase.LoadAssetAtPath<LevelConfigSO>(
+                $"Assets/ScriptableObjects/Levels/Level{n}_Config.asset");
+            if (config == null)
+                Debug.LogWarning($"[LevelSelectSceneBuilder] Level{n}_Config.asset not found — _level{n}Config will be unset.");
+            SetProperty(so, $"_level{n}Config", config);
             SetProperty(so, $"_level{n}Button", buttons[i]);
             SetProperty(so, $"_level{n}LockOverlay", locks[i]);
             SetProperty(so, $"_level{n}CompletionCheck", checks[i]);
