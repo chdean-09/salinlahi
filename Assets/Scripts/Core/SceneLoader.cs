@@ -55,27 +55,49 @@ public class SceneLoader : Singleton<SceneLoader>
         _loadingSceneName = sceneName;
         Time.timeScale = 1f; // Always reset before scene change
 
-        // Fade in (to black). Stub — replaced by TransitionManager in SALIN-44.
-        yield return Fade(0f, 1f);
-
-        AsyncOperation op = SceneManager.LoadSceneAsync(sceneName);
-        op.allowSceneActivation = true; // Fade stub must NOT gate scene activation.
-
-        while (!op.isDone)
+        // try/finally: yield IS valid inside try. finally runs even if the
+        // coroutine is stopped externally (StopAllCoroutines, object destroy, etc.)
+        // so _isLoading never gets stuck true and the screen never stays black.
+        try
         {
-            // Progress stops at 0.9 (90%) until scene activation.
-            float progress = Mathf.Clamp01(op.progress / 0.9f);
-            DebugLogger.Log($"Loading {sceneName}: {progress * 100f:F0}%");
-            yield return null;
+            // Fade in (to black). Stub — replaced by TransitionManager in SALIN-44.
+            yield return Fade(0f, 1f);
+
+            AsyncOperation op = SceneManager.LoadSceneAsync(sceneName);
+            if (op == null)
+            {
+                DebugLogger.LogError($"SceneLoader: Scene '{sceneName}' not found in Build Profiles. Add it via File → Build Profiles.");
+                yield return Fade(1f, 0f);
+                yield break;
+            }
+
+            op.allowSceneActivation = true; // Fade stub must NOT gate scene activation.
+
+            while (!op.isDone)
+            {
+                // Progress stops at 0.9 (90%) until scene activation.
+                float progress = Mathf.Clamp01(op.progress / 0.9f);
+                DebugLogger.Log($"Loading {sceneName}: {progress * 100f:F0}%");
+                yield return null;
+            }
+
+            DebugLogger.Log($"Loading {sceneName}: Complete");
+
+            // Fade out (from black).
+            yield return Fade(1f, 0f);
         }
+        finally
+        {
+            // Cannot yield here, so snap alpha to 0 instantly as a safety net.
+            // Under normal flow Fade(1f, 0f) already animated it; this only
+            // matters if the coroutine was interrupted before the fade-back ran.
+            // ReSharper disable once Unity.NoNullPropagation — != null intentional (Unity overrides ==)
+            if (_fadeCanvasGroup != null)
+                _fadeCanvasGroup.alpha = 0f;
 
-        DebugLogger.Log($"Loading {sceneName}: Complete");
-
-        // Fade out (from black).
-        yield return Fade(1f, 0f);
-
-        _isLoading = false;
-        _loadingSceneName = null;
+            _isLoading = false;
+            _loadingSceneName = null;
+        }
     }
 
     private IEnumerator Fade(float from, float to)
