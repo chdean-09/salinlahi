@@ -21,19 +21,29 @@ public class WaveManager : MonoBehaviour
     {
         EventBus.OnEnemyDefeated += OnEnemyRemoved;
         EventBus.OnBaseHit += OnEnemyRemoved;
+        EventBus.OnLevelComplete += HandleLevelComplete;
     }
 
     private void OnDisable()
     {
         EventBus.OnEnemyDefeated -= OnEnemyRemoved;
         EventBus.OnBaseHit -= OnEnemyRemoved;
+        EventBus.OnLevelComplete -= HandleLevelComplete;
     }
 
     private void Start()
     {
-        // Try to load level from PlayerPrefs (set by LevelSelectUI)
-        int selectedLevel = PlayerPrefs.GetInt("SelectedLevel", 1);
-        LoadLevelConfig(selectedLevel);
+        // GameManager.CurrentLevel is set by LevelSelectUI before scene load.
+        // Fall back to PlayerPrefs if not set (e.g. direct scene entry or Play button).
+        if (GameManager.Instance != null && GameManager.Instance.CurrentLevel != null)
+        {
+            _levelConfig = GameManager.Instance.CurrentLevel;
+        }
+        else
+        {
+            int selectedLevel = PlayerPrefs.GetInt("SelectedLevel", 1);
+            LoadLevelConfig(selectedLevel);
+        }
         StartWaves();
     }
 
@@ -166,4 +176,9 @@ public class WaveManager : MonoBehaviour
     // One handler for both defeat and base-hit -- both remove from active count
     private void OnEnemyRemoved(BaybayinCharacterSO _) => _activeEnemyCount = Mathf.Max(0, _activeEnemyCount - 1);
     private void OnEnemyRemoved() => _activeEnemyCount = Mathf.Max(0, _activeEnemyCount - 1);
+
+    private void HandleLevelComplete()
+    {
+        // ProgressManager listens to EventBus.OnLevelComplete directly and handles progress saving.
+    }
 }

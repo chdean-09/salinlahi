@@ -20,6 +20,12 @@ public class MainMenuUI : MonoBehaviour
         SceneLoader.Instance.LoadGameplay();
     }
 
+    public void OnLevelSelectPressed()
+    {
+        DebugLogger.Log("MainMenuUI: Level Select pressed");
+        SceneLoader.Instance.LoadLevelSelect();
+    }
+
     public void OnEndlessModePressed()
     {
         if (!IsStoryComplete())
