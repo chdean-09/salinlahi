@@ -18,12 +18,12 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 47bebcef7fb6e0345910b40b0aa930bb, type: 2}
   - {fileID: 11400000, guid: bf32af93e1222db4a9cc91f6598361ab, type: 2}
   - {fileID: 11400000, guid: 055149baf1c38044fb25d210a0055d1f, type: 2}
-  - {fileID: 11400000, guid: 4f5g6h7i8j9k0l12334a5b6c7d8e9f123, type: 2}
-  - {fileID: 11400000, guid: 5g6h7i8j9k0l1m23445a6b7c8d9e0f234, type: 2}
+  - {fileID: 11400000, guid: 1adf29c4624474c1c892c90dcaa43a0d, type: 2}
+  - {fileID: 11400000, guid: 6935ddacb24024a6b9d1c9edbff0f3be, type: 2}
   allowedCharacters:
   - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
   - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
   - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
-  - {fileID: 11400000, guid: 8a9b3c4d5e6f7081920a1b2c3d4e5f607, type: 2}
-  - {fileID: 11400000, guid: 9b0c4d5e6f7g8092930b1c2d3e4f5g708, type: 2}
+  - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+  - {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
   isAvailableInLite: 1
