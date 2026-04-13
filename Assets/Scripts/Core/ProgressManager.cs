@@ -232,6 +232,12 @@ public class ProgressManager : Singleton<ProgressManager>
     }
 
     /// <summary>
+    /// Returns true if the level has been completed (has at least 1 star).
+    /// </summary>
+    /// <param name="levelID">Level number (1-based)</param>
+    public bool IsLevelCompleted(int levelID) => GetStars(levelID) > 0;
+
+    /// <summary>
     /// Returns the stored star count for a level.
     /// Returns 0 if never completed.
     /// </summary>

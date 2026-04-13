@@ -2,12 +2,19 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Level Select UI with lock/unlock states and star ratings.
-/// Reads progress from ProgressManager and displays locked levels,
-/// unlocked levels, and earned stars per level.
+/// Level Select UI with lock/unlock and completion states.
+/// Reads progress from ProgressManager. Completion check shown when IsLevelCompleted returns true;
+/// the 3-star visual is intentionally deferred to SALIN-66 polish pass.
 /// </summary>
 public class LevelSelectUI : MonoBehaviour
 {
+    [Header("Level Configs")]
+    [SerializeField] private LevelConfigSO _level1Config;
+    [SerializeField] private LevelConfigSO _level2Config;
+    [SerializeField] private LevelConfigSO _level3Config;
+    [SerializeField] private LevelConfigSO _level4Config;
+    [SerializeField] private LevelConfigSO _level5Config;
+
     [Header("Level Buttons")]
     [SerializeField] private Button _level1Button;
     [SerializeField] private Button _level2Button;
@@ -22,61 +29,36 @@ public class LevelSelectUI : MonoBehaviour
     [SerializeField] private GameObject _level4LockOverlay;
     [SerializeField] private GameObject _level5LockOverlay;
 
-    [Header("Star Images (3 per level - 15 total)")]
-    [SerializeField] private Image _level1Star1;
-    [SerializeField] private Image _level1Star2;
-    [SerializeField] private Image _level1Star3;
-    [SerializeField] private Image _level2Star1;
-    [SerializeField] private Image _level2Star2;
-    [SerializeField] private Image _level2Star3;
-    [SerializeField] private Image _level3Star1;
-    [SerializeField] private Image _level3Star2;
-    [SerializeField] private Image _level3Star3;
-    [SerializeField] private Image _level4Star1;
-    [SerializeField] private Image _level4Star2;
-    [SerializeField] private Image _level4Star3;
-    [SerializeField] private Image _level5Star1;
-    [SerializeField] private Image _level5Star2;
-    [SerializeField] private Image _level5Star3;
-
-    [Header("Star Sprites")]
-    [Tooltip("Sprite to show for earned stars")]
-    [SerializeField] private Sprite _starFilledSprite;
-    [Tooltip("Sprite to show for unearned stars (optional - will be hidden if null)")]
-    [SerializeField] private Sprite _starEmptySprite;
+    [Header("Completion Checkmarks (hidden until level is beaten)")]
+    [SerializeField] private GameObject _level1CompletionCheck;
+    [SerializeField] private GameObject _level2CompletionCheck;
+    [SerializeField] private GameObject _level3CompletionCheck;
+    [SerializeField] private GameObject _level4CompletionCheck;
+    [SerializeField] private GameObject _level5CompletionCheck;
 
     [Header("Navigation")]
     [SerializeField] private Button _backButton;
 
-    // Arrays for easier iteration
     private Button[] _levelButtons;
     private GameObject[] _lockOverlays;
-    private Image[][] _starImages;
+    private GameObject[] _completionChecks;
+    private LevelConfigSO[] _levelConfigs;
 
     private void Awake()
     {
-        // Initialize arrays
-        _levelButtons = new Button[] { _level1Button, _level2Button, _level3Button, _level4Button, _level5Button };
-        _lockOverlays = new GameObject[] { _level1LockOverlay, _level2LockOverlay, _level3LockOverlay, _level4LockOverlay, _level5LockOverlay };
-        _starImages = new Image[][]
-        {
-            new Image[] { _level1Star1, _level1Star2, _level1Star3 },
-            new Image[] { _level2Star1, _level2Star2, _level2Star3 },
-            new Image[] { _level3Star1, _level3Star2, _level3Star3 },
-            new Image[] { _level4Star1, _level4Star2, _level4Star3 },
-            new Image[] { _level5Star1, _level5Star2, _level5Star3 }
-        };
+        _levelConfigs = new[] { _level1Config, _level2Config, _level3Config, _level4Config, _level5Config };
+        _levelButtons = new[] { _level1Button, _level2Button, _level3Button, _level4Button, _level5Button };
+        _lockOverlays = new[] { _level1LockOverlay, _level2LockOverlay, _level3LockOverlay, _level4LockOverlay, _level5LockOverlay };
+        _completionChecks = new[] { _level1CompletionCheck, _level2CompletionCheck, _level3CompletionCheck, _level4CompletionCheck, _level5CompletionCheck };
     }
 
     private void Start()
     {
-        // Initialize button states based on progress
         RefreshLevelButtons();
 
-        // Subscribe to button events
         for (int i = 0; i < _levelButtons.Length; i++)
         {
-            int levelNumber = i + 1; // Capture for closure
+            int levelNumber = i + 1; // capture for closure
             if (_levelButtons[i] != null)
                 _levelButtons[i].onClick.AddListener(() => OnLevelSelected(levelNumber));
         }
@@ -89,7 +71,6 @@ public class LevelSelectUI : MonoBehaviour
 
     private void OnDestroy()
     {
-        // Unsubscribe from events
         if (_levelButtons != null)
         {
             foreach (var button in _levelButtons)
@@ -105,20 +86,16 @@ public class LevelSelectUI : MonoBehaviour
 
     /// <summary>
     /// Refreshes all level buttons based on current progress.
-    /// Called on Start and can be called externally to refresh after progress changes.
+    /// Public so other systems can trigger a refresh after progress changes.
     /// </summary>
     public void RefreshLevelButtons()
     {
         for (int i = 0; i < _levelButtons.Length; i++)
         {
-            int levelNumber = i + 1;
-            UpdateLevelButtonState(levelNumber);
+            UpdateLevelButtonState(i + 1);
         }
     }
 
-    /// <summary>
-    /// Updates the visual state of a single level button.
-    /// </summary>
     private void UpdateLevelButtonState(int levelNumber)
     {
         int index = levelNumber - 1;
@@ -126,101 +103,37 @@ public class LevelSelectUI : MonoBehaviour
             return;
 
         Button button = _levelButtons[index];
-        GameObject lockOverlay = _lockOverlays != null && index < _lockOverlays.Length ? _lockOverlays[index] : null;
-        Image[] stars = _starImages != null && index < _starImages.Length ? _starImages[index] : null;
-
         if (button == null)
             return;
 
-        // Check if level is unlocked (default to true if ProgressManager not available)
+        GameObject lockOverlay = index < _lockOverlays.Length ? _lockOverlays[index] : null;
+        GameObject completionCheck = index < _completionChecks.Length ? _completionChecks[index] : null;
+
         bool unlocked = true;
+        bool completed = false;
+
         if (ProgressManager.Instance != null)
         {
             unlocked = ProgressManager.Instance.IsLevelUnlocked(levelNumber);
+            completed = ProgressManager.Instance.IsLevelCompleted(levelNumber);
         }
         else
         {
             DebugLogger.LogWarning("LevelSelectUI: ProgressManager not available. Defaulting all levels to unlocked.");
         }
 
-        // Set button interactable state
         button.interactable = unlocked;
 
-        // Show/hide lock overlay
         if (lockOverlay != null)
             lockOverlay.SetActive(!unlocked);
 
-        // Update star display (only show stars for unlocked levels that have been completed)
-        if (stars != null && unlocked && ProgressManager.Instance != null)
-        {
-            int starCount = ProgressManager.Instance.GetStars(levelNumber);
-            UpdateStarDisplay(stars, starCount);
-        }
-        else if (stars != null)
-        {
-            // Hide all stars for locked levels or when stars array is empty
-            HideAllStars(stars);
-        }
-    }
-
-    /// <summary>
-    /// Updates the star images for a level.
-    /// </summary>
-    private void UpdateStarDisplay(Image[] stars, int starCount)
-    {
-        if (stars == null || stars.Length == 0)
-            return;
-
-        for (int i = 0; i < stars.Length; i++)
-        {
-            Image starImage = stars[i];
-            if (starImage == null)
-                continue;
-
-            // Show star as filled if we have enough stars
-            bool shouldBeFilled = i < starCount;
-            
-            if (shouldBeFilled)
-            {
-                // Show filled star
-                starImage.sprite = _starFilledSprite;
-                starImage.gameObject.SetActive(true);
-            }
-            else
-            {
-                // Show empty star only if we have a sprite for it
-                if (_starEmptySprite != null)
-                {
-                    starImage.sprite = _starEmptySprite;
-                    starImage.gameObject.SetActive(true);
-                }
-                else
-                {
-                    // Hide unearned stars if no empty sprite assigned
-                    starImage.gameObject.SetActive(false);
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    /// Hides all star images for a level.
-    /// </summary>
-    private void HideAllStars(Image[] stars)
-    {
-        if (stars == null)
-            return;
-
-        foreach (var starImage in stars)
-        {
-            if (starImage != null)
-                starImage.gameObject.SetActive(false);
-        }
+        if (completionCheck != null)
+            completionCheck.SetActive(unlocked && completed);
     }
 
     private void OnLevelSelected(int levelNumber)
     {
-        // Defensive check: verify level is actually unlocked
+        // Defensive check: guard against stale button state (e.g. mid-refresh).
         if (ProgressManager.Instance != null && !ProgressManager.Instance.IsLevelUnlocked(levelNumber))
         {
             DebugLogger.Log($"LevelSelectUI: Level {levelNumber} is locked. Ignoring click.");
@@ -229,17 +142,32 @@ public class LevelSelectUI : MonoBehaviour
 
         DebugLogger.Log($"LevelSelectUI: Level {levelNumber} selected");
 
-        // Store selected level for gameplay scene
         PlayerPrefs.SetInt("SelectedLevel", levelNumber);
         PlayerPrefs.Save();
 
-        // Load gameplay scene
-        SceneLoader.Instance.LoadGameplay();
+        int index = levelNumber - 1;
+        if (GameManager.Instance != null && index >= 0 && index < _levelConfigs.Length && _levelConfigs[index] != null)
+        {
+            GameManager.Instance.SetLevel(_levelConfigs[index]);
+        }
+        else
+        {
+            DebugLogger.LogWarning($"LevelSelectUI: Could not set GameManager level for level {levelNumber} — config missing or GameManager unavailable.");
+        }
+
+        if (SceneLoader.Instance != null)
+            SceneLoader.Instance.LoadGameplay();
+        else
+            DebugLogger.LogError("LevelSelectUI: SceneLoader not available. Cannot load Gameplay.");
     }
 
     private void OnBackPressed()
     {
         DebugLogger.Log("LevelSelectUI: Back to main menu");
-        SceneLoader.Instance.LoadMainMenu();
+
+        if (SceneLoader.Instance != null)
+            SceneLoader.Instance.LoadMainMenu();
+        else
+            DebugLogger.LogError("LevelSelectUI: SceneLoader not available. Cannot load MainMenu.");
     }
 }
