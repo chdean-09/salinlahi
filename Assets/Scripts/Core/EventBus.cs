@@ -32,6 +32,10 @@ public static class EventBus
     public static event Action OnFocusModeActivated;
     public static event Action OnFocusModeDeactivated;
 
+    // -- Pause Events --
+    public static event Action OnGamePaused;
+    public static event Action OnGameResumed;
+
     // ── Raisers ──────────────────────────────────────────────────
     public static void RaiseEnemyDefeated(BaybayinCharacterSO c) => OnEnemyDefeated?.Invoke(c);
     public static void RaiseBaseHit() => OnBaseHit?.Invoke();
@@ -47,4 +51,6 @@ public static class EventBus
     public static void RaiseComboChanged(int streak) => OnComboChanged?.Invoke(streak);
     public static void RaiseFocusModeActivated() => OnFocusModeActivated?.Invoke();
     public static void RaiseFocusModeDeactivated() => OnFocusModeDeactivated?.Invoke();
+    public static void RaiseGamePaused() => OnGamePaused?.Invoke();
+    public static void RaiseGameResumed() => OnGameResumed?.Invoke();
 }

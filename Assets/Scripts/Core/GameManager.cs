@@ -32,6 +32,7 @@ public class GameManager : Singleton<GameManager>
         if (CurrentState != GameState.Playing) return;
         Time.timeScale = 0f;
         SetState(GameState.Paused);
+        EventBus.RaiseGamePaused();
     }
 
     public void ResumeGame()
@@ -39,6 +40,7 @@ public class GameManager : Singleton<GameManager>
         if (CurrentState != GameState.Paused) return;
         Time.timeScale = 1f;
         SetState(GameState.Playing);
+        EventBus.RaiseGameResumed();
     }
 
     private void HandleGameOver()

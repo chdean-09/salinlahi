@@ -45,8 +45,8 @@ public class StrokeCapture : MonoBehaviour
     private void OnFingerDown(Finger finger)
     {
         // Block all input during GameOver or Paused
-        if (GameManager.Instance.CurrentState
-            != GameState.Playing) return;
+        if (GameManager.Instance == null ||
+            GameManager.Instance.CurrentState != GameState.Playing) return;
 
         // Only accept the primary finger (index 0).
         // On desktop, mouse buttons beyond left-click create
@@ -100,8 +100,8 @@ public class StrokeCapture : MonoBehaviour
 
     private void OnFingerMove(Finger finger)
     {
-        if (GameManager.Instance.CurrentState
-            != GameState.Playing) return;
+        if (GameManager.Instance == null ||
+            GameManager.Instance.CurrentState != GameState.Playing) return;
 
         if (finger.index != 0 || !_isDrawing) return;
 
@@ -127,8 +127,8 @@ public class StrokeCapture : MonoBehaviour
 
     private void OnFingerUp(Finger finger)
     {
-        if (GameManager.Instance.CurrentState
-            != GameState.Playing) return;
+        if (GameManager.Instance == null ||
+            GameManager.Instance.CurrentState != GameState.Playing) return;
 
         if (finger.index != 0 || !_isDrawing) return;
 
@@ -205,8 +205,8 @@ public class StrokeCapture : MonoBehaviour
     private void SubmitForRecognition()
     {
         // Guard: do not submit during non-playing states
-        if (GameManager.Instance.CurrentState
-            != GameState.Playing)
+        if (GameManager.Instance == null ||
+            GameManager.Instance.CurrentState != GameState.Playing)
         {
             _strokes.Clear();
             return;
