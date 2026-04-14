@@ -15,6 +15,7 @@ public static class EventBus
 
     // ── Recognition Events ───────────────────────────────────────
     public static event Action<string> OnCharacterRecognized; // string = characterID
+    public static event Action<RecognitionResult, bool, float> OnRecognitionResolved; // result, passed threshold, threshold
     public static event Action OnDrawingFailed;
     public static event Action OnDrawingStarted;
 
@@ -43,6 +44,8 @@ public static class EventBus
     public static void RaiseLevelComplete() => OnLevelComplete?.Invoke();
     public static void RaiseWaveStarted(int index) => OnWaveStarted?.Invoke(index);
     public static void RaiseCharacterRecognized(string id) => OnCharacterRecognized?.Invoke(id);
+    public static void RaiseRecognitionResolved(RecognitionResult result, bool passedThreshold, float threshold)
+        => OnRecognitionResolved?.Invoke(result, passedThreshold, threshold);
     public static void RaiseDrawingFailed() => OnDrawingFailed?.Invoke();
     public static void RaiseDrawingStarted() => OnDrawingStarted?.Invoke();
     public static void RaiseHeartsChanged(int hearts) => OnHeartsChanged?.Invoke(hearts);

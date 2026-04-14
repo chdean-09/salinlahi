@@ -8,8 +8,8 @@ public class EnemyPool : Singleton<EnemyPool>
     [Serializable]
     private class EnemyPrefabRegistration
     {
-        public string enemyID;
-        public Enemy prefab;
+        public string enemyID = "";
+        public Enemy prefab = null;
         public int defaultCapacity = 10;
         public int maxSize = 20;
     }
@@ -52,11 +52,11 @@ public class EnemyPool : Singleton<EnemyPool>
     }
 
     // Call this to retrieve an enemy and initialize it with data
-    public Enemy Get(EnemyDataSO data)
+    public Enemy Get(EnemyDataSO data, BaybayinCharacterSO characterOverride = null)
     {
         IObjectPool<Enemy> pool = ResolvePool(data);
         Enemy enemy = pool.Get();
-        enemy.Initialize(data, pool);
+        enemy.Initialize(data, pool, characterOverride);
         return enemy;
     }
 

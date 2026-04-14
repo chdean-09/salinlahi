@@ -1,3 +1,4 @@
+using Salinlahi.Debug.Sandbox;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -53,7 +54,7 @@ public class ProgressManager : Singleton<ProgressManager>
         // Try to find HeartSystem if we're in the gameplay scene
         if (scene.name.Contains("Gameplay") || scene.name.Contains("Game"))
         {
-            _cachedHeartSystem = FindObjectOfType<HeartSystem>();
+            _cachedHeartSystem = FindFirstObjectByType<HeartSystem>();
             if (_cachedHeartSystem != null)
             {
                 DebugLogger.Log("ProgressManager: Cached HeartSystem reference.");
@@ -72,13 +73,16 @@ public class ProgressManager : Singleton<ProgressManager>
 
     private void HandleWaveStarted(int waveIndex)
     {
+        if (SandboxMode.IsActive)
+            return;
+
         // Wave 0 indicates start of a new level attempt
         if (waveIndex == 0)
         {
             // Refresh HeartSystem cache at level start
             if (_cachedHeartSystem == null)
             {
-                _cachedHeartSystem = FindObjectOfType<HeartSystem>();
+                _cachedHeartSystem = FindFirstObjectByType<HeartSystem>();
             }
 
             // Update current level ID from PlayerPrefs (in case it changed)
@@ -95,6 +99,12 @@ public class ProgressManager : Singleton<ProgressManager>
 
     private void HandleLevelComplete()
     {
+        if (SandboxMode.IsActive)
+        {
+            DebugLogger.Log("ProgressManager: Ignored LevelComplete while sandbox mode is active.");
+            return;
+        }
+
         // Get current level ID from tracking or PlayerPrefs
         int currentLevelId = _currentPlayingLevelId > 0 ? _currentPlayingLevelId : PlayerPrefs.GetInt("SelectedLevel", 1);
 
@@ -135,7 +145,7 @@ public class ProgressManager : Singleton<ProgressManager>
         HeartSystem heartSystem = _cachedHeartSystem;
         if (heartSystem == null)
         {
-            heartSystem = FindObjectOfType<HeartSystem>();
+            heartSystem = FindFirstObjectByType<HeartSystem>();
             _cachedHeartSystem = heartSystem;
         }
 

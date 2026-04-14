@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Salinlahi.Debug.Sandbox;
 using UnityEngine;
 using UnityEngine.InputSystem.EnhancedTouch;
 using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
@@ -25,6 +26,7 @@ public class StrokeCapture : MonoBehaviour
     private float _strokeStartTime;
     private Coroutine _strokeTimeoutRoutine;
     private bool _isDrawing;
+    private float _lastSandboxPreviewTime;
 
     private void OnEnable()
     {
@@ -116,6 +118,7 @@ public class StrokeCapture : MonoBehaviour
 
         _currentPoints.Add(pos);
         _canvas.AddPoint(pos);
+        PreviewSandboxRecognitionIfReady();
 
         // Reset the stroke timeout timer on every move
         if (_strokeTimeoutRoutine != null)
@@ -177,6 +180,7 @@ public class StrokeCapture : MonoBehaviour
         _strokes.Add(new List<Vector2>(_currentPoints));
         _canvas.EndStroke();
         _currentPoints.Clear();
+        PreviewSandboxRecognition();
 
         // Start the multi-stroke window timer
         _timerRoutine = StartCoroutine(
@@ -222,5 +226,35 @@ public class StrokeCapture : MonoBehaviour
         _canvas.ClearCanvas();
 
         RecognitionManager.Instance.Recognize(allPoints);
+    }
+
+    private void PreviewSandboxRecognitionIfReady()
+    {
+        if (!SandboxMode.IsActive)
+            return;
+
+        if (Time.unscaledTime - _lastSandboxPreviewTime < 0.2f)
+            return;
+
+        if (_currentPoints.Count < _config.minimumPointCount)
+            return;
+
+        _lastSandboxPreviewTime = Time.unscaledTime;
+        PreviewSandboxRecognition(includeCurrentStroke: true);
+    }
+
+    private void PreviewSandboxRecognition(bool includeCurrentStroke = false)
+    {
+        if (!SandboxMode.IsActive || RecognitionManager.Instance == null)
+            return;
+
+        List<Vector2> previewPoints = new List<Vector2>();
+        foreach (var stroke in _strokes)
+            previewPoints.AddRange(stroke);
+
+        if (includeCurrentStroke)
+            previewPoints.AddRange(_currentPoints);
+
+        RecognitionManager.Instance.PreviewRecognize(previewPoints);
     }
 }
