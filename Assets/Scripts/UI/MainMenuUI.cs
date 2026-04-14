@@ -86,36 +86,21 @@ public class MainMenuUI : MonoBehaviour
 
         var buttonObject = new GameObject("SandboxModeButton");
         buttonObject.transform.SetParent(parent, false);
-        buttonObject.AddComponent<Image>().color = new Color(0.19f, 0.42f, 0.72f, 1f);
+        buttonObject.AddComponent<Image>().color = new Color(0.25f, 0.5f, 0.85f, 1f);
         Button button = buttonObject.AddComponent<Button>();
 
         RectTransform rect = button.GetComponent<RectTransform>();
-        if (_endlessModeButton != null)
-        {
-            RectTransform sourceRect = _endlessModeButton.GetComponent<RectTransform>();
-            if (sourceRect != null)
-            {
-                rect.anchorMin = sourceRect.anchorMin;
-                rect.anchorMax = sourceRect.anchorMax;
-                rect.pivot = sourceRect.pivot;
-                rect.sizeDelta = sourceRect.sizeDelta;
-                rect.anchoredPosition = sourceRect.anchoredPosition + new Vector2(0f, -70f);
-            }
-        }
-        else
-        {
-            rect.anchorMin = new Vector2(0.5f, 0.5f);
-            rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.sizeDelta = new Vector2(240f, 56f);
-            rect.anchoredPosition = new Vector2(0f, -250f);
-        }
+        rect.anchorMin = new Vector2(0.5f, 0f);
+        rect.anchorMax = new Vector2(0.5f, 0f);
+        rect.pivot = new Vector2(0.5f, 0f);
+        rect.sizeDelta = new Vector2(600f, 120f);
+        rect.anchoredPosition = new Vector2(0f, 24f);
 
         var labelObject = new GameObject("Label");
         labelObject.transform.SetParent(buttonObject.transform, false);
         var label = labelObject.AddComponent<TextMeshProUGUI>();
         label.text = "Sandbox";
-        label.fontSize = 24f;
+        label.fontSize = 52f;
         label.color = Color.white;
         label.alignment = TextAlignmentOptions.Center;
         label.raycastTarget = false;
