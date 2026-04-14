@@ -22,6 +22,8 @@
 | Dialogue Panel (Type A) | (overlay in Gameplay) | `DialogueController.cs` (PLANNED) | NOT FOUND |
 | In-Wave Popup (Type B) | (overlay in Gameplay) | `InWavePopupController.cs` (PLANNED) | NOT FOUND |
 | Level Complete | (overlay or separate scene) | (PLANNED) | NOT FOUND |
+| Endless Mode | (shares Gameplay scene) | (PLANNED) | NOT FOUND |
+| SUS/GEQ-S Questionnaire | (overlay or separate scene) | `QuestionnaireController.cs` (PLANNED) | NOT FOUND |
 
 [EVIDENCE: Assets/_Scenes/ — only Bootstrap, MainMenu, Gameplay, GameOver scenes exist]
 [EVIDENCE: docs/capstone/GDD.md, §5.1 Player Journey]

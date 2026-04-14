@@ -37,6 +37,9 @@ All game content is defined in ScriptableObject assets. Level designers can crea
 - `pronunciationClip` must be assigned before Sprint 2 UAT.
 - 17 total assets must exist at content-complete milestone (one per Baybayin consonant).
 
+**Multi-Template Note:**
+TDD §2.2 specifies that multiple templates per character are supported (e.g., `BA_template_01.txt`, `BA_template_02.txt`) to handle handwriting variation. The current `templateFileName` field is a single `string`, which covers the base case of one template per character. If recognition accuracy tuning in Sprint 2 requires multiple templates per character, this field must either be changed to `List<string> templateFileNames` or the team must create multiple `BaybayinCharacterSO` assets per character. This decision is deferred to Sprint 2 integration.
+
 [EVIDENCE: Assets/Scripts/Data/BaybayinCharacterSO.cs]
 [EVIDENCE: docs/capstone/TDD.md, §5 Data Layer — BaybayinCharacterSO row]
 

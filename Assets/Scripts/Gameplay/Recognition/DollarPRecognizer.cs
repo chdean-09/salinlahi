@@ -4,35 +4,104 @@ public struct RecognitionResult
 {
     public string characterID;
     public float score; // 0..1, higher = better match
-    public RecognitionResult(string id, float s) { characterID = id; score = s; }
+    public int templateVariantIndex; // 1-based index among the matched character variants
+    public string secondBestID;
+    public float secondBestScore;
+    public float scoreGap;
+
+    public RecognitionResult(
+        string id, float s, int variantIndex,
+        string secondId, float secondS)
+    {
+        characterID = id;
+        score = s;
+        templateVariantIndex = variantIndex;
+        secondBestID = secondId;
+        secondBestScore = secondS;
+        scoreGap = s - secondS;
+    }
 }
+
 public class DollarPRecognizer
 {
     private readonly int _n; // resample point count
-    private Dictionary<string, List<Vector2>> _templates;
+    private Dictionary<string, List<List<Vector2>>> _templates;
     public DollarPRecognizer(int resampleCount = 32)
     {
         _n = resampleCount;
-        _templates = new Dictionary<string, List<Vector2>>();
+        _templates = new Dictionary<string, List<List<Vector2>>>();
     }
+
+    // Backward-compatible entry point for single-template-per-character callers.
     public void SetTemplates(Dictionary<string, List<Vector2>> raw)
     {
+        var wrapped = new Dictionary<string, List<List<Vector2>>>();
+        foreach (var kvp in raw)
+            wrapped[kvp.Key] = new List<List<Vector2>> { kvp.Value };
+
+        SetTemplateVariants(wrapped);
+    }
+
+    public void SetTemplateVariants(Dictionary<string, List<List<Vector2>>> raw)
+    {
         _templates.Clear();
-        foreach (var kvp in raw) _templates[kvp.Key] = Preprocess(new List<Vector2>(kvp.Value));
+        foreach (var kvp in raw)
+        {
+            var variants = new List<List<Vector2>>();
+            foreach (List<Vector2> variant in kvp.Value)
+            {
+                if (variant == null || variant.Count == 0) continue;
+                variants.Add(Preprocess(new List<Vector2>(variant)));
+            }
+
+            if (variants.Count > 0)
+                _templates[kvp.Key] = variants;
+        }
     }
     public RecognitionResult Recognize(List<Vector2> points)
     {
+        if (_templates.Count == 0)
+            return new RecognitionResult("NONE", 0f, -1, "NONE", float.MinValue);
+
         List<Vector2> candidate = Preprocess(new List<Vector2>(points));
+
         string bestID = "NONE";
         float bestScore = float.MinValue;
+        int bestVariantIndex = -1;
+        string secondID = "NONE";
+        float secondScore = float.MinValue;
+
         foreach (var kvp in _templates)
         {
-            float d = GreedyCloudMatch(candidate, kvp.Value);
-            float score = 1f - d / (0.5f * Mathf.Sqrt(2f));
-            if (score > bestScore) { bestScore = score; bestID = kvp.Key; }
+            for (int i = 0; i < kvp.Value.Count; i++)
+            {
+                List<Vector2> template = kvp.Value[i];
+                float d = GreedyCloudMatch(candidate, template);
+                float score = 1f - d / (0.5f * Mathf.Sqrt(2f));
+
+                if (score > bestScore)
+                {
+                    // Current best becomes second-best
+                    secondScore = bestScore;
+                    secondID = bestID;
+
+                    bestScore = score;
+                    bestID = kvp.Key;
+                    bestVariantIndex = i + 1;
+                }
+                else if (score > secondScore)
+                {
+                    secondScore = score;
+                    secondID = kvp.Key;
+                }
+            }
         }
-        return new RecognitionResult(bestID, bestScore);
+
+        return new RecognitionResult(
+            bestID, bestScore, bestVariantIndex,
+            secondID, secondScore);
     }
+
     // ── PREPROCESSING ────────────────────────────────────────────────
     private List<Vector2> Preprocess(List<Vector2> pts)
     {

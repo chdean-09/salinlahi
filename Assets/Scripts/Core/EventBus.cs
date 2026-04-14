@@ -21,6 +21,21 @@ public static class EventBus
     // ── UI Events ────────────────────────────────────────────────
     public static event Action<int> OnHeartsChanged; // int = current hearts
 
+    // -- Combat Events --
+    public static event Action<Enemy> OnEnemyTargeted;
+    public static event Action OnDrawingMissed;
+
+    // -- Combo Events --
+    public static event Action<int> OnComboChanged; // int = current streak
+
+    // -- Focus Mode Events --
+    public static event Action OnFocusModeActivated;
+    public static event Action OnFocusModeDeactivated;
+
+    // -- Pause Events --
+    public static event Action OnGamePaused;
+    public static event Action OnGameResumed;
+
     // ── Raisers ──────────────────────────────────────────────────
     public static void RaiseEnemyDefeated(BaybayinCharacterSO c) => OnEnemyDefeated?.Invoke(c);
     public static void RaiseBaseHit() => OnBaseHit?.Invoke();
@@ -31,4 +46,11 @@ public static class EventBus
     public static void RaiseDrawingFailed() => OnDrawingFailed?.Invoke();
     public static void RaiseDrawingStarted() => OnDrawingStarted?.Invoke();
     public static void RaiseHeartsChanged(int hearts) => OnHeartsChanged?.Invoke(hearts);
+    public static void RaiseEnemyTargeted(Enemy e) => OnEnemyTargeted?.Invoke(e);
+    public static void RaiseDrawingMissed() => OnDrawingMissed?.Invoke();
+    public static void RaiseComboChanged(int streak) => OnComboChanged?.Invoke(streak);
+    public static void RaiseFocusModeActivated() => OnFocusModeActivated?.Invoke();
+    public static void RaiseFocusModeDeactivated() => OnFocusModeDeactivated?.Invoke();
+    public static void RaiseGamePaused() => OnGamePaused?.Invoke();
+    public static void RaiseGameResumed() => OnGameResumed?.Invoke();
 }

@@ -41,9 +41,14 @@ Cold Start
 │
 ├─ Gameplay.unity loads
 │     └─ GameManager.StartGame() called → GameState.Playing
-│     └─ LevelFlowController checks LevelConfigSO.isBossLevel
-│           ├─ false → WaveManager drives waves (with optional Type A dialogue panels before/after)
-│           └─ true → BossController activates boss encounter
+│     └─ LevelFlowController plays optional Type A intro dialogue
+│     └─ WaveManager drives waves (all levels, including boss levels)
+│     └─ [All waves cleared]
+│           └─ LevelFlowController checks LevelConfigSO.isBossLevel
+│                 ├─ false → EventBus.RaiseLevelComplete()
+│                 └─ true → BossController activates boss encounter
+│                       └─ [All boss phases cleared] → EventBus.RaiseBossDefeated()
+│                             └─ EventBus.RaiseLevelComplete()
 │     └─ WaveManager (PLANNED) loads LevelConfigSO → drives WaveSpawner
 │     └─ EnemyPool.Get(data) → enemy active in scene
 │     └─ [Player draws] → RecognitionManager (PLANNED) → EventBus.RaiseCharacterRecognized()
@@ -96,6 +101,8 @@ protected virtual void Awake()
 | `[Manager] SceneLoader.prefab` | `SceneLoader.cs` | Bootstrap scene |
 | `[Manager] AudioManager.prefab` | `AudioManager.cs` | Bootstrap scene |
 | `[Manager] EnemyPool.prefab` | `EnemyPool.cs` | Bootstrap scene |
+| `[Manager] RecognitionManager.prefab` | `RecognitionManager.cs` | Bootstrap scene (PLANNED) |
+| `[Manager] StreakManager.prefab` | `StreakManager.cs` | Bootstrap scene (PLANNED) |
 | `[Manager] WaveManager.prefab` | `WaveManager.cs` | Bootstrap scene (PLANNED) |
 | `[Manager] ComboManager.prefab` | `ComboManager.cs` | Bootstrap scene (PLANNED) |
 

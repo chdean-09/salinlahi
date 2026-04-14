@@ -181,34 +181,3 @@ Adding a new Singleton requires:
 
 [EVIDENCE: Assets/Scripts/Utilities/DebugLogger.cs]
 [EVIDENCE: Assets/Scripts/Core/GameManager.cs, SetState() — uses DebugLogger.Log]
-
----
-
-## 7. NOT FOUND — Systems Planned but Not Yet Implemented
-
-The following systems are specified in `TDD.md` and `GDD.md` but have **no implementation file** in `Assets/Scripts/` as of Sprint 1:
-
-| System | Specified In | Status |
-|--------|-------------|--------|
-| `WaveManager.cs` | TDD §3.2; GDD §2.4 | NOT FOUND |
-| `WaveSpawner.cs` | TDD §3.2 | NOT FOUND |
-| `PlayerBase.cs` | TDD §3.3 | NOT FOUND |
-| `HeartSystem.cs` | TDD §3.3; GDD §2.3 | NOT FOUND |
-| `StrokeCapture.cs` | TDD §7.4 | NOT FOUND |
-| `DrawingCanvas.cs` | TDD §7.4 | NOT FOUND |
-| `DollarPRecognizer.cs` | TDD §7.4; Salinlahi.md §3.3.3 | NOT FOUND |
-| `TemplateLoader.cs` | TDD §7.4 | NOT FOUND |
-| `RecognitionManager.cs` | TDD §7.4 | NOT FOUND |
-| `HUD.cs` | TDD §7.4; GDD §5.1 | NOT FOUND |
-| `LevelSelect.cs` | TDD §7.4; GDD §5.1 | NOT FOUND |
-| `PauseMenu.cs` | TDD §7.4 | NOT FOUND |
-| `BossConfigSO.cs` | TDD §5 Data Layer | NOT FOUND |
-| `ComboManager.cs` | GDD §3.2; Team README §4 | NOT FOUND |
-| `DialogueController.cs` | GDD §4.5; Team README §12 | NOT FOUND |
-| `LevelFlowController.cs` | Team README §12; §4 | NOT FOUND |
-| `InWavePopupController.cs` | Team README §12 | NOT FOUND |
-| `BossController.cs` | GDD §4.3; TDD §3.2 | NOT FOUND |
-| `BossPhaseManager.cs` | GDD §4.3; TDD §3.2 | NOT FOUND |
-| `StreakDisplay.cs` | GDD §5.2 | NOT FOUND |
-
-These gaps are P0/P1 items in the Traceability Matrix and Remediation Backlog.

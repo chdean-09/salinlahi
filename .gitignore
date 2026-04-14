@@ -5,6 +5,7 @@
 /[Bb]uilds/
 /[Ll]ogs/
 /[Uu]ser[Ss]ettings/
+/.utmp/
 .vs/
 *.csproj
 *.sln
@@ -15,3 +16,7 @@ Thumbs.db
 *.user
 *.userprefs
 .idea/
+.plastic/
+.vscode/extensions.json
+.vscode/launch.json
+.vscode/settings.json

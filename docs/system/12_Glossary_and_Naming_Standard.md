@@ -35,6 +35,8 @@
 | **Dialogue Sequence** | A ScriptableObject asset containing an ordered list of dialogue lines (speaker, portrait, text, optional voice clip) for one story moment. Two types: Type A (gated, pauses gameplay) and Type B (in-wave popup, does not pause). | Team README §12 |
 | **Era** | One of three historical periods represented in the game's chapters: Spanish Colonization (Chapter 1), American Occupation (Chapter 2), Japanese Occupation (Chapter 3). Each era has 4 unique enemy types, a unique shrine design, and a unique tileset. | GDD §4.1 |
 | **Combo Streak** | A counter tracking consecutive correct drawings without a miss. At 5 consecutive successes, a combo reward triggers: all on-screen enemies slow down for 3 seconds. Resets on any miss or base hit. | GDD §3.2; Team README §9 |
+| **Daily Streak** | A counter tracking consecutive days the player opens the game. Stored in PlayerPrefs on the device. Displayed on the main menu. Resets if the player misses a day. The system is offline-only and vulnerable to device clock manipulation (acknowledged limitation in Salinlahi.md §1.5.2). | Salinlahi.md §1.5.1; Sprint Timeline Sprint 3 |
+| **Questionnaire (SUS / GEQ-S)** | In-game survey screens administered after gameplay during User Acceptance Testing. The System Usability Scale (SUS) measures input usability (benchmark: 68+). The Game Experience Questionnaire Short (GEQ-S) measures player engagement. Both save responses to CSV on the device. Must-ship for academic evaluation. | Salinlahi.md §3.5.1, §3.5.2; Sprint Timeline Sprint 4 |
 
 ---
 
@@ -74,12 +76,18 @@
 
 ### 3.2 Prefabs
 
-| Rule | Pattern | Example |
-|------|---------|---------|
-| Manager prefabs | `Manager_[Name]` | `Manager_Audio`, `Manager_GameManager` |
-| Enemy prefabs | `Enemy_[Type]` | `Enemy_Standard`, `Enemy_Fast` |
-| Boss prefabs | `Boss_[Chapter]` | `Boss_Chapter1` |
-| UI prefabs | `UI_[Name]` | `UI_HUD`, `UI_HeartIcon` |
+| Rule | Context | Pattern | Example |
+|------|---------|---------|---------|
+| Manager prefab file name | On disk | `Manager_[Name].prefab` | `Manager_Audio.prefab`, `Manager_GameManager.prefab` |
+| Enemy prefab file name | On disk | `Enemy_[Type].prefab` | `Enemy_Soldado.prefab`, `Enemy_Capitan.prefab` |
+| Boss prefab file name | On disk | `Boss_[Name].prefab` | `Boss_Inquisidor.prefab` |
+| UI prefab file name | On disk | `UI_[Name].prefab` | `UI_HUD.prefab`, `UI_HeartIcon.prefab` |
+| Manager hierarchy name | Unity scene hierarchy | `[Manager] Name` | `[Manager] WaveManager` |
+| Enemy hierarchy name | Unity scene hierarchy | `[Enemy] Type_CharID` | `[Enemy] Soldado_BA` |
+| Boss hierarchy name | Unity scene hierarchy | `[Boss] Name` | `[Boss] Boss_Inquisidor` |
+| UI hierarchy name | Unity scene hierarchy | `[UI] Name` | `[UI] HUD_Canvas` |
+
+**Note:** File names on disk use underscores with no brackets. Hierarchy display names in the Unity scene use brackets as category prefixes. These are two different conventions for two different contexts.
 
 [EVIDENCE: Team README §5 — underscore convention is the target standard]
 

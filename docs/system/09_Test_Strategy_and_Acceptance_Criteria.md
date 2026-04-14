@@ -38,7 +38,7 @@ Salinlahi has no automated unit test suite in its current implementation. All te
 | EN-02 | Enemy returns to pool on defeat (no Destroy call) | Defeat 50 enemies across a wave | Unity Profiler shows 0 `Destroy` calls during wave; enemy count in pool increases | P0 |
 | EN-03 | Enemy returns to pool on base hit | Allow 5 enemies to reach PlayerBase | Enemies deactivated after base hit; no null reference errors | P0 |
 | EN-04 | EnemyMover stops on `OnDisable` | Force-deactivate an active enemy | `_active = false`; no further `transform.Translate` calls | P1 |
-| EN-05 | EnemyPool default capacity pre-warms correctly | Inspect pool at game start | Pool contains `defaultCapacity` (10) inactive enemies after Bootstrap | P2 |
+| EN-05 | EnemyPool uses lazy creation with no pre-warmed enemies | Inspect pool immediately after Bootstrap; then trigger first wave | Pool enemy count == 0 after Bootstrap; first `EnemyPool.Get()` call triggers `CreateEnemy()` and returns a valid enemy; `defaultCapacity` (10) only sets internal list allocation size, not pre-instantiated object count | P2 |
 | EN-06 | `Enemy.Initialize` sets correct speed and sprite | Spawn Soldado with known EnemyDataSO | Enemy speed matches `EnemyDataSO.moveSpeed`; sprite matches `walkFrames[0]` | P1 |
 | EN-07 | Fraile phaser label fades in/out on timer | Spawn Fraile enemy; observe 10 seconds | Baybayin label alternates between visible and hidden at `phaserInterval` rate | P1 |
 | EN-08 | Maestro decoy penalizes player when drawn | Spawn Maestro; draw its displayed character | Player loses 1 heart; Maestro remains active | P1 |
@@ -149,7 +149,7 @@ All the following must be true before UAT begins:
 
 | Tool | Purpose | Source |
 |------|---------|--------|
-| System Usability Scale (SUS) | Measures whether drawing input feels natural and usable under real gameplay conditions | Salinlahi.md §3.5.2 |
+| System Usability Scale (SUS) | Measures whether drawing input feels natural and usable under real gameplay conditions. Benchmark: a score of 68 or above indicates acceptable usability. | Salinlahi.md §3.5.2 |
 | Game Experience Questionnaire (GEQ) core module | Measures player enjoyment and engagement | Salinlahi.md §3.5.1 |
 | Pre/post Baybayin character recall test | Measures learning outcome | Salinlahi.md — educational objective |
 | Session completion rate | % of participants who finish Level 1 | Engagement proxy |

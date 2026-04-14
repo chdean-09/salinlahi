@@ -5,6 +5,7 @@ public enum GameState { Idle, Playing, Paused, GameOver, LevelComplete }
 public class GameManager : Singleton<GameManager>
 {
     public GameState CurrentState { get; private set; } = GameState.Idle;
+    public LevelConfigSO CurrentLevel { get; private set; }
 
     protected override void Awake() => base.Awake();
 
@@ -31,6 +32,7 @@ public class GameManager : Singleton<GameManager>
         if (CurrentState != GameState.Playing) return;
         Time.timeScale = 0f;
         SetState(GameState.Paused);
+        EventBus.RaiseGamePaused();
     }
 
     public void ResumeGame()
@@ -38,6 +40,7 @@ public class GameManager : Singleton<GameManager>
         if (CurrentState != GameState.Paused) return;
         Time.timeScale = 1f;
         SetState(GameState.Playing);
+        EventBus.RaiseGameResumed();
     }
 
     private void HandleGameOver()
@@ -55,5 +58,11 @@ public class GameManager : Singleton<GameManager>
     {
         CurrentState = newState;
         DebugLogger.Log($"GameState -> {newState}");
+    }
+
+    public void SetLevel(LevelConfigSO level)
+    {
+        CurrentLevel = level;
+        DebugLogger.Log($"CurrentLevel -> {level?.name ?? "null"}");
     }
 }

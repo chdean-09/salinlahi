@@ -10,6 +10,10 @@ public class EnemyDataSO : ScriptableObject
     [Tooltip("World units per second the enemy moves toward the base")]
     public float moveSpeed = 1.5f;
 
+    [Header("Health")]
+    [Tooltip("1 for regular enemies. 2 for shielded (Capitan, Shokan).")]
+    public int maxHealth = 1;
+
     [Header("Visuals")]
     public Sprite[] walkFrames;
     public RuntimeAnimatorController animatorController;

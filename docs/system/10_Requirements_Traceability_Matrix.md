@@ -65,6 +65,10 @@
 | REQ-40 | Each era shall have a unique shrine design at 64×96 px with 4 damage states | GDD §4.1 | P2 | ❌ Not implemented | — | ❌ NOT FOUND | 🟡 P2 |
 | REQ-41 | Boss encounters shall use phase-based system with BossConfigSO data | GDD §4.3; TDD §3.2 | P1 | ❌ Not implemented | BS-01–BS-04 | ❌ NOT FOUND | 🟠 P1 |
 | REQ-42 | Baybayin character set shall include 14 consonants and 3 vowels (A, E/I, O/U) totaling 17 | GDD §3.3 | P0 | `RecognitionConfigSO` implies 17; character type not distinguished | RC-07 | ⚠ Partial | 🟠 P1 |
+| REQ-43 | A daily streak counter shall track consecutive days the player opens the game, stored locally via PlayerPrefs | Salinlahi.md §1.5.1; Sprint Timeline Sprint 3 | P2 | ❌ StreakManager not implemented | — | ❌ NOT FOUND | 🟡 P2 |
+| REQ-44 | The game shall include in-game SUS and GEQ-S questionnaire screens administered after gameplay during UAT | Sprint Timeline Sprint 4; Salinlahi.md §3.5.1, §3.5.2 | P0 | ❌ QuestionnaireController not implemented | — | ❌ NOT FOUND | 🔴 P0 |
+| REQ-45 | The game shall log recognition accuracy per character per level to a CSV file on the device for post-session analysis | Sprint Timeline Sprint 2; Salinlahi.md §3.5.3 | P0 | ❌ QuestionnaireLogger not implemented | — | ❌ NOT FOUND | 🔴 P0 |
+| REQ-46 | The recognition system shall support multiple templates per character to handle handwriting variation | TDD §2.2 | P1 | ⚠ RecognitionConfigSO exists; ❌ multi-template loading not implemented | RC-04 | ⚠ Partial | 🟠 P1 |
 
 ---
 
@@ -73,12 +77,12 @@
 | Status | Count |
 |--------|-------|
 | ✅ Implemented | 9 |
-| ⚠ Partial | 14 |
-| ❌ NOT FOUND | 19 |
-| **Total requirements** | **42** |
+| ⚠ Partial | 15 |
+| ❌ NOT FOUND | 22 |
+| **Total requirements** | **46** |
 
 | Severity | Count |
 |----------|-------|
-| 🔴 P0 gaps | 9 |
-| 🟠 P1 gaps | 16 |
-| 🟡 P2 gaps | 4 |
+| 🔴 P0 gaps | 11 |
+| 🟠 P1 gaps | 17 |
+| 🟡 P2 gaps | 5 |

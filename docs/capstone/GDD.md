@@ -92,7 +92,7 @@ There are no virtual joysticks, no attack buttons, and no gesture shortcuts. Dra
 | --- | --- |
 | Win (Story Mode) | Clear all waves in a level without losing all hearts. Boss levels require completing the boss encounter after the final wave. |
 | Lose (Story Mode) | The Shrine loses all its hearts (3 by default). When an enemy reaches the base, it takes 1 heart. Zero hearts triggers game over. |
-| Endless Mode | No win condition. Play until all hearts are lost. Score is based on waves survived and enemies defeated. |
+| Endless Mode | No win condition. Play until all hearts are lost. Score is based on waves survived, enemies defeated, and longest combo streak. |
 
 ## 2.4 Game Modes
 
@@ -127,7 +127,7 @@ Combat is entirely drawing-based. The player sees the Baybayin character on an e
 
 - **AOE Burst (Should Ship): **If three or more enemies on screen carry the same character and the player draws it correctly, all of them are defeated at once. This rewards quick pattern recognition.
 
-- **Combo Streak (Should Ship): **Consecutive correct drawings without a miss build a combo multiplier. The streak resets on a failed stroke. Combos increase score but do not affect damage.
+- **Combo Streak (Should Ship): **Consecutive correct drawings without a miss build a combo streak. The streak resets on a failed stroke or when an enemy reaches the base. At 5 consecutive correct drawings, a combo reward triggers: all on-screen enemies slow down for 3 seconds. This gives the player a defensive tool that rewards accuracy and consistency under pressure.
 
 - **Failed Stroke: **If the recognition score falls below 0.60, the stroke is rejected. A visual indicator (red flash or X mark) appears. The drawing canvas clears and the player must try again. Enemies do not stop moving.
 

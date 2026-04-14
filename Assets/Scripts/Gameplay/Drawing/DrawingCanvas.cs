@@ -39,6 +39,8 @@ public class DrawingCanvas : MonoBehaviour
     public void AddPoint(Vector2 screenPos)
     {
         if (_currentLine == null) return;
+        if (float.IsInfinity(screenPos.x) || float.IsInfinity(screenPos.y) ||
+            float.IsNaN(screenPos.x) || float.IsNaN(screenPos.y)) return;
         Vector3 world = _cam.ScreenToWorldPoint(
             new Vector3(screenPos.x, screenPos.y, Mathf.Abs(_cam.transform.position.z)));
         world.z = 0f;
