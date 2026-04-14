@@ -33,6 +33,7 @@ jobs:
             }
 
       - name: Validate Branch Name
+        if: github.event.pull_request.head.ref != 'dev' && github.event.pull_request.head.ref != 'main'
         uses: actions/github-script@v7
         with:
           script: |
