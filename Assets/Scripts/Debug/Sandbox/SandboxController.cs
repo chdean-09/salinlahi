@@ -150,13 +150,19 @@ namespace Salinlahi.Debug.Sandbox
             canvasObject.AddComponent<GraphicRaycaster>();
             EnsureEventSystem();
 
+            var safeAreaObject = new GameObject("[Sandbox] SafeArea");
+            safeAreaObject.transform.SetParent(canvasObject.transform, false);
+            safeAreaObject.AddComponent<RectTransform>();
+            safeAreaObject.AddComponent<SafeAreaHandler>();
+
             _panelObject = new GameObject("Panel");
-            _panelObject.transform.SetParent(canvasObject.transform, false);
+            _panelObject.transform.SetParent(safeAreaObject.transform, false);
             var panelRect = _panelObject.AddComponent<RectTransform>();
-            panelRect.anchorMin = new Vector2(0.04f, 0.05f);
-            panelRect.anchorMax = new Vector2(0.96f, 0.95f);
-            panelRect.offsetMin = Vector2.zero;
-            panelRect.offsetMax = Vector2.zero;
+            panelRect.anchorMin = new Vector2(0.0f, 1f);
+            panelRect.anchorMax = new Vector2(1f, 1f);
+            panelRect.pivot = new Vector2(0.5f, 1f);
+            panelRect.anchoredPosition = new Vector2(0f, -20f);
+            panelRect.sizeDelta = Vector2.zero;
 
             var panelImage = _panelObject.AddComponent<Image>();
             panelImage.color = new Color(0.06f, 0.07f, 0.08f, 0.92f);
@@ -164,10 +170,15 @@ namespace Salinlahi.Debug.Sandbox
             var layout = _panelObject.AddComponent<VerticalLayoutGroup>();
             layout.padding = new RectOffset(24, 24, 24, 24);
             layout.spacing = 12f;
+            layout.childAlignment = TextAnchor.UpperCenter;
             layout.childControlHeight = true;
             layout.childControlWidth = true;
             layout.childForceExpandHeight = false;
             layout.childForceExpandWidth = true;
+
+            var fitter = _panelObject.AddComponent<ContentSizeFitter>();
+            fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
             _statusLabel = CreateLabel(_panelObject.transform, "SANDBOX MODE", 30, 40f);
             CreateLabel(_panelObject.transform, "Manual enemy spawning is isolated from level progress.", 20, 56f);
@@ -222,8 +233,10 @@ namespace Salinlahi.Debug.Sandbox
                 82f);
 
             CreateButton(_panelObject.transform, "Hide Sandbox Panel", HidePanel);
-            _restoreButtonObject = CreateRestoreButton(canvasObject.transform);
+            _restoreButtonObject = CreateRestoreButton(safeAreaObject.transform);
             _restoreButtonObject.SetActive(false);
+
+            LayoutRebuilder.ForceRebuildLayoutImmediate(panelRect);
         }
 
         private TMP_Text CreateLabel(Transform parent, string text, int fontSize, float preferredHeight)
