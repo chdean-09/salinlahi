@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class TemplateRecorder : MonoBehaviour
 {
@@ -70,18 +71,21 @@ public class TemplateRecorder : MonoBehaviour
 
     private void Update()
     {
-        if (Input.GetMouseButtonDown(0))
+        Mouse mouse = Mouse.current;
+        if (mouse == null) return;
+
+        if (mouse.leftButton.wasPressedThisFrame)
         {
             BeginStroke();
         }
 
-        if (_drawing && Input.GetMouseButton(0))
+        if (_drawing && mouse.leftButton.isPressed)
         {
-            _activeStrokePoints.Add((Vector2)Input.mousePosition);
+            _activeStrokePoints.Add(mouse.position.ReadValue());
             UpdateLineRenderer(_activeStrokePoints, GetRendererForStrokeIndex(_strokes.Count - 1));
         }
 
-        if (_drawing && Input.GetMouseButtonUp(0))
+        if (_drawing && mouse.leftButton.wasReleasedThisFrame)
         {
             EndStroke();
         }
