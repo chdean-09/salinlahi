@@ -1,3 +1,4 @@
+using Salinlahi.Debug.Sandbox;
 using UnityEngine;
 
 // Handles enemy movement. Fires RaiseBaseHit when colliding with PlayerBase trigger.
@@ -33,8 +34,10 @@ public class EnemyMover : MonoBehaviour
     private void Update()
     {
         if (!_active) return;
+        if (SandboxMode.IsMovementPaused) return;
+
         // Portrait orientation: enemies move from top to bottom (negative Y direction)
-        float finalSpeed = _speed * _focusSpeedMultiplier;
+        float finalSpeed = _speed * _focusSpeedMultiplier * SandboxMode.MovementSpeedScale;
         transform.Translate(Vector2.down * finalSpeed * Time.deltaTime, Space.World);
     }
 

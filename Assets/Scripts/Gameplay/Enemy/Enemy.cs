@@ -16,8 +16,9 @@ public class Enemy : MonoBehaviour
     private EnemyMover _mover;
     private SpriteRenderer _renderer;
     private int _currentHealth;
+    private BaybayinCharacterSO _characterOverride;
 
-    public BaybayinCharacterSO Character => _data?.assignedCharacter;
+    public BaybayinCharacterSO Character => _characterOverride != null ? _characterOverride : _data?.assignedCharacter;
     public string EnemyID => _data?.enemyID;
 
     private void Awake()
@@ -27,10 +28,20 @@ public class Enemy : MonoBehaviour
     }
 
     // Called by EnemyPool when this enemy is retrieved from the pool
-    public void Initialize(EnemyDataSO data, IObjectPool<Enemy> pool)
+    public void Initialize(
+        EnemyDataSO data,
+        IObjectPool<Enemy> pool,
+        BaybayinCharacterSO characterOverride = null)
     {
+        if (data == null)
+        {
+            DebugLogger.LogError("Enemy.Initialize: EnemyDataSO is null.");
+            return;
+        }
+
         _data = data;
         _pool = pool;
+        _characterOverride = characterOverride;
         _currentHealth = _data.maxHealth;
         _mover.SetSpeed(_data.moveSpeed);
         if (_data.walkFrames != null && _data.walkFrames.Length > 0)

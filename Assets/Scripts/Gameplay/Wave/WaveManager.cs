@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Salinlahi.Debug.Sandbox;
 using UnityEngine;
 
 public class WaveManager : MonoBehaviour
@@ -44,6 +45,18 @@ public class WaveManager : MonoBehaviour
             int selectedLevel = PlayerPrefs.GetInt("SelectedLevel", 1);
             LoadLevelConfig(selectedLevel);
         }
+
+        if (SandboxMode.IsActive)
+        {
+            if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
+                GameManager.Instance.StartGame();
+
+            PauseWaves();
+            SandboxController.EnsureExists(this, _spawner);
+            DebugLogger.Log("WaveManager: Sandbox mode active. Normal waves are disabled.");
+            return;
+        }
+
         StartWaves();
     }
 
@@ -53,6 +66,14 @@ public class WaveManager : MonoBehaviour
     /// <param name="levelConfigSO">The level configuration to use</param>
     public void StartLevel(LevelConfigSO levelConfigSO)
     {
+        if (SandboxMode.IsActive)
+        {
+            PauseWaves();
+            SandboxController.EnsureExists(this, _spawner);
+            DebugLogger.Log("WaveManager.StartLevel ignored while sandbox mode is active.");
+            return;
+        }
+
         if (levelConfigSO == null)
         {
             DebugLogger.LogError("WaveManager.StartLevel: levelConfigSO is null!");
@@ -105,6 +126,17 @@ public class WaveManager : MonoBehaviour
 
     public void StartWaves()
     {
+        if (SandboxMode.IsActive)
+        {
+            if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
+                GameManager.Instance.StartGame();
+
+            PauseWaves();
+            SandboxController.EnsureExists(this, _spawner);
+            DebugLogger.Log("WaveManager.StartWaves ignored while sandbox mode is active.");
+            return;
+        }
+
         if (_levelConfig == null)
         {
             DebugLogger.LogError("WaveManager: No LevelConfigSO assigned!");
@@ -180,5 +212,85 @@ public class WaveManager : MonoBehaviour
     private void HandleLevelComplete()
     {
         // ProgressManager listens to EventBus.OnLevelComplete directly and handles progress saving.
+    }
+
+    public IReadOnlyList<EnemyDataSO> GetConfiguredEnemyTypesForSandbox()
+    {
+        var enemies = new List<EnemyDataSO>();
+        AddEnemyForSandbox(enemies, _defaultEnemyData);
+        AddEnemiesFromLevelForSandbox(enemies, _levelConfig);
+
+        if (_levelConfigs != null)
+        {
+            foreach (LevelConfigSO levelConfig in _levelConfigs)
+                AddEnemiesFromLevelForSandbox(enemies, levelConfig);
+        }
+
+        return enemies;
+    }
+
+    public IReadOnlyList<BaybayinCharacterSO> GetConfiguredCharactersForSandbox()
+    {
+        var characters = new List<BaybayinCharacterSO>();
+        AddCharactersFromLevelForSandbox(characters, _levelConfig);
+
+        if (_levelConfigs != null)
+        {
+            foreach (LevelConfigSO levelConfig in _levelConfigs)
+                AddCharactersFromLevelForSandbox(characters, levelConfig);
+        }
+
+        return characters;
+    }
+
+    private static void AddEnemiesFromLevelForSandbox(List<EnemyDataSO> enemies, LevelConfigSO levelConfig)
+    {
+        if (levelConfig?.waves == null)
+            return;
+
+        foreach (WaveConfigSO wave in levelConfig.waves)
+        {
+            if (wave?.enemyTypesInWave == null)
+                continue;
+
+            foreach (EnemyDataSO enemy in wave.enemyTypesInWave)
+                AddEnemyForSandbox(enemies, enemy);
+        }
+    }
+
+    private static void AddCharactersFromLevelForSandbox(List<BaybayinCharacterSO> characters, LevelConfigSO levelConfig)
+    {
+        if (levelConfig == null)
+            return;
+
+        if (levelConfig.allowedCharacters != null)
+        {
+            foreach (BaybayinCharacterSO character in levelConfig.allowedCharacters)
+                AddCharacterForSandbox(characters, character);
+        }
+
+        if (levelConfig.waves == null)
+            return;
+
+        foreach (WaveConfigSO wave in levelConfig.waves)
+        {
+            if (wave?.charactersInWave == null)
+                continue;
+
+            foreach (BaybayinCharacterSO character in wave.charactersInWave)
+                AddCharacterForSandbox(characters, character);
+        }
+    }
+
+    private static void AddEnemyForSandbox(List<EnemyDataSO> enemies, EnemyDataSO enemy)
+    {
+        if (enemy != null && !enemies.Contains(enemy))
+            enemies.Add(enemy);
+    }
+
+    private static void AddCharacterForSandbox(List<BaybayinCharacterSO> characters, BaybayinCharacterSO character)
+    {
+        if (character != null && !characters.Contains(character))
+            characters.Add(character);
     }
 }

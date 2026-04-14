@@ -1,4 +1,5 @@
 using System.Collections;
+using Salinlahi.Debug.Sandbox;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -42,10 +43,45 @@ public class SceneLoader : Singleton<SceneLoader>
         StartCoroutine(LoadRoutine(sceneName));
     }
 
-    public void LoadMainMenu() => LoadScene(SCENE_MAIN_MENU);
-    public void LoadGameplay() => LoadScene(SCENE_GAMEPLAY);
-    public void LoadLevelSelect() => LoadScene(SCENE_LEVEL_SELECT);
-    public void LoadGameOver() => LoadScene(SCENE_GAME_OVER);
+    public void LoadMainMenu()
+    {
+        SandboxMode.Deactivate();
+        LoadScene(SCENE_MAIN_MENU);
+    }
+
+    public void LoadGameplay()
+    {
+        SandboxMode.Deactivate();
+        LoadScene(SCENE_GAMEPLAY);
+    }
+
+    public void LoadSandboxGameplay()
+    {
+        if (!SandboxMode.TryActivate())
+        {
+            DebugLogger.LogWarning("SceneLoader: Sandbox gameplay is not available in this build.");
+            return;
+        }
+
+        LoadScene(SCENE_GAMEPLAY);
+    }
+
+    public void LoadLevelSelect()
+    {
+        SandboxMode.Deactivate();
+        LoadScene(SCENE_LEVEL_SELECT);
+    }
+
+    public void LoadGameOver()
+    {
+        if (SandboxMode.IsActive)
+        {
+            DebugLogger.Log("SceneLoader: Ignored GameOver scene load while sandbox mode is active.");
+            return;
+        }
+
+        LoadScene(SCENE_GAME_OVER);
+    }
 
     public void ReloadCurrentScene() => LoadScene(SceneManager.GetActiveScene().name);
 

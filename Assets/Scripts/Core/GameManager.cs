@@ -1,3 +1,4 @@
+using Salinlahi.Debug.Sandbox;
 using UnityEngine;
 
 public enum GameState { Idle, Playing, Paused, GameOver, LevelComplete }
@@ -45,12 +46,24 @@ public class GameManager : Singleton<GameManager>
 
     private void HandleGameOver()
     {
+        if (SandboxMode.IsActive)
+        {
+            DebugLogger.Log("GameManager: Ignored GameOver while sandbox mode is active.");
+            return;
+        }
+
         SetState(GameState.GameOver);
         SceneLoader.Instance.LoadGameOver();
     }
 
     private void HandleLevelComplete()
     {
+        if (SandboxMode.IsActive)
+        {
+            DebugLogger.Log("GameManager: Ignored LevelComplete while sandbox mode is active.");
+            return;
+        }
+
         SetState(GameState.LevelComplete);
     }
 
