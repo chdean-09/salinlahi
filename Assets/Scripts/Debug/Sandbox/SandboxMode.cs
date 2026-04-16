@@ -1,3 +1,4 @@
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
 namespace Salinlahi.Debug.Sandbox
 {
     public static class SandboxMode
@@ -19,11 +20,7 @@ namespace Salinlahi.Debug.Sandbox
                     return _availabilityOverride.Value;
 #endif
 
-#if UNITY_EDITOR || SALINLAHI_SANDBOX
                 return true;
-#else
-                return false;
-#endif
             }
         }
 
@@ -86,3 +83,4 @@ namespace Salinlahi.Debug.Sandbox
 #endif
     }
 }
+#endif

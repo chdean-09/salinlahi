@@ -1,3 +1,4 @@
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -15,3 +16,4 @@ namespace Salinlahi.Debug.Sandbox
         public IReadOnlyList<BaybayinCharacterSO> Characters => _characters;
     }
 }
+#endif

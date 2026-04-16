@@ -1,4 +1,6 @@
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
 using Salinlahi.Debug.Sandbox;
+#endif
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -73,8 +75,10 @@ public class ProgressManager : Singleton<ProgressManager>
 
     private void HandleWaveStarted(int waveIndex)
     {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
         if (SandboxMode.IsActive)
             return;
+#endif
 
         // Wave 0 indicates start of a new level attempt
         if (waveIndex == 0)
@@ -99,11 +103,13 @@ public class ProgressManager : Singleton<ProgressManager>
 
     private void HandleLevelComplete()
     {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
         if (SandboxMode.IsActive)
         {
             DebugLogger.Log("ProgressManager: Ignored LevelComplete while sandbox mode is active.");
             return;
         }
+#endif
 
         // Get current level ID from tracking or PlayerPrefs
         int currentLevelId = _currentPlayingLevelId > 0 ? _currentPlayingLevelId : PlayerPrefs.GetInt("SelectedLevel", 1);

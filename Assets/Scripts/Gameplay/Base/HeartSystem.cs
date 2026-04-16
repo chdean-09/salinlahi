@@ -1,4 +1,6 @@
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
 using Salinlahi.Debug.Sandbox;
+#endif
 using UnityEngine;
 
 public class HeartSystem : MonoBehaviour
@@ -16,11 +18,13 @@ public class HeartSystem : MonoBehaviour
     // Called by PlayerBase when the base is hit
     public void LoseHeart()
     {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
         if (SandboxMode.ShouldBypassLifeLoss)
         {
             DebugLogger.Log($"HeartSystem: Sandbox mode ignored heart loss. Hearts remain {_currentHearts}/{_maxHearts}");
             return;
         }
+#endif
 
         _currentHearts = Mathf.Max(0, _currentHearts - 1);
         EventBus.RaiseHeartsChanged(_currentHearts);
