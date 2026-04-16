@@ -50,12 +50,18 @@ public class SandboxModeTests
         bool gameOverRaised = false;
         EventBus.OnGameOver += MarkGameOverRaised;
 
-        heartSystem.LoseHeart();
+        try
+        {
+            heartSystem.LoseHeart();
 
-        EventBus.OnGameOver -= MarkGameOverRaised;
-        Assert.AreEqual(heartSystem.GetMaxHearts(), heartSystem.GetCurrentHearts());
-        Assert.IsFalse(gameOverRaised);
-        Object.DestroyImmediate(heartObject);
+            Assert.AreEqual(heartSystem.GetMaxHearts(), heartSystem.GetCurrentHearts());
+            Assert.IsFalse(gameOverRaised);
+        }
+        finally
+        {
+            EventBus.OnGameOver -= MarkGameOverRaised;
+            Object.DestroyImmediate(heartObject);
+        }
 
         void MarkGameOverRaised()
         {
@@ -91,15 +97,20 @@ public class SandboxModeTests
         GameObject enemyObject = new("Enemy");
         Enemy enemy = enemyObject.AddComponent<Enemy>();
 
-        enemy.Initialize(enemyData, new NoopEnemyPool(), overrideCharacter);
+        try
+        {
+            enemy.Initialize(enemyData, new NoopEnemyPool(), overrideCharacter);
 
-        Assert.AreSame(overrideCharacter, enemy.Character);
-        Assert.AreSame(assetCharacter, enemyData.assignedCharacter);
-
-        Object.DestroyImmediate(enemyObject);
-        Object.DestroyImmediate(enemyData);
-        Object.DestroyImmediate(assetCharacter);
-        Object.DestroyImmediate(overrideCharacter);
+            Assert.AreSame(overrideCharacter, enemy.Character);
+            Assert.AreSame(assetCharacter, enemyData.assignedCharacter);
+        }
+        finally
+        {
+            Object.DestroyImmediate(enemyObject);
+            Object.DestroyImmediate(enemyData);
+            Object.DestroyImmediate(assetCharacter);
+            Object.DestroyImmediate(overrideCharacter);
+        }
     }
 
     [Test]

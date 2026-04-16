@@ -17,6 +17,8 @@ public class Enemy : MonoBehaviour
     private SpriteRenderer _renderer;
     private int _currentHealth;
     private BaybayinCharacterSO _characterOverride;
+    private EnemyDataSO _sourceData;
+    private EnemyDataSO _runtimeData;
 
     public BaybayinCharacterSO Character => _characterOverride != null ? _characterOverride : _data?.assignedCharacter;
     public string EnemyID => _data?.enemyID;
@@ -39,7 +41,24 @@ public class Enemy : MonoBehaviour
             return;
         }
 
-        _data = data;
+        if (_sourceData != data)
+        {
+            if (_runtimeData != null)
+            {
+                Destroy(_runtimeData);
+                _runtimeData = null;
+            }
+
+            _sourceData = data;
+            _runtimeData = Instantiate(data);
+            _runtimeData.hideFlags = HideFlags.DontSave;
+            _data = _runtimeData;
+        }
+        else if (_data == null)
+        {
+            _data = _runtimeData != null ? _runtimeData : data;
+        }
+
         _pool = pool;
         _characterOverride = characterOverride;
         _currentHealth = _data.maxHealth;
@@ -111,5 +130,14 @@ public class Enemy : MonoBehaviour
     private void OnDisable()
     {
         _mover?.Stop();
+    }
+
+    private void OnDestroy()
+    {
+        if (_runtimeData != null)
+        {
+            Destroy(_runtimeData);
+            _runtimeData = null;
+        }
     }
 }

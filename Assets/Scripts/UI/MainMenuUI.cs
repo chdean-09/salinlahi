@@ -1,4 +1,6 @@
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
 using Salinlahi.Debug.Sandbox;
+#endif
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -53,6 +55,7 @@ public class MainMenuUI : MonoBehaviour
 
     public void OnSandboxModePressed()
     {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
         if (!SandboxMode.IsAvailable)
         {
             DebugLogger.LogWarning("MainMenuUI: Sandbox mode is not available in this build.");
@@ -61,10 +64,14 @@ public class MainMenuUI : MonoBehaviour
 
         DebugLogger.Log("MainMenuUI: Sandbox mode pressed");
         SceneLoader.Instance.LoadSandboxGameplay();
+#else
+        DebugLogger.LogWarning("MainMenuUI: Sandbox mode is not available in this build.");
+#endif
     }
 
     private void EnsureSandboxEntryPoint()
     {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
         if (!SandboxMode.IsAvailable)
             return;
 
@@ -76,6 +83,7 @@ public class MainMenuUI : MonoBehaviour
         sandboxButton.onClick.AddListener(OnSandboxModePressed);
         sandboxButton.interactable = true;
         sandboxButton.gameObject.SetActive(true);
+#endif
     }
 
     private Button CreateSandboxButton()

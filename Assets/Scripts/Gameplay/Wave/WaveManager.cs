@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
 using Salinlahi.Debug.Sandbox;
+#endif
 using UnityEngine;
 
 public class WaveManager : MonoBehaviour
@@ -46,6 +48,7 @@ public class WaveManager : MonoBehaviour
             LoadLevelConfig(selectedLevel);
         }
 
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
         if (SandboxMode.IsActive)
         {
             if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
@@ -56,6 +59,7 @@ public class WaveManager : MonoBehaviour
             DebugLogger.Log("WaveManager: Sandbox mode active. Normal waves are disabled.");
             return;
         }
+#endif
 
         StartWaves();
     }
@@ -66,6 +70,7 @@ public class WaveManager : MonoBehaviour
     /// <param name="levelConfigSO">The level configuration to use</param>
     public void StartLevel(LevelConfigSO levelConfigSO)
     {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
         if (SandboxMode.IsActive)
         {
             PauseWaves();
@@ -73,6 +78,7 @@ public class WaveManager : MonoBehaviour
             DebugLogger.Log("WaveManager.StartLevel ignored while sandbox mode is active.");
             return;
         }
+#endif
 
         if (levelConfigSO == null)
         {
@@ -126,6 +132,7 @@ public class WaveManager : MonoBehaviour
 
     public void StartWaves()
     {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
         if (SandboxMode.IsActive)
         {
             if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
@@ -136,6 +143,7 @@ public class WaveManager : MonoBehaviour
             DebugLogger.Log("WaveManager.StartWaves ignored while sandbox mode is active.");
             return;
         }
+#endif
 
         if (_levelConfig == null)
         {
