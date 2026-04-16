@@ -23,6 +23,26 @@ public class RecognitionManager : Singleton<RecognitionManager>
 
         DebugLogger.Log($"RecognitionManager: {templates.Count} characters loaded across {variantCount} template variants.");
     }
+
+    public void PreviewRecognize(List<Vector2> points)
+    {
+        if (points == null || points.Count < _config.minimumPointCount)
+        {
+            EventBus.RaiseRecognitionResolved(
+                new RecognitionResult("NONE", 0f, -1, "NONE", float.MinValue),
+                false,
+                _config.minimumConfidence);
+            return;
+        }
+
+        RecognitionResult result = _recognizer.Recognize(points);
+        bool passedThreshold = result.score >= _config.minimumConfidence;
+        EventBus.RaiseRecognitionResolved(
+            result,
+            passedThreshold,
+            _config.minimumConfidence);
+    }
+
     public void Recognize(List<Vector2> points)
     {
         if (points == null || points.Count < _config.minimumPointCount)
@@ -44,7 +64,13 @@ public class RecognitionManager : Singleton<RecognitionManager>
             result,
             TestSessionController.IntendedCharacterID);
 
-        if (result.score >= _config.minimumConfidence)
+        bool passedThreshold = result.score >= _config.minimumConfidence;
+        EventBus.RaiseRecognitionResolved(
+            result,
+            passedThreshold,
+            _config.minimumConfidence);
+
+        if (passedThreshold)
             EventBus.RaiseCharacterRecognized(result.characterID);
         else
             EventBus.RaiseDrawingFailed();

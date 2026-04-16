@@ -1,4 +1,7 @@
 using System.Collections;
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+using Salinlahi.Debug.Sandbox;
+#endif
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -42,10 +45,57 @@ public class SceneLoader : Singleton<SceneLoader>
         StartCoroutine(LoadRoutine(sceneName));
     }
 
-    public void LoadMainMenu() => LoadScene(SCENE_MAIN_MENU);
-    public void LoadGameplay() => LoadScene(SCENE_GAMEPLAY);
-    public void LoadLevelSelect() => LoadScene(SCENE_LEVEL_SELECT);
-    public void LoadGameOver() => LoadScene(SCENE_GAME_OVER);
+    public void LoadMainMenu()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        SandboxMode.Deactivate();
+#endif
+        LoadScene(SCENE_MAIN_MENU);
+    }
+
+    public void LoadGameplay()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        SandboxMode.Deactivate();
+#endif
+        LoadScene(SCENE_GAMEPLAY);
+    }
+
+    public void LoadSandboxGameplay()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        if (!SandboxMode.TryActivate())
+        {
+            DebugLogger.LogWarning("SceneLoader: Sandbox gameplay is not available in this build.");
+            return;
+        }
+
+        LoadScene(SCENE_GAMEPLAY);
+#else
+        DebugLogger.LogWarning("SceneLoader: Sandbox gameplay is not available in this build.");
+#endif
+    }
+
+    public void LoadLevelSelect()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        SandboxMode.Deactivate();
+#endif
+        LoadScene(SCENE_LEVEL_SELECT);
+    }
+
+    public void LoadGameOver()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        if (SandboxMode.IsActive)
+        {
+            DebugLogger.Log("SceneLoader: Ignored GameOver scene load while sandbox mode is active.");
+            return;
+        }
+#endif
+
+        LoadScene(SCENE_GAME_OVER);
+    }
 
     public void ReloadCurrentScene() => LoadScene(SceneManager.GetActiveScene().name);
 
