@@ -14,8 +14,16 @@ public class MainMenuUI : MonoBehaviour
     public void OnPlayButtonPressed()
     {
         DebugLogger.Log("MainMenuUI: Play button pressed");
-        // Default to Level 1 when pressing Play
-        PlayerPrefs.SetInt("SelectedLevel", 1);
+
+        int selectedLevel = 1;
+        if (GameManager.Instance != null
+            && GameManager.Instance.TryGetPausedRunLevelId(out int pausedLevelId))
+        {
+            selectedLevel = pausedLevelId;
+            DebugLogger.Log($"MainMenuUI: Resuming paused run on level {selectedLevel}.");
+        }
+
+        PlayerPrefs.SetInt("SelectedLevel", selectedLevel);
         PlayerPrefs.Save();
         SceneLoader.Instance.LoadGameplay();
     }

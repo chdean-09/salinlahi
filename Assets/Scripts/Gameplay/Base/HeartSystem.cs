@@ -10,6 +10,21 @@ public class HeartSystem : MonoBehaviour
     private void Awake()
     {
         _currentHearts = _maxHearts;
+
+        int selectedLevel = PlayerPrefs.GetInt("SelectedLevel", 1);
+        if (GameManager.Instance != null
+            && GameManager.Instance.TryConsumePausedRunHearts(selectedLevel, _maxHearts, out int restoredHearts))
+        {
+            _currentHearts = restoredHearts;
+            DebugLogger.Log($"HeartSystem: Restored paused run hearts to {_currentHearts}/{_maxHearts}.");
+        }
+    }
+
+    private void Start()
+    {
+        // Ensure HUD and other listeners sync to the actual starting hearts
+        // every time Gameplay loads (including restored paused runs).
+        EventBus.RaiseHeartsChanged(_currentHearts);
     }
 
     // Called by PlayerBase when the base is hit

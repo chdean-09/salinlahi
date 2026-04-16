@@ -64,6 +64,10 @@ public class HUD : MonoBehaviour
         EventBus.OnDrawingFailed += ShowRejectFeedback;
         EventBus.OnEnemyDefeated += ShowSuccessFeedback;
 
+        HeartSystem heartSystem = FindObjectOfType<HeartSystem>();
+        if (heartSystem != null)
+            UpdateHearts(heartSystem.GetCurrentHearts());
+
         if (_pauseButton != null)
             _pauseButton.onClick.AddListener(OnPausePressed);
     }

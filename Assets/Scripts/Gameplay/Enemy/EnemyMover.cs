@@ -40,10 +40,28 @@ public class EnemyMover : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D other)
     {
-        if (!other.CompareTag("PlayerBase")) return;
-        // Enemy reached the base. Fire event and return to pool.
+        if (!other.CompareTag("PlayerBase"))
+            return;
+
+        Enemy enemy = GetComponent<Enemy>();
+        if (enemy == null)
+        {
+            DebugLogger.LogError($"EnemyMover: Missing Enemy component on '{name}'. Base hit ignored.");
+            return;
+        }
+
+        EnemyPool pool = EnemyPool.Instance;
+        if (pool == null)
+        {
+            DebugLogger.LogError("EnemyMover: EnemyPool is missing in this scene. Base hit ignored.");
+            return;
+        }
+
+        if (!pool.IsCheckedOut(enemy))
+            return;
+
+        pool.Return(enemy);
         EventBus.RaiseBaseHit();
-        GetComponent<Enemy>()?.ReturnToPool();
     }
 
     private void OnDisable()

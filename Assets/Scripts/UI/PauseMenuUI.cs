@@ -51,6 +51,19 @@ public class PauseMenuUI : MonoBehaviour
 
     private void OnQuitPressed()
     {
+        if (GameManager.Instance != null)
+        {
+            HeartSystem heartSystem = FindObjectOfType<HeartSystem>();
+            if (heartSystem != null)
+            {
+                int selectedLevel = PlayerPrefs.GetInt("SelectedLevel", 1);
+                GameManager.Instance.CachePausedRunSnapshot(selectedLevel, heartSystem.GetCurrentHearts());
+            }
+        }
+
+        if (GameManager.Instance != null && GameManager.Instance.CurrentState == GameState.Paused)
+            GameManager.Instance.ResumeGame();
+
         // SceneLoader.LoadRoutine always resets Time.timeScale at the start of every load.
         SceneLoader.Instance.LoadMainMenu();
     }
