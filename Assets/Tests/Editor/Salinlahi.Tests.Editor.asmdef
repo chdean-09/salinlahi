@@ -2,7 +2,7 @@
     "name": "Salinlahi.Tests.Editor",
     "rootNamespace": "",
     "references": [
-        "Assembly-CSharp"
+        "Salinlahi.Runtime"
     ],
     "includePlatforms": [
         "Editor"

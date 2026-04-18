@@ -1,0 +1,17 @@
+{
+    "name": "Salinlahi.Editor",
+    "rootNamespace": "",
+    "references": [
+        "Salinlahi.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineSymbols": [],
+    "versionDefines": [],
+    "noEngineUpdate": false
+}
