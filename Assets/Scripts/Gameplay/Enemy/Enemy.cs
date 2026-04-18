@@ -1,7 +1,11 @@
 using UnityEngine;
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+using Salinlahi.Debug.Sandbox;
+#endif
+using TMPro;
 using UnityEngine.Pool;
 
-// Attach to Enemy prefab root. Holds data reference and returns itself to pool.
+// Attach to Enemy prefab root. Holds data reference and returns itself to EnemyPool.
 [RequireComponent(typeof(EnemyMover))]
 public class Enemy : MonoBehaviour
 {
@@ -12,65 +16,151 @@ public class Enemy : MonoBehaviour
     [SerializeField] private Color _shieldIntactColor = new(0f, 0.75f, 0.65f, 1f);
     [SerializeField] private Color _shieldBrokenColor = new(0.55f, 0.55f, 0.55f, 1f);
 
-    private IObjectPool<Enemy> _pool;
+    [Header("Debug Enemy Labels")]
+    [SerializeField] private bool _showDebugLabels = true;
+    [SerializeField] private Vector3 _labelBaseWorldOffset = new(0f, -1.4f, -0.1f);
+    [SerializeField] private float _labelLineSpacingWorld = 0.45f;
+    [SerializeField] private float _labelWorldScale = 0.22f;
+    [SerializeField] private float _labelFontSize = 10f;
+    [SerializeField] private Color _labelColor = Color.white;
+
     private EnemyMover _mover;
     private SpriteRenderer _renderer;
     private int _currentHealth;
-    private BaybayinCharacterSO _characterOverride;
-    private EnemyDataSO _sourceData;
-    private EnemyDataSO _runtimeData;
+    private BaybayinCharacterSO _runtimeCharacter;
+    private Color _baseRendererColor = Color.white;
+    private TextMeshPro _baybayinLabel;
+    private TextMeshPro _enemyTypeLabel;
 
-    public BaybayinCharacterSO Character => _characterOverride != null ? _characterOverride : _data?.assignedCharacter;
+    public BaybayinCharacterSO Character => _runtimeCharacter != null ? _runtimeCharacter : _data?.assignedCharacter;
     public string EnemyID => _data?.enemyID;
+    public EnemyDataSO Data => _data;
+    public int CurrentHealth => _currentHealth;
 
     private void Awake()
     {
         _mover = GetComponent<EnemyMover>();
         _renderer = GetComponent<SpriteRenderer>();
+
+        if (_renderer != null)
+            _baseRendererColor = _renderer.color;
+
+        EnsureDebugLabels();
+        RefreshDebugLabels();
     }
 
-    // Called by EnemyPool when this enemy is retrieved from the pool
-    public void Initialize(
-        EnemyDataSO data,
-        IObjectPool<Enemy> pool,
-        BaybayinCharacterSO characterOverride = null)
+    private void OnEnable()
     {
+        RefreshDebugLabels();
+        UpdateLabelLayout();
+    }
+
+    public void AssignCharacter(BaybayinCharacterSO character)
+    {
+        _runtimeCharacter = character;
+        RefreshDebugLabels();
+    }
+
+    // Called by EnemyPool when this enemy is retrieved from the pool.
+    public bool Initialize(EnemyDataSO data)
+    {
+        _runtimeCharacter = null;
+
         if (data == null)
         {
             DebugLogger.LogError("Enemy.Initialize: EnemyDataSO is null.");
-            return;
+            ActiveEnemyTracker.Instance?.Unregister(this);
+            _mover?.Stop();
+            _currentHealth = 0;
+            _data = null;
+            ResetRendererState();
+            return false;
         }
 
-        if (_sourceData != data)
+        if (_mover == null)
         {
-            if (_runtimeData != null)
-            {
-                Destroy(_runtimeData);
-                _runtimeData = null;
-            }
-
-            _sourceData = data;
-            _runtimeData = Instantiate(data);
-            _runtimeData.hideFlags = HideFlags.DontSave;
-            _data = _runtimeData;
+            DebugLogger.LogError($"Enemy.Initialize: Missing EnemyMover on '{name}'.");
+            ActiveEnemyTracker.Instance?.Unregister(this);
+            _currentHealth = 0;
+            _data = null;
+            ResetRendererState();
+            return false;
         }
-        else if (_data == null)
+
+        if (data.maxHealth <= 0)
         {
-            _data = _runtimeData != null ? _runtimeData : data;
+            DebugLogger.LogError($"Enemy.Initialize: Invalid maxHealth ({data.maxHealth}) for '{data.name}'.");
+            ActiveEnemyTracker.Instance?.Unregister(this);
+            _mover.Stop();
+            _currentHealth = 0;
+            _data = null;
+            ResetRendererState();
+            return false;
         }
 
-        _pool = pool;
-        _characterOverride = characterOverride;
+        if (_renderer == null)
+            DebugLogger.LogWarning($"Enemy.Initialize: Missing SpriteRenderer on '{name}'. Enemy will still function.");
+
+        _data = data;
         _currentHealth = _data.maxHealth;
+
+        _mover.Stop();
         _mover.SetSpeed(_data.moveSpeed);
-        if (_data.walkFrames != null && _data.walkFrames.Length > 0)
-            _renderer.sprite = _data.walkFrames[0];
-        ResetShieldBreakVisual();
+
+        if (_renderer != null)
+        {
+            if (_data.walkFrames != null && _data.walkFrames.Length > 0)
+                _renderer.sprite = _data.walkFrames[0];
+
+            _renderer.color = _baseRendererColor;
+            ResetShieldBreakVisual();
+        }
+
         ActiveEnemyTracker.Instance?.Register(this);
+        RefreshDebugLabels();
+        UpdateLabelLayout();
+        return true;
+    }
+
+    public bool Initialize(EnemyDataSO data, IObjectPool<Enemy> pool, BaybayinCharacterSO character)
+    {
+        bool initialized = Initialize(data);
+        if (initialized)
+            AssignCharacter(character);
+
+        return initialized;
+    }
+
+    public void ResetForPool()
+    {
+        try
+        {
+            _runtimeCharacter = null;
+            _data = null;
+            _currentHealth = 0;
+
+            if (_mover != null)
+                _mover.Stop();
+            else
+                DebugLogger.LogWarning($"Enemy.ResetForPool: Missing EnemyMover on '{name}'.");
+
+            ResetRendererState();
+            RefreshDebugLabels();
+        }
+        catch (System.Exception ex)
+        {
+            DebugLogger.LogError($"Enemy.ResetForPool: Exception on '{name}': {ex.Message}");
+        }
     }
 
     public void TakeDamage(int amount)
     {
+        if (_data == null)
+        {
+            DebugLogger.LogWarning($"Enemy.TakeDamage: Enemy '{name}' has no data and cannot take damage.");
+            return;
+        }
+
         int previousHealth = _currentHealth;
         _currentHealth -= amount;
         DebugLogger.Log(
@@ -87,6 +177,19 @@ public class Enemy : MonoBehaviour
         }
     }
 
+    public void RestoreCurrentHealth(int currentHealth)
+    {
+        if (_data == null)
+            return;
+
+        _currentHealth = Mathf.Clamp(currentHealth, 1, _data.maxHealth);
+
+        if (_data.maxHealth > 1 && _currentHealth < _data.maxHealth)
+            TriggerShieldBreakVisual();
+        else
+            ResetShieldBreakVisual();
+    }
+
     private bool ShouldTriggerShieldBreak(int previousHealth)
     {
         return _data != null
@@ -98,6 +201,9 @@ public class Enemy : MonoBehaviour
 
     private void ResetShieldBreakVisual()
     {
+        if (_renderer == null)
+            return;
+
         if (!_useShieldBreakColorFeedback || _data == null || _data.maxHealth <= 1)
             return;
 
@@ -106,25 +212,23 @@ public class Enemy : MonoBehaviour
 
     private void TriggerShieldBreakVisual()
     {
-        if (!_useShieldBreakColorFeedback)
+        if (_renderer == null || !_useShieldBreakColorFeedback)
             return;
 
         _renderer.color = _shieldBrokenColor;
     }
 
-    // Call this to defeat the enemy and return it to the pool
+    // Call this to defeat the enemy and return it to the pool.
     public void Defeat()
     {
-        ActiveEnemyTracker.Instance?.Unregister(this);
-        EventBus.RaiseEnemyDefeated(Character);
-        _mover?.Stop();
+        BaybayinCharacterSO capturedCharacter = Character;
         ReturnToPool();
+        EventBus.RaiseEnemyDefeated(capturedCharacter);
     }
 
     public void ReturnToPool()
     {
-        ActiveEnemyTracker.Instance?.Unregister(this);
-        _pool?.Release(this);
+        EnemyPool.Instance?.Return(this);
     }
 
     private void OnDisable()
@@ -132,12 +236,159 @@ public class Enemy : MonoBehaviour
         _mover?.Stop();
     }
 
-    private void OnDestroy()
+    private void LateUpdate()
     {
-        if (_runtimeData != null)
+        if (ShouldShowDebugLabels())
+            UpdateLabelLayout();
+    }
+
+    private void ResetRendererState()
+    {
+        if (_renderer == null)
+            return;
+
+        _renderer.color = _baseRendererColor;
+    }
+
+    private void EnsureDebugLabels()
+    {
+        if (!ShouldShowDebugLabels())
+            return;
+
+        if (_baybayinLabel == null)
+            _baybayinLabel = CreateLabel("BaybayinLabel");
+
+        if (_enemyTypeLabel == null)
+            _enemyTypeLabel = CreateLabel("EnemyTypeLabel");
+    }
+
+    private TextMeshPro CreateLabel(string labelName)
+    {
+        Transform existing = transform.Find(labelName);
+        GameObject labelGO = existing != null ? existing.gameObject : new GameObject(labelName);
+        labelGO.transform.SetParent(transform, false);
+        labelGO.transform.localPosition = Vector3.zero;
+        labelGO.transform.localScale = Vector3.one;
+
+        TextMeshPro tmp = labelGO.GetComponent<TextMeshPro>();
+        if (tmp == null)
+            tmp = labelGO.AddComponent<TextMeshPro>();
+
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.enableAutoSizing = false;
+        tmp.fontSize = _labelFontSize;
+        tmp.color = _labelColor;
+        tmp.outlineWidth = 0.2f;
+        tmp.outlineColor = Color.black;
+        tmp.sortingOrder = 500;
+        if (_renderer != null)
+            tmp.sortingLayerID = _renderer.sortingLayerID;
+        tmp.text = string.Empty;
+        return tmp;
+    }
+
+    private void RefreshDebugLabels()
+    {
+        if (!ShouldShowDebugLabels())
         {
-            Destroy(_runtimeData);
-            _runtimeData = null;
+            if (_baybayinLabel != null) _baybayinLabel.gameObject.SetActive(false);
+            if (_enemyTypeLabel != null) _enemyTypeLabel.gameObject.SetActive(false);
+            return;
         }
+
+        EnsureDebugLabels();
+
+        if (_baybayinLabel != null)
+        {
+            _baybayinLabel.gameObject.SetActive(true);
+            _baybayinLabel.text = BuildBaybayinLabelText();
+        }
+
+        if (_enemyTypeLabel != null)
+        {
+            _enemyTypeLabel.gameObject.SetActive(true);
+            _enemyTypeLabel.text = $"Type: {BuildEnemyTypeText()}";
+        }
+
+        UpdateLabelLayout();
+    }
+
+    private string BuildBaybayinLabelText()
+    {
+        BaybayinCharacterSO character = Character;
+        if (character == null)
+            return "Draw: (none)";
+
+        string syllable = string.IsNullOrWhiteSpace(character.syllable) ? null : character.syllable.Trim().ToLowerInvariant();
+        string id = string.IsNullOrWhiteSpace(character.characterID) ? null : character.characterID.Trim().ToUpperInvariant();
+
+        if (!string.IsNullOrEmpty(syllable) && !string.IsNullOrEmpty(id))
+            return $"Draw: {syllable} ({id})";
+
+        if (!string.IsNullOrEmpty(syllable))
+            return $"Draw: {syllable}";
+
+        if (!string.IsNullOrEmpty(id))
+            return $"Draw: {id}";
+
+        return "Draw: (unknown)";
+    }
+
+    private string BuildEnemyTypeText()
+    {
+        if (_data == null)
+            return "unknown";
+
+        if (!string.IsNullOrWhiteSpace(_data.enemyID))
+            return _data.enemyID.Trim().ToLowerInvariant();
+
+        return string.IsNullOrWhiteSpace(_data.name) ? "unknown" : _data.name.Trim();
+    }
+
+    private void UpdateLabelLayout()
+    {
+        if (_baybayinLabel == null || _enemyTypeLabel == null)
+            return;
+
+        Vector3 parentScale = transform.lossyScale;
+        float invX = InverseOrOne(parentScale.x);
+        float invY = InverseOrOne(parentScale.y);
+        float invZ = InverseOrOne(parentScale.z);
+
+        Vector3 baseLocalOffset = new Vector3(
+            _labelBaseWorldOffset.x * invX,
+            _labelBaseWorldOffset.y * invY,
+            _labelBaseWorldOffset.z * invZ
+        );
+
+        Vector3 lineSpacingLocal = new Vector3(0f, -_labelLineSpacingWorld * invY, 0f);
+        Vector3 worldStableLocalScale = new Vector3(
+            _labelWorldScale * invX,
+            _labelWorldScale * invY,
+            _labelWorldScale * invZ
+        );
+
+        _baybayinLabel.transform.localPosition = baseLocalOffset;
+        _enemyTypeLabel.transform.localPosition = baseLocalOffset + lineSpacingLocal;
+
+        _baybayinLabel.transform.localScale = worldStableLocalScale;
+        _enemyTypeLabel.transform.localScale = worldStableLocalScale;
+    }
+
+    private float InverseOrOne(float value)
+    {
+        if (Mathf.Approximately(value, 0f))
+            return 1f;
+
+        return 1f / value;
+    }
+
+    private bool ShouldShowDebugLabels()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        return _showDebugLabels && (Application.isEditor || Debug.isDebugBuild);
+#else
+        return false;
+#endif
     }
 }

@@ -1,12 +1,16 @@
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
 using Salinlahi.Debug.Sandbox;
-#endif
 using TMPro;
+#endif
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class MainMenuUI : MonoBehaviour
 {
+    private const string SceneGameplay = "Gameplay";
+    private const string SceneLevelSelect = "LevelSelect";
+
     [SerializeField] private Button _endlessModeButton;
 
     private void Start()
@@ -20,16 +24,28 @@ public class MainMenuUI : MonoBehaviour
     public void OnPlayButtonPressed()
     {
         DebugLogger.Log("MainMenuUI: Play button pressed");
-        // Default to Level 1 when pressing Play
-        PlayerPrefs.SetInt("SelectedLevel", 1);
+
+        int selectedLevel = 1;
+        if (GameManager.Instance != null
+            && GameManager.Instance.TryGetPausedRunLevelId(out int pausedLevelId))
+        {
+            selectedLevel = pausedLevelId;
+            DebugLogger.Log($"MainMenuUI: Resuming paused run on level {selectedLevel}.");
+        }
+
+        PlayerPrefs.SetInt("SelectedLevel", selectedLevel);
         PlayerPrefs.Save();
-        SceneLoader.Instance.LoadGameplay();
+
+        if (GameManager.Instance != null)
+            GameManager.Instance.SetLevel(null);
+
+        LoadGameplay();
     }
 
     public void OnLevelSelectPressed()
     {
         DebugLogger.Log("MainMenuUI: Level Select pressed");
-        SceneLoader.Instance.LoadLevelSelect();
+        LoadLevelSelect();
     }
 
     public void OnEndlessModePressed()
@@ -40,7 +56,7 @@ public class MainMenuUI : MonoBehaviour
             return;
         }
 
-        SceneLoader.Instance.LoadGameplay();
+        LoadGameplay();
     }
 
     public void OnTracingDojoPressed()
@@ -53,9 +69,9 @@ public class MainMenuUI : MonoBehaviour
         DebugLogger.Log("MainMenuUI: Settings pressed (not yet implemented)");
     }
 
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
     public void OnSandboxModePressed()
     {
-#if UNITY_EDITOR || SALINLAHI_SANDBOX
         if (!SandboxMode.IsAvailable)
         {
             DebugLogger.LogWarning("MainMenuUI: Sandbox mode is not available in this build.");
@@ -63,15 +79,14 @@ public class MainMenuUI : MonoBehaviour
         }
 
         DebugLogger.Log("MainMenuUI: Sandbox mode pressed");
-        SceneLoader.Instance.LoadSandboxGameplay();
-#else
-        DebugLogger.LogWarning("MainMenuUI: Sandbox mode is not available in this build.");
-#endif
+        if (SceneLoader.Instance != null)
+            SceneLoader.Instance.LoadSandboxGameplay();
+        else
+            LoadSandboxGameplayDirect();
     }
 
     private void EnsureSandboxEntryPoint()
     {
-#if UNITY_EDITOR || SALINLAHI_SANDBOX
         if (!SandboxMode.IsAvailable)
             return;
 
@@ -83,7 +98,6 @@ public class MainMenuUI : MonoBehaviour
         sandboxButton.onClick.AddListener(OnSandboxModePressed);
         sandboxButton.interactable = true;
         sandboxButton.gameObject.SetActive(true);
-#endif
     }
 
     private Button CreateSandboxButton()
@@ -91,6 +105,9 @@ public class MainMenuUI : MonoBehaviour
         Transform parent = _endlessModeButton != null
             ? _endlessModeButton.transform.parent
             : transform;
+
+        if (parent.Find("SandboxModeButton") is Transform existing)
+            return existing.GetComponent<Button>();
 
         var buttonObject = new GameObject("SandboxModeButton");
         buttonObject.transform.SetParent(parent, false);
@@ -120,6 +137,58 @@ public class MainMenuUI : MonoBehaviour
         labelRect.offsetMax = Vector2.zero;
 
         return button;
+    }
+
+    private static void LoadSandboxGameplayDirect()
+    {
+        if (!SandboxMode.TryActivate())
+        {
+            DebugLogger.LogWarning("MainMenuUI: Sandbox mode is not available in this build.");
+            return;
+        }
+
+        GameManager.Instance?.DiscardPausedRunSnapshot();
+        EnemyPool.Instance?.ReturnAllCheckedOut();
+        LoadSceneDirect(SceneGameplay);
+    }
+#else
+    private void EnsureSandboxEntryPoint() { }
+#endif
+
+    private static void LoadGameplay()
+    {
+        if (SceneLoader.Instance != null)
+            SceneLoader.Instance.LoadGameplay();
+        else
+        {
+            CleanupDirectGameplayState();
+            LoadSceneDirect(SceneGameplay);
+        }
+    }
+
+    private static void LoadLevelSelect()
+    {
+        if (SceneLoader.Instance != null)
+            SceneLoader.Instance.LoadLevelSelect();
+        else
+            LoadSceneDirect(SceneLevelSelect);
+    }
+
+    private static void LoadSceneDirect(string sceneName)
+    {
+        DebugLogger.LogWarning(
+            $"MainMenuUI: SceneLoader not available. Loading '{sceneName}' directly. "
+            + "Open from Bootstrap for normal transitions.");
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(sceneName);
+    }
+
+    private static void CleanupDirectGameplayState()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        SandboxMode.Deactivate();
+#endif
+        EnemyPool.Instance?.ReturnAllCheckedOut();
     }
 
     // TODO: Replace with actual story progression check when save system is implemented

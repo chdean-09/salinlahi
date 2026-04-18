@@ -148,6 +148,7 @@ public class LevelSelectUI : MonoBehaviour
         int index = levelNumber - 1;
         if (GameManager.Instance != null && index >= 0 && index < _levelConfigs.Length && _levelConfigs[index] != null)
         {
+            GameManager.Instance.DiscardPausedRunSnapshot();
             GameManager.Instance.SetLevel(_levelConfigs[index]);
         }
         else

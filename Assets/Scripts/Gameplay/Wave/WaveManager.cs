@@ -4,228 +4,505 @@ using System.Collections.Generic;
 using Salinlahi.Debug.Sandbox;
 #endif
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class WaveManager : MonoBehaviour
 {
     [Header("Configuration")]
     [SerializeField] private LevelConfigSO _levelConfig;
-    [SerializeField] private EnemyDataSO _defaultEnemyData;
     [SerializeField] private WaveSpawner _spawner;
+    [FormerlySerializedAs("_defaultEnemyData")]
+    [SerializeField] private EnemyDataSO _legacyDefaultEnemyData;
 
     [Header("Level Registry")]
     [Tooltip("All level configs that can be loaded at runtime. Index 0 = Level 1, etc.")]
     [SerializeField] private LevelConfigSO[] _levelConfigs;
 
-    private int _currentWaveIndex = 0;
-    private bool _running = false;
-    private int _activeEnemyCount = 0;
+    private int _currentWaveIndex;
+    private int _currentWaveSpawnedCount;
+    private bool _running;
+    private Coroutine _waveRoutine;
+
+    public int CurrentWaveIndex => _currentWaveIndex;
+    public int CurrentWaveSpawnedCount => _currentWaveSpawnedCount;
 
     private void OnEnable()
     {
-        EventBus.OnEnemyDefeated += OnEnemyRemoved;
-        EventBus.OnBaseHit += OnEnemyRemoved;
-        EventBus.OnLevelComplete += HandleLevelComplete;
+        EventBus.OnGameOver += HandleGameOver;
     }
 
     private void OnDisable()
     {
-        EventBus.OnEnemyDefeated -= OnEnemyRemoved;
-        EventBus.OnBaseHit -= OnEnemyRemoved;
-        EventBus.OnLevelComplete -= HandleLevelComplete;
+        EventBus.OnGameOver -= HandleGameOver;
     }
 
     private void Start()
     {
         // GameManager.CurrentLevel is set by LevelSelectUI before scene load.
-        // Fall back to PlayerPrefs if not set (e.g. direct scene entry or Play button).
-        if (GameManager.Instance != null && GameManager.Instance.CurrentLevel != null)
+        // Fall back to PlayerPrefs if not set or stale (e.g. Play after a previous level select).
+        int selectedLevel = PlayerPrefs.GetInt("SelectedLevel", 1);
+        LevelConfigSO selectedGameManagerLevel = GameManager.Instance != null
+            ? GameManager.Instance.CurrentLevel
+            : null;
+
+        if (selectedGameManagerLevel != null && selectedGameManagerLevel.levelNumber == selectedLevel)
         {
-            _levelConfig = GameManager.Instance.CurrentLevel;
+            _levelConfig = selectedGameManagerLevel;
         }
         else
         {
-            int selectedLevel = PlayerPrefs.GetInt("SelectedLevel", 1);
             LoadLevelConfig(selectedLevel);
         }
 
-#if UNITY_EDITOR || SALINLAHI_SANDBOX
-        if (SandboxMode.IsActive)
-        {
-            if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
-                GameManager.Instance.StartGame();
-
-            PauseWaves();
-            SandboxController.EnsureExists(this, _spawner);
-            DebugLogger.Log("WaveManager: Sandbox mode active. Normal waves are disabled.");
-            return;
-        }
-#endif
-
-        StartWaves();
+        StartLevel(selectedLevel);
     }
 
     /// <summary>
-    /// Starts a level with the specified config. This is the runtime API required by AC-4.
+    /// Starts a level with the specified config.
     /// </summary>
-    /// <param name="levelConfigSO">The level configuration to use</param>
     public void StartLevel(LevelConfigSO levelConfigSO)
     {
-#if UNITY_EDITOR || SALINLAHI_SANDBOX
-        if (SandboxMode.IsActive)
-        {
-            PauseWaves();
-            SandboxController.EnsureExists(this, _spawner);
-            DebugLogger.Log("WaveManager.StartLevel ignored while sandbox mode is active.");
-            return;
-        }
-#endif
-
-        if (levelConfigSO == null)
-        {
-            DebugLogger.LogError("WaveManager.StartLevel: levelConfigSO is null!");
-            return;
-        }
-
-        // Stop any current waves
-        if (_running)
-        {
-            StopAllCoroutines();
-            _running = false;
-        }
-
         _levelConfig = levelConfigSO;
-        StartWaves();
+        StartLevel();
     }
 
-    private void LoadLevelConfig(int levelNumber)
+    /// <summary>
+    /// Starts waves using the currently resolved level config.
+    /// </summary>
+    public void StartLevel()
     {
-        // Try to find config in the registry array first
-        if (_levelConfigs != null && _levelConfigs.Length > 0)
-        {
-            int index = levelNumber - 1; // Level 1 is at index 0
-            if (index >= 0 && index < _levelConfigs.Length && _levelConfigs[index] != null)
-            {
-                _levelConfig = _levelConfigs[index];
-                DebugLogger.Log($"WaveManager: Loaded Level {levelNumber} from registry.");
-                return;
-            }
-        }
-
-        // Fallback: Try to load from Resources
-        LevelConfigSO loadedConfig = Resources.Load<LevelConfigSO>($"LevelConfigs/Level{levelNumber}_Config");
-        if (loadedConfig != null)
-        {
-            _levelConfig = loadedConfig;
-            DebugLogger.Log($"WaveManager: Loaded Level {levelNumber} from Resources.");
-            return;
-        }
-
-        // If we already have a config assigned in inspector, use that
-        if (_levelConfig != null)
-        {
-            DebugLogger.LogWarning($"WaveManager: Could not find Level {levelNumber} config. Using inspector-assigned config: {_levelConfig.name}");
-            return;
-        }
-
-        DebugLogger.LogError($"WaveManager: Could not load Level {levelNumber} config and no fallback assigned!");
+        int selectedLevel = PlayerPrefs.GetInt("SelectedLevel", 1);
+        StartLevel(selectedLevel);
     }
 
-    public void StartWaves()
+    private void StartLevel(int selectedLevel)
     {
-#if UNITY_EDITOR || SALINLAHI_SANDBOX
-        if (SandboxMode.IsActive)
-        {
-            if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
-                GameManager.Instance.StartGame();
+        if (_spawner != null)
+            _spawner.SetFallbackEnemyDataIfMissing(_legacyDefaultEnemyData);
 
-            PauseWaves();
-            SandboxController.EnsureExists(this, _spawner);
-            DebugLogger.Log("WaveManager.StartWaves ignored while sandbox mode is active.");
+        if (TryHandleSandboxMode())
             return;
-        }
-#endif
 
         if (_levelConfig == null)
         {
-            DebugLogger.LogError("WaveManager: No LevelConfigSO assigned!");
+            DebugLogger.LogError("WaveManager.StartLevel: No LevelConfigSO assigned.");
             return;
         }
 
-        // Ensure GameManager is in Playing state so input is not blocked
+        if (TryRestorePausedRun(selectedLevel))
+            return;
+
+        // Ensure GameManager is in Playing state so input is not blocked.
         if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
         {
             GameManager.Instance.StartGame();
             DebugLogger.Log("WaveManager: Auto-started GameManager.");
         }
 
+        if (_running || _waveRoutine != null)
+        {
+            if (_waveRoutine != null)
+                StopCoroutine(_waveRoutine);
+
+            ReturnAllActiveEnemies();
+            ResetRunState();
+        }
+
         _running = true;
         _currentWaveIndex = 0;
-        StartCoroutine(RunAllWavesRoutine());
+        _currentWaveSpawnedCount = 0;
+        _waveRoutine = StartCoroutine(RunAllWavesRoutine(0, 0));
+    }
+
+    private bool TryHandleSandboxMode()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        if (!SandboxMode.IsActive)
+            return false;
+
+        if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
+            GameManager.Instance.StartGame();
+
+        PauseWaves();
+        SandboxController.EnsureExists(this, _spawner);
+        DebugLogger.Log("WaveManager: Sandbox mode active. Normal waves are disabled.");
+        return true;
+#else
+        return false;
+#endif
     }
 
     public void PauseWaves()
     {
         _running = false;
-        StopAllCoroutines();
+
+        if (_waveRoutine != null)
+        {
+            StopCoroutine(_waveRoutine);
+            _waveRoutine = null;
+        }
     }
 
-    private IEnumerator RunAllWavesRoutine()
+    private void HandleGameOver()
     {
-        foreach (WaveConfigSO wave in _levelConfig.waves)
-        {
-            yield return new WaitForSeconds(wave.waveStartDelay);
-            EventBus.RaiseWaveStarted(_currentWaveIndex);
-            DebugLogger.Log($"Starting wave {_currentWaveIndex + 1}");
-            yield return StartCoroutine(SpawnWaveRoutine(wave));
+        _running = false;
 
-            // Wait until all enemies from this wave are gone
-            yield return new WaitUntil(() => _activeEnemyCount <= 0);
-            DebugLogger.Log($"Wave {_currentWaveIndex + 1} cleared.");
-            _currentWaveIndex++;
+        if (_waveRoutine != null)
+            StopCoroutine(_waveRoutine);
+
+        ReturnAllActiveEnemies();
+        _waveRoutine = null;
+    }
+
+    private bool TryRestorePausedRun(int selectedLevel)
+    {
+        GameManager gameManager = GameManager.Instance;
+        if (gameManager == null)
+            return false;
+
+        if (!gameManager.TryGetPausedRunEnemies(
+                selectedLevel,
+                out IReadOnlyList<GameManager.PausedEnemySnapshot> pausedEnemies))
+        {
+            return false;
         }
-        DebugLogger.Log("All waves cleared. Level complete.");
+
+        int currentWaveIndex = 0;
+        int currentWaveSpawnedCount = 0;
+        bool hasSavedWaveProgress = gameManager.TryGetPausedRunWaveProgress(
+            selectedLevel,
+            out currentWaveIndex,
+            out currentWaveSpawnedCount);
+
+        if (GameManager.Instance.CurrentState != GameState.Playing)
+            GameManager.Instance.StartGame();
+
+        _running = true;
+        _currentWaveIndex = Mathf.Max(0, currentWaveIndex);
+        _currentWaveSpawnedCount = Mathf.Max(0, currentWaveSpawnedCount);
+        _waveRoutine = StartCoroutine(
+            pausedEnemies.Count > 0
+                ? RestorePausedRunRoutine(
+                    selectedLevel,
+                    pausedEnemies,
+                    hasSavedWaveProgress,
+                    currentWaveIndex,
+                    currentWaveSpawnedCount)
+                : RestorePausedRunWithoutActiveEnemiesRoutine(
+                    selectedLevel,
+                    hasSavedWaveProgress,
+                    currentWaveIndex,
+                    currentWaveSpawnedCount));
+        return true;
+    }
+
+    private IEnumerator RestorePausedRunRoutine(
+        int selectedLevel,
+        IReadOnlyList<GameManager.PausedEnemySnapshot> pausedEnemies,
+        bool hasSavedWaveProgress,
+        int savedWaveIndex,
+        int savedWaveSpawnedCount)
+    {
+        if (!ValidateRunDependencies())
+        {
+            AbortRun();
+            yield break;
+        }
+
+        for (int i = 0; i < pausedEnemies.Count; i++)
+        {
+            GameManager.PausedEnemySnapshot snapshot = pausedEnemies[i];
+            _spawner.RestoreEnemy(
+                snapshot.EnemyData,
+                snapshot.Character,
+                snapshot.Position,
+                snapshot.CurrentHealth);
+        }
+
+        GameManager.Instance?.ClearPausedRunSnapshotForLevel(selectedLevel);
+
+        int startWaveIndex = ResolveResumeWaveIndex(
+            hasSavedWaveProgress,
+            savedWaveIndex,
+            savedWaveSpawnedCount,
+            out int spawnOffset);
+
+        if (spawnOffset <= 0)
+            yield return WaitForActiveEnemiesCleared();
+
+        if (!CanContinueRun())
+        {
+            AbortRun();
+            yield break;
+        }
+
+        yield return RunAllWavesRoutine(startWaveIndex, spawnOffset);
+    }
+
+    private IEnumerator RestorePausedRunWithoutActiveEnemiesRoutine(
+        int selectedLevel,
+        bool hasSavedWaveProgress,
+        int savedWaveIndex,
+        int savedWaveSpawnedCount)
+    {
+        GameManager.Instance?.ClearPausedRunSnapshotForLevel(selectedLevel);
+
+        if (!CanContinueRun())
+        {
+            AbortRun();
+            yield break;
+        }
+
+        int startWaveIndex = ResolveResumeWaveIndex(
+            hasSavedWaveProgress,
+            savedWaveIndex,
+            savedWaveSpawnedCount,
+            out int spawnOffset);
+        yield return RunAllWavesRoutine(startWaveIndex, spawnOffset);
+    }
+
+    private IEnumerator RunAllWavesRoutine(int startWaveIndex, int firstWaveSpawnOffset)
+    {
+        if (!ValidateRunDependencies())
+        {
+            AbortRun();
+            yield break;
+        }
+
+        if (_levelConfig.waves == null || _levelConfig.waves.Count == 0)
+        {
+            DebugLogger.LogWarning("WaveManager: Level has no waves.");
+            if (CanContinueRun())
+                CompleteRun();
+            else
+                AbortRun();
+            yield break;
+        }
+
+        int firstWaveIndex = Mathf.Clamp(startWaveIndex, 0, _levelConfig.waves.Count);
+        for (int waveIndex = firstWaveIndex; waveIndex < _levelConfig.waves.Count; waveIndex++)
+        {
+            if (!CanContinueRun())
+            {
+                AbortRun();
+                yield break;
+            }
+
+            WaveConfigSO wave = _levelConfig.waves[waveIndex];
+            if (wave == null)
+            {
+                DebugLogger.LogWarning($"WaveManager: Wave at index {waveIndex} is null. Skipping.");
+                continue;
+            }
+
+            if (!ValidateRunDependencies())
+            {
+                AbortRun();
+                yield break;
+            }
+
+            _currentWaveIndex = waveIndex;
+            _currentWaveSpawnedCount = 0;
+            EventBus.RaiseWaveStarted(waveIndex);
+
+            float startDelay = ClampWaveStartDelay(wave.waveStartDelay, waveIndex);
+            if (startDelay > 0f)
+                yield return new WaitForSeconds(startDelay);
+
+            if (!CanContinueRun())
+            {
+                AbortRun();
+                yield break;
+            }
+
+            int spawnOffset = waveIndex == firstWaveIndex
+                ? Mathf.Clamp(firstWaveSpawnOffset, 0, Mathf.Max(0, wave.enemyCount))
+                : 0;
+            _currentWaveSpawnedCount = spawnOffset;
+            yield return StartCoroutine(_spawner.SpawnWave(wave, HandleEnemySpawned, spawnOffset));
+
+            if (!CanContinueRun())
+            {
+                AbortRun();
+                yield break;
+            }
+
+            yield return WaitForActiveEnemiesCleared();
+
+            if (!CanContinueRun())
+            {
+                AbortRun();
+                yield break;
+            }
+
+            EventBus.RaiseWaveCleared(waveIndex);
+        }
+
+        if (!CanContinueRun())
+        {
+            AbortRun();
+            yield break;
+        }
+
+        CompleteRun();
+    }
+
+    private void HandleEnemySpawned()
+    {
+        _currentWaveSpawnedCount++;
+    }
+
+    private int ResolveResumeWaveIndex(
+        bool hasSavedWaveProgress,
+        int savedWaveIndex,
+        int savedWaveSpawnedCount,
+        out int spawnOffset)
+    {
+        spawnOffset = 0;
+
+        if (!hasSavedWaveProgress || _levelConfig?.waves == null || _levelConfig.waves.Count == 0)
+            return 0;
+
+        int safeWaveIndex = Mathf.Clamp(savedWaveIndex, 0, _levelConfig.waves.Count);
+        if (safeWaveIndex >= _levelConfig.waves.Count)
+            return _levelConfig.waves.Count;
+
+        WaveConfigSO savedWave = _levelConfig.waves[safeWaveIndex];
+        int enemyCount = savedWave != null ? Mathf.Max(0, savedWave.enemyCount) : 0;
+        int safeSpawnedCount = Mathf.Clamp(savedWaveSpawnedCount, 0, enemyCount);
+
+        if (safeSpawnedCount < enemyCount)
+        {
+            spawnOffset = safeSpawnedCount;
+            return safeWaveIndex;
+        }
+
+        return Mathf.Min(safeWaveIndex + 1, _levelConfig.waves.Count);
+    }
+
+    private IEnumerator WaitForActiveEnemiesCleared()
+    {
+        bool trackerMissingDuringWait = false;
+        yield return new WaitUntil(() =>
+        {
+            if (!CanContinueRun())
+                return true;
+
+            ActiveEnemyTracker tracker = ActiveEnemyTracker.Instance;
+            if (tracker == null)
+            {
+                trackerMissingDuringWait = true;
+                return true;
+            }
+
+            return tracker.IsClear;
+        });
+
+        if (trackerMissingDuringWait)
+        {
+            DebugLogger.LogError("WaveManager: ActiveEnemyTracker.Instance became null while waiting for wave clear.");
+            AbortRun();
+        }
+    }
+
+    private void ReturnAllActiveEnemies()
+    {
+        ActiveEnemyTracker tracker = ActiveEnemyTracker.Instance;
+        EnemyPool pool = EnemyPool.Instance;
+
+        if (tracker == null || pool == null)
+            return;
+
+        var activeEnemies = tracker.GetActiveEnemiesSnapshot();
+        for (int i = 0; i < activeEnemies.Count; i++)
+        {
+            pool.Return(activeEnemies[i]);
+        }
+    }
+
+    private bool ValidateRunDependencies()
+    {
+        if (_spawner == null)
+        {
+            DebugLogger.LogError("WaveManager: WaveSpawner reference is missing.");
+            return false;
+        }
+
+        if (EnemyPool.Instance == null)
+        {
+            DebugLogger.LogError("WaveManager: EnemyPool.Instance is missing.");
+            return false;
+        }
+
+        if (ActiveEnemyTracker.Instance == null)
+        {
+            DebugLogger.LogError("WaveManager: ActiveEnemyTracker.Instance is missing.");
+            return false;
+        }
+
+        return true;
+    }
+
+    private bool CanContinueRun()
+    {
+        if (!_running)
+            return false;
+
+        if (GameManager.Instance == null)
+            return true;
+
+        return !IsTerminalState(GameManager.Instance.CurrentState);
+    }
+
+    private bool IsTerminalState(GameState state)
+    {
+        return state == GameState.Idle
+            || state == GameState.GameOver
+            || state == GameState.LevelComplete;
+    }
+
+    private float ClampWaveStartDelay(float delay, int waveIndex)
+    {
+        if (delay < 0f)
+        {
+            DebugLogger.LogWarning($"WaveManager: waveStartDelay < 0 at index {waveIndex}. Clamping to 0.");
+            return 0f;
+        }
+
+        return delay;
+    }
+
+    private void CompleteRun()
+    {
+        _running = false;
+        _waveRoutine = null;
+        RaiseLevelCompleted();
+    }
+
+    private void RaiseLevelCompleted()
+    {
         EventBus.RaiseLevelComplete();
     }
 
-    private IEnumerator SpawnWaveRoutine(WaveConfigSO wave)
+    private void AbortRun()
     {
-        for (int i = 0; i < wave.enemyCount; i++)
-        {
-            if (!_running) yield break;
-
-            EnemyDataSO enemyData = SelectEnemyDataForWave(wave);
-            Enemy enemy = _spawner.SpawnEnemy(enemyData);
-            if (enemy != null) _activeEnemyCount++;
-            yield return new WaitForSeconds(wave.spawnInterval);
-        }
+        _running = false;
+        _waveRoutine = null;
     }
 
-    private EnemyDataSO SelectEnemyDataForWave(WaveConfigSO wave)
+    private void ResetRunState()
     {
-        if (wave != null && wave.enemyTypesInWave != null && wave.enemyTypesInWave.Count > 0)
-        {
-            int index = Random.Range(0, wave.enemyTypesInWave.Count);
-            EnemyDataSO selected = wave.enemyTypesInWave[index];
-            if (selected != null)
-                return selected;
-        }
-
-        return _defaultEnemyData;
+        _running = false;
+        _waveRoutine = null;
+        _currentWaveIndex = 0;
+        _currentWaveSpawnedCount = 0;
     }
 
-    // One handler for both defeat and base-hit -- both remove from active count
-    private void OnEnemyRemoved(BaybayinCharacterSO _) => _activeEnemyCount = Mathf.Max(0, _activeEnemyCount - 1);
-    private void OnEnemyRemoved() => _activeEnemyCount = Mathf.Max(0, _activeEnemyCount - 1);
-
-    private void HandleLevelComplete()
-    {
-        // ProgressManager listens to EventBus.OnLevelComplete directly and handles progress saving.
-    }
-
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
     public IReadOnlyList<EnemyDataSO> GetConfiguredEnemyTypesForSandbox()
     {
         var enemies = new List<EnemyDataSO>();
-        AddEnemyForSandbox(enemies, _defaultEnemyData);
+        AddEnemyForSandbox(enemies, _legacyDefaultEnemyData);
         AddEnemiesFromLevelForSandbox(enemies, _levelConfig);
 
         if (_levelConfigs != null)
@@ -266,18 +543,15 @@ public class WaveManager : MonoBehaviour
         }
     }
 
+    private static void AddEnemyForSandbox(List<EnemyDataSO> enemies, EnemyDataSO enemy)
+    {
+        if (enemy != null && !enemies.Contains(enemy))
+            enemies.Add(enemy);
+    }
+
     private static void AddCharactersFromLevelForSandbox(List<BaybayinCharacterSO> characters, LevelConfigSO levelConfig)
     {
-        if (levelConfig == null)
-            return;
-
-        if (levelConfig.allowedCharacters != null)
-        {
-            foreach (BaybayinCharacterSO character in levelConfig.allowedCharacters)
-                AddCharacterForSandbox(characters, character);
-        }
-
-        if (levelConfig.waves == null)
+        if (levelConfig?.waves == null)
             return;
 
         foreach (WaveConfigSO wave in levelConfig.waves)
@@ -290,15 +564,43 @@ public class WaveManager : MonoBehaviour
         }
     }
 
-    private static void AddEnemyForSandbox(List<EnemyDataSO> enemies, EnemyDataSO enemy)
-    {
-        if (enemy != null && !enemies.Contains(enemy))
-            enemies.Add(enemy);
-    }
-
     private static void AddCharacterForSandbox(List<BaybayinCharacterSO> characters, BaybayinCharacterSO character)
     {
         if (character != null && !characters.Contains(character))
             characters.Add(character);
+    }
+#endif
+
+    private void LoadLevelConfig(int levelNumber)
+    {
+        // Try to find config in the registry array first.
+        if (_levelConfigs != null && _levelConfigs.Length > 0)
+        {
+            int index = levelNumber - 1; // Level 1 is at index 0.
+            if (index >= 0 && index < _levelConfigs.Length && _levelConfigs[index] != null)
+            {
+                _levelConfig = _levelConfigs[index];
+                DebugLogger.Log($"WaveManager: Loaded Level {levelNumber} from registry.");
+                return;
+            }
+        }
+
+        // Fallback: try to load from Resources.
+        LevelConfigSO loadedConfig = Resources.Load<LevelConfigSO>($"LevelConfigs/Level{levelNumber}_Config");
+        if (loadedConfig != null)
+        {
+            _levelConfig = loadedConfig;
+            DebugLogger.Log($"WaveManager: Loaded Level {levelNumber} from Resources.");
+            return;
+        }
+
+        // If we already have a config assigned in inspector, use that.
+        if (_levelConfig != null)
+        {
+            DebugLogger.LogWarning($"WaveManager: Could not find Level {levelNumber} config. Using inspector-assigned config: {_levelConfig.name}");
+            return;
+        }
+
+        DebugLogger.LogError($"WaveManager: Could not load Level {levelNumber} config and no fallback assigned.");
     }
 }

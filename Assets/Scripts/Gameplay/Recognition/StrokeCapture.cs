@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
-using Salinlahi.Debug.Sandbox;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.EnhancedTouch;
 using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 
@@ -26,7 +26,9 @@ public class StrokeCapture : MonoBehaviour
     private float _strokeStartTime;
     private Coroutine _strokeTimeoutRoutine;
     private bool _isDrawing;
-    private float _lastSandboxPreviewTime;
+    private bool _pendingRecognitionSubmit;
+    private float _multiStrokeTimerEndScaledTime = -1f;
+    private float _pausedMultiStrokeRemainingSeconds = -1f;
 
     private void OnEnable()
     {
@@ -34,6 +36,8 @@ public class StrokeCapture : MonoBehaviour
         Touch.onFingerDown += OnFingerDown;
         Touch.onFingerMove += OnFingerMove;
         Touch.onFingerUp += OnFingerUp;
+        EventBus.OnGamePaused += HandleGamePaused;
+        EventBus.OnGameResumed += HandleGameResumed;
     }
 
     private void OnDisable()
@@ -41,6 +45,8 @@ public class StrokeCapture : MonoBehaviour
         Touch.onFingerDown -= OnFingerDown;
         Touch.onFingerMove -= OnFingerMove;
         Touch.onFingerUp -= OnFingerUp;
+        EventBus.OnGamePaused -= HandleGamePaused;
+        EventBus.OnGameResumed -= HandleGameResumed;
         EnhancedTouchSupport.Disable();
     }
 
@@ -49,6 +55,16 @@ public class StrokeCapture : MonoBehaviour
         // Block all input during GameOver or Paused
         if (GameManager.Instance == null ||
             GameManager.Instance.CurrentState != GameState.Playing) return;
+
+        // Ignore touches that hit UI (pause button, menus, etc.).
+        // Prevents UI taps from being treated as drawing strokes.
+        if (IsScreenPositionOverUI(finger.screenPosition))
+            return;
+
+        // If a recognition submit was deferred during pause, flush it before
+        // beginning a new stroke so the previous drawing is not lost.
+        if (_pendingRecognitionSubmit && !_isDrawing)
+            SubmitForRecognition();
 
         // Only accept the primary finger (index 0).
         // On desktop, mouse buttons beyond left-click create
@@ -118,7 +134,6 @@ public class StrokeCapture : MonoBehaviour
 
         _currentPoints.Add(pos);
         _canvas.AddPoint(pos);
-        PreviewSandboxRecognitionIfReady();
 
         // Reset the stroke timeout timer on every move
         if (_strokeTimeoutRoutine != null)
@@ -130,9 +145,6 @@ public class StrokeCapture : MonoBehaviour
 
     private void OnFingerUp(Finger finger)
     {
-        if (GameManager.Instance == null ||
-            GameManager.Instance.CurrentState != GameState.Playing) return;
-
         if (finger.index != 0 || !_isDrawing) return;
 
         _isDrawing = false;
@@ -180,11 +192,8 @@ public class StrokeCapture : MonoBehaviour
         _strokes.Add(new List<Vector2>(_currentPoints));
         _canvas.EndStroke();
         _currentPoints.Clear();
-        PreviewSandboxRecognition();
 
-        // Start the multi-stroke window timer
-        _timerRoutine = StartCoroutine(
-            MultiStrokeTimerRoutine());
+        StartMultiStrokeTimer(_config.multiStrokeWindowSeconds);
     }
 
     private void CancelCurrentStroke()
@@ -200,9 +209,12 @@ public class StrokeCapture : MonoBehaviour
         }
     }
 
-    private IEnumerator MultiStrokeTimerRoutine()
+    private IEnumerator MultiStrokeTimerRoutine(float waitSeconds)
     {
-        yield return new WaitForSeconds(_config.multiStrokeWindowSeconds);
+        yield return new WaitForSeconds(waitSeconds);
+        _timerRoutine = null;
+        _multiStrokeTimerEndScaledTime = -1f;
+        _pausedMultiStrokeRemainingSeconds = -1f;
         SubmitForRecognition();
     }
 
@@ -212,7 +224,7 @@ public class StrokeCapture : MonoBehaviour
         if (GameManager.Instance == null ||
             GameManager.Instance.CurrentState != GameState.Playing)
         {
-            _strokes.Clear();
+            _pendingRecognitionSubmit = _strokes.Count > 0;
             return;
         }
 
@@ -223,38 +235,91 @@ public class StrokeCapture : MonoBehaviour
             allPoints.AddRange(stroke);
 
         _strokes.Clear();
+        _pendingRecognitionSubmit = false;
         _canvas.ClearCanvas();
 
         RecognitionManager.Instance.Recognize(allPoints);
     }
 
-    private void PreviewSandboxRecognitionIfReady()
+    private void HandleGameResumed()
     {
-        if (!SandboxMode.IsActive)
+        if (_pausedMultiStrokeRemainingSeconds > 0f
+            && _strokes.Count > 0
+            && !_isDrawing)
+        {
+            StartMultiStrokeTimer(_pausedMultiStrokeRemainingSeconds);
+            _pausedMultiStrokeRemainingSeconds = -1f;
+            return;
+        }
+
+        if (!_pendingRecognitionSubmit || _isDrawing)
             return;
 
-        if (Time.unscaledTime - _lastSandboxPreviewTime < 0.2f)
-            return;
-
-        if (_currentPoints.Count < _config.minimumPointCount)
-            return;
-
-        _lastSandboxPreviewTime = Time.unscaledTime;
-        PreviewSandboxRecognition(includeCurrentStroke: true);
+        SubmitForRecognition();
     }
 
-    private void PreviewSandboxRecognition(bool includeCurrentStroke = false)
+    private void HandleGamePaused()
     {
-        if (!SandboxMode.IsActive || RecognitionManager.Instance == null)
-            return;
+        // If pause landed before finger-up dispatch, end the active stroke so it
+        // can still participate in recognition after resume.
+        if (_isDrawing)
+        {
+            _isDrawing = false;
 
-        List<Vector2> previewPoints = new List<Vector2>();
-        foreach (var stroke in _strokes)
-            previewPoints.AddRange(stroke);
+            if (_strokeTimeoutRoutine != null)
+            {
+                StopCoroutine(_strokeTimeoutRoutine);
+                _strokeTimeoutRoutine = null;
+            }
 
-        if (includeCurrentStroke)
-            previewPoints.AddRange(_currentPoints);
+            if (_currentPoints.Count >= _config.minimumPointCount)
+            {
+                CompleteCurrentStroke();
+            }
+            else
+            {
+                // Pause can interrupt a new tap before any real stroke data exists.
+                // Only end that in-progress line; do not clear previously completed
+                // strokes waiting for recognition.
+                _currentPoints.Clear();
+                _canvas.EndStroke();
+            }
+        }
 
-        RecognitionManager.Instance.PreviewRecognize(previewPoints);
+        // Freeze active multi-stroke countdown and resume it later.
+        if (_timerRoutine != null)
+        {
+            float remaining = _multiStrokeTimerEndScaledTime - Time.time;
+            _pausedMultiStrokeRemainingSeconds = Mathf.Max(0f, remaining);
+            StopCoroutine(_timerRoutine);
+            _timerRoutine = null;
+            _multiStrokeTimerEndScaledTime = -1f;
+        }
+    }
+
+    private void StartMultiStrokeTimer(float seconds)
+    {
+        if (_timerRoutine != null)
+            StopCoroutine(_timerRoutine);
+
+        float waitSeconds = Mathf.Max(0f, seconds);
+        _multiStrokeTimerEndScaledTime = Time.time + waitSeconds;
+        _pausedMultiStrokeRemainingSeconds = -1f;
+        _timerRoutine = StartCoroutine(MultiStrokeTimerRoutine(waitSeconds));
+    }
+
+    private bool IsScreenPositionOverUI(Vector2 screenPosition)
+    {
+        if (EventSystem.current == null)
+            return false;
+
+        var eventData = new PointerEventData(EventSystem.current)
+        {
+            position = screenPosition
+        };
+
+        var results = new List<RaycastResult>();
+        EventSystem.current.RaycastAll(eventData, results);
+        return results.Count > 0;
     }
 }

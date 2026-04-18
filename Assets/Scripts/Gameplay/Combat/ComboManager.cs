@@ -1,6 +1,6 @@
 using UnityEngine;
 
-/// Tracks consecutive correct draws and activates Focus Mode.
+/// Tracks consecutive correct combat hits and activates Focus Mode.
 /// Resets on any miss or heart loss.
 public class ComboManager : Singleton<ComboManager>
 {
@@ -17,7 +17,7 @@ public class ComboManager : Singleton<ComboManager>
 
     private void OnEnable()
     {
-        EventBus.OnCharacterRecognized += HandleRecognized;
+        EventBus.OnEnemyTargeted += HandleEnemyTargeted;
         EventBus.OnDrawingFailed += HandleMiss;
         EventBus.OnDrawingMissed += HandleMiss;
         EventBus.OnHeartsChanged += HandleHeartsChanged;
@@ -27,7 +27,7 @@ public class ComboManager : Singleton<ComboManager>
 
     private void OnDisable()
     {
-        EventBus.OnCharacterRecognized -= HandleRecognized;
+        EventBus.OnEnemyTargeted -= HandleEnemyTargeted;
         EventBus.OnDrawingFailed -= HandleMiss;
         EventBus.OnDrawingMissed -= HandleMiss;
         EventBus.OnHeartsChanged -= HandleHeartsChanged;
@@ -35,29 +35,26 @@ public class ComboManager : Singleton<ComboManager>
         EventBus.OnLevelComplete -= HandleLevelEnd;
     }
 
-    private void HandleRecognized(string characterID)
+    private void HandleEnemyTargeted(Enemy _)
     {
         _currentStreak++;
         EventBus.RaiseComboChanged(_currentStreak);
-        DebugLogger.Log(
-            $"ComboManager: Streak = {_currentStreak}");
+        DebugLogger.Log($"ComboManager: Streak = {_currentStreak}");
 
         if (_currentStreak >= _config.focusModeThreshold)
         {
             if (!_focusModeActive)
             {
-                // First time hitting threshold
+                // First time hitting threshold.
                 ActivateFocusMode();
             }
             else
             {
-                // Already in Focus Mode — restart the timer
+                // Already in Focus Mode, restart the timer.
                 if (_focusRoutine != null)
                     StopCoroutine(_focusRoutine);
-                _focusRoutine = StartCoroutine(
-                    FocusModeTimerRoutine());
-                DebugLogger.Log(
-                    "ComboManager: Focus Mode timer reset");
+                _focusRoutine = StartCoroutine(FocusModeTimerRoutine());
+                DebugLogger.Log("ComboManager: Focus Mode timer reset");
             }
         }
     }
@@ -98,15 +95,12 @@ public class ComboManager : Singleton<ComboManager>
     {
         _focusModeActive = true;
         EventBus.RaiseFocusModeActivated();
-        DebugLogger.Log(
-            $"ComboManager: FOCUS MODE ON for "
-            + $"{_config.focusModeDuration}s");
+        DebugLogger.Log($"ComboManager: FOCUS MODE ON for {_config.focusModeDuration}s");
 
-        // Cancel any existing timer and start fresh
+        // Cancel any existing timer and start fresh.
         if (_focusRoutine != null)
             StopCoroutine(_focusRoutine);
-        _focusRoutine = StartCoroutine(
-            FocusModeTimerRoutine());
+        _focusRoutine = StartCoroutine(FocusModeTimerRoutine());
     }
 
     private void DeactivateFocusMode()
@@ -122,11 +116,9 @@ public class ComboManager : Singleton<ComboManager>
         DebugLogger.Log("ComboManager: FOCUS MODE OFF");
     }
 
-    private System.Collections.IEnumerator
-        FocusModeTimerRoutine()
+    private System.Collections.IEnumerator FocusModeTimerRoutine()
     {
-        yield return new WaitForSeconds(
-            _config.focusModeDuration);
+        yield return new WaitForSeconds(_config.focusModeDuration);
         _focusModeActive = false;
         _focusRoutine = null;
         EventBus.RaiseFocusModeDeactivated();

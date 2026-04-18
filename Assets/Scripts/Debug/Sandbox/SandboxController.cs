@@ -9,8 +9,6 @@ namespace Salinlahi.Debug.Sandbox
 {
     public class SandboxController : MonoBehaviour
     {
-        private const string CatalogResourcesPath = "Sandbox/SandboxCatalog";
-
         private readonly List<EnemyDataSO> _enemyTypes = new();
         private readonly List<BaybayinCharacterSO> _characters = new();
 
@@ -88,13 +86,6 @@ namespace Salinlahi.Debug.Sandbox
         {
             _enemyTypes.Clear();
             _characters.Clear();
-
-            SandboxCatalogSO catalog = Resources.Load<SandboxCatalogSO>(CatalogResourcesPath);
-            if (catalog != null)
-            {
-                AddEnemies(catalog.EnemyTypes);
-                AddCharacters(catalog.Characters);
-            }
 
             if (_waveManager != null)
             {
