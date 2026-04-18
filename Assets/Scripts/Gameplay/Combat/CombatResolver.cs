@@ -3,7 +3,7 @@ using UnityEngine;
 /// Listens for OnCharacterRecognized and defeats the correct enemy.
 /// This is the bridge between the recognition pipeline and the
 /// enemy system. Without this, drawing does nothing.
-public class CombatResolver : Singleton<CombatResolver>
+public class CombatResolver : MonoBehaviour
 {
     private void OnEnable()
     {
