@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.UI;
 
 public class BorderPulse : MonoBehaviour
 {
@@ -7,18 +6,16 @@ public class BorderPulse : MonoBehaviour
     [SerializeField] private float minAlpha = 0.3f;
     [SerializeField] private float maxAlpha = 0.8f;
 
-    private Image _image;
+    private CanvasGroup _canvasGroup;
 
     private void Awake()
     {
-        _image = GetComponent<Image>();
+        _canvasGroup = GetComponent<CanvasGroup>();
     }
 
     private void Update()
     {
         float t = (Mathf.Sin(Time.time * pulseSpeed) + 1f) / 2f;
-        Color c = _image.color;
-        c.a = Mathf.Lerp(minAlpha, maxAlpha, t);
-        _image.color = c;
+        _canvasGroup.alpha = Mathf.Lerp(minAlpha, maxAlpha, t);
     }
 }
