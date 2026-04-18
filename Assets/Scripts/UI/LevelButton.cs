@@ -39,6 +39,7 @@ public class LevelButton : MonoBehaviour
         if (_config == null || !_isUnlocked) return;
 
         DebugLogger.Log($"LevelButton: Level {_config.levelNumber} selected");
+        GameManager.Instance.DiscardPausedRunSnapshot();
         GameManager.Instance.SetLevel(_config);
         SceneLoader.Instance.LoadGameplay();
     }

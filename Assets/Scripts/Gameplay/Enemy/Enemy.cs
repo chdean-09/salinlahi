@@ -3,6 +3,7 @@ using UnityEngine;
 using Salinlahi.Debug.Sandbox;
 #endif
 using TMPro;
+using UnityEngine.Pool;
 
 // Attach to Enemy prefab root. Holds data reference and returns itself to EnemyPool.
 [RequireComponent(typeof(EnemyMover))]
@@ -33,6 +34,8 @@ public class Enemy : MonoBehaviour
 
     public BaybayinCharacterSO Character => _runtimeCharacter != null ? _runtimeCharacter : _data?.assignedCharacter;
     public string EnemyID => _data?.enemyID;
+    public EnemyDataSO Data => _data;
+    public int CurrentHealth => _currentHealth;
 
     private void Awake()
     {
@@ -119,6 +122,15 @@ public class Enemy : MonoBehaviour
         return true;
     }
 
+    public bool Initialize(EnemyDataSO data, IObjectPool<Enemy> pool, BaybayinCharacterSO character)
+    {
+        bool initialized = Initialize(data);
+        if (initialized)
+            AssignCharacter(character);
+
+        return initialized;
+    }
+
     public void ResetForPool()
     {
         try
@@ -163,6 +175,19 @@ public class Enemy : MonoBehaviour
         {
             TriggerShieldBreakVisual();
         }
+    }
+
+    public void RestoreCurrentHealth(int currentHealth)
+    {
+        if (_data == null)
+            return;
+
+        _currentHealth = Mathf.Clamp(currentHealth, 1, _data.maxHealth);
+
+        if (_data.maxHealth > 1 && _currentHealth < _data.maxHealth)
+            TriggerShieldBreakVisual();
+        else
+            ResetShieldBreakVisual();
     }
 
     private bool ShouldTriggerShieldBreak(int previousHealth)

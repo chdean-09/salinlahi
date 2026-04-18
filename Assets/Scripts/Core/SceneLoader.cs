@@ -50,6 +50,7 @@ public class SceneLoader : Singleton<SceneLoader>
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
         SandboxMode.Deactivate();
 #endif
+        CleanupGameplayRun();
         LoadScene(SCENE_MAIN_MENU);
     }
 
@@ -58,6 +59,7 @@ public class SceneLoader : Singleton<SceneLoader>
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
         SandboxMode.Deactivate();
 #endif
+        CleanupGameplayRun();
         LoadScene(SCENE_GAMEPLAY);
     }
 
@@ -70,6 +72,8 @@ public class SceneLoader : Singleton<SceneLoader>
             return;
         }
 
+        GameManager.Instance?.DiscardPausedRunSnapshot();
+        CleanupGameplayRun();
         LoadScene(SCENE_GAMEPLAY);
 #else
         DebugLogger.LogWarning("SceneLoader: Sandbox gameplay is not available in this build.");
@@ -81,6 +85,7 @@ public class SceneLoader : Singleton<SceneLoader>
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
         SandboxMode.Deactivate();
 #endif
+        CleanupGameplayRun();
         LoadScene(SCENE_LEVEL_SELECT);
     }
 
@@ -94,10 +99,16 @@ public class SceneLoader : Singleton<SceneLoader>
         }
 #endif
 
+        CleanupGameplayRun();
         LoadScene(SCENE_GAME_OVER);
     }
 
     public void ReloadCurrentScene() => LoadScene(SceneManager.GetActiveScene().name);
+
+    private void CleanupGameplayRun()
+    {
+        EnemyPool.Instance?.ReturnAllCheckedOut();
+    }
 
     private IEnumerator LoadRoutine(string sceneName)
     {

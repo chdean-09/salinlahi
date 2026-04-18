@@ -23,7 +23,7 @@ When sandbox mode is not available, the button is not created and `LoadSandboxGa
 Sandbox mode intentionally disables normal gameplay constraints:
 
 - Normal waves are paused and `WaveManager.StartWaves()` returns without starting wave coroutines.
-- Manual enemy spawns use existing `EnemyDataSO` and `BaybayinCharacterSO` references from `Assets/Resources/Sandbox/SandboxCatalog.asset`.
+- Manual enemy spawns use existing `EnemyDataSO` and `BaybayinCharacterSO` references from the configured level and wave data.
 - Character selection can be random or a specific selected character.
 - Enemy character overrides are transient runtime values on `Enemy`; shared `EnemyDataSO.assignedCharacter` assets are not changed.
 - Base hits still raise base-hit behavior and despawn enemies, but `HeartSystem` does not reduce hearts or raise game over.
@@ -44,7 +44,7 @@ Sandbox mode intentionally disables normal gameplay constraints:
 - Direct calls to `SceneLoader.LoadSandboxGameplay()` do nothing when sandbox is unavailable.
 - Sandbox opens the existing Gameplay scene with the sandbox overlay visible.
 - The overlay can cycle enemy type, character mode, and specific character.
-- Every enemy listed in `SandboxCatalog.asset` can be manually spawned.
+- Every enemy configured in the level and wave data can be manually spawned.
 - Random character mode spawns enemies with configured Baybayin characters.
 - Specific character mode spawns enemies with the selected Baybayin character.
 - Manual spawns do not change any `EnemyDataSO.assignedCharacter` asset.

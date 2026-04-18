@@ -8,8 +8,8 @@ public class EnemyPool : Singleton<EnemyPool>
     [Serializable]
     private class EnemyPrefabRegistration
     {
-        public string enemyID;
-        public Enemy prefab;
+        public string enemyID = null;
+        public Enemy prefab = null;
         public int defaultCapacity = 10;
         public int maxSize = 20;
     }
@@ -169,6 +169,16 @@ public class EnemyPool : Singleton<EnemyPool>
         }
 
         state.Pool.Release(enemy);
+    }
+
+    public void ReturnAllCheckedOut()
+    {
+        if (_checkedOutEnemies.Count == 0)
+            return;
+
+        var checkedOutSnapshot = new List<Enemy>(_checkedOutEnemies);
+        for (int i = 0; i < checkedOutSnapshot.Count; i++)
+            Return(checkedOutSnapshot[i]);
     }
 
     private PoolState ResolvePoolState(EnemyDataSO data)

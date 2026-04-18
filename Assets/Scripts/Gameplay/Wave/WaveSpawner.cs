@@ -57,7 +57,46 @@ public class WaveSpawner : MonoBehaviour
         return enemy;
     }
 
-    public IEnumerator SpawnWave(WaveConfigSO wave, Action onEnemySpawned = null)
+    public Enemy SpawnEnemy(EnemyDataSO data, BaybayinCharacterSO character)
+    {
+        Enemy enemy = SpawnEnemy(data);
+        if (enemy != null)
+            enemy.AssignCharacter(character);
+
+        return enemy;
+    }
+
+    public Enemy RestoreEnemy(
+        EnemyDataSO data,
+        BaybayinCharacterSO character,
+        Vector3 position,
+        int currentHealth)
+    {
+        EnemyDataSO finalData = ResolveEnemyData(data);
+        if (finalData == null)
+        {
+            DebugLogger.LogError("WaveSpawner.RestoreEnemy: No enemy data resolved.");
+            return null;
+        }
+
+        EnemyPool pool = EnemyPool.Instance;
+        if (pool == null)
+        {
+            DebugLogger.LogError("WaveSpawner.RestoreEnemy: EnemyPool.Instance is missing.");
+            return null;
+        }
+
+        Enemy enemy = pool.Get(finalData);
+        if (enemy == null)
+            return null;
+
+        enemy.transform.position = position;
+        enemy.AssignCharacter(character);
+        enemy.RestoreCurrentHealth(currentHealth);
+        return enemy;
+    }
+
+    public IEnumerator SpawnWave(WaveConfigSO wave, Action onEnemySpawned = null, int spawnOffset = 0)
     {
         if (wave == null)
         {
@@ -78,9 +117,13 @@ public class WaveSpawner : MonoBehaviour
             yield break;
         }
 
+        int firstSpawnIndex = Mathf.Clamp(spawnOffset, 0, enemyCount);
+        if (firstSpawnIndex >= enemyCount)
+            yield break;
+
         float interval = GetClampedSpawnInterval(wave);
 
-        for (int i = 0; i < enemyCount; i++)
+        for (int i = firstSpawnIndex; i < enemyCount; i++)
         {
             EnemyDataSO data = SelectEnemyDataForSpawn(wave);
             BaybayinCharacterSO character = SelectCharacterForSpawn(wave, data);

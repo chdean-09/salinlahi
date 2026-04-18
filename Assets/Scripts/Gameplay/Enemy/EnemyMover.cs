@@ -1,4 +1,7 @@
 using UnityEngine;
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+using Salinlahi.Debug.Sandbox;
+#endif
 
 // Handles enemy movement. Fires RaiseBaseHit when colliding with PlayerBase trigger.
 [RequireComponent(typeof(Collider2D))]
@@ -34,7 +37,7 @@ public class EnemyMover : MonoBehaviour
     {
         if (!_active) return;
         // Portrait orientation: enemies move from top to bottom (negative Y direction)
-        float finalSpeed = _speed * _focusSpeedMultiplier;
+        float finalSpeed = GetFinalSpeed();
         transform.Translate(Vector2.down * finalSpeed * Time.deltaTime, Space.World);
     }
 
@@ -73,11 +76,45 @@ public class EnemyMover : MonoBehaviour
 
     private void HandleFocusOn()
     {
-        _focusSpeedMultiplier = ComboManager.Instance.FocusSpeedMultiplier;
+        if (ComboManager.Instance != null)
+            _focusSpeedMultiplier = ComboManager.Instance.FocusSpeedMultiplier;
     }
 
     private void HandleFocusOff()
     {
         _focusSpeedMultiplier = 1f;
     }
+
+    private float GetFinalSpeed()
+    {
+        if (IsSandboxMovementPaused())
+            return 0f;
+
+        return _speed * _focusSpeedMultiplier * GetSandboxMovementSpeedScale();
+    }
+
+    private static bool IsSandboxMovementPaused()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        return SandboxMode.IsMovementPaused;
+#else
+        return false;
+#endif
+    }
+
+    private static float GetSandboxMovementSpeedScale()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        return SandboxMode.MovementSpeedScale;
+#else
+        return 1f;
+#endif
+    }
+
+#if UNITY_INCLUDE_TESTS
+    public float GetFinalSpeedForTests()
+    {
+        return GetFinalSpeed();
+    }
+#endif
 }

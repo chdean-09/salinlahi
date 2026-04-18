@@ -1,5 +1,7 @@
 using NUnit.Framework;
 using Salinlahi.Debug.Sandbox;
+using System.Collections;
+using System.Reflection;
 using UnityEngine;
 using UnityEngine.Pool;
 
@@ -114,6 +116,168 @@ public class SandboxModeTests
     }
 
     [Test]
+    public void EnemyMoverUsesSandboxMovementSpeedScale()
+    {
+        SandboxMode.SetAvailabilityOverrideForTests(true);
+        SandboxMode.TryActivate();
+        SandboxMode.SetMovementSpeedScale(0.5f);
+
+        GameObject enemyObject = new("Enemy");
+        EnemyMover mover = enemyObject.AddComponent<EnemyMover>();
+
+        try
+        {
+            mover.SetSpeed(4f);
+
+            Assert.AreEqual(2f, mover.GetFinalSpeedForTests());
+        }
+        finally
+        {
+            Object.DestroyImmediate(enemyObject);
+        }
+    }
+
+    [Test]
+    public void EnemyMoverStopsWhenSandboxMovementIsPaused()
+    {
+        SandboxMode.SetAvailabilityOverrideForTests(true);
+        SandboxMode.TryActivate();
+        SandboxMode.SetMovementPaused(true);
+
+        GameObject enemyObject = new("Enemy");
+        EnemyMover mover = enemyObject.AddComponent<EnemyMover>();
+
+        try
+        {
+            mover.SetSpeed(4f);
+
+            Assert.AreEqual(0f, mover.GetFinalSpeedForTests());
+        }
+        finally
+        {
+            Object.DestroyImmediate(enemyObject);
+        }
+    }
+
+    [Test]
+    public void WaveSpawnerSpawnWaveStartsAfterSpawnOffset()
+    {
+        GameObject poolObject = new("EnemyPool");
+        GameObject spawnerObject = new("WaveSpawner");
+        GameObject prefabObject = new("EnemyPrefab");
+        GameObject leftSpawn = new("LeftSpawn");
+        GameObject rightSpawn = new("RightSpawn");
+        EnemyDataSO enemyData = ScriptableObject.CreateInstance<EnemyDataSO>();
+        BaybayinCharacterSO character = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+        WaveConfigSO wave = ScriptableObject.CreateInstance<WaveConfigSO>();
+
+        try
+        {
+            poolObject.SetActive(false);
+            Enemy prefab = CreateEnemyPrefab(prefabObject);
+            EnemyPool pool = poolObject.AddComponent<EnemyPool>();
+            SetPrivateField(pool, "_enemyPrefab", prefab);
+            SetPrivateField(pool, "_defaultCapacity", 0);
+            SetPrivateField(pool, "_maxSize", 4);
+            poolObject.SetActive(true);
+
+            leftSpawn.transform.position = new Vector3(-1f, 3f, 0f);
+            rightSpawn.transform.position = new Vector3(1f, 3f, 0f);
+            WaveSpawner spawner = spawnerObject.AddComponent<WaveSpawner>();
+            SetPrivateField(spawner, "_spawnPoints", new[] { leftSpawn.transform, rightSpawn.transform });
+
+            enemyData.enemyID = "offset-test";
+            enemyData.maxHealth = 1;
+            enemyData.moveSpeed = 1f;
+            enemyData.assignedCharacter = character;
+            wave.enemyCount = 3;
+            wave.spawnInterval = 0f;
+            wave.enemyTypesInWave = new System.Collections.Generic.List<EnemyDataSO> { enemyData };
+            wave.charactersInWave = new System.Collections.Generic.List<BaybayinCharacterSO> { character };
+
+            int spawnedCallbacks = 0;
+            IEnumerator routine = spawner.SpawnWave(wave, () => spawnedCallbacks++, 2);
+            while (routine.MoveNext()) { }
+
+            Assert.AreEqual(1, spawnedCallbacks);
+        }
+        finally
+        {
+            Object.DestroyImmediate(poolObject);
+            Object.DestroyImmediate(spawnerObject);
+            Object.DestroyImmediate(prefabObject);
+            Object.DestroyImmediate(leftSpawn);
+            Object.DestroyImmediate(rightSpawn);
+            Object.DestroyImmediate(enemyData);
+            Object.DestroyImmediate(character);
+            Object.DestroyImmediate(wave);
+            ClearSingletonInstance<EnemyPool>();
+        }
+    }
+
+    [Test]
+    public void PausedRunSnapshotRemainsAvailableUntilExplicitlyDiscarded()
+    {
+        GameObject managerObject = new("GameManager");
+        GameManager gameManager = managerObject.AddComponent<GameManager>();
+
+        try
+        {
+            gameManager.CachePausedRunSnapshot(3, 2, 1, 4);
+
+            Assert.IsTrue(gameManager.TryGetPausedRunLevelId(out int pausedLevelId));
+            Assert.AreEqual(3, pausedLevelId);
+        }
+        finally
+        {
+            Object.DestroyImmediate(managerObject);
+            ClearSingletonInstance<GameManager>();
+        }
+    }
+
+    [Test]
+    public void DiscardPausedRunSnapshotClearsResumeState()
+    {
+        GameObject managerObject = new("GameManager");
+        GameManager gameManager = managerObject.AddComponent<GameManager>();
+
+        try
+        {
+            gameManager.CachePausedRunSnapshot(3, 2, 1, 4);
+
+            gameManager.DiscardPausedRunSnapshot();
+
+            Assert.IsFalse(gameManager.TryGetPausedRunLevelId(out _));
+            Assert.IsFalse(gameManager.TryConsumePausedRunHearts(3, 3, out _));
+            Assert.IsFalse(gameManager.TryGetPausedRunEnemies(3, out _));
+            Assert.IsFalse(gameManager.TryGetPausedRunWaveProgress(3, out _, out _));
+        }
+        finally
+        {
+            Object.DestroyImmediate(managerObject);
+            ClearSingletonInstance<GameManager>();
+        }
+    }
+
+    [Test]
+    public void PauseMenuDoesNotCachePausedRunSnapshotInSandbox()
+    {
+        SandboxMode.SetAvailabilityOverrideForTests(true);
+        SandboxMode.TryActivate();
+
+        Assert.IsFalse(PauseMenuUI.ShouldCachePausedRunSnapshot());
+    }
+
+    [Test]
+    public void PauseMenuCachesPausedRunSnapshotOutsideSandbox()
+    {
+        SandboxMode.SetAvailabilityOverrideForTests(true);
+        SandboxMode.Deactivate();
+
+        Assert.IsTrue(PauseMenuUI.ShouldCachePausedRunSnapshot());
+    }
+
+    [Test]
     public void CharacterSelectionReturnsSelectedCharacterInSpecificMode()
     {
         BaybayinCharacterSO first = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
@@ -163,5 +327,28 @@ public class SandboxModeTests
         }
         public void Release(Enemy element) { }
         public void Clear() { }
+    }
+
+    private static Enemy CreateEnemyPrefab(GameObject prefabObject)
+    {
+        prefabObject.SetActive(false);
+        prefabObject.AddComponent<BoxCollider2D>();
+        prefabObject.AddComponent<EnemyMover>();
+        return prefabObject.AddComponent<Enemy>();
+    }
+
+    private static void SetPrivateField(object target, string fieldName, object value)
+    {
+        FieldInfo field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.IsNotNull(field, $"Missing field '{fieldName}' on {target.GetType().Name}.");
+        field.SetValue(target, value);
+    }
+
+    private static void ClearSingletonInstance<T>() where T : MonoBehaviour
+    {
+        FieldInfo instanceField = typeof(Singleton<T>).GetField(
+            "<Instance>k__BackingField",
+            BindingFlags.Static | BindingFlags.NonPublic);
+        instanceField?.SetValue(null, null);
     }
 }

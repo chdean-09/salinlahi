@@ -1,4 +1,8 @@
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+using Salinlahi.Debug.Sandbox;
+#endif
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class PauseMenuUI : MonoBehaviour
@@ -53,11 +57,30 @@ public class PauseMenuUI : MonoBehaviour
     {
         if (GameManager.Instance != null)
         {
-            HeartSystem heartSystem = FindObjectOfType<HeartSystem>();
-            if (heartSystem != null)
+            if (ShouldCachePausedRunSnapshot())
             {
-                int selectedLevel = PlayerPrefs.GetInt("SelectedLevel", 1);
-                GameManager.Instance.CachePausedRunSnapshot(selectedLevel, heartSystem.GetCurrentHearts());
+                HeartSystem heartSystem = FindFirstObjectByType<HeartSystem>();
+                if (heartSystem != null)
+                {
+                    int selectedLevel = PlayerPrefs.GetInt("SelectedLevel", 1);
+                    var activeEnemies = ActiveEnemyTracker.Instance != null
+                        ? ActiveEnemyTracker.Instance.GetActiveEnemiesSnapshot()
+                        : null;
+                    WaveManager waveManager = FindFirstObjectByType<WaveManager>();
+                    int currentWaveIndex = waveManager != null ? waveManager.CurrentWaveIndex : -1;
+                    int currentWaveSpawnedCount = waveManager != null ? waveManager.CurrentWaveSpawnedCount : 0;
+
+                    GameManager.Instance.CachePausedRunSnapshot(
+                        selectedLevel,
+                        heartSystem.GetCurrentHearts(),
+                        currentWaveIndex,
+                        currentWaveSpawnedCount,
+                        activeEnemies);
+                }
+            }
+            else
+            {
+                GameManager.Instance.DiscardPausedRunSnapshot();
             }
         }
 
@@ -65,6 +88,28 @@ public class PauseMenuUI : MonoBehaviour
             GameManager.Instance.ResumeGame();
 
         // SceneLoader.LoadRoutine always resets Time.timeScale at the start of every load.
-        SceneLoader.Instance.LoadMainMenu();
+        if (SceneLoader.Instance != null)
+            SceneLoader.Instance.LoadMainMenu();
+        else
+        {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+            SandboxMode.Deactivate();
+#endif
+            EnemyPool.Instance?.ReturnAllCheckedOut();
+            DebugLogger.LogWarning(
+                "PauseMenuUI: SceneLoader not available. Loading MainMenu directly. "
+                + "Open from Bootstrap for normal transitions.");
+            Time.timeScale = 1f;
+            SceneManager.LoadScene("MainMenu");
+        }
+    }
+
+    public static bool ShouldCachePausedRunSnapshot()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        return !SandboxMode.IsActive;
+#else
+        return true;
+#endif
     }
 }
