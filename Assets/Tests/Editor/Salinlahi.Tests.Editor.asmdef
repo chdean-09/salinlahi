@@ -1,0 +1,26 @@
+{
+    "name": "Salinlahi.Tests.Editor",
+    "rootNamespace": "Salinlahi.Tests.Editor",
+    "references": [
+        "Assembly-CSharp"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "optionalUnityReferences": [
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "allow UnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineSymbols": [],
+    "versionDefines": [],
+    "noEngineUpdate": false
+}
