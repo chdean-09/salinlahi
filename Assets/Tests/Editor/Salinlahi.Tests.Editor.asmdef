@@ -1,6 +1,6 @@
 {
     "name": "Salinlahi.Tests.Editor",
-    "rootNamespace": "Salinlahi.Tests.Editor",
+    "rootNamespace": "",
     "references": [
         "Assembly-CSharp"
     ],
@@ -14,8 +14,8 @@
     "defineConstraints": [
         "UNITY_INCLUDE_TESTS"
     ],
-    "allow UnsafeCode": false,
-    "overrideReferences": false,
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
     "precompiledReferences": [
         "nunit.framework.dll"
     ],
