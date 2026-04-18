@@ -11,10 +11,12 @@ using UnityEngine.SceneManagement;
 /// </summary>
 public class ProgressManager : Singleton<ProgressManager>
 {
+    public const string SelectedLevelKey = "SelectedLevel";
+    public const string EndlessModeKey = "salinlahi.progress.endless_unlocked";
+
     private const string KeyPrefix = "salinlahi.progress.";
     private const int MaxStars = 3;
     private const int TotalLevels = 5;
-    private const string EndlessModeKey = "salinlahi.progress.endless_unlocked";
 
     // Track which level we've processed to handle restarts properly
     private int _lastProcessedLevelId = -1;
@@ -63,7 +65,7 @@ public class ProgressManager : Singleton<ProgressManager>
             }
 
             // Read the selected level when entering gameplay
-            _currentPlayingLevelId = PlayerPrefs.GetInt("SelectedLevel", 1);
+            _currentPlayingLevelId = PlayerPrefs.GetInt(SelectedLevelKey, 1);
             DebugLogger.Log($"ProgressManager: Starting Level {_currentPlayingLevelId}");
         }
         else
@@ -90,7 +92,7 @@ public class ProgressManager : Singleton<ProgressManager>
             }
 
             // Update current level ID from PlayerPrefs (in case it changed)
-            int levelId = PlayerPrefs.GetInt("SelectedLevel", 1);
+            int levelId = PlayerPrefs.GetInt(SelectedLevelKey, 1);
             if (levelId != _currentPlayingLevelId)
             {
                 _currentPlayingLevelId = levelId;
@@ -112,7 +114,7 @@ public class ProgressManager : Singleton<ProgressManager>
 #endif
 
         // Get current level ID from tracking or PlayerPrefs
-        int currentLevelId = _currentPlayingLevelId > 0 ? _currentPlayingLevelId : PlayerPrefs.GetInt("SelectedLevel", 1);
+        int currentLevelId = _currentPlayingLevelId > 0 ? _currentPlayingLevelId : PlayerPrefs.GetInt(SelectedLevelKey, 1);
 
         // Validate level ID
         if (currentLevelId < 1 || currentLevelId > TotalLevels)

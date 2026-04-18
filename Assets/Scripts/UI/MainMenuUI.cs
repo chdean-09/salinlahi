@@ -33,7 +33,7 @@ public class MainMenuUI : MonoBehaviour
             DebugLogger.Log($"MainMenuUI: Resuming paused run on level {selectedLevel}.");
         }
 
-        PlayerPrefs.SetInt("SelectedLevel", selectedLevel);
+        PlayerPrefs.SetInt(ProgressManager.SelectedLevelKey, selectedLevel);
         PlayerPrefs.Save();
 
         if (GameManager.Instance != null)

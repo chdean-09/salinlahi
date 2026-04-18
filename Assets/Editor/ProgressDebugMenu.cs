@@ -71,7 +71,7 @@ public static class ProgressDebugMenu
             PlayerPrefs.DeleteKey($"{KeyPrefix}unlocked.{i}");
             PlayerPrefs.DeleteKey($"{KeyPrefix}stars.{i}");
         }
-        PlayerPrefs.DeleteKey("salinlahi.progress.endless_unlocked");
+        PlayerPrefs.DeleteKey(ProgressManager.EndlessModeKey);
 
         PlayerPrefs.Save();
         Debug.Log("[Salinlahi] Progress cleared (direct).");
@@ -111,7 +111,7 @@ public static class ProgressDebugMenu
             progressInfo += "\n";
         }
 
-        bool endlessUnlocked = PlayerPrefs.GetInt("salinlahi.progress.endless_unlocked", 0) == 1;
+        bool endlessUnlocked = PlayerPrefs.GetInt(ProgressManager.EndlessModeKey, 0) == 1;
         progressInfo += $"\nEndless Mode: {(endlessUnlocked ? "UNLOCKED" : "LOCKED")}";
 
         Debug.Log($"[Salinlahi] {progressInfo}");
