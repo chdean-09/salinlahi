@@ -6,6 +6,7 @@ using UnityEngine;
 /// analysis. Data feeds into the confusion matrix tool (SALIN-63).
 public static class RecognitionLogger
 {
+    public static bool LoggingEnabled { get; set; } = true;
     private const string FILE_NAME = "recognition_log.csv";
 
     private static readonly string CSV_HEADER =
@@ -28,6 +29,8 @@ public static class RecognitionLogger
         RecognitionResult result,
         string intendedCharacterID = "")
     {
+        if (!LoggingEnabled) return;
+
         try
         {
             EnsureHeader();
