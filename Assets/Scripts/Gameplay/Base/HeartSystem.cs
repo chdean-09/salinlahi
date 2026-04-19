@@ -14,7 +14,7 @@ public class HeartSystem : MonoBehaviour
     {
         _currentHearts = _maxHearts;
 
-        int selectedLevel = PlayerPrefs.GetInt("SelectedLevel", 1);
+        int selectedLevel = PlayerPrefs.GetInt(ProgressManager.SelectedLevelKey, 1);
         if (GameManager.Instance != null
             && GameManager.Instance.TryConsumePausedRunHearts(selectedLevel, _maxHearts, out int restoredHearts))
         {

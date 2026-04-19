@@ -40,7 +40,7 @@ public class WaveManager : MonoBehaviour
     {
         // GameManager.CurrentLevel is set by LevelSelectUI before scene load.
         // Fall back to PlayerPrefs if not set or stale (e.g. Play after a previous level select).
-        int selectedLevel = PlayerPrefs.GetInt("SelectedLevel", 1);
+        int selectedLevel = PlayerPrefs.GetInt(ProgressManager.SelectedLevelKey, 1);
         LevelConfigSO selectedGameManagerLevel = GameManager.Instance != null
             ? GameManager.Instance.CurrentLevel
             : null;
@@ -71,7 +71,7 @@ public class WaveManager : MonoBehaviour
     /// </summary>
     public void StartLevel()
     {
-        int selectedLevel = PlayerPrefs.GetInt("SelectedLevel", 1);
+        int selectedLevel = PlayerPrefs.GetInt(ProgressManager.SelectedLevelKey, 1);
         StartLevel(selectedLevel);
     }
 

@@ -142,7 +142,7 @@ public class LevelSelectUI : MonoBehaviour
 
         DebugLogger.Log($"LevelSelectUI: Level {levelNumber} selected");
 
-        PlayerPrefs.SetInt("SelectedLevel", levelNumber);
+        PlayerPrefs.SetInt(ProgressManager.SelectedLevelKey, levelNumber);
         PlayerPrefs.Save();
 
         int index = levelNumber - 1;

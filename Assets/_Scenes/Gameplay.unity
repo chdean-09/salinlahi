@@ -1093,13 +1093,15 @@ GameObject:
   - component: {fileID: 692981212}
   - component: {fileID: 692981211}
   - component: {fileID: 692981210}
+  - component: {fileID: 692981213}
+  - component: {fileID: 692981214}
   m_Layer: 0
   m_Name: FocusModeIndicator
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &692981209
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1169,6 +1171,36 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 692981208}
   m_CullTransparentMesh: 1
+--- !u!114 &692981213
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 692981208}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f98c3d18ae3724df6b0239cdd783f374, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Salinlahi.Runtime::FocusModeIndicator
+  _focusModeIndicator: {fileID: 0}
+  _focusModeCanvasGroup: {fileID: 0}
+  _focusFadeDuration: 0.2
+--- !u!114 &692981214
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 692981208}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f98c3d18ae3724df6b0239cdd783f374, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Salinlahi.Runtime::FocusModeIndicator
+  _focusModeIndicator: {fileID: 0}
+  _focusModeCanvasGroup: {fileID: 0}
+  _focusFadeDuration: 0.2
 --- !u!1 &706297085
 GameObject:
   m_ObjectHideFlags: 0
@@ -1305,8 +1337,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WaveManager
   _levelConfig: {fileID: 11400000, guid: 0fb8a83456b92dd4aa1de31579baa559, type: 2}
-  _defaultEnemyData: {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
   _spawner: {fileID: 1543327747}
+  _legacyDefaultEnemyData: {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
   _levelConfigs:
   - {fileID: 11400000, guid: 0fb8a83456b92dd4aa1de31579baa559, type: 2}
   - {fileID: 11400000, guid: d01f1d66fecf4fc1bbf186c18f571dd7, type: 2}
@@ -1416,6 +1448,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1149608638}
   - component: {fileID: 1149608639}
+  - component: {fileID: 1149608640}
   m_Layer: 0
   m_Name: HeartsPanel
   m_TagString: Untagged
@@ -1471,6 +1504,26 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
+--- !u!114 &1149608640
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1149608637}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a9a1a7d3c6f3c41e7ac84a16e1e540fd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Salinlahi.Runtime::HeartDisplay
+  _heartIcons:
+  - {fileID: 764728337}
+  - {fileID: 89236808}
+  - {fileID: 1554531272}
+  _heartFull: {fileID: 0}
+  _heartEmpty: {fileID: 0}
+  _heartShakeDuration: 0.3
+  _heartShakeMagnitude: 5
 --- !u!1 &1462262014
 GameObject:
   m_ObjectHideFlags: 0
@@ -1619,6 +1672,9 @@ GameObject:
   - component: {fileID: 1512931225}
   - component: {fileID: 1512931227}
   - component: {fileID: 1512931226}
+  - component: {fileID: 1512931230}
+  - component: {fileID: 1512931229}
+  - component: {fileID: 1512931228}
   m_Layer: 0
   m_Name: HUDRoot
   m_TagString: Untagged
@@ -1665,29 +1721,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 70a7cf24a74e2ba4da127d21631d21e5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HUD
-  _heartIcons:
-  - {fileID: 764728337}
-  - {fileID: 89236808}
-  - {fileID: 1554531272}
-  _heartFull: {fileID: 0}
-  _heartEmpty: {fileID: 0}
-  _heartShakeDuration: 0.3
-  _heartShakeMagnitude: 5
-  _waveText: {fileID: 1868612381}
-  _waveSlideDistance: 60
-  _waveSlideDuration: 0.35
-  _streakText: {fileID: 1599009905}
-  _comboPopScale: 1.4
-  _comboPopDuration: 0.15
-  _focusModeIndicator: {fileID: 692981208}
-  _focusModeCanvasGroup: {fileID: 692981210}
-  _focusFadeDuration: 0.2
   _pauseButton: {fileID: 2039041609}
-  _rejectFlash: {fileID: 1730296454}
-  _rejectXMark: {fileID: 394851317}
-  _successFlash: {fileID: 41067759}
-  _rejectDuration: 0.5
-  _successDuration: 0.3
 --- !u!114 &1512931227
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1700,6 +1734,53 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f6ea44b5cccae4e118554ec196924b29, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SafeAreaHandler
+--- !u!114 &1512931228
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1512931224}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c84e8e3a4ed142d2a840dbecdfe96a3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Salinlahi.Runtime::DrawingFeedback
+  _rejectFlash: {fileID: 1730296454}
+  _rejectXMark: {fileID: 394851317}
+  _successFlash: {fileID: 41067759}
+  _rejectDuration: 0.5
+  _successDuration: 0.3
+--- !u!114 &1512931229
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1512931224}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f98c3d18ae3724df6b0239cdd783f374, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Salinlahi.Runtime::FocusModeIndicator
+  _focusModeIndicator: {fileID: 692981208}
+  _focusModeCanvasGroup: {fileID: 692981210}
+  _focusFadeDuration: 0.2
+--- !u!114 &1512931230
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1512931224}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 69962997e0de34ee58fff28b23cabe6a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Salinlahi.Runtime::ComboDisplay
+  _streakText: {fileID: 1599009905}
+  _comboPopScale: 1.4
+  _comboPopDuration: 0.15
 --- !u!1 &1543327746
 GameObject:
   m_ObjectHideFlags: 0
@@ -1732,6 +1813,7 @@ MonoBehaviour:
   _spawnPoints:
   - {fileID: 706297086}
   - {fileID: 2054471412}
+  _fallbackEnemyData: {fileID: 0}
 --- !u!4 &1543327748
 Transform:
   m_ObjectHideFlags: 0
@@ -1835,13 +1917,15 @@ GameObject:
   - component: {fileID: 1599009904}
   - component: {fileID: 1599009906}
   - component: {fileID: 1599009905}
+  - component: {fileID: 1599009907}
+  - component: {fileID: 1599009908}
   m_Layer: 0
   m_Name: ComboText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &1599009904
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1890,7 +1974,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
+    rgba: 4279949823
   m_fontColor: {r: 1, g: 0.85, b: 0.1, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -1903,7 +1987,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -1961,6 +2045,36 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1599009903}
   m_CullTransparentMesh: 1
+--- !u!114 &1599009907
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1599009903}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 69962997e0de34ee58fff28b23cabe6a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Salinlahi.Runtime::ComboDisplay
+  _streakText: {fileID: 0}
+  _comboPopScale: 1.4
+  _comboPopDuration: 0.15
+--- !u!114 &1599009908
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1599009903}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 69962997e0de34ee58fff28b23cabe6a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Salinlahi.Runtime::ComboDisplay
+  _streakText: {fileID: 0}
+  _comboPopScale: 1.4
+  _comboPopDuration: 0.15
 --- !u!1 &1632619546
 GameObject:
   m_ObjectHideFlags: 0
@@ -2528,6 +2642,7 @@ GameObject:
   - component: {fileID: 1868612380}
   - component: {fileID: 1868612382}
   - component: {fileID: 1868612381}
+  - component: {fileID: 1868612383}
   m_Layer: 0
   m_Name: WaveText
   m_TagString: Untagged
@@ -2654,6 +2769,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1868612379}
   m_CullTransparentMesh: 1
+--- !u!114 &1868612383
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1868612379}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6949e6946eb15418ea1456dfcc9c4ec6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Salinlahi.Runtime::WaveDisplay
+  _waveText: {fileID: 1868612381}
+  _waveSlideDistance: 60
+  _waveSlideDuration: 0.35
 --- !u!1 &1951203906
 GameObject:
   m_ObjectHideFlags: 0
@@ -2714,6 +2844,50 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -1.66665, y: 0.79758, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2022306081
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2022306083}
+  - component: {fileID: 2022306082}
+  m_Layer: 0
+  m_Name: CombatResolver
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &2022306082
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2022306081}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2f76ee17656cba748aa09681472d231f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Salinlahi.Runtime::CombatResolver
+--- !u!4 &2022306083
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2022306081}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3005,3 +3179,4 @@ SceneRoots:
   - {fileID: 1674900746}
   - {fileID: 490898503}
   - {fileID: 200905677}
+  - {fileID: 2022306083}

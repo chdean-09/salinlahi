@@ -33,7 +33,7 @@ public class MainMenuUI : MonoBehaviour
             DebugLogger.Log($"MainMenuUI: Resuming paused run on level {selectedLevel}.");
         }
 
-        PlayerPrefs.SetInt("SelectedLevel", selectedLevel);
+        PlayerPrefs.SetInt(ProgressManager.SelectedLevelKey, selectedLevel);
         PlayerPrefs.Save();
 
         if (GameManager.Instance != null)
@@ -191,9 +191,11 @@ public class MainMenuUI : MonoBehaviour
         EnemyPool.Instance?.ReturnAllCheckedOut();
     }
 
-    // TODO: Replace with actual story progression check when save system is implemented
-    private bool IsStoryComplete()
+private bool IsStoryComplete()
     {
-        return false;
+        if (ProgressManager.Instance == null)
+            return false;
+
+        return ProgressManager.Instance.IsEndlessModeUnlocked();
     }
 }

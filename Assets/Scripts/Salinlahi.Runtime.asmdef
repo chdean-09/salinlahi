@@ -1,0 +1,17 @@
+{
+    "name": "Salinlahi.Runtime",
+    "rootNamespace": "",
+    "references": [
+        "Unity.TextMeshPro",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineSymbols": [],
+    "versionDefines": [],
+    "noEngineUpdate": false
+}

@@ -7,6 +7,11 @@ public class ActiveEnemyTracker : Singleton<ActiveEnemyTracker>
 {
     private readonly List<Enemy> _activeEnemies = new List<Enemy>();
 
+    /// <summary>
+    /// Reusable buffer for FindAllWithCharacter. Callers must NOT cache the returned list.
+    /// </summary>
+    private readonly List<Enemy> _characterMatchBuffer = new List<Enemy>();
+
     public int ActiveCount
     {
         get
@@ -68,24 +73,26 @@ public class ActiveEnemyTracker : Singleton<ActiveEnemyTracker>
         return closest;
     }
 
+/// <summary>
     /// Returns all active enemies carrying the given characterID.
-    /// Used later for AOE resolution in Sprint 3.
+    /// Used later for AOE resolution.
+    /// <para><b>Do NOT cache the returned list</b> — it is reused across calls.</para>
+    /// </summary>
     public List<Enemy> FindAllWithCharacter(string characterID)
     {
         CleanupStaleEntries();
-
-        List<Enemy> matches = new List<Enemy>();
+        _characterMatchBuffer.Clear();
         for (int i = 0; i < _activeEnemies.Count; i++)
         {
             Enemy e = _activeEnemies[i];
             if (e.Character != null
                 && e.Character.characterID == characterID)
             {
-                matches.Add(e);
+                _characterMatchBuffer.Add(e);
             }
         }
 
-        return matches;
+        return _characterMatchBuffer;
     }
 
     /// No-argument overload: returns the enemy closest to base,

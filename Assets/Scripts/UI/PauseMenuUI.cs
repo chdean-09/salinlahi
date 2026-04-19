@@ -62,7 +62,7 @@ public class PauseMenuUI : MonoBehaviour
                 HeartSystem heartSystem = FindFirstObjectByType<HeartSystem>();
                 if (heartSystem != null)
                 {
-                    int selectedLevel = PlayerPrefs.GetInt("SelectedLevel", 1);
+                    int selectedLevel = PlayerPrefs.GetInt(ProgressManager.SelectedLevelKey, 1);
                     var activeEnemies = ActiveEnemyTracker.Instance != null
                         ? ActiveEnemyTracker.Instance.GetActiveEnemiesSnapshot()
                         : null;

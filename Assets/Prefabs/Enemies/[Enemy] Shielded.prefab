@@ -164,7 +164,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 45d81e901f41e1143b40ce8ebed1aa3c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Enemy
-  _data: {fileID: 11400000, guid: 3e4f5g6h7i8j9k01223a4b5c6d7e8f012, type: 2}
+  _data: {fileID: 11400000, guid: ccb4c198251c34717b8afd6455611e3a, type: 2}
   _useShieldBreakColorFeedback: 1
   _shieldIntactColor: {r: 0, g: 0.75, b: 0.65, a: 1}
   _shieldBrokenColor: {r: 0.55, g: 0.55, b: 0.55, a: 1}
