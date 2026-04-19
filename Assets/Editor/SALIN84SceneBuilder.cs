@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System.Collections.Generic;
+using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -69,6 +70,7 @@ public static class SALIN84SceneBuilder
 
         GameObject backButton = FindByExactName("BackButton");
         WireLevelSelectUI(allConfigs, buttons, backButton);
+        SetButtonEditorPreview(allConfigs, buttons);
 
         if (gridContainer != null)
             Undo.DestroyObjectImmediate(gridContainer);
@@ -220,11 +222,15 @@ public static class SALIN84SceneBuilder
             Undo.RegisterCreatedObjectUndo(instance, $"Create LevelButton_{i + 1:D2}");
             instance.name = $"LevelButton_{i + 1:D2}";
 
+            // Ensure LevelButton component exists
             LevelButton lb = instance.GetComponent<LevelButton>();
-            if (lb != null)
-                buttons.Add(lb);
-            else
-                Debug.LogWarning($"[SALIN-84] LevelButton component missing on instance {i + 1}.");
+            if (lb == null)
+                lb = Undo.AddComponent<LevelButton>(instance);
+
+            // Wire LevelButton internal fields via SerializedObject
+            WireLevelButtonInternals(lb, instance);
+
+            buttons.Add(lb);
         }
 
         if (gridContainer != null)
@@ -235,6 +241,86 @@ public static class SALIN84SceneBuilder
 
         Debug.Log($"[SALIN-84] Created {buttons.Count} LevelButton instances.");
         return buttons;
+    }
+
+    /// <summary>
+    /// Wires the internal serialized fields on a LevelButton instance:
+    /// _button, _levelNumberText, _lockIcon, _completionBadge.
+    /// Replaces legacy Text with TextMeshProUGUI if needed.
+    /// </summary>
+    private static void WireLevelButtonInternals(LevelButton lb, GameObject instance)
+    {
+        var so = new SerializedObject(lb);
+
+        // Wire _button → the Button component on the root
+        Button btn = instance.GetComponent<Button>();
+        if (btn != null)
+            so.FindProperty("_button").objectReferenceValue = btn;
+
+        // Find the Label child and ensure it has TMP_Text (not legacy Text)
+        Transform labelTransform = instance.transform.Find("Label");
+        if (labelTransform != null)
+        {
+            // Remove legacy Text if present
+            Text legacyText = labelTransform.GetComponent<Text>();
+            if (legacyText != null)
+            {
+                string existingText = legacyText.text;
+                int fontSize = legacyText.fontSize;
+                Color color = legacyText.color;
+                TextAnchor alignment = legacyText.alignment;
+                Undo.DestroyObjectImmediate(legacyText);
+
+                // Add TextMeshProUGUI
+                TextMeshProUGUI tmp = Undo.AddComponent<TextMeshProUGUI>(labelTransform.gameObject);
+                tmp.text = existingText;
+                tmp.fontSize = fontSize;
+                tmp.color = color;
+                tmp.alignment = ConvertAlignment(alignment);
+                tmp.enableAutoSizing = false;
+                tmp.raycastTarget = false;
+
+                so.FindProperty("_levelNumberText").objectReferenceValue = tmp;
+                Debug.Log($"[SALIN-84] Replaced legacy Text with TMP on '{instance.name}/Label'.");
+            }
+            else
+            {
+                // Already has TMP or needs one added
+                TextMeshProUGUI tmp = labelTransform.GetComponent<TextMeshProUGUI>();
+                if (tmp == null)
+                    tmp = Undo.AddComponent<TextMeshProUGUI>(labelTransform.gameObject);
+                so.FindProperty("_levelNumberText").objectReferenceValue = tmp;
+            }
+        }
+
+        // Wire _lockIcon → LockOverlay child
+        Transform lockTransform = instance.transform.Find("LockOverlay");
+        if (lockTransform != null)
+            so.FindProperty("_lockIcon").objectReferenceValue = lockTransform.gameObject;
+
+        // Wire _completionBadge → CompletionCheck child
+        Transform checkTransform = instance.transform.Find("CompletionCheck");
+        if (checkTransform != null)
+            so.FindProperty("_completionBadge").objectReferenceValue = checkTransform.gameObject;
+
+        so.ApplyModifiedProperties();
+    }
+
+    private static TextAlignmentOptions ConvertAlignment(TextAnchor anchor)
+    {
+        return anchor switch
+        {
+            TextAnchor.UpperLeft => TextAlignmentOptions.TopLeft,
+            TextAnchor.UpperCenter => TextAlignmentOptions.Top,
+            TextAnchor.UpperRight => TextAlignmentOptions.TopRight,
+            TextAnchor.MiddleLeft => TextAlignmentOptions.MidlineLeft,
+            TextAnchor.MiddleCenter => TextAlignmentOptions.Center,
+            TextAnchor.MiddleRight => TextAlignmentOptions.MidlineRight,
+            TextAnchor.LowerLeft => TextAlignmentOptions.BottomLeft,
+            TextAnchor.LowerCenter => TextAlignmentOptions.Bottom,
+            TextAnchor.LowerRight => TextAlignmentOptions.BottomRight,
+            _ => TextAlignmentOptions.Center,
+        };
     }
 
     private static void WireLevelSelectUI(List<LevelConfigSO> configs,
@@ -275,6 +361,74 @@ public static class SALIN84SceneBuilder
 
         so.ApplyModifiedProperties();
         Debug.Log($"[SALIN-84] Wired LevelSelectUI with {count} level slots.");
+    }
+
+    private static void SetButtonEditorPreview(List<LevelConfigSO> configs,
+        List<LevelButton> buttons)
+    {
+        int count = Mathf.Min(configs.Count, buttons.Count);
+
+        for (int i = 0; i < count; i++)
+        {
+            LevelButton lb = buttons[i];
+            LevelConfigSO config = configs[i];
+            if (lb == null || config == null) continue;
+
+            var so = new SerializedObject(lb);
+
+            // Set level number text
+            SerializedProperty textProp = so.FindProperty("_levelNumberText");
+            if (textProp != null && textProp.objectReferenceValue != null)
+            {
+                var tmp = textProp.objectReferenceValue as TMPro.TMP_Text;
+                if (tmp != null)
+                {
+                    Undo.RecordObject(tmp, "Set level number text");
+                    tmp.text = config.levelNumber.ToString();
+                }
+            }
+
+            // Level 1 unlocked by default, rest locked
+            bool unlocked = config.levelNumber == 1;
+
+            // Set lock icon visibility
+            SerializedProperty lockProp = so.FindProperty("_lockIcon");
+            if (lockProp != null && lockProp.objectReferenceValue != null)
+            {
+                var lockGO = lockProp.objectReferenceValue as GameObject;
+                if (lockGO != null)
+                {
+                    Undo.RecordObject(lockGO, "Set lock icon visibility");
+                    lockGO.SetActive(!unlocked);
+                }
+            }
+
+            // Hide completion badge
+            SerializedProperty badgeProp = so.FindProperty("_completionBadge");
+            if (badgeProp != null && badgeProp.objectReferenceValue != null)
+            {
+                var badgeGO = badgeProp.objectReferenceValue as GameObject;
+                if (badgeGO != null)
+                {
+                    Undo.RecordObject(badgeGO, "Hide completion badge");
+                    badgeGO.SetActive(false);
+                }
+            }
+
+            // Set button interactability
+            SerializedProperty btnProp = so.FindProperty("_button");
+            if (btnProp != null && btnProp.objectReferenceValue != null)
+            {
+                var btn = btnProp.objectReferenceValue as Button;
+                if (btn != null)
+                {
+                    Undo.RecordObject(btn, "Set button interactable");
+                    btn.interactable = unlocked;
+                }
+            }
+        }
+
+        Debug.Log($"[SALIN-84] Set editor preview on {count} buttons (level numbers, lock state).");
     }
 
     private static GameObject GetLevelButtonPrefab()
