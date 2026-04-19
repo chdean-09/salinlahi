@@ -1,188 +1,233 @@
 #if UNITY_EDITOR
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Salinlahi.Editor
-{
-    public static class SALIN89SceneBuilder
+public static class SALIN89SceneBuilder
     {
-        private const string MenuPath = "Salinlahi/Debug/SALIN-89: Wire Up HUD Components";
-        private const string MenuPathBorderPulse = "Salinlahi/Debug/SALIN-89: Add CanvasGroup to BorderPulse";
+        private const string MenuPath = "Salinlahi/SALIN-89: Wire Up Gameplay Scene";
 
         [MenuItem(MenuPath)]
-        public static void WireUpHUDComponents()
+        public static void WireUpGameplayScene()
         {
-            GameObject hudRoot = GameObject.Find("HUDRoot");
-            if (hudRoot == null)
-            {
-                EditorUtility.DisplayDialog("HUD Root Not Found",
-                    "Could not find a GameObject named 'HUDRoot' in the scene. " +
-                    "Make sure the Gameplay scene is loaded.", "OK");
-                return;
-            }
-
             int added = 0;
 
-            added += AddComponentToChild<HeartDisplay>(hudRoot, "HeartsPanel",
-                comp =>
-                {
-                    var hearts = FindChildrenNamed(hudRoot.transform, "Heart_");
-                    if (hearts.Count > 0)
-                    {
-                        var field = typeof(HeartDisplay).GetField("_heartIcons",
-                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                        field?.SetValue(comp, hearts.ToArray());
-                    }
+            // --- CombatResolver ---
+            added += EnsureRootComponent<CombatResolver>("CombatResolver");
 
-                    AssignSpriteByName(comp, "_heartFull", "Heart Full");
-                    AssignSpriteByName(comp, "_heartEmpty", "Heart Empty");
-                });
+            // --- HUD child components ---
+            added += EnsureComponentOnSearch<HeartDisplay>("Heart");
+            added += EnsureComponentOnSearch<WaveDisplay>("Wave");
+            added += EnsureComponentOnSearch<ComboDisplay>("Combo", "Streak");
+            added += EnsureComponentOnSearch<FocusModeIndicator>("FocusMode", "Focus");
+            added += EnsureComponentOnSearch<DrawingFeedback>("Feedback", "DrawingFeedback", "Reject");
 
-            added += AddComponentToChild<WaveDisplay>(hudRoot, "WaveText",
-                comp => { });
+            // Auto-wire serialized fields via reflection where possible
+            AutoWireHeartDisplay();
+            AutoWireWaveDisplay();
+            AutoWireComboDisplay();
+            AutoWireDrawingFeedback();
+            AutoWireFocusModeIndicator();
 
-            added += AddComponentToChild<ComboDisplay>(hudRoot, "ComboText",
-                comp => { });
+            EditorSceneManager.MarkSceneDirty(
+                EditorSceneManager.GetActiveScene());
 
-            added += AddComponentToChild<FocusModeIndicator>(hudRoot, "FocusModeIndicator",
-                comp =>
-                {
-                    AssignGameObjectField(comp, "_focusModeIndicator",
-                        FindChildNamed(hudRoot.transform, "FocusModeIndicator"));
-                    var cg = FindChildNamed(hudRoot.transform, "FocusModeIndicator")
-                        ?.GetComponent<CanvasGroup>();
-                    if (cg != null)
-                    {
-                        var field = typeof(FocusModeIndicator).GetField("_focusModeCanvasGroup",
-                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                        field?.SetValue(comp, cg);
-                    }
-                });
-
-            added += AddComponentToChild<DrawingFeedback>(hudRoot, "RejectFlash",
-                comp =>
-                {
-                    AssignGameObjectField(comp, "_rejectXMark",
-                        FindChildNamed(hudRoot.transform, "RejectXMark"));
-                    AssignCanvasGroupInChildren(comp, "_successFlash",
-                        FindChildNamed(hudRoot.transform, "SuccessFlash"));
-                });
-
-            EditorUtility.DisplayDialog("SALIN-89 HUD Setup Complete",
-                $"Added {added} component(s) under HUDRoot.\n\n" +
-                "IMPORTANT: Review each component in the Inspector and " +
-                "assign any remaining serialized references (sprites, etc.) " +
-                "that could not be auto-wired.", "OK");
+            EditorUtility.DisplayDialog("SALIN-89 Scene Setup",
+                $"Added/verified {added} component(s).\n\n" +
+                "Review each component in the Inspector and assign\n" +
+                "any remaining serialized references that could not\n" +
+                "be auto-wired.\n\n" +
+                "Remember to SAVE THE SCENE.",
+                "OK");
         }
 
-        [MenuItem(MenuPathBorderPulse)]
-        public static void AddBorderPulseCanvasGroup()
+        // ─── Component placement helpers ───
+
+        /// Ensures a component exists on a root-level GameObject (creates if missing).
+        private static int EnsureRootComponent<T>(string goName) where T : Component
         {
-            BorderPulse[] allBorderPulses = Object.FindObjectsByType<BorderPulse>(FindObjectsSortMode.None);
-            if (allBorderPulses.Length == 0)
-            {
-                EditorUtility.DisplayDialog("No BorderPulse Found",
-                    "No BorderPulse component found in the scene. " +
-                    "Add one first, then run this command.", "OK");
-                return;
-            }
-
-            int added = 0;
-            foreach (BorderPulse bp in allBorderPulses)
-            {
-                CanvasGroup cg = bp.GetComponent<CanvasGroup>();
-                if (cg == null)
-                {
-                    cg = bp.gameObject.AddComponent<CanvasGroup>();
-                    added++;
-                    DebugLogger.Log($"SALIN-89: Added CanvasGroup to BorderPulse on '{bp.gameObject.name}'.");
-                }
-                else
-                {
-                    DebugLogger.Log($"SALIN-89: BorderPulse on '{bp.gameObject.name}' already has CanvasGroup.");
-                }
-            }
-
-            EditorUtility.DisplayDialog("SALIN-89 BorderPulse Setup Complete",
-                $"Added {added} CanvasGroup(s) to BorderPulse GameObject(s).", "OK");
-        }
-
-        private static int AddComponentToChild<T>(GameObject parent, string childName, System.Action<T> wire) where T : Component
-        {
-            Transform child = parent.transform.Find(childName);
-            if (child == null)
-            {
-                DebugLogger.Log($"SALIN-89: Could not find child '{childName}' under '{parent.name}'. Skipping {typeof(T).Name}.");
-                return 0;
-            }
-
-            T existing = child.GetComponent<T>();
+            T existing = Object.FindFirstObjectByType<T>();
             if (existing != null)
             {
-                DebugLogger.Log($"SALIN-89: '{childName}' already has {typeof(T).Name}. Skipping.");
+                Debug.Log($"[SALIN-89] {typeof(T).Name} already exists on '{existing.gameObject.name}'.");
                 return 0;
             }
 
-            T comp = child.gameObject.AddComponent<T>();
-            wire(comp);
-            DebugLogger.Log($"SALIN-89: Added {typeof(T).Name} to '{childName}'.");
+            var go = new GameObject(goName);
+            go.AddComponent<T>();
+            Undo.RegisterCreatedObjectUndo(go, $"Create {goName}");
+            Debug.Log($"[SALIN-89] Created '{goName}' with {typeof(T).Name}.");
             return 1;
         }
 
-        private static GameObject FindChildNamed(Transform parent, string name)
+        /// Finds a GameObject by searching names (partial match, recursive),
+        /// then adds the component if not already present.
+        private static int EnsureComponentOnSearch<T>(params string[] searchTerms) where T : Component
         {
-            Transform found = parent.Find(name);
-            return found?.gameObject;
+            T existing = Object.FindFirstObjectByType<T>();
+            if (existing != null)
+            {
+                Debug.Log($"[SALIN-89] {typeof(T).Name} already exists on '{existing.gameObject.name}'.");
+                return 0;
+            }
+
+            GameObject target = FindGameObjectByTerms(searchTerms);
+            if (target == null)
+            {
+                Debug.LogWarning($"[SALIN-89] Could not find GameObject for {typeof(T).Name} " +
+                                 $"(searched: {string.Join(", ", searchTerms)}). " +
+                                 "Add it manually.");
+                return 0;
+            }
+
+            Undo.AddComponent<T>(target);
+            Debug.Log($"[SALIN-89] Added {typeof(T).Name} to '{target.name}'.");
+            return 1;
         }
 
-        private static System.Collections.Generic.List<Image> FindChildrenNamed(Transform parent, string prefix)
+        private static GameObject FindGameObjectByTerms(string[] terms)
         {
-            var results = new System.Collections.Generic.List<Image>();
-            foreach (Transform child in parent)
+            // Search all root objects and their children
+            var scene = EditorSceneManager.GetActiveScene();
+            foreach (GameObject root in scene.GetRootGameObjects())
             {
-                if (child.name.StartsWith(prefix))
+                var result = SearchRecursive(root.transform, terms);
+                if (result != null) return result;
+            }
+            return null;
+        }
+
+        private static GameObject SearchRecursive(Transform parent, string[] terms)
+        {
+            foreach (string term in terms)
+            {
+                if (parent.name.IndexOf(term, System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    return parent.gameObject;
+            }
+
+            for (int i = 0; i < parent.childCount; i++)
+            {
+                var result = SearchRecursive(parent.GetChild(i), terms);
+                if (result != null) return result;
+            }
+            return null;
+        }
+
+        // ─── Auto-wire helpers ───
+
+        private static void AutoWireHeartDisplay()
+        {
+            var comp = Object.FindFirstObjectByType<HeartDisplay>();
+            if (comp == null) return;
+
+            // Find heart icons — look for Image children with "Heart" in name
+            var heartImages = new System.Collections.Generic.List<Image>();
+            foreach (Transform child in comp.transform)
+            {
+                if (child.name.IndexOf("Heart", System.StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     Image img = child.GetComponent<Image>();
-                    if (img != null)
-                        results.Add(img);
+                    if (img != null) heartImages.Add(img);
                 }
             }
 
-            results.Sort((a, b) =>
-                string.Compare(a.gameObject.name, b.gameObject.name, System.StringComparison.Ordinal));
-            return results;
+            if (heartImages.Count > 0)
+            {
+                heartImages.Sort((a, b) =>
+                    string.Compare(a.name, b.name, System.StringComparison.Ordinal));
+                SetField(comp, "_heartIcons", heartImages.ToArray());
+                Debug.Log($"[SALIN-89] Auto-wired {heartImages.Count} heart icons.");
+            }
         }
 
-        private static void AssignGameObjectField(Component target, string fieldName, GameObject value)
+        private static void AutoWireWaveDisplay()
         {
-            if (value == null) return;
-            var field = target.GetType().GetField(fieldName,
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            field?.SetValue(target, value);
+            var comp = Object.FindFirstObjectByType<WaveDisplay>();
+            if (comp == null) return;
+
+            var tmp = comp.GetComponentInChildren<TMPro.TMP_Text>(true);
+            if (tmp != null)
+            {
+                SetField(comp, "_waveText", tmp);
+                Debug.Log($"[SALIN-89] Auto-wired WaveDisplay._waveText to '{tmp.name}'.");
+            }
         }
 
-        private static void AssignCanvasGroupInChildren(Component target, string fieldName, GameObject parent)
+        private static void AutoWireComboDisplay()
         {
-            if (parent == null) return;
-            CanvasGroup cg = parent.GetComponent<CanvasGroup>();
-            if (cg == null) return;
-            var field = target.GetType().GetField(fieldName,
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            field?.SetValue(target, cg);
+            var comp = Object.FindFirstObjectByType<ComboDisplay>();
+            if (comp == null) return;
+
+            var tmp = comp.GetComponentInChildren<TMPro.TMP_Text>(true);
+            if (tmp != null)
+            {
+                SetField(comp, "_streakText", tmp);
+                Debug.Log($"[SALIN-89] Auto-wired ComboDisplay._streakText to '{tmp.name}'.");
+            }
         }
 
-        private static void AssignSpriteByName(Component target, string fieldName, string assetSearchName)
+        private static void AutoWireDrawingFeedback()
         {
-            string[] guids = AssetDatabase.FindAssets($"{assetSearchName} t:Sprite");
-            if (guids.Length == 0) return;
-            string path = AssetDatabase.GUIDToAssetPath(guids[0]);
-            Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
-            if (sprite == null) return;
+            var comp = Object.FindFirstObjectByType<DrawingFeedback>();
+            if (comp == null) return;
+
+            // Look for CanvasGroups among siblings/children
+            Transform parent = comp.transform.parent ?? comp.transform;
+            foreach (Transform child in parent)
+            {
+                CanvasGroup cg = child.GetComponent<CanvasGroup>();
+                if (cg == null) continue;
+
+                string lower = child.name.ToLowerInvariant();
+                if (lower.Contains("reject"))
+                {
+                    SetField(comp, "_rejectFlash", cg);
+                    // Look for X mark child
+                    foreach (Transform sub in child)
+                    {
+                        if (sub.name.IndexOf("X", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                            sub.name.IndexOf("Mark", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            SetField(comp, "_rejectXMark", sub.gameObject);
+                            break;
+                        }
+                    }
+                    Debug.Log($"[SALIN-89] Auto-wired DrawingFeedback._rejectFlash to '{child.name}'.");
+                }
+                else if (lower.Contains("success"))
+                {
+                    SetField(comp, "_successFlash", cg);
+                    Debug.Log($"[SALIN-89] Auto-wired DrawingFeedback._successFlash to '{child.name}'.");
+                }
+            }
+        }
+
+        private static void AutoWireFocusModeIndicator()
+        {
+            var comp = Object.FindFirstObjectByType<FocusModeIndicator>();
+            if (comp == null) return;
+
+            SetField(comp, "_focusModeIndicator", comp.gameObject);
+
+            CanvasGroup cg = comp.GetComponent<CanvasGroup>();
+            if (cg == null) cg = comp.gameObject.AddComponent<CanvasGroup>();
+            SetField(comp, "_focusModeCanvasGroup", cg);
+            Debug.Log("[SALIN-89] Auto-wired FocusModeIndicator.");
+        }
+
+        // ─── Reflection utility ───
+
+        private static void SetField(object target, string fieldName, object value)
+        {
             var field = target.GetType().GetField(fieldName,
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            field?.SetValue(target, sprite);
+                System.Reflection.BindingFlags.NonPublic |
+                System.Reflection.BindingFlags.Instance);
+            if (field != null)
+            {
+                field.SetValue(target, value);
+                EditorUtility.SetDirty(target as Object);
+            }
         }
     }
-}
 #endif
