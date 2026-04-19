@@ -14,7 +14,10 @@ public class ComboDisplay : MonoBehaviour
     private void Awake()
     {
         if (_streakText != null)
+        {
             _streakBaseScale = _streakText.transform.localScale;
+            _streakText.gameObject.SetActive(false);
+        }
     }
 
     private void OnEnable()

@@ -8,6 +8,15 @@ public class FocusModeIndicator : MonoBehaviour
     [SerializeField] private CanvasGroup _focusModeCanvasGroup;
     [SerializeField] private float _focusFadeDuration = 0.2f;
 
+    private void Awake()
+    {
+        if (_focusModeIndicator != null)
+            _focusModeIndicator.SetActive(false);
+
+        if (_focusModeCanvasGroup != null)
+            _focusModeCanvasGroup.alpha = 0f;
+    }
+
     private void OnEnable()
     {
         EventBus.OnFocusModeActivated += ShowFocusIndicator;
