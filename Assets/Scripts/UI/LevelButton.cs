@@ -39,9 +39,20 @@ public class LevelButton : MonoBehaviour
         if (_config == null || !_isUnlocked) return;
 
         DebugLogger.Log($"LevelButton: Level {_config.levelNumber} selected");
-        GameManager.Instance.DiscardPausedRunSnapshot();
-        GameManager.Instance.SetLevel(_config);
-        SceneLoader.Instance.LoadGameplay();
+
+        PlayerPrefs.SetInt(ProgressManager.SelectedLevelKey, _config.levelNumber);
+        PlayerPrefs.Save();
+
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.DiscardPausedRunSnapshot();
+            GameManager.Instance.SetLevel(_config);
+        }
+
+        if (SceneLoader.Instance != null)
+            SceneLoader.Instance.LoadGameplay();
+        else
+            DebugLogger.LogError("LevelButton: SceneLoader not available. Cannot load Gameplay.");
     }
 
     private void OnDestroy()

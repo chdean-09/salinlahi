@@ -16,7 +16,7 @@ public class ProgressManager : Singleton<ProgressManager>
 
     private const string KeyPrefix = "salinlahi.progress.";
     private const int MaxStars = 3;
-    private const int TotalLevels = 5;
+    private const int TotalLevels = 15;
 
     // Track which level we've processed to handle restarts properly
     private int _lastProcessedLevelId = -1;
