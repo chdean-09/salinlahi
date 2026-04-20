@@ -61,7 +61,7 @@ public class MainMenuUI : MonoBehaviour
 
     public void OnTracingDojoPressed()
     {
-        DebugLogger.Log("MainMenuUI: Tracing Dojo pressed (not yet implemented)");
+        SceneLoader.Instance.LoadScene("TracingDojo");
     }
 
     public void OnSettingsPressed()
