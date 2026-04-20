@@ -16,7 +16,7 @@ public class GhostStrokeRenderer : MonoBehaviour
         if (character == null) return;
 
         var template = Resources.Load<TextAsset>(
-            $"Templates/{character.characterID}_template");
+            $"Templates/{character.characterID}_template_01");
         if (template == null)
         {
             Debug.LogWarning(

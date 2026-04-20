@@ -670,6 +670,10 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 820778977}
+  - component: {fileID: 820778981}
+  - component: {fileID: 820778980}
+  - component: {fileID: 820778979}
+  - component: {fileID: 820778978}
   m_Layer: 0
   m_Name: Dojo
   m_TagString: Untagged
@@ -692,6 +696,65 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &820778978
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 820778976}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 712cb7d0cef340a40a9c11f684746305, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Salinlahi.Runtime::DojoNavigator
+--- !u!114 &820778979
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 820778976}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af442fa99e4359c46b6c94610fdbd0ac, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Salinlahi.Runtime::CharacterListPopulator
+  _registry: {fileID: 11400000, guid: 5600b9b67bf2893439118a993caa5f13, type: 2}
+  _rowPrefab: {fileID: 58908519407746759, guid: 6312e0d59a292bf468acecc2f23e1f82, type: 3}
+  _content: {fileID: 1546361707}
+  _controller: {fileID: 820778981}
+--- !u!114 &820778980
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 820778976}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 42677a91c52b9174584b891d95f32da1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Salinlahi.Runtime::GhostStrokeRenderer
+  _canvasArea: {fileID: 780863636}
+  _dotPrefab: {fileID: 6099943549267488993, guid: 7967659afa1801d4980e5427b564fb03, type: 3}
+  _ghostAlpha: 0.35
+--- !u!114 &820778981
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 820778976}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 698e3fef4dddd624abb73455300c76c2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Salinlahi.Runtime::TracingDojoController
+  _ghost: {fileID: 820778980}
+  _verdictLabel: {fileID: 210564705}
+  _confidenceLabel: {fileID: 1644222580}
+  _registry: {fileID: 11400000, guid: 5600b9b67bf2893439118a993caa5f13, type: 2}
 --- !u!1 &840870197
 GameObject:
   m_ObjectHideFlags: 0
@@ -878,7 +941,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 868007518}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 820778978}
+        m_TargetAssemblyTypeName: DojoNavigator, Salinlahi.Runtime
+        m_MethodName: GoToMainMenu
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &868007518
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -917,6 +992,63 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 868007515}
   m_CullTransparentMesh: 1
+--- !u!1001 &1059411032
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 78779830093965634, guid: 3a28cc4e87282ce429d130fba124a523, type: 3}
+      propertyPath: m_Name
+      value: '[Drawing] DrawingCanvas'
+      objectReference: {fileID: 0}
+    - target: {fileID: 8355647086170769060, guid: 3a28cc4e87282ce429d130fba124a523, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -1.43654
+      objectReference: {fileID: 0}
+    - target: {fileID: 8355647086170769060, guid: 3a28cc4e87282ce429d130fba124a523, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.19413
+      objectReference: {fileID: 0}
+    - target: {fileID: 8355647086170769060, guid: 3a28cc4e87282ce429d130fba124a523, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8355647086170769060, guid: 3a28cc4e87282ce429d130fba124a523, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8355647086170769060, guid: 3a28cc4e87282ce429d130fba124a523, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8355647086170769060, guid: 3a28cc4e87282ce429d130fba124a523, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8355647086170769060, guid: 3a28cc4e87282ce429d130fba124a523, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8355647086170769060, guid: 3a28cc4e87282ce429d130fba124a523, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8355647086170769060, guid: 3a28cc4e87282ce429d130fba124a523, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8355647086170769060, guid: 3a28cc4e87282ce429d130fba124a523, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 3a28cc4e87282ce429d130fba124a523, type: 3}
 --- !u!1 &1130947943
 GameObject:
   m_ObjectHideFlags: 0
@@ -1232,7 +1364,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0.00006022583, y: 0}
+  m_AnchoredPosition: {x: 0.00006022583, y: 0.0006291783}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1546361708
@@ -1549,37 +1681,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1673520859}
   m_CullTransparentMesh: 1
---- !u!1 &1843273893
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1843273894}
-  m_Layer: 0
-  m_Name: DrawingInput
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1843273894
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1843273893}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 540.7746, y: 1403.1324, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2022913407
 GameObject:
   m_ObjectHideFlags: 0
@@ -1769,4 +1870,4 @@ SceneRoots:
   - {fileID: 2146974349}
   - {fileID: 696435109}
   - {fileID: 820778977}
-  - {fileID: 1843273894}
+  - {fileID: 1059411032}
