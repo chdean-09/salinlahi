@@ -38,6 +38,10 @@ public static class EventBus
     public static event Action OnGamePaused;
     public static event Action OnGameResumed;
 
+    // -- Boss Events --
+    public static event Action OnBossDefeated;
+    public static void RaiseBossDefeated() => OnBossDefeated?.Invoke();
+
     // -- Dialogue Events --
     public static event Action OnDialogueStarted;
     public static event Action OnDialogueComplete;
