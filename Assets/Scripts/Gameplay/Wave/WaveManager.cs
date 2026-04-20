@@ -269,6 +269,12 @@ public class WaveManager : MonoBehaviour
             yield break;
         }
 
+        if (_levelConfig.isBossLevel && _levelConfig.bossConfig != null)
+        {
+            yield return StartCoroutine(RunBossEncounter(_levelConfig.bossConfig));
+            yield break;
+        }
+
         if (_levelConfig.waves == null || _levelConfig.waves.Count == 0)
         {
             DebugLogger.LogWarning("WaveManager: Level has no waves.");
@@ -350,6 +356,34 @@ public class WaveManager : MonoBehaviour
     private void HandleEnemySpawned()
     {
         _currentWaveSpawnedCount++;
+    }
+
+    private IEnumerator RunBossEncounter(BossConfigSO bossConfig)
+    {
+        EventBus.RaiseWaveStarted(0);
+        yield return new WaitForSeconds(1f);
+
+        BaybayinCharacterSO character = _levelConfig.allowedCharacters[
+            Random.Range(0, _levelConfig.allowedCharacters.Count)];
+        Enemy bossEnemy = _spawner.SpawnEnemy(bossConfig.bossEnemyData, character);
+
+        yield return new WaitUntil(() =>
+        {
+            if (!CanContinueRun())
+                return true;
+
+            return ActiveEnemyTracker.Instance.IsClear;
+        });
+
+        if (!CanContinueRun())
+        {
+            AbortRun();
+            yield break;
+        }
+
+        EventBus.RaiseBossDefeated();
+        EventBus.RaiseWaveCleared(0);
+        CompleteRun();
     }
 
     private int ResolveResumeWaveIndex(
