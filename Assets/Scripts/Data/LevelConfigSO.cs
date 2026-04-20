@@ -16,6 +16,13 @@ public class LevelConfigSO : ScriptableObject
     [Tooltip("Master list of characters allowed in this level. WaveConfigs draw from this.")]
     public List<BaybayinCharacterSO> allowedCharacters;
 
+    [Header("Boss")]
+    [Tooltip("True if this level is a boss encounter")]
+    public bool isBossLevel;
+
+    [Tooltip("Boss configuration (only used if isBossLevel is true)")]
+    public BossConfigSO bossConfig;
+
     [Header("Build Flags")]
     public bool isAvailableInLite = true;
 }
