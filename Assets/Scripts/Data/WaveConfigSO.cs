@@ -23,4 +23,22 @@ public class WaveConfigSO : ScriptableObject
 
     [Tooltip("Seconds to wait before this wave begins")]
     public float waveStartDelay = 1f;
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        if (enemyTypesInWave == null) return;
+
+        for (int i = 0; i < enemyTypesInWave.Count; i++)
+        {
+            if (enemyTypesInWave[i] == null)
+            {
+                UnityEngine.Debug.LogError(
+                    $"[WaveConfigSO] '{name}' has a NULL enemy reference at index {i}. " +
+                    "Assign an EnemyDataSO or remove the empty slot.",
+                    this);
+            }
+        }
+    }
+#endif
 }
