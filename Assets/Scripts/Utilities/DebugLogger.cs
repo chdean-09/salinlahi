@@ -1,24 +1,22 @@
+using System.Diagnostics;
 using UnityEngine;
 
 public static class DebugLogger
 {
-    private static bool _enabled = true;
-
+    [Conditional("ENABLE_SALINLAHI_LOG")]
     public static void Log(string message)
     {
-        if (_enabled) Debug.Log($"[Salinlahi] {message}");
+        UnityEngine.Debug.Log($"[Salinlahi] {message}");
     }
 
+    [Conditional("ENABLE_SALINLAHI_LOG")]
     public static void LogWarning(string message)
     {
-        if (_enabled) Debug.LogWarning($"[Salinlahi] {message}");
+        UnityEngine.Debug.LogWarning($"[Salinlahi] {message}");
     }
 
     public static void LogError(string message)
     {
-        // Errors always print regardless of toggle
-        Debug.LogError($"[Salinlahi] {message}");
+        UnityEngine.Debug.LogError($"[Salinlahi] {message}");
     }
-
-    public static void SetEnabled(bool enabled) => _enabled = enabled;
 }
