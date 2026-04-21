@@ -10,6 +10,18 @@ public class HeartSystem : MonoBehaviour
 
     private int _currentHearts;
 
+    private void OnEnable()
+    {
+        if (ProgressManager.Instance != null)
+            ProgressManager.Instance.RegisterHeartSystem(this);
+    }
+
+    private void OnDisable()
+    {
+        if (ProgressManager.Instance != null)
+            ProgressManager.Instance.DeregisterHeartSystem(this);
+    }
+
     private void Awake()
     {
         _currentHearts = _maxHearts;
