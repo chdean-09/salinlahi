@@ -360,6 +360,20 @@ public class WaveManager : MonoBehaviour
 
     private IEnumerator RunBossEncounter(BossConfigSO bossConfig)
     {
+        if (bossConfig.bossEnemyData == null)
+        {
+            DebugLogger.LogError("WaveManager: BossConfig has no bossEnemyData assigned. Aborting boss encounter.");
+            AbortRun();
+            yield break;
+        }
+
+        if (_levelConfig.allowedCharacters == null || _levelConfig.allowedCharacters.Count == 0)
+        {
+            DebugLogger.LogError("WaveManager: Boss level has no allowedCharacters. Aborting boss encounter.");
+            AbortRun();
+            yield break;
+        }
+
         EventBus.RaiseWaveStarted(0);
         yield return new WaitForSeconds(1f);
 
@@ -367,12 +381,26 @@ public class WaveManager : MonoBehaviour
             Random.Range(0, _levelConfig.allowedCharacters.Count)];
         Enemy bossEnemy = _spawner.SpawnEnemy(bossConfig.bossEnemyData, character);
 
+        if (bossEnemy == null)
+        {
+            DebugLogger.LogError("WaveManager: Failed to spawn boss enemy. Aborting boss encounter.");
+            AbortRun();
+            yield break;
+        }
+
         yield return new WaitUntil(() =>
         {
             if (!CanContinueRun())
                 return true;
 
-            return ActiveEnemyTracker.Instance.IsClear;
+            ActiveEnemyTracker tracker = ActiveEnemyTracker.Instance;
+            if (tracker == null)
+            {
+                DebugLogger.LogError("WaveManager: ActiveEnemyTracker.Instance is null during boss encounter.");
+                return true;
+            }
+
+            return tracker.IsClear;
         });
 
         if (!CanContinueRun())
