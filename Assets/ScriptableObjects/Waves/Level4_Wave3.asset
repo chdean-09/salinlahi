@@ -18,9 +18,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
   - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
   - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
-  - {fileID: 11400000, guid: 8a9b3c4d5e6f7081920a1b2c3d4e5f607, type: 2}
+  - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
   enemyTypesInWave:
-  - {fileID: 11400000, guid: 3e4f5g6h7i8j9k01223a4b5c6d7e8f012, type: 2}
+  - {fileID: 11400000, guid: ccb4c198251c34717b8afd6455611e3a, type: 2}
   - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
   enemyCount: 7
   spawnInterval: 2
