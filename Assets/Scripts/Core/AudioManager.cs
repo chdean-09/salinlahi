@@ -6,7 +6,24 @@ public class AudioManager : Singleton<AudioManager>
     [SerializeField] private AudioSource _bgmSource;
     [SerializeField] private AudioSource _sfxSource;
 
-    protected override void Awake() => base.Awake();
+    private const string PrefKeyMasterVolume = "salinlahi.audio.master_volume";
+    private const string PrefKeyBgmVolume = "salinlahi.audio.bgm_volume";
+    private const string PrefKeySfxVolume = "salinlahi.audio.sfx_volume";
+
+    private float _masterVolume = 1f;
+    private float _bgmVolume = 1f;
+    private float _sfxVolume = 1f;
+
+    public float MasterVolume => _masterVolume;
+    public float BgmVolume => _bgmVolume;
+    public float SfxVolume => _sfxVolume;
+
+    protected override void Awake()
+    {
+        base.Awake();
+        if (Instance != this) return;
+        LoadSavedVolumes();
+    }
 
     private void OnEnable()
     {
@@ -48,4 +65,45 @@ public class AudioManager : Singleton<AudioManager>
     }
 
     public void StopBGM() => _bgmSource.Stop();
+
+    public void SetMasterVolume(float volume)
+    {
+        _masterVolume = Mathf.Clamp01(volume);
+        ApplyVolumes();
+        PlayerPrefs.SetFloat(PrefKeyMasterVolume, _masterVolume);
+        PlayerPrefs.Save();
+    }
+
+    public void SetBgmVolume(float volume)
+    {
+        _bgmVolume = Mathf.Clamp01(volume);
+        ApplyVolumes();
+        PlayerPrefs.SetFloat(PrefKeyBgmVolume, _bgmVolume);
+        PlayerPrefs.Save();
+    }
+
+    public void SetSfxVolume(float volume)
+    {
+        _sfxVolume = Mathf.Clamp01(volume);
+        ApplyVolumes();
+        PlayerPrefs.SetFloat(PrefKeySfxVolume, _sfxVolume);
+        PlayerPrefs.Save();
+    }
+
+    private void ApplyVolumes()
+    {
+        if (_bgmSource != null)
+            _bgmSource.volume = _masterVolume * _bgmVolume;
+        if (_sfxSource != null)
+            _sfxSource.volume = _masterVolume * _sfxVolume;
+    }
+
+    private void LoadSavedVolumes()
+    {
+        _masterVolume = PlayerPrefs.GetFloat(PrefKeyMasterVolume, 1f);
+        _bgmVolume = PlayerPrefs.GetFloat(PrefKeyBgmVolume, 1f);
+        _sfxVolume = PlayerPrefs.GetFloat(PrefKeySfxVolume, 1f);
+        ApplyVolumes();
+        DebugLogger.Log($"AudioManager: Loaded volumes — Master={_masterVolume:F2}, BGM={_bgmVolume:F2}, SFX={_sfxVolume:F2}");
+    }
 }
