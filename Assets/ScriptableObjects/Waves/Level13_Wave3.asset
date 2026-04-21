@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fd465d04dac006f4b8d668fc471b613a, type: 3}
+  m_Name: Level13_Wave3
+  m_EditorClassIdentifier: Salinlahi.Runtime::WaveConfigSO
+  waveID: Level13_Wave3
+  waveNumber: 3
+  charactersInWave:
+  - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+  - {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
+  - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+  - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+  - {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
+  enemyTypesInWave:
+  - {fileID: 11400000, guid: ccb6fd07e3fd94990a6944ec2b341e31, type: 2}
+  - {fileID: 11400000, guid: 5cc8877bb53ca480da124ff2ffaa9de0, type: 2}
+  enemyCount: 6
+  spawnInterval: 2
+  waveStartDelay: 1.5

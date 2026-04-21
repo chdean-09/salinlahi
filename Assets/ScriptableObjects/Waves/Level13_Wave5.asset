@@ -9,18 +9,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 98c3e4f7bd9686740a8cd775acf3cbef, type: 3}
-  m_Name: Level13_Config
-  m_EditorClassIdentifier: Salinlahi.Runtime::LevelConfigSO
-  levelName: Kempei Patrol
-  levelNumber: 13
-  waves:
-  - {fileID: 11400000, guid: 5903f34b29e2542289bd1fa06b2c7a04, type: 2}
-  - {fileID: 11400000, guid: 2a511ff389b234c0da72199443dc0fe6, type: 2}
-  - {fileID: 11400000, guid: 85d843e09a73a4e6cbf7fb1bca9f2e33, type: 2}
-  - {fileID: 11400000, guid: a06d309a21ef84266988f5e204a1b813, type: 2}
-  - {fileID: 11400000, guid: f8bf0861b009b445482ace3306d2cb8a, type: 2}
-  allowedCharacters:
+  m_Script: {fileID: 11500000, guid: fd465d04dac006f4b8d668fc471b613a, type: 3}
+  m_Name: Level13_Wave5
+  m_EditorClassIdentifier: Salinlahi.Runtime::WaveConfigSO
+  waveID: Level13_Wave5
+  waveNumber: 5
+  charactersInWave:
   - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
   - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
   - {fileID: 11400000, guid: 117f4d54439c640abaac6d80f841ee03, type: 2}
@@ -38,6 +32,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
   - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
   - {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
-  isBossLevel: 0
-  bossConfig: {fileID: 0}
-  isAvailableInLite: 0
+  enemyTypesInWave:
+  - {fileID: 11400000, guid: b1192b8ea41bc418cb84defa4321b63f, type: 2}
+  - {fileID: 11400000, guid: ccb6fd07e3fd94990a6944ec2b341e31, type: 2}
+  - {fileID: 11400000, guid: 5cc8877bb53ca480da124ff2ffaa9de0, type: 2}
+  enemyCount: 8
+  spawnInterval: 1.8
+  waveStartDelay: 1
