@@ -19,6 +19,15 @@ public class EnemyDataSO : ScriptableObject
     public RuntimeAnimatorController animatorController;
 
     [Header("Character")]
-    [Tooltip("The Baybayin character this enemy displays and requires to be defeated")]
+    [Tooltip("The Baybayin character this enemy actually requires to be defeated.")]
     public BaybayinCharacterSO assignedCharacter;
+
+    [Header("Decoy")]
+    [Tooltip("If true, this enemy is a decoy variant and drawing its character applies a penalty.")]
+    public bool isDecoy;
+
+    [Header("Contact Behavior")]
+    [Tooltip("If false, reaching the Shrine collision zone will despawn this enemy without damaging the Shrine.")]
+    public bool dealsContactDamage = true;
+
 }

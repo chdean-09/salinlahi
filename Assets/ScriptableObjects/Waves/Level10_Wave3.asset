@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fd465d04dac006f4b8d668fc471b613a, type: 3}
+  m_Name: Level10_Wave3
+  m_EditorClassIdentifier: Salinlahi.Runtime::WaveConfigSO
+  waveID: Level10_Wave3
+  waveNumber: 3
+  charactersInWave:
+  - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+  - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+  - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
+  - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+  - {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
+  - {fileID: 11400000, guid: 9aae464ed65b8416b9aa3ad6ee4ce2c4, type: 2}
+  - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+  - {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
+  - {fileID: 11400000, guid: 01bec631a12545f091f1348d9408ad47, type: 2}
+  - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
+  - {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+  - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+  - {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
+  - {fileID: 11400000, guid: 117f4d54439c640abaac6d80f841ee03, type: 2}
+  - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+  enemyTypesInWave:
+  - {fileID: 11400000, guid: b2d5819d4d6b4d8d9d1e4ef125ad2e61, type: 2}
+  - {fileID: 11400000, guid: 162b7d5e2b26d7442998aac326c48a06, type: 2}
+  enemyCount: 9
+  spawnInterval: 1.4
+  waveStartDelay: 0.8

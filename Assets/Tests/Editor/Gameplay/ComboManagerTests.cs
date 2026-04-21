@@ -43,6 +43,10 @@ namespace Salinlahi.Tests.Editor.Gameplay
         [TearDown]
         public void TearDown()
         {
+            _comboManager.GetType().GetMethod("OnDisable",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
+                .Invoke(_comboManager, null);
+
             EventBus.OnComboChanged -= OnComboChanged;
             EventBus.OnFocusModeActivated -= OnFocusActivated;
             EventBus.OnFocusModeDeactivated -= OnFocusDeactivated;
@@ -51,6 +55,11 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 Object.DestroyImmediate(_gameObject);
             if (_config != null)
                 Object.DestroyImmediate(_config);
+
+            var instanceField = typeof(Singleton<ComboManager>).GetField(
+                "<Instance>k__BackingField",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            instanceField?.SetValue(null, null);
         }
 
         private void OnComboChanged(int streak) => _lastComboValue = streak;
@@ -96,6 +105,19 @@ namespace Salinlahi.Tests.Editor.Gameplay
             EventBus.RaiseEnemyTargeted(null);
             EventBus.RaiseDrawingFailed();
             Assert.AreEqual(0, _comboManager.CurrentStreak);
+        }
+
+        [Test]
+        public void SuppressedHeartLossReset_DoesNotResetStreak()
+        {
+            EventBus.RaiseEnemyTargeted(null);
+            EventBus.RaiseEnemyTargeted(null);
+            Assert.AreEqual(2, _comboManager.CurrentStreak);
+
+            _comboManager.SuppressNextHeartLossResets(1);
+            EventBus.RaiseHeartsChanged(2);
+
+            Assert.AreEqual(2, _comboManager.CurrentStreak);
         }
     }
 }

@@ -23,6 +23,8 @@ public class Enemy : MonoBehaviour
     [SerializeField] private float _labelWorldScale = 0.22f;
     [SerializeField] private float _labelFontSize = 10f;
     [SerializeField] private Color _labelColor = Color.white;
+    [Header("Walk Animation")]
+    [SerializeField] private float _walkAnimationFps = 8f;
 
     private EnemyMover _mover;
     private SpriteRenderer _renderer;
@@ -31,11 +33,14 @@ public class Enemy : MonoBehaviour
     private Color _baseRendererColor = Color.white;
     private TextMeshPro _baybayinLabel;
     private TextMeshPro _enemyTypeLabel;
+    private int _walkFrameIndex;
+    private float _walkFrameTimer;
 
     public BaybayinCharacterSO Character => _runtimeCharacter != null ? _runtimeCharacter : _data?.assignedCharacter;
     public string EnemyID => _data?.enemyID;
     public EnemyDataSO Data => _data;
     public int CurrentHealth => _currentHealth;
+    public bool IsDecoy => _data != null && _data.isDecoy;
 
     private void Awake()
     {
@@ -110,7 +115,11 @@ public class Enemy : MonoBehaviour
         if (_renderer != null)
         {
             if (_data.walkFrames != null && _data.walkFrames.Length > 0)
+            {
+                _walkFrameIndex = 0;
+                _walkFrameTimer = 0f;
                 _renderer.sprite = _data.walkFrames[0];
+            }
 
             _renderer.color = _baseRendererColor;
             ResetShieldBreakVisual();
@@ -226,9 +235,22 @@ public class Enemy : MonoBehaviour
         EventBus.RaiseEnemyDefeated(capturedCharacter);
     }
 
+    public void ApplyDecoyPenalty()
+    {
+        ReturnToPool();
+    }
+
     public void ReturnToPool()
     {
-        EnemyPool.Instance?.Return(this);
+        EnemyPool pool = EnemyPool.Instance;
+        if (pool != null)
+        {
+            pool.Return(this);
+            return;
+        }
+
+        ActiveEnemyTracker.Instance?.Unregister(this);
+        gameObject.SetActive(false);
     }
 
     private void OnDisable()
@@ -236,10 +258,45 @@ public class Enemy : MonoBehaviour
         _mover?.Stop();
     }
 
+    private void Update()
+    {
+        AdvanceWalkAnimation();
+    }
+
     private void LateUpdate()
     {
         if (ShouldShowDebugLabels())
             UpdateLabelLayout();
+    }
+
+    private void AdvanceWalkAnimation()
+    {
+        if (_renderer == null || _data == null || _data.walkFrames == null)
+            return;
+
+        int frameCount = _data.walkFrames.Length;
+        if (frameCount == 0)
+            return;
+
+        if (frameCount == 1)
+        {
+            _renderer.sprite = _data.walkFrames[0];
+            return;
+        }
+
+        if (_mover == null || !_mover.IsMoving || _walkAnimationFps <= 0f)
+            return;
+
+        float frameDuration = 1f / _walkAnimationFps;
+        _walkFrameTimer += Time.deltaTime;
+
+        while (_walkFrameTimer >= frameDuration)
+        {
+            _walkFrameTimer -= frameDuration;
+            _walkFrameIndex = (_walkFrameIndex + 1) % frameCount;
+        }
+
+        _renderer.sprite = _data.walkFrames[_walkFrameIndex];
     }
 
     private void ResetRendererState()

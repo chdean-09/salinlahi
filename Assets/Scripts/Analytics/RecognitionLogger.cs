@@ -11,14 +11,17 @@ public static class RecognitionLogger
     private static readonly string CSV_HEADER =
         "timestamp,recognizedCharacterID,confidence,"
         + "secondBestCharacterID,secondBestConfidence,"
+        + "scoreGap,intendedCharacterID,outcome";
+    private static readonly string LEGACY_CSV_HEADER =
+        "timestamp,recognizedCharacterID,confidence,"
+        + "secondBestCharacterID,secondBestConfidence,"
         + "scoreGap,intendedCharacterID";
 
     private static string FilePath =>
         Path.Combine(
             Application.persistentDataPath, FILE_NAME);
 
-    // Tracks whether we have written the header this session.
-    // If the file already exists on disk, we skip the header.
+    // Tracks whether we have validated/migrated the header this session.
     private static bool _headerWritten;
 
     /// Called by RecognitionManager after every recognition
@@ -26,7 +29,8 @@ public static class RecognitionLogger
     /// threshold. This ensures failed attempts are also logged.
     public static void LogAttempt(
         RecognitionResult result,
-        string intendedCharacterID = "")
+        string intendedCharacterID = "",
+        string outcome = "attempt")
     {
         try
         {
@@ -49,7 +53,8 @@ public static class RecognitionLogger
                 + $"{secondID},"
                 + $"{secondConf:F4},"
                 + $"{gap:F4},"
-                + $"{intendedCharacterID}";
+                + $"{intendedCharacterID},"
+                + $"{outcome}";
 
             File.AppendAllText(FilePath, line + "\n");
 
@@ -61,6 +66,36 @@ public static class RecognitionLogger
         {
             DebugLogger.LogWarning(
                 $"RecognitionLogger: Write failed: "
+                + $"{ex.Message}");
+        }
+    }
+
+    public static void LogOutcome(
+        string outcome,
+        string recognizedCharacterID = "",
+        string intendedCharacterID = "")
+    {
+        try
+        {
+            EnsureHeader();
+
+            string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+            string line =
+                $"{timestamp},"
+                + $"{recognizedCharacterID},"
+                + "0.0000,"
+                + ","
+                + "0.0000,"
+                + "0.0000,"
+                + $"{intendedCharacterID},"
+                + $"{outcome}";
+
+            File.AppendAllText(FilePath, line + "\n");
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.LogWarning(
+                $"RecognitionLogger: Outcome write failed: "
                 + $"{ex.Message}");
         }
     }
@@ -135,6 +170,21 @@ public static class RecognitionLogger
         {
             File.WriteAllText(
                 FilePath, CSV_HEADER + "\n");
+            _headerWritten = true;
+            return;
+        }
+
+        string[] lines = File.ReadAllLines(FilePath);
+        if (lines.Length > 0 && lines[0] == LEGACY_CSV_HEADER)
+        {
+            lines[0] = CSV_HEADER;
+            for (int i = 1; i < lines.Length; i++)
+            {
+                if (!string.IsNullOrWhiteSpace(lines[i]))
+                    lines[i] += ",legacy";
+            }
+
+            File.WriteAllLines(FilePath, lines);
         }
 
         _headerWritten = true;

@@ -31,7 +31,7 @@ public class HeartSystem : MonoBehaviour
     }
 
     // Called by PlayerBase when the base is hit
-    public void LoseHeart()
+    public void LoseHeart(int amount = 1)
     {
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
         if (SandboxMode.ShouldBypassLifeLoss)
@@ -41,7 +41,8 @@ public class HeartSystem : MonoBehaviour
         }
 #endif
 
-        _currentHearts = Mathf.Max(0, _currentHearts - 1);
+        int safeAmount = Mathf.Max(0, amount);
+        _currentHearts = Mathf.Max(0, _currentHearts - safeAmount);
         EventBus.RaiseHeartsChanged(_currentHearts);
         DebugLogger.Log($"Hearts remaining: {_currentHearts}/{_maxHearts}");
 

@@ -21,8 +21,8 @@ public class PlayerBase : MonoBehaviour
         EventBus.OnBaseHit -= HandleBaseHit;
     }
 
-    private void HandleBaseHit()
+    private void HandleBaseHit(int damage)
     {
-        _heartSystem.LoseHeart();
+        _heartSystem.LoseHeart(damage);
     }
 }

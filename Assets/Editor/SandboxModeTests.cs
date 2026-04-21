@@ -49,6 +49,7 @@ public class SandboxModeTests
         SandboxMode.TryActivate();
         GameObject heartObject = new("HeartSystem");
         HeartSystem heartSystem = heartObject.AddComponent<HeartSystem>();
+        InvokePrivate(heartSystem, "Awake");
         bool gameOverRaised = false;
         EventBus.OnGameOver += MarkGameOverRaised;
 
@@ -78,6 +79,7 @@ public class SandboxModeTests
         SandboxMode.Deactivate();
         GameObject heartObject = new("HeartSystem");
         HeartSystem heartSystem = heartObject.AddComponent<HeartSystem>();
+        InvokePrivate(heartSystem, "Awake");
 
         heartSystem.LoseHeart();
 
@@ -97,6 +99,7 @@ public class SandboxModeTests
         enemyData.assignedCharacter = assetCharacter;
 
         GameObject enemyObject = new("Enemy");
+        enemyObject.AddComponent<BoxCollider2D>();
         Enemy enemy = enemyObject.AddComponent<Enemy>();
 
         try
@@ -123,6 +126,7 @@ public class SandboxModeTests
         SandboxMode.SetMovementSpeedScale(0.5f);
 
         GameObject enemyObject = new("Enemy");
+        enemyObject.AddComponent<BoxCollider2D>();
         EnemyMover mover = enemyObject.AddComponent<EnemyMover>();
 
         try
@@ -145,6 +149,7 @@ public class SandboxModeTests
         SandboxMode.SetMovementPaused(true);
 
         GameObject enemyObject = new("Enemy");
+        enemyObject.AddComponent<BoxCollider2D>();
         EnemyMover mover = enemyObject.AddComponent<EnemyMover>();
 
         try
@@ -180,6 +185,7 @@ public class SandboxModeTests
             SetPrivateField(pool, "_defaultCapacity", 0);
             SetPrivateField(pool, "_maxSize", 4);
             poolObject.SetActive(true);
+            InvokePrivate(pool, "Awake");
 
             leftSpawn.transform.position = new Vector3(-1f, 3f, 0f);
             rightSpawn.transform.position = new Vector3(1f, 3f, 0f);
@@ -350,5 +356,12 @@ public class SandboxModeTests
             "<Instance>k__BackingField",
             BindingFlags.Static | BindingFlags.NonPublic);
         instanceField?.SetValue(null, null);
+    }
+
+    private static object InvokePrivate(object target, string methodName, params object[] args)
+    {
+        MethodInfo method = target.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.IsNotNull(method, $"Missing method '{methodName}' on {target.GetType().Name}.");
+        return method.Invoke(target, args);
     }
 }

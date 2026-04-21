@@ -10,6 +10,7 @@ public class ComboManager : Singleton<ComboManager>
     private int _currentStreak;
     private bool _focusModeActive;
     private Coroutine _focusRoutine;
+    private int _suppressedHeartResetCount;
 
     public int CurrentStreak => _currentStreak;
     public bool IsFocusModeActive => _focusModeActive;
@@ -66,9 +67,23 @@ public class ComboManager : Singleton<ComboManager>
 
     private void HandleHeartsChanged(int currentHearts)
     {
+        if (_suppressedHeartResetCount > 0)
+        {
+            _suppressedHeartResetCount--;
+            return;
+        }
+
         // Any heart loss resets the streak.
         // We reset on every change because hearts only go down.
         ResetStreak();
+    }
+
+    public void SuppressNextHeartLossResets(int count)
+    {
+        if (count <= 0)
+            return;
+
+        _suppressedHeartResetCount += count;
     }
 
     private void HandleGameOver()
