@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
@@ -7,11 +8,13 @@ using UnityEngine;
 public static class RecognitionLogger
 {
     private const string FILE_NAME = "recognition_log.csv";
+    private const int FlushThreshold = 10;
 
     private static readonly string CSV_HEADER =
         "timestamp,recognizedCharacterID,confidence,"
         + "secondBestCharacterID,secondBestConfidence,"
         + "scoreGap,intendedCharacterID,outcome";
+
     private static readonly string LEGACY_CSV_HEADER =
         "timestamp,recognizedCharacterID,confidence,"
         + "secondBestCharacterID,secondBestConfidence,"
@@ -24,6 +27,15 @@ public static class RecognitionLogger
     // Tracks whether we have validated/migrated the header this session.
     private static bool _headerWritten;
 
+    private static readonly List<string> _buffer
+        = new List<string>();
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    private static void RegisterQuitHandler()
+    {
+        Application.quitting += Flush;
+    }
+
     /// Called by RecognitionManager after every recognition
     /// attempt, regardless of whether it passed the confidence
     /// threshold. This ensures failed attempts are also logged.
@@ -34,8 +46,6 @@ public static class RecognitionLogger
     {
         try
         {
-            EnsureHeader();
-
             string timestamp = DateTime.Now.ToString(
                 "yyyy-MM-dd HH:mm:ss.fff");
 
@@ -56,16 +66,14 @@ public static class RecognitionLogger
                 + $"{intendedCharacterID},"
                 + $"{outcome}";
 
-            File.AppendAllText(FilePath, line + "\n");
-
-            DebugLogger.Log(
-                $"RecognitionLogger: Wrote entry for "
-                + $"{result.characterID}");
+            _buffer.Add(line);
+            if (_buffer.Count >= FlushThreshold)
+                Flush();
         }
         catch (Exception ex)
         {
             DebugLogger.LogWarning(
-                $"RecognitionLogger: Write failed: "
+                $"RecognitionLogger: Buffer failed: "
                 + $"{ex.Message}");
         }
     }
@@ -77,8 +85,6 @@ public static class RecognitionLogger
     {
         try
         {
-            EnsureHeader();
-
             string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
             string line =
                 $"{timestamp},"
@@ -90,13 +96,33 @@ public static class RecognitionLogger
                 + $"{intendedCharacterID},"
                 + $"{outcome}";
 
-            File.AppendAllText(FilePath, line + "\n");
+            _buffer.Add(line);
+            if (_buffer.Count >= FlushThreshold)
+                Flush();
         }
         catch (Exception ex)
         {
             DebugLogger.LogWarning(
-                $"RecognitionLogger: Outcome write failed: "
+                $"RecognitionLogger: Outcome buffer failed: "
                 + $"{ex.Message}");
+        }
+    }
+
+    public static void Flush()
+    {
+        if (_buffer.Count == 0) return;
+
+        try
+        {
+            EnsureHeader();
+            string combined = string.Join("\n", _buffer) + "\n";
+            File.AppendAllText(FilePath, combined);
+            DebugLogger.Log($"RecognitionLogger: Flushed {_buffer.Count} entries.");
+            _buffer.Clear();
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.LogWarning($"RecognitionLogger: Flush failed: {ex.Message}");
         }
     }
 
@@ -104,6 +130,8 @@ public static class RecognitionLogger
     /// On editor, copies to the project root for convenience.
     public static string ExportLog()
     {
+        Flush();
+
         if (!File.Exists(FilePath))
         {
             DebugLogger.LogWarning(
@@ -113,17 +141,17 @@ public static class RecognitionLogger
 
         string exportPath;
 
-        #if UNITY_ANDROID && !UNITY_EDITOR
-                // Copy to Android Downloads folder via shared storage.
-                exportPath = Path.Combine(
-                    "/storage/emulated/0/Download",
-                    "salinlahi_recognition_log.csv");
-        #else
-                // Editor: copy to project root
-                exportPath = Path.Combine(
-                    Application.dataPath, "..",
-                    "salinlahi_recognition_log.csv");
-        #endif
+#if UNITY_ANDROID && !UNITY_EDITOR
+        // Copy to Android Downloads folder via shared storage.
+        exportPath = Path.Combine(
+            "/storage/emulated/0/Download",
+            "salinlahi_recognition_log.csv");
+#else
+        // Editor: copy to project root
+        exportPath = Path.Combine(
+            Application.dataPath, "..",
+            "salinlahi_recognition_log.csv");
+#endif
 
         try
         {
@@ -145,18 +173,25 @@ public static class RecognitionLogger
     /// Returns the total number of log entries (excluding header).
     public static int GetEntryCount()
     {
-        if (!File.Exists(FilePath)) return 0;
-        string[] lines = File.ReadAllLines(FilePath);
-        // Subtract 1 for the header row
-        return Mathf.Max(0, lines.Length - 1);
+        int diskCount = 0;
+        if (File.Exists(FilePath))
+        {
+            string[] lines = File.ReadAllLines(FilePath);
+            // Subtract 1 for the header row
+            diskCount = Mathf.Max(0, lines.Length - 1);
+        }
+
+        return diskCount + _buffer.Count;
     }
 
     /// Clears the log file. Used at the start of a structured
     /// test session so the CSV only contains test data.
     public static void ClearLog()
     {
+        _buffer.Clear();
         if (File.Exists(FilePath))
             File.Delete(FilePath);
+
         _headerWritten = false;
         DebugLogger.Log(
             "RecognitionLogger: Log cleared.");
