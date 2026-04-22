@@ -932,7 +932,7 @@ MonoBehaviour:
   _group: {fileID: 702987645}
   _verdictLabel: {fileID: 948660886}
   _confidenceLabel: {fileID: 505555380}
-  _holdSeconds: 1.5
+  _holdSeconds: 5
   _fadeSeconds: 0.2
 --- !u!225 &702987645
 CanvasGroup:
