@@ -12,8 +12,32 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 98c3e4f7bd9686740a8cd775acf3cbef, type: 3}
   m_Name: Level14_Config
   m_EditorClassIdentifier: Salinlahi.Runtime::LevelConfigSO
-  levelName: Chapter 3 - Level 4
+  levelName: Gauntlet
   levelNumber: 14
-  waves: []
-  allowedCharacters: []
+  waves:
+  - {fileID: 11400000, guid: 883409e734c034d54b283caabeb503a3, type: 2}
+  - {fileID: 11400000, guid: 2c7fcf6b4b2e24c7594e1636235df32e, type: 2}
+  - {fileID: 11400000, guid: 43b0f2c8d15ae4b55bb8aaf518a07dc0, type: 2}
+  - {fileID: 11400000, guid: ad4c602f7a7834154bb7167cbab471da, type: 2}
+  - {fileID: 11400000, guid: 9d1bc432d2ab54e6ab3a7587650adafa, type: 2}
+  allowedCharacters:
+  - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+  - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
+  - {fileID: 11400000, guid: 117f4d54439c640abaac6d80f841ee03, type: 2}
+  - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+  - {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
+  - {fileID: 11400000, guid: 9aae464ed65b8416b9aa3ad6ee4ce2c4, type: 2}
+  - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+  - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+  - {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
+  - {fileID: 11400000, guid: 01bec631a12545f091f1348d9408ad47, type: 2}
+  - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
+  - {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+  - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+  - {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
+  - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+  - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+  - {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
+  isBossLevel: 0
+  bossConfig: {fileID: 0}
   isAvailableInLite: 0
