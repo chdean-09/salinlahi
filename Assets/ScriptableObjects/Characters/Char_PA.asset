@@ -14,6 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: PA
   syllable: pa
-  displaySprite: {fileID: 0}
+  displaySprite: {fileID: -5509107429510252872, guid: cf97d3f6516c4d042b1f618be6afa0ee, type: 3}
   pronunciationClip: {fileID: 0}
   templateFileName: PA_template

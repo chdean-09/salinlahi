@@ -7,6 +7,7 @@ using UnityEngine;
 /// analysis. Data feeds into the confusion matrix tool (SALIN-63).
 public static class RecognitionLogger
 {
+    public static bool LoggingEnabled { get; set; } = true;
     private const string FILE_NAME = "recognition_log.csv";
     private const int FlushThreshold = 10;
 
@@ -44,6 +45,8 @@ public static class RecognitionLogger
         string intendedCharacterID = "",
         string outcome = "attempt")
     {
+        if (!LoggingEnabled) return;
+
         try
         {
             string timestamp = DateTime.Now.ToString(

@@ -14,6 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: WA
   syllable: wa
-  displaySprite: {fileID: 0}
+  displaySprite: {fileID: -3493063987729265783, guid: 14ccf3bb7b032d4489c4232ae5010853, type: 3}
   pronunciationClip: {fileID: 0}
   templateFileName: WA_template
