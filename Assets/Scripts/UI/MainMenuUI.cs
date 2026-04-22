@@ -10,6 +10,7 @@ public class MainMenuUI : MonoBehaviour
 {
     private const string SceneGameplay = "Gameplay";
     private const string SceneLevelSelect = "LevelSelect";
+    private const string SceneTracingDojo = "TracingDojo";
 
     [SerializeField] private Button _endlessModeButton;
 
@@ -61,7 +62,7 @@ public class MainMenuUI : MonoBehaviour
 
     public void OnTracingDojoPressed()
     {
-        SceneLoader.Instance.LoadScene("TracingDojo");
+        LoadTracingDojo();
     }
 
     public void OnSettingsPressed()
@@ -172,6 +173,14 @@ public class MainMenuUI : MonoBehaviour
             SceneLoader.Instance.LoadLevelSelect();
         else
             LoadSceneDirect(SceneLevelSelect);
+    }
+
+    private static void LoadTracingDojo()
+    {
+        if (SceneLoader.Instance != null)
+            SceneLoader.Instance.LoadScene(SceneTracingDojo);
+        else
+            LoadSceneDirect(SceneTracingDojo);
     }
 
     private static void LoadSceneDirect(string sceneName)
