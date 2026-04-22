@@ -42,7 +42,7 @@ public class TracingDojoController : MonoBehaviour
 
         if (pass && _selected != null && _selected.pronunciationClip != null)
         {
-            AudioManager.Instance.PlaySFX(_selected.pronunciationClip);
+            AudioManager.Instance?.PlaySFX(_selected.pronunciationClip);
         }
     }
 }
