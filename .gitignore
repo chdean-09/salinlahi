@@ -9,6 +9,7 @@
 .vs/
 *.csproj
 *.sln
+*.slnx
 .DS_Store
 Thumbs.db
 *.suo

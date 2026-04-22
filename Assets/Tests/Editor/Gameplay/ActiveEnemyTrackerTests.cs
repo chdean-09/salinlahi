@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
+using System.Reflection;
 
 namespace Salinlahi.Tests.Editor.Gameplay
 {
@@ -30,7 +31,10 @@ namespace Salinlahi.Tests.Editor.Gameplay
         private Enemy CreateEnemy(string characterID, float yPosition)
         {
             var go = new GameObject("Enemy_Test");
+            go.SetActive(false);
             go.transform.position = new Vector3(0, yPosition, 0);
+            go.AddComponent<BoxCollider2D>();
+            go.AddComponent<EnemyMover>();
 
             var character = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
             character.characterID = characterID;
@@ -41,6 +45,8 @@ namespace Salinlahi.Tests.Editor.Gameplay
             data.assignedCharacter = character;
 
             var enemy = go.AddComponent<Enemy>();
+            SetPrivateField(enemy, "_showDebugLabels", false);
+            go.SetActive(true);
             enemy.Initialize(data);
 
             return enemy;
@@ -50,6 +56,13 @@ namespace Salinlahi.Tests.Editor.Gameplay
         {
             if (enemy != null && enemy.gameObject != null)
                 Object.DestroyImmediate(enemy.gameObject);
+        }
+
+        private static void SetPrivateField(object target, string fieldName, object value)
+        {
+            FieldInfo field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(field, $"Missing field '{fieldName}' on {target.GetType().Name}.");
+            field.SetValue(target, value);
         }
 
         [Test]

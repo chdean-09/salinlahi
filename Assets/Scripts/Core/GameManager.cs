@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-public enum GameState { Idle, Playing, Paused, GameOver, LevelComplete }
+public enum GameState { Idle, Playing, Paused, GameOver, LevelComplete, Practicing }
 
 public class GameManager : Singleton<GameManager>
 {
@@ -9,7 +9,10 @@ public class GameManager : Singleton<GameManager>
     public LevelConfigSO CurrentLevel { get; private set; }
     public int LastDefeatHearts { get; private set; }
 
-    private bool _hasPausedRunSnapshot;
+    public bool AcceptsDrawingInput =>
+        CurrentState == GameState.Playing || CurrentState == GameState.Practicing;
+
+private bool _hasPausedRunSnapshot;
     private int _pausedRunLevelId = -1;
     private int _pausedRunHearts = -1;
     private int _pausedRunWaveIndex = -1;
@@ -55,6 +58,18 @@ public class GameManager : Singleton<GameManager>
     {
         Time.timeScale = 1f;
         SetState(GameState.Playing);
+    }
+
+    public void EnterPractice()
+    {
+        Time.timeScale = 1f;
+        SetState(GameState.Practicing);
+    }
+
+    public void ExitPractice()
+    {
+        if (CurrentState != GameState.Practicing) return;
+        SetState(GameState.Idle);
     }
 
     public void PauseGame()

@@ -44,7 +44,7 @@ public class AudioManager : Singleton<AudioManager>
             _sfxSource.PlayOneShot(character.pronunciationClip);
     }
 
-    private void PlayBaseHitSound()
+    private void PlayBaseHitSound(int _)
     {
         // Sprint 2: assign a base hit sfx clip via Inspector
         DebugLogger.Log("AudioManager: Base hit sound (stub)");

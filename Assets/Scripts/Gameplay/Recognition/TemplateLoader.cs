@@ -10,7 +10,9 @@ using UnityEngine;
 public class TemplateLoader
 {
     private const string RESOURCES_PATH = "Templates";
-    private static readonly Regex s_variantPattern = new Regex(@"^(?<id>[A-Z][A-Z-]*)_TEMPLATE(_\d+)?$", RegexOptions.Compiled);
+    // TEMP: variant suffix made required to exclude the BA/KA/GA canonicals while their
+    // geometric shapes (circle/triangle/zigzag) outrank real-character variants.
+    private static readonly Regex s_variantPattern = new Regex(@"^(?<id>[A-Z][A-Z-]*)_TEMPLATE_\d+$", RegexOptions.Compiled);
 
     public Dictionary<string, List<List<Vector2>>> LoadAll()
     {
@@ -23,7 +25,7 @@ public class TemplateLoader
         {
             if (!TryExtractCharacterID(asset.name, out string id))
             {
-                DebugLogger.LogWarning($"TemplateLoader: Skipping template '{asset.name}' due to invalid naming. Expected ID_template or ID_template_01.");
+                DebugLogger.LogWarning($"TemplateLoader: Skipping template '{asset.name}' due to invalid naming. Expected ID_template_NN (e.g. BA_template_01).");
                 continue;
             }
 

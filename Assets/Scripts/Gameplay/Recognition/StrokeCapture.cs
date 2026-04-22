@@ -71,7 +71,7 @@ public class StrokeCapture : MonoBehaviour
     private void OnFingerDown(Finger finger)
     {
         if (GameManager.Instance == null ||
-            GameManager.Instance.CurrentState != GameState.Playing) return;
+            !GameManager.Instance.AcceptsDrawingInput) return;
 
         if (IsScreenPositionOverUI(finger.screenPosition))
             return;
@@ -108,7 +108,7 @@ public class StrokeCapture : MonoBehaviour
     private void OnFingerMove(Finger finger)
     {
         if (GameManager.Instance == null ||
-            GameManager.Instance.CurrentState != GameState.Playing) return;
+            !GameManager.Instance.AcceptsDrawingInput) return;
 
         if (finger.index != 0 || !_isDrawing) return;
 
@@ -181,7 +181,7 @@ public class StrokeCapture : MonoBehaviour
     private void SubmitForRecognition()
     {
         if (GameManager.Instance == null ||
-            GameManager.Instance.CurrentState != GameState.Playing)
+            !GameManager.Instance.AcceptsDrawingInput)
         {
             _pendingRecognitionSubmit = _strokes.Count > 0;
             return;

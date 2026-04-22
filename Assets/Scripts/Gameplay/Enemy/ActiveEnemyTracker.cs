@@ -48,7 +48,7 @@ public class ActiveEnemyTracker : Singleton<ActiveEnemyTracker>
     }
 
     /// Returns the active enemy closest to the base (lowest Y)
-    /// that carries the given characterID. Returns null if none.
+    /// whose real combat character matches the given characterID. Returns null if none.
     public Enemy FindClosestToBase(string characterID)
     {
         CleanupStaleEntries();
@@ -74,8 +74,8 @@ public class ActiveEnemyTracker : Singleton<ActiveEnemyTracker>
     }
 
 /// <summary>
-    /// Returns all active enemies carrying the given characterID.
-    /// Used later for AOE resolution.
+    /// Returns all active enemies whose real combat character matches the given characterID.
+    /// Used later for AOE resolution so decoy display labels do not affect the match set.
     /// <para><b>Do NOT cache the returned list</b> — it is reused across calls.</para>
     /// </summary>
     public List<Enemy> FindAllWithCharacter(string characterID)

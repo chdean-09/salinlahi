@@ -7,6 +7,8 @@ public class LevelConfigSO : ScriptableObject
     [Header("Identity")]
     public string levelName;
     public int levelNumber;
+    public int chapterNumber = 1;
+    public string chapterName = "Chapter 1";
 
     [Header("Waves")]
     [Tooltip("Waves played in order from index 0")]
