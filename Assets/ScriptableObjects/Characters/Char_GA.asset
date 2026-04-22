@@ -14,6 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: GA
   syllable: ga
-  displaySprite: {fileID: 0}
+  displaySprite: {fileID: 4035763599135563830, guid: 90454863e23df514eb040ab91266f844, type: 3}
   pronunciationClip: {fileID: 0}
   templateFileName: GA_template

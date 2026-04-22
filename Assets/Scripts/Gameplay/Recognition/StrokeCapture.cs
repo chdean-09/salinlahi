@@ -54,7 +54,7 @@ public class StrokeCapture : MonoBehaviour
     {
         // Block all input during GameOver or Paused
         if (GameManager.Instance == null ||
-            GameManager.Instance.CurrentState != GameState.Playing) return;
+            !GameManager.Instance.AcceptsDrawingInput) return;
 
         // Ignore touches that hit UI (pause button, menus, etc.).
         // Prevents UI taps from being treated as drawing strokes.
@@ -119,7 +119,7 @@ public class StrokeCapture : MonoBehaviour
     private void OnFingerMove(Finger finger)
     {
         if (GameManager.Instance == null ||
-            GameManager.Instance.CurrentState != GameState.Playing) return;
+            !GameManager.Instance.AcceptsDrawingInput) return;
 
         if (finger.index != 0 || !_isDrawing) return;
 
@@ -222,7 +222,7 @@ public class StrokeCapture : MonoBehaviour
     {
         // Guard: do not submit during non-playing states
         if (GameManager.Instance == null ||
-            GameManager.Instance.CurrentState != GameState.Playing)
+            !GameManager.Instance.AcceptsDrawingInput)
         {
             _pendingRecognitionSubmit = _strokes.Count > 0;
             return;

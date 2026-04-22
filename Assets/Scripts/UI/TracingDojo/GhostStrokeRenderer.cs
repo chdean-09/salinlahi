@@ -1,68 +1,48 @@
-using System.Collections.Generic;
-using System.Globalization;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class GhostStrokeRenderer : MonoBehaviour
 {
     [SerializeField] private RectTransform _canvasArea;
-    [SerializeField] private GameObject _dotPrefab;   // UI Image, 8x8, ghost alpha
     [SerializeField, Range(0f, 1f)] private float _ghostAlpha = 0.35f;
 
-    private readonly List<GameObject> _activeDots = new List<GameObject>();
+    private Image _ghostImage;
+
+    private void Awake()
+    {
+        var go = new GameObject(
+            "GhostSprite", typeof(RectTransform), typeof(Image));
+        var rt = (RectTransform)go.transform;
+        rt.SetParent(_canvasArea, worldPositionStays: false);
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
+
+        _ghostImage = go.GetComponent<Image>();
+        _ghostImage.raycastTarget = false;
+        _ghostImage.preserveAspect = true;
+        _ghostImage.enabled = false;
+    }
 
     public void Render(BaybayinCharacterSO character)
     {
-        Clear();
-        if (character == null) return;
-
-        var template = Resources.Load<TextAsset>(
-            $"Templates/{character.characterID}_template_01");
-        if (template == null)
+        if (character == null || character.displaySprite == null)
         {
-            Debug.LogWarning(
-                $"GhostStrokeRenderer: no template for {character.characterID}");
+            if (character != null)
+                Debug.LogWarning(
+                    $"GhostStrokeRenderer: no displaySprite for {character.characterID}");
+            Clear();
             return;
         }
 
-        var points = Parse(template.text);
-        var rect = _canvasArea.rect;
-
-        foreach (var p in points)
-        {
-            var dot = Instantiate(_dotPrefab, _canvasArea);
-            var rt = dot.GetComponent<RectTransform>();
-            rt.anchoredPosition = new Vector2(
-                Mathf.Lerp(rect.xMin, rect.xMax, p.x),
-                Mathf.Lerp(rect.yMin, rect.yMax, p.y));
-            var img = dot.GetComponent<UnityEngine.UI.Image>();
-            var c = img.color; c.a = _ghostAlpha; img.color = c;
-            _activeDots.Add(dot);
-        }
+        _ghostImage.sprite = character.displaySprite;
+        _ghostImage.color = new Color(1f, 1f, 1f, _ghostAlpha);
+        _ghostImage.enabled = true;
     }
 
     public void Clear()
     {
-        foreach (var d in _activeDots) Destroy(d);
-        _activeDots.Clear();
-    }
-
-    private static List<Vector2> Parse(string text)
-    {
-        var list = new List<Vector2>();
-        foreach (var line in text.Split('\n'))
-        {
-            var trimmed = line.Trim();
-            if (string.IsNullOrEmpty(trimmed)) continue;
-            var parts = trimmed.Split(',');
-            if (parts.Length < 2) continue;
-            if (float.TryParse(parts[0], NumberStyles.Float,
-                               CultureInfo.InvariantCulture, out var x)
-                && float.TryParse(parts[1], NumberStyles.Float,
-                                  CultureInfo.InvariantCulture, out var y))
-            {
-                list.Add(new Vector2(x, y));
-            }
-        }
-        return list;
+        if (_ghostImage != null) _ghostImage.enabled = false;
     }
 }
