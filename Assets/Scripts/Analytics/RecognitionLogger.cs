@@ -13,12 +13,18 @@ public static class RecognitionLogger
     private static readonly string CSV_HEADER =
         "timestamp,recognizedCharacterID,confidence,"
         + "secondBestCharacterID,secondBestConfidence,"
+        + "scoreGap,intendedCharacterID,outcome";
+
+    private static readonly string LEGACY_CSV_HEADER =
+        "timestamp,recognizedCharacterID,confidence,"
+        + "secondBestCharacterID,secondBestConfidence,"
         + "scoreGap,intendedCharacterID";
 
     private static string FilePath =>
         Path.Combine(
             Application.persistentDataPath, FILE_NAME);
 
+    // Tracks whether we have validated/migrated the header this session.
     private static bool _headerWritten;
 
     private static readonly List<string> _buffer
@@ -35,7 +41,8 @@ public static class RecognitionLogger
     /// threshold. This ensures failed attempts are also logged.
     public static void LogAttempt(
         RecognitionResult result,
-        string intendedCharacterID = "")
+        string intendedCharacterID = "",
+        string outcome = "attempt")
     {
         try
         {
@@ -56,7 +63,8 @@ public static class RecognitionLogger
                 + $"{secondID},"
                 + $"{secondConf:F4},"
                 + $"{gap:F4},"
-                + $"{intendedCharacterID}";
+                + $"{intendedCharacterID},"
+                + $"{outcome}";
 
             _buffer.Add(line);
             if (_buffer.Count >= FlushThreshold)
@@ -66,6 +74,36 @@ public static class RecognitionLogger
         {
             DebugLogger.LogWarning(
                 $"RecognitionLogger: Buffer failed: "
+                + $"{ex.Message}");
+        }
+    }
+
+    public static void LogOutcome(
+        string outcome,
+        string recognizedCharacterID = "",
+        string intendedCharacterID = "")
+    {
+        try
+        {
+            string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+            string line =
+                $"{timestamp},"
+                + $"{recognizedCharacterID},"
+                + "0.0000,"
+                + ","
+                + "0.0000,"
+                + "0.0000,"
+                + $"{intendedCharacterID},"
+                + $"{outcome}";
+
+            _buffer.Add(line);
+            if (_buffer.Count >= FlushThreshold)
+                Flush();
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.LogWarning(
+                $"RecognitionLogger: Outcome buffer failed: "
                 + $"{ex.Message}");
         }
     }
@@ -103,15 +141,17 @@ public static class RecognitionLogger
 
         string exportPath;
 
-        #if UNITY_ANDROID && !UNITY_EDITOR
-                exportPath = Path.Combine(
-                    "/storage/emulated/0/Download",
-                    "salinlahi_recognition_log.csv");
-        #else
-                exportPath = Path.Combine(
-                    Application.dataPath, "..",
-                    "salinlahi_recognition_log.csv");
-        #endif
+#if UNITY_ANDROID && !UNITY_EDITOR
+        // Copy to Android Downloads folder via shared storage.
+        exportPath = Path.Combine(
+            "/storage/emulated/0/Download",
+            "salinlahi_recognition_log.csv");
+#else
+        // Editor: copy to project root
+        exportPath = Path.Combine(
+            Application.dataPath, "..",
+            "salinlahi_recognition_log.csv");
+#endif
 
         try
         {
@@ -137,8 +177,10 @@ public static class RecognitionLogger
         if (File.Exists(FilePath))
         {
             string[] lines = File.ReadAllLines(FilePath);
+            // Subtract 1 for the header row
             diskCount = Mathf.Max(0, lines.Length - 1);
         }
+
         return diskCount + _buffer.Count;
     }
 
@@ -149,8 +191,10 @@ public static class RecognitionLogger
         _buffer.Clear();
         if (File.Exists(FilePath))
             File.Delete(FilePath);
+
         _headerWritten = false;
-        DebugLogger.Log("RecognitionLogger: Log cleared.");
+        DebugLogger.Log(
+            "RecognitionLogger: Log cleared.");
     }
 
     private static void EnsureHeader()
@@ -161,6 +205,21 @@ public static class RecognitionLogger
         {
             File.WriteAllText(
                 FilePath, CSV_HEADER + "\n");
+            _headerWritten = true;
+            return;
+        }
+
+        string[] lines = File.ReadAllLines(FilePath);
+        if (lines.Length > 0 && lines[0] == LEGACY_CSV_HEADER)
+        {
+            lines[0] = CSV_HEADER;
+            for (int i = 1; i < lines.Length; i++)
+            {
+                if (!string.IsNullOrWhiteSpace(lines[i]))
+                    lines[i] += ",legacy";
+            }
+
+            File.WriteAllLines(FilePath, lines);
         }
 
         _headerWritten = true;

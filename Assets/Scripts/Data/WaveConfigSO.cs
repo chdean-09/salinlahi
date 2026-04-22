@@ -27,17 +27,34 @@ public class WaveConfigSO : ScriptableObject
 #if UNITY_EDITOR
     private void OnValidate()
     {
-        if (enemyTypesInWave == null) return;
+        if (string.IsNullOrWhiteSpace(waveID))
+            Debug.LogError($"WaveConfigSO '{name}' is missing waveID.", this);
 
-        for (int i = 0; i < enemyTypesInWave.Count; i++)
+        if (waveNumber <= 0)
+            Debug.LogError($"WaveConfigSO '{name}' has invalid waveNumber {waveNumber}.", this);
+
+        if (enemyCount < 0)
+            Debug.LogError($"WaveConfigSO '{name}' has enemyCount < 0.", this);
+
+        if (spawnInterval < 0f)
+            Debug.LogError($"WaveConfigSO '{name}' has spawnInterval < 0.", this);
+
+        if (waveStartDelay < 0f)
+            Debug.LogError($"WaveConfigSO '{name}' has waveStartDelay < 0.", this);
+
+        ValidateList(enemyTypesInWave, "enemyTypesInWave");
+        ValidateList(charactersInWave, "charactersInWave");
+    }
+
+    private void ValidateList<T>(List<T> values, string fieldName) where T : Object
+    {
+        if (values == null)
+            return;
+
+        for (int i = 0; i < values.Count; i++)
         {
-            if (enemyTypesInWave[i] == null)
-            {
-                UnityEngine.Debug.LogError(
-                    $"[WaveConfigSO] '{name}' has a NULL enemy reference at index {i}. " +
-                    "Assign an EnemyDataSO or remove the empty slot.",
-                    this);
-            }
+            if (values[i] == null)
+                Debug.LogError($"WaveConfigSO '{name}' has a missing reference in {fieldName}[{i}].", this);
         }
     }
 #endif

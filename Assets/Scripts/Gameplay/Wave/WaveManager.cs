@@ -2,6 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
 using Salinlahi.Debug.Sandbox;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 #endif
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -665,4 +668,75 @@ public class WaveManager : MonoBehaviour
 
         DebugLogger.LogError($"WaveManager: Could not load Level {levelNumber} config and no fallback assigned.");
     }
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        if (_legacyDefaultEnemyData == null)
+            Debug.LogError("WaveManager is missing _legacyDefaultEnemyData / fallback enemy data.", this);
+
+        if (_levelConfigs == null)
+            return;
+
+        var seenLevelNumbers = new HashSet<int>();
+        for (int i = 0; i < _levelConfigs.Length; i++)
+        {
+            LevelConfigSO level = _levelConfigs[i];
+            if (level == null)
+            {
+                Debug.LogError($"WaveManager has a missing LevelConfigSO reference at _levelConfigs[{i}].", this);
+                continue;
+            }
+
+            if (!seenLevelNumbers.Add(level.levelNumber))
+                Debug.LogError($"WaveManager has duplicate levelNumber {level.levelNumber} in _levelConfigs.", this);
+
+            if (level.waves == null)
+                continue;
+
+            for (int waveIndex = 0; waveIndex < level.waves.Count; waveIndex++)
+            {
+                WaveConfigSO wave = level.waves[waveIndex];
+                if (wave == null)
+                {
+                    Debug.LogError(
+                        $"WaveManager level '{level.name}' has a missing WaveConfigSO at waves[{waveIndex}].",
+                        level);
+                    continue;
+                }
+
+                ValidateWaveRefs(level, wave);
+            }
+        }
+    }
+
+    private static void ValidateWaveRefs(LevelConfigSO level, WaveConfigSO wave)
+    {
+        if (wave.enemyTypesInWave != null)
+        {
+            for (int i = 0; i < wave.enemyTypesInWave.Count; i++)
+            {
+                if (wave.enemyTypesInWave[i] == null)
+                {
+                    Debug.LogError(
+                        $"Level '{level.name}' wave '{wave.name}' has a missing enemyTypesInWave[{i}] reference.",
+                        wave);
+                }
+            }
+        }
+
+        if (wave.charactersInWave != null)
+        {
+            for (int i = 0; i < wave.charactersInWave.Count; i++)
+            {
+                if (wave.charactersInWave[i] == null)
+                {
+                    Debug.LogError(
+                        $"Level '{level.name}' wave '{wave.name}' has a missing charactersInWave[{i}] reference.",
+                        wave);
+                }
+            }
+        }
+    }
+#endif
 }
