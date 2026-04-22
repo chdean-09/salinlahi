@@ -14,4 +14,10 @@ public class Singleton<T> : MonoBehaviour where T : MonoBehaviour
         Instance = this as T;
         DontDestroyOnLoad(gameObject);
     }
+
+    protected virtual void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
+    }
 }

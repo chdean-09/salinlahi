@@ -673,7 +673,7 @@ public class WaveManager : MonoBehaviour
     private void OnValidate()
     {
         if (_legacyDefaultEnemyData == null)
-            Debug.LogError("WaveManager is missing _legacyDefaultEnemyData / fallback enemy data.", this);
+            Debug.LogWarning("WaveManager is missing _legacyDefaultEnemyData / fallback enemy data.", this);
 
         if (_levelConfigs == null)
             return;

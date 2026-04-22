@@ -19,7 +19,12 @@ public class DrawingCanvas : MonoBehaviour
     private List<LineRenderer> _activeLines = new List<LineRenderer>();
     private Camera _cam;
 
-    private void Awake() => _cam = Camera.main;
+    private void Awake()
+    {
+        _cam = Camera.main;
+        if (_cam == null)
+            Debug.LogError("DrawingCanvas: No Camera tagged 'MainCamera' found. Strokes will be disabled.", this);
+    }
 
     public void BeginStroke()
     {
@@ -38,7 +43,7 @@ public class DrawingCanvas : MonoBehaviour
 
     public void AddPoint(Vector2 screenPos)
     {
-        if (_currentLine == null) return;
+        if (_currentLine == null || _cam == null) return;
         if (float.IsInfinity(screenPos.x) || float.IsInfinity(screenPos.y) ||
             float.IsNaN(screenPos.x) || float.IsNaN(screenPos.y)) return;
         Vector3 world = _cam.ScreenToWorldPoint(
