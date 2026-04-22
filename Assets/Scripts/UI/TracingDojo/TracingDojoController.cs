@@ -8,10 +8,12 @@ public class TracingDojoController : MonoBehaviour
     [SerializeField] private CharacterRegistrySO _registry;
 
     private BaybayinCharacterSO _selected;
+    private bool _previousLoggingEnabled;
 
     private void OnEnable()
     {
         EventBus.OnRecognitionResolved += OnResolved;
+        _previousLoggingEnabled = RecognitionLogger.LoggingEnabled;
         RecognitionLogger.LoggingEnabled = false;
         if (GameManager.Instance != null) GameManager.Instance.EnterPractice();
     }
@@ -19,7 +21,7 @@ public class TracingDojoController : MonoBehaviour
     private void OnDisable()
     {
         EventBus.OnRecognitionResolved -= OnResolved;
-        RecognitionLogger.LoggingEnabled = true;
+        RecognitionLogger.LoggingEnabled = _previousLoggingEnabled;
         if (GameManager.Instance != null) GameManager.Instance.ExitPractice();
     }
 
@@ -33,12 +35,12 @@ public class TracingDojoController : MonoBehaviour
 
     private void OnResolved(RecognitionResult result, bool passedThreshold, float threshold)
     {
-        _toast.Show(result.characterID, result.score, passedThreshold);
+        bool matchesSelected = _selected == null || result.characterID == _selected.characterID;
+        bool pass = passedThreshold && matchesSelected;
 
-        if (passedThreshold
-            && _selected != null
-            && result.characterID == _selected.characterID
-            && _selected.pronunciationClip != null)
+        _toast.Show(result.characterID, result.score, pass);
+
+        if (pass && _selected != null && _selected.pronunciationClip != null)
         {
             AudioManager.Instance.PlaySFX(_selected.pronunciationClip);
         }
