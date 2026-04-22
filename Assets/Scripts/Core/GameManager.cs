@@ -17,6 +17,7 @@ public class GameManager : Singleton<GameManager>
     private int _pausedRunWaveIndex = -1;
     private int _pausedRunWaveSpawnedCount = 0;
     private readonly List<PausedEnemySnapshot> _pausedEnemies = new();
+    private GameState _stateBeforeDialogue;
 
     public readonly struct PausedEnemySnapshot
     {
@@ -84,6 +85,21 @@ public class GameManager : Singleton<GameManager>
         Time.timeScale = 1f;
         SetState(GameState.Playing);
         EventBus.RaiseGameResumed();
+    }
+
+    public void EnterDialoguePause()
+    {
+        if (CurrentState != GameState.Playing) return;
+        _stateBeforeDialogue = CurrentState;
+        Time.timeScale = 0f;
+        SetState(GameState.Paused);
+    }
+
+    public void ExitDialoguePause()
+    {
+        if (CurrentState != GameState.Paused) return;
+        Time.timeScale = 1f;
+        SetState(_stateBeforeDialogue);
     }
 
     private void HandleGameOver()

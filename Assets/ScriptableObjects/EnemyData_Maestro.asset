@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bb4cd3e37d015f4f8d9baa6e4cc1ac5, type: 3}
+  m_Name: EnemyData_Maestro
+  m_EditorClassIdentifier: Salinlahi.Runtime::EnemyDataSO
+  enemyID: maestro
+  moveSpeed: 1.45
+  maxHealth: 1
+  walkFrames:
+  - {fileID: 4563579384766323862, guid: 1f0fbc83a2f4955478ee176de2c46b24, type: 3}
+  - {fileID: -6801776770254510112, guid: 1f0fbc83a2f4955478ee176de2c46b24, type: 3}
+  - {fileID: -2810746480745109998, guid: 1f0fbc83a2f4955478ee176de2c46b24, type: 3}
+  - {fileID: 5960439762532924852, guid: 1f0fbc83a2f4955478ee176de2c46b24, type: 3}
+  animatorController: {fileID: 0}
+  assignedCharacter: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+  isDecoy: 1
+  dealsContactDamage: 0

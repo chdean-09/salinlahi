@@ -10,6 +10,7 @@ public class EnemyMover : MonoBehaviour
     private float _speed;
     private bool _active;
     private float _focusSpeedMultiplier = 1f;
+    public bool IsMoving => _active && GetFinalSpeed() > Mathf.Epsilon;
 
     public void SetSpeed(float speed)
     {
@@ -36,7 +37,6 @@ public class EnemyMover : MonoBehaviour
     private void Update()
     {
         if (!_active) return;
-        // Portrait orientation: enemies move from top to bottom (negative Y direction)
         float finalSpeed = GetFinalSpeed();
         transform.Translate(Vector2.down * finalSpeed * Time.deltaTime, Space.World);
     }
@@ -63,8 +63,19 @@ public class EnemyMover : MonoBehaviour
         if (!pool.IsCheckedOut(enemy))
             return;
 
+        EnemyDataSO data = enemy.Data;
         pool.Return(enemy);
-        EventBus.RaiseBaseHit();
+        bool dealsContactDamage = data == null || data.dealsContactDamage;
+        if (dealsContactDamage)
+        {
+            EventBus.RaiseBaseHit(1);
+        }
+        else if (data != null && data.isDecoy)
+        {
+            RecognitionLogger.LogOutcome(
+                outcome: "decoy_ignored",
+                recognizedCharacterID: data.assignedCharacter != null ? data.assignedCharacter.characterID : "");
+        }
     }
 
     private void OnDisable()

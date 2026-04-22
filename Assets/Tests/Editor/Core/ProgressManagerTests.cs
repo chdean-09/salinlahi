@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace Salinlahi.Tests.Editor.Core
 {
@@ -24,7 +25,7 @@ namespace Salinlahi.Tests.Editor.Core
                 Object.DestroyImmediate(_gameObject);
             PlayerPrefs.DeleteKey(ProgressManager.SelectedLevelKey);
             PlayerPrefs.DeleteKey(ProgressManager.EndlessModeKey);
-            for (int i = 1; i <= 5; i++)
+            for (int i = 1; i <= 15; i++)
             {
                 PlayerPrefs.DeleteKey($"salinlahi.progress.unlocked.{i}");
                 PlayerPrefs.DeleteKey($"salinlahi.progress.stars.{i}");
@@ -133,7 +134,7 @@ namespace Salinlahi.Tests.Editor.Core
         [Test]
         public void MarkLevelComplete_Level5_UnlocksEndlessMode()
         {
-            for (int i = 1; i <= 5; i++)
+            for (int i = 1; i <= 15; i++)
                 _manager.MarkLevelComplete(i, 3);
 
             Assert.IsTrue(_manager.IsEndlessModeUnlocked());
@@ -143,7 +144,7 @@ namespace Salinlahi.Tests.Editor.Core
         public void IsLevelUnlocked_InvalidLevel_ReturnsFalse()
         {
             Assert.IsFalse(_manager.IsLevelUnlocked(0));
-            Assert.IsFalse(_manager.IsLevelUnlocked(6));
+            Assert.IsFalse(_manager.IsLevelUnlocked(16));
             Assert.IsFalse(_manager.IsLevelUnlocked(-1));
         }
 
@@ -151,14 +152,16 @@ namespace Salinlahi.Tests.Editor.Core
         public void GetStars_InvalidLevel_ReturnsZero()
         {
             Assert.AreEqual(0, _manager.GetStars(0));
-            Assert.AreEqual(0, _manager.GetStars(6));
+            Assert.AreEqual(0, _manager.GetStars(16));
         }
 
         [Test]
         public void MarkLevelComplete_InvalidLevel_DoesNotThrow()
         {
+            LogAssert.Expect(LogType.Error, "[Salinlahi] ProgressManager: Invalid levelID 0. Must be between 1 and 15.");
+            LogAssert.Expect(LogType.Error, "[Salinlahi] ProgressManager: Invalid levelID 16. Must be between 1 and 15.");
             Assert.DoesNotThrow(() => _manager.MarkLevelComplete(0, 3));
-            Assert.DoesNotThrow(() => _manager.MarkLevelComplete(6, 3));
+            Assert.DoesNotThrow(() => _manager.MarkLevelComplete(16, 3));
         }
 
         [Test]

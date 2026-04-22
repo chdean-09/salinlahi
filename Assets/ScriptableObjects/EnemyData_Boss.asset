@@ -12,10 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8bb4cd3e37d015f4f8d9baa6e4cc1ac5, type: 3}
   m_Name: EnemyData_Boss
   m_EditorClassIdentifier: Assembly-CSharp::EnemyDataSO
-  enemyID: boss
-  moveSpeed: 0.8
-  maxHealth: 5
+  enemyID: kadiliman
+  moveSpeed: 0.5
+  maxHealth: 10
   walkFrames:
   - {fileID: 21300000, guid: 61e33c4f45e289b43ab91edaa12c018b, type: 3}
   animatorController: {fileID: 0}
   assignedCharacter: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+  isDecoy: 0
+  dealsContactDamage: 1

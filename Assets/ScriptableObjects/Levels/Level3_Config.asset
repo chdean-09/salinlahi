@@ -11,15 +11,9 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 98c3e4f7bd9686740a8cd775acf3cbef, type: 3}
   m_Name: Level3_Config
-  m_EditorClassIdentifier: Assembly-CSharp::LevelConfigSO
-  levelName: Level 2
-  levelNumber: 2
-  waves:
-  - {fileID: 11400000, guid: 5cd9769311864743b03967b695d56b84, type: 2}
-  - {fileID: 11400000, guid: 3f5f494698c247ba9cf2805d9f2ed6d7, type: 2}
-  - {fileID: 11400000, guid: 9dafc675b31e46e6836c461d474a0069, type: 2}
-  allowedCharacters:
-  - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
-  - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
-  - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
-  isAvailableInLite: 1
+  m_EditorClassIdentifier: Salinlahi.Runtime::LevelConfigSO
+  levelName: Level 3
+  levelNumber: 3
+  waves: []
+  allowedCharacters: []
+  isAvailableInLite: 0

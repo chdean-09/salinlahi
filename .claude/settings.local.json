@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/tmp/count_backticks.py:*)",
+      "Bash(python /tmp/count_backticks.py)",
+      "Bash(/tmp/fix_full.py:*)",
+      "Bash(python /tmp/fix_full.py)",
+      "Bash(/tmp/count2.py:*)",
+      "Bash(python /tmp/count2.py)",
+      "Bash(/tmp/verify.py:*)",
+      "Bash(python /tmp/verify.py)",
+      "Bash(/tmp/final_clean.py:*)",
+      "Bash(python /tmp/final_clean.py)"
+    ]
+  }
+}

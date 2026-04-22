@@ -6,7 +6,7 @@ public static class EventBus
 {
     // -- Enemy Events --
     public static event Action<BaybayinCharacterSO> OnEnemyDefeated;
-    public static event Action OnBaseHit;
+    public static event Action<int> OnBaseHit;
 
     // -- Game State Events --
     public static event Action OnGameOver;
@@ -34,13 +34,20 @@ public static class EventBus
     public static event Action OnFocusModeActivated;
     public static event Action OnFocusModeDeactivated;
 
-    // -- Pause Events --
+// -- Pause Events --
     public static event Action OnGamePaused;
     public static event Action OnGameResumed;
 
+    // -- Boss Events --
+    public static event Action OnBossDefeated;
+
+    // -- Dialogue Events --
+    public static event Action OnDialogueStarted;
+    public static event Action OnDialogueComplete;
+
     // -- Raisers --
     public static void RaiseEnemyDefeated(BaybayinCharacterSO c) => OnEnemyDefeated?.Invoke(c);
-    public static void RaiseBaseHit() => OnBaseHit?.Invoke();
+    public static void RaiseBaseHit(int damage = 1) => OnBaseHit?.Invoke(damage);
     public static void RaiseGameOver() => OnGameOver?.Invoke();
     public static void RaiseLevelComplete() => OnLevelComplete?.Invoke();
     public static void RaiseWaveStarted(int index) => OnWaveStarted?.Invoke(index);
@@ -58,4 +65,7 @@ public static class EventBus
     public static void RaiseFocusModeDeactivated() => OnFocusModeDeactivated?.Invoke();
     public static void RaiseGamePaused() => OnGamePaused?.Invoke();
     public static void RaiseGameResumed() => OnGameResumed?.Invoke();
+    public static void RaiseBossDefeated() => OnBossDefeated?.Invoke();
+    public static void RaiseDialogueStarted() => OnDialogueStarted?.Invoke();
+    public static void RaiseDialogueComplete() => OnDialogueComplete?.Invoke();
 }

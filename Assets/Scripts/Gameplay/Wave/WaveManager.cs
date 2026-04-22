@@ -2,6 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
 using Salinlahi.Debug.Sandbox;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 #endif
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -269,6 +272,12 @@ public class WaveManager : MonoBehaviour
             yield break;
         }
 
+        if (_levelConfig.isBossLevel && _levelConfig.bossConfig != null)
+        {
+            yield return StartCoroutine(RunBossEncounter(_levelConfig.bossConfig));
+            yield break;
+        }
+
         if (_levelConfig.waves == null || _levelConfig.waves.Count == 0)
         {
             DebugLogger.LogWarning("WaveManager: Level has no waves.");
@@ -350,6 +359,62 @@ public class WaveManager : MonoBehaviour
     private void HandleEnemySpawned()
     {
         _currentWaveSpawnedCount++;
+    }
+
+    private IEnumerator RunBossEncounter(BossConfigSO bossConfig)
+    {
+        if (bossConfig.bossEnemyData == null)
+        {
+            DebugLogger.LogError("WaveManager: BossConfig has no bossEnemyData assigned. Aborting boss encounter.");
+            AbortRun();
+            yield break;
+        }
+
+        if (_levelConfig.allowedCharacters == null || _levelConfig.allowedCharacters.Count == 0)
+        {
+            DebugLogger.LogError("WaveManager: Boss level has no allowedCharacters. Aborting boss encounter.");
+            AbortRun();
+            yield break;
+        }
+
+        EventBus.RaiseWaveStarted(0);
+        yield return new WaitForSeconds(1f);
+
+        BaybayinCharacterSO character = _levelConfig.allowedCharacters[
+            Random.Range(0, _levelConfig.allowedCharacters.Count)];
+        Enemy bossEnemy = _spawner.SpawnEnemy(bossConfig.bossEnemyData, character);
+
+        if (bossEnemy == null)
+        {
+            DebugLogger.LogError("WaveManager: Failed to spawn boss enemy. Aborting boss encounter.");
+            AbortRun();
+            yield break;
+        }
+
+        yield return new WaitUntil(() =>
+        {
+            if (!CanContinueRun())
+                return true;
+
+            ActiveEnemyTracker tracker = ActiveEnemyTracker.Instance;
+            if (tracker == null)
+            {
+                DebugLogger.LogError("WaveManager: ActiveEnemyTracker.Instance is null during boss encounter.");
+                return true;
+            }
+
+            return tracker.IsClear;
+        });
+
+        if (!CanContinueRun())
+        {
+            AbortRun();
+            yield break;
+        }
+
+        EventBus.RaiseBossDefeated();
+        EventBus.RaiseWaveCleared(0);
+        CompleteRun();
     }
 
     private int ResolveResumeWaveIndex(
@@ -603,4 +668,75 @@ public class WaveManager : MonoBehaviour
 
         DebugLogger.LogError($"WaveManager: Could not load Level {levelNumber} config and no fallback assigned.");
     }
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        if (_legacyDefaultEnemyData == null)
+            Debug.LogError("WaveManager is missing _legacyDefaultEnemyData / fallback enemy data.", this);
+
+        if (_levelConfigs == null)
+            return;
+
+        var seenLevelNumbers = new HashSet<int>();
+        for (int i = 0; i < _levelConfigs.Length; i++)
+        {
+            LevelConfigSO level = _levelConfigs[i];
+            if (level == null)
+            {
+                Debug.LogError($"WaveManager has a missing LevelConfigSO reference at _levelConfigs[{i}].", this);
+                continue;
+            }
+
+            if (!seenLevelNumbers.Add(level.levelNumber))
+                Debug.LogError($"WaveManager has duplicate levelNumber {level.levelNumber} in _levelConfigs.", this);
+
+            if (level.waves == null)
+                continue;
+
+            for (int waveIndex = 0; waveIndex < level.waves.Count; waveIndex++)
+            {
+                WaveConfigSO wave = level.waves[waveIndex];
+                if (wave == null)
+                {
+                    Debug.LogError(
+                        $"WaveManager level '{level.name}' has a missing WaveConfigSO at waves[{waveIndex}].",
+                        level);
+                    continue;
+                }
+
+                ValidateWaveRefs(level, wave);
+            }
+        }
+    }
+
+    private static void ValidateWaveRefs(LevelConfigSO level, WaveConfigSO wave)
+    {
+        if (wave.enemyTypesInWave != null)
+        {
+            for (int i = 0; i < wave.enemyTypesInWave.Count; i++)
+            {
+                if (wave.enemyTypesInWave[i] == null)
+                {
+                    Debug.LogError(
+                        $"Level '{level.name}' wave '{wave.name}' has a missing enemyTypesInWave[{i}] reference.",
+                        wave);
+                }
+            }
+        }
+
+        if (wave.charactersInWave != null)
+        {
+            for (int i = 0; i < wave.charactersInWave.Count; i++)
+            {
+                if (wave.charactersInWave[i] == null)
+                {
+                    Debug.LogError(
+                        $"Level '{level.name}' wave '{wave.name}' has a missing charactersInWave[{i}] reference.",
+                        wave);
+                }
+            }
+        }
+    }
+#endif
 }

@@ -16,12 +16,12 @@ public class ProgressManager : Singleton<ProgressManager>
 
     private const string KeyPrefix = "salinlahi.progress.";
     private const int MaxStars = 3;
-    private const int TotalLevels = 5;
+    private const int TotalLevels = 15;
 
     // Track which level we've processed to handle restarts properly
     private int _lastProcessedLevelId = -1;
 
-    // Cached HeartSystem reference for performance
+    // Cached HeartSystem reference — set via RegisterHeartSystem
     private HeartSystem _cachedHeartSystem;
 
     // Track current level being played for validation
@@ -48,22 +48,38 @@ public class ProgressManager : Singleton<ProgressManager>
     }
 
     /// <summary>
-    /// Called when a new scene is loaded. Cache HeartSystem reference if in gameplay.
+    /// Called by HeartSystem.OnEnable() to register itself.
+    /// Replaces FindFirstObjectByType scene search.
+    /// </summary>
+    public void RegisterHeartSystem(HeartSystem heartSystem)
+    {
+        _cachedHeartSystem = heartSystem;
+        DebugLogger.Log("ProgressManager: HeartSystem registered.");
+    }
+
+    /// <summary>
+    /// Called by HeartSystem.OnDisable() to deregister.
+    /// </summary>
+    public void DeregisterHeartSystem(HeartSystem heartSystem)
+    {
+        if (_cachedHeartSystem == heartSystem)
+        {
+            _cachedHeartSystem = null;
+            DebugLogger.Log("ProgressManager: HeartSystem deregistered.");
+        }
+    }
+
+    /// <summary>
+    /// Called when a new scene is loaded.
     /// </summary>
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        // Clear cached HeartSystem when entering a new scene
+        // Clear cached HeartSystem when entering a new scene;
+        // HeartSystem will re-register via its OnEnable.
         _cachedHeartSystem = null;
 
-        // Try to find HeartSystem if we're in the gameplay scene
         if (scene.name.Contains("Gameplay") || scene.name.Contains("Game"))
         {
-            _cachedHeartSystem = FindFirstObjectByType<HeartSystem>();
-            if (_cachedHeartSystem != null)
-            {
-                DebugLogger.Log("ProgressManager: Cached HeartSystem reference.");
-            }
-
             // Read the selected level when entering gameplay
             _currentPlayingLevelId = PlayerPrefs.GetInt(SelectedLevelKey, 1);
             DebugLogger.Log($"ProgressManager: Starting Level {_currentPlayingLevelId}");
@@ -85,10 +101,10 @@ public class ProgressManager : Singleton<ProgressManager>
         // Wave 0 indicates start of a new level attempt
         if (waveIndex == 0)
         {
-            // Refresh HeartSystem cache at level start
+            // HeartSystem should have already registered via OnEnable
             if (_cachedHeartSystem == null)
             {
-                _cachedHeartSystem = FindFirstObjectByType<HeartSystem>();
+                DebugLogger.LogWarning("ProgressManager: HeartSystem not registered at wave 0 start.");
             }
 
             // Update current level ID from PlayerPrefs (in case it changed)
@@ -149,18 +165,13 @@ public class ProgressManager : Singleton<ProgressManager>
     /// </summary>
     private int CalculateStars()
     {
-        // Use cached HeartSystem if available, otherwise find it
+        // HeartSystem should have already registered via OnEnable
         HeartSystem heartSystem = _cachedHeartSystem;
-        if (heartSystem == null)
-        {
-            heartSystem = FindFirstObjectByType<HeartSystem>();
-            _cachedHeartSystem = heartSystem;
-        }
 
         if (heartSystem == null)
         {
-            DebugLogger.LogWarning("ProgressManager: HeartSystem not found, defaulting to 1 star.");
-            return 1; // Default to 1 star if we can't determine hearts
+            DebugLogger.LogWarning("ProgressManager: HeartSystem not registered, defaulting to 1 star.");
+            return 1;
         }
 
         int currentHearts = heartSystem.GetCurrentHearts();
