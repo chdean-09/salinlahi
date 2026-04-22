@@ -7,8 +7,9 @@ public class GameManager : Singleton<GameManager>
 {
     public GameState CurrentState { get; private set; } = GameState.Idle;
     public LevelConfigSO CurrentLevel { get; private set; }
+    public int LastDefeatHearts { get; private set; }
 
-private bool _hasPausedRunSnapshot;
+    private bool _hasPausedRunSnapshot;
     private int _pausedRunLevelId = -1;
     private int _pausedRunHearts = -1;
     private int _pausedRunWaveIndex = -1;
@@ -89,9 +90,12 @@ private bool _hasPausedRunSnapshot;
 
     private void HandleGameOver()
     {
+        HeartSystem heartSystem = FindFirstObjectByType<HeartSystem>();
+        LastDefeatHearts = heartSystem != null ? heartSystem.GetCurrentHearts() : 0;
+
         ClearPausedRunSnapshot();
         SetState(GameState.GameOver);
-        SceneLoader.Instance.LoadGameOver();
+        DebugLogger.Log("GameManager: GameOver state set. Defeat overlay will handle UI.");
     }
 
     private void HandleLevelComplete()
