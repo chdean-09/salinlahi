@@ -215,7 +215,7 @@ public static class SALIN45SceneBuilder
         tmp.fontStyle = FontStyles.Normal;
         tmp.color = Color.white;
         tmp.alignment = TextAlignmentOptions.TopLeft;
-        tmp.enableWordWrapping = true;
+        tmp.textWrappingMode = TextWrappingModes.Normal;
         tmp.raycastTarget = false;
 
         Debug.Log("[SALIN-45] Created BodyText (TMP).");

@@ -2712,6 +2712,74 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.size
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[3].prefab
+      value: 
+      objectReference: {fileID: 5932524008345001555, guid: 8af0504b541264b64aad0cc3cef11412, type: 3}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[4].prefab
+      value: 
+      objectReference: {fileID: 4063371454573776181, guid: b0fde5fc3027f45d7b93a4db4103b9fe, type: 3}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[5].prefab
+      value: 
+      objectReference: {fileID: 5931778079631490112, guid: a4cdb46ae4485483082313ebd442d064, type: 3}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[6].prefab
+      value: 
+      objectReference: {fileID: 1922689356493373104, guid: fc471189357054627bfe740347b524f3, type: 3}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[3].enemyID
+      value: shokan
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[3].maxSize
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[4].enemyID
+      value: kisha
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[4].maxSize
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[5].enemyID
+      value: kempei
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[5].maxSize
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[6].enemyID
+      value: heitai
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[6].maxSize
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[3].defaultCapacity
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[4].defaultCapacity
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[5].defaultCapacity
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[6].defaultCapacity
+      value: 10
+      objectReference: {fileID: 0}
     - target: {fileID: 655216211397709316, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
