@@ -41,6 +41,8 @@ public class Enemy : MonoBehaviour
     public EnemyDataSO Data => _data;
     public int CurrentHealth => _currentHealth;
     public bool IsDecoy => _data != null && _data.isDecoy;
+    // placeholder for now. will be replaced in salin 68
+    public virtual bool IsBoss => false;
 
     private void Awake()
     {
