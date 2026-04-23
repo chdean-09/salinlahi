@@ -14,6 +14,10 @@ public class MainMenuUI : MonoBehaviour
 
     [SerializeField] private Button _endlessModeButton;
 
+    [Header("Overlay Panels")]
+    [SerializeField] private SettingsPanel _settingsPanel;
+    [SerializeField] private CreditsPanel _creditsPanel;
+
     private void Start()
     {
         if (_endlessModeButton != null)
@@ -67,7 +71,16 @@ public class MainMenuUI : MonoBehaviour
 
     public void OnSettingsPressed()
     {
-        DebugLogger.Log("MainMenuUI: Settings pressed (not yet implemented)");
+        DebugLogger.Log("MainMenuUI: Settings pressed");
+        if (_settingsPanel != null)
+            _settingsPanel.Show();
+    }
+
+    public void OnCreditsPressed()
+    {
+        DebugLogger.Log("MainMenuUI: Credits pressed");
+        if (_creditsPanel != null)
+            _creditsPanel.Show();
     }
 
 #if UNITY_EDITOR || SALINLAHI_SANDBOX

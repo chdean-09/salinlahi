@@ -10,6 +10,8 @@ public class PauseMenuUI : MonoBehaviour
     [SerializeField] private GameObject _panel;
     [SerializeField] private Button _resumeButton;
     [SerializeField] private Button _quitButton;
+    [SerializeField] private Button _settingsButton;
+    [SerializeField] private SettingsPanel _settingsPanel;
 
     private void Awake()
     {
@@ -25,6 +27,8 @@ public class PauseMenuUI : MonoBehaviour
             _resumeButton.onClick.AddListener(OnResumePressed);
         if (_quitButton != null)
             _quitButton.onClick.AddListener(OnQuitPressed);
+        if (_settingsButton != null)
+            _settingsButton.onClick.AddListener(OnSettingsPressed);
     }
 
     private void OnDisable()
@@ -36,6 +40,8 @@ public class PauseMenuUI : MonoBehaviour
             _resumeButton.onClick.RemoveListener(OnResumePressed);
         if (_quitButton != null)
             _quitButton.onClick.RemoveListener(OnQuitPressed);
+        if (_settingsButton != null)
+            _settingsButton.onClick.RemoveListener(OnSettingsPressed);
     }
 
     private void Show()
@@ -102,6 +108,13 @@ public class PauseMenuUI : MonoBehaviour
             Time.timeScale = 1f;
             SceneManager.LoadScene("MainMenu");
         }
+    }
+
+    private void OnSettingsPressed()
+    {
+        DebugLogger.Log("PauseMenuUI: Settings pressed");
+        if (_settingsPanel != null)
+            _settingsPanel.Show();
     }
 
     public static bool ShouldCachePausedRunSnapshot()

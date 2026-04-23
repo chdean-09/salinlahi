@@ -89,8 +89,10 @@ public class SceneLoader : Singleton<SceneLoader>
         LoadScene(SCENE_LEVEL_SELECT);
     }
 
+[System.Obsolete("GameOver scene replaced by DefeatScreenUI overlay in Gameplay scene (SALIN-58).")]
     public void LoadGameOver()
     {
+        DebugLogger.LogWarning("SceneLoader.LoadGameOver: This scene is deprecated. DefeatScreenUI overlay handles defeat.");
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
         if (SandboxMode.IsActive)
         {
