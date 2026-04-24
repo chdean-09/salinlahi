@@ -6,11 +6,13 @@ using UnityEngine;
 // pass during the same frame.
 public class AOEResolver : MonoBehaviour
 {
-    private const int AOE_THRESHOLD = 3;
-
     [SerializeField] private CharacterRegistrySO _registry;
+
     [Tooltip("Optional full-screen flash prefab spawned at this GameObject's position on AOE.")]
     [SerializeField] private GameObject _aoeFlashVfxPrefab;
+
+    [Tooltip("Minimum matching on-screen enemies required to trigger an AOE mass-defeat.")]
+    [SerializeField, Min(1)] private int _aoeThreshold = 3;
 
     private readonly List<Enemy> _iterationBuffer = new List<Enemy>(16);
     private readonly List<BaybayinCharacterSO> _defeatedBuffer = new List<BaybayinCharacterSO>(16);
@@ -31,7 +33,7 @@ public class AOEResolver : MonoBehaviour
         if (tracker == null || _registry == null) return;
 
         List<Enemy> matches = tracker.FindAllWithCharacter(characterID);
-        if (matches == null || matches.Count < AOE_THRESHOLD) return;
+        if (matches == null || matches.Count < _aoeThreshold) return;
 
         _iterationBuffer.Clear();
         for (int i = 0; i < matches.Count; i++)
