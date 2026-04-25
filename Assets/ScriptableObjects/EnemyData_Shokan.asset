@@ -16,6 +16,17 @@ MonoBehaviour:
   moveSpeed: 1.2
   maxHealth: 2
   walkFrames:
-  - {fileID: 21300000, guid: 61e33c4f45e289b43ab91edaa12c018b, type: 3}
+  - {fileID: 1993020204122024386, guid: 7899eb3fcd606484cb68aa32264a75ac, type: 3}
+  - {fileID: 6390461397121976843, guid: 7899eb3fcd606484cb68aa32264a75ac, type: 3}
+  - {fileID: -5956644242881698622, guid: 7899eb3fcd606484cb68aa32264a75ac, type: 3}
+  - {fileID: 5959802849435791413, guid: 7899eb3fcd606484cb68aa32264a75ac, type: 3}
+  - {fileID: -6289698163122794191, guid: 7899eb3fcd606484cb68aa32264a75ac, type: 3}
+  - {fileID: 6931551238785851875, guid: 7899eb3fcd606484cb68aa32264a75ac, type: 3}
   animatorController: {fileID: 0}
   assignedCharacter: {fileID: 0}
+  isDecoy: 0
+  dealsContactDamage: 1
+  chargeMultiplier: 2.5
+  chargeTriggerYNormalized: 0.5
+  pauseDuration: 0.35
+  scrambleRadius: 3

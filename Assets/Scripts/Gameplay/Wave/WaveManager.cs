@@ -11,6 +11,8 @@ using UnityEngine.Serialization;
 
 public class WaveManager : MonoBehaviour
 {
+    public static IReadOnlyList<BaybayinCharacterSO> CurrentAllowedCharacters { get; private set; }
+
     [Header("Configuration")]
     [SerializeField] private LevelConfigSO _levelConfig;
     [SerializeField] private WaveSpawner _spawner;
@@ -20,6 +22,14 @@ public class WaveManager : MonoBehaviour
     [Header("Level Registry")]
     [Tooltip("All level configs that can be loaded at runtime. Index 0 = Level 1, etc.")]
     [SerializeField] private LevelConfigSO[] _levelConfigs;
+
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+    [Header("Sandbox Registry")]
+    [Tooltip("Runtime-safe enemy data catalog for sandbox builds where AssetDatabase is unavailable.")]
+    [SerializeField] private List<EnemyDataSO> _sandboxEnemyData = new();
+    [Tooltip("Full character catalog used only by sandbox spawning and sandbox visual scramble checks.")]
+    [SerializeField] private CharacterRegistrySO _sandboxCharacterRegistry;
+#endif
 
     private int _currentWaveIndex;
     private int _currentWaveSpawnedCount;
@@ -37,6 +47,7 @@ public class WaveManager : MonoBehaviour
     private void OnDisable()
     {
         EventBus.OnGameOver -= HandleGameOver;
+        CurrentAllowedCharacters = null;
     }
 
     private void Start()
@@ -80,6 +91,8 @@ public class WaveManager : MonoBehaviour
 
     private void StartLevel(int selectedLevel)
     {
+        CurrentAllowedCharacters = null;
+
         if (_spawner != null)
             _spawner.SetFallbackEnemyDataIfMissing(_legacyDefaultEnemyData);
 
@@ -91,6 +104,8 @@ public class WaveManager : MonoBehaviour
             DebugLogger.LogError("WaveManager.StartLevel: No LevelConfigSO assigned.");
             return;
         }
+
+        CurrentAllowedCharacters = _levelConfig.allowedCharacters;
 
         if (TryRestorePausedRun(selectedLevel))
             return;
@@ -122,6 +137,10 @@ public class WaveManager : MonoBehaviour
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
         if (!SandboxMode.IsActive)
             return false;
+
+        CurrentAllowedCharacters = _levelConfig != null
+            ? _levelConfig.allowedCharacters
+            : null;
 
         if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
             GameManager.Instance.StartGame();
@@ -568,6 +587,7 @@ public class WaveManager : MonoBehaviour
     {
         var enemies = new List<EnemyDataSO>();
         AddEnemyForSandbox(enemies, _legacyDefaultEnemyData);
+        AddRuntimeSandboxEnemyData(enemies);
         AddEnemiesFromLevelForSandbox(enemies, _levelConfig);
 
         if (_levelConfigs != null)
@@ -576,12 +596,24 @@ public class WaveManager : MonoBehaviour
                 AddEnemiesFromLevelForSandbox(enemies, levelConfig);
         }
 
+        AddAllEnemyDataAssetsForSandbox(enemies);
+
         return enemies;
+    }
+
+    private void AddRuntimeSandboxEnemyData(List<EnemyDataSO> enemies)
+    {
+        if (_sandboxEnemyData == null)
+            return;
+
+        foreach (EnemyDataSO enemy in _sandboxEnemyData)
+            AddEnemyForSandbox(enemies, enemy);
     }
 
     public IReadOnlyList<BaybayinCharacterSO> GetConfiguredCharactersForSandbox()
     {
         var characters = new List<BaybayinCharacterSO>();
+        AddCharactersFromRegistryForSandbox(characters, _sandboxCharacterRegistry);
         AddCharactersFromLevelForSandbox(characters, _levelConfig);
 
         if (_levelConfigs != null)
@@ -590,7 +622,23 @@ public class WaveManager : MonoBehaviour
                 AddCharactersFromLevelForSandbox(characters, levelConfig);
         }
 
+        AddAllCharacterAssetsForSandbox(characters);
+
+        if (SandboxMode.IsActive && characters.Count > 0)
+            CurrentAllowedCharacters = characters;
+
         return characters;
+    }
+
+    private static void AddCharactersFromRegistryForSandbox(
+        List<BaybayinCharacterSO> characters,
+        CharacterRegistrySO registry)
+    {
+        if (registry?.All == null)
+            return;
+
+        foreach (BaybayinCharacterSO character in registry.All)
+            AddCharacterForSandbox(characters, character);
     }
 
     private static void AddEnemiesFromLevelForSandbox(List<EnemyDataSO> enemies, LevelConfigSO levelConfig)
@@ -614,9 +662,31 @@ public class WaveManager : MonoBehaviour
             enemies.Add(enemy);
     }
 
+    private static void AddAllEnemyDataAssetsForSandbox(List<EnemyDataSO> enemies)
+    {
+#if UNITY_EDITOR
+        string[] guids = AssetDatabase.FindAssets("t:EnemyDataSO");
+        for (int i = 0; i < guids.Length; i++)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guids[i]);
+            EnemyDataSO enemy = AssetDatabase.LoadAssetAtPath<EnemyDataSO>(path);
+            AddEnemyForSandbox(enemies, enemy);
+        }
+#endif
+    }
+
     private static void AddCharactersFromLevelForSandbox(List<BaybayinCharacterSO> characters, LevelConfigSO levelConfig)
     {
-        if (levelConfig?.waves == null)
+        if (levelConfig == null)
+            return;
+
+        if (levelConfig.allowedCharacters != null)
+        {
+            foreach (BaybayinCharacterSO character in levelConfig.allowedCharacters)
+                AddCharacterForSandbox(characters, character);
+        }
+
+        if (levelConfig.waves == null)
             return;
 
         foreach (WaveConfigSO wave in levelConfig.waves)
@@ -633,6 +703,19 @@ public class WaveManager : MonoBehaviour
     {
         if (character != null && !characters.Contains(character))
             characters.Add(character);
+    }
+
+    private static void AddAllCharacterAssetsForSandbox(List<BaybayinCharacterSO> characters)
+    {
+#if UNITY_EDITOR
+        string[] guids = AssetDatabase.FindAssets("t:BaybayinCharacterSO");
+        for (int i = 0; i < guids.Length; i++)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guids[i]);
+            BaybayinCharacterSO character = AssetDatabase.LoadAssetAtPath<BaybayinCharacterSO>(path);
+            AddCharacterForSandbox(characters, character);
+        }
+#endif
     }
 #endif
 

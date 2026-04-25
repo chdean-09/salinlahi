@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using Salinlahi.Debug.Sandbox;
 using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.Pool;
@@ -322,6 +323,168 @@ public class SandboxModeTests
         Assert.IsNull(selected);
     }
 
+    [Test]
+    public void WaveManagerStartsSandboxWithoutLevelConfig()
+    {
+        SandboxMode.SetAvailabilityOverrideForTests(true);
+        SandboxMode.TryActivate();
+
+        GameObject managerObject = new("WaveManager");
+        WaveManager waveManager = managerObject.AddComponent<WaveManager>();
+
+        try
+        {
+            Assert.DoesNotThrow(() => InvokePrivate(waveManager, "StartLevel", 1));
+            Assert.IsNull(WaveManager.CurrentAllowedCharacters);
+            Assert.IsNotNull(Object.FindFirstObjectByType<SandboxController>());
+        }
+        finally
+        {
+            Object.DestroyImmediate(Object.FindFirstObjectByType<SandboxController>()?.gameObject);
+            Object.DestroyImmediate(managerObject);
+        }
+    }
+
+    [Test]
+    public void SandboxCatalogSuppliesAllowedCharactersForKempeiScramble()
+    {
+        SandboxMode.SetAvailabilityOverrideForTests(true);
+        SandboxMode.TryActivate();
+
+        GameObject managerObject = new("WaveManager");
+        WaveManager waveManager = managerObject.AddComponent<WaveManager>();
+        LevelConfigSO levelConfig = ScriptableObject.CreateInstance<LevelConfigSO>();
+        BaybayinCharacterSO firstCharacter = CreateCharacter("A");
+        BaybayinCharacterSO secondCharacter = CreateCharacter("B");
+        levelConfig.allowedCharacters = new List<BaybayinCharacterSO> { firstCharacter, secondCharacter };
+
+        try
+        {
+            SetPrivateField(waveManager, "_levelConfigs", new[] { levelConfig });
+            InvokePrivate(waveManager, "StartLevel", 1);
+
+            Assert.IsNotNull(WaveManager.CurrentAllowedCharacters);
+            Assert.Contains(firstCharacter, (System.Collections.ICollection)WaveManager.CurrentAllowedCharacters);
+            Assert.Contains(secondCharacter, (System.Collections.ICollection)WaveManager.CurrentAllowedCharacters);
+        }
+        finally
+        {
+            SetCurrentAllowedCharacters(null);
+            Object.DestroyImmediate(Object.FindFirstObjectByType<SandboxController>()?.gameObject);
+            Object.DestroyImmediate(managerObject);
+            Object.DestroyImmediate(levelConfig);
+            Object.DestroyImmediate(firstCharacter);
+            Object.DestroyImmediate(secondCharacter);
+        }
+    }
+
+    [Test]
+    public void SandboxCharacterRegistryExposesAllCharacters()
+    {
+        SandboxMode.SetAvailabilityOverrideForTests(true);
+        SandboxMode.TryActivate();
+
+        GameObject managerObject = new("WaveManager");
+        WaveManager waveManager = managerObject.AddComponent<WaveManager>();
+        CharacterRegistrySO registry = ScriptableObject.CreateInstance<CharacterRegistrySO>();
+        LevelConfigSO levelConfig = ScriptableObject.CreateInstance<LevelConfigSO>();
+        BaybayinCharacterSO levelCharacter = CreateCharacter("A");
+        BaybayinCharacterSO registryOnlyCharacter = CreateCharacter("B");
+        registry.All = new List<BaybayinCharacterSO> { levelCharacter, registryOnlyCharacter };
+        levelConfig.allowedCharacters = new List<BaybayinCharacterSO> { levelCharacter };
+
+        try
+        {
+            SetPrivateField(waveManager, "_sandboxCharacterRegistry", registry);
+            SetPrivateField(waveManager, "_levelConfig", levelConfig);
+
+            IReadOnlyList<BaybayinCharacterSO> characters = waveManager.GetConfiguredCharactersForSandbox();
+
+            Assert.Contains(levelCharacter, (System.Collections.ICollection)characters);
+            Assert.Contains(registryOnlyCharacter, (System.Collections.ICollection)characters);
+            Assert.Contains(registryOnlyCharacter, (System.Collections.ICollection)WaveManager.CurrentAllowedCharacters);
+        }
+        finally
+        {
+            SetCurrentAllowedCharacters(null);
+            Object.DestroyImmediate(managerObject);
+            Object.DestroyImmediate(registry);
+            Object.DestroyImmediate(levelConfig);
+            Object.DestroyImmediate(levelCharacter);
+            Object.DestroyImmediate(registryOnlyCharacter);
+        }
+    }
+
+    [Test]
+    public void SandboxEnemyRegistrySuppliesRuntimeEnemyData()
+    {
+        GameObject managerObject = new("WaveManager");
+        WaveManager waveManager = managerObject.AddComponent<WaveManager>();
+        EnemyDataSO registeredEnemy = CreateEnemyData("kempei", null);
+
+        try
+        {
+            SetPrivateField(waveManager, "_sandboxEnemyData", new List<EnemyDataSO> { registeredEnemy });
+
+            IReadOnlyList<EnemyDataSO> enemies = waveManager.GetConfiguredEnemyTypesForSandbox();
+
+            Assert.Contains(registeredEnemy, (System.Collections.ICollection)enemies);
+        }
+        finally
+        {
+            Object.DestroyImmediate(managerObject);
+            Object.DestroyImmediate(registeredEnemy);
+        }
+    }
+
+    [Test]
+    public void KempeiKeepsScrambledCharacterStableWhileTargetRemainsAffected()
+    {
+        GameObject trackerObject = new("ActiveEnemyTracker");
+        ActiveEnemyTracker tracker = trackerObject.AddComponent<ActiveEnemyTracker>();
+        BaybayinCharacterSO realCharacter = CreateCharacter("A");
+        BaybayinCharacterSO firstScramble = CreateCharacter("B");
+        BaybayinCharacterSO secondScramble = CreateCharacter("C");
+        EnemyDataSO kempeiData = CreateEnemyData("kempei", realCharacter);
+        EnemyDataSO targetData = CreateEnemyData("target", realCharacter);
+        GameObject kempeiObject = CreateEnemyObject("Kempei", out Enemy kempei);
+        GameObject targetObject = CreateEnemyObject("Target", out Enemy target);
+        KempeiScrambleController scrambleController = kempeiObject.AddComponent<KempeiScrambleController>();
+
+        try
+        {
+            kempeiData.scrambleRadius = 10f;
+            kempeiObject.transform.position = Vector3.zero;
+            targetObject.transform.position = Vector3.right;
+            kempei.Initialize(kempeiData);
+            target.Initialize(targetData);
+
+            SetCurrentAllowedCharacters(new List<BaybayinCharacterSO> { realCharacter, firstScramble });
+            InvokePrivate(scrambleController, "Update");
+
+            Assert.AreSame(firstScramble, target.VisualCharacter);
+
+            SetCurrentAllowedCharacters(new List<BaybayinCharacterSO> { realCharacter, secondScramble });
+            InvokePrivate(scrambleController, "Update");
+
+            Assert.AreSame(firstScramble, target.VisualCharacter);
+            Assert.AreEqual(2, tracker.ActiveCount);
+        }
+        finally
+        {
+            SetCurrentAllowedCharacters(null);
+            Object.DestroyImmediate(kempeiObject);
+            Object.DestroyImmediate(targetObject);
+            Object.DestroyImmediate(trackerObject);
+            Object.DestroyImmediate(kempeiData);
+            Object.DestroyImmediate(targetData);
+            Object.DestroyImmediate(realCharacter);
+            Object.DestroyImmediate(firstScramble);
+            Object.DestroyImmediate(secondScramble);
+            ClearSingletonInstance<ActiveEnemyTracker>();
+        }
+    }
+
     private sealed class NoopEnemyPool : IObjectPool<Enemy>
     {
         public int CountInactive => 0;
@@ -341,6 +504,42 @@ public class SandboxModeTests
         prefabObject.AddComponent<BoxCollider2D>();
         prefabObject.AddComponent<EnemyMover>();
         return prefabObject.AddComponent<Enemy>();
+    }
+
+    private static GameObject CreateEnemyObject(string name, out Enemy enemy)
+    {
+        GameObject enemyObject = new(name);
+        enemyObject.AddComponent<BoxCollider2D>();
+        enemyObject.AddComponent<EnemyMover>();
+        enemy = enemyObject.AddComponent<Enemy>();
+        return enemyObject;
+    }
+
+    private static EnemyDataSO CreateEnemyData(string enemyID, BaybayinCharacterSO character)
+    {
+        EnemyDataSO data = ScriptableObject.CreateInstance<EnemyDataSO>();
+        data.enemyID = enemyID;
+        data.maxHealth = 1;
+        data.moveSpeed = 1f;
+        data.assignedCharacter = character;
+        return data;
+    }
+
+    private static BaybayinCharacterSO CreateCharacter(string characterID)
+    {
+        BaybayinCharacterSO character = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+        character.characterID = characterID;
+        return character;
+    }
+
+    private static void SetCurrentAllowedCharacters(IReadOnlyList<BaybayinCharacterSO> characters)
+    {
+        PropertyInfo property = typeof(WaveManager).GetProperty(
+            nameof(WaveManager.CurrentAllowedCharacters),
+            BindingFlags.Static | BindingFlags.Public);
+        MethodInfo setter = property?.GetSetMethod(true);
+        Assert.IsNotNull(setter, "Missing WaveManager.CurrentAllowedCharacters setter.");
+        setter.Invoke(null, new object[] { characters });
     }
 
     private static void SetPrivateField(object target, string fieldName, object value)

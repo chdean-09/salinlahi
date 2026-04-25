@@ -2,6 +2,8 @@ using UnityEngine;
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
 using Salinlahi.Debug.Sandbox;
 #endif
+using System;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine.Pool;
 
@@ -33,14 +35,18 @@ public class Enemy : MonoBehaviour
     private Color _baseRendererColor = Color.white;
     private TextMeshPro _baybayinLabel;
     private TextMeshPro _enemyTypeLabel;
+    private readonly Dictionary<object, BaybayinCharacterSO> _labelOverrides = new();
     private int _walkFrameIndex;
     private float _walkFrameTimer;
 
     public BaybayinCharacterSO Character => _runtimeCharacter != null ? _runtimeCharacter : _data?.assignedCharacter;
+    public BaybayinCharacterSO VisualCharacter => ResolveVisualCharacter();
+    public bool HasVisualCharacterOverride => _labelOverrides.Count > 0;
     public string EnemyID => _data?.enemyID;
     public EnemyDataSO Data => _data;
     public int CurrentHealth => _currentHealth;
     public bool IsDecoy => _data != null && _data.isDecoy;
+    public event Action<Enemy, int, int> HealthChanged;
 
     private void Awake()
     {
@@ -108,6 +114,7 @@ public class Enemy : MonoBehaviour
 
         _data = data;
         _currentHealth = _data.maxHealth;
+        _labelOverrides.Clear();
 
         _mover.Stop();
         _mover.SetSpeed(_data.moveSpeed);
@@ -128,6 +135,7 @@ public class Enemy : MonoBehaviour
         ActiveEnemyTracker.Instance?.Register(this);
         RefreshDebugLabels();
         UpdateLabelLayout();
+        HealthChanged?.Invoke(this, _currentHealth, _currentHealth);
         return true;
     }
 
@@ -147,6 +155,7 @@ public class Enemy : MonoBehaviour
             _runtimeCharacter = null;
             _data = null;
             _currentHealth = 0;
+            _labelOverrides.Clear();
 
             if (_mover != null)
                 _mover.Stop();
@@ -172,6 +181,7 @@ public class Enemy : MonoBehaviour
 
         int previousHealth = _currentHealth;
         _currentHealth -= amount;
+        HealthChanged?.Invoke(this, previousHealth, _currentHealth);
         DebugLogger.Log(
             $"Enemy [{Character?.characterID}] took {amount} damage. "
             + $"HP: {_currentHealth}");
@@ -191,7 +201,9 @@ public class Enemy : MonoBehaviour
         if (_data == null)
             return;
 
+        int previousHealth = _currentHealth;
         _currentHealth = Mathf.Clamp(currentHealth, 1, _data.maxHealth);
+        HealthChanged?.Invoke(this, previousHealth, _currentHealth);
 
         if (_data.maxHealth > 1 && _currentHealth < _data.maxHealth)
             TriggerShieldBreakVisual();
@@ -238,6 +250,24 @@ public class Enemy : MonoBehaviour
     public void ApplyDecoyPenalty()
     {
         ReturnToPool();
+    }
+
+    public void ApplyVisualCharacterOverride(object source, BaybayinCharacterSO visualCharacter)
+    {
+        if (source == null || visualCharacter == null)
+            return;
+
+        _labelOverrides[source] = visualCharacter;
+        RefreshDebugLabels();
+    }
+
+    public void ClearVisualCharacterOverride(object source)
+    {
+        if (source == null)
+            return;
+
+        if (_labelOverrides.Remove(source))
+            RefreshDebugLabels();
     }
 
     public void ReturnToPool()
@@ -372,7 +402,7 @@ public class Enemy : MonoBehaviour
 
     private string BuildBaybayinLabelText()
     {
-        BaybayinCharacterSO character = Character;
+        BaybayinCharacterSO character = ResolveVisualCharacter();
         if (character == null)
             return "Draw: (none)";
 
@@ -389,6 +419,24 @@ public class Enemy : MonoBehaviour
             return $"Draw: {id}";
 
         return "Draw: (unknown)";
+    }
+
+    private BaybayinCharacterSO ResolveVisualCharacter()
+    {
+        BaybayinCharacterSO character = Character;
+        if (_labelOverrides.Count > 0)
+        {
+            foreach (BaybayinCharacterSO overrideCharacter in _labelOverrides.Values)
+            {
+                if (overrideCharacter != null)
+                {
+                    character = overrideCharacter;
+                    break;
+                }
+            }
+        }
+
+        return character;
     }
 
     private string BuildEnemyTypeText()

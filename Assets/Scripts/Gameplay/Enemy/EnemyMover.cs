@@ -12,13 +12,13 @@ public class EnemyMover : MonoBehaviour
     private float _focusSpeedMultiplier = 1f;
     public bool IsMoving => _active && GetFinalSpeed() > Mathf.Epsilon;
 
-    public void SetSpeed(float speed)
+    public virtual void SetSpeed(float speed)
     {
         _speed = speed;
         _active = true;
     }
 
-    private void OnEnable()
+    protected virtual void OnEnable()
     {
         EventBus.OnFocusModeActivated += HandleFocusOn;
         EventBus.OnFocusModeDeactivated += HandleFocusOff;
@@ -34,7 +34,7 @@ public class EnemyMover : MonoBehaviour
 
     public void Stop() => _active = false;
 
-    private void Update()
+    protected virtual void Update()
     {
         if (!_active) return;
         float finalSpeed = GetFinalSpeed();
@@ -78,7 +78,7 @@ public class EnemyMover : MonoBehaviour
         }
     }
 
-    private void OnDisable()
+    protected virtual void OnDisable()
     {
         EventBus.OnFocusModeActivated -= HandleFocusOn;
         EventBus.OnFocusModeDeactivated -= HandleFocusOff;
@@ -96,7 +96,7 @@ public class EnemyMover : MonoBehaviour
         _focusSpeedMultiplier = 1f;
     }
 
-    private float GetFinalSpeed()
+    protected float GetFinalSpeed()
     {
         if (IsSandboxMovementPaused())
             return 0f;
