@@ -346,6 +346,39 @@ public class SandboxModeTests
     }
 
     [Test]
+    public void SandboxCatalogSuppliesAllowedCharactersForKempeiScramble()
+    {
+        SandboxMode.SetAvailabilityOverrideForTests(true);
+        SandboxMode.TryActivate();
+
+        GameObject managerObject = new("WaveManager");
+        WaveManager waveManager = managerObject.AddComponent<WaveManager>();
+        LevelConfigSO levelConfig = ScriptableObject.CreateInstance<LevelConfigSO>();
+        BaybayinCharacterSO firstCharacter = CreateCharacter("A");
+        BaybayinCharacterSO secondCharacter = CreateCharacter("B");
+        levelConfig.allowedCharacters = new List<BaybayinCharacterSO> { firstCharacter, secondCharacter };
+
+        try
+        {
+            SetPrivateField(waveManager, "_levelConfigs", new[] { levelConfig });
+            InvokePrivate(waveManager, "StartLevel", 1);
+
+            Assert.IsNotNull(WaveManager.CurrentAllowedCharacters);
+            Assert.Contains(firstCharacter, (System.Collections.ICollection)WaveManager.CurrentAllowedCharacters);
+            Assert.Contains(secondCharacter, (System.Collections.ICollection)WaveManager.CurrentAllowedCharacters);
+        }
+        finally
+        {
+            SetCurrentAllowedCharacters(null);
+            Object.DestroyImmediate(Object.FindFirstObjectByType<SandboxController>()?.gameObject);
+            Object.DestroyImmediate(managerObject);
+            Object.DestroyImmediate(levelConfig);
+            Object.DestroyImmediate(firstCharacter);
+            Object.DestroyImmediate(secondCharacter);
+        }
+    }
+
+    [Test]
     public void KempeiKeepsScrambledCharacterStableWhileTargetRemainsAffected()
     {
         GameObject trackerObject = new("ActiveEnemyTracker");

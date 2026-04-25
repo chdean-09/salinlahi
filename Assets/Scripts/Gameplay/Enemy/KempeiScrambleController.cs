@@ -4,9 +4,20 @@ using UnityEngine;
 [RequireComponent(typeof(Enemy))]
 public class KempeiScrambleController : MonoBehaviour
 {
+    private const float MinGlitchInterval = 0.18f;
+    private const float MaxGlitchInterval = 0.36f;
+
+    private sealed class ScrambleState
+    {
+        public BaybayinCharacterSO Character;
+        public bool IsScrambledVisible = true;
+        public bool AppliedScrambledVisible;
+        public float NextToggleTime;
+    }
+
     private readonly HashSet<Enemy> _affectedEnemies = new();
     private readonly HashSet<Enemy> _stillAffected = new();
-    private readonly Dictionary<Enemy, BaybayinCharacterSO> _activeScrambles = new();
+    private readonly Dictionary<Enemy, ScrambleState> _activeScrambles = new();
     private readonly List<Enemy> _activeSnapshot = new();
     private readonly List<BaybayinCharacterSO> _candidateCharacters = new();
     private Enemy _enemy;
@@ -53,13 +64,12 @@ public class KempeiScrambleController : MonoBehaviour
             if ((target.transform.position - center).sqrMagnitude > radiusSqr)
                 continue;
 
-            BaybayinCharacterSO wrongCharacter = GetOrCreateScramble(target, out bool scrambleChanged);
-            if (wrongCharacter == null)
+            ScrambleState scramble = GetOrCreateScramble(target);
+            if (scramble?.Character == null)
                 continue;
 
             bool wasAffected = _affectedEnemies.Contains(target);
-            if (!wasAffected || scrambleChanged)
-                target.ApplyVisualCharacterOverride(this, wrongCharacter);
+            ApplyScramblePulse(target, scramble, wasAffected);
 
             _affectedEnemies.Add(target);
             _stillAffected.Add(target);
@@ -97,15 +107,14 @@ public class KempeiScrambleController : MonoBehaviour
         }
     }
 
-    private BaybayinCharacterSO GetOrCreateScramble(Enemy target, out bool scrambleChanged)
+    private ScrambleState GetOrCreateScramble(Enemy target)
     {
-        scrambleChanged = false;
         if (target == null)
             return null;
 
         BaybayinCharacterSO realCharacter = target.Character;
-        if (_activeScrambles.TryGetValue(target, out BaybayinCharacterSO existing)
-            && IsWrongCharacter(existing, realCharacter))
+        if (_activeScrambles.TryGetValue(target, out ScrambleState existing)
+            && IsWrongCharacter(existing.Character, realCharacter))
         {
             return existing;
         }
@@ -117,9 +126,37 @@ public class KempeiScrambleController : MonoBehaviour
             return null;
         }
 
-        _activeScrambles[target] = next;
-        scrambleChanged = true;
-        return next;
+        var state = new ScrambleState
+        {
+            Character = next,
+            IsScrambledVisible = true,
+            NextToggleTime = Time.time + Random.Range(MinGlitchInterval, MaxGlitchInterval)
+        };
+        _activeScrambles[target] = state;
+        return state;
+    }
+
+    private void ApplyScramblePulse(Enemy target, ScrambleState scramble, bool wasAffected)
+    {
+        if (Time.time >= scramble.NextToggleTime)
+        {
+            scramble.IsScrambledVisible = !scramble.IsScrambledVisible;
+            scramble.NextToggleTime = Time.time + Random.Range(MinGlitchInterval, MaxGlitchInterval);
+        }
+
+        if (scramble.IsScrambledVisible)
+        {
+            if (!wasAffected || !scramble.AppliedScrambledVisible)
+            {
+                target.ApplyVisualCharacterOverride(this, scramble.Character);
+                scramble.AppliedScrambledVisible = true;
+            }
+        }
+        else if (wasAffected && scramble.AppliedScrambledVisible)
+        {
+            target.ClearVisualCharacterOverride(this);
+            scramble.AppliedScrambledVisible = false;
+        }
     }
 
     private BaybayinCharacterSO SelectWrongCharacter(BaybayinCharacterSO realCharacter)

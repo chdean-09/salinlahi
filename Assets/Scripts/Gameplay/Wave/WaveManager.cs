@@ -600,6 +600,13 @@ public class WaveManager : MonoBehaviour
                 AddCharactersFromLevelForSandbox(characters, levelConfig);
         }
 
+        if (SandboxMode.IsActive
+            && (CurrentAllowedCharacters == null || CurrentAllowedCharacters.Count < 2)
+            && characters.Count > 0)
+        {
+            CurrentAllowedCharacters = characters;
+        }
+
         return characters;
     }
 
