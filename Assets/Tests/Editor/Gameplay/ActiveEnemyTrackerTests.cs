@@ -154,7 +154,8 @@ namespace Salinlahi.Tests.Editor.Gameplay
         public void FillActiveEnemiesSnapshot_ReusesCallerBuffer()
         {
             var enemy = CreateEnemy("BA", -3);
-            var buffer = new List<Enemy> { null };
+            var staleEnemy = CreateEnemy("KA", -2);
+            var buffer = new List<Enemy> { staleEnemy };
             _tracker.Register(enemy);
 
             _tracker.FillActiveEnemiesSnapshot(buffer);
@@ -164,7 +165,10 @@ namespace Salinlahi.Tests.Editor.Gameplay
 
             Object.DestroyImmediate(enemy.Data);
             Object.DestroyImmediate(enemy.Character);
+            Object.DestroyImmediate(staleEnemy.Data);
+            Object.DestroyImmediate(staleEnemy.Character);
             DestroyEnemy(enemy);
+            DestroyEnemy(staleEnemy);
         }
 
         [Test]
