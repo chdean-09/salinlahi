@@ -13,9 +13,18 @@ MonoBehaviour:
   m_Name: EnemyData_Kisha
   m_EditorClassIdentifier: Salinlahi.Runtime::EnemyDataSO
   enemyID: kisha
-  moveSpeed: 3.75
+  moveSpeed: 1.5
   maxHealth: 1
   walkFrames:
-  - {fileID: 21300000, guid: 61e33c4f45e289b43ab91edaa12c018b, type: 3}
+  - {fileID: 4425629878829608467, guid: e87e33a350f8cf24394991968073c118, type: 3}
+  - {fileID: -692475314653361652, guid: e87e33a350f8cf24394991968073c118, type: 3}
+  - {fileID: 7208010760976005533, guid: e87e33a350f8cf24394991968073c118, type: 3}
+  - {fileID: 5634410682818861578, guid: e87e33a350f8cf24394991968073c118, type: 3}
   animatorController: {fileID: 0}
   assignedCharacter: {fileID: 0}
+  isDecoy: 0
+  dealsContactDamage: 1
+  chargeMultiplier: 2.5
+  chargeTriggerYNormalized: 0.5
+  pauseDuration: 0.35
+  scrambleRadius: 3

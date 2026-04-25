@@ -30,4 +30,18 @@ public class EnemyDataSO : ScriptableObject
     [Tooltip("If false, reaching the Shrine collision zone will despawn this enemy without damaging the Shrine.")]
     public bool dealsContactDamage = true;
 
+    [Header("Kisha Charge")]
+    [Tooltip("Speed multiplier applied after Kisha enters Charge state.")]
+    public float chargeMultiplier = 2.5f;
+
+    [Range(0f, 1f)]
+    [Tooltip("Viewport Y threshold that starts Kisha's pause/charge sequence. 0 is bottom, 1 is top.")]
+    public float chargeTriggerYNormalized = 0.5f;
+
+    [Tooltip("Seconds Kisha waits between walking and charging.")]
+    public float pauseDuration = 0.35f;
+
+    [Header("Kempei Censor")]
+    [Tooltip("World-space radius around Kempei that receives visual-only label scrambling.")]
+    public float scrambleRadius = 3f;
 }
