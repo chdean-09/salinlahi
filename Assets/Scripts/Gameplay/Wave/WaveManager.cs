@@ -11,6 +11,8 @@ using UnityEngine.Serialization;
 
 public class WaveManager : MonoBehaviour
 {
+    public static IReadOnlyList<BaybayinCharacterSO> CurrentAllowedCharacters { get; private set; }
+
     [Header("Configuration")]
     [SerializeField] private LevelConfigSO _levelConfig;
     [SerializeField] private WaveSpawner _spawner;
@@ -83,14 +85,16 @@ public class WaveManager : MonoBehaviour
         if (_spawner != null)
             _spawner.SetFallbackEnemyDataIfMissing(_legacyDefaultEnemyData);
 
-        if (TryHandleSandboxMode())
-            return;
-
         if (_levelConfig == null)
         {
             DebugLogger.LogError("WaveManager.StartLevel: No LevelConfigSO assigned.");
             return;
         }
+
+        CurrentAllowedCharacters = _levelConfig.allowedCharacters;
+
+        if (TryHandleSandboxMode())
+            return;
 
         if (TryRestorePausedRun(selectedLevel))
             return;
@@ -122,6 +126,10 @@ public class WaveManager : MonoBehaviour
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
         if (!SandboxMode.IsActive)
             return false;
+
+        CurrentAllowedCharacters = _levelConfig != null
+            ? _levelConfig.allowedCharacters
+            : null;
 
         if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
             GameManager.Instance.StartGame();
@@ -576,6 +584,8 @@ public class WaveManager : MonoBehaviour
                 AddEnemiesFromLevelForSandbox(enemies, levelConfig);
         }
 
+        AddAllEnemyDataAssetsForSandbox(enemies);
+
         return enemies;
     }
 
@@ -614,9 +624,31 @@ public class WaveManager : MonoBehaviour
             enemies.Add(enemy);
     }
 
+    private static void AddAllEnemyDataAssetsForSandbox(List<EnemyDataSO> enemies)
+    {
+#if UNITY_EDITOR
+        string[] guids = AssetDatabase.FindAssets("t:EnemyDataSO");
+        for (int i = 0; i < guids.Length; i++)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guids[i]);
+            EnemyDataSO enemy = AssetDatabase.LoadAssetAtPath<EnemyDataSO>(path);
+            AddEnemyForSandbox(enemies, enemy);
+        }
+#endif
+    }
+
     private static void AddCharactersFromLevelForSandbox(List<BaybayinCharacterSO> characters, LevelConfigSO levelConfig)
     {
-        if (levelConfig?.waves == null)
+        if (levelConfig == null)
+            return;
+
+        if (levelConfig.allowedCharacters != null)
+        {
+            foreach (BaybayinCharacterSO character in levelConfig.allowedCharacters)
+                AddCharacterForSandbox(characters, character);
+        }
+
+        if (levelConfig.waves == null)
             return;
 
         foreach (WaveConfigSO wave in levelConfig.waves)

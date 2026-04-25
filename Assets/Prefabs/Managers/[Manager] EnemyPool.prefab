@@ -68,3 +68,19 @@ MonoBehaviour:
     prefab: {fileID: 8037671833055544141, guid: c4eac3d9938a4d6ea54c26e243d40211, type: 3}
     defaultCapacity: 10
     maxSize: 20
+  - enemyID: heitai
+    prefab: {fileID: 1922689356493373104, guid: fc471189357054627bfe740347b524f3, type: 3}
+    defaultCapacity: 10
+    maxSize: 20
+  - enemyID: kisha
+    prefab: {fileID: 8037671833055544141, guid: b0fde5fc3027f45d7b93a4db4103b9fe, type: 3}
+    defaultCapacity: 10
+    maxSize: 20
+  - enemyID: kempei
+    prefab: {fileID: 8037671833055544141, guid: a4cdb46ae4485483082313ebd442d064, type: 3}
+    defaultCapacity: 10
+    maxSize: 20
+  - enemyID: shokan
+    prefab: {fileID: 8037671833055544141, guid: 8af0504b541264b64aad0cc3cef11412, type: 3}
+    defaultCapacity: 10
+    maxSize: 20

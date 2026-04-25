@@ -1,4 +1,5 @@
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -19,6 +20,7 @@ namespace Salinlahi.Debug.Sandbox
         private TMP_Text _characterLabel;
         private TMP_Text _movementLabel;
         private TMP_Text _recognitionLabel;
+        private TMP_Text _kempeiDebugLabel;
         private TMP_Text _statusLabel;
         private GameObject _panelObject;
         private GameObject _restoreButtonObject;
@@ -27,6 +29,8 @@ namespace Salinlahi.Debug.Sandbox
         private Button _nextEnemyButton;
         private Button _previousCharacterButton;
         private Button _nextCharacterButton;
+        private Button _kempeiDebugButton;
+        private Coroutine _kempeiDebugRoutine;
 
         private int _selectedEnemyIndex;
         private int _selectedCharacterIndex;
@@ -200,6 +204,13 @@ namespace Salinlahi.Debug.Sandbox
 
             _spawnButton = CreateButton(_panelObject.transform, "Spawn Selected Enemy", SpawnSelectedEnemy);
 
+            _kempeiDebugButton = CreateButton(_panelObject.transform, "Run Kempei Check", RunKempeiDebugCheck);
+            _kempeiDebugLabel = CreateLabel(
+                _panelObject.transform,
+                "Kempei check: not run.",
+                18,
+                132f);
+
             _movementLabel = CreateLabel(_panelObject.transform, "", 22, 34f);
             CreateButtonRow(
                 _panelObject.transform,
@@ -367,6 +378,7 @@ namespace Salinlahi.Debug.Sandbox
             }
 
             SetButtonInteractable(_spawnButton, canSpawn);
+            SetButtonInteractable(_kempeiDebugButton, canSpawn && FindKempeiEnemyData() != null && _characters.Count >= 2);
             SetButtonInteractable(_previousEnemyButton, hasEnemies && _enemyTypes.Count > 1);
             SetButtonInteractable(_nextEnemyButton, hasEnemies && _enemyTypes.Count > 1);
             SetButtonInteractable(_previousCharacterButton, hasCharacters && _characters.Count > 1 && !_useRandomCharacter);
@@ -435,6 +447,251 @@ namespace Salinlahi.Debug.Sandbox
 
             _statusLabel.text = $"Spawned {GetEnemyDisplayName(enemyData)} with {GetCharacterDisplayName(character)}";
             _statusLabel.color = Color.white;
+        }
+
+        private void RunKempeiDebugCheck()
+        {
+            if (_kempeiDebugRoutine != null)
+                StopCoroutine(_kempeiDebugRoutine);
+
+            _kempeiDebugRoutine = StartCoroutine(RunKempeiDebugCheckRoutine());
+        }
+
+        private IEnumerator RunKempeiDebugCheckRoutine()
+        {
+            SetButtonInteractable(_kempeiDebugButton, false);
+            if (_kempeiDebugLabel != null)
+                _kempeiDebugLabel.text = "Kempei check: running...";
+
+            EnemyDataSO kempeiData = FindKempeiEnemyData();
+            EnemyDataSO targetData = FindKempeiDebugTargetEnemyData();
+            IReadOnlyList<BaybayinCharacterSO> allowedCharacters = WaveManager.CurrentAllowedCharacters;
+
+            if (_spawner == null || kempeiData == null || targetData == null || _characters.Count < 2)
+            {
+                SetKempeiDebugResult("Kempei check failed: missing spawner, Kempei data, target enemy data, or at least two characters.");
+                yield break;
+            }
+
+            if (allowedCharacters == null || allowedCharacters.Count < 2)
+            {
+                SetKempeiDebugResult("Kempei check failed: current level allowedCharacters has fewer than two entries.");
+                yield break;
+            }
+
+            BaybayinCharacterSO firstCharacter = FindAllowedCharacterAtOffset(allowedCharacters, 0);
+            BaybayinCharacterSO secondCharacter = FindAllowedCharacterAtOffset(allowedCharacters, 1);
+            if (firstCharacter == null || secondCharacter == null)
+            {
+                SetKempeiDebugResult("Kempei check failed: allowedCharacters did not resolve valid character assets.");
+                yield break;
+            }
+
+            EnemyPool.Instance?.ReturnAllCheckedOut();
+            yield return null;
+
+            Enemy kempei = _spawner.SpawnEnemy(kempeiData, firstCharacter);
+            Enemy insideA = _spawner.SpawnEnemy(targetData, firstCharacter);
+            Enemy insideB = _spawner.SpawnEnemy(targetData, secondCharacter);
+            Enemy outside = _spawner.SpawnEnemy(targetData, secondCharacter);
+
+            if (kempei == null || insideA == null || insideB == null || outside == null)
+            {
+                SetKempeiDebugResult("Kempei check failed: one or more debug enemies could not spawn.");
+                ReturnIfActive(kempei);
+                ReturnIfActive(insideA);
+                ReturnIfActive(insideB);
+                ReturnIfActive(outside);
+                yield break;
+            }
+
+            float radius = Mathf.Max(0f, kempei.Data.scrambleRadius);
+            Vector3 center = new Vector3(0f, kempei.transform.position.y, 0f);
+            kempei.transform.position = center;
+            insideA.transform.position = center + new Vector3(Mathf.Min(0.75f, radius * 0.25f), 0f, 0f);
+            insideB.transform.position = center + new Vector3(-Mathf.Min(1.25f, radius * 0.4f), 0f, 0f);
+            outside.transform.position = center + new Vector3(radius + 2f, 0f, 0f);
+
+            string[] hudTextsBefore = CaptureHudTexts();
+            yield return null;
+
+            bool insideAScrambled = IsValidScramble(insideA, allowedCharacters);
+            bool insideBScrambled = IsValidScramble(insideB, allowedCharacters);
+            bool outsideUnaffected = !outside.HasVisualCharacterOverride && SameCharacter(outside.VisualCharacter, outside.Character);
+            bool combatUsesRealCharacter = insideA.Character != null
+                && insideA.VisualCharacter != null
+                && ActiveEnemyTracker.Instance != null
+                && ActiveEnemyTracker.Instance.FindAllWithCharacter(insideA.Character.characterID).Contains(insideA)
+                && !ActiveEnemyTracker.Instance.FindAllWithCharacter(insideA.VisualCharacter.characterID).Contains(insideA);
+            bool hudUnchanged = HudTextsMatch(hudTextsBefore, CaptureHudTexts());
+            string insideAScrambleText = $"{FormatCharacterID(insideA.Character)}->{FormatCharacterID(insideA.VisualCharacter)}";
+            string insideBScrambleText = $"{FormatCharacterID(insideB.Character)}->{FormatCharacterID(insideB.VisualCharacter)}";
+
+            kempei.ReturnToPool();
+            bool revertedSameFrame = SameCharacter(insideA.VisualCharacter, insideA.Character)
+                && SameCharacter(insideB.VisualCharacter, insideB.Character)
+                && !insideA.HasVisualCharacterOverride
+                && !insideB.HasVisualCharacterOverride;
+
+            string result =
+                $"Kempei check: {(insideAScrambled && insideBScrambled && outsideUnaffected && combatUsesRealCharacter && revertedSameFrame && hudUnchanged ? "PASS" : "CHECK FAIL")}\n"
+                + $"AC-3 radius scramble: {FormatPass(insideAScrambled && insideBScrambled)} "
+                + $"({insideAScrambleText}, {insideBScrambleText})\n"
+                + $"AC-3 outside radius unchanged: {FormatPass(outsideUnaffected)}\n"
+                + $"AC-4 real combat match: {FormatPass(combatUsesRealCharacter)}\n"
+                + $"AC-5 same-frame revert on Kempei pool return: {FormatPass(revertedSameFrame)}\n"
+                + $"AC-6 HUD/boss UI unchanged: {FormatPass(hudUnchanged)}";
+
+            SetKempeiDebugResult(result);
+
+            ReturnIfActive(insideA);
+            ReturnIfActive(insideB);
+            ReturnIfActive(outside);
+        }
+
+        private EnemyDataSO FindKempeiEnemyData()
+        {
+            for (int i = 0; i < _enemyTypes.Count; i++)
+            {
+                EnemyDataSO enemy = _enemyTypes[i];
+                if (enemy == null)
+                    continue;
+
+                if (IsEnemyId(enemy, "kempei"))
+                    return enemy;
+            }
+
+            return null;
+        }
+
+        private EnemyDataSO FindKempeiDebugTargetEnemyData()
+        {
+            for (int i = 0; i < _enemyTypes.Count; i++)
+            {
+                EnemyDataSO enemy = _enemyTypes[i];
+                if (enemy == null || IsEnemyId(enemy, "kempei") || IsEnemyId(enemy, "boss"))
+                    continue;
+
+                return enemy;
+            }
+
+            return null;
+        }
+
+        private static bool IsEnemyId(EnemyDataSO enemy, string expected)
+        {
+            if (enemy == null || string.IsNullOrWhiteSpace(expected))
+                return false;
+
+            string id = string.IsNullOrWhiteSpace(enemy.enemyID) ? enemy.name : enemy.enemyID;
+            return id != null && id.Trim().ToLowerInvariant().Contains(expected);
+        }
+
+        private BaybayinCharacterSO FindAllowedCharacterAtOffset(IReadOnlyList<BaybayinCharacterSO> allowedCharacters, int offset)
+        {
+            int seen = 0;
+            for (int i = 0; i < allowedCharacters.Count; i++)
+            {
+                BaybayinCharacterSO character = allowedCharacters[i];
+                if (character == null)
+                    continue;
+
+                if (seen == offset)
+                    return character;
+
+                seen++;
+            }
+
+            return null;
+        }
+
+        private static bool IsValidScramble(Enemy enemy, IReadOnlyList<BaybayinCharacterSO> allowedCharacters)
+        {
+            if (enemy == null || enemy.Character == null || enemy.VisualCharacter == null)
+                return false;
+
+            return enemy.HasVisualCharacterOverride
+                && !SameCharacter(enemy.VisualCharacter, enemy.Character)
+                && ContainsCharacter(allowedCharacters, enemy.VisualCharacter);
+        }
+
+        private static bool ContainsCharacter(IReadOnlyList<BaybayinCharacterSO> characters, BaybayinCharacterSO character)
+        {
+            if (characters == null || character == null)
+                return false;
+
+            for (int i = 0; i < characters.Count; i++)
+            {
+                if (SameCharacter(characters[i], character))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool SameCharacter(BaybayinCharacterSO first, BaybayinCharacterSO second)
+        {
+            if (first == null || second == null)
+                return first == second;
+
+            return first == second || first.characterID == second.characterID;
+        }
+
+        private static string[] CaptureHudTexts()
+        {
+            HUD hud = FindFirstObjectByType<HUD>();
+            if (hud == null)
+                return new string[0];
+
+            TMP_Text[] labels = hud.GetComponentsInChildren<TMP_Text>(true);
+            string[] texts = new string[labels.Length];
+            for (int i = 0; i < labels.Length; i++)
+                texts[i] = labels[i] != null ? labels[i].text : string.Empty;
+
+            return texts;
+        }
+
+        private static bool HudTextsMatch(string[] before, string[] after)
+        {
+            if (before == null || after == null || before.Length != after.Length)
+                return false;
+
+            for (int i = 0; i < before.Length; i++)
+            {
+                if (before[i] != after[i])
+                    return false;
+            }
+
+            return true;
+        }
+
+        private void SetKempeiDebugResult(string text)
+        {
+            if (_kempeiDebugLabel != null)
+                _kempeiDebugLabel.text = text;
+
+            _kempeiDebugRoutine = null;
+            RefreshUi();
+        }
+
+        private static string FormatPass(bool passed)
+        {
+            return passed ? "PASS" : "FAIL";
+        }
+
+        private static string FormatCharacterID(BaybayinCharacterSO character)
+        {
+            return character == null || string.IsNullOrWhiteSpace(character.characterID)
+                ? "?"
+                : character.characterID;
+        }
+
+        private static void ReturnIfActive(Enemy enemy)
+        {
+            if (enemy == null || !enemy.gameObject.activeInHierarchy)
+                return;
+
+            enemy.ReturnToPool();
         }
 
         private void SelectPreviousEnemy()
