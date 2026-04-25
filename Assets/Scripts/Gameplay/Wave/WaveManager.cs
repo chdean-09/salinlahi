@@ -85,6 +85,9 @@ public class WaveManager : MonoBehaviour
         if (_spawner != null)
             _spawner.SetFallbackEnemyDataIfMissing(_legacyDefaultEnemyData);
 
+        if (TryHandleSandboxMode())
+            return;
+
         if (_levelConfig == null)
         {
             DebugLogger.LogError("WaveManager.StartLevel: No LevelConfigSO assigned.");
@@ -92,9 +95,6 @@ public class WaveManager : MonoBehaviour
         }
 
         CurrentAllowedCharacters = _levelConfig.allowedCharacters;
-
-        if (TryHandleSandboxMode())
-            return;
 
         if (TryRestorePausedRun(selectedLevel))
             return;
