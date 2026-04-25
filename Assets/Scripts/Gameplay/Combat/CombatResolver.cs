@@ -6,6 +6,9 @@ using System.Collections.Generic;
 /// enemy system. Without this, drawing does nothing.
 public class CombatResolver : MonoBehaviour
 {
+    [Tooltip("Minimum matching on-screen enemies required to trigger an AOE mass-defeat.")]
+    [SerializeField, Min(1)] private int _aoeThreshold = 3;
+
     private void OnEnable()
     {
         EventBus.OnCharacterRecognized += HandleCharacterRecognized;
@@ -23,9 +26,10 @@ public class CombatResolver : MonoBehaviour
             return;
 
         List<Enemy> matches = tracker.FindAllWithCharacter(characterID);
-        if (matches != null && matches.Count >= 3)
+        if (matches != null && matches.Count >= _aoeThreshold)
         {
-            // AOE burst: resolve all enemies carrying this real character.
+            // AOE mass-defeat: snapshot into a local list because TakeDamage ->
+            // Defeat -> Unregister mutates the tracker's shared buffer mid-iteration.
             var burstTargets = new List<Enemy>(matches);
             int decoyCount = 0;
             int nonDecoyCount = 0;
@@ -33,8 +37,8 @@ public class CombatResolver : MonoBehaviour
             for (int i = 0; i < burstTargets.Count; i++)
             {
                 Enemy candidate = burstTargets[i];
-                if (candidate == null)
-                    continue;
+                if (candidate == null) continue;
+                if (candidate.IsBoss) continue;
 
                 if (candidate.IsDecoy)
                     decoyCount++;
@@ -47,18 +51,33 @@ public class CombatResolver : MonoBehaviour
             if (decoyCount > 0 && nonDecoyCount > 0)
                 ComboManager.Instance?.SuppressNextHeartLossResets(decoyCount);
 
+            int defeatedCount = 0;
             for (int i = 0; i < burstTargets.Count; i++)
             {
                 Enemy candidate = burstTargets[i];
-                if (candidate != null && !candidate.IsDecoy)
-                    ResolveMatchedEnemy(candidate, characterID);
+                if (candidate == null) continue;
+                if (candidate.IsBoss) continue;
+                if (candidate.IsDecoy) continue;
+                if (candidate.Data == null) continue;
+
+                EventBus.RaiseEnemyTargeted(candidate);
+                candidate.TakeDamage(candidate.Data.maxHealth);
+                defeatedCount++;
             }
 
             for (int i = 0; i < burstTargets.Count; i++)
             {
                 Enemy candidate = burstTargets[i];
-                if (candidate != null && candidate.IsDecoy)
-                    ResolveMatchedEnemy(candidate, characterID);
+                if (candidate == null) continue;
+                if (candidate.IsBoss) continue;
+                if (!candidate.IsDecoy) continue;
+                ResolveMatchedEnemy(candidate, characterID);
+            }
+
+            if (defeatedCount > 0)
+            {
+                EventBus.RaiseAOETriggered(defeatedCount);
+                DebugLogger.Log($"CombatResolver: AOE burst defeated {defeatedCount} for {characterID}");
             }
 
             return;

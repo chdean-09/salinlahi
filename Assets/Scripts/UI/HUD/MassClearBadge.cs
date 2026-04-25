@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
@@ -30,12 +29,12 @@ public class MassClearBadge : MonoBehaviour
         EventBus.OnAOETriggered -= OnAOE;
     }
 
-    private void OnAOE(List<BaybayinCharacterSO> defeated)
+    private void OnAOE(int defeatedCount)
     {
         if (_badgeRoot == null || _label == null) return;
-        if (defeated == null || defeated.Count == 0) return;
+        if (defeatedCount <= 0) return;
 
-        _label.text = $"MASS CLEAR x{defeated.Count}";
+        _label.text = $"MASS CLEAR x{defeatedCount}";
 
         if (_currentRoutine != null)
             StopCoroutine(_currentRoutine);

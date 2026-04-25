@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 
 // Static event bus. All cross-system communication goes through here.
 // Subscribe in OnEnable. Unsubscribe in OnDisable. No exceptions.
@@ -27,7 +26,7 @@ public static class EventBus
     // -- Combat Events --
     public static event Action<Enemy> OnEnemyTargeted;
     public static event Action OnDrawingMissed;
-    public static event Action<List<BaybayinCharacterSO>> OnAOETriggered;
+    public static event Action<int> OnAOETriggered; // int = number of enemies mass-defeated
 
     // -- Combo Events --
     public static event Action<int> OnComboChanged; // int = current streak
@@ -62,7 +61,7 @@ public static class EventBus
     public static void RaiseHeartsChanged(int hearts) => OnHeartsChanged?.Invoke(hearts);
     public static void RaiseEnemyTargeted(Enemy e) => OnEnemyTargeted?.Invoke(e);
     public static void RaiseDrawingMissed() => OnDrawingMissed?.Invoke();
-    public static void RaiseAOETriggered(List<BaybayinCharacterSO> defeated) => OnAOETriggered?.Invoke(defeated);
+    public static void RaiseAOETriggered(int defeatedCount) => OnAOETriggered?.Invoke(defeatedCount);
     public static void RaiseComboChanged(int streak) => OnComboChanged?.Invoke(streak);
     public static void RaiseFocusModeActivated() => OnFocusModeActivated?.Invoke();
     public static void RaiseFocusModeDeactivated() => OnFocusModeDeactivated?.Invoke();
