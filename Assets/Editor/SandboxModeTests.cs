@@ -379,6 +379,65 @@ public class SandboxModeTests
     }
 
     [Test]
+    public void SandboxCharacterRegistryExposesAllCharacters()
+    {
+        SandboxMode.SetAvailabilityOverrideForTests(true);
+        SandboxMode.TryActivate();
+
+        GameObject managerObject = new("WaveManager");
+        WaveManager waveManager = managerObject.AddComponent<WaveManager>();
+        CharacterRegistrySO registry = ScriptableObject.CreateInstance<CharacterRegistrySO>();
+        LevelConfigSO levelConfig = ScriptableObject.CreateInstance<LevelConfigSO>();
+        BaybayinCharacterSO levelCharacter = CreateCharacter("A");
+        BaybayinCharacterSO registryOnlyCharacter = CreateCharacter("B");
+        registry.All = new List<BaybayinCharacterSO> { levelCharacter, registryOnlyCharacter };
+        levelConfig.allowedCharacters = new List<BaybayinCharacterSO> { levelCharacter };
+
+        try
+        {
+            SetPrivateField(waveManager, "_sandboxCharacterRegistry", registry);
+            SetPrivateField(waveManager, "_levelConfig", levelConfig);
+
+            IReadOnlyList<BaybayinCharacterSO> characters = waveManager.GetConfiguredCharactersForSandbox();
+
+            Assert.Contains(levelCharacter, (System.Collections.ICollection)characters);
+            Assert.Contains(registryOnlyCharacter, (System.Collections.ICollection)characters);
+            Assert.Contains(registryOnlyCharacter, (System.Collections.ICollection)WaveManager.CurrentAllowedCharacters);
+        }
+        finally
+        {
+            SetCurrentAllowedCharacters(null);
+            Object.DestroyImmediate(managerObject);
+            Object.DestroyImmediate(registry);
+            Object.DestroyImmediate(levelConfig);
+            Object.DestroyImmediate(levelCharacter);
+            Object.DestroyImmediate(registryOnlyCharacter);
+        }
+    }
+
+    [Test]
+    public void SandboxEnemyRegistrySuppliesRuntimeEnemyData()
+    {
+        GameObject managerObject = new("WaveManager");
+        WaveManager waveManager = managerObject.AddComponent<WaveManager>();
+        EnemyDataSO registeredEnemy = CreateEnemyData("kempei", null);
+
+        try
+        {
+            SetPrivateField(waveManager, "_sandboxEnemyData", new List<EnemyDataSO> { registeredEnemy });
+
+            IReadOnlyList<EnemyDataSO> enemies = waveManager.GetConfiguredEnemyTypesForSandbox();
+
+            Assert.Contains(registeredEnemy, (System.Collections.ICollection)enemies);
+        }
+        finally
+        {
+            Object.DestroyImmediate(managerObject);
+            Object.DestroyImmediate(registeredEnemy);
+        }
+    }
+
+    [Test]
     public void KempeiKeepsScrambledCharacterStableWhileTargetRemainsAffected()
     {
         GameObject trackerObject = new("ActiveEnemyTracker");

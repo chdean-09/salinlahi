@@ -3590,6 +3590,11 @@ MonoBehaviour:
   - {fileID: 11400000, guid: bf5a3e06628e74c66b47faae9f1baa5e, type: 2}
   - {fileID: 11400000, guid: ad5b1b3273c2b4037afb9d6c8b8b9d1e, type: 2}
   - {fileID: 11400000, guid: 3a20295b615664b58af871b7602d34e4, type: 2}
+  _sandboxEnemyData:
+  - {fileID: 11400000, guid: ccb6fd07e3fd94990a6944ec2b341e31, type: 2}
+  - {fileID: 11400000, guid: 5cc8877bb53ca480da124ff2ffaa9de0, type: 2}
+  - {fileID: 11400000, guid: 076fdd70b6855485eb5a08635478121b, type: 2}
+  _sandboxCharacterRegistry: {fileID: 11400000, guid: 5600b9b67bf2893439118a993caa5f13, type: 2}
 --- !u!4 &920286448
 Transform:
   m_ObjectHideFlags: 0

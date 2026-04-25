@@ -47,8 +47,7 @@ public class KempeiScrambleController : MonoBehaviour
             return;
         }
 
-        _activeSnapshot.Clear();
-        _activeSnapshot.AddRange(tracker.GetActiveEnemiesSnapshot());
+        tracker.FillActiveEnemiesSnapshot(_activeSnapshot);
 
         float radius = Mathf.Max(0f, _enemy.Data.scrambleRadius);
         float radiusSqr = radius * radius;

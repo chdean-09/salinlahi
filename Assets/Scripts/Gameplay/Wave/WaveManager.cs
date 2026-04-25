@@ -23,6 +23,14 @@ public class WaveManager : MonoBehaviour
     [Tooltip("All level configs that can be loaded at runtime. Index 0 = Level 1, etc.")]
     [SerializeField] private LevelConfigSO[] _levelConfigs;
 
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+    [Header("Sandbox Registry")]
+    [Tooltip("Runtime-safe enemy data catalog for sandbox builds where AssetDatabase is unavailable.")]
+    [SerializeField] private List<EnemyDataSO> _sandboxEnemyData = new();
+    [Tooltip("Full character catalog used only by sandbox spawning and sandbox visual scramble checks.")]
+    [SerializeField] private CharacterRegistrySO _sandboxCharacterRegistry;
+#endif
+
     private int _currentWaveIndex;
     private int _currentWaveSpawnedCount;
     private bool _running;
@@ -39,6 +47,7 @@ public class WaveManager : MonoBehaviour
     private void OnDisable()
     {
         EventBus.OnGameOver -= HandleGameOver;
+        CurrentAllowedCharacters = null;
     }
 
     private void Start()
@@ -82,6 +91,8 @@ public class WaveManager : MonoBehaviour
 
     private void StartLevel(int selectedLevel)
     {
+        CurrentAllowedCharacters = null;
+
         if (_spawner != null)
             _spawner.SetFallbackEnemyDataIfMissing(_legacyDefaultEnemyData);
 
@@ -576,6 +587,7 @@ public class WaveManager : MonoBehaviour
     {
         var enemies = new List<EnemyDataSO>();
         AddEnemyForSandbox(enemies, _legacyDefaultEnemyData);
+        AddRuntimeSandboxEnemyData(enemies);
         AddEnemiesFromLevelForSandbox(enemies, _levelConfig);
 
         if (_levelConfigs != null)
@@ -589,9 +601,19 @@ public class WaveManager : MonoBehaviour
         return enemies;
     }
 
+    private void AddRuntimeSandboxEnemyData(List<EnemyDataSO> enemies)
+    {
+        if (_sandboxEnemyData == null)
+            return;
+
+        foreach (EnemyDataSO enemy in _sandboxEnemyData)
+            AddEnemyForSandbox(enemies, enemy);
+    }
+
     public IReadOnlyList<BaybayinCharacterSO> GetConfiguredCharactersForSandbox()
     {
         var characters = new List<BaybayinCharacterSO>();
+        AddCharactersFromRegistryForSandbox(characters, _sandboxCharacterRegistry);
         AddCharactersFromLevelForSandbox(characters, _levelConfig);
 
         if (_levelConfigs != null)
@@ -600,14 +622,23 @@ public class WaveManager : MonoBehaviour
                 AddCharactersFromLevelForSandbox(characters, levelConfig);
         }
 
-        if (SandboxMode.IsActive
-            && (CurrentAllowedCharacters == null || CurrentAllowedCharacters.Count < 2)
-            && characters.Count > 0)
-        {
+        AddAllCharacterAssetsForSandbox(characters);
+
+        if (SandboxMode.IsActive && characters.Count > 0)
             CurrentAllowedCharacters = characters;
-        }
 
         return characters;
+    }
+
+    private static void AddCharactersFromRegistryForSandbox(
+        List<BaybayinCharacterSO> characters,
+        CharacterRegistrySO registry)
+    {
+        if (registry?.All == null)
+            return;
+
+        foreach (BaybayinCharacterSO character in registry.All)
+            AddCharacterForSandbox(characters, character);
     }
 
     private static void AddEnemiesFromLevelForSandbox(List<EnemyDataSO> enemies, LevelConfigSO levelConfig)
@@ -672,6 +703,19 @@ public class WaveManager : MonoBehaviour
     {
         if (character != null && !characters.Contains(character))
             characters.Add(character);
+    }
+
+    private static void AddAllCharacterAssetsForSandbox(List<BaybayinCharacterSO> characters)
+    {
+#if UNITY_EDITOR
+        string[] guids = AssetDatabase.FindAssets("t:BaybayinCharacterSO");
+        for (int i = 0; i < guids.Length; i++)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guids[i]);
+            BaybayinCharacterSO character = AssetDatabase.LoadAssetAtPath<BaybayinCharacterSO>(path);
+            AddCharacterForSandbox(characters, character);
+        }
+#endif
     }
 #endif
 

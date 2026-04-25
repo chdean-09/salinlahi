@@ -151,6 +151,27 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
+        public void FillActiveEnemiesSnapshot_ReusesCallerBuffer()
+        {
+            var enemy = CreateEnemy("BA", -3);
+            var staleEnemy = CreateEnemy("KA", -2);
+            var buffer = new List<Enemy> { staleEnemy };
+            _tracker.Register(enemy);
+
+            _tracker.FillActiveEnemiesSnapshot(buffer);
+
+            Assert.AreEqual(1, buffer.Count);
+            Assert.AreSame(enemy, buffer[0]);
+
+            Object.DestroyImmediate(enemy.Data);
+            Object.DestroyImmediate(enemy.Character);
+            Object.DestroyImmediate(staleEnemy.Data);
+            Object.DestroyImmediate(staleEnemy.Character);
+            DestroyEnemy(enemy);
+            DestroyEnemy(staleEnemy);
+        }
+
+        [Test]
         public void IsClear_NoEnemies_ReturnsTrue()
         {
             Assert.IsTrue(_tracker.IsClear);

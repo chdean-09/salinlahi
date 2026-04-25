@@ -11,6 +11,7 @@ public class KishaMover : EnemyMover
     }
 
     private Enemy _enemy;
+    private Camera _mainCamera;
     private Coroutine _chargeRoutine;
     private ChargeState _state;
     private bool _warnedMissingCamera;
@@ -19,6 +20,7 @@ public class KishaMover : EnemyMover
     {
         base.OnEnable();
         _enemy = GetComponent<Enemy>();
+        _mainCamera = Camera.main;
         _state = ChargeState.Walking;
         _warnedMissingCamera = false;
         RestartChargeRoutine();
@@ -88,8 +90,10 @@ public class KishaMover : EnemyMover
 
     private bool HasReachedTriggerY(float triggerY)
     {
-        Camera camera = Camera.main;
-        if (camera == null)
+        if (_mainCamera == null)
+            _mainCamera = Camera.main;
+
+        if (_mainCamera == null)
         {
             if (!_warnedMissingCamera)
             {
@@ -100,7 +104,7 @@ public class KishaMover : EnemyMover
             return true;
         }
 
-        float viewportY = camera.WorldToViewportPoint(transform.position).y;
+        float viewportY = _mainCamera.WorldToViewportPoint(transform.position).y;
         return viewportY <= triggerY;
     }
 
