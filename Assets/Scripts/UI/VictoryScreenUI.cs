@@ -40,7 +40,7 @@ public class VictoryScreenUI : MonoBehaviour
             _levelSelectButton.onClick.RemoveListener(OnLevelSelectPressed);
     }
 
-    private void Show()
+    public void Show()
     {
         if (_panel != null)
             _panel.SetActive(true);
