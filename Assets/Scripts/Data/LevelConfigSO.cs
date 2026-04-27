@@ -27,4 +27,14 @@ public class LevelConfigSO : ScriptableObject
 
     [Header("Build Flags")]
     public bool isAvailableInLite = true;
+
+    [Header("Flow")]
+    [Tooltip("Dialogue played before waves begin. Null = skip intro.")]
+    public DialogueSO introDialogue;
+
+    [Tooltip("Dialogue played after level complete (before victory screen). Null = skip outro.")]
+    public DialogueSO outroDialogue;
+
+    [Tooltip("Background music for this level. Null = no BGM change.")]
+    public AudioClip bgmClip;
 }
