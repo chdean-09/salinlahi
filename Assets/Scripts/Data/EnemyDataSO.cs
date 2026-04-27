@@ -30,4 +30,36 @@ public class EnemyDataSO : ScriptableObject
     [Tooltip("If false, reaching the Shrine collision zone will despawn this enemy without damaging the Shrine.")]
     public bool dealsContactDamage = true;
 
+    [Header("Variant Era")]
+    [Tooltip("Chapter / faction grouping. Used by GeneralAura to limit its buff to American-era allies.")]
+    public Era era = Era.Spanish;
+
+    [Header("Zigzag Mover (Pensionado)")]
+    [Tooltip("Horizontal sine amplitude in world units. 0 disables zigzag.")]
+    public float zigzagAmplitude = 0f;
+    [Tooltip("Sine frequency in Hz. 0 disables zigzag.")]
+    public float zigzagFrequency = 0f;
+
+    [Header("Base Speed Modifier (General)")]
+    [Tooltip("Multiplier applied on top of moveSpeed. 1.0 = default.")]
+    public float baseSpeedMultiplier = 1f;
+
+    [Header("Aura (General)")]
+    [Tooltip("Radius in world units. 0 disables aura.")]
+    public float auraRadius = 0f;
+    [Tooltip("Speed multiplier applied to affected same-era non-boss enemies.")]
+    public float auraSpeedMultiplier = 1.3f;
+
+    [Header("Death Animation (optional)")]
+    [Tooltip("Frames played in sequence on Defeat() before the enemy returns to the pool. Empty = no death animation; the enemy disappears immediately (existing fast-path behaviour).")]
+    public Sprite[] deathFrames;
+    [Tooltip("Playback FPS for deathFrames. 0 falls back to the walk animation FPS on Enemy.cs (default 8).")]
+    public float deathAnimationFps = 8f;
+}
+
+public enum Era
+{
+    Spanish,
+    American,
+    Japanese
 }
