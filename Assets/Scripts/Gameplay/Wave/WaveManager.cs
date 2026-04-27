@@ -16,6 +16,8 @@ public class WaveManager : MonoBehaviour
     private static WaveManager _currentAllowedCharactersOwner;
 
     [Header("Configuration")]
+    [Tooltip("If true, WaveManager waits for an external call to StartLevel() instead of auto-starting in Start(). Set to true when LevelFlowController is present.")]
+    [SerializeField] private bool _waitForExternalStart;
     [SerializeField] private LevelConfigSO _levelConfig;
     [SerializeField] private WaveSpawner _spawner;
     [FormerlySerializedAs("_legacyDefaultEnemyData")]
@@ -85,7 +87,10 @@ public class WaveManager : MonoBehaviour
             LoadLevelConfig(selectedLevel);
         }
 
-        StartLevel(selectedLevel);
+        if (!_waitForExternalStart)
+        {
+            StartLevel(selectedLevel);
+        }
     }
 
     /// <summary>
