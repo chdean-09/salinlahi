@@ -1,4 +1,6 @@
 using UnityEngine;
+using System.Collections;
+using System.Collections.Generic;
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
 using Salinlahi.Debug.Sandbox;
 #endif
@@ -36,6 +38,10 @@ public class Enemy : MonoBehaviour
     private int _walkFrameIndex;
     private float _walkFrameTimer;
 
+    private readonly Dictionary<object, float> _speedBuffs = new Dictionary<object, float>();
+    private bool _isDying;
+    private Coroutine _deathRoutine;
+
     public BaybayinCharacterSO Character => _runtimeCharacter != null ? _runtimeCharacter : _data?.assignedCharacter;
     public string EnemyID => _data?.enemyID;
     public EnemyDataSO Data => _data;
@@ -43,6 +49,36 @@ public class Enemy : MonoBehaviour
     public bool IsDecoy => _data != null && _data.isDecoy;
     // placeholder for now. will be replaced in salin 68
     public virtual bool IsBoss => false;
+
+    public int MaxHealth => _data != null ? _data.maxHealth : 0;
+
+    public float EffectiveSpeed
+    {
+        get
+        {
+            if (_data == null) return 0f;
+            float speed = _data.moveSpeed * _data.baseSpeedMultiplier;
+            foreach (var kv in _speedBuffs) speed *= kv.Value;
+            return speed;
+        }
+    }
+
+    public void ApplySpeedBuff(object source, float multiplier)
+    {
+        _speedBuffs[source] = multiplier;
+        PushSpeedToMover();
+    }
+
+    public void ClearSpeedBuff(object source)
+    {
+        if (_speedBuffs.Remove(source))
+            PushSpeedToMover();
+    }
+
+    private void PushSpeedToMover()
+    {
+        if (_mover != null) _mover.SetSpeed(EffectiveSpeed);
+    }
 
     private void Awake()
     {
@@ -112,7 +148,7 @@ public class Enemy : MonoBehaviour
         _currentHealth = _data.maxHealth;
 
         _mover.Stop();
-        _mover.SetSpeed(_data.moveSpeed);
+        _mover.SetSpeed(EffectiveSpeed);
 
         if (_renderer != null)
         {
@@ -147,6 +183,18 @@ public class Enemy : MonoBehaviour
         try
         {
             _runtimeCharacter = null;
+            _speedBuffs.Clear();
+            _isDying = false;
+
+            if (_deathRoutine != null)
+            {
+                StopCoroutine(_deathRoutine);
+                _deathRoutine = null;
+            }
+
+            Collider2D contactCollider = GetComponent<Collider2D>();
+            if (contactCollider != null) contactCollider.enabled = true;
+
             _data = null;
             _currentHealth = 0;
 
@@ -166,6 +214,8 @@ public class Enemy : MonoBehaviour
 
     public void TakeDamage(int amount)
     {
+        if (_isDying) return;
+
         if (_data == null)
         {
             DebugLogger.LogWarning($"Enemy.TakeDamage: Enemy '{name}' has no data and cannot take damage.");
@@ -232,9 +282,61 @@ public class Enemy : MonoBehaviour
     // Call this to defeat the enemy and return it to the pool.
     public void Defeat()
     {
+        if (_isDying) return;
+
         BaybayinCharacterSO capturedCharacter = Character;
+        bool hasDeathAnimation = _data != null
+            && _data.deathFrames != null
+            && _data.deathFrames.Length > 0;
+
+        if (hasDeathAnimation)
+        {
+            // freeze, unregister, fire the event immediately, then play frames.
+            _isDying = true;
+            ActiveEnemyTracker.Instance?.Unregister(this);
+            _mover?.Stop();
+            DisableContactCollider();
+            EventBus.RaiseEnemyDefeated(capturedCharacter);
+            _deathRoutine = StartCoroutine(PlayDeathAnimationThenReturn());
+        }
+        else
+        {
+            ReturnToPool();
+            EventBus.RaiseEnemyDefeated(capturedCharacter);
+        }
+    }
+
+    private IEnumerator PlayDeathAnimationThenReturn()
+    {
+        Sprite[] frames = _data != null ? _data.deathFrames : null;
+        if (_renderer != null && frames != null && frames.Length > 0)
+        {
+            float fps = _data.deathAnimationFps > 0f
+                ? _data.deathAnimationFps
+                : _walkAnimationFps;
+            if (fps <= 0f) fps = 8f;
+            float frameDuration = 1f / fps;
+
+            for (int i = 0; i < frames.Length; i++)
+            {
+                if (frames[i] != null) _renderer.sprite = frames[i];
+                float elapsed = 0f;
+                while (elapsed < frameDuration)
+                {
+                    elapsed += Time.deltaTime;
+                    yield return null;
+                }
+            }
+        }
+
+        _deathRoutine = null;
         ReturnToPool();
-        EventBus.RaiseEnemyDefeated(capturedCharacter);
+    }
+
+    private void DisableContactCollider()
+    {
+        Collider2D col = GetComponent<Collider2D>();
+        if (col != null) col.enabled = false;
     }
 
     public void ApplyDecoyPenalty()
