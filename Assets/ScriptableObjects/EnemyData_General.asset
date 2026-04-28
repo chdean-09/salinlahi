@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bb4cd3e37d015f4f8d9baa6e4cc1ac5, type: 3}
+  m_Name: EnemyData_General
+  m_EditorClassIdentifier: Salinlahi.Runtime::EnemyDataSO
+  enemyID: general
+  moveSpeed: 1
+  maxHealth: 3
+  walkFrames: []
+  animatorController: {fileID: 0}
+  assignedCharacter: {fileID: 0}
+  isDecoy: 0
+  dealsContactDamage: 1
+  era: 1
+  zigzagAmplitude: 0
+  zigzagFrequency: 0
+  baseSpeedMultiplier: 0.7
+  auraRadius: 3.5
+  auraSpeedMultiplier: 1.3
+  deathFrames: []
+  deathAnimationFps: 8
