@@ -241,6 +241,42 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.size
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[5].prefab
+      value: 
+      objectReference: {fileID: 8037671833055544141, guid: 7fec4b394ac30ee41b7cfa80ad976d23, type: 3}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[6].prefab
+      value: 
+      objectReference: {fileID: 8037671833055544141, guid: 527f74e2ab89ed94c966baed51acc42c, type: 3}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[5].enemyID
+      value: pensionado
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[5].maxSize
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[6].enemyID
+      value: general
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[6].maxSize
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[5].defaultCapacity
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[6].defaultCapacity
+      value: 2
+      objectReference: {fileID: 0}
     - target: {fileID: 655216211397709316, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
       propertyPath: m_LocalPosition.x
       value: -9.645
