@@ -3657,6 +3657,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: bf5a3e06628e74c66b47faae9f1baa5e, type: 2}
   - {fileID: 11400000, guid: ad5b1b3273c2b4037afb9d6c8b8b9d1e, type: 2}
   - {fileID: 11400000, guid: 3a20295b615664b58af871b7602d34e4, type: 2}
+  _sandboxExtraEnemyTypes:
+  - {fileID: 11400000, guid: 096df5d2077ab9d4c9ff3732f732f957, type: 2}
+  - {fileID: 11400000, guid: e555cb9a9c190494d8ad490e246cc40c, type: 2}
 --- !u!4 &920286448
 Transform:
   m_ObjectHideFlags: 0

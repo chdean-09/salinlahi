@@ -21,6 +21,12 @@ public class WaveManager : MonoBehaviour
     [Tooltip("All level configs that can be loaded at runtime. Index 0 = Level 1, etc.")]
     [SerializeField] private LevelConfigSO[] _levelConfigs;
 
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+    [Header("Sandbox")]
+    [Tooltip("Enemy types available in sandbox mode that are not yet assigned to any wave.")]
+    [SerializeField] private EnemyDataSO[] _sandboxExtraEnemyTypes;
+#endif
+
     private int _currentWaveIndex;
     private int _currentWaveSpawnedCount;
     private bool _running;
@@ -574,6 +580,12 @@ public class WaveManager : MonoBehaviour
         {
             foreach (LevelConfigSO levelConfig in _levelConfigs)
                 AddEnemiesFromLevelForSandbox(enemies, levelConfig);
+        }
+
+        if (_sandboxExtraEnemyTypes != null)
+        {
+            foreach (EnemyDataSO enemy in _sandboxExtraEnemyTypes)
+                AddEnemyForSandbox(enemies, enemy);
         }
 
         return enemies;
