@@ -12,18 +12,18 @@
 |--------|-------|--------|-----------------------|
 | Bootstrap (invisible) | `Bootstrap.unity` | `BootstrapLoader.cs` | Implemented |
 | Main Menu | `MainMenu.unity` | `MainMenuUI.cs` | Partial (stub) |
-| Level Select | (NOT FOUND — no scene) | `LevelSelect.cs` (PLANNED) | NOT FOUND |
-| Gameplay HUD | `Gameplay.unity` | `HUD.cs` (PLANNED) | NOT FOUND |
-| Pause Menu | (overlay) | `PauseMenu.cs` (PLANNED) | NOT FOUND |
-| Level Complete | (NOT FOUND — no scene) | (PLANNED) | NOT FOUND |
-| Game Over | `GameOver.unity` | `GameOverUI.cs` | Partial (stub) |
-| Tracing Dojo | (NOT FOUND — no scene) | (PLANNED) | NOT FOUND |
-| Settings | (NOT FOUND — no scene) | (PLANNED) | NOT FOUND |
-| Dialogue Panel (Type A) | (overlay in Gameplay) | `DialogueController.cs` (PLANNED) | NOT FOUND |
-| In-Wave Popup (Type B) | (overlay in Gameplay) | `InWavePopupController.cs` (PLANNED) | NOT FOUND |
-| Level Complete | (overlay or separate scene) | (PLANNED) | NOT FOUND |
-| Endless Mode | (shares Gameplay scene) | (PLANNED) | NOT FOUND |
-| SUS/GEQ-S Questionnaire | (overlay or separate scene) | `QuestionnaireController.cs` (PLANNED) | NOT FOUND |
+| Level Select | `LevelSelect.unity` | `LevelSelectUI.cs` | Implemented |
+| Gameplay HUD | `Gameplay.unity` | `HUD.cs` | Implemented |
+| Pause Menu | (overlay) | `PauseMenuUI.cs` | Implemented |
+| Level Complete | (overlay or separate scene) | `VictoryScreenUI.cs` | Implemented |
+| Game Over | `GameOver.unity` | `GameOverUI.cs` / `DefeatScreenUI.cs` | Partial (stub) |
+| Tracing Dojo | (overlay in Gameplay) | (PLANNED — folder exists) | PLANNED |
+| Settings | (overlay) | `SettingsPanel.cs` | Implemented |
+| Credits | (overlay) | `CreditsPanel.cs` | Implemented |
+| Dialogue Panel (Type A) | (overlay in Gameplay) | `DialogueController.cs` | Implemented |
+| In-Wave Popup (Type B) | (overlay in Gameplay) | `InWavePopupController.cs` (PLANNED) | PLANNED |
+| Endless Mode | (shares Gameplay scene) | (PLANNED) | PLANNED |
+| SUS/GEQ-S Questionnaire | (overlay or separate scene) | `QuestionnaireController.cs` (PLANNED) | PLANNED |
 
 [EVIDENCE: Assets/_Scenes/ — only Bootstrap, MainMenu, Gameplay, GameOver scenes exist]
 [EVIDENCE: docs/capstone/GDD.md, §5.1 Player Journey]
@@ -79,9 +79,9 @@ App Launch
 
 ---
 
-## 4. Gameplay HUD (PLANNED)
+## 4. Gameplay HUD — `HUD.cs`
 
-The HUD is specified in the GDD and TDD but **has no implementation file**. All items below are from source documents only.
+The HUD is implemented in `Assets/Scripts/UI/HUD.cs`. Elements below reflect current implementation and GDD specification.
 
 | HUD Element | Description | EventBus Trigger |
 |-------------|-------------|-----------------|
@@ -119,7 +119,7 @@ The HUD is specified in the GDD and TDD but **has no implementation file**. All 
 
 ---
 
-## 5.5 Dialogue System (PLANNED)
+## 5.5 Dialogue System — `DialogueController.cs`
 
 ### Type A — Gated Story Panels
 
@@ -186,7 +186,7 @@ No scene or script currently exists. Required behavior per GDD:
 |-------------|----------------------|--------|
 | Full-screen drawing area — no precision targeting required | Drawing canvas = entire screen | GDD §5.4 |
 | Audio pronunciation on every correct defeat | `AudioManager.PlayPronunciationClip()` | GDD §5.4; AudioManager.cs |
-| Visual rejection feedback (red flash + X mark) on failed stroke | `HUD.cs` (PLANNED) | GDD §5.4 |
+| Visual rejection feedback (red flash + X mark) on failed stroke | `HUD.cs` | GDD §5.4 |
 | Tracing Dojo zero-pressure practice space | Tracing Dojo scene (PLANNED) | GDD §5.4 |
 | Portrait-mode one-handed play design | Unity Player Settings: portrait lock | GDD §5.4 |
 | No text-heavy tutorials — first level teaches via play | Level 1 design constraint | GDD §5.4 |

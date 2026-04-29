@@ -22,7 +22,7 @@ The game covers **17 Baybayin characters: 14 consonants (BA, KA, DA, GA, HA, LA,
 | `BaybayinCharacterSO` asset | `.asset` | `Assets/ScriptableObjects/Characters/Char_[ID].asset` | All gameplay systems |
 | Display sprite (glyph) | `.png` | `Assets/Art/UI/` or `Assets/Art/Characters/` | Enemy renderer; Tracing Dojo |
 | Pronunciation audio clip | `.wav` / `.mp3` | `Assets/Audio/` | AudioManager |
-| Recognition template file | `.txt` (point coordinates) | `Assets/Resources/Templates/[ID]_template.txt` | DollarPRecognizer (PLANNED) |
+| Recognition template file | `.txt` (point coordinates) | `Assets/Resources/Templates/[ID]_template.txt` | `DollarPRecognizer.cs` |
 
 ### 1.3 Current Status
 
@@ -123,7 +123,7 @@ As of Sprint 1: **placeholder assets only**. No BaybayinCharacterSO assets have 
 
 `Assets/Resources/Templates/`
 
-Templates are loaded via `Resources.Load<TextAsset>` at startup by `TemplateLoader.cs` (PLANNED). Each file represents one Baybayin character's point-cloud template.
+Templates are loaded via `Resources.Load<TextAsset>` at startup by `TemplateLoader.cs`. Each file represents one Baybayin character's point-cloud template.
 
 ### 4.2 File Naming
 
@@ -137,7 +137,7 @@ The `characterID` must match `BaybayinCharacterSO.characterID` exactly (case-sen
 
 ### 4.3 File Content Format
 
-Plain text coordinate pairs. Format determined by `TemplateLoader.cs` implementation (NOT FOUND). Expected format based on $P algorithm:
+Plain text coordinate pairs. Format per `TemplateLoader.cs` implementation. Format based on $P algorithm:
 ```
 x1,y1
 x2,y2
