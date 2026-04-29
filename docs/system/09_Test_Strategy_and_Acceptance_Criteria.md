@@ -46,7 +46,7 @@ Salinlahi has no automated unit test suite in its current implementation. All te
 | EN-10 | Kempei censor scrambles nearby labels | Spawn Kempei with 3 enemies nearby | Nearby enemy labels show wrong characters while Kempei alive; correct labels restored after Kempei defeated | P1 |
 | EN-11 | Capitan/Shokan require 2 hits to defeat | Spawn Capitan; draw correct character once | Capitan shows armor break but remains active; second correct draw defeats it | P1 |
 
-### 2.3 Recognition System (PLANNED — verify in Sprint 2)
+### 2.3 Recognition System
 
 | Test ID | Requirement | Test Procedure | Pass Criterion | Priority |
 |---------|-------------|---------------|---------------|----------|
@@ -58,7 +58,7 @@ Salinlahi has no automated unit test suite in its current implementation. All te
 | RC-06 | Minimum point count 8 filters out taps | Tap screen (no drag) | No recognition attempt; `OnDrawingFailed` fires or tap is silently ignored | P1 |
 | RC-07 | All 17 templates load without error at startup | Launch app with all template files present | No `NullReferenceException` in logcat; `TemplateLoader` reports 17 loaded | P0 |
 
-### 2.4 Wave System (PLANNED — verify in Sprint 2/3)
+### 2.4 Wave System
 
 | Test ID | Requirement | Test Procedure | Pass Criterion | Priority |
 |---------|-------------|---------------|---------------|----------|

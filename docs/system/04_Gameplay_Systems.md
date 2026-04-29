@@ -133,17 +133,17 @@ transform.Translate(Vector2.down * _speed * Time.deltaTime, Space.World);
 | Base hit raises `OnBaseHit` | `EnemyMover.OnTriggerEnter2D()` → `EventBus.RaiseBaseHit()` |
 | GameOver triggered | `GameManager.HandleGameOver()` on `OnGameOver` |
 
-### 4.2 NOT FOUND — Required for Full Combat
+### 4.2 Implemented — Full Combat Systems
 
-| Requirement | Specified In | Status |
-|-------------|-------------|--------|
-| $P recognizer matches drawn strokes to `characterID` | TDD §3.3; Salinlahi.md §3.3.3 | NOT FOUND |
-| `RecognitionManager` fires `OnCharacterRecognized` | TDD §3.3 | NOT FOUND |
-| `WaveManager` listens to `OnCharacterRecognized` and calls `Enemy.Defeat()` on matched enemy | TDD §3.3 | NOT FOUND |
-| `HeartSystem` decrements hearts on `OnBaseHit`; fires `OnGameOver` at 0 | TDD §3.3; GDD §2.3 | NOT FOUND |
-| Combo counter tracks consecutive correct drawings | TDD §3.3 | NOT FOUND |
-| AOE burst mechanic (3+ same-character enemies on screen) | TDD §3.3 | NOT FOUND |
-| Combo system: 5-streak triggers 3-second slow effect on all enemies | GDD §3.2; Team README §9 | NOT FOUND |
+| Requirement | Specified In | Implementation |
+|-------------|-------------|----------------|
+| $P recognizer matches drawn strokes to `characterID` | TDD §3.3; Salinlahi.md §3.3.3 | `DollarPRecognizer.cs` |
+| `RecognitionManager` fires `OnCharacterRecognized` | TDD §3.3 | `RecognitionManager.cs` |
+| `WaveManager` listens to `OnCharacterRecognized` and calls `Enemy.Defeat()` on matched enemy | TDD §3.3 | `WaveManager.cs` |
+| `HeartSystem` decrements hearts on `OnBaseHit`; fires `OnGameOver` at 0 | TDD §3.3; GDD §2.3 | `HeartSystem.cs` |
+| Combo counter tracks consecutive correct drawings | TDD §3.3 | `ComboManager.cs` |
+| AOE burst mechanic (3+ same-character enemies on screen) | TDD §3.3 | `CombatResolver.cs` |
+| Combo system: 5-streak triggers focus mode slow effect on all enemies | GDD §3.2; Team README §9 | `ComboManager.cs` |
 
 [EVIDENCE: docs/capstone/TDD.md, §3.3 Combat Resolution]
 
@@ -165,7 +165,7 @@ transform.Translate(Vector2.down * _speed * Time.deltaTime, Space.World);
 | No win condition | Game runs until hearts reach 0 |
 | Score | Based on waves survived, enemies defeated, and longest combo |
 
-### 5.3 Heart System Specification (PLANNED)
+### 5.3 Heart System Specification
 
 - Default heart count: **3**
 - Hearts lost: **1 per base hit**
@@ -177,11 +177,11 @@ transform.Translate(Vector2.down * _speed * Time.deltaTime, Space.World);
 
 ---
 
-## 6. Wave Progression Logic (PLANNED)
+## 6. Wave Progression Logic
 
 ### 6.1 WaveManager Specification
 
-`WaveManager` is specified in `TDD.md §3.2` but **has no implementation file**. The following is derived from source documents only and is marked as planned/unimplemented.
+`WaveManager` is implemented in `Assets/Scripts/Gameplay/Wave/WaveManager.cs`. The following describes its behavior per `TDD.md §3.2`.
 
 - At level load: reads `LevelConfigSO` to get ordered `List<WaveConfigSO>`.
 - For each `WaveConfigSO` in order:
