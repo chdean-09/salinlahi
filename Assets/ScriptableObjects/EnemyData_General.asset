@@ -15,7 +15,11 @@ MonoBehaviour:
   enemyID: general
   moveSpeed: 1
   maxHealth: 3
-  walkFrames: []
+  walkFrames:
+  - {fileID: -1938075836063640625, guid: 7e07dba8d42649d41a4b3dc9cae6c027, type: 3}
+  - {fileID: 5600815700529521121, guid: 7e07dba8d42649d41a4b3dc9cae6c027, type: 3}
+  - {fileID: 2831667385477735903, guid: 7e07dba8d42649d41a4b3dc9cae6c027, type: 3}
+  - {fileID: 4857809179160381339, guid: 7e07dba8d42649d41a4b3dc9cae6c027, type: 3}
   animatorController: {fileID: 0}
   assignedCharacter: {fileID: 0}
   isDecoy: 0
@@ -26,5 +30,10 @@ MonoBehaviour:
   baseSpeedMultiplier: 0.7
   auraRadius: 3.5
   auraSpeedMultiplier: 1.3
-  deathFrames: []
+  deathFrames:
+  - {fileID: 4978097901292707079, guid: 5b15910d392787345a674378883f919c, type: 3}
+  - {fileID: -6655595903017760696, guid: 5b15910d392787345a674378883f919c, type: 3}
+  - {fileID: -3792875521546226879, guid: 5b15910d392787345a674378883f919c, type: 3}
+  - {fileID: 2353656525272941875, guid: 5b15910d392787345a674378883f919c, type: 3}
+  - {fileID: 2985336602891345102, guid: 5b15910d392787345a674378883f919c, type: 3}
   deathAnimationFps: 8
