@@ -1,5 +1,6 @@
 // TemplateRecorder.cs -- temporary debug tool, DELETE before Sprint 2
 // Desktop-friendly version using mouse input
+#if UNITY_EDITOR
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
@@ -409,3 +410,4 @@ public class TemplateRecorder : MonoBehaviour
         GUILayout.EndArea();
     }
 }
+#endif
