@@ -263,7 +263,7 @@ EnemyPool
 | `pronunciationClip == null` | Silent defeat (no audio error, `AudioManager` is null-safe) | Low |
 | `walkFrames` empty | Enemy spawns with no visible sprite (invisible) | Medium |
 | `assignedCharacter == null` | Enemy cannot be recognized or defeated; gameplay blocks | High |
-| Template file missing | `TemplateLoader` will throw `NullReferenceException` (PLANNED implementation) | Critical |
+| Template file missing | `TemplateLoader` will throw `NullReferenceException` | Critical |
 | `LevelConfigSO.waves` empty | Immediate level-complete, no gameplay | High |
 
 [EVIDENCE: Assets/Scripts/Core/AudioManager.cs — null check on pronunciationClip]

@@ -69,11 +69,11 @@ App Launch
 
 | Menu Item | Expected Action | Status |
 |-----------|----------------|--------|
-| Play (Story Mode) | Navigate to Level Select | NOT FOUND (currently goes directly to Gameplay) |
-| Endless Mode | Navigate to Endless Gameplay | NOT FOUND |
-| Tracing Dojo | Navigate to Tracing Dojo scene | NOT FOUND |
-| Settings | Open Settings screen | NOT FOUND |
-| Credits | Display credits screen | NOT FOUND |
+| Play (Story Mode) | Navigate to Level Select | Partial (navigates to Gameplay directly; LevelSelect wiring unverified) |
+| Endless Mode | Navigate to Endless Gameplay | PLANNED |
+| Tracing Dojo | Navigate to Tracing Dojo scene | PLANNED |
+| Settings | Open Settings screen | Partial (`SettingsPanel.cs` exists; menu wiring unverified) |
+| Credits | Display credits screen | Partial (`CreditsPanel.cs` exists; menu wiring unverified) |
 
 [EVIDENCE: docs/capstone/GDD.md, §5.3 — "Play, Endless Mode, Tracing Dojo, Settings, Credits"]
 
