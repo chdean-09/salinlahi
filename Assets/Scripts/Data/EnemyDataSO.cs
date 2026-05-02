@@ -55,6 +55,38 @@ public class EnemyDataSO : ScriptableObject
     public Sprite[] deathFrames;
     [Tooltip("Playback FPS for deathFrames. 0 falls back to the walk animation FPS on Enemy.cs (default 8).")]
     public float deathAnimationFps = 8f;
+
+    [Header("Hurt Feedback (multi-HP enemies)")]
+    [Tooltip("Master toggle. If false, no hurt feedback runs even if EnemyHurtFeedback is on the prefab. HP=1 enemies never trigger hurt feedback regardless of this value (they die on the first hit).")]
+    public bool useHurtFeedback = true;
+
+    [Header("Hurt Feedback — Movement Pause")]
+    [Tooltip("If true, the enemy stops descending for hurtPauseDuration seconds after a non-lethal hit.")]
+    public bool hurtPausesMovement = true;
+    [Tooltip("Seconds the enemy stays frozen on hit. 0 disables the pause without touching the toggle.")]
+    public float hurtPauseDuration = 0.25f;
+
+    [Header("Hurt Feedback — Sprite Shake")]
+    [Tooltip("If true, the sprite jitters around its current position for hurtShakeDuration seconds after a non-lethal hit.")]
+    public bool hurtShakesSprite = true;
+    [Tooltip("Maximum shake offset per axis in world units. 0.08 ~= 1/12th of a 1x1 sprite.")]
+    public float hurtShakeMagnitude = 0.08f;
+    [Tooltip("Total seconds the shake plays. Should usually be <= hurtPauseDuration so the shake ends inside the freeze window.")]
+    public float hurtShakeDuration = 0.2f;
+    [Tooltip("Shake oscillations per second. Higher = more frantic. 30 reads as a sharp jolt; 10 reads as a softer wobble.")]
+    public float hurtShakeFrequency = 30f;
+
+    [Header("Hurt Feedback — Character Swap")]
+    [Tooltip("If true, the carried character changes to postHurtCharacter on the first non-lethal hit. Leave off for variants that should keep their original glyph (e.g. General).")]
+    public bool hurtSwapsCharacter = false;
+    [Tooltip("The character the enemy demands after the first non-lethal hit. Only consulted when hurtSwapsCharacter is true.")]
+    public BaybayinCharacterSO postHurtCharacter;
+
+    [Header("Hurt Feedback — Hurt Animation (optional)")]
+    [Tooltip("Frames played in sequence on a non-lethal hit. Empty = no animation; the sprite stays on the current walk frame. Plug in the artist's hurt sheet here when it arrives — no code change required.")]
+    public Sprite[] hurtFrames;
+    [Tooltip("Playback FPS for hurtFrames. 0 falls back to the walk animation FPS on Enemy.cs (default 8).")]
+    public float hurtAnimationFps = 12f;
 }
 
 public enum Era
