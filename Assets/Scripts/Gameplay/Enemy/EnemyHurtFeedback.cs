@@ -50,9 +50,9 @@ public class EnemyHurtFeedback : MonoBehaviour
         EnemyDataSO data = _enemy.Data;
         if (data == null || !data.useHurtFeedback) return;
 
-        // If a hurt routine is already in flight, do not stack — the existing
-        // one will see the latest data on its next tick. This keeps timing stable
-        // when an enemy is hit twice in rapid succession.
+        // If a hurt routine is already in flight, the second hit is fully
+        // discarded — no additional pause, shake, or swap plays. This keeps
+        // timing stable when an enemy is hit twice in rapid succession.
         if (_hurtRoutine != null) return;
 
         if (data.hurtSwapsCharacter
@@ -83,7 +83,7 @@ public class EnemyHurtFeedback : MonoBehaviour
         float animTotalDur = anim ? (data.hurtFrames.Length * animFrameDur) : 0f;
         float totalDur = Mathf.Max(pauseDur, shakeDur, animTotalDur);
 
-        if (pause) _mover?.Stop();
+        if (pause) _mover.Stop();
 
         Vector3 appliedShake = Vector3.zero;
         int animFrameIndex = -1;
@@ -132,7 +132,7 @@ public class EnemyHurtFeedback : MonoBehaviour
             {
                 // Pause window has elapsed — re-apply EffectiveSpeed (which
                 // includes any aura buffs and Focus Mode) to the mover.
-                if (_mover != null && _enemy != null)
+                if (_enemy != null)
                     _mover.SetSpeed(_enemy.EffectiveSpeed);
                 resumed = true;
             }
@@ -146,7 +146,7 @@ public class EnemyHurtFeedback : MonoBehaviour
 
         // Belt-and-suspenders: if the loop exited before the resume branch ran,
         // make sure movement resumes.
-        if (!resumed && _mover != null && _enemy != null)
+        if (!resumed && _enemy != null)
             _mover.SetSpeed(_enemy.EffectiveSpeed);
 
         _hurtRoutine = null;
