@@ -80,10 +80,12 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.IsFalse(mover.IsMoving, "Expected mover to be stopped during pause.");
 
             float waited = 0f;
-            while (waited < 0.2f)
+            int frameCount = 0;
+            while (waited < 0.2f && frameCount < 300)
             {
                 yield return null;
                 waited += Time.deltaTime;
+                frameCount++;
             }
 
             Assert.IsTrue(mover.IsMoving, "Expected mover to resume after pause window.");
@@ -104,10 +106,12 @@ namespace Salinlahi.Tests.Editor.Gameplay
             enemy.TakeDamage(1);
 
             float waited = 0f;
-            while (waited < 0.2f)
+            int frameCount = 0;
+            while (waited < 0.2f && frameCount < 300)
             {
                 yield return null;
                 waited += Time.deltaTime;
+                frameCount++;
             }
 
             Vector3 after = enemy.transform.position;
@@ -172,10 +176,12 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 "Expected first hurt frame to be applied.");
 
             float waited = 0f;
-            while (waited < 0.15f)
+            int frameCount = 0;
+            while (waited < 0.15f && frameCount < 300)
             {
                 yield return null;
                 waited += Time.deltaTime;
+                frameCount++;
             }
             Assert.AreSame(frame1, renderer.sprite,
                 "Expected second hurt frame after one frame duration elapsed.");
