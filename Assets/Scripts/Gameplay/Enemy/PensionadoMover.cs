@@ -7,16 +7,26 @@ public class PensionadoMover : MonoBehaviour
     private Enemy _enemy;
     private float _baseX;
     private float _spawnTime;
+    private bool _baseXInitialized;
 
     private void OnEnable()
     {
         _enemy = GetComponent<Enemy>();
-        _baseX = transform.position.x;
         _spawnTime = Time.time;
+        _baseXInitialized = false;
     }
 
     private void Update()
     {
+        // Capture spawn X on the first Update, after WaveSpawner has positioned the enemy.
+        // OnEnable fires before WaveSpawner sets the position, so capturing there picks up
+        // the off-screen pool position (X ≈ -9.2) instead of the actual spawn X.
+        if (!_baseXInitialized)
+        {
+            _baseX = transform.position.x;
+            _baseXInitialized = true;
+        }
+
         if (GameManager.Instance == null) return;
         if (GameManager.Instance.CurrentState != GameState.Playing) return;
 
