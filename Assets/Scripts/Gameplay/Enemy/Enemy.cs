@@ -29,6 +29,7 @@ public class Enemy : MonoBehaviour
     [SerializeField] private float _walkAnimationFps = 8f;
 
     private EnemyMover _mover;
+    private EnemyHurtFeedback _hurtFeedback;
     private SpriteRenderer _renderer;
     private int _currentHealth;
     private BaybayinCharacterSO _runtimeCharacter;
@@ -83,6 +84,7 @@ public class Enemy : MonoBehaviour
     private void Awake()
     {
         _mover = GetComponent<EnemyMover>();
+        _hurtFeedback = GetComponent<EnemyHurtFeedback>();
         _renderer = GetComponent<SpriteRenderer>();
 
         if (_renderer != null)
@@ -184,6 +186,7 @@ public class Enemy : MonoBehaviour
         {
             _runtimeCharacter = null;
             _speedBuffs.Clear();
+            _hurtFeedback?.ResetState();
             _isDying = false;
 
             if (_deathRoutine != null)
@@ -232,9 +235,12 @@ public class Enemy : MonoBehaviour
         {
             Defeat();
         }
-        else if (ShouldTriggerShieldBreak(previousHealth))
+        else
         {
-            TriggerShieldBreakVisual();
+            if (ShouldTriggerShieldBreak(previousHealth))
+                TriggerShieldBreakVisual();
+
+            _hurtFeedback?.OnHurt();
         }
     }
 
@@ -375,6 +381,9 @@ public class Enemy : MonoBehaviour
 
     private void AdvanceWalkAnimation()
     {
+        if (_hurtFeedback != null && _hurtFeedback.IsPlayingHurtAnimation)
+            return;
+
         if (_renderer == null || _data == null || _data.walkFrames == null)
             return;
 
