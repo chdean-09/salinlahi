@@ -26,7 +26,7 @@ MonoBehaviour:
   dealsContactDamage: 1
   era: 1
   zigzagAmplitude: 1.2
-  zigzagFrequency: 1.2
+  zigzagFrequency: 0.5
   baseSpeedMultiplier: 1
   auraRadius: 0
   auraSpeedMultiplier: 1.3
@@ -36,3 +36,14 @@ MonoBehaviour:
   - {fileID: -1668410936834624979, guid: 6793296a5696f764e81cd490922309dc, type: 3}
   - {fileID: -6985817714585133333, guid: 6793296a5696f764e81cd490922309dc, type: 3}
   deathAnimationFps: 8
+  useHurtFeedback: 1
+  hurtPausesMovement: 1
+  hurtPauseDuration: 0.25
+  hurtShakesSprite: 1
+  hurtShakeMagnitude: 0.08
+  hurtShakeDuration: 0.2
+  hurtShakeFrequency: 30
+  hurtSwapsCharacter: 0
+  postHurtCharacter: {fileID: 0}
+  hurtFrames: []
+  hurtAnimationFps: 12

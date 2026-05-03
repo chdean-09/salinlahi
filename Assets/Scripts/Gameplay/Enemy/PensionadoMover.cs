@@ -4,9 +4,6 @@ using UnityEngine;
 [RequireComponent(typeof(Enemy))]
 public class PensionadoMover : MonoBehaviour
 {
-    [Tooltip("Multiplier for side-to-side movement speed. Higher = faster zigzag.")]
-    [SerializeField] private float speedMultiplier = 1f;
-
     private Enemy _enemy;
     private float _baseX;
     private float _spawnTime;
@@ -37,7 +34,7 @@ public class PensionadoMover : MonoBehaviour
         if (data == null || data.zigzagAmplitude <= 0f) return;
 
         float t = Time.time - _spawnTime;
-        float offset = Mathf.Sin(t * Mathf.PI * 2f * data.zigzagFrequency * speedMultiplier)
+        float offset = Mathf.Sin(t * Mathf.PI * 2f * data.zigzagFrequency)
                        * data.zigzagAmplitude;
 
         Vector3 pos = transform.position;
