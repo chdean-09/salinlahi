@@ -37,3 +37,14 @@ MonoBehaviour:
   - {fileID: 2353656525272941875, guid: 5b15910d392787345a674378883f919c, type: 3}
   - {fileID: 2985336602891345102, guid: 5b15910d392787345a674378883f919c, type: 3}
   deathAnimationFps: 8
+  useHurtFeedback: 1
+  hurtPausesMovement: 1
+  hurtPauseDuration: 0.3
+  hurtShakesSprite: 1
+  hurtShakeMagnitude: 0.1
+  hurtShakeDuration: 0.25
+  hurtShakeFrequency: 30
+  hurtSwapsCharacter: 0
+  postHurtCharacter: {fileID: 0}
+  hurtFrames: []
+  hurtAnimationFps: 12

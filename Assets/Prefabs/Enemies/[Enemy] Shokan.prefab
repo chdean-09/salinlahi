@@ -48,6 +48,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8037671833055544141, guid: 7d0626488d0ea194db35b08de3fba50b, type: 3}
+      propertyPath: _data
+      value: 
+      objectReference: {fileID: 11400000, guid: 076fdd70b6855485eb5a08635478121b, type: 2}
     - target: {fileID: 8620596032087142478, guid: 7d0626488d0ea194db35b08de3fba50b, type: 3}
       propertyPath: m_Name
       value: '[Enemy] Shokan'
@@ -55,5 +59,25 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8620596032087142478, guid: 7d0626488d0ea194db35b08de3fba50b, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: -47561919070547590}
   m_SourcePrefab: {fileID: 100100000, guid: 7d0626488d0ea194db35b08de3fba50b, type: 3}
+--- !u!1 &5367594489284341072 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8620596032087142478, guid: 7d0626488d0ea194db35b08de3fba50b, type: 3}
+  m_PrefabInstance: {fileID: 4458287469071244574}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &-47561919070547590
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5367594489284341072}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 719ec8fed91aaf248bafa2f655012d40, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Salinlahi.Runtime::EnemyHurtFeedback

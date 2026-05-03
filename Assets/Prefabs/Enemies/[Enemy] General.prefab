@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 8037671833055544141}
   - component: {fileID: 3113497809838385314}
   - component: {fileID: -1566361512280423047}
+  - component: {fileID: 9067475563172707598}
   m_Layer: 0
   m_Name: '[Enemy] General'
   m_TagString: Untagged
@@ -87,7 +88,7 @@ SpriteRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: -1938075836063640625, guid: 7e07dba8d42649d41a4b3dc9cae6c027, type: 3}
-  m_Color: {r: 0.24, g: 0.41, b: 0.73, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -216,3 +217,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5f830b31f934034f8316e8f3045eb5b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Salinlahi.Runtime::GeneralAura
+--- !u!114 &9067475563172707598
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8620596032087142478}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 719ec8fed91aaf248bafa2f655012d40, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Salinlahi.Runtime::EnemyHurtFeedback
