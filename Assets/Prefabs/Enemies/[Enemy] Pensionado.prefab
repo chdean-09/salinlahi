@@ -216,3 +216,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: da80584c092e38d42b379eb48516a709, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Salinlahi.Runtime::PensionadoMover
+  speedMultiplier: 0.4
