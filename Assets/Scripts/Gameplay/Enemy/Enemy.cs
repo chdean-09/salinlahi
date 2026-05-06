@@ -48,6 +48,7 @@ public class Enemy : MonoBehaviour
     public EnemyDataSO Data => _data;
     public int CurrentHealth => _currentHealth;
     public bool IsDecoy => _data != null && _data.isDecoy;
+    public bool IsDying => _isDying;
     // placeholder for now. will be replaced in salin 68
     public virtual bool IsBoss => false;
 
@@ -302,6 +303,9 @@ public class Enemy : MonoBehaviour
             ActiveEnemyTracker.Instance?.Unregister(this);
             _mover?.Stop();
             DisableContactCollider();
+            // Clear any aura this enemy is projecting before the death animation starts,
+            // so affected enemies drop the buff in the same frame as defeat.
+            GetComponent<GeneralAura>()?.ClearAllAffected();
             EventBus.RaiseEnemyDefeated(capturedCharacter);
             _deathRoutine = StartCoroutine(PlayDeathAnimationThenReturn());
         }

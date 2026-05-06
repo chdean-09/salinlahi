@@ -30,7 +30,11 @@ public class PensionadoMover : MonoBehaviour
         if (GameManager.Instance == null) return;
         if (GameManager.Instance.CurrentState != GameState.Playing) return;
 
-        EnemyDataSO data = _enemy != null ? _enemy.Data : null;
+        // Freeze horizontal oscillation while the death animation plays so the
+        // sprite does not slide sideways after defeat.
+        if (_enemy == null || _enemy.IsDying) return;
+
+        EnemyDataSO data = _enemy.Data;
         if (data == null || data.zigzagAmplitude <= 0f) return;
 
         float t = Time.time - _spawnTime;

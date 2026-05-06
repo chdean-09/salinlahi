@@ -23,6 +23,14 @@ public class GeneralAura : MonoBehaviour
 
     private void OnDisable()
     {
+        ClearAllAffected();
+    }
+
+    /// Drops the aura speed buff from every currently-affected enemy.
+    /// Called from Enemy.Defeat() so buffs disappear the same frame the General is defeated,
+    /// even if a death animation keeps the GameObject alive.
+    public void ClearAllAffected()
+    {
         foreach (Enemy e in _affected)
         {
             if (e != null) e.ClearSpeedBuff(this);
@@ -35,10 +43,19 @@ public class GeneralAura : MonoBehaviour
     {
         if (GameManager.Instance == null) return;
         if (GameManager.Instance.CurrentState != GameState.Playing) return;
+
+        // Defensive: if the General is mid-death-animation, never apply new buffs.
+        // Enemy.Defeat() should have already called ClearAllAffected, so this is belt-and-suspenders.
+        if (_self == null || _self.IsDying)
+        {
+            ClearAllAffected();
+            return;
+        }
+
         if (Time.time < _nextTick) return;
         _nextTick = Time.time + TICK;
 
-        EnemyDataSO data = _self != null ? _self.Data : null;
+        EnemyDataSO data = _self.Data;
         if (data == null || data.auraRadius <= 0f) return;
 
         if (ActiveEnemyTracker.Instance == null) return;
