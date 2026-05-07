@@ -97,11 +97,11 @@ public class KishaMover : EnemyMover
         {
             if (!_warnedMissingCamera)
             {
-                DebugLogger.LogWarning("KishaMover: Camera.main is missing. Falling back to immediate charge trigger.");
+                DebugLogger.LogWarning("KishaMover: Camera.main is missing. Holding walk state until camera resolves.");
                 _warnedMissingCamera = true;
             }
 
-            return true;
+            return false;
         }
 
         float viewportY = _mainCamera.WorldToViewportPoint(transform.position).y;

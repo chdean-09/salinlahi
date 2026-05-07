@@ -4,8 +4,8 @@ using UnityEngine;
 [RequireComponent(typeof(Enemy))]
 public class KempeiScrambleController : MonoBehaviour
 {
-    private const float MinGlitchInterval = 0.18f;
-    private const float MaxGlitchInterval = 0.36f;
+    private const float FallbackMinGlitchInterval = 0.18f;
+    private const float FallbackMaxGlitchInterval = 0.36f;
 
     private sealed class ScrambleState
     {
@@ -20,6 +20,7 @@ public class KempeiScrambleController : MonoBehaviour
     private readonly Dictionary<Enemy, ScrambleState> _activeScrambles = new();
     private readonly List<Enemy> _activeSnapshot = new();
     private readonly List<BaybayinCharacterSO> _candidateCharacters = new();
+    private readonly List<Enemy> _enemiesToClear = new();
     private Enemy _enemy;
 
     private void Awake()
@@ -30,6 +31,9 @@ public class KempeiScrambleController : MonoBehaviour
     private void OnDisable()
     {
         ClearAffectedEnemies();
+        _activeSnapshot.Clear();
+        _candidateCharacters.Clear();
+        _enemiesToClear.Clear();
     }
 
     private void Update()
@@ -82,28 +86,29 @@ public class KempeiScrambleController : MonoBehaviour
         if (_affectedEnemies.Count == 0)
             return;
 
-        List<Enemy> toClear = null;
+        _enemiesToClear.Clear();
         foreach (Enemy enemy in _affectedEnemies)
         {
             if (enemy != null && _stillAffected.Contains(enemy))
                 continue;
 
-            toClear ??= new List<Enemy>();
-            toClear.Add(enemy);
+            _enemiesToClear.Add(enemy);
         }
 
-        if (toClear == null)
+        if (_enemiesToClear.Count == 0)
             return;
 
-        for (int i = 0; i < toClear.Count; i++)
+        for (int i = 0; i < _enemiesToClear.Count; i++)
         {
-            Enemy enemy = toClear[i];
+            Enemy enemy = _enemiesToClear[i];
             if (enemy != null)
                 enemy.ClearVisualCharacterOverride(this);
 
             _affectedEnemies.Remove(enemy);
             _activeScrambles.Remove(enemy);
         }
+
+        _enemiesToClear.Clear();
     }
 
     private ScrambleState GetOrCreateScramble(Enemy target)
@@ -129,7 +134,7 @@ public class KempeiScrambleController : MonoBehaviour
         {
             Character = next,
             IsScrambledVisible = true,
-            NextToggleTime = Time.time + Random.Range(MinGlitchInterval, MaxGlitchInterval)
+            NextToggleTime = Time.time + Random.Range(GetMinGlitchInterval(), GetMaxGlitchInterval())
         };
         _activeScrambles[target] = state;
         return state;
@@ -140,7 +145,7 @@ public class KempeiScrambleController : MonoBehaviour
         if (Time.time >= scramble.NextToggleTime)
         {
             scramble.IsScrambledVisible = !scramble.IsScrambledVisible;
-            scramble.NextToggleTime = Time.time + Random.Range(MinGlitchInterval, MaxGlitchInterval);
+            scramble.NextToggleTime = Time.time + Random.Range(GetMinGlitchInterval(), GetMaxGlitchInterval());
         }
 
         if (scramble.IsScrambledVisible)
@@ -167,12 +172,6 @@ public class KempeiScrambleController : MonoBehaviour
         {
             for (int i = 0; i < allowedCharacters.Count; i++)
                 AddIfWrongCharacter(allowedCharacters[i], realCharacter);
-        }
-
-        if (_candidateCharacters.Count == 0)
-        {
-            for (int i = 0; i < _activeSnapshot.Count; i++)
-                AddIfWrongCharacter(_activeSnapshot[i] != null ? _activeSnapshot[i].Character : null, realCharacter);
         }
 
         if (_candidateCharacters.Count == 0)
@@ -216,6 +215,24 @@ public class KempeiScrambleController : MonoBehaviour
         }
 
         _affectedEnemies.Clear();
+        _stillAffected.Clear();
         _activeScrambles.Clear();
+    }
+
+    private float GetMinGlitchInterval()
+    {
+        if (_enemy?.Data == null)
+            return FallbackMinGlitchInterval;
+
+        return Mathf.Max(0f, _enemy.Data.scrambleMinGlitchInterval);
+    }
+
+    private float GetMaxGlitchInterval()
+    {
+        if (_enemy?.Data == null)
+            return FallbackMaxGlitchInterval;
+
+        float min = GetMinGlitchInterval();
+        return Mathf.Max(min, _enemy.Data.scrambleMaxGlitchInterval);
     }
 }

@@ -3,6 +3,7 @@ using Salinlahi.Debug.Sandbox;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Pool;
 
@@ -101,10 +102,12 @@ public class SandboxModeTests
 
         GameObject enemyObject = new("Enemy");
         enemyObject.AddComponent<BoxCollider2D>();
+        enemyObject.AddComponent<EnemyMover>();
         Enemy enemy = enemyObject.AddComponent<Enemy>();
 
         try
         {
+            InvokePrivate(enemy, "Awake");
             enemy.Initialize(enemyData, new NoopEnemyPool(), overrideCharacter);
 
             Assert.AreSame(overrideCharacter, enemy.Character);
@@ -485,6 +488,164 @@ public class SandboxModeTests
         }
     }
 
+    [Test]
+    public void KishaMoverTransitionsWalkingPausedChargingWhenTriggerReached()
+    {
+        GameObject enemyObject = new("Kisha");
+        Camera camera = null;
+        BaybayinCharacterSO character = CreateCharacter("A");
+        EnemyDataSO data = CreateEnemyData("kisha", character);
+        data.moveSpeed = 2f;
+        data.chargeMultiplier = 3f;
+        data.pauseDuration = 0f;
+        data.chargeTriggerYNormalized = 0.75f;
+        enemyObject.transform.position = new Vector3(0f, 0f, 0f);
+        enemyObject.AddComponent<BoxCollider2D>();
+        KishaMover mover = enemyObject.AddComponent<KishaMover>();
+        Enemy enemy = enemyObject.AddComponent<Enemy>();
+
+        try
+        {
+            camera = new GameObject("Main Camera").AddComponent<Camera>();
+            camera.tag = "MainCamera";
+            camera.transform.position = new Vector3(0f, 0f, -10f);
+
+            InvokePrivate(enemy, "Awake");
+            enemy.Initialize(data);
+            Assert.AreEqual("Walking", mover.ChargeStateForTests);
+
+            IEnumerator routine = InvokePrivate(mover, "ChargeRoutine") as IEnumerator;
+            Assert.IsNotNull(routine);
+            Assert.IsTrue(routine.MoveNext());
+            Assert.AreEqual("Walking", mover.ChargeStateForTests);
+
+            Assert.IsTrue(routine.MoveNext());
+            Assert.AreEqual("Paused", mover.ChargeStateForTests);
+
+            Assert.IsFalse(routine.MoveNext());
+            Assert.AreEqual("Charging", mover.ChargeStateForTests);
+            Assert.AreEqual(data.moveSpeed * data.chargeMultiplier, mover.GetFinalSpeedForTests(), 0.001f);
+        }
+        finally
+        {
+            Object.DestroyImmediate(enemyObject);
+            if (camera != null)
+                Object.DestroyImmediate(camera.gameObject);
+            Object.DestroyImmediate(data);
+            Object.DestroyImmediate(character);
+        }
+    }
+
+    [Test]
+    public void ShokanVeilDisablesOnFirstHitAndResetsOnPoolReuse()
+    {
+        GameObject poolObject = new("EnemyPool");
+        GameObject prefabObject = new("ShokanPrefab");
+        BaybayinCharacterSO character = CreateCharacter("A");
+        EnemyDataSO shokanData = CreateEnemyData("shokan", character);
+        shokanData.maxHealth = 2;
+        SpriteRenderer veilRenderer;
+
+        try
+        {
+            poolObject.SetActive(false);
+            Enemy prefab = CreateShokanPrefab(prefabObject, out veilRenderer);
+            EnemyPool pool = poolObject.AddComponent<EnemyPool>();
+            SetPrivateField(pool, "_enemyPrefab", prefab);
+            SetPrivateField(pool, "_defaultCapacity", 0);
+            SetPrivateField(pool, "_maxSize", 4);
+            poolObject.SetActive(true);
+            InvokePrivate(pool, "Awake");
+
+            Enemy spawned = pool.Get(shokanData);
+            Assert.IsNotNull(spawned);
+
+            SpriteRenderer spawnedVeil = spawned.GetComponentsInChildren<SpriteRenderer>(true)
+                .FirstOrDefault(renderer => renderer.gameObject.name == "CorruptionVeil");
+            Assert.IsNotNull(spawnedVeil);
+            Assert.IsTrue(spawnedVeil.enabled);
+
+            spawned.TakeDamage(1);
+            Assert.IsFalse(spawnedVeil.enabled);
+
+            spawned.TakeDamage(1);
+            Assert.IsFalse(spawned.gameObject.activeSelf);
+
+            Enemy reused = pool.Get(shokanData);
+            Assert.IsNotNull(reused);
+            SpriteRenderer reusedVeil = reused.GetComponentsInChildren<SpriteRenderer>(true)
+                .FirstOrDefault(renderer => renderer.gameObject.name == "CorruptionVeil");
+            Assert.IsNotNull(reusedVeil);
+            Assert.IsTrue(reusedVeil.enabled);
+        }
+        finally
+        {
+            Object.DestroyImmediate(poolObject);
+            Object.DestroyImmediate(prefabObject);
+            Object.DestroyImmediate(shokanData);
+            Object.DestroyImmediate(character);
+            ClearSingletonInstance<EnemyPool>();
+        }
+    }
+
+    [Test]
+    public void KempeiPoolReturnClearsTargetVisualOverrideImmediately()
+    {
+        GameObject poolObject = new("EnemyPool");
+        GameObject prefabObject = new("KempeiPrefab");
+        GameObject trackerObject = new("ActiveEnemyTracker");
+        trackerObject.AddComponent<ActiveEnemyTracker>();
+        BaybayinCharacterSO realCharacter = CreateCharacter("A");
+        BaybayinCharacterSO scrambleCharacter = CreateCharacter("B");
+        EnemyDataSO kempeiData = CreateEnemyData("kempei", realCharacter);
+        EnemyDataSO targetData = CreateEnemyData("target", realCharacter);
+        kempeiData.scrambleRadius = 10f;
+        GameObject targetObject = CreateEnemyObject("Target", out Enemy target);
+        targetObject.transform.position = Vector3.right;
+
+        try
+        {
+            poolObject.SetActive(false);
+            Enemy prefab = CreateKempeiPrefab(prefabObject);
+            EnemyPool pool = poolObject.AddComponent<EnemyPool>();
+            SetPrivateField(pool, "_enemyPrefab", prefab);
+            SetPrivateField(pool, "_defaultCapacity", 0);
+            SetPrivateField(pool, "_maxSize", 8);
+            poolObject.SetActive(true);
+            InvokePrivate(pool, "Awake");
+
+            Enemy pooledKempei = pool.Get(kempeiData);
+            Assert.IsNotNull(pooledKempei);
+            KempeiScrambleController scrambleController = pooledKempei.GetComponent<KempeiScrambleController>();
+            Assert.IsNotNull(scrambleController);
+
+            target.Initialize(targetData);
+            pooledKempei.transform.position = Vector3.zero;
+
+            SetCurrentAllowedCharacters(new List<BaybayinCharacterSO> { realCharacter, scrambleCharacter });
+            InvokePrivate(scrambleController, "Update");
+
+            Assert.AreSame(scrambleCharacter, target.VisualCharacter);
+
+            pool.Return(pooledKempei);
+            Assert.AreSame(target.Character, target.VisualCharacter);
+        }
+        finally
+        {
+            SetCurrentAllowedCharacters(null);
+            Object.DestroyImmediate(poolObject);
+            Object.DestroyImmediate(prefabObject);
+            Object.DestroyImmediate(trackerObject);
+            Object.DestroyImmediate(targetObject);
+            Object.DestroyImmediate(kempeiData);
+            Object.DestroyImmediate(targetData);
+            Object.DestroyImmediate(realCharacter);
+            Object.DestroyImmediate(scrambleCharacter);
+            ClearSingletonInstance<EnemyPool>();
+            ClearSingletonInstance<ActiveEnemyTracker>();
+        }
+    }
+
     private sealed class NoopEnemyPool : IObjectPool<Enemy>
     {
         public int CountInactive => 0;
@@ -506,12 +667,37 @@ public class SandboxModeTests
         return prefabObject.AddComponent<Enemy>();
     }
 
+    private static Enemy CreateShokanPrefab(GameObject prefabObject, out SpriteRenderer veilRenderer)
+    {
+        prefabObject.SetActive(false);
+        prefabObject.AddComponent<BoxCollider2D>();
+        prefabObject.AddComponent<EnemyMover>();
+        Enemy enemy = prefabObject.AddComponent<Enemy>();
+
+        GameObject veilObject = new("CorruptionVeil");
+        veilObject.transform.SetParent(prefabObject.transform, false);
+        veilRenderer = veilObject.AddComponent<SpriteRenderer>();
+        prefabObject.AddComponent<ShokanCorruptionVeil>();
+        return enemy;
+    }
+
+    private static Enemy CreateKempeiPrefab(GameObject prefabObject)
+    {
+        prefabObject.SetActive(false);
+        prefabObject.AddComponent<BoxCollider2D>();
+        prefabObject.AddComponent<EnemyMover>();
+        Enemy enemy = prefabObject.AddComponent<Enemy>();
+        prefabObject.AddComponent<KempeiScrambleController>();
+        return enemy;
+    }
+
     private static GameObject CreateEnemyObject(string name, out Enemy enemy)
     {
         GameObject enemyObject = new(name);
         enemyObject.AddComponent<BoxCollider2D>();
         enemyObject.AddComponent<EnemyMover>();
         enemy = enemyObject.AddComponent<Enemy>();
+        InvokePrivate(enemy, "Awake");
         return enemyObject;
     }
 

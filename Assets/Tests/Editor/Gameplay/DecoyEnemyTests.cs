@@ -148,6 +148,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
             go.SetActive(true);
             _objectsToDestroy.Add(go);
 
+            InvokePrivate<object>(enemy, "Awake");
             Assert.IsTrue(enemy.Initialize(data));
             return enemy;
         }

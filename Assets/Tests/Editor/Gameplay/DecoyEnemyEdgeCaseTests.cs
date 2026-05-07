@@ -270,6 +270,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
             go.SetActive(true);
             _objectsToDestroy.Add(go);
 
+            InvokePrivate<object>(enemy, "Awake");
             Assert.IsTrue(enemy.Initialize(data));
             return enemy;
         }
@@ -332,6 +333,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
             SetPrivateField(pool, "_defaultCapacity", 0);
             SetPrivateField(pool, "_maxSize", 8);
             poolGo.SetActive(true);
+            InvokePrivate<object>(pool, "Awake");
             return pool;
         }
 

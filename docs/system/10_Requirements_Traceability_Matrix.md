@@ -48,8 +48,8 @@
 | REQ-23 | Enemies shall be managed via Unity ObjectPool; no Instantiate/Destroy in game loop | TDD §1; ObjectPool.cs comment | P0 | `EnemyPool` + `ObjectPool<Enemy>` confirmed | EN-02 | ✅ Implemented | None |
 | REQ-24 | Story Mode shall have 15 levels across 3 chapters | GDD §2.4 | P1 | `LevelConfigSO` supports structure; ❌ only 3 levels authored (Sprint target) | WV-01 | ⚠ Partial | 🟠 P1 |
 | REQ-25 | Boss encounters shall occur at levels 5, 10, 15 | GDD §2.4; TDD §3.2 | P1 | ❌ BossConfigSO not implemented | — | ❌ NOT FOUND | 🟠 P1 |
-| REQ-26 | WaveManager shall read LevelConfigSO and drive wave spawning | TDD §3.2; Salinlahi.md §3.5.1 | P0 | ❌ WaveManager not implemented | WV-01 | ❌ NOT FOUND | 🔴 P0 |
-| REQ-27 | Wave spawning shall respect waveStartDelay and spawnInterval from WaveConfigSO | TDD §3.2 | P1 | ❌ WaveSpawner not implemented | WV-02, WV-03 | ❌ NOT FOUND | 🟠 P1 |
+| REQ-26 | WaveManager shall read LevelConfigSO and drive wave spawning | TDD §3.2; Salinlahi.md §3.5.1 | P0 | `WaveManager.StartLevel()` resolves `LevelConfigSO`; `RunAllWavesRoutine()` drives wave execution through `WaveSpawner.SpawnWave(...)` | WV-01 | ✅ Implemented | None |
+| REQ-27 | Wave spawning shall respect waveStartDelay and spawnInterval from WaveConfigSO | TDD §3.2 | P1 | `WaveManager.ClampWaveStartDelay(...)` + `WaitForSeconds(startDelay)` and `WaveSpawner.SpawnWave(...)` with `WaitForSeconds(spawnInterval)` | WV-02, WV-03 | ✅ Implemented | None |
 | REQ-28 | The Lite build shall restrict access to levels 1–3 only | TDD §7.2; Salinlahi.md §3.4 | P1 | `LevelConfigSO.isAvailableInLite` field defined; ❌ gate logic not implemented | — | ⚠ Partial | 🟠 P1 |
 | REQ-29 | The game shall display a Main Menu with Play, Endless Mode, Tracing Dojo, Settings | GDD §5.1 | P1 | `MainMenuUI.Play()` exists; ❌ Endless, Dojo, Settings not implemented | — | ⚠ Partial | 🟠 P1 |
 | REQ-30 | The HUD shall display current heart count and wave number | GDD §5.1; TDD §7.4 | P1 | ❌ HUD.cs not implemented | WV-05, WV-01 | ❌ NOT FOUND | 🟠 P1 |
@@ -59,7 +59,7 @@
 | REQ-34 | Cross-system communication shall use EventBus exclusively | TDD §1; EventBus.cs comment | P0 | All systems use EventBus; no direct cross-manager calls observed | CS-03 | ✅ Implemented | None |
 | REQ-35 | EventBus subscriptions shall be in OnEnable and unsubscribed in OnDisable | EventBus.cs comment | P0 | `GameManager`, `AudioManager` — OnEnable/OnDisable confirmed | CS-03 | ✅ Implemented | None |
 | REQ-36 | Protagonist shall be visible on screen during gameplay as a 32×32 sprite with 3 era-specific designs | GDD §4.2 | P1 | ❌ Not implemented | — | ❌ NOT FOUND | 🟠 P1 |
-| REQ-37 | 12 enemy types shall be era-themed (4 per era: Soldado/Fraile/Guardia/Capitan, Soldier/Maestro/Pensionado/General, Heitai/Kisha/Kempei/Shokan) | GDD §4.3 | P1 | ❌ Only standard enemy implemented | EN-07–EN-11 | ⚠ Partial | 🟠 P1 |
+| REQ-37 | 12 enemy types shall be era-themed (4 per era: Soldado/Fraile/Guardia/Capitan, Soldier/Maestro/Pensionado/General, Heitai/Kisha/Kempei/Shokan) | GDD §4.3 | P1 | Era roster is partially implemented: Kisha/Kempei/Shokan enemy variants are implemented with dedicated mover/overlay/scramble behavior and prefabs; full 12-enemy roster is still incomplete | EN-07–EN-11 | ⚠ Partial | 🟠 P1 |
 | REQ-38 | Combo system shall track consecutive correct draws; 5-streak triggers 3-second slow effect | GDD §3.2; Team README §9 | P1 | ❌ Not implemented | — | ❌ NOT FOUND | 🟠 P1 |
 | REQ-39 | Dialogue panels (Type A) shall appear before/after levels with typewriter effect | GDD §4.5; Team README §12 | P1 | ❌ Not implemented | DL-01, DL-02 | ❌ NOT FOUND | 🟠 P1 |
 | REQ-40 | Each era shall have a unique shrine design at 64×96 px with 4 damage states | GDD §4.1 | P2 | ❌ Not implemented | — | ❌ NOT FOUND | 🟡 P2 |
@@ -76,13 +76,13 @@
 
 | Status | Count |
 |--------|-------|
-| ✅ Implemented | 9 |
+| ✅ Implemented | 11 |
 | ⚠ Partial | 15 |
-| ❌ NOT FOUND | 22 |
+| ❌ NOT FOUND | 20 |
 | **Total requirements** | **46** |
 
 | Severity | Count |
 |----------|-------|
-| 🔴 P0 gaps | 11 |
-| 🟠 P1 gaps | 17 |
+| 🔴 P0 gaps | 10 |
+| 🟠 P1 gaps | 16 |
 | 🟡 P2 gaps | 5 |

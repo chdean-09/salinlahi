@@ -31,17 +31,23 @@ public class EnemyDataSO : ScriptableObject
     public bool dealsContactDamage = true;
 
     [Header("Kisha Charge")]
-    [Tooltip("Speed multiplier applied after Kisha enters Charge state.")]
+    [Tooltip("Variant-specific: used only by KishaMover. Speed multiplier applied after Kisha enters Charge state.")]
     public float chargeMultiplier = 2.5f;
 
     [Range(0f, 1f)]
-    [Tooltip("Viewport Y threshold that starts Kisha's pause/charge sequence. 0 is bottom, 1 is top.")]
+    [Tooltip("Variant-specific: used only by KishaMover. Viewport Y threshold that starts Kisha's pause/charge sequence. 0 is bottom, 1 is top.")]
     public float chargeTriggerYNormalized = 0.5f;
 
-    [Tooltip("Seconds Kisha waits between walking and charging.")]
+    [Tooltip("Variant-specific: used only by KishaMover. Seconds Kisha waits between walking and charging.")]
     public float pauseDuration = 0.35f;
 
     [Header("Kempei Censor")]
-    [Tooltip("World-space radius around Kempei that receives visual-only label scrambling.")]
+    [Tooltip("Variant-specific: used only by KempeiScrambleController. World-space radius around Kempei that receives visual-only label scrambling.")]
     public float scrambleRadius = 3f;
+
+    [Tooltip("Variant-specific: used only by KempeiScrambleController. Minimum seconds between scramble glitch toggles.")]
+    public float scrambleMinGlitchInterval = 0.18f;
+
+    [Tooltip("Variant-specific: used only by KempeiScrambleController. Maximum seconds between scramble glitch toggles.")]
+    public float scrambleMaxGlitchInterval = 0.36f;
 }

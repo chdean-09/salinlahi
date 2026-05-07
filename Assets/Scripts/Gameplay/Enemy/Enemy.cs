@@ -257,6 +257,7 @@ public class Enemy : MonoBehaviour
         if (source == null || visualCharacter == null)
             return;
 
+        // Visual overrides are Enemy-instance-local only and must not be mirrored into HUD/boss icon UI.
         _labelOverrides[source] = visualCharacter;
         RefreshDebugLabels();
     }
