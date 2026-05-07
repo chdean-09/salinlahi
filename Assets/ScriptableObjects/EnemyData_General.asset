@@ -1,0 +1,50 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bb4cd3e37d015f4f8d9baa6e4cc1ac5, type: 3}
+  m_Name: EnemyData_General
+  m_EditorClassIdentifier: Salinlahi.Runtime::EnemyDataSO
+  enemyID: general
+  moveSpeed: 1
+  maxHealth: 3
+  walkFrames:
+  - {fileID: -1938075836063640625, guid: 7e07dba8d42649d41a4b3dc9cae6c027, type: 3}
+  - {fileID: 5600815700529521121, guid: 7e07dba8d42649d41a4b3dc9cae6c027, type: 3}
+  - {fileID: 2831667385477735903, guid: 7e07dba8d42649d41a4b3dc9cae6c027, type: 3}
+  - {fileID: 4857809179160381339, guid: 7e07dba8d42649d41a4b3dc9cae6c027, type: 3}
+  animatorController: {fileID: 0}
+  assignedCharacter: {fileID: 0}
+  isDecoy: 0
+  dealsContactDamage: 1
+  era: 1
+  zigzagAmplitude: 0
+  zigzagFrequency: 0
+  baseSpeedMultiplier: 0.7
+  auraRadius: 3.5
+  auraSpeedMultiplier: 1.3
+  deathFrames:
+  - {fileID: 4978097901292707079, guid: 5b15910d392787345a674378883f919c, type: 3}
+  - {fileID: -6655595903017760696, guid: 5b15910d392787345a674378883f919c, type: 3}
+  - {fileID: -3792875521546226879, guid: 5b15910d392787345a674378883f919c, type: 3}
+  - {fileID: 2353656525272941875, guid: 5b15910d392787345a674378883f919c, type: 3}
+  - {fileID: 2985336602891345102, guid: 5b15910d392787345a674378883f919c, type: 3}
+  deathAnimationFps: 8
+  useHurtFeedback: 1
+  hurtPausesMovement: 1
+  hurtPauseDuration: 0.3
+  hurtShakesSprite: 1
+  hurtShakeMagnitude: 0.1
+  hurtShakeDuration: 0.25
+  hurtShakeFrequency: 30
+  hurtSwapsCharacter: 0
+  postHurtCharacter: {fileID: 0}
+  hurtFrames: []
+  hurtAnimationFps: 12

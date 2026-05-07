@@ -18,6 +18,15 @@ public class EnemyMover : MonoBehaviour
         _active = true;
     }
 
+    // Updates the stored speed without changing the active state. Used for
+    // recalculations that must not unintentionally resume a paused mover —
+    // e.g. GeneralAura applying its buff every tick while the enemy is in a
+    // hurt-pause window.
+    public virtual void UpdateSpeedValue(float speed)
+    {
+        _speed = speed;
+    }
+
     protected virtual void OnEnable()
     {
         EventBus.OnFocusModeActivated += HandleFocusOn;

@@ -3661,6 +3661,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: ccb6fd07e3fd94990a6944ec2b341e31, type: 2}
   - {fileID: 11400000, guid: 5cc8877bb53ca480da124ff2ffaa9de0, type: 2}
   - {fileID: 11400000, guid: 076fdd70b6855485eb5a08635478121b, type: 2}
+  - {fileID: 11400000, guid: 096df5d2077ab9d4c9ff3732f732f957, type: 2}
+  - {fileID: 11400000, guid: e555cb9a9c190494d8ad490e246cc40c, type: 2}
   _sandboxCharacterRegistry: {fileID: 11400000, guid: 5600b9b67bf2893439118a993caa5f13, type: 2}
 --- !u!4 &920286448
 Transform:
