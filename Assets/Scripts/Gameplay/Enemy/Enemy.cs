@@ -77,6 +77,12 @@ public class Enemy : MonoBehaviour
     // Called by EnemyPool when this enemy is retrieved from the pool.
     public bool Initialize(EnemyDataSO data)
     {
+        if (_mover == null)
+            _mover = GetComponent<EnemyMover>();
+
+        if (_renderer == null)
+            _renderer = GetComponent<SpriteRenderer>();
+
         _runtimeCharacter = null;
 
         if (data == null)
@@ -368,8 +374,12 @@ public class Enemy : MonoBehaviour
         tmp.enableAutoSizing = false;
         tmp.fontSize = _labelFontSize;
         tmp.color = _labelColor;
-        tmp.outlineWidth = 0.2f;
-        tmp.outlineColor = Color.black;
+        // Avoid edit-mode material instantiation warnings in tests.
+        if (Application.isPlaying)
+        {
+            tmp.outlineWidth = 0.2f;
+            tmp.outlineColor = Color.black;
+        }
         tmp.sortingOrder = 500;
         if (_renderer != null)
             tmp.sortingLayerID = _renderer.sortingLayerID;

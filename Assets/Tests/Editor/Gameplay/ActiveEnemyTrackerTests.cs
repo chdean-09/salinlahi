@@ -155,6 +155,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
         {
             var enemy = CreateEnemy("BA", -3);
             var buffer = new List<Enemy> { null };
+            _tracker.Register(enemy);
 
             _tracker.FillActiveEnemiesSnapshot(buffer);
 
