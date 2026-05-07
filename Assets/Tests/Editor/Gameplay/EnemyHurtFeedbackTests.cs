@@ -229,6 +229,45 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 + "even after the original hurt-pause window would have elapsed.");
         }
 
+        [UnityTest]
+        public IEnumerator DeathDuringHurt_WithShake_ClearsShakeOffset()
+        {
+            // Regression: when Defeat() cancels the hurt routine via ResetState,
+            // any in-flight shake offset must be removed from the root transform.
+            // Otherwise the dying enemy plays its death animation at a shifted
+            // gameplay position.
+            EnemyDataSO data = CreateData(maxHealth: 3);
+            data.hurtPausesMovement = true;
+            data.hurtPauseDuration = 0.5f;
+            data.hurtShakesSprite = true;
+            data.hurtShakeMagnitude = 0.5f;
+            data.hurtShakeDuration = 0.5f;
+            data.hurtShakeFrequency = 30f;
+            data.deathFrames = new[] { CreateSolidSprite(Color.red) };
+            data.deathAnimationFps = 1f;
+            Enemy enemy = CreateEnemyWithFeedback(data);
+            EnemyHurtFeedback feedback = enemy.GetComponent<EnemyHurtFeedback>();
+            Vector3 rootBefore = enemy.transform.position;
+
+            enemy.TakeDamage(1);
+
+            // Let the shake apply at least one offset so there is something to
+            // leak. The shake is sampled inside the coroutine on each frame.
+            yield return null;
+            yield return null;
+
+            enemy.TakeDamage(2);
+
+            Assert.IsTrue(enemy.IsDying, "Enemy should be dying after lethal hit.");
+            Assert.IsFalse(feedback.IsPlayingHurtAnimation,
+                "Hurt routine must be cancelled when entering death animation.");
+            Assert.That((enemy.transform.position - rootBefore).magnitude,
+                Is.LessThan(0.001f),
+                "Cancelling hurt feedback must remove any leftover shake offset "
+                + "from the root transform — otherwise the death animation plays "
+                + "at a shifted gameplay position.");
+        }
+
         [Test]
         public void AuraSpeedUpdateDuringHurtPause_DoesNotUnpauseMover()
         {

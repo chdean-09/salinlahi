@@ -15,6 +15,9 @@ public class EnemyHurtFeedback : MonoBehaviour
 
     private bool _hasSwappedCharacter;
     private Coroutine _hurtRoutine;
+    // Tracks the shake offset currently applied to the root transform so it can
+    // be undone even when the hurt routine is cancelled (e.g. by Defeat()).
+    private Vector3 _appliedShake;
 
     public bool IsPlayingHurtAnimation => _hurtRoutine != null;
 
@@ -33,6 +36,8 @@ public class EnemyHurtFeedback : MonoBehaviour
     }
 
     // Called by Enemy.ResetForPool so the next reuse from the pool starts clean.
+    // Also called from Enemy.Defeat() when the death animation takes over —
+    // must leave the root transform with no leftover shake offset.
     public void ResetState()
     {
         if (_hurtRoutine != null)
@@ -40,7 +45,15 @@ public class EnemyHurtFeedback : MonoBehaviour
             StopCoroutine(_hurtRoutine);
             _hurtRoutine = null;
         }
+        ClearShakeOffset();
         _hasSwappedCharacter = false;
+    }
+
+    private void ClearShakeOffset()
+    {
+        if (_appliedShake == Vector3.zero) return;
+        transform.position -= _appliedShake;
+        _appliedShake = Vector3.zero;
     }
 
     // Called by Enemy.TakeDamage on a non-lethal hit (currentHealth > 0).
@@ -88,7 +101,7 @@ public class EnemyHurtFeedback : MonoBehaviour
 
         if (pause) _mover.Stop();
 
-        Vector3 appliedShake = Vector3.zero;
+        _appliedShake = Vector3.zero;
         int animFrameIndex = -1;
         bool resumed = !pause;
         float t = 0f;
@@ -99,7 +112,7 @@ public class EnemyHurtFeedback : MonoBehaviour
             {
                 // Subtract last frame's offset so the mover's contribution is
                 // preserved on the root transform. Then add this frame's offset.
-                transform.position -= appliedShake;
+                transform.position -= _appliedShake;
 
                 if (t < shakeDur)
                 {
@@ -110,11 +123,11 @@ public class EnemyHurtFeedback : MonoBehaviour
                         Mathf.Cos(angle * 1.7f) * data.hurtShakeMagnitude * decay,
                         0f);
                     transform.position += next;
-                    appliedShake = next;
+                    _appliedShake = next;
                 }
                 else
                 {
-                    appliedShake = Vector3.zero;
+                    _appliedShake = Vector3.zero;
                 }
             }
 
@@ -148,7 +161,7 @@ public class EnemyHurtFeedback : MonoBehaviour
         }
 
         // Cleanup: remove any leftover shake offset from the root transform.
-        if (shake) transform.position -= appliedShake;
+        ClearShakeOffset();
 
         // Belt-and-suspenders: if the loop exited before the resume branch ran,
         // make sure movement resumes (unless the enemy is dying, in which case
