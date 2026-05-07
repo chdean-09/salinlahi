@@ -187,6 +187,72 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 "Expected second hurt frame after one frame duration elapsed.");
         }
 
+        [UnityTest]
+        public IEnumerator DeathDuringHurt_CancelsHurtAndKeepsMoverStopped()
+        {
+            // Regression for the case where a non-lethal hit starts the hurt
+            // routine, a follow-up hit kills the enemy, and the still-running
+            // hurt routine would otherwise resume the mover mid death animation.
+            EnemyDataSO data = CreateData(maxHealth: 3);
+            data.hurtPauseDuration = 0.05f;
+            data.hurtShakesSprite = false;
+            data.deathFrames = new[] { CreateSolidSprite(Color.red) };
+            data.deathAnimationFps = 1f;
+            Enemy enemy = CreateEnemyWithFeedback(data);
+            EnemyHurtFeedback feedback = enemy.GetComponent<EnemyHurtFeedback>();
+            EnemyMover mover = enemy.GetComponent<EnemyMover>();
+
+            enemy.TakeDamage(1);
+            Assert.IsTrue(feedback.IsPlayingHurtAnimation,
+                "Sanity: hurt routine should be running after non-lethal hit.");
+
+            enemy.TakeDamage(2);
+            Assert.IsTrue(enemy.IsDying, "Enemy should be in dying state after lethal hit.");
+            Assert.IsFalse(feedback.IsPlayingHurtAnimation,
+                "Defeat() must cancel the in-flight hurt routine.");
+            Assert.IsFalse(mover.IsMoving,
+                "Mover must stay stopped after Defeat() with death animation.");
+
+            // Wait past the original hurt pause window — the mover must
+            // still be stopped because the hurt routine was cancelled.
+            float waited = 0f;
+            int frameCount = 0;
+            while (waited < 0.2f && frameCount < 300)
+            {
+                yield return null;
+                waited += Time.deltaTime;
+                frameCount++;
+            }
+
+            Assert.IsFalse(mover.IsMoving,
+                "Mover must remain stopped throughout the death animation, "
+                + "even after the original hurt-pause window would have elapsed.");
+        }
+
+        [Test]
+        public void AuraSpeedUpdateDuringHurtPause_DoesNotUnpauseMover()
+        {
+            // Regression: an external speed buff/debuff recalculation (e.g. a
+            // GeneralAura tick) must not flip the mover back on while hurt
+            // feedback has it paused.
+            EnemyDataSO data = CreateData(maxHealth: 2);
+            data.hurtPauseDuration = 0.5f;
+            data.hurtShakesSprite = false;
+            Enemy enemy = CreateEnemyWithFeedback(data);
+            EnemyMover mover = enemy.GetComponent<EnemyMover>();
+
+            enemy.TakeDamage(1);
+            Assert.IsFalse(mover.IsMoving, "Sanity: mover should be stopped during hurt pause.");
+
+            enemy.ApplySpeedBuff(this, 1.5f);
+            Assert.IsFalse(mover.IsMoving,
+                "Buff application must not resume a mover stopped by hurt feedback.");
+
+            enemy.ClearSpeedBuff(this);
+            Assert.IsFalse(mover.IsMoving,
+                "Buff clear must not resume a mover stopped by hurt feedback.");
+        }
+
         [Test]
         public void ResetForPool_ClearsHurtState()
         {

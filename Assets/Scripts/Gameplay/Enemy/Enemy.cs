@@ -84,7 +84,9 @@ public class Enemy : MonoBehaviour
 
     private void PushSpeedToMover()
     {
-        if (_mover != null) _mover.SetSpeed(EffectiveSpeed);
+        // Buff/debuff recalculations must not flip _active. Otherwise a periodic
+        // aura tick would resume a mover that hurt feedback just paused.
+        if (_mover != null) _mover.UpdateSpeedValue(EffectiveSpeed);
     }
 
     private void Awake()
@@ -317,6 +319,10 @@ public class Enemy : MonoBehaviour
         {
             // freeze, unregister, fire the event immediately, then play frames.
             _isDying = true;
+            // Cancel any in-flight hurt feedback before the death path takes over.
+            // Otherwise its pause-window resume (or shake offset) could fight
+            // the death animation by reactivating the mover or shifting the sprite.
+            _hurtFeedback?.ResetState();
             ActiveEnemyTracker.Instance?.Unregister(this);
             _mover?.Stop();
             DisableContactCollider();

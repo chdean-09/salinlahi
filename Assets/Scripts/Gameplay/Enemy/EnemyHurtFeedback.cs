@@ -47,6 +47,9 @@ public class EnemyHurtFeedback : MonoBehaviour
     public void OnHurt()
     {
         if (_enemy == null) return;
+        // Defensive: TakeDamage already early-returns when dying, but guard here
+        // too so a future caller can't start hurt feedback on a dying enemy.
+        if (_enemy.IsDying) return;
         EnemyDataSO data = _enemy.Data;
         if (data == null || !data.useHurtFeedback) return;
 
@@ -132,7 +135,10 @@ public class EnemyHurtFeedback : MonoBehaviour
             {
                 // Pause window has elapsed — re-apply EffectiveSpeed (which
                 // includes any aura buffs and Focus Mode) to the mover.
-                if (_enemy != null)
+                // Skip if the enemy entered the death-animation path mid-pause:
+                // Defeat() already cancelled this routine via ResetState, but
+                // this guard makes the contract explicit at the resume site.
+                if (_enemy != null && !_enemy.IsDying)
                     _mover.SetSpeed(_enemy.EffectiveSpeed);
                 resumed = true;
             }
@@ -145,8 +151,9 @@ public class EnemyHurtFeedback : MonoBehaviour
         if (shake) transform.position -= appliedShake;
 
         // Belt-and-suspenders: if the loop exited before the resume branch ran,
-        // make sure movement resumes.
-        if (!resumed && _enemy != null)
+        // make sure movement resumes (unless the enemy is dying, in which case
+        // we must leave the mover stopped for the death animation).
+        if (!resumed && _enemy != null && !_enemy.IsDying)
             _mover.SetSpeed(_enemy.EffectiveSpeed);
 
         _hurtRoutine = null;
