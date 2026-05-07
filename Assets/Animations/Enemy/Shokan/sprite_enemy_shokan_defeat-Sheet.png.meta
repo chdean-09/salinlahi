@@ -1,0 +1,499 @@
+fileFormatVersion: 2
+guid: ac9ca806e1927e642bf5852ad441bc91
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -6516679384936169309
+    second: sprite_enemy_shokan_defeat-Sheet_0
+  - first:
+      213: -3955065284743561101
+    second: sprite_enemy_shokan_defeat-Sheet_1
+  - first:
+      213: -8862199804406135661
+    second: sprite_enemy_shokan_defeat-Sheet_2
+  - first:
+      213: -6641000204904412160
+    second: sprite_enemy_shokan_defeat-Sheet_3
+  - first:
+      213: 463418769552891641
+    second: sprite_enemy_shokan_defeat-Sheet_4
+  - first:
+      213: 968571606127493531
+    second: sprite_enemy_shokan_defeat-Sheet_5
+  - first:
+      213: 4826382467626524677
+    second: sprite_enemy_shokan_defeat-Sheet_6
+  - first:
+      213: -6781912172291547073
+    second: sprite_enemy_shokan_defeat-Sheet_7
+  - first:
+      213: -1343063077312399833
+    second: sprite_enemy_shokan_defeat-Sheet_8
+  - first:
+      213: 5234462805016944079
+    second: sprite_enemy_shokan_defeat-Sheet_9
+  - first:
+      213: 6153291890682833085
+    second: sprite_enemy_shokan_defeat-Sheet_10
+  - first:
+      213: 8775003495438744871
+    second: sprite_enemy_shokan_defeat-Sheet_11
+  - first:
+      213: -2450400021563465072
+    second: sprite_enemy_shokan_defeat-Sheet_12
+  - first:
+      213: 5167814914740372934
+    second: sprite_enemy_shokan_defeat-Sheet_13
+  - first:
+      213: -2079393383948079761
+    second: sprite_enemy_shokan_defeat-Sheet_14
+  - first:
+      213: 1581313175920467177
+    second: sprite_enemy_shokan_defeat-Sheet_15
+  - first:
+      213: 6032608401636445430
+    second: sprite_enemy_shokan_defeat-Sheet_16
+  - first:
+      213: 7770003669298209117
+    second: sprite_enemy_shokan_defeat-Sheet_17
+  - first:
+      213: 75056448775713943
+    second: sprite_enemy_shokan_defeat-Sheet_18
+  - first:
+      213: 571336048847655603
+    second: sprite_enemy_shokan_defeat-Sheet_19
+  - first:
+      213: -5126565634563930526
+    second: sprite_enemy_shokan_defeat-Sheet_20
+  - first:
+      213: -8363337087575096263
+    second: sprite_enemy_shokan_defeat-Sheet_21
+  - first:
+      213: 5504316823569681627
+    second: sprite_enemy_shokan_defeat-Sheet_22
+  - first:
+      213: -2670328827486425326
+    second: sprite_enemy_shokan_defeat-Sheet_23
+  - first:
+      213: 7904461163498285859
+    second: sprite_enemy_shokan_defeat-Sheet_24
+  - first:
+      213: -3135657862001830161
+    second: sprite_enemy_shokan_defeat-Sheet_25
+  - first:
+      213: 7214513837508155031
+    second: sprite_enemy_shokan_defeat-Sheet_26
+  - first:
+      213: -9171919167851819572
+    second: sprite_enemy_shokan_defeat-Sheet_27
+  - first:
+      213: 2784524685484046043
+    second: sprite_enemy_shokan_defeat-Sheet_28
+  - first:
+      213: 1953495282755934561
+    second: sprite_enemy_shokan_defeat-Sheet_29
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 6
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: sprite_enemy_shokan_defeat-Sheet_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 48
+        height: 48
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3a0c4c150aa1095a0800000000000000
+      internalID: -6516679384936169309
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: sprite_enemy_shokan_defeat-Sheet_1
+      rect:
+        serializedVersion: 2
+        x: 48
+        y: 0
+        width: 48
+        height: 48
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 370816f0419cc19c0800000000000000
+      internalID: -3955065284743561101
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: sprite_enemy_shokan_defeat-Sheet_2
+      rect:
+        serializedVersion: 2
+        x: 96
+        y: 0
+        width: 48
+        height: 48
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 39406d95b34230580800000000000000
+      internalID: -8862199804406135661
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: sprite_enemy_shokan_defeat-Sheet_3
+      rect:
+        serializedVersion: 2
+        x: 144
+        y: 0
+        width: 48
+        height: 48
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 00c4069cf7d66d3a0800000000000000
+      internalID: -6641000204904412160
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: sprite_enemy_shokan_defeat-Sheet_4
+      rect:
+        serializedVersion: 2
+        x: 192
+        y: 0
+        width: 48
+        height: 48
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9fed2756ae46e6600800000000000000
+      internalID: 463418769552891641
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: sprite_enemy_shokan_defeat-Sheet_5
+      rect:
+        serializedVersion: 2
+        x: 240
+        y: 0
+        width: 48
+        height: 48
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b9142ca7ebe017d00800000000000000
+      internalID: 968571606127493531
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: sprite_enemy_shokan_defeat-Sheet_6
+      rect:
+        serializedVersion: 2
+        x: 288
+        y: 0
+        width: 48
+        height: 48
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5006d057841caf240800000000000000
+      internalID: 4826382467626524677
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: sprite_enemy_shokan_defeat-Sheet_7
+      rect:
+        serializedVersion: 2
+        x: 336
+        y: 0
+        width: 48
+        height: 48
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f302aa8bfcec1e1a0800000000000000
+      internalID: -6781912172291547073
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: sprite_enemy_shokan_defeat-Sheet_8
+      rect:
+        serializedVersion: 2
+        x: 384
+        y: 0
+        width: 48
+        height: 48
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 726f9dd3f3b7c5de0800000000000000
+      internalID: -1343063077312399833
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: sprite_enemy_shokan_defeat-Sheet_9
+      rect:
+        serializedVersion: 2
+        x: 432
+        y: 0
+        width: 48
+        height: 48
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 72dff68ef2317c970800000000000000
+      internalID: 8775003495438744871
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: sprite_enemy_shokan_defeat-Sheet_11
+      rect:
+        serializedVersion: 2
+        x: 528
+        y: 0
+        width: 48
+        height: 48
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f6d2a710cb28423e0800000000000000
+      internalID: -2079393383948079761
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: sprite_enemy_shokan_defeat-Sheet_10
+      rect:
+        serializedVersion: 2
+        x: 480
+        y: 0
+        width: 48
+        height: 48
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 794f0674177aa0100800000000000000
+      internalID: 75056448775713943
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: ceb213bb7d05dcc4cbbf37b11958f71f
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      0: 7770003669298209117
+      sprite_enemy_shokan_defeat-Sheet_0: -6516679384936169309
+      sprite_enemy_shokan_defeat-Sheet_1: -3955065284743561101
+      sprite_enemy_shokan_defeat-Sheet_10: 75056448775713943
+      sprite_enemy_shokan_defeat-Sheet_11: -2079393383948079761
+      sprite_enemy_shokan_defeat-Sheet_12: -2450400021563465072
+      sprite_enemy_shokan_defeat-Sheet_13: 5167814914740372934
+      sprite_enemy_shokan_defeat-Sheet_15: 1581313175920467177
+      sprite_enemy_shokan_defeat-Sheet_16: 6032608401636445430
+      sprite_enemy_shokan_defeat-Sheet_19: 571336048847655603
+      sprite_enemy_shokan_defeat-Sheet_2: -8862199804406135661
+      sprite_enemy_shokan_defeat-Sheet_20: -5126565634563930526
+      sprite_enemy_shokan_defeat-Sheet_21: -8363337087575096263
+      sprite_enemy_shokan_defeat-Sheet_22: 5504316823569681627
+      sprite_enemy_shokan_defeat-Sheet_23: -2670328827486425326
+      sprite_enemy_shokan_defeat-Sheet_24: 7904461163498285859
+      sprite_enemy_shokan_defeat-Sheet_25: -3135657862001830161
+      sprite_enemy_shokan_defeat-Sheet_26: 7214513837508155031
+      sprite_enemy_shokan_defeat-Sheet_27: -9171919167851819572
+      sprite_enemy_shokan_defeat-Sheet_28: 2784524685484046043
+      sprite_enemy_shokan_defeat-Sheet_29: 1953495282755934561
+      sprite_enemy_shokan_defeat-Sheet_3: -6641000204904412160
+      sprite_enemy_shokan_defeat-Sheet_4: 463418769552891641
+      sprite_enemy_shokan_defeat-Sheet_5: 968571606127493531
+      sprite_enemy_shokan_defeat-Sheet_6: 4826382467626524677
+      sprite_enemy_shokan_defeat-Sheet_7: -6781912172291547073
+      sprite_enemy_shokan_defeat-Sheet_8: -1343063077312399833
+      sprite_enemy_shokan_defeat-Sheet_9: 8775003495438744871
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

@@ -12,7 +12,9 @@ public class Singleton<T> : MonoBehaviour where T : MonoBehaviour
             return;
         }
         Instance = this as T;
-        DontDestroyOnLoad(gameObject);
+
+        if (Application.isPlaying)
+            DontDestroyOnLoad(gameObject);
     }
 
     protected virtual void OnDestroy()

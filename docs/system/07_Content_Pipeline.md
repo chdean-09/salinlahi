@@ -48,9 +48,9 @@ As of Sprint 1: **placeholder assets only**. No BaybayinCharacterSO assets have 
 | Pensionado | `"pensionado"` | American | Variant (32×32) | Level 8 | Should Ship | (PLANNED) | NOT FOUND |
 | General | `"general"` | American | Elite (48×48) | Level 9 | Should Ship | (PLANNED) | NOT FOUND |
 | Heitai | `"heitai"` | Japanese | Regular (32×32) | Level 11 | Must Ship | (PLANNED) | NOT FOUND |
-| Kisha | `"kisha"` | Japanese | Variant (32×32) | Level 12 | Should Ship | (PLANNED) | NOT FOUND |
-| Kempei | `"kempei"` | Japanese | Variant (32×32) | Level 13 | Should Ship | (PLANNED) | NOT FOUND |
-| Shokan | `"shokan"` | Japanese | Elite (48×48) | Level 14 | Should Ship | (PLANNED) | NOT FOUND |
+| Kisha | `"kisha"` | Japanese | Variant (32×32) | Level 12 | Should Ship | `[Enemy] Kisha.prefab` | Implemented |
+| Kempei | `"kempei"` | Japanese | Variant (32×32) | Level 13 | Should Ship | `[Enemy] Kempei.prefab` | Implemented |
+| Shokan | `"shokan"` | Japanese | Elite (48×48) | Level 14 | Should Ship | `[Enemy] Shokan.prefab` | Implemented |
 
 [EVIDENCE: Assets/Prefabs/Enemies/[Enemy] Standard.prefab — confirmed]
 [EVIDENCE: docs/capstone/GDD.md, §4.3 Enemies — full roster with priority]

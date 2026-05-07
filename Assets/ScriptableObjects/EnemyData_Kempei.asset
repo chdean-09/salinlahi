@@ -14,8 +14,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Salinlahi.Runtime::EnemyDataSO
   enemyID: kempei
   moveSpeed: 1.5
-  maxHealth: 2
+  maxHealth: 1
   walkFrames:
-  - {fileID: 21300000, guid: 61e33c4f45e289b43ab91edaa12c018b, type: 3}
+  - {fileID: 9201270906773370632, guid: fafc6362677ac0740848389c0f6e2721, type: 3}
+  - {fileID: 726385929328072029, guid: fafc6362677ac0740848389c0f6e2721, type: 3}
+  - {fileID: -8633472204466423209, guid: fafc6362677ac0740848389c0f6e2721, type: 3}
+  - {fileID: -6208063948971610537, guid: fafc6362677ac0740848389c0f6e2721, type: 3}
   animatorController: {fileID: 0}
   assignedCharacter: {fileID: 0}
+  isDecoy: 0
+  dealsContactDamage: 1
+  chargeMultiplier: 2.5
+  chargeTriggerYNormalized: 0.5
+  pauseDuration: 0.35
+  scrambleRadius: 3
