@@ -6,6 +6,9 @@ using System.Collections.Generic;
 /// enemy system. Without this, drawing does nothing.
 public class CombatResolver : MonoBehaviour
 {
+    [Tooltip("Minimum matching on-screen enemies required to trigger an AOE mass-defeat.")]
+    [SerializeField, Min(1)] private int _aoeThreshold = 3;
+
     private void OnEnable()
     {
         EventBus.OnCharacterRecognized += HandleCharacterRecognized;
@@ -23,42 +26,48 @@ public class CombatResolver : MonoBehaviour
             return;
 
         List<Enemy> matches = tracker.FindAllWithCharacter(characterID);
-        if (matches != null && matches.Count >= 3)
+
+        // Real-match count: decoys and bosses cannot enable an AOE burst. Decoys
+        // remain on screen as their own threat; burst is a reward path for sets
+        // of legitimate enemies only.
+        int realMatchCount = 0;
+        if (matches != null)
         {
-            // AOE burst: resolve all enemies carrying this real character.
+            for (int i = 0; i < matches.Count; i++)
+            {
+                Enemy m = matches[i];
+                if (m == null) continue;
+                if (m.IsBoss) continue;
+                if (m.IsDecoy) continue;
+                if (m.Data == null) continue;
+                realMatchCount++;
+            }
+        }
+
+        if (realMatchCount >= _aoeThreshold)
+        {
+            // Snapshot to a local list because TakeDamage -> Defeat -> Unregister
+            // mutates the tracker's shared buffer mid-iteration.
             var burstTargets = new List<Enemy>(matches);
-            int decoyCount = 0;
-            int nonDecoyCount = 0;
+            int defeatedCount = 0;
 
             for (int i = 0; i < burstTargets.Count; i++)
             {
                 Enemy candidate = burstTargets[i];
-                if (candidate == null)
-                    continue;
+                if (candidate == null) continue;
+                if (candidate.IsBoss) continue;
+                if (candidate.IsDecoy) continue;
+                if (candidate.Data == null) continue;
 
-                if (candidate.IsDecoy)
-                    decoyCount++;
-                else
-                    nonDecoyCount++;
+                EventBus.RaiseEnemyTargeted(candidate);
+                candidate.TakeDamage(candidate.Data.maxHealth);
+                defeatedCount++;
             }
 
-            // Mixed burst: decoy penalties should not wipe combo gains from
-            // legitimate kills resolved by the same stroke.
-            if (decoyCount > 0 && nonDecoyCount > 0)
-                ComboManager.Instance?.SuppressNextHeartLossResets(decoyCount);
-
-            for (int i = 0; i < burstTargets.Count; i++)
+            if (defeatedCount > 0)
             {
-                Enemy candidate = burstTargets[i];
-                if (candidate != null && !candidate.IsDecoy)
-                    ResolveMatchedEnemy(candidate, characterID);
-            }
-
-            for (int i = 0; i < burstTargets.Count; i++)
-            {
-                Enemy candidate = burstTargets[i];
-                if (candidate != null && candidate.IsDecoy)
-                    ResolveMatchedEnemy(candidate, characterID);
+                EventBus.RaiseAOETriggered(defeatedCount);
+                DebugLogger.Log($"CombatResolver: AOE burst defeated {defeatedCount} for {characterID}");
             }
 
             return;

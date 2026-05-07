@@ -49,11 +49,10 @@ Cold Start
 │                 └─ true → BossController activates boss encounter
 │                       └─ [All boss phases cleared] → EventBus.RaiseBossDefeated()
 │                             └─ EventBus.RaiseLevelComplete()
-│     └─ WaveManager (PLANNED) loads LevelConfigSO → drives WaveSpawner
 │     └─ EnemyPool.Get(data) → enemy active in scene
-│     └─ [Player draws] → RecognitionManager (PLANNED) → EventBus.RaiseCharacterRecognized()
+│     └─ [Player draws] → RecognitionManager → EventBus.RaiseCharacterRecognized()
 │     └─ Enemy.Defeat() → EventBus.RaiseEnemyDefeated()
-│     └─ [Enemy reaches base] → EventBus.RaiseBaseHit() → HeartSystem (PLANNED)
+│     └─ [Enemy reaches base] → EventBus.RaiseBaseHit() → HeartSystem
 │     └─ [Hearts == 0] → EventBus.RaiseGameOver()
 │           └─ GameManager.HandleGameOver() → GameState.GameOver
 │                 └─ SceneLoader.LoadGameOver()
@@ -101,10 +100,10 @@ protected virtual void Awake()
 | `[Manager] SceneLoader.prefab` | `SceneLoader.cs` | Bootstrap scene |
 | `[Manager] AudioManager.prefab` | `AudioManager.cs` | Bootstrap scene |
 | `[Manager] EnemyPool.prefab` | `EnemyPool.cs` | Bootstrap scene |
-| `[Manager] RecognitionManager.prefab` | `RecognitionManager.cs` | Bootstrap scene (PLANNED) |
-| `[Manager] StreakManager.prefab` | `StreakManager.cs` | Bootstrap scene (PLANNED) |
-| `[Manager] WaveManager.prefab` | `WaveManager.cs` | Bootstrap scene (PLANNED) |
-| `[Manager] ComboManager.prefab` | `ComboManager.cs` | Bootstrap scene (PLANNED) |
+| `[Manager] RecognitionManager.prefab` | `RecognitionManager.cs` | Bootstrap scene |
+| `[Manager] ComboManager.prefab` | `ComboManager.cs` | Bootstrap scene |
+| `[Manager] ActiveEnemyTracker.prefab` | `ActiveEnemyTracker.cs` | Bootstrap scene |
+| `[Manager] CombatResolver.prefab` | `CombatResolver.cs` | Bootstrap scene |
 
 [EVIDENCE: Assets/Prefabs/Managers/ directory]
 
@@ -116,17 +115,30 @@ All cross-system communication uses `EventBus.cs`. No direct manager-to-manager 
 
 ### 4.1 EventBus Contract Table
 
-| Event | Raised By | Subscriber(s) | Payload |
-|-------|-----------|---------------|---------|
-| `OnEnemyDefeated` | `Enemy.Defeat()` | `AudioManager` | `BaybayinCharacterSO` |
-| `OnBaseHit` | `EnemyMover.OnTriggerEnter2D()` | `HeartSystem` (PLANNED) | none |
-| `OnGameOver` | `HeartSystem` (PLANNED) | `GameManager` | none |
-| `OnLevelComplete` | `WaveManager` (PLANNED) | `GameManager` | none |
-| `OnWaveStarted` | `WaveManager` (PLANNED) | `HUD` (PLANNED) | `int waveIndex` |
-| `OnCharacterRecognized` | `RecognitionManager` (PLANNED) | `WaveManager` (PLANNED) | `string characterID` |
-| `OnDrawingFailed` | `RecognitionManager` (PLANNED) | `HUD` (PLANNED) | none |
-| `OnDrawingStarted` | `StrokeCapture` (PLANNED) | `HUD` (PLANNED) | none |
-| `OnHeartsChanged` | `HeartSystem` (PLANNED) | `HUD` (PLANNED) | `int currentHearts` |
+| Event | Payload | Raise Method |
+|-------|---------|-------------|
+| `OnEnemyDefeated` | `BaybayinCharacterSO` | `RaiseEnemyDefeated(BaybayinCharacterSO)` |
+| `OnBaseHit` | `int` (damage) | `RaiseBaseHit(int)` |
+| `OnGameOver` | none | `RaiseGameOver()` |
+| `OnLevelComplete` | none | `RaiseLevelComplete()` |
+| `OnWaveStarted` | `int` (wave index) | `RaiseWaveStarted(int)` |
+| `OnWaveCleared` | `int` (wave index) | `RaiseWaveCleared(int)` |
+| `OnCharacterRecognized` | `string` (characterID) | `RaiseCharacterRecognized(string)` |
+| `OnRecognitionResolved` | `RecognitionResult, bool, float` | `RaiseRecognitionResolved(RecognitionResult, bool, float)` |
+| `OnDrawingFailed` | none | `RaiseDrawingFailed()` |
+| `OnDrawingStarted` | none | `RaiseDrawingStarted()` |
+| `OnHeartsChanged` | `int` (current hearts) | `RaiseHeartsChanged(int)` |
+| `OnEnemyTargeted` | `Enemy` | `RaiseEnemyTargeted(Enemy)` |
+| `OnDrawingMissed` | none | `RaiseDrawingMissed()` |
+| `OnAOETriggered` | `int` (defeated count) | `RaiseAOETriggered(int)` |
+| `OnComboChanged` | `int` (current streak) | `RaiseComboChanged(int)` |
+| `OnFocusModeActivated` | none | `RaiseFocusModeActivated()` |
+| `OnFocusModeDeactivated` | none | `RaiseFocusModeDeactivated()` |
+| `OnGamePaused` | none | `RaiseGamePaused()` |
+| `OnGameResumed` | none | `RaiseGameResumed()` |
+| `OnBossDefeated` | none | `RaiseBossDefeated()` |
+| `OnDialogueStarted` | none | `RaiseDialogueStarted()` |
+| `OnDialogueComplete` | none | `RaiseDialogueComplete()` |
 
 [EVIDENCE: Assets/Scripts/Core/EventBus.cs]
 
@@ -144,17 +156,17 @@ All cross-system communication uses `EventBus.cs`. No direct manager-to-manager 
 
 ```
 Player lifts finger
-  → StrokeCapture (PLANNED) captures point cloud
-    → RecognitionManager (PLANNED) runs $P algorithm
+  → StrokeCapture captures point cloud
+    → RecognitionManager runs $P algorithm
       → confidence ≥ 0.60?
           YES → EventBus.RaiseCharacterRecognized(characterID)
-                  → WaveManager (PLANNED) finds matching enemy
+                  → WaveManager finds matching enemy
                     → Enemy.Defeat()
                         → EventBus.RaiseEnemyDefeated(character)
                             → AudioManager.PlayPronunciationClip(character)
                         → Enemy.ReturnToPool()
           NO  → EventBus.RaiseDrawingFailed()
-                  → HUD (PLANNED) shows red flash / X mark
+                  → HUD shows red flash / X mark
 ```
 
 [EVIDENCE: docs/capstone/TDD.md, §3.3 Combat Resolution]
@@ -166,9 +178,9 @@ Player lifts finger
 ```
 EnemyMover.OnTriggerEnter2D(PlayerBase tag)
   → EventBus.RaiseBaseHit()
-    → HeartSystem (PLANNED) decrements hearts
+    → HeartSystem decrements hearts
       → EventBus.RaiseHeartsChanged(currentHearts)
-        → HUD (PLANNED) updates heart display
+        → HUD updates heart display
   → Enemy.ReturnToPool()
   → hearts == 0?
       YES → EventBus.RaiseGameOver()
