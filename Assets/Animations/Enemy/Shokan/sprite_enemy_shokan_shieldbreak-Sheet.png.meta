@@ -1,19 +1,16 @@
 fileFormatVersion: 2
-guid: 1f0fbc83a2f4955478ee176de2c46b24
+guid: 2e11caf2daffae74c84acb9050c1018c
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 4563579384766323862
-    second: sprite_enemy_maestro_walk-Sheet_0
+      213: -6541244382184547606
+    second: sprite_enemy_shokan_shieldbreak-Sheet_0
   - first:
-      213: -6801776770254510112
-    second: sprite_enemy_maestro_walk-Sheet_1
+      213: -688762683050556068
+    second: sprite_enemy_shokan_shieldbreak-Sheet_1
   - first:
-      213: -2810746480745109998
-    second: sprite_enemy_maestro_walk-Sheet_2
-  - first:
-      213: 5960439762532924852
-    second: sprite_enemy_maestro_walk-Sheet_3
+      213: -2019190379054585849
+    second: sprite_enemy_shokan_shieldbreak-Sheet_2
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -109,13 +106,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: sprite_enemy_maestro_walk-Sheet_0
+      name: sprite_enemy_shokan_shieldbreak-Sheet_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 32
-        height: 32
+        width: 48
+        height: 48
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -124,20 +121,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 69cda458547155f30800000000000000
-      internalID: 4563579384766323862
+      spriteID: aeaded234e4d835a0800000000000000
+      internalID: -6541244382184547606
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: sprite_enemy_maestro_walk-Sheet_1
+      name: sprite_enemy_shokan_shieldbreak-Sheet_1
       rect:
         serializedVersion: 2
-        x: 32
+        x: 48
         y: 0
-        width: 32
-        height: 32
+        width: 48
+        height: 48
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -146,42 +143,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 0e7e977901c3b91a0800000000000000
-      internalID: -6801776770254510112
+      spriteID: c550a3e2df50176f0800000000000000
+      internalID: -688762683050556068
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: sprite_enemy_maestro_walk-Sheet_2
-      rect:
-        serializedVersion: 2
-        x: 64
-        y: 0
-        width: 32
-        height: 32
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 216228db7f83ef8d0800000000000000
-      internalID: -2810746480745109998
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: sprite_enemy_maestro_walk-Sheet_3
+      name: sprite_enemy_shokan_shieldbreak-Sheet_2
       rect:
         serializedVersion: 2
         x: 96
         y: 0
-        width: 32
-        height: 32
+        width: 48
+        height: 48
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -190,8 +165,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 4bd73ee526cb7b250800000000000000
-      internalID: 5960439762532924852
+      spriteID: 708a0926c056af3e0800000000000000
+      internalID: -2019190379054585849
       vertices: []
       indices: 
       edges: []
@@ -200,7 +175,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: c16a75f98afe7f74485e2e9e8dcdb83a
+    spriteID: cff5c7bf152fd73469014fcf0663f538
     internalID: 0
     vertices: []
     indices: 
@@ -210,10 +185,9 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      sprite_enemy_maestro_walk-Sheet_0: 4563579384766323862
-      sprite_enemy_maestro_walk-Sheet_1: -6801776770254510112
-      sprite_enemy_maestro_walk-Sheet_2: -2810746480745109998
-      sprite_enemy_maestro_walk-Sheet_3: 5960439762532924852
+      sprite_enemy_shokan_shieldbreak-Sheet_0: -6541244382184547606
+      sprite_enemy_shokan_shieldbreak-Sheet_1: -688762683050556068
+      sprite_enemy_shokan_shieldbreak-Sheet_2: -2019190379054585849
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

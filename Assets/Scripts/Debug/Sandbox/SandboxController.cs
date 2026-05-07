@@ -9,6 +9,8 @@ namespace Salinlahi.Debug.Sandbox
 {
     public class SandboxController : MonoBehaviour
     {
+        public static SandboxController Instance { get; private set; }
+
         private readonly List<EnemyDataSO> _enemyTypes = new();
         private readonly List<BaybayinCharacterSO> _characters = new();
 
@@ -47,10 +49,9 @@ namespace Salinlahi.Debug.Sandbox
             if (!SandboxMode.IsActive)
                 return;
 
-            SandboxController existing = FindFirstObjectByType<SandboxController>();
-            if (existing != null)
+            if (Instance != null)
             {
-                existing.Initialize(waveManager, spawner);
+                Instance.Initialize(waveManager, spawner);
                 return;
             }
 
@@ -68,7 +69,7 @@ namespace Salinlahi.Debug.Sandbox
             }
 
             _waveManager = waveManager;
-            _spawner = spawner != null ? spawner : FindFirstObjectByType<WaveSpawner>();
+            _spawner = spawner;
             _waveManager?.PauseWaves();
 
             LoadCatalog();
@@ -78,8 +79,22 @@ namespace Salinlahi.Debug.Sandbox
 
         private void Awake()
         {
+            if (Instance != null && Instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+
+            Instance = this;
+
             if (!SandboxMode.IsActive)
                 gameObject.SetActive(false);
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this)
+                Instance = null;
         }
 
         private void LoadCatalog()
@@ -250,7 +265,7 @@ namespace Salinlahi.Debug.Sandbox
 
         private static void EnsureEventSystem()
         {
-            if (EventSystem.current != null || FindFirstObjectByType<EventSystem>() != null)
+            if (EventSystem.current != null)
                 return;
 
             var eventSystemObject = new GameObject("[Sandbox] EventSystem");

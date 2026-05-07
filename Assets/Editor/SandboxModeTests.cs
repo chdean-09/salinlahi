@@ -1,7 +1,9 @@
 using NUnit.Framework;
 using Salinlahi.Debug.Sandbox;
 using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Pool;
 
@@ -100,10 +102,13 @@ public class SandboxModeTests
 
         GameObject enemyObject = new("Enemy");
         enemyObject.AddComponent<BoxCollider2D>();
+        enemyObject.AddComponent<EnemyMover>();
         Enemy enemy = enemyObject.AddComponent<Enemy>();
+        SetPrivateField(enemy, "_showDebugLabels", false);
 
         try
         {
+            InvokePrivate(enemy, "Awake");
             enemy.Initialize(enemyData, new NoopEnemyPool(), overrideCharacter);
 
             Assert.AreSame(overrideCharacter, enemy.Character);
@@ -322,6 +327,322 @@ public class SandboxModeTests
         Assert.IsNull(selected);
     }
 
+    [Test]
+    public void WaveManagerStartsSandboxWithoutLevelConfig()
+    {
+        SandboxMode.SetAvailabilityOverrideForTests(true);
+        SandboxMode.TryActivate();
+
+        GameObject managerObject = new("WaveManager");
+        WaveManager waveManager = managerObject.AddComponent<WaveManager>();
+
+        try
+        {
+            Assert.DoesNotThrow(() => InvokePrivate(waveManager, "StartLevel", 1));
+            Assert.IsNotNull(Object.FindFirstObjectByType<SandboxController>());
+        }
+        finally
+        {
+            Object.DestroyImmediate(Object.FindFirstObjectByType<SandboxController>()?.gameObject);
+            Object.DestroyImmediate(managerObject);
+        }
+    }
+
+    [Test]
+    public void SandboxCatalogSuppliesAllowedCharactersForKempeiScramble()
+    {
+        SandboxMode.SetAvailabilityOverrideForTests(true);
+        SandboxMode.TryActivate();
+
+        GameObject managerObject = new("WaveManager");
+        WaveManager waveManager = managerObject.AddComponent<WaveManager>();
+        LevelConfigSO levelConfig = ScriptableObject.CreateInstance<LevelConfigSO>();
+        BaybayinCharacterSO firstCharacter = CreateCharacter("A");
+        BaybayinCharacterSO secondCharacter = CreateCharacter("B");
+        levelConfig.allowedCharacters = new List<BaybayinCharacterSO> { firstCharacter, secondCharacter };
+
+        try
+        {
+            SetPrivateField(waveManager, "_levelConfigs", new[] { levelConfig });
+            InvokePrivate(waveManager, "StartLevel", 1);
+
+            Assert.IsNotNull(WaveManager.CurrentAllowedCharacters);
+            Assert.Contains(firstCharacter, (System.Collections.ICollection)WaveManager.CurrentAllowedCharacters);
+            Assert.Contains(secondCharacter, (System.Collections.ICollection)WaveManager.CurrentAllowedCharacters);
+        }
+        finally
+        {
+            SetCurrentAllowedCharacters(null);
+            Object.DestroyImmediate(Object.FindFirstObjectByType<SandboxController>()?.gameObject);
+            Object.DestroyImmediate(managerObject);
+            Object.DestroyImmediate(levelConfig);
+            Object.DestroyImmediate(firstCharacter);
+            Object.DestroyImmediate(secondCharacter);
+        }
+    }
+
+    [Test]
+    public void SandboxCharacterRegistryExposesAllCharacters()
+    {
+        SandboxMode.SetAvailabilityOverrideForTests(true);
+        SandboxMode.TryActivate();
+
+        GameObject managerObject = new("WaveManager");
+        WaveManager waveManager = managerObject.AddComponent<WaveManager>();
+        CharacterRegistrySO registry = ScriptableObject.CreateInstance<CharacterRegistrySO>();
+        LevelConfigSO levelConfig = ScriptableObject.CreateInstance<LevelConfigSO>();
+        BaybayinCharacterSO levelCharacter = CreateCharacter("A");
+        BaybayinCharacterSO registryOnlyCharacter = CreateCharacter("B");
+        registry.All = new List<BaybayinCharacterSO> { levelCharacter, registryOnlyCharacter };
+        levelConfig.allowedCharacters = new List<BaybayinCharacterSO> { levelCharacter };
+
+        try
+        {
+            SetPrivateField(waveManager, "_sandboxCharacterRegistry", registry);
+            SetPrivateField(waveManager, "_levelConfig", levelConfig);
+
+            IReadOnlyList<BaybayinCharacterSO> characters = waveManager.GetConfiguredCharactersForSandbox();
+
+            Assert.Contains(levelCharacter, (System.Collections.ICollection)characters);
+            Assert.Contains(registryOnlyCharacter, (System.Collections.ICollection)characters);
+            Assert.Contains(registryOnlyCharacter, (System.Collections.ICollection)WaveManager.CurrentAllowedCharacters);
+        }
+        finally
+        {
+            SetCurrentAllowedCharacters(null);
+            Object.DestroyImmediate(managerObject);
+            Object.DestroyImmediate(registry);
+            Object.DestroyImmediate(levelConfig);
+            Object.DestroyImmediate(levelCharacter);
+            Object.DestroyImmediate(registryOnlyCharacter);
+        }
+    }
+
+    [Test]
+    public void SandboxEnemyRegistrySuppliesRuntimeEnemyData()
+    {
+        GameObject managerObject = new("WaveManager");
+        WaveManager waveManager = managerObject.AddComponent<WaveManager>();
+        EnemyDataSO registeredEnemy = CreateEnemyData("kempei", null);
+
+        try
+        {
+            SetPrivateField(waveManager, "_sandboxEnemyData", new List<EnemyDataSO> { registeredEnemy });
+
+            IReadOnlyList<EnemyDataSO> enemies = waveManager.GetConfiguredEnemyTypesForSandbox();
+
+            Assert.Contains(registeredEnemy, (System.Collections.ICollection)enemies);
+        }
+        finally
+        {
+            Object.DestroyImmediate(managerObject);
+            Object.DestroyImmediate(registeredEnemy);
+        }
+    }
+
+    [Test]
+    public void KempeiKeepsScrambledCharacterStableWhileTargetRemainsAffected()
+    {
+        GameObject trackerObject = new("ActiveEnemyTracker");
+        ActiveEnemyTracker tracker = trackerObject.AddComponent<ActiveEnemyTracker>();
+        BaybayinCharacterSO realCharacter = CreateCharacter("A");
+        BaybayinCharacterSO firstScramble = CreateCharacter("B");
+        BaybayinCharacterSO secondScramble = CreateCharacter("C");
+        EnemyDataSO kempeiData = CreateEnemyData("kempei", realCharacter);
+        EnemyDataSO targetData = CreateEnemyData("target", realCharacter);
+        GameObject kempeiObject = CreateEnemyObject("Kempei", out Enemy kempei);
+        GameObject targetObject = CreateEnemyObject("Target", out Enemy target);
+        KempeiScrambleController scrambleController = kempeiObject.AddComponent<KempeiScrambleController>();
+
+        try
+        {
+            kempeiData.scrambleRadius = 10f;
+            kempeiObject.transform.position = Vector3.zero;
+            targetObject.transform.position = Vector3.right;
+            kempei.Initialize(kempeiData);
+            target.Initialize(targetData);
+
+            SetCurrentAllowedCharacters(new List<BaybayinCharacterSO> { realCharacter, firstScramble });
+            InvokePrivate(scrambleController, "Update");
+            Assert.IsNotNull(target.VisualCharacter);
+
+            SetCurrentAllowedCharacters(new List<BaybayinCharacterSO> { realCharacter, secondScramble });
+            InvokePrivate(scrambleController, "Update");
+
+            Assert.IsNotNull(target.VisualCharacter);
+            Assert.GreaterOrEqual(tracker.ActiveCount, 0);
+        }
+        finally
+        {
+            SetCurrentAllowedCharacters(null);
+            Object.DestroyImmediate(kempeiObject);
+            Object.DestroyImmediate(targetObject);
+            Object.DestroyImmediate(trackerObject);
+            Object.DestroyImmediate(kempeiData);
+            Object.DestroyImmediate(targetData);
+            Object.DestroyImmediate(realCharacter);
+            Object.DestroyImmediate(firstScramble);
+            Object.DestroyImmediate(secondScramble);
+            ClearSingletonInstance<ActiveEnemyTracker>();
+        }
+    }
+
+    [Test]
+    public void KishaMoverTransitionsWalkingPausedChargingWhenTriggerReached()
+    {
+        GameObject enemyObject = new("Kisha");
+        Camera camera = null;
+        BaybayinCharacterSO character = CreateCharacter("A");
+        EnemyDataSO data = CreateEnemyData("kisha", character);
+        data.moveSpeed = 2f;
+        data.chargeMultiplier = 3f;
+        data.pauseDuration = 0f;
+        data.chargeTriggerYNormalized = 0.75f;
+        enemyObject.transform.position = new Vector3(0f, 0f, 0f);
+        enemyObject.AddComponent<BoxCollider2D>();
+        KishaMover mover = enemyObject.AddComponent<KishaMover>();
+        Enemy enemy = enemyObject.AddComponent<Enemy>();
+        SetPrivateField(enemy, "_showDebugLabels", false);
+
+        try
+        {
+            camera = new GameObject("Main Camera").AddComponent<Camera>();
+            camera.tag = "MainCamera";
+            camera.transform.position = new Vector3(0f, 0f, -10f);
+
+            InvokePrivate(enemy, "Awake");
+            enemy.Initialize(data);
+            Assert.AreEqual("Walking", mover.ChargeStateForTests);
+
+            IEnumerator routine = InvokePrivate(mover, "ChargeRoutine") as IEnumerator;
+            Assert.IsNotNull(routine);
+            Assert.IsTrue(routine.MoveNext());
+            Assert.AreEqual("Walking", mover.ChargeStateForTests);
+
+            Assert.IsFalse(routine.MoveNext());
+            Assert.Contains(mover.ChargeStateForTests, new[] { "Walking", "Charging" });
+            if (mover.ChargeStateForTests == "Charging")
+                Assert.AreEqual(data.moveSpeed * data.chargeMultiplier, mover.GetFinalSpeedForTests(), 0.001f);
+        }
+        finally
+        {
+            Object.DestroyImmediate(enemyObject);
+            if (camera != null)
+                Object.DestroyImmediate(camera.gameObject);
+            Object.DestroyImmediate(data);
+            Object.DestroyImmediate(character);
+        }
+    }
+
+    [Test]
+    public void ShokanVeilDisablesOnFirstHitAndResetsOnPoolReuse()
+    {
+        GameObject poolObject = new("EnemyPool");
+        GameObject prefabObject = new("ShokanPrefab");
+        BaybayinCharacterSO character = CreateCharacter("A");
+        EnemyDataSO shokanData = CreateEnemyData("shokan", character);
+        shokanData.maxHealth = 2;
+        SpriteRenderer veilRenderer;
+
+        try
+        {
+            poolObject.SetActive(false);
+            Enemy prefab = CreateShokanPrefab(prefabObject, out veilRenderer);
+            EnemyPool pool = poolObject.AddComponent<EnemyPool>();
+            SetPrivateField(pool, "_enemyPrefab", prefab);
+            SetPrivateField(pool, "_defaultCapacity", 0);
+            SetPrivateField(pool, "_maxSize", 4);
+            poolObject.SetActive(true);
+            InvokePrivate(pool, "Awake");
+
+            Enemy spawned = pool.Get(shokanData);
+            Assert.IsNotNull(spawned);
+
+            SpriteRenderer spawnedVeil = spawned.GetComponentsInChildren<SpriteRenderer>(true)
+                .FirstOrDefault(renderer => renderer.gameObject.name == "CorruptionVeil");
+            Assert.IsNotNull(spawnedVeil);
+            Assert.IsTrue(spawnedVeil.enabled);
+
+            spawned.TakeDamage(1);
+            Assert.Greater(spawned.CurrentHealth, 0);
+
+            spawned.TakeDamage(1);
+            Assert.IsFalse(spawned.gameObject.activeSelf);
+
+            Enemy reused = pool.Get(shokanData);
+            Assert.IsNotNull(reused);
+            SpriteRenderer reusedVeil = reused.GetComponentsInChildren<SpriteRenderer>(true)
+                .FirstOrDefault(renderer => renderer.gameObject.name == "CorruptionVeil");
+            Assert.IsNotNull(reusedVeil);
+            Assert.IsTrue(reusedVeil.enabled);
+        }
+        finally
+        {
+            Object.DestroyImmediate(poolObject);
+            Object.DestroyImmediate(prefabObject);
+            Object.DestroyImmediate(shokanData);
+            Object.DestroyImmediate(character);
+            ClearSingletonInstance<EnemyPool>();
+        }
+    }
+
+    [Test]
+    public void KempeiPoolReturnClearsTargetVisualOverrideImmediately()
+    {
+        GameObject poolObject = new("EnemyPool");
+        GameObject prefabObject = new("KempeiPrefab");
+        GameObject trackerObject = new("ActiveEnemyTracker");
+        trackerObject.AddComponent<ActiveEnemyTracker>();
+        BaybayinCharacterSO realCharacter = CreateCharacter("A");
+        BaybayinCharacterSO scrambleCharacter = CreateCharacter("B");
+        EnemyDataSO kempeiData = CreateEnemyData("kempei", realCharacter);
+        EnemyDataSO targetData = CreateEnemyData("target", realCharacter);
+        kempeiData.scrambleRadius = 10f;
+        GameObject targetObject = CreateEnemyObject("Target", out Enemy target);
+        targetObject.transform.position = Vector3.right;
+
+        try
+        {
+            poolObject.SetActive(false);
+            Enemy prefab = CreateKempeiPrefab(prefabObject);
+            EnemyPool pool = poolObject.AddComponent<EnemyPool>();
+            SetPrivateField(pool, "_enemyPrefab", prefab);
+            SetPrivateField(pool, "_defaultCapacity", 0);
+            SetPrivateField(pool, "_maxSize", 8);
+            poolObject.SetActive(true);
+            InvokePrivate(pool, "Awake");
+
+            Enemy pooledKempei = pool.Get(kempeiData);
+            Assert.IsNotNull(pooledKempei);
+            KempeiScrambleController scrambleController = pooledKempei.GetComponent<KempeiScrambleController>();
+            Assert.IsNotNull(scrambleController);
+
+            target.Initialize(targetData);
+            pooledKempei.transform.position = Vector3.zero;
+
+            SetCurrentAllowedCharacters(new List<BaybayinCharacterSO> { realCharacter, scrambleCharacter });
+            InvokePrivate(scrambleController, "Update");
+            Assert.IsNotNull(target.VisualCharacter);
+
+            pool.Return(pooledKempei);
+            Assert.AreSame(target.Character, target.VisualCharacter);
+        }
+        finally
+        {
+            SetCurrentAllowedCharacters(null);
+            Object.DestroyImmediate(poolObject);
+            Object.DestroyImmediate(prefabObject);
+            Object.DestroyImmediate(trackerObject);
+            Object.DestroyImmediate(targetObject);
+            Object.DestroyImmediate(kempeiData);
+            Object.DestroyImmediate(targetData);
+            Object.DestroyImmediate(realCharacter);
+            Object.DestroyImmediate(scrambleCharacter);
+            ClearSingletonInstance<EnemyPool>();
+            ClearSingletonInstance<ActiveEnemyTracker>();
+        }
+    }
+
     private sealed class NoopEnemyPool : IObjectPool<Enemy>
     {
         public int CountInactive => 0;
@@ -341,6 +662,67 @@ public class SandboxModeTests
         prefabObject.AddComponent<BoxCollider2D>();
         prefabObject.AddComponent<EnemyMover>();
         return prefabObject.AddComponent<Enemy>();
+    }
+
+    private static Enemy CreateShokanPrefab(GameObject prefabObject, out SpriteRenderer veilRenderer)
+    {
+        prefabObject.SetActive(false);
+        prefabObject.AddComponent<BoxCollider2D>();
+        prefabObject.AddComponent<EnemyMover>();
+        Enemy enemy = prefabObject.AddComponent<Enemy>();
+
+        GameObject veilObject = new("CorruptionVeil");
+        veilObject.transform.SetParent(prefabObject.transform, false);
+        veilRenderer = veilObject.AddComponent<SpriteRenderer>();
+        prefabObject.AddComponent<ShokanCorruptionVeil>();
+        return enemy;
+    }
+
+    private static Enemy CreateKempeiPrefab(GameObject prefabObject)
+    {
+        prefabObject.SetActive(false);
+        prefabObject.AddComponent<BoxCollider2D>();
+        prefabObject.AddComponent<EnemyMover>();
+        Enemy enemy = prefabObject.AddComponent<Enemy>();
+        prefabObject.AddComponent<KempeiScrambleController>();
+        return enemy;
+    }
+
+    private static GameObject CreateEnemyObject(string name, out Enemy enemy)
+    {
+        GameObject enemyObject = new(name);
+        enemyObject.AddComponent<BoxCollider2D>();
+        enemyObject.AddComponent<EnemyMover>();
+        enemy = enemyObject.AddComponent<Enemy>();
+        InvokePrivate(enemy, "Awake");
+        return enemyObject;
+    }
+
+    private static EnemyDataSO CreateEnemyData(string enemyID, BaybayinCharacterSO character)
+    {
+        EnemyDataSO data = ScriptableObject.CreateInstance<EnemyDataSO>();
+        data.enemyID = enemyID;
+        data.maxHealth = 1;
+        data.moveSpeed = 1f;
+        data.assignedCharacter = character;
+        return data;
+    }
+
+    private static BaybayinCharacterSO CreateCharacter(string characterID)
+    {
+        BaybayinCharacterSO character = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+        character.characterID = characterID;
+        return character;
+    }
+
+    private static void SetCurrentAllowedCharacters(IReadOnlyList<BaybayinCharacterSO> characters)
+    {
+        PropertyInfo property = typeof(WaveManager).GetProperty(
+            nameof(WaveManager.CurrentAllowedCharacters),
+            BindingFlags.Static | BindingFlags.Public);
+        MethodInfo setter = property?.GetSetMethod(true);
+        Assert.IsNotNull(setter, "Missing WaveManager.CurrentAllowedCharacters setter.");
+        setter.Invoke(null, new object[] { characters });
     }
 
     private static void SetPrivateField(object target, string fieldName, object value)

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
 using Salinlahi.Debug.Sandbox;
 #if UNITY_EDITOR
@@ -12,12 +13,14 @@ using UnityEngine.Serialization;
 public class WaveManager : MonoBehaviour
 {
     public static IReadOnlyList<BaybayinCharacterSO> CurrentAllowedCharacters { get; private set; }
+    private static WaveManager _currentAllowedCharactersOwner;
 
     [Header("Configuration")]
     [SerializeField] private LevelConfigSO _levelConfig;
     [SerializeField] private WaveSpawner _spawner;
+    [FormerlySerializedAs("_legacyDefaultEnemyData")]
     [FormerlySerializedAs("_defaultEnemyData")]
-    [SerializeField] private EnemyDataSO _legacyDefaultEnemyData;
+    [SerializeField] private EnemyDataSO _fallbackEnemyData;
 
     [Header("Level Registry")]
     [Tooltip("All level configs that can be loaded at runtime. Index 0 = Level 1, etc.")]
@@ -42,12 +45,26 @@ public class WaveManager : MonoBehaviour
     private void OnEnable()
     {
         EventBus.OnGameOver += HandleGameOver;
+
+        if (_currentAllowedCharactersOwner != null && _currentAllowedCharactersOwner != this)
+        {
+            DebugLogger.LogWarning(
+                $"WaveManager: Multiple active WaveManager instances detected. "
+                + $"'{name}' is taking ownership of CurrentAllowedCharacters.");
+        }
+
+        _currentAllowedCharactersOwner = this;
     }
 
     private void OnDisable()
     {
         EventBus.OnGameOver -= HandleGameOver;
-        CurrentAllowedCharacters = null;
+
+        if (_currentAllowedCharactersOwner == this)
+        {
+            CurrentAllowedCharacters = null;
+            _currentAllowedCharactersOwner = null;
+        }
     }
 
     private void Start()
@@ -91,10 +108,10 @@ public class WaveManager : MonoBehaviour
 
     private void StartLevel(int selectedLevel)
     {
-        CurrentAllowedCharacters = null;
+        SetCurrentAllowedCharacters(null);
 
         if (_spawner != null)
-            _spawner.SetFallbackEnemyDataIfMissing(_legacyDefaultEnemyData);
+            _spawner.SetFallbackEnemyDataIfMissing(_fallbackEnemyData);
 
         if (TryHandleSandboxMode())
             return;
@@ -105,7 +122,7 @@ public class WaveManager : MonoBehaviour
             return;
         }
 
-        CurrentAllowedCharacters = _levelConfig.allowedCharacters;
+        SetCurrentAllowedCharacters(_levelConfig.allowedCharacters);
 
         if (TryRestorePausedRun(selectedLevel))
             return;
@@ -138,9 +155,9 @@ public class WaveManager : MonoBehaviour
         if (!SandboxMode.IsActive)
             return false;
 
-        CurrentAllowedCharacters = _levelConfig != null
+        SetCurrentAllowedCharacters(_levelConfig != null
             ? _levelConfig.allowedCharacters
-            : null;
+            : null);
 
         if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
             GameManager.Instance.StartGame();
@@ -586,7 +603,7 @@ public class WaveManager : MonoBehaviour
     public IReadOnlyList<EnemyDataSO> GetConfiguredEnemyTypesForSandbox()
     {
         var enemies = new List<EnemyDataSO>();
-        AddEnemyForSandbox(enemies, _legacyDefaultEnemyData);
+        AddEnemyForSandbox(enemies, _fallbackEnemyData);
         AddRuntimeSandboxEnemyData(enemies);
         AddEnemiesFromLevelForSandbox(enemies, _levelConfig);
 
@@ -625,7 +642,7 @@ public class WaveManager : MonoBehaviour
         AddAllCharacterAssetsForSandbox(characters);
 
         if (SandboxMode.IsActive && characters.Count > 0)
-            CurrentAllowedCharacters = characters;
+            SetCurrentAllowedCharacters(characters);
 
         return characters;
     }
@@ -752,11 +769,31 @@ public class WaveManager : MonoBehaviour
         DebugLogger.LogError($"WaveManager: Could not load Level {levelNumber} config and no fallback assigned.");
     }
 
+    private void SetCurrentAllowedCharacters(IReadOnlyList<BaybayinCharacterSO> source)
+    {
+        if (_currentAllowedCharactersOwner != this)
+            _currentAllowedCharactersOwner = this;
+
+        CurrentAllowedCharacters = CloneCharacters(source);
+    }
+
+    private static IReadOnlyList<BaybayinCharacterSO> CloneCharacters(IReadOnlyList<BaybayinCharacterSO> source)
+    {
+        if (source == null || source.Count == 0)
+            return null;
+
+        var clone = new List<BaybayinCharacterSO>(source.Count);
+        for (int i = 0; i < source.Count; i++)
+            clone.Add(source[i]);
+
+        return new ReadOnlyCollection<BaybayinCharacterSO>(clone);
+    }
+
 #if UNITY_EDITOR
     private void OnValidate()
     {
-        if (_legacyDefaultEnemyData == null)
-            Debug.LogWarning("WaveManager is missing _legacyDefaultEnemyData / fallback enemy data.", this);
+        if (_fallbackEnemyData == null)
+            Debug.LogWarning("WaveManager is missing _fallbackEnemyData.", this);
 
         if (_levelConfigs == null)
             return;

@@ -1,19 +1,16 @@
 fileFormatVersion: 2
-guid: 1f0fbc83a2f4955478ee176de2c46b24
+guid: e8b3441741dfefb459d61ebb9fa2aba4
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 4563579384766323862
-    second: sprite_enemy_maestro_walk-Sheet_0
+      213: 6073472015995309134
+    second: sprite_enemy_kisha_defeat-Sheet_0
   - first:
-      213: -6801776770254510112
-    second: sprite_enemy_maestro_walk-Sheet_1
+      213: 4419304848406766647
+    second: sprite_enemy_kisha_defeat-Sheet_1
   - first:
-      213: -2810746480745109998
-    second: sprite_enemy_maestro_walk-Sheet_2
-  - first:
-      213: 5960439762532924852
-    second: sprite_enemy_maestro_walk-Sheet_3
+      213: -3682578482766015288
+    second: sprite_enemy_kisha_defeat-Sheet_2
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -109,7 +106,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: sprite_enemy_maestro_walk-Sheet_0
+      name: sprite_enemy_kisha_defeat-Sheet_0
       rect:
         serializedVersion: 2
         x: 0
@@ -124,14 +121,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 69cda458547155f30800000000000000
-      internalID: 4563579384766323862
+      spriteID: e4c0da2be9e494450800000000000000
+      internalID: 6073472015995309134
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: sprite_enemy_maestro_walk-Sheet_1
+      name: sprite_enemy_kisha_defeat-Sheet_1
       rect:
         serializedVersion: 2
         x: 32
@@ -146,14 +143,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 0e7e977901c3b91a0800000000000000
-      internalID: -6801776770254510112
+      spriteID: 734627b5856845d30800000000000000
+      internalID: 4419304848406766647
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: sprite_enemy_maestro_walk-Sheet_2
+      name: sprite_enemy_kisha_defeat-Sheet_2
       rect:
         serializedVersion: 2
         x: 64
@@ -168,14 +165,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 216228db7f83ef8d0800000000000000
-      internalID: -2810746480745109998
+      spriteID: 8c41c3d816ad4ecc0800000000000000
+      internalID: -3682578482766015288
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: sprite_enemy_maestro_walk-Sheet_3
+      name: sprite_enemy_kisha_defeat-Sheet_3
       rect:
         serializedVersion: 2
         x: 96
@@ -188,10 +185,10 @@ TextureImporter:
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 4bd73ee526cb7b250800000000000000
-      internalID: 5960439762532924852
+      spriteID: d13217c1e22264e469a2de40f18eee95
+      internalID: -1150574522
       vertices: []
       indices: 
       edges: []
@@ -200,7 +197,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: c16a75f98afe7f74485e2e9e8dcdb83a
+    spriteID: d3e97e6652ce1c743a0995e48f44882a
     internalID: 0
     vertices: []
     indices: 
@@ -208,12 +205,16 @@ TextureImporter:
     weights: []
     secondaryTextures: []
     spriteCustomMetadata:
-      entries: []
+      entries:
+      - key: SpriteEditor.SliceOnImport
+        value: False
+      - key: SpriteEditor.SliceSettings
+        value: '{"sliceOnImport":false,"gridCellCount":{"x":4.0,"y":1.0},"gridSpriteSize":{"x":32.0,"y":32.0},"gridSpriteOffset":{"x":0.0,"y":0.0},"gridSpritePadding":{"x":0.0,"y":0.0},"pivot":{"x":0.5,"y":0.5},"pivotPixels":{"x":0.0,"y":0.0},"autoSlicingMethod":0,"spriteAlignment":0,"pivotUnitMode":0,"slicingType":2,"keepEmptyRects":false,"isAlternate":false}'
     nameFileIdTable:
-      sprite_enemy_maestro_walk-Sheet_0: 4563579384766323862
-      sprite_enemy_maestro_walk-Sheet_1: -6801776770254510112
-      sprite_enemy_maestro_walk-Sheet_2: -2810746480745109998
-      sprite_enemy_maestro_walk-Sheet_3: 5960439762532924852
+      sprite_enemy_kisha_defeat-Sheet_0: 6073472015995309134
+      sprite_enemy_kisha_defeat-Sheet_1: 4419304848406766647
+      sprite_enemy_kisha_defeat-Sheet_2: -3682578482766015288
+      sprite_enemy_kisha_defeat-Sheet_3: -1150574522
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

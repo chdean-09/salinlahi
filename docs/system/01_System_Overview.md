@@ -95,7 +95,7 @@ App Launch
                       └── MainMenu Scene
                             └── [Play] → SceneLoader.LoadGameplay()
                                   └── Gameplay Scene
-                                        ├── WaveManager (NOT FOUND in implementation)
+                                        ├── WaveManager
                                         ├── Enemy ← EnemyPool
                                         ├── EnemyMover
                                         └── EventBus

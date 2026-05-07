@@ -47,6 +47,16 @@ public class ActiveEnemyTracker : Singleton<ActiveEnemyTracker>
         return new List<Enemy>(_activeEnemies);
     }
 
+    public void FillActiveEnemiesSnapshot(List<Enemy> buffer)
+    {
+        if (buffer == null)
+            return;
+
+        CleanupStaleEntries();
+        buffer.Clear();
+        buffer.AddRange(_activeEnemies);
+    }
+
     /// Returns the active enemy closest to the base (lowest Y)
     /// whose real combat character matches the given characterID. Returns null if none.
     public Enemy FindClosestToBase(string characterID)
@@ -73,7 +83,7 @@ public class ActiveEnemyTracker : Singleton<ActiveEnemyTracker>
         return closest;
     }
 
-/// <summary>
+    /// <summary>
     /// Returns all active enemies whose real combat character matches the given characterID.
     /// Used later for AOE resolution so decoy display labels do not affect the match set.
     /// <para><b>Do NOT cache the returned list</b> — it is reused across calls.</para>

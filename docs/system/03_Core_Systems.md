@@ -120,20 +120,27 @@ Owns two `AudioSource` components: `_bgmSource` (background music, looped) and `
 | Category | Event | Raise Method | Payload Type |
 |----------|-------|-------------|-------------|
 | Enemy | `OnEnemyDefeated` | `RaiseEnemyDefeated(BaybayinCharacterSO)` | `BaybayinCharacterSO` |
-| Enemy | `OnBaseHit` | `RaiseBaseHit()` | none |
-| Enemy | `OnAOETriggered` | `RaiseAOETriggered(List<BaybayinCharacterSO>)` | `List<BaybayinCharacterSO>` |
+| Enemy | `OnBaseHit` | `RaiseBaseHit(int)` | `int` (damage amount) |
+| Enemy | `OnAOETriggered` | `RaiseAOETriggered(int)` | `int` (defeated count) |
 | Game State | `OnGameOver` | `RaiseGameOver()` | none |
 | Game State | `OnLevelComplete` | `RaiseLevelComplete()` | none |
 | Game State | `OnWaveStarted` | `RaiseWaveStarted(int)` | `int` waveIndex |
+| Game State | `OnWaveCleared` | `RaiseWaveCleared(int)` | `int` waveIndex |
 | Recognition | `OnCharacterRecognized` | `RaiseCharacterRecognized(string)` | `string` characterID |
+| Recognition | `OnRecognitionResolved` | `RaiseRecognitionResolved(RecognitionResult, bool, float)` | `RecognitionResult, bool, float` |
 | Recognition | `OnDrawingFailed` | `RaiseDrawingFailed()` | none |
 | Recognition | `OnDrawingStarted` | `RaiseDrawingStarted()` | none |
 | UI | `OnHeartsChanged` | `RaiseHeartsChanged(int)` | `int` currentHearts |
+| Combat | `OnEnemyTargeted` | `RaiseEnemyTargeted(Enemy)` | `Enemy` |
+| Combat | `OnDrawingMissed` | `RaiseDrawingMissed()` | none |
 | Combo | `OnComboChanged` | `RaiseComboChanged(int)` | `int` currentStreak |
-| Combo | `OnComboRewardTriggered` | `RaiseComboRewardTriggered()` | none |
-| Boss | `OnBossSpawned` | `RaiseBossSpawned(BossConfigSO)` | `BossConfigSO` |
-| Boss | `OnBossPhaseCleared` | `RaiseBossPhaseCleared()` | none |
+| Focus | `OnFocusModeActivated` | `RaiseFocusModeActivated()` | none |
+| Focus | `OnFocusModeDeactivated` | `RaiseFocusModeDeactivated()` | none |
+| Pause | `OnGamePaused` | `RaiseGamePaused()` | none |
+| Pause | `OnGameResumed` | `RaiseGameResumed()` | none |
 | Boss | `OnBossDefeated` | `RaiseBossDefeated()` | none |
+| Dialogue | `OnDialogueStarted` | `RaiseDialogueStarted()` | none |
+| Dialogue | `OnDialogueComplete` | `RaiseDialogueComplete()` | none |
 
 ### 4.4 Usage Rules
 1. **Subscribe only in `OnEnable`.** Never subscribe in `Start` or `Awake`.

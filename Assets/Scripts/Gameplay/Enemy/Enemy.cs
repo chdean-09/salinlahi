@@ -1,4 +1,5 @@
 using UnityEngine;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
@@ -36,6 +37,7 @@ public class Enemy : MonoBehaviour
     private Color _baseRendererColor = Color.white;
     private TextMeshPro _baybayinLabel;
     private TextMeshPro _enemyTypeLabel;
+    private readonly Dictionary<object, BaybayinCharacterSO> _labelOverrides = new();
     private int _walkFrameIndex;
     private float _walkFrameTimer;
 
@@ -44,6 +46,8 @@ public class Enemy : MonoBehaviour
     private Coroutine _deathRoutine;
 
     public BaybayinCharacterSO Character => _runtimeCharacter != null ? _runtimeCharacter : _data?.assignedCharacter;
+    public BaybayinCharacterSO VisualCharacter => ResolveVisualCharacter();
+    public bool HasVisualCharacterOverride => _labelOverrides.Count > 0;
     public string EnemyID => _data?.enemyID;
     public EnemyDataSO Data => _data;
     public int CurrentHealth => _currentHealth;
@@ -51,6 +55,7 @@ public class Enemy : MonoBehaviour
     public bool IsDying => _isDying;
     // placeholder for now. will be replaced in salin 68
     public virtual bool IsBoss => false;
+    public event Action<Enemy, int, int> HealthChanged;
 
     public int MaxHealth => _data != null ? _data.maxHealth : 0;
 
@@ -110,6 +115,12 @@ public class Enemy : MonoBehaviour
     // Called by EnemyPool when this enemy is retrieved from the pool.
     public bool Initialize(EnemyDataSO data)
     {
+        if (_mover == null)
+            _mover = GetComponent<EnemyMover>();
+
+        if (_renderer == null)
+            _renderer = GetComponent<SpriteRenderer>();
+
         _runtimeCharacter = null;
 
         if (data == null)
@@ -149,6 +160,7 @@ public class Enemy : MonoBehaviour
 
         _data = data;
         _currentHealth = _data.maxHealth;
+        _labelOverrides.Clear();
 
         _mover.Stop();
         _mover.SetSpeed(EffectiveSpeed);
@@ -169,6 +181,7 @@ public class Enemy : MonoBehaviour
         ActiveEnemyTracker.Instance?.Register(this);
         RefreshDebugLabels();
         UpdateLabelLayout();
+        HealthChanged?.Invoke(this, _currentHealth, _currentHealth);
         return true;
     }
 
@@ -187,6 +200,7 @@ public class Enemy : MonoBehaviour
         {
             _runtimeCharacter = null;
             _speedBuffs.Clear();
+            _labelOverrides.Clear();
             _hurtFeedback?.ResetState();
             _isDying = false;
 
@@ -228,6 +242,7 @@ public class Enemy : MonoBehaviour
 
         int previousHealth = _currentHealth;
         _currentHealth -= amount;
+        HealthChanged?.Invoke(this, previousHealth, _currentHealth);
         DebugLogger.Log(
             $"Enemy [{Character?.characterID}] took {amount} damage. "
             + $"HP: {_currentHealth}");
@@ -250,7 +265,9 @@ public class Enemy : MonoBehaviour
         if (_data == null)
             return;
 
+        int previousHealth = _currentHealth;
         _currentHealth = Mathf.Clamp(currentHealth, 1, _data.maxHealth);
+        HealthChanged?.Invoke(this, previousHealth, _currentHealth);
 
         if (_data.maxHealth > 1 && _currentHealth < _data.maxHealth)
             TriggerShieldBreakVisual();
@@ -354,6 +371,25 @@ public class Enemy : MonoBehaviour
         ReturnToPool();
     }
 
+    public void ApplyVisualCharacterOverride(object source, BaybayinCharacterSO visualCharacter)
+    {
+        if (source == null || visualCharacter == null)
+            return;
+
+        // Visual overrides are Enemy-instance-local only and must not be mirrored into HUD/boss icon UI.
+        _labelOverrides[source] = visualCharacter;
+        RefreshDebugLabels();
+    }
+
+    public void ClearVisualCharacterOverride(object source)
+    {
+        if (source == null)
+            return;
+
+        if (_labelOverrides.Remove(source))
+            RefreshDebugLabels();
+    }
+
     public void ReturnToPool()
     {
         EnemyPool pool = EnemyPool.Instance;
@@ -452,8 +488,12 @@ public class Enemy : MonoBehaviour
         tmp.enableAutoSizing = false;
         tmp.fontSize = _labelFontSize;
         tmp.color = _labelColor;
-        tmp.outlineWidth = 0.2f;
-        tmp.outlineColor = Color.black;
+        // Avoid edit-mode material instantiation warnings in tests.
+        if (Application.isPlaying)
+        {
+            tmp.outlineWidth = 0.2f;
+            tmp.outlineColor = Color.black;
+        }
         tmp.sortingOrder = 500;
         if (_renderer != null)
             tmp.sortingLayerID = _renderer.sortingLayerID;
@@ -489,7 +529,7 @@ public class Enemy : MonoBehaviour
 
     private string BuildBaybayinLabelText()
     {
-        BaybayinCharacterSO character = Character;
+        BaybayinCharacterSO character = ResolveVisualCharacter();
         if (character == null)
             return "Draw: (none)";
 
@@ -506,6 +546,24 @@ public class Enemy : MonoBehaviour
             return $"Draw: {id}";
 
         return "Draw: (unknown)";
+    }
+
+    private BaybayinCharacterSO ResolveVisualCharacter()
+    {
+        BaybayinCharacterSO character = Character;
+        if (_labelOverrides.Count > 0)
+        {
+            foreach (BaybayinCharacterSO overrideCharacter in _labelOverrides.Values)
+            {
+                if (overrideCharacter != null)
+                {
+                    character = overrideCharacter;
+                    break;
+                }
+            }
+        }
+
+        return character;
     }
 
     private string BuildEnemyTypeText()

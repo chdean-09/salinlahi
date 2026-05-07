@@ -87,6 +87,27 @@ public class EnemyDataSO : ScriptableObject
     public Sprite[] hurtFrames;
     [Tooltip("Playback FPS for hurtFrames. 0 falls back to the walk animation FPS on Enemy.cs (default 8).")]
     public float hurtAnimationFps = 12f;
+
+    [Header("Kisha Charge")]
+    [Tooltip("Variant-specific: used only by KishaMover. Speed multiplier applied after Kisha enters Charge state.")]
+    public float chargeMultiplier = 2.5f;
+
+    [Range(0f, 1f)]
+    [Tooltip("Variant-specific: used only by KishaMover. Viewport Y threshold that starts Kisha's pause/charge sequence. 0 is bottom, 1 is top.")]
+    public float chargeTriggerYNormalized = 0.5f;
+
+    [Tooltip("Variant-specific: used only by KishaMover. Seconds Kisha waits between walking and charging.")]
+    public float pauseDuration = 0.35f;
+
+    [Header("Kempei Censor")]
+    [Tooltip("Variant-specific: used only by KempeiScrambleController. World-space radius around Kempei that receives visual-only label scrambling.")]
+    public float scrambleRadius = 3f;
+
+    [Tooltip("Variant-specific: used only by KempeiScrambleController. Minimum seconds between scramble glitch toggles.")]
+    public float scrambleMinGlitchInterval = 0.18f;
+
+    [Tooltip("Variant-specific: used only by KempeiScrambleController. Maximum seconds between scramble glitch toggles.")]
+    public float scrambleMaxGlitchInterval = 0.36f;
 }
 
 public enum Era
