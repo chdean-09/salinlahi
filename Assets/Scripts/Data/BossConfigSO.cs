@@ -9,6 +9,8 @@ public class BossConfigSO : ScriptableObject
     [Header("Identity")]
     public string bossName;
     public string bossID;
+
+    [Header("Visuals")]
     [Tooltip("Optional HUD/portrait sprite, distinct from the in-world Enemy sprite.")]
     public Sprite bossSprite;
 
