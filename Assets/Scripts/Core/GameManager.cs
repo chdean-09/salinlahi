@@ -8,6 +8,8 @@ public class GameManager : Singleton<GameManager>
     public GameState CurrentState { get; private set; } = GameState.Idle;
     public LevelConfigSO CurrentLevel { get; private set; }
     public int LastDefeatHearts { get; private set; }
+    public BossController CurrentBoss { get; private set; }
+    internal void SetCurrentBoss(BossController boss) => CurrentBoss = boss;
 
     public bool AcceptsDrawingInput =>
         CurrentState == GameState.Playing || CurrentState == GameState.Practicing;
