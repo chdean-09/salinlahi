@@ -88,3 +88,7 @@ MonoBehaviour:
     prefab: {fileID: 8037671833055544141, guid: 8af0504b541264b64aad0cc3cef11412, type: 3}
     defaultCapacity: 10
     maxSize: 20
+  - enemyID: elinquisidor
+    prefab: {fileID: 8774765201253825161, guid: 3162ad5b896c54746a794736dc9371e4, type: 3}
+    defaultCapacity: 1
+    maxSize: 1
