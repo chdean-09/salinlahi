@@ -84,13 +84,13 @@ public class PhaseBasedMovement : MonoBehaviour
     private IEnumerator Pace(float speed)
     {
         float dir = 1f;
+        float minX = _baseLocalPosition.x - _paceHalfRange;
+        float maxX = _baseLocalPosition.x + _paceHalfRange;
         while (true)
         {
-            float dx = dir * speed * Time.deltaTime;
-            Vector3 next = transform.localPosition + new Vector3(dx, 0f, 0f);
-            if (next.x > _baseLocalPosition.x + _paceHalfRange) dir = -1f;
-            else if (next.x < _baseLocalPosition.x - _paceHalfRange) dir = 1f;
-            else transform.localPosition = next;
+            float newX = Mathf.Clamp(transform.localPosition.x + dir * speed * Time.deltaTime, minX, maxX);
+            transform.localPosition = new Vector3(newX, transform.localPosition.y, transform.localPosition.z);
+            if (newX >= maxX || newX <= minX) dir *= -1f;
             yield return null;
         }
     }
