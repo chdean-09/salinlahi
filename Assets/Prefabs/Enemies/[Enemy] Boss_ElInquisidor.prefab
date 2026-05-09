@@ -195,7 +195,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b02c42ec928bde741b41a1e33d3978d1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Salinlahi.Runtime::BossEnemy
-  _data: {fileID: 0}
+  _data: {fileID: 11400000, guid: aa843150d07c87f439e39501b863853c, type: 2}
   _useShieldBreakColorFeedback: 0
   _shieldIntactColor: {r: 0, g: 0.75, b: 0.65, a: 1}
   _shieldBrokenColor: {r: 0.55, g: 0.55, b: 0.55, a: 1}
@@ -246,5 +246,5 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Salinlahi.Runtime::SummonWaveOnPhaseStart
   _triggerOnPhaseIndices: 0000000001000000
-  _waveToSpawn: {fileID: 0}
+  _waveToSpawn: {fileID: 11400000, guid: 37348704de55da54db69dedeaaaa10fb, type: 2}
   _spawner: {fileID: 0}

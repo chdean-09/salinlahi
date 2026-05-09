@@ -10,15 +10,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5bcd7fccabc7c46ceb246e8068fbcf0e, type: 3}
-  m_Name: BossConfig_Kadiliman
+  m_Name: BossConfig_Superintendent
   m_EditorClassIdentifier: Salinlahi.Runtime::BossConfigSO
-  bossName: Kadiliman
-  bossID: KADILIMAN
+  bossName: The Superintendent
+  bossID: SUPERINTENDENT
   bossSprite: {fileID: 0}
   bossEnemyData: {fileID: 11400000, guid: aa843150d07c87f439e39501b863853c, type: 2}
   phases:
   - requiredCharacters:
-    - {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
+    - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
     movementPattern: 0
     movementSpeed: 0
     intermissionWave: {fileID: 0}
