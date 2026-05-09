@@ -96,7 +96,7 @@ public class WaveSpawner : MonoBehaviour
         return enemy;
     }
 
-    public IEnumerator SpawnWave(WaveConfigSO wave, Action onEnemySpawned = null, int spawnOffset = 0)
+    public virtual IEnumerator SpawnWave(WaveConfigSO wave, Action onEnemySpawned = null, int spawnOffset = 0)
     {
         if (wave == null)
         {
