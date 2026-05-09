@@ -41,6 +41,11 @@ public static class EventBus
     public static event Action OnGameResumed;
 
     // -- Boss Events --
+    public static event Action<BossConfigSO> OnBossStarted;
+    public static event Action<int> OnBossPhaseStarted;        // phase index (0-based)
+    public static event Action<int> OnBossPhaseCleared;        // phase index (0-based)
+    public static event Action OnBossIntermissionStarted;
+    public static event Action OnBossIntermissionCleared;
     public static event Action OnBossDefeated;
 
     // -- Dialogue Events --
@@ -69,6 +74,11 @@ public static class EventBus
     public static void RaiseFocusModeDeactivated() => OnFocusModeDeactivated?.Invoke();
     public static void RaiseGamePaused() => OnGamePaused?.Invoke();
     public static void RaiseGameResumed() => OnGameResumed?.Invoke();
+    public static void RaiseBossStarted(BossConfigSO config) => OnBossStarted?.Invoke(config);
+    public static void RaiseBossPhaseStarted(int phaseIndex) => OnBossPhaseStarted?.Invoke(phaseIndex);
+    public static void RaiseBossPhaseCleared(int phaseIndex) => OnBossPhaseCleared?.Invoke(phaseIndex);
+    public static void RaiseBossIntermissionStarted() => OnBossIntermissionStarted?.Invoke();
+    public static void RaiseBossIntermissionCleared() => OnBossIntermissionCleared?.Invoke();
     public static void RaiseBossDefeated() => OnBossDefeated?.Invoke();
     public static void RaiseDialogueStarted() => OnDialogueStarted?.Invoke();
     public static void RaiseDialogueComplete() => OnDialogueComplete?.Invoke();
