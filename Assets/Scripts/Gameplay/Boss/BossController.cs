@@ -67,6 +67,7 @@ public class BossController : MonoBehaviour
         CurrentPhaseIndex = -1;
         CurrentPhase = null;
         _drawnThisPhase.Clear();
+        _state = State.Idle;
 
         // Set CurrentBoss BEFORE raising OnBossStarted so subscribers
         // resolving GameManager.Instance.CurrentBoss in the handler see this
@@ -171,6 +172,8 @@ public class BossController : MonoBehaviour
                 _state = State.PhaseClearedIntermission;
                 EventBus.RaiseBossIntermissionStarted();
 
+                // onEnemySpawned callback intentionally omitted: intermission waves are not
+                // tracked as regular wave indices, so WaveManager bookkeeping is skipped.
                 yield return StartCoroutine(_spawner.SpawnWave(CurrentPhase.intermissionWave));
 
                 // Wait for adds to clear
