@@ -19,10 +19,7 @@ public class LevelConfigSO : ScriptableObject
     public List<BaybayinCharacterSO> allowedCharacters;
 
     [Header("Boss")]
-    [Tooltip("True if this level is a boss encounter")]
-    public bool isBossLevel;
-
-    [Tooltip("Boss configuration (only used if isBossLevel is true)")]
+    [Tooltip("If set, this level is a boss encounter. Waves list is ignored.")]
     public BossConfigSO bossConfig;
 
     [Header("Build Flags")]
