@@ -8480,6 +8480,7 @@ GameObject:
   - component: {fileID: 1791611348}
   - component: {fileID: 1791611347}
   - component: {fileID: 1791611346}
+  - component: {fileID: 1791611349}
   m_Layer: 0
   m_Name: ScrollView
   m_TagString: Untagged
@@ -8575,6 +8576,18 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &1791611349
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1791611344}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f6ea44b5cccae4e118554ec196924b29, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Salinlahi.Runtime::SafeAreaHandler
 --- !u!1 &1793066201 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5288809830755546078, guid: 5279bdc95d7e5485e990e2529698d71d, type: 3}
