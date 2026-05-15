@@ -113,6 +113,28 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         [UnityTest]
+        public IEnumerator Phaser_ContinuouslyCyclesWhileActive()
+        {
+            ConfigureDeterministicTime();
+            yield return null;
+
+            Enemy enemy = CreateEnemy(
+                isPhaser: true,
+                phaserInterval: 0.02f,
+                phaserFadeOutDuration: 0f);
+            PhaserEnemy phaser = enemy.GetComponent<PhaserEnemy>();
+
+            yield return WaitUntilOrTimeout(() => !phaser.IsVisible, timeoutSeconds: 0.6f);
+            Assert.IsFalse(phaser.IsVisible, "Phaser should enter an invisible state.");
+
+            yield return WaitUntilOrTimeout(() => phaser.IsVisible, timeoutSeconds: 0.6f);
+            Assert.IsTrue(phaser.IsVisible, "Phaser should return to a visible state.");
+
+            yield return WaitUntilOrTimeout(() => !phaser.IsVisible, timeoutSeconds: 0.6f);
+            Assert.IsFalse(phaser.IsVisible, "Phaser should continue cycling and become invisible again.");
+        }
+
+        [UnityTest]
         public IEnumerator Phaser_PulsesBeforeBecomingInvisible()
         {
             ConfigureDeterministicTime();
