@@ -20,7 +20,7 @@ public class TemplatePreview : MonoBehaviour
     [Header("Auto-reload")]
     [SerializeField] private bool _reloadOnValidate = true;
 
-    private LineRenderer _lr;
+    private readonly List<LineRenderer> _strokeRenderers = new List<LineRenderer>();
 
     private void Start()
     {
@@ -38,16 +38,7 @@ public class TemplatePreview : MonoBehaviour
 
     private void EnsureLineRenderer()
     {
-        if (_lr != null) return;
-        _lr = GetComponent<LineRenderer>();
-        if (_lr == null) _lr = gameObject.AddComponent<LineRenderer>();
-        _lr.material = _lineMaterial ?? new Material(Shader.Find("Sprites/Default"));
-        _lr.useWorldSpace = false;
-        _lr.loop = false;
-        _lr.numCapVertices = 8;
-        _lr.numCornerVertices = 8;
-        _lr.textureMode = LineTextureMode.Stretch;
-        _lr.alignment = LineAlignment.View;
+        GetRendererForStrokeIndex(0);
     }
 
     private void LoadAndRender()
@@ -68,40 +59,75 @@ public class TemplatePreview : MonoBehaviour
         if (asset == null)
         {
             Debug.LogWarning($"TemplatePreview: could not load Resources/{resourcePath}.txt");
-            _lr.positionCount = 0;
+            ClearAllRenderers();
             return;
         }
 
-        List<Vector2> points = ParsePoints(asset.text);
-        if (points.Count < 2)
+        List<List<Vector2>> strokes = ParseStrokes(asset.text);
+        int strokeCount = strokes.Count;
+        int pointCount = 0;
+        for (int i = 0; i < strokeCount; i++)
+            pointCount += strokes[i].Count;
+
+        if (pointCount < 2)
         {
-            Debug.LogWarning($"TemplatePreview: '{resourcePath}' had {points.Count} points.");
-            _lr.positionCount = 0;
+            Debug.LogWarning($"TemplatePreview: '{resourcePath}' had {strokeCount} strokes and {pointCount} points.");
+            ClearAllRenderers();
             return;
         }
 
-        // Template is bbox-normalized to [0,1]. Map to a square centered at _displayCenter.
-        _lr.widthMultiplier = _lineWidth;
-        _lr.startColor = _lineColor;
-        _lr.endColor = _lineColor;
-        _lr.positionCount = points.Count;
-        for (int i = 0; i < points.Count; i++)
+        int renderedStrokeCount = 0;
+        for (int i = 0; i < strokeCount; i++)
         {
-            float x = _displayCenter.x + (points[i].x - 0.5f) * _displaySize;
-            float y = _displayCenter.y + (points[i].y - 0.5f) * _displaySize;
-            _lr.SetPosition(i, new Vector3(x, y, 0f));
+            List<Vector2> stroke = strokes[i];
+            if (stroke.Count < 2) continue;
+
+            LineRenderer renderer = GetRendererForStrokeIndex(renderedStrokeCount);
+            renderer.enabled = true;
+            renderer.widthMultiplier = _lineWidth;
+            renderer.startColor = _lineColor;
+            renderer.endColor = _lineColor;
+            renderer.positionCount = stroke.Count;
+
+            // Template is bbox-normalized to [0,1]. Map to a square centered at _displayCenter.
+            for (int j = 0; j < stroke.Count; j++)
+            {
+                float x = _displayCenter.x + (stroke[j].x - 0.5f) * _displaySize;
+                float y = _displayCenter.y + (stroke[j].y - 0.5f) * _displaySize;
+                renderer.SetPosition(j, new Vector3(x, y, 0f));
+            }
+
+            renderedStrokeCount++;
         }
 
-        Debug.Log($"TemplatePreview: rendered {resourcePath} ({points.Count} points).");
+        for (int i = renderedStrokeCount; i < _strokeRenderers.Count; i++)
+        {
+            if (_strokeRenderers[i] == null) continue;
+            _strokeRenderers[i].positionCount = 0;
+            _strokeRenderers[i].enabled = false;
+        }
+
+        Debug.Log($"TemplatePreview: rendered {resourcePath} with {strokeCount} strokes and {pointCount} points (drawn strokes: {renderedStrokeCount}).");
     }
 
-    private List<Vector2> ParsePoints(string text)
+    private List<List<Vector2>> ParseStrokes(string text)
     {
-        var points = new List<Vector2>();
-        foreach (string raw in text.Split('\n'))
+        var strokes = new List<List<Vector2>>();
+        var current = new List<Vector2>();
+        string[] lines = text.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
+        foreach (string raw in lines)
         {
             string line = raw.Trim();
-            if (string.IsNullOrEmpty(line)) continue;
+            if (string.IsNullOrEmpty(line))
+            {
+                if (current.Count > 0)
+                {
+                    strokes.Add(current);
+                    current = new List<Vector2>();
+                }
+                continue;
+            }
+
             string[] parts = line.Split(',');
             if (parts.Length != 2) continue;
             if (float.TryParse(parts[0].Trim(), System.Globalization.NumberStyles.Float,
@@ -109,9 +135,55 @@ public class TemplatePreview : MonoBehaviour
                 float.TryParse(parts[1].Trim(), System.Globalization.NumberStyles.Float,
                     System.Globalization.CultureInfo.InvariantCulture, out float y))
             {
-                points.Add(new Vector2(x, y));
+                current.Add(new Vector2(x, y));
             }
         }
-        return points;
+
+        if (current.Count > 0)
+            strokes.Add(current);
+
+        return strokes;
+    }
+
+    private LineRenderer GetRendererForStrokeIndex(int strokeIndex)
+    {
+        while (strokeIndex >= _strokeRenderers.Count)
+        {
+            LineRenderer renderer;
+            if (_strokeRenderers.Count == 0)
+            {
+                renderer = GetComponent<LineRenderer>();
+                if (renderer == null) renderer = gameObject.AddComponent<LineRenderer>();
+            }
+            else
+            {
+                GameObject strokeObj = new GameObject($"PreviewStroke_{_strokeRenderers.Count + 1}");
+                strokeObj.transform.SetParent(transform, false);
+                renderer = strokeObj.AddComponent<LineRenderer>();
+            }
+
+            renderer.material = _lineMaterial ?? new Material(Shader.Find("Sprites/Default"));
+            renderer.useWorldSpace = false;
+            renderer.loop = false;
+            renderer.numCapVertices = 8;
+            renderer.numCornerVertices = 8;
+            renderer.textureMode = LineTextureMode.Stretch;
+            renderer.alignment = LineAlignment.View;
+            renderer.positionCount = 0;
+            renderer.enabled = false;
+            _strokeRenderers.Add(renderer);
+        }
+
+        return _strokeRenderers[strokeIndex];
+    }
+
+    private void ClearAllRenderers()
+    {
+        for (int i = 0; i < _strokeRenderers.Count; i++)
+        {
+            if (_strokeRenderers[i] == null) continue;
+            _strokeRenderers[i].positionCount = 0;
+            _strokeRenderers[i].enabled = false;
+        }
     }
 }
