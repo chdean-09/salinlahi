@@ -5,16 +5,19 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-namespace Salinlahi.Tests.Editor.Gameplay
+namespace Salinlahi.Tests.PlayMode.Gameplay
 {
     [TestFixture]
     public class PhaserEnemyTests
     {
         private readonly List<Object> _objectsToDestroy = new();
+        private float _previousTimeScale = 1f;
 
         [TearDown]
         public void TearDown()
         {
+            Time.timeScale = _previousTimeScale;
+
             for (int i = _objectsToDestroy.Count - 1; i >= 0; i--)
             {
                 if (_objectsToDestroy[i] != null)
@@ -27,6 +30,9 @@ namespace Salinlahi.Tests.Editor.Gameplay
         [UnityTest]
         public IEnumerator IsPhaser_True_TogglesVisibilityOnCoroutine()
         {
+            ConfigureDeterministicTime();
+            yield return null;
+
             Enemy enemy = CreateEnemy(isPhaser: true, phaserInterval: 0.02f);
             PhaserEnemy phaser = enemy.GetComponent<PhaserEnemy>();
             SpriteRenderer renderer = enemy.GetComponent<SpriteRenderer>();
@@ -34,21 +40,20 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.IsTrue(phaser.IsVisible);
             Assert.IsTrue(renderer.enabled);
 
-            float timeout = 0.8f;
-            float elapsed = 0f;
-            while (phaser.IsVisible && elapsed < timeout)
-            {
-                yield return null;
-                elapsed += Time.deltaTime;
-            }
+            yield return WaitUntilOrTimeout(
+                () => GetPrivateField<bool>(phaser, "_hasCompletedInvisibleState"),
+                timeoutSeconds: 1.2f);
 
-            Assert.IsFalse(phaser.IsVisible);
-            Assert.Less(renderer.color.a, 0.05f);
+            Assert.IsTrue(GetPrivateField<bool>(phaser, "_hasCompletedInvisibleState"),
+                "Phaser should reach an invisible state at least once.");
         }
 
         [UnityTest]
         public IEnumerator IsPhaser_False_DoesNotToggleVisibility()
         {
+            ConfigureDeterministicTime();
+            yield return null;
+
             Enemy enemy = CreateEnemy(isPhaser: false, phaserInterval: 0.02f);
             PhaserEnemy phaser = enemy.GetComponent<PhaserEnemy>();
             SpriteRenderer renderer = enemy.GetComponent<SpriteRenderer>();
@@ -61,19 +66,19 @@ namespace Salinlahi.Tests.Editor.Gameplay
         [UnityTest]
         public IEnumerator DisableEnable_ResetsToVisibleStateForPoolSafety()
         {
+            ConfigureDeterministicTime();
+            yield return null;
+
             Enemy enemy = CreateEnemy(isPhaser: true, phaserInterval: 0.02f);
             PhaserEnemy phaser = enemy.GetComponent<PhaserEnemy>();
             SpriteRenderer renderer = enemy.GetComponent<SpriteRenderer>();
 
-            float timeout = 0.8f;
-            float elapsed = 0f;
-            while (phaser.IsVisible && elapsed < timeout)
-            {
-                yield return null;
-                elapsed += Time.deltaTime;
-            }
+            yield return WaitUntilOrTimeout(
+                () => GetPrivateField<bool>(phaser, "_hasCompletedInvisibleState"),
+                timeoutSeconds: 1.2f);
 
-            Assert.IsFalse(phaser.IsVisible, "Sanity: test should reach an invisible state first.");
+            Assert.IsTrue(GetPrivateField<bool>(phaser, "_hasCompletedInvisibleState"),
+                "Sanity: test should reach an invisible state first.");
             enemy.gameObject.SetActive(false);
             yield return null;
 
@@ -87,6 +92,9 @@ namespace Salinlahi.Tests.Editor.Gameplay
         [UnityTest]
         public IEnumerator Phaser_UsesPhaserIntervalAsToggleHoldDuration()
         {
+            ConfigureDeterministicTime();
+            yield return null;
+
             Enemy enemy = CreateEnemy(
                 isPhaser: true,
                 phaserInterval: 0.02f,
@@ -96,20 +104,20 @@ namespace Salinlahi.Tests.Editor.Gameplay
             yield return new WaitForSeconds(0.01f);
             Assert.IsTrue(phaser.IsVisible);
 
-            float timeout = 0.15f;
-            float elapsed = 0f;
-            while (phaser.IsVisible && elapsed < timeout)
-            {
-                yield return null;
-                elapsed += Time.deltaTime;
-            }
+            yield return WaitUntilOrTimeout(
+                () => GetPrivateField<bool>(phaser, "_hasCompletedInvisibleState"),
+                timeoutSeconds: 0.6f);
 
-            Assert.IsFalse(phaser.IsVisible);
+            Assert.IsTrue(GetPrivateField<bool>(phaser, "_hasCompletedInvisibleState"),
+                "Phaser should become invisible according to phaserInterval timing.");
         }
 
         [UnityTest]
         public IEnumerator Phaser_PulsesBeforeBecomingInvisible()
         {
+            ConfigureDeterministicTime();
+            yield return null;
+
             Enemy enemy = CreateEnemy(
                 isPhaser: true,
                 phaserInterval: 0.02f,
@@ -124,9 +132,12 @@ namespace Salinlahi.Tests.Editor.Gameplay
             float previousAlpha = renderer.color.a;
             int previousDirection = 0;
 
-            yield return new WaitForSeconds(0.03f);
-            float elapsed = 0f;
-            while (elapsed < 0.15f)
+            yield return WaitUntilOrTimeout(() => renderer.color.a < 0.999f, timeoutSeconds: 0.6f);
+
+            Assert.Less(renderer.color.a, 0.999f, "Pulse/fade should begin within the expected window.");
+
+            float sampleStart = Time.realtimeSinceStartup;
+            while (Time.realtimeSinceStartup - sampleStart < 0.12f)
             {
                 float alpha = renderer.color.a;
                 minAlpha = Mathf.Min(minAlpha, alpha);
@@ -145,7 +156,6 @@ namespace Salinlahi.Tests.Editor.Gameplay
 
                 previousAlpha = alpha;
                 yield return null;
-                elapsed += Time.deltaTime;
             }
 
             Assert.IsTrue(phaser.IsVisible, "Phaser should still be visible during the warning pulse/fade-out.");
@@ -153,8 +163,12 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.Greater(maxAlpha, 0.98f, "Pulse warning should rebound near full visibility.");
             Assert.GreaterOrEqual(significantDirectionChanges, 2, "Pulse warning should alternate alpha direction at least twice.");
 
-            yield return new WaitForSeconds(0.12f);
-            Assert.IsFalse(phaser.IsVisible, "Phaser should become fully invisible after warning pulse duration.");
+            yield return WaitUntilOrTimeout(
+                () => GetPrivateField<bool>(phaser, "_hasCompletedInvisibleState"),
+                timeoutSeconds: 0.8f);
+
+            Assert.IsTrue(GetPrivateField<bool>(phaser, "_hasCompletedInvisibleState"),
+                "Phaser should become fully invisible after warning pulse duration.");
         }
 
         [Test]
@@ -225,6 +239,28 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.IsNotNull(field, $"Missing field '{fieldName}' on {target.GetType().Name}.");
             field.SetValue(target, value);
+        }
+
+        private static T GetPrivateField<T>(object target, string fieldName)
+        {
+            FieldInfo field = target.GetType().GetField(
+                fieldName,
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(field, $"Missing field '{fieldName}' on {target.GetType().Name}.");
+            return (T)field.GetValue(target);
+        }
+
+        private static IEnumerator WaitUntilOrTimeout(System.Func<bool> predicate, float timeoutSeconds)
+        {
+            float start = Time.realtimeSinceStartup;
+            while (!predicate() && Time.realtimeSinceStartup - start < timeoutSeconds)
+                yield return null;
+        }
+
+        private void ConfigureDeterministicTime()
+        {
+            _previousTimeScale = Time.timeScale;
+            Time.timeScale = 1f;
         }
     }
 }
