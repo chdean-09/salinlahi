@@ -63,7 +63,7 @@ public class TemplatePreview : MonoBehaviour
             return;
         }
 
-        List<List<Vector2>> strokes = ParseStrokes(asset.text);
+        List<List<Vector2>> strokes = StrokeTextParser.ParseStrokes(asset.text);
         int strokeCount = strokes.Count;
         int pointCount = 0;
         for (int i = 0; i < strokeCount; i++)
@@ -108,41 +108,6 @@ public class TemplatePreview : MonoBehaviour
         }
 
         Debug.Log($"TemplatePreview: rendered {resourcePath} with {strokeCount} strokes and {pointCount} points (drawn strokes: {renderedStrokeCount}).");
-    }
-
-    private List<List<Vector2>> ParseStrokes(string text)
-    {
-        var strokes = new List<List<Vector2>>();
-        var current = new List<Vector2>();
-        string[] lines = text.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
-        foreach (string raw in lines)
-        {
-            string line = raw.Trim();
-            if (string.IsNullOrEmpty(line))
-            {
-                if (current.Count > 0)
-                {
-                    strokes.Add(current);
-                    current = new List<Vector2>();
-                }
-                continue;
-            }
-
-            string[] parts = line.Split(',');
-            if (parts.Length != 2) continue;
-            if (float.TryParse(parts[0].Trim(), System.Globalization.NumberStyles.Float,
-                    System.Globalization.CultureInfo.InvariantCulture, out float x) &&
-                float.TryParse(parts[1].Trim(), System.Globalization.NumberStyles.Float,
-                    System.Globalization.CultureInfo.InvariantCulture, out float y))
-            {
-                current.Add(new Vector2(x, y));
-            }
-        }
-
-        if (current.Count > 0)
-            strokes.Add(current);
-
-        return strokes;
     }
 
     private LineRenderer GetRendererForStrokeIndex(int strokeIndex)

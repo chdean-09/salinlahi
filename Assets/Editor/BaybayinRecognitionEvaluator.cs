@@ -44,10 +44,10 @@ public static class BaybayinRecognitionEvaluator
             int resampleCount = config != null ? config.resamplePointCount : 32;
 
             var loader = new TemplateLoader();
-            Dictionary<string, List<List<Vector2>>> templates = loader.LoadAll();
+            Dictionary<string, List<List<List<Vector2>>>> templates = loader.LoadAll();
 
             var recognizer = new DollarPRecognizer(resampleCount);
-            recognizer.SetTemplateVariants(templates);
+            recognizer.SetTemplateStrokeVariants(templates);
 
             string[] drawFiles = Directory.GetFiles(TestDrawsFolder, "*.txt", SearchOption.TopDirectoryOnly);
             if (drawFiles.Length == 0)
@@ -78,14 +78,15 @@ public static class BaybayinRecognitionEvaluator
                     continue;
                 }
 
-                List<Vector2> points = ParsePoints(File.ReadAllText(drawFile));
+                List<List<Vector2>> strokes = StrokeTextParser.ParseStrokes(File.ReadAllText(drawFile));
+                List<Vector2> points = StrokeTextParser.FlattenStrokes(strokes);
                 if (points.Count < 8)
                 {
                     Debug.LogWarning($"[BaybayinEval] Skipping sample '{fileNameNoExt}' with too few points ({points.Count}).");
                     continue;
                 }
 
-                RecognitionResult result = recognizer.Recognize(points);
+                RecognitionResult result = recognizer.Recognize(strokes);
                 total++;
 
                 bool isCorrect = string.Equals(expectedID, result.characterID, StringComparison.OrdinalIgnoreCase);
@@ -258,27 +259,27 @@ public static class BaybayinRecognitionEvaluator
 
     private static void PrintPerCharacterReport(
         Dictionary<string, AccuracyStats> perCharacter,
-        Dictionary<string, List<List<Vector2>>> templates)
+        Dictionary<string, List<List<List<Vector2>>>> templates)
     {
         Debug.Log("[BaybayinEval] Per-character accuracy (expectedID -> accuracy, evaluated draws, loaded template count):");
 
         foreach (string id in ExpectedCharacterIDs)
         {
             AccuracyStats stats = GetOrCreateStats(perCharacter, id);
-            int templateCount = templates.TryGetValue(id, out List<List<Vector2>> variants) ? variants.Count : 0;
+            int templateCount = templates.TryGetValue(id, out List<List<List<Vector2>>> variants) ? variants.Count : 0;
             Debug.Log($"[BaybayinEval] {id}: {stats.AccuracyPercent:F2}% ({stats.Correct}/{stats.Total}) templates={templateCount}");
         }
     }
 
     private static void PrintPerCharacterTemplateVariantReport(
         Dictionary<string, Dictionary<int, AccuracyStats>> perCharacterPredictedVariant,
-        Dictionary<string, List<List<Vector2>>> templates)
+        Dictionary<string, List<List<List<Vector2>>>> templates)
     {
         Debug.Log("[BaybayinEval] Per-character predicted template-variant accuracy (winner variant index):");
 
         foreach (string id in ExpectedCharacterIDs)
         {
-            int templateCount = templates.TryGetValue(id, out List<List<Vector2>> variants) ? variants.Count : 0;
+            int templateCount = templates.TryGetValue(id, out List<List<List<Vector2>>> variants) ? variants.Count : 0;
             Debug.Log($"[BaybayinEval] {id}: loadedVariants={templateCount}");
 
             if (!perCharacterPredictedVariant.TryGetValue(id, out Dictionary<int, AccuracyStats> byVariant) || byVariant.Count == 0)
@@ -297,14 +298,14 @@ public static class BaybayinRecognitionEvaluator
 
     private static void PrintExpectedTemplateVariantReport(
         Dictionary<string, Dictionary<int, AccuracyStats>> expectedVariantStats,
-        Dictionary<string, List<List<Vector2>>> templates,
+        Dictionary<string, List<List<List<Vector2>>>> templates,
         int drawsWithExpectedVariant)
     {
         Debug.Log($"[BaybayinEval] Expected-template variant accuracy for {drawsWithExpectedVariant} labeled draw(s):");
 
         foreach (string id in ExpectedCharacterIDs)
         {
-            int templateCount = templates.TryGetValue(id, out List<List<Vector2>> variants) ? variants.Count : 0;
+            int templateCount = templates.TryGetValue(id, out List<List<List<Vector2>>> variants) ? variants.Count : 0;
             Debug.Log($"[BaybayinEval] {id}: loadedVariants={templateCount}");
 
             if (!expectedVariantStats.TryGetValue(id, out Dictionary<int, AccuracyStats> byVariant) || byVariant.Count == 0)
@@ -334,24 +335,4 @@ public static class BaybayinRecognitionEvaluator
             Debug.Log($"[BaybayinEval]   {kvp.Key}: {kvp.Value}");
     }
 
-    private static List<Vector2> ParsePoints(string text)
-    {
-        var points = new List<Vector2>();
-        string[] lines = text.Split('\n');
-        foreach (string raw in lines)
-        {
-            string line = raw.Trim();
-            if (string.IsNullOrEmpty(line)) continue;
-
-            string[] parts = line.Split(',');
-            if (parts.Length != 2) continue;
-
-            bool parsedX = float.TryParse(parts[0].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float x);
-            bool parsedY = float.TryParse(parts[1].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float y);
-            if (parsedX && parsedY)
-                points.Add(new Vector2(x, y));
-        }
-
-        return points;
-    }
 }

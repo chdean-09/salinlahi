@@ -57,7 +57,7 @@ public static class BaybayinTemplateValidator
         {
             string fileNameNoExt = Path.GetFileNameWithoutExtension(filePath);
 
-            if (!fileNameNoExt.Contains("_template_", StringComparison.OrdinalIgnoreCase))
+            if (!TemplateVariantNameUtility.TryExtractCharacterID(fileNameNoExt, out _))
                 warnings.Add($"File '{fileNameNoExt}' does not match numbered variant naming (expected *_template_01 style).");
 
             string resourcePath = $"Templates/{fileNameNoExt}";
@@ -81,11 +81,8 @@ public static class BaybayinTemplateValidator
         foreach (string filePath in files)
         {
             string fileNameNoExt = Path.GetFileNameWithoutExtension(filePath).ToUpperInvariant();
-            int marker = fileNameNoExt.IndexOf("_TEMPLATE", StringComparison.Ordinal);
-            if (marker <= 0) continue;
-
-            string id = fileNameNoExt.Substring(0, marker);
-            id = CanonicalizeID(id);
+            if (!TemplateVariantNameUtility.TryExtractCharacterID(fileNameNoExt, out string id))
+                continue;
             foundIDs.Add(id);
         }
 

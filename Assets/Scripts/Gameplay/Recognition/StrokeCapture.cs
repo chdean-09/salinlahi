@@ -189,15 +189,15 @@ public class StrokeCapture : MonoBehaviour
 
         if (_strokes.Count == 0) return;
 
-        List<Vector2> allPoints = new List<Vector2>();
-        foreach (var stroke in _strokes)
-            allPoints.AddRange(stroke);
+        List<List<Vector2>> strokesForRecognition = new List<List<Vector2>>();
+        for (int i = 0; i < _strokes.Count; i++)
+            strokesForRecognition.Add(new List<Vector2>(_strokes[i]));
 
         _strokes.Clear();
         _pendingRecognitionSubmit = false;
         _canvas.ClearCanvas();
 
-        RecognitionManager.Instance.Recognize(allPoints);
+        RecognitionManager.Instance.Recognize(strokesForRecognition);
     }
 
     private void HandleGameResumed()
