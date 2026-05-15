@@ -162,6 +162,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Assert.Less(minAlpha, 0.95f, "Pulse warning should dip below full visibility.");
             Assert.Greater(maxAlpha, 0.98f, "Pulse warning should rebound near full visibility.");
             Assert.GreaterOrEqual(significantDirectionChanges, 2, "Pulse warning should alternate alpha direction at least twice.");
+            Assert.Greater(renderer.color.a, 0.98f, "Pulse warning should rebound near full visibility before invisibility.");
 
             yield return WaitUntilOrTimeout(
                 () => GetPrivateField<bool>(phaser, "_hasCompletedInvisibleState"),
