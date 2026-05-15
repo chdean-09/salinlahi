@@ -25,6 +25,7 @@ public class TemplateRecorder : MonoBehaviour
     [SerializeField] private bool _autoIncrementDrawNumber = true;
     [SerializeField] private Material _lineMaterial;
     [SerializeField] private float _lineWidth = 0.02f;
+    [SerializeField] private float _minimumPointDistancePixels = 1f;
     [SerializeField] private int _minimumStrokePointCount = 3;
     [SerializeField] private float _minimumStrokePathLength = 12f;
     [SerializeField] private bool _preserveAspectRatioOnSave = true;
@@ -88,8 +89,9 @@ public class TemplateRecorder : MonoBehaviour
 
         if (_drawing && mouse.leftButton.isPressed)
         {
-            _activeStrokePoints.Add(mouse.position.ReadValue());
-            UpdateLineRenderer(_activeStrokePoints, GetRendererForStrokeIndex(_strokes.Count - 1));
+            Vector2 point = mouse.position.ReadValue();
+            if (TryAppendPoint(_activeStrokePoints, point))
+                UpdateLineRenderer(_activeStrokePoints, GetRendererForStrokeIndex(_strokes.Count - 1));
         }
 
         if (_drawing && mouse.leftButton.wasReleasedThisFrame)
@@ -210,6 +212,24 @@ public class TemplateRecorder : MonoBehaviour
         }
 
         _activeStrokePoints = null;
+    }
+
+    private bool TryAppendPoint(List<Vector2> strokePoints, Vector2 point)
+    {
+        if (strokePoints == null) return false;
+        if (strokePoints.Count == 0)
+        {
+            strokePoints.Add(point);
+            return true;
+        }
+
+        float minDistance = Mathf.Max(0f, _minimumPointDistancePixels);
+        Vector2 lastPoint = strokePoints[strokePoints.Count - 1];
+        if (Vector2.Distance(lastPoint, point) < minDistance)
+            return false;
+
+        strokePoints.Add(point);
+        return true;
     }
 
     private void UpdateLineRenderer(List<Vector2> strokePoints, LineRenderer targetRenderer)

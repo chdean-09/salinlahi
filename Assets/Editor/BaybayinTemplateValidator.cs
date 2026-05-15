@@ -17,22 +17,35 @@ public static class BaybayinTemplateValidator
     [MenuItem("Salinlahi/Validation/Validate Baybayin Templates")]
     public static void ValidateTemplates()
     {
-        var errors = new List<string>();
-        var warnings = new List<string>();
+        Debug.Log("[BaybayinValidator] Validation started.");
 
-        if (!Directory.Exists(TemplatesFolder))
+        try
         {
-            errors.Add($"Missing templates folder: {TemplatesFolder}");
+            var errors = new List<string>();
+            var warnings = new List<string>();
+
+            if (!Directory.Exists(TemplatesFolder))
+            {
+                errors.Add($"Missing templates folder: {TemplatesFolder}");
+                PrintResults(errors, warnings);
+                return;
+            }
+
+            string[] files = Directory.GetFiles(TemplatesFolder, "*.txt", SearchOption.TopDirectoryOnly);
+            ValidateTemplateFiles(files, errors, warnings);
+            ValidateCharacterCoverage(files, errors);
+            ValidateCharacterAssets(errors, warnings);
+
             PrintResults(errors, warnings);
-            return;
         }
-
-        string[] files = Directory.GetFiles(TemplatesFolder, "*.txt", SearchOption.TopDirectoryOnly);
-        ValidateTemplateFiles(files, errors, warnings);
-        ValidateCharacterCoverage(files, errors);
-        ValidateCharacterAssets(errors, warnings);
-
-        PrintResults(errors, warnings);
+        catch (Exception ex)
+        {
+            Debug.LogException(ex);
+            EditorUtility.DisplayDialog(
+                "Baybayin Template Validation",
+                "Validation crashed. See Console for exception details.",
+                "OK");
+        }
     }
 
     private static void ValidateTemplateFiles(string[] files, List<string> errors, List<string> warnings)
@@ -114,9 +127,14 @@ public static class BaybayinTemplateValidator
                     ? templatePathWithoutExtension
                     : $"Templates/{templatePathWithoutExtension}";
 
-                TextAsset loaded = Resources.Load<TextAsset>(resourcePath);
-                if (loaded == null)
+                if (!TryLoadTemplateResource(resourcePath, out TextAsset loaded, out string resolvedPath))
+                {
                     errors.Add($"{path}: Resources.Load failed for templateFileName '{so.templateFileName}' (resolved '{resourcePath}').");
+                }
+                else if (!string.Equals(resourcePath, resolvedPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    warnings.Add($"{path}: templateFileName '{so.templateFileName}' resolved via fallback '{resolvedPath}'. Consider updating the asset value.");
+                }
             }
 
             if (so.displaySprite == null)
@@ -130,6 +148,31 @@ public static class BaybayinTemplateValidator
             if (!seenIDs.Contains(expected))
                 warnings.Add($"No BaybayinCharacterSO found for expected characterID '{expected}'.");
         }
+    }
+
+    private static bool TryLoadTemplateResource(string resourcePath, out TextAsset loaded, out string resolvedPath)
+    {
+        loaded = Resources.Load<TextAsset>(resourcePath);
+        resolvedPath = resourcePath;
+        if (loaded != null)
+            return true;
+
+        // Backward compatibility: allow non-numbered templateFileName values
+        // (e.g. Templates/BA_template) to resolve to numbered variants.
+        if (resourcePath.EndsWith("_template", StringComparison.OrdinalIgnoreCase))
+        {
+            for (int i = 1; i <= 99; i++)
+            {
+                string candidate = $"{resourcePath}_{i:00}";
+                loaded = Resources.Load<TextAsset>(candidate);
+                if (loaded == null) continue;
+
+                resolvedPath = candidate;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static int CountValidCoordinatePairs(string text)
@@ -170,5 +213,12 @@ public static class BaybayinTemplateValidator
             Debug.Log($"[BaybayinValidator] Validation passed with {warnings.Count} warning(s).");
         else
             Debug.LogError($"[BaybayinValidator] Validation failed with {errors.Count} error(s) and {warnings.Count} warning(s).");
+
+        EditorUtility.DisplayDialog(
+            "Baybayin Template Validation",
+            errors.Count == 0
+                ? $"Validation passed.\nWarnings: {warnings.Count}\n\nSee Console for details."
+                : $"Validation failed.\nErrors: {errors.Count}\nWarnings: {warnings.Count}\n\nSee Console for details.",
+            "OK");
     }
 }
