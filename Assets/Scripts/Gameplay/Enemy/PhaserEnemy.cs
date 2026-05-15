@@ -147,9 +147,12 @@ public class PhaserEnemy : MonoBehaviour
         if (_enemy == null || _enemy.Data == null)
             return fallback;
 
-        return _enemy.Data.phaserInitialVisibleDelayMin > 0f
-            ? _enemy.Data.phaserInitialVisibleDelayMin
-            : fallback;
+        float minDelay = _enemy.Data.phaserInitialVisibleDelayMin;
+        float maxDelay = _enemy.Data.phaserInitialVisibleDelayMax > 0f
+            ? _enemy.Data.phaserInitialVisibleDelayMax
+            : minDelay;
+
+        return GetRandomDuration(minDelay, maxDelay, fallback);
     }
 
     private void CacheRenderersIfMissing()

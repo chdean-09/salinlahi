@@ -33,6 +33,8 @@ public class EnemyDataSO : ScriptableObject
     public float phaserInterval = 0.5f;
     [Tooltip("Minimum visible time after spawn/enable before the first invisibility cycle. <= 0 uses phaserInterval.")]
     public float phaserInitialVisibleDelayMin = 0f;
+    [Tooltip("Maximum visible time after spawn/enable before the first invisibility cycle. <= 0 uses phaserInitialVisibleDelayMin (or phaserInterval when min is also <= 0).")]
+    public float phaserInitialVisibleDelayMax = 0f;
     [Tooltip("Optional randomized visible hold minimum in seconds. <= 0 falls back to phaserInterval.")]
     public float phaserVisibleHoldMin = 0f;
     [Tooltip("Optional randomized visible hold maximum in seconds. <= 0 falls back to phaserInterval.")]
