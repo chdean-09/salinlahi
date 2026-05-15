@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using UnityEngine;
 // Loads Baybayin character template point clouds from Resources / Templates /.
@@ -29,7 +30,8 @@ public class TemplateLoader
                 continue;
             }
 
-            List<Vector2> pts = ParsePoints(asset.text);
+            List<List<Vector2>> parsedStrokes = ParseStrokes(asset.text);
+            List<Vector2> pts = FlattenStrokes(parsedStrokes);
             if (pts.Count > 0)
             {
                 if (!result.TryGetValue(id, out List<List<Vector2>> variants))
@@ -39,11 +41,11 @@ public class TemplateLoader
                 }
 
                 variants.Add(pts);
-                DebugLogger.Log($"TemplateLoader: Loaded '{asset.name}' -> '{id}' with {pts.Count} points.");
+                DebugLogger.Log($"TemplateLoader: Loaded '{asset.name}' -> '{id}' with {parsedStrokes.Count} strokes and {pts.Count} points.");
             }
             else
             {
-                DebugLogger.LogWarning($"TemplateLoader: Template '{id}' had no valid points.");
+                DebugLogger.LogWarning($"TemplateLoader: Template '{id}' had no valid points after parsing strokes.");
             }
         }
 
@@ -61,21 +63,51 @@ public class TemplateLoader
         return !string.IsNullOrEmpty(id);
     }
 
-    private List<Vector2> ParsePoints(string text)
+    private List<List<Vector2>> ParseStrokes(string text)
     {
-        var points = new List<Vector2>();
-        foreach (string raw in text.Split('\n'))
+        var strokes = new List<List<Vector2>>();
+        var current = new List<Vector2>();
+        string[] lines = text.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
+        foreach (string raw in lines)
         {
             string line = raw.Trim();
-            if (string.IsNullOrEmpty(line)) continue;
+            if (string.IsNullOrEmpty(line))
+            {
+                if (current.Count > 0)
+                {
+                    strokes.Add(current);
+                    current = new List<Vector2>();
+                }
+                continue;
+            }
+
             string[] parts = line.Split(',');
             if (parts.Length != 2) continue;
-            if (float.TryParse(parts[0].Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float x) &&
-                float.TryParse(parts[1].Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float y))
+            if (float.TryParse(parts[0].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float x) &&
+                float.TryParse(parts[1].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float y))
             {
-                points.Add(new Vector2(x, y));
+                current.Add(new Vector2(x, y));
             }
         }
+
+        if (current.Count > 0)
+            strokes.Add(current);
+
+        return strokes;
+    }
+
+    private List<Vector2> FlattenStrokes(List<List<Vector2>> strokes)
+    {
+        var points = new List<Vector2>();
+        if (strokes == null) return points;
+
+        for (int i = 0; i < strokes.Count; i++)
+        {
+            List<Vector2> stroke = strokes[i];
+            if (stroke == null || stroke.Count == 0) continue;
+            points.AddRange(stroke);
+        }
+
         return points;
     }
 }
