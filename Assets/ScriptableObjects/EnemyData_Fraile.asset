@@ -35,7 +35,6 @@ MonoBehaviour:
   phaserFadeInDuration: 0.08
   phaserFadeOutPulseCount: 1
   phaserFadeOutPulseAmplitude: 0.3
-  phaserNoInvisibleNearBaseDistance: 1.75
   dealsContactDamage: 1
   era: 0
   zigzagAmplitude: 0

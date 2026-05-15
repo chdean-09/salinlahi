@@ -52,9 +52,6 @@ public class EnemyDataSO : ScriptableObject
     [Range(0f, 1f)]
     [Tooltip("Pulse intensity during fade-out. 0 = plain fade, 1 = strongest pulse.")]
     public float phaserFadeOutPulseAmplitude = 0.2f;
-    [Tooltip("World-space distance from PlayerBase where phasers are forced visible (no invisibility near base).")]
-    public float phaserNoInvisibleNearBaseDistance = 1.5f;
-
     [Header("Contact Behavior")]
     [Tooltip("If false, reaching the Shrine collision zone will despawn this enemy without damaging the Shrine.")]
     public bool dealsContactDamage = true;
