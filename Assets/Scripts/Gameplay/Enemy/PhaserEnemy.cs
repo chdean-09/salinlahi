@@ -7,6 +7,7 @@ public class PhaserEnemy : MonoBehaviour
 {
     private const float FallbackInterval = 0.5f;
     private const float MinDuration = 0.01f;
+    private const float DefaultPulseMinAlpha = 0.6f;
 
     [SerializeField] private Renderer[] _renderers;
 
@@ -206,14 +207,14 @@ public class PhaserEnemy : MonoBehaviour
         {
             elapsed += Time.deltaTime;
             float t = Mathf.Clamp01(elapsed / duration);
-            float baseAlpha = 1f - t;
-            // Ease-out pulse timing: faster flicker early, slower near invisibility.
-            float pulseTime = 1f - Mathf.Pow(1f - t, 2f);
+            // Telegraph invisibility by pulsing out and back to full visibility
+            // before the final invisible state is applied.
+            float pulseTime = Mathf.SmoothStep(0f, 1f, t);
             float pulseWave = pulseCount > 0
-                ? Mathf.Abs(Mathf.Sin(pulseTime * pulseCount * Mathf.PI * 2f))
+                ? Mathf.Abs(Mathf.Sin(pulseTime * pulseCount * Mathf.PI))
                 : 0f;
-            float pulseStrength = Mathf.Clamp01(pulseWave * pulseAmplitude);
-            float alpha = Mathf.Lerp(baseAlpha, 1f, pulseStrength);
+            float targetPulseMinAlpha = Mathf.Min(1f - pulseAmplitude, DefaultPulseMinAlpha);
+            float alpha = Mathf.Lerp(1f, targetPulseMinAlpha, pulseWave);
             ApplyAlpha(alpha);
             yield return null;
         }
