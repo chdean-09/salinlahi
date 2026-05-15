@@ -136,12 +136,13 @@ namespace Salinlahi.Tests.Editor.Gameplay
             go.AddComponent<SpriteRenderer>();
             go.AddComponent<BoxCollider2D>();
             go.AddComponent<EnemyMover>();
+            Enemy enemy = go.AddComponent<Enemy>();
             if (isPhaser)
                 go.AddComponent<PhaserEnemy>();
-            Enemy enemy = go.AddComponent<Enemy>();
             SetPrivateField(enemy, "_showDebugLabels", false);
             go.SetActive(true);
             _objectsToDestroy.Add(go);
+            Assert.AreEqual(1, go.GetComponents<Enemy>().Length);
 
             Assert.IsTrue(enemy.Initialize(data));
             return enemy;

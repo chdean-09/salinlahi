@@ -17,6 +17,8 @@ public class PhaserEnemy : MonoBehaviour
     private TextMeshPro[] _textLabels;
     private Color[] _spriteBaseColors;
     private Color[] _labelBaseColors;
+    private bool _hasCompletedInvisibleState;
+    private bool _hasCompletedSinglePhaseCycle;
 
     public bool IsVisible => _isVisible;
 
@@ -49,6 +51,8 @@ public class PhaserEnemy : MonoBehaviour
     public void RefreshPhaserState()
     {
         StopToggleRoutine();
+        _hasCompletedInvisibleState = false;
+        _hasCompletedSinglePhaseCycle = false;
         SetVisibleImmediate();
 
         if (ShouldRunPhaser())
@@ -57,7 +61,7 @@ public class PhaserEnemy : MonoBehaviour
 
     private IEnumerator ToggleVisibilityRoutine()
     {
-        while (ShouldRunPhaser())
+        while (ShouldRunPhaser() && !_hasCompletedSinglePhaseCycle)
         {
             float holdDuration = Mathf.Max(MinDuration, GetCurrentHoldDuration());
             yield return new WaitForSeconds(holdDuration);
@@ -67,6 +71,7 @@ public class PhaserEnemy : MonoBehaviour
                 yield return FadeOutWithPulse();
                 // Damage becomes invalid only once fully invisible.
                 _isVisible = false;
+                _hasCompletedInvisibleState = true;
                 ApplyAlpha(0f);
             }
             else
@@ -75,9 +80,13 @@ public class PhaserEnemy : MonoBehaviour
                 _isVisible = true;
                 yield return FadeIn();
                 ApplyAlpha(1f);
+                _hasCompletedSinglePhaseCycle = true;
             }
         }
 
+        // One-shot phase behavior: remain visible after first full cycle.
+        _isVisible = true;
+        ApplyAlpha(1f);
         _toggleRoutine = null;
     }
 
@@ -106,13 +115,39 @@ public class PhaserEnemy : MonoBehaviour
         float fallback = GetInterval();
         if (_isVisible)
         {
-            return _enemy.Data.phaserVisibleDuration > 0f
-                ? _enemy.Data.phaserVisibleDuration
-                : fallback;
+            float randomized = GetRandomDuration(_enemy.Data.phaserVisibleHoldMin, _enemy.Data.phaserVisibleHoldMax, fallback);
+            if (!_hasCompletedInvisibleState)
+                randomized = Mathf.Max(randomized, GetInitialVisibleDelay(fallback));
+            return randomized;
         }
 
-        return _enemy.Data.phaserInvisibleDuration > 0f
-            ? _enemy.Data.phaserInvisibleDuration
+        return GetRandomDuration(_enemy.Data.phaserInvisibleHoldMin, _enemy.Data.phaserInvisibleHoldMax, fallback);
+    }
+
+    private float GetRandomDuration(float min, float max, float fallback)
+    {
+        float minDuration = min > 0f ? min : fallback;
+        float maxDuration = max > 0f ? max : fallback;
+        if (maxDuration < minDuration)
+        {
+            float tmp = minDuration;
+            minDuration = maxDuration;
+            maxDuration = tmp;
+        }
+
+        if (Mathf.Approximately(minDuration, maxDuration))
+            return minDuration;
+
+        return Random.Range(minDuration, maxDuration);
+    }
+
+    private float GetInitialVisibleDelay(float fallback)
+    {
+        if (_enemy == null || _enemy.Data == null)
+            return fallback;
+
+        return _enemy.Data.phaserInitialVisibleDelayMin > 0f
+            ? _enemy.Data.phaserInitialVisibleDelayMin
             : fallback;
     }
 
@@ -172,10 +207,13 @@ public class PhaserEnemy : MonoBehaviour
             elapsed += Time.deltaTime;
             float t = Mathf.Clamp01(elapsed / duration);
             float baseAlpha = 1f - t;
-            float pulse = pulseCount > 0
-                ? Mathf.Sin(t * pulseCount * Mathf.PI * 2f) * pulseAmplitude * baseAlpha
+            // Ease-out pulse timing: faster flicker early, slower near invisibility.
+            float pulseTime = 1f - Mathf.Pow(1f - t, 2f);
+            float pulseWave = pulseCount > 0
+                ? Mathf.Abs(Mathf.Sin(pulseTime * pulseCount * Mathf.PI * 2f))
                 : 0f;
-            float alpha = Mathf.Clamp01(baseAlpha + pulse);
+            float pulseStrength = Mathf.Clamp01(pulseWave * pulseAmplitude);
+            float alpha = Mathf.Lerp(baseAlpha, 1f, pulseStrength);
             ApplyAlpha(alpha);
             yield return null;
         }

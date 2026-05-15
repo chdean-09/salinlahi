@@ -65,6 +65,43 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.IsFalse(enemy.gameObject.activeInHierarchy);
         }
 
+        [Test]
+        public void Defeat_WithoutDeathAnimation_ReturnsToPool_AndUnregistersCleanly()
+        {
+            Enemy prefab = CreateEnemyPrefab();
+            EnemyPool pool = CreateEnemyPool(prefab);
+            EnemyDataSO data = CreateEnemyDataWithoutDeathAnimation();
+
+            Enemy enemy = pool.Get(data);
+            Assert.IsNotNull(enemy);
+            Assert.AreEqual(1, _tracker.ActiveCount);
+
+            enemy.Defeat();
+
+            Assert.IsFalse(pool.IsCheckedOut(enemy));
+            Assert.AreEqual(0, _tracker.ActiveCount);
+            Assert.IsFalse(enemy.gameObject.activeInHierarchy);
+        }
+
+        [Test]
+        public void ApplyDecoyPenalty_ReturnsToPool_AndUnregistersCleanly()
+        {
+            Enemy prefab = CreateEnemyPrefab();
+            EnemyPool pool = CreateEnemyPool(prefab);
+            EnemyDataSO data = CreateEnemyDataWithoutDeathAnimation();
+            data.isDecoy = true;
+
+            Enemy enemy = pool.Get(data);
+            Assert.IsNotNull(enemy);
+            Assert.AreEqual(1, _tracker.ActiveCount);
+
+            enemy.ApplyDecoyPenalty();
+
+            Assert.IsFalse(pool.IsCheckedOut(enemy));
+            Assert.AreEqual(0, _tracker.ActiveCount);
+            Assert.IsFalse(enemy.gameObject.activeInHierarchy);
+        }
+
         private Enemy CreateEnemyPrefab()
         {
             var prefabGo = new GameObject("EnemyPrefab_Unregister_Test");
@@ -108,6 +145,24 @@ namespace Salinlahi.Tests.Editor.Gameplay
             data.assignedCharacter = character;
             data.deathFrames = new[] { CreateSprite(Color.red) };
             data.deathAnimationFps = 120f;
+            _objectsToDestroy.Add(data);
+            return data;
+        }
+
+        private EnemyDataSO CreateEnemyDataWithoutDeathAnimation()
+        {
+            BaybayinCharacterSO character = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            character.characterID = "BA";
+            character.syllable = "ba";
+            _objectsToDestroy.Add(character);
+
+            EnemyDataSO data = ScriptableObject.CreateInstance<EnemyDataSO>();
+            data.enemyID = "soldado";
+            data.maxHealth = 1;
+            data.moveSpeed = 1f;
+            data.assignedCharacter = character;
+            data.deathFrames = System.Array.Empty<Sprite>();
+            data.deathAnimationFps = 0f;
             _objectsToDestroy.Add(data);
             return data;
         }
