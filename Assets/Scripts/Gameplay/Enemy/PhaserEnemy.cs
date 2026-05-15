@@ -19,7 +19,6 @@ public class PhaserEnemy : MonoBehaviour
     private Color[] _spriteBaseColors;
     private Color[] _labelBaseColors;
     private bool _hasCompletedInvisibleState;
-    private bool _hasCompletedSinglePhaseCycle;
 
     public bool IsVisible => _isVisible;
 
@@ -53,7 +52,6 @@ public class PhaserEnemy : MonoBehaviour
     {
         StopToggleRoutine();
         _hasCompletedInvisibleState = false;
-        _hasCompletedSinglePhaseCycle = false;
         SetVisibleImmediate();
 
         if (ShouldRunPhaser())
@@ -62,7 +60,7 @@ public class PhaserEnemy : MonoBehaviour
 
     private IEnumerator ToggleVisibilityRoutine()
     {
-        while (ShouldRunPhaser() && !_hasCompletedSinglePhaseCycle)
+        while (ShouldRunPhaser())
         {
             float holdDuration = Mathf.Max(MinDuration, GetCurrentHoldDuration());
             yield return new WaitForSeconds(holdDuration);
@@ -81,13 +79,8 @@ public class PhaserEnemy : MonoBehaviour
                 _isVisible = true;
                 yield return FadeIn();
                 ApplyAlpha(1f);
-                _hasCompletedSinglePhaseCycle = true;
             }
         }
-
-        // One-shot phase behavior: remain visible after first full cycle.
-        _isVisible = true;
-        ApplyAlpha(1f);
         _toggleRoutine = null;
     }
 

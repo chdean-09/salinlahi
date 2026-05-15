@@ -24,13 +24,13 @@ MonoBehaviour:
   assignedCharacter: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
   isDecoy: 0
   isPhaser: 1
-  phaserInterval: 1.2
-  phaserInitialVisibleDelayMin: 0.6
-  phaserInitialVisibleDelayMax: 2
-  phaserVisibleHoldMin: 0.8
-  phaserVisibleHoldMax: 1.4
-  phaserInvisibleHoldMin: 1.5
-  phaserInvisibleHoldMax: 2.8
+  phaserInterval: 1
+  phaserInitialVisibleDelayMin: 0.5
+  phaserInitialVisibleDelayMax: 1
+  phaserVisibleHoldMin: 1.8
+  phaserVisibleHoldMax: 2.7
+  phaserInvisibleHoldMin: 0.8
+  phaserInvisibleHoldMax: 1.4
   phaserFadeOutDuration: 0.7
   phaserFadeInDuration: 0.08
   phaserFadeOutPulseCount: 1
