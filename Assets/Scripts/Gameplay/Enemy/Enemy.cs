@@ -31,7 +31,6 @@ public class Enemy : MonoBehaviour
 
     private EnemyMover _mover;
     private EnemyHurtFeedback _hurtFeedback;
-    private PhaserEnemy _phaserEnemy;
     private SpriteRenderer _renderer;
     private int _currentHealth;
     private BaybayinCharacterSO _runtimeCharacter;
@@ -54,7 +53,6 @@ public class Enemy : MonoBehaviour
     public int CurrentHealth => _currentHealth;
     public bool IsDecoy => _data != null && _data.isDecoy;
     public bool IsDying => _isDying;
-    public bool IsPhaserVisible => _phaserEnemy == null || _phaserEnemy.IsVisible;
     // placeholder for now. will be replaced in salin 68
     public virtual bool IsBoss => false;
     public event Action<Enemy, int, int> HealthChanged;
@@ -95,7 +93,6 @@ public class Enemy : MonoBehaviour
     {
         _mover = GetComponent<EnemyMover>();
         _hurtFeedback = GetComponent<EnemyHurtFeedback>();
-        _phaserEnemy = GetComponent<PhaserEnemy>();
         _renderer = GetComponent<SpriteRenderer>();
 
         if (_renderer != null)
@@ -122,8 +119,6 @@ public class Enemy : MonoBehaviour
     {
         if (_mover == null)
             _mover = GetComponent<EnemyMover>();
-        if (_phaserEnemy == null)
-            _phaserEnemy = GetComponent<PhaserEnemy>();
 
         if (_renderer == null)
             _renderer = GetComponent<SpriteRenderer>();
@@ -186,7 +181,6 @@ public class Enemy : MonoBehaviour
         }
 
         ActiveEnemyTracker.Instance?.Register(this);
-        _phaserEnemy?.RefreshPhaserState();
         RefreshDebugLabels();
         UpdateLabelLayout();
         HealthChanged?.Invoke(this, _currentHealth, _currentHealth);
@@ -247,9 +241,6 @@ public class Enemy : MonoBehaviour
             DebugLogger.LogWarning($"Enemy.TakeDamage: Enemy '{name}' has no data and cannot take damage.");
             return;
         }
-
-        if (_data.isPhaser && !IsPhaserVisible)
-            return;
 
         int previousHealth = _currentHealth;
         _currentHealth -= amount;
@@ -332,6 +323,7 @@ public class Enemy : MonoBehaviour
             // Otherwise its pause-window resume (or shake offset) could fight
             // the death animation by reactivating the mover or shifting the sprite.
             _hurtFeedback?.ResetState();
+            ActiveEnemyTracker.Instance?.Unregister(this);
             _mover?.Stop();
             DisableContactCollider();
             // Clear any aura this enemy is projecting before the death animation starts,

@@ -26,25 +26,6 @@ public class EnemyDataSO : ScriptableObject
     [Tooltip("If true, this enemy is a decoy variant and drawing its character applies a penalty.")]
     public bool isDecoy;
 
-    [Header("Phaser (Fraile)")]
-    [Tooltip("If true, this enemy toggles between visible and invisible states.")]
-    public bool isPhaser;
-    [Tooltip("Seconds between visibility toggles for Phaser enemies.")]
-    public float phaserInterval = 0.5f;
-    [Tooltip("Optional: seconds the phaser stays visible before turning invisible. <= 0 uses phaserInterval.")]
-    public float phaserVisibleDuration = 0f;
-    [Tooltip("Optional: seconds the phaser stays invisible before turning visible. <= 0 uses phaserInterval.")]
-    public float phaserInvisibleDuration = 0f;
-    [Tooltip("Seconds spent fading/pulsing from visible to invisible before full invisibility.")]
-    public float phaserFadeOutDuration = 0.3f;
-    [Tooltip("Seconds spent fading from invisible to visible.")]
-    public float phaserFadeInDuration = 0.2f;
-    [Tooltip("Pulse cycles during fade-out telegraph.")]
-    public int phaserFadeOutPulseCount = 3;
-    [Range(0f, 1f)]
-    [Tooltip("Pulse intensity during fade-out. 0 = plain fade, 1 = strongest pulse.")]
-    public float phaserFadeOutPulseAmplitude = 0.2f;
-
     [Header("Contact Behavior")]
     [Tooltip("If false, reaching the Shrine collision zone will despawn this enemy without damaging the Shrine.")]
     public bool dealsContactDamage = true;
