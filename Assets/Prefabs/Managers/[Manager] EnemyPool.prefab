@@ -52,10 +52,6 @@ MonoBehaviour:
     prefab: {fileID: 8037671833055544141, guid: 7d0626488d0ea194db35b08de3fba50b, type: 3}
     defaultCapacity: 10
     maxSize: 20
-  - enemyID: fraile
-    prefab: {fileID: 8037671833055544141, guid: 3463fc9c4bae4593bdce70d36ae8a2fd, type: 3}
-    defaultCapacity: 10
-    maxSize: 20
   - enemyID: soldier
     prefab: {fileID: 8037671833055544141, guid: 5d5a8f0c2e3446198d8d7f7b3a1c0f42, type: 3}
     defaultCapacity: 10
