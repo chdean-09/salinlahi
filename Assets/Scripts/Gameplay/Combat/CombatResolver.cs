@@ -37,6 +37,7 @@ public class CombatResolver : MonoBehaviour
             {
                 Enemy m = matches[i];
                 if (m == null) continue;
+                if (!IsEligibleCombatTarget(m)) continue;
                 if (m.IsBoss) continue;
                 if (m.IsDecoy) continue;
                 if (m.Data == null) continue;
@@ -55,6 +56,7 @@ public class CombatResolver : MonoBehaviour
             {
                 Enemy candidate = burstTargets[i];
                 if (candidate == null) continue;
+                if (!IsEligibleCombatTarget(candidate)) continue;
                 if (candidate.IsBoss) continue;
                 if (candidate.IsDecoy) continue;
                 if (candidate.Data == null) continue;
@@ -73,7 +75,7 @@ public class CombatResolver : MonoBehaviour
             return;
         }
 
-        Enemy closestTarget = tracker.FindClosestToBase(characterID);
+        Enemy closestTarget = FindClosestEligibleMatch(matches);
         if (closestTarget == null)
         {
             EventBus.RaiseDrawingMissed();
@@ -84,6 +86,47 @@ public class CombatResolver : MonoBehaviour
         }
 
         ResolveMatchedEnemy(closestTarget, characterID);
+    }
+
+    private static Enemy FindClosestEligibleMatch(List<Enemy> matches)
+    {
+        if (matches == null || matches.Count == 0)
+            return null;
+
+        Enemy closest = null;
+        float lowestY = float.MaxValue;
+        for (int i = 0; i < matches.Count; i++)
+        {
+            Enemy candidate = matches[i];
+            if (!IsEligibleCombatTarget(candidate))
+                continue;
+
+            float y = candidate.transform.position.y;
+            if (y < lowestY)
+            {
+                lowestY = y;
+                closest = candidate;
+            }
+        }
+
+        return closest;
+    }
+
+    private static bool IsEligibleCombatTarget(Enemy enemy)
+    {
+        if (enemy == null)
+            return false;
+
+        if (enemy.IsDying)
+            return false;
+
+        if (enemy.Data == null)
+            return false;
+
+        if (enemy.Data.isPhaser && !enemy.IsPhaserVisible)
+            return false;
+
+        return true;
     }
 
     private static void ResolveMatchedEnemy(Enemy target, string characterID)
