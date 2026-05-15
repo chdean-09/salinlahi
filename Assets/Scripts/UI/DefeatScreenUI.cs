@@ -21,8 +21,6 @@ public class DefeatScreenUI : MonoBehaviour
 
     private void OnEnable()
     {
-        EventBus.OnGameOver += Show;
-
         if (_retryButton != null)
             _retryButton.onClick.AddListener(OnRetryPressed);
         if (_levelSelectButton != null)
@@ -31,15 +29,13 @@ public class DefeatScreenUI : MonoBehaviour
 
     private void OnDisable()
     {
-        EventBus.OnGameOver -= Show;
-
         if (_retryButton != null)
             _retryButton.onClick.RemoveListener(OnRetryPressed);
         if (_levelSelectButton != null)
             _levelSelectButton.onClick.RemoveListener(OnLevelSelectPressed);
     }
 
-    private void Show()
+    public void Show()
     {
         if (_panel != null)
             _panel.SetActive(true);

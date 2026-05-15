@@ -4,7 +4,7 @@ using UnityEngine;
 /// <summary>
 /// Orchestrates the full level lifecycle in the Gameplay scene:
 /// intro dialogue → BGM → WaveManager → outro dialogue → Victory/Defeat routing.
-/// All transitions driven by EventBus events (SALIN-46 AC-6).
+/// EventBus signals drive lifecycle changes; this controller owns terminal screen routing.
 /// </summary>
 public class LevelFlowController : MonoBehaviour
 {
@@ -12,6 +12,7 @@ public class LevelFlowController : MonoBehaviour
     [SerializeField] private WaveManager _waveManager;
     [SerializeField] private DialogueController _dialogueController;
     [SerializeField] private VictoryScreenUI _victoryScreen;
+    [SerializeField] private DefeatScreenUI _defeatScreen;
 
     [Header("Level Config")]
     [Tooltip("Resolved at runtime from GameManager.CurrentLevel or Inspector fallback.")]
@@ -55,11 +56,20 @@ public class LevelFlowController : MonoBehaviour
             _waitingForDialogue = true;
             _dialogueController.Play(_levelConfig.introDialogue);
             yield return new WaitUntil(() => !_waitingForDialogue);
+
+            if (_levelEnded)
+                yield break;
         }
+
+        if (_levelEnded)
+            yield break;
 
         // AC-2: Start BGM from level config
         if (_levelConfig.bgmClip != null && AudioManager.Instance != null)
             AudioManager.Instance.PlayBGM(_levelConfig.bgmClip);
+
+        if (_levelEnded)
+            yield break;
 
         // AC-3: Start waves — no isBossLevel branching; WaveManager handles it internally
         if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
@@ -93,22 +103,17 @@ public class LevelFlowController : MonoBehaviour
 
         if (_levelConfig != null && _levelConfig.outroDialogue != null && _dialogueController != null)
             StartCoroutine(PlayOutroThenVictory());
-        // No outro: VictoryScreenUI handles display via its own OnLevelComplete subscription
+        else
+            ShowVictoryScreen();
     }
 
     private IEnumerator PlayOutroThenVictory()
     {
-        // DialogueController.Play() requires GameState.Playing
-        if (GameManager.Instance != null)
-            GameManager.Instance.StartGame();
-
         _waitingForDialogue = true;
         _dialogueController.Play(_levelConfig.outroDialogue);
         yield return new WaitUntil(() => !_waitingForDialogue);
 
-        // Show victory screen directly to avoid re-triggering OnLevelComplete handlers
-        if (_victoryScreen != null)
-            _victoryScreen.Show();
+        ShowVictoryScreen();
     }
 
     // AC-4: Game over → defeat screen directly (no outro)
@@ -116,17 +121,29 @@ public class LevelFlowController : MonoBehaviour
     {
         if (_levelEnded) return;
         _levelEnded = true;
-        // DefeatScreenUI handles display via its own OnGameOver subscription
+        ShowDefeatScreen();
     }
 
     // AC-7: Boss-specific hooks (chapter-complete dialogue can be added here)
     private void HandleBossDefeated()
     {
-        DebugLogger.Log("LevelFlowController: Boss defeated. Chapter hooks can be added here.");
+        // Reserved for future boss-specific chapter hooks. Current boss flow completes via OnLevelComplete.
     }
 
     private void HandleDialogueComplete()
     {
         _waitingForDialogue = false;
+    }
+
+    private void ShowVictoryScreen()
+    {
+        if (_victoryScreen != null)
+            _victoryScreen.Show();
+    }
+
+    private void ShowDefeatScreen()
+    {
+        if (_defeatScreen != null)
+            _defeatScreen.Show();
     }
 }

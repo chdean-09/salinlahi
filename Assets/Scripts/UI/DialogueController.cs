@@ -43,7 +43,8 @@ public class DialogueController : MonoBehaviour
         if (_currentDialogue != null) return;
 
         if (GameManager.Instance == null ||
-            GameManager.Instance.CurrentState != GameState.Playing) return;
+            (GameManager.Instance.CurrentState != GameState.Playing
+                && GameManager.Instance.CurrentState != GameState.LevelComplete)) return;
 
         if (dialogue == null || dialogue.lines == null || dialogue.lines.Length == 0) return;
 
