@@ -5,7 +5,7 @@ public class RecognitionConfigSO : ScriptableObject
 {
     [Header("Point Cloud")]
     [Range(16, 64)]
-    [Tooltip("Number of points the $P algorithm resamples each stroke to. Default: 32")]
+    [Tooltip("Total number of points the $P recognizer resamples the full drawing/template to. Default: 32")]
     public int resamplePointCount = 32;
 
     [Header("Confidence")]
