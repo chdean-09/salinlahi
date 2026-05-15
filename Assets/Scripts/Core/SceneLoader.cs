@@ -19,8 +19,14 @@ public class SceneLoader : Singleton<SceneLoader>
     [SerializeField] private CanvasGroup _fadeCanvasGroup;
     [SerializeField] private float _fadeDuration = 0.25f;
 
+    [Header("Loading Screen")]
+    [SerializeField] private float _loadingFadeInDuration = 0.15f;
+    [SerializeField] private float _loadingFadeOutDuration = 0.15f;
+
     private bool _isLoading;
     private string _loadingSceneName;
+    private CanvasGroup _loadingCanvasGroup;
+    private Image _progressBarFill;
 
     protected override void Awake()
     {
@@ -30,6 +36,7 @@ public class SceneLoader : Singleton<SceneLoader>
         if (Instance != this) return;
 
         _fadeCanvasGroup ??= CreateFadeCanvas();
+        _loadingCanvasGroup ??= CreateLoadingCanvas();
     }
 
     // Unified internal entry point. Convenience wrappers below all funnel here
@@ -126,10 +133,16 @@ public class SceneLoader : Singleton<SceneLoader>
             // Fade in (to black). Stub — replaced by TransitionManager in SALIN-44.
             yield return Fade(0f, 1f);
 
+            // Show loading screen over the black.
+            if (_progressBarFill != null)
+                _progressBarFill.fillAmount = 0f;
+            yield return FadeLoadingScreen(0f, 1f, _loadingFadeInDuration);
+
             AsyncOperation op = SceneManager.LoadSceneAsync(sceneName);
             if (op == null)
             {
                 DebugLogger.LogError($"SceneLoader: Scene '{sceneName}' not found in Build Profiles. Add it via File → Build Profiles.");
+                yield return FadeLoadingScreen(1f, 0f, _loadingFadeOutDuration);
                 yield return Fade(1f, 0f);
                 yield break;
             }
@@ -140,13 +153,23 @@ public class SceneLoader : Singleton<SceneLoader>
             {
                 // Progress stops at 0.9 (90%) until scene activation.
                 float progress = Mathf.Clamp01(op.progress / 0.9f);
+                if (_progressBarFill != null)
+                    _progressBarFill.fillAmount = progress;
                 DebugLogger.Log($"Loading {sceneName}: {progress * 100f:F0}%");
                 yield return null;
             }
 
+            // Snap to full before hiding.
+            if (_progressBarFill != null)
+                _progressBarFill.fillAmount = 1f;
+
             DebugLogger.Log($"Loading {sceneName}: Complete");
 
-            // Fade out (from black).
+            // Brief hold at 100% so player sees completion.
+            yield return new WaitForSecondsRealtime(0.15f);
+
+            // Hide loading screen, then fade from black.
+            yield return FadeLoadingScreen(1f, 0f, _loadingFadeOutDuration);
             yield return Fade(1f, 0f);
         }
         finally
@@ -157,6 +180,8 @@ public class SceneLoader : Singleton<SceneLoader>
             // ReSharper disable once Unity.NoNullPropagation — != null intentional (Unity overrides ==)
             if (_fadeCanvasGroup != null)
                 _fadeCanvasGroup.alpha = 0f;
+            if (_loadingCanvasGroup != null)
+                _loadingCanvasGroup.alpha = 0f;
 
             _isLoading = false;
             _loadingSceneName = null;
@@ -177,6 +202,81 @@ public class SceneLoader : Singleton<SceneLoader>
             yield return null;
         }
         _fadeCanvasGroup.alpha = to;
+    }
+
+    private IEnumerator FadeLoadingScreen(float from, float to, float duration)
+    {
+        if (_loadingCanvasGroup == null) yield break;
+
+        _loadingCanvasGroup.alpha = from;
+        float t = 0f;
+        while (t < duration)
+        {
+            t += Time.unscaledDeltaTime;
+            _loadingCanvasGroup.alpha = Mathf.Lerp(from, to, t / duration);
+            yield return null;
+        }
+        _loadingCanvasGroup.alpha = to;
+    }
+
+    private CanvasGroup CreateLoadingCanvas()
+    {
+        var go = new GameObject("SceneLoaderLoadingCanvas");
+        go.transform.SetParent(transform, worldPositionStays: false);
+
+        var canvas = go.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 998; // Below fade canvas (999), above gameplay UI.
+
+        go.AddComponent<CanvasScaler>();
+
+        // Background — full-screen black behind the progress bar.
+        var bgGo = new GameObject("Background");
+        bgGo.transform.SetParent(go.transform, worldPositionStays: false);
+        var bgRect = bgGo.AddComponent<RectTransform>();
+        bgRect.anchorMin = Vector2.zero;
+        bgRect.anchorMax = Vector2.one;
+        bgRect.offsetMin = Vector2.zero;
+        bgRect.offsetMax = Vector2.zero;
+        var bgImage = bgGo.AddComponent<Image>();
+        bgImage.color = Color.black;
+        bgImage.raycastTarget = false;
+
+        // Progress bar track (dark gray, centered horizontally, near bottom).
+        var trackGo = new GameObject("ProgressBarTrack");
+        trackGo.transform.SetParent(go.transform, worldPositionStays: false);
+        var trackRect = trackGo.AddComponent<RectTransform>();
+        trackRect.anchorMin = new Vector2(0.15f, 0.12f);
+        trackRect.anchorMax = new Vector2(0.85f, 0.14f);
+        trackRect.offsetMin = Vector2.zero;
+        trackRect.offsetMax = Vector2.zero;
+        var trackImage = trackGo.AddComponent<Image>();
+        trackImage.color = new Color(0.2f, 0.2f, 0.2f, 1f);
+        trackImage.raycastTarget = false;
+
+        // Progress bar fill (white, stretches left-to-right).
+        var fillGo = new GameObject("ProgressBarFill");
+        fillGo.transform.SetParent(trackGo.transform, worldPositionStays: false);
+        var fillRect = fillGo.AddComponent<RectTransform>();
+        fillRect.anchorMin = Vector2.zero;
+        fillRect.anchorMax = Vector2.one;
+        fillRect.offsetMin = Vector2.zero;
+        fillRect.offsetMax = Vector2.zero;
+        var fillImage = fillGo.AddComponent<Image>();
+        fillImage.color = Color.white;
+        fillImage.raycastTarget = false;
+        fillImage.type = Image.Type.Filled;
+        fillImage.fillMethod = Image.FillMethod.Horizontal;
+        fillImage.fillOrigin = (int)Image.OriginHorizontal.Left;
+        fillImage.fillAmount = 0f;
+
+        _progressBarFill = fillImage;
+
+        var group = go.AddComponent<CanvasGroup>();
+        group.alpha = 0f;
+        group.interactable = false;
+        group.blocksRaycasts = false;
+        return group;
     }
 
     // Builds a full-screen black overlay CanvasGroup at runtime so any scene
