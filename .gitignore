@@ -10,7 +10,6 @@
 *.csproj
 *.sln
 *.slnx
-*.lscache
 .DS_Store
 Thumbs.db
 *.suo
