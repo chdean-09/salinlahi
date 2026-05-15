@@ -29,12 +29,18 @@ public class EnemyDataSO : ScriptableObject
     [Header("Phaser (Fraile)")]
     [Tooltip("If true, this enemy toggles between visible and invisible states.")]
     public bool isPhaser;
-    [Tooltip("Seconds between visibility toggles for Phaser enemies.")]
+    [Tooltip("Fallback seconds between visibility toggles for Phaser enemies when randomized ranges are not configured.")]
     public float phaserInterval = 0.5f;
-    [Tooltip("Optional: seconds the phaser stays visible before turning invisible. <= 0 uses phaserInterval.")]
-    public float phaserVisibleDuration = 0f;
-    [Tooltip("Optional: seconds the phaser stays invisible before turning visible. <= 0 uses phaserInterval.")]
-    public float phaserInvisibleDuration = 0f;
+    [Tooltip("Minimum visible time after spawn/enable before the first invisibility cycle. <= 0 uses phaserInterval.")]
+    public float phaserInitialVisibleDelayMin = 0f;
+    [Tooltip("Optional randomized visible hold minimum in seconds. <= 0 falls back to phaserInterval.")]
+    public float phaserVisibleHoldMin = 0f;
+    [Tooltip("Optional randomized visible hold maximum in seconds. <= 0 falls back to phaserInterval.")]
+    public float phaserVisibleHoldMax = 0f;
+    [Tooltip("Optional randomized invisible hold minimum in seconds. <= 0 falls back to phaserInterval.")]
+    public float phaserInvisibleHoldMin = 0f;
+    [Tooltip("Optional randomized invisible hold maximum in seconds. <= 0 falls back to phaserInterval.")]
+    public float phaserInvisibleHoldMax = 0f;
     [Tooltip("Seconds spent fading/pulsing from visible to invisible before full invisibility.")]
     public float phaserFadeOutDuration = 0.3f;
     [Tooltip("Seconds spent fading from invisible to visible.")]
@@ -44,6 +50,8 @@ public class EnemyDataSO : ScriptableObject
     [Range(0f, 1f)]
     [Tooltip("Pulse intensity during fade-out. 0 = plain fade, 1 = strongest pulse.")]
     public float phaserFadeOutPulseAmplitude = 0.2f;
+    [Tooltip("World-space distance from PlayerBase where phasers are forced visible (no invisibility near base).")]
+    public float phaserNoInvisibleNearBaseDistance = 1.5f;
 
     [Header("Contact Behavior")]
     [Tooltip("If false, reaching the Shrine collision zone will despawn this enemy without damaging the Shrine.")]
