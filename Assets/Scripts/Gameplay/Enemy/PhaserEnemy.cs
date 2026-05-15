@@ -87,6 +87,7 @@ public class PhaserEnemy : MonoBehaviour
     private bool ShouldRunPhaser()
     {
         return _enemy != null
+            && !_enemy.IsDying
             && _enemy.Data != null
             && _enemy.Data.isPhaser;
     }
