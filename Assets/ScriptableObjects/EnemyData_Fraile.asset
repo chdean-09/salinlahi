@@ -26,10 +26,11 @@ MonoBehaviour:
   isPhaser: 1
   phaserInterval: 1.2
   phaserInitialVisibleDelayMin: 0.6
+  phaserInitialVisibleDelayMax: 2
   phaserVisibleHoldMin: 0.8
   phaserVisibleHoldMax: 1.4
-  phaserInvisibleHoldMin: 1.3
-  phaserInvisibleHoldMax: 2.0
+  phaserInvisibleHoldMin: 1.5
+  phaserInvisibleHoldMax: 2.8
   phaserFadeOutDuration: 0.7
   phaserFadeInDuration: 0.08
   phaserFadeOutPulseCount: 1
