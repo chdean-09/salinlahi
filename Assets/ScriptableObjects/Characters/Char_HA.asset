@@ -16,4 +16,4 @@ MonoBehaviour:
   syllable: ha
   displaySprite: {fileID: -6831661676589965225, guid: 8d666fe3219e3bb4b9f4d251d9a3947f, type: 3}
   pronunciationClip: {fileID: 0}
-  templateFileName: HA_template
+  templateFileName: HA_template_01

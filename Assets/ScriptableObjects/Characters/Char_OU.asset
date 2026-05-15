@@ -16,4 +16,4 @@ MonoBehaviour:
   syllable: o/u
   displaySprite: {fileID: 8544560402322239208, guid: 86136cc8d6bbba249b05d453f42fdd73, type: 3}
   pronunciationClip: {fileID: 0}
-  templateFileName: OU_template
+  templateFileName: OU_template_01

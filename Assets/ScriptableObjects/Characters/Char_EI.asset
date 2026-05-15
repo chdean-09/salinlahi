@@ -16,4 +16,4 @@ MonoBehaviour:
   syllable: e/i
   displaySprite: {fileID: -2869617533910908798, guid: 3b7c4fb0744a29e4a991dd555bae27f9, type: 3}
   pronunciationClip: {fileID: 0}
-  templateFileName: EI_template
+  templateFileName: EI_template_01

@@ -16,4 +16,4 @@ MonoBehaviour:
   syllable: da
   displaySprite: {fileID: -3721400742328757493, guid: cf2ef03225c142f409c5cad3e4d17a37, type: 3}
   pronunciationClip: {fileID: 0}
-  templateFileName: DA_template
+  templateFileName: DA_template_01

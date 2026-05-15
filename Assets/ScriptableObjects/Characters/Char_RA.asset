@@ -16,4 +16,4 @@ MonoBehaviour:
   syllable: ra
   displaySprite: {fileID: -4082948466674284124, guid: 6fe326552750eee4fb1e4ddedf481626, type: 3}
   pronunciationClip: {fileID: 0}
-  templateFileName: RA_template
+  templateFileName: RA_template_01

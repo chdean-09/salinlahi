@@ -16,4 +16,4 @@ MonoBehaviour:
   syllable: la
   displaySprite: {fileID: 303769409180692269, guid: a8076105381be8e4abca9e9ad4664fab, type: 3}
   pronunciationClip: {fileID: 0}
-  templateFileName: LA_template
+  templateFileName: LA_template_01
