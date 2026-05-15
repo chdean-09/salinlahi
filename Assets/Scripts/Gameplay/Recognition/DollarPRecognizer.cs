@@ -44,26 +44,55 @@ public class DollarPRecognizer
 
     public void SetTemplateVariants(Dictionary<string, List<List<Vector2>>> raw)
     {
+        var wrapped = new Dictionary<string, List<List<List<Vector2>>>>();
+        foreach (var kvp in raw)
+        {
+            var variants = new List<List<List<Vector2>>>();
+            foreach (List<Vector2> variant in kvp.Value)
+                variants.Add(new List<List<Vector2>> { variant });
+            wrapped[kvp.Key] = variants;
+        }
+
+        SetTemplateStrokeVariants(wrapped);
+    }
+
+    public void SetTemplateStrokeVariants(Dictionary<string, List<List<List<Vector2>>>> raw)
+    {
         _templates.Clear();
+
         foreach (var kvp in raw)
         {
             var variants = new List<List<Vector2>>();
-            foreach (List<Vector2> variant in kvp.Value)
+
+            foreach (List<List<Vector2>> variantStrokes in kvp.Value)
             {
-                if (variant == null || variant.Count == 0) continue;
-                variants.Add(Preprocess(new List<Vector2>(variant)));
+                if (variantStrokes == null || variantStrokes.Count == 0) continue;
+                List<Vector2> preprocessed = PreprocessStrokes(CloneStrokes(variantStrokes));
+                if (preprocessed.Count == 0) continue;
+
+                variants.Add(preprocessed);
             }
 
             if (variants.Count > 0)
+            {
                 _templates[kvp.Key] = variants;
+            }
         }
     }
+
     public RecognitionResult Recognize(List<Vector2> points)
+    {
+        return Recognize(new List<List<Vector2>> { points });
+    }
+
+    public RecognitionResult Recognize(List<List<Vector2>> strokes)
     {
         if (_templates.Count == 0)
             return new RecognitionResult("NONE", 0f, -1, "NONE", float.MinValue);
 
-        List<Vector2> candidate = Preprocess(new List<Vector2>(points));
+        List<Vector2> candidate = PreprocessStrokes(CloneStrokes(strokes));
+        if (candidate.Count == 0)
+            return new RecognitionResult("NONE", 0f, -1, "NONE", float.MinValue);
 
         string bestID = "NONE";
         float bestScore = float.MinValue;
@@ -103,43 +132,108 @@ public class DollarPRecognizer
     }
 
     // ── PREPROCESSING ────────────────────────────────────────────────
-    private List<Vector2> Preprocess(List<Vector2> pts)
+    private List<Vector2> PreprocessStrokes(List<List<Vector2>> strokes)
     {
-        pts = Resample(pts, _n);
+        List<Vector2> pts = ResampleStrokes(strokes, _n);
+        if (pts.Count == 0)
+            return pts;
         pts = ScaleToSquare(pts, 1f);
         pts = TranslateToOrigin(pts);
         return pts;
     }
-    private List<Vector2> Resample(List<Vector2> pts, int n)
+
+    private List<Vector2> ResampleStrokes(List<List<Vector2>> strokes, int n)
     {
-        float totalLen = PathLength(pts);
-        if (totalLen == 0f) return pts;
-        float interval = totalLen / (n - 1);
-        float D = 0f;
-        var result = new List<Vector2> { pts[0] };
-        for (int i = 1; i < pts.Count; i++)
+        List<Vector2> flattened = StrokeTextParser.FlattenStrokes(strokes);
+        if (flattened.Count == 0 || n <= 0)
+            return flattened;
+        if (n == 1)
+            return new List<Vector2> { flattened[0] };
+
+        float totalLen = TotalStrokePathLength(strokes);
+        if (totalLen <= 1e-6f)
         {
-            float d = Vector2.Distance(pts[i - 1], pts[i]);
-            if (D + d >= interval)
-            {
-                float t = (interval - D) / d;
-                Vector2 q = Vector2.Lerp(pts[i - 1], pts[i], t);
-                result.Add(q);
-                pts.Insert(i, q);
-                D = 0f;
-            }
-            else D += d;
+            var degenerate = new List<Vector2> { flattened[0] };
+            while (degenerate.Count < n)
+                degenerate.Add(flattened[flattened.Count - 1]);
+            return degenerate;
         }
-        // Pad or trim to exactly n points
-        while (result.Count < n) result.Add(pts[pts.Count - 1]);
-        if (result.Count > n) result.RemoveRange(n, result.Count - n);
+
+        float interval = totalLen / (n - 1);
+        float accumulated = 0f;
+        var result = new List<Vector2> { flattened[0] };
+        for (int strokeIndex = 0; strokeIndex < strokes.Count; strokeIndex++)
+        {
+            List<Vector2> stroke = strokes[strokeIndex];
+            if (stroke == null || stroke.Count < 2)
+                continue;
+
+            Vector2 segmentStart = stroke[0];
+            for (int pointIndex = 1; pointIndex < stroke.Count; pointIndex++)
+            {
+                Vector2 segmentEnd = stroke[pointIndex];
+                float segmentLength = Vector2.Distance(segmentStart, segmentEnd);
+                if (segmentLength <= 1e-6f)
+                {
+                    segmentStart = segmentEnd;
+                    continue;
+                }
+
+                while (accumulated + segmentLength >= interval)
+                {
+                    float t = (interval - accumulated) / segmentLength;
+                    Vector2 q = Vector2.Lerp(segmentStart, segmentEnd, t);
+                    result.Add(q);
+                    segmentStart = q;
+                    segmentLength = Vector2.Distance(segmentStart, segmentEnd);
+                    accumulated = 0f;
+                }
+
+                accumulated += segmentLength;
+                segmentStart = segmentEnd;
+            }
+        }
+
+        while (result.Count < n)
+            result.Add(flattened[flattened.Count - 1]);
+        if (result.Count > n)
+            result.RemoveRange(n, result.Count - n);
         return result;
     }
-    private float PathLength(List<Vector2> pts)
+
+    private float TotalStrokePathLength(List<List<Vector2>> strokes)
     {
-        float d = 0f;
-        for (int i = 1; i < pts.Count; i++) d += Vector2.Distance(pts[i - 1], pts[i]);
-        return d;
+        float total = 0f;
+        if (strokes == null)
+            return total;
+
+        for (int i = 0; i < strokes.Count; i++)
+        {
+            List<Vector2> stroke = strokes[i];
+            if (stroke == null || stroke.Count < 2)
+                continue;
+            for (int j = 1; j < stroke.Count; j++)
+                total += Vector2.Distance(stroke[j - 1], stroke[j]);
+        }
+
+        return total;
+    }
+
+    private List<List<Vector2>> CloneStrokes(List<List<Vector2>> strokes)
+    {
+        var clone = new List<List<Vector2>>();
+        if (strokes == null)
+            return clone;
+
+        for (int i = 0; i < strokes.Count; i++)
+        {
+            List<Vector2> stroke = strokes[i];
+            if (stroke == null || stroke.Count == 0)
+                continue;
+            clone.Add(new List<Vector2>(stroke));
+        }
+
+        return clone;
     }
     private List<Vector2> ScaleToSquare(List<Vector2> pts, float size)
     {

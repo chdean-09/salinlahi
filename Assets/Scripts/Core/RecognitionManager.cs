@@ -15,7 +15,7 @@ public class RecognitionManager : Singleton<RecognitionManager>
     {
         var loader = new TemplateLoader();
         var templates = loader.LoadAll();
-        _recognizer.SetTemplateVariants(templates);
+        _recognizer.SetTemplateStrokeVariants(templates);
 
         int variantCount = 0;
         foreach (var kvp in templates)
@@ -26,7 +26,13 @@ public class RecognitionManager : Singleton<RecognitionManager>
 
     public void PreviewRecognize(List<Vector2> points)
     {
-        if (points == null || points.Count < _config.minimumPointCount)
+        PreviewRecognize(new List<List<Vector2>> { points });
+    }
+
+    public void PreviewRecognize(List<List<Vector2>> strokes)
+    {
+        int pointCount = StrokeTextParser.FlattenStrokes(strokes).Count;
+        if (pointCount < _config.minimumPointCount)
         {
             EventBus.RaiseRecognitionResolved(
                 new RecognitionResult("NONE", 0f, -1, "NONE", float.MinValue),
@@ -35,7 +41,7 @@ public class RecognitionManager : Singleton<RecognitionManager>
             return;
         }
 
-        RecognitionResult result = _recognizer.Recognize(points);
+        RecognitionResult result = _recognizer.Recognize(strokes);
         bool passedThreshold = result.score >= _config.minimumConfidence;
         EventBus.RaiseRecognitionResolved(
             result,
@@ -45,13 +51,19 @@ public class RecognitionManager : Singleton<RecognitionManager>
 
     public void Recognize(List<Vector2> points)
     {
-        if (points == null || points.Count < _config.minimumPointCount)
+        Recognize(new List<List<Vector2>> { points });
+    }
+
+    public void Recognize(List<List<Vector2>> strokes)
+    {
+        int pointCount = StrokeTextParser.FlattenStrokes(strokes).Count;
+        if (pointCount < _config.minimumPointCount)
         {
             DebugLogger.Log("RecognitionManager: Too few points -- ignoring.");
             EventBus.RaiseDrawingFailed();
             return;
         }
-        RecognitionResult result = _recognizer.Recognize(points);
+        RecognitionResult result = _recognizer.Recognize(strokes);
         DebugLogger.Log(
             $"Recognized: {result.characterID} "
             + $"Score: {result.score:F3} "

@@ -15,6 +15,6 @@ public class BaybayinCharacterSO : ScriptableObject
     public AudioClip pronunciationClip;
 
     [Header("Recognition")]
-    [Tooltip("Filename in Resources/Templates/ without extension. Example: BA_template")]
+    [Tooltip("Filename in Resources/Templates/ without extension. Example: BA_template_01")]
     public string templateFileName;
 }
