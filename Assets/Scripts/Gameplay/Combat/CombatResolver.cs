@@ -106,6 +106,7 @@ public class CombatResolver : MonoBehaviour
         else
         {
             EventBus.RaiseEnemyTargeted(target);
+            EventBus.RaiseSingleAttackHit(target);
             target.TakeDamage(1);
             DebugLogger.Log($"CombatResolver: Hit {characterID}");
         }
