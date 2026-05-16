@@ -5,12 +5,17 @@ using UnityEngine.UI;
 
 public class TutorialOverlayController : MonoBehaviour
 {
-    private static readonly string[] TutorialSteps =
+    private const int RequiredStepCount = 3;
+
+    // Serialized defaults keep this player-facing copy ready for future localization/data wiring.
+    [SerializeField] private string[] _stepBodyText =
     {
         "An enemy approaches — it shows a Baybayin character",
         "Draw the character on your screen with your finger",
         "The enemy is defeated!"
     };
+    [SerializeField] private string _nextButtonLabel = "Next";
+    [SerializeField] private string _doneButtonLabel = "Done";
 
     [Header("UI References")]
     [SerializeField] private GameObject _overlayPanel;
@@ -53,14 +58,25 @@ public class TutorialOverlayController : MonoBehaviour
             yield break;
         }
 
-        ShowFirstStep();
-        yield return new WaitUntil(() => !_isShowing);
+        bool enteredTutorialPause = TryEnterTutorialPause();
+
+        try
+        {
+            ShowFirstStep();
+            yield return new WaitUntil(() => !_isShowing);
+        }
+        finally
+        {
+            if (enteredTutorialPause && GameManager.Instance != null)
+                GameManager.Instance.ExitDialoguePause();
+        }
     }
 
-    public void ShowFirstStep()
+    private void ShowFirstStep()
     {
         _stepIndex = 0;
         _isShowing = true;
+        // Persist on first show so partial views still count as "seen" after backgrounding or force-quit.
         LevelTutorialProgress.MarkLevel1TutorialSeen();
 
         if (_overlayPanel != null)
@@ -75,7 +91,7 @@ public class TutorialOverlayController : MonoBehaviour
             return;
 
         _stepIndex++;
-        if (_stepIndex >= TutorialSteps.Length)
+        if (_stepIndex >= _stepBodyText.Length)
         {
             CompleteTutorial();
             return;
@@ -88,16 +104,32 @@ public class TutorialOverlayController : MonoBehaviour
     {
         return _overlayPanel != null
             && _bodyText != null
+            && _buttonText != null
+            && _stepBodyText != null
+            && _stepBodyText.Length == RequiredStepCount
             && _dismissButton != null;
     }
 
     private void RenderCurrentStep()
     {
         if (_bodyText != null)
-            _bodyText.text = TutorialSteps[_stepIndex];
+            _bodyText.text = _stepBodyText[_stepIndex];
 
         if (_buttonText != null)
-            _buttonText.text = _stepIndex == TutorialSteps.Length - 1 ? "Done" : "Next";
+            _buttonText.text = _stepIndex == _stepBodyText.Length - 1 ? _doneButtonLabel : _nextButtonLabel;
+    }
+
+    private bool TryEnterTutorialPause()
+    {
+        if (GameManager.Instance == null)
+            return false;
+
+        GameState currentState = GameManager.Instance.CurrentState;
+        if (currentState != GameState.Playing && currentState != GameState.LevelComplete)
+            return false;
+
+        GameManager.Instance.EnterDialoguePause();
+        return GameManager.Instance.CurrentState == GameState.Paused;
     }
 
     private void CompleteTutorial()

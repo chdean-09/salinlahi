@@ -2,8 +2,8 @@ using UnityEngine;
 
 public static class LevelTutorialProgress
 {
-    public const int TutorialLevelNumber = 1;
-    public const string Level1FtueSeenKey = "salinlahi.tutorial.level1_ftue_seen";
+    public const int TutorialLevelNumber = ProgressManager.Level1FtueTutorialLevelNumber;
+    public const string Level1FtueSeenKey = ProgressManager.Level1FtueSeenKey;
 
     public static bool ShouldShowForLevel(LevelConfigSO levelConfig)
     {

@@ -97,13 +97,16 @@ namespace Salinlahi.Tests.Editor.Core
         {
             _manager.MarkLevelComplete(1, 3);
             _manager.MarkLevelComplete(2, 2);
+            LevelTutorialProgress.MarkLevel1TutorialSeen();
             Assert.AreEqual(5, _manager.GetTotalStars());
+            Assert.IsTrue(LevelTutorialProgress.HasSeenLevel1Tutorial());
 
             _manager.ClearAllProgress();
             Assert.AreEqual(0, _manager.GetStars(1));
             Assert.AreEqual(0, _manager.GetStars(2));
             Assert.IsTrue(_manager.IsLevelUnlocked(1));
             Assert.IsFalse(_manager.IsLevelUnlocked(2));
+            Assert.IsFalse(LevelTutorialProgress.HasSeenLevel1Tutorial());
         }
 
         [Test]
