@@ -9,6 +9,9 @@ public sealed class SingleAttackHitSpriteVfx : MonoBehaviour
 
     private float _elapsed;
     private bool _isPlaying;
+    private int _lastFrameIndex = -1;
+    private System.Action<int> _onFrameChanged;
+    private System.Action _onCompleted;
 
     public float PlayDuration
     {
@@ -32,6 +35,9 @@ public sealed class SingleAttackHitSpriteVfx : MonoBehaviour
     {
         _elapsed = 0f;
         _isPlaying = false;
+        _lastFrameIndex = -1;
+        _onFrameChanged = null;
+        _onCompleted = null;
     }
 
     private void Update()
@@ -45,13 +51,20 @@ public sealed class SingleAttackHitSpriteVfx : MonoBehaviour
         if (frameIndex >= _frames.Length)
         {
             _isPlaying = false;
+            _onCompleted?.Invoke();
+            _onCompleted = null;
             return;
         }
 
-        _spriteRenderer.sprite = _frames[frameIndex];
+        if (frameIndex != _lastFrameIndex)
+        {
+            _lastFrameIndex = frameIndex;
+            _spriteRenderer.sprite = _frames[frameIndex];
+            _onFrameChanged?.Invoke(frameIndex);
+        }
     }
 
-    public void Play()
+    public void Play(System.Action<int> onFrameChanged = null, System.Action onCompleted = null)
     {
         if (_spriteRenderer == null)
             _spriteRenderer = GetComponent<SpriteRenderer>();
@@ -59,15 +72,22 @@ public sealed class SingleAttackHitSpriteVfx : MonoBehaviour
         if (_spriteRenderer == null || _frames == null || _frames.Length == 0)
             return;
 
+        _onFrameChanged = onFrameChanged;
+        _onCompleted = onCompleted;
         _elapsed = 0f;
         _isPlaying = true;
+        _lastFrameIndex = 0;
         _spriteRenderer.sprite = _frames[0];
+        _onFrameChanged?.Invoke(0);
     }
 
     public void ResetVisual()
     {
         _isPlaying = false;
         _elapsed = 0f;
+        _lastFrameIndex = -1;
+        _onFrameChanged = null;
+        _onCompleted = null;
 
         if (_spriteRenderer != null && _frames != null && _frames.Length > 0)
             _spriteRenderer.sprite = _frames[0];
