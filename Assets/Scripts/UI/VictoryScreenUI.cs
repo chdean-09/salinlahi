@@ -22,8 +22,6 @@ public class VictoryScreenUI : MonoBehaviour
 
     private void OnEnable()
     {
-        EventBus.OnLevelComplete += Show;
-
         if (_nextLevelButton != null)
             _nextLevelButton.onClick.AddListener(OnNextLevelPressed);
         if (_levelSelectButton != null)
@@ -32,15 +30,13 @@ public class VictoryScreenUI : MonoBehaviour
 
     private void OnDisable()
     {
-        EventBus.OnLevelComplete -= Show;
-
         if (_nextLevelButton != null)
             _nextLevelButton.onClick.RemoveListener(OnNextLevelPressed);
         if (_levelSelectButton != null)
             _levelSelectButton.onClick.RemoveListener(OnLevelSelectPressed);
     }
 
-    private void Show()
+    public void Show()
     {
         if (_panel != null)
             _panel.SetActive(true);

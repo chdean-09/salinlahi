@@ -90,7 +90,7 @@ private bool _hasPausedRunSnapshot;
 
     public void EnterDialoguePause()
     {
-        if (CurrentState != GameState.Playing) return;
+        if (CurrentState != GameState.Playing && CurrentState != GameState.LevelComplete) return;
         _stateBeforeDialogue = CurrentState;
         Time.timeScale = 0f;
         SetState(GameState.Paused);
