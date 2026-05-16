@@ -26,8 +26,6 @@ public static class EventBus
     // -- Combat Events --
     public static event Action<Enemy> OnEnemyTargeted;
     public static event Action<Enemy> OnSingleAttackHit;
-    public static event Action<Enemy, int> OnSingleAttackVfxFrame;
-    public static event Action<Enemy> OnSingleAttackVfxCompleted;
     public static event Action OnDrawingMissed;
     public static event Action<int> OnAOETriggered; // int = number of enemies mass-defeated
 
@@ -64,8 +62,6 @@ public static class EventBus
     public static void RaiseHeartsChanged(int hearts) => OnHeartsChanged?.Invoke(hearts);
     public static void RaiseEnemyTargeted(Enemy e) => OnEnemyTargeted?.Invoke(e);
     public static void RaiseSingleAttackHit(Enemy enemy) => OnSingleAttackHit?.Invoke(enemy);
-    public static void RaiseSingleAttackVfxFrame(Enemy enemy, int frameIndex) => OnSingleAttackVfxFrame?.Invoke(enemy, frameIndex);
-    public static void RaiseSingleAttackVfxCompleted(Enemy enemy) => OnSingleAttackVfxCompleted?.Invoke(enemy);
     public static void RaiseDrawingMissed() => OnDrawingMissed?.Invoke();
     public static void RaiseAOETriggered(int defeatedCount) => OnAOETriggered?.Invoke(defeatedCount);
     public static void RaiseComboChanged(int streak) => OnComboChanged?.Invoke(streak);
