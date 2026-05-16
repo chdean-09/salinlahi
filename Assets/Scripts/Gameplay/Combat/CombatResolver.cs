@@ -8,28 +8,15 @@ public class CombatResolver : MonoBehaviour
 {
     [Tooltip("Minimum matching on-screen enemies required to trigger an AOE mass-defeat.")]
     [SerializeField, Min(1)] private int _aoeThreshold = 3;
-    [Header("Single Target Lethal Timing")]
-    [Tooltip("First burst frame index (0-based) that can apply lethal damage.")]
-    [SerializeField, Min(0)] private int _singleHitKillFrameMin = 3;
-    [Tooltip("Last burst frame index (0-based) that can apply lethal damage.")]
-    [SerializeField, Min(0)] private int _singleHitKillFrameMax = 4;
-    private readonly HashSet<Enemy> _pendingLethalSingleHits = new HashSet<Enemy>();
-    private readonly Dictionary<Enemy, int> _pendingLethalTriggerFrame = new Dictionary<Enemy, int>();
 
     private void OnEnable()
     {
         EventBus.OnCharacterRecognized += HandleCharacterRecognized;
-        EventBus.OnSingleAttackVfxFrame += HandleSingleAttackVfxFrame;
-        EventBus.OnSingleAttackVfxCompleted += HandleSingleAttackVfxCompleted;
     }
 
     private void OnDisable()
     {
         EventBus.OnCharacterRecognized -= HandleCharacterRecognized;
-        EventBus.OnSingleAttackVfxFrame -= HandleSingleAttackVfxFrame;
-        EventBus.OnSingleAttackVfxCompleted -= HandleSingleAttackVfxCompleted;
-        _pendingLethalSingleHits.Clear();
-        _pendingLethalTriggerFrame.Clear();
     }
 
     private void HandleCharacterRecognized(string characterID)
@@ -99,7 +86,7 @@ public class CombatResolver : MonoBehaviour
         ResolveMatchedEnemy(closestTarget, characterID);
     }
 
-    private void ResolveMatchedEnemy(Enemy target, string characterID)
+    private static void ResolveMatchedEnemy(Enemy target, string characterID)
     {
         if (target == null)
             return;
@@ -120,67 +107,8 @@ public class CombatResolver : MonoBehaviour
         {
             EventBus.RaiseEnemyTargeted(target);
             EventBus.RaiseSingleAttackHit(target);
-
-            bool willBeLethal = target.CurrentHealth <= 1;
-            if (willBeLethal)
-            {
-                _pendingLethalSingleHits.Add(target);
-                _pendingLethalTriggerFrame[target] = ChooseLethalTriggerFrame();
-            }
-            else
-                target.TakeDamage(1);
-
+            target.TakeDamage(1);
             DebugLogger.Log($"CombatResolver: Hit {characterID}");
         }
-    }
-
-    private void HandleSingleAttackVfxFrame(Enemy target, int frameIndex)
-    {
-        if (target == null)
-            return;
-
-        if (!_pendingLethalSingleHits.Contains(target))
-            return;
-
-        int triggerFrame = 3;
-        if (_pendingLethalTriggerFrame.TryGetValue(target, out int configuredFrame))
-            triggerFrame = configuredFrame;
-
-        if (frameIndex < triggerFrame)
-            return;
-
-        ApplyPendingLethalDamage(target);
-    }
-
-    private void HandleSingleAttackVfxCompleted(Enemy target)
-    {
-        if (target == null)
-            return;
-
-        if (!_pendingLethalSingleHits.Contains(target))
-            return;
-
-        ApplyPendingLethalDamage(target);
-    }
-
-    private void ApplyPendingLethalDamage(Enemy target)
-    {
-        _pendingLethalSingleHits.Remove(target);
-        _pendingLethalTriggerFrame.Remove(target);
-
-        if (target == null || target.IsDying || !target.gameObject.activeInHierarchy)
-            return;
-
-        target.TakeDamage(1);
-    }
-
-    private int ChooseLethalTriggerFrame()
-    {
-        int minFrame = Mathf.Max(0, _singleHitKillFrameMin);
-        int maxFrame = Mathf.Max(0, _singleHitKillFrameMax);
-        if (maxFrame < minFrame)
-            maxFrame = minFrame;
-
-        return Random.Range(minFrame, maxFrame + 1);
     }
 }

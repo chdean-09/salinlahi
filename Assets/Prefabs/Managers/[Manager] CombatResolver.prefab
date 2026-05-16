@@ -44,4 +44,3 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2f76ee17656cba748aa09681472d231f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CombatResolver
-  _aoeThreshold: 3
