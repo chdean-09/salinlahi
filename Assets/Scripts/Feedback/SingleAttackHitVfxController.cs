@@ -56,7 +56,9 @@ public sealed class SingleAttackHitVfxController : MonoBehaviour
         instance.transform.rotation = Quaternion.identity;
         instance.transform.localScale = Vector3.one;
         instance.gameObject.SetActive(true);
-        instance.Play();
+        instance.Play(
+            frameIndex => EventBus.RaiseSingleAttackVfxFrame(target, frameIndex),
+            () => EventBus.RaiseSingleAttackVfxCompleted(target));
 
         float lifetime = GetPlaybackLifetime(instance);
         Coroutine existing;
