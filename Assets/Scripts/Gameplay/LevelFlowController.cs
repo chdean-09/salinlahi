@@ -11,6 +11,7 @@ public class LevelFlowController : MonoBehaviour
     [Header("References")]
     [SerializeField] private WaveManager _waveManager;
     [SerializeField] private DialogueController _dialogueController;
+    [SerializeField] private TutorialOverlayController _tutorialOverlayController;
     [SerializeField] private VictoryScreenUI _victoryScreen;
     [SerializeField] private DefeatScreenUI _defeatScreen;
 
@@ -20,6 +21,7 @@ public class LevelFlowController : MonoBehaviour
 
     private bool _levelEnded;
     private bool _waitingForDialogue;
+    private bool _flowAborted;
 
     private void OnEnable()
     {
@@ -64,6 +66,11 @@ public class LevelFlowController : MonoBehaviour
         if (_levelEnded)
             yield break;
 
+        yield return PlayLevelTutorialIfNeeded();
+
+        if (_flowAborted || _levelEnded)
+            yield break;
+
         // AC-2: Start BGM from level config
         if (_levelConfig.bgmClip != null && AudioManager.Instance != null)
             AudioManager.Instance.PlayBGM(_levelConfig.bgmClip);
@@ -93,6 +100,28 @@ public class LevelFlowController : MonoBehaviour
             return;
 
         DebugLogger.LogWarning("LevelFlowController: No level config found via GameManager or Inspector.");
+    }
+
+    private IEnumerator PlayLevelTutorialIfNeeded()
+    {
+        if (!LevelTutorialProgress.ShouldShowForLevel(_levelConfig))
+            yield break;
+
+        if (_tutorialOverlayController == null)
+        {
+            _flowAborted = true;
+            DebugLogger.LogError("LevelFlowController: Level 1 FTUE is due, but TutorialOverlayController is not assigned.");
+            yield break;
+        }
+
+        if (!_tutorialOverlayController.IsConfigured)
+        {
+            _flowAborted = true;
+            DebugLogger.LogError("LevelFlowController: Level 1 FTUE is due, but TutorialOverlayController is not fully configured.");
+            yield break;
+        }
+
+        yield return _tutorialOverlayController.PlayIfNeeded(_levelConfig);
     }
 
     // AC-5: Level complete → outro dialogue → victory screen
