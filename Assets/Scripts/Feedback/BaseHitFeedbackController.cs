@@ -34,6 +34,13 @@ public sealed class BaseHitFeedbackController : MonoBehaviour
     private void OnDisable()
     {
         EventBus.OnBaseHit -= HandleBaseHit;
+
+        if (_wobbleRoutine != null)
+        {
+            StopCoroutine(_wobbleRoutine);
+            _wobbleRoutine = null;
+        }
+
         ResetBaseVisual();
     }
 

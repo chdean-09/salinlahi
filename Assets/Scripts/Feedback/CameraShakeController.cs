@@ -9,15 +9,21 @@ public sealed class CameraShakeController : MonoBehaviour
     [SerializeField] private float _fallbackMagnitude = 0.08f;
 
     private Coroutine _shakeRoutine;
-    private Vector3 _originalLocalPosition;
+    private Vector3 _restLocalPosition;
 
     private void Awake()
     {
-        _originalLocalPosition = transform.localPosition;
+        _restLocalPosition = transform.localPosition;
     }
 
     private void OnDisable()
     {
+        if (_shakeRoutine != null)
+        {
+            StopCoroutine(_shakeRoutine);
+            _shakeRoutine = null;
+        }
+
         ResetTransform();
     }
 
@@ -34,8 +40,12 @@ public sealed class CameraShakeController : MonoBehaviour
         if (data == null) return;
 
         if (_shakeRoutine != null)
+        {
             StopCoroutine(_shakeRoutine);
+            _shakeRoutine = null;
+        }
 
+        ResetTransform();
         _shakeRoutine = StartCoroutine(ShakeRoutine(data.Duration, data.Magnitude, data.FalloffCurve));
     }
 
@@ -45,14 +55,18 @@ public sealed class CameraShakeController : MonoBehaviour
         float safeMagnitude = Mathf.Max(0f, magnitude);
 
         if (_shakeRoutine != null)
+        {
             StopCoroutine(_shakeRoutine);
+            _shakeRoutine = null;
+        }
 
+        ResetTransform();
         _shakeRoutine = StartCoroutine(ShakeRoutine(safeDuration, safeMagnitude, null));
     }
 
     private IEnumerator ShakeRoutine(float duration, float magnitude, AnimationCurve curve)
     {
-        _originalLocalPosition = transform.localPosition;
+        Vector3 origin = _restLocalPosition;
         float elapsed = 0f;
         duration = Mathf.Max(0.01f, duration);
 
@@ -69,7 +83,7 @@ public sealed class CameraShakeController : MonoBehaviour
 
             float x = Random.Range(-1f, 1f) * magnitude * falloff;
             float y = Random.Range(-1f, 1f) * magnitude * falloff;
-            transform.localPosition = _originalLocalPosition + new Vector3(x, y, 0f);
+            transform.localPosition = origin + new Vector3(x, y, 0f);
 
             yield return null;
         }
@@ -80,6 +94,6 @@ public sealed class CameraShakeController : MonoBehaviour
 
     private void ResetTransform()
     {
-        transform.localPosition = _originalLocalPosition;
+        transform.localPosition = _restLocalPosition;
     }
 }

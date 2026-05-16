@@ -48,7 +48,8 @@ public class HeartDisplay : MonoBehaviour
     private void UpdateHearts(int current)
     {
         EnsureRuntimeBuffers();
-        bool lost = current < _lastHeartCount;
+        int previous = _lastHeartCount;
+        bool lost = current < previous;
         _lastHeartCount = current;
 
         for (int i = 0; i < _heartIcons.Length; i++)
@@ -63,7 +64,7 @@ public class HeartDisplay : MonoBehaviour
             else
                 _heartIcons[i].color = filled ? Color.red : new Color(1f, 1f, 1f, 0.25f);
 
-            if (lost && i == current)
+            if (lost && i >= current && i < previous)
             {
                 if (i < _heartAnimRoutines.Length && _heartAnimRoutines[i] != null)
                     StopCoroutine(_heartAnimRoutines[i]);

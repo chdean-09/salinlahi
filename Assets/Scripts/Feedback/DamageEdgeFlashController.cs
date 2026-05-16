@@ -21,6 +21,12 @@ public sealed class DamageEdgeFlashController : MonoBehaviour
 
     private void OnDisable()
     {
+        if (_flashRoutine != null)
+        {
+            StopCoroutine(_flashRoutine);
+            _flashRoutine = null;
+        }
+
         ApplyAlpha(0f);
     }
 
@@ -101,52 +107,6 @@ public sealed class DamageEdgeFlashController : MonoBehaviour
             case 2: return EdgeGradient.Edge.Left;
             case 3: return EdgeGradient.Edge.Right;
             default: return EdgeGradient.Edge.Top;
-        }
-    }
-}
-
-public class EdgeGradient : BaseMeshEffect
-{
-    public enum Edge { Top, Bottom, Left, Right }
-    public Edge edgeType = Edge.Top;
-
-    public override void ModifyMesh(VertexHelper vh)
-    {
-        if (!IsActive()) return;
-
-        RectTransform rt = GetComponent<RectTransform>();
-        if (rt == null) return;
-
-        Rect rect = rt.rect;
-        UIVertex v = new UIVertex();
-
-        for (int i = 0; i < vh.currentVertCount; i++)
-        {
-            vh.PopulateUIVertex(ref v, i);
-            
-            float alphaMultiplier = 1f;
-            
-            switch (edgeType)
-            {
-                case Edge.Top:
-                    alphaMultiplier = Mathf.InverseLerp(rect.yMin, rect.yMax, v.position.y);
-                    break;
-                case Edge.Bottom:
-                    alphaMultiplier = Mathf.InverseLerp(rect.yMax, rect.yMin, v.position.y);
-                    break;
-                case Edge.Left:
-                    alphaMultiplier = Mathf.InverseLerp(rect.xMax, rect.xMin, v.position.x);
-                    break;
-                case Edge.Right:
-                    alphaMultiplier = Mathf.InverseLerp(rect.xMin, rect.xMax, v.position.x);
-                    break;
-            }
-
-            // Power of 2 makes the fade start steeper from the center to look more like a soft shadow
-            alphaMultiplier *= alphaMultiplier;
-            
-            v.color = new Color32(v.color.r, v.color.g, v.color.b, (byte)(v.color.a * alphaMultiplier));
-            vh.SetUIVertex(v, i);
         }
     }
 }

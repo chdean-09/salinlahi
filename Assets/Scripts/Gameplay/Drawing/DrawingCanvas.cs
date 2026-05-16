@@ -14,16 +14,20 @@ public class DrawingCanvas : MonoBehaviour
 
     [Header("Clear")]
     [SerializeField] private float _clearDelaySeconds = 0.3f;
+    [SerializeField] private bool _stabilizeProjectionAgainstCameraShake = true;
 
     private LineRenderer _currentLine;
     private List<LineRenderer> _activeLines = new List<LineRenderer>();
     private Camera _cam;
+    private Vector3 _cameraRestWorldPosition;
 
     private void Awake()
     {
         _cam = Camera.main;
         if (_cam == null)
             Debug.LogError("DrawingCanvas: No Camera tagged 'MainCamera' found. Strokes will be disabled.", this);
+        else
+            _cameraRestWorldPosition = _cam.transform.position;
     }
 
     public void BeginStroke()
@@ -48,6 +52,13 @@ public class DrawingCanvas : MonoBehaviour
             float.IsNaN(screenPos.x) || float.IsNaN(screenPos.y)) return;
         Vector3 world = _cam.ScreenToWorldPoint(
             new Vector3(screenPos.x, screenPos.y, Mathf.Abs(_cam.transform.position.z)));
+
+        if (_stabilizeProjectionAgainstCameraShake)
+        {
+            Vector3 cameraOffset = _cam.transform.position - _cameraRestWorldPosition;
+            world -= new Vector3(cameraOffset.x, cameraOffset.y, 0f);
+        }
+
         world.z = 0f;
         _currentLine.positionCount++;
         _currentLine.SetPosition(_currentLine.positionCount - 1, world);
