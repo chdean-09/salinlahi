@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -10,9 +11,9 @@ public class TutorialOverlayController : MonoBehaviour
     // Serialized defaults keep this player-facing copy ready for future localization/data wiring.
     [SerializeField] private string[] _stepBodyText =
     {
-        "An enemy approaches — it shows a Baybayin character",
-        "Draw the character on your screen with your finger",
-        "The enemy is defeated!"
+        "Enemies carry Baybayin characters.",
+        "Draw the shown character anywhere on the screen.",
+        "Protect the Shrine and clear each wave."
     };
     [SerializeField] private string _nextButtonLabel = "Next";
     [SerializeField] private string _doneButtonLabel = "Done";
@@ -23,8 +24,25 @@ public class TutorialOverlayController : MonoBehaviour
     [SerializeField] private TextMeshProUGUI _buttonText;
     [SerializeField] private Button _dismissButton;
 
+    [Header("Guided Draw References")]
+    [SerializeField] private CanvasGroup _visualOverlayGroup;
+    [SerializeField] private GameObject _guidedDrawPanel;
+    [SerializeField] private TextMeshProUGUI _guidedPromptText;
+    [SerializeField] private Image _guidedGlyphImage;
+    [SerializeField] private RectTransform _enemyHighlight;
+    [SerializeField] private Camera _worldCamera;
+    [SerializeField] private Canvas _targetCanvas;
+
+    [Header("Toast References")]
+    [SerializeField] private GameObject _toastPanel;
+    [SerializeField] private TextMeshProUGUI _toastText;
+    [SerializeField] private float _toastDurationSeconds = 3f;
+
     private int _stepIndex;
     private bool _isShowing;
+    private Enemy _highlightedEnemy;
+    private Coroutine _toastRoutine;
+    private readonly Queue<string> _toastQueue = new();
 
     public bool IsShowing => _isShowing;
     public int CurrentStepIndex => _stepIndex;
@@ -45,6 +63,8 @@ public class TutorialOverlayController : MonoBehaviour
     {
         if (_dismissButton != null)
             _dismissButton.onClick.RemoveListener(AdvanceStep);
+
+        HideOverlay();
     }
 
     public IEnumerator PlayIfNeeded(LevelConfigSO levelConfig)
@@ -100,6 +120,75 @@ public class TutorialOverlayController : MonoBehaviour
         RenderCurrentStep();
     }
 
+    public void ShowGuidedDraw(Enemy enemy)
+    {
+        if (enemy == null)
+            return;
+
+        _highlightedEnemy = enemy;
+
+        if (_visualOverlayGroup != null)
+        {
+            _visualOverlayGroup.alpha = 1f;
+            _visualOverlayGroup.interactable = false;
+            _visualOverlayGroup.blocksRaycasts = false;
+        }
+
+        if (_guidedDrawPanel != null)
+            _guidedDrawPanel.SetActive(true);
+
+        BaybayinCharacterSO character = enemy.Character;
+        if (_guidedPromptText != null)
+            _guidedPromptText.text = "Trace this Baybayin character to stop the enemy.";
+
+        if (_guidedGlyphImage != null)
+        {
+            _guidedGlyphImage.sprite = character != null ? character.displaySprite : null;
+            _guidedGlyphImage.enabled = _guidedGlyphImage.sprite != null;
+            _guidedGlyphImage.raycastTarget = false;
+        }
+
+        if (_enemyHighlight != null)
+            _enemyHighlight.gameObject.SetActive(true);
+    }
+
+    public void HideGuidedDraw()
+    {
+        _highlightedEnemy = null;
+
+        if (_guidedDrawPanel != null)
+            _guidedDrawPanel.SetActive(false);
+
+        if (_enemyHighlight != null)
+            _enemyHighlight.gameObject.SetActive(false);
+
+        if (_visualOverlayGroup != null)
+        {
+            _visualOverlayGroup.alpha = 0f;
+            _visualOverlayGroup.interactable = false;
+            _visualOverlayGroup.blocksRaycasts = false;
+        }
+    }
+
+    public void ShowToast(string message)
+    {
+        if (_toastPanel == null || _toastText == null)
+            return;
+
+        _toastQueue.Enqueue(message);
+
+        if (_toastRoutine == null)
+            _toastRoutine = StartCoroutine(ShowToastRoutine());
+    }
+
+    private void LateUpdate()
+    {
+        if (_highlightedEnemy == null || _enemyHighlight == null)
+            return;
+
+        UpdateEnemyHighlight(_highlightedEnemy.transform.position);
+    }
+
     private bool CanShowOverlay()
     {
         return _overlayPanel != null
@@ -117,6 +206,48 @@ public class TutorialOverlayController : MonoBehaviour
 
         if (_buttonText != null)
             _buttonText.text = _stepIndex == _stepBodyText.Length - 1 ? _doneButtonLabel : _nextButtonLabel;
+    }
+
+    private void UpdateEnemyHighlight(Vector3 worldPosition)
+    {
+        if (_targetCanvas == null)
+            return;
+
+        Camera cameraForWorld = _worldCamera != null ? _worldCamera : Camera.main;
+        Vector3 screenPosition = cameraForWorld != null
+            ? cameraForWorld.WorldToScreenPoint(worldPosition)
+            : worldPosition;
+
+        RectTransform canvasRect = _targetCanvas.transform as RectTransform;
+        if (canvasRect == null)
+            return;
+
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            canvasRect,
+            screenPosition,
+            _targetCanvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : _targetCanvas.worldCamera,
+            out Vector2 localPoint);
+
+        _enemyHighlight.anchoredPosition = localPoint;
+    }
+
+    private IEnumerator ShowToastRoutine()
+    {
+        while (_toastQueue.Count > 0)
+        {
+            _toastText.text = _toastQueue.Dequeue();
+            _toastPanel.SetActive(true);
+
+            float elapsed = 0f;
+            while (elapsed < _toastDurationSeconds)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+        }
+
+        _toastPanel.SetActive(false);
+        _toastRoutine = null;
     }
 
     private bool TryEnterTutorialPause()
@@ -141,6 +272,18 @@ public class TutorialOverlayController : MonoBehaviour
     {
         _isShowing = false;
         _stepIndex = 0;
+        HideGuidedDraw();
+
+        if (_toastRoutine != null)
+        {
+            StopCoroutine(_toastRoutine);
+            _toastRoutine = null;
+        }
+
+        _toastQueue.Clear();
+
+        if (_toastPanel != null)
+            _toastPanel.SetActive(false);
 
         if (_overlayPanel != null)
             _overlayPanel.SetActive(false);
