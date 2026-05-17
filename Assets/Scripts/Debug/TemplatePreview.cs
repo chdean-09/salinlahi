@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -8,7 +9,6 @@ public class TemplatePreview : MonoBehaviour
     [Header("Template")]
     [SerializeField] private string _characterID = "KA";
     [SerializeField, Min(1)] private int _variantNumber = 1;
-    [SerializeField] private bool _useNumberedFileName = true;
 
     [Header("Display")]
     [SerializeField] private Vector2 _displayCenter = Vector2.zero;
@@ -46,19 +46,17 @@ public class TemplatePreview : MonoBehaviour
         string id = BaybayinIdCanonicalizer.Canonicalize(_characterID);
         if (string.IsNullOrEmpty(id))
         {
-            Debug.LogWarning($"TemplatePreview: invalid character ID '{_characterID}'.");
+            DebugLogger.LogWarning($"TemplatePreview: invalid character ID '{_characterID}'.");
             return;
         }
 
-        string fileName = _useNumberedFileName
-            ? $"{id}_template_{Mathf.Max(1, _variantNumber):00}"
-            : $"{id}_template";
+        string fileName = $"{id}_template_{Mathf.Max(1, _variantNumber):00}";
         string resourcePath = $"Templates/{fileName}";
 
         TextAsset asset = Resources.Load<TextAsset>(resourcePath);
         if (asset == null)
         {
-            Debug.LogWarning($"TemplatePreview: could not load Resources/{resourcePath}.txt");
+            DebugLogger.LogWarning($"TemplatePreview: could not load Resources/{resourcePath}.txt");
             ClearAllRenderers();
             return;
         }
@@ -71,7 +69,7 @@ public class TemplatePreview : MonoBehaviour
 
         if (pointCount < 2)
         {
-            Debug.LogWarning($"TemplatePreview: '{resourcePath}' had {strokeCount} strokes and {pointCount} points.");
+            DebugLogger.LogWarning($"TemplatePreview: '{resourcePath}' had {strokeCount} strokes and {pointCount} points.");
             ClearAllRenderers();
             return;
         }
@@ -107,7 +105,7 @@ public class TemplatePreview : MonoBehaviour
             _strokeRenderers[i].enabled = false;
         }
 
-        Debug.Log($"TemplatePreview: rendered {resourcePath} with {strokeCount} strokes and {pointCount} points (drawn strokes: {renderedStrokeCount}).");
+        DebugLogger.Log($"TemplatePreview: rendered {resourcePath} with {strokeCount} strokes and {pointCount} points (drawn strokes: {renderedStrokeCount}).");
     }
 
     private LineRenderer GetRendererForStrokeIndex(int strokeIndex)
@@ -152,3 +150,4 @@ public class TemplatePreview : MonoBehaviour
         }
     }
 }
+#endif

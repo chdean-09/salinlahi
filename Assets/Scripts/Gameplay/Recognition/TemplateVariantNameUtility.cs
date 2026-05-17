@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 
 public static class TemplateVariantNameUtility
 {
-    private static readonly Regex s_variantPattern = new Regex(@"^(?<id>[A-Z][A-Z-]*)_TEMPLATE_(?<variant>\d+)$", RegexOptions.Compiled);
+    private static readonly Regex s_variantPattern = new Regex(@"^(?<id>[A-Z][A-Z-]*)_TEMPLATE_(?:\d+)$", RegexOptions.Compiled);
 
     public static bool TryExtractCharacterID(string templateName, out string id)
     {
