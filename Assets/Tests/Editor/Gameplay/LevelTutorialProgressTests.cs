@@ -53,5 +53,41 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.AreEqual("salinlahi.tutorial.level1_ftue_seen", LevelTutorialProgress.Level1FtueSeenKey);
             Assert.AreEqual(ProgressManager.Level1FtueSeenKey, LevelTutorialProgress.Level1FtueSeenKey);
         }
+
+        [Test]
+        public void GuidedMomentKeys_MatchPersistedContract()
+        {
+            Assert.AreEqual("salinlahi.tutorial.level1.first_enemy_guided", LevelTutorialProgress.Level1FirstEnemyGuidedKey);
+            Assert.AreEqual("salinlahi.tutorial.level1.first_enemy_defeated", LevelTutorialProgress.Level1FirstEnemyDefeatedKey);
+            Assert.AreEqual("salinlahi.tutorial.level1.base_hp_explained", LevelTutorialProgress.Level1BaseHpExplainedKey);
+            Assert.AreEqual("salinlahi.tutorial.level1.wave1_clear_explained", LevelTutorialProgress.Level1Wave1ClearExplainedKey);
+        }
+
+        [Test]
+        public void MarkLevel1FirstEnemyGuided_PersistsGuidedFlag()
+        {
+            LevelTutorialProgress.MarkLevel1FirstEnemyGuided();
+
+            Assert.IsTrue(LevelTutorialProgress.HasSeenLevel1FirstEnemyGuided());
+            Assert.AreEqual(1, PlayerPrefs.GetInt(LevelTutorialProgress.Level1FirstEnemyGuidedKey, 0));
+        }
+
+        [Test]
+        public void ResetLevel1TutorialForTests_RemovesAllLevelOneTutorialFlags()
+        {
+            LevelTutorialProgress.MarkLevel1TutorialSeen();
+            LevelTutorialProgress.MarkLevel1FirstEnemyGuided();
+            LevelTutorialProgress.MarkLevel1FirstEnemyDefeated();
+            LevelTutorialProgress.MarkLevel1BaseHpExplained();
+            LevelTutorialProgress.MarkLevel1Wave1ClearExplained();
+
+            LevelTutorialProgress.ResetLevel1TutorialForTests();
+
+            Assert.IsFalse(LevelTutorialProgress.HasSeenLevel1Tutorial());
+            Assert.IsFalse(LevelTutorialProgress.HasSeenLevel1FirstEnemyGuided());
+            Assert.IsFalse(LevelTutorialProgress.HasSeenLevel1FirstEnemyDefeated());
+            Assert.IsFalse(LevelTutorialProgress.HasSeenLevel1BaseHpExplained());
+            Assert.IsFalse(LevelTutorialProgress.HasSeenLevel1Wave1ClearExplained());
+        }
     }
 }
