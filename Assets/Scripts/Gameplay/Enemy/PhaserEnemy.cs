@@ -26,6 +26,7 @@ public class PhaserEnemy : MonoBehaviour
     {
         _enemy = GetComponent<Enemy>();
         CacheRenderersIfMissing();
+        CacheFadeTargets();
     }
 
     private void OnEnable()
@@ -34,7 +35,9 @@ public class PhaserEnemy : MonoBehaviour
             _enemy = GetComponent<Enemy>();
 
         CacheRenderersIfMissing();
-        CacheFadeTargets();
+        if (_spriteRenderers == null || _textLabels == null || _spriteBaseColors == null || _labelBaseColors == null)
+            CacheFadeTargets();
+        RefreshBaseColors();
         SetVisibleImmediate();
 
         RefreshPhaserState();
@@ -68,14 +71,16 @@ public class PhaserEnemy : MonoBehaviour
             if (_isVisible)
             {
                 yield return FadeOutWithPulse();
-                // Damage becomes invalid only once fully invisible.
+                // The warning pulse/fade-out is still a valid damage window.
+                // A phaser becomes untargetable only after it reaches full invisibility.
                 _isVisible = false;
                 _hasCompletedInvisibleState = true;
                 ApplyAlpha(0f);
             }
             else
             {
-                // Damage is valid while transitioning back from invisible.
+                // Returning phasers become hittable immediately, even while fading in,
+                // so players are not penalized for drawing as soon as the enemy telegraphs.
                 _isVisible = true;
                 yield return FadeIn();
                 ApplyAlpha(1f);
@@ -110,10 +115,10 @@ public class PhaserEnemy : MonoBehaviour
         float fallback = GetInterval();
         if (_isVisible)
         {
-            float randomized = GetRandomDuration(_enemy.Data.phaserVisibleHoldMin, _enemy.Data.phaserVisibleHoldMax, fallback);
             if (!_hasCompletedInvisibleState)
-                randomized = Mathf.Max(randomized, GetInitialVisibleDelay(fallback));
-            return randomized;
+                return GetInitialVisibleDelay(fallback);
+
+            return GetRandomDuration(_enemy.Data.phaserVisibleHoldMin, _enemy.Data.phaserVisibleHoldMax, fallback);
         }
 
         return GetRandomDuration(_enemy.Data.phaserInvisibleHoldMin, _enemy.Data.phaserInvisibleHoldMax, fallback);
@@ -176,6 +181,29 @@ public class PhaserEnemy : MonoBehaviour
             _labelBaseColors[i] = _textLabels[i] != null
                 ? _textLabels[i].color
                 : Color.white;
+        }
+    }
+
+    private void RefreshBaseColors()
+    {
+        if (_spriteRenderers != null && _spriteBaseColors != null)
+        {
+            for (int i = 0; i < _spriteRenderers.Length; i++)
+            {
+                _spriteBaseColors[i] = _spriteRenderers[i] != null
+                    ? _spriteRenderers[i].color
+                    : Color.white;
+            }
+        }
+
+        if (_textLabels != null && _labelBaseColors != null)
+        {
+            for (int i = 0; i < _textLabels.Length; i++)
+            {
+                _labelBaseColors[i] = _textLabels[i] != null
+                    ? _textLabels[i].color
+                    : Color.white;
+            }
         }
     }
 
@@ -242,12 +270,6 @@ public class PhaserEnemy : MonoBehaviour
 
         if (_renderers == null)
             return;
-
-        for (int i = 0; i < _renderers.Length; i++)
-        {
-            if (_renderers[i] != null)
-                _renderers[i].enabled = true;
-        }
 
         for (int i = 0; i < _spriteRenderers.Length; i++)
         {

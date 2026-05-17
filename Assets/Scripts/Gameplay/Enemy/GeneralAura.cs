@@ -70,6 +70,7 @@ public class GeneralAura : MonoBehaviour
         {
             Enemy other = active[i];
             if (other == null || other == _self) continue;          // do not self-buff
+            if (other.IsDying) continue;
             if (other.IsBoss) continue;
             EnemyDataSO otherData = other.Data;
             if (otherData == null) continue;

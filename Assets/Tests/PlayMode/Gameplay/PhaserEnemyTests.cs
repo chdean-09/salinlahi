@@ -113,6 +113,28 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         [UnityTest]
+        public IEnumerator Phaser_InitialVisibleDelay_DoesNotUseVisibleHoldRange()
+        {
+            ConfigureDeterministicTime();
+            yield return null;
+
+            Enemy enemy = CreateEnemy(
+                isPhaser: true,
+                phaserInterval: 0.02f,
+                phaserFadeOutDuration: 0f,
+                phaserInitialVisibleDelayMin: 0.05f,
+                phaserInitialVisibleDelayMax: 0.05f,
+                phaserVisibleHoldMin: 1.8f,
+                phaserVisibleHoldMax: 2.7f);
+            PhaserEnemy phaser = enemy.GetComponent<PhaserEnemy>();
+
+            yield return new WaitForSeconds(0.3f);
+
+            Assert.IsTrue(GetPrivateField<bool>(phaser, "_hasCompletedInvisibleState"),
+                "Phaser should complete first invisibility using initial delay, not visible hold range.");
+        }
+
+        [UnityTest]
         public IEnumerator Phaser_ContinuouslyCyclesWhileActive()
         {
             ConfigureDeterministicTime();
@@ -194,6 +216,31 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 "Phaser should become fully invisible after warning pulse duration.");
         }
 
+        [UnityTest]
+        public IEnumerator Phaser_RemainsDamageableDuringFadeOutWarning()
+        {
+            ConfigureDeterministicTime();
+            yield return null;
+
+            Enemy enemy = CreateEnemy(
+                isPhaser: true,
+                phaserInterval: 0.02f,
+                maxHealth: 2,
+                phaserFadeOutDuration: 0.18f,
+                phaserFadeOutPulseCount: 1,
+                phaserFadeOutPulseAmplitude: 1f);
+            PhaserEnemy phaser = enemy.GetComponent<PhaserEnemy>();
+            SpriteRenderer renderer = enemy.GetComponent<SpriteRenderer>();
+
+            yield return WaitUntilOrTimeout(
+                () => renderer.color.a < 0.95f && phaser.IsVisible,
+                timeoutSeconds: 0.6f);
+
+            Assert.IsTrue(phaser.IsVisible, "Phaser should still be hittable during warning fade-out.");
+            enemy.TakeDamage(1);
+            Assert.AreEqual(1, enemy.CurrentHealth);
+        }
+
         [Test]
         public void InvisiblePhaser_IgnoresTakeDamage()
         {
@@ -220,7 +267,11 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             int maxHealth = 1,
             float phaserFadeOutDuration = 0.3f,
             int phaserFadeOutPulseCount = 3,
-            float phaserFadeOutPulseAmplitude = 0.2f)
+            float phaserFadeOutPulseAmplitude = 0.2f,
+            float phaserInitialVisibleDelayMin = 0f,
+            float phaserInitialVisibleDelayMax = 0f,
+            float phaserVisibleHoldMin = 0f,
+            float phaserVisibleHoldMax = 0f)
         {
             BaybayinCharacterSO character = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
             character.characterID = "BA";
@@ -237,6 +288,10 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             data.phaserFadeOutDuration = phaserFadeOutDuration;
             data.phaserFadeOutPulseCount = phaserFadeOutPulseCount;
             data.phaserFadeOutPulseAmplitude = phaserFadeOutPulseAmplitude;
+            data.phaserInitialVisibleDelayMin = phaserInitialVisibleDelayMin;
+            data.phaserInitialVisibleDelayMax = phaserInitialVisibleDelayMax;
+            data.phaserVisibleHoldMin = phaserVisibleHoldMin;
+            data.phaserVisibleHoldMax = phaserVisibleHoldMax;
             _objectsToDestroy.Add(data);
 
             GameObject go = new GameObject("Enemy_Phaser_Component_Test");

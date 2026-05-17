@@ -126,6 +126,8 @@ public class CombatResolver : MonoBehaviour
         if (enemy.Data.isPhaser && !enemy.IsPhaserVisible)
             return false;
 
+        // Bosses are excluded from AOE counts/bursts, but may still use the
+        // single-target resolution path for boss-specific combat tuning.
         return true;
     }
 
