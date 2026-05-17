@@ -33,7 +33,7 @@ public class EnemyDataSO : ScriptableObject
     public float phaserInterval = 0.5f;
     [Tooltip("Minimum visible time after spawn/enable before the first invisibility cycle. <= 0 uses phaserInterval.")]
     public float phaserInitialVisibleDelayMin = 0f;
-    [Tooltip("Maximum visible time after spawn/enable before the first invisibility cycle. <= 0 uses phaserInitialVisibleDelayMin (or phaserInterval when min is also <= 0).")]
+    [Tooltip("Maximum visible time after spawn/enable before the first invisibility cycle. <= 0 falls back through the same phaserInterval rule as the minimum.")]
     public float phaserInitialVisibleDelayMax = 0f;
     [Tooltip("Optional randomized visible hold minimum in seconds. <= 0 falls back to phaserInterval.")]
     public float phaserVisibleHoldMin = 0f;
@@ -52,6 +52,7 @@ public class EnemyDataSO : ScriptableObject
     [Range(0f, 1f)]
     [Tooltip("Pulse intensity during fade-out. 0 = plain fade, 1 = strongest pulse.")]
     public float phaserFadeOutPulseAmplitude = 0.2f;
+
     [Header("Contact Behavior")]
     [Tooltip("If false, reaching the Shrine collision zone will despawn this enemy without damaging the Shrine.")]
     public bool dealsContactDamage = true;

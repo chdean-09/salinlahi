@@ -326,7 +326,10 @@ public class Enemy : MonoBehaviour
 
         if (hasDeathAnimation)
         {
-            // freeze, unregister, fire the event immediately, then play frames.
+            // Freeze and fire defeat immediately, but keep this enemy registered
+            // until the death animation returns it to the pool. Wave-clear checks
+            // therefore wait for visible death animations to finish. EnemyPool.Return
+            // owns the single ActiveEnemyTracker.Unregister call.
             _isDying = true;
             // Cancel any in-flight hurt feedback before the death path takes over.
             // Otherwise its pause-window resume (or shake offset) could fight
