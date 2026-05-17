@@ -72,6 +72,14 @@ public static class ProgressDebugMenu
             PlayerPrefs.DeleteKey($"{KeyPrefix}stars.{i}");
         }
         PlayerPrefs.DeleteKey(ProgressManager.EndlessModeKey);
+        PlayerPrefs.DeleteKey(ProgressManager.Level1FtueSeenKey);
+        PlayerPrefs.DeleteKey(ProgressManager.Level1FirstEnemyGuidedKey);
+        PlayerPrefs.DeleteKey(ProgressManager.Level1FirstEnemyDefeatedKey);
+        PlayerPrefs.DeleteKey(ProgressManager.Level1BaseHpExplainedKey);
+        PlayerPrefs.DeleteKey(ProgressManager.Level1Wave1ClearExplainedKey);
+        PlayerPrefs.DeleteKey(ProgressManager.Level1WorldIntroSeenKey);
+        PlayerPrefs.DeleteKey(ProgressManager.Level1TraceAssistShownCountKey);
+        PlayerPrefs.DeleteKey(ProgressManager.Level1RecentDrawFailuresKey);
 
         PlayerPrefs.Save();
         Debug.Log("[Salinlahi] Progress cleared (direct).");

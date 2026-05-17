@@ -11,8 +11,11 @@ public class GuidedLevel1TutorialController : MonoBehaviour
     [SerializeField] private int _levelNumber = 1;
     [SerializeField] private int _waveOneIndex = 0;
     [SerializeField] private string _guidedCharacterID = "BA";
+    [SerializeField] private int _lightAssistMaxShown = 2;
+    [SerializeField] private int _failureAssistThreshold = 2;
 
     private Enemy _guidedEnemy;
+    private Enemy _lightAssistedEnemy;
     private bool _guidanceActive;
     private bool _spawnSuspended;
     private Coroutine _completionRoutine;
@@ -21,6 +24,7 @@ public class GuidedLevel1TutorialController : MonoBehaviour
     {
         EventBus.OnEnemySpawned += HandleEnemySpawned;
         EventBus.OnEnemyTargeted += HandleEnemyTargeted;
+        EventBus.OnDrawingFailed += HandleDrawingFailed;
         EventBus.OnBaseHit += HandleBaseHit;
         EventBus.OnWaveCleared += HandleWaveCleared;
         EventBus.OnGameOver += HandleTerminalState;
@@ -31,6 +35,7 @@ public class GuidedLevel1TutorialController : MonoBehaviour
     {
         EventBus.OnEnemySpawned -= HandleEnemySpawned;
         EventBus.OnEnemyTargeted -= HandleEnemyTargeted;
+        EventBus.OnDrawingFailed -= HandleDrawingFailed;
         EventBus.OnBaseHit -= HandleBaseHit;
         EventBus.OnWaveCleared -= HandleWaveCleared;
         EventBus.OnGameOver -= HandleTerminalState;
@@ -70,7 +75,16 @@ public class GuidedLevel1TutorialController : MonoBehaviour
     private void HandleEnemySpawned(Enemy enemy)
     {
         if (!ShouldGuideFirstEnemy(enemy))
+        {
+            if (ShouldShowLightAssist(enemy))
+            {
+                _lightAssistedEnemy = enemy;
+                _overlayController?.ShowTraceAssist(enemy, TraceAssistStrength.Light);
+                LevelTutorialProgress.IncrementLevel1TraceAssistShownCount();
+            }
+
             return;
+        }
 
         _guidedEnemy = enemy;
         _guidanceActive = true;
@@ -81,8 +95,34 @@ public class GuidedLevel1TutorialController : MonoBehaviour
         LevelTutorialProgress.MarkLevel1FirstEnemyGuided();
     }
 
+    private bool ShouldShowLightAssist(Enemy enemy)
+    {
+        if (enemy == null || _guidanceActive)
+            return false;
+
+        if (!IsLevelOneActive())
+            return false;
+
+        if (!LevelTutorialProgress.HasSeenLevel1FirstEnemyDefeated())
+            return false;
+
+        if (LevelTutorialProgress.HasSeenLevel1Wave1ClearExplained())
+            return false;
+
+        int shownCount = LevelTutorialProgress.GetLevel1TraceAssistShownCount();
+        int recentFailures = LevelTutorialProgress.GetLevel1RecentDrawFailures();
+        return shownCount < _lightAssistMaxShown || recentFailures >= _failureAssistThreshold;
+    }
+
     private void HandleEnemyTargeted(Enemy enemy)
     {
+        if (enemy != null && enemy == _lightAssistedEnemy)
+        {
+            _overlayController?.HideTraceAssist();
+            _lightAssistedEnemy = null;
+            LevelTutorialProgress.ResetLevel1RecentDrawFailures();
+        }
+
         if (!_guidanceActive || enemy == null || enemy != _guidedEnemy)
             return;
 
@@ -90,6 +130,17 @@ public class GuidedLevel1TutorialController : MonoBehaviour
             StopCoroutine(_completionRoutine);
 
         _completionRoutine = StartCoroutine(CompleteGuidedEncounterAfterCombatFrame());
+    }
+
+    private void HandleDrawingFailed()
+    {
+        if (!IsLevelOneActive())
+            return;
+
+        if (!LevelTutorialProgress.HasSeenLevel1FirstEnemyDefeated())
+            return;
+
+        LevelTutorialProgress.IncrementLevel1RecentDrawFailures();
     }
 
     private IEnumerator CompleteGuidedEncounterAfterCombatFrame()
@@ -108,6 +159,7 @@ public class GuidedLevel1TutorialController : MonoBehaviour
         _overlayController?.HideGuidedDraw();
         SetSpawnSuspended(false);
         LevelTutorialProgress.MarkLevel1FirstEnemyDefeated();
+        LevelTutorialProgress.ResetLevel1RecentDrawFailures();
         _overlayController?.ShowToast("Good. Draw the mark enemies carry to stop them.");
 
         _guidanceActive = false;
@@ -193,7 +245,9 @@ public class GuidedLevel1TutorialController : MonoBehaviour
             SetSpawnSuspended(false);
 
         _overlayController?.HideGuidedDraw();
+        _overlayController?.HideTraceAssist();
         _guidanceActive = false;
         _guidedEnemy = null;
+        _lightAssistedEnemy = null;
     }
 }

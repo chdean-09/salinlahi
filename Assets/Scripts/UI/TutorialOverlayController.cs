@@ -30,6 +30,7 @@ public class TutorialOverlayController : MonoBehaviour
     [SerializeField] private TextMeshProUGUI _guidedPromptText;
     [SerializeField] private Image _guidedGlyphImage;
     [SerializeField] private RectTransform _enemyHighlight;
+    [SerializeField] private BaybayinTraceGuideController _traceGuideController;
     [SerializeField] private Camera _worldCamera;
     [SerializeField] private Canvas _targetCanvas;
 
@@ -150,11 +151,53 @@ public class TutorialOverlayController : MonoBehaviour
 
         if (_enemyHighlight != null)
             _enemyHighlight.gameObject.SetActive(true);
+
+        _traceGuideController?.Show(character, TraceAssistStrength.Strong);
+    }
+
+    public void ShowTraceAssist(Enemy enemy, TraceAssistStrength strength)
+    {
+        if (enemy == null)
+            return;
+
+        if (strength == TraceAssistStrength.Hidden)
+        {
+            HideTraceAssist();
+            return;
+        }
+
+        _highlightedEnemy = enemy;
+
+        if (_visualOverlayGroup != null)
+        {
+            _visualOverlayGroup.alpha = strength == TraceAssistStrength.Strong ? 1f : 0.35f;
+            _visualOverlayGroup.interactable = false;
+            _visualOverlayGroup.blocksRaycasts = false;
+        }
+
+        if (_enemyHighlight != null)
+            _enemyHighlight.gameObject.SetActive(strength == TraceAssistStrength.Strong);
+
+        _traceGuideController?.Show(enemy.Character, strength);
+    }
+
+    public void HideTraceAssist()
+    {
+        _traceGuideController?.Hide();
+
+        bool guidedDrawActive = _guidedDrawPanel != null && _guidedDrawPanel.activeSelf;
+        if (_visualOverlayGroup != null && !guidedDrawActive)
+        {
+            _visualOverlayGroup.alpha = 0f;
+            _visualOverlayGroup.interactable = false;
+            _visualOverlayGroup.blocksRaycasts = false;
+        }
     }
 
     public void HideGuidedDraw()
     {
         _highlightedEnemy = null;
+        _traceGuideController?.Hide();
 
         if (_guidedDrawPanel != null)
             _guidedDrawPanel.SetActive(false);

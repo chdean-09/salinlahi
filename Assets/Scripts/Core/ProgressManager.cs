@@ -19,6 +19,9 @@ public class ProgressManager : Singleton<ProgressManager>
     public const string Level1FirstEnemyDefeatedKey = "salinlahi.tutorial.level1.first_enemy_defeated";
     public const string Level1BaseHpExplainedKey = "salinlahi.tutorial.level1.base_hp_explained";
     public const string Level1Wave1ClearExplainedKey = "salinlahi.tutorial.level1.wave1_clear_explained";
+    public const string Level1WorldIntroSeenKey = "salinlahi.tutorial.level1.world_intro_seen";
+    public const string Level1TraceAssistShownCountKey = "salinlahi.tutorial.level1.trace_assist_shown_count";
+    public const string Level1RecentDrawFailuresKey = "salinlahi.tutorial.level1.recent_draw_failures";
 
     private const string KeyPrefix = "salinlahi.progress.";
     private const int MaxStars = 3;
@@ -340,6 +343,9 @@ public class ProgressManager : Singleton<ProgressManager>
         PlayerPrefs.DeleteKey(Level1FirstEnemyDefeatedKey);
         PlayerPrefs.DeleteKey(Level1BaseHpExplainedKey);
         PlayerPrefs.DeleteKey(Level1Wave1ClearExplainedKey);
+        PlayerPrefs.DeleteKey(Level1WorldIntroSeenKey);
+        PlayerPrefs.DeleteKey(Level1TraceAssistShownCountKey);
+        PlayerPrefs.DeleteKey(Level1RecentDrawFailuresKey);
 
         // Reset tracking
         _lastProcessedLevelId = -1;

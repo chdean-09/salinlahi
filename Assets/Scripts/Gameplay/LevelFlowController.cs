@@ -12,6 +12,7 @@ public class LevelFlowController : MonoBehaviour
     [SerializeField] private WaveManager _waveManager;
     [SerializeField] private DialogueController _dialogueController;
     [SerializeField] private TutorialOverlayController _tutorialOverlayController;
+    [SerializeField] private Level1WorldIntroController _level1WorldIntroController;
     [SerializeField] private VictoryScreenUI _victoryScreen;
     [SerializeField] private DefeatScreenUI _defeatScreen;
 
@@ -106,6 +107,12 @@ public class LevelFlowController : MonoBehaviour
     {
         if (!LevelTutorialProgress.ShouldShowForLevel(_levelConfig))
             yield break;
+
+        if (_level1WorldIntroController != null && _level1WorldIntroController.IsConfigured)
+        {
+            yield return _level1WorldIntroController.PlayIfNeeded(_levelConfig);
+            yield break;
+        }
 
         if (_tutorialOverlayController == null)
         {

@@ -61,6 +61,9 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.AreEqual("salinlahi.tutorial.level1.first_enemy_defeated", LevelTutorialProgress.Level1FirstEnemyDefeatedKey);
             Assert.AreEqual("salinlahi.tutorial.level1.base_hp_explained", LevelTutorialProgress.Level1BaseHpExplainedKey);
             Assert.AreEqual("salinlahi.tutorial.level1.wave1_clear_explained", LevelTutorialProgress.Level1Wave1ClearExplainedKey);
+            Assert.AreEqual("salinlahi.tutorial.level1.world_intro_seen", LevelTutorialProgress.Level1WorldIntroSeenKey);
+            Assert.AreEqual("salinlahi.tutorial.level1.trace_assist_shown_count", LevelTutorialProgress.Level1TraceAssistShownCountKey);
+            Assert.AreEqual("salinlahi.tutorial.level1.recent_draw_failures", LevelTutorialProgress.Level1RecentDrawFailuresKey);
         }
 
         [Test]
@@ -73,6 +76,28 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
+        public void MarkLevel1WorldIntroSeen_PersistsWorldIntroFlag()
+        {
+            LevelTutorialProgress.MarkLevel1WorldIntroSeen();
+
+            Assert.IsTrue(LevelTutorialProgress.HasSeenLevel1WorldIntro());
+            Assert.AreEqual(1, PlayerPrefs.GetInt(LevelTutorialProgress.Level1WorldIntroSeenKey, 0));
+        }
+
+        [Test]
+        public void TraceAssistCounters_PersistAndReset()
+        {
+            Assert.AreEqual(1, LevelTutorialProgress.IncrementLevel1TraceAssistShownCount());
+            Assert.AreEqual(2, LevelTutorialProgress.IncrementLevel1TraceAssistShownCount());
+            Assert.AreEqual(1, LevelTutorialProgress.IncrementLevel1RecentDrawFailures());
+
+            LevelTutorialProgress.ResetLevel1RecentDrawFailures();
+
+            Assert.AreEqual(2, LevelTutorialProgress.GetLevel1TraceAssistShownCount());
+            Assert.AreEqual(0, LevelTutorialProgress.GetLevel1RecentDrawFailures());
+        }
+
+        [Test]
         public void ResetLevel1TutorialForTests_RemovesAllLevelOneTutorialFlags()
         {
             LevelTutorialProgress.MarkLevel1TutorialSeen();
@@ -80,6 +105,9 @@ namespace Salinlahi.Tests.Editor.Gameplay
             LevelTutorialProgress.MarkLevel1FirstEnemyDefeated();
             LevelTutorialProgress.MarkLevel1BaseHpExplained();
             LevelTutorialProgress.MarkLevel1Wave1ClearExplained();
+            LevelTutorialProgress.MarkLevel1WorldIntroSeen();
+            LevelTutorialProgress.IncrementLevel1TraceAssistShownCount();
+            LevelTutorialProgress.IncrementLevel1RecentDrawFailures();
 
             LevelTutorialProgress.ResetLevel1TutorialForTests();
 
@@ -88,6 +116,9 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.IsFalse(LevelTutorialProgress.HasSeenLevel1FirstEnemyDefeated());
             Assert.IsFalse(LevelTutorialProgress.HasSeenLevel1BaseHpExplained());
             Assert.IsFalse(LevelTutorialProgress.HasSeenLevel1Wave1ClearExplained());
+            Assert.IsFalse(LevelTutorialProgress.HasSeenLevel1WorldIntro());
+            Assert.AreEqual(0, LevelTutorialProgress.GetLevel1TraceAssistShownCount());
+            Assert.AreEqual(0, LevelTutorialProgress.GetLevel1RecentDrawFailures());
         }
     }
 }
