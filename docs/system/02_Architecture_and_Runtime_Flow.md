@@ -117,6 +117,7 @@ All cross-system communication uses `EventBus.cs`. No direct manager-to-manager 
 
 | Event | Payload | Raise Method |
 |-------|---------|-------------|
+| `OnEnemySpawned` | `Enemy` | `RaiseEnemySpawned(Enemy)` |
 | `OnEnemyDefeated` | `BaybayinCharacterSO` | `RaiseEnemyDefeated(BaybayinCharacterSO)` |
 | `OnBaseHit` | `int` (damage) | `RaiseBaseHit(int)` |
 | `OnGameOver` | none | `RaiseGameOver()` |

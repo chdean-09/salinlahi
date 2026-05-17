@@ -38,11 +38,17 @@ public class WaveManager : MonoBehaviour
 
     private int _currentWaveIndex;
     private int _currentWaveSpawnedCount;
+    private bool _tutorialSpawnSuspended;
     private bool _running;
     private Coroutine _waveRoutine;
 
     public int CurrentWaveIndex => _currentWaveIndex;
     public int CurrentWaveSpawnedCount => _currentWaveSpawnedCount;
+
+    public void SetTutorialSpawnSuspended(bool suspended)
+    {
+        _tutorialSpawnSuspended = suspended;
+    }
 
     private void OnEnable()
     {
@@ -369,7 +375,8 @@ public class WaveManager : MonoBehaviour
                 ? Mathf.Clamp(firstWaveSpawnOffset, 0, Mathf.Max(0, wave.enemyCount))
                 : 0;
             _currentWaveSpawnedCount = spawnOffset;
-            yield return StartCoroutine(_spawner.SpawnWave(wave, HandleEnemySpawned, spawnOffset));
+            yield return StartCoroutine(
+                _spawner.SpawnWave(wave, HandleEnemySpawned, spawnOffset, IsTutorialSpawnSuspended));
 
             if (!CanContinueRun())
             {
@@ -397,9 +404,15 @@ public class WaveManager : MonoBehaviour
         CompleteRun();
     }
 
-    private void HandleEnemySpawned()
+    private void HandleEnemySpawned(Enemy enemy)
     {
         _currentWaveSpawnedCount++;
+        EventBus.RaiseEnemySpawned(enemy);
+    }
+
+    private bool IsTutorialSpawnSuspended()
+    {
+        return _tutorialSpawnSuspended;
     }
 
     private IEnumerator RunBossEncounter(BossConfigSO bossConfig)
@@ -594,6 +607,7 @@ public class WaveManager : MonoBehaviour
     {
         _running = false;
         _waveRoutine = null;
+        _tutorialSpawnSuspended = false;
     }
 
     private void ResetRunState()
@@ -602,6 +616,7 @@ public class WaveManager : MonoBehaviour
         _waveRoutine = null;
         _currentWaveIndex = 0;
         _currentWaveSpawnedCount = 0;
+        _tutorialSpawnSuspended = false;
     }
 
 #if UNITY_EDITOR || SALINLAHI_SANDBOX

@@ -69,6 +69,7 @@
 | REQ-44 | The game shall include in-game SUS and GEQ-S questionnaire screens administered after gameplay during UAT | Sprint Timeline Sprint 4; Salinlahi.md Â§3.5.1, Â§3.5.2 | P0 | âŒ QuestionnaireController not implemented | â€” | âŒ NOT FOUND | ðŸ”´ P0 |
 | REQ-45 | The game shall log recognition accuracy per character per level to a CSV file on the device for post-session analysis | Sprint Timeline Sprint 2; Salinlahi.md Â§3.5.3 | P0 | âŒ QuestionnaireLogger not implemented | â€” | âŒ NOT FOUND | ðŸ”´ P0 |
 | REQ-46 | The recognition system shall support multiple templates per character to handle handwriting variation | TDD Â§2.2 | P1 | âš  RecognitionConfigSO exists; âŒ multi-template loading not implemented | RC-04 | âš  Partial | ðŸŸ  P1 |
+| REQ-47 | First-time Level 1 shall guide the first enemy encounter with deterministic spawn, non-blocking drawing UI, and once-only tutorial progress | SALIN-93 | P1 | `WaveConfigSO` first-spawn override fields, `WaveManager` spawn suspension, `EventBus.OnEnemySpawned`, `LevelTutorialProgress` once-only keys; scene wiring pending | SALIN93-01â€“SALIN93-08, CS-03, WV-01 | âš  Partial | Scene and asset wiring pending |
 
 ---
 
@@ -77,12 +78,12 @@
 | Status | Count |
 |--------|-------|
 | âœ… Implemented | 23 |
-| âš  Partial | 18 |
+| âš  Partial | 19 |
 | âŒ NOT FOUND | 5 |
-| **Total requirements** | **46** |
+| **Total requirements** | **47** |
 
 | Severity | Count |
 |----------|-------|
 | ðŸ”´ P0 gaps | 0 |
-| ðŸŸ  P1 gaps | 14 |
+| ðŸŸ  P1 gaps | 15 |
 | ðŸŸ¡ P2 gaps | 5 |

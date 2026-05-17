@@ -119,6 +119,7 @@ Owns two `AudioSource` components: `_bgmSource` (background music, looped) and `
 
 | Category | Event | Raise Method | Payload Type |
 |----------|-------|-------------|-------------|
+| Enemy | `OnEnemySpawned` | `RaiseEnemySpawned(Enemy)` | `Enemy` |
 | Enemy | `OnEnemyDefeated` | `RaiseEnemyDefeated(BaybayinCharacterSO)` | `BaybayinCharacterSO` |
 | Enemy | `OnBaseHit` | `RaiseBaseHit(int)` | `int` (damage amount) |
 | Enemy | `OnAOETriggered` | `RaiseAOETriggered(int)` | `int` (defeated count) |

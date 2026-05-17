@@ -5,6 +5,7 @@ using System;
 public static class EventBus
 {
     // -- Enemy Events --
+    public static event Action<Enemy> OnEnemySpawned;
     public static event Action<BaybayinCharacterSO> OnEnemyDefeated;
     public static event Action<int> OnBaseHit;
 
@@ -48,6 +49,7 @@ public static class EventBus
     public static event Action OnDialogueComplete;
 
     // -- Raisers --
+    public static void RaiseEnemySpawned(Enemy enemy) => OnEnemySpawned?.Invoke(enemy);
     public static void RaiseEnemyDefeated(BaybayinCharacterSO c) => OnEnemyDefeated?.Invoke(c);
     public static void RaiseBaseHit(int damage = 1) => OnBaseHit?.Invoke(damage);
     public static void RaiseGameOver() => OnGameOver?.Invoke();

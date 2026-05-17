@@ -15,6 +15,16 @@ public class WaveConfigSO : ScriptableObject
     [Tooltip("Enemy data assets that can spawn in this wave")]
     public List<EnemyDataSO> enemyTypesInWave;
 
+    [Header("First Spawn Override")]
+    [Tooltip("When enabled, spawn index 0 uses the override enemy and/or character before normal random selection resumes.")]
+    public bool useFirstSpawnOverride;
+
+    [Tooltip("Optional enemy type for the first spawn in this wave.")]
+    public EnemyDataSO firstSpawnEnemyType;
+
+    [Tooltip("Optional Baybayin character for the first spawn in this wave.")]
+    public BaybayinCharacterSO firstSpawnCharacter;
+
     [Tooltip("Total enemies to spawn across this wave")]
     public int enemyCount = 5;
 
@@ -41,6 +51,9 @@ public class WaveConfigSO : ScriptableObject
 
         if (waveStartDelay < 0f)
             Debug.LogError($"WaveConfigSO '{name}' has waveStartDelay < 0.", this);
+
+        if (useFirstSpawnOverride && firstSpawnEnemyType == null && firstSpawnCharacter == null)
+            Debug.LogError($"WaveConfigSO '{name}' has useFirstSpawnOverride enabled but no first spawn override references.", this);
 
         ValidateList(enemyTypesInWave, "enemyTypesInWave");
         ValidateList(charactersInWave, "charactersInWave");

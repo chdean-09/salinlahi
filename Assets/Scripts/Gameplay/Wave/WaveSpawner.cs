@@ -96,7 +96,17 @@ public class WaveSpawner : MonoBehaviour
         return enemy;
     }
 
-    public IEnumerator SpawnWave(WaveConfigSO wave, Action onEnemySpawned = null, int spawnOffset = 0)
+    public IEnumerator SpawnWave(WaveConfigSO wave, Action onEnemySpawned, int spawnOffset = 0)
+    {
+        Action<Enemy> callback = onEnemySpawned != null ? _ => onEnemySpawned() : null;
+        return SpawnWave(wave, callback, spawnOffset);
+    }
+
+    public IEnumerator SpawnWave(
+        WaveConfigSO wave,
+        Action<Enemy> onEnemySpawned = null,
+        int spawnOffset = 0,
+        Func<bool> shouldSuspendSpawning = null)
     {
         if (wave == null)
         {
@@ -125,18 +135,40 @@ public class WaveSpawner : MonoBehaviour
 
         for (int i = firstSpawnIndex; i < enemyCount; i++)
         {
-            EnemyDataSO data = SelectEnemyDataForSpawn(wave);
-            BaybayinCharacterSO character = SelectCharacterForSpawn(wave, data);
+            yield return WaitWhileSuspended(shouldSuspendSpawning);
+
+            EnemyDataSO data = SelectEnemyDataForSpawn(wave, i);
+            BaybayinCharacterSO character = SelectCharacterForSpawn(wave, data, i);
 
             Enemy enemy = SpawnEnemy(data);
             if (enemy != null)
             {
                 enemy.AssignCharacter(character);
-                onEnemySpawned?.Invoke();
+                onEnemySpawned?.Invoke(enemy);
             }
 
             if (i < enemyCount - 1)
-                yield return new WaitForSeconds(interval);
+                yield return WaitForSecondsRespectingSuspension(interval, shouldSuspendSpawning);
+        }
+    }
+
+    private IEnumerator WaitWhileSuspended(Func<bool> shouldSuspendSpawning)
+    {
+        while (shouldSuspendSpawning != null && shouldSuspendSpawning())
+            yield return null;
+    }
+
+    private IEnumerator WaitForSecondsRespectingSuspension(
+        float seconds,
+        Func<bool> shouldSuspendSpawning)
+    {
+        float elapsed = 0f;
+        while (elapsed < seconds)
+        {
+            if (shouldSuspendSpawning == null || !shouldSuspendSpawning())
+                elapsed += Time.deltaTime;
+
+            yield return null;
         }
     }
 
@@ -148,8 +180,16 @@ public class WaveSpawner : MonoBehaviour
         return _fallbackEnemyData;
     }
 
-    private EnemyDataSO SelectEnemyDataForSpawn(WaveConfigSO wave)
+    private EnemyDataSO SelectEnemyDataForSpawn(WaveConfigSO wave, int spawnIndex)
     {
+        if (spawnIndex == 0
+            && wave != null
+            && wave.useFirstSpawnOverride
+            && wave.firstSpawnEnemyType != null)
+        {
+            return ResolveEnemyData(wave.firstSpawnEnemyType);
+        }
+
         EnemyDataSO selected = null;
 
         if (wave.enemyTypesInWave != null && wave.enemyTypesInWave.Count > 0)
@@ -171,8 +211,19 @@ public class WaveSpawner : MonoBehaviour
         return ResolveEnemyData(selected);
     }
 
-    private BaybayinCharacterSO SelectCharacterForSpawn(WaveConfigSO wave, EnemyDataSO selectedEnemyData)
+    private BaybayinCharacterSO SelectCharacterForSpawn(
+        WaveConfigSO wave,
+        EnemyDataSO selectedEnemyData,
+        int spawnIndex)
     {
+        if (spawnIndex == 0
+            && wave != null
+            && wave.useFirstSpawnOverride
+            && wave.firstSpawnCharacter != null)
+        {
+            return wave.firstSpawnCharacter;
+        }
+
         if (wave.charactersInWave != null && wave.charactersInWave.Count > 0)
         {
             List<BaybayinCharacterSO> validCharacters = new List<BaybayinCharacterSO>();
