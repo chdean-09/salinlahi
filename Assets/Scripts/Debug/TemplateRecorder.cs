@@ -190,17 +190,8 @@ public class TemplateRecorder : MonoBehaviour
         _drawing = false;
         if (_activeStrokePoints == null) return;
 
-        if (_activeStrokePoints.Count < _minimumStrokePointCount)
-        {
-            int lastIndex = _strokes.Count - 1;
-            if (lastIndex >= 0)
-            {
-                _strokes.RemoveAt(lastIndex);
-                LineRenderer renderer = GetRendererForStrokeIndex(lastIndex);
-                if (renderer != null) renderer.positionCount = 0;
-            }
-        }
-        else if (ComputeStrokePathLength(_activeStrokePoints) < _minimumStrokePathLength)
+        float strokeLength = ComputeStrokePathLength(_activeStrokePoints);
+        if (_activeStrokePoints.Count < _minimumStrokePointCount || strokeLength < _minimumStrokePathLength)
         {
             int lastIndex = _strokes.Count - 1;
             if (lastIndex >= 0)

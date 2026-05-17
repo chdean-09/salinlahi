@@ -24,6 +24,13 @@ public struct RecognitionResult
 
 public class DollarPRecognizer
 {
+    private struct CandidateMatch
+    {
+        public string CharacterID;
+        public float Score;
+        public int VariantIndex;
+    }
+
     private readonly int _n; // resample point count
     private Dictionary<string, List<List<Vector2>>> _templates;
     public DollarPRecognizer(int resampleCount = 32)
@@ -42,6 +49,8 @@ public class DollarPRecognizer
         SetTemplateVariants(wrapped);
     }
 
+    // Backward-compatible wrapper for legacy callers with flattened multi-variant templates.
+    // Prefer SetTemplateStrokeVariants for new stroke-aware template loading.
     public void SetTemplateVariants(Dictionary<string, List<List<Vector2>>> raw)
     {
         var wrapped = new Dictionary<string, List<List<List<Vector2>>>>();
@@ -94,41 +103,64 @@ public class DollarPRecognizer
         if (candidate.Count == 0)
             return new RecognitionResult("NONE", 0f, -1, "NONE", float.MinValue);
 
-        string bestID = "NONE";
-        float bestScore = float.MinValue;
-        int bestVariantIndex = -1;
-        string secondID = "NONE";
-        float secondScore = float.MinValue;
+        CandidateMatch best = new CandidateMatch
+        {
+            CharacterID = "NONE",
+            Score = float.MinValue,
+            VariantIndex = -1
+        };
+        CandidateMatch second = new CandidateMatch
+        {
+            CharacterID = "NONE",
+            Score = float.MinValue,
+            VariantIndex = -1
+        };
 
         foreach (var kvp in _templates)
         {
+            float bestScoreForCharacter = float.MinValue;
+            int bestVariantForCharacter = -1;
+
             for (int i = 0; i < kvp.Value.Count; i++)
             {
                 List<Vector2> template = kvp.Value[i];
                 float d = GreedyCloudMatch(candidate, template);
                 float score = 1f - d / (0.5f * Mathf.Sqrt(2f));
 
-                if (score > bestScore)
+                if (score > bestScoreForCharacter)
                 {
-                    // Current best becomes second-best
-                    secondScore = bestScore;
-                    secondID = bestID;
+                    bestScoreForCharacter = score;
+                    bestVariantForCharacter = i + 1;
+                }
+            }
 
-                    bestScore = score;
-                    bestID = kvp.Key;
-                    bestVariantIndex = i + 1;
-                }
-                else if (score > secondScore)
+            if (bestVariantForCharacter < 0)
+                continue;
+
+            if (bestScoreForCharacter > best.Score)
+            {
+                second = best;
+                best = new CandidateMatch
                 {
-                    secondScore = score;
-                    secondID = kvp.Key;
-                }
+                    CharacterID = kvp.Key,
+                    Score = bestScoreForCharacter,
+                    VariantIndex = bestVariantForCharacter
+                };
+            }
+            else if (bestScoreForCharacter > second.Score)
+            {
+                second = new CandidateMatch
+                {
+                    CharacterID = kvp.Key,
+                    Score = bestScoreForCharacter,
+                    VariantIndex = bestVariantForCharacter
+                };
             }
         }
 
         return new RecognitionResult(
-            bestID, bestScore, bestVariantIndex,
-            secondID, secondScore);
+            best.CharacterID, best.Score, best.VariantIndex,
+            second.CharacterID, second.Score);
     }
 
     // ── PREPROCESSING ────────────────────────────────────────────────

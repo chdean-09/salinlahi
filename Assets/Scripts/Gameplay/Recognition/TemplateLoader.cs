@@ -1,11 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
-// Loads Baybayin character template point clouds from Resources / Templates /.
-// Template files are plain text: one x,y pair per line.
-// Example file: BA_template.txt
-// -0.123, 0.456
-// -0.120, 0.450
-// ... (32+ points)
+// Loads Baybayin template strokes from Resources/Templates.
+// Template files use versioned names like BA_template_01.txt.
+// Each non-empty line is an x,y point and blank lines separate strokes.
 public class TemplateLoader
 {
     private const string RESOURCES_PATH = "Templates";
