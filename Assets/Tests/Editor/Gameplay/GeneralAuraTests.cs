@@ -88,6 +88,20 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
+        public void DoesNotBuffDyingEnemy()
+        {
+            Enemy general = CreateGeneral(Vector3.zero, radius: 5f, buffMul: 2f);
+            Enemy dyingAmerican = CreatePawn<Enemy>(new Vector3(2f, 0f, 0f), Era.American);
+
+            float before = dyingAmerican.EffectiveSpeed;
+            SetPrivateField(dyingAmerican, "_isDying", true);
+            ForceAuraTick(general);
+
+            Assert.AreEqual(before, dyingAmerican.EffectiveSpeed, 0.0001f,
+                "Dying enemies must be excluded from General aura buff application.");
+        }
+
+        [Test]
         public void RemovesBuffWhenEnemyLeavesRadius()
         {
             Enemy general = CreateGeneral(Vector3.zero, radius: 5f, buffMul: 2f);
