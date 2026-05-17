@@ -11,6 +11,6 @@ public sealed class CameraShakeData : ScriptableObject
     [Min(0f)]
     public float Magnitude = 0.08f;
 
-    [Tooltip("Optional curve to control the falloff over time. Defaults to linear ease-out if not set or empty.")]
+    [Tooltip("Curve to control the falloff over time.")]
     public AnimationCurve FalloffCurve = AnimationCurve.Linear(0f, 1f, 1f, 0f);
 }

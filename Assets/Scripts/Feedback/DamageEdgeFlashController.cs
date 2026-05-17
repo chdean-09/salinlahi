@@ -69,14 +69,13 @@ public sealed class DamageEdgeFlashController : MonoBehaviour
             Color color = _flashColor;
             color.a = alpha;
             image.color = color;
-            image.raycastTarget = false;
         }
     }
 
     private void ValidateReferences()
     {
         if (_edgeImages == null || _edgeImages.Length == 0)
-            Debug.LogWarning("DamageEdgeFlashController has no edge images assigned.", this);
+            DebugLogger.LogWarning("DamageEdgeFlashController has no edge images assigned.");
     }
 
     private void ConfigureEdgeGradients()
@@ -94,7 +93,8 @@ public sealed class DamageEdgeFlashController : MonoBehaviour
             if (gradient == null)
                 gradient = image.gameObject.AddComponent<EdgeGradient>();
 
-            gradient.edgeType = GetEdgeTypeForIndex(i);
+            gradient.EdgeType = GetEdgeTypeForIndex(i);
+            image.raycastTarget = false;
         }
     }
 

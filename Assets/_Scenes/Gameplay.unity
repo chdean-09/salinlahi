@@ -1380,7 +1380,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BaseHitFeedbackController
   _cameraShake: {fileID: 573789169}
-  _baseVisualRoot: {fileID: 0}
+  _baseVisualRoot: {fileID: 364051678}
   _edgeFlash: {fileID: 900000004}
   _audioSource: {fileID: 0}
   _baseHitClip: {fileID: 0}
@@ -2602,7 +2602,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 199ecfef106a4802b3389fcb487e57be, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CameraShakeController
-  _defaultShakeData: {fileID: 0}
+  _defaultShakeData: {fileID: 11400000, guid: c35eebbb887f4196b1492a0e120980db, type: 2}
   _fallbackDuration: 0.15
   _fallbackMagnitude: 0.08
 --- !u!1 &603433032

@@ -11,3 +11,6 @@
 *.unity merge=unityyamlmerge diff
 *.prefab merge=unityyamlmerge diff
 *.asset merge=unityyamlmerge diff
+
+# C# source line endings (reduces whitespace-only diff churn)
+*.cs text eol=lf
