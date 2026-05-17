@@ -70,6 +70,7 @@
 | REQ-45 | The game shall log recognition accuracy per character per level to a CSV file on the device for post-session analysis | Sprint Timeline Sprint 2; Salinlahi.md Â§3.5.3 | P0 | âŒ QuestionnaireLogger not implemented | â€” | âŒ NOT FOUND | ðŸ”´ P0 |
 | REQ-46 | The recognition system shall support multiple templates per character to handle handwriting variation | TDD Â§2.2 | P1 | âš  RecognitionConfigSO exists; âŒ multi-template loading not implemented | RC-04 | âš  Partial | ðŸŸ  P1 |
 | REQ-47 | First-time Level 1 shall guide the first enemy encounter with deterministic spawn, non-blocking drawing UI, and once-only tutorial progress | SALIN-93 | P1 | `WaveConfigSO` first-spawn override fields, `WaveManager` spawn suspension, `EventBus.OnEnemySpawned`, `LevelTutorialProgress` once-only keys; scene wiring pending | SALIN93-01â€“SALIN93-08, CS-03, WV-01 | âš  Partial | Scene and asset wiring pending |
+| REQ-48 | First-time Level 1 shall establish the protagonist, Shrine objective, and progressive tracing assist before normal wave pacing | SALIN-93 supplemental flow | P1 | `Level1WorldIntroController`, `BaybayinTraceGuideController`, `TutorialOverlayController.ShowTraceAssist`, `GuidedLevel1TutorialController` assist fading; scene wiring pending | SALIN93-FLOW-00-SALIN93-FLOW-07, RC-01, RC-02 | âš  Partial | Scene and UI wiring pending |
 
 ---
 
@@ -78,12 +79,12 @@
 | Status | Count |
 |--------|-------|
 | âœ… Implemented | 23 |
-| âš  Partial | 19 |
+| âš  Partial | 20 |
 | âŒ NOT FOUND | 5 |
-| **Total requirements** | **47** |
+| **Total requirements** | **48** |
 
 | Severity | Count |
 |----------|-------|
 | ðŸ”´ P0 gaps | 0 |
-| ðŸŸ  P1 gaps | 15 |
+| ðŸŸ  P1 gaps | 16 |
 | ðŸŸ¡ P2 gaps | 5 |

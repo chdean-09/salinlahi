@@ -39,6 +39,7 @@ App Launch
               ├─ [Play] → Level Select (PLANNED)
               │     └─ [Select Level] → Gameplay Scene
               │           ├─ Type A Intro Dialogue (if configured) → draws from DialogueSequence SO
+              │           ├─ Level 1 World Intro (first-time only, if configured) → protagonist/Shrine/objective
               │           ├─ Waves begin after dialogue ends
               │           ├─ Pause → Pause Menu (PLANNED)
               │           │     ├─ [Resume] → Gameplay
@@ -177,6 +178,30 @@ No scene or script currently exists. Required behavior per GDD:
 - Runs recognition system in passive mode to show confidence score as visual feedback.
 
 [EVIDENCE: docs/capstone/GDD.md, §2.4 Game Modes — "Tracing Dojo (Tutorial)"]
+
+---
+
+## 7.5 Level 1 World Intro and Guided Trace Assist
+
+SALIN-93 first-time Level 1 onboarding teaches through play instead of text-heavy panels.
+
+Target first-time sequence:
+
+1. Protagonist enters or settles into the lower play position.
+2. Shrine/village area is visually established.
+3. A short objective line appears: **"Defend the Shrine."**
+4. Wave 1 begins.
+5. The first deterministic enemy is highlighted and suspended.
+6. A strong animated Baybayin trace guide shows recommended drawing flow.
+7. Drawing input stays active while the guide is visible.
+8. After the first success, assist fades to light or hidden for follow-up enemies.
+
+The trace guide is non-blocking UI. Images and canvas groups used by the guide must not consume raycasts while the player is expected to draw. The guide explains stroke direction and flow for player learning, but combat results still come from the existing $P recognition pipeline.
+
+[EVIDENCE: Assets/Scripts/UI/Level1WorldIntroController.cs]
+[EVIDENCE: Assets/Scripts/UI/BaybayinTraceGuideController.cs]
+[EVIDENCE: Assets/Scripts/UI/TutorialOverlayController.cs]
+[EVIDENCE: Assets/Scripts/UI/GuidedLevel1TutorialController.cs]
 
 ---
 

@@ -42,6 +42,7 @@ Cold Start
 ├─ Gameplay.unity loads
 │     └─ GameManager.StartGame() called → GameState.Playing
 │     └─ LevelFlowController plays optional Type A intro dialogue
+│     └─ LevelFlowController plays the once-only Level 1 world intro if configured
 │     └─ WaveManager drives waves (all levels, including boss levels)
 │     └─ [All waves cleared]
 │           └─ LevelFlowController checks LevelConfigSO.isBossLevel
@@ -66,6 +67,30 @@ Cold Start
 [EVIDENCE: Assets/Scripts/Core/SceneLoader.cs, LoadRoutine()]
 [EVIDENCE: Assets/Scripts/Core/GameManager.cs, HandleGameOver()]
 [EVIDENCE: docs/capstone/GDD.md, §5.1 Player Journey]
+
+### 2.1 First-Time Level 1 Onboarding Flow
+
+SALIN-93 extends first-time Level 1 onboarding with two scene-local tutorial moments:
+
+```
+Gameplay scene loads
+  → Optional Type A intro dialogue
+  → Level1WorldIntroController establishes protagonist, Shrine, and objective
+  → BGM starts
+  → WaveManager.StartLevel()
+  → First deterministic enemy is retrieved from the pool
+  → GuidedLevel1TutorialController suspends that enemy and shows a strong trace guide
+  → Player draws while tutorial UI remains non-blocking
+  → First enemy is defeated
+  → Wave 1 continues with light or hidden tracing assist
+```
+
+`Level1WorldIntroController` and `GuidedLevel1TutorialController` are scene-local components in Gameplay. They use `LevelTutorialProgress` PlayerPrefs keys so the intro and guided moments run once per install/profile unless tutorial progress is reset. The animated tracing guide is presentation-only: it demonstrates recommended drawing flow but does not change $P recognition semantics.
+
+[EVIDENCE: Assets/Scripts/Gameplay/LevelFlowController.cs]
+[EVIDENCE: Assets/Scripts/UI/Level1WorldIntroController.cs]
+[EVIDENCE: Assets/Scripts/UI/GuidedLevel1TutorialController.cs]
+[EVIDENCE: Assets/Scripts/UI/BaybayinTraceGuideController.cs]
 
 ---
 
