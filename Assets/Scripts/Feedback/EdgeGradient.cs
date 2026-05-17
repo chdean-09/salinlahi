@@ -4,7 +4,21 @@ using UnityEngine.UI;
 public class EdgeGradient : BaseMeshEffect
 {
     public enum Edge { Top, Bottom, Left, Right }
-    public Edge edgeType = Edge.Top;
+    [SerializeField] private Edge _edgeType = Edge.Top;
+
+    public Edge EdgeType
+    {
+        get => _edgeType;
+        set
+        {
+            if (_edgeType == value)
+                return;
+
+            _edgeType = value;
+            if (graphic != null)
+                graphic.SetVerticesDirty();
+        }
+    }
 
     public override void ModifyMesh(VertexHelper vh)
     {
@@ -22,7 +36,7 @@ public class EdgeGradient : BaseMeshEffect
 
             float alphaMultiplier = 1f;
 
-            switch (edgeType)
+            switch (_edgeType)
             {
                 case Edge.Top:
                     alphaMultiplier = Mathf.InverseLerp(rect.yMin, rect.yMax, v.position.y);

@@ -46,6 +46,7 @@ public sealed class CameraShakeController : MonoBehaviour
         }
 
         ResetTransform();
+        _restLocalPosition = transform.localPosition;
         _shakeRoutine = StartCoroutine(ShakeRoutine(data.Duration, data.Magnitude, data.FalloffCurve));
     }
 
@@ -61,6 +62,7 @@ public sealed class CameraShakeController : MonoBehaviour
         }
 
         ResetTransform();
+        _restLocalPosition = transform.localPosition;
         _shakeRoutine = StartCoroutine(ShakeRoutine(safeDuration, safeMagnitude, null));
     }
 
@@ -75,11 +77,7 @@ public sealed class CameraShakeController : MonoBehaviour
             elapsed += Time.unscaledDeltaTime;
             float t = Mathf.Clamp01(elapsed / duration);
             
-            float falloff = 1f - t;
-            if (curve != null && curve.keys.Length > 0)
-            {
-                falloff = curve.Evaluate(t);
-            }
+            float falloff = curve != null ? curve.Evaluate(t) : (1f - t);
 
             float x = Random.Range(-1f, 1f) * magnitude * falloff;
             float y = Random.Range(-1f, 1f) * magnitude * falloff;

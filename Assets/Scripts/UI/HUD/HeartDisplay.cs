@@ -13,6 +13,7 @@ public class HeartDisplay : MonoBehaviour
 
     private Coroutine[] _heartAnimRoutines;
     private Vector3[] _heartBaseScales;
+    private bool[] _heartScaleCached;
     private int _lastHeartCount;
 
     private void OnEnable()
@@ -40,7 +41,7 @@ public class HeartDisplay : MonoBehaviour
                 _heartAnimRoutines[i] = null;
             }
 
-            if (_heartIcons[i] != null && i < _heartBaseScales.Length && _heartBaseScales[i] != Vector3.zero)
+            if (_heartIcons[i] != null && i < _heartBaseScales.Length && i < _heartScaleCached.Length && _heartScaleCached[i])
                 _heartIcons[i].transform.localScale = _heartBaseScales[i];
         }
     }
@@ -83,8 +84,11 @@ public class HeartDisplay : MonoBehaviour
         if (index >= _heartBaseScales.Length)
             return;
 
-        if (_heartBaseScales[index] == Vector3.zero && _heartIcons[index] != null)
+        if (!_heartScaleCached[index] && _heartIcons[index] != null)
+        {
             _heartBaseScales[index] = _heartIcons[index].transform.localScale;
+            _heartScaleCached[index] = true;
+        }
     }
 
     private IEnumerator HeartLossAnimation(int index, Image heart)
@@ -93,7 +97,7 @@ public class HeartDisplay : MonoBehaviour
 
         float duration = Mathf.Max(0.05f, _heartShakeDuration);
         float elapsed = 0f;
-        Vector3 baseScale = index < _heartBaseScales.Length && _heartBaseScales[index] != Vector3.zero
+        Vector3 baseScale = index < _heartBaseScales.Length && index < _heartScaleCached.Length && _heartScaleCached[index]
             ? _heartBaseScales[index]
             : heart.transform.localScale;
         Vector3 punchScale = baseScale * Mathf.Max(1f, _heartPunchScale);
@@ -141,5 +145,8 @@ public class HeartDisplay : MonoBehaviour
 
         if (_heartBaseScales == null || _heartBaseScales.Length != heartCount)
             _heartBaseScales = new Vector3[heartCount];
+
+        if (_heartScaleCached == null || _heartScaleCached.Length != heartCount)
+            _heartScaleCached = new bool[heartCount];
     }
 }

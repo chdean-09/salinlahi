@@ -4,7 +4,6 @@ using UnityEngine;
 
 // Renders stroke points as a visible line using LineRenderer.
 // Sprint 4: replace with a render texture or GPU line for better visual quality.
-
 public class DrawingCanvas : MonoBehaviour
 {
     [Header("Line Appearance")]
@@ -50,6 +49,7 @@ public class DrawingCanvas : MonoBehaviour
         if (_currentLine == null || _cam == null) return;
         if (float.IsInfinity(screenPos.x) || float.IsInfinity(screenPos.y) ||
             float.IsNaN(screenPos.x) || float.IsNaN(screenPos.y)) return;
+
         Vector3 world = _cam.ScreenToWorldPoint(
             new Vector3(screenPos.x, screenPos.y, Mathf.Abs(_cam.transform.position.z)));
 

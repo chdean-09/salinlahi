@@ -20,10 +20,16 @@ public sealed class BaseHitFeedbackController : MonoBehaviour
 
     private void Awake()
     {
-        if (_baseVisualRoot != null)
-            _baseVisualOrigin = _baseVisualRoot.localPosition;
-        else if (_enableBaseWobble)
-            Debug.LogWarning("BaseHitFeedbackController: Base wobble is enabled, but _baseVisualRoot is not assigned. Wobble feedback will be skipped.", this);
+        if (_baseVisualRoot == null && _enableBaseWobble)
+        {
+            DebugLogger.LogWarning("BaseHitFeedbackController: Base wobble is enabled, but _baseVisualRoot is not assigned. Wobble feedback will be skipped.");
+            _enableBaseWobble = false;
+        }
+    }
+
+    private void Start()
+    {
+        CacheBaseVisualOrigin();
     }
 
     private void OnEnable()
@@ -54,6 +60,8 @@ public sealed class BaseHitFeedbackController : MonoBehaviour
 
         if (_enableBaseWobble && _baseVisualRoot != null)
         {
+            CacheBaseVisualOrigin();
+
             if (_wobbleRoutine != null)
                 StopCoroutine(_wobbleRoutine);
 
@@ -105,5 +113,11 @@ public sealed class BaseHitFeedbackController : MonoBehaviour
     {
         if (_baseVisualRoot != null)
             _baseVisualRoot.localPosition = _baseVisualOrigin;
+    }
+
+    private void CacheBaseVisualOrigin()
+    {
+        if (_baseVisualRoot != null)
+            _baseVisualOrigin = _baseVisualRoot.localPosition;
     }
 }
