@@ -12,10 +12,17 @@ namespace Salinlahi.Tests.Editor.Gameplay
     {
         private readonly List<Object> _objectsToDestroy = new();
 
+        [SetUp]
+        public void SetUp()
+        {
+            LevelTutorialProgress.ResetLevel1TutorialForTests();
+        }
+
         [TearDown]
         public void TearDown()
         {
             ClearSingletonInstance<GameManager>();
+            LevelTutorialProgress.ResetLevel1TutorialForTests();
 
             for (int i = _objectsToDestroy.Count - 1; i >= 0; i--)
             {
@@ -133,6 +140,24 @@ namespace Salinlahi.Tests.Editor.Gameplay
             yield break;
         }
 
+        [Test]
+        public void LevelOneTutorialDueWithoutOverlayControllerAbortsFlow()
+        {
+            LevelConfigSO levelConfig = CreateLevelConfig();
+            levelConfig.levelNumber = LevelTutorialProgress.TutorialLevelNumber;
+
+            LevelFlowController controller = CreateComponent<LevelFlowController>("LevelFlowController");
+            SetPrivateField(controller, "_levelConfig", levelConfig);
+
+            IEnumerator tutorialGate = InvokePrivate<IEnumerator>(controller, "PlayLevelTutorialIfNeeded");
+            LogAssert.Expect(
+                LogType.Error,
+                "[Salinlahi] LevelFlowController: Level 1 FTUE is due, but TutorialOverlayController is not assigned.");
+
+            Assert.IsFalse(tutorialGate.MoveNext());
+            Assert.IsTrue(GetPrivateField<bool>(controller, "_flowAborted"));
+        }
+
         private GameManager CreateGameManager()
         {
             GameManager gameManager = CreateComponent<GameManager>("GameManager");
@@ -199,6 +224,15 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.IsNotNull(method, $"{target.GetType().Name}.{methodName} method not found.");
             method.Invoke(target, null);
+        }
+
+        private static T GetPrivateField<T>(object target, string fieldName)
+        {
+            FieldInfo field = target.GetType().GetField(
+                fieldName,
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(field, $"{target.GetType().Name}.{fieldName} field not found.");
+            return (T)field.GetValue(target);
         }
 
         private static void SetSingletonInstance<T>(T instance) where T : MonoBehaviour
