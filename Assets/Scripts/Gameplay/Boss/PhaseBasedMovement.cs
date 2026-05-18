@@ -2,8 +2,9 @@ using System.Collections;
 using UnityEngine;
 
 // Drives the boss's transform per CurrentPhase.movementPattern.
-// Subscribes to EventBus boss events; never touches BossController internals.
 // All coroutines use WaitForSeconds (scaled). Do not use WaitForSecondsRealtime.
+// REWORK: refactored in Task 7 — movement now driven directly by BossController
+// calling StartPattern/StopPattern/TeleportNow instead of EventBus subscriptions.
 [RequireComponent(typeof(BossController))]
 public class PhaseBasedMovement : MonoBehaviour
 {
@@ -18,49 +19,45 @@ public class PhaseBasedMovement : MonoBehaviour
     [SerializeField] private float _teleportHalfRange = 2.0f;
 
     private BossController _boss;
+    private EnemyMover _mover;
     private Vector3 _baseLocalPosition;
     private Coroutine _movementRoutine;
 
     private void Awake()
     {
         _boss = GetComponent<BossController>();
+        _mover = GetComponent<EnemyMover>();
         _baseLocalPosition = transform.localPosition;
     }
 
-    private void OnEnable()
+    // REWORK: refactored in Task 7 — previously subscribed to OnBossStarted,
+    // OnBossPhaseStarted, OnBossPhaseAdsReturning, and OnBossDefeated via EventBus.
+    // Those events were removed/renamed in the Task 2 EventBus refactor.
+    // BossController now calls StartPattern/StopPattern/TeleportNow directly.
+
+    public virtual void StartPattern(BossPhase phase)
     {
-        EventBus.OnBossPhaseStarted += HandlePhaseStarted;
-        EventBus.OnBossPhaseCleared += HandlePhaseCleared;
-        EventBus.OnBossIntermissionStarted += StopMovement;
-        EventBus.OnBossDefeated += StopMovement;
+        if (phase == null) return;
+        StopPattern();
+        _movementRoutine = StartCoroutine(RunPattern(phase));
     }
 
-    private void OnDisable()
-    {
-        EventBus.OnBossPhaseStarted -= HandlePhaseStarted;
-        EventBus.OnBossPhaseCleared -= HandlePhaseCleared;
-        EventBus.OnBossIntermissionStarted -= StopMovement;
-        EventBus.OnBossDefeated -= StopMovement;
-        StopMovement();
-    }
-
-    private void HandlePhaseStarted(int phaseIndex)
-    {
-        if (_boss == null || _boss.CurrentPhase == null) return;
-        StopMovement();
-        _baseLocalPosition = transform.localPosition;
-        _movementRoutine = StartCoroutine(RunPattern(_boss.CurrentPhase));
-    }
-
-    private void HandlePhaseCleared(int phaseIndex) => StopMovement();
-
-    private void StopMovement()
+    public virtual void StopPattern()
     {
         if (_movementRoutine != null)
         {
             StopCoroutine(_movementRoutine);
             _movementRoutine = null;
         }
+        if (_mover != null) _mover.SetExternallyMoving(false);
+    }
+
+    public virtual void TeleportNow(BossPhase phase)
+    {
+        if (phase == null) return;
+        float halfRange = phase.teleportHalfRange.x;
+        float x = _baseLocalPosition.x + Random.Range(-halfRange, halfRange);
+        transform.localPosition = new Vector3(x, _baseLocalPosition.y, _baseLocalPosition.z);
     }
 
     private IEnumerator RunPattern(BossPhase phase)
@@ -68,40 +65,40 @@ public class PhaseBasedMovement : MonoBehaviour
         switch (phase.movementPattern)
         {
             case BossMovementPattern.Hover:
-                // Stationary — nothing to do beyond holding position.
                 yield break;
 
             case BossMovementPattern.Pace:
-                yield return Pace(phase.movementSpeed);
+                if (_mover != null) _mover.SetExternallyMoving(true);
+                yield return Pace(phase.movementSpeed, phase.paceHalfRange);
                 break;
 
             case BossMovementPattern.Teleport:
-                yield return Teleport();
+                // Teleport cadence is driven by BossController calling TeleportNow
+                // at each summon tick; this coroutine just holds until stopped.
+                yield return new WaitUntil(() => false);
                 break;
         }
     }
 
-    private IEnumerator Pace(float speed)
+    private IEnumerator Pace(float speed, float halfRange)
     {
         float dir = 1f;
-        float minX = _baseLocalPosition.x - _paceHalfRange;
-        float maxX = _baseLocalPosition.x + _paceHalfRange;
+        float minX = _baseLocalPosition.x - halfRange;
+        float maxX = _baseLocalPosition.x + halfRange;
+        BossDamageFeedback dmgFeedback = GetComponent<BossDamageFeedback>();
+
         while (true)
         {
+            if (dmgFeedback != null && dmgFeedback.IsHurtPaused)
+            {
+                yield return null;
+                continue;
+            }
+
             float newX = Mathf.Clamp(transform.localPosition.x + dir * speed * Time.deltaTime, minX, maxX);
             transform.localPosition = new Vector3(newX, transform.localPosition.y, transform.localPosition.z);
             if (newX >= maxX || newX <= minX) dir *= -1f;
             yield return null;
-        }
-    }
-
-    private IEnumerator Teleport()
-    {
-        while (true)
-        {
-            yield return new WaitForSeconds(_teleportInterval);
-            float x = _baseLocalPosition.x + Random.Range(-_teleportHalfRange, _teleportHalfRange);
-            transform.localPosition = new Vector3(x, _baseLocalPosition.y, _baseLocalPosition.z);
         }
     }
 }

@@ -1,47 +1,40 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-// Single MonoBehaviour state machine that drives a boss encounter.
-// Co-located with BossEnemy on the boss prefab.
-//
-// Lifecycle:
-//   WaveManager.RunBossEncounter spawns the boss Enemy via WaveSpawner,
-//   gets BossController via GetComponent, and calls StartBoss(config, spawner).
-//   StartBoss is the lifecycle entry point — OnEnable does NOT begin the
-//   encounter, because at OnEnable the controller has no config yet.
-//
-// States: Intro -> PhaseActive -> [PhaseClearedIntermission ->] PhaseActive -> ... -> Outro -> Defeated
-//
-// Pause: All coroutines use WaitForSeconds (scaled time). When GameManager
-// calls Time.timeScale = 0 the encounter halts automatically.
-// DO NOT use WaitForSecondsRealtime in this subsystem.
 [RequireComponent(typeof(BossEnemy))]
 public class BossController : MonoBehaviour
 {
-    private enum State { Idle, Intro, PhaseActive, PhaseClearedIntermission, Outro, Defeated }
+    private enum State { Idle, Intro, SummoningPhase, WindingDown, Vulnerable, Damaged, Outro, Defeated }
 
     public BossConfigSO Config { get; private set; }
-    public BossPhase CurrentPhase { get; private set; }
     public int CurrentPhaseIndex { get; private set; } = -1;
-    public bool IsTargetable => _state == State.PhaseActive;
+    public BossPhase CurrentPhase =>
+        (Config != null && CurrentPhaseIndex >= 0 && CurrentPhaseIndex < Config.phases.Count)
+            ? Config.phases[CurrentPhaseIndex]
+            : null;
+    public int HPRemaining { get; private set; }
+    public bool IsTargetable => _state == State.Vulnerable && _isVulnerableActiveWindow;
     public bool IsDefeated { get; private set; }
-    public IReadOnlyList<BaybayinCharacterSO> RequiredCharacters =>
-        CurrentPhase != null ? CurrentPhase.requiredCharacters : null;
-    public IReadOnlyCollection<BaybayinCharacterSO> DrawnThisPhase => _drawnThisPhase;
 
-    // Local event — fired on every successful Hit. UI listens for per-icon
-    // grey-out. Kept local because subscribers need the controller-instance
-    // handle to read DrawnThisPhase / RequiredCharacters mid-phase.
+    public string CurrentExpectedCharacterID =>
+        _currentExpectedCharacter != null ? _currentExpectedCharacter.characterID : null;
+    public BaybayinCharacterSO CurrentExpectedCharacter => _currentExpectedCharacter;
+    public int CorrectDrawsThisWindow => _correctDrawsThisWindow;
+    public int RequiredCharactersForCurrentPhase =>
+        CurrentPhase != null ? CurrentPhase.requiredCharacterCount : 0;
+
     public event Action OnDrawnThisPhaseChanged;
 
     private State _state = State.Idle;
+    private bool _isVulnerableActiveWindow;
     private WaveSpawner _spawner;
-    private readonly HashSet<BaybayinCharacterSO> _drawnThisPhase = new();
+    private BossSummonTicker _summonTicker;
+    private BossStateVisuals _stateVisuals;
+    private PhaseBasedMovement _phaseMovement;
     private Coroutine _stateRoutine;
-
-    // ---- Lifecycle ----
+    private BaybayinCharacterSO _currentExpectedCharacter;
+    private int _correctDrawsThisWindow;
 
     public void StartBoss(BossConfigSO config, WaveSpawner spawner)
     {
@@ -63,15 +56,18 @@ public class BossController : MonoBehaviour
 
         Config = config;
         _spawner = spawner;
+        _summonTicker = GetComponent<BossSummonTicker>();
+        _stateVisuals = GetComponent<BossStateVisuals>();
+        _phaseMovement = GetComponent<PhaseBasedMovement>();
+
+        HPRemaining = config.phases.Count;
         IsDefeated = false;
         CurrentPhaseIndex = -1;
-        CurrentPhase = null;
-        _drawnThisPhase.Clear();
         _state = State.Idle;
+        _isVulnerableActiveWindow = false;
+        _currentExpectedCharacter = null;
+        _correctDrawsThisWindow = 0;
 
-        // Set CurrentBoss BEFORE raising OnBossStarted so subscribers
-        // resolving GameManager.Instance.CurrentBoss in the handler see this
-        // controller, not null.
         if (GameManager.Instance != null)
             GameManager.Instance.SetCurrentBoss(this);
 
@@ -93,104 +89,174 @@ public class BossController : MonoBehaviour
             GameManager.Instance.SetCurrentBoss(null);
     }
 
-    // ---- Hit routing ----
-
     public BossRouteResult TryRouteDraw(string characterID)
     {
-        if (!IsTargetable || CurrentPhase == null)
-            return BossRouteResult.NotRouted;
-        if (CurrentPhase.requiredCharacters == null
-            || CurrentPhase.requiredCharacters.Count == 0)
+        if (!IsTargetable || _currentExpectedCharacter == null)
             return BossRouteResult.NotRouted;
 
-        BaybayinCharacterSO matched = null;
-        for (int i = 0; i < CurrentPhase.requiredCharacters.Count; i++)
+        if (characterID == _currentExpectedCharacter.characterID)
         {
-            BaybayinCharacterSO so = CurrentPhase.requiredCharacters[i];
-            if (so == null) continue;
-            if (so.characterID == characterID)
-            {
-                matched = so;
-                break;
-            }
+            _correctDrawsThisWindow++;
+            OnDrawnThisPhaseChanged?.Invoke();
+            SampleNextExpectedCharacter();
+            return BossRouteResult.Hit;
         }
 
-        if (matched == null)
-            return BossRouteResult.NotRouted;
-
-        if (_drawnThisPhase.Contains(matched))
-        {
-            EventBus.RaiseDrawingFailed();
-            return BossRouteResult.Duplicate;
-        }
-
-        _drawnThisPhase.Add(matched);
-        OnDrawnThisPhaseChanged?.Invoke();
-
-        int requiredCount = 0;
-        for (int i = 0; i < CurrentPhase.requiredCharacters.Count; i++)
-            if (CurrentPhase.requiredCharacters[i] != null) requiredCount++;
-
-        if (_drawnThisPhase.Count >= requiredCount)
-        {
-            EventBus.RaiseBossPhaseCleared(CurrentPhaseIndex);
-            // The state coroutine watches _drawnThisPhase.Count vs. requiredCount
-            // on each frame and advances. Hit signal already raised.
-        }
-
-        return BossRouteResult.Hit;
+        EventBus.RaiseDrawingFailed();
+        return BossRouteResult.WrongGlyph;
     }
 
-    // ---- State coroutine ----
+    private void SampleNextExpectedCharacter()
+    {
+        LevelConfigSO level = GameManager.Instance != null ? GameManager.Instance.CurrentLevel : null;
+        if (level == null
+            || level.allowedCharacters == null
+            || level.allowedCharacters.Count == 0)
+        {
+            DebugLogger.LogWarning("BossController: LevelConfigSO.allowedCharacters is empty — cannot sample glyph.");
+            _currentExpectedCharacter = null;
+            return;
+        }
+        int idx = UnityEngine.Random.Range(0, level.allowedCharacters.Count);
+        _currentExpectedCharacter = level.allowedCharacters[idx];
+    }
 
     private IEnumerator RunEncounter()
     {
-        // Intro
-        _state = State.Intro;
-        yield return new WaitForSeconds(Mathf.Max(0f, Config.introDuration));
+        yield return RunIntro();
 
-        // Phases
         for (int i = 0; i < Config.phases.Count; i++)
         {
             CurrentPhaseIndex = i;
-            CurrentPhase = Config.phases[i];
-            _drawnThisPhase.Clear();
+            bool phaseCleared = false;
 
-            _state = State.PhaseActive;
-            EventBus.RaiseBossPhaseStarted(i);
-
-            // Wait for the phase to clear (TryRouteDraw raises BossPhaseCleared
-            // when the count is met; we observe the same condition here so
-            // we don't depend on the order of subscriber invocation).
-            yield return new WaitUntil(() =>
-                _drawnThisPhase.Count >= CountNonNull(CurrentPhase.requiredCharacters));
-
-            // Intermission (if configured AND this is not the final phase)
-            bool isFinalPhase = (i == Config.phases.Count - 1);
-            if (!isFinalPhase && CurrentPhase.intermissionWave != null)
+            while (!phaseCleared)
             {
-                _state = State.PhaseClearedIntermission;
-                EventBus.RaiseBossIntermissionStarted();
+                yield return RunSummoningPhase(i);
+                yield return RunWindingDown(i);
 
-                // onEnemySpawned callback intentionally omitted: intermission waves are not
-                // tracked as regular wave indices, so WaveManager bookkeeping is skipped.
-                yield return StartCoroutine(_spawner.SpawnWave(CurrentPhase.intermissionWave));
+                bool didDamage = false;
+                yield return RunVulnerable(i, hit => didDamage = hit);
 
-                // Wait for adds to clear
-                yield return new WaitUntil(() =>
+                if (didDamage)
                 {
-                    ActiveEnemyTracker tracker = ActiveEnemyTracker.Instance;
-                    return tracker == null || tracker.IsClear;
-                });
-
-                if (CurrentPhase.postIntermissionDelay > 0f)
-                    yield return new WaitForSeconds(CurrentPhase.postIntermissionDelay);
-
-                EventBus.RaiseBossIntermissionCleared();
+                    yield return RunDamaged(i);
+                    phaseCleared = true;
+                }
             }
         }
 
-        // Outro
+        yield return RunOutro();
+        _stateRoutine = null;
+    }
+
+    private IEnumerator RunIntro()
+    {
+        _state = State.Intro;
+        yield return new WaitForSeconds(Mathf.Max(0f, Config.introDuration));
+    }
+
+    private IEnumerator RunSummoningPhase(int i)
+    {
+        BossPhase phase = Config.phases[i];
+        _state = State.SummoningPhase;
+        EventBus.RaiseBossPhaseStarted(i);
+
+        if (_phaseMovement != null)
+            _phaseMovement.StartPattern(phase);
+
+        float elapsed = 0f;
+        float nextTickAt = phase.summonInterval;
+        while (elapsed < phase.summonDuration)
+        {
+            if (elapsed >= nextTickAt)
+            {
+                if (phase.movementPattern == BossMovementPattern.Teleport
+                    && _phaseMovement != null)
+                {
+                    _phaseMovement.TeleportNow(phase);
+                }
+
+                if (_summonTicker != null)
+                    yield return _summonTicker.PlayTickAndSpawn(phase, Config, _spawner);
+
+                nextTickAt += phase.summonInterval;
+            }
+            yield return null;
+            elapsed += Time.deltaTime;
+        }
+
+        if (_phaseMovement != null)
+            _phaseMovement.StopPattern();
+    }
+
+    private IEnumerator RunWindingDown(int i)
+    {
+        _state = State.WindingDown;
+        EventBus.RaiseBossExhausted(i);
+
+        if (_stateVisuals != null)
+            _stateVisuals.BeginPanting();
+
+        yield return new WaitUntil(() =>
+        {
+            ActiveEnemyTracker tracker = ActiveEnemyTracker.Instance;
+            return tracker == null || !tracker.HasActiveNonBossEnemies;
+        });
+    }
+
+    private IEnumerator RunVulnerable(int i, Action<bool> onComplete)
+    {
+        BossPhase phase = Config.phases[i];
+        _state = State.Vulnerable;
+        _isVulnerableActiveWindow = false;
+        _correctDrawsThisWindow = 0;
+        _currentExpectedCharacter = null;
+
+        EventBus.RaiseBossVulnerable(i);
+
+        if (_stateVisuals != null)
+            yield return _stateVisuals.PlayCollapse();
+
+        _isVulnerableActiveWindow = true;
+        SampleNextExpectedCharacter();
+        OnDrawnThisPhaseChanged?.Invoke();
+
+        float elapsed = 0f;
+        while (elapsed < phase.vulnerabilityTimer
+            && _correctDrawsThisWindow < phase.requiredCharacterCount)
+        {
+            yield return null;
+            elapsed += Time.deltaTime;
+        }
+
+        _isVulnerableActiveWindow = false;
+
+        if (_correctDrawsThisWindow >= phase.requiredCharacterCount)
+        {
+            onComplete?.Invoke(true);
+        }
+        else
+        {
+            EventBus.RaiseBossVulnerabilityExpired(i);
+            if (_stateVisuals != null)
+                yield return _stateVisuals.PlayStandUp();
+            onComplete?.Invoke(false);
+        }
+    }
+
+    private IEnumerator RunDamaged(int i)
+    {
+        _state = State.Damaged;
+        HPRemaining--;
+        EventBus.RaiseBossDamaged(i, HPRemaining);
+
+        if (_stateVisuals != null)
+            yield return _stateVisuals.PlayStandUp();
+    }
+
+    private IEnumerator RunOutro()
+    {
         _state = State.Outro;
         IsDefeated = true;
         yield return new WaitForSeconds(Mathf.Max(0f, Config.outroDuration));
@@ -199,28 +265,15 @@ public class BossController : MonoBehaviour
         EventBus.RaiseBossDefeated();
         EventBus.RaiseLevelComplete();
 
-        // Return the boss Enemy to the pool. ResetForPool clears _data, so the
-        // next encounter's spawn re-initializes cleanly.
         BossEnemy bossEnemy = GetComponent<BossEnemy>();
         if (bossEnemy != null)
             bossEnemy.ReturnToPool();
-
-        _stateRoutine = null;
-    }
-
-    private static int CountNonNull(List<BaybayinCharacterSO> list)
-    {
-        if (list == null) return 0;
-        int n = 0;
-        for (int i = 0; i < list.Count; i++)
-            if (list[i] != null) n++;
-        return n;
     }
 }
 
 public enum BossRouteResult
 {
-    NotRouted,   // characterID not in current phase's required list — caller falls through to AOE/closest-match
-    Hit,         // valid required character drawn for the first time this phase
-    Duplicate    // required character already drawn this phase — consumed, raises OnDrawingFailed
+    NotRouted,    // boss not targetable; caller falls through to AOE/closest-match
+    Hit,          // correct glyph drawn during Vulnerable; advances queue
+    WrongGlyph    // incorrect glyph drawn during Vulnerable; consumed (no fall-through)
 }

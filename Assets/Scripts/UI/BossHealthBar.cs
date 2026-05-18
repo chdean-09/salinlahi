@@ -2,12 +2,14 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
+// REWORK: refactored in Task 9 — health bar now tracks HPRemaining/phase count
+// instead of DrawnThisPhase/requiredCharacters from the old model.
 public class BossHealthBar : MonoBehaviour
 {
     [Header("UI Elements")]
     [SerializeField] private CanvasGroup _canvasGroup;
     [SerializeField] private Image _fillImage; // Assumes Image Type is 'Filled'
-    
+
     [Header("Animation")]
     [SerializeField] private float _fadeDuration = 0.5f;
 
@@ -17,10 +19,10 @@ public class BossHealthBar : MonoBehaviour
 
     private BossController _boss;
     private Transform _bossTransform;
-    private int _totalRequiredGlyphs = 0;
+    private int _totalPhases = 0;
     private float _targetFill = 0f;
     private float _currentFill = 0f;
-    
+
     private Coroutine _fadeRoutine;
 
     private void Awake()
@@ -34,20 +36,24 @@ public class BossHealthBar : MonoBehaviour
     {
         EventBus.OnBossStarted += HandleBossStarted;
         EventBus.OnBossDefeated += HandleBossDefeated;
-        EventBus.OnBossIntermissionStarted += HandleIntermissionStarted;
         EventBus.OnBossPhaseStarted += HandlePhaseStarted;
-        EventBus.OnBossPhaseVulnerable += HandlePhaseVulnerable;
-        EventBus.OnBossPhaseAdsReturning += HandlePhaseReset;
+        // REWORK: refactored in Task 9 — rewired to new events
+        EventBus.OnBossVulnerable += HandlePhaseVulnerable;
+        EventBus.OnBossDamaged += HandleBossDamaged;
+        // REWORK: refactored in Task 9 — OnBossPhaseAdsReturning removed; vulnerability
+        // expiry resets are handled via OnBossVulnerabilityExpired when Task 9 lands.
+        // EventBus.OnBossPhaseAdsReturning += HandlePhaseReset;
     }
 
     private void OnDisable()
     {
         EventBus.OnBossStarted -= HandleBossStarted;
         EventBus.OnBossDefeated -= HandleBossDefeated;
-        EventBus.OnBossIntermissionStarted -= HandleIntermissionStarted;
         EventBus.OnBossPhaseStarted -= HandlePhaseStarted;
-        EventBus.OnBossPhaseVulnerable -= HandlePhaseVulnerable;
-        EventBus.OnBossPhaseAdsReturning -= HandlePhaseReset;
+        EventBus.OnBossVulnerable -= HandlePhaseVulnerable;
+        EventBus.OnBossDamaged -= HandleBossDamaged;
+        // REWORK: refactored in Task 9 — see OnEnable comment.
+        // EventBus.OnBossPhaseAdsReturning -= HandlePhaseReset;
         UnsubscribeFromBoss();
     }
 
@@ -60,21 +66,13 @@ public class BossHealthBar : MonoBehaviour
             if (_gameplayCamera == null) _gameplayCamera = Camera.main;
 
             _boss.OnDrawnThisPhaseChanged += UpdateHealthBar;
-            
-            // Calculate total health
-            _totalRequiredGlyphs = 0;
-            if (config.phases != null)
-            {
-                foreach (var phase in config.phases)
-                {
-                    _totalRequiredGlyphs += CountNonNull(phase.requiredCharacters);
-                }
-            }
+
+            _totalPhases = config.phases != null ? config.phases.Count : 0;
 
             _currentFill = 1f;
             _targetFill = 1f;
             SetFillWidth(1f);
-            
+
             FadeTo(1f);
         }
     }
@@ -91,14 +89,9 @@ public class BossHealthBar : MonoBehaviour
         UpdateHealthBar();
     }
 
-    private void HandlePhaseReset(int phaseIndex)
+    private void HandleBossDamaged(int phaseIndex, int hpRemaining)
     {
         UpdateHealthBar();
-    }
-
-    private void HandleIntermissionStarted()
-    {
-        FadeTo(0f);
     }
 
     private void HandleBossDefeated()
@@ -119,24 +112,9 @@ public class BossHealthBar : MonoBehaviour
 
     private void UpdateHealthBar()
     {
-        if (_boss == null || _boss.Config == null || _totalRequiredGlyphs <= 0) return;
+        if (_boss == null || _boss.Config == null || _totalPhases <= 0) return;
 
-        int currentDrawn = 0;
-        for (int i = 0; i < _boss.Config.phases.Count; i++)
-        {
-            int phaseReqCount = CountNonNull(_boss.Config.phases[i].requiredCharacters);
-            
-            if (i < _boss.CurrentPhaseIndex)
-            {
-                currentDrawn += phaseReqCount;
-            }
-            else if (i == _boss.CurrentPhaseIndex)
-            {
-                currentDrawn += _boss.DrawnThisPhase.Count;
-            }
-        }
-
-        _targetFill = 1f - Mathf.Clamp01((float)currentDrawn / _totalRequiredGlyphs);
+        _targetFill = Mathf.Clamp01((float)_boss.HPRemaining / _totalPhases);
     }
 
     private void Update()
@@ -151,10 +129,10 @@ public class BossHealthBar : MonoBehaviour
         {
             Vector3 worldPos = _bossTransform.position + (Vector3)_bossWorldOffset;
             Vector3 screenPos = _gameplayCamera.WorldToScreenPoint(worldPos);
-            
+
             Canvas canvas = GetComponentInParent<Canvas>();
             Camera uiCamera = (canvas != null && canvas.renderMode == RenderMode.ScreenSpaceOverlay) ? null : canvas?.worldCamera;
-            
+
             RectTransform parentRect = transform.parent as RectTransform;
             if (parentRect != null && RectTransformUtility.ScreenPointToWorldPointInRectangle(parentRect, screenPos, uiCamera, out Vector3 uiWorldPos))
             {
@@ -170,7 +148,7 @@ public class BossHealthBar : MonoBehaviour
     private void FadeTo(float targetAlpha)
     {
         if (_canvasGroup == null) return;
-        
+
         if (_fadeRoutine != null)
         {
             StopCoroutine(_fadeRoutine);
@@ -182,14 +160,14 @@ public class BossHealthBar : MonoBehaviour
     {
         float startAlpha = _canvasGroup.alpha;
         float t = 0f;
-        
+
         while (t < _fadeDuration)
         {
             t += Time.unscaledDeltaTime; // Use unscaled so it animates even if game pauses
             _canvasGroup.alpha = Mathf.Lerp(startAlpha, targetAlpha, t / _fadeDuration);
             yield return null;
         }
-        
+
         _canvasGroup.alpha = targetAlpha;
         _fadeRoutine = null;
     }
@@ -204,14 +182,5 @@ public class BossHealthBar : MonoBehaviour
         Vector2 sd = rt.sizeDelta;
         sd.x = 0f;
         rt.sizeDelta = sd;
-    }
-
-    private static int CountNonNull(List<BaybayinCharacterSO> list)
-    {
-        if (list == null) return 0;
-        int n = 0;
-        for (int i = 0; i < list.Count; i++)
-            if (list[i] != null) n++;
-        return n;
     }
 }

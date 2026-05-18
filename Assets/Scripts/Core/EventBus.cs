@@ -42,10 +42,11 @@ public static class EventBus
 
     // -- Boss Events --
     public static event Action<BossConfigSO> OnBossStarted;
-    public static event Action<int> OnBossPhaseStarted;        // phase index (0-based)
-    public static event Action<int> OnBossPhaseCleared;        // phase index (0-based)
-    public static event Action OnBossIntermissionStarted;
-    public static event Action OnBossIntermissionCleared;
+    public static event Action<int> OnBossPhaseStarted;        // phase index (0-based) — entered SummoningPhase sub-state
+    public static event Action<int> OnBossExhausted;             // phase index — boss enters WindingDown
+    public static event Action<int> OnBossVulnerable;            // phase index — boss enters Vulnerable (collapse begins)
+    public static event Action<int> OnBossVulnerabilityExpired;  // phase index — vulnerability timer expired with < N correct draws
+    public static event Action<int, int> OnBossDamaged;          // phase index, HP remaining after the hit
     public static event Action OnBossDefeated;
 
     // -- Dialogue Events --
@@ -76,9 +77,10 @@ public static class EventBus
     public static void RaiseGameResumed() => OnGameResumed?.Invoke();
     public static void RaiseBossStarted(BossConfigSO config) => OnBossStarted?.Invoke(config);
     public static void RaiseBossPhaseStarted(int phaseIndex) => OnBossPhaseStarted?.Invoke(phaseIndex);
-    public static void RaiseBossPhaseCleared(int phaseIndex) => OnBossPhaseCleared?.Invoke(phaseIndex);
-    public static void RaiseBossIntermissionStarted() => OnBossIntermissionStarted?.Invoke();
-    public static void RaiseBossIntermissionCleared() => OnBossIntermissionCleared?.Invoke();
+    public static void RaiseBossExhausted(int phaseIndex) => OnBossExhausted?.Invoke(phaseIndex);
+    public static void RaiseBossVulnerable(int phaseIndex) => OnBossVulnerable?.Invoke(phaseIndex);
+    public static void RaiseBossVulnerabilityExpired(int phaseIndex) => OnBossVulnerabilityExpired?.Invoke(phaseIndex);
+    public static void RaiseBossDamaged(int phaseIndex, int hpRemaining) => OnBossDamaged?.Invoke(phaseIndex, hpRemaining);
     public static void RaiseBossDefeated() => OnBossDefeated?.Invoke();
     public static void RaiseDialogueStarted() => OnDialogueStarted?.Invoke();
     public static void RaiseDialogueComplete() => OnDialogueComplete?.Invoke();

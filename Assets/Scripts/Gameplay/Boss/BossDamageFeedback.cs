@@ -35,14 +35,17 @@ public class BossDamageFeedback : MonoBehaviour
     private void OnEnable()
     {
         _boss.OnDrawnThisPhaseChanged += HandleDrawnThisPhaseChanged;
-        EventBus.OnBossPhaseAdsReturning += HandlePhaseReset;
+        // REWORK: refactored in Task 9 — OnBossPhaseAdsReturning was removed from EventBus
+        // in the Task 2 refactor. HandlePhaseReset will be rewired to the new events.
+        // EventBus.OnBossPhaseAdsReturning += HandlePhaseReset;
     }
 
     private void OnDisable()
     {
         _boss.OnDrawnThisPhaseChanged -= HandleDrawnThisPhaseChanged;
-        EventBus.OnBossPhaseAdsReturning -= HandlePhaseReset;
-        
+        // REWORK: refactored in Task 9 — see OnEnable comment.
+        // EventBus.OnBossPhaseAdsReturning -= HandlePhaseReset;
+
         ResetState();
     }
 
@@ -68,44 +71,30 @@ public class BossDamageFeedback : MonoBehaviour
     private void HandleDrawnThisPhaseChanged()
     {
         UpdateProgressiveTint();
-        
+
         // Match EnemyHurtFeedback: if already hurting, ignore the second hit's feedback
         if (_hitFeedbackRoutine != null) return;
-        
+
         _hitFeedbackRoutine = StartCoroutine(PlayHitFeedback());
     }
 
-    private void HandlePhaseReset(int phaseIndex)
-    {
-        UpdateProgressiveTint();
-    }
+    // REWORK: refactored in Task 9 — previously called by OnBossPhaseAdsReturning handler.
+    // private void HandlePhaseReset(int phaseIndex)
+    // {
+    //     UpdateProgressiveTint();
+    // }
 
     private void UpdateProgressiveTint()
     {
         if (_boss.Config == null || _boss.Config.phases == null) return;
 
-        int totalRequired = 0;
-        int currentDrawn = 0;
+        // REWORK: refactored in Task 9 — progressive tint now uses HPRemaining / phase count
+        // instead of DrawnThisPhase count (which no longer exists in the new BossController).
+        int totalPhases = _boss.Config.phases.Count;
+        if (totalPhases <= 0) return;
 
-        for (int i = 0; i < _boss.Config.phases.Count; i++)
-        {
-            int phaseReqCount = CountNonNull(_boss.Config.phases[i].requiredCharacters);
-            totalRequired += phaseReqCount;
+        float healthRatio = (float)_boss.HPRemaining / totalPhases;
 
-            if (i < _boss.CurrentPhaseIndex)
-            {
-                currentDrawn += phaseReqCount;
-            }
-            else if (i == _boss.CurrentPhaseIndex)
-            {
-                currentDrawn += _boss.DrawnThisPhase.Count;
-            }
-        }
-
-        if (totalRequired <= 0) return;
-
-        float healthRatio = 1f - Mathf.Clamp01((float)currentDrawn / totalRequired);
-        
         // Only set color instantly if we're not flashing
         if (_hitFeedbackRoutine == null)
         {
@@ -117,43 +106,26 @@ public class BossDamageFeedback : MonoBehaviour
     {
         if (_boss.Config == null || _boss.Config.phases == null) return _healthyColor;
 
-        int totalRequired = 0;
-        int currentDrawn = 0;
+        int totalPhases = _boss.Config.phases.Count;
+        if (totalPhases <= 0) return _healthyColor;
 
-        for (int i = 0; i < _boss.Config.phases.Count; i++)
-        {
-            int phaseReqCount = CountNonNull(_boss.Config.phases[i].requiredCharacters);
-            totalRequired += phaseReqCount;
-
-            if (i < _boss.CurrentPhaseIndex)
-            {
-                currentDrawn += phaseReqCount;
-            }
-            else if (i == _boss.CurrentPhaseIndex)
-            {
-                currentDrawn += _boss.DrawnThisPhase.Count;
-            }
-        }
-
-        if (totalRequired <= 0) return _healthyColor;
-
-        float healthRatio = 1f - Mathf.Clamp01((float)currentDrawn / totalRequired);
+        float healthRatio = (float)_boss.HPRemaining / totalPhases;
         return Color.Lerp(_criticalColor, _healthyColor, healthRatio);
     }
 
     private IEnumerator PlayHitFeedback()
     {
         float totalDur = Mathf.Max(_pauseDuration, _shakeDuration);
-        
+
         _appliedShake = Vector3.zero;
         IsHurtPaused = true;
         _renderer.color = _flashColor;
-        
+
         float t = 0f;
         while (t < totalDur)
         {
             // Flash color only lasts for the shake duration
-            if (t > _shakeDuration) 
+            if (t > _shakeDuration)
             {
                 _renderer.color = GetCurrentTint();
             }
@@ -161,7 +133,7 @@ public class BossDamageFeedback : MonoBehaviour
             if (_shakeDuration > 0f)
             {
                 transform.position -= _appliedShake;
-                
+
                 if (t < _shakeDuration)
                 {
                     float angle = t * _shakeFrequency * Mathf.PI * 2f;
@@ -192,14 +164,5 @@ public class BossDamageFeedback : MonoBehaviour
         IsHurtPaused = false;
         _renderer.color = GetCurrentTint();
         _hitFeedbackRoutine = null;
-    }
-
-    private static int CountNonNull(List<BaybayinCharacterSO> list)
-    {
-        if (list == null) return 0;
-        int n = 0;
-        for (int i = 0; i < list.Count; i++)
-            if (list[i] != null) n++;
-        return n;
     }
 }

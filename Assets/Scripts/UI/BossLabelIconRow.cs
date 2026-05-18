@@ -1,12 +1,14 @@
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 
 // Renders a row of Baybayin character icons above the boss representing
 // the current phase's required characters. Each icon greys out as the
-// player draws it. Hides during intermission and outro.
+// player draws it. Hides during outro.
 // Lives on the Gameplay Canvas — set up in §16.
+// REWORK: refactored in Task 9 — icon row now driven by new EventBus events
+// (OnBossVulnerable, OnBossExhausted, OnBossDamaged) and the new
+// CurrentExpectedCharacterID/CorrectDrawsThisWindow model on BossController.
 public class BossLabelIconRow : MonoBehaviour
 {
     [Header("Icon Prefab (Image with RectTransform 32x32)")]
@@ -24,7 +26,6 @@ public class BossLabelIconRow : MonoBehaviour
     [SerializeField] private Camera _gameplayCamera;
 
     private readonly List<Image> _spawnedIcons = new();
-    private readonly Dictionary<BaybayinCharacterSO, Image> _iconByChar = new();
     private BossController _boss;
     private Transform _bossTransform;
 
@@ -32,60 +33,69 @@ public class BossLabelIconRow : MonoBehaviour
     {
         if (_container == null) _container = (RectTransform)transform;
         if (_gameplayCamera == null) _gameplayCamera = Camera.main;
-        gameObject.SetActive(false);
     }
 
     private void OnEnable()
     {
         EventBus.OnBossStarted += HandleBossStarted;
         EventBus.OnBossPhaseStarted += HandlePhaseStarted;
-        EventBus.OnBossPhaseCleared += HandlePhaseCleared;
-        EventBus.OnBossIntermissionStarted += HideRow;
+        // REWORK: refactored in Task 9 — rewired to new events
+        EventBus.OnBossVulnerable += HandlePhaseVulnerable;
         EventBus.OnBossDefeated += HandleBossDefeated;
+        // REWORK: refactored in Task 9 — these events were removed from EventBus:
+        // EventBus.OnBossPhaseVulnerable += HandlePhaseVulnerable;
+        // EventBus.OnBossPhaseAdsReturning += HandlePhaseAdsReturning;
+        // EventBus.OnBossPhaseCleared += HandlePhaseCleared;
+        // EventBus.OnBossIntermissionStarted += HideRow;
     }
 
     private void OnDisable()
     {
         EventBus.OnBossStarted -= HandleBossStarted;
         EventBus.OnBossPhaseStarted -= HandlePhaseStarted;
-        EventBus.OnBossPhaseCleared -= HandlePhaseCleared;
-        EventBus.OnBossIntermissionStarted -= HideRow;
+        EventBus.OnBossVulnerable -= HandlePhaseVulnerable;
         EventBus.OnBossDefeated -= HandleBossDefeated;
+        // REWORK: refactored in Task 9 — see OnEnable comment.
+        // EventBus.OnBossPhaseVulnerable -= HandlePhaseVulnerable;
+        // EventBus.OnBossPhaseAdsReturning -= HandlePhaseAdsReturning;
+        // EventBus.OnBossPhaseCleared -= HandlePhaseCleared;
+        // EventBus.OnBossIntermissionStarted -= HideRow;
         UnsubscribeFromBossInstance();
     }
 
     private void HandleBossStarted(BossConfigSO config)
     {
-        gameObject.SetActive(true);
-        // Boss transform — locate via GameManager.CurrentBoss (set inside StartBoss).
         if (GameManager.Instance != null && GameManager.Instance.CurrentBoss != null)
             _bossTransform = GameManager.Instance.CurrentBoss.transform;
     }
 
     private void HandlePhaseStarted(int phaseIndex)
     {
+        // SummoningPhase: boss invulnerable, minions spawning. Subscribe to the
+        // boss instance for draw notifications but keep the icon row hidden —
+        // icons appear on OnBossVulnerable.
         UnsubscribeFromBossInstance();
 
         _boss = GameManager.Instance != null ? GameManager.Instance.CurrentBoss : null;
         if (_boss == null) return;
 
         _boss.OnDrawnThisPhaseChanged += RefreshIconStates;
-
-        BuildIcons(_boss.RequiredCharacters);
-        RefreshIconStates();
+        ClearIcons();
     }
 
-    private void HandlePhaseCleared(int phaseIndex)
+    private void HandlePhaseVulnerable(int phaseIndex)
     {
-        // Flash + hide. Per spec: row re-shows on the next OnBossPhaseStarted.
-        HideRow();
+        // Vulnerable window: boss targetable. Show a single icon for the
+        // current expected character (Task 9 will build the full icon row).
+        // REWORK: refactored in Task 9 — full icon row rebuild goes here.
+        RefreshIconStates();
     }
 
     private void HandleBossDefeated()
     {
         UnsubscribeFromBossInstance();
         ClearIcons();
-        gameObject.SetActive(false);
+        _bossTransform = null;
     }
 
     private void UnsubscribeFromBossInstance()
@@ -102,65 +112,22 @@ public class BossLabelIconRow : MonoBehaviour
                 _spawnedIcons[i].gameObject.SetActive(false);
     }
 
-    private void BuildIcons(IReadOnlyList<BaybayinCharacterSO> required)
-    {
-        ClearIcons();
-        if (_iconPrefab == null || _container == null || required == null) return;
-
-        int count = 0;
-        for (int i = 0; i < required.Count; i++) if (required[i] != null) count++;
-
-        // Center the row horizontally on the container.
-        float totalWidth = count * _iconSize + Mathf.Max(0, count - 1) * _iconGap;
-        float x = -totalWidth * 0.5f + _iconSize * 0.5f;
-
-        for (int i = 0; i < required.Count; i++)
-        {
-            BaybayinCharacterSO so = required[i];
-            if (so == null) continue;
-
-            Image icon = Instantiate(_iconPrefab, _container);
-            icon.gameObject.SetActive(true);
-            icon.sprite = so.displaySprite;
-            icon.color = Color.white;
-            icon.preserveAspect = true;
-
-            RectTransform rt = (RectTransform)icon.transform;
-            rt.sizeDelta = new Vector2(_iconSize, _iconSize);
-            rt.anchoredPosition = new Vector2(x, 0f);
-            x += _iconSize + _iconGap;
-
-            _spawnedIcons.Add(icon);
-            _iconByChar[so] = icon;
-        }
-    }
-
     private void ClearIcons()
     {
         for (int i = 0; i < _spawnedIcons.Count; i++)
             if (_spawnedIcons[i] != null)
                 Destroy(_spawnedIcons[i].gameObject);
         _spawnedIcons.Clear();
-        _iconByChar.Clear();
     }
 
     private void RefreshIconStates()
     {
-        if (_boss == null) return;
-
-        IReadOnlyCollection<BaybayinCharacterSO> drawn = _boss.DrawnThisPhase;
-        foreach (KeyValuePair<BaybayinCharacterSO, Image> kv in _iconByChar)
-        {
-            bool isDrawn = drawn != null && drawn.Contains(kv.Key);
-            Color c = isDrawn ? _drawnTint : Color.white;
-            c.a = isDrawn ? _drawnAlpha : 1f;
-            kv.Value.color = c;
-        }
+        // REWORK: refactored in Task 9 — full per-icon grey-out logic will go here
+        // using boss.CurrentExpectedCharacterID and boss.CorrectDrawsThisWindow.
     }
 
     private void Update()
     {
-        // Follow the boss's screen position.
         if (_bossTransform == null || _gameplayCamera == null || _container == null) return;
 
         Vector3 worldPos = _bossTransform.position + (Vector3)_bossWorldOffset;

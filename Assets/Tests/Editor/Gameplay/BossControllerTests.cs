@@ -14,15 +14,18 @@ namespace Salinlahi.Tests.Editor.Gameplay
         private int _onDrawingFailedCount;
         private int _onBossDefeatedCount;
         private int _onLevelCompleteCount;
-        private int _onPhaseStartedCount;
-        private int _onPhaseClearedCount;
+        private int _onBossDamagedCount;
+        private int _onBossVulnerabilityExpiredCount;
+        private int _lastDamagedHpRemaining = -1;
 
         // Named delegates so subscribe/unsubscribe match correctly.
         private System.Action _onDrawingFailed;
         private System.Action _onBossDefeated;
         private System.Action _onLevelComplete;
-        private System.Action<int> _onBossPhaseStarted;
-        private System.Action<int> _onBossPhaseCleared;
+        private System.Action<int, int> _onBossDamaged;
+        private System.Action<int> _onBossVulnerabilityExpired;
+
+        private LevelConfigSO _testLevelConfig;
 
         [SetUp]
         public void SetUp()
@@ -30,20 +33,21 @@ namespace Salinlahi.Tests.Editor.Gameplay
             _onDrawingFailedCount = 0;
             _onBossDefeatedCount = 0;
             _onLevelCompleteCount = 0;
-            _onPhaseStartedCount = 0;
-            _onPhaseClearedCount = 0;
+            _onBossDamagedCount = 0;
+            _onBossVulnerabilityExpiredCount = 0;
+            _lastDamagedHpRemaining = -1;
 
             _onDrawingFailed = () => _onDrawingFailedCount++;
             _onBossDefeated = () => _onBossDefeatedCount++;
             _onLevelComplete = () => _onLevelCompleteCount++;
-            _onBossPhaseStarted = _ => _onPhaseStartedCount++;
-            _onBossPhaseCleared = _ => _onPhaseClearedCount++;
+            _onBossDamaged = (phase, hp) => { _onBossDamagedCount++; _lastDamagedHpRemaining = hp; };
+            _onBossVulnerabilityExpired = _ => _onBossVulnerabilityExpiredCount++;
 
             EventBus.OnDrawingFailed += _onDrawingFailed;
             EventBus.OnBossDefeated += _onBossDefeated;
             EventBus.OnLevelComplete += _onLevelComplete;
-            EventBus.OnBossPhaseStarted += _onBossPhaseStarted;
-            EventBus.OnBossPhaseCleared += _onBossPhaseCleared;
+            EventBus.OnBossDamaged += _onBossDamaged;
+            EventBus.OnBossVulnerabilityExpired += _onBossVulnerabilityExpired;
         }
 
         [TearDown]
@@ -52,8 +56,8 @@ namespace Salinlahi.Tests.Editor.Gameplay
             EventBus.OnDrawingFailed -= _onDrawingFailed;
             EventBus.OnBossDefeated -= _onBossDefeated;
             EventBus.OnLevelComplete -= _onLevelComplete;
-            EventBus.OnBossPhaseStarted -= _onBossPhaseStarted;
-            EventBus.OnBossPhaseCleared -= _onBossPhaseCleared;
+            EventBus.OnBossDamaged -= _onBossDamaged;
+            EventBus.OnBossVulnerabilityExpired -= _onBossVulnerabilityExpired;
 
             for (int i = _objectsToDestroy.Count - 1; i >= 0; i--)
                 if (_objectsToDestroy[i] != null)
@@ -61,177 +65,229 @@ namespace Salinlahi.Tests.Editor.Gameplay
             _objectsToDestroy.Clear();
         }
 
-        // ---- Test 1 — §10.1 ----
+        // ---- Test 1 — spec §11 ----
         [UnityTest]
-        public IEnumerator NonRequiredDraw_ReturnsNotRouted_NoAdvance()
+        public IEnumerator Vulnerable_NCorrectDrawsCompleted_TransitionsToDamaged()
         {
             BaybayinCharacterSO ba = CreateChar("BA");
-            BaybayinCharacterSO ka = CreateChar("KA");
+            CreateLevelConfig(ba);
             BossConfigSO config = CreateConfig(introDuration: 0f, outroDuration: 0f, phases:
-                new List<BossPhase> { CreatePhase(new[] { ba }) });
+                new List<BossPhase> { CreatePhase(requiredCount: 3, vulnerabilityTimer: 100f) });
 
             (BossController boss, _) = CreateBossWithFakeSpawner();
             boss.StartBoss(config, GetFakeSpawner());
 
-            // Advance frames so Intro (0s) elapses and PhaseActive begins.
+            yield return WaitUntilTargetable(boss, timeout: 2f);
+
+            Assert.IsTrue(boss.IsTargetable);
+            Assert.AreEqual(BossRouteResult.Hit, boss.TryRouteDraw("BA"));
+            Assert.AreEqual(BossRouteResult.Hit, boss.TryRouteDraw("BA"));
+            Assert.AreEqual(BossRouteResult.Hit, boss.TryRouteDraw("BA"));
+
             yield return null;
             yield return null;
-
-            BossRouteResult result = boss.TryRouteDraw(ka.characterID);
-            Assert.AreEqual(BossRouteResult.NotRouted, result);
+            Assert.AreEqual(1, _onBossDamagedCount);
+            Assert.AreEqual(0, _lastDamagedHpRemaining,
+                "Single-phase boss: HP after the damaged event must be 0.");
         }
 
-        // ---- Test 2 — §10.2 ----
+        // ---- Test 2 — spec §11 ----
         [UnityTest]
-        public IEnumerator ThreeRequiredChars_ClearsWhenAllDrawn_AnyOrder()
+        public IEnumerator Vulnerable_TimerExpiresWithFewerThanNCorrect_ReturnsToSummoningSamePhase()
+        {
+            BaybayinCharacterSO ba = CreateChar("BA");
+            CreateLevelConfig(ba);
+            BossConfigSO config = CreateConfig(introDuration: 0f, outroDuration: 0f, phases:
+                new List<BossPhase> { CreatePhase(requiredCount: 3, vulnerabilityTimer: 0.3f) });
+
+            (BossController boss, _) = CreateBossWithFakeSpawner();
+            boss.StartBoss(config, GetFakeSpawner());
+
+            yield return WaitUntilTargetable(boss, timeout: 2f);
+            int phaseAtVulnerable = boss.CurrentPhaseIndex;
+            int hpAtVulnerable = boss.HPRemaining;
+
+            float elapsed = 0f;
+            while (elapsed < 0.5f) { yield return null; elapsed += Time.deltaTime; }
+
+            Assert.AreEqual(1, _onBossVulnerabilityExpiredCount);
+            Assert.AreEqual(0, _onBossDamagedCount);
+            Assert.AreEqual(phaseAtVulnerable, boss.CurrentPhaseIndex,
+                "Forgiving timeout must keep the same phase index.");
+            Assert.AreEqual(hpAtVulnerable, boss.HPRemaining, "HP must be unchanged after timeout.");
+        }
+
+        // ---- Test 3 — spec §11 ----
+        [UnityTest]
+        public IEnumerator Vulnerable_WrongGlyph_DoesNotAdvanceQueueOrAffectTimer()
         {
             BaybayinCharacterSO ba = CreateChar("BA");
             BaybayinCharacterSO ka = CreateChar("KA");
-            BaybayinCharacterSO ga = CreateChar("GA");
+            CreateLevelConfig(ba); // Pool contains only BA -> KA is always "wrong".
             BossConfigSO config = CreateConfig(introDuration: 0f, outroDuration: 0f, phases:
-                new List<BossPhase> { CreatePhase(new[] { ba, ka, ga }) });
+                new List<BossPhase> { CreatePhase(requiredCount: 2, vulnerabilityTimer: 100f) });
 
             (BossController boss, _) = CreateBossWithFakeSpawner();
             boss.StartBoss(config, GetFakeSpawner());
-            yield return null; yield return null;
+            yield return WaitUntilTargetable(boss, timeout: 2f);
 
-            Assert.AreEqual(BossRouteResult.Hit, boss.TryRouteDraw("GA"));
-            Assert.AreEqual(0, _onPhaseClearedCount);
-            Assert.AreEqual(BossRouteResult.Hit, boss.TryRouteDraw("BA"));
-            Assert.AreEqual(0, _onPhaseClearedCount);
-            Assert.AreEqual(BossRouteResult.Hit, boss.TryRouteDraw("KA"));
-            Assert.AreEqual(1, _onPhaseClearedCount);
+            string expectedBefore = boss.CurrentExpectedCharacterID;
+            int failedBefore = _onDrawingFailedCount;
+
+            BossRouteResult result = boss.TryRouteDraw("KA");
+            Assert.AreEqual(BossRouteResult.WrongGlyph, result);
+            Assert.AreEqual(0, _onBossDamagedCount, "Wrong glyph must not damage.");
+            Assert.AreEqual(expectedBefore, boss.CurrentExpectedCharacterID,
+                "Wrong glyph must not advance the expected character.");
+            Assert.AreEqual(failedBefore + 1, _onDrawingFailedCount,
+                "Wrong glyph must raise OnDrawingFailed exactly once (spec §7).");
         }
 
-        // ---- Test 3 — §10.3 ----
+        // ---- Test 4 — spec §11 ----
         [UnityTest]
-        public IEnumerator DuplicateRequiredDraw_RaisesOnDrawingFailed_Consumed()
+        public IEnumerator Vulnerable_AfterCorrectDraw_NextExpectedGlyphIsFromAllowedPool()
         {
             BaybayinCharacterSO ba = CreateChar("BA");
-            BaybayinCharacterSO ka = CreateChar("KA");
+            CreateLevelConfig(ba); // Single-element pool — every sample yields BA.
             BossConfigSO config = CreateConfig(introDuration: 0f, outroDuration: 0f, phases:
-                new List<BossPhase> { CreatePhase(new[] { ba, ka }) });
+                new List<BossPhase> { CreatePhase(requiredCount: 3, vulnerabilityTimer: 100f) });
 
             (BossController boss, _) = CreateBossWithFakeSpawner();
             boss.StartBoss(config, GetFakeSpawner());
-            yield return null; yield return null;
+            yield return WaitUntilTargetable(boss, timeout: 2f);
 
+            Assert.AreEqual("BA", boss.CurrentExpectedCharacterID);
             Assert.AreEqual(BossRouteResult.Hit, boss.TryRouteDraw("BA"));
-            BossRouteResult dup = boss.TryRouteDraw("BA");
-            Assert.AreEqual(BossRouteResult.Duplicate, dup);
-            Assert.AreEqual(1, _onDrawingFailedCount);
-            Assert.AreEqual(0, _onPhaseClearedCount, "Duplicate must not clear the phase.");
+            Assert.AreEqual("BA", boss.CurrentExpectedCharacterID,
+                "After a correct draw, the next expected character must be sampled from the pool.");
         }
 
-        // ---- Test 4 — §10.4 ----
+        // ---- Test 5 — spec §11 ----
         [UnityTest]
-        public IEnumerator LastPhaseCleared_RaisesOnBossDefeated_AndOnLevelComplete()
+        public IEnumerator SummoningPhase_TicksFireAtSummonIntervalCadence()
         {
             BaybayinCharacterSO ba = CreateChar("BA");
-            BossConfigSO config = CreateConfig(introDuration: 0f, outroDuration: 0.05f, phases:
-                new List<BossPhase> { CreatePhase(new[] { ba }) });
+            CreateLevelConfig(ba);
+            BossPhase phase = CreatePhase(requiredCount: 1, vulnerabilityTimer: 100f, summonDuration: 2f);
+            phase.summonInterval = 0.5f;
+            phase.summonBurstMin = 1;
+            phase.summonBurstMax = 1;
+            EnemyDataSO summonData = ScriptableObject.CreateInstance<EnemyDataSO>();
+            summonData.enemyID = "summon";
+            summonData.maxHealth = 1;
+            _objectsToDestroy.Add(summonData);
+            phase.summonEnemyTypes = new List<EnemyDataSO> { summonData };
+
+            BossConfigSO config = CreateConfig(introDuration: 0f, outroDuration: 0f, phases:
+                new List<BossPhase> { phase });
+
+            (BossController boss, FakeWaveSpawner spawner) = CreateBossWithFakeSpawner();
+            boss.StartBoss(config, GetFakeSpawner());
+
+            float elapsed = 0f;
+            while (elapsed < 2.3f) { yield return null; elapsed += Time.deltaTime; }
+
+            Assert.GreaterOrEqual(spawner.SpawnEnemyCallCount, 3,
+                "Expected at least 3 summon ticks in ~2s at 0.5s cadence.");
+            Assert.LessOrEqual(spawner.SpawnEnemyCallCount, 5,
+                "Expected at most 5 summon ticks; cadence drift should not exceed one tick.");
+        }
+
+        // ---- Test 6 — spec §11 ----
+        [UnityTest]
+        public IEnumerator Damaged_HPReachesZero_TransitionsToOutroThenDefeated()
+        {
+            BaybayinCharacterSO ba = CreateChar("BA");
+            CreateLevelConfig(ba);
+            BossConfigSO config = CreateConfig(introDuration: 0f, outroDuration: 0.1f, phases:
+                new List<BossPhase> { CreatePhase(requiredCount: 1, vulnerabilityTimer: 100f) });
 
             (BossController boss, _) = CreateBossWithFakeSpawner();
             boss.StartBoss(config, GetFakeSpawner());
-            yield return null; yield return null;
+            yield return WaitUntilTargetable(boss, timeout: 2f);
 
             Assert.AreEqual(BossRouteResult.Hit, boss.TryRouteDraw("BA"));
 
-            // Wait outroDuration + a frame.
-            float t = 0f;
-            while (t < 0.2f) { yield return null; t += Time.deltaTime; }
+            float elapsed = 0f;
+            while (elapsed < 0.5f) { yield return null; elapsed += Time.deltaTime; }
 
             Assert.AreEqual(1, _onBossDefeatedCount);
             Assert.AreEqual(1, _onLevelCompleteCount);
         }
 
-        // ---- Test 5 — §10.5 ----
+        // ---- Test 7 — spec §11 ----
         [UnityTest]
-        public IEnumerator Intro_IsTargetableFalse_TryRouteDrawReturnsNotRouted()
+        public IEnumerator IsTargetable_FalseDuringIntroAndSummoningPhase()
         {
             BaybayinCharacterSO ba = CreateChar("BA");
-            BossConfigSO config = CreateConfig(introDuration: 0.2f, outroDuration: 0f, phases:
-                new List<BossPhase> { CreatePhase(new[] { ba }) });
+            CreateLevelConfig(ba);
+            BossPhase phase = CreatePhase(requiredCount: 1, vulnerabilityTimer: 100f, summonDuration: 0.5f);
+            BossConfigSO config = CreateConfig(introDuration: 0.3f, outroDuration: 0f, phases:
+                new List<BossPhase> { phase });
 
             (BossController boss, _) = CreateBossWithFakeSpawner();
             boss.StartBoss(config, GetFakeSpawner());
-            yield return null;
 
+            yield return null;
             Assert.IsFalse(boss.IsTargetable, "IsTargetable must be false during Intro.");
+            Assert.AreEqual(BossRouteResult.NotRouted, boss.TryRouteDraw("BA"));
+
+            float elapsed = 0f;
+            while (elapsed < 0.5f) { yield return null; elapsed += Time.deltaTime; }
+            Assert.IsFalse(boss.IsTargetable, "IsTargetable must be false during SummoningPhase.");
             Assert.AreEqual(BossRouteResult.NotRouted, boss.TryRouteDraw("BA"));
         }
 
-        // ---- Test 6 — §10.6 ----
+        // ---- Test 8 — spec §11 ----
         [UnityTest]
-        public IEnumerator Intermission_IsTargetableFalse_TryRouteDrawReturnsNotRouted()
+        public IEnumerator BossPhase_MovementPatternIsPerPhase()
         {
             BaybayinCharacterSO ba = CreateChar("BA");
-            BaybayinCharacterSO ka = CreateChar("KA");
-            WaveConfigSO intermission = ScriptableObject.CreateInstance<WaveConfigSO>();
-            _objectsToDestroy.Add(intermission);
-
-            BossPhase phase1 = CreatePhase(new[] { ba });
-            phase1.intermissionWave = intermission;
-            phase1.postIntermissionDelay = 1f;
-
+            CreateLevelConfig(ba);
+            BossPhase phase0 = CreatePhase(requiredCount: 1, vulnerabilityTimer: 100f,
+                movement: BossMovementPattern.Pace);
+            BossPhase phase1 = CreatePhase(requiredCount: 1, vulnerabilityTimer: 100f,
+                movement: BossMovementPattern.Teleport);
             BossConfigSO config = CreateConfig(introDuration: 0f, outroDuration: 0f, phases:
-                new List<BossPhase> { phase1, CreatePhase(new[] { ka }) });
-
-            (BossController boss, FakeWaveSpawner spawner) = CreateBossWithFakeSpawner();
-            boss.StartBoss(config, GetFakeSpawner());
-            yield return null; yield return null;
-
-            Assert.AreEqual(BossRouteResult.Hit, boss.TryRouteDraw("BA"));
-            yield return null;
-
-            Assert.IsFalse(boss.IsTargetable, "IsTargetable must be false during intermission.");
-            Assert.AreEqual(BossRouteResult.NotRouted, boss.TryRouteDraw("KA"));
-            Assert.AreEqual(1, spawner.SpawnWaveCallCount,
-                "Intermission must spawn the configured wave exactly once.");
-        }
-
-        // ---- Test 7 — §10.7 ----
-        [UnityTest]
-        public IEnumerator IntermissionSpawning_UsesInjectedSpawner()
-        {
-            BaybayinCharacterSO ba = CreateChar("BA");
-            BaybayinCharacterSO ka = CreateChar("KA");
-            WaveConfigSO intermission = ScriptableObject.CreateInstance<WaveConfigSO>();
-            _objectsToDestroy.Add(intermission);
-
-            BossPhase phase1 = CreatePhase(new[] { ba });
-            phase1.intermissionWave = intermission;
-
-            BossConfigSO config = CreateConfig(introDuration: 0f, outroDuration: 0f, phases:
-                new List<BossPhase> { phase1, CreatePhase(new[] { ka }) });
-
-            (BossController boss, FakeWaveSpawner spawner) = CreateBossWithFakeSpawner();
-            boss.StartBoss(config, GetFakeSpawner());
-            yield return null; yield return null;
-
-            boss.TryRouteDraw("BA");
-            yield return null;
-
-            Assert.AreSame(intermission, spawner.LastSpawnedWave,
-                "BossController must call SpawnWave on the injected spawner with the configured wave.");
-        }
-
-        // ---- Test 8 — §10.8 ----
-        [UnityTest]
-        public IEnumerator IsDefeated_FlipsAtStartOfOutro()
-        {
-            BaybayinCharacterSO ba = CreateChar("BA");
-            BossConfigSO config = CreateConfig(introDuration: 0f, outroDuration: 1f, phases:
-                new List<BossPhase> { CreatePhase(new[] { ba }) });
+                new List<BossPhase> { phase0, phase1 });
 
             (BossController boss, _) = CreateBossWithFakeSpawner();
-            boss.StartBoss(config, GetFakeSpawner());
-            yield return null; yield return null;
 
-            Assert.IsFalse(boss.IsDefeated);
-            boss.TryRouteDraw("BA");
-            yield return null;
-            Assert.IsTrue(boss.IsDefeated, "IsDefeated must flip true at the start of Outro.");
+            PhaseBasedMovement existing = boss.GetComponent<PhaseBasedMovement>();
+            if (existing != null) Object.DestroyImmediate(existing);
+            SpyPhaseBasedMovement spy = boss.gameObject.AddComponent<SpyPhaseBasedMovement>();
+
+            boss.StartBoss(config, GetFakeSpawner());
+
+            yield return WaitUntilTargetable(boss, timeout: 2f);
+            Assert.AreEqual(BossRouteResult.Hit, boss.TryRouteDraw("BA"));
+
+            float elapsed = 0f;
+            while (elapsed < 2f && spy.StartedPatterns.Count < 2)
+            {
+                yield return null;
+                elapsed += Time.deltaTime;
+            }
+
+            Assert.GreaterOrEqual(spy.StartedPatterns.Count, 2,
+                "PhaseBasedMovement.StartPattern must be called at least once per phase.");
+            Assert.AreEqual(BossMovementPattern.Pace, spy.StartedPatterns[0],
+                "Phase 0 should start with the Pace pattern.");
+            Assert.AreEqual(BossMovementPattern.Teleport, spy.StartedPatterns[1],
+                "Phase 1 should start with the Teleport pattern.");
+        }
+
+        // ---- Helper polling for Vulnerable active window ----
+        private IEnumerator WaitUntilTargetable(BossController boss, float timeout)
+        {
+            float t = 0f;
+            while (t < timeout && !boss.IsTargetable)
+            {
+                yield return null;
+                t += Time.deltaTime;
+            }
+            if (!boss.IsTargetable)
+                throw new AssertionException($"Boss did not become IsTargetable within {timeout}s.");
         }
 
         // ---- Helpers ----
@@ -244,13 +300,27 @@ namespace Salinlahi.Tests.Editor.Gameplay
             return so;
         }
 
-        private BossPhase CreatePhase(IReadOnlyList<BaybayinCharacterSO> required)
+        private BossPhase CreatePhase(
+            int requiredCount,
+            float vulnerabilityTimer = 100f,
+            float summonDuration = 0f,
+            BossMovementPattern movement = BossMovementPattern.Hover)
         {
-            BossPhase phase = new BossPhase();
-            phase.requiredCharacters = new List<BaybayinCharacterSO>(required);
-            phase.movementPattern = BossMovementPattern.Hover;
-            phase.movementSpeed = 0f;
-            return phase;
+            return new BossPhase
+            {
+                summonDuration = summonDuration,
+                summonInterval = 1f,
+                summonBurstMin = 1,
+                summonBurstMax = 1,
+                summonEnemyTypes = new List<EnemyDataSO>(),
+                summonSpawnRange = Vector2.zero,
+                requiredCharacterCount = requiredCount,
+                vulnerabilityTimer = vulnerabilityTimer,
+                movementPattern = movement,
+                movementSpeed = 0f,
+                paceHalfRange = 0f,
+                teleportHalfRange = Vector2.zero,
+            };
         }
 
         private BossConfigSO CreateConfig(float introDuration, float outroDuration, List<BossPhase> phases)
@@ -271,6 +341,20 @@ namespace Salinlahi.Tests.Editor.Gameplay
 
             _objectsToDestroy.Add(config);
             return config;
+        }
+
+        private LevelConfigSO CreateLevelConfig(params BaybayinCharacterSO[] allowed)
+        {
+            LevelConfigSO lc = ScriptableObject.CreateInstance<LevelConfigSO>();
+            lc.allowedCharacters = new List<BaybayinCharacterSO>(allowed);
+            _objectsToDestroy.Add(lc);
+            _testLevelConfig = lc;
+
+            // Wire GameManager.CurrentLevel so BossController.SampleNextExpectedCharacter resolves.
+            if (GameManager.Instance != null)
+                GameManager.Instance.SetLevel(lc);
+
+            return lc;
         }
 
         private FakeWaveSpawner _fakeSpawner;
@@ -307,19 +391,33 @@ namespace Salinlahi.Tests.Editor.Gameplay
             f.SetValue(target, value);
         }
 
-        // ---- Test double ----
+        // ---- Test doubles ----
 
         private class FakeWaveSpawner : WaveSpawner
         {
-            public int SpawnWaveCallCount;
-            public WaveConfigSO LastSpawnedWave;
+            public int SpawnEnemyCallCount;
+            public EnemyDataSO LastSpawnedEnemyData;
+            public Vector3 LastSpawnedEnemyPosition;
 
-            public override IEnumerator SpawnWave(WaveConfigSO wave, System.Action onEnemySpawned = null, int spawnOffset = 0)
+            public override Enemy SpawnEnemy(EnemyDataSO data)
             {
-                SpawnWaveCallCount++;
-                LastSpawnedWave = wave;
-                yield break;
+                SpawnEnemyCallCount++;
+                LastSpawnedEnemyData = data;
+                return null;
             }
+        }
+
+        private class SpyPhaseBasedMovement : PhaseBasedMovement
+        {
+            public readonly List<BossMovementPattern> StartedPatterns = new();
+
+            public override void StartPattern(BossPhase phase)
+            {
+                if (phase != null) StartedPatterns.Add(phase.movementPattern);
+            }
+
+            public override void StopPattern() { }
+            public override void TeleportNow(BossPhase phase) { }
         }
     }
 }

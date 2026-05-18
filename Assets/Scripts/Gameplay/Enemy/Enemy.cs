@@ -32,6 +32,7 @@ public class Enemy : MonoBehaviour
     private EnemyMover _mover;
     private EnemyHurtFeedback _hurtFeedback;
     private PhaserEnemy _phaserEnemy;
+    // REWORK: SummonWaveOnPhaseStart removed — replaced by BossSummonTicker.
     private SpriteRenderer _renderer;
     private int _currentHealth;
     private BaybayinCharacterSO _runtimeCharacter;
@@ -228,6 +229,12 @@ public class Enemy : MonoBehaviour
                 _mover.Stop();
             else
                 DebugLogger.LogWarning($"Enemy.ResetForPool: Missing EnemyMover on '{name}'.");
+
+            // Park far off-screen (very high Y) so that if this enemy is
+            // re-registered by Initialize() before the spawner sets its final
+            // position, FindClosestToBase will never accidentally select it
+            // over an enemy that has already moved partway down the field.
+            transform.position = new Vector3(0f, 9999f, 0f);
 
             ResetRendererState();
             RefreshDebugLabels();
@@ -436,6 +443,22 @@ public class Enemy : MonoBehaviour
             UpdateLabelLayout();
     }
 
+    /// <summary>
+    /// Resets the walk animation to frame 0. Called when the boss cleanly returns
+    /// to the walk cycle after a tell animation completes.
+    /// </summary>
+    public void ResetWalkAnimation()
+    {
+        _walkFrameIndex = 0;
+        _walkFrameTimer = 0f;
+        if (_renderer != null && _data != null
+            && _data.walkFrames != null && _data.walkFrames.Length > 0
+            && _data.walkFrames[0] != null)
+        {
+            _renderer.sprite = _data.walkFrames[0];
+        }
+    }
+
     private void AdvanceWalkAnimation()
     {
         if (_hurtFeedback != null && _hurtFeedback.IsPlayingHurtAnimation)
@@ -531,8 +554,13 @@ public class Enemy : MonoBehaviour
 
         if (_baybayinLabel != null)
         {
-            _baybayinLabel.gameObject.SetActive(true);
-            _baybayinLabel.text = BuildBaybayinLabelText();
+            // Bosses don't have a single assigned character — required draws
+            // are surfaced by BossLabelIconRow. Suppressing the per-enemy
+            // label avoids the misleading "Draw: (none)" readout.
+            bool showBaybayin = !IsBoss;
+            _baybayinLabel.gameObject.SetActive(showBaybayin);
+            if (showBaybayin)
+                _baybayinLabel.text = BuildBaybayinLabelText();
         }
 
         if (_enemyTypeLabel != null)
