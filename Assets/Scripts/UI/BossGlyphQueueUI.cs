@@ -18,7 +18,6 @@ public class BossGlyphQueueUI : MonoBehaviour
     [SerializeField] private Camera _gameplayCamera;
 
     [Header("Visuals")]
-    [SerializeField] private float _fadeDuration = 0.15f;
     [SerializeField] private Color _failFlashColor = new Color(1f, 0.3f, 0.3f, 1f);
     [SerializeField] private float _failFlashDuration = 0.15f;
 
@@ -37,7 +36,7 @@ public class BossGlyphQueueUI : MonoBehaviour
     {
         EventBus.OnBossStarted += HandleBossStarted;
         EventBus.OnBossVulnerable += HandleBossVulnerable;
-        EventBus.OnBossDamaged += HandleHide;
+        EventBus.OnBossDamaged += HandleBossDamagedHide;
         EventBus.OnBossVulnerabilityExpired += HandleHide;
         EventBus.OnBossDefeated += HandleBossDefeated;
         EventBus.OnDrawingFailed += HandleDrawingFailed;
@@ -47,7 +46,7 @@ public class BossGlyphQueueUI : MonoBehaviour
     {
         EventBus.OnBossStarted -= HandleBossStarted;
         EventBus.OnBossVulnerable -= HandleBossVulnerable;
-        EventBus.OnBossDamaged -= HandleHide;
+        EventBus.OnBossDamaged -= HandleBossDamagedHide;
         EventBus.OnBossVulnerabilityExpired -= HandleHide;
         EventBus.OnBossDefeated -= HandleBossDefeated;
         EventBus.OnDrawingFailed -= HandleDrawingFailed;
@@ -74,6 +73,8 @@ public class BossGlyphQueueUI : MonoBehaviour
     {
         if (_canvasGroup != null) _canvasGroup.alpha = 0f;
     }
+
+    private void HandleBossDamagedHide(int phaseIndex, int hpRemaining) => HandleHide(phaseIndex);
 
     private void HandleBossDefeated()
     {
