@@ -158,6 +158,26 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.IsTrue(GetPrivateField<bool>(controller, "_flowAborted"));
         }
 
+        [Test]
+        public void LevelOneTutorialDueWithIncompleteWorldIntroAbortsFlow()
+        {
+            LevelConfigSO levelConfig = CreateLevelConfig();
+            levelConfig.levelNumber = LevelTutorialProgress.TutorialLevelNumber;
+
+            Level1WorldIntroController worldIntro = CreateComponent<Level1WorldIntroController>("WorldIntro");
+            LevelFlowController controller = CreateComponent<LevelFlowController>("LevelFlowController");
+            SetPrivateField(controller, "_levelConfig", levelConfig);
+            SetPrivateField(controller, "_level1WorldIntroController", worldIntro);
+
+            IEnumerator tutorialGate = InvokePrivate<IEnumerator>(controller, "PlayLevelTutorialIfNeeded");
+            LogAssert.Expect(
+                LogType.Error,
+                "[Salinlahi] LevelFlowController: Level 1 world intro is due, but Level1WorldIntroController is not fully configured.");
+
+            Assert.IsFalse(tutorialGate.MoveNext());
+            Assert.IsTrue(GetPrivateField<bool>(controller, "_flowAborted"));
+        }
+
         private GameManager CreateGameManager()
         {
             GameManager gameManager = CreateComponent<GameManager>("GameManager");

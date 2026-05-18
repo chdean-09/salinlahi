@@ -62,6 +62,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.AreEqual("salinlahi.tutorial.level1.base_hp_explained", LevelTutorialProgress.Level1BaseHpExplainedKey);
             Assert.AreEqual("salinlahi.tutorial.level1.wave1_clear_explained", LevelTutorialProgress.Level1Wave1ClearExplainedKey);
             Assert.AreEqual("salinlahi.tutorial.level1.world_intro_seen", LevelTutorialProgress.Level1WorldIntroSeenKey);
+            Assert.AreEqual("salinlahi.tutorial.level1.onboarding_complete", LevelTutorialProgress.Level1OnboardingCompleteKey);
             Assert.AreEqual("salinlahi.tutorial.level1.trace_assist_shown_count", LevelTutorialProgress.Level1TraceAssistShownCountKey);
             Assert.AreEqual("salinlahi.tutorial.level1.recent_draw_failures", LevelTutorialProgress.Level1RecentDrawFailuresKey);
         }
@@ -82,6 +83,15 @@ namespace Salinlahi.Tests.Editor.Gameplay
 
             Assert.IsTrue(LevelTutorialProgress.HasSeenLevel1WorldIntro());
             Assert.AreEqual(1, PlayerPrefs.GetInt(LevelTutorialProgress.Level1WorldIntroSeenKey, 0));
+        }
+
+        [Test]
+        public void MarkLevel1OnboardingComplete_PersistsCompletionFlag()
+        {
+            LevelTutorialProgress.MarkLevel1OnboardingComplete();
+
+            Assert.IsTrue(LevelTutorialProgress.HasCompletedLevel1Onboarding());
+            Assert.AreEqual(1, PlayerPrefs.GetInt(LevelTutorialProgress.Level1OnboardingCompleteKey, 0));
         }
 
         [Test]
@@ -106,6 +116,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
             LevelTutorialProgress.MarkLevel1BaseHpExplained();
             LevelTutorialProgress.MarkLevel1Wave1ClearExplained();
             LevelTutorialProgress.MarkLevel1WorldIntroSeen();
+            LevelTutorialProgress.MarkLevel1OnboardingComplete();
             LevelTutorialProgress.IncrementLevel1TraceAssistShownCount();
             LevelTutorialProgress.IncrementLevel1RecentDrawFailures();
 
@@ -117,6 +128,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.IsFalse(LevelTutorialProgress.HasSeenLevel1BaseHpExplained());
             Assert.IsFalse(LevelTutorialProgress.HasSeenLevel1Wave1ClearExplained());
             Assert.IsFalse(LevelTutorialProgress.HasSeenLevel1WorldIntro());
+            Assert.IsFalse(LevelTutorialProgress.HasCompletedLevel1Onboarding());
             Assert.AreEqual(0, LevelTutorialProgress.GetLevel1TraceAssistShownCount());
             Assert.AreEqual(0, LevelTutorialProgress.GetLevel1RecentDrawFailures());
         }
