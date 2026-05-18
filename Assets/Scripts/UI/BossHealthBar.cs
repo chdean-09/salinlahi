@@ -1,9 +1,8 @@
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-// REWORK: refactored in Task 9 — health bar now tracks HPRemaining/phase count
-// instead of DrawnThisPhase/requiredCharacters from the old model.
+// HP-based health bar for the boss encounter.
+// Fills at HPRemaining / phases.Count and tweens down on OnBossDamaged.
 public class BossHealthBar : MonoBehaviour
 {
     [Header("UI Elements")]
@@ -19,7 +18,8 @@ public class BossHealthBar : MonoBehaviour
 
     private BossController _boss;
     private Transform _bossTransform;
-    private int _totalPhases = 0;
+    private int _totalPhases;
+    private float _hpTweenSpeed = 2.5f; // ~0.4s sweep for a single HP loss on a 3-phase boss
     private float _targetFill = 0f;
     private float _currentFill = 0f;
 
@@ -35,93 +35,54 @@ public class BossHealthBar : MonoBehaviour
     private void OnEnable()
     {
         EventBus.OnBossStarted += HandleBossStarted;
-        EventBus.OnBossDefeated += HandleBossDefeated;
-        EventBus.OnBossPhaseStarted += HandlePhaseStarted;
-        // REWORK: refactored in Task 9 — rewired to new events
-        EventBus.OnBossVulnerable += HandlePhaseVulnerable;
         EventBus.OnBossDamaged += HandleBossDamaged;
-        // REWORK: refactored in Task 9 — OnBossPhaseAdsReturning removed; vulnerability
-        // expiry resets are handled via OnBossVulnerabilityExpired when Task 9 lands.
-        // EventBus.OnBossPhaseAdsReturning += HandlePhaseReset;
+        EventBus.OnBossDefeated += HandleBossDefeated;
     }
 
     private void OnDisable()
     {
         EventBus.OnBossStarted -= HandleBossStarted;
-        EventBus.OnBossDefeated -= HandleBossDefeated;
-        EventBus.OnBossPhaseStarted -= HandlePhaseStarted;
-        EventBus.OnBossVulnerable -= HandlePhaseVulnerable;
         EventBus.OnBossDamaged -= HandleBossDamaged;
-        // REWORK: refactored in Task 9 — see OnEnable comment.
-        // EventBus.OnBossPhaseAdsReturning -= HandlePhaseReset;
+        EventBus.OnBossDefeated -= HandleBossDefeated;
         UnsubscribeFromBoss();
     }
 
     private void HandleBossStarted(BossConfigSO config)
     {
-        if (GameManager.Instance != null && GameManager.Instance.CurrentBoss != null)
-        {
-            _boss = GameManager.Instance.CurrentBoss;
-            _bossTransform = _boss.transform;
-            if (_gameplayCamera == null) _gameplayCamera = Camera.main;
+        _boss = GameManager.Instance != null ? GameManager.Instance.CurrentBoss : null;
+        if (_boss == null) return;
+        _bossTransform = _boss.transform;
+        if (_gameplayCamera == null) _gameplayCamera = Camera.main;
 
-            _boss.OnDrawnThisPhaseChanged += UpdateHealthBar;
-
-            _totalPhases = config.phases != null ? config.phases.Count : 0;
-
-            _currentFill = 1f;
-            _targetFill = 1f;
-            SetFillWidth(1f);
-
-            FadeTo(1f);
-        }
-    }
-
-    private void HandlePhaseStarted(int phaseIndex)
-    {
+        _totalPhases = config.phases != null ? config.phases.Count : 0;
+        _currentFill = 1f;
+        _targetFill = 1f;
+        SetFillWidth(1f);
         FadeTo(1f);
-        UpdateHealthBar();
-    }
-
-    private void HandlePhaseVulnerable(int phaseIndex)
-    {
-        FadeTo(1f);
-        UpdateHealthBar();
     }
 
     private void HandleBossDamaged(int phaseIndex, int hpRemaining)
     {
-        UpdateHealthBar();
+        if (_totalPhases <= 0) return;
+        _targetFill = Mathf.Clamp01((float)hpRemaining / _totalPhases);
     }
 
     private void HandleBossDefeated()
     {
-        UpdateHealthBar(); // To reach 0
+        _targetFill = 0f;
         FadeTo(0f);
-        UnsubscribeFromBoss();
     }
 
     private void UnsubscribeFromBoss()
     {
-        if (_boss != null)
-        {
-            _boss.OnDrawnThisPhaseChanged -= UpdateHealthBar;
-            _boss = null;
-        }
-    }
-
-    private void UpdateHealthBar()
-    {
-        if (_boss == null || _boss.Config == null || _totalPhases <= 0) return;
-
-        _targetFill = Mathf.Clamp01((float)_boss.HPRemaining / _totalPhases);
+        _boss = null;
     }
 
     private void Update()
     {
         if (_fillImage != null && Mathf.Abs(_currentFill - _targetFill) > 0.001f)
         {
-            _currentFill = Mathf.Lerp(_currentFill, _targetFill, Time.deltaTime * 5f);
+            _currentFill = Mathf.Lerp(_currentFill, _targetFill, Time.deltaTime * _hpTweenSpeed);
             SetFillWidth(_currentFill);
         }
 
