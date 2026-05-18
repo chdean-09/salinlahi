@@ -1,43 +1,45 @@
 using System.Collections;
 using UnityEngine;
 
-// Drives the boss's transform per CurrentPhase.movementPattern.
-// All coroutines use WaitForSeconds (scaled). Do not use WaitForSecondsRealtime.
-// REWORK: refactored in Task 7 — movement now driven directly by BossController
-// calling StartPattern/StopPattern/TeleportNow instead of EventBus subscriptions.
+// Drives the boss's transform per a BossPhase passed in by BossController.
+// No EventBus subscriptions — invoked imperatively. All coroutines use
+// WaitForSeconds (scaled). Do not use WaitForSecondsRealtime.
 [RequireComponent(typeof(BossController))]
 public class PhaseBasedMovement : MonoBehaviour
 {
-    [Header("Pace Pattern")]
-    [Tooltip("Horizontal range (world units) the boss paces left/right around its starting X.")]
-    [SerializeField] private float _paceHalfRange = 1.5f;
-
-    [Header("Teleport Pattern")]
-    [Tooltip("Seconds between teleport jumps.")]
-    [SerializeField] private float _teleportInterval = 1.5f;
-    [Tooltip("Horizontal range (world units) for teleport destination, around starting X.")]
-    [SerializeField] private float _teleportHalfRange = 2.0f;
-
-    private BossController _boss;
     private EnemyMover _mover;
     private Vector3 _baseLocalPosition;
     private Coroutine _movementRoutine;
+    private BossSummonTicker _summonTicker;
+    private BossDamageFeedback _dmgFeedback;
+    private bool _baseCaptured;
 
     private void Awake()
     {
-        _boss = GetComponent<BossController>();
         _mover = GetComponent<EnemyMover>();
-        _baseLocalPosition = transform.localPosition;
+        _summonTicker = GetComponent<BossSummonTicker>();
+        _dmgFeedback = GetComponent<BossDamageFeedback>();
     }
 
-    // REWORK: refactored in Task 7 — previously subscribed to OnBossStarted,
-    // OnBossPhaseStarted, OnBossPhaseAdsReturning, and OnBossDefeated via EventBus.
-    // Those events were removed/renamed in the Task 2 EventBus refactor.
-    // BossController now calls StartPattern/StopPattern/TeleportNow directly.
+    private void OnDisable()
+    {
+        StopPattern();
+        _baseCaptured = false;
+    }
 
+    // virtual so SpyPhaseBasedMovement in BossControllerTests can intercept.
     public virtual void StartPattern(BossPhase phase)
     {
         if (phase == null) return;
+
+        // Capture the boss's spawn position the first time movement runs —
+        // by then WaveSpawner has placed it. Awake catches only (0, 9999, 0).
+        if (!_baseCaptured)
+        {
+            _baseLocalPosition = transform.localPosition;
+            _baseCaptured = true;
+        }
+
         StopPattern();
         _movementRoutine = StartCoroutine(RunPattern(phase));
     }
@@ -52,12 +54,21 @@ public class PhaseBasedMovement : MonoBehaviour
         if (_mover != null) _mover.SetExternallyMoving(false);
     }
 
+    // Imperative one-shot relocation used by BossController on each
+    // Teleport-pattern summon tick (spec §10). virtual for test interception.
     public virtual void TeleportNow(BossPhase phase)
     {
         if (phase == null) return;
-        float halfRange = phase.teleportHalfRange.x;
-        float x = _baseLocalPosition.x + Random.Range(-halfRange, halfRange);
-        transform.localPosition = new Vector3(x, _baseLocalPosition.y, _baseLocalPosition.z);
+        if (!_baseCaptured)
+        {
+            _baseLocalPosition = transform.localPosition;
+            _baseCaptured = true;
+        }
+        float x = _baseLocalPosition.x
+            + Random.Range(-phase.teleportHalfRange.x, phase.teleportHalfRange.x);
+        float y = _baseLocalPosition.y
+            + Random.Range(-phase.teleportHalfRange.y, phase.teleportHalfRange.y);
+        transform.localPosition = new Vector3(x, y, _baseLocalPosition.z);
     }
 
     private IEnumerator RunPattern(BossPhase phase)
@@ -69,33 +80,38 @@ public class PhaseBasedMovement : MonoBehaviour
 
             case BossMovementPattern.Pace:
                 if (_mover != null) _mover.SetExternallyMoving(true);
-                yield return Pace(phase.movementSpeed, phase.paceHalfRange);
+                yield return Pace(phase);
                 break;
 
             case BossMovementPattern.Teleport:
-                // Teleport cadence is driven by BossController calling TeleportNow
-                // at each summon tick; this coroutine just holds until stopped.
+                // Teleport is event-driven by BossController.TeleportNow();
+                // nothing continuous to do here.
                 while (true) yield return null;
-                break;
         }
     }
 
-    private IEnumerator Pace(float speed, float halfRange)
+    private IEnumerator Pace(BossPhase phase)
     {
         float dir = 1f;
-        float minX = _baseLocalPosition.x - halfRange;
-        float maxX = _baseLocalPosition.x + halfRange;
-        BossDamageFeedback dmgFeedback = GetComponent<BossDamageFeedback>();
+        float minX = _baseLocalPosition.x - phase.paceHalfRange;
+        float maxX = _baseLocalPosition.x + phase.paceHalfRange;
 
         while (true)
         {
-            if (dmgFeedback != null && dmgFeedback.IsHurtPaused)
+            if (_summonTicker != null && _summonTicker.IsPlayingSummonAnimation)
+            {
+                yield return null;
+                continue;
+            }
+            if (_dmgFeedback != null && _dmgFeedback.IsHurtPaused)
             {
                 yield return null;
                 continue;
             }
 
-            float newX = Mathf.Clamp(transform.localPosition.x + dir * speed * Time.deltaTime, minX, maxX);
+            float newX = Mathf.Clamp(
+                transform.localPosition.x + dir * phase.movementSpeed * Time.deltaTime,
+                minX, maxX);
             transform.localPosition = new Vector3(newX, transform.localPosition.y, transform.localPosition.z);
             if (newX >= maxX || newX <= minX) dir *= -1f;
             yield return null;
