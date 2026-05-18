@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(BossController))]
@@ -9,11 +8,10 @@ public class BossDamageFeedback : MonoBehaviour
     [Header("Hit Flash")]
     [SerializeField] private Color _flashColor = Color.white;
 
-    [Header("Shake and Pause")]
+    [Header("Shake")]
     [SerializeField] private float _shakeDuration = 0.2f;
     [SerializeField] private float _shakeFrequency = 20f;
     [SerializeField] private float _shakeMagnitude = 0.1f;
-    [SerializeField] private float _pauseDuration = 0.2f;
 
     [Header("Progressive Damage Tint")]
     [SerializeField] private Color _healthyColor = Color.white;
@@ -26,6 +24,9 @@ public class BossDamageFeedback : MonoBehaviour
 
     public bool IsHurtPaused { get; private set; }
 
+    // Exposed for BossStateVisuals to read the critical tint color.
+    public Color CriticalColor => _criticalColor;
+
     private void Awake()
     {
         _boss = GetComponent<BossController>();
@@ -34,18 +35,14 @@ public class BossDamageFeedback : MonoBehaviour
 
     private void OnEnable()
     {
-        _boss.OnDrawnThisPhaseChanged += HandleDrawnThisPhaseChanged;
-        // REWORK: refactored in Task 9 — OnBossPhaseAdsReturning was removed from EventBus
-        // in the Task 2 refactor. HandlePhaseReset will be rewired to the new events.
-        // EventBus.OnBossPhaseAdsReturning += HandlePhaseReset;
+        _boss.OnDrawnThisPhaseChanged += HandleSmallHit;
+        EventBus.OnBossDamaged += HandleEmphasizedDamage;
     }
 
     private void OnDisable()
     {
-        _boss.OnDrawnThisPhaseChanged -= HandleDrawnThisPhaseChanged;
-        // REWORK: refactored in Task 9 — see OnEnable comment.
-        // EventBus.OnBossPhaseAdsReturning -= HandlePhaseReset;
-
+        _boss.OnDrawnThisPhaseChanged -= HandleSmallHit;
+        EventBus.OnBossDamaged -= HandleEmphasizedDamage;
         ResetState();
     }
 
@@ -68,79 +65,82 @@ public class BossDamageFeedback : MonoBehaviour
         _appliedShake = Vector3.zero;
     }
 
-    private void HandleDrawnThisPhaseChanged()
+    // Small flash + tiny shake fired on each correct draw (OnDrawnThisPhaseChanged).
+    private void HandleSmallHit()
     {
-        UpdateProgressiveTint();
-
-        // Match EnemyHurtFeedback: if already hurting, ignore the second hit's feedback
-        if (_hitFeedbackRoutine != null) return;
-
-        _hitFeedbackRoutine = StartCoroutine(PlayHitFeedback());
+        if (_hitFeedbackRoutine != null) return; // ignore double-hits
+        _hitFeedbackRoutine = StartCoroutine(PlayHitFeedback(
+            flashDuration: 0.06f,
+            shakeMagnitude: _shakeMagnitude * 0.4f,
+            shakeDuration: _shakeDuration * 0.5f,
+            screenTimeDip: 0f));
     }
 
-    // REWORK: refactored in Task 9 — previously called by OnBossPhaseAdsReturning handler.
-    // private void HandlePhaseReset(int phaseIndex)
-    // {
-    //     UpdateProgressiveTint();
-    // }
-
-    private void UpdateProgressiveTint()
+    // Large white flash + hard shake + time-scale dip fired when the boss loses an HP (OnBossDamaged).
+    private void HandleEmphasizedDamage(int phaseIndex, int hpRemaining)
     {
-        if (_boss.Config == null || _boss.Config.phases == null) return;
-
-        // REWORK: refactored in Task 9 — progressive tint now uses HPRemaining / phase count
-        // instead of DrawnThisPhase count (which no longer exists in the new BossController).
-        int totalPhases = _boss.Config.phases.Count;
-        if (totalPhases <= 0) return;
-
-        float healthRatio = (float)_boss.HPRemaining / totalPhases;
-
-        // Only set color instantly if we're not flashing
-        if (_hitFeedbackRoutine == null)
+        if (_hitFeedbackRoutine != null)
         {
-            _renderer.color = Color.Lerp(_criticalColor, _healthyColor, healthRatio);
+            StopCoroutine(_hitFeedbackRoutine);
+            _hitFeedbackRoutine = null;
         }
+        _hitFeedbackRoutine = StartCoroutine(PlayHitFeedback(
+            flashDuration: 0.2f,
+            shakeMagnitude: _shakeMagnitude * 1.5f,
+            shakeDuration: _shakeDuration * 1.5f,
+            screenTimeDip: 0.3f));
     }
 
-    private Color GetCurrentTint()
+    // Used by BossStateVisuals.PlayCollapse to play the white flash only,
+    // without shake/pause (those are owned by the collapse one-shot).
+    public void PlaySmallFlashOnly(float duration)
     {
-        if (_boss.Config == null || _boss.Config.phases == null) return _healthyColor;
-
-        int totalPhases = _boss.Config.phases.Count;
-        if (totalPhases <= 0) return _healthyColor;
-
-        float healthRatio = (float)_boss.HPRemaining / totalPhases;
-        return Color.Lerp(_criticalColor, _healthyColor, healthRatio);
+        StartCoroutine(FlashOnly(duration));
     }
 
-    private IEnumerator PlayHitFeedback()
+    private IEnumerator FlashOnly(float duration)
     {
-        float totalDur = Mathf.Max(_pauseDuration, _shakeDuration);
+        Color before = _renderer.color;
+        _renderer.color = _flashColor;
+        yield return new WaitForSeconds(duration);
+        _renderer.color = before;
+    }
+
+    private IEnumerator PlayHitFeedback(float flashDuration, float shakeMagnitude, float shakeDuration, float screenTimeDip)
+    {
+        float totalDur = Mathf.Max(flashDuration, shakeDuration);
 
         _appliedShake = Vector3.zero;
         IsHurtPaused = true;
         _renderer.color = _flashColor;
 
+        if (screenTimeDip > 0f)
+        {
+            Time.timeScale = 1f - screenTimeDip;
+            yield return new WaitForSecondsRealtime(0.15f);  // SCALED-TIME EXCEPTION
+            Time.timeScale = 1f;
+        }
+
         float t = 0f;
         while (t < totalDur)
         {
-            // Flash color only lasts for the shake duration
-            if (t > _shakeDuration)
+            // Flash color only lasts for the flash duration
+            if (t > flashDuration)
             {
-                _renderer.color = GetCurrentTint();
+                _renderer.color = _healthyColor;
             }
 
-            if (_shakeDuration > 0f)
+            if (shakeDuration > 0f)
             {
                 transform.position -= _appliedShake;
 
-                if (t < _shakeDuration)
+                if (t < shakeDuration)
                 {
                     float angle = t * _shakeFrequency * Mathf.PI * 2f;
-                    float decay = 1f - Mathf.Clamp01(t / _shakeDuration);
+                    float decay = 1f - Mathf.Clamp01(t / shakeDuration);
                     Vector3 next = new Vector3(
-                        Mathf.Sin(angle) * _shakeMagnitude * decay,
-                        Mathf.Cos(angle * 1.7f) * _shakeMagnitude * decay,
+                        Mathf.Sin(angle) * shakeMagnitude * decay,
+                        Mathf.Cos(angle * 1.7f) * shakeMagnitude * decay,
                         0f);
                     transform.position += next;
                     _appliedShake = next;
@@ -151,18 +151,13 @@ public class BossDamageFeedback : MonoBehaviour
                 }
             }
 
-            if (t >= _pauseDuration)
-            {
-                IsHurtPaused = false;
-            }
-
             yield return null;
             t += Time.deltaTime;
         }
 
         ClearShakeOffset();
         IsHurtPaused = false;
-        _renderer.color = GetCurrentTint();
+        _renderer.color = _healthyColor;
         _hitFeedbackRoutine = null;
     }
 }
