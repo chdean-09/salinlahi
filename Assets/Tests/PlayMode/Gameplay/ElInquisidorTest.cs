@@ -62,26 +62,32 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Assert.IsNotNull(GameManager.Instance.CurrentBoss, "Boss did not spawn within 5s.");
             BossController boss = GameManager.Instance.CurrentBoss;
 
-            // Drive the encounter: 3 phases, 1 char each, with 2 intermissions.
+            // Drive the encounter: iterate each phase and draw the required number
+            // of correct glyphs. In the new model the boss samples random glyphs from
+            // LevelConfigSO.allowedCharacters one at a time via CurrentExpectedCharacterID.
             for (int phaseIdx = 0; phaseIdx < boss.Config.phases.Count; phaseIdx++)
             {
                 // Wait until this phase becomes targetable.
                 float t = 0f;
-                while ((!boss.IsTargetable || boss.CurrentPhaseIndex != phaseIdx) && t < 5f)
+                while ((!boss.IsTargetable || boss.CurrentPhaseIndex != phaseIdx) && t < 15f)
                 {
                     yield return null;
                     t += Time.deltaTime;
                 }
-                Assert.IsTrue(boss.IsTargetable, $"Phase {phaseIdx} did not become targetable within 5s.");
+                Assert.IsTrue(boss.IsTargetable, $"Phase {phaseIdx} did not become targetable within 15s.");
 
-                // Draw each required character once.
-                System.Collections.Generic.IReadOnlyList<BaybayinCharacterSO> required = boss.RequiredCharacters;
-                for (int i = 0; i < required.Count; i++)
+                int requiredCount = boss.RequiredCharactersForCurrentPhase;
+                for (int draw = 0; draw < requiredCount; draw++)
                 {
-                    if (required[i] == null) continue;
-                    boss.TryRouteDraw(required[i].characterID);
+                    // Wait a frame for the boss to sample the next expected character.
                     yield return null;
+                    string expected = boss.CurrentExpectedCharacterID;
+                    if (expected == null) continue;
+                    boss.TryRouteDraw(expected);
                 }
+
+                // Allow a frame for the Damaged coroutine to process.
+                yield return null;
             }
 
             // Wait for OnLevelComplete with a generous timeout.
