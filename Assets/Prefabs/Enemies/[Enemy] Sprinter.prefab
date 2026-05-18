@@ -1,5 +1,57 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &7417204103258755638
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 87409846451867114}
+  - component: {fileID: 5822167304088901917}
+  m_Layer: 0
+  m_Name: BaybayinGlyphPresenter
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &87409846451867114
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7417204103258755638}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.85, z: -0.05}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3299562541025932769}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5822167304088901917
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7417204103258755638}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bd80a3dc00b941dfbd699ad6d4499e74, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Salinlahi.Runtime::EnemyGlyphPresenter
+  _glyphRenderer: {fileID: 0}
+  _backplateRenderer: {fileID: 0}
+  _localOffset: {x: 0, y: 0.85, z: -0.05}
+  _localScale: {x: 0.55, y: 0.55, z: 1}
+  _glyphColor: {r: 1, g: 1, b: 1, a: 1}
+  _backplateColor: {r: 0, g: 0, b: 0, a: 0.62}
+  _showBackplate: 1
+  _sortingOrderOffset: 25
 --- !u!1 &8620596032087142478
 GameObject:
   m_ObjectHideFlags: 0
@@ -33,7 +85,8 @@ Transform:
   m_LocalPosition: {x: 0.45937, y: 0.00113, z: 0}
   m_LocalScale: {x: 0.3, y: 0.3, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 87409846451867114}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &6330742590155926061
@@ -151,7 +204,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 795b7b37de9034945b4400c16ad9ae5d, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyMover
 --- !u!114 &8037671833055544141
 MonoBehaviour:
@@ -163,9 +216,20 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 45d81e901f41e1143b40ce8ebed1aa3c, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Enemy
   _data: {fileID: 11400000, guid: 68294b34869d421d8f8ed5e4efa431e1, type: 2}
+  _useShieldBreakColorFeedback: 0
+  _shieldIntactColor: {r: 0, g: 0.75, b: 0.65, a: 1}
+  _shieldBrokenColor: {r: 0.55, g: 0.55, b: 0.55, a: 1}
+  _showDebugLabels: 1
+  _labelBaseWorldOffset: {x: 0, y: -1.4, z: -0.1}
+  _labelLineSpacingWorld: 0.45
+  _labelWorldScale: 0.22
+  _labelFontSize: 10
+  _labelColor: {r: 1, g: 1, b: 1, a: 1}
+  _walkAnimationFps: 8
+  _glyphPresenter: {fileID: 5822167304088901917}
 --- !u!50 &3113497809838385314
 Rigidbody2D:
   serializedVersion: 5
