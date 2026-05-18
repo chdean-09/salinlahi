@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 52fa2974b9683594293f74821ca08eb7, type: 3}
+  m_Name: EraTheme_Japanese
+  m_EditorClassIdentifier: Salinlahi.Runtime::EraThemeSO
+  eraName: 
+  backgroundSprite: {fileID: 0}
+  backgroundColor: {r: 0.9386792, g: 0.4826228, b: 0.4826228, a: 1}
+  groundSprite: {fileID: 0}
+  baseZoneSprite: {fileID: 4596100162390401131, guid: 7e4202dd096489f4696594f195e47502, type: 3}
+  shrineSprite: {fileID: -1724526718931755926, guid: 39669ea11767efc4698f6ea3f0cfdd2d, type: 3}
+  topFoliageSprite: {fileID: 0}
+  bushSprite: {fileID: 0}
+  torchSprite: {fileID: 0}
