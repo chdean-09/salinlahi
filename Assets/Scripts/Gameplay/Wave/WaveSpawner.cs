@@ -26,7 +26,7 @@ public class WaveSpawner : MonoBehaviour
 
     // Spawn points define horizontal bounds (left/right edges).
     // X position is randomized between bounds for natural spawn spread.
-    public Enemy SpawnEnemy(EnemyDataSO data)
+    public virtual Enemy SpawnEnemy(EnemyDataSO data)
     {
         EnemyDataSO finalData = ResolveEnemyData(data);
         if (finalData == null)
@@ -62,6 +62,25 @@ public class WaveSpawner : MonoBehaviour
         Enemy enemy = SpawnEnemy(data);
         if (enemy != null)
             enemy.AssignCharacter(character);
+
+        return enemy;
+    }
+
+    // Boss-specific entry point: spawns the enemy at the horizontal center
+    // of the spawn bounds rather than a random X. Bosses are visually
+    // centerpieces, and the random spread inherited from SpawnEnemy makes
+    // them appear to "drift" off to one side at encounter start.
+    public Enemy SpawnBossEnemy(EnemyDataSO data)
+    {
+        Enemy enemy = SpawnEnemy(data);
+        if (enemy == null)
+            return null;
+
+        if (TryGetSpawnBounds(out float minX, out float maxX, out float spawnY))
+        {
+            float centerX = (minX + maxX) * 0.5f;
+            enemy.transform.position = new Vector3(centerX, spawnY, 0f);
+        }
 
         return enemy;
     }
