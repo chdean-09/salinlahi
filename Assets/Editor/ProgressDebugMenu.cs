@@ -41,7 +41,7 @@ public static class ProgressDebugMenu
 
         // Show confirmation dialog
         EditorUtility.DisplayDialog("Levels Unlocked", 
-            "All levels (1-5) have been unlocked.", 
+            "All levels (1-15) have been unlocked.",
             "OK");
     }
 
@@ -64,7 +64,7 @@ public static class ProgressDebugMenu
     private static void ClearProgressDirectly()
     {
         const string KeyPrefix = "salinlahi.progress.";
-        const int TotalLevels = 5;
+        const int TotalLevels = 15;
 
         for (int i = 1; i <= TotalLevels; i++)
         {
@@ -78,6 +78,7 @@ public static class ProgressDebugMenu
         PlayerPrefs.DeleteKey(ProgressManager.Level1BaseHpExplainedKey);
         PlayerPrefs.DeleteKey(ProgressManager.Level1Wave1ClearExplainedKey);
         PlayerPrefs.DeleteKey(ProgressManager.Level1WorldIntroSeenKey);
+        PlayerPrefs.DeleteKey(ProgressManager.Level1OnboardingCompleteKey);
         PlayerPrefs.DeleteKey(ProgressManager.Level1TraceAssistShownCountKey);
         PlayerPrefs.DeleteKey(ProgressManager.Level1RecentDrawFailuresKey);
 
@@ -88,7 +89,7 @@ public static class ProgressDebugMenu
     private static void UnlockAllDirectly()
     {
         const string KeyPrefix = "salinlahi.progress.";
-        const int TotalLevels = 5;
+        const int TotalLevels = 15;
 
         for (int i = 1; i <= TotalLevels; i++)
         {
@@ -102,7 +103,7 @@ public static class ProgressDebugMenu
     private static void ShowProgressDirectly()
     {
         const string KeyPrefix = "salinlahi.progress.";
-        const int TotalLevels = 5;
+        const int TotalLevels = 15;
 
         string progressInfo = "Current Progress:\n\n";
 
@@ -132,7 +133,7 @@ public static class ProgressDebugMenu
 
     private static void ShowProgressViaManager()
     {
-        const int TotalLevels = 5;
+        const int TotalLevels = 15;
 
         string progressInfo = "Current Progress:\n\n";
 

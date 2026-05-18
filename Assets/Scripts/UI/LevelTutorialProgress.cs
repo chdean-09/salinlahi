@@ -9,6 +9,7 @@ public static class LevelTutorialProgress
     public const string Level1BaseHpExplainedKey = ProgressManager.Level1BaseHpExplainedKey;
     public const string Level1Wave1ClearExplainedKey = ProgressManager.Level1Wave1ClearExplainedKey;
     public const string Level1WorldIntroSeenKey = ProgressManager.Level1WorldIntroSeenKey;
+    public const string Level1OnboardingCompleteKey = ProgressManager.Level1OnboardingCompleteKey;
     public const string Level1TraceAssistShownCountKey = ProgressManager.Level1TraceAssistShownCountKey;
     public const string Level1RecentDrawFailuresKey = ProgressManager.Level1RecentDrawFailuresKey;
 
@@ -55,6 +56,11 @@ public static class LevelTutorialProgress
         return HasSeen(Level1WorldIntroSeenKey);
     }
 
+    public static bool HasCompletedLevel1Onboarding()
+    {
+        return HasSeen(Level1OnboardingCompleteKey);
+    }
+
     public static int GetLevel1TraceAssistShownCount()
     {
         return PlayerPrefs.GetInt(Level1TraceAssistShownCountKey, 0);
@@ -93,6 +99,11 @@ public static class LevelTutorialProgress
     public static void MarkLevel1WorldIntroSeen()
     {
         MarkSeen(Level1WorldIntroSeenKey);
+    }
+
+    public static void MarkLevel1OnboardingComplete()
+    {
+        MarkSeen(Level1OnboardingCompleteKey);
     }
 
     public static int IncrementLevel1TraceAssistShownCount()
@@ -139,6 +150,7 @@ public static class LevelTutorialProgress
         PlayerPrefs.DeleteKey(Level1BaseHpExplainedKey);
         PlayerPrefs.DeleteKey(Level1Wave1ClearExplainedKey);
         PlayerPrefs.DeleteKey(Level1WorldIntroSeenKey);
+        PlayerPrefs.DeleteKey(Level1OnboardingCompleteKey);
         PlayerPrefs.DeleteKey(Level1TraceAssistShownCountKey);
         PlayerPrefs.DeleteKey(Level1RecentDrawFailuresKey);
         PlayerPrefs.Save();

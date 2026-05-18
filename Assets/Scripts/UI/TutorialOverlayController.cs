@@ -140,7 +140,7 @@ public class TutorialOverlayController : MonoBehaviour
 
         BaybayinCharacterSO character = enemy.Character;
         if (_guidedPromptText != null)
-            _guidedPromptText.text = "Trace this Baybayin character to stop the enemy.";
+            _guidedPromptText.text = "Trace the mark to stop it.";
 
         if (_guidedGlyphImage != null)
         {

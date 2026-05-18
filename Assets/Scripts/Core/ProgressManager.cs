@@ -20,6 +20,7 @@ public class ProgressManager : Singleton<ProgressManager>
     public const string Level1BaseHpExplainedKey = "salinlahi.tutorial.level1.base_hp_explained";
     public const string Level1Wave1ClearExplainedKey = "salinlahi.tutorial.level1.wave1_clear_explained";
     public const string Level1WorldIntroSeenKey = "salinlahi.tutorial.level1.world_intro_seen";
+    public const string Level1OnboardingCompleteKey = "salinlahi.tutorial.level1.onboarding_complete";
     public const string Level1TraceAssistShownCountKey = "salinlahi.tutorial.level1.trace_assist_shown_count";
     public const string Level1RecentDrawFailuresKey = "salinlahi.tutorial.level1.recent_draw_failures";
 

@@ -140,7 +140,9 @@ public class GuidedLevel1TutorialController : MonoBehaviour
         if (!LevelTutorialProgress.HasSeenLevel1FirstEnemyDefeated())
             return;
 
-        LevelTutorialProgress.IncrementLevel1RecentDrawFailures();
+        int recentFailures = LevelTutorialProgress.IncrementLevel1RecentDrawFailures();
+        if (recentFailures >= _failureAssistThreshold)
+            ShowFailureTraceAssist();
     }
 
     private IEnumerator CompleteGuidedEncounterAfterCombatFrame()
@@ -193,8 +195,28 @@ public class GuidedLevel1TutorialController : MonoBehaviour
         if (!LevelTutorialProgress.HasSeenLevel1Wave1ClearExplained())
         {
             LevelTutorialProgress.MarkLevel1Wave1ClearExplained();
+            LevelTutorialProgress.MarkLevel1OnboardingComplete();
             _overlayController?.ShowToast("Wave cleared. Stop every enemy to finish each wave.");
         }
+    }
+
+    private void ShowFailureTraceAssist()
+    {
+        if (_guidanceActive)
+            return;
+
+        ActiveEnemyTracker tracker = ActiveEnemyTracker.Instance;
+        Enemy target = tracker != null ? tracker.FindClosestToBase() : null;
+        if (target == null)
+            return;
+
+        if (_lightAssistedEnemy != target)
+        {
+            _lightAssistedEnemy = target;
+            LevelTutorialProgress.IncrementLevel1TraceAssistShownCount();
+        }
+
+        _overlayController?.ShowTraceAssist(target, TraceAssistStrength.Light);
     }
 
     private void HandleTerminalState()

@@ -1,6 +1,7 @@
 using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class Level1WorldIntroController : MonoBehaviour
 {
@@ -13,12 +14,15 @@ public class Level1WorldIntroController : MonoBehaviour
 
     [Header("Objective")]
     [SerializeField] private string _objectiveLine = "Defend the Shrine.";
+    [SerializeField] private string _threatCueLine = "Enemies incoming.";
+    [SerializeField] private bool _hidePlaceholderLabels = true;
 
     [Header("Timing")]
     [SerializeField] private float _fadeInSeconds = 0.35f;
     [SerializeField] private float _protagonistWalkSeconds = 1.5f;
     [SerializeField] private float _shrineHoldSeconds = 1.25f;
     [SerializeField] private float _objectiveHoldSeconds = 1.75f;
+    [SerializeField] private float _threatCueHoldSeconds = 0.75f;
     [SerializeField] private float _fadeOutSeconds = 0.35f;
 
     [Header("Protagonist Motion")]
@@ -30,10 +34,16 @@ public class Level1WorldIntroController : MonoBehaviour
     [SerializeField] private string _introStartTrigger = "IntroStart";
     [SerializeField] private string _introEndTrigger = "IntroEnd";
 
-    public bool IsConfigured => _introGroup != null && _objectiveText != null;
+    public bool IsConfigured => _introGroup != null
+        && _objectiveText != null
+        && _protagonist != null
+        && _shrineFocus != null;
 
     private void Awake()
     {
+        if (_hidePlaceholderLabels)
+            HidePlaceholderLabels();
+
         HideImmediate();
     }
 
@@ -53,11 +63,13 @@ public class Level1WorldIntroController : MonoBehaviour
 
         gameObject.SetActive(true);
         transform.SetAsLastSibling();
-        LevelTutorialProgress.MarkLevel1WorldIntroSeen();
-        LevelTutorialProgress.MarkLevel1TutorialSeen();
         DebugLogger.Log("Level1WorldIntroController: Playing Level 1 world intro.");
 
         yield return PlayIntroRoutine();
+
+        LevelTutorialProgress.MarkLevel1WorldIntroSeen();
+        LevelTutorialProgress.MarkLevel1TutorialSeen();
+        DebugLogger.Log("Level1WorldIntroController: Level 1 world intro complete.");
     }
 
     private static bool ShouldPlay(LevelConfigSO levelConfig)
@@ -101,6 +113,12 @@ public class Level1WorldIntroController : MonoBehaviour
             yield return new WaitForSeconds(_shrineHoldSeconds);
 
         yield return new WaitForSeconds(_objectiveHoldSeconds);
+
+        if (!string.IsNullOrWhiteSpace(_threatCueLine) && _objectiveText != null)
+        {
+            _objectiveText.text = _threatCueLine;
+            yield return new WaitForSeconds(_threatCueHoldSeconds);
+        }
 
         TrySetTrigger(_introEndTrigger);
         yield return FadeTo(0f, _fadeOutSeconds);
@@ -180,5 +198,35 @@ public class Level1WorldIntroController : MonoBehaviour
         _introGroup.interactable = false;
         _introGroup.blocksRaycasts = false;
         _introGroup.gameObject.SetActive(false);
+    }
+
+    private static void HidePlaceholderLabels()
+    {
+        Scene activeScene = SceneManager.GetActiveScene();
+        GameObject[] roots = activeScene.GetRootGameObjects();
+
+        for (int i = 0; i < roots.Length; i++)
+        {
+            TextMeshProUGUI[] labels = roots[i].GetComponentsInChildren<TextMeshProUGUI>(true);
+            for (int j = 0; j < labels.Length; j++)
+            {
+                TextMeshProUGUI label = labels[j];
+                if (label == null || !IsPlaceholderLabel(label.text))
+                    continue;
+
+                label.gameObject.SetActive(false);
+            }
+        }
+    }
+
+    private static bool IsPlaceholderLabel(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+
+        string normalized = value.Trim().ToUpperInvariant();
+        return normalized == "PROTAGONIST"
+            || normalized == "SHRINE"
+            || normalized == "ENEMY CROSSING LINE";
     }
 }
