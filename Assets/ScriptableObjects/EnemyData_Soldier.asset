@@ -16,7 +16,10 @@ MonoBehaviour:
   moveSpeed: 1.55
   maxHealth: 1
   walkFrames:
-  - {fileID: 21300000, guid: 61e33c4f45e289b43ab91edaa12c018b, type: 3}
+  - {fileID: -1938075836063640625, guid: 7e07dba8d42649d41a4b3dc9cae6c027, type: 3}
+  - {fileID: 5600815700529521121, guid: 7e07dba8d42649d41a4b3dc9cae6c027, type: 3}
+  - {fileID: 2831667385477735903, guid: 7e07dba8d42649d41a4b3dc9cae6c027, type: 3}
+  - {fileID: 4857809179160381339, guid: 7e07dba8d42649d41a4b3dc9cae6c027, type: 3}
   animatorController: {fileID: 0}
   assignedCharacter: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
   isDecoy: 0
