@@ -1,23 +1,104 @@
 using System.Collections;
 using UnityEngine;
 
+// Plays a summon animation on the boss's SpriteRenderer and spawns
+// 2-3 minions per tick at the boss's CURRENT world position (so movement
+// patterns gain mechanical meaning). Stateless — invoked by BossController
+// only; no event subscriptions.
 [RequireComponent(typeof(BossController))]
 public class BossSummonTicker : MonoBehaviour
 {
+    [Header("Visual Tell")]
+    [SerializeField] private Sprite[] _summonFrames;
+    [SerializeField] private float _summonAnimationFps = 8f;
+    [SerializeField] private float _holdLastFrameDuration = 0.3f;
+
+    private Enemy _enemy;
+    private SpriteRenderer _renderer;
+
+    // Mirrors EnemyHurtFeedback.IsPlayingHurtAnimation. Enemy.AdvanceWalkAnimation
+    // reads this to suppress the walk loop while the tell is playing.
+    public bool IsPlayingSummonAnimation { get; private set; }
+
+    private void Awake()
+    {
+        _enemy = GetComponent<Enemy>();
+        _renderer = GetComponent<SpriteRenderer>();
+    }
+
     public IEnumerator PlayTickAndSpawn(BossPhase phase, BossConfigSO config, WaveSpawner spawner)
     {
         if (phase == null || spawner == null)
             yield break;
 
-        // Temporary: call SpawnEnemy once per tick so summon-cadence tests pass.
-        // Full implementation replaces this in Task 6.
-        EnemyDataSO data = null;
-        if (phase.summonEnemyTypes != null && phase.summonEnemyTypes.Count > 0)
-            data = phase.summonEnemyTypes[0];
-        else if (config != null && config.fallbackEnemyTypes != null && config.fallbackEnemyTypes.Count > 0)
-            data = config.fallbackEnemyTypes[0];
+        // ---- Play tell (if frames configured) ----
+        IsPlayingSummonAnimation = true;
+        if (_summonFrames != null && _summonFrames.Length > 0 && _renderer != null)
+        {
+            float fps = _summonAnimationFps > 0f ? _summonAnimationFps : 8f;
+            float frameDur = 1f / fps;
+            for (int idx = 0; idx < _summonFrames.Length; idx++)
+            {
+                Sprite frame = _summonFrames[idx];
+                if (frame != null) _renderer.sprite = frame;
+                float t = 0f;
+                while (t < frameDur) { yield return null; t += Time.deltaTime; }
+            }
+            if (_holdLastFrameDuration > 0f)
+                yield return new WaitForSeconds(_holdLastFrameDuration);
+        }
 
-        if (data != null)
-            spawner.SpawnEnemy(data);
+        // ---- Spawn burst ----
+        int min = Mathf.Max(0, phase.summonBurstMin);
+        int max = Mathf.Max(min, phase.summonBurstMax);
+        int burst = Random.Range(min, max + 1);
+
+        for (int n = 0; n < burst; n++)
+        {
+            EnemyDataSO data = PickEnemyType(phase, config);
+            if (data == null) continue;
+
+            Enemy summon = spawner.SpawnEnemy(data);
+            if (summon == null) continue;
+
+            // Override the random-X position with boss.position ± summonSpawnRange.
+            Vector3 origin = transform.position;
+            float dx = Random.Range(-phase.summonSpawnRange.x, phase.summonSpawnRange.x);
+            float dy = Random.Range(-phase.summonSpawnRange.y, phase.summonSpawnRange.y);
+            summon.transform.position = new Vector3(origin.x + dx, origin.y + dy, 0f);
+
+            // Assign a random allowed character so the minion is defeatable.
+            BaybayinCharacterSO character = PickAllowedCharacter();
+            if (character != null)
+                summon.AssignCharacter(character);
+        }
+
+        if (_enemy != null) _enemy.ResetWalkAnimation();
+        IsPlayingSummonAnimation = false;
+    }
+
+    private static EnemyDataSO PickEnemyType(BossPhase phase, BossConfigSO config)
+    {
+        if (phase.summonEnemyTypes != null && phase.summonEnemyTypes.Count > 0)
+        {
+            int idx = Random.Range(0, phase.summonEnemyTypes.Count);
+            return phase.summonEnemyTypes[idx];
+        }
+        if (config != null && config.fallbackEnemyTypes != null && config.fallbackEnemyTypes.Count > 0)
+        {
+            int idx = Random.Range(0, config.fallbackEnemyTypes.Count);
+            return config.fallbackEnemyTypes[idx];
+        }
+        DebugLogger.LogWarning("BossSummonTicker: No enemy types configured for phase or fallback. Skipping summon.");
+        return null;
+    }
+
+    private static BaybayinCharacterSO PickAllowedCharacter()
+    {
+        LevelConfigSO level = GameManager.Instance != null ? GameManager.Instance.CurrentLevel : null;
+        if (level == null || level.allowedCharacters == null || level.allowedCharacters.Count == 0)
+            return null;
+        int idx = Random.Range(0, level.allowedCharacters.Count);
+        return level.allowedCharacters[idx];
     }
 }
