@@ -70,7 +70,7 @@ public class BossStateVisuals : MonoBehaviour
         if (_dmgFeedback != null)
             _dmgFeedback.PlaySmallFlashOnly(_collapseFlashDuration);
 
-        Vector3 startScale = _spriteBaseLocalScale;
+        Vector3 startScale = transform.localScale;
         Vector3 endScale = new Vector3(_spriteBaseLocalScale.x,
             _spriteBaseLocalScale.y * _collapseYScale, _spriteBaseLocalScale.z);
         float startY = transform.localPosition.y;
