@@ -22,6 +22,10 @@ public class BossConfigSO : ScriptableObject
     [Tooltip("Ordered. Phase count = boss's effective HP. Last phase clear ends the encounter.")]
     public List<BossPhase> phases;
 
+    [Header("Summon Fallback")]
+    [Tooltip("Enemy types summoned when a BossPhase.summonEnemyTypes list is empty.")]
+    public List<EnemyDataSO> fallbackEnemyTypes;
+
     [Header("Intro / Outro")]
     [Tooltip("Seconds the boss is invulnerable on entry while the intro animation plays.")]
     public float introDuration = 2.0f;
