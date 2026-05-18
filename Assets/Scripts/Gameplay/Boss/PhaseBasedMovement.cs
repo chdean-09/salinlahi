@@ -75,7 +75,7 @@ public class PhaseBasedMovement : MonoBehaviour
             case BossMovementPattern.Teleport:
                 // Teleport cadence is driven by BossController calling TeleportNow
                 // at each summon tick; this coroutine just holds until stopped.
-                yield return new WaitUntil(() => false);
+                while (true) yield return null;
                 break;
         }
     }

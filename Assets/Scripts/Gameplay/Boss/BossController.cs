@@ -147,7 +147,6 @@ public class BossController : MonoBehaviour
         }
 
         yield return RunOutro();
-        _stateRoutine = null;
     }
 
     private IEnumerator RunIntro()
@@ -165,25 +164,28 @@ public class BossController : MonoBehaviour
         if (_phaseMovement != null)
             _phaseMovement.StartPattern(phase);
 
-        float elapsed = 0f;
-        float nextTickAt = phase.summonInterval;
-        while (elapsed < phase.summonDuration)
+        if (phase.summonInterval > 0f && phase.summonDuration > 0f)
         {
-            if (elapsed >= nextTickAt)
+            float elapsed = 0f;
+            float nextTickAt = phase.summonInterval;
+            while (elapsed < phase.summonDuration)
             {
-                if (phase.movementPattern == BossMovementPattern.Teleport
-                    && _phaseMovement != null)
+                if (elapsed >= nextTickAt)
                 {
-                    _phaseMovement.TeleportNow(phase);
+                    if (phase.movementPattern == BossMovementPattern.Teleport
+                        && _phaseMovement != null)
+                    {
+                        _phaseMovement.TeleportNow(phase);
+                    }
+
+                    if (_summonTicker != null)
+                        yield return _summonTicker.PlayTickAndSpawn(phase, Config, _spawner);
+
+                    nextTickAt += phase.summonInterval;
                 }
-
-                if (_summonTicker != null)
-                    yield return _summonTicker.PlayTickAndSpawn(phase, Config, _spawner);
-
-                nextTickAt += phase.summonInterval;
+                yield return null;
+                elapsed += Time.deltaTime;
             }
-            yield return null;
-            elapsed += Time.deltaTime;
         }
 
         if (_phaseMovement != null)
@@ -262,6 +264,7 @@ public class BossController : MonoBehaviour
         yield return new WaitForSeconds(Mathf.Max(0f, Config.outroDuration));
 
         _state = State.Defeated;
+        _stateRoutine = null;  // Clear before ReturnToPool triggers OnDisable
         EventBus.RaiseBossDefeated();
         EventBus.RaiseLevelComplete();
 
