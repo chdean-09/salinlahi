@@ -29,6 +29,9 @@ public class Enemy : MonoBehaviour
     [Header("Walk Animation")]
     [SerializeField] private float _walkAnimationFps = 8f;
 
+    [Header("Baybayin Glyph")]
+    [SerializeField] private EnemyGlyphPresenter _glyphPresenter;
+
     private EnemyMover _mover;
     private EnemyHurtFeedback _hurtFeedback;
     private PhaserEnemy _phaserEnemy;
@@ -97,12 +100,16 @@ public class Enemy : MonoBehaviour
         _hurtFeedback = GetComponent<EnemyHurtFeedback>();
         _phaserEnemy = GetComponent<PhaserEnemy>();
         _renderer = GetComponent<SpriteRenderer>();
+        _glyphPresenter = _glyphPresenter != null
+            ? _glyphPresenter
+            : EnemyGlyphPresenter.GetOrCreate(this);
 
         if (_renderer != null)
             _baseRendererColor = _renderer.color;
 
         EnsureDebugLabels();
         RefreshDebugLabels();
+        RefreshGlyphPresenter();
     }
 
     private void OnEnable()
@@ -115,6 +122,7 @@ public class Enemy : MonoBehaviour
     {
         _runtimeCharacter = character;
         RefreshDebugLabels();
+        RefreshGlyphPresenter();
     }
 
     // Called by EnemyPool when this enemy is retrieved from the pool.
@@ -188,6 +196,7 @@ public class Enemy : MonoBehaviour
         ActiveEnemyTracker.Instance?.Register(this);
         _phaserEnemy?.RefreshPhaserState();
         RefreshDebugLabels();
+        RefreshGlyphPresenter();
         UpdateLabelLayout();
         HealthChanged?.Invoke(this, _currentHealth, _currentHealth);
         return true;
@@ -231,6 +240,7 @@ public class Enemy : MonoBehaviour
 
             ResetRendererState();
             RefreshDebugLabels();
+            RefreshGlyphPresenter();
         }
         catch (System.Exception ex)
         {
@@ -396,6 +406,7 @@ public class Enemy : MonoBehaviour
         // Visual overrides are Enemy-instance-local only and must not be mirrored into HUD/boss icon UI.
         _labelOverrides[source] = visualCharacter;
         RefreshDebugLabels();
+        RefreshGlyphPresenter();
     }
 
     public void ClearVisualCharacterOverride(object source)
@@ -404,7 +415,10 @@ public class Enemy : MonoBehaviour
             return;
 
         if (_labelOverrides.Remove(source))
+        {
             RefreshDebugLabels();
+            RefreshGlyphPresenter();
+        }
     }
 
     public void ReturnToPool()
@@ -475,6 +489,24 @@ public class Enemy : MonoBehaviour
             return;
 
         _renderer.color = _baseRendererColor;
+    }
+
+    private void RefreshGlyphPresenter()
+    {
+        if (_glyphPresenter == null)
+            _glyphPresenter = EnemyGlyphPresenter.GetOrCreate(this);
+
+        if (_glyphPresenter == null)
+            return;
+
+        BaybayinCharacterSO character = ResolveVisualCharacter();
+        if (character == null)
+        {
+            _glyphPresenter.Hide();
+            return;
+        }
+
+        _glyphPresenter.Bind(character, _renderer);
     }
 
     private void EnsureDebugLabels()

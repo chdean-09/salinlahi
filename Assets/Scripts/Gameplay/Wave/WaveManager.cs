@@ -44,6 +44,7 @@ public class WaveManager : MonoBehaviour
 
     public int CurrentWaveIndex => _currentWaveIndex;
     public int CurrentWaveSpawnedCount => _currentWaveSpawnedCount;
+    public LevelConfigSO CurrentLevelConfig => _levelConfig;
 
     public void SetTutorialSpawnSuspended(bool suspended)
     {
@@ -77,21 +78,8 @@ public class WaveManager : MonoBehaviour
 
     private void Start()
     {
-        // GameManager.CurrentLevel is set by LevelSelectUI before scene load.
-        // Fall back to PlayerPrefs if not set or stale (e.g. Play after a previous level select).
         int selectedLevel = PlayerPrefs.GetInt(ProgressManager.SelectedLevelKey, 1);
-        LevelConfigSO selectedGameManagerLevel = GameManager.Instance != null
-            ? GameManager.Instance.CurrentLevel
-            : null;
-
-        if (selectedGameManagerLevel != null && selectedGameManagerLevel.levelNumber == selectedLevel)
-        {
-            _levelConfig = selectedGameManagerLevel;
-        }
-        else
-        {
-            LoadLevelConfig(selectedLevel);
-        }
+        ResolveLevelConfig(selectedLevel);
 
         if (!_waitForExternalStart)
         {
@@ -106,6 +94,12 @@ public class WaveManager : MonoBehaviour
     {
         _levelConfig = levelConfigSO;
         StartLevel();
+    }
+
+    public LevelConfigSO ResolveSelectedLevelConfig(LevelConfigSO inspectorFallback = null)
+    {
+        int selectedLevel = PlayerPrefs.GetInt(ProgressManager.SelectedLevelKey, 1);
+        return ResolveLevelConfig(selectedLevel, inspectorFallback);
     }
 
     /// <summary>
@@ -758,35 +752,28 @@ public class WaveManager : MonoBehaviour
 
     private void LoadLevelConfig(int levelNumber)
     {
-        // Try to find config in the registry array first.
-        if (_levelConfigs != null && _levelConfigs.Length > 0)
+        ResolveLevelConfig(levelNumber);
+    }
+
+    private LevelConfigSO ResolveLevelConfig(int levelNumber, LevelConfigSO inspectorFallback = null)
+    {
+        LevelConfigSO selectedGameManagerLevel = GameManager.Instance != null
+            ? GameManager.Instance.CurrentLevel
+            : null;
+        LevelConfigSO fallback = inspectorFallback != null ? inspectorFallback : _levelConfig;
+        LevelConfigSO resolved = LevelConfigResolver.Resolve(
+            levelNumber,
+            selectedGameManagerLevel,
+            _levelConfigs,
+            fallback);
+
+        if (resolved != null)
         {
-            int index = levelNumber - 1; // Level 1 is at index 0.
-            if (index >= 0 && index < _levelConfigs.Length && _levelConfigs[index] != null)
-            {
-                _levelConfig = _levelConfigs[index];
-                DebugLogger.Log($"WaveManager: Loaded Level {levelNumber} from registry.");
-                return;
-            }
+            _levelConfig = resolved;
+            DebugLogger.Log($"WaveManager: Resolved Level {resolved.levelNumber} config '{resolved.name}'.");
         }
 
-        // Fallback: try to load from Resources.
-        LevelConfigSO loadedConfig = Resources.Load<LevelConfigSO>($"LevelConfigs/Level{levelNumber}_Config");
-        if (loadedConfig != null)
-        {
-            _levelConfig = loadedConfig;
-            DebugLogger.Log($"WaveManager: Loaded Level {levelNumber} from Resources.");
-            return;
-        }
-
-        // If we already have a config assigned in inspector, use that.
-        if (_levelConfig != null)
-        {
-            DebugLogger.LogWarning($"WaveManager: Could not find Level {levelNumber} config. Using inspector-assigned config: {_levelConfig.name}");
-            return;
-        }
-
-        DebugLogger.LogError($"WaveManager: Could not load Level {levelNumber} config and no fallback assigned.");
+        return _levelConfig;
     }
 
     private void SetCurrentAllowedCharacters(IReadOnlyList<BaybayinCharacterSO> source)

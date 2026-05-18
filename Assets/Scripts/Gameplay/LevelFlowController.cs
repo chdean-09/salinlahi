@@ -91,11 +91,21 @@ public class LevelFlowController : MonoBehaviour
 
     private void ResolveLevelConfig()
     {
-        if (GameManager.Instance != null && GameManager.Instance.CurrentLevel != null)
+        LevelConfigSO currentLevel = GameManager.Instance != null
+            ? GameManager.Instance.CurrentLevel
+            : null;
+
+        if (_waveManager != null)
         {
-            _levelConfig = GameManager.Instance.CurrentLevel;
-            return;
+            _levelConfig = _waveManager.ResolveSelectedLevelConfig(_levelConfig);
+            if (_levelConfig != null)
+                return;
         }
+
+        _levelConfig = LevelConfigResolver.ResolveSelected(
+            currentLevel,
+            null,
+            _levelConfig);
 
         if (_levelConfig != null)
             return;
@@ -108,8 +118,15 @@ public class LevelFlowController : MonoBehaviour
         if (!LevelTutorialProgress.ShouldShowForLevel(_levelConfig))
             yield break;
 
-        if (_level1WorldIntroController != null && _level1WorldIntroController.IsConfigured)
+        if (_level1WorldIntroController != null)
         {
+            if (!_level1WorldIntroController.IsConfigured)
+            {
+                _flowAborted = true;
+                DebugLogger.LogError("LevelFlowController: Level 1 world intro is due, but Level1WorldIntroController is not fully configured.");
+                yield break;
+            }
+
             yield return _level1WorldIntroController.PlayIfNeeded(_levelConfig);
             yield break;
         }
