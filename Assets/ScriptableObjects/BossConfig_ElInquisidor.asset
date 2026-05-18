@@ -14,26 +14,50 @@ MonoBehaviour:
   m_EditorClassIdentifier: Salinlahi.Runtime::BossConfigSO
   bossName: El Inquisidor
   bossID: ELINQUISIDOR
-  bossSprite: {fileID: 0}
+  bossSprite: {fileID: 95172164111334305, guid: f6ede119ad3b6824b9652c0513057a7c, type: 3}
   bossEnemyData: {fileID: 11400000, guid: aa843150d07c87f439e39501b863853c, type: 2}
   phases:
-  - requiredCharacters:
-    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
-    movementPattern: 0
-    movementSpeed: 0
-    intermissionWave: {fileID: 11400000, guid: e5a89027c20fee9459f52e982df5adee, type: 2}
-    postIntermissionDelay: 1
-  - requiredCharacters:
-    - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
+  - summonDuration: 30
+    summonInterval: 5
+    summonBurstMin: 2
+    summonBurstMax: 3
+    summonEnemyTypes:
+    - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+    summonSpawnRange: {x: 2, y: 0}
+    requiredCharacterCount: 3
+    vulnerabilityTimer: 12
     movementPattern: 1
     movementSpeed: 1
-    intermissionWave: {fileID: 11400000, guid: 71317812912092b4ba1d5c97b5be118b, type: 2}
-    postIntermissionDelay: 1
-  - requiredCharacters:
-    - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+    paceHalfRange: 1.5
+    teleportHalfRange: {x: 2, y: 0}
+  - summonDuration: 30
+    summonInterval: 5
+    summonBurstMin: 2
+    summonBurstMax: 3
+    summonEnemyTypes:
+    - {fileID: 11400000, guid: b1192b8ea41bc418cb84defa4321b63f, type: 2}
+    summonSpawnRange: {x: 2, y: 0}
+    requiredCharacterCount: 3
+    vulnerabilityTimer: 10
+    movementPattern: 1
+    movementSpeed: 1.3
+    paceHalfRange: 2
+    teleportHalfRange: {x: 2, y: 0}
+  - summonDuration: 30
+    summonInterval: 5
+    summonBurstMin: 3
+    summonBurstMax: 3
+    summonEnemyTypes:
+    - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+    - {fileID: 11400000, guid: b1192b8ea41bc418cb84defa4321b63f, type: 2}
+    summonSpawnRange: {x: 2.5, y: 0}
+    requiredCharacterCount: 4
+    vulnerabilityTimer: 10
     movementPattern: 2
     movementSpeed: 0
-    intermissionWave: {fileID: 0}
-    postIntermissionDelay: 0
+    paceHalfRange: 1.5
+    teleportHalfRange: {x: 3, y: 0}
+  fallbackEnemyTypes:
+  - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
   introDuration: 2
   outroDuration: 2.5
