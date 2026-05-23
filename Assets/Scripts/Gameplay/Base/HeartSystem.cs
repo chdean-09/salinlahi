@@ -45,11 +45,6 @@ public class HeartSystem : MonoBehaviour
     // Called by PlayerBase when the base is hit
     public void LoseHeart(int amount = 1)
     {
-        // TEST CHEAT — TODO REVERT (SALIN-68 boss testing): infinite HP.
-        DebugLogger.Log($"HeartSystem: TEST CHEAT — ignored heart loss. Hearts remain {_currentHearts}/{_maxHearts}.");
-        return;
-
-#pragma warning disable CS0162 // unreachable code
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
         if (SandboxMode.ShouldBypassLifeLoss)
         {
@@ -68,7 +63,6 @@ public class HeartSystem : MonoBehaviour
             DebugLogger.Log("Hearts at zero. Raising GameOver.");
             EventBus.RaiseGameOver();
         }
-#pragma warning restore CS0162
     }
 
     public int GetCurrentHearts() => _currentHearts;

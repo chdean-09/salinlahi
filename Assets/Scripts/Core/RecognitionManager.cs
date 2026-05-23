@@ -6,9 +6,6 @@ public class RecognitionManager : Singleton<RecognitionManager>
     [Header("Configuration")]
     [SerializeField] private RecognitionConfigSO _config;
 
-    [Header("Debug")]
-    [SerializeField] private bool _enableBossTestCheat;
-
     private DollarPRecognizer _recognizer;
 
     protected override void Awake()
@@ -71,19 +68,6 @@ public class RecognitionManager : Singleton<RecognitionManager>
             return;
         }
 
-        if (_enableBossTestCheat)
-        {
-            string cheatCharacterID = ResolveCheatCharacterID();
-            if (!string.IsNullOrEmpty(cheatCharacterID))
-            {
-                var cheatResult = new RecognitionResult(cheatCharacterID, 1f, 0, "NONE", 1f);
-                DebugLogger.Log($"RecognitionManager: test cheat forcing recognized character to {cheatCharacterID}.");
-                EventBus.RaiseRecognitionResolved(cheatResult, true, _config.minimumConfidence);
-                EventBus.RaiseCharacterRecognized(cheatCharacterID);
-                return;
-            }
-        }
-
         RecognitionResult result = _recognizer.Recognize(strokes);
         DebugLogger.Log(
             $"Recognized: {result.characterID} "
@@ -107,22 +91,5 @@ public class RecognitionManager : Singleton<RecognitionManager>
             EventBus.RaiseCharacterRecognized(result.characterID);
         else
             EventBus.RaiseDrawingFailed();
-    }
-
-    private static string ResolveCheatCharacterID()
-    {
-        BossController boss = GameManager.Instance != null ? GameManager.Instance.CurrentBoss : null;
-        if (boss != null && boss.IsTargetable && !string.IsNullOrEmpty(boss.CurrentExpectedCharacterID))
-            return boss.CurrentExpectedCharacterID;
-
-        ActiveEnemyTracker tracker = ActiveEnemyTracker.Instance;
-        if (tracker != null)
-        {
-            Enemy nearest = tracker.FindClosestToBase();
-            if (nearest != null && nearest.Character != null)
-                return nearest.Character.characterID;
-        }
-
-        return null;
     }
 }
