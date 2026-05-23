@@ -16,8 +16,40 @@ MonoBehaviour:
   moveSpeed: 1.55
   maxHealth: 1
   walkFrames:
-  - {fileID: 21300000, guid: 61e33c4f45e289b43ab91edaa12c018b, type: 3}
+  - {fileID: -4272518514192780182, guid: d94bb5de0cae19845a66c2189bb2ea46, type: 3}
+  - {fileID: -4432828032234856293, guid: d94bb5de0cae19845a66c2189bb2ea46, type: 3}
+  - {fileID: 4111953553154678690, guid: d94bb5de0cae19845a66c2189bb2ea46, type: 3}
+  - {fileID: 8653983572613697612, guid: d94bb5de0cae19845a66c2189bb2ea46, type: 3}
   animatorController: {fileID: 0}
-  assignedCharacter: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+  assignedCharacter: {fileID: 0}
   isDecoy: 0
   dealsContactDamage: 1
+  era: 0
+  zigzagAmplitude: 0
+  zigzagFrequency: 0
+  baseSpeedMultiplier: 1
+  auraRadius: 0
+  auraSpeedMultiplier: 1.3
+  deathFrames:
+  - {fileID: 7066805989283105437, guid: 9e943ed547b6424479e2b683ae3ef736, type: 3}
+  - {fileID: 6808092184226927339, guid: 9e943ed547b6424479e2b683ae3ef736, type: 3}
+  - {fileID: 6722293248762079022, guid: 9e943ed547b6424479e2b683ae3ef736, type: 3}
+  - {fileID: 1841053983385125769, guid: 9e943ed547b6424479e2b683ae3ef736, type: 3}
+  deathAnimationFps: 8
+  useHurtFeedback: 1
+  hurtPausesMovement: 1
+  hurtPauseDuration: 0.25
+  hurtShakesSprite: 1
+  hurtShakeMagnitude: 0.08
+  hurtShakeDuration: 0.2
+  hurtShakeFrequency: 30
+  hurtSwapsCharacter: 0
+  postHurtCharacter: {fileID: 0}
+  hurtFrames: []
+  hurtAnimationFps: 12
+  chargeMultiplier: 2.5
+  chargeTriggerYNormalized: 0.5
+  pauseDuration: 0.35
+  scrambleRadius: 3
+  scrambleMinGlitchInterval: 0.18
+  scrambleMaxGlitchInterval: 0.36

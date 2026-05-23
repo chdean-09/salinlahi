@@ -85,8 +85,8 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 61e33c4f45e289b43ab91edaa12c018b, type: 3}
-  m_Color: {r: 0.75, g: 0.09551887, b: 0.09551887, a: 1}
+  m_Sprite: {fileID: -2143216508735518789, guid: b139e52f4aed3d04883ac3904a7d2724, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -133,13 +133,13 @@ BoxCollider2D:
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 8, y: 8}
+    oldSize: {x: 3.1666667, y: 5.3333335}
     newSize: {x: 16, y: 16}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 16, y: 16}
+  m_Size: {x: 3.1666667, y: 5.3333335}
   m_EdgeRadius: 0
 --- !u!114 &2027983948284982860
 MonoBehaviour:
@@ -166,6 +166,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Enemy
   _data: {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+  _useShieldBreakColorFeedback: 0
+  _shieldIntactColor: {r: 0, g: 0.75, b: 0.65, a: 1}
+  _shieldBrokenColor: {r: 0.55, g: 0.55, b: 0.55, a: 1}
+  _showDebugLabels: 1
+  _labelBaseWorldOffset: {x: 0, y: -1.4, z: -0.1}
+  _labelLineSpacingWorld: 0.45
+  _labelWorldScale: 0.22
+  _labelFontSize: 10
+  _labelColor: {r: 1, g: 1, b: 1, a: 1}
+  _walkAnimationFps: 8
 --- !u!50 &3113497809838385314
 Rigidbody2D:
   serializedVersion: 5

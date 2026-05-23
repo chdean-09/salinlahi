@@ -53,6 +53,9 @@ public static class EventBus
     public static event Action OnDialogueStarted;
     public static event Action OnDialogueComplete;
 
+    // -- Environment Events --
+    public static event Action<EraThemeSO> OnThemeApplied; // raised by EnvironmentThemeSwapper after ApplyTheme
+
     // -- Raisers --
     public static void RaiseEnemyDefeated(BaybayinCharacterSO c) => OnEnemyDefeated?.Invoke(c);
     public static void RaiseBaseHit(int damage = 1) => OnBaseHit?.Invoke(damage);
@@ -84,4 +87,5 @@ public static class EventBus
     public static void RaiseBossDefeated() => OnBossDefeated?.Invoke();
     public static void RaiseDialogueStarted() => OnDialogueStarted?.Invoke();
     public static void RaiseDialogueComplete() => OnDialogueComplete?.Invoke();
+    public static void RaiseThemeApplied(EraThemeSO theme) => OnThemeApplied?.Invoke(theme);
 }

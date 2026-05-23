@@ -44,7 +44,15 @@ public class EnvironmentThemeSwapper : MonoBehaviour
 
         // Base zone (fence)
         if (_baseZoneRenderer != null && theme.baseZoneSprite != null)
+        {
             _baseZoneRenderer.sprite = theme.baseZoneSprite;
+
+            // Sprite bounds/PPU can differ between era themes, so the
+            // scaler must recompute after the swap rather than relying on
+            // Start() execution order.
+            if (_baseZoneRenderer.TryGetComponent(out BaseZoneScaler baseZoneScaler))
+                baseZoneScaler.Rescale();
+        }
 
         // Shrine
         if (_shrineRenderer != null && theme.shrineSprite != null)
@@ -75,5 +83,7 @@ public class EnvironmentThemeSwapper : MonoBehaviour
         }
 
         DebugLogger.Log($"EnvironmentThemeSwapper: Applied theme '{theme.eraName}'");
+
+        EventBus.RaiseThemeApplied(theme);
     }
 }

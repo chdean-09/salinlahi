@@ -37,4 +37,14 @@ public class EraThemeSO : ScriptableObject
 
     [Tooltip("Torch/lantern sprite")]
     public Sprite torchSprite;
+
+    [Header("Pillar Fill")]
+    [Tooltip("How to render the pillar area outside the play column on wider-than-target devices")]
+    public PillarFillMode pillarMode = PillarFillMode.None;
+
+    [Tooltip("Used when pillarMode == Color")]
+    public Color pillarColor = Color.black;
+
+    [Tooltip("Used when pillarMode == Sprite. Tileable recommended.")]
+    public Sprite pillarSprite;
 }

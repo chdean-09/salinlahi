@@ -140,7 +140,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 16, y: 16}
+  m_Size: {x: 3.5, y: 5}
   m_EdgeRadius: 0
 --- !u!114 &2027983948284982860
 MonoBehaviour:
@@ -216,4 +216,3 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: da80584c092e38d42b379eb48516a709, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Salinlahi.Runtime::PensionadoMover
-  speedMultiplier: 1
