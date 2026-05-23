@@ -1,7 +1,7 @@
 # 03 — Core Systems
 **Project:** Salinlahi
-**Version:** 1.4
-**Date:** 2026-05-23
+**Version:** 1.5
+**Date:** 2026-05-24
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -165,6 +165,7 @@ Owns two `AudioSource` components: `_bgmSource` (background music, looped) and `
 | Boss | `OnBossPhaseStarted` | `RaiseBossPhaseStarted(int)` | `int` phaseIndex |
 | Boss | `OnBossExhausted` | `RaiseBossExhausted(int)` | `int` phaseIndex |
 | Boss | `OnBossVulnerable` | `RaiseBossVulnerable(int)` | `int` phaseIndex |
+| Boss | `OnBossVulnerabilityWindowActive` | `RaiseBossVulnerabilityWindowActive(int)` | `int` phaseIndex |
 | Boss | `OnBossVulnerabilityExpired` | `RaiseBossVulnerabilityExpired(int)` | `int` phaseIndex |
 | Boss | `OnBossDamaged` | `RaiseBossDamaged(int, int)` | `int phaseIndex, int hpRemaining` |
 | Boss | `OnBossDefeated` | `RaiseBossDefeated()` | none |

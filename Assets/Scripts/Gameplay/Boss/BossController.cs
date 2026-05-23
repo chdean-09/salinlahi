@@ -225,6 +225,7 @@ public class BossController : MonoBehaviour
         _isVulnerableActiveWindow = true;
         SampleNextExpectedCharacter();
         OnDrawnThisPhaseChanged?.Invoke();
+        EventBus.RaiseBossVulnerabilityWindowActive(i);
 
         float elapsed = 0f;
         while (elapsed < phase.vulnerabilityTimer

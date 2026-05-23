@@ -191,7 +191,7 @@ transform.Translate(Vector2.down * _speed * Time.deltaTime, Space.World);
   4. Enemy type and character drawn from `WaveConfigSO.charactersInWave`.
   5. When all enemies in wave are defeated or return to pool: advance to next wave.
 - After all waves complete: fire `EventBus.RaiseLevelComplete()`.
-- Boss levels (5, 10, 15): after final wave, activate boss via `BossConfigSO`.
+- Boss levels (5, 10, 15): when `LevelConfigSO.bossConfig != null`, `WaveManager.RunBossEncounter` activates the boss immediately and the level's `waves` list is ignored. `OnLevelComplete` is raised by `BossController` (not `WaveManager`) when the boss outro finishes.
 
 ### 6.2 WaveConfigSO Fields Used by WaveManager
 

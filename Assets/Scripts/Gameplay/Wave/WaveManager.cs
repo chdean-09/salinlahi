@@ -99,6 +99,17 @@ public class WaveManager : MonoBehaviour
     public void StartLevel(LevelConfigSO levelConfigSO)
     {
         _levelConfig = levelConfigSO;
+
+        // BossController and BossSummonTicker sample allowed characters from
+        // GameManager.CurrentLevel. Keep it in sync so boss encounters started
+        // by passing a LevelConfigSO directly here can resolve glyphs.
+        if (levelConfigSO != null
+            && GameManager.Instance != null
+            && GameManager.Instance.CurrentLevel != levelConfigSO)
+        {
+            GameManager.Instance.SetLevel(levelConfigSO);
+        }
+
         StartLevel();
     }
 

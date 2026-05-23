@@ -1,7 +1,7 @@
 # 10 â€” Requirements Traceability Matrix
 **Project:** Salinlahi
-**Version:** 1.4
-**Date:** 2026-05-23
+**Version:** 1.5
+**Date:** 2026-05-24
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -47,7 +47,7 @@
 | REQ-22 | Only one instance of each Singleton type shall exist at runtime | TDD Â§1 | P0 | `Singleton<T>.Awake()` â€” duplicate destruction confirmed | CS-01 | âœ… Implemented | None |
 | REQ-23 | Enemies shall be managed via Unity ObjectPool; no Instantiate/Destroy in game loop | TDD Â§1; ObjectPool.cs comment | P0 | `EnemyPool` + `ObjectPool<Enemy>` confirmed | EN-02 | âœ… Implemented | None |
 | REQ-24 | Story Mode shall have 15 levels across 3 chapters | GDD Â§2.4 | P1 | `LevelConfigSO` supports structure; âŒ only 3 levels authored (Sprint target) | WV-01 | âš  Partial | ðŸŸ  P1 |
-| REQ-25 | Boss encounters shall occur at levels 5, 10, 15 | GDD Â§2.4; TDD Â§3.2 | P1 | Level 5 wired to `BossConfig_ElInquisidor.asset`; `WaveManager.RunBossEncounter` activates boss when `LevelConfigSO.bossConfig != null` | BS-01 | âš  Partial | ðŸŸ  P1 (levels 10 and 15 boss configs not yet authored) |
+| REQ-25 | Boss encounters shall occur at levels 5, 10, 15 | GDD Â§2.4; TDD Â§3.2 | P1 | Level 5 wired to fully-authored `BossConfig_ElInquisidor.asset`; Levels 10 and 15 wired to placeholder `BossConfig_Superintendent.asset` and `BossConfig_Kadiliman.asset` (single phase using legacy schema, both reuse El Inquisidor `bossEnemyData`). `WaveManager.RunBossEncounter` activates boss when `LevelConfigSO.bossConfig != null` | BS-01 | âš  Partial | ðŸŸ  P1 (Levels 10 and 15 still need dedicated boss prefab/data and new-schema BossPhase values before they ship) |
 | REQ-26 | WaveManager shall read LevelConfigSO and drive wave spawning | TDD Â§3.2; Salinlahi.md Â§3.5.1 | P0 | `WaveManager.cs` + `WaveSpawner.cs` | WV-01 | âœ… Implemented | None |
 | REQ-27 | Wave spawning shall respect waveStartDelay and spawnInterval from WaveConfigSO | TDD Â§3.2 | P1 | `WaveSpawner.cs` reads `WaveConfigSO` | WV-02, WV-03 | âœ… Implemented | None |
 | REQ-28 | The Lite build shall restrict access to levels 1â€“3 only | TDD Â§7.2; Salinlahi.md Â§3.4 | P1 | `LevelConfigSO.isAvailableInLite` field defined; âŒ gate logic not implemented | â€” | âš  Partial | ðŸŸ  P1 |

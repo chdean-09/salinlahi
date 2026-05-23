@@ -423,8 +423,15 @@ namespace Salinlahi.Tests.Editor.Gameplay
 
         private static void SetField(object target, string fieldName, object value)
         {
-            FieldInfo f = target.GetType().GetField(fieldName,
-                BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            // Walk the type hierarchy: private fields declared on a base type
+            // are not returned by GetField on a derived type, even with
+            // BindingFlags.NonPublic. Required so e.g. setting Enemy._showDebugLabels
+            // on a BossEnemy instance resolves the inherited field.
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+            FieldInfo f = null;
+            for (System.Type t = target.GetType(); t != null && f == null; t = t.BaseType)
+                f = t.GetField(fieldName, flags);
+
             Assert.IsNotNull(f, $"Missing field '{fieldName}' on {target.GetType().Name}.");
             f.SetValue(target, value);
         }

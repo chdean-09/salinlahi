@@ -119,6 +119,12 @@ public class PauseMenuUI : MonoBehaviour
 
     public static bool ShouldCachePausedRunSnapshot()
     {
+        // Boss encounters cannot be safely resumed from a generic enemy snapshot:
+        // the restored boss would lack a running BossController state machine and
+        // soft-lock the run. Quitting mid-boss discards the snapshot instead.
+        if (GameManager.Instance != null && GameManager.Instance.CurrentBoss != null)
+            return false;
+
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
         return !SandboxMode.IsActive;
 #else

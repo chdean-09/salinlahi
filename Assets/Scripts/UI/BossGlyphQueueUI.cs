@@ -35,7 +35,7 @@ public class BossGlyphQueueUI : MonoBehaviour
     private void OnEnable()
     {
         EventBus.OnBossStarted += HandleBossStarted;
-        EventBus.OnBossVulnerable += HandleBossVulnerable;
+        EventBus.OnBossVulnerabilityWindowActive += HandleBossVulnerabilityWindowActive;
         EventBus.OnBossDamaged += HandleBossDamagedHide;
         EventBus.OnBossVulnerabilityExpired += HandleHide;
         EventBus.OnBossDefeated += HandleBossDefeated;
@@ -45,7 +45,7 @@ public class BossGlyphQueueUI : MonoBehaviour
     private void OnDisable()
     {
         EventBus.OnBossStarted -= HandleBossStarted;
-        EventBus.OnBossVulnerable -= HandleBossVulnerable;
+        EventBus.OnBossVulnerabilityWindowActive -= HandleBossVulnerabilityWindowActive;
         EventBus.OnBossDamaged -= HandleBossDamagedHide;
         EventBus.OnBossVulnerabilityExpired -= HandleHide;
         EventBus.OnBossDefeated -= HandleBossDefeated;
@@ -62,7 +62,7 @@ public class BossGlyphQueueUI : MonoBehaviour
         _boss.OnDrawnThisPhaseChanged += RefreshFromBoss;
     }
 
-    private void HandleBossVulnerable(int phaseIndex)
+    private void HandleBossVulnerabilityWindowActive(int phaseIndex)
     {
         if (_boss == null) return;
         RefreshFromBoss();

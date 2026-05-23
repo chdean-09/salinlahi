@@ -204,6 +204,7 @@ classDiagram
         +OnBossDefeated
         +OnBossPhaseStarted
         +OnBossVulnerable
+        +OnBossVulnerabilityWindowActive
         +OnBossDamaged
     }
 

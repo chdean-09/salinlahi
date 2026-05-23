@@ -1,7 +1,7 @@
 # 06 — UI/UX and Player Flow
 **Project:** Salinlahi
-**Version:** 1.4
-**Date:** 2026-05-23
+**Version:** 1.5
+**Date:** 2026-05-24
 **Owner:** Jeff Andre Millan (UI/UX Developer)
 
 ---
@@ -108,8 +108,8 @@ The Gameplay scene wires three boss-only UI elements alongside the regular HUD. 
 | UI Element | Script | Behavior |
 |------------|--------|----------|
 | Boss health bar | `Assets/Scripts/UI/BossHealthBar.cs` | Filled Image type. Fills at `HPRemaining / phases.Count` and tweens via `Mathf.Lerp` on `OnBossDamaged`. Subscribes to `OnBossStarted` (acquires `GameManager.CurrentBoss`), `OnBossDamaged`, `OnBossDefeated`. Follows the boss world-space position with `_bossWorldOffset` via `WorldToScreenPoint` then `ScreenPointToWorldPointInRectangle`. Fades via unscaled time. |
-| Boss glyph queue | `Assets/Scripts/UI/BossGlyphQueueUI.cs` | Shows one Baybayin icon plus an `X / N` progress counter above the boss during the Vulnerable window. Subscribes to `OnBossStarted`, `OnBossVulnerable`, `OnBossDamaged`, `OnBossVulnerabilityExpired`, `OnBossDefeated`, `OnDrawingFailed` (red flash on wrong glyph). Listens to `BossController.OnDrawnThisPhaseChanged` to refresh the counter and the next expected glyph. Replaces the legacy `BossLabelIconRow`. |
-| Boss vulnerability timer | `Assets/Scripts/UI/BossVulnerabilityTimerBar.cs` | Countdown bar under the boss that drains during the Vulnerable window. Driven by `OnBossVulnerable` / `OnBossVulnerabilityExpired` / `OnBossDamaged`. |
+| Boss glyph queue | `Assets/Scripts/UI/BossGlyphQueueUI.cs` | Shows one Baybayin icon plus an `X / N` progress counter above the boss during the Vulnerable window. Subscribes to `OnBossStarted`, `OnBossVulnerabilityWindowActive` (shown only after the collapse animation finishes, so the icon never displays a stale glyph mid-collapse), `OnBossDamaged`, `OnBossVulnerabilityExpired`, `OnBossDefeated`, `OnDrawingFailed` (red flash on wrong glyph). Listens to `BossController.OnDrawnThisPhaseChanged` to refresh the counter and the next expected glyph. Replaces the legacy `BossLabelIconRow`. |
+| Boss vulnerability timer | `Assets/Scripts/UI/BossVulnerabilityTimerBar.cs` | Countdown bar under the boss that drains during the Vulnerable window. Driven by `OnBossVulnerabilityWindowActive` (countdown starts after collapse finishes so the on-screen time matches the actual targetable window) / `OnBossVulnerabilityExpired` / `OnBossDamaged`. |
 
 [EVIDENCE: Assets/Scripts/UI/BossHealthBar.cs]
 [EVIDENCE: Assets/Scripts/UI/BossGlyphQueueUI.cs]

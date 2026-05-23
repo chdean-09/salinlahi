@@ -1,7 +1,7 @@
 # 02 — Architecture and Runtime Flow
 **Project:** Salinlahi
-**Version:** 1.4
-**Date:** 2026-05-23
+**Version:** 1.5
+**Date:** 2026-05-24
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -141,6 +141,7 @@ All cross-system communication uses `EventBus.cs`. No direct manager-to-manager 
 | `OnBossPhaseStarted` | `int` (phaseIndex) | `RaiseBossPhaseStarted(int)` |
 | `OnBossExhausted` | `int` (phaseIndex) | `RaiseBossExhausted(int)` |
 | `OnBossVulnerable` | `int` (phaseIndex) | `RaiseBossVulnerable(int)` |
+| `OnBossVulnerabilityWindowActive` | `int` (phaseIndex) | `RaiseBossVulnerabilityWindowActive(int)` |
 | `OnBossVulnerabilityExpired` | `int` (phaseIndex) | `RaiseBossVulnerabilityExpired(int)` |
 | `OnBossDamaged` | `int phaseIndex, int hpRemaining` | `RaiseBossDamaged(int, int)` |
 | `OnBossDefeated` | none | `RaiseBossDefeated()` |
