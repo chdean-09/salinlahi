@@ -1,7 +1,7 @@
 # 05 — Data Contracts and ScriptableObjects
 **Project:** Salinlahi
-**Version:** 1.2
-**Date:** 2026-03-25
+**Version:** 1.4
+**Date:** 2026-05-23
 **Owner:** Chad Andrada (Product Owner / Designer)
 
 ---
@@ -49,28 +49,63 @@ TDD §2.2 specifies that multiple templates per character are supported (e.g., `
 
 **Menu path:** `Salinlahi/Enemy Data`
 **File:** `Assets/Scripts/Data/EnemyDataSO.cs`
-**Asset folder:** `Assets/ScriptableObjects/` (implied; not confirmed in repo)
+**Asset folder:** `Assets/ScriptableObjects/`
 
-| Field | Type | Header | Required | Invariants |
-|-------|------|--------|----------|------------|
-| `enemyID` | `string` | Identity | YES | Unique type identifier. Canonical values: `"soldado"`, `"fraile"`, `"guardia"`, `"capitan"`, `"soldier"`, `"maestro"`, `"pensionado"`, `"general"`, `"heitai"`, `"kisha"`, `"kempei"`, `"shokan"`. Must be lowercase. |
-| `moveSpeed` | `float` | Stats | YES | World units per second toward the base. Default `1.5f`. Must be > 0. |
-| `hitsRequired` | `int` | Stats | YES | Number of correct drawings needed to defeat. Default `1`. Shielded enemies use `2`. |
-| `walkFrames` | `Sprite[]` | Visuals | YES | Animation frames for walking. At least 1 frame required (index 0 set as initial sprite). Null array or zero length is tolerated by code but produces invisible enemy — authoring error. |
-| `animatorController` | `RuntimeAnimatorController` | Visuals | NO | Optional animator override. May be null for static sprite enemies. |
-| `assignedCharacter` | `BaybayinCharacterSO` | Character | YES | The Baybayin character this enemy carries and requires drawn to be defeated. Must not be null at runtime. |
-| `isDecoy` | `bool` | Special | NO | `true` for Maestro enemies. Drawing their character penalizes the player. Default `false`. |
-| `isPhaser` | `bool` | Special | NO | `true` for Fraile enemies. Baybayin label fades in/out on timer. Default `false`. |
-| `phaserInterval` | `float` | Special | NO | Seconds between phaser label visibility toggles. Only used when `isPhaser = true`. |
-| `hasCorruptionVeil` | `bool` | Special | NO | `true` for Shokan enemies. All three era corruption colors swirl around sprite. Default `false`. |
-| `commanderSpeedBuff` | `float` | Special | NO | Speed multiplier applied to nearby same-era enemies while this enemy is alive. Only used for General (`1.3f`). Default `0f` (inactive). |
+| Field | Type | Header | Required | Notes |
+|-------|------|--------|----------|-------|
+| `enemyID` | `string` | Identity | YES | Lowercase ID. Confirmed values in `Assets/ScriptableObjects/`: `soldado, soldier, heitai, maestro, pensionado, general, kisha, kempei, shokan`, plus the boss type and legacy `shielded`/`sprinter` placeholders. |
+| `moveSpeed` | `float` | Stats | YES | World units per second. Default `1.5f`. |
+| `maxHealth` | `int` | Health | YES | Default `1`. `2` for shielded variants (Capitan, Shokan). Replaces the old `hitsRequired` field. |
+| `walkFrames` | `Sprite[]` | Visuals | YES | At least 1 frame required. |
+| `animatorController` | `RuntimeAnimatorController` | Visuals | NO | Optional animator override. |
+| `assignedCharacter` | `BaybayinCharacterSO` | Character | YES | The character this enemy actually demands to be defeated. |
+| `isDecoy` | `bool` | Decoy | NO | `true` for Maestro — drawing its character penalizes. |
+| `dealsContactDamage` | `bool` | Contact Behavior | YES | Default `true`. `false` despawns the enemy without damaging the Shrine on contact. |
+| `era` | `Era` | Variant Era | YES | `Era` enum: `Spanish, American, Japanese`. Used by `GeneralAura` to limit its buff to American-era allies. |
+| `zigzagAmplitude` | `float` | Zigzag Mover (Pensionado) | NO | World-unit sine amplitude. `0` disables. |
+| `zigzagFrequency` | `float` | Zigzag Mover (Pensionado) | NO | Hz. `0` disables. |
+| `baseSpeedMultiplier` | `float` | Base Speed Modifier (General) | NO | Multiplier on top of `moveSpeed`. Default `1f`. |
+| `auraRadius` | `float` | Aura (General) | NO | World-unit radius. `0` disables. |
+| `auraSpeedMultiplier` | `float` | Aura (General) | NO | Multiplier applied to affected same-era non-boss enemies. Default `1.3f`. |
+| `deathFrames` | `Sprite[]` | Death Animation | NO | Played in sequence on `Defeat()` before returning to pool. Empty = instant despawn. |
+| `deathAnimationFps` | `float` | Death Animation | NO | Falls back to walk FPS when 0. Default `8f`. |
+| `useHurtFeedback` | `bool` | Hurt Feedback | NO | Master toggle. HP=1 enemies never run hurt feedback regardless. |
+| `hurtPausesMovement` | `bool` | Hurt Feedback — Movement Pause | NO | Freeze descent on non-lethal hit. |
+| `hurtPauseDuration` | `float` | Hurt Feedback — Movement Pause | NO | Default `0.25f`. |
+| `hurtShakesSprite` | `bool` | Hurt Feedback — Sprite Shake | NO | Jitter on hit. |
+| `hurtShakeMagnitude` | `float` | Hurt Feedback — Sprite Shake | NO | Default `0.08f`. |
+| `hurtShakeDuration` | `float` | Hurt Feedback — Sprite Shake | NO | Default `0.2f`. Should be ≤ `hurtPauseDuration`. |
+| `hurtShakeFrequency` | `float` | Hurt Feedback — Sprite Shake | NO | Oscillations/sec. Default `30f`. |
+| `hurtSwapsCharacter` | `bool` | Hurt Feedback — Character Swap | NO | On first non-lethal hit, swap to `postHurtCharacter`. |
+| `postHurtCharacter` | `BaybayinCharacterSO` | Hurt Feedback — Character Swap | NO | Only consulted when `hurtSwapsCharacter == true`. |
+| `hurtFrames` | `Sprite[]` | Hurt Feedback — Hurt Animation | NO | Frames played on non-lethal hit. |
+| `hurtAnimationFps` | `float` | Hurt Feedback — Hurt Animation | NO | Default `12f`. |
+| `chargeMultiplier` | `float` | Kisha Charge | NO | Variant-specific: KishaMover. Default `2.5f`. |
+| `chargeTriggerYNormalized` | `float [0,1]` | Kisha Charge | NO | Viewport Y to start pause/charge. |
+| `pauseDuration` | `float` | Kisha Charge | NO | Default `0.35f`. |
+| `scrambleRadius` | `float` | Kempei Censor | NO | KempeiScrambleController radius. Default `3f`. |
+| `scrambleMinGlitchInterval` | `float` | Kempei Censor | NO | Default `0.18f`. |
+| `scrambleMaxGlitchInterval` | `float` | Kempei Censor | NO | Default `0.36f`. |
 
 **Validation Rules:**
 - `moveSpeed` must be > 0. Value ≤ 0 causes the enemy to never move (not crash-safe, but functionally broken).
+- `maxHealth ≥ 1`.
 - `assignedCharacter` must not be null. An enemy with a null character cannot be defeated by drawing.
 - `walkFrames` must contain at least one entry.
+- `era` must be one of `Spanish, American, Japanese`.
+- `hurtShakeDuration` should be ≤ `hurtPauseDuration` so the shake ends inside the freeze window.
+- Aura/decoy/zigzag/charge/scramble fields are variant-specific — leaving them at their default values disables the behavior.
+
+#### 2.2.1 `Era` enum
+
+Defined at the bottom of `EnemyDataSO.cs`:
+
+| Value | Notes |
+|-------|-------|
+| `Spanish`, `American`, `Japanese` | Chapter/faction grouping. Drives same-era aura targeting (`GeneralAura`) and other era-scoped behaviors. |
 
 [EVIDENCE: Assets/Scripts/Data/EnemyDataSO.cs]
+[EVIDENCE: Assets/ScriptableObjects/EnemyData_*.asset]
 
 ---
 
@@ -84,18 +119,20 @@ TDD §2.2 specifies that multiple templates per character are supported (e.g., `
 |-------|------|--------|----------|------------|
 | `levelName` | `string` | Identity | YES | Human-readable display name. Example: `"Chapter 1 - Level 1"`. |
 | `levelNumber` | `int` | Identity | YES | 1-indexed. Story Mode range: 1–15. Must be globally unique. |
-| `waves` | `List<WaveConfigSO>` | Waves | YES | Ordered list of waves played in index order. Must not be empty. |
+| `chapterNumber` | `int` | Identity | YES | Default `1`. Author-facing label for HUD/level-select grouping. |
+| `chapterName` | `string` | Identity | YES | Default `"Chapter 1"`. Author-facing label for HUD/level-select grouping. |
+| `eraTheme` | `EraThemeSO` | Identity | NO | Visual theme for this level's era (background, ground, shrine, decorations). Consumed by `EnvironmentThemeSwapper`. |
+| `waves` | `List<WaveConfigSO>` | Waves | YES (non-boss) | Ordered list of waves played in index order. Ignored when `bossConfig != null`. |
 | `allowedCharacters` | `List<BaybayinCharacterSO>` | Characters | YES | Master allowed-character list for this level. All `WaveConfigSO.charactersInWave` entries must be a subset of this list. |
-| `baseSpawnDelay` | `float` | Spawn Settings | YES | Base delay between enemy spawns for this level. |
-| `isBossLevel` | `bool` | Boss | YES | `true` for levels 5, 10, 15. When true, `LevelFlowController` activates `BossController` instead of `WaveManager` after final wave. |
-| `bossConfig` | `BossConfigSO` | Boss | NO | Reference to boss configuration. Null for non-boss levels. Required for boss levels (5, 10, 15). |
-| `isAvailableInLite` | `bool` | Build Flags | YES | `true` for levels 1–3 (Salinlahi Lite). `false` for levels 4–15 (Full only). |
+| `bossConfig` | `BossConfigSO` | Boss | NO | If assigned, this level is a boss encounter. The level is treated as a boss level whenever this reference is non-null. |
+| `isAvailableInLite` | `bool` | Build Flags | YES | `true` for levels 1–3 (Salinlahi Lite). `false` for levels 4–15 (Full only). Default `true`. |
 
 **Validation Rules:**
 - Levels 1–3: `isAvailableInLite = true`.
 - Levels 4–15: `isAvailableInLite = false`.
-- Boss levels (5, 10, 15): must reference a `BossConfigSO` (field NOT FOUND in current implementation — planned Sprint 3).
-- `waves` list must not be empty. An empty wave list causes immediate level-complete with no gameplay.
+- When `bossConfig != null`, the level runs the boss encounter and the `waves` list is ignored (per the LevelConfigSO inspector tooltip and `WaveManager.RunAllWavesRoutine`).
+- For non-boss levels, the `waves` list must not be empty. An empty wave list causes immediate level-complete with no gameplay.
+- `chapterNumber` and `chapterName` are author-facing labels for HUD/level-select grouping.
 
 [EVIDENCE: Assets/Scripts/Data/LevelConfigSO.cs]
 [EVIDENCE: docs/capstone/TDD.md, §5 Data Layer — LevelConfigSO row]
@@ -111,17 +148,21 @@ TDD §2.2 specifies that multiple templates per character are supported (e.g., `
 
 | Field | Type | Header | Required | Invariants |
 |-------|------|--------|----------|------------|
-| `waveID` | `string` | Identity | YES | Unique string identifier. Example: `"L1_W1"`. Used for debug logging and potential save-state keying. |
-| `waveNumber` | `int` | Identity | YES | 1-indexed within the level. Used for HUD display. |
+| `waveID` | `string` | Identity | YES (non-intermission) | Unique string identifier. Example: `"L1_W1"`. Used for debug logging and potential save-state keying. |
+| `waveNumber` | `int` | Identity | YES (non-intermission) | 1-indexed within the level. Used for HUD display. |
+| `isIntermissionWave` | `bool` | Identity | NO | When `true`, `OnValidate` skips `waveID`/`waveNumber` checks. Used for boss intermission waves. |
 | `charactersInWave` | `List<BaybayinCharacterSO>` | Spawn Settings | YES | Baybayin characters that can appear on enemies in this wave. WaveManager draws from this list when assigning characters to spawned enemies. Must not be empty. |
+| `enemyTypesInWave` | `List<EnemyDataSO>` | Spawn Settings | NO | Pool of enemy types this wave may spawn. `WaveSpawner.SelectEnemyDataForSpawn` picks at random; falls back to the spawner's `_fallbackEnemyData` if this list is empty. |
 | `enemyCount` | `int` | Spawn Settings | YES | Total enemies spawned in this wave. Default `5`. Must be ≥ 1. |
 | `spawnInterval` | `float` | Spawn Settings | YES | Seconds between consecutive enemy spawns. Default `3f`. Must be > 0. |
 | `waveStartDelay` | `float` | Spawn Settings | YES | Seconds of delay before first enemy spawns in this wave. Default `1f`. May be 0. |
 
 **Validation Rules:**
 - `charactersInWave` must be a non-empty subset of the parent `LevelConfigSO.allowedCharacters`.
+- When `isIntermissionWave` is `false`, `waveID` must be non-empty and `waveNumber > 0` (enforced by `OnValidate`).
 - `enemyCount` ≥ 1.
 - `spawnInterval` > 0 (zero causes instantaneous spawn of all enemies simultaneously — gameplay-breaking).
+- Missing entries in `enemyTypesInWave` / `charactersInWave` are flagged by `OnValidate`.
 
 [EVIDENCE: Assets/Scripts/Data/WaveConfigSO.cs]
 
@@ -148,25 +189,107 @@ TDD §2.2 specifies that multiple templates per character are supported (e.g., `
 
 ---
 
-### 2.6 `BossConfigSO` — NOT FOUND
+### 2.6 `BossConfigSO`
 
-`BossConfigSO` is specified in `TDD.md §5 Data Layer` and is referenced in `LevelConfigSO` design for boss levels (5, 10, 15). **No implementation file exists in `Assets/Scripts/Data/`.**
+**Menu path:** `Salinlahi/Boss Config`
+**File:** `Assets/Scripts/Data/BossConfigSO.cs`
+**Asset folder:** `Assets/ScriptableObjects/` (existing assets include `BossConfig_ElInquisidor.asset`)
 
-Required fields (from TDD spec and Team README §4):
+| Field | Type | Header | Required | Notes |
+|-------|------|--------|----------|-------|
+| `bossName` | `string` | Identity | YES | Display name. |
+| `bossID` | `string` | Identity | YES | Internal id (e.g. `el_inquisidor`). |
+| `bossSprite` | `Sprite` | Visuals | NO | HUD/portrait sprite, distinct from the in-world enemy sprite. |
+| `bossEnemyData` | `EnemyDataSO` | Spawning | YES | Defines the boss's prefab, base sprite, animator, collision. Its `assignedCharacter` MUST be null so the boss is invisible to `FindClosestToBase`. |
+| `phases` | `List<BossPhase>` | Phases | YES | Ordered. Phase count = boss's effective HP. Last phase clear ends the encounter. |
+| `fallbackEnemyTypes` | `List<EnemyDataSO>` | Summon Fallback | NO | Used when a phase's `summonEnemyTypes` is empty. |
+| `summonHorizontalBounds` | `Vector2` | Summon Bounds | NO | Hard world-space horizontal cap on every minion spawn (`x = minX, y = maxX`). Set `x ≥ y` to disable. |
+| `introDuration` | `float` | Intro / Outro | YES | Seconds boss is invulnerable on entry. Default `2.0f`. |
+| `outroDuration` | `float` | Intro / Outro | YES | Seconds before `OnLevelComplete` after the last phase is cleared. Default `2.5f`. |
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `bossName` | `string` | Display name of the boss |
-| `totalPhases` | `int` | Number of distinct phases |
-| `phaseCharacters` | `List<BaybayinCharacterSO>` | Characters required per phase |
-| `timeLimitPerPhase` | `float` | Seconds allowed per phase |
-| `bossSprites` | `Sprite[]` | Visual sprites for boss states |
-| `bossThemeClip` | `AudioClip` | Boss encounter background music |
+**Validation Rules:**
+- `phases.Count ≥ 1` (zero phases → `BossController.StartBoss` aborts with a logged error).
+- `bossEnemyData.assignedCharacter` must be null so the boss is excluded from `CombatResolver` closest-match.
+- If a phase's `summonEnemyTypes` is empty, `fallbackEnemyTypes` must provide at least one entry — otherwise `BossSummonTicker` skips the spawn and logs a warning.
 
-Status: **NOT FOUND** — P1 gap, required Sprint 3.
+[EVIDENCE: Assets/Scripts/Data/BossConfigSO.cs]
+[EVIDENCE: Assets/ScriptableObjects/BossConfig_ElInquisidor.asset]
 
-[EVIDENCE: docs/capstone/TDD.md, §5 Data Layer — BossConfigSO row]
-[EVIDENCE: Team README §4 — BossConfigSO code sample]
+---
+
+### 2.7 `BossPhase`
+
+**File:** `Assets/Scripts/Data/BossPhase.cs`
+**Embedding:** `[System.Serializable]` class stored in `BossConfigSO.phases`. Not a `ScriptableObject` and has no menu path.
+
+| Field | Type | Header | Notes |
+|-------|------|--------|-------|
+| `summonDuration` | `float` | Summoning Phase | Seconds the boss summons minions. Default `30f`. |
+| `summonInterval` | `float` | Summoning Phase | Seconds between summon ticks. In Teleport movement, also the teleport cadence. Default `5f`. |
+| `summonBurstMin` | `int` | Summoning Phase | Min minions per tick (inclusive). Default `2`. |
+| `summonBurstMax` | `int` | Summoning Phase | Max minions per tick (inclusive, `Random.Range(min, max+1)`). Default `3`. |
+| `summonEnemyTypes` | `List<EnemyDataSO>` | Summoning Phase | Pool for this phase. Empty falls back to `BossConfigSO.fallbackEnemyTypes`. |
+| `summonSpawnRange` | `Vector2` | Summoning Phase | Half-range around the boss's CURRENT position for each minion's spawn origin. Default `(2, 0)`. |
+| `requiredCharacterCount` | `int` | Vulnerability Window | Correct random glyphs needed during the Vulnerable window. Default `3`. |
+| `vulnerabilityTimer` | `float` | Vulnerability Window | Seconds the Vulnerable window lasts (timer starts after the collapse animation). Default `12f`. |
+| `movementPattern` | `BossMovementPattern` | Movement | `Hover, Pace, Teleport`. Default `Pace`. |
+| `movementSpeed` | `float` | Movement | World units/sec. Used by Pace; ignored by Hover/Teleport. Default `1f`. |
+| `paceHalfRange` | `float` | Movement | Pace only: horizontal half-range around spawn. Default `1.5f`. |
+| `teleportHalfRange` | `Vector2` | Movement | Teleport only: half-range around base position. `Y > 0` enables vertical teleport. Default `(2, 0)`. |
+
+`BossMovementPattern` enum (defined in the same file): `Hover` / `Pace` / `Teleport`.
+
+[EVIDENCE: Assets/Scripts/Data/BossPhase.cs]
+
+---
+
+### 2.8 `EraThemeSO`
+
+**Menu path:** `Salinlahi/Era Theme`
+**File:** `Assets/Scripts/Data/EraThemeSO.cs`
+**Asset folder:** `Assets/ScriptableObjects/`
+
+Per-era visual theme referenced by `LevelConfigSO.eraTheme` and consumed by `EnvironmentThemeSwapper` to swap background, ground, shrine, and base-zone visuals per level era. Inferred fields (matching the ERD in `docs/capstone/SystemDiagrams.md`):
+
+| Field | Notes |
+|-------|-------|
+| `eraName` | Identity label. |
+| `backgroundSprite` | Main background sprite. |
+| `groundSprite` | Tiled ground sprite. |
+| `shrineSprite` | Era-specific shrine sprite. |
+| `baseZoneSprite` | Fence/barrier sprite at the shrine defense line. |
+
+[EVIDENCE: Assets/Scripts/Data/EraThemeSO.cs]
+[EVIDENCE: docs/capstone/SystemDiagrams.md — ERD]
+
+---
+
+### 2.9 `GameConfigSO`
+
+**Menu path:** `Salinlahi/Game Config`
+**File:** `Assets/Scripts/Data/GameConfigSO.cs`
+
+Single tuning asset (one project-wide instance) that holds runtime tuning knobs. ERD-visible fields:
+
+| Field | Notes |
+|-------|-------|
+| `focusModeThreshold` | Consecutive correct draws needed to trigger Focus Mode. |
+| `focusModeDuration` | Seconds Focus Mode stays active. |
+| `focusModeSpeedMultiplier` | Enemy speed multiplier while Focus Mode is active (e.g. `0.5` = half speed). |
+
+[EVIDENCE: Assets/Scripts/Data/GameConfigSO.cs]
+[EVIDENCE: docs/capstone/SystemDiagrams.md — ERD]
+
+---
+
+### 2.10 `CharacterRegistrySO`
+
+**Menu path:** `Salinlahi/Character Registry`
+**File:** `Assets/Scripts/Data/CharacterRegistrySO.cs`
+
+Master registry of all `BaybayinCharacterSO` assets, exposed via the `All` list. Used by sandbox mode (`WaveManager` sandbox code path) and visual scramble checks that need to enumerate every available character.
+
+[EVIDENCE: Assets/Scripts/Data/CharacterRegistrySO.cs]
 
 ---
 
@@ -189,7 +312,8 @@ Status: **NOT FOUND** — P1 gap, required Sprint 3.
 | `BaybayinCharacterSO` | `Assets/ScriptableObjects/Characters/` |
 | `LevelConfigSO` | `Assets/ScriptableObjects/Levels/` |
 | `WaveConfigSO` | `Assets/ScriptableObjects/Waves/` |
-| `EnemyDataSO` | `Assets/ScriptableObjects/` (confirm with Designer) |
+| `EnemyDataSO` | `Assets/ScriptableObjects/` |
+| `BossConfigSO` | `Assets/ScriptableObjects/` (e.g. `BossConfig_ElInquisidor.asset`, alongside other top-level configs) |
 | Templates (text files) | `Assets/Resources/Templates/` |
 
 [EVIDENCE: Assets/ScriptableObjects/ directory listing — Characters/, Levels/, Waves/ subdirs confirmed]

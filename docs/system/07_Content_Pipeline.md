@@ -1,7 +1,7 @@
 # 07 — Content Pipeline
 **Project:** Salinlahi
-**Version:** 1.2
-**Date:** 2026-03-25
+**Version:** 1.4
+**Date:** 2026-05-23
 **Owner:** Chad Andrada (Product Owner / Designer)
 
 ---
@@ -39,20 +39,23 @@ As of Sprint 1: **placeholder assets only**. No BaybayinCharacterSO assets have 
 
 | Enemy Type | `enemyID` | Era | Tier | First Appears | Priority | Prefab | Status |
 |------------|-----------|-----|------|--------------|----------|--------|--------|
-| Soldado | `"soldado"` | Spanish | Regular (32×32) | Level 1 | Must Ship | `Enemy_Standard.prefab` | Prefab exists; SO unverified |
-| Fraile | `"fraile"` | Spanish | Variant (32×32) | Level 2 | Must Ship | (PLANNED) | NOT FOUND |
-| Guardia | `"guardia"` | Spanish | Variant (32×32) | Level 3 | Must Ship | (PLANNED) | NOT FOUND |
-| Capitan | `"capitan"` | Spanish | Elite (48×48) | Level 4 | Must Ship | (PLANNED) | NOT FOUND |
-| Soldier | `"soldier"` | American | Regular (32×32) | Level 6 | Must Ship | (PLANNED) | NOT FOUND |
-| Maestro | `"maestro"` | American | Variant (32×32) | Level 7 | Should Ship | (PLANNED) | NOT FOUND |
-| Pensionado | `"pensionado"` | American | Variant (32×32) | Level 8 | Should Ship | (PLANNED) | NOT FOUND |
-| General | `"general"` | American | Elite (48×48) | Level 9 | Should Ship | (PLANNED) | NOT FOUND |
-| Heitai | `"heitai"` | Japanese | Regular (32×32) | Level 11 | Must Ship | (PLANNED) | NOT FOUND |
-| Kisha | `"kisha"` | Japanese | Variant (32×32) | Level 12 | Should Ship | `[Enemy] Kisha.prefab` | Implemented |
-| Kempei | `"kempei"` | Japanese | Variant (32×32) | Level 13 | Should Ship | `[Enemy] Kempei.prefab` | Implemented |
-| Shokan | `"shokan"` | Japanese | Elite (48×48) | Level 14 | Should Ship | `[Enemy] Shokan.prefab` | Implemented |
+| Soldado | `"soldado"` | Spanish | Regular (32×32) | Level 1 | Must Ship | `[Enemy] Soldado.prefab` | Implemented (`[Enemy] Soldado.prefab` + `EnemyData_Soldado.asset`) |
+| Fraile | `"fraile"` | Spanish | Variant (32×32) | Level 2 | Must Ship | (PLANNED) | PLANNED |
+| Guardia | `"guardia"` | Spanish | Variant (32×32) | Level 3 | Must Ship | (PLANNED) | PLANNED |
+| Capitan | `"capitan"` | Spanish | Elite (48×48) | Level 4 | Must Ship | (PLANNED) | PLANNED |
+| Soldier | `"soldier"` | American | Regular (32×32) | Level 6 | Must Ship | `[Enemy] Soldier.prefab` | Implemented (`[Enemy] Soldier.prefab` + `EnemyData_Soldier.asset`) |
+| Maestro | `"maestro"` | American | Variant (32×32) | Level 7 | Should Ship | `[Enemy] Maestro.prefab` | Implemented (`[Enemy] Maestro.prefab` + `EnemyData_Maestro.asset`) |
+| Pensionado | `"pensionado"` | American | Variant (32×32) | Level 8 | Should Ship | `[Enemy] Pensionado.prefab` | Implemented (`[Enemy] Pensionado.prefab` + `EnemyData_Pensionado.asset`) |
+| General | `"general"` | American | Elite (48×48) | Level 9 | Should Ship | `[Enemy] General.prefab` | Implemented (`[Enemy] General.prefab` + `EnemyData_General.asset`) |
+| Heitai | `"heitai"` | Japanese | Regular (32×32) | Level 11 | Must Ship | `[Enemy] Heitai.prefab` | Implemented (`[Enemy] Heitai.prefab` + `EnemyData_Heitai.asset`) |
+| Kisha | `"kisha"` | Japanese | Variant (32×32) | Level 12 | Should Ship | `[Enemy] Kisha.prefab` | Implemented (`[Enemy] Kisha.prefab` + `EnemyData_Kisha.asset`) |
+| Kempei | `"kempei"` | Japanese | Variant (32×32) | Level 13 | Should Ship | `[Enemy] Kempei.prefab` | Implemented (`[Enemy] Kempei.prefab` + `EnemyData_Kempei.asset`) |
+| Shokan | `"shokan"` | Japanese | Elite (48×48) | Level 14 | Should Ship | `[Enemy] Shokan.prefab` | Implemented (`[Enemy] Shokan.prefab` + `EnemyData_Shokan.asset`) |
 
-[EVIDENCE: Assets/Prefabs/Enemies/[Enemy] Standard.prefab — confirmed]
+**Note:** `[Enemy] Shielded.prefab` and `[Enemy] Sprinter.prefab` were removed from the repo. The matching `EnemyData_Shielded.asset` / `EnemyData_Sprinter.asset` SOs may still exist as legacy placeholders and are not referenced by any current `LevelConfigSO` / `WaveConfigSO`.
+
+[EVIDENCE: Assets/Prefabs/Enemies/ — Soldado, Soldier, Heitai, Maestro, Pensionado, General, Kisha, Kempei, Shokan, Boss_ElInquisidor prefabs confirmed]
+[EVIDENCE: Assets/ScriptableObjects/ — matching `EnemyData_*.asset` files confirmed]
 [EVIDENCE: docs/capstone/GDD.md, §4.3 Enemies — full roster with priority]
 [EVIDENCE: Team README §9 — Enemy Type Roster with introduction levels]
 
@@ -80,6 +83,17 @@ As of Sprint 1: **placeholder assets only**. No BaybayinCharacterSO assets have 
 [EVIDENCE: docs/capstone/GDD.md, §4.2 Characters; §4.3 Enemies]
 [EVIDENCE: Team README §6 — Technical Specifications for pixel artist]
 
+### 2.4 Bosses
+
+| Boss | Asset | Status |
+|------|-------|--------|
+| El Inquisidor (Spanish) | `[Enemy] Boss_ElInquisidor.prefab` + `BossConfig_ElInquisidor.asset` | Implemented |
+| The Superintendent (American) | — | PLANNED |
+| Kadiliman (Final) | — | PLANNED |
+
+[EVIDENCE: Assets/Prefabs/Enemies/[Enemy] Boss_ElInquisidor.prefab]
+[EVIDENCE: Assets/ScriptableObjects/BossConfig_ElInquisidor.asset]
+
 ---
 
 ## 3. Levels and Waves
@@ -102,9 +116,12 @@ As of Sprint 1: **placeholder assets only**. No BaybayinCharacterSO assets have 
 | `LevelConfigSO` | `Level_[##]` | `Level_01.asset`, `Level_10.asset` |
 | `WaveConfigSO` | `L[level]_W[wave]` | `L1_W1.asset`, `L3_W2.asset` |
 
-**Current status:** `Assets/ScriptableObjects/Levels/` and `Assets/ScriptableObjects/Waves/` folders exist. Asset population is NOT verified beyond folder existence.
+**Note:** Authored on-disk pattern is `Level[N]_Config.asset` (e.g. `Level1_Config.asset`); the doc's `Level_##` example is the planned convention. Levels 1–3 are populated; the remaining 12 are PLANNED.
 
-[EVIDENCE: Assets/ScriptableObjects/Levels/ and Waves/ — folders confirmed]
+**Current status:** `Assets/ScriptableObjects/Levels/` contains `Level1_Config.asset`, `Level2_Config.asset`, `Level3_Config.asset`. `Assets/ScriptableObjects/Waves/` exists; wave-asset population is not exhaustively audited.
+
+[EVIDENCE: Assets/ScriptableObjects/Levels/Level1_Config.asset, Level2_Config.asset, Level3_Config.asset]
+[EVIDENCE: Assets/ScriptableObjects/Waves/ — folder confirmed]
 
 ### 3.3 Build Flag
 
@@ -243,6 +260,15 @@ LevelConfigSO
 LevelConfigSO
   └─ List<BaybayinCharacterSO> (allowedCharacters)
 
+LevelConfigSO
+  └─ bossConfig (optional) → BossConfigSO
+                               ├─ bossEnemyData → EnemyDataSO (assignedCharacter MUST be null)
+                               ├─ phases (List<BossPhase>) — each phase may reference summonEnemyTypes → EnemyDataSO
+                               └─ fallbackEnemyTypes → List<EnemyDataSO>
+
+LevelConfigSO
+  └─ eraTheme → EraThemeSO
+
 EnemyDataSO
   ├─ walkFrames (Sprite[])
   ├─ animatorController (RuntimeAnimatorController)
@@ -265,6 +291,12 @@ EnemyPool
 | `assignedCharacter == null` | Enemy cannot be recognized or defeated; gameplay blocks | High |
 | Template file missing | `TemplateLoader` will throw `NullReferenceException` | Critical |
 | `LevelConfigSO.waves` empty | Immediate level-complete, no gameplay | High |
+| `BossConfigSO.phases` empty | `BossController.StartBoss` logs an error and aborts the encounter | Critical |
+| `BossConfigSO.bossEnemyData.assignedCharacter` non-null | Boss enters `CombatResolver.FindClosestToBase` results, breaking the boss damage gate | High |
+| `BossPhase.summonEnemyTypes` empty AND `BossConfigSO.fallbackEnemyTypes` empty | `BossSummonTicker` skips spawns with a warning; vulnerability windows still resolve normally | Medium |
 
 [EVIDENCE: Assets/Scripts/Core/AudioManager.cs — null check on pronunciationClip]
 [EVIDENCE: Assets/Scripts/Gameplay/Enemy/Enemy.cs — null checks on walkFrames]
+[EVIDENCE: Assets/Scripts/Gameplay/Boss/BossController.cs — `StartBoss` phase guard]
+[EVIDENCE: Assets/Scripts/Gameplay/Combat/CombatResolver.cs — `FindClosestToBase`]
+[EVIDENCE: Assets/Scripts/Gameplay/Boss/BossSummonTicker.cs — summon-type fallback]

@@ -1,7 +1,7 @@
 # 03 — Core Systems
 **Project:** Salinlahi
-**Version:** 1.2
-**Date:** 2026-03-25
+**Version:** 1.4
+**Date:** 2026-05-23
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -17,7 +17,7 @@ Owns the authoritative `GameState` enum and all state transition methods. Subscr
 ### 1.3 State Enum
 
 ```csharp
-public enum GameState { Idle, Playing, Paused, GameOver, LevelComplete }
+public enum GameState { Idle, Playing, Paused, GameOver, LevelComplete, Practicing }
 ```
 
 ### 1.4 Public API
@@ -27,13 +27,28 @@ public enum GameState { Idle, Playing, Paused, GameOver, LevelComplete }
 | `StartGame()` | Any state | `Time.timeScale = 1f`; state → `Playing` |
 | `PauseGame()` | state == `Playing` | `Time.timeScale = 0f`; state → `Paused` |
 | `ResumeGame()` | state == `Paused` | `Time.timeScale = 1f`; state → `Playing` |
-| `HandleGameOver()` (private) | `OnGameOver` fired | state → `GameOver`; calls `SceneLoader.Instance.LoadGameOver()` |
-| `HandleLevelComplete()` (private) | `OnLevelComplete` fired | state → `LevelComplete` |
+| `EnterPractice()` | Any state | `Time.timeScale = 1f`; state → `Practicing` |
+| `ExitPractice()` | state == `Practicing` | state → `Idle` (no-op otherwise) |
+| `EnterDialoguePause()` | state == `Playing` | Caches previous state; `Time.timeScale = 0f`; state → `Paused` |
+| `ExitDialoguePause()` | state == `Paused` | `Time.timeScale = 1f`; state → previous (cached) state |
+| `SetLevel(LevelConfigSO)` | Any state | Sets `CurrentLevel` property |
+| `SetCurrentBoss(BossController)` | Internal | Setter used by `BossController.StartBoss` to publish `CurrentBoss` |
+| `HandleGameOver()` (private) | `OnGameOver` fired | state → `GameOver`; clears paused-run snapshot; DefeatScreenUI overlay handles UI |
+| `HandleLevelComplete()` (private) | `OnLevelComplete` fired | state → `LevelComplete`; clears paused-run snapshot |
+
+**Properties:**
+- `CurrentLevel` (`LevelConfigSO`) — the active level config; set via `SetLevel`.
+- `LastDefeatHearts` (`int`) — hearts remaining at last defeat (consumed by DefeatScreenUI).
+- `CurrentBoss` (`BossController`) — non-null during a boss encounter; set via `SetCurrentBoss`.
+- `AcceptsDrawingInput` (`bool`) — true when `CurrentState` is `Playing` or `Practicing`.
 
 ### 1.5 Invariants
 - `PauseGame()` is a no-op when `CurrentState != Playing`. Guard is enforced in code.
 - `ResumeGame()` is a no-op when `CurrentState != Paused`. Guard is enforced in code.
 - All state changes log to `DebugLogger`.
+
+### 1.6 Paused Run Snapshot
+`GameManager` exposes a paused-run snapshot API used by the Pause/Retry flow to restore a run mid-level instead of resetting. The snapshot caches the level id, hearts remaining, current wave index, spawned count, wave progress, and an array of `PausedEnemySnapshot` records — one per live enemy, each capturing `EnemyData`, `Character`, `Position`, and `CurrentHealth`. Snapshot accessors (`CachePausedRunSnapshot`, `TryConsumePausedRunHearts`, `TryGetPausedRunEnemies`, `TryGetPausedRunWaveIndex`, `TryGetPausedRunWaveProgress`, `TryGetPausedRunLevelId`, `ClearPausedRunSnapshotForLevel`, `DiscardPausedRunSnapshot`) gate restoration to the matching level id. The snapshot is cleared on `HandleGameOver` and `HandleLevelComplete`.
 
 [EVIDENCE: Assets/Scripts/Core/GameManager.cs]
 
@@ -52,8 +67,8 @@ Wraps `SceneManager.LoadSceneAsync` in coroutines. Single source of truth for al
 ```csharp
 private const string SCENE_BOOTSTRAP    = "Bootstrap";
 private const string SCENE_MAIN_MENU    = "MainMenu";
-private const string SCENE_LEVEL_SELECT = "LevelSelect";   // PLANNED — GDD §5.1, TDD §1.1
 private const string SCENE_GAMEPLAY     = "Gameplay";
+private const string SCENE_LEVEL_SELECT = "LevelSelect";
 private const string SCENE_GAME_OVER    = "GameOver";
 ```
 
@@ -61,16 +76,24 @@ private const string SCENE_GAME_OVER    = "GameOver";
 
 | Method | Loads Scene |
 |--------|-------------|
+| `LoadScene(string)` | Unified entry; in-progress guard prevents overlapping loads |
 | `LoadMainMenu()` | `MainMenu` |
-| `LoadLevelSelect()` | `LevelSelect` (PLANNED) |
 | `LoadGameplay()` | `Gameplay` |
-| `LoadGameOver()` | `GameOver` |
+| `LoadSandboxGameplay()` | `Gameplay` (editor/sandbox builds only) |
+| `LoadLevelSelect()` | `LevelSelect` |
+| `LoadGameOver()` | `[System.Obsolete]` — DefeatScreenUI overlay replaced this scene (SALIN-58); logs a warning |
 | `ReloadCurrentScene()` | Active scene (name retrieved at call time) |
 
 ### 2.5 Invariants
 - Scene name strings are never duplicated outside this file. Any scene rename requires only this one edit.
 - `Time.timeScale` is always reset to `1f` at the start of `LoadRoutine`.
 - Loading progress is reported every frame via `DebugLogger`.
+
+### 2.6 Fade Stub
+`SceneLoader` builds a Screen-Space-Overlay black-fade `Canvas` at runtime via `CreateFadeCanvas()` and fades to/from black around `SceneManager.LoadSceneAsync` using `Time.unscaledDeltaTime`. Sort order is taken from `RenderOrder.LoadingCanvas`. The implementation is an interim stub for the planned SALIN-44 `TransitionManager`. `LoadRoutine` wraps the load in `try/finally` so `_isLoading` and the fade alpha always reset, even if the coroutine is interrupted.
+
+### 2.7 CleanupGameplayRun
+Every scene-load entry first calls `EnemyPool.Instance?.ReturnAllCheckedOut()` to return live enemies to the pool before the next scene loads. In Editor/sandbox builds, `SandboxMode.Deactivate()` runs ahead of cleanup so sandbox state does not leak across scene loads.
 
 [EVIDENCE: Assets/Scripts/Core/SceneLoader.cs]
 
@@ -138,6 +161,12 @@ Owns two `AudioSource` components: `_bgmSource` (background music, looped) and `
 | Focus | `OnFocusModeDeactivated` | `RaiseFocusModeDeactivated()` | none |
 | Pause | `OnGamePaused` | `RaiseGamePaused()` | none |
 | Pause | `OnGameResumed` | `RaiseGameResumed()` | none |
+| Boss | `OnBossStarted` | `RaiseBossStarted(BossConfigSO)` | `BossConfigSO` |
+| Boss | `OnBossPhaseStarted` | `RaiseBossPhaseStarted(int)` | `int` phaseIndex |
+| Boss | `OnBossExhausted` | `RaiseBossExhausted(int)` | `int` phaseIndex |
+| Boss | `OnBossVulnerable` | `RaiseBossVulnerable(int)` | `int` phaseIndex |
+| Boss | `OnBossVulnerabilityExpired` | `RaiseBossVulnerabilityExpired(int)` | `int` phaseIndex |
+| Boss | `OnBossDamaged` | `RaiseBossDamaged(int, int)` | `int phaseIndex, int hpRemaining` |
 | Boss | `OnBossDefeated` | `RaiseBossDefeated()` | none |
 | Dialogue | `OnDialogueStarted` | `RaiseDialogueStarted()` | none |
 | Dialogue | `OnDialogueComplete` | `RaiseDialogueComplete()` | none |

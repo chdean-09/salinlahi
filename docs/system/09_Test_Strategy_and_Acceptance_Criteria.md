@@ -1,7 +1,7 @@
 # 09 — Test Strategy and Acceptance Criteria
 **Project:** Salinlahi
-**Version:** 1.2
-**Date:** 2026-03-25
+**Version:** 1.4
+**Date:** 2026-05-23
 **Owner:** Whole Team (QA responsibility shared)
 
 ---
@@ -40,7 +40,7 @@ Salinlahi has no automated unit test suite in its current implementation. All te
 | EN-04 | EnemyMover stops on `OnDisable` | Force-deactivate an active enemy | `_active = false`; no further `transform.Translate` calls | P1 |
 | EN-05 | EnemyPool uses lazy creation with no pre-warmed enemies | Inspect pool immediately after Bootstrap; then trigger first wave | Pool enemy count == 0 after Bootstrap; first `EnemyPool.Get()` call triggers `CreateEnemy()` and returns a valid enemy; `defaultCapacity` (10) only sets internal list allocation size, not pre-instantiated object count | P2 |
 | EN-06 | `Enemy.Initialize` sets correct speed and sprite | Spawn Soldado with known EnemyDataSO | Enemy speed matches `EnemyDataSO.moveSpeed`; sprite matches `walkFrames[0]` | P1 |
-| EN-07 | Fraile phaser label fades in/out on timer | Spawn Fraile enemy; observe 10 seconds | Baybayin label alternates between visible and hidden at `phaserInterval` rate | P1 |
+| EN-07 | Fraile phaser label fades in/out on timer (PLANNED — Fraile enemy and phaser mechanic not yet implemented; `isPhaser`/`phaserInterval` are not present on `EnemyDataSO`) | Spawn Fraile enemy; observe 10 seconds | Baybayin label alternates between visible and hidden | P1 |
 | EN-08 | Maestro decoy penalizes player when drawn | Spawn Maestro; draw its displayed character | Player loses 1 heart; Maestro remains active | P1 |
 | EN-09 | General commander aura buffs nearby American enemies | Spawn General with 3 Soldiers nearby | Soldiers move at 1.3× speed while General alive; normal speed after General defeated | P1 |
 | EN-10 | Kempei censor scrambles nearby labels | Spawn Kempei with 3 enemies nearby | Nearby enemy labels show wrong characters while Kempei alive; correct labels restored after Kempei defeated | P1 |
@@ -78,14 +78,19 @@ Salinlahi has no automated unit test suite in its current implementation. All te
 | PF-03 | APK size < 100 MB | Check final build size | APK ≤ 100 MB | P1 |
 | PF-04 | Zero runtime Instantiate/Destroy in game loop | Profile wave gameplay | Unity Profiler shows 0 `Instantiate`/`Destroy` calls during active wave | P0 |
 
-### 2.7 Boss System (PLANNED — verify in Sprint 3)
+### 2.7 Boss System
 
 | Test ID | Requirement | Test Procedure | Pass Criterion | Priority |
 |---------|-------------|---------------|---------------|----------|
-| BS-01 | Boss spawns at boss level (5, 10, 15) | Play Level 5 to final wave completion | Boss encounter activates after waves; `OnBossSpawned` fires | P0 |
-| BS-02 | Boss phase transitions work | Defeat boss phase 1 requirement | `OnBossPhaseCleared` fires; boss transitions to phase 2 | P0 |
+| BS-01 | Boss spawns at boss level (5, 10, 15) | Play Level 5 to final wave completion | Boss encounter activates after waves; `OnBossStarted(BossConfigSO)` fires | P0 |
+| BS-02 | Boss phase transitions work | During the `Vulnerable` window, player draws `phase.requiredCharacterCount` correct random glyphs within `phase.vulnerabilityTimer` seconds | `OnBossDamaged(phaseIndex, hpRemaining)` fires; boss advances to next phase (or `Outro` on the final phase) | P0 |
 | BS-03 | Boss defeat triggers level complete | Clear all boss phases | `OnBossDefeated` fires; `OnLevelComplete` fires | P0 |
 | BS-04 | Kadiliman requires all 17 characters | Play Level 15 boss | Player must draw all 17 characters to defeat Kadiliman | P1 |
+| BS-05 | Vulnerability timer expiry repeats the phase without HP loss | Enter `Vulnerable` window; do not satisfy `requiredCharacterCount` before `vulnerabilityTimer` elapses | `OnBossVulnerabilityExpired(phaseIndex)` fires; `HPRemaining` unchanged after window expires with `CorrectDrawsThisWindow < requiredCharacterCount`; phase loop repeats | P0 |
+| BS-06 | Boss minion summons appear at boss position with horizontal clamp | Allow `BossSummonTicker` to fire a summon tick on a phase that moves (Pace/Teleport) | Spawned minion X is within `summonSpawnRange.x` of boss X AND inside `BossConfigSO.summonHorizontalBounds` when configured | P1 |
+
+[EVIDENCE: Assets/Scripts/Gameplay/Boss/BossController.cs]
+[EVIDENCE: Assets/Scripts/Gameplay/Boss/BossSummonTicker.cs]
 
 ### 2.8 Dialogue System (PLANNED — verify in Sprint 3)
 
@@ -114,7 +119,7 @@ Salinlahi has no automated unit test suite in its current implementation. All te
 - [ ] Enemy returns to pool on defeat (not destroyed)
 - [ ] Enemy returns to pool on base hit
 - [ ] GameOver fires when hearts reach 0
-- [ ] GameOver scene loads after game over state
+- [ ] Defeat overlay (`DefeatScreenUI`) appears in Gameplay scene after game over state
 - [ ] Retry button reloads Gameplay
 - [ ] Menu button returns to MainMenu
 - [ ] No duplicate Singleton warnings in console

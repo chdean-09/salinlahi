@@ -1,7 +1,7 @@
 # 02 — Architecture and Runtime Flow
 **Project:** Salinlahi
-**Version:** 1.2
-**Date:** 2026-03-25
+**Version:** 1.4
+**Date:** 2026-05-23
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -12,9 +12,10 @@
 |------------|------|------|
 | Bootstrap | `Assets/_Scenes/Bootstrap.unity` | Instantiates all manager singletons; auto-transitions to MainMenu |
 | MainMenu | `Assets/_Scenes/MainMenu.unity` | Entry point for user: Play, Endless, Tracing Dojo, Settings |
-| LevelSelect | `Assets/_Scenes/LevelSelect.unity` | 15 level buttons grouped by chapter; unlock progression; 3 shrines per era |
+| LevelSelect | `Assets/_Scenes/LevelSelect.unity` | Live; level grid with unlock progression and per-era shrine grouping |
+| TracingDojo | `Assets/_Scenes/TracingDojo.unity` | Live; practice mode for tracing Baybayin glyphs |
 | Gameplay | `Assets/_Scenes/Gameplay.unity` | Core defense loop: enemies, drawing canvas, HUD |
-| GameOver | `Assets/_Scenes/GameOver.unity` | Post-defeat stats; Retry and Return-to-Menu actions |
+| GameOver | `Assets/_Scenes/GameOver.unity` | Deprecated — replaced by DefeatScreenUI overlay in Gameplay scene (SALIN-58) |
 
 [EVIDENCE: Assets/_Scenes/ directory listing]
 [EVIDENCE: docs/capstone/GDD.md, §5.1 Player Journey]
@@ -39,32 +40,31 @@ Cold Start
 ├─ MainMenu.unity loads
 │     └─ MainMenuUI.cs wires Play button → SceneLoader.LoadGameplay()
 │
-├─ Gameplay.unity loads
-│     └─ GameManager.StartGame() called → GameState.Playing
-│     └─ LevelFlowController plays optional Type A intro dialogue
-│     └─ WaveManager drives waves (all levels, including boss levels)
-│     └─ [All waves cleared]
-│           └─ LevelFlowController checks LevelConfigSO.isBossLevel
-│                 ├─ false → EventBus.RaiseLevelComplete()
-│                 └─ true → BossController activates boss encounter
-│                       └─ [All boss phases cleared] → EventBus.RaiseBossDefeated()
-│                             └─ EventBus.RaiseLevelComplete()
-│     └─ EnemyPool.Get(data) → enemy active in scene
-│     └─ [Player draws] → RecognitionManager → EventBus.RaiseCharacterRecognized()
-│     └─ Enemy.Defeat() → EventBus.RaiseEnemyDefeated()
-│     └─ [Enemy reaches base] → EventBus.RaiseBaseHit() → HeartSystem
-│     └─ [Hearts == 0] → EventBus.RaiseGameOver()
-│           └─ GameManager.HandleGameOver() → GameState.GameOver
-│                 └─ SceneLoader.LoadGameOver()
-│
-└─ GameOver.unity loads
-      └─ GameOverUI.cs wires Retry → SceneLoader.LoadGameplay()
-      └─ GameOverUI.cs wires Menu  → SceneLoader.LoadMainMenu()
+└─ Gameplay.unity loads
+      └─ GameManager.StartGame() called → GameState.Playing
+      └─ WaveManager drives waves (all levels, including boss levels)
+      └─ [All waves cleared]
+            └─ WaveManager checks LevelConfigSO.bossConfig != null
+                  ├─ null → EventBus.RaiseLevelComplete()
+                  └─ non-null → WaveSpawner.SpawnBossEnemy(bossConfig)
+                              → BossController.StartBoss(config, spawner)
+                                    └─ [Final phase cleared] → RunOutro coroutine
+                                          → EventBus.RaiseBossDefeated()
+                                          → EventBus.RaiseLevelComplete()
+      └─ EnemyPool.Get(data) → enemy active in scene
+      └─ [Player draws] → RecognitionManager → EventBus.RaiseCharacterRecognized()
+      └─ Enemy.Defeat() → EventBus.RaiseEnemyDefeated()
+      └─ [Enemy reaches base] → EventBus.RaiseBaseHit() → HeartSystem
+      └─ [Hearts == 0] → EventBus.RaiseGameOver()
+            └─ GameManager.HandleGameOver() → GameState.GameOver
+                  └─ DefeatScreenUI overlay handles UI (Retry / Menu actions in-scene)
 ```
 
 [EVIDENCE: Assets/Scripts/Core/BootstrapLoader.cs, Start()]
 [EVIDENCE: Assets/Scripts/Core/SceneLoader.cs, LoadRoutine()]
 [EVIDENCE: Assets/Scripts/Core/GameManager.cs, HandleGameOver()]
+[EVIDENCE: Assets/Scripts/Gameplay/Waves/WaveManager.cs, boss dispatch]
+[EVIDENCE: Assets/Scripts/Gameplay/Boss/BossController.cs, StartBoss() / RunOutro()]
 [EVIDENCE: docs/capstone/GDD.md, §5.1 Player Journey]
 
 ---
@@ -104,6 +104,7 @@ protected virtual void Awake()
 | `[Manager] ComboManager.prefab` | `ComboManager.cs` | Bootstrap scene |
 | `[Manager] ActiveEnemyTracker.prefab` | `ActiveEnemyTracker.cs` | Bootstrap scene |
 | `[Manager] CombatResolver.prefab` | `CombatResolver.cs` | Bootstrap scene |
+| `[Manager] ProgressManager.prefab` | `ProgressManager.cs` | Bootstrap scene |
 
 [EVIDENCE: Assets/Prefabs/Managers/ directory]
 
@@ -111,7 +112,7 @@ protected virtual void Awake()
 
 ## 4. Event-Driven Interactions
 
-All cross-system communication uses `EventBus.cs`. No direct manager-to-manager method calls occur except via `Instance` for single-frame operations (e.g., `SceneLoader.Instance.LoadGameOver()`).
+All cross-system communication uses `EventBus.cs`. No direct manager-to-manager method calls occur except via `Instance` for single-frame operations (e.g., `SceneLoader.Instance.LoadGameplay()`).
 
 ### 4.1 EventBus Contract Table
 
@@ -136,6 +137,12 @@ All cross-system communication uses `EventBus.cs`. No direct manager-to-manager 
 | `OnFocusModeDeactivated` | none | `RaiseFocusModeDeactivated()` |
 | `OnGamePaused` | none | `RaiseGamePaused()` |
 | `OnGameResumed` | none | `RaiseGameResumed()` |
+| `OnBossStarted` | `BossConfigSO` | `RaiseBossStarted(BossConfigSO)` |
+| `OnBossPhaseStarted` | `int` (phaseIndex) | `RaiseBossPhaseStarted(int)` |
+| `OnBossExhausted` | `int` (phaseIndex) | `RaiseBossExhausted(int)` |
+| `OnBossVulnerable` | `int` (phaseIndex) | `RaiseBossVulnerable(int)` |
+| `OnBossVulnerabilityExpired` | `int` (phaseIndex) | `RaiseBossVulnerabilityExpired(int)` |
+| `OnBossDamaged` | `int phaseIndex, int hpRemaining` | `RaiseBossDamaged(int, int)` |
 | `OnBossDefeated` | none | `RaiseBossDefeated()` |
 | `OnDialogueStarted` | none | `RaiseDialogueStarted()` |
 | `OnDialogueComplete` | none | `RaiseDialogueComplete()` |
@@ -186,7 +193,7 @@ EnemyMover.OnTriggerEnter2D(PlayerBase tag)
       YES → EventBus.RaiseGameOver()
               → GameManager.HandleGameOver()
                   → GameState = GameOver
-                  → SceneLoader.LoadGameOver()
+                  → DefeatScreenUI overlay handles in-scene UI (SALIN-58)
 ```
 
 [EVIDENCE: Assets/Scripts/Gameplay/Enemy/EnemyMover.cs, OnTriggerEnter2D()]

@@ -1,7 +1,7 @@
 # 11 — Risks, Dependencies, and Mitigations
 **Project:** Salinlahi
-**Version:** 1.2
-**Date:** 2026-03-25
+**Version:** 1.4
+**Date:** 2026-05-23
 **Owner:** Jon Wayne Cabusbusan (Scrum Master)
 
 ---
@@ -12,11 +12,11 @@
 |---------|-----------------|-------------|--------|-------|-----------|------------------|
 | RISK-01 | $P recognizer accuracy insufficient at 0.60 confidence for Baybayin characters — too many false positives or negatives | High | Critical | Jon Wayne | Implement recognizer in Sprint 2 immediately; run accuracy test with 10 testers × all 17 characters; tune `minimumConfidence` if needed; record all threshold changes in CLAUDE.md | Sprint 2 internal test shows < 70% acceptance on correct draws OR > 20% acceptance on clearly wrong draws |
 | RISK-02 | Recognition latency exceeds 50ms budget on target Android hardware | Medium | High | Jon Wayne | Profile `DollarPRecognizer` on lowest-spec target device in Sprint 2; if over budget, reduce `resamplePointCount` incrementally (32→24→16) and re-test accuracy | Stopwatch measurement exceeds 50ms at p95 |
-| RISK-03 | Object pool max size (20) exceeded during boss waves, causing runtime `Destroy` calls and GC spikes | Low | Medium | Jon Wayne | Profile enemy count during boss wave design; increase `_maxSize` in `EnemyPool` Inspector before Sprint 3 boss integration | Unity Profiler shows `Destroy` calls during active gameplay |
+| RISK-03 | Object pool max size (20) exceeded during boss waves, causing runtime `Destroy` calls and GC spikes | Low | Medium | Jon Wayne | Profile enemy count during boss wave design; increase `_maxSize` in `EnemyPool` Inspector before Sprint 3 boss integration. `BossSummonTicker` summon ticks add 2–3 enemies per `summonInterval`, so pool sizing was reviewed before SALIN-68 wire-up; `BossConfigSO.summonHorizontalBounds` clamps summons on-screen. | Unity Profiler shows `Destroy` calls during active gameplay |
 | RISK-04 | ~~`WaveManager` implementation deferred beyond Sprint 2 blocks all gameplay testing~~ | — | — | — | **RESOLVED** — `WaveManager.cs` implemented | — |
 | RISK-05 | ~~`HeartSystem` not implemented causes GameOver to never trigger~~ | — | — | — | **RESOLVED** — `HeartSystem.cs` implemented | — |
 | RISK-06 | Template .txt files for all 17 characters not authored before Sprint 2 integration | High | High | Chad | Template authoring is Chad's Sprint 1 offline task; must produce all 17 files before DollarPRecognizer is integrated | Sprint 2 DollarPRecognizer integration blocked waiting for templates |
-| RISK-07 | `BossConfigSO` and boss phase system require significant design time; Sprint 3 scope may slip | Medium | Medium | Chad | Stub boss encounter as "extended wave" in Sprint 3 if full phase system is not ready; delay boss phases to Sprint 4 | Sprint 3 end without working boss encounter at Level 5 |
+| RISK-07 | ~~`BossConfigSO` and boss phase system require significant design time; Sprint 3 scope may slip~~ | — | — | — | **RESOLVED** — `BossController` + `BossConfigSO` + `BossPhase` fully implemented at `Assets/Scripts/Gameplay/Boss/` and `Assets/Scripts/Data/` | — |
 | RISK-08 | iOS build submission requires paid Apple Developer account; not confirmed provisioned | Unknown | High | Ian Clyde | Confirm Apple Developer account status before Sprint 4; if unavailable, submit Android only for Sprint 4 testing | Sprint 4 build target requires iOS IPA |
 | RISK-09 | Duplicate event subscriptions cause double-firing (e.g., scene reload without OnDisable cleanup) | Medium | Medium | All | Enforce OnEnable/OnDisable pattern strictly; add CS-03 regression test to every sprint checklist | Console shows duplicate event handler errors |
 | RISK-10 | `ScriptableObjects/Characters/` folder empty — no BaybayinCharacterSO assets authored | High | Critical | Chad | Character SO authoring is Sprint 1 content deliverable; Chad must author all 17 SOs by end of Sprint 1 | Sprint 2 enemy spawning fails due to null assignedCharacter |
@@ -24,6 +24,7 @@
 | RISK-12 | `Time.timeScale = 0` persists into next scene if SceneLoader is bypassed (e.g., direct `SceneManager.LoadScene` call) | Low | High | Jon Wayne | Never call `SceneManager.LoadScene` directly; all scene loads must go through `SceneLoader` — enforced by code review | MainMenu scene loads but game appears frozen |
 | RISK-13 | Dialogue system scope creep — Type A panels and Type B popups may consume more Sprint 3 time than budgeted | Medium | Medium | Chad | Dialogue is Moderate scope per Team README §12. Type B popups are explicitly cuttable. If behind, scale to Minimal (text crawl only). | Sprint 3 Day 5 with no working Type A panel |
 | RISK-14 | Boss battle balancing — too hard frustrates, too easy feels anticlimactic | Medium | Medium | Chad | Start boss phase timers generous; tighten based on playtest feedback. Playtest bosses separately and early. | Internal playtest shows > 80% fail rate or < 20% fail rate on boss |
+| RISK-15 | Aspect-locked play column requires every gameplay UI to live under `PlayAreaContainer`; new UI authored against the device viewport will visibly misalign on tablets | Low | Medium | Jon Wayne | Code review checklist for new gameplay UI: parent under `PlayAreaContainer`. `BaseZoneScaler` and `DrawingCanvas` already subscribe to `OnPlayAreaChanged` and re-fit automatically. | New HUD element appears outside the 9:16 column on a tablet aspect ratio |
 
 ---
 

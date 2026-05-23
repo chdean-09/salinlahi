@@ -1,7 +1,7 @@
 # 10 â€” Requirements Traceability Matrix
 **Project:** Salinlahi
-**Version:** 1.2
-**Date:** 2026-03-25
+**Version:** 1.4
+**Date:** 2026-05-23
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -47,7 +47,7 @@
 | REQ-22 | Only one instance of each Singleton type shall exist at runtime | TDD Â§1 | P0 | `Singleton<T>.Awake()` â€” duplicate destruction confirmed | CS-01 | âœ… Implemented | None |
 | REQ-23 | Enemies shall be managed via Unity ObjectPool; no Instantiate/Destroy in game loop | TDD Â§1; ObjectPool.cs comment | P0 | `EnemyPool` + `ObjectPool<Enemy>` confirmed | EN-02 | âœ… Implemented | None |
 | REQ-24 | Story Mode shall have 15 levels across 3 chapters | GDD Â§2.4 | P1 | `LevelConfigSO` supports structure; âŒ only 3 levels authored (Sprint target) | WV-01 | âš  Partial | ðŸŸ  P1 |
-| REQ-25 | Boss encounters shall occur at levels 5, 10, 15 | GDD Â§2.4; TDD Â§3.2 | P1 | âŒ BossConfigSO not implemented | â€” | âŒ NOT FOUND | ðŸŸ  P1 |
+| REQ-25 | Boss encounters shall occur at levels 5, 10, 15 | GDD Â§2.4; TDD Â§3.2 | P1 | Level 5 wired to `BossConfig_ElInquisidor.asset`; `WaveManager.RunBossEncounter` activates boss when `LevelConfigSO.bossConfig != null` | BS-01 | âš  Partial | ðŸŸ  P1 (levels 10 and 15 boss configs not yet authored) |
 | REQ-26 | WaveManager shall read LevelConfigSO and drive wave spawning | TDD Â§3.2; Salinlahi.md Â§3.5.1 | P0 | `WaveManager.cs` + `WaveSpawner.cs` | WV-01 | âœ… Implemented | None |
 | REQ-27 | Wave spawning shall respect waveStartDelay and spawnInterval from WaveConfigSO | TDD Â§3.2 | P1 | `WaveSpawner.cs` reads `WaveConfigSO` | WV-02, WV-03 | âœ… Implemented | None |
 | REQ-28 | The Lite build shall restrict access to levels 1â€“3 only | TDD Â§7.2; Salinlahi.md Â§3.4 | P1 | `LevelConfigSO.isAvailableInLite` field defined; âŒ gate logic not implemented | â€” | âš  Partial | ðŸŸ  P1 |
@@ -59,16 +59,17 @@
 | REQ-34 | Cross-system communication shall use EventBus exclusively | TDD Â§1; EventBus.cs comment | P0 | All systems use EventBus; no direct cross-manager calls observed | CS-03 | âœ… Implemented | None |
 | REQ-35 | EventBus subscriptions shall be in OnEnable and unsubscribed in OnDisable | EventBus.cs comment | P0 | `GameManager`, `AudioManager` â€” OnEnable/OnDisable confirmed | CS-03 | âœ… Implemented | None |
 | REQ-36 | Protagonist shall be visible on screen during gameplay as a 32Ã—32 sprite with 3 era-specific designs | GDD Â§4.2 | P1 | âŒ Not implemented | â€” | âŒ NOT FOUND | ðŸŸ  P1 |
-| REQ-37 | 12 enemy types shall be era-themed (4 per era: Soldado/Fraile/Guardia/Capitan, Soldier/Maestro/Pensionado/General, Heitai/Kisha/Kempei/Shokan) | GDD Â§4.3 | P1 | âŒ Only standard enemy implemented | EN-07â€“EN-11 | âš  Partial | ðŸŸ  P1 |
+| REQ-37 | 12 enemy types shall be era-themed (4 per era: Soldado/Fraile/Guardia/Capitan, Soldier/Maestro/Pensionado/General, Heitai/Kisha/Kempei/Shokan) | GDD Â§4.3 | P1 | 9 of 12 implemented (Soldado, Soldier, Heitai, Maestro, Pensionado, General, Kisha, Kempei, Shokan); 3 remain PLANNED (Fraile, Guardia, Capitan) | EN-07â€“EN-11 | âš  Partial | ðŸŸ  P1 |
 | REQ-38 | Combo system shall track consecutive correct draws; 5-streak triggers focus mode slow effect | GDD Â§3.2; Team README Â§9 | P1 | `ComboManager.cs` | â€” | âœ… Implemented | None |
 | REQ-39 | Dialogue panels (Type A) shall appear before/after levels with typewriter effect | GDD Â§4.5; Team README Â§12 | P1 | `DialogueController.cs` | DL-01, DL-02 | âœ… Implemented | None |
 | REQ-40 | Each era shall have a unique shrine design at 64Ã—96 px with 4 damage states | GDD Â§4.1 | P2 | âŒ Not implemented | â€” | âŒ NOT FOUND | ðŸŸ¡ P2 |
-| REQ-41 | Boss encounters shall use phase-based system with BossConfigSO data | GDD Â§4.3; TDD Â§3.2 | P1 | âŒ Not implemented | BS-01â€“BS-04 | âŒ NOT FOUND | ðŸŸ  P1 |
+| REQ-41 | Boss encounters shall use phase-based system with BossConfigSO data | GDD Â§4.3; TDD Â§3.2 | P1 | `Assets/Scripts/Data/BossConfigSO.cs` + `BossPhase.cs`; full state machine in `Assets/Scripts/Gameplay/Boss/BossController.cs` (Idle -> Intro -> SummoningPhase -> WindingDown -> Vulnerable -> Damaged -> Outro) | BS-01, BS-02, BS-03, BS-05, BS-06 | âœ… Implemented | None |
 | REQ-42 | Baybayin character set shall include 14 consonants and 3 vowels (A, E/I, O/U) totaling 17 | GDD Â§3.3 | P0 | `RecognitionConfigSO` implies 17; character type not distinguished | RC-07 | âš  Partial | ðŸŸ  P1 |
 | REQ-43 | A daily streak counter shall track consecutive days the player opens the game, stored locally via PlayerPrefs | Salinlahi.md Â§1.5.1; Sprint Timeline Sprint 3 | P2 | âŒ StreakManager not implemented | â€” | âŒ NOT FOUND | ðŸŸ¡ P2 |
 | REQ-44 | The game shall include in-game SUS and GEQ-S questionnaire screens administered after gameplay during UAT | Sprint Timeline Sprint 4; Salinlahi.md Â§3.5.1, Â§3.5.2 | P0 | âŒ QuestionnaireController not implemented | â€” | âŒ NOT FOUND | ðŸ”´ P0 |
 | REQ-45 | The game shall log recognition accuracy per character per level to a CSV file on the device for post-session analysis | Sprint Timeline Sprint 2; Salinlahi.md Â§3.5.3 | P0 | âŒ QuestionnaireLogger not implemented | â€” | âŒ NOT FOUND | ðŸ”´ P0 |
 | REQ-46 | The recognition system shall support multiple templates per character to handle handwriting variation | TDD Â§2.2 | P1 | âš  RecognitionConfigSO exists; âŒ multi-template loading not implemented | RC-04 | âš  Partial | ðŸŸ  P1 |
+| REQ-47 | The Gameplay HUD and stroke input shall constrain to a fixed 9:16 play column regardless of device aspect | `docs/superpowers/specs/2026-05-21-aspect-locked-play-column-design.md` | P2 | `Assets/Scripts/Gameplay/Camera/AspectLockedCamera.cs`, `Assets/Scripts/UI/PlayAreaContainer.cs`, `Assets/Scripts/Gameplay/Environment/BaseZoneScaler.cs`, `Assets/Scripts/Gameplay/Drawing/DrawingCanvas.cs` | PF-05 | âœ… Implemented | None |
 
 ---
 
@@ -76,13 +77,13 @@
 
 | Status | Count |
 |--------|-------|
-| âœ… Implemented | 23 |
-| âš  Partial | 18 |
-| âŒ NOT FOUND | 5 |
-| **Total requirements** | **46** |
+| âœ… Implemented | 25 |
+| âš  Partial | 19 |
+| âŒ NOT FOUND | 3 |
+| **Total requirements** | **47** |
 
 | Severity | Count |
 |----------|-------|
 | ðŸ”´ P0 gaps | 0 |
-| ðŸŸ  P1 gaps | 14 |
+| ðŸŸ  P1 gaps | 13 |
 | ðŸŸ¡ P2 gaps | 5 |
