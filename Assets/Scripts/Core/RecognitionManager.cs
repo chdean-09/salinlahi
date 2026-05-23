@@ -1,16 +1,20 @@
 using System.Collections.Generic;
 using UnityEngine;
+
 public class RecognitionManager : Singleton<RecognitionManager>
 {
     [Header("Configuration")]
     [SerializeField] private RecognitionConfigSO _config;
+
     private DollarPRecognizer _recognizer;
+
     protected override void Awake()
     {
         base.Awake();
         _recognizer = new DollarPRecognizer(_config.resamplePointCount);
         LoadTemplates();
     }
+
     private void LoadTemplates()
     {
         var loader = new TemplateLoader();
@@ -63,6 +67,7 @@ public class RecognitionManager : Singleton<RecognitionManager>
             EventBus.RaiseDrawingFailed();
             return;
         }
+
         RecognitionResult result = _recognizer.Recognize(strokes);
         DebugLogger.Log(
             $"Recognized: {result.characterID} "

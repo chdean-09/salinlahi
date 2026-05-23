@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RecognitionConfigSO
   resamplePointCount: 32
   minimumConfidence: 0.6
-  multiStrokeWindowSeconds: 1.5
+  multiStrokeWindowSeconds: 0.6
   minimumPointCount: 8

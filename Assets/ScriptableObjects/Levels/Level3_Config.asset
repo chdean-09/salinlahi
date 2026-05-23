@@ -14,6 +14,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Salinlahi.Runtime::LevelConfigSO
   levelName: Level 3
   levelNumber: 3
-  waves: []
-  allowedCharacters: []
+  chapterNumber: 1
+  chapterName: Chapter 1
+  eraTheme: {fileID: 11400000, guid: 80a50c4bceb3cc946a8586e47777bb12, type: 2}
+  waves:
+  - {fileID: 11400000, guid: bcbd85a71e74347c88a0ff62e32c719e, type: 2}
+  - {fileID: 11400000, guid: e4a6ca0f3271e43fd92ccd659e4bbe9d, type: 2}
+  - {fileID: 11400000, guid: 5e47926cdafff4eb7acae35150eea7ed, type: 2}
+  - {fileID: 11400000, guid: c538b3cffc977482d8eebb07b071bfbd, type: 2}
+  allowedCharacters:
+  - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+  - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+  - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
+  bossConfig: {fileID: 0}
   isAvailableInLite: 0

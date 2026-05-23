@@ -1,7 +1,7 @@
 # 06 — UI/UX and Player Flow
 **Project:** Salinlahi
-**Version:** 1.2
-**Date:** 2026-03-25
+**Version:** 1.5
+**Date:** 2026-05-24
 **Owner:** Jeff Andre Millan (UI/UX Developer)
 
 ---
@@ -16,8 +16,9 @@
 | Gameplay HUD | `Gameplay.unity` | `HUD.cs` | Implemented |
 | Pause Menu | (overlay) | `PauseMenuUI.cs` | Implemented |
 | Level Complete | (overlay or separate scene) | `VictoryScreenUI.cs` | Implemented |
-| Game Over | `GameOver.unity` | `GameOverUI.cs` / `DefeatScreenUI.cs` | Partial (stub) |
-| Tracing Dojo | (overlay in Gameplay) | (PLANNED — folder exists) | PLANNED |
+| Game Over | `GameOver.unity` | `GameOverUI.cs` / `DefeatScreenUI.cs` | Deprecated — replaced by `DefeatScreenUI` overlay in Gameplay scene (SALIN-58) |
+| Tracing Dojo | `TracingDojo.unity` | `TracingDojoController.cs` (+ `CharacterDropdown`, `CharacterListPopulator`, `CharacterListRow`, `DojoNavigator`, `FeedbackToast`, `GhostStrokeRenderer`) | Implemented |
+| Create Baybayin Template (editor-only) | `CreateBaybayinTemplate.unity` | — | Editor tooling |
 | Settings | (overlay) | `SettingsPanel.cs` | Implemented |
 | Credits | (overlay) | `CreditsPanel.cs` | Implemented |
 | Dialogue Panel (Type A) | (overlay in Gameplay) | `DialogueController.cs` | Implemented |
@@ -25,7 +26,9 @@
 | Endless Mode | (shares Gameplay scene) | (PLANNED) | PLANNED |
 | SUS/GEQ-S Questionnaire | (overlay or separate scene) | `QuestionnaireController.cs` (PLANNED) | PLANNED |
 
-[EVIDENCE: Assets/_Scenes/ — only Bootstrap, MainMenu, Gameplay, GameOver scenes exist]
+[EVIDENCE: Assets/_Scenes/ — Bootstrap, MainMenu, LevelSelect, TracingDojo, Gameplay, GameOver, CreateBaybayinTemplate scenes confirmed]
+[EVIDENCE: Assets/Scripts/UI/TracingDojo/ — TracingDojoController.cs and supporting scripts]
+[EVIDENCE: Assets/Scripts/UI/DefeatScreenUI.cs; Assets/Scripts/Core/SceneLoader.cs — `LoadGameOver()` marked `[System.Obsolete]`]
 [EVIDENCE: docs/capstone/GDD.md, §5.1 Player Journey]
 
 ---
@@ -36,7 +39,7 @@
 App Launch
   └─ Bootstrap (invisible)
         └─ Auto → Main Menu
-              ├─ [Play] → Level Select (PLANNED)
+              ├─ [Play] → Level Select
               │     └─ [Select Level] → Gameplay Scene
               │           ├─ Type A Intro Dialogue (if configured) → draws from DialogueSequence SO
               │           ├─ Waves begin after dialogue ends
@@ -46,11 +49,11 @@ App Launch
               │           ├─ Win → Level Complete (PLANNED)
               │           │     └─ [Next Level] → Gameplay (next level)
               │           │     └─ [Menu] → Main Menu
-              │           └─ Lose → Game Over Scene
+              │           └─ Lose → Defeat Overlay (in Gameplay) — `DefeatScreenUI`
               │                 ├─ [Retry] → Gameplay (same level)
               │                 └─ [Menu] → Main Menu
               ├─ [Endless Mode] → Gameplay Scene (endless config) (PLANNED)
-              ├─ [Tracing Dojo] → Tracing Dojo Scene (PLANNED)
+              ├─ [Tracing Dojo] → Tracing Dojo Scene (Implemented)
               └─ [Settings] → Settings Screen (PLANNED)
 ```
 
@@ -98,21 +101,46 @@ The HUD is implemented in `Assets/Scripts/UI/HUD.cs`. Elements below reflect cur
 [EVIDENCE: docs/capstone/GDD.md, §2.2 Controls Summary; §5.4 Accessibility]
 [EVIDENCE: docs/capstone/TDD.md, §7.4 — HUD.cs]
 
+### 4.1 Boss HUD Elements
+
+The Gameplay scene wires three boss-only UI elements alongside the regular HUD. Each is a separate `MonoBehaviour` on the gameplay Canvas and is active only during a boss encounter.
+
+| UI Element | Script | Behavior |
+|------------|--------|----------|
+| Boss health bar | `Assets/Scripts/UI/BossHealthBar.cs` | Filled Image type. Fills at `HPRemaining / phases.Count` and tweens via `Mathf.Lerp` on `OnBossDamaged`. Subscribes to `OnBossStarted` (acquires `GameManager.CurrentBoss`), `OnBossDamaged`, `OnBossDefeated`. Follows the boss world-space position with `_bossWorldOffset` via `WorldToScreenPoint` then `ScreenPointToWorldPointInRectangle`. Fades via unscaled time. |
+| Boss glyph queue | `Assets/Scripts/UI/BossGlyphQueueUI.cs` | Shows one Baybayin icon plus an `X / N` progress counter above the boss during the Vulnerable window. Subscribes to `OnBossStarted`, `OnBossVulnerabilityWindowActive` (shown only after the collapse animation finishes, so the icon never displays a stale glyph mid-collapse), `OnBossDamaged`, `OnBossVulnerabilityExpired`, `OnBossDefeated`, `OnDrawingFailed` (red flash on wrong glyph). Listens to `BossController.OnDrawnThisPhaseChanged` to refresh the counter and the next expected glyph. Replaces the legacy `BossLabelIconRow`. |
+| Boss vulnerability timer | `Assets/Scripts/UI/BossVulnerabilityTimerBar.cs` | Countdown bar under the boss that drains during the Vulnerable window. Driven by `OnBossVulnerabilityWindowActive` (countdown starts after collapse finishes so the on-screen time matches the actual targetable window) / `OnBossVulnerabilityExpired` / `OnBossDamaged`. |
+
+[EVIDENCE: Assets/Scripts/UI/BossHealthBar.cs]
+[EVIDENCE: Assets/Scripts/UI/BossGlyphQueueUI.cs]
+[EVIDENCE: Assets/Scripts/UI/BossVulnerabilityTimerBar.cs]
+[EVIDENCE: Assets/Scripts/Gameplay/Boss/BossController.cs — `OnDrawnThisPhaseChanged`]
+
+### 4.2 PlayAreaContainer / AspectLockedCamera
+
+The Gameplay HUD now lives under a `PlayAreaContainer` RectTransform that sizes itself to `AspectLockedCamera.PlayColumnScreenRect`. This keeps HUD corner anchors pinned to the 9:16 play column on tablets and ultra-wide phones, instead of the device viewport. `PlayAreaContainer` subscribes to `AspectLockedCamera.OnPlayAreaChanged` to re-anchor whenever the device aspect changes (e.g., editor Game-view aspect switch).
+
+[EVIDENCE: Assets/Scripts/UI/PlayAreaContainer.cs]
+[EVIDENCE: Assets/Scripts/Gameplay/Camera/AspectLockedCamera.cs — `PlayColumnScreenRect`, `OnPlayAreaChanged`]
+
 ---
 
-## 5. Game Over Screen — `GameOverUI.cs`
+## 5. Defeat Screen — `DefeatScreenUI.cs`
 
 ### 5.1 Implemented Behavior
-`GameOverUI` contains wired button handlers. Implementation is a stub with button calls to `SceneLoader.Instance.LoadGameplay()` (Retry) and `SceneLoader.Instance.LoadMainMenu()` (Menu).
 
-[EVIDENCE: Assets/Scripts/UI/GameOverUI.cs]
+The standalone `GameOver` scene is **deprecated**. The current defeat flow runs entirely inside the Gameplay scene via `DefeatScreenUI`, a `CanvasGroup` overlay. `GameManager.HandleGameOver` no longer calls `SceneLoader.LoadGameOver` (the loader method itself is marked `[System.Obsolete]`); it instead snapshots `GameManager.LastDefeatHearts` (the hearts count at the moment of defeat, which the overlay reads to render its summary) and toggles the overlay's `CanvasGroup`.
+
+[EVIDENCE: Assets/Scripts/UI/DefeatScreenUI.cs]
+[EVIDENCE: Assets/Scripts/Core/GameManager.cs — `HandleGameOver`, `LastDefeatHearts`]
+[EVIDENCE: Assets/Scripts/Core/SceneLoader.cs — `LoadGameOver()` carries `[System.Obsolete]`]
 
 ### 5.2 Required Content (from GDD — partially not implemented)
 
 | Element | Description | Status |
 |---------|-------------|--------|
-| Final stats display | Waves survived, enemies defeated, accuracy % | NOT FOUND |
-| Retry button | Reloads current level gameplay scene | Implemented (LoadGameplay stub) |
+| Final stats display | Waves survived, enemies defeated, accuracy % | Partial (`LastDefeatHearts` snapshot wired; full stats NOT FOUND) |
+| Retry button | Reloads current level gameplay scene | Implemented (overlay calls `SceneLoader.LoadGameplay`) |
 | Return to Level Select | Returns to level select | Partial (returns to MainMenu currently) |
 
 [EVIDENCE: docs/capstone/GDD.md, §5.1 — "Game Over: Shows final stats. Retry button. Return to Level Select button."]
@@ -165,17 +193,21 @@ No scene or script for Level Complete currently exists. Required content per GDD
 
 ---
 
-## 7. Tracing Dojo (PLANNED)
+## 7. Tracing Dojo — Implemented
 
-No scene or script currently exists. Required behavior per GDD:
+Scene: `Assets/_Scenes/TracingDojo.unity`. Script suite: `Assets/Scripts/UI/TracingDojo/` (`TracingDojoController.cs`, `CharacterDropdown.cs`, `CharacterListPopulator.cs`, `CharacterListRow.cs`, `DojoNavigator.cs`, `FeedbackToast.cs`, `GhostStrokeRenderer.cs`).
+
+User-facing behavior per GDD:
 
 - Accessible from Main Menu at any time.
 - Shows all 17 Baybayin characters in a practice grid.
 - Player can select any character and trace it freely.
 - No enemies, no timer, no penalty for incorrect strokes.
-- Provides visual guide overlay for each character's expected shape.
-- Runs recognition system in passive mode to show confidence score as visual feedback.
+- Provides visual guide overlay for each character's expected shape (`GhostStrokeRenderer`).
+- Runs recognition system in passive mode to show confidence score as visual feedback (`FeedbackToast`).
 
+[EVIDENCE: Assets/_Scenes/TracingDojo.unity]
+[EVIDENCE: Assets/Scripts/UI/TracingDojo/TracingDojoController.cs and supporting scripts]
 [EVIDENCE: docs/capstone/GDD.md, §2.4 Game Modes — "Tracing Dojo (Tutorial)"]
 
 ---
@@ -187,7 +219,7 @@ No scene or script currently exists. Required behavior per GDD:
 | Full-screen drawing area — no precision targeting required | Drawing canvas = entire screen | GDD §5.4 |
 | Audio pronunciation on every correct defeat | `AudioManager.PlayPronunciationClip()` | GDD §5.4; AudioManager.cs |
 | Visual rejection feedback (red flash + X mark) on failed stroke | `HUD.cs` | GDD §5.4 |
-| Tracing Dojo zero-pressure practice space | Tracing Dojo scene (PLANNED) | GDD §5.4 |
+| Tracing Dojo zero-pressure practice space | `TracingDojo.unity` (Implemented) | GDD §5.4 |
 | Portrait-mode one-handed play design | Unity Player Settings: portrait lock | GDD §5.4 |
 | No text-heavy tutorials — first level teaches via play | Level 1 design constraint | GDD §5.4 |
 

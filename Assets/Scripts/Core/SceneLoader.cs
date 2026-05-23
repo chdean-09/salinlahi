@@ -288,7 +288,7 @@ public class SceneLoader : Singleton<SceneLoader>
 
         var canvas = go.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 999; // Render above all gameplay UI.
+        canvas.sortingOrder = RenderOrder.LoadingCanvas; // Render above all gameplay UI.
 
         go.AddComponent<CanvasScaler>();
         // GraphicRaycaster intentionally omitted — the stub must not eat input.

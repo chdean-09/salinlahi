@@ -99,6 +99,17 @@ public class WaveManager : MonoBehaviour
     public void StartLevel(LevelConfigSO levelConfigSO)
     {
         _levelConfig = levelConfigSO;
+
+        // BossController and BossSummonTicker sample allowed characters from
+        // GameManager.CurrentLevel. Keep it in sync so boss encounters started
+        // by passing a LevelConfigSO directly here can resolve glyphs.
+        if (levelConfigSO != null
+            && GameManager.Instance != null
+            && GameManager.Instance.CurrentLevel != levelConfigSO)
+        {
+            GameManager.Instance.SetLevel(levelConfigSO);
+        }
+
         StartLevel();
     }
 
@@ -313,7 +324,7 @@ public class WaveManager : MonoBehaviour
             yield break;
         }
 
-        if (_levelConfig.isBossLevel && _levelConfig.bossConfig != null)
+        if (_levelConfig.bossConfig != null)
         {
             yield return StartCoroutine(RunBossEncounter(_levelConfig.bossConfig));
             yield break;
@@ -404,48 +415,40 @@ public class WaveManager : MonoBehaviour
 
     private IEnumerator RunBossEncounter(BossConfigSO bossConfig)
     {
-        if (bossConfig.bossEnemyData == null)
+        if (bossConfig.bossEnemyData == null
+            || bossConfig.phases == null
+            || bossConfig.phases.Count == 0)
         {
-            DebugLogger.LogError("WaveManager: BossConfig has no bossEnemyData assigned. Aborting boss encounter.");
+            DebugLogger.LogError("WaveManager: BossConfig is incomplete (missing bossEnemyData or phases). Aborting boss encounter.");
             AbortRun();
             yield break;
         }
 
-        if (_levelConfig.allowedCharacters == null || _levelConfig.allowedCharacters.Count == 0)
-        {
-            DebugLogger.LogError("WaveManager: Boss level has no allowedCharacters. Aborting boss encounter.");
-            AbortRun();
-            yield break;
-        }
-
-        EventBus.RaiseWaveStarted(0);
-        yield return new WaitForSeconds(1f);
-
-        BaybayinCharacterSO character = _levelConfig.allowedCharacters[
-            Random.Range(0, _levelConfig.allowedCharacters.Count)];
-        Enemy bossEnemy = _spawner.SpawnEnemy(bossConfig.bossEnemyData, character);
-
+        // Spawn the boss as a regular Enemy. No character assigned —
+        // BossController.TryRouteDraw replaces character matching.
+        // Boss spawns at the horizontal center of the spawn bounds rather
+        // than a random X, so it visually anchors the encounter.
+        Enemy bossEnemy = _spawner.SpawnBossEnemy(bossConfig.bossEnemyData);
         if (bossEnemy == null)
         {
-            DebugLogger.LogError("WaveManager: Failed to spawn boss enemy. Aborting boss encounter.");
+            DebugLogger.LogError("WaveManager: Failed to spawn boss. Aborting boss encounter.");
             AbortRun();
             yield break;
         }
 
-        yield return new WaitUntil(() =>
+        BossController boss = bossEnemy.GetComponent<BossController>();
+        if (boss == null)
         {
-            if (!CanContinueRun())
-                return true;
+            DebugLogger.LogError("WaveManager: Boss prefab is missing BossController. Aborting boss encounter.");
+            AbortRun();
+            yield break;
+        }
 
-            ActiveEnemyTracker tracker = ActiveEnemyTracker.Instance;
-            if (tracker == null)
-            {
-                DebugLogger.LogError("WaveManager: ActiveEnemyTracker.Instance is null during boss encounter.");
-                return true;
-            }
+        boss.StartBoss(bossConfig, _spawner);
 
-            return tracker.IsClear;
-        });
+        // Wait for the boss to be defeated (Outro complete) — boss raises
+        // OnLevelComplete itself.
+        yield return new WaitUntil(() => !CanContinueRun() || boss.IsDefeated);
 
         if (!CanContinueRun())
         {
@@ -453,9 +456,10 @@ public class WaveManager : MonoBehaviour
             yield break;
         }
 
-        EventBus.RaiseBossDefeated();
-        EventBus.RaiseWaveCleared(0);
-        CompleteRun();
+        // BossController is the source of OnLevelComplete during boss
+        // encounters. CompleteRun is intentionally NOT called here.
+        _running = false;
+        _waveRoutine = null;
     }
 
     private int ResolveResumeWaveIndex(

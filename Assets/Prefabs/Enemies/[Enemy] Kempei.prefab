@@ -107,10 +107,40 @@ BoxCollider2D:
   serializedVersion: 3
   m_Density: 1
   m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
   m_IsTrigger: 1
   m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
-  m_Size: {x: 16, y: 16}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0.5, y: 0.5}
+    oldSize: {x: 5.3333335, y: 5.3333335}
+    newSize: {x: 32, y: 32}
+    adaptiveTilingThreshold: 0.5
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Size: {x: 5.3333335, y: 5.3333335}
   m_EdgeRadius: 0
 --- !u!114 &2027983948284982860
 MonoBehaviour:
@@ -140,6 +170,13 @@ MonoBehaviour:
   _useShieldBreakColorFeedback: 0
   _shieldIntactColor: {r: 0, g: 0.75, b: 0.65, a: 1}
   _shieldBrokenColor: {r: 0.55, g: 0.55, b: 0.55, a: 1}
+  _showDebugLabels: 1
+  _labelBaseWorldOffset: {x: 0, y: -1.4, z: -0.1}
+  _labelLineSpacingWorld: 0.45
+  _labelWorldScale: 0.22
+  _labelFontSize: 10
+  _labelColor: {r: 1, g: 1, b: 1, a: 1}
+  _walkAnimationFps: 8
 --- !u!114 &5174125012564421174
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -168,6 +205,13 @@ Rigidbody2D:
   m_LinearDamping: 0
   m_AngularDamping: 0.05
   m_GravityScale: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
   m_Interpolate: 0
   m_SleepingMode: 1
   m_CollisionDetection: 0

@@ -23,6 +23,26 @@ public class ActiveEnemyTracker : Singleton<ActiveEnemyTracker>
 
     public bool IsClear => ActiveCount == 0;
 
+    // True if any non-boss enemy is alive on screen. Boss encounters use this
+    // to gate the AdsAlive -> Vulnerable transition: the boss itself registers
+    // in _activeEnemies, so plain IsClear would never resolve while the boss
+    // is alive.
+    public bool HasActiveNonBossEnemies
+    {
+        get
+        {
+            CleanupStaleEntries();
+            for (int i = 0; i < _activeEnemies.Count; i++)
+            {
+                Enemy e = _activeEnemies[i];
+                if (e == null) continue;
+                if (e.IsBoss) continue;
+                return true;
+            }
+            return false;
+        }
+    }
+
     public void Register(Enemy enemy)
     {
         if (enemy == null)
@@ -69,6 +89,8 @@ public class ActiveEnemyTracker : Singleton<ActiveEnemyTracker>
         for (int i = 0; i < _activeEnemies.Count; i++)
         {
             Enemy e = _activeEnemies[i];
+            if (e.IsBoss) continue;
+            if (e.IsDying) continue;
             if (e.Character == null) continue;
             if (e.Character.characterID != characterID) continue;
 

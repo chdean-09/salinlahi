@@ -10,6 +10,9 @@ public class LevelConfigSO : ScriptableObject
     public int chapterNumber = 1;
     public string chapterName = "Chapter 1";
 
+    [Tooltip("Visual theme for this level's era (background, decorations, etc.)")]
+    public EraThemeSO eraTheme;
+
     [Header("Waves")]
     [Tooltip("Waves played in order from index 0")]
     public List<WaveConfigSO> waves;
@@ -19,10 +22,7 @@ public class LevelConfigSO : ScriptableObject
     public List<BaybayinCharacterSO> allowedCharacters;
 
     [Header("Boss")]
-    [Tooltip("True if this level is a boss encounter")]
-    public bool isBossLevel;
-
-    [Tooltip("Boss configuration (only used if isBossLevel is true)")]
+    [Tooltip("If set, this level is a boss encounter. Waves list is ignored.")]
     public BossConfigSO bossConfig;
 
     [Header("Build Flags")]

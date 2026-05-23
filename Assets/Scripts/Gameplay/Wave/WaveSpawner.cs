@@ -11,6 +11,9 @@ public class WaveSpawner : MonoBehaviour
     [Tooltip("Top-of-screen positions where enemies appear. Add 3-5 evenly spaced.")]
     [SerializeField] private Transform[] _spawnPoints;
 
+    [Tooltip("Where the boss appears at encounter start. Y is used instead of the enemy spawn-point Y so the boss enters within the visible play area even when enemy spawn points are above the screen.")]
+    [SerializeField] private Transform _bossSpawnPoint;
+
     [Header("Fallback")]
     [Tooltip("Used when a wave spawn chooses no valid enemy type.")]
     [SerializeField] private EnemyDataSO _fallbackEnemyData;
@@ -26,7 +29,7 @@ public class WaveSpawner : MonoBehaviour
 
     // Spawn points define horizontal bounds (left/right edges).
     // X position is randomized between bounds for natural spawn spread.
-    public Enemy SpawnEnemy(EnemyDataSO data)
+    public virtual Enemy SpawnEnemy(EnemyDataSO data)
     {
         EnemyDataSO finalData = ResolveEnemyData(data);
         if (finalData == null)
@@ -66,6 +69,26 @@ public class WaveSpawner : MonoBehaviour
         return enemy;
     }
 
+    // Boss-specific entry point: spawns the enemy at the horizontal center
+    // of the spawn bounds rather than a random X. Uses _bossSpawnPoint.y
+    // when assigned so the boss appears within the visible play area even
+    // when enemy _spawnPoints are positioned above the screen.
+    public Enemy SpawnBossEnemy(EnemyDataSO data)
+    {
+        Enemy enemy = SpawnEnemy(data);
+        if (enemy == null)
+            return null;
+
+        if (TryGetSpawnBounds(out float minX, out float maxX, out float spawnY))
+        {
+            float centerX = (minX + maxX) * 0.5f;
+            float bossY = _bossSpawnPoint != null ? _bossSpawnPoint.position.y : spawnY;
+            enemy.transform.position = new Vector3(centerX, bossY, 0f);
+        }
+
+        return enemy;
+    }
+
     public Enemy RestoreEnemy(
         EnemyDataSO data,
         BaybayinCharacterSO character,
@@ -96,7 +119,7 @@ public class WaveSpawner : MonoBehaviour
         return enemy;
     }
 
-    public IEnumerator SpawnWave(WaveConfigSO wave, Action onEnemySpawned = null, int spawnOffset = 0)
+    public virtual IEnumerator SpawnWave(WaveConfigSO wave, Action onEnemySpawned = null, int spawnOffset = 0)
     {
         if (wave == null)
         {

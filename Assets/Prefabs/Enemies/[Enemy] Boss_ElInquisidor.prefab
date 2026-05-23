@@ -12,11 +12,15 @@ GameObject:
   - component: {fileID: 6330742590155926061}
   - component: {fileID: 7795591901418362833}
   - component: {fileID: 2027983948284982860}
-  - component: {fileID: 8037671833055544141}
   - component: {fileID: 3113497809838385314}
-  - component: {fileID: -1320151050535009636}
+  - component: {fileID: 8774765201253825161}
+  - component: {fileID: 8020330976364606304}
+  - component: {fileID: 7415927956708679269}
+  - component: {fileID: -2374455997103774434}
+  - component: {fileID: 1096354656556004451}
+  - component: {fileID: 605744564620617401}
   m_Layer: 0
-  m_Name: '[Enemy] Shielded'
+  m_Name: '[Enemy] Boss_ElInquisidor'
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -32,7 +36,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0.45937, y: 0.00113, z: 0}
-  m_LocalScale: {x: 0.3, y: 0.3, z: 1}
+  m_LocalScale: {x: 0.5, y: 0.5, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -84,14 +88,14 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 10
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 61e33c4f45e289b43ab91edaa12c018b, type: 3}
-  m_Color: {r: 0, g: 0.75, b: 0.65, a: 1}
+  m_Sprite: {fileID: 95172164111334305, guid: f6ede119ad3b6824b9652c0513057a7c, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
-  m_Size: {x: 16, y: 16}
+  m_Size: {x: 9.666667, y: 8.5}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
@@ -134,13 +138,13 @@ BoxCollider2D:
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 8, y: 8}
-    newSize: {x: 16, y: 16}
+    oldSize: {x: 10.666667, y: 10.666667}
+    newSize: {x: 9.666667, y: 8.5}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 16, y: 16}
+  m_Size: {x: 10.666667, y: 10.666667}
   m_EdgeRadius: 0
 --- !u!114 &2027983948284982860
 MonoBehaviour:
@@ -154,29 +158,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 795b7b37de9034945b4400c16ad9ae5d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyMover
---- !u!114 &8037671833055544141
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8620596032087142478}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 45d81e901f41e1143b40ce8ebed1aa3c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Enemy
-  _data: {fileID: 11400000, guid: ccb4c198251c34717b8afd6455611e3a, type: 2}
-  _useShieldBreakColorFeedback: 1
-  _shieldIntactColor: {r: 0, g: 0.75, b: 0.65, a: 1}
-  _shieldBrokenColor: {r: 0.55, g: 0.55, b: 0.55, a: 1}
-  _showDebugLabels: 1
-  _labelBaseWorldOffset: {x: 0, y: -1.4, z: -0.1}
-  _labelLineSpacingWorld: 0.45
-  _labelWorldScale: 0.22
-  _labelFontSize: 10
-  _labelColor: {r: 1, g: 1, b: 1, a: 1}
-  _walkAnimationFps: 8
 --- !u!50 &3113497809838385314
 Rigidbody2D:
   serializedVersion: 5
@@ -204,7 +185,7 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 0
---- !u!114 &-1320151050535009636
+--- !u!114 &8774765201253825161
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -213,6 +194,97 @@ MonoBehaviour:
   m_GameObject: {fileID: 8620596032087142478}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 719ec8fed91aaf248bafa2f655012d40, type: 3}
+  m_Script: {fileID: 11500000, guid: b02c42ec928bde741b41a1e33d3978d1, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Salinlahi.Runtime::EnemyHurtFeedback
+  m_EditorClassIdentifier: Salinlahi.Runtime::BossEnemy
+  _data: {fileID: 11400000, guid: aa843150d07c87f439e39501b863853c, type: 2}
+  _useShieldBreakColorFeedback: 0
+  _shieldIntactColor: {r: 0, g: 0.75, b: 0.65, a: 1}
+  _shieldBrokenColor: {r: 0.55, g: 0.55, b: 0.55, a: 1}
+  _showDebugLabels: 1
+  _labelBaseWorldOffset: {x: 0, y: -1.4, z: -0.1}
+  _labelLineSpacingWorld: 0.45
+  _labelWorldScale: 0.22
+  _labelFontSize: 10
+  _labelColor: {r: 1, g: 1, b: 1, a: 1}
+  _walkAnimationFps: 8
+--- !u!114 &8020330976364606304
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8620596032087142478}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0d07b741ee22f7546952a85722ce3f10, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Salinlahi.Runtime::BossController
+--- !u!114 &7415927956708679269
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8620596032087142478}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0ae7f83aa31ed94ea55f5e9b62104d1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Salinlahi.Runtime::PhaseBasedMovement
+--- !u!114 &-2374455997103774434
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8620596032087142478}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 15da641430b56ca46afed78a1fc8fe85, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Salinlahi.Runtime::BossDamageFeedback
+  _flashColor: {r: 1, g: 1, b: 1, a: 1}
+  _shakeDuration: 0.2
+  _shakeFrequency: 20
+  _shakeMagnitude: 0.1
+  _healthyColor: {r: 1, g: 1, b: 1, a: 1}
+  _criticalColor: {r: 0.1978462, g: 0.5156872, b: 0.8066038, a: 1}
+--- !u!114 &1096354656556004451
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8620596032087142478}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0bf28d60ed55d97449aac5eea6e1ef37, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Salinlahi.Runtime::BossSummonTicker
+  _summonFrames:
+  - {fileID: -6719877106280894156, guid: f5e3baeb6ac82454599eb01b299d517e, type: 3}
+  - {fileID: -5344868401632300688, guid: f5e3baeb6ac82454599eb01b299d517e, type: 3}
+  _summonAnimationFps: 8
+  _holdLastFrameDuration: 0.3
+--- !u!114 &605744564620617401
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8620596032087142478}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b2b892afb159679469bd45017044aa8a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Salinlahi.Runtime::BossStateVisuals
+  _bobAmplitude: 0.05
+  _bobHalfAmplitudeVulnerable: 0.025
+  _bobFrequency: 1.5
+  _pantingTintLerp: 0.4
+  _collapseDuration: 0.25
+  _collapseYScale: 0.85
+  _collapseYOffset: -0.1
+  _collapseFlashDuration: 0.1
+  _standUpDuration: 0.3

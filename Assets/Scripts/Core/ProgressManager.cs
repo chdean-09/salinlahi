@@ -252,6 +252,9 @@ public class ProgressManager : Singleton<ProgressManager>
             return false;
         }
 
+        // TEMP: all levels unlocked for boss testing
+        return true;
+
         // Level 1 is always unlocked by default
         if (levelID == 1)
         {

@@ -12,8 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 98c3e4f7bd9686740a8cd775acf3cbef, type: 3}
   m_Name: Level5_Config
   m_EditorClassIdentifier: Salinlahi.Runtime::LevelConfigSO
-  levelName: Level 5
+  levelName: El Inquisidor
   levelNumber: 5
+  chapterNumber: 1
+  chapterName: Chapter 1
   waves: []
-  allowedCharacters: []
+  allowedCharacters:
+  - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+  - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
+  - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+  bossConfig: {fileID: 11400000, guid: 4b8095123334d644cafc8dbd8086b5e3, type: 2}
   isAvailableInLite: 0

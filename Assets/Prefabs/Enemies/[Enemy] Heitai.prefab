@@ -48,6 +48,54 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6330742590155926061, guid: 7d0626488d0ea194db35b08de3fba50b, type: 3}
+      propertyPath: m_Size.x
+      value: 3.1666667
+      objectReference: {fileID: 0}
+    - target: {fileID: 6330742590155926061, guid: 7d0626488d0ea194db35b08de3fba50b, type: 3}
+      propertyPath: m_Size.y
+      value: 5.3333335
+      objectReference: {fileID: 0}
+    - target: {fileID: 6330742590155926061, guid: 7d0626488d0ea194db35b08de3fba50b, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 1786547280311139245, guid: 66d9c2ad9e334cd41afe36756ce2c384, type: 3}
+    - target: {fileID: 6330742590155926061, guid: 7d0626488d0ea194db35b08de3fba50b, type: 3}
+      propertyPath: m_Color.b
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6330742590155926061, guid: 7d0626488d0ea194db35b08de3fba50b, type: 3}
+      propertyPath: m_Color.g
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6330742590155926061, guid: 7d0626488d0ea194db35b08de3fba50b, type: 3}
+      propertyPath: m_Color.r
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6330742590155926061, guid: 7d0626488d0ea194db35b08de3fba50b, type: 3}
+      propertyPath: m_WasSpriteAssigned
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7795591901418362833, guid: 7d0626488d0ea194db35b08de3fba50b, type: 3}
+      propertyPath: m_Size.x
+      value: 3.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 7795591901418362833, guid: 7d0626488d0ea194db35b08de3fba50b, type: 3}
+      propertyPath: m_SpriteTilingProperty.newSize.x
+      value: 3.1666667
+      objectReference: {fileID: 0}
+    - target: {fileID: 7795591901418362833, guid: 7d0626488d0ea194db35b08de3fba50b, type: 3}
+      propertyPath: m_SpriteTilingProperty.newSize.y
+      value: 5.3333335
+      objectReference: {fileID: 0}
+    - target: {fileID: 7795591901418362833, guid: 7d0626488d0ea194db35b08de3fba50b, type: 3}
+      propertyPath: m_SpriteTilingProperty.oldSize.x
+      value: 3.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 7795591901418362833, guid: 7d0626488d0ea194db35b08de3fba50b, type: 3}
+      propertyPath: m_SpriteTilingProperty.oldSize.y
+      value: 5.3333335
+      objectReference: {fileID: 0}
     - target: {fileID: 8620596032087142478, guid: 7d0626488d0ea194db35b08de3fba50b, type: 3}
       propertyPath: m_Name
       value: '[Enemy] Heitai'

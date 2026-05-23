@@ -7,6 +7,8 @@ public class WaveConfigSO : ScriptableObject
     [Header("Identity")]
     public string waveID;
     public int waveNumber;
+    [Tooltip("Set true for boss intermission waves — skips waveID/waveNumber validation.")]
+    public bool isIntermissionWave;
 
     [Header("Spawn Settings")]
     [Tooltip("Baybayin characters that can appear in this wave")]
@@ -27,11 +29,14 @@ public class WaveConfigSO : ScriptableObject
 #if UNITY_EDITOR
     private void OnValidate()
     {
-        if (string.IsNullOrWhiteSpace(waveID))
-            Debug.LogError($"WaveConfigSO '{name}' is missing waveID.", this);
+        if (!isIntermissionWave)
+        {
+            if (string.IsNullOrWhiteSpace(waveID))
+                Debug.LogError($"WaveConfigSO '{name}' is missing waveID.", this);
 
-        if (waveNumber <= 0)
-            Debug.LogError($"WaveConfigSO '{name}' has invalid waveNumber {waveNumber}.", this);
+            if (waveNumber <= 0)
+                Debug.LogError($"WaveConfigSO '{name}' has invalid waveNumber {waveNumber}.", this);
+        }
 
         if (enemyCount < 0)
             Debug.LogError($"WaveConfigSO '{name}' has enemyCount < 0.", this);
