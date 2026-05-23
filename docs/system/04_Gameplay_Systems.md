@@ -1,7 +1,7 @@
 # 04 — Gameplay Systems
 **Project:** Salinlahi
-**Version:** 1.4
-**Date:** 2026-05-23
+**Version:** 1.5
+**Date:** 2026-05-24
 **Owner:** Gameplay Developer (Jon Wayne Cabusbusan / Chad Andrada)
 
 ---
@@ -293,7 +293,7 @@ During `Vulnerable`, the controller samples a random glyph from `LevelConfigSO.a
 | `BossController.TryRouteDraw(characterID)` result | Meaning |
 |------|---------|
 | `BossRouteResult.NotRouted` | Boss not targetable; caller (`CombatResolver`) falls through to AOE/closest-match |
-| `BossRouteResult.Hit` | Correct glyph during `Vulnerable`; advances queue, samples next expected glyph |
+| `BossRouteResult.Hit` | Correct glyph during `Vulnerable`; advances queue, samples next expected glyph. **Ordering invariant:** the controller samples the next glyph BEFORE raising `OnDrawnThisPhaseChanged`, so subscribers reading `CurrentExpectedCharacter` in the handler observe the newly sampled glyph (required by `BossGlyphQueueUI`). |
 | `BossRouteResult.WrongGlyph` | Incorrect glyph during `Vulnerable`; consumed (no fall-through), raises `OnDrawingFailed` |
 
 ### 8.5 Boss Spawn Integration

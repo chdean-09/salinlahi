@@ -162,6 +162,44 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 "After a correct draw, the next expected character must be sampled from the pool.");
         }
 
+        // ---- Test 4b — regression: UI must read the NEWLY sampled glyph ----
+        // Repro for the bug where TryRouteDraw fired OnDrawnThisPhaseChanged
+        // BEFORE sampling the next character, leaving the UI stuck on the
+        // just-matched glyph while the boss internally expected a different one.
+        [UnityTest]
+        public IEnumerator Vulnerable_AfterCorrectDraw_SubscriberSeesNewlySampledGlyph()
+        {
+            BaybayinCharacterSO ba = CreateChar("BA");
+            BaybayinCharacterSO ka = CreateChar("KA");
+            CreateLevelConfig(ba, ka); // Multi-character pool: new sample may differ.
+            BossConfigSO config = CreateConfig(introDuration: 0f, outroDuration: 0f, phases:
+                new List<BossPhase> { CreatePhase(requiredCount: 5, vulnerabilityTimer: 100f) });
+
+            (BossController boss, _) = CreateBossWithFakeSpawner();
+            boss.StartBoss(config, GetFakeSpawner());
+            yield return WaitUntilTargetable(boss, timeout: 2f);
+
+            string observedInsideHandler = null;
+            System.Action handler = () => observedInsideHandler = boss.CurrentExpectedCharacterID;
+            boss.OnDrawnThisPhaseChanged += handler;
+            try
+            {
+                string matched = boss.CurrentExpectedCharacterID;
+                Assert.AreEqual(BossRouteResult.Hit, boss.TryRouteDraw(matched));
+
+                Assert.IsNotNull(observedInsideHandler,
+                    "OnDrawnThisPhaseChanged must fire after a Hit.");
+                Assert.AreEqual(boss.CurrentExpectedCharacterID, observedInsideHandler,
+                    "Subscribers reading CurrentExpectedCharacter inside the event must "
+                    + "see the newly sampled glyph, not the one that was just matched. "
+                    + "If this fails the boss glyph UI will desync from the expected char.");
+            }
+            finally
+            {
+                boss.OnDrawnThisPhaseChanged -= handler;
+            }
+        }
+
         // ---- Test 5 — spec §11 ----
         [UnityTest]
         public IEnumerator SummoningPhase_TicksFireAtSummonIntervalCadence()

@@ -18,45 +18,45 @@ MonoBehaviour:
   bossEnemyData: {fileID: 11400000, guid: aa843150d07c87f439e39501b863853c, type: 2}
   phases:
   - summonDuration: 30
-    summonInterval: 5
-    summonBurstMin: 2
-    summonBurstMax: 3
+    summonInterval: 7
+    summonBurstMin: 1
+    summonBurstMax: 2
     summonEnemyTypes:
     - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
     summonSpawnRange: {x: 3, y: 1.5}
     requiredCharacterCount: 3
-    vulnerabilityTimer: 12
+    vulnerabilityTimer: 20
     movementPattern: 1
     movementSpeed: 1
     paceHalfRange: 2.5
     teleportHalfRange: {x: 2, y: 0}
-  - summonDuration: 20
-    summonInterval: 4
-    summonBurstMin: 2
-    summonBurstMax: 3
+  - summonDuration: 30
+    summonInterval: 2
+    summonBurstMin: 1
+    summonBurstMax: 2
     summonEnemyTypes:
     - {fileID: 11400000, guid: b1192b8ea41bc418cb84defa4321b63f, type: 2}
     summonSpawnRange: {x: 3, y: 1.5}
     requiredCharacterCount: 3
-    vulnerabilityTimer: 12
+    vulnerabilityTimer: 20
     movementPattern: 1
     movementSpeed: 1.3
     paceHalfRange: 2.5
     teleportHalfRange: {x: 2.5, y: 0}
   - summonDuration: 20
-    summonInterval: 3
-    summonBurstMin: 3
+    summonInterval: 4
+    summonBurstMin: 2
     summonBurstMax: 3
     summonEnemyTypes:
     - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
     - {fileID: 11400000, guid: b1192b8ea41bc418cb84defa4321b63f, type: 2}
     summonSpawnRange: {x: 3.5, y: 1}
     requiredCharacterCount: 4
-    vulnerabilityTimer: 15
+    vulnerabilityTimer: 25
     movementPattern: 2
     movementSpeed: 0
     paceHalfRange: 2
-    teleportHalfRange: {x: 2.5, y: 3}
+    teleportHalfRange: {x: 2.5, y: 2.5}
   fallbackEnemyTypes:
   - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
   summonHorizontalBounds: {x: -2, y: 2}

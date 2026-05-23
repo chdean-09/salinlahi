@@ -97,8 +97,10 @@ public class BossController : MonoBehaviour
         if (characterID == _currentExpectedCharacter.characterID)
         {
             _correctDrawsThisWindow++;
-            OnDrawnThisPhaseChanged?.Invoke();
+            // Sample before notifying: UI subscribers read CurrentExpectedCharacter
+            // in their handler and must see the next glyph, not the one just matched.
             SampleNextExpectedCharacter();
+            OnDrawnThisPhaseChanged?.Invoke();
             return BossRouteResult.Hit;
         }
 
