@@ -261,6 +261,16 @@ public class BossController : MonoBehaviour
     {
         _state = State.Outro;
         IsDefeated = true;
+
+        // Play the boss's death animation (if frames are configured on its
+        // EnemyDataSO) before the outro buffer. The normal Enemy.Defeat path
+        // is bypassed for the boss because BossEnemy.TakeDamage no-ops —
+        // damage is gated by BossController — so this is the only path that
+        // can drive the death frames for the boss.
+        BossEnemy bossEnemy = GetComponent<BossEnemy>();
+        if (bossEnemy != null)
+            yield return bossEnemy.PlayDeathAnimationFrames();
+
         yield return new WaitForSeconds(Mathf.Max(0f, Config.outroDuration));
 
         _state = State.Defeated;
@@ -268,7 +278,6 @@ public class BossController : MonoBehaviour
         EventBus.RaiseBossDefeated();
         EventBus.RaiseLevelComplete();
 
-        BossEnemy bossEnemy = GetComponent<BossEnemy>();
         if (bossEnemy != null)
             bossEnemy.ReturnToPool();
     }

@@ -32,6 +32,7 @@ public class Enemy : MonoBehaviour
     private EnemyMover _mover;
     private EnemyHurtFeedback _hurtFeedback;
     private PhaserEnemy _phaserEnemy;
+    private BossSummonTicker _summonTicker;
     // REWORK: SummonWaveOnPhaseStart removed — replaced by BossSummonTicker.
     private SpriteRenderer _renderer;
     private int _currentHealth;
@@ -92,11 +93,16 @@ public class Enemy : MonoBehaviour
         if (_mover != null) _mover.UpdateSpeedValue(EffectiveSpeed);
     }
 
-    private void Awake()
+    // protected virtual so subclasses (e.g., BossEnemy) can override and chain
+    // via base.Awake(). Unity's message dispatcher shadows a base private Awake
+    // when a subclass declares its own — making _summonTicker / _hurtFeedback
+    // silently null on the boss if base.Awake() isn't called.
+    protected virtual void Awake()
     {
         _mover = GetComponent<EnemyMover>();
         _hurtFeedback = GetComponent<EnemyHurtFeedback>();
         _phaserEnemy = GetComponent<PhaserEnemy>();
+        _summonTicker = GetComponent<BossSummonTicker>();
         _renderer = GetComponent<SpriteRenderer>();
 
         if (_renderer != null)
@@ -106,8 +112,14 @@ public class Enemy : MonoBehaviour
         RefreshDebugLabels();
     }
 
-    private void OnEnable()
+    protected virtual void OnEnable()
     {
+        // Reset on every pool reuse — a previous run as a boss summon may have
+        // bumped this above the boss layer. BossEnemy.OnEnable overrides this
+        // back to RenderOrder.Boss after calling base.
+        if (_renderer != null)
+            _renderer.sortingOrder = RenderOrder.EnemyDefault;
+
         RefreshDebugLabels();
         UpdateLabelLayout();
     }
@@ -359,29 +371,36 @@ public class Enemy : MonoBehaviour
 
     private IEnumerator PlayDeathAnimationThenReturn()
     {
-        Sprite[] frames = _data != null ? _data.deathFrames : null;
-        if (_renderer != null && frames != null && frames.Length > 0)
-        {
-            float fps = _data.deathAnimationFps > 0f
-                ? _data.deathAnimationFps
-                : _walkAnimationFps;
-            if (fps <= 0f) fps = 8f;
-            float frameDuration = 1f / fps;
-
-            for (int i = 0; i < frames.Length; i++)
-            {
-                if (frames[i] != null) _renderer.sprite = frames[i];
-                float elapsed = 0f;
-                while (elapsed < frameDuration)
-                {
-                    elapsed += Time.deltaTime;
-                    yield return null;
-                }
-            }
-        }
-
+        yield return PlayDeathAnimationFrames();
         _deathRoutine = null;
         ReturnToPool();
+    }
+
+    // Plays _data.deathFrames once on this enemy's SpriteRenderer. Used by the
+    // normal Defeat path AND by BossController.RunOutro (which manages the
+    // boss return-to-pool itself and just wants the visual played).
+    public IEnumerator PlayDeathAnimationFrames()
+    {
+        Sprite[] frames = _data != null ? _data.deathFrames : null;
+        if (_renderer == null || frames == null || frames.Length == 0)
+            yield break;
+
+        float fps = _data.deathAnimationFps > 0f
+            ? _data.deathAnimationFps
+            : _walkAnimationFps;
+        if (fps <= 0f) fps = 8f;
+        float frameDuration = 1f / fps;
+
+        for (int i = 0; i < frames.Length; i++)
+        {
+            if (frames[i] != null) _renderer.sprite = frames[i];
+            float elapsed = 0f;
+            while (elapsed < frameDuration)
+            {
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+        }
     }
 
     private void DisableContactCollider()
@@ -427,7 +446,7 @@ public class Enemy : MonoBehaviour
         gameObject.SetActive(false);
     }
 
-    private void OnDisable()
+    protected virtual void OnDisable()
     {
         _mover?.Stop();
     }
@@ -462,6 +481,12 @@ public class Enemy : MonoBehaviour
     private void AdvanceWalkAnimation()
     {
         if (_hurtFeedback != null && _hurtFeedback.IsPlayingHurtAnimation)
+            return;
+
+        // Suppress the walk loop while the boss summon tell is on-screen —
+        // otherwise the walk frames overwrite the tell on Pacing movement,
+        // because Pace sets EnemyMover.IsMoving=true via SetExternallyMoving.
+        if (_summonTicker != null && _summonTicker.IsPlayingSummonAnimation)
             return;
 
         if (_renderer == null || _data == null || _data.walkFrames == null)
@@ -534,7 +559,7 @@ public class Enemy : MonoBehaviour
             tmp.outlineWidth = 0.2f;
             tmp.outlineColor = Color.black;
         }
-        tmp.sortingOrder = 500;
+        tmp.sortingOrder = RenderOrder.EnemyDebugLabel;
         if (_renderer != null)
             tmp.sortingLayerID = _renderer.sortingLayerID;
         tmp.text = string.Empty;
@@ -555,7 +580,7 @@ public class Enemy : MonoBehaviour
         if (_baybayinLabel != null)
         {
             // Bosses don't have a single assigned character — required draws
-            // are surfaced by BossLabelIconRow. Suppressing the per-enemy
+            // are surfaced by BossGlyphQueueUI. Suppressing the per-enemy
             // label avoids the misleading "Draw: (none)" readout.
             bool showBaybayin = !IsBoss;
             _baybayinLabel.gameObject.SetActive(showBaybayin);

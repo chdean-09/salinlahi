@@ -65,7 +65,21 @@ public class BossSummonTicker : MonoBehaviour
             Vector3 origin = transform.position;
             float dx = Random.Range(-phase.summonSpawnRange.x, phase.summonSpawnRange.x);
             float dy = Random.Range(-phase.summonSpawnRange.y, phase.summonSpawnRange.y);
-            summon.transform.position = new Vector3(origin.x + dx, origin.y + dy, 0f);
+            float spawnX = origin.x + dx;
+            float spawnY = origin.y + dy;
+
+            // Hard cap to keep summons on-screen even when the boss drifts toward the edge.
+            if (config != null && config.summonHorizontalBounds.y > config.summonHorizontalBounds.x)
+                spawnX = Mathf.Clamp(spawnX, config.summonHorizontalBounds.x, config.summonHorizontalBounds.y);
+
+            summon.transform.position = new Vector3(spawnX, spawnY, 0f);
+
+            // Render summons above the boss so they don't disappear behind its sprite
+            // when their spawn position overlaps. Enemy.OnEnable resets this on pool
+            // reuse, so normal wave spawns are unaffected.
+            SpriteRenderer summonRenderer = summon.GetComponent<SpriteRenderer>();
+            if (summonRenderer != null)
+                summonRenderer.sortingOrder = RenderOrder.BossSummon;
 
             // Assign a random allowed character so the minion is defeatable.
             BaybayinCharacterSO character = PickAllowedCharacter();

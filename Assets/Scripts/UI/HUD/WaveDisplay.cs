@@ -14,24 +14,36 @@ public class WaveDisplay : MonoBehaviour
     private void Awake()
     {
         if (_waveText != null)
+        {
             _waveBasePos = _waveText.transform.localPosition;
+            _waveText.text = string.Empty;
+        }
     }
 
     private void OnEnable()
     {
         EventBus.OnWaveStarted += UpdateWave;
+        EventBus.OnBossStarted += HandleBossStarted;
     }
 
     private void OnDisable()
     {
         EventBus.OnWaveStarted -= UpdateWave;
+        EventBus.OnBossStarted -= HandleBossStarted;
     }
 
     private void UpdateWave(int waveIndex)
     {
         if (_waveText == null) return;
+        _waveText.gameObject.SetActive(true);
         _waveText.text = $"Wave {waveIndex + 1}";
         StartCoroutine(WaveSlideAnimation());
+    }
+
+    private void HandleBossStarted(BossConfigSO _)
+    {
+        if (_waveText == null) return;
+        _waveText.gameObject.SetActive(false);
     }
 
     private IEnumerator WaveSlideAnimation()

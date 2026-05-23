@@ -26,6 +26,10 @@ public class BossConfigSO : ScriptableObject
     [Tooltip("Enemy types summoned when a BossPhase.summonEnemyTypes list is empty.")]
     public List<EnemyDataSO> fallbackEnemyTypes;
 
+    [Header("Summon Bounds")]
+    [Tooltip("Hard horizontal world-space cap applied to every minion spawn position. x = minX, y = maxX. Prevents summons drifting off-screen when the boss is near the edge of the playfield. Set x >= y to disable clamping.")]
+    public Vector2 summonHorizontalBounds = Vector2.zero;
+
     [Header("Intro / Outro")]
     [Tooltip("Seconds the boss is invulnerable on entry while the intro animation plays.")]
     public float introDuration = 2.0f;

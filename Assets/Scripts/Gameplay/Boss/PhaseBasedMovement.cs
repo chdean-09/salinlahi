@@ -67,7 +67,7 @@ public class PhaseBasedMovement : MonoBehaviour
         float x = _baseLocalPosition.x
             + Random.Range(-phase.teleportHalfRange.x, phase.teleportHalfRange.x);
         float y = _baseLocalPosition.y
-            + Random.Range(-phase.teleportHalfRange.y, phase.teleportHalfRange.y);
+            + Random.Range(-phase.teleportHalfRange.y, 0f);
         transform.localPosition = new Vector3(x, y, _baseLocalPosition.z);
     }
 

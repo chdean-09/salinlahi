@@ -415,7 +415,9 @@ public class WaveManager : MonoBehaviour
 
         // Spawn the boss as a regular Enemy. No character assigned —
         // BossController.TryRouteDraw replaces character matching.
-        Enemy bossEnemy = _spawner.SpawnEnemy(bossConfig.bossEnemyData);
+        // Boss spawns at the horizontal center of the spawn bounds rather
+        // than a random X, so it visually anchors the encounter.
+        Enemy bossEnemy = _spawner.SpawnBossEnemy(bossConfig.bossEnemyData);
         if (bossEnemy == null)
         {
             DebugLogger.LogError("WaveManager: Failed to spawn boss. Aborting boss encounter.");

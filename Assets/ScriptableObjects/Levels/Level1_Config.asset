@@ -14,6 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LevelConfigSO
   levelName: Level 1
   levelNumber: 1
+  chapterNumber: 1
+  chapterName: Chapter 1
+  eraTheme: {fileID: 11400000, guid: 4a3f16684c91d284eafb13ac69eecbfc, type: 2}
   waves:
   - {fileID: 11400000, guid: 47bebcef7fb6e0345910b40b0aa930bb, type: 2}
   - {fileID: 11400000, guid: bf32af93e1222db4a9cc91f6598361ab, type: 2}
@@ -26,4 +29,5 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
   - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
   - {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
+  bossConfig: {fileID: 0}
   isAvailableInLite: 1

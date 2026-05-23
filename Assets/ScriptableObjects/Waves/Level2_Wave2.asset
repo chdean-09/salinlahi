@@ -20,7 +20,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
   enemyTypesInWave:
   - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
-  - {fileID: 11400000, guid: 68294b34869d421d8f8ed5e4efa431e1, type: 2}
   enemyCount: 5
   spawnInterval: 2.8
   waveStartDelay: 1.5

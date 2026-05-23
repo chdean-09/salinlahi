@@ -150,7 +150,7 @@ namespace Salinlahi.Debug.Sandbox
 
             var canvas = canvasObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 2000;
+            canvas.sortingOrder = RenderOrder.SandboxOverlay;
             var scaler = canvasObject.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
             scaler.scaleFactor = 1f;
