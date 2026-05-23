@@ -19,6 +19,9 @@ public class StrokeCapture : MonoBehaviour
         + "auto-completing.")]
     [SerializeField] private float _strokeTimeoutSeconds = 2f;
 
+    [Tooltip("Fraction of screen width/height to ignore at each edge (0 = full screen, 0.05 = 5% margin).")]
+    [SerializeField] [Range(0f, 0.25f)] private float _edgeMarginPercent = 0f;
+
     private List<List<Vector2>> _strokes = new List<List<Vector2>>();
     private List<Vector2> _currentPoints = new List<Vector2>();
     private float _strokeStartTime;
@@ -114,8 +117,8 @@ public class StrokeCapture : MonoBehaviour
 
         Vector2 pos = finger.screenPosition;
 
-        float marginX = Screen.width * 0.05f;
-        float marginY = Screen.height * 0.05f;
+        float marginX = Screen.width * _edgeMarginPercent;
+        float marginY = Screen.height * _edgeMarginPercent;
         if (pos.x < marginX || pos.x > Screen.width - marginX ||
             pos.y < marginY || pos.y > Screen.height - marginY)
             return;
@@ -267,6 +270,11 @@ public class StrokeCapture : MonoBehaviour
 
         var results = new List<RaycastResult>();
         EventSystem.current.RaycastAll(eventData, results);
-        return results.Count > 0;
+
+        foreach (var result in results)
+            if (result.gameObject.GetComponentInParent<UnityEngine.UI.Selectable>() != null)
+                return true;
+
+        return false;
     }
 }

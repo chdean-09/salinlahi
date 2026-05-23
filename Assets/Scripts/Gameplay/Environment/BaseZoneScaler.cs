@@ -1,58 +1,93 @@
 using UnityEngine;
 
 /// <summary>
-/// Scales the base zone (fence) SpriteRenderer to always span the full
-/// camera width, regardless of device aspect ratio.
-/// Attach to the same GameObject that has the base-zone SpriteRenderer
-/// (e.g. '[Base] PlayerShrine').
+/// Sizes the base zone (fence) SpriteRenderer to span the play column width.
+/// Subscribes to AspectLockedCamera.OnPlayAreaChanged so it re-runs whenever
+/// the play-area extents change (device rotation, editor Game-view aspect switch).
+/// Y is left alone so pixel-art proportions and the ground anchor are preserved.
+/// For Sliced/Tiled SpriteRenderers, drives SpriteRenderer.size; for Simple
+/// sprites, drives transform.localScale.x.
+/// Attach to the same GameObject that has the base-zone SpriteRenderer.
 /// </summary>
+[ExecuteAlways]
 [RequireComponent(typeof(SpriteRenderer))]
-public class BaseZoneScaler : MonoBehaviour
+public sealed class BaseZoneScaler : MonoBehaviour
 {
-    [Tooltip("Reference camera. Falls back to Camera.main if not set.")]
-    [SerializeField] private Camera _camera;
+    [Tooltip("Optional explicit reference. Falls back to the first AspectLockedCamera in scene.")]
+    [SerializeField] private AspectLockedCamera _playColumn;
 
-    [Tooltip("Extra world-unit padding added to each side so the fence " +
-             "extends beyond the screen edges and avoids visible seams.")]
-    [SerializeField] private float _overflowPadding = 0.5f;
+    [Tooltip("World-unit overflow added to each side (total added width = value * 2). " +
+             "Prevents visible seams at the pillar/wall boundary.")]
+    [SerializeField] private float _overflowPerSide = 0.5f;
 
     private SpriteRenderer _sr;
+    private bool _warnedNoPlayColumn;
 
     private void Awake()
     {
         _sr = GetComponent<SpriteRenderer>();
-
-        if (_camera == null)
-            _camera = Camera.main;
     }
 
-    private void Start()
+    private void OnEnable()
     {
-        ScaleToFitWidth();
+        if (_playColumn == null) _playColumn = FindFirstObjectByType<AspectLockedCamera>();
+        if (_playColumn != null)
+            _playColumn.OnPlayAreaChanged += Rescale;
+        Rescale();
+    }
+
+    private void OnDisable()
+    {
+        if (_playColumn != null)
+            _playColumn.OnPlayAreaChanged -= Rescale;
     }
 
     /// <summary>
-    /// Calculates the visible world width of the orthographic camera and
-    /// scales this sprite's X so it covers the full width (plus padding).
-    /// Y and Z scale remain unchanged.
+    /// Recomputes and applies the fence width. Safe to call externally
+    /// after the SpriteRenderer's sprite has been swapped (e.g. by EnvironmentThemeSwapper).
     /// </summary>
-    private void ScaleToFitWidth()
+    public void Rescale()
     {
-        if (_sr == null || _sr.sprite == null || _camera == null) return;
+        if (_sr == null) _sr = GetComponent<SpriteRenderer>();
+        if (_sr == null || _sr.sprite == null) return;
 
-        // The sprite's native width in world units at scale 1.
+        if (_playColumn == null)
+        {
+            if (!_warnedNoPlayColumn)
+            {
+                Debug.LogWarning("BaseZoneScaler: no AspectLockedCamera found. Sprite renders at native width.", this);
+                _warnedNoPlayColumn = true;
+            }
+            return;
+        }
+
         float spriteWorldWidth = _sr.sprite.bounds.size.x;
-
         if (spriteWorldWidth <= 0f) return;
 
-        // Visible world width for an orthographic camera.
-        float cameraWorldWidth = 2f * _camera.orthographicSize * _camera.aspect;
+        float desiredWidth = _playColumn.WorldHalfWidth * 2f + _overflowPerSide * 2f;
 
-        float desiredWidth = cameraWorldWidth + _overflowPadding * 2f;
-        float requiredScaleX = desiredWidth / spriteWorldWidth;
-
-        Vector3 s = transform.localScale;
-        s.x = requiredScaleX;
-        transform.localScale = s;
+        if (_sr.drawMode == SpriteDrawMode.Simple)
+        {
+            float requiredScaleX = desiredWidth / spriteWorldWidth;
+            Vector3 s = transform.localScale;
+            s.x = requiredScaleX;
+            transform.localScale = s;
+        }
+        else
+        {
+            Vector2 size = _sr.size;
+            size.x = desiredWidth;
+            _sr.size = size;
+        }
     }
+
+#if UNITY_EDITOR
+    [ContextMenu("Rescale Now")]
+    private void EditorRescale() => Rescale();
+
+    private void OnValidate()
+    {
+        if (!Application.isPlaying) Rescale();
+    }
+#endif
 }

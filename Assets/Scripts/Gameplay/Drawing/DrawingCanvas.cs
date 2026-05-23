@@ -41,6 +41,7 @@ public class DrawingCanvas : MonoBehaviour
         _currentLine.endColor = _strokeColor;
         _currentLine.positionCount = 0;
         _currentLine.useWorldSpace = true;
+        _currentLine.sortingOrder = RenderOrder.DrawingStroke;
         _activeLines.Add(_currentLine);
     }
 

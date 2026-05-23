@@ -9,12 +9,19 @@ public class EnemyMover : MonoBehaviour
 {
     private float _speed;
     private bool _active;
+    private bool _externallyMoving;
     private float _focusSpeedMultiplier = 1f;
-    public bool IsMoving => _active && GetFinalSpeed() > Mathf.Epsilon;
+    public bool IsMoving => _externallyMoving || (_active && GetFinalSpeed() > Mathf.Epsilon);
+
+    // For movers that drive the transform externally (e.g. PhaseBasedMovement
+    // on the boss). Lets IsMoving report true so visuals coupled to it — like
+    // Enemy.AdvanceWalkAnimation — run while the external system is active,
+    // even when this component's own speed is zero.
+    public void SetExternallyMoving(bool moving) => _externallyMoving = moving;
 
     public virtual void SetSpeed(float speed)
     {
-        _speed = speed;
+        _speed = speed * GetCorridorNormalizationScale();
         _active = true;
     }
 
@@ -24,7 +31,13 @@ public class EnemyMover : MonoBehaviour
     // hurt-pause window.
     public virtual void UpdateSpeedValue(float speed)
     {
-        _speed = speed;
+        _speed = speed * GetCorridorNormalizationScale();
+    }
+
+    private static float GetCorridorNormalizationScale()
+    {
+        var cam = AspectLockedCamera.Instance;
+        return cam != null ? cam.CorridorSpeedNormalizationScale : 1f;
     }
 
     protected virtual void OnEnable()
