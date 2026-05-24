@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1383d6b6cc1b491a925bc0fa6b59d4ca, type: 3}
+  m_Name: Level1TutorialStep_LA
+  m_EditorClassIdentifier: Assembly-CSharp::Level1TutorialStepSO
+  promptId: LA
+  targetCharacter: {fileID: 11400000, guid: 9aae464ed65b8416b9aa3ad6ee4ce2c4, type: 2}
+  enemyData: {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+  stopPosition: {x: -0.010000229, y: 4.120987, z: 0}
+  templatePoints:
+  - {x: 0, y: 30}
+  - {x: 55, y: 12}
+  - {x: 105, y: 30}
+  - {x: 72, y: 120}
+  guideSprite: {fileID: 0}
+  tolerancePixels: 15
+  widenedTolerancePixels: 20
+  promptText: Draw LA next.
+  successText: 
+  idleHint: Trace the glowing guide.
+  strongHint: Start at the dot, then follow the arrow.
+  assistText: Watch this once.
+  wrongCharacterFeedback: Draw the shown syllable.
+  directionMismatchFeedback: Follow the arrow direction.
+  tooShortFeedback: Draw the full shape.
+  recognitionFailedFeedback: Try that shape again.
+  assistAnimationPrefab: {fileID: 0}

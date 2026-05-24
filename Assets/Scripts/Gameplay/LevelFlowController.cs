@@ -11,6 +11,7 @@ public class LevelFlowController : MonoBehaviour
     [Header("References")]
     [SerializeField] private WaveManager _waveManager;
     [SerializeField] private DialogueController _dialogueController;
+    [SerializeField] private Level1InteractiveTutorialController _level1InteractiveTutorialController;
     [SerializeField] private TutorialOverlayController _tutorialOverlayController;
     [SerializeField] private VictoryScreenUI _victoryScreen;
     [SerializeField] private DefeatScreenUI _defeatScreen;
@@ -66,6 +67,9 @@ public class LevelFlowController : MonoBehaviour
         if (_levelEnded)
             yield break;
 
+        if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
+            GameManager.Instance.StartGame();
+
         yield return PlayLevelTutorialIfNeeded();
 
         if (_flowAborted || _levelEnded)
@@ -97,15 +101,58 @@ public class LevelFlowController : MonoBehaviour
         }
 
         if (_levelConfig != null)
+        {
+            if (GameManager.Instance != null && GameManager.Instance.CurrentLevel != _levelConfig)
+                GameManager.Instance.SetLevel(_levelConfig);
+
             return;
+        }
 
         DebugLogger.LogWarning("LevelFlowController: No level config found via GameManager or Inspector.");
     }
 
     private IEnumerator PlayLevelTutorialIfNeeded()
     {
-        if (!LevelTutorialProgress.ShouldShowForLevel(_levelConfig))
+        DebugLogger.Log("LevelFlowController: PlayLevelTutorialIfNeeded() started.");
+        
+        if (_levelConfig == null)
+        {
+            DebugLogger.LogError("LevelFlowController: _levelConfig is null. Cannot determine if tutorial is needed.");
             yield break;
+        }
+        
+        DebugLogger.Log($"LevelFlowController: _levelConfig.levelNumber = {_levelConfig.levelNumber}");
+        
+        if (!LevelTutorialProgress.ShouldShowForLevel(_levelConfig))
+        {
+            DebugLogger.Log($"LevelFlowController: ShouldShowForLevel returned false. levelNumber={_levelConfig.levelNumber}, HasSeen={LevelTutorialProgress.HasSeenLevel1Tutorial()}");
+            yield break;
+        }
+        
+        DebugLogger.Log("LevelFlowController: Tutorial should show. Checking interactive controller...");
+
+        if (_level1InteractiveTutorialController != null
+            && _level1InteractiveTutorialController.ShouldRunFor(_levelConfig))
+        {
+            DebugLogger.Log("LevelFlowController: Interactive tutorial controller.ShouldRunFor returned true.");
+            
+            if (!_level1InteractiveTutorialController.IsConfigured)
+            {
+                _flowAborted = true;
+                DebugLogger.LogError("LevelFlowController: Level 1 interactive tutorial is due, but it is not configured (no steps).");
+                yield break;
+            }
+
+            DebugLogger.Log("LevelFlowController: Starting interactive tutorial...");
+            yield return _level1InteractiveTutorialController.PlayIfNeeded(_levelConfig);
+            DebugLogger.Log("LevelFlowController: Interactive tutorial completed.");
+            yield break;
+        }
+        
+        if (_level1InteractiveTutorialController == null)
+            DebugLogger.Log("LevelFlowController: _level1InteractiveTutorialController is null. Falling back to overlay.");
+        else
+            DebugLogger.Log("LevelFlowController: _level1InteractiveTutorialController.ShouldRunFor returned false. Falling back to overlay.");
 
         if (_tutorialOverlayController == null)
         {
@@ -121,6 +168,7 @@ public class LevelFlowController : MonoBehaviour
             yield break;
         }
 
+        DebugLogger.Log("LevelFlowController: Starting overlay tutorial...");
         yield return _tutorialOverlayController.PlayIfNeeded(_levelConfig);
     }
 

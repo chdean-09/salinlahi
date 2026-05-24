@@ -152,4 +152,38 @@ public static class ProgressDebugMenu
     }
 
     #endregion
+
+    #region Level 1 Tutorial QA Hooks
+
+    [MenuItem("Salinlahi/Debug/Reset Level 1 Tutorial")]
+    public static void ResetLevel1Tutorial()
+    {
+        LevelTutorialProgress.ResetLevel1TutorialForTests();
+        EditorUtility.DisplayDialog("Tutorial Reset", 
+            "Level 1 tutorial progress has been reset.\n\nThe tutorial will show again on next Level 1 load.", 
+            "OK");
+    }
+
+    [MenuItem("Salinlahi/Debug/Show Tutorial Status")]
+    public static void ShowTutorialStatus()
+    {
+        bool hasSeen = LevelTutorialProgress.HasSeenLevel1Tutorial();
+        bool shouldShow = LevelTutorialProgress.ShouldShowForLevelNumber(1);
+        string status = $"Level 1 Tutorial Status:\n\n" +
+                        $"HasSeen: {hasSeen}\n" +
+                        $"ShouldShowForLevel(1): {shouldShow}\n\n" +
+                        $"PlayerPrefs Key: {LevelTutorialProgress.Level1FtueSeenKey}\n" +
+                        $"Value: {PlayerPrefs.GetInt(LevelTutorialProgress.Level1FtueSeenKey, 0)}";
+        
+        Debug.Log($"[Salinlahi] {status}");
+        EditorUtility.DisplayDialog("Tutorial Status", status, "OK");
+    }
+
+    [MenuItem("Salinlahi/Debug/Open Tutorial QA Window")]
+    public static void OpenTutorialQAWindow()
+    {
+        Level1TutorialDebugWindow.ShowWindow();
+    }
+
+    #endregion
 }
