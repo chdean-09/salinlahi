@@ -12,6 +12,9 @@ public sealed class Level1TutorialStepSO : ScriptableObject
     [Tooltip("World position where this tutorial enemy should stop (safe zone before base).")]
     public Vector3 stopPosition;
 
+    [Tooltip("Seconds after spawn before the tutorial enemy freezes and the draw prompt appears.")]
+    public float promptFreezeDelaySeconds = 0.75f;
+
     [Header("Guide")]
     [Tooltip("Screen-space or world-space guide points for the drawing template.")]
     public Vector2[] templatePoints;

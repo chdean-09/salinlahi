@@ -13,6 +13,8 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
     [Header("Guide Visuals")]
     [Tooltip("LineRenderer or similar to draw the guide path.")]
     [SerializeField] private LineRenderer _guidePathRenderer;
+    [Tooltip("Optional UI image that shows the syllable glyph being copied.")]
+    [SerializeField] private Image _guideSpriteImage;
     [Tooltip("Transform of the start dot (will be pulsed).")]
     [SerializeField] private Transform _startDot;
     [Tooltip("Transform of the direction arrow.")]
@@ -50,6 +52,8 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
 
         if (_skipButton != null)
             _skipButton.gameObject.SetActive(canSkip);
+
+        ShowGuideSprite(step);
 
         // Set up guide visuals if available
         if (_guidePathRenderer != null && step != null && step.templatePoints != null && step.templatePoints.Length > 1)
@@ -105,6 +109,9 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
 
         if (_skipButton != null)
             _skipButton.gameObject.SetActive(canSkip);
+
+        if (_guideSpriteImage != null)
+            _guideSpriteImage.gameObject.SetActive(false);
     }
 
     public void ShowFeedback(string message)
@@ -126,6 +133,9 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
 
         if (_directionArrow != null)
             _directionArrow.gameObject.SetActive(false);
+
+        if (_guideSpriteImage != null)
+            _guideSpriteImage.gameObject.SetActive(false);
 
         StopEffects();
     }
@@ -159,6 +169,54 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
 
         GameObject instance = Instantiate(prefab, _assistAnimationParent);
         Destroy(instance, 3f); // Clean up after animation
+    }
+
+    private void ShowGuideSprite(Level1TutorialStepSO step)
+    {
+        if (step == null || step.guideSprite == null)
+        {
+            if (_guideSpriteImage != null)
+                _guideSpriteImage.gameObject.SetActive(false);
+            return;
+        }
+
+        Image image = EnsureGuideSpriteImage();
+        if (image == null)
+            return;
+
+        image.sprite = step.guideSprite;
+        image.preserveAspect = true;
+        image.gameObject.SetActive(true);
+    }
+
+    private Image EnsureGuideSpriteImage()
+    {
+        if (_guideSpriteImage != null)
+            return _guideSpriteImage;
+
+        Transform parent = _root != null ? _root.transform : transform;
+        Transform existing = parent.Find("GuideSpriteImage");
+        if (existing != null)
+        {
+            _guideSpriteImage = existing.GetComponent<Image>();
+            if (_guideSpriteImage != null)
+                return _guideSpriteImage;
+        }
+
+        GameObject imageObject = new("GuideSpriteImage", typeof(RectTransform), typeof(Image));
+        imageObject.transform.SetParent(parent, false);
+        RectTransform rect = imageObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = new Vector2(0f, 120f);
+        rect.sizeDelta = new Vector2(180f, 180f);
+
+        _guideSpriteImage = imageObject.GetComponent<Image>();
+        _guideSpriteImage.raycastTarget = false;
+        _guideSpriteImage.color = new Color(1f, 1f, 1f, 0.9f);
+        imageObject.SetActive(false);
+        return _guideSpriteImage;
     }
 
     private void StopEffects()

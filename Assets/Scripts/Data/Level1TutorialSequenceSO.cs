@@ -17,6 +17,9 @@ public sealed class Level1TutorialSequenceSO : ScriptableObject
     [Tooltip("Shown when first enemy appears and freezes.")]
     public string drawPurposeText = "Draw its syllable to defeat it.";
 
+    [Tooltip("Shown once if the base takes damage during the Level 1 tutorial.")]
+    public string baseDamageText = "The base took damage. Draw before enemies reach it.";
+
     [Tooltip("Shown after HA is defeated, before releasing to normal waves.")]
     public string finalReleaseText = "You are ready. Defend the base.";
 

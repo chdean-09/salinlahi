@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 namespace Salinlahi.Tests.Editor.Gameplay
 {
@@ -58,7 +59,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
-        public void CompleteTutorial_MarksProgressSeen()
+        public void CompleteTutorial_DoesNotMarkProgressSeen()
         {
             GameObject gameObject = new("Level1InteractiveTutorialController");
             Level1InteractiveTutorialController controller = gameObject.AddComponent<Level1InteractiveTutorialController>();
@@ -67,7 +68,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
             {
                 controller.CompleteForTests();
 
-                Assert.IsTrue(LevelTutorialProgress.HasSeenLevel1Tutorial());
+                Assert.IsFalse(LevelTutorialProgress.HasSeenLevel1Tutorial());
             }
             finally
             {
@@ -130,6 +131,37 @@ namespace Salinlahi.Tests.Editor.Gameplay
 
             Assert.IsFalse(result.IsCorrect);
             Assert.AreEqual(Level1TutorialValidationFailure.WrongCharacter, result.Failure);
+        }
+
+        [Test]
+        public void GuideUI_ShowPrompt_CreatesAndShowsGuideSprite()
+        {
+            GameObject gameObject = new("Level1TutorialGuideUI");
+            Level1TutorialGuideUI guide = gameObject.AddComponent<Level1TutorialGuideUI>();
+            Level1TutorialStepSO step = ScriptableObject.CreateInstance<Level1TutorialStepSO>();
+            Texture2D texture = new(2, 2);
+            Sprite sprite = Sprite.Create(texture, new Rect(0f, 0f, 2f, 2f), new Vector2(0.5f, 0.5f));
+            step.guideSprite = sprite;
+
+            try
+            {
+                guide.ShowPrompt(step, canSkip: false);
+
+                Transform guideSpriteTransform = gameObject.transform.Find("GuideSpriteImage");
+                Assert.IsNotNull(guideSpriteTransform);
+
+                Image guideSpriteImage = guideSpriteTransform.GetComponent<Image>();
+                Assert.IsNotNull(guideSpriteImage);
+                Assert.AreSame(sprite, guideSpriteImage.sprite);
+                Assert.IsTrue(guideSpriteImage.gameObject.activeSelf);
+            }
+            finally
+            {
+                Object.DestroyImmediate(sprite);
+                Object.DestroyImmediate(texture);
+                Object.DestroyImmediate(step);
+                Object.DestroyImmediate(gameObject);
+            }
         }
 
         private static List<Vector2> CreateLine(float x0, float y0, float x1, float y1)
@@ -198,8 +230,8 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 // Simulate first manual success by completing tutorial
                 controller.CompleteForTests();
                 
-                Assert.IsTrue(LevelTutorialProgress.HasSeenLevel1Tutorial(), 
-                    "BA success should mark tutorial seen (skip unlocked)");
+                Assert.IsFalse(LevelTutorialProgress.HasSeenLevel1Tutorial(), 
+                    "Interactive tutorial is embedded in Level_01_Tutorial and should replay on each open");
             }
             finally
             {
@@ -283,7 +315,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
-        public void AC07_CompletingTutorial_MarksProgress()
+        public void AC07_CompletingTutorial_DoesNotMarkProgress()
         {
             GameObject gameObject = new("Level1InteractiveTutorialController");
             Level1InteractiveTutorialController controller = gameObject.AddComponent<Level1InteractiveTutorialController>();
@@ -295,8 +327,8 @@ namespace Salinlahi.Tests.Editor.Gameplay
 
                 controller.CompleteForTests();
 
-                Assert.IsTrue(LevelTutorialProgress.HasSeenLevel1Tutorial(), 
-                    "CompleteTutorial should mark Level 1 tutorial as seen");
+                Assert.IsFalse(LevelTutorialProgress.HasSeenLevel1Tutorial(), 
+                    "Interactive Level 1 tutorial should not set one-time progress");
             }
             finally
             {
@@ -305,7 +337,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
-        public void AC08_SkippingTutorial_MarksProgress()
+        public void AC08_SkippingTutorial_DoesNotMarkProgress()
         {
             GameObject gameObject = new("Level1InteractiveTutorialController");
             Level1InteractiveTutorialController controller = gameObject.AddComponent<Level1InteractiveTutorialController>();
@@ -317,8 +349,8 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 controller.BeginForTests(levelConfig, "Level_01_Tutorial");
                 controller.CompleteForTests();
 
-                Assert.IsTrue(LevelTutorialProgress.HasSeenLevel1Tutorial(), 
-                    "Skip path should also mark tutorial as seen");
+                Assert.IsFalse(LevelTutorialProgress.HasSeenLevel1Tutorial(), 
+                    "Skip path should not prevent embedded tutorial from replaying next time");
             }
             finally
             {

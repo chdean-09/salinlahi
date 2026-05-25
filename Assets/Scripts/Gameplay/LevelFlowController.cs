@@ -122,14 +122,6 @@ public class LevelFlowController : MonoBehaviour
         }
         
         DebugLogger.Log($"LevelFlowController: _levelConfig.levelNumber = {_levelConfig.levelNumber}");
-        
-        if (!LevelTutorialProgress.ShouldShowForLevel(_levelConfig))
-        {
-            DebugLogger.Log($"LevelFlowController: ShouldShowForLevel returned false. levelNumber={_levelConfig.levelNumber}, HasSeen={LevelTutorialProgress.HasSeenLevel1Tutorial()}");
-            yield break;
-        }
-        
-        DebugLogger.Log("LevelFlowController: Tutorial should show. Checking interactive controller...");
 
         if (_level1InteractiveTutorialController != null
             && _level1InteractiveTutorialController.ShouldRunFor(_levelConfig))
@@ -146,6 +138,12 @@ public class LevelFlowController : MonoBehaviour
             DebugLogger.Log("LevelFlowController: Starting interactive tutorial...");
             yield return _level1InteractiveTutorialController.PlayIfNeeded(_levelConfig);
             DebugLogger.Log("LevelFlowController: Interactive tutorial completed.");
+            yield break;
+        }
+
+        if (!LevelTutorialProgress.ShouldShowForLevel(_levelConfig))
+        {
+            DebugLogger.Log($"LevelFlowController: ShouldShowForLevel returned false. levelNumber={_levelConfig.levelNumber}, HasSeen={LevelTutorialProgress.HasSeenLevel1Tutorial()}");
             yield break;
         }
         

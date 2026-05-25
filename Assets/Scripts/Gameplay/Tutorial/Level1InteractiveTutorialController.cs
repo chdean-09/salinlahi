@@ -21,6 +21,7 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
     [SerializeField] private string _baseIntroText = "This is the base.";
     [SerializeField] private string _baseDefenseText = "Keep enemies away from it.";
     [SerializeField] private string _drawPurposeText = "Draw its syllable to defeat it.";
+    [SerializeField] private string _baseDamageText = "The base took damage. Draw before enemies reach it.";
     [SerializeField] private string _finalReleaseText = "You are ready. Defend the base.";
     [SerializeField] private float _messageSeconds = 1.25f;
     [SerializeField] private float _idleHintSeconds = 5f;
@@ -51,9 +52,13 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
     private bool _firstManualSuccess;
     private bool _skipRequested;
     private bool _assistedCompletion;
+    private bool _baseDamagePauseRequested;
+    private bool _baseDamagePauseShown;
+    private bool _baseDamagePauseRunning;
     private bool[] _hiddenOriginalStates;
     private bool _uiHiddenForTutorial;
 
+    public static bool IsCombatOverrideActive { get; private set; }
     public Level1TutorialState State => _state;
     public bool IsConfigured 
     { 
@@ -95,21 +100,23 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
     private void OnEnable()
     {
         EventBus.OnRecognitionResolved += HandleRecognitionResolved;
+        EventBus.OnBaseHit += HandleBaseHit;
         StrokeCapture.OnStrokesSubmitted += HandleStrokesSubmitted;
     }
 
     private void OnDisable()
     {
         EventBus.OnRecognitionResolved -= HandleRecognitionResolved;
+        EventBus.OnBaseHit -= HandleBaseHit;
         StrokeCapture.OnStrokesSubmitted -= HandleStrokesSubmitted;
+        IsCombatOverrideActive = false;
         RestoreHiddenTutorialUI();
     }
 
     public static bool ShouldRunForContext(string sceneName, int levelNumber)
     {
         return sceneName == RequiredSceneName
-            && levelNumber == LevelTutorialProgress.TutorialLevelNumber
-            && !LevelTutorialProgress.HasSeenLevel1Tutorial();
+            && levelNumber == LevelTutorialProgress.TutorialLevelNumber;
     }
 
     public bool ShouldRunFor(LevelConfigSO levelConfig)
@@ -125,8 +132,7 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
         
         bool result = levelConfig != null
             && activeSceneName == _requiredSceneName
-            && levelConfig.levelNumber == _requiredLevelNumber
-            && !hasSeen;
+            && levelConfig.levelNumber == _requiredLevelNumber;
         
         DebugLogger.Log($"Level1InteractiveTutorialController.ShouldRunFor: returning {result}");
         return result;
@@ -183,10 +189,14 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
     private void Begin()
     {
         _state = Level1TutorialState.BaseIntro;
+        IsCombatOverrideActive = true;
         _failureCount = 0;
         _firstManualSuccess = false;
         _skipRequested = false;
         _assistedCompletion = false;
+        _baseDamagePauseRequested = false;
+        _baseDamagePauseShown = false;
+        _baseDamagePauseRunning = false;
         _activeStep = null;
         _activeEnemy = null;
         _lastSubmittedStrokes = null;
@@ -203,6 +213,7 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
     private string GetBaseIntroText() => _sequence != null ? _sequence.baseIntroText : _baseIntroText;
     private string GetBaseDefenseText() => _sequence != null ? _sequence.baseDefenseText : _baseDefenseText;
     private string GetDrawPurposeText() => _sequence != null ? _sequence.drawPurposeText : _drawPurposeText;
+    private string GetBaseDamageText() => _sequence != null ? _sequence.baseDamageText : _baseDamageText;
     private string GetFinalReleaseText() => _sequence != null ? _sequence.finalReleaseText : _finalReleaseText;
     private float GetMessageSeconds() => _sequence != null ? _sequence.messageSeconds : _messageSeconds;
     private float GetIdleHintSeconds() => _sequence != null ? _sequence.idleHintSeconds : _idleHintSeconds;
@@ -221,6 +232,7 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
         _assistedCompletion = false;
         _hasRecognitionForPrompt = false;
         _lastSubmittedStrokes = null;
+        _guideUI?.Hide();
 
         yield return SpawnTutorialEnemy(step);
 
@@ -238,7 +250,8 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
         {
             if (_skipRequested && _firstManualSuccess)
             {
-                _activeEnemy?.Defeat();
+                _guideUI?.Hide();
+                DefeatActiveTutorialEnemy();
                 yield break;
             }
 
@@ -248,7 +261,8 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
                 Level1TutorialValidationResult validation = ValidateActivePrompt();
                 if (validation.IsCorrect)
                 {
-                    _activeEnemy?.Defeat();
+                    _guideUI?.Hide();
+                    DefeatActiveTutorialEnemy();
                     _firstManualSuccess = true;
                     if (!string.IsNullOrWhiteSpace(step.successText))
                         yield return ShowMessage(step.successText);
@@ -269,7 +283,8 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
                     _assistedCompletion = true;
                     _guideUI?.ShowFeedback(step.assistText);
                     _guideUI?.PlayAssistAnimation(step.assistAnimationPrefab);
-                    _activeEnemy?.Defeat();
+                    _guideUI?.Hide();
+                    DefeatActiveTutorialEnemy();
                     yield break;
                 }
 
@@ -277,6 +292,9 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
                 showedIdleHint = false;
                 showedStrongHint = false;
             }
+
+            if (_baseDamagePauseRequested)
+                yield return ShowBaseDamagePause(restorePrompt: true);
 
             float idleTime = Time.unscaledTime - promptStartTime;
             if (!showedIdleHint && idleTime >= GetIdleHintSeconds())
@@ -338,6 +356,47 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
         }
     }
 
+    private IEnumerator ShowBaseDamagePause(bool restorePrompt)
+    {
+        if (_baseDamagePauseShown || _baseDamagePauseRunning)
+            yield break;
+
+        _baseDamagePauseRequested = false;
+        _baseDamagePauseShown = true;
+        _baseDamagePauseRunning = true;
+
+        bool enteredPause = TryEnterDialoguePause();
+        if (restorePrompt)
+            _activeEnemy?.FreezeThreat();
+
+        yield return ShowMessage(GetBaseDamageText());
+
+        if (restorePrompt && _state == Level1TutorialState.DrawPrompt && _activeStep != null)
+            _guideUI?.ShowPrompt(_activeStep, _firstManualSuccess);
+        else
+            _guideUI?.Hide();
+
+        if (enteredPause && GameManager.Instance != null)
+            GameManager.Instance.ExitDialoguePause();
+
+        _baseDamagePauseRunning = false;
+    }
+
+    private void DefeatActiveTutorialEnemy()
+    {
+        _activeEnemy?.Defeat();
+        _activeEnemy = null;
+    }
+
+    private static bool TryEnterDialoguePause()
+    {
+        if (GameManager.Instance == null)
+            return false;
+
+        GameManager.Instance.EnterDialoguePause();
+        return GameManager.Instance.CurrentState == GameState.Paused;
+    }
+
     private IEnumerator SpawnTutorialEnemy(Level1TutorialStepSO step)
     {
         if (_waveSpawner == null)
@@ -370,21 +429,43 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
         if (end == Vector3.zero && _waveSpawner.transform.Find("TutorialEnemyStopPoint") != null)
             end = _waveSpawner.transform.Find("TutorialEnemyStopPoint").position;
 
-        if (end != Vector3.zero)
-        {
-            while (enemy != null && !enemy.IsDying && enemy.transform.position.y > end.y)
-            {
-                yield return null;
-            }
+        yield return WaitUntilEnemyIsVisible(enemy, end);
 
-            if (enemy != null && !enemy.IsDying)
-            {
-                Vector3 position = enemy.transform.position;
-                enemy.transform.position = new Vector3(position.x, end.y, position.z);
-            }
+        float readableDelay = Mathf.Max(0f, step.promptFreezeDelaySeconds);
+        float elapsed = 0f;
+        while (enemy != null && !enemy.IsDying && elapsed < readableDelay)
+        {
+            if (end != Vector3.zero && enemy.transform.position.y <= end.y)
+                break;
+
+            elapsed += Time.deltaTime;
+            yield return null;
         }
 
         _activeEnemy.FreezeThreat();
+    }
+
+    private static IEnumerator WaitUntilEnemyIsVisible(Enemy enemy, Vector3 fallbackStopPosition)
+    {
+        Camera camera = Camera.main;
+        if (camera == null)
+            yield break;
+
+        while (enemy != null && !enemy.IsDying)
+        {
+            Vector3 viewport = camera.WorldToViewportPoint(enemy.transform.position);
+            bool visible = viewport.z > 0f
+                && viewport.x >= 0f && viewport.x <= 1f
+                && viewport.y >= 0.82f && viewport.y <= 1f;
+
+            if (visible)
+                yield break;
+
+            if (fallbackStopPosition != Vector3.zero && enemy.transform.position.y <= fallbackStopPosition.y)
+                yield break;
+
+            yield return null;
+        }
     }
 
     private Level1TutorialValidationResult ValidateActivePrompt()
@@ -450,6 +531,26 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
         _hasRecognitionForPrompt = true;
     }
 
+    private void HandleBaseHit(int damage)
+    {
+        if (SceneManager.GetActiveScene().name != _requiredSceneName)
+            return;
+
+        if (_baseDamagePauseShown || _baseDamagePauseRunning)
+            return;
+
+        if (damage <= 0)
+            return;
+
+        if (_state == Level1TutorialState.DrawPrompt)
+        {
+            _baseDamagePauseRequested = true;
+            return;
+        }
+
+        StartCoroutine(ShowBaseDamagePause(restorePrompt: false));
+    }
+
     private void RequestSkip()
     {
         if (_firstManualSuccess)
@@ -458,6 +559,8 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
 
     private void CompleteTutorial()
     {
+        IsCombatOverrideActive = false;
+        _activeEnemy = null;
         _guideUI?.Hide();
         RestoreHiddenTutorialUI();
 
@@ -467,7 +570,9 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
             // TODO: Log analytics with assisted=true
         }
 
-        LevelTutorialProgress.MarkLevel1TutorialSeen();
+        // Interactive Level 1 tutorial is embedded in Level_01_Tutorial and should run
+        // every time that scene opens. The older overlay tutorial still owns the
+        // one-time FTUE seen flag.
     }
 
     private void HideTutorialBlockedUI()

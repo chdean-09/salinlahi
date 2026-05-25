@@ -16,12 +16,13 @@ MonoBehaviour:
   targetCharacter: {fileID: 11400000, guid: 9aae464ed65b8416b9aa3ad6ee4ce2c4, type: 2}
   enemyData: {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
   stopPosition: {x: -0.010000229, y: 4.120987, z: 0}
+  promptFreezeDelaySeconds: 2.05
   templatePoints:
   - {x: 0, y: 30}
   - {x: 55, y: 12}
   - {x: 105, y: 30}
   - {x: 72, y: 120}
-  guideSprite: {fileID: 0}
+  guideSprite: {fileID: 303769409180692269, guid: a8076105381be8e4abca9e9ad4664fab, type: 3}
   tolerancePixels: 15
   widenedTolerancePixels: 20
   promptText: Draw LA next.

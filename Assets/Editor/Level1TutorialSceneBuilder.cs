@@ -289,6 +289,7 @@ public static class Level1TutorialSceneBuilder
         Button skip = CreateButton(root.transform);
 
         // Create guide visual elements
+        Image guideSpriteImage = CreateGuideSpriteImage(root.transform);
         LineRenderer guidePath = EnsureGuidePathRenderer(root.transform);
         Transform startDot = EnsureGuideDot(root.transform, "StartDot", Color.green);
         Transform directionArrow = EnsureGuideArrow(root.transform);
@@ -307,6 +308,7 @@ public static class Level1TutorialSceneBuilder
         serialized.FindProperty("_promptText").objectReferenceValue = prompt;
         serialized.FindProperty("_feedbackText").objectReferenceValue = feedback;
         serialized.FindProperty("_skipButton").objectReferenceValue = skip;
+        serialized.FindProperty("_guideSpriteImage").objectReferenceValue = guideSpriteImage;
         serialized.FindProperty("_guidePathRenderer").objectReferenceValue = guidePath;
         serialized.FindProperty("_startDot").objectReferenceValue = startDot;
         serialized.FindProperty("_directionArrow").objectReferenceValue = directionArrow;
@@ -314,6 +316,28 @@ public static class Level1TutorialSceneBuilder
         serialized.ApplyModifiedPropertiesWithoutUndo();
 
         return guide;
+    }
+
+    private static Image CreateGuideSpriteImage(Transform parent)
+    {
+        GameObject go = new("GuideSpriteImage");
+        Undo.RegisterCreatedObjectUndo(go, "Create Guide Sprite Image");
+        go.transform.SetParent(parent, false);
+        go.SetActive(false);
+
+        Image image = go.AddComponent<Image>();
+        image.raycastTarget = false;
+        image.preserveAspect = true;
+        image.color = new Color(1f, 1f, 1f, 0.9f);
+
+        RectTransform rect = go.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = new Vector2(0f, 120f);
+        rect.sizeDelta = new Vector2(180f, 180f);
+
+        return image;
     }
 
     private static LineRenderer EnsureGuidePathRenderer(Transform parent)
@@ -538,7 +562,9 @@ public static class Level1TutorialSceneBuilder
                     SerializedObject stepSerialized = new SerializedObject(sequence.steps[i]);
                     stepSerialized.FindProperty("enemyData").objectReferenceValue = FindEnemyData();
                     stepSerialized.FindProperty("stopPosition").vector3Value = enemyStop.position;
+                    stepSerialized.FindProperty("promptFreezeDelaySeconds").floatValue = GetPromptFreezeDelay(sequence.steps[i].promptId);
                     SetTemplatePoints(stepSerialized.FindProperty("templatePoints"), sequence.steps[i].promptId);
+                    stepSerialized.FindProperty("guideSprite").objectReferenceValue = FindGuideSprite(sequence.steps[i].promptId);
                     stepSerialized.ApplyModifiedPropertiesWithoutUndo();
                     EditorUtility.SetDirty(sequence.steps[i]);
                 }
@@ -580,13 +606,20 @@ public static class Level1TutorialSceneBuilder
             step.FindPropertyRelative("promptId").stringValue = ids[i];
             step.FindPropertyRelative("targetCharacter").objectReferenceValue = FindCharacter(ids[i]);
             step.FindPropertyRelative("enemyData").objectReferenceValue = FindEnemyData();
+            step.FindPropertyRelative("guideSprite").objectReferenceValue = FindGuideSprite(ids[i]);
             step.FindPropertyRelative("tolerancePixels").floatValue = 15f;
+            step.FindPropertyRelative("promptFreezeDelaySeconds").floatValue = GetPromptFreezeDelay(ids[i]);
             step.FindPropertyRelative("promptText").stringValue = prompts[i];
             step.FindPropertyRelative("successText").stringValue = success[i];
             step.FindPropertyRelative("idleHint").stringValue = "Trace the glowing guide.";
             step.FindPropertyRelative("strongHint").stringValue = "Start at the dot, then follow the arrow.";
             SetTemplatePoints(step.FindPropertyRelative("templatePoints"), ids[i]);
         }
+    }
+
+    private static float GetPromptFreezeDelay(string promptId)
+    {
+        return promptId == "BA" ? 2.2f : 2.05f;
     }
 
     private static void ConfigureHiddenDuringTutorial(SerializedProperty hiddenObjects)
@@ -691,6 +724,12 @@ public static class Level1TutorialSceneBuilder
         }
 
         return null;
+    }
+
+    private static Sprite FindGuideSprite(string id)
+    {
+        BaybayinCharacterSO character = FindCharacter(id);
+        return character != null ? character.displaySprite : null;
     }
 
     private static EnemyDataSO FindEnemyData()

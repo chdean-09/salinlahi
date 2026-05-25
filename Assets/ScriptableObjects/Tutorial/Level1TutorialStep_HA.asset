@@ -16,11 +16,12 @@ MonoBehaviour:
   targetCharacter: {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
   enemyData: {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
   stopPosition: {x: -0.010000229, y: 4.120987, z: 0}
+  promptFreezeDelaySeconds: 2.05
   templatePoints:
   - {x: 0, y: 36}
   - {x: 48, y: 24}
   - {x: 96, y: 36}
-  guideSprite: {fileID: 0}
+  guideSprite: {fileID: -6831661676589965225, guid: 8d666fe3219e3bb4b9f4d251d9a3947f, type: 3}
   tolerancePixels: 15
   widenedTolerancePixels: 20
   promptText: Last one. Draw HA.

@@ -20,6 +20,7 @@ MonoBehaviour:
   baseIntroText: This is the base.
   baseDefenseText: Keep enemies away from it.
   drawPurposeText: Draw its syllable to defeat it.
+  baseDamageText: The base took damage. Draw before enemies reach it.
   finalReleaseText: You are ready. Defend the base.
   messageSeconds: 1.25
   idleHintSeconds: 5
