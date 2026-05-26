@@ -29,12 +29,11 @@ namespace Salinlahi.Runtime.Gameplay
         {
             if (ProtagonistTransform != null) return;
 
-            // Try to load prefab if not assigned
             if (_protagonistPrefab == null)
             {
-                #if UNITY_EDITOR
+#if UNITY_EDITOR
                 _protagonistPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(ProtagonistPrefabPath);
-                #endif
+#endif
 
                 if (_protagonistPrefab == null)
                 {
@@ -44,7 +43,7 @@ namespace Salinlahi.Runtime.Gameplay
                 }
             }
 
-            Vector3 startPosition = targetPosition + Vector3.down * 5f; // Below screen
+            Vector3 startPosition = targetPosition + Vector3.down * 5f;
             GameObject protagonist = Instantiate(_protagonistPrefab, startPosition, Quaternion.identity);
             ProtagonistTransform = protagonist.transform;
             ValidateProtagonistVisibility(ProtagonistTransform);
@@ -66,7 +65,6 @@ namespace Salinlahi.Runtime.Gameplay
             {
                 elapsed += Time.deltaTime;
                 float t = elapsed / _walkInDuration;
-                // Ease-out curve: t * (2 - t)
                 t = t * (2 - t);
 
                 ProtagonistTransform.position = Vector3.Lerp(startPosition, targetPosition, t);
