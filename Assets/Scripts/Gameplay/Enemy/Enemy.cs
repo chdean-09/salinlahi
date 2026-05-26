@@ -35,6 +35,7 @@ public class Enemy : MonoBehaviour
     private BossSummonTicker _summonTicker;
     // REWORK: SummonWaveOnPhaseStart removed — replaced by BossSummonTicker.
     private SpriteRenderer _renderer;
+    private EnemyGlyphBadge _glyphBadge;
     private int _currentHealth;
     private BaybayinCharacterSO _runtimeCharacter;
     private Color _baseRendererColor = Color.white;
@@ -51,6 +52,7 @@ public class Enemy : MonoBehaviour
     public BaybayinCharacterSO Character => _runtimeCharacter != null ? _runtimeCharacter : _data?.assignedCharacter;
     public BaybayinCharacterSO VisualCharacter => ResolveVisualCharacter();
     public bool HasVisualCharacterOverride => _labelOverrides.Count > 0;
+    public EnemyGlyphBadge GlyphBadge => _glyphBadge;
     public string EnemyID => _data?.enemyID;
     public EnemyDataSO Data => _data;
     public int CurrentHealth => _currentHealth;
@@ -104,6 +106,7 @@ public class Enemy : MonoBehaviour
         _phaserEnemy = GetComponent<PhaserEnemy>();
         _summonTicker = GetComponent<BossSummonTicker>();
         _renderer = GetComponent<SpriteRenderer>();
+        _glyphBadge = GetComponentInChildren<EnemyGlyphBadge>(includeInactive: true);
 
         if (_renderer != null)
             _baseRendererColor = _renderer.color;
@@ -128,6 +131,7 @@ public class Enemy : MonoBehaviour
     {
         _runtimeCharacter = character;
         RefreshDebugLabels();
+        _glyphBadge?.Refresh();
     }
 
     // Called by EnemyPool when this enemy is retrieved from the pool.
@@ -201,6 +205,11 @@ public class Enemy : MonoBehaviour
         ActiveEnemyTracker.Instance?.Register(this);
         _phaserEnemy?.RefreshPhaserState();
         RefreshDebugLabels();
+        if (_glyphBadge != null)
+        {
+            _glyphBadge.ApplyLayout();
+            _glyphBadge.Refresh();
+        }
         UpdateLabelLayout();
         HealthChanged?.Invoke(this, _currentHealth, _currentHealth);
         return true;
@@ -250,6 +259,7 @@ public class Enemy : MonoBehaviour
 
             ResetRendererState();
             RefreshDebugLabels();
+            _glyphBadge?.ResetForPool();
         }
         catch (System.Exception ex)
         {
@@ -350,6 +360,7 @@ public class Enemy : MonoBehaviour
             // therefore wait for visible death animations to finish. EnemyPool.Return
             // owns the single ActiveEnemyTracker.Unregister call.
             _isDying = true;
+            _glyphBadge?.PlayFinalDraw();
             // Cancel any in-flight hurt feedback before the death path takes over.
             // Otherwise its pause-window resume (or shake offset) could fight
             // the death animation by reactivating the mover or shifting the sprite.
@@ -364,6 +375,7 @@ public class Enemy : MonoBehaviour
         }
         else
         {
+            _glyphBadge?.PlayFinalDraw();
             ReturnToPool();
             EventBus.RaiseEnemyDefeated(capturedCharacter);
         }
@@ -411,6 +423,20 @@ public class Enemy : MonoBehaviour
 
     public void ApplyDecoyPenalty()
     {
+        if (_glyphBadge != null && gameObject.activeInHierarchy)
+        {
+            _mover?.Stop();
+            StartCoroutine(PlayRejectThenReturn());
+        }
+        else
+        {
+            ReturnToPool();
+        }
+    }
+
+    private IEnumerator PlayRejectThenReturn()
+    {
+        yield return _glyphBadge.PlayDecoyReject();
         ReturnToPool();
     }
 
@@ -422,6 +448,7 @@ public class Enemy : MonoBehaviour
         // Visual overrides are Enemy-instance-local only and must not be mirrored into HUD/boss icon UI.
         _labelOverrides[source] = visualCharacter;
         RefreshDebugLabels();
+        _glyphBadge?.Refresh();
     }
 
     public void ClearVisualCharacterOverride(object source)
@@ -430,7 +457,10 @@ public class Enemy : MonoBehaviour
             return;
 
         if (_labelOverrides.Remove(source))
+        {
             RefreshDebugLabels();
+            _glyphBadge?.Refresh();
+        }
     }
 
     public void ReturnToPool()
