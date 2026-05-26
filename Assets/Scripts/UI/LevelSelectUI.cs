@@ -96,6 +96,10 @@ public class LevelSelectUI : MonoBehaviour
         if (_eraBannerImage != null && era.bannerSprite != null)
             _eraBannerImage.sprite = era.bannerSprite;
 
+        bool pmAvailable = ProgressManager.Instance != null;
+        if (!pmAvailable)
+            DebugLogger.LogWarning("LevelSelectUI: ProgressManager not available. Defaulting all levels to unlocked.");
+
         for (int i = 0; i < _levelButtons.Count; i++)
         {
             LevelButton button = _levelButtons[i];
@@ -113,14 +117,10 @@ public class LevelSelectUI : MonoBehaviour
             bool unlocked  = true;
             bool completed = false;
 
-            if (ProgressManager.Instance != null)
+            if (pmAvailable)
             {
                 unlocked  = ProgressManager.Instance.IsLevelUnlocked(levelConfig.levelNumber);
                 completed = ProgressManager.Instance.IsLevelCompleted(levelConfig.levelNumber);
-            }
-            else
-            {
-                DebugLogger.LogWarning("LevelSelectUI: ProgressManager not available. Defaulting all levels to unlocked.");
             }
 
             button.gameObject.SetActive(true);
