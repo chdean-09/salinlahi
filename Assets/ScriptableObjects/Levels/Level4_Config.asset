@@ -17,6 +17,7 @@ MonoBehaviour:
   chapterNumber: 1
   chapterName: Chapter 1
   eraTheme: {fileID: 11400000, guid: 4a3f16684c91d284eafb13ac69eecbfc, type: 2}
+  numberSprite: {fileID: 21300000, guid: 02eb897dfabd3f44798a967b677647e9, type: 3}
   waves: []
   allowedCharacters: []
   bossConfig: {fileID: 0}
