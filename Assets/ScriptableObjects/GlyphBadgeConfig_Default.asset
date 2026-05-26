@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 58ec13b28fb94064989dc43e257e148e, type: 3}
   m_Name: GlyphBadgeConfig_Default
   m_EditorClassIdentifier: Salinlahi.Runtime::GlyphBadgeConfigSO
-  defaultWorldOffset: {x: 0, y: 1.5}
+  defaultWorldOffset: {x: 0, y: 1.4}
   defaultWorldScale: 0.8
   swapSlideOffset: {x: -0.8, y: 0}
   swapOutDuration: 0.18

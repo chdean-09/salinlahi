@@ -716,8 +716,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 0.3773585, b: 0.3773585, a: 1}
-  m_RaycastTarget: 1
+  m_Color: {r: 1, g: 0.254717, b: 0.254717, a: 1}
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -2494,7 +2494,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 200, y: 20}
+  m_SizeDelta: {x: 200, y: 25}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &596255154
 MonoBehaviour:
@@ -2562,7 +2562,7 @@ MonoBehaviour:
   _label: {fileID: 991249936}
   _canvasGroup: {fileID: 596255156}
   _labelText: VULNERABLE
-  _bossWorldOffset: {x: 0, y: -0.8}
+  _bossWorldOffset: {x: 0, y: -2}
   _gameplayCamera: {fileID: 573789166}
 --- !u!1 &601531608
 GameObject:
@@ -3209,7 +3209,7 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1512931225}
+  m_Father: {fileID: 1441290015}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
@@ -4368,7 +4368,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &991249935
 RectTransform:
   m_ObjectHideFlags: 0
@@ -4435,8 +4435,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 12
-  m_fontSizeBase: 12
+  m_fontSize: 36
+  m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -5729,8 +5729,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 26
-  m_fontSizeBase: 26
+  m_fontSize: 36
+  m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -5936,6 +5936,7 @@ RectTransform:
   - {fileID: 1730296453}
   - {fileID: 394851318}
   - {fileID: 1277825756}
+  - {fileID: 692981209}
   m_Father: {fileID: 490898503}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -6281,7 +6282,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Salinlahi.Runtime::BossDrawCounterUI
   _counterText: {fileID: 1402297130}
   _canvasGroup: {fileID: 1492016838}
-  _badgeRelativeOffset: {x: 0, y: -0.5}
+  _badgeRelativeOffset: {x: 0, y: -0.3}
   _gameplayCamera: {fileID: 573789166}
 --- !u!1 &1512931224
 GameObject:
@@ -6316,7 +6317,6 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 692981209}
   - {fileID: 1753008421}
   m_Father: {fileID: 490898503}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -8941,7 +8941,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 300, y: 60}
+  m_SizeDelta: {x: 300, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!225 &1869551400
 CanvasGroup:
@@ -8970,7 +8970,7 @@ MonoBehaviour:
   _canvasGroup: {fileID: 1869551400}
   _fillImage: {fileID: 110413871}
   _fadeDuration: 0.5
-  _bossWorldOffset: {x: 0, y: 2}
+  _bossWorldOffset: {x: 0, y: 2.3}
   _gameplayCamera: {fileID: 0}
 --- !u!114 &1869551402
 MonoBehaviour:
@@ -8986,7 +8986,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 0.122641504, g: 0.122641504, b: 0.122641504, a: 1}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -9142,7 +9142,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
+  m_Sprite: {fileID: 21300000, guid: b927325f60359b5448dc9a985e615588, type: 3}
   m_Type: 3
   m_PreserveAspect: 0
   m_FillCenter: 1
