@@ -27,7 +27,16 @@ namespace Salinlahi.Runtime.Gameplay
 
         public void EnsureProtagonist(Vector3 targetPosition)
         {
-            if (ProtagonistTransform != null) return;
+            DebugLogger.Log("[ProtagonistManager] EnsureProtagonist called. Current ProtagonistTransform: " + (ProtagonistTransform != null ? ProtagonistTransform.name : "null"));
+
+            if (ProtagonistTransform != null)
+            {
+                DebugLogger.Log("[ProtagonistManager] Protagonist already exists, skipping creation");
+                return;
+            }
+
+            Vector3 startPosition = targetPosition + Vector3.down * 5f;
+            DebugLogger.Log("[ProtagonistManager] Will create protagonist at start position: " + startPosition + " (target: " + targetPosition + ")");
 
             if (_protagonistPrefab == null)
             {
@@ -43,7 +52,6 @@ namespace Salinlahi.Runtime.Gameplay
                 }
             }
 
-            Vector3 startPosition = targetPosition + Vector3.down * 5f;
             GameObject protagonist = Instantiate(_protagonistPrefab, startPosition, Quaternion.identity);
             ProtagonistTransform = protagonist.transform;
             ValidateProtagonistVisibility(ProtagonistTransform);
