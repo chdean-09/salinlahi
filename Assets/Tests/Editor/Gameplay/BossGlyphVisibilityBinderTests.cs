@@ -88,6 +88,80 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.IsFalse(badge.IsPlayingFinalDraw);
         }
 
+        // Regression: HandleDrawnThisPhaseChanged fired on init with
+        // CorrectDrawsThisWindow == 0 would trigger PlaySwap even though no
+        // player draw had landed. The binder now ignores that initial signal.
+        [Test]
+        public void DrawnThisPhaseChanged_OnInitWithZeroDraws_DoesNothing()
+        {
+            BaybayinCharacterSO ch = CreateCharacter("BA", CreateSprite(Color.green));
+            (_, EnemyGlyphBadge badge, _, FakeBoss fake) =
+                CreateBinderRig(correctDraws: 0, required: 3, expected: ch);
+            EventBus.RaiseBossStarted(null);
+            EventBus.RaiseBossVulnerabilityWindowActive(0);
+            fake.RaiseDrawnThisPhaseChanged();
+            Assert.IsFalse(badge.IsSwapping,
+                "Init signal must not start a swap before the first correct draw.");
+            Assert.IsFalse(badge.IsPlayingFinalDraw);
+        }
+
+        // Regression: HandleBossDamaged previously called Hide() which stops
+        // _finalDrawRoutine via StopCoroutine. The seal-broken animation must
+        // run to completion; the routine self-hides at its end.
+        [Test]
+        public void BossDamaged_DuringFinalDraw_DoesNotCancelFinalDraw()
+        {
+            BaybayinCharacterSO ch = CreateCharacter("BA", CreateSprite(Color.green));
+            (_, EnemyGlyphBadge badge, _, FakeBoss fake) =
+                CreateBinderRig(correctDraws: 3, required: 3, expected: ch);
+            EventBus.RaiseBossStarted(null);
+            EventBus.RaiseBossVulnerabilityWindowActive(0);
+            fake.RaiseDrawnThisPhaseChanged();
+            Assert.IsTrue(badge.IsPlayingFinalDraw,
+                "Terminal draw should kick off the seal-broken animation.");
+            EventBus.RaiseBossDamaged(0, 0);
+            Assert.IsTrue(badge.IsPlayingFinalDraw,
+                "BossDamaged must not cancel the in-flight final-draw routine.");
+        }
+
+        // Regression: DrawingFailed fired outside the active vulnerability
+        // window briefly revealed the hidden boss glyph because FailFlashRoutine
+        // writes alpha 1 unconditionally.
+        [Test]
+        public void DrawingFailed_OutsideVulnerability_DoesNotPlayFailFlash()
+        {
+            BaybayinCharacterSO ch = CreateCharacter("BA", CreateSprite(Color.green));
+            (_, EnemyGlyphBadge badge, SpriteRenderer renderer, FakeBoss fake) =
+                CreateBinderRig(correctDraws: 0, required: 3, expected: ch);
+            EventBus.RaiseBossStarted(null);
+            // No RaiseBossVulnerabilityWindowActive — boss is not targetable.
+            Color before = renderer.color;
+            EventBus.RaiseDrawingFailed();
+            Assert.AreEqual(before.r, renderer.color.r, 0.001f);
+            Assert.AreEqual(before.g, renderer.color.g, 0.001f);
+            Assert.AreEqual(before.b, renderer.color.b, 0.001f);
+            Assert.AreEqual(before.a, renderer.color.a, 0.001f,
+                "Fail flash must not alter color (especially alpha) when boss is hidden.");
+        }
+
+        [Test]
+        public void DrawingFailed_DuringVulnerability_PlaysFailFlash()
+        {
+            BaybayinCharacterSO ch = CreateCharacter("BA", CreateSprite(Color.green));
+            (_, EnemyGlyphBadge badge, SpriteRenderer renderer, FakeBoss fake) =
+                CreateBinderRig(correctDraws: 0, required: 3, expected: ch);
+            // Make FakeBoss targetable so the binder's IsTargetable gate passes.
+            fake.SetTargetableForTest(true);
+            EventBus.RaiseBossStarted(null);
+            EventBus.RaiseBossVulnerabilityWindowActive(0);
+            EventBus.RaiseDrawingFailed();
+            // FailFlashRoutine writes failFlashColor on its first iteration.
+            GlyphBadgeConfigSO config = badge.Config;
+            Assert.AreEqual(config.failFlashColor.r, renderer.color.r, 0.01f);
+            Assert.AreEqual(config.failFlashColor.g, renderer.color.g, 0.01f);
+            Assert.AreEqual(config.failFlashColor.b, renderer.color.b, 0.01f);
+        }
+
         private (GameObject, EnemyGlyphBadge, SpriteRenderer, FakeBoss) CreateBinderRig(
             int correctDraws, int required, BaybayinCharacterSO expected)
         {
@@ -163,6 +237,24 @@ namespace Salinlahi.Tests.Editor.Gameplay
         public override int RequiredCharactersForCurrentPhase => _fakeRequired;
 
         public void RaiseDrawnThisPhaseChanged() => RaiseOnDrawnThisPhaseChanged();
+
+        // BossController.IsTargetable is non-virtual and reads
+        // (_state == State.Vulnerable && _isVulnerableActiveWindow). Set the
+        // underlying base-class fields via reflection. We resolve them through
+        // typeof(BossController) because Type.GetField with NonPublic does not
+        // walk the inheritance chain for private base-class fields.
+        public void SetTargetableForTest(bool targetable)
+        {
+            System.Type stateType = typeof(BossController).GetNestedType("State",
+                System.Reflection.BindingFlags.NonPublic);
+            object stateValue = targetable
+                ? System.Enum.Parse(stateType, "Vulnerable")
+                : System.Enum.Parse(stateType, "Idle");
+            const System.Reflection.BindingFlags flags =
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            typeof(BossController).GetField("_state", flags).SetValue(this, stateValue);
+            typeof(BossController).GetField("_isVulnerableActiveWindow", flags).SetValue(this, targetable);
+        }
     }
 
     internal static class TestEnemyDebugLabels

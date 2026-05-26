@@ -1,6 +1,6 @@
 # 04 — Gameplay Systems
 **Project:** Salinlahi
-**Version:** 1.6
+**Version:** 1.7
 **Date:** 2026-05-26
 **Owner:** Gameplay Developer (Jon Wayne Cabusbusan / Chad Andrada)
 
@@ -33,9 +33,11 @@ Three animations live on the badge:
 - **Final-Draw** — fires on every `Enemy.Defeat()` and on the boss's terminal correct draw of a window.
 - **Decoy Reject** — fires when the player draws a decoy's character (`Enemy.ApplyDecoyPenalty`).
 
-Boss visibility is gated by `BossGlyphVisibilityBinder`, which subscribes to vulnerability events. The boss's `X / N` counter (`BossDrawCounterUI`) anchors its screen position to the badge transform, so per-enemy badge offsets propagate to the counter automatically.
+Boss visibility is gated by `BossGlyphVisibilityBinder`, which subscribes to vulnerability events. The boss's `X / N` counter (`BossDrawCounterUI`) anchors its screen position to the badge transform, so per-enemy badge offsets propagate to the counter automatically. The binder ignores the initial `OnDrawnThisPhaseChanged` signal raised when a vulnerability window first samples its expected glyph (no swap before the first player draw), defers `Hide()` while the terminal final-draw animation is still playing (so the seal-broken animation runs to completion), and suppresses fail flashes when the boss is not currently targetable.
 
-Visual tuning lives in `GlyphBadgeConfigSO`. Per-enemy offset/scale overrides live on `EnemyDataSO` (opt-in via `overrideBadgeOffset` / `overrideBadgeScale` toggles).
+The defeat path also drives the badge final-draw for enemies without `deathFrames`: `Enemy.Defeat()` marks the enemy dying, kicks off `PlayFinalDraw()`, and waits for the badge animation to finish before returning to the pool. Decoy rejection (`Enemy.ApplyDecoyPenalty`) marks the decoy dying immediately and disables its contact collider so a second recognized draw of the same character cannot find it as an eligible target and re-trigger the penalty.
+
+Visual tuning lives in `GlyphBadgeConfigSO`. Per-enemy offset/scale overrides live on `EnemyDataSO` (opt-in via `overrideBadgeOffset` / `overrideBadgeScale` toggles). The badge keeps its world-space offset/scale even when the parent's `localScale` changes mid-encounter (e.g. boss collapse squash) by recomputing the inverse-parent-scale compensation in `LateUpdate`.
 
 [EVIDENCE: Assets/Scripts/Gameplay/Enemy/EnemyGlyphBadge.cs]
 [EVIDENCE: Assets/Scripts/Gameplay/Boss/BossGlyphVisibilityBinder.cs]

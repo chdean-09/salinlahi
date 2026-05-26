@@ -353,6 +353,10 @@ public class Enemy : MonoBehaviour
             && _data.deathFrames != null
             && _data.deathFrames.Length > 0;
 
+        bool hasBadgeFinalDraw = _glyphBadge != null
+            && _glyphBadge.Config != null
+            && _glyphBadge.isActiveAndEnabled;
+
         if (hasDeathAnimation)
         {
             // Freeze and fire defeat immediately, but keep this enemy registered
@@ -373,9 +377,24 @@ public class Enemy : MonoBehaviour
             EventBus.RaiseEnemyDefeated(capturedCharacter);
             _deathRoutine = StartCoroutine(PlayDeathAnimationThenReturn());
         }
+        else if (hasBadgeFinalDraw)
+        {
+            // No death frames, but a badge final-draw can still play. Mark dying
+            // and disable the contact collider so the enemy is not re-targeted
+            // while the badge animation plays. ReturnToPool is delayed until the
+            // final-draw coroutine completes (otherwise OnDisable.ResetForPool
+            // would stop the coroutine before the animation renders).
+            _isDying = true;
+            _glyphBadge.PlayFinalDraw();
+            _hurtFeedback?.ResetState();
+            _mover?.Stop();
+            DisableContactCollider();
+            GetComponent<GeneralAura>()?.ClearAllAffected();
+            EventBus.RaiseEnemyDefeated(capturedCharacter);
+            _deathRoutine = StartCoroutine(PlayBadgeFinalDrawThenReturn());
+        }
         else
         {
-            _glyphBadge?.PlayFinalDraw();
             ReturnToPool();
             EventBus.RaiseEnemyDefeated(capturedCharacter);
         }
@@ -384,6 +403,14 @@ public class Enemy : MonoBehaviour
     private IEnumerator PlayDeathAnimationThenReturn()
     {
         yield return PlayDeathAnimationFrames();
+        _deathRoutine = null;
+        ReturnToPool();
+    }
+
+    private IEnumerator PlayBadgeFinalDrawThenReturn()
+    {
+        while (_glyphBadge != null && _glyphBadge.IsPlayingFinalDraw)
+            yield return null;
         _deathRoutine = null;
         ReturnToPool();
     }
@@ -423,10 +450,24 @@ public class Enemy : MonoBehaviour
 
     public void ApplyDecoyPenalty()
     {
-        if (_glyphBadge != null && gameObject.activeInHierarchy)
+        // Mark dying immediately so a second recognized draw of this decoy's
+        // character cannot find it as an eligible target during the reject
+        // animation. Without this guard, CombatResolver.ResolveMatchedEnemy
+        // would re-enter and raise another OnBaseHit before the pool return.
+        if (_isDying) return;
+        _isDying = true;
+
+        _mover?.Stop();
+        DisableContactCollider();
+
+        bool canPlayReject = _glyphBadge != null
+            && _glyphBadge.Config != null
+            && _glyphBadge.isActiveAndEnabled
+            && gameObject.activeInHierarchy;
+
+        if (canPlayReject && _deathRoutine == null)
         {
-            _mover?.Stop();
-            StartCoroutine(PlayRejectThenReturn());
+            _deathRoutine = StartCoroutine(PlayRejectThenReturn());
         }
         else
         {
@@ -437,6 +478,7 @@ public class Enemy : MonoBehaviour
     private IEnumerator PlayRejectThenReturn()
     {
         yield return _glyphBadge.PlayDecoyReject();
+        _deathRoutine = null;
         ReturnToPool();
     }
 

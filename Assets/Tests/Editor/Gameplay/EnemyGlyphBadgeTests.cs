@@ -120,6 +120,45 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.AreEqual(1f, badge.transform.localScale.x, 0.001f);
         }
 
+        // Regression: ApplyLayout used to cache the parent's lossyScale once.
+        // When the boss collapse animation later changed root localScale, the
+        // child badge was visually squashed and the boss counter (which anchors
+        // to the badge) shifted with it. RecomputeBaseFromParentScale (also
+        // invoked from LateUpdate) must restore the world-stable scale.
+        [Test]
+        public void Layout_RecomputesAfterParentScaleChange_StaysWorldStable()
+        {
+            BaybayinCharacterSO ch = CreateCharacter("BA", badge: CreateSprite(Color.green));
+            EnemyDataSO data = ScriptableObject.CreateInstance<EnemyDataSO>();
+            data.enemyID = "test";
+            data.moveSpeed = 1f;
+            data.maxHealth = 1;
+            data.assignedCharacter = ch;
+            data.overrideBadgeOffset = true;
+            data.glyphBadgeOffsetOverride = new Vector2(0f, 1.2f);
+            data.overrideBadgeScale = true;
+            data.glyphBadgeScaleOverride = 1f;
+            _objectsToDestroy.Add(data);
+
+            (Enemy enemy, EnemyGlyphBadge badge, _) = CreateEnemyAndBadgeShells();
+            Assert.IsTrue(enemy.Initialize(data));
+            badge.ApplyLayout();
+
+            // Parent localScale changes (mimics boss collapse squash).
+            enemy.transform.localScale = new Vector3(1f, 0.85f, 1f);
+            badge.RecomputeBaseFromParentScale();
+
+            // World-space offset/scale should still match the configured values.
+            Vector3 worldPos = badge.transform.position;
+            Vector3 worldScale = badge.transform.lossyScale;
+            Assert.AreEqual(0f, worldPos.x, 0.001f);
+            Assert.AreEqual(1.2f, worldPos.y, 0.001f,
+                "Badge world Y offset must remain equal to the configured world offset.");
+            Assert.AreEqual(1f, worldScale.x, 0.001f);
+            Assert.AreEqual(1f, worldScale.y, 0.001f,
+                "Badge world Y scale must remain stable after parent scale changes.");
+        }
+
         [Test]
         public void ResetForPool_ClearsAlphaPositionScaleRotation_AndStopsRoutines()
         {

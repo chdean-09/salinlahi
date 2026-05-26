@@ -18,10 +18,17 @@ public class EnemyGlyphBadge : MonoBehaviour
     private Quaternion _baseLocalRotation;
     private Color _baseColor = Color.white;
     private bool _layoutApplied;
+    // Cached world-space layout values from EnemyDataSO/GlyphBadgeConfigSO.
+    // Used by LateUpdate to recompute the inverse-parent-scale compensation each
+    // frame so the badge stays world-stable even after the parent's localScale
+    // changes (e.g. boss collapse / stand-up squash-stretch).
+    private Vector2 _desiredWorldOffset;
+    private float _desiredWorldScale = 1f;
 
     public GlyphBadgeConfigSO Config => _config;
     public bool IsSwapping => _swapRoutine != null;
     public bool IsPlayingFinalDraw => _finalDrawRoutine != null;
+    public bool IsPlayingDecoyReject => _decoyRejectRoutine != null;
 
     private void Awake()
     {
@@ -50,20 +57,44 @@ public class EnemyGlyphBadge : MonoBehaviour
     {
         if (_enemy == null || _enemy.Data == null || _config == null) return;
         EnemyDataSO d = _enemy.Data;
-        Vector2 offset = d.overrideBadgeOffset ? d.glyphBadgeOffsetOverride : _config.defaultWorldOffset;
-        float scale = d.overrideBadgeScale ? d.glyphBadgeScaleOverride : _config.defaultWorldScale;
+        _desiredWorldOffset = d.overrideBadgeOffset ? d.glyphBadgeOffsetOverride : _config.defaultWorldOffset;
+        _desiredWorldScale = d.overrideBadgeScale ? d.glyphBadgeScaleOverride : _config.defaultWorldScale;
+        _baseLocalRotation = Quaternion.identity;
+        _layoutApplied = true;
+        RecomputeBaseFromParentScale(forceApplyTransform: true);
+    }
 
+    /// <summary>
+    /// Recompute the base local position/scale from the cached desired world
+    /// values and the parent's current lossyScale. Called from LateUpdate so the
+    /// badge stays world-stable even when the parent's localScale changes after
+    /// the initial layout (e.g. boss collapse squashes the boss sprite y-scale).
+    /// When an animation routine is in flight, only the base values are
+    /// refreshed; the transform is not overwritten so the coroutine retains
+    /// ownership of localPosition/localScale.
+    /// </summary>
+    public void RecomputeBaseFromParentScale(bool forceApplyTransform = false)
+    {
+        if (!_layoutApplied) return;
         Vector3 parentScale = transform.parent != null ? transform.parent.lossyScale : Vector3.one;
         float invX = InverseOrOne(parentScale.x);
         float invY = InverseOrOne(parentScale.y);
 
-        _baseLocalPosition = new Vector3(offset.x * invX, offset.y * invY, 0f);
-        _baseLocalScale = new Vector3(scale * invX, scale * invY, 1f);
-        _baseLocalRotation = Quaternion.identity;
-        transform.localPosition = _baseLocalPosition;
-        transform.localScale = _baseLocalScale;
-        transform.localRotation = _baseLocalRotation;
-        _layoutApplied = true;
+        _baseLocalPosition = new Vector3(_desiredWorldOffset.x * invX, _desiredWorldOffset.y * invY, 0f);
+        _baseLocalScale = new Vector3(_desiredWorldScale * invX, _desiredWorldScale * invY, 1f);
+
+        if (forceApplyTransform || (!IsSwapping && !IsPlayingFinalDraw && !IsPlayingDecoyReject))
+        {
+            transform.localPosition = _baseLocalPosition;
+            transform.localScale = _baseLocalScale;
+            transform.localRotation = _baseLocalRotation;
+        }
+    }
+
+    private void LateUpdate()
+    {
+        if (!_layoutApplied) return;
+        RecomputeBaseFromParentScale();
     }
 
     public void Refresh()

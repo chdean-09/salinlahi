@@ -57,7 +57,12 @@ public class BossGlyphVisibilityBinder : MonoBehaviour
 
     private void HandleBossDamaged(int phaseIndex, int hpRemaining)
     {
-        if (_badge != null) _badge.Hide();
+        if (_badge == null) return;
+        // Let the terminal final-draw routine finish on its own. It self-hides
+        // by disabling the renderer in its last frame. Calling Hide() here would
+        // StopCoroutine on _finalDrawRoutine and cancel the seal-broken animation.
+        if (_badge.IsPlayingFinalDraw) return;
+        _badge.Hide();
     }
 
     private void HandleBossDefeated()
@@ -69,6 +74,11 @@ public class BossGlyphVisibilityBinder : MonoBehaviour
     private void HandleDrawnThisPhaseChanged()
     {
         if (_boss == null || _badge == null) return;
+        // BossController raises this when the vulnerability window initializes
+        // the first expected glyph (before any player draw). Treat that as the
+        // initial show, not a swap result — HandleVulnerabilityActive already
+        // handles the initial Show + SetCharacter on the same frame.
+        if (_boss.CorrectDrawsThisWindow <= 0) return;
         bool terminal = _boss.CorrectDrawsThisWindow >= _boss.RequiredCharactersForCurrentPhase;
         if (terminal)
             _badge.PlayFinalDraw();
@@ -78,7 +88,12 @@ public class BossGlyphVisibilityBinder : MonoBehaviour
 
     private void HandleDrawingFailed()
     {
-        if (_badge != null) _badge.PlayFailFlash();
+        if (_badge == null || _boss == null) return;
+        // Suppress fail flash outside the active vulnerability window — otherwise
+        // a recognizer failure during summon/winddown/damage would briefly reveal
+        // the hidden boss glyph because FailFlashRoutine writes alpha-1 color.
+        if (!_boss.IsTargetable) return;
+        _badge.PlayFailFlash();
     }
 
     private void UnsubscribeFromBossInstance()

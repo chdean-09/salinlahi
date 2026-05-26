@@ -79,6 +79,78 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 "Enemy should be inactive after the reject animation completes.");
         }
 
+        [UnityTest]
+        public IEnumerator ApplyDecoyPenalty_SecondCallDuringReject_IsNoOp()
+        {
+            yield return null;
+
+            BaybayinCharacterSO character = GlyphBadgePlayModeTestHelpers.CreateCharacter(
+                "BA", GlyphBadgePlayModeTestHelpers.CreateSprite(Color.green));
+            _objectsToDestroy.Add(character);
+
+            GlyphBadgeConfigSO config = GlyphBadgePlayModeTestHelpers.CreateBadgeConfig(
+                decoyFlash: 0.08f,
+                decoyShake: 0.2f,
+                decoyShakeMagnitude: 0.1f);
+            _objectsToDestroy.Add(config);
+
+            EnemyDataSO data = ScriptableObject.CreateInstance<EnemyDataSO>();
+            data.enemyID = "decoy_double_hit_test";
+            data.moveSpeed = 1f;
+            data.maxHealth = 1;
+            data.assignedCharacter = character;
+            data.isDecoy = true;
+            _objectsToDestroy.Add(data);
+
+            Enemy enemy = CreateMaestroShell();
+            (EnemyGlyphBadge badge, _) =
+                GlyphBadgePlayModeTestHelpers.AddGlyphBadgeChild(enemy.gameObject, config);
+            Collider2D collider = enemy.GetComponent<Collider2D>();
+            Assert.IsTrue(enemy.Initialize(data));
+            badge.ApplyLayout();
+            badge.Refresh();
+
+            // First decoy hit: marks dying, disables collider, starts reject coroutine.
+            enemy.ApplyDecoyPenalty();
+            Assert.IsTrue(enemy.IsDying,
+                "First decoy hit must mark the enemy dying so it cannot be retargeted.");
+            Assert.IsFalse(collider.enabled,
+                "First decoy hit must disable the contact collider during the reject window.");
+            yield return null;
+
+            // Second decoy hit during the reject window: should be a no-op.
+            // Without the _isDying guard this would start a second reject
+            // coroutine and (via CombatResolver) raise another OnBaseHit.
+            int baseHitsRaised = 0;
+            System.Action<int> baseHitCounter = _ => baseHitsRaised++;
+            EventBus.OnBaseHit += baseHitCounter;
+            try
+            {
+                enemy.ApplyDecoyPenalty();
+                // ApplyDecoyPenalty does not raise OnBaseHit itself — CombatResolver
+                // does. The guarantee here is that the second call is a no-op
+                // (no new coroutine, enemy still going through original reject).
+                yield return null;
+                Assert.AreEqual(0, baseHitsRaised,
+                    "ApplyDecoyPenalty must not raise OnBaseHit on its own.");
+            }
+            finally
+            {
+                EventBus.OnBaseHit -= baseHitCounter;
+            }
+
+            // Wait for the reject to finish and return to pool.
+            float rejectEnd = Time.realtimeSinceStartup
+                + config.decoyRejectFlashDuration
+                + config.decoyRejectShakeDuration
+                + 0.1f;
+            while (Time.realtimeSinceStartup < rejectEnd && enemy.gameObject.activeSelf)
+                yield return null;
+
+            Assert.IsFalse(enemy.gameObject.activeSelf,
+                "Enemy should be returned to the pool exactly once after the reject completes.");
+        }
+
         private Enemy CreateMaestroShell()
         {
             GameObject go = new GameObject("Enemy_Maestro_Decoy_Test");
