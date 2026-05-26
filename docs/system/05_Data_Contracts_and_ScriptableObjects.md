@@ -1,7 +1,7 @@
 # 05 — Data Contracts and ScriptableObjects
 **Project:** Salinlahi
-**Version:** 1.6
-**Date:** 2026-05-26
+**Version:** 1.7
+**Date:** 2026-05-27
 **Owner:** Chad Andrada (Product Owner / Designer)
 
 ---
@@ -243,6 +243,7 @@ Defined at the bottom of `EnemyDataSO.cs`:
 | `summonHorizontalBounds` | `Vector2` | Summon Bounds | NO | Hard world-space horizontal cap on every minion spawn (`x = minX, y = maxX`). Set `x ≥ y` to disable. |
 | `introDuration` | `float` | Intro / Outro | YES | Seconds boss is invulnerable on entry. Default `2.0f`. |
 | `outroDuration` | `float` | Intro / Outro | YES | Seconds before `OnLevelComplete` after the last phase is cleared. Default `2.5f`. |
+| `audioBank` | `BossAudioBankSO` | Audio | NO | Per-boss audio bank. May be null — `BossAudio` no-ops cleanly if absent. |
 
 **Validation Rules:**
 - `phases.Count ≥ 1` (zero phases → `BossController.StartBoss` aborts with a logged error).
@@ -331,6 +332,37 @@ Master registry of all `BaybayinCharacterSO` assets, exposed via the `All` list.
 
 ---
 
+### 2.11 `BossAudioBankSO`
+
+**Menu path:** `Salinlahi/Audio/Boss Audio Bank`
+**File:** `Assets/Scripts/Data/BossAudioBankSO.cs`
+**Asset folder:** `Assets/ScriptableObjects/Audio/` (e.g. `BossAudioBank_ElInquisidor.asset`)
+
+Holds all per-boss audio clip references and tuning fields for one boss encounter. Referenced by `BossConfigSO.audioBank` and consumed by `BossAudio` on the boss prefab. Designers create a new asset for each new boss to give it a distinct sonic identity without code changes.
+
+| Field | Type | Header | Required | Notes |
+|-------|------|--------|----------|-------|
+| `bgm` | `AudioClip` | BGM | NO | Looping BGM played for the duration of the boss encounter. |
+| `introGrowl` | `AudioClip` | One-Shots | NO | Plays once on `OnBossStarted`. |
+| `summonTick` | `AudioClip` | One-Shots | NO | Plays each time the boss begins a summon tick (`OnBossSummonTick`). |
+| `bodyFall` | `AudioClip` | One-Shots | NO | Plays on `OnBossExhausted` (winding-down state). |
+| `vulnerabilityExpiredLaugh` | `AudioClip` | One-Shots | NO | Plays on `OnBossVulnerabilityExpired` (player failed to break the boss). |
+| `defeat` | `AudioClip` | One-Shots | NO | Plays on `OnBossDefeated` (outro start). |
+| `hitGrowls` | `AudioClip[]` | Variant Pools | NO | Short growls cycled on `OnBossDrawHit` (correct glyph during vulnerable window). No-immediate-repeat. |
+| `damagedGrowls` | `AudioClip[]` | Variant Pools | NO | Long growls cycled on `OnBossDamaged` (HP lost). No-immediate-repeat. |
+| `footsteps` | `AudioClip[]` | Variant Pools | NO | Footstep variants played at `footstepInterval` during Pace-pattern phases. No-immediate-repeat. |
+| `teleports` | `AudioClip[]` | Variant Pools | NO | Teleport variants played on `OnBossTeleport` (Teleport-pattern snap). No-immediate-repeat. |
+| `footstepInterval` | `float` | Footstep Cadence | NO | Seconds between footstep SFX while in a Pace phase. Default `0.45f`. Min `0.05f`. |
+| `bgmFadeInSeconds` | `float` | BGM Fade | NO | Seconds to fade BGM in on `OnBossStarted`. Default `1f`. |
+| `bgmFadeOutSeconds` | `float` | BGM Fade | NO | Seconds to fade BGM out on `OnBossDefeated`. Default `1.5f`. |
+
+**Null-tolerance:** All fields are optional. `BossAudio` silently skips any clip that is null, so partially-filled banks do not break gameplay. A new boss with a completely different sonic identity requires only a new `BossAudioBankSO` asset and a reference update on `BossConfigSO.audioBank` — no code change.
+
+[EVIDENCE: Assets/Scripts/Data/BossAudioBankSO.cs]
+[EVIDENCE: Assets/ScriptableObjects/Audio/BossAudioBank_ElInquisidor.asset]
+
+---
+
 ## 3. Asset Authoring Guidelines
 
 ### 3.1 Naming Convention
@@ -352,6 +384,7 @@ Master registry of all `BaybayinCharacterSO` assets, exposed via the `All` list.
 | `WaveConfigSO` | `Assets/ScriptableObjects/Waves/` |
 | `EnemyDataSO` | `Assets/ScriptableObjects/` |
 | `BossConfigSO` | `Assets/ScriptableObjects/` (e.g. `BossConfig_ElInquisidor.asset`, alongside other top-level configs) |
+| `BossAudioBankSO` | `Assets/ScriptableObjects/Audio/` (e.g. `BossAudioBank_ElInquisidor.asset`) |
 | Templates (text files) | `Assets/Resources/Templates/` |
 
 [EVIDENCE: Assets/ScriptableObjects/ directory listing — Characters/, Levels/, Waves/ subdirs confirmed]

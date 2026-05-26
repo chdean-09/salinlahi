@@ -1,7 +1,7 @@
 # 13 — Document Change Log
 **Project:** Salinlahi
-**Version:** 1.6
-**Date:** 2026-05-26
+**Version:** 1.7
+**Date:** 2026-05-27
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -10,6 +10,7 @@
 
 | Version | Date | Author | Summary | Impacted Documents |
 |---------|------|--------|---------|-------------------|
+| 1.7 | 2026-05-27 | Sync pass | SALIN-98 — Boss SFX & BGM: add `BossAudioBankSO` (per-boss audio clip bank SO), `BossAudio` component (9 EventBus subscriptions, footstep coroutine, no-immediate-repeat picker), three new EventBus boss audio events (`OnBossSummonTick`, `OnBossDrawHit`, `OnBossTeleport`), `AudioManager` fade helpers (`FadeInBGM`, `FadeOutBGM`), and `audioBank` field on `BossConfigSO`. | 02, 03, 04, 05, 13, SystemDiagrams |
 | 1.6 | 2026-05-26 | Sync pass | SALIN-98 — Boss summon staggered spawning. `BossPhase` field rename + new `delayBetweenMinions`: `summonDuration`→`summonPhaseDuration`, `summonInterval`→`delayBetweenSummons`, `summonBurstMin`→`minionsPerSummonMin`, `summonBurstMax`→`minionsPerSummonMax` (all guarded by `[FormerlySerializedAs]`). `BossSummonTicker` now streams minions one at a time instead of bursting in one frame. | 04, 05, 12, 13, SystemDiagrams |
 | 1.5 | 2026-05-26 | Sync pass | SALIN-97 — Added `EnemyGlyphBadge` system. Updated `04_Gameplay_Systems.md`, `05_Data_Contracts_and_ScriptableObjects.md`. Renamed `BossGlyphQueueUI` → `BossDrawCounterUI`. New SO: `GlyphBadgeConfigSO`. Two new fields on `BaybayinCharacterSO` (`badgeSprite`, `scrambledBadgeSprite`); four new fields on `EnemyDataSO`. | 04, 05, 13, SystemDiagrams, TDD, GDD, 06 |
 | 1.0 | 2026-03-19 | Jon Wayne Cabusbusan (Claude Code) | Initial generation of complete documentation suite from repository inventory, Salinlahi.md, GDD.md, TDD.md, and all C# implementation files as of Sprint 1 end. 35 requirements traced. 9 P0 gaps identified. | All (00–13) |

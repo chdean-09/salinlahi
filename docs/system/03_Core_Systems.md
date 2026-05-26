@@ -1,7 +1,7 @@
 # 03 — Core Systems
 **Project:** Salinlahi
-**Version:** 1.5
-**Date:** 2026-05-24
+**Version:** 1.6
+**Date:** 2026-05-27
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -121,6 +121,8 @@ Owns two `AudioSource` components: `_bgmSource` (background music, looped) and `
 | `PlaySFX(AudioClip clip)` | Plays clip one-shot on `_sfxSource`; null-safe |
 | `PlayBGM(AudioClip clip)` | Assigns clip to `_bgmSource`, loops, plays; guards against re-playing the same clip |
 | `StopBGM()` | Stops `_bgmSource` |
+| `FadeInBGM(AudioClip clip, float seconds) → Coroutine` | Fades from the current BGM (if any) to `clip` over `seconds`. Cancels any in-flight fade. `seconds ≤ 0` snaps without fading. No-ops if `clip` is null. Uses `Time.unscaledDeltaTime` so fades work during pause (`timeScale == 0`). |
+| `FadeOutBGM(float seconds) → Coroutine` | Fades the current BGM out then stops the source. Cancels any in-flight fade. `seconds ≤ 0` is equivalent to `StopBGM()`. |
 
 ### 3.5 Sprint 2 TODOs (marked in code)
 - `PlayBaseHitSound` is a stub. Requires assignment of a base-hit SFX `AudioClip` via Inspector.
@@ -169,6 +171,9 @@ Owns two `AudioSource` components: `_bgmSource` (background music, looped) and `
 | Boss | `OnBossVulnerabilityExpired` | `RaiseBossVulnerabilityExpired(int)` | `int` phaseIndex |
 | Boss | `OnBossDamaged` | `RaiseBossDamaged(int, int)` | `int phaseIndex, int hpRemaining` |
 | Boss | `OnBossDefeated` | `RaiseBossDefeated()` | none |
+| Boss Audio | `OnBossSummonTick` | `RaiseBossSummonTick()` | none — raised by `BossSummonTicker` at each summon tick |
+| Boss Audio | `OnBossDrawHit` | `RaiseBossDrawHit()` | none — raised by `BossController` on `BossRouteResult.Hit` |
+| Boss Audio | `OnBossTeleport` | `RaiseBossTeleport()` | none — raised by `PhaseBasedMovement.TeleportNow` on each snap |
 | Dialogue | `OnDialogueStarted` | `RaiseDialogueStarted()` | none |
 | Dialogue | `OnDialogueComplete` | `RaiseDialogueComplete()` | none |
 

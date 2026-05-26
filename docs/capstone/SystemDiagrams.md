@@ -39,6 +39,7 @@ erDiagram
     BossConfigSO ||--|{ BossPhase : "phases (embedded, 1 per HP)"
     BossConfigSO ||--|| EnemyDataSO : "bossEnemyData"
     BossConfigSO ||--o{ EnemyDataSO : "fallbackEnemyTypes"
+    BossConfigSO |o--o| BossAudioBankSO : "audioBank (optional)"
 
     BossPhase ||--o{ EnemyDataSO : "summonEnemyTypes"
 
@@ -97,6 +98,23 @@ erDiagram
         float introDuration
         float outroDuration
         Vector2 summonHorizontalBounds
+        BossAudioBankSO audioBank FK
+    }
+
+    BossAudioBankSO {
+        AudioClip bgm
+        AudioClip introGrowl
+        AudioClip summonTick
+        AudioClip bodyFall
+        AudioClip vulnerabilityExpiredLaugh
+        AudioClip defeat
+        AudioClip_array hitGrowls
+        AudioClip_array damagedGrowls
+        AudioClip_array footsteps
+        AudioClip_array teleports
+        float footstepInterval
+        float bgmFadeInSeconds
+        float bgmFadeOutSeconds
     }
 
     BossPhase {
@@ -185,6 +203,8 @@ classDiagram
         +PlaySFX(AudioClip)
         +PlayBGM(AudioClip)
         +StopBGM()
+        +FadeInBGM(AudioClip, float) Coroutine
+        +FadeOutBGM(float) Coroutine
     }
     class EnemyPool {
         +Get(EnemyDataSO) Enemy
@@ -263,6 +283,18 @@ classDiagram
     class BossSummonTicker
     class BossStateVisuals
     class PhaseBasedMovement
+    class BossAudio {
+        +HandleBossStarted(BossConfigSO)
+        +HandleBossPhaseStarted(int)
+        +HandleBossSummonTick()
+        +HandleBossTeleport()
+        +HandleBossExhausted(int)
+        +HandleBossDrawHit()
+        +HandleBossDamaged(int, int)
+        +HandleBossVulnerabilityExpired(int)
+        +HandleBossDefeated()
+    }
+    class BossAudioBankSO
     class WaveManager {
         +StartLevel(LevelConfigSO)
     }
@@ -329,6 +361,11 @@ classDiagram
     BossController ..> EventBus : publishes
     Enemy ..> EventBus : publishes
     EnemyMover ..> EventBus : publishes
+    BossAudio --> BossController : requires
+    BossAudio ..> EventBus : subscribes
+    BossAudio ..> AudioManager : PlaySFX / FadeInBGM / FadeOutBGM
+    BossAudio ..> BossAudioBankSO : reads
+    BossController ..> BossConfigSO : uses
 ```
 
 **Notation:**

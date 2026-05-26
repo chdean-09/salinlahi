@@ -1,7 +1,7 @@
 # 02 — Architecture and Runtime Flow
 **Project:** Salinlahi
-**Version:** 1.5
-**Date:** 2026-05-24
+**Version:** 1.6
+**Date:** 2026-05-27
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -145,6 +145,9 @@ All cross-system communication uses `EventBus.cs`. No direct manager-to-manager 
 | `OnBossVulnerabilityExpired` | `int` (phaseIndex) | `RaiseBossVulnerabilityExpired(int)` |
 | `OnBossDamaged` | `int phaseIndex, int hpRemaining` | `RaiseBossDamaged(int, int)` |
 | `OnBossDefeated` | none | `RaiseBossDefeated()` |
+| `OnBossSummonTick` | none | `RaiseBossSummonTick()` — raised by `BossSummonTicker.PlayTickAndSpawn` at each summon tick |
+| `OnBossDrawHit` | none | `RaiseBossDrawHit()` — raised by `BossController.TryRouteDraw` on `BossRouteResult.Hit` |
+| `OnBossTeleport` | none | `RaiseBossTeleport()` — raised by `PhaseBasedMovement.TeleportNow` on each Teleport-pattern snap |
 | `OnDialogueStarted` | none | `RaiseDialogueStarted()` |
 | `OnDialogueComplete` | none | `RaiseDialogueComplete()` |
 
