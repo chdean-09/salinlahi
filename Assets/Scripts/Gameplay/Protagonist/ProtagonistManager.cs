@@ -93,15 +93,19 @@ namespace Salinlahi.Runtime.Gameplay
         private static Sprite LoadFallbackSprite()
         {
 #if UNITY_EDITOR
+            DebugLogger.Log("[ProtagonistManager] Attempting to load sprites from: " + ProtagonistSpritePath);
             Object[] assets = UnityEditor.AssetDatabase.LoadAllAssetsAtPath(ProtagonistSpritePath);
+            DebugLogger.Log("[ProtagonistManager] Found " + assets.Length + " assets at path");
             foreach (Object asset in assets)
             {
                 if (asset is Sprite sprite)
                 {
+                    DebugLogger.Log("[ProtagonistManager] Found sprite: " + sprite.name);
                     return sprite;
                 }
             }
 #endif
+            DebugLogger.Log("[ProtagonistManager] Attempting to load sprite from Resources");
             return Resources.Load<Sprite>("Characters/Protagonist/sprite_prot_japanese_idle_back-Sheet");
         }
 
