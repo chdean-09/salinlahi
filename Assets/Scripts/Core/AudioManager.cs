@@ -1,10 +1,27 @@
 using UnityEngine;
+using System.Collections.Generic;
+using System.Collections;
 
 public class AudioManager : Singleton<AudioManager>
 {
     [Header("Audio Sources")]
     [SerializeField] private AudioSource _bgmSource;
     [SerializeField] private AudioSource _sfxSource;
+
+    [Header("SFX Clips")]
+    [SerializeField] private AudioClip _chainLightningSfxClip;
+    [SerializeField] private AudioClip _chainLightningZapSfxClip;
+
+    [Header("Chain Lightning Mix")]
+    [SerializeField] private bool _enablePerEnemyChainZap = true;
+    [SerializeField, Min(0)] private int _maxChainZapOneShots = 3;
+    [SerializeField, Min(0f)] private float _chainZapVolumeScale = 0.3f;
+    [SerializeField, Min(0f)] private float _chainAudioStartDelayMin = 0.08f;
+    [SerializeField, Min(0f)] private float _chainAudioStartDelayMax = 0.22f;
+    [SerializeField, Min(0f)] private float _chainZapInterval = 0.06f;
+    [SerializeField, Min(0f)] private float _chainZapIntervalJitter = 0.07f;
+
+    private Coroutine _chainZapRoutine;
 
     private const string PrefKeyMasterVolume = "salinlahi.audio.master_volume";
     private const string PrefKeyBgmVolume = "salinlahi.audio.bgm_volume";
@@ -29,12 +46,20 @@ public class AudioManager : Singleton<AudioManager>
     {
         EventBus.OnEnemyDefeated += PlayPronunciationClip;
         EventBus.OnBaseHit += PlayBaseHitSound;
+        EventBus.OnChainAttackHit += PlayChainLightningSfx;
     }
 
     private void OnDisable()
     {
         EventBus.OnEnemyDefeated -= PlayPronunciationClip;
         EventBus.OnBaseHit -= PlayBaseHitSound;
+        EventBus.OnChainAttackHit -= PlayChainLightningSfx;
+
+        if (_chainZapRoutine != null)
+        {
+            StopCoroutine(_chainZapRoutine);
+            _chainZapRoutine = null;
+        }
     }
 
     // Sprint 2: Replace stubs with real implementations
@@ -48,6 +73,52 @@ public class AudioManager : Singleton<AudioManager>
     {
         // Sprint 2: assign a base hit sfx clip via Inspector
         DebugLogger.Log("AudioManager: Base hit sound (stub)");
+    }
+
+    private void PlayChainLightningSfx(IReadOnlyList<Enemy> targets)
+    {
+        if (targets == null || targets.Count == 0)
+            return;
+
+        if (_chainZapRoutine != null)
+            StopCoroutine(_chainZapRoutine);
+
+        int zapCount = Mathf.Min(Mathf.Max(0, _maxChainZapOneShots), targets.Count);
+        _chainZapRoutine = StartCoroutine(PlayChainLightningBurst(targets.Count, zapCount));
+    }
+
+    private IEnumerator PlayChainLightningBurst(int targetCount, int zapCount)
+    {
+        float startMin = Mathf.Min(_chainAudioStartDelayMin, _chainAudioStartDelayMax);
+        float startMax = Mathf.Max(_chainAudioStartDelayMin, _chainAudioStartDelayMax);
+        float startDelay = startMax > 0f ? Random.Range(startMin, startMax) : 0f;
+        if (startDelay > 0f)
+            yield return new WaitForSeconds(startDelay);
+
+        if (_chainLightningSfxClip != null)
+            _sfxSource.PlayOneShot(_chainLightningSfxClip);
+
+        if (!_enablePerEnemyChainZap || _chainLightningZapSfxClip == null || zapCount <= 0 || targetCount <= 0)
+        {
+            _chainZapRoutine = null;
+            yield break;
+        }
+
+        for (int i = 0; i < zapCount; i++)
+        {
+            float volume = _chainZapVolumeScale * Random.Range(0.85f, 1f);
+            _sfxSource.PlayOneShot(_chainLightningZapSfxClip, volume);
+
+            if (i < zapCount - 1)
+            {
+                float jitter = _chainZapIntervalJitter > 0f
+                    ? Random.Range(0f, _chainZapIntervalJitter)
+                    : 0f;
+                yield return new WaitForSeconds(_chainZapInterval + jitter);
+            }
+        }
+
+        _chainZapRoutine = null;
     }
 
     public void PlaySFX(AudioClip clip)

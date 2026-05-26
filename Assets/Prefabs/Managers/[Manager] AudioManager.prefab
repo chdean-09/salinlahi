@@ -48,6 +48,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AudioManager
   _bgmSource: {fileID: 7226962601350481409}
   _sfxSource: {fileID: 4551939043571537906}
+  _chainLightningSfxClip: {fileID: 8300000, guid: 80cdd272d9d2a464da494ebcb9245341, type: 3}
+  _chainLightningZapSfxClip: {fileID: 8300000, guid: 80cdd272d9d2a464da494ebcb9245341, type: 3}
+  _enablePerEnemyChainZap: 1
+  _maxChainZapOneShots: 3
+  _chainZapVolumeScale: 0.3
+  _chainAudioStartDelayMin: 0.08
+  _chainAudioStartDelayMax: 0.22
+  _chainZapInterval: 0.06
+  _chainZapIntervalJitter: 0.07
 --- !u!82 &7226962601350481409
 AudioSource:
   m_ObjectHideFlags: 0

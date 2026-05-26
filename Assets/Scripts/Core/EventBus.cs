@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 // Static event bus. All cross-system communication goes through here.
 // Subscribe in OnEnable. Unsubscribe in OnDisable. No exceptions.
@@ -28,6 +29,8 @@ public static class EventBus
     public static event Action<Enemy> OnSingleAttackHit;
     public static event Action OnDrawingMissed;
     public static event Action<int> OnAOETriggered; // int = number of enemies mass-defeated
+    public static event Action<IReadOnlyList<Enemy>> OnChainAttackHit;
+    public static event Action<Enemy> OnChainAttackStep;
 
     // -- Combo Events --
     public static event Action<int> OnComboChanged; // int = current streak
@@ -74,6 +77,8 @@ public static class EventBus
     public static void RaiseSingleAttackHit(Enemy enemy) => OnSingleAttackHit?.Invoke(enemy);
     public static void RaiseDrawingMissed() => OnDrawingMissed?.Invoke();
     public static void RaiseAOETriggered(int defeatedCount) => OnAOETriggered?.Invoke(defeatedCount);
+    public static void RaiseChainAttackHit(IReadOnlyList<Enemy> enemies) => OnChainAttackHit?.Invoke(enemies);
+    public static void RaiseChainAttackStep(Enemy enemy) => OnChainAttackStep?.Invoke(enemy);
     public static void RaiseComboChanged(int streak) => OnComboChanged?.Invoke(streak);
     public static void RaiseFocusModeActivated() => OnFocusModeActivated?.Invoke();
     public static void RaiseFocusModeDeactivated() => OnFocusModeDeactivated?.Invoke();

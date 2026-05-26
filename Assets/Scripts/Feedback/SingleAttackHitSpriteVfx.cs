@@ -9,6 +9,7 @@ public sealed class SingleAttackHitSpriteVfx : MonoBehaviour
 
     private float _elapsed;
     private bool _isPlaying;
+    public SpriteRenderer SpriteRenderer => _spriteRenderer;
 
     public float PlayDuration
     {

@@ -44,3 +44,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2f76ee17656cba748aa09681472d231f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CombatResolver
+  _aoeThreshold: 3
+  _aoeDamagePerTarget: 1
+  _staggerAoeDefeats: 0
+  _distanceWeightedDelay: 1
+  _baseAnchor: {fileID: 0}
+  _aoeMinDelay: 0.02
+  _aoeMaxDelay: 0.22
+  _aoeRandomJitter: 0.06
+  _aoeExtraRandomDelay: 0.12
+  _aoeInitialDelayMin: 0.08
+  _aoeInitialDelayMax: 0.2
