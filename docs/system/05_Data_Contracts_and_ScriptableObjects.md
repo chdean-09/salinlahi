@@ -1,6 +1,6 @@
 # 05 — Data Contracts and ScriptableObjects
 **Project:** Salinlahi
-**Version:** 1.8
+**Version:** 1.9
 **Date:** 2026-05-27
 **Owner:** Chad Andrada (Product Owner / Designer)
 
@@ -159,6 +159,7 @@ Defined at the bottom of `EnemyDataSO.cs`:
 | `chapterNumber` | `int` | Identity | YES | Default `1`. Author-facing label for HUD/level-select grouping. |
 | `chapterName` | `string` | Identity | YES | Default `"Chapter 1"`. Author-facing label for HUD/level-select grouping. |
 | `eraTheme` | `EraThemeSO` | Identity | NO | Visual theme for this level's era (background, ground, shrine, decorations). Consumed by `EnvironmentThemeSwapper`. |
+| `numberSprite` | `Sprite` | Identity | NO | Baked-in numbered scroll sprite displayed on this level's Level Select button. Null triggers a warning log from LevelButton; the scroll image is unchanged. |
 | `waves` | `List<WaveConfigSO>` | Waves | YES (non-boss) | Ordered list of waves played in index order. Ignored when `bossConfig != null`. |
 | `allowedCharacters` | `List<BaybayinCharacterSO>` | Characters | YES | Master allowed-character list for this level. All `WaveConfigSO.charactersInWave` entries must be a subset of this list. |
 | `bossConfig` | `BossConfigSO` | Boss | NO | If assigned, this level is a boss encounter. The level is treated as a boss level whenever this reference is non-null. |
@@ -375,6 +376,30 @@ Holds all per-boss audio clip references and tuning fields for one boss encounte
 
 ---
 
+### 2.12 `EraConfigSO`
+
+**Menu path:** `Salinlahi/Era Config`
+**File:** `Assets/Scripts/Data/EraConfigSO.cs`
+**Asset folder:** `Assets/ScriptableObjects/Eras/`
+
+Per-era visual + content bundle for the Level Select screen. `LevelSelectUI` holds a `List<EraConfigSO>` and iterates its `levels` list to populate the five fixed `LevelButton` scene instances.
+
+| Field | Type | Header | Required | Notes |
+|-------|------|--------|----------|-------|
+| `eraName` | `string` | Identity | YES | Human-readable name for logs/debugging (e.g. `"Era One"`). |
+| `backgroundSprite` | `Sprite` | Visuals | YES | Full-screen background sprite shown when this era is active. Assigned to `_eraBackgroundImage.sprite` by `LevelSelectUI.ShowEra`. |
+| `bannerSprite` | `Sprite` | Visuals | YES | Baked-in banner sprite for this era (e.g. the ERA ONE scroll). Assigned to `_eraBannerImage.sprite` by `LevelSelectUI.ShowEra`. |
+| `levels` | `List<LevelConfigSO>` | Levels | YES | Ordered list of levels in this era. Expected length matches `LevelSelectUI._slotsPerEra` (5). Shorter lists cause the surplus `LevelButton` slots to be hidden (`SetActive(false)`). |
+
+**Validation Rules:**
+- `levels.Count` should equal `LevelSelectUI._slotsPerEra` (currently 5). Shorter is handled; longer entries beyond slot count are silently ignored.
+- All three visual fields (`eraName`, `backgroundSprite`, `bannerSprite`) must be non-null for the era to render correctly.
+
+[EVIDENCE: Assets/Scripts/Data/EraConfigSO.cs]
+[EVIDENCE: Assets/Scripts/UI/LevelSelectUI.cs]
+
+---
+
 ## 3. Asset Authoring Guidelines
 
 ### 3.1 Naming Convention
@@ -386,6 +411,7 @@ Holds all per-boss audio clip references and tuning fields for one boss encounte
 | `LevelConfigSO` | `Level_[number]` | `Level_01`, `Level_10` |
 | `WaveConfigSO` | `L[level]_W[wave]` | `L1_W1`, `L3_W2` |
 | `RecognitionConfigSO` | `RecognitionConfig` | (singleton asset) |
+| `EraConfigSO` | `Era_[number]` | `Era_01`, `Era_02` |
 
 ### 3.2 Asset Folder Map
 
@@ -397,6 +423,7 @@ Holds all per-boss audio clip references and tuning fields for one boss encounte
 | `EnemyDataSO` | `Assets/ScriptableObjects/` |
 | `BossConfigSO` | `Assets/ScriptableObjects/` (e.g. `BossConfig_ElInquisidor.asset`, alongside other top-level configs) |
 | `BossAudioBankSO` | `Assets/ScriptableObjects/Audio/` (e.g. `BossAudioBank_ElInquisidor.asset`) |
+| `EraConfigSO` | `Assets/ScriptableObjects/Eras/` |
 | Templates (text files) | `Assets/Resources/Templates/` |
 
 [EVIDENCE: Assets/ScriptableObjects/ directory listing — Characters/, Levels/, Waves/ subdirs confirmed]

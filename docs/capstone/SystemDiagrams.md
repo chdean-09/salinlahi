@@ -30,6 +30,7 @@ erDiagram
     LevelConfigSO ||--|{ BaybayinCharacterSO : "allowedCharacters"
     LevelConfigSO }o--|| EraThemeSO : "eraTheme"
     LevelConfigSO |o--o| BossConfigSO : "bossConfig (optional)"
+    EraConfigSO ||--o{ LevelConfigSO : "levels (ordered list)"
 
     WaveConfigSO ||--|{ BaybayinCharacterSO : "charactersInWave"
 
@@ -89,6 +90,7 @@ erDiagram
         int levelNumber PK
         int chapterNumber
         bool isAvailableInLite
+        Sprite numberSprite
     }
 
     BossConfigSO {
@@ -134,6 +136,12 @@ erDiagram
         Sprite groundSprite
         Sprite shrineSprite
         Sprite baseZoneSprite
+    }
+
+    EraConfigSO {
+        string eraName PK
+        Sprite backgroundSprite
+        Sprite bannerSprite
     }
 
     RecognitionConfigSO {
