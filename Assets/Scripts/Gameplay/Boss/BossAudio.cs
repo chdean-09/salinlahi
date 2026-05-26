@@ -67,8 +67,8 @@ public class BossAudio : MonoBehaviour
         if (_bank == null) return;
 
         if (AudioManager.Instance != null)
-            AudioManager.Instance.FadeInBGM(_bank.bgm, _bank.bgmFadeInSeconds);
-        PlaySfx(_bank.introGrowl);
+            AudioManager.Instance.FadeInBGM(_bank.bgm, _bank.bgmFadeInSeconds, _bank.bgmVolume);
+        PlaySfx(_bank.introGrowl, _bank.introGrowlVolume);
     }
 
     private void HandleBossPhaseStarted(int phaseIndex)
@@ -93,40 +93,40 @@ public class BossAudio : MonoBehaviour
 
     private void HandleBossSummonTick()
     {
-        if (_bank != null) PlaySfx(_bank.summonTick);
+        if (_bank != null) PlaySfx(_bank.summonTick, _bank.summonTickVolume);
     }
 
     private void HandleBossTeleport()
     {
-        if (_bank != null) PlaySfx(PickNoRepeat(_bank.teleports, ref _lastTeleportIdx));
+        if (_bank != null) PlaySfx(PickNoRepeat(_bank.teleports, ref _lastTeleportIdx), _bank.teleportsVolume);
     }
 
     private void HandleBossExhausted(int phaseIndex)
     {
         StopFootsteps();
-        if (_bank != null) PlaySfx(_bank.bodyFall);
+        if (_bank != null) PlaySfx(_bank.bodyFall, _bank.bodyFallVolume);
     }
 
     private void HandleBossDrawHit()
     {
-        if (_bank != null) PlaySfx(PickNoRepeat(_bank.hitGrowls, ref _lastHitIdx));
+        if (_bank != null) PlaySfx(PickNoRepeat(_bank.hitGrowls, ref _lastHitIdx), _bank.hitGrowlsVolume);
     }
 
     private void HandleBossDamaged(int phaseIndex, int hpRemaining)
     {
-        if (_bank != null) PlaySfx(PickNoRepeat(_bank.damagedGrowls, ref _lastDamagedIdx));
+        if (_bank != null) PlaySfx(PickNoRepeat(_bank.damagedGrowls, ref _lastDamagedIdx), _bank.damagedGrowlsVolume);
     }
 
     private void HandleBossVulnerabilityExpired(int phaseIndex)
     {
-        if (_bank != null) PlaySfx(_bank.vulnerabilityExpiredLaugh);
+        if (_bank != null) PlaySfx(_bank.vulnerabilityExpiredLaugh, _bank.vulnerabilityExpiredLaughVolume);
     }
 
     private void HandleBossDefeated()
     {
         StopFootsteps();
         if (_bank == null) return;
-        PlaySfx(_bank.defeat);
+        PlaySfx(_bank.defeat, _bank.defeatVolume);
         if (AudioManager.Instance != null)
             AudioManager.Instance.FadeOutBGM(_bank.bgmFadeOutSeconds);
     }
@@ -162,7 +162,7 @@ public class BossAudio : MonoBehaviour
             if (gated) continue;
 
             if (_bank != null)
-                PlaySfx(PickNoRepeat(_bank.footsteps, ref _lastFootstepIdx));
+                PlaySfx(PickNoRepeat(_bank.footsteps, ref _lastFootstepIdx), _bank.footstepsVolume);
         }
     }
 
@@ -176,10 +176,10 @@ public class BossAudio : MonoBehaviour
         return pool[idx];
     }
 
-    private void PlaySfx(AudioClip clip)
+    private void PlaySfx(AudioClip clip, float volumeScale = 1f)
     {
         if (clip == null) return;
         if (AudioManager.Instance != null)
-            AudioManager.Instance.PlaySFX(clip);
+            AudioManager.Instance.PlaySFX(clip, volumeScale);
     }
 }

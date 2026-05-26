@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ebf46108f2a53ca4b80edbf66d3f6b41, type: 3}
+  m_Name: BossAudioBank_ElInquisidor
+  m_EditorClassIdentifier: Salinlahi.Runtime::BossAudioBankSO
+  bgm: {fileID: 8300000, guid: 2c4b95783d12b6640971f04de5308a9f, type: 3}
+  bgmVolume: 0.4
+  introGrowl: {fileID: 8300000, guid: b87a6b100c9b0c54cbb115819ccf870e, type: 3}
+  introGrowlVolume: 1
+  summonTick: {fileID: 8300000, guid: 1934090fbdd5d1f4ea616df9d9e34523, type: 3}
+  summonTickVolume: 1
+  bodyFall: {fileID: 8300000, guid: 0e18c15ef7bef84449c4c36d1268ba24, type: 3}
+  bodyFallVolume: 1
+  vulnerabilityExpiredLaugh: {fileID: 8300000, guid: 09a36a5eff236ea46bf479d7f3c2095d, type: 3}
+  vulnerabilityExpiredLaughVolume: 1
+  defeat: {fileID: 8300000, guid: 794dc7b9c1e83ce4eb62203a68a38f26, type: 3}
+  defeatVolume: 1
+  hitGrowls:
+  - {fileID: 8300000, guid: 26fae50fd77656f45b311879ede9b6a5, type: 3}
+  - {fileID: 8300000, guid: 069a22be520ef334bb4fb1dd465d9911, type: 3}
+  - {fileID: 8300000, guid: ee85b89b3b2187d4ea0df9899825e569, type: 3}
+  hitGrowlsVolume: 1
+  damagedGrowls:
+  - {fileID: 8300000, guid: 8fd2a6f9fe100d7489389355ad695ea1, type: 3}
+  - {fileID: 8300000, guid: e9f37ebe28fd4d1428d86c5524e4dd87, type: 3}
+  - {fileID: 8300000, guid: f4fab9ec5b0b04949843c4f82ba563d7, type: 3}
+  damagedGrowlsVolume: 1
+  footsteps:
+  - {fileID: 8300000, guid: 4f8d422ed200bd149a981eb5d9bca1ac, type: 3}
+  - {fileID: 8300000, guid: 807b4f343ea76fd4ebb104a4471635ff, type: 3}
+  - {fileID: 8300000, guid: c948d438f3b7ff84d834c8358451451a, type: 3}
+  - {fileID: 8300000, guid: dcf2731d0651d3941930529c25ceeca7, type: 3}
+  footstepsVolume: 0.3
+  teleports:
+  - {fileID: 8300000, guid: 4d762ba50a6246640b96dd11b0a70465, type: 3}
+  - {fileID: 8300000, guid: 21d3df9596dc00e488ef655d32487237, type: 3}
+  teleportsVolume: 1
+  footstepInterval: 0.45
+  bgmFadeInSeconds: 1
+  bgmFadeOutSeconds: 1.5

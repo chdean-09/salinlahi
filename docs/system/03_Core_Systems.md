@@ -1,6 +1,6 @@
 # 03 — Core Systems
 **Project:** Salinlahi
-**Version:** 1.6
+**Version:** 1.7
 **Date:** 2026-05-27
 **Owner:** Jon Wayne Cabusbusan
 
@@ -118,11 +118,11 @@ Owns two `AudioSource` components: `_bgmSource` (background music, looped) and `
 
 | Method | Behavior |
 |--------|----------|
-| `PlaySFX(AudioClip clip)` | Plays clip one-shot on `_sfxSource`; null-safe |
-| `PlayBGM(AudioClip clip)` | Assigns clip to `_bgmSource`, loops, plays; guards against re-playing the same clip |
-| `StopBGM()` | Stops `_bgmSource` |
-| `FadeInBGM(AudioClip clip, float seconds) → Coroutine` | Fades from the current BGM (if any) to `clip` over `seconds`. Cancels any in-flight fade. `seconds ≤ 0` snaps without fading. No-ops if `clip` is null. Uses `Time.unscaledDeltaTime` so fades work during pause (`timeScale == 0`). |
-| `FadeOutBGM(float seconds) → Coroutine` | Fades the current BGM out then stops the source. Cancels any in-flight fade. `seconds ≤ 0` is equivalent to `StopBGM()`. |
+| `PlaySFX(AudioClip clip, float volumeScale = 1f)` | Plays clip one-shot on `_sfxSource`; null-safe. `volumeScale` is clamped to `[0,1]` and forwarded to `AudioSource.PlayOneShot`, stacking with the user-facing master & SFX sliders. |
+| `PlayBGM(AudioClip clip)` | Assigns clip to `_bgmSource`, loops, plays; guards against re-playing the same clip. Resets `_bgmScale` to `1f` so non-boss BGM plays at full authored level. |
+| `StopBGM()` | Stops `_bgmSource` and resets `_bgmScale` to `1f`. |
+| `FadeInBGM(AudioClip clip, float seconds, float volumeScale = 1f) → Coroutine` | Fades from the current BGM (if any) to `clip` over `seconds`. Cancels any in-flight fade. `seconds ≤ 0` snaps without fading. No-ops if `clip` is null. Uses `Time.unscaledDeltaTime` so fades work during pause (`timeScale == 0`). `volumeScale` is stored as `_bgmScale` and applied as `master * bgm * _bgmScale` until the next `PlayBGM`/`StopBGM`/`FadeOutBGM`. |
+| `FadeOutBGM(float seconds) → Coroutine` | Fades the current BGM out then stops the source. Cancels any in-flight fade. `seconds ≤ 0` is equivalent to `StopBGM()`. Resets `_bgmScale` to `1f` when the fade completes. |
 
 ### 3.5 Sprint 2 TODOs (marked in code)
 - `PlayBaseHitSound` is a stub. Requires assignment of a base-hit SFX `AudioClip` via Inspector.

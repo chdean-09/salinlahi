@@ -1,6 +1,6 @@
 # 05 — Data Contracts and ScriptableObjects
 **Project:** Salinlahi
-**Version:** 1.7
+**Version:** 1.8
 **Date:** 2026-05-27
 **Owner:** Chad Andrada (Product Owner / Designer)
 
@@ -343,20 +343,32 @@ Holds all per-boss audio clip references and tuning fields for one boss encounte
 | Field | Type | Header | Required | Notes |
 |-------|------|--------|----------|-------|
 | `bgm` | `AudioClip` | BGM | NO | Looping BGM played for the duration of the boss encounter. |
+| `bgmVolume` | `float` | BGM | NO | `[0..1]` scale for this boss's BGM. Stacks multiplicatively on top of Master & BGM user sliders. Default `1f`. |
 | `introGrowl` | `AudioClip` | One-Shots | NO | Plays once on `OnBossStarted`. |
+| `introGrowlVolume` | `float` | One-Shots | NO | `[0..1]` per-clip volume scale. Default `1f`. |
 | `summonTick` | `AudioClip` | One-Shots | NO | Plays each time the boss begins a summon tick (`OnBossSummonTick`). |
+| `summonTickVolume` | `float` | One-Shots | NO | `[0..1]` per-clip volume scale. Default `1f`. |
 | `bodyFall` | `AudioClip` | One-Shots | NO | Plays on `OnBossExhausted` (winding-down state). |
+| `bodyFallVolume` | `float` | One-Shots | NO | `[0..1]` per-clip volume scale. Default `1f`. |
 | `vulnerabilityExpiredLaugh` | `AudioClip` | One-Shots | NO | Plays on `OnBossVulnerabilityExpired` (player failed to break the boss). |
+| `vulnerabilityExpiredLaughVolume` | `float` | One-Shots | NO | `[0..1]` per-clip volume scale. Default `1f`. |
 | `defeat` | `AudioClip` | One-Shots | NO | Plays on `OnBossDefeated` (outro start). |
+| `defeatVolume` | `float` | One-Shots | NO | `[0..1]` per-clip volume scale. Default `1f`. |
 | `hitGrowls` | `AudioClip[]` | Variant Pools | NO | Short growls cycled on `OnBossDrawHit` (correct glyph during vulnerable window). No-immediate-repeat. |
+| `hitGrowlsVolume` | `float` | Variant Pools | NO | `[0..1]` volume scale applied to every clip in the pool. Default `1f`. |
 | `damagedGrowls` | `AudioClip[]` | Variant Pools | NO | Long growls cycled on `OnBossDamaged` (HP lost). No-immediate-repeat. |
+| `damagedGrowlsVolume` | `float` | Variant Pools | NO | `[0..1]` volume scale applied to every clip in the pool. Default `1f`. |
 | `footsteps` | `AudioClip[]` | Variant Pools | NO | Footstep variants played at `footstepInterval` during Pace-pattern phases. No-immediate-repeat. |
+| `footstepsVolume` | `float` | Variant Pools | NO | `[0..1]` volume scale applied to every clip in the pool. Default `1f`. |
 | `teleports` | `AudioClip[]` | Variant Pools | NO | Teleport variants played on `OnBossTeleport` (Teleport-pattern snap). No-immediate-repeat. |
+| `teleportsVolume` | `float` | Variant Pools | NO | `[0..1]` volume scale applied to every clip in the pool. Default `1f`. |
 | `footstepInterval` | `float` | Footstep Cadence | NO | Seconds between footstep SFX while in a Pace phase. Default `0.45f`. Min `0.05f`. |
 | `bgmFadeInSeconds` | `float` | BGM Fade | NO | Seconds to fade BGM in on `OnBossStarted`. Default `1f`. |
 | `bgmFadeOutSeconds` | `float` | BGM Fade | NO | Seconds to fade BGM out on `OnBossDefeated`. Default `1.5f`. |
 
-**Null-tolerance:** All fields are optional. `BossAudio` silently skips any clip that is null, so partially-filled banks do not break gameplay. A new boss with a completely different sonic identity requires only a new `BossAudioBankSO` asset and a reference update on `BossConfigSO.audioBank` — no code change.
+**Null-tolerance:** All clip fields are optional. `BossAudio` silently skips any clip that is null, so partially-filled banks do not break gameplay. A new boss with a completely different sonic identity requires only a new `BossAudioBankSO` asset and a reference update on `BossConfigSO.audioBank` — no code change.
+
+**Volume layering:** Per-clip `*Volume` fields and `bgmVolume` are designer-side balance knobs that stack multiplicatively on top of the player-facing master/BGM/SFX sliders managed by `AudioManager`. Setting any `*Volume` to `0` silences that category without breaking the rest of the bank.
 
 [EVIDENCE: Assets/Scripts/Data/BossAudioBankSO.cs]
 [EVIDENCE: Assets/ScriptableObjects/Audio/BossAudioBank_ElInquisidor.asset]

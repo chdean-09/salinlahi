@@ -14,6 +14,11 @@ public class AudioManager : Singleton<AudioManager>
     private float _bgmVolume = 1f;
     private float _sfxVolume = 1f;
 
+    // Per-clip scale applied to the BGM source on top of master & bgm sliders.
+    // Set by FadeInBGM; reused by ApplyVolumes and fade routines so live slider
+    // changes during a track preserve the bank's authored level.
+    private float _bgmScale = 1f;
+
     public float MasterVolume => _masterVolume;
     public float BgmVolume => _bgmVolume;
     public float SfxVolume => _sfxVolume;
@@ -50,21 +55,27 @@ public class AudioManager : Singleton<AudioManager>
         DebugLogger.Log("AudioManager: Base hit sound (stub)");
     }
 
-    public void PlaySFX(AudioClip clip)
+    public void PlaySFX(AudioClip clip, float volumeScale = 1f)
     {
         if (clip == null) return;
-        _sfxSource.PlayOneShot(clip);
+        _sfxSource.PlayOneShot(clip, Mathf.Clamp01(volumeScale));
     }
 
     public void PlayBGM(AudioClip clip)
     {
         if (clip == null || _bgmSource.clip == clip) return;
+        _bgmScale = 1f;
         _bgmSource.clip = clip;
         _bgmSource.loop = true;
+        _bgmSource.volume = _masterVolume * _bgmVolume;
         _bgmSource.Play();
     }
 
-    public void StopBGM() => _bgmSource.Stop();
+    public void StopBGM()
+    {
+        _bgmScale = 1f;
+        _bgmSource.Stop();
+    }
 
     private Coroutine _bgmFadeRoutine;
 
@@ -72,17 +83,19 @@ public class AudioManager : Singleton<AudioManager>
     // If `clip` is null, no-ops. If already playing `clip`, no-ops.
     // `seconds <= 0` snaps to the new clip at full target volume (no fade).
     // Cancels any in-flight fade before starting a new one.
-    public Coroutine FadeInBGM(AudioClip clip, float seconds)
+    public Coroutine FadeInBGM(AudioClip clip, float seconds, float volumeScale = 1f)
     {
         if (clip == null) return null;
         if (_bgmSource == null) return null;
         if (_bgmFadeRoutine != null) StopCoroutine(_bgmFadeRoutine);
 
+        _bgmScale = Mathf.Clamp01(volumeScale);
+
         if (seconds <= 0f)
         {
             _bgmSource.clip = clip;
             _bgmSource.loop = true;
-            _bgmSource.volume = _masterVolume * _bgmVolume;
+            _bgmSource.volume = _masterVolume * _bgmVolume * _bgmScale;
             _bgmSource.Play();
             _bgmFadeRoutine = null;
             return null;
@@ -102,6 +115,7 @@ public class AudioManager : Singleton<AudioManager>
         if (seconds <= 0f)
         {
             _bgmSource.Stop();
+            _bgmScale = 1f;
             _bgmSource.volume = _masterVolume * _bgmVolume;
             _bgmFadeRoutine = null;
             return null;
@@ -122,11 +136,11 @@ public class AudioManager : Singleton<AudioManager>
         while (elapsed < seconds)
         {
             elapsed += Time.unscaledDeltaTime;
-            float target = _masterVolume * _bgmVolume;
+            float target = _masterVolume * _bgmVolume * _bgmScale;
             _bgmSource.volume = Mathf.Lerp(0f, target, Mathf.Clamp01(elapsed / seconds));
             yield return null;
         }
-        _bgmSource.volume = _masterVolume * _bgmVolume;
+        _bgmSource.volume = _masterVolume * _bgmVolume * _bgmScale;
         _bgmFadeRoutine = null;
     }
 
@@ -139,12 +153,13 @@ public class AudioManager : Singleton<AudioManager>
             elapsed += Time.unscaledDeltaTime;
             // Recompute the upper bound each tick so volume slider changes
             // mid-fade are respected.
-            float upper = _masterVolume * _bgmVolume;
+            float upper = _masterVolume * _bgmVolume * _bgmScale;
             float from = Mathf.Min(startVolume, upper);
             _bgmSource.volume = Mathf.Lerp(from, 0f, Mathf.Clamp01(elapsed / seconds));
             yield return null;
         }
         _bgmSource.Stop();
+        _bgmScale = 1f;
         _bgmSource.volume = _masterVolume * _bgmVolume;
         _bgmFadeRoutine = null;
     }
@@ -176,7 +191,7 @@ public class AudioManager : Singleton<AudioManager>
     private void ApplyVolumes()
     {
         if (_bgmSource != null)
-            _bgmSource.volume = _masterVolume * _bgmVolume;
+            _bgmSource.volume = _masterVolume * _bgmVolume * _bgmScale;
         if (_sfxSource != null)
             _sfxSource.volume = _masterVolume * _sfxVolume;
     }

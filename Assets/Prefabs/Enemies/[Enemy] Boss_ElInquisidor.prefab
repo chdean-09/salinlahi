@@ -125,6 +125,7 @@ GameObject:
   - component: {fileID: 1096354656556004451}
   - component: {fileID: 605744564620617401}
   - component: {fileID: 6320176332696674443}
+  - component: {fileID: 3508264831374356309}
   m_Layer: 0
   m_Name: '[Enemy] Boss_ElInquisidor'
   m_TagString: Untagged
@@ -407,3 +408,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8def2f05ffd9fa6498679a69b053f303, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Salinlahi.Runtime::BossGlyphVisibilityBinder
+--- !u!114 &3508264831374356309
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8620596032087142478}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6a472363bd33c6e4798f9a53d726fd47, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Salinlahi.Runtime::BossAudio

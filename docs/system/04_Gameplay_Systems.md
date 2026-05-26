@@ -1,6 +1,6 @@
 # 04 — Gameplay Systems
 **Project:** Salinlahi
-**Version:** 1.9
+**Version:** 2.0
 **Date:** 2026-05-27
 **Owner:** Gameplay Developer (Jon Wayne Cabusbusan / Chad Andrada)
 
@@ -361,6 +361,8 @@ Boss HP equals `BossConfigSO.phases.Count`. There is **no separate `maxHealth`**
 **No-immediate-repeat picker:** Variant pools (`hitGrowls`, `damagedGrowls`, `footsteps`, `teleports`) use `Random.Range` with a per-pool `lastIdx` guard so the same clip never plays twice in a row.
 
 **Null-tolerance:** Every handler silently returns if `_bank` is null or the targeted clip field is null. A partially-filled `BossAudioBankSO` does not break gameplay.
+
+**Per-category volume scaling:** Each `PlaySFX`/`FadeInBGM` call passes the matching `*Volume` field from the bank (`bgmVolume`, `introGrowlVolume`, `summonTickVolume`, `bodyFallVolume`, `vulnerabilityExpiredLaughVolume`, `defeatVolume`, `hitGrowlsVolume`, `damagedGrowlsVolume`, `footstepsVolume`, `teleportsVolume`). `AudioManager.PlaySFX(clip, volumeScale)` forwards the scale to `AudioSource.PlayOneShot`, and `AudioManager.FadeInBGM(clip, seconds, volumeScale)` stores it as `_bgmScale` so the BGM volume is computed as `master * bgm * _bgmScale` for the duration of the encounter. `_bgmScale` resets to `1f` on `FadeOutBGM`, `StopBGM`, or `PlayBGM` so non-boss tracks resume at normal level.
 
 [EVIDENCE: Assets/Scripts/Gameplay/Boss/BossAudio.cs]
 [EVIDENCE: Assets/Scripts/Data/BossAudioBankSO.cs]
