@@ -16,13 +16,13 @@ MonoBehaviour:
   targetCharacter: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
   enemyData: {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
   stopPosition: {x: -0.010000229, y: 2.9275002, z: 0}
-  promptFreezeDelaySeconds: 2.2
+  promptFreezeDelaySeconds: 1.9
   templatePoints:
   - {x: 0, y: 50}
   - {x: 40, y: 0}
   - {x: 88, y: 50}
   - {x: 40, y: 92}
-  guideSprite: {fileID: 8335134393165218311, guid: e5ec7d503e3af6545bae9d7312af2bcb, type: 3}
+  guideSprite: {fileID: -7019089095972263220, guid: ceb87f9375157e64690dafe395aab3b8, type: 3}
   tolerancePixels: 15
   widenedTolerancePixels: 20
   promptText: Draw BA. Start at the dot.

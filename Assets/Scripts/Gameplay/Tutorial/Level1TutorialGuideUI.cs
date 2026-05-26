@@ -25,6 +25,7 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
     private System.Action _skipRequested;
     private Coroutine _pulseCoroutine;
     private Coroutine _animatePathCoroutine;
+    private Coroutine _heartbeatCoroutine;
 
     private void Awake()
     {
@@ -191,6 +192,10 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
 
         ShowGuideSprite(step);
 
+        if (_heartbeatCoroutine != null)
+            StopCoroutine(_heartbeatCoroutine);
+        _heartbeatCoroutine = StartCoroutine(HeartbeatCoroutine());
+
         // Set up guide visuals if available
         if (_guidePathRenderer != null && step != null && step.templatePoints != null && step.templatePoints.Length > 1)
         {
@@ -346,11 +351,11 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         rect.anchorMax = new Vector2(0.5f, 0.5f);
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.anchoredPosition = new Vector2(0f, 120f);
-        rect.sizeDelta = new Vector2(180f, 180f);
+        rect.sizeDelta = new Vector2(260f, 260f);
 
         _guideSpriteImage = imageObject.GetComponent<Image>();
         _guideSpriteImage.raycastTarget = false;
-        _guideSpriteImage.color = new Color(1f, 1f, 1f, 0.9f);
+        _guideSpriteImage.color = new Color(1f, 1f, 1f, 0.55f);
         imageObject.SetActive(false);
         return _guideSpriteImage;
     }
@@ -366,6 +371,11 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         {
             StopCoroutine(_animatePathCoroutine);
             _animatePathCoroutine = null;
+        }
+        if (_heartbeatCoroutine != null)
+        {
+            StopCoroutine(_heartbeatCoroutine);
+            _heartbeatCoroutine = null;
         }
     }
 
@@ -409,6 +419,24 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         }
 
         _guidePathRenderer.positionCount = totalPoints;
+    }
+
+    private System.Collections.IEnumerator HeartbeatCoroutine()
+    {
+        float cycleDuration = 1.2f;
+        while (true)
+        {
+            float elapsed = 0f;
+            while (elapsed < cycleDuration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.PingPong(elapsed / cycleDuration, 1f);
+                float alpha = Mathf.Lerp(0.35f, 0.75f, t);
+                if (_guideSpriteImage != null)
+                    _guideSpriteImage.color = new Color(1f, 1f, 1f, alpha);
+                yield return null;
+            }
+        }
     }
 
     private void HandleSkipClicked()

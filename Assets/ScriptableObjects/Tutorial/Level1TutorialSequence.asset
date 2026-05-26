@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Level1TutorialSequenceSO
   steps:
   - {fileID: 11400000, guid: 570d304cd3744bb8984f246b1e280c64, type: 2}
-  - {fileID: 11400000, guid: 18991ac1d995495cb1e74613e834b571, type: 2}
-  - {fileID: 11400000, guid: c689dc7cf1cd4f999954e3183e5ab328, type: 2}
+  - {fileID: 11400000, guid: c1fa5b94252c48bfb7044e94cb5d09c5, type: 2}
   - {fileID: 11400000, guid: ef95595956164dc4b7ba103c155ceaed, type: 2}
   baseIntroText: This is the base.
   baseDefenseText: Keep enemies away from it.
