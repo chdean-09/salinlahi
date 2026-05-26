@@ -119,7 +119,9 @@ All game content is defined in ScriptableObject assets. This means that level de
 | LevelConfigSO | Chapter assignment, background theme, ordered list of WaveConfigSO references for that level. |
 | WaveConfigSO | Enemy types to spawn, count per type, spawn delay between enemies, spawn position columns. |
 | EnemyDataSO | Era assignment, movement speed, movement pattern (straight, fast, glide, zigzag, sprinter/charge, commander aura, censor), health / hits required (for shielded types like Capitan and Shokan), isDecoy flag (for Maestro), isPhaser flag and interval (for Fraile), corruption veil flag (for Shokan), reference to a BaybayinCharacterSO. |
-| BaybayinCharacterSO | Character ID string, display name, template file references, AudioClip for pronunciation. |
+| BaybayinCharacterSO | Character ID string, display name, template file references, AudioClip for pronunciation, `badgeSprite` (framed glyph for `EnemyGlyphBadge`), optional `scrambledBadgeSprite` (glitched override variant). |
+| GlyphBadgeConfigSO | Global badge layout and animation tuning: default offset/scale, swap slide/durations, final-draw charge/release, decoy-reject flash/shake, boss fail-flash colors/durations. Single shared asset (`GlyphBadgeConfig_Default`). |
+| EnemyDataSO (glyph badge) | Optional per-enemy overrides: `overrideBadgeOffset`, `glyphBadgeOffsetOverride`, `overrideBadgeScale`, `glyphBadgeScaleOverride`. |
 | BossConfigSO | Boss name (El Inquisidor, The Superintendent, Kadiliman), boss health pool, number of phases, required characters per phase, timing windows, summon ability configuration, special ability (decree scramble for Superintendent). |
 | RecognitionConfigSO | Confidence threshold (0.60), resample point count (32), scale square size (250), idle timer duration (1.5s). |
 

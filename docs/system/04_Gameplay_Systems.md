@@ -1,7 +1,7 @@
 # 04 — Gameplay Systems
 **Project:** Salinlahi
-**Version:** 1.5
-**Date:** 2026-05-24
+**Version:** 1.6
+**Date:** 2026-05-26
 **Owner:** Gameplay Developer (Jon Wayne Cabusbusan / Chad Andrada)
 
 ---
@@ -16,10 +16,30 @@
 | `SpriteRenderer` | (Unity built-in) | Set to `walkFrames[0]` on initialize |
 | `Collider2D` | (Unity built-in, 2D trigger) | Required by `EnemyMover` |
 | Movement | `EnemyMover.cs` | `[RequireComponent(typeof(Collider2D))]` |
+| `GlyphBadge` child | `EnemyGlyphBadge.cs` | World-space framed Baybayin badge; optional until prefabs are wired (null-safe on `Enemy`) |
 
 [EVIDENCE: Assets/Scripts/Gameplay/Enemy/Enemy.cs]
 [EVIDENCE: Assets/Scripts/Gameplay/Enemy/EnemyMover.cs]
+[EVIDENCE: Assets/Scripts/Gameplay/Enemy/EnemyGlyphBadge.cs]
 [EVIDENCE: Assets/Prefabs/Enemies/[Enemy] Standard.prefab]
+
+### 1.1.1 Glyph Badge
+
+`EnemyGlyphBadge` is a world-space component on every enemy prefab (including the boss). It reads `Enemy.VisualCharacter` — the same source the developer debug label uses — so all visual overrides (Kempei scramble, Capitan/Shokan hurt-swap, `ApplyVisualCharacterOverride`) drive it for free. It renders the framed Baybayin glyph via `BaybayinCharacterSO.badgeSprite`.
+
+Three animations live on the badge:
+
+- **Swap** — fires for hurt-swap (`postHurtCharacter`) and the boss's intermediate correct draws within a vulnerable window.
+- **Final-Draw** — fires on every `Enemy.Defeat()` and on the boss's terminal correct draw of a window.
+- **Decoy Reject** — fires when the player draws a decoy's character (`Enemy.ApplyDecoyPenalty`).
+
+Boss visibility is gated by `BossGlyphVisibilityBinder`, which subscribes to vulnerability events. The boss's `X / N` counter (`BossDrawCounterUI`) anchors its screen position to the badge transform, so per-enemy badge offsets propagate to the counter automatically.
+
+Visual tuning lives in `GlyphBadgeConfigSO`. Per-enemy offset/scale overrides live on `EnemyDataSO` (opt-in via `overrideBadgeOffset` / `overrideBadgeScale` toggles).
+
+[EVIDENCE: Assets/Scripts/Gameplay/Enemy/EnemyGlyphBadge.cs]
+[EVIDENCE: Assets/Scripts/Gameplay/Boss/BossGlyphVisibilityBinder.cs]
+[EVIDENCE: Assets/Scripts/UI/BossDrawCounterUI.cs]
 
 ### 1.2 Lifecycle States
 
@@ -272,6 +292,8 @@ The Spanish-era boss (`el_inquisidor`) is implemented as a self-contained phase-
 | `PhaseBasedMovement` | Drives the boss transform per phase movement pattern (Hover/Pace/Teleport). Imperative API: `StartPattern(phase)`, `StopPattern()`, `TeleportNow(phase)` (called by BossController on Teleport ticks). |
 | `BossStateVisuals` | Panting bob + red tint during `WindingDown`/`Vulnerable`; collapse animation on entering `Vulnerable`; stand-up tween on exiting `Vulnerable` (`Damaged` or timeout). |
 | `BossDamageFeedback` | Two-tier damage feedback: small-hit (per glyph) and emphasized (phase damage). Exposes `IsHurtPaused` and `CriticalColor` consumed by movement and state visuals. |
+| `EnemyGlyphBadge` | World-space framed glyph above the boss; same component as regular enemies. |
+| `BossGlyphVisibilityBinder` | Shows/hides the badge and drives swap/final-draw/fail-flash during vulnerability windows. |
 
 ### 8.2 State Machine
 
@@ -293,7 +315,7 @@ During `Vulnerable`, the controller samples a random glyph from `LevelConfigSO.a
 | `BossController.TryRouteDraw(characterID)` result | Meaning |
 |------|---------|
 | `BossRouteResult.NotRouted` | Boss not targetable; caller (`CombatResolver`) falls through to AOE/closest-match |
-| `BossRouteResult.Hit` | Correct glyph during `Vulnerable`; advances queue, samples next expected glyph. **Ordering invariant:** the controller samples the next glyph BEFORE raising `OnDrawnThisPhaseChanged`, so subscribers reading `CurrentExpectedCharacter` in the handler observe the newly sampled glyph (required by `BossGlyphQueueUI`). |
+| `BossRouteResult.Hit` | Correct glyph during `Vulnerable`; advances queue, samples next expected glyph. **Ordering invariant:** the controller samples the next glyph BEFORE raising `OnDrawnThisPhaseChanged`, so subscribers reading `CurrentExpectedCharacter` in the handler observe the newly sampled glyph (required by `BossDrawCounterUI`). |
 | `BossRouteResult.WrongGlyph` | Incorrect glyph during `Vulnerable`; consumed (no fall-through), raises `OnDrawingFailed` |
 
 ### 8.5 Boss Spawn Integration
