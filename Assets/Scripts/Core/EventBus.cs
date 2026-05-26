@@ -54,6 +54,11 @@ public static class EventBus
     public static event Action<int, int> OnBossDamaged;          // phase index, HP remaining after the hit
     public static event Action OnBossDefeated;
 
+    // -- Boss Audio Events --
+    public static event Action OnBossSummonTick;     // raised by BossSummonTicker at each summon tick
+    public static event Action OnBossDrawHit;        // raised by BossController on BossRouteResult.Hit
+    public static event Action OnBossTeleport;       // raised by PhaseBasedMovement on TeleportNow
+
     // -- Dialogue Events --
     public static event Action OnDialogueStarted;
     public static event Action OnDialogueComplete;
@@ -94,6 +99,9 @@ public static class EventBus
     public static void RaiseBossVulnerabilityExpired(int phaseIndex) => OnBossVulnerabilityExpired?.Invoke(phaseIndex);
     public static void RaiseBossDamaged(int phaseIndex, int hpRemaining) => OnBossDamaged?.Invoke(phaseIndex, hpRemaining);
     public static void RaiseBossDefeated() => OnBossDefeated?.Invoke();
+    public static void RaiseBossSummonTick() => OnBossSummonTick?.Invoke();
+    public static void RaiseBossDrawHit() => OnBossDrawHit?.Invoke();
+    public static void RaiseBossTeleport() => OnBossTeleport?.Invoke();
     public static void RaiseDialogueStarted() => OnDialogueStarted?.Invoke();
     public static void RaiseDialogueComplete() => OnDialogueComplete?.Invoke();
     public static void RaiseThemeApplied(EraThemeSO theme) => OnThemeApplied?.Invoke(theme);

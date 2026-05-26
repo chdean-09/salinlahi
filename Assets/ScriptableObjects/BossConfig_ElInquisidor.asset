@@ -17,10 +17,11 @@ MonoBehaviour:
   bossSprite: {fileID: 95172164111334305, guid: f6ede119ad3b6824b9652c0513057a7c, type: 3}
   bossEnemyData: {fileID: 11400000, guid: aa843150d07c87f439e39501b863853c, type: 2}
   phases:
-  - summonDuration: 30
-    summonInterval: 7
-    summonBurstMin: 1
-    summonBurstMax: 2
+  - summonPhaseDuration: 30
+    delayBetweenSummons: 7
+    minionsPerSummonMin: 1
+    minionsPerSummonMax: 2
+    delayBetweenMinions: 0.6
     summonEnemyTypes:
     - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
     summonSpawnRange: {x: 3, y: 1.5}
@@ -30,10 +31,11 @@ MonoBehaviour:
     movementSpeed: 1
     paceHalfRange: 2.5
     teleportHalfRange: {x: 2, y: 0}
-  - summonDuration: 30
-    summonInterval: 2
-    summonBurstMin: 1
-    summonBurstMax: 2
+  - summonPhaseDuration: 30
+    delayBetweenSummons: 2
+    minionsPerSummonMin: 1
+    minionsPerSummonMax: 2
+    delayBetweenMinions: 0.6
     summonEnemyTypes:
     - {fileID: 11400000, guid: b1192b8ea41bc418cb84defa4321b63f, type: 2}
     summonSpawnRange: {x: 3, y: 1.5}
@@ -43,10 +45,11 @@ MonoBehaviour:
     movementSpeed: 1.3
     paceHalfRange: 2.5
     teleportHalfRange: {x: 2.5, y: 0}
-  - summonDuration: 20
-    summonInterval: 4
-    summonBurstMin: 2
-    summonBurstMax: 3
+  - summonPhaseDuration: 20
+    delayBetweenSummons: 4
+    minionsPerSummonMin: 2
+    minionsPerSummonMax: 3
+    delayBetweenMinions: 0.6
     summonEnemyTypes:
     - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
     - {fileID: 11400000, guid: b1192b8ea41bc418cb84defa4321b63f, type: 2}
@@ -60,5 +63,6 @@ MonoBehaviour:
   fallbackEnemyTypes:
   - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
   summonHorizontalBounds: {x: -2, y: 2}
-  introDuration: 1
-  outroDuration: 2.5
+  introDuration: 1.5
+  outroDuration: 0
+  audioBank: {fileID: 11400000, guid: e1230ab6e2d4a074a912f176e29df4eb, type: 2}

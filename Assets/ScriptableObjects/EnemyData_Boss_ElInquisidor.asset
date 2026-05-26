@@ -25,8 +25,24 @@ MonoBehaviour:
   animatorController: {fileID: 0}
   assignedCharacter: {fileID: 0}
   isDecoy: 0
+  isPhaser: 0
+  phaserInterval: 0.5
+  phaserInitialVisibleDelayMin: 0
+  phaserInitialVisibleDelayMax: 0
+  phaserVisibleHoldMin: 0
+  phaserVisibleHoldMax: 0
+  phaserInvisibleHoldMin: 0
+  phaserInvisibleHoldMax: 0
+  phaserFadeOutDuration: 0.3
+  phaserFadeInDuration: 0.2
+  phaserFadeOutPulseCount: 3
+  phaserFadeOutPulseAmplitude: 0.2
   dealsContactDamage: 0
   era: 0
+  overrideBadgeOffset: 1
+  glyphBadgeOffsetOverride: {x: 0, y: -3.5}
+  overrideBadgeScale: 1
+  glyphBadgeScaleOverride: 3
   zigzagAmplitude: 0
   zigzagFrequency: 0
   baseSpeedMultiplier: 1

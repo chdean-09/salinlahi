@@ -15,5 +15,7 @@ MonoBehaviour:
   characterID: SA
   syllable: sa
   displaySprite: {fileID: -6582686875119954690, guid: c8c94c8a0f22bb14da2303902b6392df, type: 3}
+  badgeSprite: {fileID: -1376931383015601363, guid: 9cfd94270482c3941baf99de008a269b, type: 3}
+  scrambledBadgeSprite: {fileID: 0}
   pronunciationClip: {fileID: 0}
   templateFileName: SA_template_01

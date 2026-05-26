@@ -1,7 +1,7 @@
 # 04 — Gameplay Systems
 **Project:** Salinlahi
-**Version:** 1.5
-**Date:** 2026-05-24
+**Version:** 2.0
+**Date:** 2026-05-27
 **Owner:** Gameplay Developer (Jon Wayne Cabusbusan / Chad Andrada)
 
 ---
@@ -16,10 +16,32 @@
 | `SpriteRenderer` | (Unity built-in) | Set to `walkFrames[0]` on initialize |
 | `Collider2D` | (Unity built-in, 2D trigger) | Required by `EnemyMover` |
 | Movement | `EnemyMover.cs` | `[RequireComponent(typeof(Collider2D))]` |
+| `GlyphBadge` child | `EnemyGlyphBadge.cs` | World-space framed Baybayin badge; optional until prefabs are wired (null-safe on `Enemy`) |
 
 [EVIDENCE: Assets/Scripts/Gameplay/Enemy/Enemy.cs]
 [EVIDENCE: Assets/Scripts/Gameplay/Enemy/EnemyMover.cs]
+[EVIDENCE: Assets/Scripts/Gameplay/Enemy/EnemyGlyphBadge.cs]
 [EVIDENCE: Assets/Prefabs/Enemies/[Enemy] Standard.prefab]
+
+### 1.1.1 Glyph Badge
+
+`EnemyGlyphBadge` is a world-space component on every enemy prefab (including the boss). It reads `Enemy.VisualCharacter` — the same source the developer debug label uses — so all visual overrides (Kempei scramble, Capitan/Shokan hurt-swap, `ApplyVisualCharacterOverride`) drive it for free. It renders the framed Baybayin glyph via `BaybayinCharacterSO.badgeSprite`.
+
+Three animations live on the badge:
+
+- **Swap** — fires for hurt-swap (`postHurtCharacter`) and the boss's intermediate correct draws within a vulnerable window.
+- **Final-Draw** — fires on every `Enemy.Defeat()` and on the boss's terminal correct draw of a window.
+- **Decoy Reject** — fires when the player draws a decoy's character (`Enemy.ApplyDecoyPenalty`).
+
+Boss visibility is gated by `BossGlyphVisibilityBinder`, which subscribes to vulnerability events. The boss's `X / N` counter (`BossDrawCounterUI`) anchors its screen position to the badge transform, so per-enemy badge offsets propagate to the counter automatically. The binder ignores the initial `OnDrawnThisPhaseChanged` signal raised when a vulnerability window first samples its expected glyph (no swap before the first player draw), defers `Hide()` while the terminal final-draw animation is still playing (so the seal-broken animation runs to completion), and suppresses fail flashes when the boss is not currently targetable.
+
+The defeat path also drives the badge final-draw for enemies without `deathFrames`: `Enemy.Defeat()` marks the enemy dying, kicks off `PlayFinalDraw()`, and waits for the badge animation to finish before returning to the pool. Decoy rejection (`Enemy.ApplyDecoyPenalty`) marks the decoy dying immediately and disables its contact collider so a second recognized draw of the same character cannot find it as an eligible target and re-trigger the penalty.
+
+Visual tuning lives in `GlyphBadgeConfigSO`. Per-enemy offset/scale overrides live on `EnemyDataSO` (opt-in via `overrideBadgeOffset` / `overrideBadgeScale` toggles). The badge keeps its world-space offset/scale even when the parent's `localScale` changes mid-encounter (e.g. boss collapse squash) by recomputing the inverse-parent-scale compensation in `LateUpdate`.
+
+[EVIDENCE: Assets/Scripts/Gameplay/Enemy/EnemyGlyphBadge.cs]
+[EVIDENCE: Assets/Scripts/Gameplay/Boss/BossGlyphVisibilityBinder.cs]
+[EVIDENCE: Assets/Scripts/UI/BossDrawCounterUI.cs]
 
 ### 1.2 Lifecycle States
 
@@ -268,10 +290,13 @@ The Spanish-era boss (`el_inquisidor`) is implemented as a self-contained phase-
 |--------|------|
 | `BossEnemy` (extends `Enemy`) | `IsBoss => true` so `CombatResolver` excludes it; `TakeDamage` is a no-op (warns) so only `BossController.TryRouteDraw` can damage the boss. `OnEnable` reasserts `SpriteRenderer.sortingOrder = RenderOrder.Boss`. |
 | `BossController` | Authoritative state machine. Owns phases, vulnerability, HP, and outro. Raises all boss events. |
-| `BossSummonTicker` | Stateless helper. Plays a summon-tell animation on the boss SpriteRenderer, then spawns 2–3 minions per tick at the boss's CURRENT position, applying `summonHorizontalBounds` clamp. |
+| `BossSummonTicker` | Stateless helper. Plays a summon-tell animation on the boss SpriteRenderer, then streams minions one at a time on a per-spawn `delayBetweenMinions` cadence (default 0.6s), applying `summonHorizontalBounds` clamp. Each summon act spawns 2–3 minions as a paced stream, not a single-frame burst. The boss holds its cast pose from the windup through the final spawn and for ~0.3s after, so the stream reads as a deliberate ritual. The number of acts per phase and the gap between acts (`delayBetweenSummons`) are unchanged. |
 | `PhaseBasedMovement` | Drives the boss transform per phase movement pattern (Hover/Pace/Teleport). Imperative API: `StartPattern(phase)`, `StopPattern()`, `TeleportNow(phase)` (called by BossController on Teleport ticks). |
 | `BossStateVisuals` | Panting bob + red tint during `WindingDown`/`Vulnerable`; collapse animation on entering `Vulnerable`; stand-up tween on exiting `Vulnerable` (`Damaged` or timeout). |
 | `BossDamageFeedback` | Two-tier damage feedback: small-hit (per glyph) and emphasized (phase damage). Exposes `IsHurtPaused` and `CriticalColor` consumed by movement and state visuals. |
+| `EnemyGlyphBadge` | World-space framed glyph above the boss; same component as regular enemies. |
+| `BossGlyphVisibilityBinder` | Shows/hides the badge and drives swap/final-draw/fail-flash during vulnerability windows. |
+| `BossAudio` | Subscribes to 9 EventBus boss events in `OnEnable`/`OnDisable`. Resolves `BossAudioBankSO` lazily from `BossConfigSO.audioBank` on `OnBossStarted`. Owns the footstep cadence coroutine (Pace phases only, gated by summon-animation and hurt-pause). Uses no-immediate-repeat random selection for `hitGrowls`, `damagedGrowls`, `footsteps`, and `teleports` pools. Null-tolerant: silently skips all audio if the bank or a specific clip is absent. |
 
 ### 8.2 State Machine
 
@@ -293,7 +318,7 @@ During `Vulnerable`, the controller samples a random glyph from `LevelConfigSO.a
 | `BossController.TryRouteDraw(characterID)` result | Meaning |
 |------|---------|
 | `BossRouteResult.NotRouted` | Boss not targetable; caller (`CombatResolver`) falls through to AOE/closest-match |
-| `BossRouteResult.Hit` | Correct glyph during `Vulnerable`; advances queue, samples next expected glyph. **Ordering invariant:** the controller samples the next glyph BEFORE raising `OnDrawnThisPhaseChanged`, so subscribers reading `CurrentExpectedCharacter` in the handler observe the newly sampled glyph (required by `BossGlyphQueueUI`). |
+| `BossRouteResult.Hit` | Correct glyph during `Vulnerable`; advances queue, samples next expected glyph. **Ordering invariant:** the controller samples the next glyph BEFORE raising `OnDrawnThisPhaseChanged`, so subscribers reading `CurrentExpectedCharacter` in the handler observe the newly sampled glyph (required by `BossDrawCounterUI`). |
 | `BossRouteResult.WrongGlyph` | Incorrect glyph during `Vulnerable`; consumed (no fall-through), raises `OnDrawingFailed` |
 
 ### 8.5 Boss Spawn Integration
@@ -309,8 +334,38 @@ Boss HP equals `BossConfigSO.phases.Count`. There is **no separate `maxHealth`**
 [EVIDENCE: Assets/Scripts/Gameplay/Boss/PhaseBasedMovement.cs]
 [EVIDENCE: Assets/Scripts/Gameplay/Boss/BossStateVisuals.cs]
 [EVIDENCE: Assets/Scripts/Gameplay/Boss/BossDamageFeedback.cs]
+[EVIDENCE: Assets/Scripts/Gameplay/Boss/BossAudio.cs]
 [EVIDENCE: Assets/Scripts/Gameplay/Enemy/BossEnemy.cs]
 [EVIDENCE: Assets/Scripts/Gameplay/Wave/WaveManager.cs — `RunBossEncounter`]
+
+### 8.7 BossAudio Component
+
+`BossAudio` is a `MonoBehaviour` on the boss prefab (sibling of `BossController`). It has no Inspector fields — the audio bank is resolved lazily at runtime.
+
+**EventBus subscriptions (subscribe in `OnEnable`, unsubscribe in `OnDisable`):**
+
+| Event | Handler | Audio Played |
+|-------|---------|-------------|
+| `OnBossStarted(BossConfigSO)` | `HandleBossStarted` | `FadeInBGM(bank.bgm, bank.bgmFadeInSeconds)` + `PlaySFX(bank.introGrowl)` |
+| `OnBossPhaseStarted(int)` | `HandleBossPhaseStarted` | Starts/stops footstep coroutine based on `BossMovementPattern.Pace` |
+| `OnBossSummonTick` | `HandleBossSummonTick` | `PlaySFX(bank.summonTick)` |
+| `OnBossTeleport` | `HandleBossTeleport` | `PlaySFX(PickNoRepeat(bank.teleports))` |
+| `OnBossExhausted(int)` | `HandleBossExhausted` | Stops footsteps + `PlaySFX(bank.bodyFall)` |
+| `OnBossDrawHit` | `HandleBossDrawHit` | `PlaySFX(PickNoRepeat(bank.hitGrowls))` |
+| `OnBossDamaged(int, int)` | `HandleBossDamaged` | `PlaySFX(PickNoRepeat(bank.damagedGrowls))` |
+| `OnBossVulnerabilityExpired(int)` | `HandleBossVulnerabilityExpired` | `PlaySFX(bank.vulnerabilityExpiredLaugh)` |
+| `OnBossDefeated` | `HandleBossDefeated` | `PlaySFX(bank.defeat)` + `FadeOutBGM(bank.bgmFadeOutSeconds)` |
+
+**Footstep coroutine:** Active only during `BossMovementPattern.Pace` phases. Fires at `bank.footstepInterval` (default 0.45s). Gated by `BossSummonTicker.IsPlayingSummonAnimation` and `BossDamageFeedback.IsHurtPaused` — no footsteps while the boss is visually still. First step is delayed by one interval after phase start (by design).
+
+**No-immediate-repeat picker:** Variant pools (`hitGrowls`, `damagedGrowls`, `footsteps`, `teleports`) use `Random.Range` with a per-pool `lastIdx` guard so the same clip never plays twice in a row.
+
+**Null-tolerance:** Every handler silently returns if `_bank` is null or the targeted clip field is null. A partially-filled `BossAudioBankSO` does not break gameplay.
+
+**Per-category volume scaling:** Each `PlaySFX`/`FadeInBGM` call passes the matching `*Volume` field from the bank (`bgmVolume`, `introGrowlVolume`, `summonTickVolume`, `bodyFallVolume`, `vulnerabilityExpiredLaughVolume`, `defeatVolume`, `hitGrowlsVolume`, `damagedGrowlsVolume`, `footstepsVolume`, `teleportsVolume`). `AudioManager.PlaySFX(clip, volumeScale)` forwards the scale to `AudioSource.PlayOneShot`, and `AudioManager.FadeInBGM(clip, seconds, volumeScale)` stores it as `_bgmScale` so the BGM volume is computed as `master * bgm * _bgmScale` for the duration of the encounter. `_bgmScale` resets to `1f` on `FadeOutBGM`, `StopBGM`, or `PlayBGM` so non-boss tracks resume at normal level.
+
+[EVIDENCE: Assets/Scripts/Gameplay/Boss/BossAudio.cs]
+[EVIDENCE: Assets/Scripts/Data/BossAudioBankSO.cs]
 
 ---
 

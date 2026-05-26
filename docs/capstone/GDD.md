@@ -133,6 +133,8 @@ Combat is entirely drawing-based. The player sees the Baybayin character on an e
 
 - **Audio Feedback: **On every successful kill, a voice pronunciation clip of the Baybayin syllable plays immediately. This pairs the positive reward (enemy defeated) with the phonetic identity of the character. This is the core learning mechanism.
 
+- **Glyph Badge: **Every enemy displays its required Baybayin character in a scroll badge above its head. The badge reacts visually to correct draws (swap animation when the enemy demands a follow-up character; final-draw animation when the enemy is defeated), to drawing a decoy's character (reject shake with red flash), and to Kempei scramble effects (glitched variant when authored).
+
 ## 3.3 Progression
 
 Character introduction follows a strict scaffolding system. The player never encounters a character they have not been introduced to in a previous level.

@@ -39,15 +39,27 @@ erDiagram
     BossConfigSO ||--|{ BossPhase : "phases (embedded, 1 per HP)"
     BossConfigSO ||--|| EnemyDataSO : "bossEnemyData"
     BossConfigSO ||--o{ EnemyDataSO : "fallbackEnemyTypes"
+    BossConfigSO |o--o| BossAudioBankSO : "audioBank (optional)"
 
     BossPhase ||--o{ EnemyDataSO : "summonEnemyTypes"
 
     CharacterRegistrySO ||--|{ BaybayinCharacterSO : "All (master registry)"
 
+    EnemyGlyphBadge }o--|| GlyphBadgeConfigSO : "config"
+
+    GlyphBadgeConfigSO {
+        Vector2 defaultWorldOffset
+        float defaultWorldScale
+        float swapOutDuration
+        float swapInDuration
+    }
+
     BaybayinCharacterSO {
         string characterID PK
         string syllable
         Sprite displaySprite
+        Sprite badgeSprite
+        Sprite scrambledBadgeSprite
         AudioClip pronunciationClip
         string templateFileName
     }
@@ -86,13 +98,31 @@ erDiagram
         float introDuration
         float outroDuration
         Vector2 summonHorizontalBounds
+        BossAudioBankSO audioBank FK
+    }
+
+    BossAudioBankSO {
+        AudioClip bgm
+        AudioClip introGrowl
+        AudioClip summonTick
+        AudioClip bodyFall
+        AudioClip vulnerabilityExpiredLaugh
+        AudioClip defeat
+        AudioClip_array hitGrowls
+        AudioClip_array damagedGrowls
+        AudioClip_array footsteps
+        AudioClip_array teleports
+        float footstepInterval
+        float bgmFadeInSeconds
+        float bgmFadeOutSeconds
     }
 
     BossPhase {
-        float summonDuration
-        float summonInterval
-        int summonBurstMin
-        int summonBurstMax
+        float summonPhaseDuration
+        float delayBetweenSummons
+        int minionsPerSummonMin
+        int minionsPerSummonMax
+        float delayBetweenMinions
         int requiredCharacterCount
         float vulnerabilityTimer
         BossMovementPattern movementPattern
@@ -173,6 +203,8 @@ classDiagram
         +PlaySFX(AudioClip)
         +PlayBGM(AudioClip)
         +StopBGM()
+        +FadeInBGM(AudioClip, float) Coroutine
+        +FadeOutBGM(float) Coroutine
     }
     class EnemyPool {
         +Get(EnemyDataSO) Enemy
@@ -211,9 +243,17 @@ classDiagram
     class Enemy {
         -EnemyDataSO _data
         +BaybayinCharacterSO Character
+        +EnemyGlyphBadge GlyphBadge
         +Initialize(data, pool)
         +Defeat()
         +ReturnToPool()
+    }
+    class EnemyGlyphBadge {
+        +Refresh()
+        +PlaySwap(next)
+        +PlayFinalDraw()
+        +Show()
+        +Hide()
     }
     class EnemyMover {
         -float _speed
@@ -232,9 +272,29 @@ classDiagram
         +StartBoss(config, spawner)
         +TryRouteDraw(charID) BossRouteResult
     }
+    class BossGlyphVisibilityBinder {
+        +HandleVulnerabilityActive()
+        +HandleDrawnThisPhaseChanged()
+    }
+    class BossDrawCounterUI {
+        +RefreshFromBoss()
+    }
+    class GlyphBadgeConfigSO
     class BossSummonTicker
     class BossStateVisuals
     class PhaseBasedMovement
+    class BossAudio {
+        +HandleBossStarted(BossConfigSO)
+        +HandleBossPhaseStarted(int)
+        +HandleBossSummonTick()
+        +HandleBossTeleport()
+        +HandleBossExhausted(int)
+        +HandleBossDrawHit()
+        +HandleBossDamaged(int, int)
+        +HandleBossVulnerabilityExpired(int)
+        +HandleBossDefeated()
+    }
+    class BossAudioBankSO
     class WaveManager {
         +StartLevel(LevelConfigSO)
     }
@@ -266,9 +326,15 @@ classDiagram
     Singleton <|-- CombatResolver
 
     Enemy --> EnemyMover : requires
+    Enemy --> EnemyGlyphBadge : child
     Enemy ..> EnemyDataSO : uses
+    EnemyGlyphBadge ..> GlyphBadgeConfigSO : reads
     BossEnemy --|> Enemy
+    BossEnemy --> EnemyGlyphBadge : child
     BossController --> BossEnemy : requires
+    BossGlyphVisibilityBinder --> EnemyGlyphBadge : drives
+    BossGlyphVisibilityBinder ..> EventBus : subscribes
+    BossDrawCounterUI ..> EnemyGlyphBadge : anchors UI
     BossController --> BossSummonTicker : uses
     BossController --> BossStateVisuals : uses
     BossController --> PhaseBasedMovement : uses
@@ -295,6 +361,11 @@ classDiagram
     BossController ..> EventBus : publishes
     Enemy ..> EventBus : publishes
     EnemyMover ..> EventBus : publishes
+    BossAudio --> BossController : requires
+    BossAudio ..> EventBus : subscribes
+    BossAudio ..> AudioManager : PlaySFX / FadeInBGM / FadeOutBGM
+    BossAudio ..> BossAudioBankSO : reads
+    BossController ..> BossConfigSO : uses
 ```
 
 **Notation:**
@@ -319,6 +390,7 @@ flowchart LR
         ED["EnemyDataSO"]
         BC["BaybayinCharacterSO"]
         BCfg["BossConfigSO"]
+        GBCfg["GlyphBadgeConfigSO"]
         RC["RecognitionConfigSO"]
     end
 
@@ -373,8 +445,15 @@ flowchart LR
     E1 --> BCtl
     CR -- "matched enemy" --> EN
     BCtl -- "TryRouteDraw" --> BCtl
-    EN -- "Defeat()" --> E2
-    E2 --> AM["AudioManager"]
+        EN -- "Defeat()" --> E2
+        EGB["EnemyGlyphBadge"]
+        BGB["BossGlyphVisibilityBinder"]
+        BCfg -. "config" .-> BGB
+        GBCfg -. "tuning" .-> EGB
+        EN --> EGB
+        BCtl --> BGB
+        BGB --> EGB
+        E2 --> AM["AudioManager"]
     E2 --> CM["ComboManager"]
     EN -- "reaches base" --> E3
     E3 --> HS["HeartSystem"]
@@ -426,10 +505,10 @@ stateDiagram-v2
     Idle --> Intro : StartBoss(config)
     Intro --> SummoningPhase : after introDuration
 
-    SummoningPhase --> WindingDown : after summonDuration
+    SummoningPhase --> WindingDown : after summonPhaseDuration (gate; in-flight acts complete)
     note right of SummoningPhase
-        Spawns minions on summonInterval ticks.
-        Movement pattern: Hover / Pace / Teleport.
+        Streams minions on delayBetweenMinions cadence within each act.
+        Acts repeat every delayBetweenSummons. Movement pattern fires between acts.
     end note
 
     WindingDown --> Vulnerable : all non-boss enemies cleared

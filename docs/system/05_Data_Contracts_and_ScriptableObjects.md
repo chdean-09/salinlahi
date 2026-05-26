@@ -1,7 +1,7 @@
 # 05 — Data Contracts and ScriptableObjects
 **Project:** Salinlahi
-**Version:** 1.4
-**Date:** 2026-05-23
+**Version:** 1.8
+**Date:** 2026-05-27
 **Owner:** Chad Andrada (Product Owner / Designer)
 
 ---
@@ -28,6 +28,8 @@ All game content is defined in ScriptableObject assets. Level designers can crea
 | `characterID` | `string` | Identity | YES | Must match template filename prefix. Example: `"BA"` → template file `BA_template.txt` in `Assets/Resources/Templates/`. Case-sensitive. |
 | `syllable` | `string` | Identity | YES | Lowercase Filipino syllable shown to player. Example: `"ba"`, `"ka"`, `"ga"`. Must not be empty. |
 | `displaySprite` | `Sprite` | Visuals | YES | The Baybayin glyph sprite rendered on the enemy body. Must not be null at runtime. |
+| `badgeSprite` | `Sprite` | Visuals | NO | Framed glyph used by `EnemyGlyphBadge` during gameplay. Distinct from `displaySprite` (Tracing Dojo). |
+| `scrambledBadgeSprite` | `Sprite` | Visuals | NO | Optional framed + glitched variant when a visual override is active (e.g. Kempei scramble). Falls back to `badgeSprite` when null. |
 | `pronunciationClip` | `AudioClip` | Audio | YES | Played on every successful character recognition via `AudioManager`. Duration must be under 1 second to prevent overlap. Null triggers a silent defeat (no audio error). |
 | `templateFileName` | `string` | Recognition | YES | Filename in `Assets/Resources/Templates/` without extension. Example: `"BA_template"`. Must match a file loadable via `Resources.Load<TextAsset>`. |
 
@@ -86,6 +88,10 @@ TDD §2.2 specifies that multiple templates per character are supported (e.g., `
 | `scrambleRadius` | `float` | Kempei Censor | NO | KempeiScrambleController radius. Default `3f`. |
 | `scrambleMinGlitchInterval` | `float` | Kempei Censor | NO | Default `0.18f`. |
 | `scrambleMaxGlitchInterval` | `float` | Kempei Censor | NO | Default `0.36f`. |
+| `overrideBadgeOffset` | `bool` | Glyph Badge Override | NO | If true, `glyphBadgeOffsetOverride` replaces `GlyphBadgeConfigSO.defaultWorldOffset`. |
+| `glyphBadgeOffsetOverride` | `Vector2` | Glyph Badge Override | NO | Per-enemy badge offset; consulted only when `overrideBadgeOffset` is true. |
+| `overrideBadgeScale` | `bool` | Glyph Badge Override | NO | If true, `glyphBadgeScaleOverride` replaces `GlyphBadgeConfigSO.defaultWorldScale`. |
+| `glyphBadgeScaleOverride` | `float` | Glyph Badge Override | NO | Per-enemy badge scale; consulted only when `overrideBadgeScale` is true. Default `1f`. |
 
 **Validation Rules:**
 - `moveSpeed` must be > 0. Value ≤ 0 causes the enemy to never move (not crash-safe, but functionally broken).
@@ -106,6 +112,37 @@ Defined at the bottom of `EnemyDataSO.cs`:
 
 [EVIDENCE: Assets/Scripts/Data/EnemyDataSO.cs]
 [EVIDENCE: Assets/ScriptableObjects/EnemyData_*.asset]
+
+---
+
+### 2.2.2 `GlyphBadgeConfigSO`
+
+**Menu path:** `Salinlahi/Glyph Badge Config`
+**File:** `Assets/Scripts/Data/GlyphBadgeConfigSO.cs`
+**Asset folder:** `Assets/ScriptableObjects/GlyphBadgeConfig_Default.asset` (single instance referenced by every `EnemyGlyphBadge` prefab instance)
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| `defaultWorldOffset` | `Vector2` | `(0, 1.2)` | Default local offset from enemy root. |
+| `defaultWorldScale` | `float` | `1` | Default world-stable scale of the badge transform. |
+| `swapSlideOffset` | `Vector2` | `(-0.8, 0)` | Slide direction + magnitude for swap animation. |
+| `swapOutDuration` | `float` | `0.18` | Seconds for old sprite to slide out + fade. |
+| `swapInDuration` | `float` | `0.18` | Seconds for new sprite to slide in + fade. |
+| `finalDrawFlashColor` | `Color` | white | Tint applied during final-draw charge phase. |
+| `finalDrawChargeDuration` | `float` | `0.08` | Seconds for scale-up + flash phase. |
+| `finalDrawChargeScale` | `float` | `1.15` | Peak scale multiplier at end of charge phase. |
+| `finalDrawReleaseDuration` | `float` | `0.18` | Seconds for shrink + drift phase. |
+| `finalDrawReleaseRise` | `float` | `0.25` | Local-Y added during release phase. |
+| `finalDrawReleaseRotation` | `float` | `10` | Degrees of rotation added during release phase. |
+| `decoyRejectFlashColor` | `Color` | `(1, 0.3, 0.3, 1)` | Tint during decoy-reject flash. |
+| `decoyRejectFlashDuration` | `float` | `0.1` | Seconds for the red flash. |
+| `decoyRejectShakeMagnitude` | `float` | `0.1` | Peak shake offset (world units). |
+| `decoyRejectShakeDuration` | `float` | `0.3` | Total shake duration. |
+| `decoyRejectShakeFrequency` | `float` | `18` | Shake oscillations per second. |
+| `failFlashColor` | `Color` | `(1, 0.3, 0.3, 1)` | Tint for boss draw-fail flash on the world badge. |
+| `failFlashDuration` | `float` | `0.15` | Seconds for fail flash. |
+
+[EVIDENCE: Assets/Scripts/Data/GlyphBadgeConfigSO.cs]
 
 ---
 
@@ -206,6 +243,7 @@ Defined at the bottom of `EnemyDataSO.cs`:
 | `summonHorizontalBounds` | `Vector2` | Summon Bounds | NO | Hard world-space horizontal cap on every minion spawn (`x = minX, y = maxX`). Set `x ≥ y` to disable. |
 | `introDuration` | `float` | Intro / Outro | YES | Seconds boss is invulnerable on entry. Default `2.0f`. |
 | `outroDuration` | `float` | Intro / Outro | YES | Seconds before `OnLevelComplete` after the last phase is cleared. Default `2.5f`. |
+| `audioBank` | `BossAudioBankSO` | Audio | NO | Per-boss audio bank. May be null — `BossAudio` no-ops cleanly if absent. |
 
 **Validation Rules:**
 - `phases.Count ≥ 1` (zero phases → `BossController.StartBoss` aborts with a logged error).
@@ -224,10 +262,11 @@ Defined at the bottom of `EnemyDataSO.cs`:
 
 | Field | Type | Header | Notes |
 |-------|------|--------|-------|
-| `summonDuration` | `float` | Summoning Phase | Seconds the boss summons minions. Default `30f`. |
-| `summonInterval` | `float` | Summoning Phase | Seconds between summon ticks. In Teleport movement, also the teleport cadence. Default `5f`. |
-| `summonBurstMin` | `int` | Summoning Phase | Min minions per tick (inclusive). Default `2`. |
-| `summonBurstMax` | `int` | Summoning Phase | Max minions per tick (inclusive, `Random.Range(min, max+1)`). Default `3`. |
+| `summonPhaseDuration` | `float` | Summoning Phase | Total phase length in seconds. No NEW summon acts may start after this elapses; an act already in progress always runs to completion. Default `30f`. Renamed from `summonDuration` (legacy assets migrate via `[FormerlySerializedAs]`). |
+| `delayBetweenSummons` | `float` | Summoning Phase | Seconds BETWEEN summon acts. Boss movement (teleport / pace) fires during this gap. Default `5f`. Renamed from `summonInterval`. |
+| `minionsPerSummonMin` | `int` | Summoning Phase | Min minions per summon act (inclusive). Default `2`. Renamed from `summonBurstMin`. |
+| `minionsPerSummonMax` | `int` | Summoning Phase | Max minions per summon act (inclusive, `Random.Range(min, max+1)`). Default `3`. Renamed from `summonBurstMax`. |
+| `delayBetweenMinions` | `float` | Summoning Phase | Seconds WITHIN a summon act between consecutive minion spawns (NEW). Total in-act duration ≈ `count × delayBetweenMinions`. Default `0.6f`. Set to `0` to disable stagger — discouraged. |
 | `summonEnemyTypes` | `List<EnemyDataSO>` | Summoning Phase | Pool for this phase. Empty falls back to `BossConfigSO.fallbackEnemyTypes`. |
 | `summonSpawnRange` | `Vector2` | Summoning Phase | Half-range around the boss's CURRENT position for each minion's spawn origin. Default `(2, 0)`. |
 | `requiredCharacterCount` | `int` | Vulnerability Window | Correct random glyphs needed during the Vulnerable window. Default `3`. |
@@ -293,6 +332,49 @@ Master registry of all `BaybayinCharacterSO` assets, exposed via the `All` list.
 
 ---
 
+### 2.11 `BossAudioBankSO`
+
+**Menu path:** `Salinlahi/Audio/Boss Audio Bank`
+**File:** `Assets/Scripts/Data/BossAudioBankSO.cs`
+**Asset folder:** `Assets/ScriptableObjects/Audio/` (e.g. `BossAudioBank_ElInquisidor.asset`)
+
+Holds all per-boss audio clip references and tuning fields for one boss encounter. Referenced by `BossConfigSO.audioBank` and consumed by `BossAudio` on the boss prefab. Designers create a new asset for each new boss to give it a distinct sonic identity without code changes.
+
+| Field | Type | Header | Required | Notes |
+|-------|------|--------|----------|-------|
+| `bgm` | `AudioClip` | BGM | NO | Looping BGM played for the duration of the boss encounter. |
+| `bgmVolume` | `float` | BGM | NO | `[0..1]` scale for this boss's BGM. Stacks multiplicatively on top of Master & BGM user sliders. Default `1f`. |
+| `introGrowl` | `AudioClip` | One-Shots | NO | Plays once on `OnBossStarted`. |
+| `introGrowlVolume` | `float` | One-Shots | NO | `[0..1]` per-clip volume scale. Default `1f`. |
+| `summonTick` | `AudioClip` | One-Shots | NO | Plays each time the boss begins a summon tick (`OnBossSummonTick`). |
+| `summonTickVolume` | `float` | One-Shots | NO | `[0..1]` per-clip volume scale. Default `1f`. |
+| `bodyFall` | `AudioClip` | One-Shots | NO | Plays on `OnBossExhausted` (winding-down state). |
+| `bodyFallVolume` | `float` | One-Shots | NO | `[0..1]` per-clip volume scale. Default `1f`. |
+| `vulnerabilityExpiredLaugh` | `AudioClip` | One-Shots | NO | Plays on `OnBossVulnerabilityExpired` (player failed to break the boss). |
+| `vulnerabilityExpiredLaughVolume` | `float` | One-Shots | NO | `[0..1]` per-clip volume scale. Default `1f`. |
+| `defeat` | `AudioClip` | One-Shots | NO | Plays on `OnBossDefeated` (outro start). |
+| `defeatVolume` | `float` | One-Shots | NO | `[0..1]` per-clip volume scale. Default `1f`. |
+| `hitGrowls` | `AudioClip[]` | Variant Pools | NO | Short growls cycled on `OnBossDrawHit` (correct glyph during vulnerable window). No-immediate-repeat. |
+| `hitGrowlsVolume` | `float` | Variant Pools | NO | `[0..1]` volume scale applied to every clip in the pool. Default `1f`. |
+| `damagedGrowls` | `AudioClip[]` | Variant Pools | NO | Long growls cycled on `OnBossDamaged` (HP lost). No-immediate-repeat. |
+| `damagedGrowlsVolume` | `float` | Variant Pools | NO | `[0..1]` volume scale applied to every clip in the pool. Default `1f`. |
+| `footsteps` | `AudioClip[]` | Variant Pools | NO | Footstep variants played at `footstepInterval` during Pace-pattern phases. No-immediate-repeat. |
+| `footstepsVolume` | `float` | Variant Pools | NO | `[0..1]` volume scale applied to every clip in the pool. Default `1f`. |
+| `teleports` | `AudioClip[]` | Variant Pools | NO | Teleport variants played on `OnBossTeleport` (Teleport-pattern snap). No-immediate-repeat. |
+| `teleportsVolume` | `float` | Variant Pools | NO | `[0..1]` volume scale applied to every clip in the pool. Default `1f`. |
+| `footstepInterval` | `float` | Footstep Cadence | NO | Seconds between footstep SFX while in a Pace phase. Default `0.45f`. Min `0.05f`. |
+| `bgmFadeInSeconds` | `float` | BGM Fade | NO | Seconds to fade BGM in on `OnBossStarted`. Default `1f`. |
+| `bgmFadeOutSeconds` | `float` | BGM Fade | NO | Seconds to fade BGM out on `OnBossDefeated`. Default `1.5f`. |
+
+**Null-tolerance:** All clip fields are optional. `BossAudio` silently skips any clip that is null, so partially-filled banks do not break gameplay. A new boss with a completely different sonic identity requires only a new `BossAudioBankSO` asset and a reference update on `BossConfigSO.audioBank` — no code change.
+
+**Volume layering:** Per-clip `*Volume` fields and `bgmVolume` are designer-side balance knobs that stack multiplicatively on top of the player-facing master/BGM/SFX sliders managed by `AudioManager`. Setting any `*Volume` to `0` silences that category without breaking the rest of the bank.
+
+[EVIDENCE: Assets/Scripts/Data/BossAudioBankSO.cs]
+[EVIDENCE: Assets/ScriptableObjects/Audio/BossAudioBank_ElInquisidor.asset]
+
+---
+
 ## 3. Asset Authoring Guidelines
 
 ### 3.1 Naming Convention
@@ -314,6 +396,7 @@ Master registry of all `BaybayinCharacterSO` assets, exposed via the `All` list.
 | `WaveConfigSO` | `Assets/ScriptableObjects/Waves/` |
 | `EnemyDataSO` | `Assets/ScriptableObjects/` |
 | `BossConfigSO` | `Assets/ScriptableObjects/` (e.g. `BossConfig_ElInquisidor.asset`, alongside other top-level configs) |
+| `BossAudioBankSO` | `Assets/ScriptableObjects/Audio/` (e.g. `BossAudioBank_ElInquisidor.asset`) |
 | Templates (text files) | `Assets/Resources/Templates/` |
 
 [EVIDENCE: Assets/ScriptableObjects/ directory listing — Characters/, Levels/, Waves/ subdirs confirmed]

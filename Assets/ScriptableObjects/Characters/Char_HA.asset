@@ -15,5 +15,7 @@ MonoBehaviour:
   characterID: HA
   syllable: ha
   displaySprite: {fileID: -6831661676589965225, guid: 8d666fe3219e3bb4b9f4d251d9a3947f, type: 3}
+  badgeSprite: {fileID: 1480245255709561063, guid: ebbaaeae6be7a804fa394d0d05ed68e3, type: 3}
+  scrambledBadgeSprite: {fileID: 0}
   pronunciationClip: {fileID: 0}
   templateFileName: HA_template_01
