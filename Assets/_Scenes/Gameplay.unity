@@ -5760,8 +5760,8 @@ MonoBehaviour:
   - {fileID: 764728337}
   - {fileID: 89236808}
   - {fileID: 1554531272}
-  _heartFull: {fileID: 0}
-  _heartEmpty: {fileID: 0}
+  _heartFull: {fileID: 872317334273715103, guid: bff7d019450377f40b2d75618dc039a2, type: 3}
+  _heartEmpty: {fileID: -995616824291215981, guid: 7a5d8ccd8077a3d44a6f70ff32da33a0, type: 3}
   _heartShakeDuration: 0.3
   _heartPunchScale: 1.2
 --- !u!1 &1149843348
