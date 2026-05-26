@@ -1,7 +1,7 @@
 # 12 — Glossary and Naming Standard
 **Project:** Salinlahi
-**Version:** 1.5
-**Date:** 2026-05-26
+**Version:** 1.8
+**Date:** 2026-05-27
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -13,9 +13,9 @@
 | **Baybayin** | The pre-colonial Filipino abugida writing system. Each character represents a consonant-vowel syllabic unit. The game uses 17 consonant base characters. **Correct spelling: Baybayin.** Not "Alibata." | Salinlahi.md §1; expert consultation |
 | **Abugida** | A writing system in which each character represents a complete consonant-vowel syllabic unit (not individual phonemes). Baybayin is an abugida. | Salinlahi.md §2.1.3 |
 | **Aspect-Locked Play Column** | A fixed 9:16 world-space rectangle enforced by `AspectLockedCamera`. The play column is the same world width on every device; tablets see pillars on the sides, ultra-tall phones see the column extend vertically. All gameplay UI lives under `PlayAreaContainer` so HUD anchors resolve to the column's corners, not the device viewport. | `AspectLockedCamera.cs` |
-| **$P Algorithm** | The $P Point-Cloud Gesture Recognizer. A 2D gesture recognition algorithm that treats a drawing as an unordered cloud of points, ignoring stroke number, order, and direction. The chosen recognition algorithm for Salinlahi. Also written as "Dollar P" in prose. | Salinlahi.md §1.7.4; §3.3.3 |
-| **Template** | A pre-stored reference point cloud for one Baybayin character used by the $P algorithm to match player drawings. Stored as `.txt` files in `Assets/Resources/Templates/`. | Salinlahi.md §3.3.3 |
-| **Confidence Score** | A value between 0 and 1 output by the $P algorithm indicating how closely a player's drawing matches the nearest template. A score ≥ 0.60 is accepted as a valid match. | RecognitionConfigSO.cs; Salinlahi.md §3.3.3 |
+| **$P Algorithm** | The $P Point-Cloud Gesture Recognizer. A 2D gesture recognition algorithm that treats a drawing as an unordered cloud of points, ignoring stroke order and direction. Salinlahi runs $P in a two-stage flow: pure shape scoring picks a leader, and only if the leader's margin over the runner-up is small does a top-K disambiguator re-rank the close candidates using stroke-count and aspect-ratio penalties. Also written as "Dollar P" in prose. | Salinlahi.md §1.7.4; §3.3.3 |
+| **Template** | A pre-stored reference point cloud for one Baybayin character used by the $P algorithm to match player drawings. Stored as `.txt` files in `Assets/Resources/Templates/`. Blank lines in the file separate strokes; the recognizer records the per-variant stroke count and raw bounding-box aspect ratio for use by the top-K disambiguator. | Salinlahi.md §3.3.3 |
+| **Confidence Score** | A value between 0 and 1 output by the $P recognition pipeline. When the shape leader's margin over the runner-up is `≥ 0.08`, the leader's pure $P shape score is returned. Otherwise the top three candidates are re-ranked by `shapeScore × strokeCountPenalty × aspectRatioPenalty` and the new leader's composite score is returned. `strokeCountPenalty` is `1.0` on match, decreasing by `0.15` per unit of difference (floor `0.6`). `aspectRatioPenalty` is `1.0` on match, decreasing by `0.4 × |log10(userRatio / templateRatio)|` (floor `0.6`); aspect ratio is `longer / shorter` of the raw bounding box. A score ≥ 0.60 is accepted as a valid match. | RecognitionConfigSO.cs; Salinlahi.md §3.3.3; `DollarPRecognizer.cs` |
 | **Shrine** | The player's base structure that enemies march toward. Losing all 3 Shrine hearts ends the game. | GDD §2.3 |
 | **Phase (Boss)** | One unit of boss HP. The boss has as many phases as `BossConfigSO.phases.Count`; there is no separate maxHealth field. One full Summoning → WindingDown → Vulnerable → Damaged loop = one HP point. | `BossConfigSO.cs`; `BossController.cs` |
 | **PlayerBase** | The Unity `GameObject` representing the Shrine's collision boundary. Must have Unity tag `"PlayerBase"`. Enemies use `OnTriggerEnter2D` with this tag. | EnemyMover.cs |

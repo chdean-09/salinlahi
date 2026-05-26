@@ -1,7 +1,7 @@
 # 01 — System Overview
 **Project:** Salinlahi
-**Version:** 1.2
-**Date:** 2026-03-25
+**Version:** 1.5
+**Date:** 2026-05-27
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -85,7 +85,7 @@ Game content (levels, waves, enemies, characters, recognition configuration) is 
 
 Enemy objects are managed through a **Unity `ObjectPool<Enemy>`** instance in `EnemyPool`. No `Instantiate` or `Destroy` call occurs during the gameplay loop. Enemies are retrieved from the pool (`EnemyPool.Get(data)`) and returned to it on defeat or base-hit.
 
-The **$P Point-Cloud Recognizer** operates fully on-device against 17 pre-loaded template files stored in `Assets/Resources/Templates/`. Recognition produces a confidence score; scores at or above `0.60` are accepted.
+The **$P Point-Cloud Recognizer** operates fully on-device against 17 pre-loaded template files stored in `Assets/Resources/Templates/`. Recognition runs in two stages: (1) pure $P shape scoring picks a leader across all characters; if that leader beats the runner-up by at least `0.08`, it is returned untaxed. (2) Otherwise the top three candidates are re-ranked by a composite score that multiplies shape score by stroke-count and aspect-ratio mismatch penalties. This top-K disambiguation isolates semantic penalties to close-call candidates only, so characters that are unambiguous by shape do not pay a tax. Scores at or above `0.60` are accepted.
 
 ```
 App Launch

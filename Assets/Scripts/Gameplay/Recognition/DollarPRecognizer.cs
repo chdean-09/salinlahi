@@ -31,12 +31,40 @@ public class DollarPRecognizer
         public int VariantIndex;
     }
 
+    // Recognition runs in two stages:
+    //   1. Pure $P shape scoring picks a leader. If the leader beats the runner-up
+    //      by CLEAR_WIN_GAP or more, return it untaxed.
+    //   2. Otherwise disambiguate among the top DISAMBIGUATION_TOP_K candidates by
+    //      multiplying their shape scores by stroke-count and aspect-ratio penalties
+    //      that $P itself ignores.
+    // Applying penalties only to close-call candidates avoids regressing characters
+    // that are already unambiguous by shape alone.
+    private const int DISAMBIGUATION_TOP_K = 3;
+    private const float CLEAR_WIN_GAP = 0.08f;
+
+    // Stroke-count mismatch penalty: shape score multiplied by
+    // max(MIN_PENALTY, 1 - PER_STROKE_PENALTY * |userStrokes - templateStrokes|).
+    // Applied only during disambiguation.
+    private const float STROKE_COUNT_PER_STROKE_PENALTY = 0.15f;
+    private const float STROKE_COUNT_MIN_PENALTY = 0.6f;
+
+    // Aspect-ratio mismatch penalty: shape score multiplied by
+    // max(MIN_PENALTY, 1 - STRENGTH * |log10(userRatio / templateRatio)|).
+    // Aspect ratio = longer/shorter of the raw bounding box. Applied only during
+    // disambiguation.
+    private const float ASPECT_RATIO_PENALTY_STRENGTH = 0.4f;
+    private const float ASPECT_RATIO_MIN_PENALTY = 0.6f;
+
     private readonly int _n; // resample point count
     private Dictionary<string, List<List<Vector2>>> _templates;
+    private Dictionary<string, List<int>> _templateStrokeCounts;
+    private Dictionary<string, List<float>> _templateAspectRatios;
     public DollarPRecognizer(int resampleCount = 32)
     {
         _n = resampleCount;
         _templates = new Dictionary<string, List<List<Vector2>>>();
+        _templateStrokeCounts = new Dictionary<string, List<int>>();
+        _templateAspectRatios = new Dictionary<string, List<float>>();
     }
 
     // Backward-compatible entry point for single-template-per-character callers.
@@ -68,10 +96,14 @@ public class DollarPRecognizer
     public void SetTemplateStrokeVariants(Dictionary<string, List<List<List<Vector2>>>> raw)
     {
         _templates.Clear();
+        _templateStrokeCounts.Clear();
+        _templateAspectRatios.Clear();
 
         foreach (var kvp in raw)
         {
             var variants = new List<List<Vector2>>();
+            var strokeCounts = new List<int>();
+            var aspectRatios = new List<float>();
 
             foreach (List<List<Vector2>> variantStrokes in kvp.Value)
             {
@@ -80,13 +112,73 @@ public class DollarPRecognizer
                 if (preprocessed.Count == 0) continue;
 
                 variants.Add(preprocessed);
+                strokeCounts.Add(CountNonEmptyStrokes(variantStrokes));
+                aspectRatios.Add(ComputeAspectRatio(variantStrokes));
             }
 
             if (variants.Count > 0)
             {
                 _templates[kvp.Key] = variants;
+                _templateStrokeCounts[kvp.Key] = strokeCounts;
+                _templateAspectRatios[kvp.Key] = aspectRatios;
             }
         }
+    }
+
+    private static int CountNonEmptyStrokes(List<List<Vector2>> strokes)
+    {
+        if (strokes == null) return 0;
+        int count = 0;
+        for (int i = 0; i < strokes.Count; i++)
+        {
+            if (strokes[i] != null && strokes[i].Count > 0)
+                count++;
+        }
+        return count;
+    }
+
+    private static float StrokeCountPenalty(int userStrokeCount, int templateStrokeCount)
+    {
+        int diff = Mathf.Abs(userStrokeCount - templateStrokeCount);
+        if (diff == 0) return 1f;
+        return Mathf.Max(STROKE_COUNT_MIN_PENALTY, 1f - STROKE_COUNT_PER_STROKE_PENALTY * diff);
+    }
+
+    // Returns longer-side / shorter-side from the strokes' bounding box. Result is
+    // always >= 1 (rotation-invariant) and is 1 for a square or degenerate bbox.
+    private static float ComputeAspectRatio(List<List<Vector2>> strokes)
+    {
+        if (strokes == null) return 1f;
+        float minX = float.MaxValue, minY = float.MaxValue;
+        float maxX = float.MinValue, maxY = float.MinValue;
+        bool any = false;
+        for (int i = 0; i < strokes.Count; i++)
+        {
+            List<Vector2> s = strokes[i];
+            if (s == null) continue;
+            for (int j = 0; j < s.Count; j++)
+            {
+                Vector2 p = s[j];
+                if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+                if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
+                any = true;
+            }
+        }
+        if (!any) return 1f;
+        float w = maxX - minX, h = maxY - minY;
+        float longer = Mathf.Max(w, h);
+        float shorter = Mathf.Min(w, h);
+        if (longer < 1e-6f) return 1f;
+        if (shorter < 1e-6f) shorter = 1e-6f;
+        return longer / shorter;
+    }
+
+    private static float AspectRatioPenalty(float userRatio, float templateRatio)
+    {
+        if (userRatio < 1e-6f || templateRatio < 1e-6f) return 1f;
+        float logDistance = Mathf.Abs(Mathf.Log10(userRatio / templateRatio));
+        if (logDistance < 1e-6f) return 1f;
+        return Mathf.Max(ASPECT_RATIO_MIN_PENALTY, 1f - ASPECT_RATIO_PENALTY_STRENGTH * logDistance);
     }
 
     public RecognitionResult Recognize(List<Vector2> points)
@@ -103,64 +195,125 @@ public class DollarPRecognizer
         if (candidate.Count == 0)
             return new RecognitionResult("NONE", 0f, -1, "NONE", float.MinValue);
 
-        CandidateMatch best = new CandidateMatch
-        {
-            CharacterID = "NONE",
-            Score = float.MinValue,
-            VariantIndex = -1
-        };
-        CandidateMatch second = new CandidateMatch
-        {
-            CharacterID = "NONE",
-            Score = float.MinValue,
-            VariantIndex = -1
-        };
-
+        // Stage 1: pure shape scoring. For each character, keep its best-matching variant.
+        var shortlist = new List<CandidateMatch>(_templates.Count);
         foreach (var kvp in _templates)
         {
-            float bestScoreForCharacter = float.MinValue;
-            int bestVariantForCharacter = -1;
-
+            float bestShape = float.MinValue;
+            int bestVariant = -1;
             for (int i = 0; i < kvp.Value.Count; i++)
             {
-                List<Vector2> template = kvp.Value[i];
-                float d = GreedyCloudMatch(candidate, template);
-                float score = 1f - d / (0.5f * Mathf.Sqrt(2f));
-
-                if (score > bestScoreForCharacter)
+                float d = GreedyCloudMatch(candidate, kvp.Value[i]);
+                float shape = 1f - d / (0.5f * Mathf.Sqrt(2f));
+                if (shape > bestShape)
                 {
-                    bestScoreForCharacter = score;
-                    bestVariantForCharacter = i + 1;
+                    bestShape = shape;
+                    bestVariant = i + 1;
                 }
             }
 
-            if (bestVariantForCharacter < 0)
-                continue;
-
-            if (bestScoreForCharacter > best.Score)
+            if (bestVariant > 0)
             {
-                second = best;
-                best = new CandidateMatch
+                shortlist.Add(new CandidateMatch
                 {
                     CharacterID = kvp.Key,
-                    Score = bestScoreForCharacter,
-                    VariantIndex = bestVariantForCharacter
-                };
+                    Score = bestShape,
+                    VariantIndex = bestVariant
+                });
             }
-            else if (bestScoreForCharacter > second.Score)
+        }
+
+        if (shortlist.Count == 0)
+            return new RecognitionResult("NONE", 0f, -1, "NONE", float.MinValue);
+
+        shortlist.Sort((a, b) => b.Score.CompareTo(a.Score));
+
+        CandidateMatch leader = shortlist[0];
+        CandidateMatch runnerUp = shortlist.Count > 1
+            ? shortlist[1]
+            : new CandidateMatch { CharacterID = "NONE", Score = float.MinValue, VariantIndex = -1 };
+
+        // Stage 2: if shape alone gives the leader a clear margin, trust it untaxed.
+        // This is the core Option-A property: unambiguous characters never pay a penalty.
+        float shapeGap = shortlist.Count > 1 ? leader.Score - runnerUp.Score : leader.Score;
+        if (shortlist.Count == 1 || shapeGap >= CLEAR_WIN_GAP)
+        {
+            return new RecognitionResult(
+                leader.CharacterID, leader.Score, leader.VariantIndex,
+                runnerUp.CharacterID, runnerUp.Score);
+        }
+
+        // Stage 3: close call — re-rank the top K by composite score (shape × stroke-count × aspect-ratio).
+        int userStrokeCount = CountNonEmptyStrokes(strokes);
+        float userAspectRatio = ComputeAspectRatio(strokes);
+        int k = Mathf.Min(DISAMBIGUATION_TOP_K, shortlist.Count);
+
+        CandidateMatch disambiguatedBest = new CandidateMatch
+        {
+            CharacterID = "NONE",
+            Score = float.MinValue,
+            VariantIndex = -1
+        };
+        CandidateMatch disambiguatedSecond = new CandidateMatch
+        {
+            CharacterID = "NONE",
+            Score = float.MinValue,
+            VariantIndex = -1
+        };
+
+        for (int i = 0; i < k; i++)
+        {
+            CandidateMatch candidateMatch = shortlist[i];
+            int templateStrokeCount = LookupTemplateStrokeCount(
+                candidateMatch.CharacterID, candidateMatch.VariantIndex, userStrokeCount);
+            float templateAspectRatio = LookupTemplateAspectRatio(
+                candidateMatch.CharacterID, candidateMatch.VariantIndex, userAspectRatio);
+
+            float composite = candidateMatch.Score
+                * StrokeCountPenalty(userStrokeCount, templateStrokeCount)
+                * AspectRatioPenalty(userAspectRatio, templateAspectRatio);
+
+            CandidateMatch ranked = new CandidateMatch
             {
-                second = new CandidateMatch
-                {
-                    CharacterID = kvp.Key,
-                    Score = bestScoreForCharacter,
-                    VariantIndex = bestVariantForCharacter
-                };
+                CharacterID = candidateMatch.CharacterID,
+                Score = composite,
+                VariantIndex = candidateMatch.VariantIndex
+            };
+
+            if (composite > disambiguatedBest.Score)
+            {
+                disambiguatedSecond = disambiguatedBest;
+                disambiguatedBest = ranked;
+            }
+            else if (composite > disambiguatedSecond.Score)
+            {
+                disambiguatedSecond = ranked;
             }
         }
 
         return new RecognitionResult(
-            best.CharacterID, best.Score, best.VariantIndex,
-            second.CharacterID, second.Score);
+            disambiguatedBest.CharacterID, disambiguatedBest.Score, disambiguatedBest.VariantIndex,
+            disambiguatedSecond.CharacterID, disambiguatedSecond.Score);
+    }
+
+    private int LookupTemplateStrokeCount(string characterID, int variantOneBased, int fallback)
+    {
+        if (_templateStrokeCounts.TryGetValue(characterID, out List<int> list))
+        {
+            int idx = variantOneBased - 1;
+            if (idx >= 0 && idx < list.Count) return list[idx];
+        }
+        return fallback;
+    }
+
+    private float LookupTemplateAspectRatio(string characterID, int variantOneBased, float fallback)
+    {
+        if (_templateAspectRatios.TryGetValue(characterID, out List<float> list))
+        {
+            int idx = variantOneBased - 1;
+            if (idx >= 0 && idx < list.Count) return list[idx];
+        }
+        return fallback;
     }
 
     // ── PREPROCESSING ────────────────────────────────────────────────
