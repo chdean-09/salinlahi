@@ -2,6 +2,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 using System.Collections;
+using Salinlahi.Runtime.Gameplay;
 
 namespace Tests.Gameplay
 {
