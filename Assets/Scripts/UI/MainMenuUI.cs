@@ -11,6 +11,21 @@ public class MainMenuUI : MonoBehaviour
     private const string SceneGameplay = "Gameplay";
     private const string SceneLevelSelect = "LevelSelect";
     private const string SceneTracingDojo = "TracingDojo";
+    private static readonly string[] MainMenuButtonNames =
+    {
+        "PlayButton",
+        "LevelSelectButton",
+        "EndlessModeButton",
+        "TracingDojoButton",
+        "SettingsButton"
+    };
+
+    private static readonly Color ActiveTextColor = new(0.7019608f, 0.5019608f, 0.07450981f, 1f);
+    private static readonly Color LockedTextColor = new(0.38f, 0.34f, 0.26f, 1f);
+    private static readonly Color ActiveButtonColor = Color.white;
+    private static readonly Color LockedButtonColor = new(0.42f, 0.39f, 0.32f, 0.75f);
+    private static readonly Color TextShadowColor = new(0.06f, 0.035f, 0.01f, 1f);
+    private static readonly Vector2 TextShadowOffset = new(5f, -5f);
 
     [SerializeField] private Button _endlessModeButton;
 
@@ -20,14 +35,21 @@ public class MainMenuUI : MonoBehaviour
 
     private void Start()
     {
+        ApplyMainMenuTextEffects();
+
         if (_endlessModeButton != null)
-            _endlessModeButton.interactable = IsStoryComplete();
+        {
+            bool isEndlessUnlocked = IsStoryComplete();
+            _endlessModeButton.interactable = isEndlessUnlocked;
+            ApplyButtonVisualState(_endlessModeButton, isEndlessUnlocked);
+        }
 
         EnsureSandboxEntryPoint();
     }
 
     public void OnPlayButtonPressed()
     {
+        AudioManager.Instance?.PlayMenuButtonClick();
         DebugLogger.Log("MainMenuUI: Play button pressed");
 
         int selectedLevel = 1;
@@ -49,6 +71,7 @@ public class MainMenuUI : MonoBehaviour
 
     public void OnLevelSelectPressed()
     {
+        AudioManager.Instance?.PlayMenuButtonClick();
         DebugLogger.Log("MainMenuUI: Level Select pressed");
         LoadLevelSelect();
     }
@@ -61,16 +84,19 @@ public class MainMenuUI : MonoBehaviour
             return;
         }
 
+        AudioManager.Instance?.PlayMenuButtonClick();
         LoadGameplay();
     }
 
     public void OnTracingDojoPressed()
     {
+        AudioManager.Instance?.PlayMenuButtonClick();
         LoadTracingDojo();
     }
 
     public void OnSettingsPressed()
     {
+        AudioManager.Instance?.PlayMenuButtonClick();
         DebugLogger.Log("MainMenuUI: Settings pressed");
         if (_settingsPanel != null)
             _settingsPanel.Show();
@@ -78,6 +104,7 @@ public class MainMenuUI : MonoBehaviour
 
     public void OnCreditsPressed()
     {
+        AudioManager.Instance?.PlayMenuButtonClick();
         DebugLogger.Log("MainMenuUI: Credits pressed");
         if (_creditsPanel != null)
             _creditsPanel.Show();
@@ -92,6 +119,7 @@ public class MainMenuUI : MonoBehaviour
             return;
         }
 
+        AudioManager.Instance?.PlayMenuButtonClick();
         DebugLogger.Log("MainMenuUI: Sandbox mode pressed");
         if (SceneLoader.Instance != null)
             SceneLoader.Instance.LoadSandboxGameplay();
@@ -213,7 +241,63 @@ public class MainMenuUI : MonoBehaviour
         EnemyPool.Instance?.ReturnAllCheckedOut();
     }
 
-private bool IsStoryComplete()
+    private static void ApplyButtonVisualState(Button button, bool isUnlocked)
+    {
+        if (button.targetGraphic != null)
+            button.targetGraphic.color = isUnlocked ? ActiveButtonColor : LockedButtonColor;
+
+        Text label = button.GetComponentInChildren<Text>(true);
+        if (label != null)
+        {
+            label.color = isUnlocked ? ActiveTextColor : LockedTextColor;
+            EnsureTextShadow(label);
+        }
+    }
+
+    private void ApplyMainMenuTextEffects()
+    {
+        Text[] labels = GetComponentsInChildren<Text>(true);
+        foreach (Text label in labels)
+        {
+            if (label == null)
+                continue;
+
+            if (IsPrimaryMenuLabel(label))
+                EnsureTextShadow(label);
+        }
+    }
+
+    private static bool IsPrimaryMenuLabel(Text label)
+    {
+        if (label.name == "TitleText" || label.text == "Salinlahi")
+            return true;
+
+        return label.transform.parent != null && IsMainMenuButton(label.transform.parent.name);
+    }
+
+    private static bool IsMainMenuButton(string objectName)
+    {
+        foreach (string buttonName in MainMenuButtonNames)
+        {
+            if (objectName == buttonName)
+                return true;
+        }
+
+        return false;
+    }
+
+    private static void EnsureTextShadow(Text label)
+    {
+        Shadow shadow = label.GetComponent<Shadow>();
+        if (shadow == null)
+            shadow = label.gameObject.AddComponent<Shadow>();
+
+        shadow.effectColor = TextShadowColor;
+        shadow.effectDistance = TextShadowOffset;
+        shadow.useGraphicAlpha = true;
+    }
+
+    private bool IsStoryComplete()
     {
         if (ProgressManager.Instance == null)
             return false;

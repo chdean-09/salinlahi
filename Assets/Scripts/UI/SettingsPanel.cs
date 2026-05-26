@@ -36,6 +36,7 @@ public class SettingsPanel : MonoBehaviour
 
     public void Hide()
     {
+        AudioManager.Instance?.PlayMenuExitButtonClick();
         gameObject.SetActive(false);
     }
 

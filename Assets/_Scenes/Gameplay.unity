@@ -1707,6 +1707,7 @@ GameObject:
   - component: {fileID: 364051682}
   - component: {fileID: 364051683}
   - component: {fileID: 364051684}
+  - component: {fileID: 364051685}
   m_Layer: 0
   m_Name: '[Base] PlayerShrine'
   m_TagString: PlayerBase
@@ -1911,6 +1912,28 @@ MonoBehaviour:
   _useSpriteBoundsCenter: 1
   _prewarmCount: 8
   _maxPoolSize: 16
+  _fallbackLifetime: 0.45
+  _detachFromEnemy: 1
+  _debugWarnings: 1
+--- !u!114 &364051685
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 364051676}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c989a3ad8e96f34cbc90249ea410f5f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ChainAttackHitVfxController
+  _chainVfxPrefab: {fileID: 4100000000000000003, guid: ebff0c5e6c4282e4ea0e4ae24fcedb39, type: 3}
+  _vfxRoot: {fileID: 0}
+  _worldOffset: {x: 0, y: 0, z: 0}
+  _useSpriteBoundsCenter: 1
+  _chainStepDelay: 0.04
+  _prewarmCount: 12
+  _maxPoolSize: 24
   _fallbackLifetime: 0.45
   _detachFromEnemy: 1
   _debugWarnings: 1
@@ -3361,14 +3384,14 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.2, g: 0.75, b: 0.35, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: 5492327305593120934, guid: 61ca8a9790566074b9e108592f6a7e6a, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -3405,7 +3428,7 @@ MonoBehaviour:
     m_SelectOnDown: {fileID: 0}
     m_SelectOnLeft: {fileID: 0}
     m_SelectOnRight: {fileID: 0}
-  m_Transition: 1
+  m_Transition: 2
   m_Colors:
     m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
     m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
@@ -3416,7 +3439,7 @@ MonoBehaviour:
     m_FadeDuration: 0.1
   m_SpriteState:
     m_HighlightedSprite: {fileID: 0}
-    m_PressedSprite: {fileID: 0}
+    m_PressedSprite: {fileID: -1172348659990362884, guid: a75c439303e16f340a72b5bc70a8c727, type: 3}
     m_SelectedSprite: {fileID: 0}
     m_DisabledSprite: {fileID: 0}
   m_AnimationTriggers:
@@ -10781,6 +10804,16 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier: Salinlahi.Runtime::CombatResolver
   _aoeThreshold: 3
+  _aoeDamagePerTarget: 1
+  _staggerAoeDefeats: 1
+  _distanceWeightedDelay: 1
+  _baseAnchor: {fileID: 364051678}
+  _aoeMinDelay: 0.02
+  _aoeMaxDelay: 0.22
+  _aoeRandomJitter: 0.06
+  _aoeExtraRandomDelay: 0.12
+  _aoeInitialDelayMin: 0.08
+  _aoeInitialDelayMax: 0.2
 --- !u!4 &2022306083
 Transform:
   m_ObjectHideFlags: 0
@@ -10834,7 +10867,7 @@ MonoBehaviour:
     m_SelectOnDown: {fileID: 0}
     m_SelectOnLeft: {fileID: 0}
     m_SelectOnRight: {fileID: 0}
-  m_Transition: 1
+  m_Transition: 2
   m_Colors:
     m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
     m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
@@ -10845,7 +10878,7 @@ MonoBehaviour:
     m_FadeDuration: 0.1
   m_SpriteState:
     m_HighlightedSprite: {fileID: 0}
-    m_PressedSprite: {fileID: 0}
+    m_PressedSprite: {fileID: -1172348659990362884, guid: a75c439303e16f340a72b5bc70a8c727, type: 3}
     m_SelectedSprite: {fileID: 0}
     m_DisabledSprite: {fileID: 0}
   m_AnimationTriggers:
@@ -10872,14 +10905,14 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.75, g: 0.2, b: 0.2, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: 5492327305593120934, guid: 61ca8a9790566074b9e108592f6a7e6a, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1

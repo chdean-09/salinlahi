@@ -81,6 +81,7 @@ public class LevelSelectUI : MonoBehaviour
 
     private void OnBackPressed()
     {
+        AudioManager.Instance?.PlayMenuExitButtonClick();
         DebugLogger.Log("LevelSelectUI: Back to main menu");
 
         if (SceneLoader.Instance != null)

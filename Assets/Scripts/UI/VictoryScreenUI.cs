@@ -67,6 +67,7 @@ public class VictoryScreenUI : MonoBehaviour
 
     private void OnNextLevelPressed()
     {
+        AudioManager.Instance?.PlayMenuButtonClick();
         int currentLevel = PlayerPrefs.GetInt(ProgressManager.SelectedLevelKey, 1);
         int nextLevel = currentLevel + 1;
 
@@ -93,6 +94,7 @@ public class VictoryScreenUI : MonoBehaviour
 
     private void OnLevelSelectPressed()
     {
+        AudioManager.Instance?.PlayMenuButtonClick();
         DebugLogger.Log("VictoryScreenUI: Level Select pressed");
 
         if (SceneLoader.Instance != null)
