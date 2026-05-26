@@ -6,6 +6,8 @@ using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 
 public class StrokeCapture : MonoBehaviour
 {
+    public static event System.Action<IReadOnlyList<List<Vector2>>> OnStrokesSubmitted;
+
     [Header("Configuration")]
     [SerializeField] private RecognitionConfigSO _config;
     [SerializeField] private DrawingCanvas _canvas;
@@ -200,6 +202,7 @@ public class StrokeCapture : MonoBehaviour
         _pendingRecognitionSubmit = false;
         _canvas.ClearCanvas();
 
+        OnStrokesSubmitted?.Invoke(strokesForRecognition);
         RecognitionManager.Instance.Recognize(strokesForRecognition);
     }
 

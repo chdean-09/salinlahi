@@ -21,6 +21,9 @@ public class CombatResolver : MonoBehaviour
 
     private void HandleCharacterRecognized(string characterID)
     {
+        if (TutorialRuntimeState.IsCombatOverrideActive)
+            return;
+
         // Boss route — runs before AOE and closest-match. If the active boss
         // is targetable and the draw matches a required character, the boss
         // consumes the draw (Hit or Duplicate). Otherwise we fall through.
