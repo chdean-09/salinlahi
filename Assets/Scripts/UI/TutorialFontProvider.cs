@@ -6,6 +6,12 @@ public static class TutorialFontProvider
     private const string FontAssetPath = "Fonts/TutorialFont";
     private static TMP_FontAsset _cachedFontAsset;
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void DomainReloadInit()
+    {
+        _cachedFontAsset = null;
+    }
+
     public static TMP_FontAsset FontAsset
     {
         get

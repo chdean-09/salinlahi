@@ -25,9 +25,6 @@ public sealed class Level1TutorialStepSO : ScriptableObject
     [Range(1f, 64f)]
     public float tolerancePixels = 15f;
 
-    [Tooltip("Widen tolerance toward this value on 2nd failure.")]
-    public float widenedTolerancePixels = 20f;
-
     [Header("Copy / Localization")]
     [TextArea(1, 2)]
     public string promptText;

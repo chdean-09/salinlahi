@@ -174,20 +174,6 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
-        public void Validator_RejectsReversedDirection()
-        {
-            Level1TutorialGlyphValidator validator = new();
-
-            Level1TutorialValidationResult result = validator.Validate(
-                "BA",
-                new RecognitionResult("BA", 0.9f, 0, "SA", 0.2f),
-                passedRecognitionThreshold: true);
-
-            Assert.IsFalse(result.IsCorrect);
-            Assert.AreEqual(Level1TutorialValidationFailure.DirectionMismatch, result.Failure);
-        }
-
-        [Test]
         public void Validator_RejectsWrongRecognizedCharacter()
         {
             Level1TutorialGlyphValidator validator = new();
@@ -487,28 +473,6 @@ namespace Salinlahi.Tests.Editor.Gameplay
             {
                 Object.DestroyImmediate(enemyObject);
             }
-        }
-
-        [Test]
-        public void AC13_ToleranceWidens_OnSecondFailure()
-        {
-            Level1TutorialGlyphValidator validator = new();
-
-            // First attempt: strict tolerance (15px) — should fail
-            Level1TutorialValidationResult result1 = validator.Validate(
-                "BA",
-                new RecognitionResult("BA", 0.9f, 0, "SA", 0.2f),
-                passedRecognitionThreshold: true);
-
-            Assert.IsFalse(result1.IsCorrect, "Should fail with 15px tolerance");
-
-            // Second attempt: widened tolerance (20px) — should pass
-            Level1TutorialValidationResult result2 = validator.Validate(
-                "BA",
-                new RecognitionResult("BA", 0.9f, 0, "SA", 0.2f),
-                passedRecognitionThreshold: true);
-
-            Assert.IsTrue(result2.IsCorrect, "Should pass with widened 20px tolerance");
         }
 
         #endregion

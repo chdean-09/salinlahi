@@ -62,23 +62,16 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
         get
         {
             var steps = GetSteps();
-            bool configured = steps != null && steps.Length > 0;
-            DebugLogger.Log($"Level1InteractiveTutorialController.IsConfigured: steps={(steps?.Length.ToString() ?? "null")}, configured={configured}");
-            return configured;
+            return steps != null && steps.Length > 0;
         }
     }
 
     private void Awake()
     {
         if (_guideUI != null)
-        {
-            DebugLogger.Log("Level1InteractiveTutorialController: Initializing GuideUI.");
             _guideUI.Initialize(RequestSkip);
-        }
         else
-        {
             DebugLogger.LogWarning("Level1InteractiveTutorialController: _guideUI is null in Awake.");
-        }
     }
 
     private void OnEnable()
@@ -104,17 +97,9 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
 
     public bool ShouldRunFor(LevelConfigSO levelConfig)
     {
-        DebugLogger.Log($"Level1InteractiveTutorialController.ShouldRunFor: " +
-            $"levelConfig={(levelConfig != null ? levelConfig.name : "null")}, " +
-            $"levelNumber={(levelConfig?.levelNumber.ToString() ?? "N/A")}, required={_requiredLevelNumber}, " +
-            $"hasTutorialSequence={levelConfig?.tutorialSequence != null}");
-
-        bool result = levelConfig != null
+        return levelConfig != null
             && levelConfig.levelNumber == _requiredLevelNumber
             && levelConfig.tutorialSequence != null;
-
-        DebugLogger.Log($"Level1InteractiveTutorialController.ShouldRunFor: returning {result}");
-        return result;
     }
 
     public IEnumerator PlayIfNeeded(LevelConfigSO levelConfig)

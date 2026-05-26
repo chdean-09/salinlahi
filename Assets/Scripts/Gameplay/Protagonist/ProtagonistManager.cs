@@ -124,7 +124,8 @@ namespace Salinlahi.Runtime.Gameplay
                     return sprite;
             }
 #endif
-            return Resources.Load<Sprite>("Characters/Protagonist/sprite_prot_japanese_idle_back-Sheet");
+            DebugLogger.LogWarning("[ProtagonistManager] Fallback sprite not found. Ensure Protagonist.prefab is assigned in ProtagonistManager.");
+            return null;
         }
 
         private static void ValidateProtagonistVisibility(Transform protagonist)

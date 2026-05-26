@@ -302,25 +302,13 @@ public static class ProtagonistAnimationSetup
 
         string content = File.ReadAllText(AttackControllerScriptPath);
 
-        // Check if already injected
         if (content.Contains("Animator protagonistAnimator"))
         {
             Debug.Log("[Salinlahi] Animation trigger already present in ProtagonistAttackController.");
             return true;
         }
 
-        string oldCode = "            // Get pooled slash VFX\n            ProtagonistSlashVfx slash = GetPooledSlash();\n            slash.gameObject.SetActive(true);\n            slash.Play(protagonistPos, targetPos);";
-
-        string newCode = "            // Trigger protagonist draw animation\n            Animator protagonistAnimator = ProtagonistManager.Instance?.ProtagonistTransform?.GetComponent<Animator>();\n            if (protagonistAnimator != null)\n                protagonistAnimator.SetTrigger(\"Draw\");\n\n            // Get pooled slash VFX\n            ProtagonistSlashVfx slash = GetPooledSlash();\n            slash.gameObject.SetActive(true);\n            slash.Play(protagonistPos, targetPos);";
-
-        if (!content.Contains(oldCode))
-        {
-            Debug.LogError("[Salinlahi] Could not find expected code block in ProtagonistAttackController.cs. Manual injection may be needed.");
-            return false;
-        }
-
-        content = content.Replace(oldCode, newCode);
-        File.WriteAllText(AttackControllerScriptPath, content);
-        return true;
+        Debug.LogError("[Salinlahi] Animation trigger NOT found in ProtagonistAttackController.cs. The source may have changed.");
+        return false;
     }
 }

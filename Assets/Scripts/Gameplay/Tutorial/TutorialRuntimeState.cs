@@ -1,8 +1,16 @@
+using UnityEngine;
+
 public static class TutorialRuntimeState
 {
     public static bool IsActive { get; private set; }
     public static int ActiveLevelNumber { get; private set; } = -1;
     public static bool IsCombatOverrideActive { get; private set; }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void DomainReloadInit()
+    {
+        Clear();
+    }
 
     public static bool IsActiveForLevel(int levelNumber)
     {

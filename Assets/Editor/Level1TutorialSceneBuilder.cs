@@ -41,8 +41,7 @@ public static class Level1TutorialSceneBuilder
     public static void RepairOpenGameplayTutorialWiring()
     {
         Scene scene = EditorSceneManager.GetActiveScene();
-        
-        // Safety: confirm before modifying open scene
+
         bool proceed = EditorUtility.DisplayDialog(
             "Repair Gameplay Tutorial Wiring",
             $"This will modify the currently open scene '{scene.name}' by adding/updating "
@@ -50,10 +49,10 @@ public static class Level1TutorialSceneBuilder
             + "Existing GameObjects may be recreated. Make sure your scene is saved or version-controlled.",
             "Proceed with Repair",
             "Cancel");
-        
+
         if (!proceed)
             return;
-        
+
         RepairOpenScene(scene, false);
     }
 
@@ -62,7 +61,7 @@ public static class Level1TutorialSceneBuilder
         Undo.IncrementCurrentGroup();
         int undoGroup = Undo.GetCurrentGroup();
         Undo.SetCurrentGroupName("Level1 Tutorial Scene Builder");
-        
+
         try
         {
             RepairOpenSceneCore(scene, createdScene);
@@ -72,12 +71,12 @@ public static class Level1TutorialSceneBuilder
             Undo.CollapseUndoOperations(undoGroup);
         }
     }
-    
+
     private static void RepairOpenSceneCore(Scene scene, bool createdScene)
     {
         EnsureDirectPlayManagers();
 
-        ResolveSpawnPositions(out Vector3 leftSpawn, out Vector3 centerSpawn, out Vector3 rightSpawn);
+        Level1TutorialMarkerBuilder.ResolveSpawnPositions(out Vector3 leftSpawn, out Vector3 centerSpawn, out Vector3 rightSpawn);
         WaveSpawner spawner = EnsureWaveSpawner(leftSpawn, centerSpawn, rightSpawn);
         WaveManager waveManager = EnsureWaveManager(spawner);
         LevelFlowController flow = EnsureLevelFlowController(waveManager);
@@ -85,15 +84,15 @@ public static class Level1TutorialSceneBuilder
 
         Level1InteractiveTutorialController tutorial = EnsureTutorialController();
         Level1TutorialGuideUI guide = EnsureGuideUI(canvas);
-        ResolveTutorialPositions(
+        Level1TutorialMarkerBuilder.ResolveTutorialPositions(
             out Vector3 protagonistPosition,
             out Vector3 protagonistStartPosition,
             out Vector3 protagonistEndPosition,
             out Vector3 enemyStopPosition);
-        Transform protagonist = EnsureMarker("Tutorial_Protagonist", protagonistPosition, true);
-        Transform protagonistStart = EnsureMarker("Tutorial_Protagonist_Start", protagonistStartPosition, true);
-        Transform protagonistEnd = EnsureMarker("Tutorial_Protagonist_End", protagonistEndPosition, true);
-        Transform enemyStop = EnsureMarker("Tutorial_Enemy_Stop", enemyStopPosition, true);
+        Transform protagonist = Level1TutorialMarkerBuilder.EnsureMarker("Tutorial_Protagonist", protagonistPosition, true);
+        Transform protagonistStart = Level1TutorialMarkerBuilder.EnsureMarker("Tutorial_Protagonist_Start", protagonistStartPosition, true);
+        Transform protagonistEnd = Level1TutorialMarkerBuilder.EnsureMarker("Tutorial_Protagonist_End", protagonistEndPosition, true);
+        Transform enemyStop = Level1TutorialMarkerBuilder.EnsureMarker("Tutorial_Enemy_Stop", enemyStopPosition, true);
 
         ConfigureTutorialController(
             tutorial,
@@ -108,7 +107,6 @@ public static class Level1TutorialSceneBuilder
         ConfigureWaveManager(waveManager, spawner);
         EnsureSceneInBuildSettings(GameplayScenePath);
 
-        // Ensure protagonist animation setup is applied (silent, logs only)
         ProtagonistAnimationSetup.SetupFromSceneBuilder();
 
         EditorSceneManager.MarkSceneDirty(scene);
@@ -158,9 +156,9 @@ public static class Level1TutorialSceneBuilder
             existing = go.AddComponent<WaveSpawner>();
         }
 
-        Transform left = EnsureMarker("SpawnPoint_01", leftSpawnPosition, true);
-        Transform center = EnsureMarker("SpawnPoint_02", centerSpawnPosition, true);
-        Transform right = EnsureMarker("SpawnPoint_03", rightSpawnPosition, true);
+        Transform left = Level1TutorialMarkerBuilder.EnsureMarker("SpawnPoint_01", leftSpawnPosition, true);
+        Transform center = Level1TutorialMarkerBuilder.EnsureMarker("SpawnPoint_02", centerSpawnPosition, true);
+        Transform right = Level1TutorialMarkerBuilder.EnsureMarker("SpawnPoint_03", rightSpawnPosition, true);
 
         SerializedObject serialized = new(existing);
         SerializedProperty spawnPoints = serialized.FindProperty("_spawnPoints");
@@ -236,7 +234,7 @@ public static class Level1TutorialSceneBuilder
         Level1TutorialGuideUI existing = Object.FindFirstObjectByType<Level1TutorialGuideUI>();
         if (existing != null)
         {
-            RepairGuideTextPositions(existing.transform);
+            Level1TutorialUIBuilder.RepairGuideTextPositions(existing.transform);
             return existing;
         }
 
@@ -262,17 +260,14 @@ public static class Level1TutorialSceneBuilder
 
         Level1TutorialGuideUI guide = root.AddComponent<Level1TutorialGuideUI>();
 
-        // Positioned above the base / wall area so instructions are clearly
-        // readable and don't overlap with enemies spawning from the top.
-        TextMeshProUGUI prompt = CreateText(root.transform, "PromptText", new Vector2(0.5f, 0.32f), 42, TextAlignmentOptions.Center);
-        TextMeshProUGUI feedback = CreateText(root.transform, "FeedbackText", new Vector2(0.5f, 0.24f), 32, TextAlignmentOptions.Center);
-        Button skip = CreateButton(root.transform);
+        TextMeshProUGUI prompt = Level1TutorialUIBuilder.CreateText(root.transform, "PromptText", new Vector2(0.5f, 0.32f), 42, TextAlignmentOptions.Center);
+        TextMeshProUGUI feedback = Level1TutorialUIBuilder.CreateText(root.transform, "FeedbackText", new Vector2(0.5f, 0.24f), 32, TextAlignmentOptions.Center);
+        Button skip = Level1TutorialUIBuilder.CreateButton(root.transform);
 
-        // Create guide visual elements
-        Image guideSpriteImage = CreateGuideSpriteImage(root.transform);
-        LineRenderer guidePath = EnsureGuidePathRenderer(root.transform);
-        Transform startDot = EnsureGuideDot(root.transform, "StartDot", Color.green);
-        Transform directionArrow = EnsureGuideArrow(root.transform);
+        Image guideSpriteImage = Level1TutorialUIBuilder.CreateGuideSpriteImage(root.transform);
+        LineRenderer guidePath = Level1TutorialUIBuilder.EnsureGuidePathRenderer(root.transform);
+        Transform startDot = Level1TutorialUIBuilder.EnsureGuideDot(root.transform, "StartDot", Color.green);
+        Transform directionArrow = Level1TutorialUIBuilder.EnsureGuideArrow(root.transform);
         GameObject assistParent = new("AssistAnimationParent");
         Undo.RegisterCreatedObjectUndo(assistParent, "Create Assist Animation Parent");
         assistParent.transform.SetParent(root.transform, false);
@@ -298,238 +293,6 @@ public static class Level1TutorialSceneBuilder
         return guide;
     }
 
-    private static Image CreateGuideSpriteImage(Transform parent)
-    {
-        GameObject go = new("GuideSpriteImage");
-        Undo.RegisterCreatedObjectUndo(go, "Create Guide Sprite Image");
-        go.transform.SetParent(parent, false);
-        go.SetActive(false);
-
-        Image image = go.AddComponent<Image>();
-        image.raycastTarget = false;
-        image.preserveAspect = true;
-        image.color = new Color(1f, 1f, 1f, 0.9f);
-
-        RectTransform rect = go.GetComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0.5f, 0.5f);
-        rect.anchorMax = new Vector2(0.5f, 0.5f);
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = new Vector2(0f, 120f);
-        rect.sizeDelta = new Vector2(180f, 180f);
-
-        return image;
-    }
-
-    private static LineRenderer EnsureGuidePathRenderer(Transform parent)
-    {
-        GameObject go = new("GuidePathRenderer");
-        Undo.RegisterCreatedObjectUndo(go, "Create Guide Path Renderer");
-        go.transform.SetParent(parent, false);
-        LineRenderer lr = go.AddComponent<LineRenderer>();
-        lr.useWorldSpace = false;
-        lr.startWidth = 0.05f;
-        lr.endWidth = 0.05f;
-        lr.positionCount = 0;
-        lr.enabled = false;
-        
-        // Try to find or create a simple material
-        Material mat = new(Shader.Find("Sprites/Default"));
-        if (mat != null)
-        {
-            mat.color = new Color(0.49f, 0.09f, 0.56f, 1f); // #7d168f
-            lr.material = mat;
-        }
-        
-        return lr;
-    }
-
-    private static Transform EnsureGuideDot(Transform parent, string name, Color color)
-    {
-        GameObject go = new(name);
-        Undo.RegisterCreatedObjectUndo(go, $"Create {name}");
-        go.transform.SetParent(parent, false);
-        go.SetActive(false);
-        
-        // Create a simple circle using a small sprite or UI Image
-        Image image = go.AddComponent<Image>();
-        image.color = color;
-        image.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
-        
-        RectTransform rect = go.GetComponent<RectTransform>();
-        rect.sizeDelta = new Vector2(26f, 26f);
-        rect.anchorMin = new Vector2(0.5f, 0.5f);
-        rect.anchorMax = new Vector2(0.5f, 0.5f);
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        
-        return go.transform;
-    }
-
-    private static Transform EnsureGuideArrow(Transform parent)
-    {
-        GameObject go = new("DirectionArrow");
-        Undo.RegisterCreatedObjectUndo(go, "Create Direction Arrow");
-        go.transform.SetParent(parent, false);
-        go.SetActive(false);
-        
-        Image image = go.AddComponent<Image>();
-        image.color = new Color(0.09f, 0.54f, 0.29f, 1f); // #168a4a
-        image.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
-        
-        RectTransform rect = go.GetComponent<RectTransform>();
-        rect.sizeDelta = new Vector2(40f, 20f);
-        rect.anchorMin = new Vector2(0.5f, 0.5f);
-        rect.anchorMax = new Vector2(0.5f, 0.5f);
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        
-        return go.transform;
-    }
-
-    private static TextMeshProUGUI CreateText(
-        Transform parent,
-        string name,
-        Vector2 anchor,
-        float fontSize,
-        TextAlignmentOptions alignment)
-    {
-        GameObject go = new(name);
-        Undo.RegisterCreatedObjectUndo(go, $"Create {name}");
-        go.transform.SetParent(parent, false);
-        RectTransform rect = go.AddComponent<RectTransform>();
-        rect.anchorMin = anchor;
-        rect.anchorMax = anchor;
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.sizeDelta = new Vector2(900f, 96f);
-        rect.anchoredPosition = Vector2.zero;
-
-        TextMeshProUGUI text = go.AddComponent<TextMeshProUGUI>();
-        text.fontSize = fontSize;
-        text.alignment = alignment;
-        text.color = Color.white;
-        text.textWrappingMode = TextWrappingModes.Normal;
-        text.text = string.Empty;
-        return text;
-    }
-
-    private static Button CreateButton(Transform parent)
-    {
-        GameObject go = new("SkipButton");
-        Undo.RegisterCreatedObjectUndo(go, "Create Skip Button");
-        go.transform.SetParent(parent, false);
-        RectTransform rect = go.AddComponent<RectTransform>();
-        rect.anchorMin = new Vector2(1f, 1f);
-        rect.anchorMax = new Vector2(1f, 1f);
-        rect.pivot = new Vector2(1f, 1f);
-        rect.sizeDelta = new Vector2(160f, 56f);
-        rect.anchoredPosition = new Vector2(-32f, -32f);
-
-        Image image = go.AddComponent<Image>();
-        image.color = new Color(0f, 0f, 0f, 0.65f);
-        Button button = go.AddComponent<Button>();
-
-        TextMeshProUGUI label = CreateText(go.transform, "Label", new Vector2(0.5f, 0.5f), 26, TextAlignmentOptions.Center);
-        label.text = "Skip";
-        RectTransform labelRect = label.GetComponent<RectTransform>();
-        labelRect.anchorMin = Vector2.zero;
-        labelRect.anchorMax = Vector2.one;
-        labelRect.offsetMin = Vector2.zero;
-        labelRect.offsetMax = Vector2.zero;
-
-        go.SetActive(false);
-        return button;
-    }
-
-    private static void RepairGuideTextPositions(Transform guideRoot)
-    {
-        // Ensure existing PromptText and FeedbackText are repositioned above
-        // the base area instead of overlapping with enemies from the top.
-        Transform prompt = guideRoot.Find("PromptText");
-        if (prompt != null && prompt.TryGetComponent(out RectTransform promptRect))
-        {
-            Undo.RecordObject(promptRect, "Repair PromptText Position");
-            promptRect.anchorMin = new Vector2(0.5f, 0.32f);
-            promptRect.anchorMax = new Vector2(0.5f, 0.32f);
-            EditorUtility.SetDirty(promptRect);
-        }
-
-        Transform feedback = guideRoot.Find("FeedbackText");
-        if (feedback != null && feedback.TryGetComponent(out RectTransform feedbackRect))
-        {
-            Undo.RecordObject(feedbackRect, "Repair FeedbackText Position");
-            feedbackRect.anchorMin = new Vector2(0.5f, 0.24f);
-            feedbackRect.anchorMax = new Vector2(0.5f, 0.24f);
-            EditorUtility.SetDirty(feedbackRect);
-        }
-    }
-
-    private static Transform EnsureMarker(string name, Vector3 position, bool forcePosition = false)
-    {
-        GameObject existing = GameObject.Find(name);
-        if (existing != null)
-        {
-            if (forcePosition)
-            {
-                Undo.RecordObject(existing.transform, $"Move {name}");
-                existing.transform.position = position;
-                EditorUtility.SetDirty(existing.transform);
-            }
-
-            return existing.transform;
-        }
-
-        GameObject marker = new(name);
-        marker.transform.position = position;
-        Undo.RegisterCreatedObjectUndo(marker, $"Create {name}");
-        return marker.transform;
-    }
-
-    private static void ResolveTutorialPositions(
-        out Vector3 protagonistPosition,
-        out Vector3 protagonistStartPosition,
-        out Vector3 protagonistEndPosition,
-        out Vector3 enemyStopPosition)
-    {
-        PlayerBase playerBase = Object.FindFirstObjectByType<PlayerBase>();
-        if (playerBase == null)
-        {
-            protagonistEndPosition = new Vector3(0f, -8.35f, 0f);
-            protagonistStartPosition = protagonistEndPosition + new Vector3(0f, -3f, 0f);
-            protagonistPosition = protagonistStartPosition;
-            enemyStopPosition = new Vector3(0f, 3.75f, 0f);
-            Debug.LogWarning("[Salinlahi] Level1TutorialSceneBuilder: PlayerBase not found. Used default tutorial positions with an upper-lane enemy hold point.");
-            return;
-        }
-
-        Bounds baseBounds = GetBaseBounds(playerBase);
-        Vector3 baseCenter = baseBounds.center;
-        ResolveSpawnPositions(out _, out Vector3 spawnCenter, out _);
-
-        // Enemies move downward from above the screen into the PlayerBase
-        // trigger. The protagonist enters from the bottom and ends on the
-        // protected side behind the wall/base line. The enemy is held well
-        // before the wall so the prompt teaches the draw-to-defeat rule while
-        // the threat is still readable and safely distant from the base.
-        float protagonistY = baseBounds.min.y - 0.45f;
-        float protagonistStartY = protagonistY - 3f;
-        float enemyStopY = Mathf.Lerp(baseBounds.max.y, spawnCenter.y, 0.55f);
-        protagonistEndPosition = new Vector3(baseCenter.x, protagonistY, 0f);
-        protagonistStartPosition = new Vector3(baseCenter.x, protagonistStartY, 0f);
-        protagonistPosition = protagonistStartPosition;
-        enemyStopPosition = new Vector3(baseCenter.x, enemyStopY, 0f);
-    }
-
-    private static Bounds GetBaseBounds(PlayerBase playerBase)
-    {
-        Collider2D collider = playerBase.GetComponent<Collider2D>();
-        if (collider != null)
-            return collider.bounds;
-
-        Renderer renderer = playerBase.GetComponent<Renderer>();
-        if (renderer != null)
-            return renderer.bounds;
-
-        return new Bounds(playerBase.transform.position, new Vector3(10f, 0.5f, 0f));
-    }
-
     private static void ConfigureTutorialController(
         Level1InteractiveTutorialController tutorial,
         WaveSpawner spawner,
@@ -545,15 +308,13 @@ public static class Level1TutorialSceneBuilder
         serialized.FindProperty("_guideUI").objectReferenceValue = guide;
         serialized.FindProperty("_protagonistWalkSeconds").floatValue = 1.75f;
         ConfigureHiddenDuringTutorial(serialized.FindProperty("_hideDuringTutorial"));
-        
-        // Use the ScriptableObject sequence asset instead of inline steps
+
         Level1TutorialSequenceSO sequence = AssetDatabase.LoadAssetAtPath<Level1TutorialSequenceSO>(TutorialSequencePath);
         if (sequence != null)
         {
             serialized.FindProperty("_sequence").objectReferenceValue = sequence;
             Debug.Log("[Salinlahi] Level1TutorialSceneBuilder: Linked Level1TutorialSequence.asset.");
-            
-            // Populate stop positions from the scene marker into each step asset
+
             if (enemyStop != null && sequence.steps != null)
             {
                 for (int i = 0; i < sequence.steps.Length; i++)
@@ -576,7 +337,7 @@ public static class Level1TutorialSceneBuilder
             Debug.LogWarning("[Salinlahi] Level1TutorialSceneBuilder: Level1TutorialSequence.asset not found. Falling back to inline steps.");
             ConfigureSteps(serialized.FindProperty("_steps"));
         }
-        
+
         serialized.ApplyModifiedPropertiesWithoutUndo();
         EditorUtility.SetDirty(tutorial);
     }
@@ -688,28 +449,9 @@ public static class Level1TutorialSceneBuilder
         return AssetDatabase.LoadAssetAtPath<LevelConfigSO>(Level1ConfigPath);
     }
 
-    private static Transform FindBaseTransform()
-    {
-        PlayerBase playerBase = Object.FindFirstObjectByType<PlayerBase>();
-        return playerBase != null ? playerBase.transform : null;
-    }
-
     private static void ResolveSpawnPositions(out Vector3 left, out Vector3 center, out Vector3 right)
     {
-        Camera camera = Camera.main;
-        float centerX = 0f;
-        float y = 13f;
-
-        if (camera != null && camera.orthographic)
-        {
-            centerX = camera.transform.position.x;
-            y = camera.transform.position.y + camera.orthographicSize + 1.5f;
-        }
-
-        float halfWidth = 2.4f;
-        left = new Vector3(centerX - halfWidth, y, 0f);
-        center = new Vector3(centerX, y, 0f);
-        right = new Vector3(centerX + halfWidth, y, 0f);
+        Level1TutorialMarkerBuilder.ResolveSpawnPositions(out left, out center, out right);
     }
 
     private static BaybayinCharacterSO FindCharacter(string id)

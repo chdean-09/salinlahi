@@ -202,21 +202,15 @@ public class LevelFlowController : MonoBehaviour
 
     private IEnumerator PlayLevelTutorialIfNeeded()
     {
-        DebugLogger.Log("LevelFlowController: PlayLevelTutorialIfNeeded() started.");
-        
         if (_levelConfig == null)
         {
             DebugLogger.LogError("LevelFlowController: _levelConfig is null. Cannot determine if tutorial is needed.");
             yield break;
         }
-        
-        DebugLogger.Log($"LevelFlowController: _levelConfig.levelNumber = {_levelConfig.levelNumber}");
 
         if (_level1InteractiveTutorialController != null
             && _level1InteractiveTutorialController.ShouldRunFor(_levelConfig))
         {
-            DebugLogger.Log("LevelFlowController: Interactive tutorial controller.ShouldRunFor returned true.");
-            
             if (!_level1InteractiveTutorialController.IsConfigured)
             {
                 _flowAborted = true;
@@ -224,22 +218,12 @@ public class LevelFlowController : MonoBehaviour
                 yield break;
             }
 
-            DebugLogger.Log("LevelFlowController: Starting interactive tutorial...");
             yield return _level1InteractiveTutorialController.PlayIfNeeded(_levelConfig);
-            DebugLogger.Log("LevelFlowController: Interactive tutorial completed.");
             yield break;
         }
 
         if (!LevelTutorialProgress.ShouldShowForLevel(_levelConfig))
-        {
-            DebugLogger.Log($"LevelFlowController: ShouldShowForLevel returned false. levelNumber={_levelConfig.levelNumber}, HasSeen={LevelTutorialProgress.HasSeenLevel1Tutorial()}");
             yield break;
-        }
-        
-        if (_level1InteractiveTutorialController == null)
-            DebugLogger.Log("LevelFlowController: _level1InteractiveTutorialController is null. Falling back to overlay.");
-        else
-            DebugLogger.Log("LevelFlowController: _level1InteractiveTutorialController.ShouldRunFor returned false. Falling back to overlay.");
 
         if (_tutorialOverlayController == null)
         {
@@ -255,7 +239,6 @@ public class LevelFlowController : MonoBehaviour
             yield break;
         }
 
-        DebugLogger.Log("LevelFlowController: Starting overlay tutorial...");
         yield return _tutorialOverlayController.PlayIfNeeded(_levelConfig);
     }
 

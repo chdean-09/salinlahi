@@ -26,6 +26,7 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
     private Coroutine _pulseCoroutine;
     private Coroutine _animatePathCoroutine;
     private Coroutine _heartbeatCoroutine;
+    private Vector3[] _originalGuidePathPoints;
 
     private void Awake()
     {
@@ -200,8 +201,13 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         if (_guidePathRenderer != null && step != null && step.templatePoints != null && step.templatePoints.Length > 1)
         {
             _guidePathRenderer.positionCount = step.templatePoints.Length;
+            _originalGuidePathPoints = new Vector3[step.templatePoints.Length];
             for (int i = 0; i < step.templatePoints.Length; i++)
-                _guidePathRenderer.SetPosition(i, step.templatePoints[i]);
+            {
+                Vector3 pos = step.templatePoints[i];
+                _guidePathRenderer.SetPosition(i, pos);
+                _originalGuidePathPoints[i] = pos;
+            }
             _guidePathRenderer.gameObject.SetActive(true);
         }
 
@@ -371,6 +377,7 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         {
             StopCoroutine(_animatePathCoroutine);
             _animatePathCoroutine = null;
+            RestoreGuidePath();
         }
         if (_heartbeatCoroutine != null)
         {
@@ -386,12 +393,14 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
 
         Vector3 baseScale = _startDot.localScale;
         float duration = 0.6f;
-        while (true)
+        while (_startDot != null)
         {
             float elapsed = 0f;
             while (elapsed < duration)
             {
                 elapsed += Time.unscaledDeltaTime;
+                if (_startDot == null)
+                    yield break;
                 float t = Mathf.PingPong(elapsed / duration, 1f);
                 float scale = Mathf.Lerp(1f, 1.3f, t);
                 _startDot.localScale = baseScale * scale;
@@ -418,7 +427,17 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
             yield return null;
         }
 
-        _guidePathRenderer.positionCount = totalPoints;
+        RestoreGuidePath();
+    }
+
+    private void RestoreGuidePath()
+    {
+        if (_guidePathRenderer == null || _originalGuidePathPoints == null)
+            return;
+
+        _guidePathRenderer.positionCount = _originalGuidePathPoints.Length;
+        for (int i = 0; i < _originalGuidePathPoints.Length; i++)
+            _guidePathRenderer.SetPosition(i, _originalGuidePathPoints[i]);
     }
 
     private System.Collections.IEnumerator HeartbeatCoroutine()
