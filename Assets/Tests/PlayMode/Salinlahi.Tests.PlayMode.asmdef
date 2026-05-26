@@ -2,7 +2,8 @@
     "name": "Salinlahi.Tests.PlayMode",
     "rootNamespace": "",
     "references": [
-        "Salinlahi.Runtime"
+        "Salinlahi.Runtime",
+        "Unity.TextMeshPro"
     ],
     "includePlatforms": [],
     "optionalUnityReferences": [

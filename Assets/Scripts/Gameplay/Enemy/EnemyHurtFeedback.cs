@@ -75,6 +75,7 @@ public class EnemyHurtFeedback : MonoBehaviour
             && !_hasSwappedCharacter
             && data.postHurtCharacter != null)
         {
+            _enemy.GlyphBadge?.PlaySwap(data.postHurtCharacter);
             _enemy.AssignCharacter(data.postHurtCharacter);
             _hasSwappedCharacter = true;
         }

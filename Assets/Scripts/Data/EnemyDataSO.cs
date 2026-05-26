@@ -61,6 +61,19 @@ public class EnemyDataSO : ScriptableObject
     [Tooltip("Chapter / faction grouping. Used by GeneralAura to limit its buff to American-era allies.")]
     public Era era = Era.Spanish;
 
+    [Header("Glyph Badge Override")]
+    [Tooltip("If true, glyphBadgeOffsetOverride replaces GlyphBadgeConfigSO.defaultWorldOffset for this enemy. Use sparingly — boss and other large-sprite variants only.")]
+    public bool overrideBadgeOffset;
+
+    [Tooltip("Local-space offset from the enemy root for the GlyphBadge child. Consulted only when overrideBadgeOffset is true.")]
+    public Vector2 glyphBadgeOffsetOverride;
+
+    [Tooltip("If true, glyphBadgeScaleOverride replaces GlyphBadgeConfigSO.defaultWorldScale for this enemy.")]
+    public bool overrideBadgeScale;
+
+    [Tooltip("World-stable scale multiplier for the GlyphBadge child. Consulted only when overrideBadgeScale is true.")]
+    public float glyphBadgeScaleOverride = 1f;
+
     [Header("Zigzag Mover (Pensionado)")]
     [Tooltip("Horizontal sine amplitude in world units. 0 disables zigzag.")]
     public float zigzagAmplitude = 0f;

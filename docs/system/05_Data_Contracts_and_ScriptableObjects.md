@@ -1,7 +1,7 @@
 # 05 — Data Contracts and ScriptableObjects
 **Project:** Salinlahi
-**Version:** 1.4
-**Date:** 2026-05-23
+**Version:** 1.5
+**Date:** 2026-05-26
 **Owner:** Chad Andrada (Product Owner / Designer)
 
 ---
@@ -28,6 +28,8 @@ All game content is defined in ScriptableObject assets. Level designers can crea
 | `characterID` | `string` | Identity | YES | Must match template filename prefix. Example: `"BA"` → template file `BA_template.txt` in `Assets/Resources/Templates/`. Case-sensitive. |
 | `syllable` | `string` | Identity | YES | Lowercase Filipino syllable shown to player. Example: `"ba"`, `"ka"`, `"ga"`. Must not be empty. |
 | `displaySprite` | `Sprite` | Visuals | YES | The Baybayin glyph sprite rendered on the enemy body. Must not be null at runtime. |
+| `badgeSprite` | `Sprite` | Visuals | NO | Framed glyph used by `EnemyGlyphBadge` during gameplay. Distinct from `displaySprite` (Tracing Dojo). |
+| `scrambledBadgeSprite` | `Sprite` | Visuals | NO | Optional framed + glitched variant when a visual override is active (e.g. Kempei scramble). Falls back to `badgeSprite` when null. |
 | `pronunciationClip` | `AudioClip` | Audio | YES | Played on every successful character recognition via `AudioManager`. Duration must be under 1 second to prevent overlap. Null triggers a silent defeat (no audio error). |
 | `templateFileName` | `string` | Recognition | YES | Filename in `Assets/Resources/Templates/` without extension. Example: `"BA_template"`. Must match a file loadable via `Resources.Load<TextAsset>`. |
 
@@ -86,6 +88,10 @@ TDD §2.2 specifies that multiple templates per character are supported (e.g., `
 | `scrambleRadius` | `float` | Kempei Censor | NO | KempeiScrambleController radius. Default `3f`. |
 | `scrambleMinGlitchInterval` | `float` | Kempei Censor | NO | Default `0.18f`. |
 | `scrambleMaxGlitchInterval` | `float` | Kempei Censor | NO | Default `0.36f`. |
+| `overrideBadgeOffset` | `bool` | Glyph Badge Override | NO | If true, `glyphBadgeOffsetOverride` replaces `GlyphBadgeConfigSO.defaultWorldOffset`. |
+| `glyphBadgeOffsetOverride` | `Vector2` | Glyph Badge Override | NO | Per-enemy badge offset; consulted only when `overrideBadgeOffset` is true. |
+| `overrideBadgeScale` | `bool` | Glyph Badge Override | NO | If true, `glyphBadgeScaleOverride` replaces `GlyphBadgeConfigSO.defaultWorldScale`. |
+| `glyphBadgeScaleOverride` | `float` | Glyph Badge Override | NO | Per-enemy badge scale; consulted only when `overrideBadgeScale` is true. Default `1f`. |
 
 **Validation Rules:**
 - `moveSpeed` must be > 0. Value ≤ 0 causes the enemy to never move (not crash-safe, but functionally broken).
@@ -106,6 +112,37 @@ Defined at the bottom of `EnemyDataSO.cs`:
 
 [EVIDENCE: Assets/Scripts/Data/EnemyDataSO.cs]
 [EVIDENCE: Assets/ScriptableObjects/EnemyData_*.asset]
+
+---
+
+### 2.2.2 `GlyphBadgeConfigSO`
+
+**Menu path:** `Salinlahi/Glyph Badge Config`
+**File:** `Assets/Scripts/Data/GlyphBadgeConfigSO.cs`
+**Asset folder:** `Assets/ScriptableObjects/GlyphBadgeConfig_Default.asset` (single instance referenced by every `EnemyGlyphBadge` prefab instance)
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| `defaultWorldOffset` | `Vector2` | `(0, 1.2)` | Default local offset from enemy root. |
+| `defaultWorldScale` | `float` | `1` | Default world-stable scale of the badge transform. |
+| `swapSlideOffset` | `Vector2` | `(-0.8, 0)` | Slide direction + magnitude for swap animation. |
+| `swapOutDuration` | `float` | `0.18` | Seconds for old sprite to slide out + fade. |
+| `swapInDuration` | `float` | `0.18` | Seconds for new sprite to slide in + fade. |
+| `finalDrawFlashColor` | `Color` | white | Tint applied during final-draw charge phase. |
+| `finalDrawChargeDuration` | `float` | `0.08` | Seconds for scale-up + flash phase. |
+| `finalDrawChargeScale` | `float` | `1.15` | Peak scale multiplier at end of charge phase. |
+| `finalDrawReleaseDuration` | `float` | `0.18` | Seconds for shrink + drift phase. |
+| `finalDrawReleaseRise` | `float` | `0.25` | Local-Y added during release phase. |
+| `finalDrawReleaseRotation` | `float` | `10` | Degrees of rotation added during release phase. |
+| `decoyRejectFlashColor` | `Color` | `(1, 0.3, 0.3, 1)` | Tint during decoy-reject flash. |
+| `decoyRejectFlashDuration` | `float` | `0.1` | Seconds for the red flash. |
+| `decoyRejectShakeMagnitude` | `float` | `0.1` | Peak shake offset (world units). |
+| `decoyRejectShakeDuration` | `float` | `0.3` | Total shake duration. |
+| `decoyRejectShakeFrequency` | `float` | `18` | Shake oscillations per second. |
+| `failFlashColor` | `Color` | `(1, 0.3, 0.3, 1)` | Tint for boss draw-fail flash on the world badge. |
+| `failFlashDuration` | `float` | `0.15` | Seconds for fail flash. |
+
+[EVIDENCE: Assets/Scripts/Data/GlyphBadgeConfigSO.cs]
 
 ---
 

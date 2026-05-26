@@ -19,12 +19,14 @@ public class BossController : MonoBehaviour
 
     public string CurrentExpectedCharacterID =>
         _currentExpectedCharacter != null ? _currentExpectedCharacter.characterID : null;
-    public BaybayinCharacterSO CurrentExpectedCharacter => _currentExpectedCharacter;
-    public int CorrectDrawsThisWindow => _correctDrawsThisWindow;
-    public int RequiredCharactersForCurrentPhase =>
+    public virtual BaybayinCharacterSO CurrentExpectedCharacter => _currentExpectedCharacter;
+    public virtual int CorrectDrawsThisWindow => _correctDrawsThisWindow;
+    public virtual int RequiredCharactersForCurrentPhase =>
         CurrentPhase != null ? CurrentPhase.requiredCharacterCount : 0;
 
     public event Action OnDrawnThisPhaseChanged;
+
+    protected void RaiseOnDrawnThisPhaseChanged() => OnDrawnThisPhaseChanged?.Invoke();
 
     private State _state = State.Idle;
     private bool _isVulnerableActiveWindow;
@@ -100,7 +102,7 @@ public class BossController : MonoBehaviour
             // Sample before notifying: UI subscribers read CurrentExpectedCharacter
             // in their handler and must see the next glyph, not the one just matched.
             SampleNextExpectedCharacter();
-            OnDrawnThisPhaseChanged?.Invoke();
+            RaiseOnDrawnThisPhaseChanged();
             return BossRouteResult.Hit;
         }
 
@@ -224,7 +226,7 @@ public class BossController : MonoBehaviour
 
         _isVulnerableActiveWindow = true;
         SampleNextExpectedCharacter();
-        OnDrawnThisPhaseChanged?.Invoke();
+        RaiseOnDrawnThisPhaseChanged();
         EventBus.RaiseBossVulnerabilityWindowActive(i);
 
         float elapsed = 0f;

@@ -15,5 +15,7 @@ MonoBehaviour:
   characterID: KA
   syllable: ka
   displaySprite: {fileID: -2353683099554400273, guid: 68b66762f83fcfc4eabf47ef3c60ab74, type: 3}
+  badgeSprite: {fileID: 21300000, guid: dcd55d22c68975d48b674dfda85b9543, type: 3}
+  scrambledBadgeSprite: {fileID: 0}
   pronunciationClip: {fileID: 0}
   templateFileName: KA_template_01
