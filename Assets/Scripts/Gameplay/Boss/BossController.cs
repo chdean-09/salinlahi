@@ -103,6 +103,7 @@ public class BossController : MonoBehaviour
             // in their handler and must see the next glyph, not the one just matched.
             SampleNextExpectedCharacter();
             RaiseOnDrawnThisPhaseChanged();
+            EventBus.RaiseBossDrawHit();
             return BossRouteResult.Hit;
         }
 

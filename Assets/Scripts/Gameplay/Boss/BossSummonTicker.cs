@@ -31,6 +31,8 @@ public class BossSummonTicker : MonoBehaviour
         if (phase == null || spawner == null)
             yield break;
 
+        EventBus.RaiseBossSummonTick();
+
         // ---- Play tell (if frames configured) ----
         IsPlayingSummonAnimation = true;
         if (_summonFrames != null && _summonFrames.Length > 0 && _renderer != null)
