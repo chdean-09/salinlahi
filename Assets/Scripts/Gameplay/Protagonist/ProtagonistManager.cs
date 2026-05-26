@@ -61,6 +61,7 @@ namespace Salinlahi.Runtime.Gameplay
         public void WalkInProtagonist(Vector3 targetPosition)
         {
             if (ProtagonistTransform == null) return;
+            ValidateProtagonistVisibility(ProtagonistTransform);
             StartCoroutine(WalkInCoroutine(targetPosition));
         }
 
@@ -93,6 +94,7 @@ namespace Salinlahi.Runtime.Gameplay
             renderer.sprite = LoadFallbackSprite();
             renderer.sortingOrder = RenderOrder.Protagonist;
             NormalizeProtagonistRenderer(protagonist.transform, renderer);
+            LogRendererState("[ProtagonistManager] Fallback protagonist renderer", protagonist.transform, renderer);
 
             DebugLogger.Log("[ProtagonistManager] Protagonist fallback created at: " + startPosition);
             return protagonist.transform;
@@ -126,6 +128,8 @@ namespace Salinlahi.Runtime.Gameplay
                 return;
             }
 
+            LogRendererState("[ProtagonistManager] Protagonist visibility check", protagonist, renderer);
+
             renderer.enabled = true;
             renderer.sortingOrder = Mathf.Max(renderer.sortingOrder, RenderOrder.Protagonist);
             Color color = renderer.color;
@@ -134,6 +138,7 @@ namespace Salinlahi.Runtime.Gameplay
             protagonist.gameObject.SetActive(true);
 
             NormalizeProtagonistRenderer(protagonist, renderer);
+            LogRendererState("[ProtagonistManager] Protagonist visibility normalized", protagonist, renderer);
         }
 
         private static void NormalizeProtagonistRenderer(Transform protagonist, SpriteRenderer renderer)
@@ -155,6 +160,19 @@ namespace Salinlahi.Runtime.Gameplay
                 protagonist.localScale.x * multiplier,
                 protagonist.localScale.y * multiplier,
                 protagonist.localScale.z);
+        }
+
+        private static void LogRendererState(string prefix, Transform protagonist, SpriteRenderer renderer)
+        {
+            DebugLogger.Log(prefix + ": " +
+                "Sprite=" + (renderer.sprite != null ? renderer.sprite.name : "NULL") +
+                ", Enabled=" + renderer.enabled +
+                ", Color=" + renderer.color +
+                ", SortingOrder=" + renderer.sortingOrder +
+                ", SortingLayer=" + renderer.sortingLayerName + " (" + renderer.sortingLayerID + ")" +
+                ", Position=" + protagonist.position +
+                ", Scale=" + protagonist.localScale +
+                ", Active=" + protagonist.gameObject.activeSelf);
         }
 
         private void OnDestroy()
