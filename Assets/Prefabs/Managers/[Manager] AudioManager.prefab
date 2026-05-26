@@ -50,6 +50,15 @@ MonoBehaviour:
   _sfxSource: {fileID: 4551939043571537906}
   _chainLightningSfxClip: {fileID: 8300000, guid: 80cdd272d9d2a464da494ebcb9245341, type: 3}
   _chainLightningZapSfxClip: {fileID: 8300000, guid: 80cdd272d9d2a464da494ebcb9245341, type: 3}
+  _menuButtonClickClip: {fileID: 8300000, guid: 72ff269da6245544fa4478c233414d92, type: 3}
+  _menuExitButtonClickClip: {fileID: 8300000, guid: 89231383eb95f5e4bb541fc7546daa37, type: 3}
+  _baseHitClips:
+  - {fileID: 8300000, guid: c4ac9746bfe721240ae773e4c895c9d4, type: 3}
+  - {fileID: 8300000, guid: cabe2af8c7b99b641b25abd2f50a9291, type: 3}
+  _baseHitVolumeMin: 0.92
+  _baseHitVolumeMax: 1
+  _baseHitPitchMin: 0.96
+  _baseHitPitchMax: 1.04
   _enablePerEnemyChainZap: 1
   _maxChainZapOneShots: 3
   _chainZapVolumeScale: 0.3

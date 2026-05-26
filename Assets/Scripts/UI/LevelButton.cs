@@ -52,6 +52,7 @@ public class LevelButton : MonoBehaviour
     {
         if (_config == null || !_isUnlocked) return;
 
+        AudioManager.Instance?.PlayMenuButtonClick();
         DebugLogger.Log($"LevelButton: Level {_config.levelNumber} selected");
 
         PlayerPrefs.SetInt(ProgressManager.SelectedLevelKey, _config.levelNumber);

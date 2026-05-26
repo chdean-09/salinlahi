@@ -8,6 +8,7 @@ public static class EventBus
     // -- Enemy Events --
     public static event Action<BaybayinCharacterSO> OnEnemyDefeated;
     public static event Action<int> OnBaseHit;
+    public static event Action<int> OnBaseDamageApplied;
 
     // -- Game State Events --
     public static event Action OnGameOver;
@@ -63,6 +64,7 @@ public static class EventBus
     // -- Raisers --
     public static void RaiseEnemyDefeated(BaybayinCharacterSO c) => OnEnemyDefeated?.Invoke(c);
     public static void RaiseBaseHit(int damage = 1) => OnBaseHit?.Invoke(damage);
+    public static void RaiseBaseDamageApplied(int amount) => OnBaseDamageApplied?.Invoke(amount);
     public static void RaiseGameOver() => OnGameOver?.Invoke();
     public static void RaiseLevelComplete() => OnLevelComplete?.Invoke();
     public static void RaiseWaveStarted(int index) => OnWaveStarted?.Invoke(index);

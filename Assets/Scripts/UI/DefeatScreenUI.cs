@@ -52,6 +52,7 @@ public class DefeatScreenUI : MonoBehaviour
 
     private void OnRetryPressed()
     {
+        AudioManager.Instance?.PlayMenuButtonClick();
         DebugLogger.Log("DefeatScreenUI: Retry pressed");
 
         if (SceneLoader.Instance != null)
@@ -62,6 +63,7 @@ public class DefeatScreenUI : MonoBehaviour
 
     private void OnLevelSelectPressed()
     {
+        AudioManager.Instance?.PlayMenuButtonClick();
         DebugLogger.Log("DefeatScreenUI: Level Select pressed");
 
         if (SceneLoader.Instance != null)

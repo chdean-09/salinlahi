@@ -49,6 +49,7 @@ public class MainMenuUI : MonoBehaviour
 
     public void OnPlayButtonPressed()
     {
+        AudioManager.Instance?.PlayMenuButtonClick();
         DebugLogger.Log("MainMenuUI: Play button pressed");
 
         int selectedLevel = 1;
@@ -70,6 +71,7 @@ public class MainMenuUI : MonoBehaviour
 
     public void OnLevelSelectPressed()
     {
+        AudioManager.Instance?.PlayMenuButtonClick();
         DebugLogger.Log("MainMenuUI: Level Select pressed");
         LoadLevelSelect();
     }
@@ -82,16 +84,19 @@ public class MainMenuUI : MonoBehaviour
             return;
         }
 
+        AudioManager.Instance?.PlayMenuButtonClick();
         LoadGameplay();
     }
 
     public void OnTracingDojoPressed()
     {
+        AudioManager.Instance?.PlayMenuButtonClick();
         LoadTracingDojo();
     }
 
     public void OnSettingsPressed()
     {
+        AudioManager.Instance?.PlayMenuButtonClick();
         DebugLogger.Log("MainMenuUI: Settings pressed");
         if (_settingsPanel != null)
             _settingsPanel.Show();
@@ -99,6 +104,7 @@ public class MainMenuUI : MonoBehaviour
 
     public void OnCreditsPressed()
     {
+        AudioManager.Instance?.PlayMenuButtonClick();
         DebugLogger.Log("MainMenuUI: Credits pressed");
         if (_creditsPanel != null)
             _creditsPanel.Show();
@@ -113,6 +119,7 @@ public class MainMenuUI : MonoBehaviour
             return;
         }
 
+        AudioManager.Instance?.PlayMenuButtonClick();
         DebugLogger.Log("MainMenuUI: Sandbox mode pressed");
         if (SceneLoader.Instance != null)
             SceneLoader.Instance.LoadSandboxGameplay();
