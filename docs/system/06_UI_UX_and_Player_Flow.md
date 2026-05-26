@@ -123,7 +123,7 @@ The Gameplay HUD now lives under a `PlayAreaContainer` RectTransform that sizes 
 [EVIDENCE: Assets/Scripts/UI/PlayAreaContainer.cs]
 [EVIDENCE: Assets/Scripts/Gameplay/Camera/AspectLockedCamera.cs — `PlayColumnScreenRect`, `OnPlayAreaChanged`]
 
-## 4.3 Level Select — `LevelSelectUI.cs`
+## 3.5 Level Select — `LevelSelectUI.cs`
 
 The Level Select screen is driven by a serialized `List<EraConfigSO>` on the `LevelSelectUI` component. It displays up to five level scroll buttons at a time (one per slot), sourced from the active era's `EraConfigSO.levels` list.
 
