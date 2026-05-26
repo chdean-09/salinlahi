@@ -163,16 +163,11 @@ namespace Salinlahi.Tests.Editor.Gameplay
         public void Validator_AcceptsMatchingCharacterWithinToleranceAndDirection()
         {
             Level1TutorialGlyphValidator validator = new();
-            List<Vector2> template = CreateLine(0f, 0f, 100f, 0f);
-            List<Vector2> playerStroke = CreateLine(1f, 2f, 101f, 1f);
 
             Level1TutorialValidationResult result = validator.Validate(
                 "BA",
                 new RecognitionResult("BA", 0.9f, 0, "SA", 0.2f),
-                passedRecognitionThreshold: true,
-                new List<List<Vector2>> { playerStroke },
-                new List<List<Vector2>> { template },
-                tolerancePixels: 15f);
+                passedRecognitionThreshold: true);
 
             Assert.IsTrue(result.IsCorrect);
             Assert.AreEqual(Level1TutorialValidationFailure.None, result.Failure);
@@ -182,16 +177,11 @@ namespace Salinlahi.Tests.Editor.Gameplay
         public void Validator_RejectsReversedDirection()
         {
             Level1TutorialGlyphValidator validator = new();
-            List<Vector2> template = CreateLine(0f, 0f, 100f, 0f);
-            List<Vector2> reversedStroke = CreateLine(100f, 0f, 0f, 0f);
 
             Level1TutorialValidationResult result = validator.Validate(
                 "BA",
                 new RecognitionResult("BA", 0.9f, 0, "SA", 0.2f),
-                passedRecognitionThreshold: true,
-                new List<List<Vector2>> { reversedStroke },
-                new List<List<Vector2>> { template },
-                tolerancePixels: 15f);
+                passedRecognitionThreshold: true);
 
             Assert.IsFalse(result.IsCorrect);
             Assert.AreEqual(Level1TutorialValidationFailure.DirectionMismatch, result.Failure);
@@ -201,16 +191,11 @@ namespace Salinlahi.Tests.Editor.Gameplay
         public void Validator_RejectsWrongRecognizedCharacter()
         {
             Level1TutorialGlyphValidator validator = new();
-            List<Vector2> template = CreateLine(0f, 0f, 100f, 0f);
-            List<Vector2> playerStroke = CreateLine(0f, 0f, 100f, 0f);
 
             Level1TutorialValidationResult result = validator.Validate(
                 "BA",
                 new RecognitionResult("SA", 0.9f, 0, "BA", 0.2f),
-                passedRecognitionThreshold: true,
-                new List<List<Vector2>> { playerStroke },
-                new List<List<Vector2>> { template },
-                tolerancePixels: 15f);
+                passedRecognitionThreshold: true);
 
             Assert.IsFalse(result.IsCorrect);
             Assert.AreEqual(Level1TutorialValidationFailure.WrongCharacter, result.Failure);
@@ -328,17 +313,12 @@ namespace Salinlahi.Tests.Editor.Gameplay
         public void AC04_WrongSyllableDuringBA_DoesNotDamageBaseOrEnemy()
         {
             Level1TutorialGlyphValidator validator = new();
-            List<Vector2> template = CreateLine(0f, 0f, 100f, 0f);
-            List<Vector2> playerStroke = CreateLine(0f, 0f, 100f, 0f);
 
             // Player draws "SA" during BA prompt
             Level1TutorialValidationResult result = validator.Validate(
                 "BA",
                 new RecognitionResult("SA", 0.9f, 0, "BA", 0.2f),
-                passedRecognitionThreshold: true,
-                new List<List<Vector2>> { playerStroke },
-                new List<List<Vector2>> { template },
-                tolerancePixels: 15f);
+                passedRecognitionThreshold: true);
 
             Assert.IsFalse(result.IsCorrect);
             Assert.AreEqual(Level1TutorialValidationFailure.WrongCharacter, result.Failure);
@@ -349,8 +329,6 @@ namespace Salinlahi.Tests.Editor.Gameplay
         public void AC05_ThreeFailures_TriggerAssist()
         {
             Level1TutorialGlyphValidator validator = new();
-            List<Vector2> template = CreateLine(0f, 0f, 100f, 0f);
-            List<Vector2> badStroke = CreateLine(50f, 50f, 60f, 60f); // far from template
 
             int failureCount = 0;
             const int failuresBeforeAssist = 3;
@@ -360,10 +338,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 Level1TutorialValidationResult result = validator.Validate(
                     "BA",
                     new RecognitionResult("BA", 0.9f, 0, "SA", 0.2f),
-                    passedRecognitionThreshold: true,
-                    new List<List<Vector2>> { badStroke },
-                    new List<List<Vector2>> { template },
-                    tolerancePixels: 15f);
+                    passedRecognitionThreshold: true);
 
                 if (!result.IsCorrect)
                     failureCount++;
@@ -518,19 +493,12 @@ namespace Salinlahi.Tests.Editor.Gameplay
         public void AC13_ToleranceWidens_OnSecondFailure()
         {
             Level1TutorialGlyphValidator validator = new();
-            List<Vector2> template = CreateLine(0f, 0f, 100f, 0f);
-            
-            // Stroke that is just outside 15px tolerance but inside 20px
-            List<Vector2> borderlineStroke = CreateLine(16f, 0f, 116f, 0f);
 
             // First attempt: strict tolerance (15px) — should fail
             Level1TutorialValidationResult result1 = validator.Validate(
                 "BA",
                 new RecognitionResult("BA", 0.9f, 0, "SA", 0.2f),
-                passedRecognitionThreshold: true,
-                new List<List<Vector2>> { borderlineStroke },
-                new List<List<Vector2>> { template },
-                tolerancePixels: 15f);
+                passedRecognitionThreshold: true);
 
             Assert.IsFalse(result1.IsCorrect, "Should fail with 15px tolerance");
 
@@ -538,10 +506,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Level1TutorialValidationResult result2 = validator.Validate(
                 "BA",
                 new RecognitionResult("BA", 0.9f, 0, "SA", 0.2f),
-                passedRecognitionThreshold: true,
-                new List<List<Vector2>> { borderlineStroke },
-                new List<List<Vector2>> { template },
-                tolerancePixels: 20f);
+                passedRecognitionThreshold: true);
 
             Assert.IsTrue(result2.IsCorrect, "Should pass with widened 20px tolerance");
         }

@@ -23,7 +23,6 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
     [SerializeField] private float _messageSeconds = 1.25f;
     [SerializeField] private float _idleHintSeconds = 5f;
     [SerializeField] private float _strongHintSeconds = 12f;
-    [SerializeField] private int _failuresBeforeAssist = 3;
 
     [Header("Scene References")]
     [SerializeField] private WaveSpawner _waveSpawner;
@@ -40,14 +39,11 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
     private Level1TutorialState _state = Level1TutorialState.Gate;
     private Level1TutorialStepSO _activeStep;
     private Level1TutorialEnemyController _activeEnemy;
-    private List<List<Vector2>> _lastSubmittedStrokes;
     private RecognitionResult _lastRecognitionResult;
     private bool _lastRecognitionPassed;
     private bool _hasRecognitionForPrompt;
-    private int _failureCount;
     private bool _firstManualSuccess;
     private bool _skipRequested;
-    private bool _assistedCompletion;
     private bool _baseDamagePauseRequested;
     private bool _baseDamagePauseShown;
     private bool _baseDamagePauseRunning;
@@ -90,7 +86,6 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
         EventBus.OnRecognitionResolved += HandleRecognitionResolved;
         EventBus.OnBaseHit += HandleBaseHit;
         EventBus.OnGameOver += HandleGameOver;
-        StrokeCapture.OnStrokesSubmitted += HandleStrokesSubmitted;
     }
 
     private void OnDisable()
@@ -98,7 +93,6 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
         EventBus.OnRecognitionResolved -= HandleRecognitionResolved;
         EventBus.OnBaseHit -= HandleBaseHit;
         EventBus.OnGameOver -= HandleGameOver;
-        StrokeCapture.OnStrokesSubmitted -= HandleStrokesSubmitted;
         TutorialRuntimeState.Clear();
         RestoreHiddenTutorialUI();
     }
@@ -176,16 +170,13 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
         _state = Level1TutorialState.BaseIntro;
         TutorialRuntimeState.Begin(_requiredLevelNumber);
         TutorialRuntimeState.SetCombatOverrideActive(true);
-        _failureCount = 0;
         _firstManualSuccess = false;
         _skipRequested = false;
-        _assistedCompletion = false;
         _baseDamagePauseRequested = false;
         _baseDamagePauseShown = false;
         _baseDamagePauseRunning = false;
         _activeStep = null;
         _activeEnemy = null;
-        _lastSubmittedStrokes = null;
         _hasRecognitionForPrompt = false;
         ClearLeakedEnemiesBeforeTutorial();
     }
@@ -220,12 +211,13 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
 
     private void EnsureTutorialTransforms()
     {
-        // Calculate end position: center behind the base
+        // Calculate end position: center below the base/wall line
         PlayerBase playerBase = FindFirstObjectByType<PlayerBase>();
         if (playerBase != null)
         {
             Bounds bounds = ResolveBounds(playerBase.gameObject);
-            _protagonistEndPosition = new Vector3(bounds.center.x, bounds.min.y + 1.5f, 0f);
+            // Position protagonist below/under the wall/base line
+            _protagonistEndPosition = new Vector3(bounds.center.x, bounds.min.y - 0.5f, 0f);
         }
         else
         {
@@ -345,7 +337,6 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
     private float GetMessageSeconds() => _sequence != null ? _sequence.messageSeconds : _messageSeconds;
     private float GetIdleHintSeconds() => _sequence != null ? _sequence.idleHintSeconds : _idleHintSeconds;
     private float GetStrongHintSeconds() => _sequence != null ? _sequence.strongHintSeconds : _strongHintSeconds;
-    private int GetFailuresBeforeAssist() => _sequence != null ? _sequence.failuresBeforeAssist : _failuresBeforeAssist;
     private float GetProtagonistWalkSeconds() => _sequence != null ? _sequence.protagonistWalkSeconds : _protagonistWalkSeconds;
 
     private IEnumerator RunStep(Level1TutorialStepSO step, int stepIndex)
@@ -355,10 +346,7 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
 
         _state = stepIndex == 0 ? Level1TutorialState.EnemyIntro : Level1TutorialState.PracticeChain;
         _activeStep = step;
-        _failureCount = 0;
-        _assistedCompletion = false;
         _hasRecognitionForPrompt = false;
-        _lastSubmittedStrokes = null;
         _guideUI?.Hide();
 
         yield return SpawnTutorialEnemy(step);
@@ -396,24 +384,7 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
                     yield break;
                 }
 
-                _failureCount++;
                 _guideUI?.ShowFeedback(GetFeedbackText(step, validation.Failure));
-
-                // Widen tolerance on 2nd failure
-                if (_failureCount == 2 && _activeStep != null)
-                {
-                    _activeStep.tolerancePixels = Mathf.Max(_activeStep.tolerancePixels, _activeStep.widenedTolerancePixels);
-                }
-
-                if (_failureCount >= GetFailuresBeforeAssist())
-                {
-                    _assistedCompletion = true;
-                    _guideUI?.ShowFeedback(step.assistText);
-                    _guideUI?.PlayAssistAnimation(step.assistAnimationPrefab);
-                    _guideUI?.Hide();
-                    DefeatActiveTutorialEnemy();
-                    yield break;
-                }
 
                 promptStartTime = Time.unscaledTime;
                 showedIdleHint = false;
@@ -604,18 +575,10 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
         if (_activeStep == null || _activeStep.targetCharacter == null)
             return Level1TutorialValidationResult.Incorrect(Level1TutorialValidationFailure.NoPrompt);
 
-        List<List<Vector2>> templateStrokes = new()
-        {
-            new List<Vector2>(_activeStep.templatePoints ?? System.Array.Empty<Vector2>())
-        };
-
         return _validator.Validate(
             _activeStep.targetCharacter.characterID,
             _lastRecognitionResult,
-            _lastRecognitionPassed,
-            _lastSubmittedStrokes,
-            templateStrokes,
-            _activeStep.tolerancePixels);
+            _lastRecognitionPassed);
     }
 
     private static string GetFeedbackText(Level1TutorialStepSO step, Level1TutorialValidationFailure failure)
@@ -633,19 +596,6 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
                 return step?.recognitionFailedFeedback ?? "Try that shape again.";
             default:
                 return string.Empty;
-        }
-    }
-
-    private void HandleStrokesSubmitted(IReadOnlyList<List<Vector2>> strokes)
-    {
-        _lastSubmittedStrokes = new List<List<Vector2>>();
-        if (strokes == null)
-            return;
-
-        for (int i = 0; i < strokes.Count; i++)
-        {
-            List<Vector2> stroke = strokes[i];
-            _lastSubmittedStrokes.Add(stroke != null ? new List<Vector2>(stroke) : new List<Vector2>());
         }
     }
 
@@ -716,12 +666,6 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
         _guideUI?.Hide();
         RestoreHiddenTutorialUI();
         ForceGameplayHudVisible();
-
-        if (_assistedCompletion)
-        {
-            DebugLogger.Log("Level1InteractiveTutorialController: Tutorial completed with assist.");
-            // TODO: Log analytics with assisted=true
-        }
 
         // Interactive Level 1 tutorial is embedded in Level 1 gameplay and should
         // run every time Level 1 opens. The older overlay tutorial still owns the
