@@ -27,16 +27,7 @@ namespace Salinlahi.Runtime.Gameplay
 
         public void EnsureProtagonist(Vector3 targetPosition)
         {
-            DebugLogger.Log("[ProtagonistManager] EnsureProtagonist called. Current ProtagonistTransform: " + (ProtagonistTransform != null ? ProtagonistTransform.name : "null"));
-
-            if (ProtagonistTransform != null)
-            {
-                DebugLogger.Log("[ProtagonistManager] Protagonist already exists, skipping creation");
-                return;
-            }
-
-            Vector3 startPosition = targetPosition + Vector3.down * 5f;
-            DebugLogger.Log("[ProtagonistManager] Will create protagonist at start position: " + startPosition + " (target: " + targetPosition + ")");
+            if (ProtagonistTransform != null) return;
 
             if (_protagonistPrefab == null)
             {
@@ -52,10 +43,10 @@ namespace Salinlahi.Runtime.Gameplay
                 }
             }
 
+            Vector3 startPosition = targetPosition + Vector3.down * 5f;
             GameObject protagonist = Instantiate(_protagonistPrefab, startPosition, Quaternion.identity);
             ProtagonistTransform = protagonist.transform;
             ValidateProtagonistVisibility(ProtagonistTransform);
-            DebugLogger.Log("[ProtagonistManager] Protagonist instantiated at: " + startPosition);
         }
 
         public void WalkInProtagonist(Vector3 targetPosition)
@@ -94,28 +85,22 @@ namespace Salinlahi.Runtime.Gameplay
             renderer.sprite = LoadFallbackSprite();
             renderer.sortingOrder = RenderOrder.Protagonist;
             NormalizeProtagonistRenderer(protagonist.transform, renderer);
-            LogRendererState("[ProtagonistManager] Fallback protagonist renderer", protagonist.transform, renderer);
 
-            DebugLogger.Log("[ProtagonistManager] Protagonist fallback created at: " + startPosition);
             return protagonist.transform;
         }
 
         private static Sprite LoadFallbackSprite()
         {
 #if UNITY_EDITOR
-            DebugLogger.Log("[ProtagonistManager] Attempting to load sprites from: " + ProtagonistSpritePath);
             Object[] assets = UnityEditor.AssetDatabase.LoadAllAssetsAtPath(ProtagonistSpritePath);
-            DebugLogger.Log("[ProtagonistManager] Found " + assets.Length + " assets at path");
             foreach (Object asset in assets)
             {
                 if (asset is Sprite sprite)
                 {
-                    DebugLogger.Log("[ProtagonistManager] Found sprite: " + sprite.name);
                     return sprite;
                 }
             }
 #endif
-            DebugLogger.Log("[ProtagonistManager] Attempting to load sprite from Resources");
             return Resources.Load<Sprite>("Characters/Protagonist/sprite_prot_japanese_idle_back-Sheet");
         }
 
@@ -128,8 +113,6 @@ namespace Salinlahi.Runtime.Gameplay
                 return;
             }
 
-            LogRendererState("[ProtagonistManager] Protagonist visibility check", protagonist, renderer);
-
             renderer.enabled = true;
             renderer.sortingOrder = Mathf.Max(renderer.sortingOrder, RenderOrder.Protagonist);
             Color color = renderer.color;
@@ -138,41 +121,34 @@ namespace Salinlahi.Runtime.Gameplay
             protagonist.gameObject.SetActive(true);
 
             NormalizeProtagonistRenderer(protagonist, renderer);
-            LogRendererState("[ProtagonistManager] Protagonist visibility normalized", protagonist, renderer);
         }
 
         private static void NormalizeProtagonistRenderer(Transform protagonist, SpriteRenderer renderer)
         {
+            if (protagonist == null || renderer == null)
+                return;
+
+            renderer.sortingOrder = Mathf.Max(renderer.sortingOrder, RenderOrder.Protagonist);
+
             if (renderer.sprite == null)
             {
                 DebugLogger.LogWarning("[ProtagonistManager] Protagonist SpriteRenderer has no sprite assigned.");
                 return;
             }
 
-            float currentHeight = renderer.sprite.bounds.size.y * protagonist.localScale.y;
-            if (currentHeight <= 0f || currentHeight >= MinVisibleWorldHeight)
-            {
+            float spriteWorldHeight = renderer.sprite.bounds.size.y;
+            if (spriteWorldHeight <= 0f)
                 return;
-            }
 
-            float multiplier = MinVisibleWorldHeight / currentHeight;
+            float currentHeight = spriteWorldHeight * Mathf.Abs(protagonist.localScale.y);
+            if (currentHeight <= Mathf.Epsilon || currentHeight >= MinVisibleWorldHeight)
+                return;
+
+            float scaleMultiplier = MinVisibleWorldHeight / currentHeight;
             protagonist.localScale = new Vector3(
-                protagonist.localScale.x * multiplier,
-                protagonist.localScale.y * multiplier,
+                protagonist.localScale.x * scaleMultiplier,
+                protagonist.localScale.y * scaleMultiplier,
                 protagonist.localScale.z);
-        }
-
-        private static void LogRendererState(string prefix, Transform protagonist, SpriteRenderer renderer)
-        {
-            DebugLogger.Log(prefix + ": " +
-                "Sprite=" + (renderer.sprite != null ? renderer.sprite.name : "NULL") +
-                ", Enabled=" + renderer.enabled +
-                ", Color=" + renderer.color +
-                ", SortingOrder=" + renderer.sortingOrder +
-                ", SortingLayer=" + renderer.sortingLayerName + " (" + renderer.sortingLayerID + ")" +
-                ", Position=" + protagonist.position +
-                ", Scale=" + protagonist.localScale +
-                ", Active=" + protagonist.gameObject.activeSelf);
         }
 
         private void OnDestroy()

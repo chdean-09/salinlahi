@@ -125,15 +125,9 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
 
     public IEnumerator PlayIfNeeded(LevelConfigSO levelConfig)
     {
-        DebugLogger.Log("[Level1Tutorial] PlayIfNeeded called");
-
         if (!ShouldRunFor(levelConfig))
-        {
-            DebugLogger.Log("[Level1Tutorial] ShouldRunFor returned false, skipping tutorial");
             yield break;
-        }
 
-        DebugLogger.Log("[Level1Tutorial] Starting Level 1 interactive tutorial");
         ConfigureForLevel(levelConfig, _waveSpawner, _fallbackTutorialEnemyData);
         Begin();
         HideTutorialBlockedUI();
@@ -232,12 +226,10 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
         {
             Bounds bounds = ResolveBounds(playerBase.gameObject);
             _protagonistEndPosition = new Vector3(bounds.center.x, bounds.min.y + 1.5f, 0f);
-            DebugLogger.Log($"[Level1Tutorial] Calculated protagonist end position: {_protagonistEndPosition} (based on PlayerBase)");
         }
         else
         {
             _protagonistEndPosition = Vector3.zero;
-            DebugLogger.LogWarning("[Level1Tutorial] PlayerBase not found, using (0,0,0) for protagonist position");
         }
 
         // Ensure ProtagonistManager exists (auto-create if missing)
@@ -246,12 +238,9 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
 
     private void EnsureProtagonistManager()
     {
-        DebugLogger.Log("[Level1Tutorial] EnsureProtagonistManager called");
-
         // If instance already exists, we're good
         if (ProtagonistManager.Instance != null)
         {
-            DebugLogger.Log("[Level1Tutorial] ProtagonistManager instance exists, ensuring protagonist");
             ProtagonistManager.Instance.EnsureProtagonist(_protagonistEndPosition);
             return;
         }
@@ -260,28 +249,15 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
         ProtagonistManager existing = FindFirstObjectByType<ProtagonistManager>();
         if (existing != null)
         {
-            DebugLogger.Log("[Level1Tutorial] Found existing ProtagonistManager in scene");
             existing.EnsureProtagonist(_protagonistEndPosition);
             return;
         }
 
         // Auto-create ProtagonistManager GameObject
-        DebugLogger.Log("[Level1Tutorial] Creating ProtagonistManager GameObject...");
         GameObject go = new GameObject("[Manager] ProtagonistManager");
         ProtagonistManager manager = go.AddComponent<ProtagonistManager>();
         go.AddComponent<ProtagonistAttackController>();
-
-        DebugLogger.Log("[Level1Tutorial] Auto-created ProtagonistManager, now creating protagonist");
         manager.EnsureProtagonist(_protagonistEndPosition);
-
-        if (ProtagonistManager.Instance?.ProtagonistTransform != null)
-        {
-            DebugLogger.Log("[Level1Tutorial] Protagonist created successfully!");
-        }
-        else
-        {
-            DebugLogger.LogWarning("[Level1Tutorial] Protagonist was not created - check sprite exists at Assets/Art/Characters/Protagonist/");
-        }
     }
 
     private static Bounds ResolveBounds(GameObject target)
@@ -494,8 +470,6 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
         // Wait for walk-in to complete
         float duration = Mathf.Max(0.01f, GetProtagonistWalkSeconds());
         yield return new WaitForSeconds(duration);
-
-        DebugLogger.Log("[Level1Tutorial] Protagonist walk-in complete");
     }
 
     private IEnumerator ShowMessage(string message)
