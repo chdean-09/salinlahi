@@ -1717,8 +1717,8 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1585537418}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.88}
-  m_AnchorMax: {x: 0.5, y: 0.88}
+  m_AnchorMin: {x: 0.5, y: 0.32}
+  m_AnchorMax: {x: 0.5, y: 0.32}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 900, y: 96}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -7279,6 +7279,7 @@ MonoBehaviour:
   _feedbackText: {fileID: 1620113383}
   _skipButton: {fileID: 111659831}
   _guidePathRenderer: {fileID: 0}
+  _guideSpriteImage: {fileID: 0}
   _startDot: {fileID: 0}
   _directionArrow: {fileID: 0}
   _assistAnimationParent: {fileID: 0}
@@ -7616,8 +7617,8 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1585537418}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.78}
-  m_AnchorMax: {x: 0.5, y: 0.78}
+  m_AnchorMin: {x: 0.5, y: 0.24}
+  m_AnchorMax: {x: 0.5, y: 0.24}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 900, y: 96}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -9157,6 +9158,7 @@ MonoBehaviour:
   _baseIntroText: This is the base.
   _baseDefenseText: Keep enemies away from it.
   _drawPurposeText: Draw its syllable to defeat it.
+  _baseDamageText: The base took damage. Draw before enemies reach it.
   _finalReleaseText: You are ready. Defend the base.
   _messageSeconds: 1.25
   _idleHintSeconds: 5

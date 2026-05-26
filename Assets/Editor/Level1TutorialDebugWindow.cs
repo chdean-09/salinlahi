@@ -10,6 +10,7 @@ public class Level1TutorialDebugWindow : EditorWindow
 {
     private const string WindowTitle = "Level 1 Tutorial QA";
     private const string MenuPath = "Salinlahi/Debug/Level 1 Tutorial QA Window";
+    private const string GameplaySceneName = "Gameplay";
 
     private Vector2 _scrollPosition;
     private Level1InteractiveTutorialController _controller;
@@ -27,18 +28,18 @@ public class Level1TutorialDebugWindow : EditorWindow
 
         // Scene check
         string activeScene = SceneManager.GetActiveScene().name;
-        if (activeScene != Level1InteractiveTutorialController.RequiredSceneName)
+        if (activeScene != GameplaySceneName)
         {
             EditorGUILayout.HelpBox(
                 $"Active scene is '{activeScene}'.\n" +
-                $"Please open '{Level1InteractiveTutorialController.RequiredSceneName}' to use runtime controls.",
+                $"Please open '{GameplaySceneName}' with SelectedLevel = 1 to use runtime controls.",
                 MessageType.Warning);
 
             EditorGUILayout.Space(10);
-            if (GUILayout.Button("Load Level_01_Tutorial Scene"))
+            if (GUILayout.Button("Load Gameplay Scene"))
             {
                 if (EditorApplication.isPlaying)
-                    SceneManager.LoadScene(Level1InteractiveTutorialController.RequiredSceneName);
+                    SceneManager.LoadScene(GameplaySceneName);
                 else
                     EditorUtility.DisplayDialog("Play Mode Required", 
                         "Scene loading requires Play Mode. Press Play first.", "OK");

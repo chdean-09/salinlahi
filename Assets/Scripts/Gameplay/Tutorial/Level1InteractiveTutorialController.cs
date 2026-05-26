@@ -1,14 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public sealed class Level1InteractiveTutorialController : MonoBehaviour
 {
-    public const string RequiredSceneName = "Level_01_Tutorial";
-
     [Header("Guards")]
-    [SerializeField] private string _requiredSceneName = RequiredSceneName;
     [SerializeField] private int _requiredLevelNumber = LevelTutorialProgress.TutorialLevelNumber;
 
     [Header("Flow Data")]
@@ -56,9 +52,14 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
     private bool _baseDamagePauseShown;
     private bool _baseDamagePauseRunning;
     private bool[] _hiddenOriginalStates;
+    private CanvasGroup[] _hiddenCanvasGroups;
+    private bool[] _hiddenCanvasGroupExisted;
+    private float[] _hiddenOriginalAlpha;
+    private bool[] _hiddenOriginalInteractable;
+    private bool[] _hiddenOriginalBlocksRaycasts;
     private bool _uiHiddenForTutorial;
 
-    public static bool IsCombatOverrideActive { get; private set; }
+    public static bool IsCombatOverrideActive => TutorialRuntimeState.IsCombatOverrideActive;
     public Level1TutorialState State => _state;
     public bool IsConfigured 
     { 
@@ -73,19 +74,6 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
 
     private void Awake()
     {
-        string activeScene = SceneManager.GetActiveScene().name;
-        DebugLogger.Log($"Level1InteractiveTutorialController.Awake: Scene='{activeScene}', Required='{_requiredSceneName}'");
-        
-        if (activeScene != _requiredSceneName)
-        {
-            DebugLogger.Log($"Level1InteractiveTutorialController: Scene mismatch. Disabling.");
-            enabled = false;
-            return;
-        }
-
-        // NOTE: Don't check CurrentLevel here — it may not be set yet.
-        // The full validation happens in ShouldRunFor() which is called later.
-
         if (_guideUI != null)
         {
             DebugLogger.Log("Level1InteractiveTutorialController: Initializing GuideUI.");
@@ -101,6 +89,7 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
     {
         EventBus.OnRecognitionResolved += HandleRecognitionResolved;
         EventBus.OnBaseHit += HandleBaseHit;
+        EventBus.OnGameOver += HandleGameOver;
         StrokeCapture.OnStrokesSubmitted += HandleStrokesSubmitted;
     }
 
@@ -108,31 +97,27 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
     {
         EventBus.OnRecognitionResolved -= HandleRecognitionResolved;
         EventBus.OnBaseHit -= HandleBaseHit;
+        EventBus.OnGameOver -= HandleGameOver;
         StrokeCapture.OnStrokesSubmitted -= HandleStrokesSubmitted;
-        IsCombatOverrideActive = false;
+        TutorialRuntimeState.Clear();
         RestoreHiddenTutorialUI();
     }
 
     public static bool ShouldRunForContext(string sceneName, int levelNumber)
     {
-        return sceneName == RequiredSceneName
-            && levelNumber == LevelTutorialProgress.TutorialLevelNumber;
+        return levelNumber == LevelTutorialProgress.TutorialLevelNumber;
     }
 
     public bool ShouldRunFor(LevelConfigSO levelConfig)
     {
-        string activeSceneName = SceneManager.GetActiveScene().name;
-        bool hasSeen = LevelTutorialProgress.HasSeenLevel1Tutorial();
-        
         DebugLogger.Log($"Level1InteractiveTutorialController.ShouldRunFor: " +
             $"levelConfig={(levelConfig != null ? levelConfig.name : "null")}, " +
-            $"scene='{activeSceneName}', required='{_requiredSceneName}', " +
             $"levelNumber={(levelConfig?.levelNumber.ToString() ?? "N/A")}, required={_requiredLevelNumber}, " +
-            $"hasSeen={hasSeen}");
+            $"hasTutorialSequence={levelConfig?.tutorialSequence != null}");
         
         bool result = levelConfig != null
-            && activeSceneName == _requiredSceneName
-            && levelConfig.levelNumber == _requiredLevelNumber;
+            && levelConfig.levelNumber == _requiredLevelNumber
+            && levelConfig.tutorialSequence != null;
         
         DebugLogger.Log($"Level1InteractiveTutorialController.ShouldRunFor: returning {result}");
         return result;
@@ -143,6 +128,7 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
         if (!ShouldRunFor(levelConfig))
             yield break;
 
+        ConfigureForLevel(levelConfig, _waveSpawner, _fallbackTutorialEnemyData);
         Begin();
         HideTutorialBlockedUI();
         yield return ShowMessage(GetBaseIntroText());
@@ -171,7 +157,6 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
     public void BeginForTests(LevelConfigSO levelConfig, string sceneName)
     {
         if (levelConfig == null ||
-            sceneName != _requiredSceneName ||
             levelConfig.levelNumber != _requiredLevelNumber)
         {
             return;
@@ -189,7 +174,8 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
     private void Begin()
     {
         _state = Level1TutorialState.BaseIntro;
-        IsCombatOverrideActive = true;
+        TutorialRuntimeState.Begin(_requiredLevelNumber);
+        TutorialRuntimeState.SetCombatOverrideActive(true);
         _failureCount = 0;
         _firstManualSuccess = false;
         _skipRequested = false;
@@ -201,6 +187,124 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
         _activeEnemy = null;
         _lastSubmittedStrokes = null;
         _hasRecognitionForPrompt = false;
+        ClearLeakedEnemiesBeforeTutorial();
+    }
+
+    public void ConfigureForLevel(
+        LevelConfigSO levelConfig,
+        WaveSpawner waveSpawner,
+        EnemyDataSO fallbackTutorialEnemyData)
+    {
+        if (levelConfig != null && levelConfig.tutorialSequence != null)
+            _sequence = levelConfig.tutorialSequence;
+
+        if (waveSpawner != null)
+            _waveSpawner = waveSpawner;
+
+        if (fallbackTutorialEnemyData != null)
+            _fallbackTutorialEnemyData = fallbackTutorialEnemyData;
+
+        EnsureRuntimeReferences();
+
+        if (_guideUI != null)
+            _guideUI.Initialize(RequestSkip);
+    }
+
+    private void EnsureRuntimeReferences()
+    {
+        _waveSpawner ??= FindFirstObjectByType<WaveSpawner>();
+        _guideUI ??= Level1TutorialGuideUI.CreateRuntime();
+        EnsureTutorialTransforms();
+        EnsureHiddenTutorialUI();
+    }
+
+    private void EnsureTutorialTransforms()
+    {
+        if (_protagonist != null && _protagonistWalkStart != null && _protagonistWalkEnd != null)
+            return;
+
+        Vector3 end = Vector3.zero;
+        PlayerBase playerBase = FindFirstObjectByType<PlayerBase>();
+        if (playerBase != null)
+        {
+            Bounds bounds = ResolveBounds(playerBase.gameObject);
+            end = new Vector3(bounds.center.x, bounds.min.y - 0.45f, 0f);
+        }
+
+        Vector3 start = end + new Vector3(0f, -3f, 0f);
+        _protagonist ??= CreateMarker("Tutorial_Protagonist", start);
+        _protagonistWalkStart ??= CreateMarker("Tutorial_Protagonist_Start", start);
+        _protagonistWalkEnd ??= CreateMarker("Tutorial_Protagonist_End", end);
+    }
+
+    private static Bounds ResolveBounds(GameObject target)
+    {
+        Collider2D collider = target.GetComponent<Collider2D>();
+        if (collider != null)
+            return collider.bounds;
+
+        Renderer renderer = target.GetComponent<Renderer>();
+        if (renderer != null)
+            return renderer.bounds;
+
+        return new Bounds(target.transform.position, Vector3.one);
+    }
+
+    private static Transform CreateMarker(string name, Vector3 position)
+    {
+        GameObject marker = new(name);
+        marker.transform.position = position;
+        return marker.transform;
+    }
+
+    private void EnsureHiddenTutorialUI()
+    {
+        GameObject hudLayer = GameObject.Find("HUDLayer");
+        if (hudLayer != null)
+        {
+            _hideDuringTutorial = new[] { hudLayer };
+            return;
+        }
+
+        _hideDuringTutorial = new[]
+        {
+            GameObject.Find("HeartsPanel"),
+            GameObject.Find("WaveText"),
+            GameObject.Find("ComboText"),
+            GameObject.Find("GlyphCounter")
+        };
+    }
+
+    private static void ClearLeakedEnemiesBeforeTutorial()
+    {
+        WaveManager[] waveManagers = FindObjectsByType<WaveManager>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+
+        for (int i = 0; i < waveManagers.Length; i++)
+        {
+            if (waveManagers[i] != null)
+                waveManagers[i].PauseWaves();
+        }
+
+        EnemyPool pool = EnemyPool.Instance;
+        if (pool != null)
+        {
+            pool.ReturnAllCheckedOut();
+            return;
+        }
+
+        ActiveEnemyTracker tracker = ActiveEnemyTracker.Instance;
+        if (tracker == null)
+            return;
+
+        List<Enemy> activeEnemies = tracker.GetActiveEnemiesSnapshot();
+        for (int i = 0; i < activeEnemies.Count; i++)
+        {
+            Enemy enemy = activeEnemies[i];
+            if (enemy != null)
+                enemy.gameObject.SetActive(false);
+        }
     }
 
     private Level1TutorialStepSO[] GetSteps()
@@ -533,7 +637,7 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
 
     private void HandleBaseHit(int damage)
     {
-        if (SceneManager.GetActiveScene().name != _requiredSceneName)
+        if (!IsLevelOneContext())
             return;
 
         if (_baseDamagePauseShown || _baseDamagePauseRunning)
@@ -551,6 +655,27 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
         StartCoroutine(ShowBaseDamagePause(restorePrompt: false));
     }
 
+    private void HandleGameOver()
+    {
+        TutorialRuntimeState.Clear();
+        _activeEnemy = null;
+        _state = Level1TutorialState.Gate;
+        _guideUI?.Hide();
+        RestoreHiddenTutorialUI();
+    }
+
+    private bool IsLevelOneContext()
+    {
+        if (TutorialRuntimeState.IsActiveForLevel(_requiredLevelNumber))
+            return true;
+
+        LevelConfigSO currentLevel = GameManager.Instance != null ? GameManager.Instance.CurrentLevel : null;
+        if (currentLevel != null)
+            return currentLevel.levelNumber == _requiredLevelNumber;
+
+        return PlayerPrefs.GetInt(ProgressManager.SelectedLevelKey, 1) == _requiredLevelNumber;
+    }
+
     private void RequestSkip()
     {
         if (_firstManualSuccess)
@@ -559,10 +684,11 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
 
     private void CompleteTutorial()
     {
-        IsCombatOverrideActive = false;
+        TutorialRuntimeState.Clear();
         _activeEnemy = null;
         _guideUI?.Hide();
         RestoreHiddenTutorialUI();
+        ForceGameplayHudVisible();
 
         if (_assistedCompletion)
         {
@@ -570,8 +696,8 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
             // TODO: Log analytics with assisted=true
         }
 
-        // Interactive Level 1 tutorial is embedded in Level_01_Tutorial and should run
-        // every time that scene opens. The older overlay tutorial still owns the
+        // Interactive Level 1 tutorial is embedded in Level 1 gameplay and should
+        // run every time Level 1 opens. The older overlay tutorial still owns the
         // one-time FTUE seen flag.
     }
 
@@ -581,6 +707,12 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
             return;
 
         _hiddenOriginalStates = new bool[_hideDuringTutorial.Length];
+        _hiddenCanvasGroups = new CanvasGroup[_hideDuringTutorial.Length];
+        _hiddenCanvasGroupExisted = new bool[_hideDuringTutorial.Length];
+        _hiddenOriginalAlpha = new float[_hideDuringTutorial.Length];
+        _hiddenOriginalInteractable = new bool[_hideDuringTutorial.Length];
+        _hiddenOriginalBlocksRaycasts = new bool[_hideDuringTutorial.Length];
+
         for (int i = 0; i < _hideDuringTutorial.Length; i++)
         {
             GameObject target = _hideDuringTutorial[i];
@@ -588,7 +720,21 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
                 continue;
 
             _hiddenOriginalStates[i] = target.activeSelf;
-            target.SetActive(false);
+
+            if (!target.activeInHierarchy)
+                continue;
+
+            _hiddenCanvasGroupExisted[i] = target.TryGetComponent(out CanvasGroup canvasGroup);
+            if (!_hiddenCanvasGroupExisted[i])
+                canvasGroup = target.AddComponent<CanvasGroup>();
+
+            _hiddenCanvasGroups[i] = canvasGroup;
+            _hiddenOriginalAlpha[i] = canvasGroup.alpha;
+            _hiddenOriginalInteractable[i] = canvasGroup.interactable;
+            _hiddenOriginalBlocksRaycasts[i] = canvasGroup.blocksRaycasts;
+            canvasGroup.alpha = 0f;
+            canvasGroup.interactable = false;
+            canvasGroup.blocksRaycasts = false;
         }
 
         _uiHiddenForTutorial = true;
@@ -603,11 +749,117 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
         for (int i = 0; i < count; i++)
         {
             GameObject target = _hideDuringTutorial[i];
-            if (target != null)
+            if (target == null)
+                continue;
+
+            if (_hiddenCanvasGroups != null
+                && i < _hiddenCanvasGroups.Length
+                && _hiddenCanvasGroups[i] != null)
+            {
+                CanvasGroup canvasGroup = _hiddenCanvasGroups[i];
+                canvasGroup.alpha = i < _hiddenOriginalAlpha.Length ? _hiddenOriginalAlpha[i] : 1f;
+                canvasGroup.interactable = i < _hiddenOriginalInteractable.Length && _hiddenOriginalInteractable[i];
+                canvasGroup.blocksRaycasts = i < _hiddenOriginalBlocksRaycasts.Length && _hiddenOriginalBlocksRaycasts[i];
+
+                if (_hiddenCanvasGroupExisted != null
+                    && i < _hiddenCanvasGroupExisted.Length
+                    && !_hiddenCanvasGroupExisted[i])
+                {
+                    Destroy(canvasGroup);
+                }
+            }
+
+            if (target.activeSelf != _hiddenOriginalStates[i])
                 target.SetActive(_hiddenOriginalStates[i]);
         }
 
         _uiHiddenForTutorial = false;
         _hiddenOriginalStates = null;
+        _hiddenCanvasGroups = null;
+        _hiddenCanvasGroupExisted = null;
+        _hiddenOriginalAlpha = null;
+        _hiddenOriginalInteractable = null;
+        _hiddenOriginalBlocksRaycasts = null;
+    }
+
+    public static void ForceGameplayHudVisible()
+    {
+        string[] names =
+        {
+            "HUDCanvas",
+            "HUDRoot",
+            "HUDLayer",
+            "HeartsPanel",
+            "WaveText",
+            "GlyphCounter"
+        };
+
+        for (int i = 0; i < names.Length; i++)
+        {
+            GameObject target = FindSceneObjectByName(names[i]);
+            if (target == null)
+                continue;
+
+            ActivateHierarchy(target);
+
+            if (target.name == "HUDCanvas")
+            {
+                if (target.transform.localScale == Vector3.zero)
+                    target.transform.localScale = Vector3.one;
+
+                continue;
+            }
+
+            if (target.name == "HUDRoot" || target.name == "HUDLayer")
+                continue;
+
+            RestoreCanvasGroups(target);
+        }
+    }
+
+    private static GameObject FindSceneObjectByName(string objectName)
+    {
+        Transform[] transforms = FindObjectsByType<Transform>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+
+        for (int i = 0; i < transforms.Length; i++)
+        {
+            Transform candidate = transforms[i];
+            if (candidate != null && candidate.name == objectName && candidate.gameObject.scene.IsValid())
+                return candidate.gameObject;
+        }
+
+        return null;
+    }
+
+    private static void ActivateHierarchy(GameObject target)
+    {
+        if (target == null)
+            return;
+
+        Transform current = target.transform;
+        while (current != null)
+        {
+            if (!current.gameObject.activeSelf)
+                current.gameObject.SetActive(true);
+
+            current = current.parent;
+        }
+    }
+
+    private static void RestoreCanvasGroups(GameObject target)
+    {
+        CanvasGroup[] groups = target.GetComponentsInChildren<CanvasGroup>(true);
+        for (int i = 0; i < groups.Length; i++)
+        {
+            CanvasGroup group = groups[i];
+            if (group == null)
+                continue;
+
+            group.alpha = 1f;
+            group.interactable = true;
+            group.blocksRaycasts = true;
+        }
     }
 }

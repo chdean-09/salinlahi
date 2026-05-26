@@ -23,6 +23,44 @@ public class LevelFlowController : MonoBehaviour
     private bool _levelEnded;
     private bool _waitingForDialogue;
     private bool _flowAborted;
+    private bool _runtimeBootstrapped;
+
+    public static bool TryStartRuntimeTutorialFlow(
+        LevelConfigSO levelConfig,
+        WaveManager waveManager,
+        WaveSpawner waveSpawner,
+        EnemyDataSO fallbackEnemyData)
+    {
+        if (levelConfig == null
+            || levelConfig.levelNumber != LevelTutorialProgress.TutorialLevelNumber
+            || levelConfig.tutorialSequence == null
+            || waveManager == null)
+        {
+            return false;
+        }
+
+        LevelFlowController existing = FindFirstObjectByType<LevelFlowController>();
+        if (existing != null)
+            return true;
+
+        GameObject go = new("[Runtime] LevelFlowController");
+        LevelFlowController controller = go.AddComponent<LevelFlowController>();
+        controller.BootstrapRuntimeFlow(levelConfig, waveManager, waveSpawner, fallbackEnemyData);
+        return true;
+    }
+
+    private void BootstrapRuntimeFlow(
+        LevelConfigSO levelConfig,
+        WaveManager waveManager,
+        WaveSpawner waveSpawner,
+        EnemyDataSO fallbackEnemyData)
+    {
+        _runtimeBootstrapped = true;
+        _levelConfig = levelConfig;
+        _waveManager = waveManager;
+        EnsureRuntimeReferences(waveSpawner, fallbackEnemyData);
+        StartCoroutine(RunLevelFlow());
+    }
 
     private void OnEnable()
     {
@@ -42,8 +80,16 @@ public class LevelFlowController : MonoBehaviour
 
     private IEnumerator Start()
     {
-        ResolveLevelConfig();
+        if (_runtimeBootstrapped)
+            yield break;
 
+        ResolveLevelConfig();
+        EnsureRuntimeReferences(null, null);
+        yield return RunLevelFlow();
+    }
+
+    private IEnumerator RunLevelFlow()
+    {
         if (_levelConfig == null)
         {
             DebugLogger.LogError("LevelFlowController: No LevelConfigSO resolved. Aborting flow.");
@@ -86,10 +132,38 @@ public class LevelFlowController : MonoBehaviour
         if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
             GameManager.Instance.StartGame();
 
+        if (_levelConfig.levelNumber == LevelTutorialProgress.TutorialLevelNumber)
+            Level1InteractiveTutorialController.ForceGameplayHudVisible();
+
         if (_waveManager != null)
             _waveManager.StartLevel();
         else
             DebugLogger.LogError("LevelFlowController: WaveManager reference missing.");
+    }
+
+    private void EnsureRuntimeReferences(WaveSpawner waveSpawner, EnemyDataSO fallbackEnemyData)
+    {
+        _waveManager ??= FindFirstObjectByType<WaveManager>();
+        _dialogueController ??= FindFirstObjectByType<DialogueController>();
+        _victoryScreen ??= FindFirstObjectByType<VictoryScreenUI>();
+        _defeatScreen ??= FindFirstObjectByType<DefeatScreenUI>();
+        _tutorialOverlayController ??= FindFirstObjectByType<TutorialOverlayController>();
+
+        if (_level1InteractiveTutorialController == null
+            && _levelConfig != null
+            && _levelConfig.tutorialSequence != null
+            && _levelConfig.levelNumber == LevelTutorialProgress.TutorialLevelNumber)
+        {
+            _level1InteractiveTutorialController = FindFirstObjectByType<Level1InteractiveTutorialController>();
+            if (_level1InteractiveTutorialController == null)
+            {
+                GameObject tutorialObject = new("Level1InteractiveTutorialController");
+                _level1InteractiveTutorialController = tutorialObject.AddComponent<Level1InteractiveTutorialController>();
+            }
+        }
+
+        if (_level1InteractiveTutorialController != null && _levelConfig != null)
+            _level1InteractiveTutorialController.ConfigureForLevel(_levelConfig, waveSpawner, fallbackEnemyData);
     }
 
     private void ResolveLevelConfig()

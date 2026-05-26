@@ -13,28 +13,76 @@ namespace Salinlahi.Tests.Editor.Gameplay
         public void SetUp()
         {
             LevelTutorialProgress.ResetLevel1TutorialForTests();
+            TutorialRuntimeState.Clear();
         }
 
         [TearDown]
         public void TearDown()
         {
             LevelTutorialProgress.ResetLevel1TutorialForTests();
+            TutorialRuntimeState.Clear();
         }
 
         [Test]
-        public void ShouldRunForContext_RequiresTutorialSceneAndLevelOne()
+        public void ShouldRunForContext_RequiresLevelOneOnly()
         {
             Assert.IsTrue(Level1InteractiveTutorialController.ShouldRunForContext(
-                "Level_01_Tutorial",
+                "Gameplay",
+                LevelTutorialProgress.TutorialLevelNumber));
+
+            Assert.IsTrue(Level1InteractiveTutorialController.ShouldRunForContext(
+                "AnyGameplayScene",
                 LevelTutorialProgress.TutorialLevelNumber));
 
             Assert.IsFalse(Level1InteractiveTutorialController.ShouldRunForContext(
                 "Gameplay",
-                LevelTutorialProgress.TutorialLevelNumber));
-
-            Assert.IsFalse(Level1InteractiveTutorialController.ShouldRunForContext(
-                "Level_01_Tutorial",
                 LevelTutorialProgress.TutorialLevelNumber + 1));
+        }
+
+        [Test]
+        public void ShouldRunFor_RequiresLevelOneAndTutorialSequence()
+        {
+            GameObject gameObject = new("Level1InteractiveTutorialController");
+            Level1InteractiveTutorialController controller = gameObject.AddComponent<Level1InteractiveTutorialController>();
+            Level1TutorialSequenceSO sequence = ScriptableObject.CreateInstance<Level1TutorialSequenceSO>();
+            LevelConfigSO levelOne = ScriptableObject.CreateInstance<LevelConfigSO>();
+            LevelConfigSO levelTwo = ScriptableObject.CreateInstance<LevelConfigSO>();
+
+            try
+            {
+                levelOne.levelNumber = LevelTutorialProgress.TutorialLevelNumber;
+                levelTwo.levelNumber = LevelTutorialProgress.TutorialLevelNumber + 1;
+
+                Assert.IsFalse(controller.ShouldRunFor(levelOne));
+
+                levelOne.tutorialSequence = sequence;
+                levelTwo.tutorialSequence = sequence;
+
+                Assert.IsTrue(controller.ShouldRunFor(levelOne));
+                Assert.IsFalse(controller.ShouldRunFor(levelTwo));
+            }
+            finally
+            {
+                Object.DestroyImmediate(gameObject);
+                Object.DestroyImmediate(sequence);
+                Object.DestroyImmediate(levelOne);
+                Object.DestroyImmediate(levelTwo);
+            }
+        }
+
+        [Test]
+        public void TutorialRuntimeState_CombatOverrideClears()
+        {
+            TutorialRuntimeState.Begin(1);
+            TutorialRuntimeState.SetCombatOverrideActive(true);
+
+            Assert.IsTrue(TutorialRuntimeState.IsActiveForLevel(1));
+            Assert.IsTrue(TutorialRuntimeState.IsCombatOverrideActive);
+
+            TutorialRuntimeState.Clear();
+
+            Assert.IsFalse(TutorialRuntimeState.IsActive);
+            Assert.IsFalse(TutorialRuntimeState.IsCombatOverrideActive);
         }
 
         [Test]
@@ -47,7 +95,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
 
             try
             {
-                controller.BeginForTests(levelConfig, "Level_01_Tutorial");
+                controller.BeginForTests(levelConfig, "Gameplay");
 
                 Assert.IsFalse(LevelTutorialProgress.HasSeenLevel1Tutorial());
             }
@@ -73,6 +121,41 @@ namespace Salinlahi.Tests.Editor.Gameplay
             finally
             {
                 Object.DestroyImmediate(gameObject);
+            }
+        }
+
+        [Test]
+        public void ForceGameplayHudVisible_DoesNotRevealFullscreenFeedbackOverlays()
+        {
+            GameObject hudCanvas = new("HUDCanvas");
+            GameObject heartsPanel = new("HeartsPanel");
+            GameObject rejectFlash = new("RejectFlash");
+            CanvasGroup heartsGroup = heartsPanel.AddComponent<CanvasGroup>();
+            CanvasGroup rejectGroup = rejectFlash.AddComponent<CanvasGroup>();
+
+            heartsPanel.transform.SetParent(hudCanvas.transform);
+            rejectFlash.transform.SetParent(hudCanvas.transform);
+            heartsGroup.alpha = 0f;
+            heartsGroup.interactable = false;
+            heartsGroup.blocksRaycasts = false;
+            rejectGroup.alpha = 0f;
+            rejectGroup.interactable = false;
+            rejectGroup.blocksRaycasts = false;
+
+            try
+            {
+                Level1InteractiveTutorialController.ForceGameplayHudVisible();
+
+                Assert.AreEqual(1f, heartsGroup.alpha);
+                Assert.IsTrue(heartsGroup.interactable);
+                Assert.IsTrue(heartsGroup.blocksRaycasts);
+                Assert.AreEqual(0f, rejectGroup.alpha);
+                Assert.IsFalse(rejectGroup.interactable);
+                Assert.IsFalse(rejectGroup.blocksRaycasts);
+            }
+            finally
+            {
+                Object.DestroyImmediate(hudCanvas);
             }
         }
 
@@ -176,24 +259,25 @@ namespace Salinlahi.Tests.Editor.Gameplay
         #region Acceptance Tests
 
         [Test]
-        public void AC01_NonTutorialScene_DoesNotRunTutorial()
+        public void AC01_LevelOneWithTutorialData_RunsInGameplayScene()
         {
             GameObject gameObject = new("Level1InteractiveTutorialController");
             Level1InteractiveTutorialController controller = gameObject.AddComponent<Level1InteractiveTutorialController>();
             LevelConfigSO levelConfig = ScriptableObject.CreateInstance<LevelConfigSO>();
+            Level1TutorialSequenceSO sequence = ScriptableObject.CreateInstance<Level1TutorialSequenceSO>();
             levelConfig.levelNumber = LevelTutorialProgress.TutorialLevelNumber;
+            levelConfig.tutorialSequence = sequence;
 
             try
             {
-                // Simulate being in a non-tutorial scene by using a different scene name
                 bool shouldRun = controller.ShouldRunFor(levelConfig);
-                // This will be false because the active scene is not Level_01_Tutorial
-                Assert.IsFalse(shouldRun, "Tutorial should not run outside Level_01_Tutorial scene");
+                Assert.IsTrue(shouldRun, "Tutorial should run as a Level 1 phase in the normal Gameplay scene");
             }
             finally
             {
                 Object.DestroyImmediate(gameObject);
                 Object.DestroyImmediate(levelConfig);
+                Object.DestroyImmediate(sequence);
             }
         }
 
@@ -225,13 +309,13 @@ namespace Salinlahi.Tests.Editor.Gameplay
 
             try
             {
-                controller.BeginForTests(levelConfig, "Level_01_Tutorial");
+                controller.BeginForTests(levelConfig, "Gameplay");
                 
                 // Simulate first manual success by completing tutorial
                 controller.CompleteForTests();
                 
                 Assert.IsFalse(LevelTutorialProgress.HasSeenLevel1Tutorial(), 
-                    "Interactive tutorial is embedded in Level_01_Tutorial and should replay on each open");
+                    "Interactive tutorial is embedded in Level 1 gameplay and should replay on each open");
             }
             finally
             {
@@ -346,7 +430,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
 
             try
             {
-                controller.BeginForTests(levelConfig, "Level_01_Tutorial");
+                controller.BeginForTests(levelConfig, "Gameplay");
                 controller.CompleteForTests();
 
                 Assert.IsFalse(LevelTutorialProgress.HasSeenLevel1Tutorial(), 
@@ -380,9 +464,9 @@ namespace Salinlahi.Tests.Editor.Gameplay
         [Test]
         public void AC10_GateCheck_FailsClosed_WrongSceneName()
         {
-            Assert.IsFalse(
+            Assert.IsTrue(
                 Level1InteractiveTutorialController.ShouldRunForContext("Gameplay", 1),
-                "Gate must fail closed if scene name is not Level_01_Tutorial");
+                "Gate should allow normal Gameplay scene for embedded Level 1 tutorial");
         }
 
         [Test]

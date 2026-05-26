@@ -29,6 +29,9 @@ public class LevelConfigSO : ScriptableObject
     public bool isAvailableInLite = true;
 
     [Header("Flow")]
+    [Tooltip("Optional tutorial phase played before this level's waves. Level 1 uses this for embedded onboarding.")]
+    public Level1TutorialSequenceSO tutorialSequence;
+
     [Tooltip("Dialogue played before waves begin. Null = skip intro.")]
     public DialogueSO introDialogue;
 

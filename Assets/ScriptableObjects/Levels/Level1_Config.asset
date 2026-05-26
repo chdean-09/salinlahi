@@ -31,3 +31,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
   bossConfig: {fileID: 0}
   isAvailableInLite: 1
+  tutorialSequence: {fileID: 11400000, guid: 7369c0885d3f4f508ae62d77174c703a, type: 2}
+  introDialogue: {fileID: 0}
+  outroDialogue: {fileID: 0}
+  bgmClip: {fileID: 0}

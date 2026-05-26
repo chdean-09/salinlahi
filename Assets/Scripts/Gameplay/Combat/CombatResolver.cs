@@ -21,7 +21,7 @@ public class CombatResolver : MonoBehaviour
 
     private void HandleCharacterRecognized(string characterID)
     {
-        if (Level1InteractiveTutorialController.IsCombatOverrideActive)
+        if (TutorialRuntimeState.IsCombatOverrideActive)
             return;
 
         // Boss route — runs before AOE and closest-match. If the active boss

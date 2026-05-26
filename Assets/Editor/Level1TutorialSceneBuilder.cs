@@ -8,53 +8,43 @@ using UnityEngine.SceneManagement;
 
 public static class Level1TutorialSceneBuilder
 {
-    private const string SourceScenePath = "Assets/_Scenes/Gameplay.unity";
-    private const string TutorialScenePath = "Assets/_Scenes/Level_01_Tutorial.unity";
+    private const string GameplayScenePath = "Assets/_Scenes/Gameplay.unity";
     private const string Level1ConfigPath = "Assets/ScriptableObjects/Levels/Level1_Config.asset";
     private const string TutorialSequencePath = "Assets/ScriptableObjects/Tutorial/Level1TutorialSequence.asset";
 
-    [MenuItem("Salinlahi/Tutorial/Build Level 1 Tutorial Scene")]
-    public static void BuildLevel1TutorialScene()
+    [MenuItem("Salinlahi/Tutorial/Configure Level 1 Tutorial In Gameplay")]
+    public static void ConfigureLevel1TutorialInGameplay()
     {
-        if (!File.Exists(SourceScenePath))
+        if (!File.Exists(GameplayScenePath))
         {
             EditorUtility.DisplayDialog(
-                "Level 1 Tutorial Builder",
-                $"Missing source scene:\n{SourceScenePath}",
+                "Level 1 Tutorial Gameplay Builder",
+                $"Missing gameplay scene:\n{GameplayScenePath}",
                 "OK");
             return;
         }
 
-        // Safety check: warn if modifying existing scene
-        bool sceneExists = File.Exists(TutorialScenePath);
-        if (sceneExists)
-        {
-            bool proceed = EditorUtility.DisplayDialog(
-                "Level 1 Tutorial Builder",
-                $"'{TutorialScenePath}' already exists.\n\n"
-                + "This will OVERWRITE the scene with a fresh copy from Gameplay.unity, "
-                + "then add tutorial wiring.\n\n"
-                + "Any existing tutorial-specific objects will be recreated.",
-                "Rebuild from Gameplay",
-                "Cancel");
-            
-            if (!proceed)
-                return;
-        }
+        bool proceed = EditorUtility.DisplayDialog(
+            "Level 1 Tutorial Gameplay Builder",
+            "This will open Gameplay.unity and add/update Level 1 tutorial wiring in the normal gameplay scene.",
+            "Configure Gameplay",
+            "Cancel");
 
-        bool createdScene = EnsureTutorialSceneAsset();
-        Scene scene = EditorSceneManager.OpenScene(TutorialScenePath, OpenSceneMode.Single);
-        RepairOpenScene(scene, createdScene);
+        if (!proceed)
+            return;
+
+        Scene scene = EditorSceneManager.OpenScene(GameplayScenePath, OpenSceneMode.Single);
+        RepairOpenScene(scene, false);
     }
 
-    [MenuItem("Salinlahi/Tutorial/Repair Open Tutorial Scene")]
-    public static void RepairOpenTutorialScene()
+    [MenuItem("Salinlahi/Tutorial/Repair Open Gameplay Tutorial Wiring")]
+    public static void RepairOpenGameplayTutorialWiring()
     {
         Scene scene = EditorSceneManager.GetActiveScene();
         
         // Safety: confirm before modifying open scene
         bool proceed = EditorUtility.DisplayDialog(
-            "Repair Tutorial Scene",
+            "Repair Gameplay Tutorial Wiring",
             $"This will modify the currently open scene '{scene.name}' by adding/updating "
             + "tutorial controllers, UI, markers, and wiring.\n\n"
             + "Existing GameObjects may be recreated. Make sure your scene is saved or version-controlled.",
@@ -116,38 +106,20 @@ public static class Level1TutorialSceneBuilder
 
         AssignFlowController(flow, tutorial);
         ConfigureWaveManager(waveManager, spawner);
-        EnsureSceneInBuildSettings(TutorialScenePath);
+        EnsureSceneInBuildSettings(GameplayScenePath);
 
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene);
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
 
-        string message = createdScene
-            ? "Created and configured Level_01_Tutorial from Gameplay."
-            : "Updated existing Level_01_Tutorial tutorial wiring.";
+        string message = "Updated Level 1 tutorial wiring in Gameplay.";
 
         if (FindCharacter("HA") == null)
             message += "\n\nWarning: Char_HA was not found. Add or repair Char_HA before final QA.";
 
-        EditorUtility.DisplayDialog("Level 1 Tutorial Builder", message, "OK");
+        EditorUtility.DisplayDialog("Level 1 Tutorial Gameplay Builder", message, "OK");
         Debug.Log($"[Salinlahi] {message}");
-    }
-    
-    private static bool EnsureTutorialSceneAsset()
-    {
-        if (File.Exists(TutorialScenePath))
-            return false;
-
-        string folder = Path.GetDirectoryName(TutorialScenePath);
-        if (!string.IsNullOrEmpty(folder) && !Directory.Exists(folder))
-            Directory.CreateDirectory(folder);
-
-        if (!AssetDatabase.CopyAsset(SourceScenePath, TutorialScenePath))
-            throw new IOException($"Failed to copy {SourceScenePath} to {TutorialScenePath}.");
-
-        AssetDatabase.ImportAsset(TutorialScenePath);
-        return true;
     }
 
     private static Level1InteractiveTutorialController EnsureTutorialController()
@@ -260,7 +232,10 @@ public static class Level1TutorialSceneBuilder
     {
         Level1TutorialGuideUI existing = Object.FindFirstObjectByType<Level1TutorialGuideUI>();
         if (existing != null)
+        {
+            RepairGuideTextPositions(existing.transform);
             return existing;
+        }
 
         if (canvas == null)
         {
@@ -284,8 +259,10 @@ public static class Level1TutorialSceneBuilder
 
         Level1TutorialGuideUI guide = root.AddComponent<Level1TutorialGuideUI>();
 
-        TextMeshProUGUI prompt = CreateText(root.transform, "PromptText", new Vector2(0.5f, 0.88f), 42, TextAlignmentOptions.Center);
-        TextMeshProUGUI feedback = CreateText(root.transform, "FeedbackText", new Vector2(0.5f, 0.78f), 32, TextAlignmentOptions.Center);
+        // Positioned above the base / wall area so instructions are clearly
+        // readable and don't overlap with enemies spawning from the top.
+        TextMeshProUGUI prompt = CreateText(root.transform, "PromptText", new Vector2(0.5f, 0.32f), 42, TextAlignmentOptions.Center);
+        TextMeshProUGUI feedback = CreateText(root.transform, "FeedbackText", new Vector2(0.5f, 0.24f), 32, TextAlignmentOptions.Center);
         Button skip = CreateButton(root.transform);
 
         // Create guide visual elements
@@ -456,6 +433,29 @@ public static class Level1TutorialSceneBuilder
 
         go.SetActive(false);
         return button;
+    }
+
+    private static void RepairGuideTextPositions(Transform guideRoot)
+    {
+        // Ensure existing PromptText and FeedbackText are repositioned above
+        // the base area instead of overlapping with enemies from the top.
+        Transform prompt = guideRoot.Find("PromptText");
+        if (prompt != null && prompt.TryGetComponent(out RectTransform promptRect))
+        {
+            Undo.RecordObject(promptRect, "Repair PromptText Position");
+            promptRect.anchorMin = new Vector2(0.5f, 0.32f);
+            promptRect.anchorMax = new Vector2(0.5f, 0.32f);
+            EditorUtility.SetDirty(promptRect);
+        }
+
+        Transform feedback = guideRoot.Find("FeedbackText");
+        if (feedback != null && feedback.TryGetComponent(out RectTransform feedbackRect))
+        {
+            Undo.RecordObject(feedbackRect, "Repair FeedbackText Position");
+            feedbackRect.anchorMin = new Vector2(0.5f, 0.24f);
+            feedbackRect.anchorMax = new Vector2(0.5f, 0.24f);
+            EditorUtility.SetDirty(feedbackRect);
+        }
     }
 
     private static Transform EnsureMarker(string name, Vector3 position, bool forcePosition = false)

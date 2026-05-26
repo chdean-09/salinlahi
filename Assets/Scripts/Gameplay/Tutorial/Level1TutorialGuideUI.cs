@@ -26,11 +26,134 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
     private Coroutine _pulseCoroutine;
     private Coroutine _animatePathCoroutine;
 
+    public static Level1TutorialGuideUI CreateRuntime()
+    {
+        Canvas canvas = FindFirstObjectByType<Canvas>();
+        if (canvas == null)
+        {
+            GameObject canvasObject = new("TutorialCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            canvas = canvasObject.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1080f, 1920f);
+        }
+
+        GameObject root = new("Level1TutorialGuideUI", typeof(RectTransform));
+        root.transform.SetParent(canvas.transform, false);
+        RectTransform rootRect = root.GetComponent<RectTransform>();
+        rootRect.anchorMin = Vector2.zero;
+        rootRect.anchorMax = Vector2.one;
+        rootRect.offsetMin = Vector2.zero;
+        rootRect.offsetMax = Vector2.zero;
+
+        Level1TutorialGuideUI guide = root.AddComponent<Level1TutorialGuideUI>();
+        guide._root = root;
+        guide._promptText = CreateText(root.transform, "PromptText", new Vector2(0.5f, 0.88f), 42, TextAlignmentOptions.Center);
+        guide._feedbackText = CreateText(root.transform, "FeedbackText", new Vector2(0.5f, 0.76f), 28, TextAlignmentOptions.Center);
+        guide._skipButton = CreateSkipButton(root.transform);
+        root.SetActive(false);
+        return guide;
+    }
+
+    private static TextMeshProUGUI CreateText(
+        Transform parent,
+        string name,
+        Vector2 anchor,
+        float fontSize,
+        TextAlignmentOptions alignment)
+    {
+        GameObject textObject = new(name, typeof(RectTransform), typeof(TextMeshProUGUI));
+        textObject.transform.SetParent(parent, false);
+
+        RectTransform rect = textObject.GetComponent<RectTransform>();
+        rect.anchorMin = anchor;
+        rect.anchorMax = anchor;
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = new Vector2(900f, 120f);
+
+        TextMeshProUGUI text = textObject.GetComponent<TextMeshProUGUI>();
+        text.fontSize = fontSize;
+        text.alignment = alignment;
+        text.color = Color.white;
+        text.textWrappingMode = TextWrappingModes.Normal;
+        return text;
+    }
+
+    private static Button CreateSkipButton(Transform parent)
+    {
+        GameObject buttonObject = new("SkipButton", typeof(RectTransform), typeof(Image), typeof(Button));
+        buttonObject.transform.SetParent(parent, false);
+
+        RectTransform rect = buttonObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(1f, 1f);
+        rect.anchorMax = new Vector2(1f, 1f);
+        rect.pivot = new Vector2(1f, 1f);
+        rect.anchoredPosition = new Vector2(-48f, -96f);
+        rect.sizeDelta = new Vector2(120f, 56f);
+
+        Image image = buttonObject.GetComponent<Image>();
+        image.color = new Color(0f, 0f, 0f, 0.45f);
+
+        TextMeshProUGUI label = CreateText(buttonObject.transform, "Label", new Vector2(0.5f, 0.5f), 24, TextAlignmentOptions.Center);
+        RectTransform labelRect = label.GetComponent<RectTransform>();
+        labelRect.sizeDelta = rect.sizeDelta;
+        label.text = "Skip";
+
+        buttonObject.SetActive(false);
+        return buttonObject.GetComponent<Button>();
+    }
+
     public void Initialize(System.Action skipRequested)
     {
+        EnsureRuntimeCanvas();
         _skipRequested = skipRequested;
         if (_skipButton != null)
             _skipButton.onClick.AddListener(HandleSkipClicked);
+    }
+
+    private void EnsureRuntimeCanvas()
+    {
+        Canvas currentCanvas = GetComponentInParent<Canvas>();
+        if (currentCanvas != null
+            && currentCanvas.transform.localScale != Vector3.zero
+            && currentCanvas.name == "TutorialCanvas")
+        {
+            return;
+        }
+
+        Canvas tutorialCanvas = FindTutorialCanvas();
+        if (tutorialCanvas == null)
+        {
+            GameObject canvasObject = new("TutorialCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            tutorialCanvas = canvasObject.GetComponent<Canvas>();
+            tutorialCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            tutorialCanvas.sortingOrder = 20;
+
+            CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1080f, 1920f);
+        }
+
+        tutorialCanvas.transform.localScale = Vector3.one;
+        transform.SetParent(tutorialCanvas.transform, false);
+    }
+
+    private static Canvas FindTutorialCanvas()
+    {
+        Canvas[] canvases = FindObjectsByType<Canvas>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+
+        for (int i = 0; i < canvases.Length; i++)
+        {
+            Canvas canvas = canvases[i];
+            if (canvas != null && canvas.name == "TutorialCanvas")
+                return canvas;
+        }
+
+        return null;
     }
 
     private void OnDestroy()
