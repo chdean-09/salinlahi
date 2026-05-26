@@ -14,6 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Salinlahi.Runtime::LevelConfigSO
   levelName: Level 4
   levelNumber: 4
+  chapterNumber: 1
+  chapterName: Chapter 1
+  eraTheme: {fileID: 11400000, guid: 4a3f16684c91d284eafb13ac69eecbfc, type: 2}
   waves: []
   allowedCharacters: []
+  bossConfig: {fileID: 0}
   isAvailableInLite: 0
+  introDialogue: {fileID: 0}
+  outroDialogue: {fileID: 0}
+  bgmClip: {fileID: 0}
