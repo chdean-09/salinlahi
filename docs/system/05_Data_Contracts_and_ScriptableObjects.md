@@ -1,7 +1,7 @@
 # 05 — Data Contracts and ScriptableObjects
 **Project:** Salinlahi
-**Version:** 1.5
-**Date:** 2026-05-26
+**Version:** 1.8
+**Date:** 2026-05-27
 **Owner:** Chad Andrada (Product Owner / Designer)
 
 ---
@@ -243,6 +243,7 @@ Defined at the bottom of `EnemyDataSO.cs`:
 | `summonHorizontalBounds` | `Vector2` | Summon Bounds | NO | Hard world-space horizontal cap on every minion spawn (`x = minX, y = maxX`). Set `x ≥ y` to disable. |
 | `introDuration` | `float` | Intro / Outro | YES | Seconds boss is invulnerable on entry. Default `2.0f`. |
 | `outroDuration` | `float` | Intro / Outro | YES | Seconds before `OnLevelComplete` after the last phase is cleared. Default `2.5f`. |
+| `audioBank` | `BossAudioBankSO` | Audio | NO | Per-boss audio bank. May be null — `BossAudio` no-ops cleanly if absent. |
 
 **Validation Rules:**
 - `phases.Count ≥ 1` (zero phases → `BossController.StartBoss` aborts with a logged error).
@@ -261,10 +262,11 @@ Defined at the bottom of `EnemyDataSO.cs`:
 
 | Field | Type | Header | Notes |
 |-------|------|--------|-------|
-| `summonDuration` | `float` | Summoning Phase | Seconds the boss summons minions. Default `30f`. |
-| `summonInterval` | `float` | Summoning Phase | Seconds between summon ticks. In Teleport movement, also the teleport cadence. Default `5f`. |
-| `summonBurstMin` | `int` | Summoning Phase | Min minions per tick (inclusive). Default `2`. |
-| `summonBurstMax` | `int` | Summoning Phase | Max minions per tick (inclusive, `Random.Range(min, max+1)`). Default `3`. |
+| `summonPhaseDuration` | `float` | Summoning Phase | Total phase length in seconds. No NEW summon acts may start after this elapses; an act already in progress always runs to completion. Default `30f`. Renamed from `summonDuration` (legacy assets migrate via `[FormerlySerializedAs]`). |
+| `delayBetweenSummons` | `float` | Summoning Phase | Seconds BETWEEN summon acts. Boss movement (teleport / pace) fires during this gap. Default `5f`. Renamed from `summonInterval`. |
+| `minionsPerSummonMin` | `int` | Summoning Phase | Min minions per summon act (inclusive). Default `2`. Renamed from `summonBurstMin`. |
+| `minionsPerSummonMax` | `int` | Summoning Phase | Max minions per summon act (inclusive, `Random.Range(min, max+1)`). Default `3`. Renamed from `summonBurstMax`. |
+| `delayBetweenMinions` | `float` | Summoning Phase | Seconds WITHIN a summon act between consecutive minion spawns (NEW). Total in-act duration ≈ `count × delayBetweenMinions`. Default `0.6f`. Set to `0` to disable stagger — discouraged. |
 | `summonEnemyTypes` | `List<EnemyDataSO>` | Summoning Phase | Pool for this phase. Empty falls back to `BossConfigSO.fallbackEnemyTypes`. |
 | `summonSpawnRange` | `Vector2` | Summoning Phase | Half-range around the boss's CURRENT position for each minion's spawn origin. Default `(2, 0)`. |
 | `requiredCharacterCount` | `int` | Vulnerability Window | Correct random glyphs needed during the Vulnerable window. Default `3`. |
@@ -330,6 +332,49 @@ Master registry of all `BaybayinCharacterSO` assets, exposed via the `All` list.
 
 ---
 
+### 2.11 `BossAudioBankSO`
+
+**Menu path:** `Salinlahi/Audio/Boss Audio Bank`
+**File:** `Assets/Scripts/Data/BossAudioBankSO.cs`
+**Asset folder:** `Assets/ScriptableObjects/Audio/` (e.g. `BossAudioBank_ElInquisidor.asset`)
+
+Holds all per-boss audio clip references and tuning fields for one boss encounter. Referenced by `BossConfigSO.audioBank` and consumed by `BossAudio` on the boss prefab. Designers create a new asset for each new boss to give it a distinct sonic identity without code changes.
+
+| Field | Type | Header | Required | Notes |
+|-------|------|--------|----------|-------|
+| `bgm` | `AudioClip` | BGM | NO | Looping BGM played for the duration of the boss encounter. |
+| `bgmVolume` | `float` | BGM | NO | `[0..1]` scale for this boss's BGM. Stacks multiplicatively on top of Master & BGM user sliders. Default `1f`. |
+| `introGrowl` | `AudioClip` | One-Shots | NO | Plays once on `OnBossStarted`. |
+| `introGrowlVolume` | `float` | One-Shots | NO | `[0..1]` per-clip volume scale. Default `1f`. |
+| `summonTick` | `AudioClip` | One-Shots | NO | Plays each time the boss begins a summon tick (`OnBossSummonTick`). |
+| `summonTickVolume` | `float` | One-Shots | NO | `[0..1]` per-clip volume scale. Default `1f`. |
+| `bodyFall` | `AudioClip` | One-Shots | NO | Plays on `OnBossExhausted` (winding-down state). |
+| `bodyFallVolume` | `float` | One-Shots | NO | `[0..1]` per-clip volume scale. Default `1f`. |
+| `vulnerabilityExpiredLaugh` | `AudioClip` | One-Shots | NO | Plays on `OnBossVulnerabilityExpired` (player failed to break the boss). |
+| `vulnerabilityExpiredLaughVolume` | `float` | One-Shots | NO | `[0..1]` per-clip volume scale. Default `1f`. |
+| `defeat` | `AudioClip` | One-Shots | NO | Plays on `OnBossDefeated` (outro start). |
+| `defeatVolume` | `float` | One-Shots | NO | `[0..1]` per-clip volume scale. Default `1f`. |
+| `hitGrowls` | `AudioClip[]` | Variant Pools | NO | Short growls cycled on `OnBossDrawHit` (correct glyph during vulnerable window). No-immediate-repeat. |
+| `hitGrowlsVolume` | `float` | Variant Pools | NO | `[0..1]` volume scale applied to every clip in the pool. Default `1f`. |
+| `damagedGrowls` | `AudioClip[]` | Variant Pools | NO | Long growls cycled on `OnBossDamaged` (HP lost). No-immediate-repeat. |
+| `damagedGrowlsVolume` | `float` | Variant Pools | NO | `[0..1]` volume scale applied to every clip in the pool. Default `1f`. |
+| `footsteps` | `AudioClip[]` | Variant Pools | NO | Footstep variants played at `footstepInterval` during Pace-pattern phases. No-immediate-repeat. |
+| `footstepsVolume` | `float` | Variant Pools | NO | `[0..1]` volume scale applied to every clip in the pool. Default `1f`. |
+| `teleports` | `AudioClip[]` | Variant Pools | NO | Teleport variants played on `OnBossTeleport` (Teleport-pattern snap). No-immediate-repeat. |
+| `teleportsVolume` | `float` | Variant Pools | NO | `[0..1]` volume scale applied to every clip in the pool. Default `1f`. |
+| `footstepInterval` | `float` | Footstep Cadence | NO | Seconds between footstep SFX while in a Pace phase. Default `0.45f`. Min `0.05f`. |
+| `bgmFadeInSeconds` | `float` | BGM Fade | NO | Seconds to fade BGM in on `OnBossStarted`. Default `1f`. |
+| `bgmFadeOutSeconds` | `float` | BGM Fade | NO | Seconds to fade BGM out on `OnBossDefeated`. Default `1.5f`. |
+
+**Null-tolerance:** All clip fields are optional. `BossAudio` silently skips any clip that is null, so partially-filled banks do not break gameplay. A new boss with a completely different sonic identity requires only a new `BossAudioBankSO` asset and a reference update on `BossConfigSO.audioBank` — no code change.
+
+**Volume layering:** Per-clip `*Volume` fields and `bgmVolume` are designer-side balance knobs that stack multiplicatively on top of the player-facing master/BGM/SFX sliders managed by `AudioManager`. Setting any `*Volume` to `0` silences that category without breaking the rest of the bank.
+
+[EVIDENCE: Assets/Scripts/Data/BossAudioBankSO.cs]
+[EVIDENCE: Assets/ScriptableObjects/Audio/BossAudioBank_ElInquisidor.asset]
+
+---
+
 ## 3. Asset Authoring Guidelines
 
 ### 3.1 Naming Convention
@@ -351,6 +396,7 @@ Master registry of all `BaybayinCharacterSO` assets, exposed via the `All` list.
 | `WaveConfigSO` | `Assets/ScriptableObjects/Waves/` |
 | `EnemyDataSO` | `Assets/ScriptableObjects/` |
 | `BossConfigSO` | `Assets/ScriptableObjects/` (e.g. `BossConfig_ElInquisidor.asset`, alongside other top-level configs) |
+| `BossAudioBankSO` | `Assets/ScriptableObjects/Audio/` (e.g. `BossAudioBank_ElInquisidor.asset`) |
 | Templates (text files) | `Assets/Resources/Templates/` |
 
 [EVIDENCE: Assets/ScriptableObjects/ directory listing — Characters/, Levels/, Waves/ subdirs confirmed]

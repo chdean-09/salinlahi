@@ -69,6 +69,7 @@ public class PhaseBasedMovement : MonoBehaviour
         float y = _baseLocalPosition.y
             + Random.Range(-phase.teleportHalfRange.y, 0f);
         transform.localPosition = new Vector3(x, y, _baseLocalPosition.z);
+        EventBus.RaiseBossTeleport();
     }
 
     private IEnumerator RunPattern(BossPhase phase)

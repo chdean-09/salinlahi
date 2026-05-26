@@ -103,6 +103,7 @@ public class BossController : MonoBehaviour
             // in their handler and must see the next glyph, not the one just matched.
             SampleNextExpectedCharacter();
             RaiseOnDrawnThisPhaseChanged();
+            EventBus.RaiseBossDrawHit();
             return BossRouteResult.Hit;
         }
 
@@ -168,11 +169,11 @@ public class BossController : MonoBehaviour
         if (_phaseMovement != null)
             _phaseMovement.StartPattern(phase);
 
-        if (phase.summonInterval > 0f && phase.summonDuration > 0f)
+        if (phase.delayBetweenSummons > 0f && phase.summonPhaseDuration > 0f)
         {
             float elapsed = 0f;
-            float nextTickAt = phase.summonInterval;
-            while (elapsed < phase.summonDuration)
+            float nextTickAt = phase.delayBetweenSummons;
+            while (elapsed < phase.summonPhaseDuration)
             {
                 if (elapsed >= nextTickAt)
                 {
@@ -185,7 +186,7 @@ public class BossController : MonoBehaviour
                     if (_summonTicker != null)
                         yield return _summonTicker.PlayTickAndSpawn(phase, Config, _spawner);
 
-                    nextTickAt += phase.summonInterval;
+                    nextTickAt += phase.delayBetweenSummons;
                 }
                 yield return null;
                 elapsed += Time.deltaTime;

@@ -1,7 +1,7 @@
 # 04 — Gameplay Systems
 **Project:** Salinlahi
-**Version:** 1.7
-**Date:** 2026-05-26
+**Version:** 2.0
+**Date:** 2026-05-27
 **Owner:** Gameplay Developer (Jon Wayne Cabusbusan / Chad Andrada)
 
 ---
@@ -290,12 +290,13 @@ The Spanish-era boss (`el_inquisidor`) is implemented as a self-contained phase-
 |--------|------|
 | `BossEnemy` (extends `Enemy`) | `IsBoss => true` so `CombatResolver` excludes it; `TakeDamage` is a no-op (warns) so only `BossController.TryRouteDraw` can damage the boss. `OnEnable` reasserts `SpriteRenderer.sortingOrder = RenderOrder.Boss`. |
 | `BossController` | Authoritative state machine. Owns phases, vulnerability, HP, and outro. Raises all boss events. |
-| `BossSummonTicker` | Stateless helper. Plays a summon-tell animation on the boss SpriteRenderer, then spawns 2–3 minions per tick at the boss's CURRENT position, applying `summonHorizontalBounds` clamp. |
+| `BossSummonTicker` | Stateless helper. Plays a summon-tell animation on the boss SpriteRenderer, then streams minions one at a time on a per-spawn `delayBetweenMinions` cadence (default 0.6s), applying `summonHorizontalBounds` clamp. Each summon act spawns 2–3 minions as a paced stream, not a single-frame burst. The boss holds its cast pose from the windup through the final spawn and for ~0.3s after, so the stream reads as a deliberate ritual. The number of acts per phase and the gap between acts (`delayBetweenSummons`) are unchanged. |
 | `PhaseBasedMovement` | Drives the boss transform per phase movement pattern (Hover/Pace/Teleport). Imperative API: `StartPattern(phase)`, `StopPattern()`, `TeleportNow(phase)` (called by BossController on Teleport ticks). |
 | `BossStateVisuals` | Panting bob + red tint during `WindingDown`/`Vulnerable`; collapse animation on entering `Vulnerable`; stand-up tween on exiting `Vulnerable` (`Damaged` or timeout). |
 | `BossDamageFeedback` | Two-tier damage feedback: small-hit (per glyph) and emphasized (phase damage). Exposes `IsHurtPaused` and `CriticalColor` consumed by movement and state visuals. |
 | `EnemyGlyphBadge` | World-space framed glyph above the boss; same component as regular enemies. |
 | `BossGlyphVisibilityBinder` | Shows/hides the badge and drives swap/final-draw/fail-flash during vulnerability windows. |
+| `BossAudio` | Subscribes to 9 EventBus boss events in `OnEnable`/`OnDisable`. Resolves `BossAudioBankSO` lazily from `BossConfigSO.audioBank` on `OnBossStarted`. Owns the footstep cadence coroutine (Pace phases only, gated by summon-animation and hurt-pause). Uses no-immediate-repeat random selection for `hitGrowls`, `damagedGrowls`, `footsteps`, and `teleports` pools. Null-tolerant: silently skips all audio if the bank or a specific clip is absent. |
 
 ### 8.2 State Machine
 
@@ -333,8 +334,38 @@ Boss HP equals `BossConfigSO.phases.Count`. There is **no separate `maxHealth`**
 [EVIDENCE: Assets/Scripts/Gameplay/Boss/PhaseBasedMovement.cs]
 [EVIDENCE: Assets/Scripts/Gameplay/Boss/BossStateVisuals.cs]
 [EVIDENCE: Assets/Scripts/Gameplay/Boss/BossDamageFeedback.cs]
+[EVIDENCE: Assets/Scripts/Gameplay/Boss/BossAudio.cs]
 [EVIDENCE: Assets/Scripts/Gameplay/Enemy/BossEnemy.cs]
 [EVIDENCE: Assets/Scripts/Gameplay/Wave/WaveManager.cs — `RunBossEncounter`]
+
+### 8.7 BossAudio Component
+
+`BossAudio` is a `MonoBehaviour` on the boss prefab (sibling of `BossController`). It has no Inspector fields — the audio bank is resolved lazily at runtime.
+
+**EventBus subscriptions (subscribe in `OnEnable`, unsubscribe in `OnDisable`):**
+
+| Event | Handler | Audio Played |
+|-------|---------|-------------|
+| `OnBossStarted(BossConfigSO)` | `HandleBossStarted` | `FadeInBGM(bank.bgm, bank.bgmFadeInSeconds)` + `PlaySFX(bank.introGrowl)` |
+| `OnBossPhaseStarted(int)` | `HandleBossPhaseStarted` | Starts/stops footstep coroutine based on `BossMovementPattern.Pace` |
+| `OnBossSummonTick` | `HandleBossSummonTick` | `PlaySFX(bank.summonTick)` |
+| `OnBossTeleport` | `HandleBossTeleport` | `PlaySFX(PickNoRepeat(bank.teleports))` |
+| `OnBossExhausted(int)` | `HandleBossExhausted` | Stops footsteps + `PlaySFX(bank.bodyFall)` |
+| `OnBossDrawHit` | `HandleBossDrawHit` | `PlaySFX(PickNoRepeat(bank.hitGrowls))` |
+| `OnBossDamaged(int, int)` | `HandleBossDamaged` | `PlaySFX(PickNoRepeat(bank.damagedGrowls))` |
+| `OnBossVulnerabilityExpired(int)` | `HandleBossVulnerabilityExpired` | `PlaySFX(bank.vulnerabilityExpiredLaugh)` |
+| `OnBossDefeated` | `HandleBossDefeated` | `PlaySFX(bank.defeat)` + `FadeOutBGM(bank.bgmFadeOutSeconds)` |
+
+**Footstep coroutine:** Active only during `BossMovementPattern.Pace` phases. Fires at `bank.footstepInterval` (default 0.45s). Gated by `BossSummonTicker.IsPlayingSummonAnimation` and `BossDamageFeedback.IsHurtPaused` — no footsteps while the boss is visually still. First step is delayed by one interval after phase start (by design).
+
+**No-immediate-repeat picker:** Variant pools (`hitGrowls`, `damagedGrowls`, `footsteps`, `teleports`) use `Random.Range` with a per-pool `lastIdx` guard so the same clip never plays twice in a row.
+
+**Null-tolerance:** Every handler silently returns if `_bank` is null or the targeted clip field is null. A partially-filled `BossAudioBankSO` does not break gameplay.
+
+**Per-category volume scaling:** Each `PlaySFX`/`FadeInBGM` call passes the matching `*Volume` field from the bank (`bgmVolume`, `introGrowlVolume`, `summonTickVolume`, `bodyFallVolume`, `vulnerabilityExpiredLaughVolume`, `defeatVolume`, `hitGrowlsVolume`, `damagedGrowlsVolume`, `footstepsVolume`, `teleportsVolume`). `AudioManager.PlaySFX(clip, volumeScale)` forwards the scale to `AudioSource.PlayOneShot`, and `AudioManager.FadeInBGM(clip, seconds, volumeScale)` stores it as `_bgmScale` so the BGM volume is computed as `master * bgm * _bgmScale` for the duration of the encounter. `_bgmScale` resets to `1f` on `FadeOutBGM`, `StopBGM`, or `PlayBGM` so non-boss tracks resume at normal level.
+
+[EVIDENCE: Assets/Scripts/Gameplay/Boss/BossAudio.cs]
+[EVIDENCE: Assets/Scripts/Data/BossAudioBankSO.cs]
 
 ---
 

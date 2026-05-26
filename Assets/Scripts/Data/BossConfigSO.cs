@@ -35,4 +35,8 @@ public class BossConfigSO : ScriptableObject
     public float introDuration = 2.0f;
     [Tooltip("Seconds before OnLevelComplete fires after the last phase is cleared.")]
     public float outroDuration = 2.5f;
+
+    [Header("Audio")]
+    [Tooltip("Per-boss audio bank. May be left null — BossAudio will no-op cleanly if absent.")]
+    public BossAudioBankSO audioBank;
 }

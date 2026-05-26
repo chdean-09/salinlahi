@@ -1,7 +1,7 @@
 # 12 — Glossary and Naming Standard
 **Project:** Salinlahi
-**Version:** 1.4
-**Date:** 2026-05-23
+**Version:** 1.5
+**Date:** 2026-05-26
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -22,7 +22,7 @@
 | **Heart** | One unit of the Shrine's health. The Shrine has 3 hearts by default. Each enemy base hit costs 1 heart. 0 hearts = Game Over. | GDD §2.3 |
 | **Wave** | A single spawn sequence within a level, defined by `WaveConfigSO`. A wave has a fixed enemy count, spawn interval, and character pool. | WaveConfigSO.cs; GDD §2.4 |
 | **Spawn Interval** | Seconds between consecutive enemy spawns within a wave. Defined in `WaveConfigSO.spawnInterval` (default: 3s). | WaveConfigSO.cs |
-| **Summoning Phase** | The boss sub-state during which the boss is invulnerable and `BossSummonTicker` spawns 2–3 minions per `summonInterval`. Ends after `summonDuration` and is followed by WindingDown. | `BossController.RunSummoningPhase` |
+| **Summoning Phase** | The boss sub-state during which the boss is invulnerable and `BossSummonTicker` streams 2–3 minions per summon act on `delayBetweenMinions` cadence (default 0.6s). Acts repeat every `delayBetweenSummons`. Ends after `summonPhaseDuration` (no new acts may start after that gate; an in-progress act always runs to completion), followed by WindingDown. | `BossController.RunSummoningPhase` |
 | **Bootstrap Scene** | The first scene loaded on app launch. It initializes all manager singletons and immediately transitions to MainMenu. It is never returned to after the initial load. | BootstrapLoader.cs; GDD §5.1 |
 | **Boss Movement Pattern** | The per-phase movement mode (`Hover`, `Pace`, `Teleport`) driven imperatively by `PhaseBasedMovement` based on `BossPhase.movementPattern`. | `BossPhase.cs`; `PhaseBasedMovement.cs` |
 | **Manager** | A persistent `MonoBehaviour` Singleton that survives all scene loads. All managers are instantiated in the Bootstrap scene. | Singleton.cs; 02_Architecture |
