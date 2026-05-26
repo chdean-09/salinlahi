@@ -29,7 +29,7 @@ namespace Salinlahi.Runtime.Gameplay
         {
             if (_slashVfxPrefab == null)
             {
-                Debug.LogWarning("[ProtagonistAttackController] No slash VFX prefab assigned!");
+                DebugLogger.LogWarning("[ProtagonistAttackController] No slash VFX prefab assigned!");
                 return;
             }
 

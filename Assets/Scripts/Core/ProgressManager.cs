@@ -19,6 +19,7 @@ public class ProgressManager : Singleton<ProgressManager>
     private const string KeyPrefix = "salinlahi.progress.";
     private const int MaxStars = 3;
     private const int TotalLevels = 15;
+    private static bool UnlockAllLevelsForBossTesting => true;
 
     // Track which level we've processed to handle restarts properly
     private int _lastProcessedLevelId = -1;
@@ -252,8 +253,11 @@ public class ProgressManager : Singleton<ProgressManager>
             return false;
         }
 
-        // TEMP: all levels unlocked for boss testing
-        return true;
+        if (UnlockAllLevelsForBossTesting)
+        {
+            // TEMP: all levels unlocked for boss testing
+            return true;
+        }
 
         // Level 1 is always unlocked by default
         if (levelID == 1)

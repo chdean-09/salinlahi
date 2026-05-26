@@ -33,7 +33,7 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
 
     [Header("Animation Timing")]
     [SerializeField] private float _protagonistWalkSeconds = 1.75f;
-    
+
     private Vector3 _protagonistEndPosition;
 
     private readonly Level1TutorialGlyphValidator _validator = new();
@@ -61,15 +61,15 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
 
     public static bool IsCombatOverrideActive => TutorialRuntimeState.IsCombatOverrideActive;
     public Level1TutorialState State => _state;
-    public bool IsConfigured 
-    { 
-        get 
-        { 
+    public bool IsConfigured
+    {
+        get
+        {
             var steps = GetSteps();
             bool configured = steps != null && steps.Length > 0;
             DebugLogger.Log($"Level1InteractiveTutorialController.IsConfigured: steps={(steps?.Length.ToString() ?? "null")}, configured={configured}");
             return configured;
-        } 
+        }
     }
 
     private void Awake()
@@ -114,11 +114,11 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
             $"levelConfig={(levelConfig != null ? levelConfig.name : "null")}, " +
             $"levelNumber={(levelConfig?.levelNumber.ToString() ?? "N/A")}, required={_requiredLevelNumber}, " +
             $"hasTutorialSequence={levelConfig?.tutorialSequence != null}");
-        
+
         bool result = levelConfig != null
             && levelConfig.levelNumber == _requiredLevelNumber
             && levelConfig.tutorialSequence != null;
-        
+
         DebugLogger.Log($"Level1InteractiveTutorialController.ShouldRunFor: returning {result}");
         return result;
     }
@@ -232,11 +232,35 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
             _protagonistEndPosition = Vector3.zero;
         }
 
-        // Ensure protagonist exists via ProtagonistManager
+        // Ensure ProtagonistManager exists (auto-create if missing)
+        EnsureProtagonistManager();
+    }
+
+    private void EnsureProtagonistManager()
+    {
+        // If instance already exists, we're good
         if (ProtagonistManager.Instance != null)
         {
             ProtagonistManager.Instance.EnsureProtagonist(_protagonistEndPosition);
+            return;
         }
+
+        // Try to find existing in scene
+        ProtagonistManager existing = FindFirstObjectByType<ProtagonistManager>();
+        if (existing != null)
+        {
+            existing.EnsureProtagonist(_protagonistEndPosition);
+            return;
+        }
+
+        // Auto-create ProtagonistManager GameObject
+        GameObject go = new GameObject("[Manager] ProtagonistManager");
+        ProtagonistManager manager = go.AddComponent<ProtagonistManager>();
+        go.AddComponent<ProtagonistAttackController>();
+
+        DebugLogger.Log("[Level1Tutorial] Auto-created ProtagonistManager");
+
+        manager.EnsureProtagonist(_protagonistEndPosition);
     }
 
     private static Bounds ResolveBounds(GameObject target)
@@ -423,21 +447,34 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
 
     private IEnumerator RunProtagonistWalkIn()
     {
+        // Ensure manager exists (in case it was destroyed or missing)
+        EnsureProtagonistManager();
+
         if (ProtagonistManager.Instance == null)
         {
-            DebugLogger.LogWarning("[Level1Tutorial] ProtagonistManager not found, skipping walk-in");
+            DebugLogger.LogWarning("[Level1Tutorial] ProtagonistManager could not be created, skipping walk-in");
             yield break;
         }
 
         _state = Level1TutorialState.WalkIn;
-        
+
         // Ensure protagonist is created and walk it in
         ProtagonistManager.Instance.EnsureProtagonist(_protagonistEndPosition);
+
+        // Verify protagonist was created
+        if (ProtagonistManager.Instance.ProtagonistTransform == null)
+        {
+            DebugLogger.LogError("[Level1Tutorial] Protagonist prefab not assigned in ProtagonistManager!");
+            yield break;
+        }
+
         ProtagonistManager.Instance.WalkInProtagonist(_protagonistEndPosition);
 
         // Wait for walk-in to complete
         float duration = Mathf.Max(0.01f, GetProtagonistWalkSeconds());
         yield return new WaitForSeconds(duration);
+
+        DebugLogger.Log("[Level1Tutorial] Protagonist walk-in complete");
     }
 
     private IEnumerator ShowMessage(string message)

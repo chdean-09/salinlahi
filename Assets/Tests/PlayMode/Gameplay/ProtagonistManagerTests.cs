@@ -4,7 +4,7 @@ using UnityEngine.TestTools;
 using System.Collections;
 using Salinlahi.Runtime.Gameplay;
 
-namespace Tests.Gameplay
+namespace Salinlahi.Tests.PlayMode.Gameplay
 {
     public class ProtagonistManagerTests
     {
@@ -35,9 +35,6 @@ namespace Tests.Gameplay
             // Arrange
             var gameObject = new GameObject("TestManager");
             _manager = gameObject.AddComponent<ProtagonistManager>();
-
-            // Act
-            _manager.Awake();
 
             // Assert
             Assert.IsNotNull(ProtagonistManager.Instance);
