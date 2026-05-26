@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5a1d575bfa5eb844c90ca811b25817bd, type: 3}
+  m_Name: Era_01
+  m_EditorClassIdentifier: Salinlahi.Runtime::EraConfigSO
+  eraName: Era One
+  backgroundSprite: {fileID: -8410918290169310731, guid: c31990d003e308a42894ccd057dd6548, type: 3}
+  bannerSprite: {fileID: 21300000, guid: 733e95c8b2636974c95813cec85cdcd0, type: 3}
+  levels:
+  - {fileID: 11400000, guid: 0fb8a83456b92dd4aa1de31579baa559, type: 2}
+  - {fileID: 11400000, guid: d01f1d66fecf4fc1bbf186c18f571dd7, type: 2}
+  - {fileID: 11400000, guid: b643eccf168564fdba522fefae795880, type: 2}
+  - {fileID: 11400000, guid: 092d40473c176415b945fd0da34913ab, type: 2}
+  - {fileID: 11400000, guid: 72050107dc7aa455aad29d5ad7bc857e, type: 2}
