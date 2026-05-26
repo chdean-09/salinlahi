@@ -15,5 +15,7 @@ MonoBehaviour:
   characterID: BA
   syllable: ba
   displaySprite: {fileID: 8335134393165218311, guid: e5ec7d503e3af6545bae9d7312af2bcb, type: 3}
+  badgeSprite: {fileID: 21300000, guid: 4ed75582c71cdb941aa2283c9480b27b, type: 3}
+  scrambledBadgeSprite: {fileID: 0}
   pronunciationClip: {fileID: 0}
   templateFileName: BA_template_01

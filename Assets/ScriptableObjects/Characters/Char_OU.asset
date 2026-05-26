@@ -15,5 +15,7 @@ MonoBehaviour:
   characterID: OU
   syllable: o/u
   displaySprite: {fileID: 8544560402322239208, guid: 86136cc8d6bbba249b05d453f42fdd73, type: 3}
+  badgeSprite: {fileID: 21300000, guid: a3059a56b46b2b640b93239e75f6dd39, type: 3}
+  scrambledBadgeSprite: {fileID: 0}
   pronunciationClip: {fileID: 0}
   templateFileName: OU_template_01
