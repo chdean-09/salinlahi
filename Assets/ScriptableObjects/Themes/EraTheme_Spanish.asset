@@ -13,11 +13,14 @@ MonoBehaviour:
   m_Name: EraTheme_Spanish
   m_EditorClassIdentifier: Salinlahi.Runtime::EraThemeSO
   eraName: 
-  backgroundSprite: {fileID: 0}
-  backgroundColor: {r: 0.3517711, g: 0.5027633, b: 0.8773585, a: 1}
+  backgroundSprite: {fileID: -8410918290169310731, guid: c31990d003e308a42894ccd057dd6548, type: 3}
+  backgroundColor: {r: 0.5943396, g: 0.3448291, b: 0.3448291, a: 1}
   groundSprite: {fileID: 0}
   baseZoneSprite: {fileID: -3168015599944306380, guid: c3a8b40810764b2469d2572195e7bf34, type: 3}
   shrineSprite: {fileID: 1809467782239504920, guid: c0344f34c3a6b7e4991afc62c0c8c242, type: 3}
   topFoliageSprite: {fileID: 0}
   bushSprite: {fileID: 0}
   torchSprite: {fileID: 0}
+  pillarMode: 0
+  pillarColor: {r: 0, g: 0, b: 0, a: 1}
+  pillarSprite: {fileID: 0}
