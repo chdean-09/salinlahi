@@ -87,6 +87,12 @@ public class WaveManager : MonoBehaviour
             LoadLevelConfig(selectedLevel);
         }
 
+        if (!_waitForExternalStart
+            && LevelFlowController.TryStartRuntimeTutorialFlow(_levelConfig, this, _spawner, _fallbackEnemyData))
+        {
+            return;
+        }
+
         if (!_waitForExternalStart)
         {
             StartLevel(selectedLevel);

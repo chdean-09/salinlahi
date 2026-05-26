@@ -16,7 +16,7 @@ MonoBehaviour:
   levelNumber: 3
   chapterNumber: 1
   chapterName: Chapter 1
-  eraTheme: {fileID: 11400000, guid: 80a50c4bceb3cc946a8586e47777bb12, type: 2}
+  eraTheme: {fileID: 11400000, guid: 4a3f16684c91d284eafb13ac69eecbfc, type: 2}
   waves:
   - {fileID: 11400000, guid: bcbd85a71e74347c88a0ff62e32c719e, type: 2}
   - {fileID: 11400000, guid: e4a6ca0f3271e43fd92ccd659e4bbe9d, type: 2}
@@ -28,3 +28,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
   bossConfig: {fileID: 0}
   isAvailableInLite: 0
+  introDialogue: {fileID: 0}
+  outroDialogue: {fileID: 0}
+  bgmClip: {fileID: 0}
+  hasProtagonist: 1
+  protagonistWalksIn: 0
