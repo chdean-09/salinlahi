@@ -16,7 +16,7 @@ MonoBehaviour:
   targetCharacter: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
   enemyData: {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
   stopPosition: {x: -0.010000229, y: 2.9275002, z: 0}
-  promptFreezeDelaySeconds: 1.9
+  promptFreezeDelaySeconds: 2.3
   templatePoints:
   - {x: 0, y: 50}
   - {x: 40, y: 0}
