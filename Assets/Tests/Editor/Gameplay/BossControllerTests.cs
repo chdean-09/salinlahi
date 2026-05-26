@@ -206,10 +206,10 @@ namespace Salinlahi.Tests.Editor.Gameplay
         {
             BaybayinCharacterSO ba = CreateChar("BA");
             CreateLevelConfig(ba);
-            BossPhase phase = CreatePhase(requiredCount: 1, vulnerabilityTimer: 100f, summonDuration: 2f);
-            phase.summonInterval = 0.5f;
-            phase.summonBurstMin = 1;
-            phase.summonBurstMax = 1;
+            BossPhase phase = CreatePhase(requiredCount: 1, vulnerabilityTimer: 100f, summonPhaseDuration: 2f);
+            phase.delayBetweenSummons = 0.5f;
+            phase.minionsPerSummonMin = 1;
+            phase.minionsPerSummonMax = 1;
             EnemyDataSO summonData = ScriptableObject.CreateInstance<EnemyDataSO>();
             summonData.enemyID = "summon";
             summonData.maxHealth = 1;
@@ -259,7 +259,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
         {
             BaybayinCharacterSO ba = CreateChar("BA");
             CreateLevelConfig(ba);
-            BossPhase phase = CreatePhase(requiredCount: 1, vulnerabilityTimer: 100f, summonDuration: 0.5f);
+            BossPhase phase = CreatePhase(requiredCount: 1, vulnerabilityTimer: 100f, summonPhaseDuration: 0.5f);
             BossConfigSO config = CreateConfig(introDuration: 0.3f, outroDuration: 0f, phases:
                 new List<BossPhase> { phase });
 
@@ -341,15 +341,15 @@ namespace Salinlahi.Tests.Editor.Gameplay
         private BossPhase CreatePhase(
             int requiredCount,
             float vulnerabilityTimer = 100f,
-            float summonDuration = 0f,
+            float summonPhaseDuration = 0f,
             BossMovementPattern movement = BossMovementPattern.Hover)
         {
             return new BossPhase
             {
-                summonDuration = summonDuration,
-                summonInterval = 1f,
-                summonBurstMin = 1,
-                summonBurstMax = 1,
+                summonPhaseDuration = summonPhaseDuration,
+                delayBetweenSummons = 1f,
+                minionsPerSummonMin = 1,
+                minionsPerSummonMax = 1,
                 summonEnemyTypes = new List<EnemyDataSO>(),
                 summonSpawnRange = Vector2.zero,
                 requiredCharacterCount = requiredCount,
