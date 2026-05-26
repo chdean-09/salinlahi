@@ -25,9 +25,36 @@ namespace Salinlahi.Runtime.Gameplay
             Instance = this;
         }
 
-        public void EnsureProtagonist(Vector3 targetPosition)
+        public Vector3 CalculateProtagonistPosition()
+        {
+            PlayerBase playerBase = FindFirstObjectByType<PlayerBase>();
+            if (playerBase != null)
+            {
+                Bounds bounds = GetBaseBounds(playerBase);
+                return new Vector3(bounds.center.x, bounds.min.y - 0.45f, 0f);
+            }
+
+            return new Vector3(0f, -8.35f, 0f);
+        }
+
+        private static Bounds GetBaseBounds(PlayerBase playerBase)
+        {
+            Collider2D collider = playerBase.GetComponent<Collider2D>();
+            if (collider != null)
+                return collider.bounds;
+
+            SpriteRenderer renderer = playerBase.GetComponent<SpriteRenderer>();
+            if (renderer != null && renderer.sprite != null)
+                return renderer.bounds;
+
+            return new Bounds(playerBase.transform.position, Vector3.one);
+        }
+
+        public void EnsureProtagonist(Vector3 targetPosition, bool spawnBelowScreen = true)
         {
             if (ProtagonistTransform != null) return;
+
+            Vector3 startPosition = spawnBelowScreen ? targetPosition + Vector3.down * 5f : targetPosition;
 
             if (_protagonistPrefab == null)
             {
@@ -38,12 +65,11 @@ namespace Salinlahi.Runtime.Gameplay
                 if (_protagonistPrefab == null)
                 {
                     DebugLogger.LogWarning("[ProtagonistManager] No protagonist prefab assigned. Creating protagonist from sprite fallback.");
-                    ProtagonistTransform = CreateProtagonistFromSprite(targetPosition);
+                    ProtagonistTransform = CreateProtagonistFromSprite(startPosition);
                     return;
                 }
             }
 
-            Vector3 startPosition = targetPosition + Vector3.down * 5f;
             GameObject protagonist = Instantiate(_protagonistPrefab, startPosition, Quaternion.identity);
             ProtagonistTransform = protagonist.transform;
             ValidateProtagonistVisibility(ProtagonistTransform);
@@ -74,9 +100,8 @@ namespace Salinlahi.Runtime.Gameplay
             ProtagonistTransform.position = targetPosition;
         }
 
-        private Transform CreateProtagonistFromSprite(Vector3 targetPosition)
+        private Transform CreateProtagonistFromSprite(Vector3 startPosition)
         {
-            Vector3 startPosition = targetPosition + Vector3.down * 5f;
             GameObject protagonist = new("Protagonist");
             protagonist.transform.position = startPosition;
             protagonist.transform.localScale = new Vector3(0.3f, 0.3f, 1f);
@@ -96,9 +121,7 @@ namespace Salinlahi.Runtime.Gameplay
             foreach (Object asset in assets)
             {
                 if (asset is Sprite sprite)
-                {
                     return sprite;
-                }
             }
 #endif
             return Resources.Load<Sprite>("Characters/Protagonist/sprite_prot_japanese_idle_back-Sheet");

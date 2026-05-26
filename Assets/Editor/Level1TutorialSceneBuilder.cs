@@ -108,6 +108,9 @@ public static class Level1TutorialSceneBuilder
         ConfigureWaveManager(waveManager, spawner);
         EnsureSceneInBuildSettings(GameplayScenePath);
 
+        // Ensure protagonist animation setup is applied (silent, logs only)
+        ProtagonistAnimationSetup.SetupFromSceneBuilder();
+
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene);
         AssetDatabase.SaveAssets();
@@ -540,9 +543,6 @@ public static class Level1TutorialSceneBuilder
         serialized.FindProperty("_waveSpawner").objectReferenceValue = spawner;
         serialized.FindProperty("_fallbackTutorialEnemyData").objectReferenceValue = FindEnemyData();
         serialized.FindProperty("_guideUI").objectReferenceValue = guide;
-        serialized.FindProperty("_protagonist").objectReferenceValue = protagonist;
-        serialized.FindProperty("_protagonistWalkStart").objectReferenceValue = protagonistStart;
-        serialized.FindProperty("_protagonistWalkEnd").objectReferenceValue = protagonistEnd;
         serialized.FindProperty("_protagonistWalkSeconds").floatValue = 1.75f;
         ConfigureHiddenDuringTutorial(serialized.FindProperty("_hideDuringTutorial"));
         

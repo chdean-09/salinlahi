@@ -1,4 +1,5 @@
 using System.Collections;
+using Salinlahi.Runtime.Gameplay;
 using UnityEngine;
 
 /// <summary>
@@ -94,6 +95,20 @@ public class LevelFlowController : MonoBehaviour
         {
             DebugLogger.LogError("LevelFlowController: No LevelConfigSO resolved. Aborting flow.");
             yield break;
+        }
+
+        // Spawn protagonist if level has one configured
+        if (_levelConfig.hasProtagonist)
+        {
+            if (ProtagonistManager.Instance != null)
+            {
+                Vector3 protagonistPos = ProtagonistManager.Instance.CalculateProtagonistPosition();
+                ProtagonistManager.Instance.EnsureProtagonist(protagonistPos, spawnBelowScreen: _levelConfig.protagonistWalksIn);
+            }
+            else
+            {
+                DebugLogger.LogError("[LevelFlowController] ProtagonistManager.Instance is NULL! Is the ProtagonistManager prefab in the scene?");
+            }
         }
 
         // AC-1: Play intro dialogue before starting waves

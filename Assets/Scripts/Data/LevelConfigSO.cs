@@ -40,4 +40,11 @@ public class LevelConfigSO : ScriptableObject
 
     [Tooltip("Background music for this level. Null = no BGM change.")]
     public AudioClip bgmClip;
+
+    [Header("Protagonist")]
+    [Tooltip("If true, spawns a protagonist during this level.")]
+    public bool hasProtagonist = false;
+
+    [Tooltip("If true, protagonist walks in from below. If false, appears instantly at final position.")]
+    public bool protagonistWalksIn = false;
 }

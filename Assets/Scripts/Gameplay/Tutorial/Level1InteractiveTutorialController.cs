@@ -211,6 +211,10 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
 
     private void EnsureTutorialTransforms()
     {
+        // Only prepare tutorial transforms for Level 1
+        if (!IsLevelOneContext())
+            return;
+
         // Calculate end position: center below the base/wall line
         PlayerBase playerBase = FindFirstObjectByType<PlayerBase>();
         if (playerBase != null)
@@ -486,6 +490,11 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
 
     private void DefeatActiveTutorialEnemy()
     {
+        // Trigger protagonist draw animation (tutorial bypasses CombatResolver)
+        Animator protagonistAnimator = ProtagonistManager.Instance?.ProtagonistTransform?.GetComponent<Animator>();
+        if (protagonistAnimator != null)
+            protagonistAnimator.SetTrigger("Draw");
+
         _activeEnemy?.Defeat();
         _activeEnemy = null;
     }
