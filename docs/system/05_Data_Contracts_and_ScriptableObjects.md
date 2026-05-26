@@ -1,6 +1,6 @@
 # 05 — Data Contracts and ScriptableObjects
 **Project:** Salinlahi
-**Version:** 1.5
+**Version:** 1.6
 **Date:** 2026-05-26
 **Owner:** Chad Andrada (Product Owner / Designer)
 
@@ -261,10 +261,11 @@ Defined at the bottom of `EnemyDataSO.cs`:
 
 | Field | Type | Header | Notes |
 |-------|------|--------|-------|
-| `summonDuration` | `float` | Summoning Phase | Seconds the boss summons minions. Default `30f`. |
-| `summonInterval` | `float` | Summoning Phase | Seconds between summon ticks. In Teleport movement, also the teleport cadence. Default `5f`. |
-| `summonBurstMin` | `int` | Summoning Phase | Min minions per tick (inclusive). Default `2`. |
-| `summonBurstMax` | `int` | Summoning Phase | Max minions per tick (inclusive, `Random.Range(min, max+1)`). Default `3`. |
+| `summonPhaseDuration` | `float` | Summoning Phase | Total phase length in seconds. No NEW summon acts may start after this elapses; an act already in progress always runs to completion. Default `30f`. Renamed from `summonDuration` (legacy assets migrate via `[FormerlySerializedAs]`). |
+| `delayBetweenSummons` | `float` | Summoning Phase | Seconds BETWEEN summon acts. Boss movement (teleport / pace) fires during this gap. Default `5f`. Renamed from `summonInterval`. |
+| `minionsPerSummonMin` | `int` | Summoning Phase | Min minions per summon act (inclusive). Default `2`. Renamed from `summonBurstMin`. |
+| `minionsPerSummonMax` | `int` | Summoning Phase | Max minions per summon act (inclusive, `Random.Range(min, max+1)`). Default `3`. Renamed from `summonBurstMax`. |
+| `delayBetweenMinions` | `float` | Summoning Phase | Seconds WITHIN a summon act between consecutive minion spawns (NEW). Total in-act duration ≈ `count × delayBetweenMinions`. Default `0.6f`. Set to `0` to disable stagger — discouraged. |
 | `summonEnemyTypes` | `List<EnemyDataSO>` | Summoning Phase | Pool for this phase. Empty falls back to `BossConfigSO.fallbackEnemyTypes`. |
 | `summonSpawnRange` | `Vector2` | Summoning Phase | Half-range around the boss's CURRENT position for each minion's spawn origin. Default `(2, 0)`. |
 | `requiredCharacterCount` | `int` | Vulnerability Window | Correct random glyphs needed during the Vulnerable window. Default `3`. |

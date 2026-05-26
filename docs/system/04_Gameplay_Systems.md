@@ -1,6 +1,6 @@
 # 04 — Gameplay Systems
 **Project:** Salinlahi
-**Version:** 1.7
+**Version:** 1.8
 **Date:** 2026-05-26
 **Owner:** Gameplay Developer (Jon Wayne Cabusbusan / Chad Andrada)
 
@@ -290,7 +290,7 @@ The Spanish-era boss (`el_inquisidor`) is implemented as a self-contained phase-
 |--------|------|
 | `BossEnemy` (extends `Enemy`) | `IsBoss => true` so `CombatResolver` excludes it; `TakeDamage` is a no-op (warns) so only `BossController.TryRouteDraw` can damage the boss. `OnEnable` reasserts `SpriteRenderer.sortingOrder = RenderOrder.Boss`. |
 | `BossController` | Authoritative state machine. Owns phases, vulnerability, HP, and outro. Raises all boss events. |
-| `BossSummonTicker` | Stateless helper. Plays a summon-tell animation on the boss SpriteRenderer, then spawns 2–3 minions per tick at the boss's CURRENT position, applying `summonHorizontalBounds` clamp. |
+| `BossSummonTicker` | Stateless helper. Plays a summon-tell animation on the boss SpriteRenderer, then streams minions one at a time on a per-spawn `delayBetweenMinions` cadence (default 0.6s), applying `summonHorizontalBounds` clamp. Each summon act spawns 2–3 minions as a paced stream, not a single-frame burst. The boss holds its cast pose from the windup through the final spawn and for ~0.3s after, so the stream reads as a deliberate ritual. The number of acts per phase and the gap between acts (`delayBetweenSummons`) are unchanged. |
 | `PhaseBasedMovement` | Drives the boss transform per phase movement pattern (Hover/Pace/Teleport). Imperative API: `StartPattern(phase)`, `StopPattern()`, `TeleportNow(phase)` (called by BossController on Teleport ticks). |
 | `BossStateVisuals` | Panting bob + red tint during `WindingDown`/`Vulnerable`; collapse animation on entering `Vulnerable`; stand-up tween on exiting `Vulnerable` (`Damaged` or timeout). |
 | `BossDamageFeedback` | Two-tier damage feedback: small-hit (per glyph) and emphasized (phase damage). Exposes `IsHurtPaused` and `CriticalColor` consumed by movement and state visuals. |

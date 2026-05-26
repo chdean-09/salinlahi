@@ -100,10 +100,11 @@ erDiagram
     }
 
     BossPhase {
-        float summonDuration
-        float summonInterval
-        int summonBurstMin
-        int summonBurstMax
+        float summonPhaseDuration
+        float delayBetweenSummons
+        int minionsPerSummonMin
+        int minionsPerSummonMax
+        float delayBetweenMinions
         int requiredCharacterCount
         float vulnerabilityTimer
         BossMovementPattern movementPattern
@@ -467,10 +468,10 @@ stateDiagram-v2
     Idle --> Intro : StartBoss(config)
     Intro --> SummoningPhase : after introDuration
 
-    SummoningPhase --> WindingDown : after summonDuration
+    SummoningPhase --> WindingDown : after summonPhaseDuration (gate; in-flight acts complete)
     note right of SummoningPhase
-        Spawns minions on summonInterval ticks.
-        Movement pattern: Hover / Pace / Teleport.
+        Streams minions on delayBetweenMinions cadence within each act.
+        Acts repeat every delayBetweenSummons. Movement pattern fires between acts.
     end note
 
     WindingDown --> Vulnerable : all non-boss enemies cleared
