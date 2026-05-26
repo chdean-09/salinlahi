@@ -5,6 +5,7 @@ using System.Collections;
 /// Listens for OnCharacterRecognized and defeats the correct enemy.
 /// This is the bridge between the recognition pipeline and the
 /// enemy system. Without this, drawing does nothing.
+[DisallowMultipleComponent]
 public class CombatResolver : MonoBehaviour
 {
     [Tooltip("Minimum matching on-screen enemies required to trigger an AOE mass-defeat.")]
@@ -20,6 +21,21 @@ public class CombatResolver : MonoBehaviour
     [SerializeField, Min(0f)] private float _aoeExtraRandomDelay = 0.12f;
     [SerializeField, Min(0f)] private float _aoeInitialDelayMin = 0.08f;
     [SerializeField, Min(0f)] private float _aoeInitialDelayMax = 0.2f;
+    private static CombatResolver _instance;
+
+    private void Awake()
+    {
+        if (_instance != null && _instance != this)
+        {
+            if (Application.isPlaying)
+                Destroy(gameObject);
+            else
+                DestroyImmediate(gameObject);
+            return;
+        }
+
+        _instance = this;
+    }
 
     private void OnEnable()
     {
@@ -30,6 +46,12 @@ public class CombatResolver : MonoBehaviour
     private void OnDisable()
     {
         EventBus.OnCharacterRecognized -= HandleCharacterRecognized;
+    }
+
+    private void OnDestroy()
+    {
+        if (_instance == this)
+            _instance = null;
     }
 
     private void HandleCharacterRecognized(string characterID)

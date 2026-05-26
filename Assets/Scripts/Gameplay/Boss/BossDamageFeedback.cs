@@ -116,9 +116,10 @@ public class BossDamageFeedback : MonoBehaviour
 
         if (screenTimeDip > 0f)
         {
+            float previousTimeScale = Time.timeScale;
             Time.timeScale = 1f - screenTimeDip;
             yield return new WaitForSecondsRealtime(0.15f);  // SCALED-TIME EXCEPTION
-            Time.timeScale = 1f;
+            Time.timeScale = previousTimeScale;
         }
 
         float t = 0f;

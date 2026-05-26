@@ -111,6 +111,20 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.AreEqual(1, invisiblePhaser.CurrentHealth);
         }
 
+        [Test]
+        public void Awake_DestroysDuplicateResolverInstance()
+        {
+            CombatResolver first = CreateResolver();
+            Assert.IsNotNull(first);
+
+            var duplicateGo = new GameObject("CombatResolver_Duplicate_Test");
+            _objectsToDestroy.Add(duplicateGo);
+            CombatResolver duplicate = duplicateGo.AddComponent<CombatResolver>();
+
+            Assert.IsTrue(duplicate == null);
+            Assert.AreEqual(1, Object.FindObjectsByType<CombatResolver>(FindObjectsSortMode.None).Length);
+        }
+
         private BaybayinCharacterSO CreateCharacter(string id, string syllable)
         {
             var character = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
