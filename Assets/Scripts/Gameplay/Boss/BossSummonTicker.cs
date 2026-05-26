@@ -48,44 +48,58 @@ public class BossSummonTicker : MonoBehaviour
                 yield return new WaitForSeconds(_holdLastFrameDuration);
         }
 
-        // ---- Spawn burst ----
-        int min = Mathf.Max(0, phase.summonBurstMin);
-        int max = Mathf.Max(min, phase.summonBurstMax);
-        int burst = Random.Range(min, max + 1);
+        // ---- Stream spawns one at a time ----
+        int min = Mathf.Max(0, phase.minionsPerSummonMin);
+        int max = Mathf.Max(min, phase.minionsPerSummonMax);
+        int count = Random.Range(min, max + 1);
+        float perSpawnDelay = Mathf.Max(0f, phase.delayBetweenMinions);
 
-        for (int n = 0; n < burst; n++)
+        for (int n = 0; n < count; n++)
         {
             EnemyDataSO data = PickEnemyType(phase, config);
-            if (data == null) continue;
+            if (data != null)
+            {
+                Enemy summon = spawner.SpawnEnemy(data);
+                if (summon != null)
+                {
+                    // Override the random-X position with boss.position ± summonSpawnRange.
+                    Vector3 origin = transform.position;
+                    float dx = Random.Range(-phase.summonSpawnRange.x, phase.summonSpawnRange.x);
+                    float dy = Random.Range(-phase.summonSpawnRange.y, phase.summonSpawnRange.y);
+                    float spawnX = origin.x + dx;
+                    float spawnY = origin.y + dy;
 
-            Enemy summon = spawner.SpawnEnemy(data);
-            if (summon == null) continue;
+                    // Hard cap to keep summons on-screen even when the boss drifts toward the edge.
+                    if (config != null && config.summonHorizontalBounds.y > config.summonHorizontalBounds.x)
+                        spawnX = Mathf.Clamp(spawnX, config.summonHorizontalBounds.x, config.summonHorizontalBounds.y);
 
-            // Override the random-X position with boss.position ± summonSpawnRange.
-            Vector3 origin = transform.position;
-            float dx = Random.Range(-phase.summonSpawnRange.x, phase.summonSpawnRange.x);
-            float dy = Random.Range(-phase.summonSpawnRange.y, phase.summonSpawnRange.y);
-            float spawnX = origin.x + dx;
-            float spawnY = origin.y + dy;
+                    summon.transform.position = new Vector3(spawnX, spawnY, 0f);
 
-            // Hard cap to keep summons on-screen even when the boss drifts toward the edge.
-            if (config != null && config.summonHorizontalBounds.y > config.summonHorizontalBounds.x)
-                spawnX = Mathf.Clamp(spawnX, config.summonHorizontalBounds.x, config.summonHorizontalBounds.y);
+                    // Render summons above the boss so they don't disappear behind its sprite
+                    // when their spawn position overlaps. Enemy.OnEnable resets this on pool
+                    // reuse, so normal wave spawns are unaffected.
+                    SpriteRenderer summonRenderer = summon.GetComponent<SpriteRenderer>();
+                    if (summonRenderer != null)
+                        summonRenderer.sortingOrder = RenderOrder.BossSummon;
 
-            summon.transform.position = new Vector3(spawnX, spawnY, 0f);
+                    // Assign a random allowed character so the minion is defeatable.
+                    BaybayinCharacterSO character = PickAllowedCharacter();
+                    if (character != null)
+                        summon.AssignCharacter(character);
+                }
+            }
 
-            // Render summons above the boss so they don't disappear behind its sprite
-            // when their spawn position overlaps. Enemy.OnEnable resets this on pool
-            // reuse, so normal wave spawns are unaffected.
-            SpriteRenderer summonRenderer = summon.GetComponent<SpriteRenderer>();
-            if (summonRenderer != null)
-                summonRenderer.sortingOrder = RenderOrder.BossSummon;
-
-            // Assign a random allowed character so the minion is defeatable.
-            BaybayinCharacterSO character = PickAllowedCharacter();
-            if (character != null)
-                summon.AssignCharacter(character);
+            // Stagger between spawns. Skip the wait after the LAST spawn — the
+            // post-stream pose tail below covers the "hold pose" beat.
+            if (n < count - 1 && perSpawnDelay > 0f)
+                yield return new WaitForSeconds(perSpawnDelay);
         }
+
+        // ---- Post-stream pose tail ----
+        // Hold the cast-pose sprite (last frame of _summonFrames) for a beat
+        // after the final spawn before returning the boss to its walk loop.
+        if (_holdLastFrameDuration > 0f)
+            yield return new WaitForSeconds(_holdLastFrameDuration);
 
         if (_enemy != null) _enemy.ResetWalkAnimation();
         IsPlayingSummonAnimation = false;
