@@ -26,6 +26,18 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
     private Coroutine _pulseCoroutine;
     private Coroutine _animatePathCoroutine;
 
+    private void Awake()
+    {
+        TutorialFontProvider.ApplyTo(_promptText);
+        TutorialFontProvider.ApplyTo(_feedbackText);
+
+        if (_skipButton != null)
+        {
+            TMP_Text skipLabel = _skipButton.GetComponentInChildren<TMP_Text>(true);
+            TutorialFontProvider.ApplyTo(skipLabel);
+        }
+    }
+
     public static Level1TutorialGuideUI CreateRuntime()
     {
         Canvas canvas = FindFirstObjectByType<Canvas>();
@@ -78,6 +90,7 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         text.alignment = alignment;
         text.color = Color.white;
         text.textWrappingMode = TextWrappingModes.Normal;
+        TutorialFontProvider.ApplyTo(text);
         return text;
     }
 

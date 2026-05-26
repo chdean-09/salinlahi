@@ -33,6 +33,8 @@ public class TutorialOverlayController : MonoBehaviour
     private void Awake()
     {
         HideOverlay();
+        TutorialFontProvider.ApplyTo(_bodyText);
+        TutorialFontProvider.ApplyTo(_buttonText);
     }
 
     private void OnEnable()
