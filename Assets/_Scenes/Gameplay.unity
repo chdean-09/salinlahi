@@ -6282,7 +6282,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Salinlahi.Runtime::BossDrawCounterUI
   _counterText: {fileID: 1402297130}
   _canvasGroup: {fileID: 1492016838}
-  _badgeRelativeOffset: {x: 0, y: -0.3}
+  _badgeRelativeOffset: {x: 0, y: -0.6}
   _gameplayCamera: {fileID: 573789166}
 --- !u!1 &1512931224
 GameObject:

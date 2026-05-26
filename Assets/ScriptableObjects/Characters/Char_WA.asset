@@ -15,7 +15,7 @@ MonoBehaviour:
   characterID: WA
   syllable: wa
   displaySprite: {fileID: -3493063987729265783, guid: 14ccf3bb7b032d4489c4232ae5010853, type: 3}
-  badgeSprite: {fileID: 21300000, guid: 5885840ad1a1a4041a71c6aeb1221305, type: 3}
+  badgeSprite: {fileID: 21300000, guid: ca1f080825aef994095f093a562c0b28, type: 3}
   scrambledBadgeSprite: {fileID: 0}
   pronunciationClip: {fileID: 0}
   templateFileName: WA_template_01
