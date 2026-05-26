@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Salinlahi.Runtime.Gameplay;
 
 public sealed class Level1InteractiveTutorialController : MonoBehaviour
 {
@@ -28,13 +29,12 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
     [SerializeField] private WaveSpawner _waveSpawner;
     [SerializeField] private EnemyDataSO _fallbackTutorialEnemyData;
     [SerializeField] private Level1TutorialGuideUI _guideUI;
-    [SerializeField] private Transform _protagonist;
-    [SerializeField] private Transform _protagonistWalkStart;
-    [SerializeField] private Transform _protagonistWalkEnd;
     [SerializeField] private GameObject[] _hideDuringTutorial;
 
     [Header("Animation Timing")]
     [SerializeField] private float _protagonistWalkSeconds = 1.75f;
+    
+    private Vector3 _protagonistEndPosition;
 
     private readonly Level1TutorialGlyphValidator _validator = new();
     private Level1TutorialState _state = Level1TutorialState.Gate;
@@ -220,21 +220,23 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
 
     private void EnsureTutorialTransforms()
     {
-        if (_protagonist != null && _protagonistWalkStart != null && _protagonistWalkEnd != null)
-            return;
-
-        Vector3 end = Vector3.zero;
+        // Calculate end position: center behind the base
         PlayerBase playerBase = FindFirstObjectByType<PlayerBase>();
         if (playerBase != null)
         {
             Bounds bounds = ResolveBounds(playerBase.gameObject);
-            end = new Vector3(bounds.center.x, bounds.min.y - 0.45f, 0f);
+            _protagonistEndPosition = new Vector3(bounds.center.x, bounds.min.y + 1.5f, 0f);
+        }
+        else
+        {
+            _protagonistEndPosition = Vector3.zero;
         }
 
-        Vector3 start = end + new Vector3(0f, -3f, 0f);
-        _protagonist ??= CreateMarker("Tutorial_Protagonist", start);
-        _protagonistWalkStart ??= CreateMarker("Tutorial_Protagonist_Start", start);
-        _protagonistWalkEnd ??= CreateMarker("Tutorial_Protagonist_End", end);
+        // Ensure protagonist exists via ProtagonistManager
+        if (ProtagonistManager.Instance != null)
+        {
+            ProtagonistManager.Instance.EnsureProtagonist(_protagonistEndPosition);
+        }
     }
 
     private static Bounds ResolveBounds(GameObject target)
@@ -421,28 +423,21 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
 
     private IEnumerator RunProtagonistWalkIn()
     {
-        if (_protagonist == null || _protagonistWalkStart == null || _protagonistWalkEnd == null)
-            yield break;
-
-        _state = Level1TutorialState.WalkIn;
-        _protagonist.position = _protagonistWalkStart.position;
-
-        float duration = Mathf.Max(0.01f, GetProtagonistWalkSeconds());
-        float elapsed = 0f;
-        while (elapsed < duration)
+        if (ProtagonistManager.Instance == null)
         {
-            elapsed += Time.unscaledDeltaTime;
-            float t = Mathf.Clamp01(elapsed / duration);
-            // Ease-out during final 20%
-            float eased = t < 0.8f ? t : Mathf.Lerp(0.8f, 1f, 1f - Mathf.Pow(1f - ((t - 0.8f) / 0.2f), 2f));
-            _protagonist.position = Vector3.Lerp(
-                _protagonistWalkStart.position,
-                _protagonistWalkEnd.position,
-                eased);
-            yield return null;
+            DebugLogger.LogWarning("[Level1Tutorial] ProtagonistManager not found, skipping walk-in");
+            yield break;
         }
 
-        _protagonist.position = _protagonistWalkEnd.position;
+        _state = Level1TutorialState.WalkIn;
+        
+        // Ensure protagonist is created and walk it in
+        ProtagonistManager.Instance.EnsureProtagonist(_protagonistEndPosition);
+        ProtagonistManager.Instance.WalkInProtagonist(_protagonistEndPosition);
+
+        // Wait for walk-in to complete
+        float duration = Mathf.Max(0.01f, GetProtagonistWalkSeconds());
+        yield return new WaitForSeconds(duration);
     }
 
     private IEnumerator ShowMessage(string message)
