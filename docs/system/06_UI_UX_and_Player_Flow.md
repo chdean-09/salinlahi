@@ -1,7 +1,7 @@
 # 06 — UI/UX and Player Flow
 **Project:** Salinlahi
-**Version:** 1.5
-**Date:** 2026-05-24
+**Version:** 1.6
+**Date:** 2026-05-27
 **Owner:** Jeff Andre Millan (UI/UX Developer)
 
 ---
@@ -122,6 +122,33 @@ The Gameplay HUD now lives under a `PlayAreaContainer` RectTransform that sizes 
 
 [EVIDENCE: Assets/Scripts/UI/PlayAreaContainer.cs]
 [EVIDENCE: Assets/Scripts/Gameplay/Camera/AspectLockedCamera.cs — `PlayColumnScreenRect`, `OnPlayAreaChanged`]
+
+## 3.5 Level Select — `LevelSelectUI.cs`
+
+The Level Select screen is driven by a serialized `List<EraConfigSO>` on the `LevelSelectUI` component. It displays up to five level scroll buttons at a time (one per slot), sourced from the active era's `EraConfigSO.levels` list.
+
+### Era Navigation
+
+- Prev / Next arrow buttons remain **always visible** at era edges; they are toggled **non-interactable** (Unity's `Button.interactable = false`) rather than hidden, so the Button's `ColorBlock.disabledColor` tints them grey in place.
+- With only one era authored, both Prev and Next arrows appear greyed at startup.
+
+### Per-Era Visuals
+
+| Element | Source |
+|---------|--------|
+| Background sprite | `EraConfigSO.backgroundSprite` → assigned to `Image _eraBackgroundImage.sprite` |
+| Banner sprite | `EraConfigSO.bannerSprite` → assigned to `Image _eraBannerImage.sprite` |
+| Level scroll sprites | `LevelConfigSO.numberSprite` → assigned to each `LevelButton._scrollImage.sprite` |
+
+TMP text overlays (era title, level number) were removed; all text is baked into the sprites.
+
+### Level Button Reuse
+
+Five `LevelButton` scene instances are reused across all eras. On era change, each button is configured via `LevelButton.Setup(config, unlocked, completed)` from the incoming `EraConfigSO.levels` list. Buttons beyond the era's level count are hidden (`SetActive(false)`).
+
+[EVIDENCE: Assets/Scripts/UI/LevelSelectUI.cs]
+[EVIDENCE: Assets/Scripts/UI/LevelButton.cs]
+[EVIDENCE: Assets/Scripts/Data/EraConfigSO.cs]
 
 ---
 

@@ -13,6 +13,9 @@ public class LevelConfigSO : ScriptableObject
     [Tooltip("Visual theme for this level's era (background, decorations, etc.)")]
     public EraThemeSO eraTheme;
 
+    [Tooltip("Baked-in numbered scroll sprite displayed on this level's Level Select button.")]
+    public Sprite numberSprite;
+
     [Header("Waves")]
     [Tooltip("Waves played in order from index 0")]
     public List<WaveConfigSO> waves;

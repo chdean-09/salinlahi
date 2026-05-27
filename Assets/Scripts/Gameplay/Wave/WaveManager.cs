@@ -69,23 +69,22 @@ public class WaveManager : MonoBehaviour
         }
     }
 
+    private void Awake()
+    {
+        // Resolve the level config and propagate to GameManager.CurrentLevel
+        // here (not in Start) so that other scene components — most notably
+        // EnvironmentThemeSwapper.Start — read the correct level. MainMenu's
+        // Play button intentionally clears CurrentLevel before loading the
+        // scene; this is the recovery path that reads SelectedLevel from
+        // PlayerPrefs and re-hydrates GameManager before any Start runs.
+        EnsureLevelConfigResolvedAndPropagated();
+    }
+
     private void Start()
     {
-        // GameManager.CurrentLevel is set by LevelSelectUI before scene load.
-        // Fall back to PlayerPrefs if not set or stale (e.g. Play after a previous level select).
-        int selectedLevel = PlayerPrefs.GetInt(ProgressManager.SelectedLevelKey, 1);
-        LevelConfigSO selectedGameManagerLevel = GameManager.Instance != null
-            ? GameManager.Instance.CurrentLevel
-            : null;
-
-        if (selectedGameManagerLevel != null && selectedGameManagerLevel.levelNumber == selectedLevel)
-        {
-            _levelConfig = selectedGameManagerLevel;
-        }
-        else
-        {
-            LoadLevelConfig(selectedLevel);
-        }
+        // Safety re-resolve in case SelectedLevel changed between Awake and
+        // Start (rare, but cheap).
+        EnsureLevelConfigResolvedAndPropagated();
 
         if (!_waitForExternalStart
             && LevelFlowController.TryStartRuntimeTutorialFlow(_levelConfig, this, _spawner, _fallbackEnemyData))
@@ -95,7 +94,31 @@ public class WaveManager : MonoBehaviour
 
         if (!_waitForExternalStart)
         {
+            int selectedLevel = PlayerPrefs.GetInt(ProgressManager.SelectedLevelKey, 1);
             StartLevel(selectedLevel);
+        }
+    }
+
+    private void EnsureLevelConfigResolvedAndPropagated()
+    {
+        int selectedLevel = PlayerPrefs.GetInt(ProgressManager.SelectedLevelKey, 1);
+        LevelConfigSO existing = GameManager.Instance != null
+            ? GameManager.Instance.CurrentLevel
+            : null;
+
+        if (existing != null && existing.levelNumber == selectedLevel)
+        {
+            _levelConfig = existing;
+            return;
+        }
+
+        LoadLevelConfig(selectedLevel);
+
+        if (_levelConfig != null
+            && GameManager.Instance != null
+            && GameManager.Instance.CurrentLevel != _levelConfig)
+        {
+            GameManager.Instance.SetLevel(_levelConfig);
         }
     }
 
