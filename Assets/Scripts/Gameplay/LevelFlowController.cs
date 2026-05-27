@@ -4,7 +4,7 @@ using UnityEngine;
 
 /// <summary>
 /// Orchestrates the full level lifecycle in the Gameplay scene:
-/// intro dialogue → BGM → WaveManager → outro dialogue → Victory/Defeat routing.
+/// [cutscene (before)] → intro dialogue → BGM → WaveManager → outro dialogue → [cutscene (after)] → Victory/Defeat routing.
 /// EventBus signals drive lifecycle changes; this controller owns terminal screen routing.
 /// </summary>
 public class LevelFlowController : MonoBehaviour
@@ -17,12 +17,18 @@ public class LevelFlowController : MonoBehaviour
     [SerializeField] private VictoryScreenUI _victoryScreen;
     [SerializeField] private DefeatScreenUI _defeatScreen;
 
+    [Header("Cutscene")]
+    [SerializeField] private CutscenePlayer _cutscenePlayer;
+    [Tooltip("Maps level numbers to cutscenes. Null = no cutscenes for any level.")]
+    [SerializeField] private LevelCutsceneMappingSO _levelCutsceneMapping;
+
     [Header("Level Config")]
     [Tooltip("Resolved at runtime from GameManager.CurrentLevel or Inspector fallback.")]
     [SerializeField] private LevelConfigSO _levelConfig;
 
     private bool _levelEnded;
     private bool _waitingForDialogue;
+    private bool _waitingForCutscene;
     private bool _flowAborted;
     private bool _runtimeBootstrapped;
 
@@ -69,6 +75,7 @@ public class LevelFlowController : MonoBehaviour
         EventBus.OnGameOver += HandleGameOver;
         EventBus.OnBossDefeated += HandleBossDefeated;
         EventBus.OnDialogueComplete += HandleDialogueComplete;
+        EventBus.OnCutsceneComplete += HandleCutsceneComplete;
     }
 
     private void OnDisable()
@@ -77,6 +84,7 @@ public class LevelFlowController : MonoBehaviour
         EventBus.OnGameOver -= HandleGameOver;
         EventBus.OnBossDefeated -= HandleBossDefeated;
         EventBus.OnDialogueComplete -= HandleDialogueComplete;
+        EventBus.OnCutsceneComplete -= HandleCutsceneComplete;
     }
 
     private IEnumerator Start()
@@ -109,6 +117,19 @@ public class LevelFlowController : MonoBehaviour
             {
                 DebugLogger.LogError("[LevelFlowController] ProtagonistManager.Instance is NULL! Is the ProtagonistManager prefab in the scene?");
             }
+        }
+
+        // AC-0: Play "before level" cutscene if mapped
+        CutsceneSO beforeCutscene = ResolveCutscene(CutsceneTriggerType.BeforeLevel);
+        if (beforeCutscene != null && _cutscenePlayer != null)
+        {
+            _waitingForCutscene = true;
+            bool playExitTransition = _levelConfig.levelNumber == 1;
+            _cutscenePlayer.Play(beforeCutscene, playExitTransition);
+            yield return new WaitUntil(() => !_waitingForCutscene);
+
+            if (_levelEnded)
+                yield break;
         }
 
         // AC-1: Play intro dialogue before starting waves
@@ -160,8 +181,9 @@ public class LevelFlowController : MonoBehaviour
     {
         _waveManager ??= FindFirstObjectByType<WaveManager>();
         _dialogueController ??= FindFirstObjectByType<DialogueController>();
-        _victoryScreen ??= FindFirstObjectByType<VictoryScreenUI>();
-        _defeatScreen ??= FindFirstObjectByType<DefeatScreenUI>();
+        _cutscenePlayer ??= FindFirstObjectByType<CutscenePlayer>();
+        _victoryScreen ??= FindFirstObjectByType<VictoryScreenUI>(FindObjectsInactive.Include);
+        _defeatScreen ??= FindFirstObjectByType<DefeatScreenUI>(FindObjectsInactive.Include);
         _tutorialOverlayController ??= FindFirstObjectByType<TutorialOverlayController>();
 
         if (_level1InteractiveTutorialController == null
@@ -242,23 +264,31 @@ public class LevelFlowController : MonoBehaviour
         yield return _tutorialOverlayController.PlayIfNeeded(_levelConfig);
     }
 
-    // AC-5: Level complete → outro dialogue → victory screen
+    // AC-5: Level complete → outro dialogue → [cutscene (after)] → victory screen
     private void HandleLevelComplete()
     {
         if (_levelEnded) return;
         _levelEnded = true;
 
-        if (_levelConfig != null && _levelConfig.outroDialogue != null && _dialogueController != null)
-            StartCoroutine(PlayOutroThenVictory());
-        else
-            ShowVictoryScreen();
+        StartCoroutine(PlayOutroThenVictory());
     }
 
     private IEnumerator PlayOutroThenVictory()
     {
-        _waitingForDialogue = true;
-        _dialogueController.Play(_levelConfig.outroDialogue);
-        yield return new WaitUntil(() => !_waitingForDialogue);
+        if (_levelConfig != null && _levelConfig.outroDialogue != null && _dialogueController != null)
+        {
+            _waitingForDialogue = true;
+            _dialogueController.Play(_levelConfig.outroDialogue);
+            yield return new WaitUntil(() => !_waitingForDialogue);
+        }
+
+        CutsceneSO afterCutscene = ResolveCutscene(CutsceneTriggerType.AfterLevel);
+        if (afterCutscene != null && _cutscenePlayer != null)
+        {
+            _waitingForCutscene = true;
+            _cutscenePlayer.Play(afterCutscene);
+            yield return new WaitUntil(() => !_waitingForCutscene);
+        }
 
         ShowVictoryScreen();
     }
@@ -280,6 +310,23 @@ public class LevelFlowController : MonoBehaviour
     private void HandleDialogueComplete()
     {
         _waitingForDialogue = false;
+    }
+
+    private void HandleCutsceneComplete()
+    {
+        _waitingForCutscene = false;
+    }
+
+    private CutsceneSO ResolveCutscene(CutsceneTriggerType trigger)
+    {
+        if (_levelCutsceneMapping == null || _levelConfig == null) return null;
+
+        foreach (LevelCutsceneEntry entry in _levelCutsceneMapping.entries)
+        {
+            if (entry.levelNumber == _levelConfig.levelNumber && entry.triggerType == trigger)
+                return entry.cutscene;
+        }
+        return null;
     }
 
     private void ShowVictoryScreen()

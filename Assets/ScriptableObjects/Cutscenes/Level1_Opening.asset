@@ -1,0 +1,58 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 70f95914c0af94d7bbb1e9ce7cf6e6a8, type: 3}
+  m_Name: Level1_Opening
+  m_EditorClassIdentifier: Salinlahi.Runtime::CutsceneSO
+  cutsceneId: 
+  panels:
+  - image: {fileID: -8046377105674812886, guid: 7b21987c51a4b4657bd294f7a6f50c65, type: 3}
+    text: "It was an ordinary night.\nThe streets were quiet.\nOnly the sound of
+      Juan\u2019s footsteps echoed through the old city.\nBut something beneath the
+      stones was waiting."
+    transitionIn: 0
+    transitionDuration: 0
+    typewriterSpeed: 0
+  - image: {fileID: 4400984820199472484, guid: f43f76612847743438af6831c098a048, type: 3}
+    text: "A strange golden light pulsed from the ground.\nFaint. Alive. Ancient.\nSomething
+      was buried beneath the street.\nAnd somehow\u2026 it was calling to him."
+    transitionIn: 0
+    transitionDuration: 0
+    typewriterSpeed: 0
+  - image: {fileID: 4049355002215072942, guid: a4834c0f76142455ebd0554b3e000567, type: 3}
+    text: "Beneath the dust lay an ancient scroll.\nUntouched by time.\nWarm to the
+      touch.\nThe moment Juan lifted it\u2026\nthe light awakened."
+    transitionIn: 0
+    transitionDuration: 0
+    typewriterSpeed: 0
+  - image: {fileID: -7210448134734164589, guid: 93717dc45de8f4b0fae04a78258c1537, type: 3}
+    text: "Symbols of light rose into the air \u2014\nletters Juan had never seen
+      before.\nYet deep inside\u2026\n They felt familiar.\nLike a forgotten memory
+      returning home."
+    transitionIn: 0
+    transitionDuration: 0
+    typewriterSpeed: 0
+  - image: {fileID: -22084241626377286, guid: 6d3c194e59e1e4d348002ef9e6834324, type: 3}
+    text: "Then the voices came.\n\u201CThe language of your ancestors is fading.\u201D\n\u201CThree
+      eras tried to erase it.\u201D\n\u201CAnd now\u2026 only one remains to bring
+      it back.\u201D\nThe chamber fell silent.\nThe scroll glowed brighter."
+    transitionIn: 0
+    transitionDuration: 0
+    typewriterSpeed: 0
+  - image: {fileID: -7714356923733013676, guid: 35d4a26b12c7645a39ad6ecf04b3ace1, type: 3}
+    text: "One final message burned across the parchment.\n\u201CYou are Salinlahi
+      \u2014 the inheritor. The script is not dead. Reclaim it.\u201D"
+    transitionIn: 0
+    transitionDuration: 0
+    typewriterSpeed: 0
+  defaultTransition: 1
+  defaultTransitionDuration: 0.5
+  defaultTypewriterSpeed: 30
