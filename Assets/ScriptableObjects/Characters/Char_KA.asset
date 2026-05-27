@@ -17,5 +17,5 @@ MonoBehaviour:
   displaySprite: {fileID: -2353683099554400273, guid: 68b66762f83fcfc4eabf47ef3c60ab74, type: 3}
   badgeSprite: {fileID: 3632636149465085345, guid: 02eb2696145ec0f4895294bf3b0e5552, type: 3}
   scrambledBadgeSprite: {fileID: 0}
-  pronunciationClip: {fileID: 0}
+  pronunciationClip: {fileID: 8300000, guid: 722c77ed9c66a084f9432b041b5edc4a, type: 3}
   templateFileName: KA_template_01
