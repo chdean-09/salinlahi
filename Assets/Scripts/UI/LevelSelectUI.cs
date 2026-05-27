@@ -114,17 +114,17 @@ public class LevelSelectUI : MonoBehaviour
 
             LevelConfigSO levelConfig = era.levels[i];
 
-            bool unlocked  = true;
-            bool completed = false;
+            bool unlocked = true;
+            // bool completed = false;
 
             if (pmAvailable)
             {
-                unlocked  = ProgressManager.Instance.IsLevelUnlocked(levelConfig.levelNumber);
-                completed = ProgressManager.Instance.IsLevelCompleted(levelConfig.levelNumber);
+                unlocked = ProgressManager.Instance.IsLevelUnlocked(levelConfig.levelNumber);
+                // completed = ProgressManager.Instance.IsLevelCompleted(levelConfig.levelNumber);
             }
 
             button.gameObject.SetActive(true);
-            button.Setup(levelConfig, unlocked, completed);
+            button.Setup(levelConfig, unlocked, false);
         }
 
         UpdateNavigationButtons();

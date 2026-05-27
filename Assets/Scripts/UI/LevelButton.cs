@@ -16,8 +16,7 @@ public class LevelButton : MonoBehaviour
     [Header("State Visuals")]
     [Tooltip("Shown only when the level is locked (e.g. a lock icon overlay).")]
     [SerializeField] private GameObject _lockIcon;
-    [Tooltip("Shown only when the level is completed (e.g. a star/check badge).")]
-    [SerializeField] private GameObject _completionBadge;
+    // [SerializeField] private GameObject _completionBadge;
 
     [Header("Colors")]
     [SerializeField] private Color _unlockedColor = Color.white;
@@ -48,8 +47,8 @@ public class LevelButton : MonoBehaviour
         if (_lockIcon != null)
             _lockIcon.SetActive(!isUnlocked);
 
-        if (_completionBadge != null)
-            _completionBadge.SetActive(isCompleted);
+        // if (_completionBadge != null)
+        //     _completionBadge.SetActive(isCompleted);
 
         if (_button != null)
         {
