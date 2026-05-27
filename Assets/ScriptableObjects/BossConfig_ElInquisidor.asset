@@ -37,7 +37,8 @@ MonoBehaviour:
     minionsPerSummonMax: 2
     delayBetweenMinions: 0.6
     summonEnemyTypes:
-    - {fileID: 11400000, guid: b1192b8ea41bc418cb84defa4321b63f, type: 2}
+    - {fileID: 11400000, guid: 5441937cc8c04b60b92b0112af80aac3, type: 2}
+    - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
     summonSpawnRange: {x: 3, y: 1.5}
     requiredCharacterCount: 3
     vulnerabilityTimer: 20
@@ -52,7 +53,7 @@ MonoBehaviour:
     delayBetweenMinions: 0.6
     summonEnemyTypes:
     - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
-    - {fileID: 11400000, guid: b1192b8ea41bc418cb84defa4321b63f, type: 2}
+    - {fileID: 11400000, guid: 5441937cc8c04b60b92b0112af80aac3, type: 2}
     summonSpawnRange: {x: 3.5, y: 1}
     requiredCharacterCount: 4
     vulnerabilityTimer: 25

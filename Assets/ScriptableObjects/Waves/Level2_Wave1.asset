@@ -14,11 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WaveConfigSO
   waveID: Level2_Wave1
   waveNumber: 1
+  isIntermissionWave: 0
   charactersInWave:
   - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
-  - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+  - {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
   enemyTypesInWave:
   - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
-  enemyCount: 4
+  enemyCount: 6
   spawnInterval: 3.2
   waveStartDelay: 1.5
