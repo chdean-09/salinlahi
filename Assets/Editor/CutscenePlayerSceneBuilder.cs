@@ -122,6 +122,7 @@ public static class CutscenePlayerSceneBuilder
         Button skipButton = CreateSkipButton(canvasGo.transform);
 
         CutscenePlayer player = canvasGo.AddComponent<CutscenePlayer>();
+        player.enabled = false;
 
         SerializedObject serialized = new(player);
         serialized.FindProperty("_canvasGroup").objectReferenceValue = cg;
@@ -134,12 +135,16 @@ public static class CutscenePlayerSceneBuilder
         serialized.FindProperty("_bodyFont").objectReferenceValue = FindVT323Font();
         serialized.ApplyModifiedPropertiesWithoutUndo();
 
+        player.enabled = true;
+
         EditorUtility.SetDirty(player);
         return player;
     }
 
     private static void RepairCutscenePlayerWiring(CutscenePlayer player)
     {
+        player.enabled = false;
+
         SerializedObject serialized = new(player);
         Transform root = player.transform;
 
@@ -168,6 +173,8 @@ public static class CutscenePlayerSceneBuilder
         serialized.FindProperty("_skipButtonRoot").objectReferenceValue = skipButton.gameObject;
         serialized.FindProperty("_bodyFont").objectReferenceValue = FindVT323Font();
         serialized.ApplyModifiedPropertiesWithoutUndo();
+
+        player.enabled = true;
 
         EditorUtility.SetDirty(player);
     }
