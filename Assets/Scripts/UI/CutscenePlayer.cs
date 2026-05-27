@@ -104,7 +104,9 @@ public class CutscenePlayer : MonoBehaviour
 
             yield return TransitionIn(panel.image, transition, duration);
 
-            yield return TypewriterRoutine(panel.text ?? "", speed);
+            _typewriterRoutine = StartCoroutine(TypewriterRoutine(panel.text ?? "", speed));
+            yield return _typewriterRoutine;
+            _typewriterRoutine = null;
             _isTypewriting = false;
 
             _waitingForTap = true;
