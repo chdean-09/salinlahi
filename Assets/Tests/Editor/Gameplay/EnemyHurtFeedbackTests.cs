@@ -188,6 +188,46 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [UnityTest]
+        public IEnumerator HurtFrames_KeepMoverStoppedUntilAnimationCompletes()
+        {
+            Sprite frame0 = CreateSolidSprite(Color.cyan);
+            Sprite frame1 = CreateSolidSprite(Color.magenta);
+            Sprite frame2 = CreateSolidSprite(Color.white);
+            EnemyDataSO data = CreateData(maxHealth: 2);
+            data.hurtPausesMovement = true;
+            data.hurtPauseDuration = 0.01f;
+            data.hurtShakesSprite = false;
+            data.hurtFrames = new[] { frame0, frame1, frame2 };
+            data.hurtAnimationFps = 5f; // total anim time = 0.6s
+
+            Enemy enemy = CreateEnemyWithFeedback(data);
+            EnemyMover mover = enemy.GetComponent<EnemyMover>();
+
+            enemy.TakeDamage(1);
+            Assert.IsFalse(mover.IsMoving, "Mover should stop when shield-break starts.");
+
+            float waitedMidAnim = 0f;
+            while (waitedMidAnim < 0.2f)
+            {
+                yield return null;
+                waitedMidAnim += Time.deltaTime;
+            }
+
+            Assert.IsFalse(mover.IsMoving,
+                "Mover should remain stopped while hurt frames are still playing.");
+
+            float waitedEnd = 0f;
+            while (waitedEnd < 0.7f)
+            {
+                yield return null;
+                waitedEnd += Time.deltaTime;
+            }
+
+            Assert.IsTrue(mover.IsMoving,
+                "Mover should resume after shield-break animation completes.");
+        }
+
+        [UnityTest]
         public IEnumerator DeathDuringHurt_CancelsHurtAndKeepsMoverStopped()
         {
             // Regression for the case where a non-lethal hit starts the hurt

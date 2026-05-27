@@ -272,7 +272,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Enemy
   _data: {fileID: 11400000, guid: 92b7e894088646b8a8173cdbfda63679, type: 2}
-  _useShieldBreakColorFeedback: 0
+  _useShieldBreakColorFeedback: 1
   _shieldIntactColor: {r: 0, g: 0.75, b: 0.65, a: 1}
   _shieldBrokenColor: {r: 0.55, g: 0.55, b: 0.55, a: 1}
   _showDebugLabels: 1

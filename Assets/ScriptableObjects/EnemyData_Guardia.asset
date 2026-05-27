@@ -47,7 +47,7 @@ MonoBehaviour:
   hurtShakeFrequency: 30
   hurtSwapsCharacter: 0
   postHurtCharacter: {fileID: 0}
-  hurtFrames: []
+  hurtFrames:`r`n  - {fileID: 8783481094493475426, guid: a9db35f01cd66b4438a8169ebf94789d, type: 3}`r`n  - {fileID: 9180390179238202184, guid: a9db35f01cd66b4438a8169ebf94789d, type: 3}`r`n  - {fileID: -4445151505474273842, guid: a9db35f01cd66b4438a8169ebf94789d, type: 3}
   hurtAnimationFps: 12
   chargeMultiplier: 2.5
   chargeTriggerYNormalized: 0.5

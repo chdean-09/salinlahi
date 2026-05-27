@@ -99,6 +99,9 @@ public class EnemyHurtFeedback : MonoBehaviour
         float animFrameDur = anim ? (1f / animFps) : 0f;
         float animTotalDur = anim ? (data.hurtFrames.Length * animFrameDur) : 0f;
         float totalDur = Mathf.Max(pauseDur, shakeDur, animTotalDur);
+        // When hurt frames exist, keep movement frozen until the shield-break
+        // animation completes even if hurtPauseDuration is shorter.
+        float resumeDur = Mathf.Max(pauseDur, animTotalDur);
 
         if (pause) _mover.Stop();
 
@@ -145,7 +148,7 @@ public class EnemyHurtFeedback : MonoBehaviour
                 }
             }
 
-            if (!resumed && t >= pauseDur)
+            if (!resumed && t >= resumeDur)
             {
                 // Pause window has elapsed — re-apply EffectiveSpeed (which
                 // includes any aura buffs and Focus Mode) to the mover.
