@@ -12,6 +12,7 @@ public class CutscenePlayer : MonoBehaviour
     [SerializeField] private TMP_Text _bodyText;
     [SerializeField] private TMP_FontAsset _bodyFont;
     [SerializeField] private float _bodyFontSize = 92f;
+    [SerializeField] private Material _bodyMaterialPreset;
     [SerializeField] private Button _tapCatcher;
     [SerializeField] private Button _skipButton;
     [SerializeField] private GameObject _skipButtonRoot;
@@ -49,6 +50,9 @@ public class CutscenePlayer : MonoBehaviour
 
         if (_bodyText != null)
             _bodyText.fontSize = _bodyFontSize;
+
+        if (_bodyMaterialPreset != null && _bodyText != null)
+            _bodyText.fontMaterial = _bodyMaterialPreset;
     }
 
     private void OnDisable()

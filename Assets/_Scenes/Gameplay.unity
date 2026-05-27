@@ -11693,6 +11693,7 @@ MonoBehaviour:
   _bodyText: {fileID: 1322866062}
   _bodyFont: {fileID: 11400000, guid: dc209d62f0d784591b6b2bdbeeb22afa, type: 2}
   _bodyFontSize: 92
+  _bodyMaterialPreset: {fileID: 0}
   _tapCatcher: {fileID: 756999031}
   _skipButton: {fileID: 1296541905}
   _skipButtonRoot: {fileID: 1296541901}

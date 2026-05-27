@@ -132,8 +132,10 @@ public static class CutscenePlayerSceneBuilder
         serialized.FindProperty("_tapCatcher").objectReferenceValue = tapCatcher;
         serialized.FindProperty("_skipButton").objectReferenceValue = skipButton;
         serialized.FindProperty("_skipButtonRoot").objectReferenceValue = skipButton.gameObject;
-        serialized.FindProperty("_bodyFont").objectReferenceValue = EnsureVT323FontAsset();
+        TMP_FontAsset font = EnsureVT323FontAsset();
+        serialized.FindProperty("_bodyFont").objectReferenceValue = font;
         serialized.FindProperty("_bodyFontSize").floatValue = 92f;
+        serialized.FindProperty("_bodyMaterialPreset").objectReferenceValue = EnsureCutsceneBodyMaterial(font);
         serialized.ApplyModifiedPropertiesWithoutUndo();
 
         player.enabled = true;
@@ -172,8 +174,10 @@ public static class CutscenePlayerSceneBuilder
         serialized.FindProperty("_tapCatcher").objectReferenceValue = tapCatcher;
         serialized.FindProperty("_skipButton").objectReferenceValue = skipButton;
         serialized.FindProperty("_skipButtonRoot").objectReferenceValue = skipButton.gameObject;
-        serialized.FindProperty("_bodyFont").objectReferenceValue = EnsureVT323FontAsset();
+        TMP_FontAsset font = EnsureVT323FontAsset();
+        serialized.FindProperty("_bodyFont").objectReferenceValue = font;
         serialized.FindProperty("_bodyFontSize").floatValue = 92f;
+        serialized.FindProperty("_bodyMaterialPreset").objectReferenceValue = EnsureCutsceneBodyMaterial(font);
         serialized.ApplyModifiedPropertiesWithoutUndo();
 
         player.enabled = true;
@@ -378,5 +382,27 @@ public static class CutscenePlayerSceneBuilder
 
         Debug.Log("[CutsceneBuilder] Generated VT323 SDF TMP Font Asset at " + destPath);
         return fontAsset;
+    }
+
+    private static Material EnsureCutsceneBodyMaterial(TMP_FontAsset fontAsset)
+    {
+        if (fontAsset == null) return null;
+
+        string[] guids = AssetDatabase.FindAssets("VT323 SDF Outline t:Material");
+        if (guids.Length > 0)
+            return AssetDatabase.LoadAssetAtPath<Material>(AssetDatabase.GUIDToAssetPath(guids[0]));
+
+        Material preset = new Material(fontAsset.material);
+        preset.name = "VT323 SDF Outline";
+        preset.EnableKeyword(TMPro.ShaderUtilities.Keyword_Outline);
+        preset.SetFloat(TMPro.ShaderUtilities.ID_OutlineWidth, 0.3f);
+        preset.SetColor(TMPro.ShaderUtilities.ID_OutlineColor, Color.black);
+
+        const string destPath = "Assets/Resources/Fonts/VT323 SDF Outline.mat";
+        AssetDatabase.CreateAsset(preset, destPath);
+        AssetDatabase.SaveAssets();
+
+        Debug.Log("[CutsceneBuilder] Generated VT323 SDF Outline material at " + destPath);
+        return preset;
     }
 }
