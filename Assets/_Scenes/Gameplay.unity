@@ -11691,7 +11691,7 @@ MonoBehaviour:
   _bottomGradientHeightPercent: 0.3
   _exitTransitionImage: {fileID: 0}
   _bodyText: {fileID: 1322866062}
-  _bodyFont: {fileID: 0}
+  _bodyFont: {fileID: 11400000, guid: dc209d62f0d784591b6b2bdbeeb22afa, type: 2}
   _bodyFontSize: 92
   _tapCatcher: {fileID: 756999031}
   _skipButton: {fileID: 1296541905}
