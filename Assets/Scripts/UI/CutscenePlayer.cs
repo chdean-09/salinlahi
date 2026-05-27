@@ -109,8 +109,10 @@ public class CutscenePlayer : MonoBehaviour
             _typewriterRoutine = null;
             _isTypewriting = false;
 
+            Debug.Log($"[CutscenePlayer] Panel {_panelIndex} done. Waiting for tap...");
             _waitingForTap = true;
             yield return new WaitUntil(() => _currentCutscene == null || !_waitingForTap);
+            Debug.Log($"[CutscenePlayer] Tap received. Advancing from panel {_panelIndex}.");
 
             _panelIndex++;
         }
@@ -222,17 +224,25 @@ public class CutscenePlayer : MonoBehaviour
 
     private void OnTap()
     {
+        Debug.Log($"[CutscenePlayer] OnTap: isTypewriting={_isTypewriting}, waitingForTap={_waitingForTap}, panelIndex={_panelIndex}, totalPanels={_currentCutscene?.panels?.Length}");
+
         if (_currentCutscene == null) return;
 
         if (_isTypewriting)
         {
+            Debug.Log("[CutscenePlayer] OnTap -> SkipTypewriter");
             SkipTypewriter();
             return;
         }
 
         if (_waitingForTap)
         {
+            Debug.Log("[CutscenePlayer] OnTap -> Advance Panel");
             _waitingForTap = false;
+        }
+        else
+        {
+            Debug.Log("[CutscenePlayer] OnTap -> Ignored (not waiting)");
         }
     }
 
