@@ -350,15 +350,7 @@ public static class CutscenePlayerSceneBuilder
             return null;
         }
 
-        TMP_FontAsset fontAsset = TMP_FontAsset.CreateFontAsset(
-            sourceFont,
-            72,
-            1,
-            GlyphRenderMode.SDF_8,
-            512,
-            512,
-            AtlasPopulationMode.Dynamic,
-            true);
+        TMP_FontAsset fontAsset = TMP_FontAsset.CreateFontAsset(sourceFont);
 
         const string destDir = "Assets/Resources/Fonts";
         if (!Directory.Exists(destDir))
