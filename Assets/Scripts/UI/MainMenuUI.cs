@@ -148,35 +148,35 @@ public class MainMenuUI : MonoBehaviour
             ? _endlessModeButton.transform.parent
             : transform;
 
-        if (parent.Find("SandboxModeButton") is Transform existing)
+        if (parent.Find("SandboxModeButton") is Transform existing && existing.GetComponent<Button>() != null)
             return existing.GetComponent<Button>();
 
-        var buttonObject = new GameObject("SandboxModeButton");
-        buttonObject.transform.SetParent(parent, false);
-        buttonObject.AddComponent<Image>().color = new Color(0.25f, 0.5f, 0.85f, 1f);
-        Button button = buttonObject.AddComponent<Button>();
+        Button template = _endlessModeButton != null
+            ? _endlessModeButton
+            : parent.Find("SettingsButton")?.GetComponent<Button>();
 
-        RectTransform rect = button.GetComponent<RectTransform>();
+        if (template == null)
+            return null;
+
+        GameObject buttonObject = Instantiate(template.gameObject, parent, false);
+        buttonObject.name = "SandboxModeButton";
+        Button button = buttonObject.GetComponent<Button>();
+        if (button == null)
+            return null;
+
+        RectTransform rect = buttonObject.GetComponent<RectTransform>();
         rect.anchorMin = new Vector2(0.5f, 0f);
         rect.anchorMax = new Vector2(0.5f, 0f);
         rect.pivot = new Vector2(0.5f, 0f);
-        rect.sizeDelta = new Vector2(600f, 120f);
-        rect.anchoredPosition = new Vector2(0f, 24f);
+        rect.anchoredPosition = new Vector2(0f, 16f);
 
-        var labelObject = new GameObject("Label");
-        labelObject.transform.SetParent(buttonObject.transform, false);
-        var label = labelObject.AddComponent<TextMeshProUGUI>();
-        label.text = "Sandbox";
-        label.fontSize = 52f;
-        label.color = Color.white;
-        label.alignment = TextAlignmentOptions.Center;
-        label.raycastTarget = false;
+        TextMeshProUGUI tmpLabel = buttonObject.GetComponentInChildren<TextMeshProUGUI>(true);
+        if (tmpLabel != null)
+            tmpLabel.text = "SANDBOX";
 
-        RectTransform labelRect = label.GetComponent<RectTransform>();
-        labelRect.anchorMin = Vector2.zero;
-        labelRect.anchorMax = Vector2.one;
-        labelRect.offsetMin = Vector2.zero;
-        labelRect.offsetMax = Vector2.zero;
+        Text legacyLabel = buttonObject.GetComponentInChildren<Text>(true);
+        if (legacyLabel != null)
+            legacyLabel.text = "SANDBOX";
 
         return button;
     }

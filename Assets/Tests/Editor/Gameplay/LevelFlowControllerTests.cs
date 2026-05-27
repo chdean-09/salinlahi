@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
+using Salinlahi.Runtime.Gameplay;
 using UnityEngine;
 using UnityEngine.TestTools;
 
@@ -31,6 +32,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
             }
 
             _objectsToDestroy.Clear();
+            DestroyAllProtagonistManagers();
             Time.timeScale = 1f;
         }
 
@@ -156,6 +158,48 @@ namespace Salinlahi.Tests.Editor.Gameplay
 
             Assert.IsFalse(tutorialGate.MoveNext());
             Assert.IsTrue(GetPrivateField<bool>(controller, "_flowAborted"));
+        }
+
+        [UnityTest]
+        public IEnumerator NonTutorialLevel_WithProtagonistEnabled_CreatesProtagonistWhenManagerMissing()
+        {
+            LevelConfigSO levelConfig = CreateLevelConfig();
+            levelConfig.levelNumber = 2;
+            levelConfig.hasProtagonist = true;
+            levelConfig.protagonistWalksIn = false;
+
+            GameManager gameManager = CreateGameManager();
+            gameManager.SetLevel(levelConfig);
+
+            WaveManager waveManager = CreateComponent<WaveManager>("WaveManager");
+            LevelFlowController controller = CreateComponent<LevelFlowController>("LevelFlowController");
+            SetPrivateField(controller, "_levelConfig", levelConfig);
+            SetPrivateField(controller, "_waveManager", waveManager);
+
+            Assert.IsNull(ProtagonistManager.Instance, "Test setup expects no pre-existing ProtagonistManager.");
+            LogAssert.Expect(LogType.Error, "[Salinlahi] WaveManager.StartLevel: No LevelConfigSO assigned.");
+
+            IEnumerator start = InvokePrivate<IEnumerator>(controller, "Start");
+            while (start.MoveNext())
+                yield return start.Current;
+
+            ProtagonistManager protagonistManager =
+                ProtagonistManager.Instance ?? Object.FindFirstObjectByType<ProtagonistManager>();
+
+            Assert.IsNotNull(protagonistManager,
+                "Level flow should ensure a ProtagonistManager exists when protagonist spawning is enabled.");
+            Assert.IsNotNull(protagonistManager.ProtagonistTransform,
+                "Level flow should spawn protagonist for non-tutorial levels when hasProtagonist is true.");
+        }
+
+        private static void DestroyAllProtagonistManagers()
+        {
+            ProtagonistManager[] managers = Object.FindObjectsByType<ProtagonistManager>(FindObjectsSortMode.None);
+            for (int i = 0; i < managers.Length; i++)
+            {
+                if (managers[i] != null)
+                    Object.DestroyImmediate(managers[i].gameObject);
+            }
         }
 
         private GameManager CreateGameManager()

@@ -108,10 +108,11 @@ public class LevelFlowController : MonoBehaviour
         // Spawn protagonist if level has one configured
         if (_levelConfig.hasProtagonist)
         {
-            if (ProtagonistManager.Instance != null)
+            ProtagonistManager protagonistManager = EnsureProtagonistManager();
+            if (protagonistManager != null)
             {
-                Vector3 protagonistPos = ProtagonistManager.Instance.CalculateProtagonistPosition();
-                ProtagonistManager.Instance.EnsureProtagonist(protagonistPos, spawnBelowScreen: _levelConfig.protagonistWalksIn);
+                Vector3 protagonistPos = protagonistManager.CalculateProtagonistPosition();
+                protagonistManager.EnsureProtagonist(protagonistPos, spawnBelowScreen: _levelConfig.protagonistWalksIn);
             }
             else
             {
@@ -201,6 +202,24 @@ public class LevelFlowController : MonoBehaviour
 
         if (_level1InteractiveTutorialController != null && _levelConfig != null)
             _level1InteractiveTutorialController.ConfigureForLevel(_levelConfig, waveSpawner, fallbackEnemyData);
+    }
+
+    private static ProtagonistManager EnsureProtagonistManager()
+    {
+        if (ProtagonistManager.Instance != null)
+            return ProtagonistManager.Instance;
+
+        ProtagonistManager existing = FindFirstObjectByType<ProtagonistManager>();
+        if (existing != null)
+            return existing;
+
+        GameObject managerObject = new("[Manager] ProtagonistManager");
+        ProtagonistManager manager = managerObject.AddComponent<ProtagonistManager>();
+
+        if (managerObject.GetComponent<ProtagonistAttackController>() == null)
+            managerObject.AddComponent<ProtagonistAttackController>();
+
+        return manager;
     }
 
     private void ResolveLevelConfig()

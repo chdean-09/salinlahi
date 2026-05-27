@@ -55,6 +55,10 @@ MonoBehaviour:
   _baseHitClips:
   - {fileID: 8300000, guid: c4ac9746bfe721240ae773e4c895c9d4, type: 3}
   - {fileID: 8300000, guid: cabe2af8c7b99b641b25abd2f50a9291, type: 3}
+  _homeScreenBgmClip: {fileID: 8300000, guid: 1e4282e2179138c49a9c3c7f72641d5e, type: 3}
+  _gameplayBgmClip: {fileID: 8300000, guid: 30ff0000af0ce964782acd90a13a79dc, type: 3}
+  _contextBgmFadeOutSeconds: 0.15
+  _contextBgmFadeInSeconds: 0.2
   _baseHitVolumeMin: 0.92
   _baseHitVolumeMax: 1
   _baseHitPitchMin: 0.96
