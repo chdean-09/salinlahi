@@ -186,6 +186,17 @@ public class Enemy : MonoBehaviour
         _currentHealth = _data.maxHealth;
         _labelOverrides.Clear();
 
+        if (_data.useHurtFeedback && _hurtFeedback == null)
+        {
+            _hurtFeedback = GetComponent<EnemyHurtFeedback>();
+            if (_hurtFeedback == null)
+            {
+                _hurtFeedback = gameObject.AddComponent<EnemyHurtFeedback>();
+                DebugLogger.LogWarning(
+                    $"Enemy.Initialize: Added missing EnemyHurtFeedback on '{name}' for '{_data.enemyID}'.");
+            }
+        }
+
         _mover.Stop();
         _mover.SetSpeed(EffectiveSpeed);
 
@@ -295,6 +306,12 @@ public class Enemy : MonoBehaviour
         {
             if (ShouldTriggerShieldBreak(previousHealth))
                 TriggerShieldBreakVisual();
+
+            if (_data.useHurtFeedback && _hurtFeedback == null)
+            {
+                DebugLogger.LogWarning(
+                    $"Enemy.TakeDamage: '{name}' ({_data.enemyID}) has useHurtFeedback enabled but no EnemyHurtFeedback component.");
+            }
 
             _hurtFeedback?.OnHurt();
         }
