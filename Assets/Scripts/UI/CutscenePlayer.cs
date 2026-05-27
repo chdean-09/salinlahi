@@ -23,8 +23,8 @@ public class CutscenePlayer : MonoBehaviour
     private CutsceneSO _currentCutscene;
     private int _panelIndex;
     private bool _isTypewriting;
+    private bool _skipRequested;
     private bool _waitingForTap;
-    private Coroutine _typewriterRoutine;
     private Coroutine _playRoutine;
 
     private void Awake()
@@ -89,6 +89,7 @@ public class CutscenePlayer : MonoBehaviour
         {
             CutscenePanel panel = _currentCutscene.panels[_panelIndex];
             _waitingForTap = false;
+            _skipRequested = false;
 
             TransitionType transition = panel.transitionIn;
             if (transition == TransitionType.None && _panelIndex == 0)
@@ -104,9 +105,7 @@ public class CutscenePlayer : MonoBehaviour
 
             yield return TransitionIn(panel.image, transition, duration);
 
-            _typewriterRoutine = StartCoroutine(TypewriterRoutine(panel.text ?? "", speed));
-            yield return _typewriterRoutine;
-            _typewriterRoutine = null;
+            yield return TypewriterRoutine(panel.text ?? "", speed);
             _isTypewriting = false;
 
             Debug.Log($"[CutscenePlayer] Panel {_panelIndex} done. Waiting for tap...");
@@ -215,6 +214,11 @@ public class CutscenePlayer : MonoBehaviour
 
         for (int i = 0; i < fullText.Length; i++)
         {
+            if (_skipRequested)
+            {
+                _bodyText.text = fullText;
+                break;
+            }
             _bodyText.text = fullText.Substring(0, i + 1);
             yield return new WaitForSecondsRealtime(delay);
         }
@@ -248,12 +252,7 @@ public class CutscenePlayer : MonoBehaviour
 
     private void SkipTypewriter()
     {
-        if (_typewriterRoutine != null)
-        {
-            StopCoroutine(_typewriterRoutine);
-            _typewriterRoutine = null;
-        }
-
+        _skipRequested = true;
         _isTypewriting = false;
 
         if (_bodyText != null && _currentCutscene != null
@@ -275,12 +274,6 @@ public class CutscenePlayer : MonoBehaviour
         {
             StopCoroutine(_playRoutine);
             _playRoutine = null;
-        }
-
-        if (_typewriterRoutine != null)
-        {
-            StopCoroutine(_typewriterRoutine);
-            _typewriterRoutine = null;
         }
 
         _isTypewriting = false;
