@@ -475,6 +475,11 @@ public sealed class Level1InteractiveTutorialController : MonoBehaviour
 
     private void DefeatActiveTutorialEnemy()
     {
+        Enemy enemy = _activeEnemy != null ? _activeEnemy.Enemy : null;
+        BaybayinCharacterSO pronunciationCharacter = enemy != null ? enemy.Character : null;
+        if (pronunciationCharacter != null)
+            EventBus.RaisePronunciationRequested(pronunciationCharacter);
+
         // Trigger protagonist draw animation (tutorial bypasses CombatResolver)
         Animator protagonistAnimator = ProtagonistManager.Instance?.ProtagonistTransform?.GetComponent<Animator>();
         if (protagonistAnimator != null)
