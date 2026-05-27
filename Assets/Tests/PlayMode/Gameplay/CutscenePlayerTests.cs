@@ -132,6 +132,9 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
 
             Assert.IsTrue(_startedFired, "OnCutsceneStarted should fire");
             Assert.IsTrue(_player.IsPlaying, "IsPlaying should be true");
+
+            CanvasGroup cg = GetPrivateField<CanvasGroup>(_player, "_canvasGroup");
+            Assert.IsTrue(cg.blocksRaycasts, "blocksRaycasts should be true so taps register");
         }
 
         [UnityTest]
