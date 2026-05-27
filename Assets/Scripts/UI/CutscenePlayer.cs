@@ -74,7 +74,10 @@ public class CutscenePlayer : MonoBehaviour
             _skipButtonRoot.SetActive(true);
 
         if (_canvasGroup != null)
+        {
+            _canvasGroup.interactable = true;
             _canvasGroup.blocksRaycasts = true;
+        }
 
         _playRoutine = StartCoroutine(PlayRoutine());
     }
@@ -270,6 +273,7 @@ public class CutscenePlayer : MonoBehaviour
         {
             _canvasGroup.alpha = 0f;
             _canvasGroup.blocksRaycasts = false;
+            _canvasGroup.interactable = false;
         }
 
         if (_skipButtonRoot != null)
