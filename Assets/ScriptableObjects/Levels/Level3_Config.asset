@@ -25,10 +25,11 @@ MonoBehaviour:
   - {fileID: 11400000, guid: c538b3cffc977482d8eebb07b071bfbd, type: 2}
   allowedCharacters:
   - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
-  - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
-  - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
+  - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
+  - {fileID: 11400000, guid: 117f4d54439c640abaac6d80f841ee03, type: 2}
   bossConfig: {fileID: 0}
   isAvailableInLite: 0
+  tutorialSequence: {fileID: 0}
   introDialogue: {fileID: 0}
   outroDialogue: {fileID: 0}
   bgmClip: {fileID: 0}

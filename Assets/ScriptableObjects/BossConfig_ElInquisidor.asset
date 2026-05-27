@@ -21,7 +21,7 @@ MonoBehaviour:
     delayBetweenSummons: 7
     minionsPerSummonMin: 1
     minionsPerSummonMax: 2
-    delayBetweenMinions: 0.6
+    delayBetweenMinions: 0.8
     summonEnemyTypes:
     - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
     summonSpawnRange: {x: 3, y: 1.5}
@@ -32,12 +32,14 @@ MonoBehaviour:
     paceHalfRange: 2.5
     teleportHalfRange: {x: 2, y: 0}
   - summonPhaseDuration: 30
-    delayBetweenSummons: 2
+    delayBetweenSummons: 4
     minionsPerSummonMin: 1
     minionsPerSummonMax: 2
-    delayBetweenMinions: 0.6
+    delayBetweenMinions: 1.2
     summonEnemyTypes:
-    - {fileID: 11400000, guid: b1192b8ea41bc418cb84defa4321b63f, type: 2}
+    - {fileID: 11400000, guid: 5441937cc8c04b60b92b0112af80aac3, type: 2}
+    - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+    - {fileID: 11400000, guid: 92b7e894088646b8a8173cdbfda63679, type: 2}
     summonSpawnRange: {x: 3, y: 1.5}
     requiredCharacterCount: 3
     vulnerabilityTimer: 20
@@ -49,10 +51,12 @@ MonoBehaviour:
     delayBetweenSummons: 4
     minionsPerSummonMin: 2
     minionsPerSummonMax: 3
-    delayBetweenMinions: 0.6
+    delayBetweenMinions: 1
     summonEnemyTypes:
     - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
-    - {fileID: 11400000, guid: b1192b8ea41bc418cb84defa4321b63f, type: 2}
+    - {fileID: 11400000, guid: 5441937cc8c04b60b92b0112af80aac3, type: 2}
+    - {fileID: 11400000, guid: 92b7e894088646b8a8173cdbfda63679, type: 2}
+    - {fileID: 11400000, guid: 55369c8c5f914966a731075c4b14742a, type: 2}
     summonSpawnRange: {x: 3.5, y: 1}
     requiredCharacterCount: 4
     vulnerabilityTimer: 25
