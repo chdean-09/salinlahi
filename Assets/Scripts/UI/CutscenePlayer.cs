@@ -73,6 +73,9 @@ public class CutscenePlayer : MonoBehaviour
         if (_skipButtonRoot != null)
             _skipButtonRoot.SetActive(true);
 
+        if (_canvasGroup != null)
+            _canvasGroup.blocksRaycasts = true;
+
         _playRoutine = StartCoroutine(PlayRoutine());
     }
 

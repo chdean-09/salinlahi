@@ -131,6 +131,7 @@ public static class CutscenePlayerSceneBuilder
         serialized.FindProperty("_tapCatcher").objectReferenceValue = tapCatcher;
         serialized.FindProperty("_skipButton").objectReferenceValue = skipButton;
         serialized.FindProperty("_skipButtonRoot").objectReferenceValue = skipButton.gameObject;
+        serialized.FindProperty("_bodyFont").objectReferenceValue = FindVT323Font();
         serialized.ApplyModifiedPropertiesWithoutUndo();
 
         EditorUtility.SetDirty(player);
@@ -165,6 +166,7 @@ public static class CutscenePlayerSceneBuilder
         serialized.FindProperty("_tapCatcher").objectReferenceValue = tapCatcher;
         serialized.FindProperty("_skipButton").objectReferenceValue = skipButton;
         serialized.FindProperty("_skipButtonRoot").objectReferenceValue = skipButton.gameObject;
+        serialized.FindProperty("_bodyFont").objectReferenceValue = FindVT323Font();
         serialized.ApplyModifiedPropertiesWithoutUndo();
 
         EditorUtility.SetDirty(player);
@@ -324,5 +326,15 @@ public static class CutscenePlayerSceneBuilder
     private static bool SkipButtonExists(Transform root)
     {
         return root.Find("SkipButton") != null;
+    }
+
+    private static TMP_FontAsset FindVT323Font()
+    {
+        string[] guids = AssetDatabase.FindAssets("VT323 t:TMP_FontAsset");
+        if (guids.Length == 0)
+            return null;
+
+        return AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(
+            AssetDatabase.GUIDToAssetPath(guids[0]));
     }
 }
