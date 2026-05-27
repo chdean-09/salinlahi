@@ -9,6 +9,8 @@ using UnityEngine.SceneManagement;
 public static class CutscenePlayerSceneBuilder
 {
     private const string GameplayScenePath = "Assets/_Scenes/Gameplay.unity";
+    private const float BottomGradientHeightPercent = 0.30f;
+    private static readonly Color BottomGradientColor = new Color(0f, 0f, 0f, 0.55f);
 
     [MenuItem("Salinlahi/Cutscene/Configure In Gameplay Scene")]
     public static void ConfigureInGameplay()
@@ -100,6 +102,7 @@ public static class CutscenePlayerSceneBuilder
 
         GameObject canvasGo = new("CutsceneCanvas");
         Undo.RegisterCreatedObjectUndo(canvasGo, "Create Cutscene Canvas");
+        canvasGo.transform.localScale = Vector3.one;
 
         Canvas canvas = canvasGo.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -117,9 +120,12 @@ public static class CutscenePlayerSceneBuilder
         cg.interactable = false;
 
         Image panelImage = CreateFullScreenImage(canvasGo.transform, "PanelImage");
+        Image bottomGradientOverlay = CreateBottomGradientOverlay(canvasGo.transform);
         TMP_Text bodyText = CreateBodyText(canvasGo.transform, "BodyText");
         Button tapCatcher = CreateTapCatcher(canvasGo.transform, "TapCatcher");
         Button skipButton = CreateSkipButton(canvasGo.transform);
+        Image exitTransitionImage = CreateExitTransitionImage(canvasGo.transform);
+        SetCutsceneSiblingOrder(canvasGo.transform);
 
         CutscenePlayer player = canvasGo.AddComponent<CutscenePlayer>();
         player.enabled = false;
@@ -128,6 +134,10 @@ public static class CutscenePlayerSceneBuilder
         serialized.FindProperty("_canvasGroup").objectReferenceValue = cg;
         serialized.FindProperty("_panelImage").objectReferenceValue = panelImage;
         serialized.FindProperty("_imageRectTransform").objectReferenceValue = panelImage.GetComponent<RectTransform>();
+        serialized.FindProperty("_bottomGradientOverlay").objectReferenceValue = bottomGradientOverlay;
+        serialized.FindProperty("_bottomGradientColor").colorValue = BottomGradientColor;
+        serialized.FindProperty("_bottomGradientHeightPercent").floatValue = BottomGradientHeightPercent;
+        serialized.FindProperty("_exitTransitionImage").objectReferenceValue = exitTransitionImage;
         serialized.FindProperty("_bodyText").objectReferenceValue = bodyText;
         serialized.FindProperty("_tapCatcher").objectReferenceValue = tapCatcher;
         serialized.FindProperty("_skipButton").objectReferenceValue = skipButton;
@@ -149,6 +159,7 @@ public static class CutscenePlayerSceneBuilder
 
         SerializedObject serialized = new(player);
         Transform root = player.transform;
+        root.localScale = Vector3.one;
 
         CanvasGroup cg = player.GetComponent<CanvasGroup>();
         if (cg == null)
@@ -160,15 +171,22 @@ public static class CutscenePlayerSceneBuilder
         cg.blocksRaycasts = false;
 
         Image panelImage = EnsureChildImage(root, "PanelImage");
+        Image bottomGradientOverlay = EnsureBottomGradientOverlay(root);
         TMP_Text bodyText = EnsureChildTMPText(root, "BodyText");
         Button tapCatcher = EnsureChildButton(root, "TapCatcher");
         Button skipButton = SkipButtonExists(root)
             ? root.Find("SkipButton").GetComponent<Button>()
             : CreateSkipButton(root);
+        Image exitTransitionImage = EnsureExitTransitionImage(root);
+        SetCutsceneSiblingOrder(root);
 
         serialized.FindProperty("_canvasGroup").objectReferenceValue = cg;
         serialized.FindProperty("_panelImage").objectReferenceValue = panelImage;
         serialized.FindProperty("_imageRectTransform").objectReferenceValue = panelImage.GetComponent<RectTransform>();
+        serialized.FindProperty("_bottomGradientOverlay").objectReferenceValue = bottomGradientOverlay;
+        serialized.FindProperty("_bottomGradientColor").colorValue = BottomGradientColor;
+        serialized.FindProperty("_bottomGradientHeightPercent").floatValue = BottomGradientHeightPercent;
+        serialized.FindProperty("_exitTransitionImage").objectReferenceValue = exitTransitionImage;
         serialized.FindProperty("_bodyText").objectReferenceValue = bodyText;
         serialized.FindProperty("_tapCatcher").objectReferenceValue = tapCatcher;
         serialized.FindProperty("_skipButton").objectReferenceValue = skipButton;
@@ -181,6 +199,7 @@ public static class CutscenePlayerSceneBuilder
         player.enabled = true;
 
         EditorUtility.SetDirty(player);
+        EditorUtility.SetDirty(root);
     }
 
     private static LevelFlowController EnsureLevelFlowControllerWired(CutscenePlayer player)
@@ -199,6 +218,48 @@ public static class CutscenePlayerSceneBuilder
         EditorUtility.SetDirty(flow);
 
         return flow;
+    }
+
+    private static Image CreateBottomGradientOverlay(Transform parent)
+    {
+        GameObject go = new("BottomGradientOverlay");
+        Undo.RegisterCreatedObjectUndo(go, "Create Bottom Gradient Overlay");
+        go.transform.SetParent(parent, false);
+
+        RectTransform rect = go.AddComponent<RectTransform>();
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = new Vector2(1f, BottomGradientHeightPercent);
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        Image image = go.AddComponent<Image>();
+        image.color = BottomGradientColor;
+        image.raycastTarget = false;
+
+        EdgeGradient gradient = go.AddComponent<EdgeGradient>();
+        gradient.EdgeType = EdgeGradient.Edge.Bottom;
+
+        return image;
+    }
+
+    private static Image CreateExitTransitionImage(Transform parent)
+    {
+        GameObject go = new("ExitTransitionImage");
+        Undo.RegisterCreatedObjectUndo(go, "Create Exit Transition Image");
+        go.transform.SetParent(parent, false);
+
+        RectTransform rect = go.AddComponent<RectTransform>();
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        Image image = go.AddComponent<Image>();
+        image.color = new Color(0f, 0f, 0f, 0f);
+        image.raycastTarget = false;
+        image.gameObject.SetActive(false);
+
+        return image;
     }
 
     private static Image CreateFullScreenImage(Transform parent, string name)
@@ -298,6 +359,66 @@ public static class CutscenePlayerSceneBuilder
         return button;
     }
 
+    private static Image EnsureBottomGradientOverlay(Transform root)
+    {
+        Transform existing = root.Find("BottomGradientOverlay");
+        Image image = null;
+
+        if (existing != null)
+            image = existing.GetComponent<Image>();
+
+        if (image == null)
+            image = CreateBottomGradientOverlay(root);
+
+        RectTransform rect = image.GetComponent<RectTransform>();
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = new Vector2(1f, BottomGradientHeightPercent);
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        image.color = BottomGradientColor;
+        image.raycastTarget = false;
+
+        EdgeGradient gradient = image.GetComponent<EdgeGradient>();
+        if (gradient == null)
+            gradient = image.gameObject.AddComponent<EdgeGradient>();
+        gradient.EdgeType = EdgeGradient.Edge.Bottom;
+
+        SetCutsceneSiblingOrder(root);
+        EditorUtility.SetDirty(image);
+        EditorUtility.SetDirty(rect);
+        EditorUtility.SetDirty(gradient);
+
+        return image;
+    }
+
+    private static Image EnsureExitTransitionImage(Transform root)
+    {
+        Transform existing = root.Find("ExitTransitionImage");
+        Image image = null;
+
+        if (existing != null)
+            image = existing.GetComponent<Image>();
+
+        if (image == null)
+            image = CreateExitTransitionImage(root);
+
+        RectTransform rect = image.GetComponent<RectTransform>();
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        image.color = new Color(0f, 0f, 0f, 0f);
+        image.raycastTarget = false;
+        image.gameObject.SetActive(false);
+
+        EditorUtility.SetDirty(image);
+        EditorUtility.SetDirty(rect);
+
+        return image;
+    }
+
     private static Image EnsureChildImage(Transform root, string name)
     {
         Transform existing = root.Find(name);
@@ -337,6 +458,29 @@ public static class CutscenePlayerSceneBuilder
     private static bool SkipButtonExists(Transform root)
     {
         return root.Find("SkipButton") != null;
+    }
+
+    private static void SetCutsceneSiblingOrder(Transform root)
+    {
+        Transform panelImage = root.Find("PanelImage");
+        Transform bottomGradientOverlay = root.Find("BottomGradientOverlay");
+        Transform bodyText = root.Find("BodyText");
+        Transform tapCatcher = root.Find("TapCatcher");
+        Transform skipButton = root.Find("SkipButton");
+        Transform exitTransitionImage = root.Find("ExitTransitionImage");
+
+        if (panelImage != null)
+            panelImage.SetSiblingIndex(0);
+        if (bottomGradientOverlay != null)
+            bottomGradientOverlay.SetSiblingIndex(1);
+        if (bodyText != null)
+            bodyText.SetAsLastSibling();
+        if (tapCatcher != null)
+            tapCatcher.SetAsLastSibling();
+        if (skipButton != null)
+            skipButton.SetAsLastSibling();
+        if (exitTransitionImage != null)
+            exitTransitionImage.SetAsLastSibling();
     }
 
     private static TMP_FontAsset EnsureVT323FontAsset()

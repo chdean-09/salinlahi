@@ -124,7 +124,8 @@ public class LevelFlowController : MonoBehaviour
         if (beforeCutscene != null && _cutscenePlayer != null)
         {
             _waitingForCutscene = true;
-            _cutscenePlayer.Play(beforeCutscene);
+            bool playExitTransition = _levelConfig.levelNumber == 1;
+            _cutscenePlayer.Play(beforeCutscene, playExitTransition);
             yield return new WaitUntil(() => !_waitingForCutscene);
 
             if (_levelEnded)
