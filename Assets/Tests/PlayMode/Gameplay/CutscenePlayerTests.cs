@@ -228,6 +228,37 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         [UnityTest]
+        public IEnumerator OnTap_DuringTransition_IsIgnored()
+        {
+            _cutscene.panels = new CutscenePanel[]
+            {
+                new CutscenePanel { text = "Panel 1", transitionIn = TransitionType.Fade, transitionDuration = 1f },
+                new CutscenePanel { text = "Panel 2" }
+            };
+
+            _player.Play(_cutscene);
+            yield return null;
+
+            _tapCatcher.onClick.Invoke();
+            yield return null;
+
+            Assert.IsTrue(_player.IsPlaying, "Should still be playing");
+            Assert.IsFalse(GetPrivateField<bool>(_player, "_waitingForTap"),
+                "Tap during transition should not set waiting state");
+
+            yield return new WaitForSecondsRealtime(1.5f);
+
+            Assert.IsTrue(GetPrivateField<bool>(_player, "_waitingForTap"),
+                "Should be waiting for tap after typewriter completes");
+
+            _tapCatcher.onClick.Invoke();
+            yield return null;
+            yield return null;
+
+            Assert.IsTrue(_player.IsPlaying, "Should have advanced to panel 2");
+        }
+
+        [UnityTest]
         public IEnumerator OnTap_OnLastPanel_EndsCutscene()
         {
             _cutscene.panels = new CutscenePanel[]
