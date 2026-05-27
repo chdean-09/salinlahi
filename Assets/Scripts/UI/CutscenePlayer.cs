@@ -10,6 +10,7 @@ public class CutscenePlayer : MonoBehaviour
     [SerializeField] private Image _panelImage;
     [SerializeField] private RectTransform _imageRectTransform;
     [SerializeField] private TMP_Text _bodyText;
+    [SerializeField] private TMP_FontAsset _bodyFont;
     [SerializeField] private Button _tapCatcher;
     [SerializeField] private Button _skipButton;
     [SerializeField] private GameObject _skipButtonRoot;
@@ -32,6 +33,9 @@ public class CutscenePlayer : MonoBehaviour
             _canvasGroup.alpha = 0f;
             _canvasGroup.blocksRaycasts = false;
         }
+
+        if (_bodyFont != null && _bodyText != null)
+            _bodyText.font = _bodyFont;
     }
 
     private void OnEnable()
