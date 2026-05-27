@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using UnityEditor;
+using System.Linq;
 
 namespace Salinlahi.Tests.Editor.Gameplay
 {
@@ -37,6 +38,24 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.AreEqual(2, capitan.maxHealth);
             Assert.That(capitan.moveSpeed, Is.EqualTo(soldado.moveSpeed * 0.7f).Within(0.001f));
             Assert.IsTrue(capitan.useHurtFeedback);
+        }
+
+        [Test]
+        public void Level3Waves_ContainGuardia_AndLevel4Waves_ContainCapitan()
+        {
+            WaveConfigSO level3Wave4 = AssetDatabase.LoadAssetAtPath<WaveConfigSO>(
+                "Assets/ScriptableObjects/Waves/Level3_Wave4.asset");
+            WaveConfigSO level4Wave4 = AssetDatabase.LoadAssetAtPath<WaveConfigSO>(
+                "Assets/ScriptableObjects/Waves/Level4_Wave4.asset");
+
+            Assert.NotNull(level3Wave4);
+            Assert.NotNull(level4Wave4);
+
+            bool level3HasGuardia = level3Wave4.enemyTypesInWave.Any(e => e != null && e.enemyID == "guardia");
+            bool level4HasCapitan = level4Wave4.enemyTypesInWave.Any(e => e != null && e.enemyID == "capitan");
+
+            Assert.IsTrue(level3HasGuardia);
+            Assert.IsTrue(level4HasCapitan);
         }
     }
 }
