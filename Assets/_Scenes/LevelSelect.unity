@@ -258,11 +258,6 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 1590632968362237474, guid: 5279bdc95d7e5485e990e2529698d71d, type: 3}
   m_PrefabInstance: {fileID: 72061775}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &72061777 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 6100931867097971686, guid: 5279bdc95d7e5485e990e2529698d71d, type: 3}
-  m_PrefabInstance: {fileID: 72061775}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &72061778 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 8643733574217965651, guid: 5279bdc95d7e5485e990e2529698d71d, type: 3}
@@ -310,7 +305,6 @@ MonoBehaviour:
   _button: {fileID: 72061780}
   _scrollImage: {fileID: 72061781}
   _lockIcon: {fileID: 72061778}
-  _completionBadge: {fileID: 72061777}
   _unlockedColor: {r: 1, g: 1, b: 1, a: 1}
   _lockedColor: {r: 0.55, g: 0.55, b: 0.55, a: 1}
 --- !u!1 &158144177
@@ -376,16 +370,6 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
---- !u!1 &169551109 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 6100931867097971686, guid: 5279bdc95d7e5485e990e2529698d71d, type: 3}
-  m_PrefabInstance: {fileID: 1153097948}
-  m_PrefabAsset: {fileID: 0}
---- !u!1 &232370547 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 6100931867097971686, guid: 5279bdc95d7e5485e990e2529698d71d, type: 3}
-  m_PrefabInstance: {fileID: 375080905}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &372979388
 GameObject:
   m_ObjectHideFlags: 0
@@ -665,10 +649,10 @@ MonoBehaviour:
       m_Calls: []
   m_FontData:
     m_Font: {fileID: 12800000, guid: 5980c04aae18447ead7148ba3217b74e, type: 3}
-    m_FontSize: 48
+    m_FontSize: 42
     m_FontStyle: 0
     m_BestFit: 0
-    m_MinSize: 10
+    m_MinSize: 4
     m_MaxSize: 48
     m_Alignment: 4
     m_AlignByGeometry: 0
@@ -908,7 +892,6 @@ MonoBehaviour:
   _button: {fileID: 845387014}
   _scrollImage: {fileID: 1112715380}
   _lockIcon: {fileID: 426096395}
-  _completionBadge: {fileID: 1438471948}
   _unlockedColor: {r: 1, g: 1, b: 1, a: 1}
   _lockedColor: {r: 0.55, g: 0.55, b: 0.55, a: 1}
 --- !u!1 &852129665
@@ -949,7 +932,7 @@ MonoBehaviour:
     m_SelectOnDown: {fileID: 0}
     m_SelectOnLeft: {fileID: 0}
     m_SelectOnRight: {fileID: 0}
-  m_Transition: 1
+  m_Transition: 2
   m_Colors:
     m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
     m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
@@ -960,7 +943,7 @@ MonoBehaviour:
     m_FadeDuration: 0.1
   m_SpriteState:
     m_HighlightedSprite: {fileID: 0}
-    m_PressedSprite: {fileID: 0}
+    m_PressedSprite: {fileID: -1172348659990362884, guid: a75c439303e16f340a72b5bc70a8c727, type: 3}
     m_SelectedSprite: {fileID: 0}
     m_DisabledSprite: {fileID: 0}
   m_AnimationTriggers:
@@ -987,14 +970,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.35, g: 0.35, b: 0.4, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: 5492327305593120934, guid: 61ca8a9790566074b9e108592f6a7e6a, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -1029,7 +1012,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 60, y: -60}
+  m_AnchoredPosition: {x: 59.999, y: -85}
   m_SizeDelta: {x: 200, y: 100}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &854982942 stripped
@@ -1068,7 +1051,6 @@ MonoBehaviour:
   _button: {fileID: 854982944}
   _scrollImage: {fileID: 1153097949}
   _lockIcon: {fileID: 931653512}
-  _completionBadge: {fileID: 169551109}
   _unlockedColor: {r: 1, g: 1, b: 1, a: 1}
   _lockedColor: {r: 0.55, g: 0.55, b: 0.55, a: 1}
 --- !u!1 &889984519
@@ -1357,7 +1339,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
 --- !u!1001 &1153097948
 PrefabInstance:
@@ -1776,7 +1758,6 @@ MonoBehaviour:
   _button: {fileID: 1250510608}
   _scrollImage: {fileID: 375080906}
   _lockIcon: {fileID: 959480364}
-  _completionBadge: {fileID: 232370547}
   _unlockedColor: {r: 1, g: 1, b: 1, a: 1}
   _lockedColor: {r: 0.55, g: 0.55, b: 0.55, a: 1}
 --- !u!1 &1289674700
@@ -2059,11 +2040,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
---- !u!1 &1438471948 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 6100931867097971686, guid: 5279bdc95d7e5485e990e2529698d71d, type: 3}
-  m_PrefabInstance: {fileID: 1112715379}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1538221232 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5288809830755546078, guid: 5279bdc95d7e5485e990e2529698d71d, type: 3}
@@ -2100,7 +2076,6 @@ MonoBehaviour:
   _button: {fileID: 1538221234}
   _scrollImage: {fileID: 1367614986}
   _lockIcon: {fileID: 1558318798}
-  _completionBadge: {fileID: 1954503805}
   _unlockedColor: {r: 1, g: 1, b: 1, a: 1}
   _lockedColor: {r: 0.55, g: 0.55, b: 0.55, a: 1}
 --- !u!1 &1558318798 stripped
@@ -2183,11 +2158,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1675429897}
   m_CullTransparentMesh: 1
---- !u!1 &1954503805 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 6100931867097971686, guid: 5279bdc95d7e5485e990e2529698d71d, type: 3}
-  m_PrefabInstance: {fileID: 1367614985}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1975014160
 GameObject:
   m_ObjectHideFlags: 0
