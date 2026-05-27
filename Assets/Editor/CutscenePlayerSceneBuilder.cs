@@ -343,27 +343,9 @@ public static class CutscenePlayerSceneBuilder
         if (guids.Length > 0)
             return AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(AssetDatabase.GUIDToAssetPath(guids[0]));
 
-        const string ttfPath = "Assets/Art/UI/Fonts/VT323-Regular.ttf";
-        Font sourceFont = AssetDatabase.LoadAssetAtPath<Font>(ttfPath);
-        if (sourceFont == null)
-        {
-            Debug.LogWarning("[CutsceneBuilder] VT323-Regular.ttf not found at " + ttfPath
-                + ". Import the font, then re-run this builder.");
-            return null;
-        }
-
-        TMP_FontAsset fontAsset = TMP_FontAsset.CreateFontAsset(sourceFont);
-
-        const string destDir = "Assets/Resources/Fonts";
-        if (!Directory.Exists(destDir))
-            Directory.CreateDirectory(destDir);
-
-        string destPath = destDir + "/VT323 SDF.asset";
-        AssetDatabase.CreateAsset(fontAsset, destPath);
-        AssetDatabase.SaveAssets();
-        AssetDatabase.Refresh();
-
-        Debug.Log("[CutsceneBuilder] Generated VT323 SDF TMP Font Asset at " + destPath);
-        return fontAsset;
+        Debug.LogWarning("[CutsceneBuilder] No TMP_FontAsset with 'VT323' in name found. "
+            + "Create one via Window → TextMeshPro → Font Asset Creator from VT323-Regular.ttf, "
+            + "then re-run this builder. Font will default to Liberation Sans until then.");
+        return null;
     }
 }
