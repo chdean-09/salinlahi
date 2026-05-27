@@ -11686,11 +11686,20 @@ MonoBehaviour:
   _canvasGroup: {fileID: 283012945}
   _panelImage: {fileID: 1042849118}
   _imageRectTransform: {fileID: 1042849116}
+  _bottomGradientOverlay: {fileID: 0}
+  _bottomGradientColor: {r: 0, g: 0, b: 0, a: 0.55}
+  _bottomGradientHeightPercent: 0.3
+  _exitTransitionImage: {fileID: 0}
   _bodyText: {fileID: 1322866062}
+  _bodyFont: {fileID: 0}
+  _bodyFontSize: 92
   _tapCatcher: {fileID: 756999031}
   _skipButton: {fileID: 1296541905}
   _skipButtonRoot: {fileID: 1296541901}
   _slideDistance: 400
+  _exitFadeToBlackDuration: 0.45
+  _exitBlackHoldDuration: 0.1
+  _exitFadeFromBlackDuration: 0.35
 --- !u!225 &283012945
 CanvasGroup:
   m_ObjectHideFlags: 0
@@ -11775,7 +11784,7 @@ RectTransform:
   m_GameObject: {fileID: 283012943}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1042849116}
