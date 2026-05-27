@@ -9,6 +9,8 @@ using UnityEngine.SceneManagement;
 public static class CutscenePlayerSceneBuilder
 {
     private const string GameplayScenePath = "Assets/_Scenes/Gameplay.unity";
+    private const string VT323FontAssetPath = "Assets/Art/UI/Fonts/VT323-Regular SDF.asset";
+    private const string VT323SourceFontPath = "Assets/Art/UI/Fonts/VT323-Regular.ttf";
     private const float BottomGradientHeightPercent = 0.30f;
     private static readonly Color BottomGradientColor = new Color(0f, 0f, 0f, 0.55f);
 
@@ -485,27 +487,25 @@ public static class CutscenePlayerSceneBuilder
 
     private static TMP_FontAsset EnsureVT323FontAsset()
     {
-        string[] guids = AssetDatabase.FindAssets("VT323 t:TMP_FontAsset");
-        if (guids.Length > 0)
-            return AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(AssetDatabase.GUIDToAssetPath(guids[0]));
+        TMP_FontAsset existing = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(VT323FontAssetPath);
+        if (existing != null)
+            return existing;
 
-        const string ttfPath = "Assets/Art/UI/Fonts/VT323-Regular.ttf";
-        Font sourceFont = AssetDatabase.LoadAssetAtPath<Font>(ttfPath);
+        Font sourceFont = AssetDatabase.LoadAssetAtPath<Font>(VT323SourceFontPath);
         if (sourceFont == null)
         {
-            Debug.LogWarning("[CutsceneBuilder] VT323-Regular.ttf not found at " + ttfPath
+            Debug.LogWarning("[CutsceneBuilder] VT323-Regular.ttf not found at " + VT323SourceFontPath
                 + ". Font will default to Liberation Sans until VT323 is imported.");
             return null;
         }
 
         TMP_FontAsset fontAsset = TMP_FontAsset.CreateFontAsset(sourceFont);
 
-        const string destDir = "Assets/Resources/Fonts";
+        string destDir = Path.GetDirectoryName(VT323FontAssetPath);
         if (!Directory.Exists(destDir))
             Directory.CreateDirectory(destDir);
 
-        string destPath = destDir + "/VT323 SDF.asset";
-        AssetDatabase.CreateAsset(fontAsset, destPath);
+        AssetDatabase.CreateAsset(fontAsset, VT323FontAssetPath);
 
         if (fontAsset.atlasTextures != null)
         {
@@ -522,7 +522,6 @@ public static class CutscenePlayerSceneBuilder
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
 
-        Debug.Log("[CutsceneBuilder] Generated VT323 SDF TMP Font Asset at " + destPath);
         return fontAsset;
     }
 }
