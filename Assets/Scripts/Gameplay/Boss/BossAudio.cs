@@ -25,6 +25,7 @@ public class BossAudio : MonoBehaviour
     private int _lastDamagedIdx = -1;
     private int _lastFootstepIdx = -1;
     private int _lastTeleportIdx = -1;
+    private bool _bgmFadeOutRequested;
 
     private void Awake()
     {
@@ -58,12 +59,25 @@ public class BossAudio : MonoBehaviour
         EventBus.OnBossDefeated -= HandleBossDefeated;
 
         StopFootsteps();
+
+        // Player can quit mid-boss; OnBossDefeated never fires in that case
+        // and the boss BGM would otherwise keep looping on the DontDestroyOnLoad
+        // AudioManager all the way back to MainMenu. Fade it out here unless
+        // HandleBossDefeated already requested the fade.
+        if (!_bgmFadeOutRequested && _bank != null && _bank.bgm != null
+            && AudioManager.Instance != null)
+        {
+            AudioManager.Instance.FadeOutBGM(_bank.bgmFadeOutSeconds);
+        }
+
         _bank = null;
+        _bgmFadeOutRequested = false;
     }
 
     private void HandleBossStarted(BossConfigSO config)
     {
         _bank = config != null ? config.audioBank : null;
+        _bgmFadeOutRequested = false;
         if (_bank == null) return;
 
         if (AudioManager.Instance != null)
@@ -128,7 +142,10 @@ public class BossAudio : MonoBehaviour
         if (_bank == null) return;
         PlaySfx(_bank.defeat, _bank.defeatVolume);
         if (AudioManager.Instance != null)
+        {
             AudioManager.Instance.FadeOutBGM(_bank.bgmFadeOutSeconds);
+            _bgmFadeOutRequested = true;
+        }
     }
 
     private void StartFootsteps()
