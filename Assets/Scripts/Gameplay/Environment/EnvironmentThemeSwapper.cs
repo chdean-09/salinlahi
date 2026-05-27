@@ -19,6 +19,12 @@ public class EnvironmentThemeSwapper : MonoBehaviour
 
     private void Start()
     {
+        if (GameManager.Instance == null)
+        {
+            DebugLogger.LogWarning("EnvironmentThemeSwapper: GameManager is missing. Theme swap skipped.");
+            return;
+        }
+
         LevelConfigSO level = GameManager.Instance.CurrentLevel;
         if (level == null || level.eraTheme == null)
         {

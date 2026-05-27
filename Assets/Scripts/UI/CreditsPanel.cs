@@ -24,6 +24,7 @@ public class CreditsPanel : MonoBehaviour
 
     public void Hide()
     {
+        AudioManager.Instance?.PlayMenuExitButtonClick();
         gameObject.SetActive(false);
     }
 }

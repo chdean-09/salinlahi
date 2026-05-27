@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Level Select UI driven by a serialized list of EraConfigSO entries.
-/// Shows _slotsPerEra LevelButtons at a time, swapping the background sprite,
+/// Shows the era's LevelButtons, swapping the background sprite,
 /// banner sprite, and the level scrolls when the player navigates eras.
 /// Prev/Next arrow buttons remain visible at era edges; their interactable
 /// flag is toggled and Unity's Button ColorBlock disabled-color tints them grey.
@@ -17,8 +17,6 @@ public class LevelSelectUI : MonoBehaviour
 
     [Header("Era Data")]
     [SerializeField] private List<EraConfigSO> _eras = new();
-    [Tooltip("How many level buttons are shown per era. Must match the LevelButton list below.")]
-    [SerializeField] private int _slotsPerEra = 5;
 
     [Header("Scene Refs")]
     [SerializeField] private Image _eraBackgroundImage;
@@ -169,6 +167,7 @@ public class LevelSelectUI : MonoBehaviour
 
     private void OnBackPressed()
     {
+        AudioManager.Instance?.PlayMenuExitButtonClick();
         DebugLogger.Log("LevelSelectUI: Back to main menu");
 
         if (SceneLoader.Instance != null)

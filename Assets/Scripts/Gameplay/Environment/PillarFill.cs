@@ -23,6 +23,7 @@ public sealed class PillarFill : MonoBehaviour
     private Sprite _whitePixelSprite;
     private bool _warnedNoSprite;
     private bool _warnedNoPlayColumn;
+    private Vector3 _lastCameraPosition;
 
     /// <summary>
     /// Returns the half-width of one pillar, in world units. Zero when the device
@@ -53,6 +54,24 @@ public sealed class PillarFill : MonoBehaviour
         {
             Apply();
         }
+    }
+
+    private void LateUpdate()
+    {
+        if (!Application.isPlaying || _cam == null)
+            return;
+
+        if ((_leftPillar == null || !_leftPillar.enabled) &&
+            (_rightPillar == null || !_rightPillar.enabled))
+        {
+            return;
+        }
+
+        Vector3 cameraPosition = _cam.transform.position;
+        if (cameraPosition == _lastCameraPosition)
+            return;
+
+        ResizeRenderers();
     }
 
     private void OnDisable()
@@ -162,8 +181,16 @@ public sealed class PillarFill : MonoBehaviour
         float halfPillar = pillarWidth * 0.5f;
         float height = orthoSize * 2f;
 
-        _leftPillar.transform.position = new Vector3(-(halfCol + halfPillar), 0f, 0f);
-        _rightPillar.transform.position = new Vector3(+(halfCol + halfPillar), 0f, 0f);
+        Vector3 cameraPosition = _cam.transform.position;
+        _lastCameraPosition = cameraPosition;
+        _leftPillar.transform.position = new Vector3(
+            cameraPosition.x - (halfCol + halfPillar),
+            cameraPosition.y,
+            0f);
+        _rightPillar.transform.position = new Vector3(
+            cameraPosition.x + (halfCol + halfPillar),
+            cameraPosition.y,
+            0f);
 
         _leftPillar.size = new Vector2(pillarWidth, height);
         _rightPillar.size = new Vector2(pillarWidth, height);

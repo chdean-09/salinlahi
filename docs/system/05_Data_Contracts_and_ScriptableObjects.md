@@ -389,10 +389,10 @@ Per-era visual + content bundle for the Level Select screen. `LevelSelectUI` hol
 | `eraName` | `string` | Identity | YES | Human-readable name for logs/debugging (e.g. `"Era One"`). |
 | `backgroundSprite` | `Sprite` | Visuals | YES | Full-screen background sprite shown when this era is active. Assigned to `_eraBackgroundImage.sprite` by `LevelSelectUI.ShowEra`. |
 | `bannerSprite` | `Sprite` | Visuals | YES | Baked-in banner sprite for this era (e.g. the ERA ONE scroll). Assigned to `_eraBannerImage.sprite` by `LevelSelectUI.ShowEra`. |
-| `levels` | `List<LevelConfigSO>` | Levels | YES | Ordered list of levels in this era. Expected length matches `LevelSelectUI._slotsPerEra` (5). Shorter lists cause the surplus `LevelButton` slots to be hidden (`SetActive(false)`). |
+| `levels` | `List<LevelConfigSO>` | Levels | YES | Ordered list of levels in this era. Expected length matches `LevelSelectUI._levelButtons.Count` (5). Shorter lists cause the surplus `LevelButton` slots to be hidden (`SetActive(false)`). |
 
 **Validation Rules:**
-- `levels.Count` should equal `LevelSelectUI._slotsPerEra` (currently 5). Shorter is handled; longer entries beyond slot count are silently ignored.
+- `levels.Count` should equal `LevelSelectUI._levelButtons.Count` (currently 5). Shorter is handled; longer entries beyond slot count are silently ignored.
 - All three visual fields (`eraName`, `backgroundSprite`, `bannerSprite`) must be non-null for the era to render correctly.
 
 [EVIDENCE: Assets/Scripts/Data/EraConfigSO.cs]

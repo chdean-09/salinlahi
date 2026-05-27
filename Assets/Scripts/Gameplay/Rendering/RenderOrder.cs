@@ -11,6 +11,7 @@ public static class RenderOrder
     public const int EnemyDefault    = 0;
     public const int Boss            = 10;
     public const int BossSummon      = 15;
+    public const int Protagonist     = 50;
     public const int EnemyGlyphBadge = 200;
     public const int EnemyDebugLabel = 500;
 

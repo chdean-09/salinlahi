@@ -25,3 +25,5 @@ MonoBehaviour:
   introDialogue: {fileID: 0}
   outroDialogue: {fileID: 0}
   bgmClip: {fileID: 0}
+  hasProtagonist: 1
+  protagonistWalksIn: 0

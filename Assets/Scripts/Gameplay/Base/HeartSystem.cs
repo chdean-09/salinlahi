@@ -54,7 +54,13 @@ public class HeartSystem : MonoBehaviour
 #endif
 
         int safeAmount = Mathf.Max(0, amount);
+        int previousHearts = _currentHearts;
         _currentHearts = Mathf.Max(0, _currentHearts - safeAmount);
+        int appliedDamage = previousHearts - _currentHearts;
+
+        if (appliedDamage > 0)
+            EventBus.RaiseBaseDamageApplied(appliedDamage);
+
         EventBus.RaiseHeartsChanged(_currentHearts);
         DebugLogger.Log($"Hearts remaining: {_currentHearts}/{_maxHearts}");
 

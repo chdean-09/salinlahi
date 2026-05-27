@@ -32,6 +32,9 @@ public class LevelConfigSO : ScriptableObject
     public bool isAvailableInLite = true;
 
     [Header("Flow")]
+    [Tooltip("Optional tutorial phase played before this level's waves. Level 1 uses this for embedded onboarding.")]
+    public Level1TutorialSequenceSO tutorialSequence;
+
     [Tooltip("Dialogue played before waves begin. Null = skip intro.")]
     public DialogueSO introDialogue;
 
@@ -40,4 +43,11 @@ public class LevelConfigSO : ScriptableObject
 
     [Tooltip("Background music for this level. Null = no BGM change.")]
     public AudioClip bgmClip;
+
+    [Header("Protagonist")]
+    [Tooltip("If true, spawns a protagonist during this level.")]
+    public bool hasProtagonist = false;
+
+    [Tooltip("If true, protagonist walks in from below. If false, appears instantly at final position.")]
+    public bool protagonistWalksIn = false;
 }

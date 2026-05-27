@@ -652,7 +652,7 @@ public class Enemy : MonoBehaviour
         if (_baybayinLabel != null)
         {
             // Bosses don't have a single assigned character — required draws
-            // are surfaced by BossGlyphQueueUI. Suppressing the per-enemy
+            // are surfaced by BossDrawCounterUI. Suppressing the per-enemy
             // label avoids the misleading "Draw: (none)" readout.
             bool showBaybayin = !IsBoss;
             _baybayinLabel.gameObject.SetActive(showBaybayin);

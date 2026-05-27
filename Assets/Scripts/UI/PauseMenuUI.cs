@@ -56,11 +56,14 @@ public class PauseMenuUI : MonoBehaviour
 
     private void OnResumePressed()
     {
+        AudioManager.Instance?.PlayMenuButtonClick();
         GameManager.Instance.ResumeGame();
     }
 
     private void OnQuitPressed()
     {
+        AudioManager.Instance?.PlayMenuExitButtonClick();
+
         if (GameManager.Instance != null)
         {
             if (ShouldCachePausedRunSnapshot())
@@ -112,6 +115,7 @@ public class PauseMenuUI : MonoBehaviour
 
     private void OnSettingsPressed()
     {
+        AudioManager.Instance?.PlayMenuButtonClick();
         DebugLogger.Log("PauseMenuUI: Settings pressed");
         if (_settingsPanel != null)
             _settingsPanel.Show();

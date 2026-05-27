@@ -207,7 +207,11 @@ public class EnemyPool : Singleton<EnemyPool>
     {
         if (prefab == null)
         {
-            DebugLogger.LogError($"EnemyPool: Missing prefab for pool '{enemyID}'. Skipping pool.");
+            if (isDefaultPool)
+                DebugLogger.LogError($"EnemyPool: Missing prefab for pool '{enemyID}'. Skipping pool.");
+            else
+                DebugLogger.LogWarning($"EnemyPool: Missing prefab for optional pool '{enemyID}'. Skipping pool.");
+
             return null;
         }
 
