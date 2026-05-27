@@ -339,7 +339,11 @@ public static class CutscenePlayerSceneBuilder
     {
         string[] guids = AssetDatabase.FindAssets("VT323 t:TMP_FontAsset");
         if (guids.Length == 0)
+        {
+            Debug.LogWarning("[CutsceneBuilder] No TMP_FontAsset found with 'VT323' in name. "
+                + "Create one via Window → TextMeshPro → Font Asset Creator, then re-run this builder.");
             return null;
+        }
 
         return AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(
             AssetDatabase.GUIDToAssetPath(guids[0]));
