@@ -1089,7 +1089,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: -20
   m_MaskInteraction: 0
   m_Sprite: {fileID: -8410918290169310731, guid: c31990d003e308a42894ccd057dd6548, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -8669,6 +8669,14 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 8037671833055544141, guid: 8af0504b541264b64aad0cc3cef11412, type: 3}
     - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[9].prefab
+      value: 
+      objectReference: {fileID: 8037671833055544141, guid: 8ffc08ca659d467094885c5bf3a4437e, type: 3}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[10].prefab
+      value: 
+      objectReference: {fileID: 8037671833055544141, guid: 5b9f514008014de4b8f6dd862682490a, type: 3}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
       propertyPath: _registeredEnemyPrefabs.Array.data[3].enemyID
       value: sprinter
       objectReference: {fileID: 0}
@@ -8717,6 +8725,22 @@ PrefabInstance:
       value: 20
       objectReference: {fileID: 0}
     - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[9].enemyID
+      value: guardia
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[9].maxSize
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[10].enemyID
+      value: capitan
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[10].maxSize
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
       propertyPath: _registeredEnemyPrefabs.Array.data[3].defaultCapacity
       value: 10
       objectReference: {fileID: 0}
@@ -8741,32 +8765,8 @@ PrefabInstance:
       value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
-      propertyPath: _registeredEnemyPrefabs.Array.data[9].prefab
-      value: 
-      objectReference: {fileID: 8037671833055544141, guid: 8ffc08ca659d467094885c5bf3a4437e, type: 3}
-    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
-      propertyPath: _registeredEnemyPrefabs.Array.data[9].enemyID
-      value: guardia
-      objectReference: {fileID: 0}
-    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
-      propertyPath: _registeredEnemyPrefabs.Array.data[9].maxSize
-      value: 20
-      objectReference: {fileID: 0}
-    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
       propertyPath: _registeredEnemyPrefabs.Array.data[9].defaultCapacity
       value: 10
-      objectReference: {fileID: 0}
-    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
-      propertyPath: _registeredEnemyPrefabs.Array.data[10].prefab
-      value: 
-      objectReference: {fileID: 8037671833055544141, guid: 5b9f514008014de4b8f6dd862682490a, type: 3}
-    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
-      propertyPath: _registeredEnemyPrefabs.Array.data[10].enemyID
-      value: capitan
-      objectReference: {fileID: 0}
-    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
-      propertyPath: _registeredEnemyPrefabs.Array.data[10].maxSize
-      value: 20
       objectReference: {fileID: 0}
     - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
       propertyPath: _registeredEnemyPrefabs.Array.data[10].defaultCapacity
