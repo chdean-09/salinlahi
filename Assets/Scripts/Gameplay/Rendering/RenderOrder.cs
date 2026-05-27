@@ -20,6 +20,7 @@ public static class RenderOrder
 
     // Screen Space - Overlay canvases (separate axis from world sprites,
     // but kept in a high band so the numeric ordering still reads top-to-bottom)
+    public const int CutsceneCanvas  = 8500;
     public const int LoadingCanvas   = 9000;
     public const int SandboxOverlay  = 9500;
 }

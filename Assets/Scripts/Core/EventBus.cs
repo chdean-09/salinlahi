@@ -64,6 +64,10 @@ public static class EventBus
     public static event Action OnDialogueStarted;
     public static event Action OnDialogueComplete;
 
+    // -- Cutscene Events --
+    public static event Action OnCutsceneStarted;
+    public static event Action OnCutsceneComplete;
+
     // -- Environment Events --
     public static event Action<EraThemeSO> OnThemeApplied; // raised by EnvironmentThemeSwapper after ApplyTheme
 
@@ -106,5 +110,7 @@ public static class EventBus
     public static void RaiseBossTeleport() => OnBossTeleport?.Invoke();
     public static void RaiseDialogueStarted() => OnDialogueStarted?.Invoke();
     public static void RaiseDialogueComplete() => OnDialogueComplete?.Invoke();
+    public static void RaiseCutsceneStarted() => OnCutsceneStarted?.Invoke();
+    public static void RaiseCutsceneComplete() => OnCutsceneComplete?.Invoke();
     public static void RaiseThemeApplied(EraThemeSO theme) => OnThemeApplied?.Invoke(theme);
 }
