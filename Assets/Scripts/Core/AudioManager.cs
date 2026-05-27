@@ -1,9 +1,17 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.SceneManagement;
 
 public class AudioManager : Singleton<AudioManager>
 {
+    private enum BgmContext
+    {
+        None,
+        Home,
+        Gameplay
+    }
+
     [Header("Audio Sources")]
     [SerializeField] private AudioSource _bgmSource;
     [SerializeField] private AudioSource _sfxSource;
@@ -14,6 +22,12 @@ public class AudioManager : Singleton<AudioManager>
     [SerializeField] private AudioClip _menuButtonClickClip;
     [SerializeField] private AudioClip _menuExitButtonClickClip;
     [SerializeField] private AudioClip[] _baseHitClips;
+
+    [Header("Context BGM")]
+    [SerializeField] private AudioClip _homeScreenBgmClip;
+    [SerializeField] private AudioClip _gameplayBgmClip;
+    [SerializeField] private float _contextBgmFadeOutSeconds = 0.15f;
+    [SerializeField] private float _contextBgmFadeInSeconds = 0.2f;
 
     [Header("Base Hit Variation")]
     [SerializeField, Min(0f)] private float _baseHitVolumeMin = 0.92f;
@@ -62,6 +76,7 @@ public class AudioManager : Singleton<AudioManager>
     // changes during a track preserve the bank's authored level.
     private float _bgmScale = 1f;
     private Coroutine _bgmFadeRoutine;
+    private BgmContext _currentBgmContext = BgmContext.None;
 
     public float MasterVolume => _masterVolume;
     public float BgmVolume => _bgmVolume;
@@ -75,10 +90,12 @@ public class AudioManager : Singleton<AudioManager>
         EnsurePronunciationSfxSource();
         WarmupSfxClips();
         LoadSavedVolumes();
+        ApplyContextBgmForScene(SceneManager.GetActiveScene().name);
     }
 
     private void OnEnable()
     {
+        SceneManager.sceneLoaded += HandleSceneLoaded;
         EventBus.OnPronunciationRequested += PlayPronunciationClip;
         EventBus.OnBaseDamageApplied += PlayBaseHitSound;
         EventBus.OnChainAttackHit += PlayChainLightningSfx;
@@ -86,6 +103,7 @@ public class AudioManager : Singleton<AudioManager>
 
     private void OnDisable()
     {
+        SceneManager.sceneLoaded -= HandleSceneLoaded;
         EventBus.OnPronunciationRequested -= PlayPronunciationClip;
         EventBus.OnBaseDamageApplied -= PlayBaseHitSound;
         EventBus.OnChainAttackHit -= PlayChainLightningSfx;
@@ -101,6 +119,70 @@ public class AudioManager : Singleton<AudioManager>
             StopCoroutine(_bgmFadeRoutine);
             _bgmFadeRoutine = null;
         }
+    }
+
+    private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        ApplyContextBgmForScene(scene.name);
+    }
+
+    private void ApplyContextBgmForScene(string sceneName)
+    {
+        BgmContext context = ResolveContext(sceneName);
+        if (context == BgmContext.None)
+            return;
+
+        if (_currentBgmContext == context && _bgmSource != null && _bgmSource.isPlaying)
+            return;
+
+        AudioClip clipToPlay = context == BgmContext.Home ? _homeScreenBgmClip : _gameplayBgmClip;
+        if (clipToPlay == null)
+        {
+            DebugLogger.LogError($"AudioManager: Missing BGM clip for context '{context}' in scene '{sceneName}'.");
+            return;
+        }
+
+        _currentBgmContext = context;
+        CrossfadeToBgm(clipToPlay);
+    }
+
+    private static BgmContext ResolveContext(string sceneName)
+    {
+        if (sceneName == "MainMenu")
+            return BgmContext.Home;
+
+        if (sceneName == "Gameplay" || sceneName == "Level_01_Tutorial")
+            return BgmContext.Gameplay;
+
+        return BgmContext.None;
+    }
+
+    private void CrossfadeToBgm(AudioClip clip)
+    {
+        if (_bgmSource == null || clip == null)
+            return;
+
+        if (_bgmSource.clip == clip && _bgmSource.isPlaying)
+        {
+            _bgmSource.loop = true;
+            return;
+        }
+
+        if (_contextBgmFadeOutSeconds <= 0f && _contextBgmFadeInSeconds <= 0f)
+        {
+            PlayBGM(clip);
+            return;
+        }
+
+        StartCoroutine(CrossfadeRoutine(clip));
+    }
+
+    private IEnumerator CrossfadeRoutine(AudioClip clip)
+    {
+        if (_contextBgmFadeOutSeconds > 0f && _bgmSource.isPlaying)
+            yield return FadeOutBGM(_contextBgmFadeOutSeconds);
+
+        FadeInBGM(clip, _contextBgmFadeInSeconds);
     }
 
     private void PlayPronunciationClip(BaybayinCharacterSO character)
