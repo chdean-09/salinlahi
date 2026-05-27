@@ -160,8 +160,8 @@ public class LevelFlowController : MonoBehaviour
     {
         _waveManager ??= FindFirstObjectByType<WaveManager>();
         _dialogueController ??= FindFirstObjectByType<DialogueController>();
-        _victoryScreen ??= FindFirstObjectByType<VictoryScreenUI>();
-        _defeatScreen ??= FindFirstObjectByType<DefeatScreenUI>();
+        _victoryScreen ??= FindFirstObjectByType<VictoryScreenUI>(FindObjectsInactive.Include);
+        _defeatScreen ??= FindFirstObjectByType<DefeatScreenUI>(FindObjectsInactive.Include);
         _tutorialOverlayController ??= FindFirstObjectByType<TutorialOverlayController>();
 
         if (_level1InteractiveTutorialController == null
