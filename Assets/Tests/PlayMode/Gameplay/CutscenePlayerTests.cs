@@ -80,6 +80,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             CanvasGroup cg = _playerGo.AddComponent<CanvasGroup>();
 
             _player = _playerGo.AddComponent<CutscenePlayer>();
+            _player.enabled = false;
 
             GameObject imgGo = new GameObject("PanelImage");
             imgGo.transform.SetParent(_playerGo.transform, false);
@@ -117,8 +118,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             SetPrivateField(_player, "_tapCatcher", _tapCatcher);
             SetPrivateField(_player, "_skipButtonRoot", skipRoot);
 
-            InvokePrivate(_player, "Awake");
-            InvokePrivate(_player, "OnEnable");
+            _player.enabled = true;
         }
 
         // ─── Tests ────────────────────────────────────────────────────────────

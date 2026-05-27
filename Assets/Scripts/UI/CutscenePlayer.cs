@@ -33,9 +33,6 @@ public class CutscenePlayer : MonoBehaviour
             _canvasGroup.alpha = 0f;
             _canvasGroup.blocksRaycasts = false;
         }
-
-        if (_bodyFont != null && _bodyText != null)
-            _bodyText.font = _bodyFont;
     }
 
     private void OnEnable()
@@ -44,6 +41,9 @@ public class CutscenePlayer : MonoBehaviour
             _tapCatcher.onClick.AddListener(OnTap);
         if (_skipButton != null)
             _skipButton.onClick.AddListener(SkipCutscene);
+
+        if (_bodyFont != null && _bodyText != null)
+            _bodyText.font = _bodyFont;
     }
 
     private void OnDisable()
