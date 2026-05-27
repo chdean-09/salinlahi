@@ -55,7 +55,7 @@ public class CutscenePlayer : MonoBehaviour
             _bodyText.fontMaterial.EnableKeyword("OUTLINE_ON");
             _bodyText.fontMaterial.SetFloat(Shader.PropertyToID("_OutlineWidth"), 0.35f);
             _bodyText.fontMaterial.SetColor(Shader.PropertyToID("_OutlineColor"), Color.black);
-            _bodyText.fontMaterial.SetFloat(Shader.PropertyToID("_FaceDilate"), 0.1f);
+            _bodyText.fontMaterial.SetFloat(Shader.PropertyToID("_FaceDilate"), 0.15f);
         }
     }
 
