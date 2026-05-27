@@ -21,6 +21,9 @@ public class CombatResolver : MonoBehaviour
     [SerializeField, Min(0f)] private float _aoeExtraRandomDelay = 0.12f;
     [SerializeField, Min(0f)] private float _aoeInitialDelayMin = 0.08f;
     [SerializeField, Min(0f)] private float _aoeInitialDelayMax = 0.2f;
+    [Header("Pronunciation Timing")]
+    [Tooltip("Small lead so pronunciation starts before damage resolves.")]
+    [SerializeField, Min(0f)] private float _pronunciationLeadSeconds = 0.06f;
     private static CombatResolver _instance;
 
     private void Awake()
@@ -118,9 +121,11 @@ public class CombatResolver : MonoBehaviour
 
             if (chainTargets.Count > 0)
             {
-                // Broadcast once for AOE-wide systems (audio/UI counters).
-                ApplyAoeDefeat(chainTargets);
-                EventBus.RaiseChainAttackHit(chainTargets);
+                BaybayinCharacterSO pronunciationCharacter = chainTargets[0] != null ? chainTargets[0].Character : null;
+                if (pronunciationCharacter != null)
+                    EventBus.RaisePronunciationRequested(pronunciationCharacter);
+
+                StartCoroutine(ApplyAoeDefeatAfterPronunciationLead(chainTargets));
             }
 
             if (defeatedCount > 0)
@@ -207,11 +212,47 @@ public class CombatResolver : MonoBehaviour
         }
         else
         {
-            EventBus.RaiseEnemyTargeted(target);
-            EventBus.RaiseSingleAttackHit(target);
-            target.TakeDamage(1);
-            DebugLogger.Log($"CombatResolver: Hit {characterID}");
+            if (target.Character != null)
+                EventBus.RaisePronunciationRequested(target.Character);
+
+            if (_instance != null)
+            {
+                _instance.StartCoroutine(_instance.ResolveMatchedEnemyAfterPronunciationLead(target, characterID));
+            }
+            else
+            {
+                EventBus.RaiseEnemyTargeted(target);
+                EventBus.RaiseSingleAttackHit(target);
+                target.TakeDamage(1);
+                DebugLogger.Log($"CombatResolver: Hit {characterID}");
+            }
         }
+    }
+
+    private IEnumerator ResolveMatchedEnemyAfterPronunciationLead(Enemy target, string characterID)
+    {
+        float delay = Mathf.Max(0f, _pronunciationLeadSeconds);
+        if (delay > 0f)
+            yield return new WaitForSeconds(delay);
+
+        if (!IsEligibleCombatTarget(target))
+            yield break;
+
+        EventBus.RaiseEnemyTargeted(target);
+        EventBus.RaiseSingleAttackHit(target);
+        target.TakeDamage(1);
+        DebugLogger.Log($"CombatResolver: Hit {characterID}");
+    }
+
+    private IEnumerator ApplyAoeDefeatAfterPronunciationLead(List<Enemy> targets)
+    {
+        float delay = Mathf.Max(0f, _pronunciationLeadSeconds);
+        if (delay > 0f)
+            yield return new WaitForSeconds(delay);
+
+        // Broadcast once for AOE-wide systems (audio/UI counters) at execution time.
+        ApplyAoeDefeat(targets);
+        EventBus.RaiseChainAttackHit(targets);
     }
 
     private void ApplyAoeDefeat(List<Enemy> targets)

@@ -24,6 +24,15 @@ public class AudioManager : Singleton<AudioManager>
     [Header("SFX Playback Polish")]
     [SerializeField, Min(0f)] private float _trimSilenceThreshold = 0.0025f;
     [SerializeField, Min(0f)] private float _maxLeadingSilenceTrimSeconds = 0.12f;
+    [Header("Pronunciation Playback Polish")]
+    [SerializeField, Min(0f)] private float _pronunciationTrimSilenceThreshold = 0.01f;
+    [SerializeField, Min(0f)] private float _maxPronunciationLeadingTrimSeconds = 0.6f;
+    [Header("Pronunciation Modulation")]
+    [SerializeField] private bool _enablePronunciationModulation = true;
+    [SerializeField, Min(0.1f)] private float _pronunciationPitchMin = 0.96f;
+    [SerializeField, Min(0.1f)] private float _pronunciationPitchMax = 1.04f;
+    [SerializeField, Min(0f)] private float _pronunciationVolumeMin = 0.94f;
+    [SerializeField, Min(0f)] private float _pronunciationVolumeMax = 1f;
 
     [Header("Chain Lightning Mix")]
     [SerializeField] private bool _enablePerEnemyChainZap = true;
@@ -36,7 +45,9 @@ public class AudioManager : Singleton<AudioManager>
 
     private Coroutine _chainZapRoutine;
     private AudioSource _baseHitSfxSource;
+    private AudioSource _pronunciationSfxSource;
     private readonly Dictionary<AudioClip, AudioClip> _trimmedClipCache = new();
+    private readonly Dictionary<AudioClip, AudioClip> _trimmedPronunciationClipCache = new();
 
     private const string PrefKeyMasterVolume = "salinlahi.audio.master_volume";
     private const string PrefKeyBgmVolume = "salinlahi.audio.bgm_volume";
@@ -61,20 +72,21 @@ public class AudioManager : Singleton<AudioManager>
         base.Awake();
         if (Instance != this) return;
         EnsureBaseHitSfxSource();
+        EnsurePronunciationSfxSource();
         WarmupSfxClips();
         LoadSavedVolumes();
     }
 
     private void OnEnable()
     {
-        EventBus.OnEnemyDefeated += PlayPronunciationClip;
+        EventBus.OnPronunciationRequested += PlayPronunciationClip;
         EventBus.OnBaseDamageApplied += PlayBaseHitSound;
         EventBus.OnChainAttackHit += PlayChainLightningSfx;
     }
 
     private void OnDisable()
     {
-        EventBus.OnEnemyDefeated -= PlayPronunciationClip;
+        EventBus.OnPronunciationRequested -= PlayPronunciationClip;
         EventBus.OnBaseDamageApplied -= PlayBaseHitSound;
         EventBus.OnChainAttackHit -= PlayChainLightningSfx;
 
@@ -93,8 +105,36 @@ public class AudioManager : Singleton<AudioManager>
 
     private void PlayPronunciationClip(BaybayinCharacterSO character)
     {
-        if (character?.pronunciationClip != null)
-            _sfxSource.PlayOneShot(character.pronunciationClip);
+        PlayPronunciation(character?.pronunciationClip);
+    }
+
+    public void PlayPronunciation(AudioClip clip)
+    {
+        if (clip == null)
+            return;
+
+        EnsurePronunciationSfxSource();
+        if (_pronunciationSfxSource == null)
+            return;
+
+        AudioClip prepared = PreparePronunciationClipForImmediateAttack(clip);
+        if (prepared == null)
+            return;
+
+        float volumeScale = 1f;
+        float pitch = 1f;
+        if (_enablePronunciationModulation)
+        {
+            float pitchMin = Mathf.Min(_pronunciationPitchMin, _pronunciationPitchMax);
+            float pitchMax = Mathf.Max(_pronunciationPitchMin, _pronunciationPitchMax);
+            float volumeMin = Mathf.Min(_pronunciationVolumeMin, _pronunciationVolumeMax);
+            float volumeMax = Mathf.Max(_pronunciationVolumeMin, _pronunciationVolumeMax);
+            pitch = Random.Range(pitchMin, pitchMax);
+            volumeScale = Random.Range(volumeMin, volumeMax);
+        }
+
+        _pronunciationSfxSource.pitch = pitch;
+        _pronunciationSfxSource.PlayOneShot(prepared, volumeScale);
     }
 
     private void PlayBaseHitSound(int appliedDamage)
@@ -340,6 +380,8 @@ public class AudioManager : Singleton<AudioManager>
             _sfxSource.volume = sfxVolume;
         if (_baseHitSfxSource != null)
             _baseHitSfxSource.volume = sfxVolume;
+        if (_pronunciationSfxSource != null)
+            _pronunciationSfxSource.volume = sfxVolume;
     }
 
     private void LoadSavedVolumes()
@@ -379,6 +421,34 @@ public class AudioManager : Singleton<AudioManager>
         _baseHitSfxSource.maxDistance = _sfxSource.maxDistance;
     }
 
+    private void EnsurePronunciationSfxSource()
+    {
+        if (_pronunciationSfxSource != null)
+            return;
+
+        if (_sfxSource == null)
+            return;
+
+        _pronunciationSfxSource = gameObject.AddComponent<AudioSource>();
+        _pronunciationSfxSource.outputAudioMixerGroup = _sfxSource.outputAudioMixerGroup;
+        _pronunciationSfxSource.playOnAwake = false;
+        _pronunciationSfxSource.loop = false;
+        _pronunciationSfxSource.mute = _sfxSource.mute;
+        _pronunciationSfxSource.bypassEffects = _sfxSource.bypassEffects;
+        _pronunciationSfxSource.bypassListenerEffects = _sfxSource.bypassListenerEffects;
+        _pronunciationSfxSource.bypassReverbZones = _sfxSource.bypassReverbZones;
+        _pronunciationSfxSource.priority = _sfxSource.priority;
+        _pronunciationSfxSource.volume = _sfxSource.volume;
+        _pronunciationSfxSource.panStereo = _sfxSource.panStereo;
+        _pronunciationSfxSource.spatialBlend = _sfxSource.spatialBlend;
+        _pronunciationSfxSource.reverbZoneMix = _sfxSource.reverbZoneMix;
+        _pronunciationSfxSource.dopplerLevel = _sfxSource.dopplerLevel;
+        _pronunciationSfxSource.spread = _sfxSource.spread;
+        _pronunciationSfxSource.rolloffMode = _sfxSource.rolloffMode;
+        _pronunciationSfxSource.minDistance = _sfxSource.minDistance;
+        _pronunciationSfxSource.maxDistance = _sfxSource.maxDistance;
+    }
+
     private void WarmupSfxClips()
     {
         PrepareClipForImmediateAttack(_menuButtonClickClip);
@@ -405,7 +475,35 @@ public class AudioManager : Singleton<AudioManager>
         return trimmed;
     }
 
+    private AudioClip PreparePronunciationClipForImmediateAttack(AudioClip clip)
+    {
+        if (clip == null)
+            return null;
+
+        if (_trimmedPronunciationClipCache.TryGetValue(clip, out AudioClip cached))
+            return cached;
+
+        clip.LoadAudioData();
+        AudioClip trimmed = TrimLeadingSilence(
+            clip,
+            Mathf.Max(0f, _pronunciationTrimSilenceThreshold),
+            Mathf.Max(0f, _maxPronunciationLeadingTrimSeconds));
+        _trimmedPronunciationClipCache[clip] = trimmed;
+        return trimmed;
+    }
+
     private AudioClip TrimLeadingSilence(AudioClip source)
+    {
+        return TrimLeadingSilence(
+            source,
+            Mathf.Max(0f, _trimSilenceThreshold),
+            Mathf.Max(0f, _maxLeadingSilenceTrimSeconds));
+    }
+
+    private AudioClip TrimLeadingSilence(
+        AudioClip source,
+        float silenceThreshold,
+        float maxLeadingTrimSeconds)
     {
         if (source == null)
             return null;
@@ -421,11 +519,11 @@ public class AudioManager : Singleton<AudioManager>
 
         int maxTrimFrames = Mathf.Min(
             totalSamples,
-            Mathf.FloorToInt(_maxLeadingSilenceTrimSeconds * source.frequency));
+            Mathf.FloorToInt(maxLeadingTrimSeconds * source.frequency));
 
         int firstAudibleFrame = 0;
         bool found = false;
-        float threshold = Mathf.Max(0f, _trimSilenceThreshold);
+        float threshold = Mathf.Max(0f, silenceThreshold);
 
         for (int frame = 0; frame < maxTrimFrames; frame++)
         {
