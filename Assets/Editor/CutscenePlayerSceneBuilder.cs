@@ -394,9 +394,9 @@ public static class CutscenePlayerSceneBuilder
 
         Material preset = new Material(fontAsset.material);
         preset.name = "VT323 SDF Outline";
-        preset.EnableKeyword(TMPro.ShaderUtilities.Keyword_Outline);
-        preset.SetFloat(TMPro.ShaderUtilities.ID_OutlineWidth, 0.3f);
-        preset.SetColor(TMPro.ShaderUtilities.ID_OutlineColor, Color.black);
+        preset.EnableKeyword("OUTLINE_ON");
+        preset.SetFloat(Shader.PropertyToID("_OutlineWidth"), 0.3f);
+        preset.SetColor(Shader.PropertyToID("_OutlineColor"), Color.black);
 
         const string destPath = "Assets/Resources/Fonts/VT323 SDF Outline.mat";
         AssetDatabase.CreateAsset(preset, destPath);
