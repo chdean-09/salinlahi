@@ -23,6 +23,7 @@ public class CutscenePlayer : MonoBehaviour
     private CutsceneSO _currentCutscene;
     private int _panelIndex;
     private bool _isTypewriting;
+    private bool _waitingForTap;
     private Coroutine _typewriterRoutine;
     private Coroutine _playRoutine;
 
@@ -87,7 +88,7 @@ public class CutscenePlayer : MonoBehaviour
         while (_panelIndex < _currentCutscene.panels.Length)
         {
             CutscenePanel panel = _currentCutscene.panels[_panelIndex];
-            int currentIndex = _panelIndex;
+            _waitingForTap = false;
 
             TransitionType transition = panel.transitionIn;
             if (transition == TransitionType.None && _panelIndex == 0)
@@ -106,7 +107,10 @@ public class CutscenePlayer : MonoBehaviour
             yield return TypewriterRoutine(panel.text ?? "", speed);
             _isTypewriting = false;
 
-            yield return new WaitUntil(() => _currentCutscene == null || _panelIndex != currentIndex);
+            _waitingForTap = true;
+            yield return new WaitUntil(() => _currentCutscene == null || !_waitingForTap);
+
+            _panelIndex++;
         }
 
         EndCutscene();
@@ -224,7 +228,10 @@ public class CutscenePlayer : MonoBehaviour
             return;
         }
 
-        _panelIndex++;
+        if (_waitingForTap)
+        {
+            _waitingForTap = false;
+        }
     }
 
     private void SkipTypewriter()
@@ -265,6 +272,7 @@ public class CutscenePlayer : MonoBehaviour
         }
 
         _isTypewriting = false;
+        _waitingForTap = false;
         _currentCutscene = null;
         _panelIndex = 0;
         IsPlaying = false;
