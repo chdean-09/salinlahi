@@ -9,8 +9,6 @@ namespace Salinlahi.Runtime.Gameplay
         [SerializeField] private GameObject _protagonistPrefab;
         [SerializeField] private float _walkInDuration = 1.5f;
 
-        private const string ProtagonistPrefabPath = "Assets/Prefabs/Protagonist/Protagonist.prefab";
-        private const string ProtagonistSpritePath = "Assets/Art/Characters/Protagonist/sprite_prot_japanese_idle_back-Sheet.png";
         private const float MinVisibleWorldHeight = 1.5f;
 
         public Transform ProtagonistTransform { get; private set; }
@@ -58,16 +56,8 @@ namespace Salinlahi.Runtime.Gameplay
 
             if (_protagonistPrefab == null)
             {
-#if UNITY_EDITOR
-                _protagonistPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(ProtagonistPrefabPath);
-#endif
-
-                if (_protagonistPrefab == null)
-                {
-                    DebugLogger.LogWarning("[ProtagonistManager] No protagonist prefab assigned. Creating protagonist from sprite fallback.");
-                    ProtagonistTransform = CreateProtagonistFromSprite(startPosition);
-                    return;
-                }
+                DebugLogger.LogError("[ProtagonistManager] _protagonistPrefab not assigned. Place [Manager] ProtagonistManager.prefab in the active scene.");
+                return;
             }
 
             GameObject protagonist = Instantiate(_protagonistPrefab, startPosition, Quaternion.identity);
@@ -98,34 +88,6 @@ namespace Salinlahi.Runtime.Gameplay
             }
 
             ProtagonistTransform.position = targetPosition;
-        }
-
-        private Transform CreateProtagonistFromSprite(Vector3 startPosition)
-        {
-            GameObject protagonist = new("Protagonist");
-            protagonist.transform.position = startPosition;
-            protagonist.transform.localScale = new Vector3(0.3f, 0.3f, 1f);
-
-            SpriteRenderer renderer = protagonist.AddComponent<SpriteRenderer>();
-            renderer.sprite = LoadFallbackSprite();
-            renderer.sortingOrder = RenderOrder.Protagonist;
-            NormalizeProtagonistRenderer(protagonist.transform, renderer);
-
-            return protagonist.transform;
-        }
-
-        private static Sprite LoadFallbackSprite()
-        {
-#if UNITY_EDITOR
-            Object[] assets = UnityEditor.AssetDatabase.LoadAllAssetsAtPath(ProtagonistSpritePath);
-            foreach (Object asset in assets)
-            {
-                if (asset is Sprite sprite)
-                    return sprite;
-            }
-#endif
-            DebugLogger.LogWarning("[ProtagonistManager] Fallback sprite not found. Ensure Protagonist.prefab is assigned in ProtagonistManager.");
-            return null;
         }
 
         private static void ValidateProtagonistVisibility(Transform protagonist)

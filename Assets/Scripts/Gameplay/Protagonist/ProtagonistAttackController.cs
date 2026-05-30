@@ -7,8 +7,6 @@ namespace Salinlahi.Runtime.Gameplay
         [SerializeField] private ProtagonistSlashVfx _slashVfxPrefab;
         [SerializeField] private int _poolSize = 3;
 
-        private const string SlashVfxPrefabPath = "Assets/Prefabs/VFX/Protagonist/ProtagonistSlashVfx.prefab";
-
         private ProtagonistSlashVfx[] _slashPool;
         private int _poolIndex;
 
@@ -29,18 +27,10 @@ namespace Salinlahi.Runtime.Gameplay
 
         private void InitializePool()
         {
-            // Try to load prefab if not assigned
             if (_slashVfxPrefab == null)
             {
-                #if UNITY_EDITOR
-                _slashVfxPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<ProtagonistSlashVfx>(SlashVfxPrefabPath);
-                #endif
-
-                if (_slashVfxPrefab == null)
-                {
-                    DebugLogger.LogWarning("[ProtagonistAttackController] No slash VFX prefab assigned! Create one at: " + SlashVfxPrefabPath);
-                    return;
-                }
+                DebugLogger.LogWarning("[ProtagonistAttackController] _slashVfxPrefab not assigned on ProtagonistManager prefab.");
+                return;
             }
 
             _slashPool = new ProtagonistSlashVfx[_poolSize];
