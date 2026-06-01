@@ -23,10 +23,57 @@ MonoBehaviour:
   - {fileID: 11400000, guid: e4a6ca0f3271e43fd92ccd659e4bbe9d, type: 2}
   - {fileID: 11400000, guid: 5e47926cdafff4eb7acae35150eea7ed, type: 2}
   - {fileID: 11400000, guid: c538b3cffc977482d8eebb07b071bfbd, type: 2}
+  embeddedWaves:
+  - isIntermissionWave: 0
+    characters:
+    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+    - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
+    enemyTypes:
+    - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+    enemyCount: 5
+    spawnInterval: 2
+    waveStartDelay: 1.5
+  - isIntermissionWave: 0
+    characters:
+    - {fileID: 11400000, guid: 117f4d54439c640abaac6d80f841ee03, type: 2}
+    - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
+    enemyTypes:
+    - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+    - {fileID: 11400000, guid: 5441937cc8c04b60b92b0112af80aac3, type: 2}
+    enemyCount: 5
+    spawnInterval: 2
+    waveStartDelay: 1.5
+  - isIntermissionWave: 0
+    characters:
+    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+    - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
+    - {fileID: 11400000, guid: 117f4d54439c640abaac6d80f841ee03, type: 2}
+    enemyTypes:
+    - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+    - {fileID: 11400000, guid: 92b7e894088646b8a8173cdbfda63679, type: 2}
+    enemyCount: 5
+    spawnInterval: 3.5
+    waveStartDelay: 1.5
+  - isIntermissionWave: 0
+    characters:
+    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+    - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
+    - {fileID: 11400000, guid: 117f4d54439c640abaac6d80f841ee03, type: 2}
+    enemyTypes:
+    - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+    - {fileID: 11400000, guid: 5441937cc8c04b60b92b0112af80aac3, type: 2}
+    - {fileID: 11400000, guid: 92b7e894088646b8a8173cdbfda63679, type: 2}
+    enemyCount: 7
+    spawnInterval: 4
+    waveStartDelay: 1.5
   allowedCharacters:
   - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
   - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
   - {fileID: 11400000, guid: 117f4d54439c640abaac6d80f841ee03, type: 2}
+  allowedEnemyTypes:
+  - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+  - {fileID: 11400000, guid: 5441937cc8c04b60b92b0112af80aac3, type: 2}
+  - {fileID: 11400000, guid: 92b7e894088646b8a8173cdbfda63679, type: 2}
   bossConfig: {fileID: 0}
   isAvailableInLite: 0
   tutorialSequence: {fileID: 0}

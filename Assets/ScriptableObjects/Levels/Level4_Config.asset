@@ -22,11 +22,48 @@ MonoBehaviour:
   - {fileID: 11400000, guid: c57e1e310f4da4ecfb7beb533822f7a1, type: 2}
   - {fileID: 11400000, guid: 468f810ded65044ce969888abd4fb211, type: 2}
   - {fileID: 11400000, guid: 0a4113d77576e429db905f3c4b88508a, type: 2}
+  embeddedWaves:
+  - isIntermissionWave: 0
+    characters:
+    - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+    - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
+    enemyTypes:
+    - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+    - {fileID: 11400000, guid: 5441937cc8c04b60b92b0112af80aac3, type: 2}
+    enemyCount: 5
+    spawnInterval: 3
+    waveStartDelay: 1.5
+  - isIntermissionWave: 0
+    characters:
+    - {fileID: 11400000, guid: 117f4d54439c640abaac6d80f841ee03, type: 2}
+    - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+    enemyTypes:
+    - {fileID: 11400000, guid: 55369c8c5f914966a731075c4b14742a, type: 2}
+    - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+    enemyCount: 7
+    spawnInterval: 3
+    waveStartDelay: 1.5
+  - isIntermissionWave: 0
+    characters:
+    - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+    - {fileID: 11400000, guid: 117f4d54439c640abaac6d80f841ee03, type: 2}
+    - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
+    enemyTypes:
+    - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+    - {fileID: 11400000, guid: 55369c8c5f914966a731075c4b14742a, type: 2}
+    - {fileID: 11400000, guid: 92b7e894088646b8a8173cdbfda63679, type: 2}
+    enemyCount: 8
+    spawnInterval: 4
+    waveStartDelay: 1.5
   allowedCharacters:
   - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
   - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
   - {fileID: 11400000, guid: 117f4d54439c640abaac6d80f841ee03, type: 2}
-  - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
+  allowedEnemyTypes:
+  - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+  - {fileID: 11400000, guid: 5441937cc8c04b60b92b0112af80aac3, type: 2}
+  - {fileID: 11400000, guid: 55369c8c5f914966a731075c4b14742a, type: 2}
+  - {fileID: 11400000, guid: 92b7e894088646b8a8173cdbfda63679, type: 2}
   bossConfig: {fileID: 0}
   isAvailableInLite: 0
   tutorialSequence: {fileID: 0}
