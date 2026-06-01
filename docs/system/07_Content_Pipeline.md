@@ -1,7 +1,7 @@
 # 07 — Content Pipeline
 **Project:** Salinlahi
-**Version:** 1.4
-**Date:** 2026-05-23
+**Version:** 1.5
+**Date:** 2026-06-01
 **Owner:** Chad Andrada (Product Owner / Designer)
 
 ---
@@ -52,7 +52,7 @@ As of Sprint 1: **placeholder assets only**. No BaybayinCharacterSO assets have 
 | Kempei | `"kempei"` | Japanese | Variant (32×32) | Level 13 | Should Ship | `[Enemy] Kempei.prefab` | Implemented (`[Enemy] Kempei.prefab` + `EnemyData_Kempei.asset`) |
 | Shokan | `"shokan"` | Japanese | Elite (48×48) | Level 14 | Should Ship | `[Enemy] Shokan.prefab` | Implemented (`[Enemy] Shokan.prefab` + `EnemyData_Shokan.asset`) |
 
-**Note:** `[Enemy] Shielded.prefab` and `[Enemy] Sprinter.prefab` were removed from the repo. The matching `EnemyData_Shielded.asset` / `EnemyData_Sprinter.asset` SOs may still exist as legacy placeholders and are not referenced by any current `LevelConfigSO` / `WaveConfigSO`.
+**Note:** `[Enemy] Shielded.prefab` and `[Enemy] Sprinter.prefab` were removed from the repo. The matching `EnemyData_Shielded.asset` / `EnemyData_Sprinter.asset` SOs may still exist as legacy placeholders and are not referenced by any current `LevelConfigSO` or its embedded `WaveDefinition` waves.
 
 [EVIDENCE: Assets/Prefabs/Enemies/ — Soldado, Soldier, Heitai, Maestro, Pensionado, General, Kisha, Kempei, Shokan, Boss_ElInquisidor prefabs confirmed]
 [EVIDENCE: Assets/ScriptableObjects/ — matching `EnemyData_*.asset` files confirmed]
@@ -114,14 +114,12 @@ As of Sprint 1: **placeholder assets only**. No BaybayinCharacterSO assets have 
 | Asset | Pattern | Example |
 |-------|---------|---------|
 | `LevelConfigSO` | `Level_[##]` | `Level_01.asset`, `Level_10.asset` |
-| `WaveConfigSO` | `L[level]_W[wave]` | `L1_W1.asset`, `L3_W2.asset` |
 
-**Note:** Authored on-disk pattern is `Level[N]_Config.asset` (e.g. `Level1_Config.asset`); the doc's `Level_##` example is the planned convention. Levels 1–3 are populated; the remaining 12 are PLANNED.
+**Note:** Authored on-disk pattern is `Level[N]_Config.asset` (e.g. `Level1_Config.asset`); the doc's `Level_##` example is the planned convention. Levels 1–3 are populated; the remaining 12 are PLANNED. Wave data is now embedded inside each `LevelConfigSO` as `List<WaveDefinition>` — there are no separate wave `.asset` files.
 
-**Current status:** `Assets/ScriptableObjects/Levels/` contains `Level1_Config.asset`, `Level2_Config.asset`, `Level3_Config.asset`. `Assets/ScriptableObjects/Waves/` exists; wave-asset population is not exhaustively audited.
+**Current status:** `Assets/ScriptableObjects/Levels/` contains `Level1_Config.asset`, `Level2_Config.asset`, `Level3_Config.asset` (and additional configs for higher levels).
 
 [EVIDENCE: Assets/ScriptableObjects/Levels/Level1_Config.asset, Level2_Config.asset, Level3_Config.asset]
-[EVIDENCE: Assets/ScriptableObjects/Waves/ — folder confirmed]
 
 ### 3.3 Build Flag
 
@@ -236,7 +234,6 @@ Each era has its own shrine/base structure at 64×96 px with 4 visual damage sta
 | Baybayin Character SO | `Char_[ID]` | ID uppercase, 2 chars: BA, KA, GA |
 | Enemy Data SO | `Enemy_[Type]` | Type title-case: Standard, Fast |
 | Level Config SO | `Level_[##]` | Zero-padded number: 01, 10 |
-| Wave Config SO | `L[level]_W[wave]` | No padding: L1_W1, L10_W3 |
 | Enemy prefab | `[Enemy] [Type]` | Brackets denote prefab: `[Enemy] Standard` |
 | Manager prefab | `[Manager] [Name]` | Brackets: `[Manager] GameManager` |
 | Recognition template | `[ID]_template.txt` | Lowercase ID: `ba_template.txt` OR uppercase per SO |
@@ -251,14 +248,18 @@ Each era has its own shrine/base structure at 64×96 px with 4 visual damage sta
 
 ```
 LevelConfigSO
-  └─ List<WaveConfigSO>
-        └─ List<BaybayinCharacterSO>
-              ├─ displaySprite (Sprite)
-              ├─ pronunciationClip (AudioClip)
-              └─ templateFileName → Resources/Templates/[file].txt
+  └─ List<WaveDefinition> (embedded, no asset files)
+        ├─ List<BaybayinCharacterSO> (characters — subset of level allowedCharacters)
+        │     ├─ displaySprite (Sprite)
+        │     ├─ pronunciationClip (AudioClip)
+        │     └─ templateFileName → Resources/Templates/[file].txt
+        └─ List<EnemyDataSO> (enemyTypes — subset of level allowedEnemyTypes)
 
 LevelConfigSO
   └─ List<BaybayinCharacterSO> (allowedCharacters)
+
+LevelConfigSO
+  └─ List<EnemyDataSO> (allowedEnemyTypes)
 
 LevelConfigSO
   └─ bossConfig (optional) → BossConfigSO

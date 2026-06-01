@@ -1,7 +1,7 @@
 # 05 — Data Contracts and ScriptableObjects
 **Project:** Salinlahi
-**Version:** 1.9
-**Date:** 2026-05-27
+**Version:** 2.0
+**Date:** 2026-06-01
 **Owner:** Chad Andrada (Product Owner / Designer)
 
 ---
@@ -160,8 +160,9 @@ Defined at the bottom of `EnemyDataSO.cs`:
 | `chapterName` | `string` | Identity | YES | Default `"Chapter 1"`. Author-facing label for HUD/level-select grouping. |
 | `eraTheme` | `EraThemeSO` | Identity | NO | Visual theme for this level's era (background, ground, shrine, decorations). Consumed by `EnvironmentThemeSwapper`. |
 | `numberSprite` | `Sprite` | Identity | NO | Baked-in numbered scroll sprite displayed on this level's Level Select button. Null triggers a warning log from LevelButton; the scroll image is unchanged. |
-| `waves` | `List<WaveConfigSO>` | Waves | YES (non-boss) | Ordered list of waves played in index order. Ignored when `bossConfig != null`. |
-| `allowedCharacters` | `List<BaybayinCharacterSO>` | Characters | YES | Master allowed-character list for this level. All `WaveConfigSO.charactersInWave` entries must be a subset of this list. |
+| `waves` | `List<WaveDefinition>` | Waves | YES (non-boss) | Ordered list of embedded waves. Each `WaveDefinition`'s character/enemy subset is kept ⊆ the level rosters by `ReconcileWavesToRoster()`. Ignored when `bossConfig != null`. |
+| `allowedCharacters` | `List<BaybayinCharacterSO>` | Characters | YES | Master allowed-character list for this level. All `WaveDefinition.characters` entries must be a subset of this list. |
+| `allowedEnemyTypes` | `List<EnemyDataSO>` | Characters | YES | Master enemy-type roster for this level. All `WaveDefinition.enemyTypes` entries must be a subset of this list. |
 | `bossConfig` | `BossConfigSO` | Boss | NO | If assigned, this level is a boss encounter. The level is treated as a boss level whenever this reference is non-null. |
 | `isAvailableInLite` | `bool` | Build Flags | YES | `true` for levels 1–3 (Salinlahi Lite). `false` for levels 4–15 (Full only). Default `true`. |
 
@@ -178,31 +179,28 @@ Defined at the bottom of `EnemyDataSO.cs`:
 
 ---
 
-### 2.4 `WaveConfigSO`
+### 2.4 `WaveDefinition`
 
-**Menu path:** `Salinlahi/Wave Config`
-**File:** `Assets/Scripts/Data/WaveConfigSO.cs`
-**Asset folder:** `Assets/ScriptableObjects/Waves/`
+**Type:** Embedded `[System.Serializable]` class (not a ScriptableObject — no separate asset file)
+**File:** `Assets/Scripts/Data/WaveDefinition.cs`
+**Owner:** Stored inline inside `LevelConfigSO.waves`
 
-| Field | Type | Header | Required | Invariants |
-|-------|------|--------|----------|------------|
-| `waveID` | `string` | Identity | YES (non-intermission) | Unique string identifier. Example: `"L1_W1"`. Used for debug logging and potential save-state keying. |
-| `waveNumber` | `int` | Identity | YES (non-intermission) | 1-indexed within the level. Used for HUD display. |
-| `isIntermissionWave` | `bool` | Identity | NO | When `true`, `OnValidate` skips `waveID`/`waveNumber` checks. Used for boss intermission waves. |
-| `charactersInWave` | `List<BaybayinCharacterSO>` | Spawn Settings | YES | Baybayin characters that can appear on enemies in this wave. WaveManager draws from this list when assigning characters to spawned enemies. Must not be empty. |
-| `enemyTypesInWave` | `List<EnemyDataSO>` | Spawn Settings | NO | Pool of enemy types this wave may spawn. `WaveSpawner.SelectEnemyDataForSpawn` picks at random; falls back to the spawner's `_fallbackEnemyData` if this list is empty. |
-| `enemyCount` | `int` | Spawn Settings | YES | Total enemies spawned in this wave. Default `5`. Must be ≥ 1. |
-| `spawnInterval` | `float` | Spawn Settings | YES | Seconds between consecutive enemy spawns. Default `3f`. Must be > 0. |
-| `waveStartDelay` | `float` | Spawn Settings | YES | Seconds of delay before first enemy spawns in this wave. Default `1f`. May be 0. |
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `isIntermissionWave` | `bool` | NO | When `true`, marks a boss intermission wave. |
+| `characters` | `List<BaybayinCharacterSO>` | YES (non-intermission) | Wave-subset of the level's `allowedCharacters` roster. Pruned to roster by `ReconcileWavesToRoster()`. |
+| `enemyTypes` | `List<EnemyDataSO>` | YES (non-intermission) | Wave-subset of the level's `allowedEnemyTypes` roster. Pruned to roster by `ReconcileWavesToRoster()`. |
+| `enemyCount` | `int` | YES | Total enemies spawned in this wave. Default `5`. |
+| `spawnInterval` | `float` | YES | Seconds between enemy spawns. Default `3f`. |
+| `waveStartDelay` | `float` | NO | Seconds before this wave begins. Default `1f`. |
 
-**Validation Rules:**
-- `charactersInWave` must be a non-empty subset of the parent `LevelConfigSO.allowedCharacters`.
-- When `isIntermissionWave` is `false`, `waveID` must be non-empty and `waveNumber > 0` (enforced by `OnValidate`).
-- `enemyCount` ≥ 1.
-- `spawnInterval` > 0 (zero causes instantaneous spawn of all enemies simultaneously — gameplay-breaking).
-- Missing entries in `enemyTypesInWave` / `charactersInWave` are flagged by `OnValidate`.
+**Invariants:**
+- `characters` ⊆ `LevelConfigSO.allowedCharacters` (enforced by `ReconcileWavesToRoster` on `OnValidate`).
+- `enemyTypes` ⊆ `LevelConfigSO.allowedEnemyTypes` (enforced by `ReconcileWavesToRoster` on `OnValidate`).
+- Removing an entry from a level roster automatically removes it from all waves in the same `OnValidate` call.
 
-[EVIDENCE: Assets/Scripts/Data/WaveConfigSO.cs]
+[EVIDENCE: Assets/Scripts/Data/WaveDefinition.cs]
+[EVIDENCE: Assets/Scripts/Data/LevelConfigSO.cs — ReconcileWavesToRoster]
 
 ---
 
@@ -409,7 +407,6 @@ Per-era visual + content bundle for the Level Select screen. `LevelSelectUI` hol
 | `BaybayinCharacterSO` | `Char_[ID]` | `Char_BA`, `Char_KA` |
 | `EnemyDataSO` | `Enemy_[type]` | `Enemy_Standard`, `Enemy_Fast` |
 | `LevelConfigSO` | `Level_[number]` | `Level_01`, `Level_10` |
-| `WaveConfigSO` | `L[level]_W[wave]` | `L1_W1`, `L3_W2` |
 | `RecognitionConfigSO` | `RecognitionConfig` | (singleton asset) |
 | `EraConfigSO` | `Era_[number]` | `Era_01`, `Era_02` |
 
@@ -419,7 +416,6 @@ Per-era visual + content bundle for the Level Select screen. `LevelSelectUI` hol
 |------------|--------|
 | `BaybayinCharacterSO` | `Assets/ScriptableObjects/Characters/` |
 | `LevelConfigSO` | `Assets/ScriptableObjects/Levels/` |
-| `WaveConfigSO` | `Assets/ScriptableObjects/Waves/` |
 | `EnemyDataSO` | `Assets/ScriptableObjects/` |
 | `BossConfigSO` | `Assets/ScriptableObjects/` (e.g. `BossConfig_ElInquisidor.asset`, alongside other top-level configs) |
 | `BossAudioBankSO` | `Assets/ScriptableObjects/Audio/` (e.g. `BossAudioBank_ElInquisidor.asset`) |
