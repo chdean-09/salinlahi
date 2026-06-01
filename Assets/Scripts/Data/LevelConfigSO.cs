@@ -20,9 +20,15 @@ public class LevelConfigSO : ScriptableObject
     [Tooltip("Waves played in order from index 0")]
     public List<WaveConfigSO> waves;
 
+    [Tooltip("TEMP during migration: embedded waves. Renamed to 'waves' in finalize step.")]
+    public List<WaveDefinition> embeddedWaves = new();
+
     [Header("Characters")]
     [Tooltip("Master list of characters allowed in this level. WaveConfigs draw from this.")]
     public List<BaybayinCharacterSO> allowedCharacters;
+
+    [Tooltip("Master list of enemy types allowed in this level. Waves draw from this.")]
+    public List<EnemyDataSO> allowedEnemyTypes = new();
 
     [Header("Boss")]
     [Tooltip("If set, this level is a boss encounter. Waves list is ignored.")]
@@ -50,4 +56,35 @@ public class LevelConfigSO : ScriptableObject
 
     [Tooltip("If true, protagonist walks in from below. If false, appears instantly at final position.")]
     public bool protagonistWalksIn = false;
+
+    public void ReconcileWavesToRoster()
+    {
+        if (embeddedWaves == null)
+            return;
+
+        for (int i = 0; i < embeddedWaves.Count; i++)
+        {
+            WaveDefinition wave = embeddedWaves[i];
+            if (wave == null)
+                continue;
+
+            PruneToRoster(wave.characters, allowedCharacters);
+            PruneToRoster(wave.enemyTypes, allowedEnemyTypes);
+        }
+    }
+
+    private static void PruneToRoster<T>(List<T> subset, List<T> roster) where T : Object
+    {
+        if (subset == null)
+            return;
+
+        subset.RemoveAll(item => item == null || roster == null || !roster.Contains(item));
+    }
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        ReconcileWavesToRoster();
+    }
+#endif
 }
