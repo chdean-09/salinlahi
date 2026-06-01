@@ -46,16 +46,18 @@ namespace Salinlahi.Tests.Editor.Gameplay
         [Test]
         public void Level3Waves_ContainGuardia_AndLevel4Waves_ContainCapitan()
         {
-            WaveConfigSO level3Wave4 = AssetDatabase.LoadAssetAtPath<WaveConfigSO>(
-                "Assets/ScriptableObjects/Waves/Level3_Wave4.asset");
-            WaveConfigSO level4Wave4 = AssetDatabase.LoadAssetAtPath<WaveConfigSO>(
-                "Assets/ScriptableObjects/Waves/Level4_Wave4.asset");
+            LevelConfigSO level3 = AssetDatabase.LoadAssetAtPath<LevelConfigSO>(
+                "Assets/ScriptableObjects/Levels/Level3_Config.asset");
+            LevelConfigSO level4 = AssetDatabase.LoadAssetAtPath<LevelConfigSO>(
+                "Assets/ScriptableObjects/Levels/Level4_Config.asset");
 
-            Assert.NotNull(level3Wave4);
-            Assert.NotNull(level4Wave4);
+            Assert.NotNull(level3);
+            Assert.NotNull(level4);
 
-            bool level3HasGuardia = level3Wave4.enemyTypesInWave.Any(e => e != null && e.enemyID == "guardia");
-            bool level4HasCapitan = level4Wave4.enemyTypesInWave.Any(e => e != null && e.enemyID == "capitan");
+            bool level3HasGuardia = level3.embeddedWaves
+                .SelectMany(w => w.enemyTypes).Any(e => e != null && e.enemyID == "guardia");
+            bool level4HasCapitan = level4.embeddedWaves
+                .SelectMany(w => w.enemyTypes).Any(e => e != null && e.enemyID == "capitan");
 
             Assert.IsTrue(level3HasGuardia);
             Assert.IsTrue(level4HasCapitan);

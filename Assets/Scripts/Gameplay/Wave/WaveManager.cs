@@ -359,7 +359,7 @@ public class WaveManager : MonoBehaviour
             yield break;
         }
 
-        if (_levelConfig.waves == null || _levelConfig.waves.Count == 0)
+        if (_levelConfig.embeddedWaves == null || _levelConfig.embeddedWaves.Count == 0)
         {
             DebugLogger.LogWarning("WaveManager: Level has no waves.");
             if (CanContinueRun())
@@ -369,8 +369,8 @@ public class WaveManager : MonoBehaviour
             yield break;
         }
 
-        int firstWaveIndex = Mathf.Clamp(startWaveIndex, 0, _levelConfig.waves.Count);
-        for (int waveIndex = firstWaveIndex; waveIndex < _levelConfig.waves.Count; waveIndex++)
+        int firstWaveIndex = Mathf.Clamp(startWaveIndex, 0, _levelConfig.embeddedWaves.Count);
+        for (int waveIndex = firstWaveIndex; waveIndex < _levelConfig.embeddedWaves.Count; waveIndex++)
         {
             if (!CanContinueRun())
             {
@@ -378,7 +378,7 @@ public class WaveManager : MonoBehaviour
                 yield break;
             }
 
-            WaveConfigSO wave = _levelConfig.waves[waveIndex];
+            WaveDefinition wave = _levelConfig.embeddedWaves[waveIndex];
             if (wave == null)
             {
                 DebugLogger.LogWarning($"WaveManager: Wave at index {waveIndex} is null. Skipping.");
@@ -499,14 +499,14 @@ public class WaveManager : MonoBehaviour
     {
         spawnOffset = 0;
 
-        if (!hasSavedWaveProgress || _levelConfig?.waves == null || _levelConfig.waves.Count == 0)
+        if (!hasSavedWaveProgress || _levelConfig?.embeddedWaves == null || _levelConfig.embeddedWaves.Count == 0)
             return 0;
 
-        int safeWaveIndex = Mathf.Clamp(savedWaveIndex, 0, _levelConfig.waves.Count);
-        if (safeWaveIndex >= _levelConfig.waves.Count)
-            return _levelConfig.waves.Count;
+        int safeWaveIndex = Mathf.Clamp(savedWaveIndex, 0, _levelConfig.embeddedWaves.Count);
+        if (safeWaveIndex >= _levelConfig.embeddedWaves.Count)
+            return _levelConfig.embeddedWaves.Count;
 
-        WaveConfigSO savedWave = _levelConfig.waves[safeWaveIndex];
+        WaveDefinition savedWave = _levelConfig.embeddedWaves[safeWaveIndex];
         int enemyCount = savedWave != null ? Mathf.Max(0, savedWave.enemyCount) : 0;
         int safeSpawnedCount = Mathf.Clamp(savedWaveSpawnedCount, 0, enemyCount);
 
@@ -516,7 +516,7 @@ public class WaveManager : MonoBehaviour
             return safeWaveIndex;
         }
 
-        return Mathf.Min(safeWaveIndex + 1, _levelConfig.waves.Count);
+        return Mathf.Min(safeWaveIndex + 1, _levelConfig.embeddedWaves.Count);
     }
 
     private IEnumerator WaitForActiveEnemiesCleared()
@@ -698,15 +698,24 @@ public class WaveManager : MonoBehaviour
 
     private static void AddEnemiesFromLevelForSandbox(List<EnemyDataSO> enemies, LevelConfigSO levelConfig)
     {
-        if (levelConfig?.waves == null)
+        if (levelConfig == null)
             return;
 
-        foreach (WaveConfigSO wave in levelConfig.waves)
+        if (levelConfig.allowedEnemyTypes != null)
         {
-            if (wave?.enemyTypesInWave == null)
+            foreach (EnemyDataSO enemy in levelConfig.allowedEnemyTypes)
+                AddEnemyForSandbox(enemies, enemy);
+        }
+
+        if (levelConfig.embeddedWaves == null)
+            return;
+
+        foreach (WaveDefinition wave in levelConfig.embeddedWaves)
+        {
+            if (wave?.enemyTypes == null)
                 continue;
 
-            foreach (EnemyDataSO enemy in wave.enemyTypesInWave)
+            foreach (EnemyDataSO enemy in wave.enemyTypes)
                 AddEnemyForSandbox(enemies, enemy);
         }
     }
@@ -741,15 +750,15 @@ public class WaveManager : MonoBehaviour
                 AddCharacterForSandbox(characters, character);
         }
 
-        if (levelConfig.waves == null)
+        if (levelConfig.embeddedWaves == null)
             return;
 
-        foreach (WaveConfigSO wave in levelConfig.waves)
+        foreach (WaveDefinition wave in levelConfig.embeddedWaves)
         {
-            if (wave?.charactersInWave == null)
+            if (wave?.characters == null)
                 continue;
 
-            foreach (BaybayinCharacterSO character in wave.charactersInWave)
+            foreach (BaybayinCharacterSO character in wave.characters)
                 AddCharacterForSandbox(characters, character);
         }
     }
@@ -849,49 +858,49 @@ public class WaveManager : MonoBehaviour
             if (!seenLevelNumbers.Add(level.levelNumber))
                 Debug.LogError($"WaveManager has duplicate levelNumber {level.levelNumber} in _levelConfigs.", this);
 
-            if (level.waves == null)
+            if (level.embeddedWaves == null)
                 continue;
 
-            for (int waveIndex = 0; waveIndex < level.waves.Count; waveIndex++)
+            for (int waveIndex = 0; waveIndex < level.embeddedWaves.Count; waveIndex++)
             {
-                WaveConfigSO wave = level.waves[waveIndex];
+                WaveDefinition wave = level.embeddedWaves[waveIndex];
                 if (wave == null)
                 {
                     Debug.LogError(
-                        $"WaveManager level '{level.name}' has a missing WaveConfigSO at waves[{waveIndex}].",
+                        $"WaveManager level '{level.name}' has a missing WaveDefinition at embeddedWaves[{waveIndex}].",
                         level);
                     continue;
                 }
 
-                ValidateWaveRefs(level, wave);
+                ValidateWaveRefs(level, wave, waveIndex);
             }
         }
     }
 
-    private static void ValidateWaveRefs(LevelConfigSO level, WaveConfigSO wave)
+    private static void ValidateWaveRefs(LevelConfigSO level, WaveDefinition wave, int waveIndex)
     {
-        if (wave.enemyTypesInWave != null)
+        if (wave.enemyTypes != null)
         {
-            for (int i = 0; i < wave.enemyTypesInWave.Count; i++)
+            for (int i = 0; i < wave.enemyTypes.Count; i++)
             {
-                if (wave.enemyTypesInWave[i] == null)
+                if (wave.enemyTypes[i] == null)
                 {
                     Debug.LogError(
-                        $"Level '{level.name}' wave '{wave.name}' has a missing enemyTypesInWave[{i}] reference.",
-                        wave);
+                        $"Level '{level.name}' embeddedWaves[{waveIndex}] has a missing enemyTypes[{i}] reference.",
+                        level);
                 }
             }
         }
 
-        if (wave.charactersInWave != null)
+        if (wave.characters != null)
         {
-            for (int i = 0; i < wave.charactersInWave.Count; i++)
+            for (int i = 0; i < wave.characters.Count; i++)
             {
-                if (wave.charactersInWave[i] == null)
+                if (wave.characters[i] == null)
                 {
                     Debug.LogError(
-                        $"Level '{level.name}' wave '{wave.name}' has a missing charactersInWave[{i}] reference.",
-                        wave);
+                        $"Level '{level.name}' embeddedWaves[{waveIndex}] has a missing characters[{i}] reference.",
+                        level);
                 }
             }
         }

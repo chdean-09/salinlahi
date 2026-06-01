@@ -179,7 +179,6 @@ public class SandboxModeTests
         GameObject rightSpawn = new("RightSpawn");
         EnemyDataSO enemyData = ScriptableObject.CreateInstance<EnemyDataSO>();
         BaybayinCharacterSO character = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
-        WaveConfigSO wave = ScriptableObject.CreateInstance<WaveConfigSO>();
 
         try
         {
@@ -201,10 +200,13 @@ public class SandboxModeTests
             enemyData.maxHealth = 1;
             enemyData.moveSpeed = 1f;
             enemyData.assignedCharacter = character;
-            wave.enemyCount = 3;
-            wave.spawnInterval = 0f;
-            wave.enemyTypesInWave = new System.Collections.Generic.List<EnemyDataSO> { enemyData };
-            wave.charactersInWave = new System.Collections.Generic.List<BaybayinCharacterSO> { character };
+            WaveDefinition wave = new()
+            {
+                enemyCount = 3,
+                spawnInterval = 0f,
+                enemyTypes = new System.Collections.Generic.List<EnemyDataSO> { enemyData },
+                characters = new System.Collections.Generic.List<BaybayinCharacterSO> { character },
+            };
 
             int spawnedCallbacks = 0;
             IEnumerator routine = spawner.SpawnWave(wave, () => spawnedCallbacks++, 2);
@@ -221,7 +223,6 @@ public class SandboxModeTests
             Object.DestroyImmediate(rightSpawn);
             Object.DestroyImmediate(enemyData);
             Object.DestroyImmediate(character);
-            Object.DestroyImmediate(wave);
             ClearSingletonInstance<EnemyPool>();
         }
     }
