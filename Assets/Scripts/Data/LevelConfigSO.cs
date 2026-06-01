@@ -17,9 +17,6 @@ public class LevelConfigSO : ScriptableObject
     public Sprite numberSprite;
 
     [Header("Waves")]
-    [Tooltip("Waves played in order from index 0")]
-    public List<WaveConfigSO> waves;
-
     [Tooltip("TEMP during migration: embedded waves. Renamed to 'waves' in finalize step.")]
     public List<WaveDefinition> embeddedWaves = new();
 

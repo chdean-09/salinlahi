@@ -34,6 +34,17 @@ public static class LevelWaveMigrator
         Debug.Log($"LevelWaveMigrator: migrated {migrated} level(s).");
     }
 
+    [MenuItem("Salinlahi/Migration/Force Reserialize Level Assets")]
+    public static void ReserializeLevels()
+    {
+        string[] guids = AssetDatabase.FindAssets("t:LevelConfigSO");
+        var paths = new List<string>();
+        foreach (string guid in guids)
+            paths.Add(AssetDatabase.GUIDToAssetPath(guid));
+        AssetDatabase.ForceReserializeAssets(paths);
+        Debug.Log($"Reserialized {paths.Count} level asset(s).");
+    }
+
     /// <summary>Pure-ish migration of one level; exposed for tests.</summary>
     public static void MigrateLevel(LevelConfigSO level)
     {
