@@ -54,9 +54,9 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.NotNull(level3);
             Assert.NotNull(level4);
 
-            bool level3HasGuardia = level3.embeddedWaves
+            bool level3HasGuardia = level3.waves
                 .SelectMany(w => w.enemyTypes).Any(e => e != null && e.enemyID == "guardia");
-            bool level4HasCapitan = level4.embeddedWaves
+            bool level4HasCapitan = level4.waves
                 .SelectMany(w => w.enemyTypes).Any(e => e != null && e.enemyID == "capitan");
 
             Assert.IsTrue(level3HasGuardia);

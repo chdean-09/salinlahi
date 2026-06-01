@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 [CreateAssetMenu(fileName = "LevelConfig", menuName = "Salinlahi/Level Config")]
 public class LevelConfigSO : ScriptableObject
@@ -17,8 +18,9 @@ public class LevelConfigSO : ScriptableObject
     public Sprite numberSprite;
 
     [Header("Waves")]
-    [Tooltip("TEMP during migration: embedded waves. Renamed to 'waves' in finalize step.")]
-    public List<WaveDefinition> embeddedWaves = new();
+    [FormerlySerializedAs("embeddedWaves")]
+    [Tooltip("Waves played in order from index 0.")]
+    public List<WaveDefinition> waves = new();
 
     [Header("Characters")]
     [Tooltip("Master list of characters allowed in this level. WaveConfigs draw from this.")]
@@ -56,12 +58,12 @@ public class LevelConfigSO : ScriptableObject
 
     public void ReconcileWavesToRoster()
     {
-        if (embeddedWaves == null)
+        if (waves == null)
             return;
 
-        for (int i = 0; i < embeddedWaves.Count; i++)
+        for (int i = 0; i < waves.Count; i++)
         {
-            WaveDefinition wave = embeddedWaves[i];
+            WaveDefinition wave = waves[i];
             if (wave == null)
                 continue;
 

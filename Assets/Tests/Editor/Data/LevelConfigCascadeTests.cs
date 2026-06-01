@@ -23,7 +23,7 @@ namespace Salinlahi.Tests.Editor.Data
                 characters = new List<BaybayinCharacterSO> { keepChar, dropChar },
                 enemyTypes = new List<EnemyDataSO> { keepEnemy, dropEnemy },
             };
-            level.embeddedWaves = new List<WaveDefinition> { wave };
+            level.waves = new List<WaveDefinition> { wave };
 
             try
             {
@@ -52,7 +52,7 @@ namespace Salinlahi.Tests.Editor.Data
             level.allowedCharacters = new List<BaybayinCharacterSO> { keepChar };
             level.allowedEnemyTypes = new List<EnemyDataSO>();
             WaveDefinition wave = new() { characters = new List<BaybayinCharacterSO> { keepChar, null } };
-            level.embeddedWaves = new List<WaveDefinition> { wave };
+            level.waves = new List<WaveDefinition> { wave };
 
             try
             {
