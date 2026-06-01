@@ -18,7 +18,7 @@ MonoBehaviour:
   chapterName: American Era
   eraTheme: {fileID: 0}
   numberSprite: {fileID: 0}
-  embeddedWaves: []
+  waves: []
   allowedCharacters:
   - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
   allowedEnemyTypes: []

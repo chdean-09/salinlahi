@@ -18,7 +18,7 @@ MonoBehaviour:
   chapterName: American Era
   eraTheme: {fileID: 0}
   numberSprite: {fileID: 0}
-  embeddedWaves:
+  waves:
   - isIntermissionWave: 0
     characters:
     - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
