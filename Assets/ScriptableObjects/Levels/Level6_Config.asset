@@ -18,11 +18,6 @@ MonoBehaviour:
   chapterName: American Era
   eraTheme: {fileID: 0}
   numberSprite: {fileID: 0}
-  waves:
-  - {fileID: 11400000, guid: 4c1a5b0b2d3e4f5a8b9c0d1e2f3a4b5c, type: 2}
-  - {fileID: 11400000, guid: 5d2b6c1c3e4f5a6b9c0d1e2f3a4b5c6d, type: 2}
-  - {fileID: 11400000, guid: 6e3c7d2d4f5a6b7c0d1e2f3a4b5c6d7e, type: 2}
-  - {fileID: 11400000, guid: 7f4d8e3e5a6b7c8d1e2f3a4b5c6d7e8f, type: 2}
   embeddedWaves:
   - isIntermissionWave: 0
     characters:

@@ -18,7 +18,6 @@ MonoBehaviour:
   chapterName: Chapter 1
   eraTheme: {fileID: 0}
   numberSprite: {fileID: 0}
-  waves: []
   embeddedWaves: []
   allowedCharacters:
   - {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}

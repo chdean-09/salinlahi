@@ -18,10 +18,6 @@ MonoBehaviour:
   chapterName: Chapter 1
   eraTheme: {fileID: 11400000, guid: 4a3f16684c91d284eafb13ac69eecbfc, type: 2}
   numberSprite: {fileID: 187839122118532240, guid: 04da23af290d613448e27c47ec8f91c0, type: 3}
-  waves:
-  - {fileID: 11400000, guid: 5cd9769311864743b03967b695d56b84, type: 2}
-  - {fileID: 11400000, guid: 3f5f494698c247ba9cf2805d9f2ed6d7, type: 2}
-  - {fileID: 11400000, guid: 9dafc675b31e46e6836c461d474a0069, type: 2}
   embeddedWaves:
   - isIntermissionWave: 0
     characters:
