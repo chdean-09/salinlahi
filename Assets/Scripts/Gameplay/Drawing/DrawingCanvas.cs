@@ -42,6 +42,8 @@ public class DrawingCanvas : MonoBehaviour
         _currentLine.endColor = _strokeColor;
         _currentLine.positionCount = 0;
         _currentLine.useWorldSpace = true;
+        _currentLine.numCapVertices = 4;
+        _currentLine.numCornerVertices = 4;
         _currentLine.sortingOrder = RenderOrder.DrawingStroke;
         _activeLines.Add(_currentLine);
     }
@@ -81,6 +83,26 @@ public class DrawingCanvas : MonoBehaviour
 
         for (int i = 0; i < _worldPointBuffer.Count; i++)
             _currentLine.SetPosition(oldCount + i, _worldPointBuffer[i]);
+    }
+
+    public void SetPoints(IReadOnlyList<Vector2> screenPositions)
+    {
+        if (_currentLine == null || _cam == null || screenPositions == null)
+            return;
+
+        _worldPointBuffer.Clear();
+        for (int i = 0; i < screenPositions.Count; i++)
+        {
+            Vector2 screenPos = screenPositions[i];
+            if (!StrokeGeometry.IsFinite(screenPos))
+                continue;
+
+            _worldPointBuffer.Add(ScreenToStrokeWorld(screenPos));
+        }
+
+        _currentLine.positionCount = _worldPointBuffer.Count;
+        for (int i = 0; i < _worldPointBuffer.Count; i++)
+            _currentLine.SetPosition(i, _worldPointBuffer[i]);
     }
 
     private Vector3 ScreenToStrokeWorld(Vector2 screenPos)

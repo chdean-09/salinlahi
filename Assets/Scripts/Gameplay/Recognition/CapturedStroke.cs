@@ -40,6 +40,15 @@ public sealed class CapturedStroke
         StrokeGeometry.AppendVisualSegment(_visualPoints, from, to, spacingPixels, maxInsertedPoints);
     }
 
+    public void RebuildVisualCurve(float spacingPixels, int maxInsertedPointsPerSegment)
+    {
+        StrokeGeometry.RebuildVisualCurve(
+            _rawPoints,
+            _visualPoints,
+            spacingPixels,
+            maxInsertedPointsPerSegment);
+    }
+
     public List<Vector2> CloneRawPoints()
     {
         return new List<Vector2>(_rawPoints);

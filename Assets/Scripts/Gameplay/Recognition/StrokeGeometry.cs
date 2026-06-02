@@ -85,6 +85,99 @@ public static class StrokeGeometry
         }
     }
 
+    public static void RebuildVisualCurve(
+        IReadOnlyList<Vector2> rawPoints,
+        List<Vector2> visualPoints,
+        float spacingPixels,
+        int maxInsertedPointsPerSegment)
+    {
+        if (visualPoints == null)
+            return;
+
+        visualPoints.Clear();
+        if (rawPoints == null || rawPoints.Count == 0)
+            return;
+
+        for (int i = 0; i < rawPoints.Count; i++)
+        {
+            if (!IsFinite(rawPoints[i]))
+                return;
+        }
+
+        visualPoints.Add(rawPoints[0]);
+        if (rawPoints.Count == 1)
+            return;
+
+        for (int i = 0; i < rawPoints.Count - 1; i++)
+        {
+            Vector2 p1 = rawPoints[i];
+            Vector2 p2 = rawPoints[i + 1];
+            Vector2 p0 = i > 0
+                ? rawPoints[i - 1]
+                : p1 + (p1 - p2);
+            Vector2 p3 = i + 2 < rawPoints.Count
+                ? rawPoints[i + 2]
+                : p2 + (p2 - p1);
+
+            AppendCurvedSegment(
+                visualPoints,
+                p0,
+                p1,
+                p2,
+                p3,
+                spacingPixels,
+                maxInsertedPointsPerSegment);
+        }
+    }
+
+    private static void AppendCurvedSegment(
+        List<Vector2> visualPoints,
+        Vector2 p0,
+        Vector2 p1,
+        Vector2 p2,
+        Vector2 p3,
+        float spacingPixels,
+        int maxInsertedPoints)
+    {
+        float distance = Vector2.Distance(p1, p2);
+        float spacing = Mathf.Max(1f, spacingPixels);
+        int segmentCount = Mathf.Max(1, Mathf.CeilToInt(distance / spacing));
+        segmentCount = Mathf.Min(segmentCount, Mathf.Max(1, maxInsertedPoints + 1));
+
+        Vector2 tangent1 = LimitTangent((p2 - p0) * 0.5f, distance);
+        Vector2 tangent2 = LimitTangent((p3 - p1) * 0.5f, distance);
+
+        for (int i = 1; i <= segmentCount; i++)
+        {
+            float t = i / (float)segmentCount;
+            Vector2 point = CubicHermite(p1, tangent1, p2, tangent2, t);
+
+            if (visualPoints.Count == 0 || Vector2.SqrMagnitude(visualPoints[visualPoints.Count - 1] - point) > 0.0001f)
+                visualPoints.Add(point);
+        }
+    }
+
+    private static Vector2 LimitTangent(Vector2 tangent, float segmentDistance)
+    {
+        float maxMagnitude = Mathf.Max(1f, segmentDistance * 1.25f);
+        if (tangent.sqrMagnitude <= maxMagnitude * maxMagnitude)
+            return tangent;
+
+        return tangent.normalized * maxMagnitude;
+    }
+
+    private static Vector2 CubicHermite(Vector2 p0, Vector2 m0, Vector2 p1, Vector2 m1, float t)
+    {
+        float t2 = t * t;
+        float t3 = t2 * t;
+        float h00 = 2f * t3 - 3f * t2 + 1f;
+        float h10 = t3 - 2f * t2 + t;
+        float h01 = -2f * t3 + 3f * t2;
+        float h11 = t3 - t2;
+
+        return h00 * p0 + h10 * m0 + h01 * p1 + h11 * m1;
+    }
+
     public static bool IsFinite(Vector2 point)
     {
         return !float.IsNaN(point.x)

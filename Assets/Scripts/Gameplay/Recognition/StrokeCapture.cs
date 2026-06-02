@@ -276,45 +276,21 @@ public class StrokeCapture : MonoBehaviour
             return;
         }
 
-        IReadOnlyList<Vector2> rawPoints = _currentStroke.RawPoints;
-        Vector2 previousRaw = rawPoints.Count > 0
-            ? rawPoints[rawPoints.Count - 1]
-            : screenPosition;
-
         bool addedRaw = _currentStroke.AddRawSample(
             screenPosition,
             _config.rawSampleMinDistancePixels);
 
         if (addedRaw)
         {
-            int visualStart = _currentStroke.VisualPoints.Count;
-            _currentStroke.AddVisualSegment(
-                previousRaw,
-                screenPosition,
+            _currentStroke.RebuildVisualCurve(
                 _config.visualSampleSpacingPixels,
                 _config.maxVisualSamplesPerSegment);
 
-            AddNewVisualPointsToCanvas(visualStart);
+            _canvas.SetPoints(_currentStroke.VisualPoints);
         }
 
         _lastProcessedTouchTime = sampleTime;
         _strokeTimeoutEndTime = Time.time + _strokeTimeoutSeconds;
-    }
-
-    private void AddNewVisualPointsToCanvas(int visualStart)
-    {
-        if (_currentStroke == null)
-            return;
-
-        IReadOnlyList<Vector2> visualPoints = _currentStroke.VisualPoints;
-        if (visualStart >= visualPoints.Count)
-            return;
-
-        var pointsToRender = new List<Vector2>(visualPoints.Count - visualStart);
-        for (int i = visualStart; i < visualPoints.Count; i++)
-            pointsToRender.Add(visualPoints[i]);
-
-        _canvas.AddPoints(pointsToRender);
     }
 
     private bool IsInsideDrawableScreenArea(Vector2 pos)

@@ -73,6 +73,56 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         [UnityTest]
+        public IEnumerator BeginStroke_ConfiguresRoundedLineJoins()
+        {
+            _cameraObject = new GameObject("Main Camera");
+            _cameraObject.tag = "MainCamera";
+            _cameraObject.AddComponent<Camera>();
+
+            _canvasObject = new GameObject("DrawingCanvas");
+            DrawingCanvas canvas = _canvasObject.AddComponent<DrawingCanvas>();
+
+            canvas.BeginStroke();
+
+            yield return null;
+
+            LineRenderer line = _canvasObject.GetComponentInChildren<LineRenderer>();
+            Assert.IsNotNull(line);
+            Assert.GreaterOrEqual(line.numCapVertices, 4);
+            Assert.GreaterOrEqual(line.numCornerVertices, 4);
+        }
+
+        [UnityTest]
+        public IEnumerator SetPoints_ReplacesCurrentStrokePositions()
+        {
+            _cameraObject = new GameObject("Main Camera");
+            _cameraObject.tag = "MainCamera";
+            _cameraObject.AddComponent<Camera>();
+
+            _canvasObject = new GameObject("DrawingCanvas");
+            DrawingCanvas canvas = _canvasObject.AddComponent<DrawingCanvas>();
+
+            canvas.BeginStroke();
+            canvas.AddPoints(new[]
+            {
+                new Vector2(10f, 10f),
+                new Vector2(20f, 20f)
+            });
+            canvas.SetPoints(new[]
+            {
+                new Vector2(30f, 30f),
+                new Vector2(40f, 40f),
+                new Vector2(50f, 50f)
+            });
+
+            yield return null;
+
+            LineRenderer line = _canvasObject.GetComponentInChildren<LineRenderer>();
+            Assert.IsNotNull(line);
+            Assert.AreEqual(3, line.positionCount);
+        }
+
+        [UnityTest]
         public IEnumerator DiscardCurrentStroke_RemovesOnlyActiveStroke()
         {
             _cameraObject = new GameObject("Main Camera");
