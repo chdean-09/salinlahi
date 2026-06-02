@@ -1,0 +1,422 @@
+using System.Collections;
+using System.Collections.Generic;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
+{
+    [Header("UI References")]
+    [SerializeField] private CanvasGroup _canvasGroup;
+    [SerializeField] private RectTransform _targetFrame;
+    [SerializeField] private TextMeshProUGUI _bodyText;
+    [SerializeField] private Button _dismissButton;
+
+    [Header("Copy")]
+#pragma warning disable 0414
+    [SerializeField] private string _messageTemplate = "New enemy: {0}";
+#pragma warning restore 0414
+
+    [Header("Positioning")]
+    [SerializeField] private Camera _gameplayCamera;
+    [SerializeField] private Vector2 _framePadding = new Vector2(28f, 28f);
+    [SerializeField] private Vector2 _fallbackFrameSize = new Vector2(140f, 140f);
+
+    [Header("Reveal Timing")]
+    [SerializeField, Range(0.05f, 0.95f)] private float _revealViewportYFromBottom = 0.72f;
+    [SerializeField] private float _revealTimeoutSeconds = 4f;
+    [SerializeField, Range(0f, 0.2f)] private float _safeAreaViewportPadding = 0.02f;
+
+    [Header("Spotlight")]
+    [SerializeField] private SpotlightOverlayGraphic _spotlightOverlay;
+    [SerializeField] private Vector2 _spotlightPadding = new Vector2(36f, 36f);
+    [SerializeField] private Color _dimOverlayColor = new Color(0f, 0f, 0f, 0.78f);
+
+    private Enemy _targetEnemy;
+    private EnemyDataSO _targetData;
+    private Coroutine _queueRoutine;
+    private bool _enteredPause;
+    private readonly Queue<PendingDiscovery> _pendingDiscoveries = new Queue<PendingDiscovery>();
+
+    public bool IsShowing => _canvasGroup != null && _canvasGroup.alpha > 0f;
+
+    private readonly struct PendingDiscovery
+    {
+        public PendingDiscovery(EnemyDataSO data, Enemy enemy)
+        {
+            Data = data;
+            Enemy = enemy;
+        }
+
+        public EnemyDataSO Data { get; }
+        public Enemy Enemy { get; }
+    }
+
+    private void Awake()
+    {
+        if (_canvasGroup == null)
+            _canvasGroup = GetComponent<CanvasGroup>();
+
+        if (_gameplayCamera == null)
+            _gameplayCamera = Camera.main;
+
+        EnsureSpotlightOverlay();
+        ConfigureTargetFrame();
+        HideImmediate();
+    }
+
+    private void OnEnable()
+    {
+        EventBus.OnEnemyDiscovered += HandleEnemyDiscovered;
+
+        if (_dismissButton != null)
+            _dismissButton.onClick.AddListener(Dismiss);
+    }
+
+    private void OnDisable()
+    {
+        EventBus.OnEnemyDiscovered -= HandleEnemyDiscovered;
+
+        if (_dismissButton != null)
+            _dismissButton.onClick.RemoveListener(Dismiss);
+
+        if (_queueRoutine != null)
+        {
+            StopCoroutine(_queueRoutine);
+            _queueRoutine = null;
+        }
+
+        _pendingDiscoveries.Clear();
+        ExitPauseIfNeeded();
+        HideImmediate();
+        _targetEnemy = null;
+        _targetData = null;
+    }
+
+    private void HandleEnemyDiscovered(EnemyDataSO data, Enemy enemy)
+    {
+        if (data == null || enemy == null)
+            return;
+
+        if (TutorialRuntimeState.IsActive)
+            return;
+
+        if (!CanShow())
+        {
+            DebugLogger.LogWarning("EnemyDiscoveryOnboardingController: Missing UI references. Discovery overlay skipped.");
+            return;
+        }
+
+        _pendingDiscoveries.Enqueue(new PendingDiscovery(data, enemy));
+
+        if (_queueRoutine == null)
+            _queueRoutine = StartCoroutine(ProcessDiscoveryQueue());
+    }
+
+    private IEnumerator ProcessDiscoveryQueue()
+    {
+        yield return null;
+
+        while (_pendingDiscoveries.Count > 0)
+        {
+            PendingDiscovery pending = _pendingDiscoveries.Dequeue();
+            yield return WaitForRevealReady(pending);
+
+            Enemy enemy = pending.Enemy;
+            EnemyDataSO data = pending.Data;
+            if (!IsPendingDiscoveryValid(data, enemy) || !IsEnemyPastRevealThreshold(enemy))
+                continue;
+
+            _targetEnemy = enemy;
+            _targetData = data;
+            EnterPauseIfPossible();
+            ShowImmediate();
+            RenderCopy(data);
+            PositionFrameAndSpotlight();
+
+            yield return new WaitUntil(() => !IsShowing);
+        }
+
+        _queueRoutine = null;
+        if (_pendingDiscoveries.Count > 0 && isActiveAndEnabled)
+            _queueRoutine = StartCoroutine(ProcessDiscoveryQueue());
+    }
+
+    private void Update()
+    {
+        if (!IsShowing || _targetEnemy == null)
+            return;
+
+        if (!_targetEnemy.gameObject.activeInHierarchy || _targetEnemy.Data != _targetData)
+        {
+            Dismiss();
+            return;
+        }
+
+        PositionFrameAndSpotlight();
+    }
+
+    private void RenderCopy(EnemyDataSO data)
+    {
+        if (_bodyText == null)
+            return;
+
+        EnemyDiscoveryCopy copy = EnemyDiscoveryCopyProvider.Resolve(data);
+        _bodyText.text = $"{copy.Title}\n{copy.Description}\n\nPower: {copy.Power}";
+    }
+
+    private void PositionFrameAndSpotlight()
+    {
+        if (_targetFrame == null || _targetEnemy == null)
+            return;
+
+        Camera camera = _gameplayCamera != null ? _gameplayCamera : Camera.main;
+        if (camera == null)
+            return;
+
+        Bounds bounds = ResolveEnemyBounds(_targetEnemy);
+        Vector3 screenCenter = camera.WorldToScreenPoint(bounds.center);
+        Vector3 screenMin = camera.WorldToScreenPoint(bounds.min);
+        Vector3 screenMax = camera.WorldToScreenPoint(bounds.max);
+
+        Canvas canvas = GetComponentInParent<Canvas>();
+        Camera uiCamera = canvas != null && canvas.renderMode == RenderMode.ScreenSpaceOverlay
+            ? null
+            : canvas?.worldCamera;
+
+        RectTransform parentRect = _targetFrame.parent as RectTransform;
+        Vector2 localCenter = Vector2.zero;
+        if (parentRect != null
+            && RectTransformUtility.ScreenPointToLocalPointInRectangle(parentRect, screenCenter, uiCamera, out localCenter))
+        {
+            _targetFrame.anchoredPosition = localCenter;
+        }
+        else
+        {
+            _targetFrame.position = screenCenter;
+        }
+
+        Vector2 size = new Vector2(
+            Mathf.Abs(screenMax.x - screenMin.x),
+            Mathf.Abs(screenMax.y - screenMin.y));
+        if (size.x <= 1f || size.y <= 1f)
+            size = _fallbackFrameSize;
+
+        Vector2 paddedFrameSize = size + _framePadding;
+        _targetFrame.sizeDelta = paddedFrameSize;
+
+        UpdateSpotlightCutout(parentRect, _targetFrame.anchoredPosition, paddedFrameSize);
+    }
+
+    private IEnumerator WaitForRevealReady(PendingDiscovery pending)
+    {
+        float startTime = Time.unscaledTime;
+
+        while (true)
+        {
+            if (!IsPendingDiscoveryValid(pending.Data, pending.Enemy))
+                yield break;
+
+            if (IsEnemyPastRevealThreshold(pending.Enemy))
+                yield break;
+
+            if (_revealTimeoutSeconds > 0f && Time.unscaledTime - startTime >= _revealTimeoutSeconds)
+                yield break;
+
+            yield return null;
+        }
+    }
+
+    private bool IsPendingDiscoveryValid(EnemyDataSO data, Enemy enemy)
+    {
+        return !TutorialRuntimeState.IsActive
+            && enemy != null
+            && data != null
+            && enemy.gameObject.activeInHierarchy
+            && enemy.Data == data;
+    }
+
+    private bool IsEnemyPastRevealThreshold(Enemy enemy)
+    {
+        Camera camera = _gameplayCamera != null ? _gameplayCamera : Camera.main;
+        if (camera == null || enemy == null)
+            return true;
+
+        Bounds bounds = ResolveEnemyBounds(enemy);
+        Vector3 viewportCenter = camera.WorldToViewportPoint(bounds.center);
+        return viewportCenter.z >= 0f && viewportCenter.y <= CurrentRevealViewportY();
+    }
+
+    public static float ResolveRevealViewportY(float configuredViewportY, Rect safeArea, Vector2Int screenSize, float safeAreaViewportPadding)
+    {
+        float configured = Mathf.Clamp(configuredViewportY, 0.05f, 0.95f);
+        if (screenSize.y <= 0 || safeArea.height <= 0f)
+            return configured;
+
+        float safeAreaTop = Mathf.Clamp01(safeArea.yMax / screenSize.y);
+        float padding = Mathf.Clamp(safeAreaViewportPadding, 0f, 0.2f);
+        return Mathf.Min(configured, Mathf.Max(0.05f, safeAreaTop - padding));
+    }
+
+    public static float ResolveRevealViewportY(float configuredViewportY, Rect safeArea, Vector2Int screenSize)
+    {
+        return ResolveRevealViewportY(configuredViewportY, safeArea, screenSize, 0.02f);
+    }
+
+    private float CurrentRevealViewportY()
+    {
+        return ResolveRevealViewportY(
+            _revealViewportYFromBottom,
+            Screen.safeArea,
+            new Vector2Int(Screen.width, Screen.height),
+            _safeAreaViewportPadding);
+    }
+
+    private void EnsureSpotlightOverlay()
+    {
+        if (_spotlightOverlay == null)
+            _spotlightOverlay = GetComponentInChildren<SpotlightOverlayGraphic>(includeInactive: true);
+
+        if (_spotlightOverlay == null)
+        {
+            GameObject overlayGo = new GameObject("SpotlightOverlay", typeof(RectTransform), typeof(CanvasRenderer), typeof(SpotlightOverlayGraphic));
+            overlayGo.transform.SetParent(transform, false);
+            RectTransform overlayRect = overlayGo.GetComponent<RectTransform>();
+            overlayRect.anchorMin = Vector2.zero;
+            overlayRect.anchorMax = Vector2.one;
+            overlayRect.offsetMin = Vector2.zero;
+            overlayRect.offsetMax = Vector2.zero;
+            _spotlightOverlay = overlayGo.GetComponent<SpotlightOverlayGraphic>();
+        }
+
+        _spotlightOverlay.color = _dimOverlayColor;
+        _spotlightOverlay.raycastTarget = false;
+        _spotlightOverlay.transform.SetSiblingIndex(0);
+    }
+
+    private void ConfigureTargetFrame()
+    {
+        if (_targetFrame == null)
+            return;
+
+        Image frameImage = _targetFrame.GetComponent<Image>();
+        if (frameImage != null)
+        {
+            Color color = frameImage.color;
+            color.a = 0f;
+            frameImage.color = color;
+            frameImage.raycastTarget = false;
+        }
+    }
+
+    private void UpdateSpotlightCutout(RectTransform parentRect, Vector2 localCenter, Vector2 paddedFrameSize)
+    {
+        if (_spotlightOverlay == null)
+            return;
+
+        RectTransform overlayRect = _spotlightOverlay.rectTransform;
+        Vector2 cutoutSize = paddedFrameSize + _spotlightPadding;
+        Vector2 overlayLocalCenter = localCenter;
+
+        if (parentRect != null && overlayRect != parentRect)
+        {
+            Vector3 worldCenter = parentRect.TransformPoint(localCenter);
+            overlayLocalCenter = overlayRect.InverseTransformPoint(worldCenter);
+        }
+
+        Rect cutout = new Rect(
+            overlayLocalCenter.x - cutoutSize.x * 0.5f,
+            overlayLocalCenter.y - cutoutSize.y * 0.5f,
+            cutoutSize.x,
+            cutoutSize.y);
+
+        _spotlightOverlay.SetCutout(cutout);
+    }
+
+    private static Bounds ResolveEnemyBounds(Enemy enemy)
+    {
+        SpriteRenderer spriteRenderer = enemy.GetComponentInChildren<SpriteRenderer>();
+        if (spriteRenderer != null)
+            return spriteRenderer.bounds;
+
+        Collider2D collider = enemy.GetComponentInChildren<Collider2D>();
+        if (collider != null)
+            return collider.bounds;
+
+        Renderer renderer = enemy.GetComponentInChildren<Renderer>();
+        if (renderer != null)
+            return renderer.bounds;
+
+        return new Bounds(enemy.transform.position, Vector3.one);
+    }
+
+    private bool CanShow()
+    {
+        return _canvasGroup != null
+            && _targetFrame != null
+            && _bodyText != null
+            && _dismissButton != null;
+    }
+
+    private void EnterPauseIfPossible()
+    {
+        if (GameManager.Instance == null)
+            return;
+
+        if (GameManager.Instance.CurrentState != GameState.Playing)
+            return;
+
+        GameManager.Instance.EnterDialoguePause();
+        _enteredPause = GameManager.Instance.CurrentState == GameState.Paused;
+    }
+
+    private void ExitPauseIfNeeded()
+    {
+        if (!_enteredPause || GameManager.Instance == null)
+        {
+            _enteredPause = false;
+            return;
+        }
+
+        GameManager.Instance.ExitDialoguePause();
+        _enteredPause = false;
+    }
+
+    private void ShowImmediate()
+    {
+        _targetFrame.gameObject.SetActive(true);
+        if (_spotlightOverlay != null)
+            _spotlightOverlay.gameObject.SetActive(true);
+
+        _canvasGroup.alpha = 1f;
+        _canvasGroup.interactable = true;
+        _canvasGroup.blocksRaycasts = true;
+    }
+
+    private void HideImmediate()
+    {
+        if (_targetFrame != null)
+            _targetFrame.gameObject.SetActive(false);
+
+        if (_spotlightOverlay != null)
+        {
+            _spotlightOverlay.ClearCutout();
+            _spotlightOverlay.gameObject.SetActive(false);
+        }
+
+        if (_canvasGroup == null)
+            return;
+
+        _canvasGroup.alpha = 0f;
+        _canvasGroup.interactable = false;
+        _canvasGroup.blocksRaycasts = false;
+    }
+
+    public void Dismiss()
+    {
+        ExitPauseIfNeeded();
+        HideImmediate();
+        _targetEnemy = null;
+        _targetData = null;
+    }
+}
