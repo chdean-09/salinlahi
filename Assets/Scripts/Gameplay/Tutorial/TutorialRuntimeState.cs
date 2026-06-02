@@ -5,6 +5,7 @@ public static class TutorialRuntimeState
     public static bool IsActive { get; private set; }
     public static int ActiveLevelNumber { get; private set; } = -1;
     public static bool IsCombatOverrideActive { get; private set; }
+    public static bool IsDrawingInputLocked { get; private set; }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void DomainReloadInit()
@@ -22,6 +23,7 @@ public static class TutorialRuntimeState
         IsActive = true;
         ActiveLevelNumber = levelNumber;
         IsCombatOverrideActive = false;
+        IsDrawingInputLocked = false;
     }
 
     public static void SetCombatOverrideActive(bool active)
@@ -29,10 +31,16 @@ public static class TutorialRuntimeState
         IsCombatOverrideActive = IsActive && active;
     }
 
+    public static void SetDrawingInputLocked(bool locked)
+    {
+        IsDrawingInputLocked = IsActive && locked;
+    }
+
     public static void Clear()
     {
         IsActive = false;
         ActiveLevelNumber = -1;
         IsCombatOverrideActive = false;
+        IsDrawingInputLocked = false;
     }
 }
