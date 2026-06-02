@@ -39,7 +39,7 @@
 | DEP-05 | PlayerBase `GameObject` exists in Gameplay scene with tag `"PlayerBase"` | Scene setup | Jon Wayne | Sprint 2 `EnemyMover` base-hit test | NOT CONFIRMED |
 | DEP-06 | Android keystore signed and configured | Build | Ian Clyde | Sprint 1 Android build (confirmed via git commit) | ✅ DONE — commit `ddc6ea3` |
 | DEP-07 | Apple Developer Program account provisioned | Build | Ian Clyde | Sprint 4 iOS submission | UNKNOWN |
-| DEP-08 | Levels 1–3 LevelConfigSO and WaveConfigSO assets fully authored | Content | Chad | Sprint 1–2 wave system | NOT CONFIRMED |
+| DEP-08 | Levels 1–3 LevelConfigSO assets (with embedded WaveDefinitions) fully authored | Content | Chad | Sprint 1–2 wave system | NOT CONFIRMED |
 | DEP-09 | BGM audio clip for Gameplay scene | Audio | Ian Clyde | Sprint 2 audio integration | NOT CONFIRMED |
 | DEP-10 | Base hit and game over SFX clips | Audio | Ian Clyde | Sprint 2 audio stubs replaced | NOT CONFIRMED |
 | DEP-11 | DialogueSequence ScriptableObjects (30–40 assets, 2 per level + boss intros/outros) | Content | Chad | Sprint 3 dialogue integration | NOT CONFIRMED |
