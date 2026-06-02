@@ -35,8 +35,7 @@ public class RecognitionManager : Singleton<RecognitionManager>
 
     public void PreviewRecognize(List<List<Vector2>> strokes)
     {
-        int pointCount = StrokeTextParser.FlattenStrokes(strokes).Count;
-        if (pointCount < _config.minimumPointCount)
+        if (StrokeValidation.IsRecognitionDegenerate(strokes))
         {
             EventBus.RaiseRecognitionResolved(
                 new RecognitionResult("NONE", 0f, -1, "NONE", float.MinValue),
@@ -60,10 +59,9 @@ public class RecognitionManager : Singleton<RecognitionManager>
 
     public void Recognize(List<List<Vector2>> strokes)
     {
-        int pointCount = StrokeTextParser.FlattenStrokes(strokes).Count;
-        if (pointCount < _config.minimumPointCount)
+        if (StrokeValidation.IsRecognitionDegenerate(strokes))
         {
-            DebugLogger.Log("RecognitionManager: Too few points -- ignoring.");
+            DebugLogger.Log("RecognitionManager: Degenerate stroke input -- ignoring.");
             EventBus.RaiseDrawingFailed();
             return;
         }
