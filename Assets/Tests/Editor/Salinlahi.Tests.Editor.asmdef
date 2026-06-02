@@ -2,7 +2,8 @@
     "name": "Salinlahi.Tests.Editor",
     "rootNamespace": "",
     "references": [
-        "Salinlahi.Runtime"
+        "Salinlahi.Runtime",
+        "Salinlahi.Editor"
     ],
     "includePlatforms": [
         "Editor"

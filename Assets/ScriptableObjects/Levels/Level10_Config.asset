@@ -16,8 +16,17 @@ MonoBehaviour:
   levelNumber: 10
   chapterNumber: 2
   chapterName: American Era
+  eraTheme: {fileID: 0}
+  numberSprite: {fileID: 0}
   waves: []
   allowedCharacters:
   - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+  allowedEnemyTypes: []
   bossConfig: {fileID: 11400000, guid: 56283b9b09d5ccb468691c7195fb6ab6, type: 2}
   isAvailableInLite: 0
+  tutorialSequence: {fileID: 0}
+  introDialogue: {fileID: 0}
+  outroDialogue: {fileID: 0}
+  bgmClip: {fileID: 0}
+  hasProtagonist: 0
+  protagonistWalksIn: 0

@@ -1,4 +1,4 @@
-# 10 â€” Requirements Traceability Matrix
+﻿# 10 â€” Requirements Traceability Matrix
 **Project:** Salinlahi
 **Version:** 1.5
 **Date:** 2026-05-24
@@ -49,7 +49,7 @@
 | REQ-24 | Story Mode shall have 15 levels across 3 chapters | GDD Â§2.4 | P1 | `LevelConfigSO` supports structure; âŒ only 3 levels authored (Sprint target) | WV-01 | âš  Partial | ðŸŸ  P1 |
 | REQ-25 | Boss encounters shall occur at levels 5, 10, 15 | GDD Â§2.4; TDD Â§3.2 | P1 | Level 5 wired to fully-authored `BossConfig_ElInquisidor.asset`; Levels 10 and 15 wired to placeholder `BossConfig_Superintendent.asset` and `BossConfig_Kadiliman.asset` (single phase using legacy schema, both reuse El Inquisidor `bossEnemyData`). `WaveManager.RunBossEncounter` activates boss when `LevelConfigSO.bossConfig != null` | BS-01 | âš  Partial | ðŸŸ  P1 (Levels 10 and 15 still need dedicated boss prefab/data and new-schema BossPhase values before they ship) |
 | REQ-26 | WaveManager shall read LevelConfigSO and drive wave spawning | TDD Â§3.2; Salinlahi.md Â§3.5.1 | P0 | `WaveManager.cs` + `WaveSpawner.cs` | WV-01 | âœ… Implemented | None |
-| REQ-27 | Wave spawning shall respect waveStartDelay and spawnInterval from WaveConfigSO | TDD Â§3.2 | P1 | `WaveSpawner.cs` reads `WaveConfigSO` | WV-02, WV-03 | âœ… Implemented | None |
+| REQ-27 | Wave spawning shall respect waveStartDelay and spawnInterval from WaveDefinition | TDD Â§3.2 | P1 | `WaveSpawner.cs` reads `WaveDefinition` embedded in `LevelConfigSO` | WV-02, WV-03 | âœ… Implemented | None |
 | REQ-28 | The Lite build shall restrict access to levels 1â€“3 only | TDD Â§7.2; Salinlahi.md Â§3.4 | P1 | `LevelConfigSO.isAvailableInLite` field defined; âŒ gate logic not implemented | â€” | âš  Partial | ðŸŸ  P1 |
 | REQ-29 | The game shall display a Main Menu with Play, Endless Mode, Tracing Dojo, Settings | GDD Â§5.1 | P1 | `MainMenuUI.Play()` exists; âŒ Endless, Dojo, Settings not implemented | â€” | âš  Partial | ðŸŸ  P1 |
 | REQ-30 | The HUD shall display current heart count and wave number | GDD Â§5.1; TDD Â§7.4 | P1 | `HUD.cs` | WV-05, WV-01 | âœ… Implemented | None |

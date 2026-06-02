@@ -2,6 +2,7 @@
 **Project:** Salinlahi
 **Version:** 2.1
 **Date:** 2026-06-03
+
 **Owner:** Gameplay Developer (Jon Wayne Cabusbusan / Chad Andrada)
 
 ---
@@ -221,28 +222,27 @@ Tap-like strokes are rejected by raw path length and raw bounds (`minimumStrokeP
 
 `WaveManager` is implemented in `Assets/Scripts/Gameplay/Wave/WaveManager.cs`. The following describes its behavior per `TDD.md §3.2`.
 
-- At level load: reads `LevelConfigSO` to get ordered `List<WaveConfigSO>`.
-- For each `WaveConfigSO` in order:
+- At level load: reads `LevelConfigSO` to get ordered `List<WaveDefinition>` (embedded waves).
+- For each `WaveDefinition` in order:
   1. Wait `waveStartDelay` seconds.
   2. Fire `EventBus.RaiseWaveStarted(waveIndex)`.
   3. Spawn `enemyCount` enemies at intervals of `spawnInterval` seconds.
-  4. Enemy type and character drawn from `WaveConfigSO.charactersInWave`.
+  4. Enemy type and character drawn from `WaveDefinition.characters` / `WaveDefinition.enemyTypes` (subsets of the level rosters).
   5. When all enemies in wave are defeated or return to pool: advance to next wave.
 - After all waves complete: fire `EventBus.RaiseLevelComplete()`.
 - Boss levels (5, 10, 15): when `LevelConfigSO.bossConfig != null`, `WaveManager.RunBossEncounter` activates the boss immediately and the level's `waves` list is ignored. `OnLevelComplete` is raised by `BossController` (not `WaveManager`) when the boss outro finishes.
 
-### 6.2 WaveConfigSO Fields Used by WaveManager
+### 6.2 WaveDefinition Fields Used by WaveManager
 
 | Field | Type | Purpose |
 |-------|------|---------|
-| `waveID` | `string` | Unique identifier for debug logging |
-| `waveNumber` | `int` | Display index in HUD |
-| `charactersInWave` | `List<BaybayinCharacterSO>` | Pool of characters enemies can carry |
+| `characters` | `List<BaybayinCharacterSO>` | Pool of characters enemies can carry (subset of level roster) |
+| `enemyTypes` | `List<EnemyDataSO>` | Pool of enemy types this wave may spawn (subset of level roster) |
 | `enemyCount` | `int` | Total enemies spawned in this wave (default: 5) |
 | `spawnInterval` | `float` | Seconds between spawns (default: 3f) |
 | `waveStartDelay` | `float` | Seconds before first spawn in wave (default: 1f) |
 
-[EVIDENCE: Assets/Scripts/Data/WaveConfigSO.cs]
+[EVIDENCE: Assets/Scripts/Data/WaveDefinition.cs]
 [EVIDENCE: docs/capstone/TDD.md, §3.2 Wave Management]
 [EVIDENCE: docs/capstone/GDD.md, §2.4 Game Modes]
 

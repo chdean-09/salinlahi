@@ -157,11 +157,11 @@ The Lite/Full split is the only monetization boundary. Lite gives you 3 levels f
 
 Enemy behavior is data-driven, not adaptive. Enemies do not react to the player's drawing. Their behavior is fully defined by ScriptableObject configurations:
 
-- **WaveConfigSO: **Defines which enemies spawn, how many, spawn delay, and spawn positions for each wave.
+- **LevelConfigSO: **Defines the sequence of waves per level, background theme, chapter assignment, and the allowed character and enemy-type rosters.
+
+- **WaveDefinition: **Embedded value type inside LevelConfigSO.waves. Defines which enemies spawn, how many, spawn interval, and the allowed character pool for one wave.
 
 - **EnemyDataSO: **Defines movement speed, movement pattern, health (for shielded enemies), and the assigned Baybayin character.
-
-- **LevelConfigSO: **Defines the sequence of waves per level, background theme, and chapter assignment.
 
 - **BossConfigSO: **Defines boss behavior phases, health pools, and mini-game sequences for boss encounters at Levels 5, 10, and 15.
 

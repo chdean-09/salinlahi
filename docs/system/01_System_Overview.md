@@ -28,7 +28,7 @@ Salinlahi is a 2D pixel art mobile defense game whose core mechanic is drawing B
 | Story Mode: 15 levels across 3 chapters, boss encounters at levels 5, 10, 15 | GDD §2.4 |
 | Endless Mode: Unlocked after completing Story Mode or defeating the final boss, random characters, high-score tracking | GDD §2.4 |
 | Tracing Dojo: Pressure-free practice mode for all 17 characters, no enemies | GDD §2.4 |
-| Enemy wave system driven by ScriptableObject data (LevelConfigSO, WaveConfigSO) | Salinlahi.md §3.5.1; LevelConfigSO.cs |
+| Enemy wave system driven by ScriptableObject data (LevelConfigSO with embedded WaveDefinitions) | Salinlahi.md §3.5.1; LevelConfigSO.cs |
 | Two-build split: Salinlahi Lite (free, levels 1–3) and Salinlahi Full (PHP 149, all content) | TDD §7.2; Salinlahi.md §3.4 |
 | Fully offline operation — zero network calls at runtime | GDD §1.3; TDD header |
 | Singleton manager architecture with DontDestroyOnLoad | GameManager.cs; Singleton.cs |

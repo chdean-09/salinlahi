@@ -20,8 +20,8 @@
 | **Phase (Boss)** | One unit of boss HP. The boss has as many phases as `BossConfigSO.phases.Count`; there is no separate maxHealth field. One full Summoning → WindingDown → Vulnerable → Damaged loop = one HP point. | `BossConfigSO.cs`; `BossController.cs` |
 | **PlayerBase** | The Unity `GameObject` representing the Shrine's collision boundary. Must have Unity tag `"PlayerBase"`. Enemies use `OnTriggerEnter2D` with this tag. | EnemyMover.cs |
 | **Heart** | One unit of the Shrine's health. The Shrine has 3 hearts by default. Each enemy base hit costs 1 heart. 0 hearts = Game Over. | GDD §2.3 |
-| **Wave** | A single spawn sequence within a level, defined by `WaveConfigSO`. A wave has a fixed enemy count, spawn interval, and character pool. | WaveConfigSO.cs; GDD §2.4 |
-| **Spawn Interval** | Seconds between consecutive enemy spawns within a wave. Defined in `WaveConfigSO.spawnInterval` (default: 3s). | WaveConfigSO.cs |
+| **Wave** | A single spawn sequence within a level, defined by an embedded `WaveDefinition` value type inside `LevelConfigSO.waves`. A wave has a fixed enemy count, spawn interval, and character pool. | WaveDefinition.cs; GDD §2.4 |
+| **Spawn Interval** | Seconds between consecutive enemy spawns within a wave. Defined in `WaveDefinition.spawnInterval` (default: 3s). | WaveDefinition.cs |
 | **Summoning Phase** | The boss sub-state during which the boss is invulnerable and `BossSummonTicker` streams 2–3 minions per summon act on `delayBetweenMinions` cadence (default 0.6s). Acts repeat every `delayBetweenSummons`. Ends after `summonPhaseDuration` (no new acts may start after that gate; an in-progress act always runs to completion), followed by WindingDown. | `BossController.RunSummoningPhase` |
 | **Bootstrap Scene** | The first scene loaded on app launch. It initializes all manager singletons and immediately transitions to MainMenu. It is never returned to after the initial load. | BootstrapLoader.cs; GDD §5.1 |
 | **Boss Movement Pattern** | The per-phase movement mode (`Hover`, `Pace`, `Teleport`) driven imperatively by `PhaseBasedMovement` based on `BossPhase.movementPattern`. | `BossPhase.cs`; `PhaseBasedMovement.cs` |
@@ -105,7 +105,7 @@
 | `BaybayinCharacterSO` assets | `Char_[ID]` | `Char_BA`, `Char_KA` |
 | `EnemyDataSO` assets | `Enemy_[Type]` | `Enemy_Standard` |
 | `LevelConfigSO` assets | `Level_[##]` (zero-padded) | `Level_01`, `Level_10` |
-| `WaveConfigSO` assets | `L[level]_W[wave]` | `L1_W1`, `L10_W3` |
+| `WaveDefinition` entries | embedded in `LevelConfigSO.waves` list | (no standalone asset file) |
 
 ### 3.4 Scenes
 

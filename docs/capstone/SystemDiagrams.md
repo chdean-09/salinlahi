@@ -26,13 +26,15 @@ references between assets. This is the closest analogue to a relational ERD for 
 
 ```mermaid
 erDiagram
-    LevelConfigSO ||--o{ WaveConfigSO : "waves (ordered list)"
+    LevelConfigSO ||--o{ WaveDefinition : "waves (embedded list)"
     LevelConfigSO ||--|{ BaybayinCharacterSO : "allowedCharacters"
+    LevelConfigSO ||--o{ EnemyDataSO : "allowedEnemyTypes"
     LevelConfigSO }o--|| EraThemeSO : "eraTheme"
     LevelConfigSO |o--o| BossConfigSO : "bossConfig (optional)"
     EraConfigSO ||--o{ LevelConfigSO : "levels (ordered list)"
 
-    WaveConfigSO ||--|{ BaybayinCharacterSO : "charactersInWave"
+    WaveDefinition ||--|{ BaybayinCharacterSO : "characters (subset)"
+    WaveDefinition ||--o{ EnemyDataSO : "enemyTypes (subset)"
 
     EnemyDataSO ||--|| BaybayinCharacterSO : "assignedCharacter"
     EnemyDataSO |o--o| BaybayinCharacterSO : "postHurtCharacter (optional)"
@@ -77,9 +79,8 @@ erDiagram
         BaybayinCharacterSO postHurtCharacter FK
     }
 
-    WaveConfigSO {
-        string waveID PK
-        int waveNumber
+    WaveDefinition {
+        bool isIntermissionWave
         int enemyCount
         float spawnInterval
         float waveStartDelay
@@ -91,6 +92,7 @@ erDiagram
         int chapterNumber
         bool isAvailableInLite
         Sprite numberSprite
+        List_EnemyDataSO allowedEnemyTypes FK
     }
 
     BossConfigSO {
@@ -168,7 +170,7 @@ erDiagram
 
 **Reading the diagram:**
 
-- `||--o{` = one-to-many (zero or more). A LevelConfigSO has a list of WaveConfigSOs.
+- `||--o{` = one-to-many (zero or more). A LevelConfigSO has a list of WaveDefinitions (embedded).
 - `||--|{` = one-to-many (one or more, required non-empty).
 - `}o--||` = many-to-one (a level points to exactly one era theme; many levels can share one).
 - `|o--o|` = optional one-to-one (boss config only for boss levels).
@@ -357,7 +359,7 @@ classDiagram
     LevelFlowController --> WaveManager : drives
     LevelFlowController --> BossController : activates
 
-    WaveManager ..> WaveConfigSO : reads
+    WaveManager ..> WaveDefinition : reads
     WaveManager --> EnemyPool : gets enemies from
     WaveManager --> WaveSpawner : uses
 
@@ -398,7 +400,7 @@ runtime systems in the middle; EventBus is the central hub; consumers on the rig
 flowchart LR
     subgraph SO_Assets["Content (ScriptableObjects)"]
         LC["LevelConfigSO"]
-        WC["WaveConfigSO"]
+        WC["WaveDefinition (embedded)"]
         ED["EnemyDataSO"]
         BC["BaybayinCharacterSO"]
         BCfg["BossConfigSO"]

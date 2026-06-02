@@ -119,7 +119,7 @@ public class WaveSpawner : MonoBehaviour
         return enemy;
     }
 
-    public virtual IEnumerator SpawnWave(WaveConfigSO wave, Action onEnemySpawned = null, int spawnOffset = 0)
+    public virtual IEnumerator SpawnWave(WaveDefinition wave, Action onEnemySpawned = null, int spawnOffset = 0)
     {
         if (wave == null)
         {
@@ -136,7 +136,7 @@ public class WaveSpawner : MonoBehaviour
         int enemyCount = wave.enemyCount;
         if (enemyCount <= 0)
         {
-            DebugLogger.LogWarning($"WaveSpawner.SpawnWave: enemyCount <= 0 for wave '{wave.name}'. Spawning zero enemies.");
+            DebugLogger.LogWarning("WaveSpawner.SpawnWave: enemyCount <= 0 for a wave. Spawning zero enemies.");
             yield break;
         }
 
@@ -171,17 +171,17 @@ public class WaveSpawner : MonoBehaviour
         return _fallbackEnemyData;
     }
 
-    private EnemyDataSO SelectEnemyDataForSpawn(WaveConfigSO wave)
+    private EnemyDataSO SelectEnemyDataForSpawn(WaveDefinition wave)
     {
         EnemyDataSO selected = null;
 
-        if (wave.enemyTypesInWave != null && wave.enemyTypesInWave.Count > 0)
+        if (wave.enemyTypes != null && wave.enemyTypes.Count > 0)
         {
             List<EnemyDataSO> validTypes = new List<EnemyDataSO>();
-            for (int i = 0; i < wave.enemyTypesInWave.Count; i++)
+            for (int i = 0; i < wave.enemyTypes.Count; i++)
             {
-                if (wave.enemyTypesInWave[i] != null)
-                    validTypes.Add(wave.enemyTypesInWave[i]);
+                if (wave.enemyTypes[i] != null)
+                    validTypes.Add(wave.enemyTypes[i]);
             }
 
             if (validTypes.Count > 0)
@@ -194,15 +194,15 @@ public class WaveSpawner : MonoBehaviour
         return ResolveEnemyData(selected);
     }
 
-    private BaybayinCharacterSO SelectCharacterForSpawn(WaveConfigSO wave, EnemyDataSO selectedEnemyData)
+    private BaybayinCharacterSO SelectCharacterForSpawn(WaveDefinition wave, EnemyDataSO selectedEnemyData)
     {
-        if (wave.charactersInWave != null && wave.charactersInWave.Count > 0)
+        if (wave.characters != null && wave.characters.Count > 0)
         {
             List<BaybayinCharacterSO> validCharacters = new List<BaybayinCharacterSO>();
-            for (int i = 0; i < wave.charactersInWave.Count; i++)
+            for (int i = 0; i < wave.characters.Count; i++)
             {
-                if (wave.charactersInWave[i] != null)
-                    validCharacters.Add(wave.charactersInWave[i]);
+                if (wave.characters[i] != null)
+                    validCharacters.Add(wave.characters[i]);
             }
 
             if (validCharacters.Count > 0)
@@ -222,12 +222,12 @@ public class WaveSpawner : MonoBehaviour
         return fallbackCharacter;
     }
 
-    private float GetClampedSpawnInterval(WaveConfigSO wave)
+    private float GetClampedSpawnInterval(WaveDefinition wave)
     {
         float interval = wave.spawnInterval;
         if (interval <= 0f)
         {
-            DebugLogger.LogWarning($"WaveSpawner.SpawnWave: spawnInterval <= 0 for wave '{wave.name}'. Using 0.");
+            DebugLogger.LogWarning("WaveSpawner.SpawnWave: spawnInterval <= 0 for a wave. Using 0.");
             return 0f;
         }
 
