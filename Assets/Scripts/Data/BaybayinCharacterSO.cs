@@ -8,6 +8,10 @@ public class BaybayinCharacterSO : ScriptableObject
 
     public string syllable; // "ba", "ka", "ga" -- shown to player
 
+    [TextArea]
+    [Tooltip("Almanac detail copy. Optional — the detail view omits empty text.")]
+    public string description;
+
     [Header("Visuals")]
     public Sprite displaySprite; // The Baybayin glyph shown on the enemy
 

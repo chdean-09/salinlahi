@@ -14,6 +14,10 @@ public class BossConfigSO : ScriptableObject
     [Tooltip("Optional HUD/portrait sprite, distinct from the in-world Enemy sprite.")]
     public Sprite bossSprite;
 
+    [TextArea]
+    [Tooltip("Almanac detail copy for this boss. Optional.")]
+    public string description;
+
     [Header("Spawning")]
     [Tooltip("EnemyDataSO defining the boss's prefab, base sprite, animator, and collision behavior. Its assignedCharacter MUST be null so the boss is invisible to FindClosestToBase.")]
     public EnemyDataSO bossEnemyData;
