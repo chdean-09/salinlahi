@@ -903,7 +903,7 @@ GameObject:
   - component: {fileID: 203729382}
   - component: {fileID: 203729381}
   m_Layer: 0
-  m_Name: Level1InteractiveTutorialController
+  m_Name: Level1OnboardingController
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -918,29 +918,24 @@ MonoBehaviour:
   m_GameObject: {fileID: 203729380}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b716f44742754e708a61f90d03a04f6b, type: 3}
+  m_Script: {fileID: 11500000, guid: ee3036f0022984575ad88b616264a85a, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Salinlahi.Runtime::Level1InteractiveTutorialController
-  _requiredLevelNumber: 1
-  _sequence: {fileID: 11400000, guid: 7369c0885d3f4f508ae62d77174c703a, type: 2}
-  _steps: []
-  _baseIntroText: This is the base.
-  _baseDefenseText: Keep enemies away from it.
-  _drawPurposeText: Draw its syllable to defeat it.
-  _baseDamageText: The base took damage. Draw before enemies reach it.
-  _finalReleaseText: You are ready. Defend the base.
-  _messageSeconds: 1.25
-  _idleHintSeconds: 5
-  _strongHintSeconds: 12
-  _waveSpawner: {fileID: 1543327747}
-  _fallbackTutorialEnemyData: {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+  m_EditorClassIdentifier: Salinlahi.Runtime::Level1OnboardingController
+  _dialogueController: {fileID: 1169153849}
+  _spotlight: {fileID: 0}
+  _introPlayer: {fileID: 0}
+  _demoHeartSimulator: {fileID: 0}
   _guideUI: {fileID: 1307902100}
-  _hideDuringTutorial:
+  _waveSpawner: {fileID: 1543327747}
+  _playerBase: {fileID: 364051679}
+  _worldCamera: {fileID: 573789166}
+  _protagonistManager: {fileID: 0}
+  _hideDuringOnboarding:
   - {fileID: 1149608637}
   - {fileID: 1868612379}
   - {fileID: 1599009903}
   - {fileID: 1402297128}
-  _protagonistWalkSeconds: 1.75
+  _fallbackSequence: {fileID: 0}
 --- !u!4 &203729382
 Transform:
   m_ObjectHideFlags: 0
@@ -3222,8 +3217,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Salinlahi.Runtime::LevelFlowController
   _waveManager: {fileID: 920286447}
   _dialogueController: {fileID: 0}
-  _level1InteractiveTutorialController: {fileID: 203729381}
-  _tutorialOverlayController: {fileID: 0}
+  _level1OnboardingController: {fileID: 203729381}
   _victoryScreen: {fileID: 0}
   _defeatScreen: {fileID: 0}
   _cutscenePlayer: {fileID: 283012944}
