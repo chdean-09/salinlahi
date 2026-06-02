@@ -26,6 +26,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Scenes/Level_01_Tutorial.unity
     guid: 73f60e154313b49169e14af8d1301170
+  - enabled: 1
+    path: Assets/_Scenes/Almanac.unity
+    guid: 17a29c6fc6a92c647a80b551d4df4fa6
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   m_UseUCBPForAssetBundles: 0
