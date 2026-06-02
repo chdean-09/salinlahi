@@ -14,6 +14,7 @@ public class SceneLoader : Singleton<SceneLoader>
     private const string SCENE_GAMEPLAY = "Gameplay";
     private const string SCENE_LEVEL_SELECT = "LevelSelect";
     private const string SCENE_GAME_OVER = "GameOver";
+    private const string SCENE_ALMANAC = "Almanac";
 
     [Header("Fade Stub (placeholder for SALIN-44 TransitionManager)")]
     [SerializeField] private CanvasGroup _fadeCanvasGroup;
@@ -94,6 +95,15 @@ public class SceneLoader : Singleton<SceneLoader>
 #endif
         CleanupGameplayRun();
         LoadScene(SCENE_LEVEL_SELECT);
+    }
+
+    public void LoadAlmanac()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        SandboxMode.Deactivate();
+#endif
+        CleanupGameplayRun();
+        LoadScene(SCENE_ALMANAC);
     }
 
 [System.Obsolete("GameOver scene replaced by DefeatScreenUI overlay in Gameplay scene (SALIN-58).")]
