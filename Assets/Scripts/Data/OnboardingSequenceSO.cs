@@ -29,6 +29,16 @@ public struct OnboardingVideoTemplate
     [Tooltip("Loops while waiting for the player to tap to proceed.")]
     public VideoClip videoClip;
 
+    [Tooltip("Imported GIF texture used by the lightweight GIF player when videoClip is null.")]
+    public Texture2D gifTexture;
+
+    [Tooltip("Optional frame sprites sliced from gifTexture. When assigned, frames animate over the intro overlay.")]
+    public Sprite[] gifFrames;
+
+    [Min(1f)]
+    [Tooltip("Playback speed for gifFrames.")]
+    public float gifFramesPerSecond;
+
     [Tooltip("Sprite-sheet fallback used when videoClip is null. Authored AnimationClip drives the image surface.")]
     public AnimationClip animationClip;
 

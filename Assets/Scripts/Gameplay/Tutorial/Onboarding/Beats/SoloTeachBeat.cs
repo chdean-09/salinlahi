@@ -41,14 +41,17 @@ public sealed class SoloTeachBeat : OnboardingBeat
 
         yield return WalkEnemyTo(enemy, step.stopPosition, _walkInDuration);
 
-        // Play the intro video FIRST over the clean scene — no spotlight yet, so the video
-        // overlay fully covers the area instead of competing with a bright enemy cut-out.
-        if (ctx.IntroPlayer != null)
+        OnboardingVideoTemplate teachMedia = ctx.Sequence.soloTeachVideo;
+        bool showGifDuringDraw = ctx.IntroPlayer != null && TutorialIntroPlayer.TemplateUsesGif(teachMedia);
+
+        // Non-GIF media stays modal before the draw phase. GIF hints are shown later,
+        // alongside the draw prompt, so they do not dim or block drawing input.
+        if (ctx.IntroPlayer != null && !showGifDuringDraw)
         {
             TutorialRuntimeState.SetDrawingInputLocked(true);
             try
             {
-                yield return ctx.IntroPlayer.Play(ctx.Sequence.soloTeachVideo);
+                yield return ctx.IntroPlayer.Play(teachMedia);
             }
             finally
             {
@@ -66,6 +69,9 @@ public sealed class SoloTeachBeat : OnboardingBeat
 
         if (ctx.GuideUI != null)
             ctx.GuideUI.ShowMessage(step.promptText ?? "Draw the mark to defeat the enemy!", canSkip: false);
+
+        if (showGifDuringDraw)
+            ctx.IntroPlayer.ShowGifHint(teachMedia);
 
         string expectedID = step.targetCharacter.characterID;
         System.Action<RecognitionResult, bool, float> feedbackHandler = null;
@@ -93,6 +99,8 @@ public sealed class SoloTeachBeat : OnboardingBeat
         finally
         {
             TutorialRuntimeState.SetCombatOverrideActive(false);
+            if (showGifDuringDraw)
+                ctx.IntroPlayer.HideGifHint();
             if (feedbackHandler != null)
                 EventBus.OnRecognitionResolved -= feedbackHandler;
         }

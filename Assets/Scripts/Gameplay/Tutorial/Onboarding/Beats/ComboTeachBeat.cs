@@ -49,13 +49,17 @@ public sealed class ComboTeachBeat : OnboardingBeat
             yield break;
         }
 
-        // Play the intro video FIRST over the clean scene — no spotlight competing with it.
-        if (ctx.IntroPlayer != null)
+        OnboardingVideoTemplate teachMedia = ctx.Sequence.comboTeachVideo;
+        bool showGifDuringDraw = ctx.IntroPlayer != null && TutorialIntroPlayer.TemplateUsesGif(teachMedia);
+
+        // Non-GIF media stays modal before the draw phase. GIF hints are shown later,
+        // alongside the draw prompt, so they do not dim or block drawing input.
+        if (ctx.IntroPlayer != null && !showGifDuringDraw)
         {
             TutorialRuntimeState.SetDrawingInputLocked(true);
             try
             {
-                yield return ctx.IntroPlayer.Play(ctx.Sequence.comboTeachVideo);
+                yield return ctx.IntroPlayer.Play(teachMedia);
             }
             finally
             {
@@ -74,6 +78,9 @@ public sealed class ComboTeachBeat : OnboardingBeat
         if (ctx.GuideUI != null)
             ctx.GuideUI.ShowMessage(step.promptText ?? "Draw the mark to defeat them all!", canSkip: false);
 
+        if (showGifDuringDraw)
+            ctx.IntroPlayer.ShowGifHint(teachMedia);
+
         if (GameManager.Instance != null && !GameManager.Instance.AcceptsDrawingInput)
             GameManager.Instance.StartGame();
 
@@ -84,6 +91,8 @@ public sealed class ComboTeachBeat : OnboardingBeat
         finally
         {
             TutorialRuntimeState.SetCombatOverrideActive(false);
+            if (showGifDuringDraw)
+                ctx.IntroPlayer.HideGifHint();
         }
 
         if (ctx.GuideUI != null) ctx.GuideUI.Hide();

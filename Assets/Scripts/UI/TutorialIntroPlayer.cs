@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -9,14 +10,19 @@ using UnityEngine.Video;
 /// Plays a tutorial intro template that loops while waiting for the player to tap to proceed.
 /// Supports two playback paths:
 ///   1. VideoClip via UnityEngine.Video.VideoPlayer (preferred when assigned).
-///   2. AnimationClip via Animator (used as a placeholder/fallback).
+///   2. Imported GIF texture/sliced frames via RawImage.
+///   3. AnimationClip via Animator (used as a placeholder/fallback).
 /// </summary>
 public sealed class TutorialIntroPlayer : MonoBehaviour
 {
-    public enum PlaybackMode { None, Video, Animation }
+    public enum PlaybackMode { None, Video, Gif, Animation }
+
+    private static readonly Vector2 DefaultGifSurfaceSize = new(420f, 420f);
+    private static readonly Vector2 DefaultGifSurfaceAnchoredPosition = new(0f, 560f);
 
     [Header("Surfaces")]
     [SerializeField] private RawImage _videoSurface;
+    [SerializeField] private RawImage _gifSurface;
     [SerializeField] private Image _animationSurface;
     [SerializeField] private Animator _animator;
 
@@ -29,12 +35,18 @@ public sealed class TutorialIntroPlayer : MonoBehaviour
     [SerializeField] private TMP_Text _tapToProceedLabel;
     [SerializeField] private GameObject _root;
 
+    [Header("GIF Layout")]
+    [SerializeField] private Vector2 _gifSurfaceSize = new(420f, 420f);
+    [SerializeField] private Vector2 _gifSurfaceAnchoredPosition = new(0f, 560f);
+
     [Header("Animation Fallback")]
     [Tooltip("State name on the Animator used when an AnimationClip is provided as a fallback.")]
     [SerializeField] private string _animatorStateName = "TutorialPlaceholder";
 
     private Action _onDismissed;
     private bool _isPlaying;
+    private Coroutine _gifPlaybackRoutine;
+    private bool _gifFramesUseFullTexture;
 
     public bool IsPlaying => _isPlaying;
     public PlaybackMode CurrentMode { get; private set; } = PlaybackMode.None;
@@ -61,6 +73,7 @@ public sealed class TutorialIntroPlayer : MonoBehaviour
         TutorialIntroPlayer player = playerObject.AddComponent<TutorialIntroPlayer>();
         player._root = CreateRoot(playerObject.transform);
         player._videoSurface = CreateVideoSurface(player._root.transform);
+        player._gifSurface = CreateGifSurface(player._root.transform);
         player._animationSurface = CreateAnimationSurface(player._root.transform);
         player._tapToProceedLabel = CreateLabel(player._root.transform);
         player._tapCatcher = CreateTapCatcher(playerObject.transform);
@@ -125,6 +138,21 @@ public sealed class TutorialIntroPlayer : MonoBehaviour
         return image;
     }
 
+    private static RawImage CreateGifSurface(Transform parent)
+    {
+        GameObject surfaceObject = new("GifSurface", typeof(RectTransform), typeof(RawImage));
+        surfaceObject.transform.SetParent(parent, false);
+        RectTransform rect = surfaceObject.GetComponent<RectTransform>();
+        ConfigureGifSurfaceRect(rect, DefaultGifSurfaceSize, DefaultGifSurfaceAnchoredPosition);
+
+        RawImage image = surfaceObject.GetComponent<RawImage>();
+        image.color = Color.white;
+        image.raycastTarget = false;
+        image.uvRect = new Rect(0f, 0f, 1f, 1f);
+        surfaceObject.SetActive(false);
+        return image;
+    }
+
     private static Image CreateAnimationSurface(Transform parent)
     {
         GameObject surfaceObject = new("AnimationSurface", typeof(RectTransform), typeof(Image));
@@ -183,6 +211,7 @@ public sealed class TutorialIntroPlayer : MonoBehaviour
 
     private void Awake()
     {
+        ApplyGifLayout();
         if (_root != null) _root.SetActive(false);
         // The tap-catcher is a SIBLING of _root, so toggling _root never disables it.
         // Manage it explicitly so it can't stay active full-screen (blocking drawing input
@@ -206,6 +235,7 @@ public sealed class TutorialIntroPlayer : MonoBehaviour
     {
         if (_tapCatcher != null)
             _tapCatcher.onClick.RemoveListener(OnTapped);
+        StopGifPlayback();
         if (_videoPlayer != null)
         {
             _videoPlayer.loopPointReached -= OnVideoLoopPoint;
@@ -227,30 +257,42 @@ public sealed class TutorialIntroPlayer : MonoBehaviour
     }
 
     /// <summary>
-    /// Pure helper: choose Video when a clip is assigned, else Animation when a clip is assigned, else None.
+    /// Pure helper: choose Video when a clip is assigned, else GIF, else Animation, else None.
     /// Public/static so it can be exercised by EditMode tests.
     /// </summary>
     public static PlaybackMode SelectMode(VideoClip videoClip, AnimationClip animationClip)
         => SelectMode(videoClip != null, animationClip != null);
 
+    public static PlaybackMode SelectMode(VideoClip videoClip, Texture2D gifTexture, IReadOnlyList<Sprite> gifFrames, AnimationClip animationClip)
+        => SelectMode(videoClip != null, HasGifContent(gifTexture, gifFrames), animationClip != null);
+
     public static PlaybackMode SelectMode(bool hasVideoClip, bool hasAnimationClip)
+        => SelectMode(hasVideoClip, false, hasAnimationClip);
+
+    public static PlaybackMode SelectMode(bool hasVideoClip, bool hasGifTexture, bool hasAnimationClip)
     {
         if (hasVideoClip) return PlaybackMode.Video;
+        if (hasGifTexture) return PlaybackMode.Gif;
         if (hasAnimationClip) return PlaybackMode.Animation;
         return PlaybackMode.None;
     }
+
+    public static bool TemplateUsesGif(OnboardingVideoTemplate template)
+        => SelectMode(template.videoClip, template.gifTexture, template.gifFrames, template.animationClip) == PlaybackMode.Gif;
 
     public IEnumerator Play(OnboardingVideoTemplate template, Action onDismissed = null)
     {
         _onDismissed = onDismissed;
         ConfigureLabel(template.tapToProceedText);
 
-        CurrentMode = SelectMode(template.videoClip, template.animationClip);
+        CurrentMode = SelectMode(template.videoClip, template.gifTexture, template.gifFrames, template.animationClip);
         if (CurrentMode == PlaybackMode.None)
         {
-            DebugLogger.LogWarning("TutorialIntroPlayer.Play: No video or animation clip assigned. Showing tap catcher only.");
+            _onDismissed = null;
+            yield break;
         }
 
+        ConfigureOverlayRoot(dimBackground: true, showLabel: true);
         ShowSurfaces(CurrentMode);
         if (_root != null) _root.SetActive(true);
         SetTapCatcherActive(true);
@@ -261,12 +303,47 @@ public sealed class TutorialIntroPlayer : MonoBehaviour
             case PlaybackMode.Video:
                 yield return StartVideo(template.videoClip);
                 break;
+            case PlaybackMode.Gif:
+                StartGif(template.gifTexture, template.gifFrames, template.gifFramesPerSecond);
+                break;
             case PlaybackMode.Animation:
                 StartAnimation(template.animationClip);
                 break;
         }
 
         yield return new WaitWhile(() => _isPlaying);
+    }
+
+    public bool ShowGifHint(OnboardingVideoTemplate template)
+    {
+        if (!TemplateUsesGif(template))
+            return false;
+
+        StopAllPlayback();
+        _onDismissed = null;
+        CurrentMode = PlaybackMode.Gif;
+        ConfigureOverlayRoot(dimBackground: false, showLabel: false);
+        ShowSurfaces(PlaybackMode.Gif);
+        if (_root != null) _root.SetActive(true);
+        SetTapCatcherActive(false);
+        _isPlaying = true;
+        StartGif(template.gifTexture, template.gifFrames, template.gifFramesPerSecond);
+        return true;
+    }
+
+    public void HideGifHint()
+    {
+        if (CurrentMode != PlaybackMode.Gif)
+            return;
+
+        _isPlaying = false;
+        StopGifPlayback();
+        if (_gifSurface != null)
+            _gifSurface.gameObject.SetActive(false);
+        if (_root != null)
+            _root.SetActive(false);
+        SetTapCatcherActive(false);
+        CurrentMode = PlaybackMode.None;
     }
 
     public void Dismiss()
@@ -292,8 +369,52 @@ public sealed class TutorialIntroPlayer : MonoBehaviour
     private void ShowSurfaces(PlaybackMode mode)
     {
         if (_videoSurface != null) _videoSurface.gameObject.SetActive(mode == PlaybackMode.Video);
+        if (_gifSurface != null)
+        {
+            if (mode == PlaybackMode.Gif)
+                ApplyGifLayout();
+            _gifSurface.gameObject.SetActive(mode == PlaybackMode.Gif);
+        }
         if (_animationSurface != null) _animationSurface.gameObject.SetActive(mode == PlaybackMode.Animation);
     }
+
+    private void ConfigureOverlayRoot(bool dimBackground, bool showLabel)
+    {
+        if (_root != null && _root.TryGetComponent(out Image background))
+        {
+            background.enabled = dimBackground;
+            background.color = dimBackground
+                ? new Color(0f, 0f, 0f, 0.82f)
+                : new Color(0f, 0f, 0f, 0f);
+        }
+
+        if (_tapToProceedLabel != null)
+            _tapToProceedLabel.gameObject.SetActive(showLabel);
+    }
+
+    private void ApplyGifLayout()
+    {
+        if (_gifSurface == null)
+            return;
+
+        RectTransform rect = _gifSurface.transform as RectTransform;
+        ConfigureGifSurfaceRect(rect, ResolvePositive(_gifSurfaceSize, DefaultGifSurfaceSize), _gifSurfaceAnchoredPosition);
+    }
+
+    internal static void ConfigureGifSurfaceRect(RectTransform rect, Vector2 size, Vector2 anchoredPosition)
+    {
+        if (rect == null)
+            return;
+
+        rect.anchorMin = new Vector2(0.5f, 0f);
+        rect.anchorMax = new Vector2(0.5f, 0f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = ResolvePositive(size, DefaultGifSurfaceSize);
+        rect.anchoredPosition = anchoredPosition;
+    }
+
+    private static Vector2 ResolvePositive(Vector2 value, Vector2 fallback)
+        => value.x > 0f && value.y > 0f ? value : fallback;
 
     private IEnumerator StartVideo(VideoClip clip)
     {
@@ -325,10 +446,111 @@ public sealed class TutorialIntroPlayer : MonoBehaviour
             _animator.Play(_animatorStateName, 0, 0f);
     }
 
+    private void StartGif(Texture2D texture, IReadOnlyList<Sprite> frames, float framesPerSecond)
+    {
+        if (_gifSurface == null)
+        {
+            DebugLogger.LogError("TutorialIntroPlayer: GIF surface reference missing.");
+            return;
+        }
+
+        StopGifPlayback();
+
+        if (HasFrames(frames))
+        {
+            _gifFramesUseFullTexture = FramesUseSeparateTextures(frames);
+            ApplyGifFrame(frames[0]);
+            _gifPlaybackRoutine = StartCoroutine(AnimateGifFrames(frames, framesPerSecond));
+            return;
+        }
+
+        _gifFramesUseFullTexture = false;
+        _gifSurface.texture = texture;
+        _gifSurface.uvRect = new Rect(0f, 0f, 1f, 1f);
+    }
+
+    private IEnumerator AnimateGifFrames(IReadOnlyList<Sprite> frames, float framesPerSecond)
+    {
+        float secondsPerFrame = 1f / Mathf.Max(1f, framesPerSecond);
+        WaitForSecondsRealtime delay = new(secondsPerFrame);
+        int index = 0;
+
+        while (_isPlaying && CurrentMode == PlaybackMode.Gif)
+        {
+            if (HasFrames(frames))
+            {
+                ApplyGifFrame(frames[index]);
+                index = (index + 1) % frames.Count;
+            }
+            yield return delay;
+        }
+    }
+
+    private void ApplyGifFrame(Sprite frame)
+    {
+        if (_gifSurface == null || frame == null || frame.texture == null)
+            return;
+
+        Texture2D texture = frame.texture;
+        _gifSurface.texture = texture;
+
+        if (_gifFramesUseFullTexture)
+        {
+            _gifSurface.uvRect = new Rect(0f, 0f, 1f, 1f);
+            return;
+        }
+
+        Rect rect = frame.textureRect;
+        _gifSurface.uvRect = new Rect(
+            rect.x / texture.width,
+            rect.y / texture.height,
+            rect.width / texture.width,
+            rect.height / texture.height);
+    }
+
     private void StopAllPlayback()
     {
+        StopGifPlayback();
         if (_videoPlayer != null && _videoPlayer.isPlaying)
             _videoPlayer.Stop();
+    }
+
+    private void StopGifPlayback()
+    {
+        if (_gifPlaybackRoutine == null)
+            return;
+
+        StopCoroutine(_gifPlaybackRoutine);
+        _gifPlaybackRoutine = null;
+    }
+
+    private static bool HasGifContent(Texture2D texture, IReadOnlyList<Sprite> frames)
+        => texture != null || HasFrames(frames);
+
+    private static bool HasFrames(IReadOnlyList<Sprite> frames)
+        => frames != null && frames.Count > 0;
+
+    private static bool FramesUseSeparateTextures(IReadOnlyList<Sprite> frames)
+    {
+        if (!HasFrames(frames))
+            return false;
+
+        for (int i = 0; i < frames.Count; i++)
+        {
+            Sprite current = frames[i];
+            Texture2D texture = current != null ? current.texture : null;
+            if (texture == null)
+                return false;
+
+            for (int j = i + 1; j < frames.Count; j++)
+            {
+                Sprite other = frames[j];
+                if (other != null && ReferenceEquals(texture, other.texture))
+                    return false;
+            }
+        }
+
+        return true;
     }
 
     private void OnVideoLoopPoint(VideoPlayer source) { /* looping is built-in; hook here if needed */ }

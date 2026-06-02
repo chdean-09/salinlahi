@@ -12,6 +12,8 @@ using UnityEngine;
 /// </summary>
 public sealed class Level1OnboardingController : MonoBehaviour
 {
+    private const string BaCharacterId = "BA";
+
     [Header("Scene References")]
     [SerializeField] private DialogueController _dialogueController;
     [SerializeField] private TutorialSpotlightOverlay _spotlight;
@@ -27,6 +29,11 @@ public sealed class Level1OnboardingController : MonoBehaviour
     [Header("Sequence Data")]
     [SerializeField] private OnboardingSequenceSO _fallbackSequence;
 
+    [Header("BA GIF Scene Override")]
+    [SerializeField] private Texture2D _baGifTexture;
+    [SerializeField] private Sprite[] _baGifFrames;
+    [SerializeField] private float _baGifFramesPerSecond = 8f;
+
     private readonly List<OnboardingBeat> _beats = new();
     private bool _firstManualSuccess;
     private bool _skipRequested;
@@ -34,6 +41,8 @@ public sealed class Level1OnboardingController : MonoBehaviour
     private bool _onboardingHudHidden;
     private Level1TutorialSequenceSO _runtimeLegacySource;
     private OnboardingSequenceSO _runtimeLegacySequence;
+    private OnboardingSequenceSO _runtimeSceneOverrideSource;
+    private OnboardingSequenceSO _runtimeSceneOverrideSequence;
 
     public bool FirstManualSuccessRecorded => _firstManualSuccess;
     public bool SkipRequested => _skipRequested;
@@ -41,6 +50,7 @@ public sealed class Level1OnboardingController : MonoBehaviour
 
     private void Awake()
     {
+        EnsureDefaultBeatComponents();
         EnsureRuntimeHelpers();
         CollectBeats();
         if (_guideUI == null)
@@ -51,13 +61,10 @@ public sealed class Level1OnboardingController : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (_runtimeLegacySequence == null)
-            return;
-
-        if (Application.isPlaying)
-            Destroy(_runtimeLegacySequence);
-        else
-            DestroyImmediate(_runtimeLegacySequence);
+        DestroyRuntimeSequence(_runtimeLegacySequence);
+        DestroyRuntimeSequence(_runtimeSceneOverrideSequence);
+        _runtimeLegacySequence = null;
+        _runtimeSceneOverrideSequence = null;
     }
 
     public void RequestSkip()
@@ -92,6 +99,9 @@ public sealed class Level1OnboardingController : MonoBehaviour
 
     public IEnumerator PlayIfNeeded(LevelConfigSO levelConfig)
     {
+        EnsureDefaultBeatComponents();
+        CollectBeats();
+
         if (!ShouldRunFor(levelConfig)) yield break;
 
         OnboardingSequenceSO sequence = ResolveSequence(levelConfig);
@@ -199,12 +209,32 @@ public sealed class Level1OnboardingController : MonoBehaviour
     private OnboardingSequenceSO ResolveSequence(LevelConfigSO levelConfig)
     {
         if (levelConfig != null && levelConfig.onboardingSequence != null)
-            return levelConfig.onboardingSequence;
+            return ResolveSceneOverrideSequence(levelConfig.onboardingSequence);
         if (_fallbackSequence != null)
-            return _fallbackSequence;
+            return ResolveSceneOverrideSequence(_fallbackSequence);
         if (levelConfig != null && levelConfig.tutorialSequence != null)
             return ResolveLegacyTutorialSequence(levelConfig.tutorialSequence);
         return null;
+    }
+
+    private OnboardingSequenceSO ResolveSceneOverrideSequence(OnboardingSequenceSO source)
+    {
+        if (source == null)
+            return null;
+
+        if (!HasSceneGifFallbacks())
+            return source;
+
+        if (_runtimeSceneOverrideSequence != null && _runtimeSceneOverrideSource == source)
+            return _runtimeSceneOverrideSequence;
+
+        DestroyRuntimeSequence(_runtimeSceneOverrideSequence);
+        _runtimeSceneOverrideSource = source;
+        _runtimeSceneOverrideSequence = Instantiate(source);
+        _runtimeSceneOverrideSequence.name = $"{source.name}_RuntimeSceneOverrides";
+        _runtimeSceneOverrideSequence.hideFlags = HideFlags.HideAndDontSave;
+        ApplySceneGifFallbacks(_runtimeSceneOverrideSequence);
+        return _runtimeSceneOverrideSequence;
     }
 
     private OnboardingSequenceSO ResolveLegacyTutorialSequence(Level1TutorialSequenceSO legacySequence)
@@ -225,7 +255,67 @@ public sealed class Level1OnboardingController : MonoBehaviour
 
         _runtimeLegacySource = legacySequence;
         _runtimeLegacySequence = CreateRuntimeSequenceFromLegacy(legacySequence);
+        ApplySceneGifFallbacks(_runtimeLegacySequence);
         return _runtimeLegacySequence;
+    }
+
+    private void ApplySceneGifFallbacks(OnboardingSequenceSO sequence)
+    {
+        if (sequence == null || !HasSceneGifFallbacks())
+            return;
+
+        bool applied = false;
+        if (IsStepForCharacter(sequence.soloTeachStep, BaCharacterId))
+        {
+            sequence.soloTeachVideo = WithSceneGifFallback(sequence.soloTeachVideo);
+            applied = true;
+        }
+
+        if (IsStepForCharacter(sequence.comboTeachStep, BaCharacterId))
+        {
+            sequence.comboTeachVideo = WithSceneGifFallback(sequence.comboTeachVideo);
+            applied = true;
+        }
+
+        if (!applied)
+            DebugLogger.LogWarning("Level1OnboardingController: BA GIF scene override was assigned, but no BA teach step was found. Override skipped.");
+    }
+
+    private bool HasSceneGifFallbacks()
+        => _baGifTexture != null || (_baGifFrames != null && _baGifFrames.Length > 0);
+
+    private OnboardingVideoTemplate WithSceneGifFallback(OnboardingVideoTemplate template)
+    {
+        template.videoClip = null;
+        template.gifTexture = _baGifTexture;
+        template.gifFrames = _baGifFrames;
+        template.gifFramesPerSecond = Mathf.Max(1f, _baGifFramesPerSecond);
+        if (string.IsNullOrWhiteSpace(template.tapToProceedText))
+            template.tapToProceedText = "Tap anywhere to continue";
+        return template;
+    }
+
+    private static bool IsStepForCharacter(Level1TutorialStepSO step, string characterId)
+    {
+        if (step == null || string.IsNullOrWhiteSpace(characterId))
+            return false;
+
+        if (step.targetCharacter != null
+            && string.Equals(step.targetCharacter.characterID, characterId, System.StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return string.Equals(step.promptId, characterId, System.StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void DestroyRuntimeSequence(OnboardingSequenceSO sequence)
+    {
+        if (sequence == null)
+            return;
+
+        if (Application.isPlaying)
+            Destroy(sequence);
+        else
+            DestroyImmediate(sequence);
     }
 
     private static OnboardingSequenceSO CreateRuntimeSequenceFromLegacy(Level1TutorialSequenceSO legacySequence)
@@ -299,6 +389,22 @@ public sealed class Level1OnboardingController : MonoBehaviour
     {
         _beats.Clear();
         GetComponents<OnboardingBeat>(_beats);
+    }
+
+    internal void EnsureDefaultBeatComponents()
+    {
+        EnsureBeatComponent<ProtagonistIntroBeat>();
+        EnsureBeatComponent<BaseIntroBeat>();
+        EnsureBeatComponent<SoloTeachBeat>();
+        EnsureBeatComponent<ComboTeachBeat>();
+        EnsureBeatComponent<HeartLossDemoBeat>();
+        EnsureBeatComponent<ReleaseBeat>();
+    }
+
+    private void EnsureBeatComponent<T>() where T : OnboardingBeat
+    {
+        if (GetComponent<T>() == null)
+            gameObject.AddComponent<T>();
     }
 
     private OnboardingBeat FindBeat(OnboardingBeatType type)
