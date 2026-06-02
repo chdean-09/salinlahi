@@ -69,14 +69,23 @@ public class DrawingCanvas : MonoBehaviour
 
     public void ClearCanvas()
     {
-        StartCoroutine(ClearAfterDelayRoutine());
+        StartCoroutine(ClearAfterDelayRoutine(new List<LineRenderer>(_activeLines)));
     }
 
-    private IEnumerator ClearAfterDelayRoutine()
+    private IEnumerator ClearAfterDelayRoutine(List<LineRenderer> linesToClear)
     {
         yield return new WaitForSeconds(_clearDelaySeconds);
-        foreach (var line in _activeLines)
-            if (line != null) Destroy(line.gameObject);
-        _activeLines.Clear();
+
+        foreach (var line in linesToClear)
+        {
+            _activeLines.Remove(line);
+
+            if (line == null) continue;
+
+            if (line == _currentLine)
+                _currentLine = null;
+
+            Destroy(line.gameObject);
+        }
     }
 }
