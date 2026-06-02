@@ -17,6 +17,7 @@ public class DrawingCanvas : MonoBehaviour
 
     private LineRenderer _currentLine;
     private List<LineRenderer> _activeLines = new List<LineRenderer>();
+    private readonly List<Vector3> _worldPointBuffer = new List<Vector3>(256);
     private Camera _cam;
     private Vector3 _cameraRestWorldPosition;
 
@@ -41,6 +42,8 @@ public class DrawingCanvas : MonoBehaviour
         _currentLine.endColor = _strokeColor;
         _currentLine.positionCount = 0;
         _currentLine.useWorldSpace = true;
+        _currentLine.numCapVertices = 4;
+        _currentLine.numCornerVertices = 4;
         _currentLine.sortingOrder = RenderOrder.DrawingStroke;
         _activeLines.Add(_currentLine);
     }
@@ -48,9 +51,36 @@ public class DrawingCanvas : MonoBehaviour
     public void AddPoint(Vector2 screenPos)
     {
         if (_currentLine == null || _cam == null) return;
-        if (float.IsInfinity(screenPos.x) || float.IsInfinity(screenPos.y) ||
-            float.IsNaN(screenPos.x) || float.IsNaN(screenPos.y)) return;
+        if (!StrokeGeometry.IsFinite(screenPos)) return;
 
+        Vector3 world = ScreenToStrokeWorld(screenPos);
+        int index = _currentLine.positionCount;
+        _currentLine.positionCount = index + 1;
+        _currentLine.SetPosition(index, world);
+    }
+
+    public void SetPoints(IReadOnlyList<Vector2> screenPositions)
+    {
+        if (_currentLine == null || _cam == null || screenPositions == null)
+            return;
+
+        _worldPointBuffer.Clear();
+        for (int i = 0; i < screenPositions.Count; i++)
+        {
+            Vector2 screenPos = screenPositions[i];
+            if (!StrokeGeometry.IsFinite(screenPos))
+                continue;
+
+            _worldPointBuffer.Add(ScreenToStrokeWorld(screenPos));
+        }
+
+        _currentLine.positionCount = _worldPointBuffer.Count;
+        for (int i = 0; i < _worldPointBuffer.Count; i++)
+            _currentLine.SetPosition(i, _worldPointBuffer[i]);
+    }
+
+    private Vector3 ScreenToStrokeWorld(Vector2 screenPos)
+    {
         Vector3 world = _cam.ScreenToWorldPoint(
             new Vector3(screenPos.x, screenPos.y, Mathf.Abs(_cam.transform.position.z)));
 
@@ -61,22 +91,43 @@ public class DrawingCanvas : MonoBehaviour
         }
 
         world.z = 0f;
-        _currentLine.positionCount++;
-        _currentLine.SetPosition(_currentLine.positionCount - 1, world);
+        return world;
     }
 
     public void EndStroke() => _currentLine = null;
 
-    public void ClearCanvas()
+    public void DiscardCurrentStroke()
     {
-        StartCoroutine(ClearAfterDelayRoutine());
+        if (_currentLine == null)
+            return;
+
+        LineRenderer line = _currentLine;
+        _currentLine = null;
+        _activeLines.Remove(line);
+
+        if (line != null)
+            Destroy(line.gameObject);
     }
 
-    private IEnumerator ClearAfterDelayRoutine()
+    public void ClearCanvas()
+    {
+        StartCoroutine(ClearAfterDelayRoutine(new List<LineRenderer>(_activeLines)));
+    }
+
+    private IEnumerator ClearAfterDelayRoutine(List<LineRenderer> linesToClear)
     {
         yield return new WaitForSeconds(_clearDelaySeconds);
-        foreach (var line in _activeLines)
-            if (line != null) Destroy(line.gameObject);
-        _activeLines.Clear();
+
+        foreach (var line in linesToClear)
+        {
+            _activeLines.Remove(line);
+
+            if (line == null) continue;
+
+            if (line == _currentLine)
+                _currentLine = null;
+
+            Destroy(line.gameObject);
+        }
     }
 }

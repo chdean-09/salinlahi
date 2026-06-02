@@ -139,6 +139,26 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 "A thin horizontal gesture should not match a square-aspect template even when stroke count agrees.");
         }
 
+        [TestCase("KA_draw_01", "KA")]
+        [TestCase("RA_draw_01", "RA")]
+        [TestCase("RA_draw_02", "RA")]
+        [TestCase("RA_draw_03", "RA")]
+        [TestCase("HA_draw_01", "HA")]
+        public void Recognize_ResourceDrawRegression_ReturnsExpectedCharacter(string drawAssetName, string expectedCharacter)
+        {
+            var recognizer = new DollarPRecognizer(32);
+            var templates = new TemplateLoader().LoadAll();
+            recognizer.SetTemplateStrokeVariants(templates);
+
+            TextAsset drawAsset = Resources.Load<TextAsset>($"TestDraws/{drawAssetName}");
+            Assert.IsNotNull(drawAsset, $"Missing Resources/TestDraws/{drawAssetName}.txt");
+
+            List<List<Vector2>> strokes = StrokeTextParser.ParseStrokes(drawAsset.text);
+            RecognitionResult result = recognizer.Recognize(strokes);
+
+            Assert.AreEqual(expectedCharacter, result.characterID);
+        }
+
         private static List<Vector2> CreateStroke(float x0, float y0, float x1, float y1)
         {
             return new List<Vector2>

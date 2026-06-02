@@ -15,4 +15,8 @@ MonoBehaviour:
   resamplePointCount: 32
   minimumConfidence: 0.6
   multiStrokeWindowSeconds: 0.6
-  minimumPointCount: 8
+  rawSampleMinDistancePixels: 2
+  visualSampleSpacingPixels: 8
+  maxVisualSamplesPerSegment: 24
+  minimumStrokePathLengthPixels: 40
+  minimumStrokeBoundsPixels: 12

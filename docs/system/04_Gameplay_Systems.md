@@ -1,7 +1,8 @@
 # 04 — Gameplay Systems
 **Project:** Salinlahi
 **Version:** 2.1
-**Date:** 2026-06-01
+**Date:** 2026-06-03
+
 **Owner:** Gameplay Developer (Jon Wayne Cabusbusan / Chad Andrada)
 
 ---
@@ -168,6 +169,22 @@ transform.Translate(Vector2.down * _speed * Time.deltaTime, Space.World);
 | Combo system: 5-streak triggers focus mode slow effect on all enemies | GDD §3.2; Team README §9 | `ComboManager.cs` |
 
 [EVIDENCE: docs/capstone/TDD.md, §3.3 Combat Resolution]
+
+### 4.3 Mobile Drawing Capture
+
+`StrokeCapture` uses Unity Input System `EnhancedTouch` callbacks as the authoritative input source. The finger-down sample is recorded and rendered immediately, so every stroke begins at the press position. While a finger is active, `Update()` only catches up unprocessed touch history for that same finger; it is not the primary drawing source.
+
+Capture keeps two point streams:
+
+- Raw points are accepted through `CapturedStroke.AddRawSample()` using `RecognitionConfigSO.rawSampleMinDistancePixels`. These cloned raw points are the only geometry submitted to `RecognitionManager`.
+- Visual points are rebuilt from the raw points using `StrokeGeometry.RebuildVisualCurve()`. The curve is rendered through `DrawingCanvas.SetPoints()` and is never fed back into recognition.
+
+Tap-like strokes are rejected by raw path length and raw bounds (`minimumStrokePathLengthPixels`, `minimumStrokeBoundsPixels`) instead of a fixed point-count threshold. Stroke timeout and multi-stroke submission timers use unscaled time so pause/timeScale changes do not stretch or freeze drawing completion.
+
+[EVIDENCE: Assets/Scripts/Gameplay/Recognition/StrokeCapture.cs]
+[EVIDENCE: Assets/Scripts/Gameplay/Recognition/CapturedStroke.cs]
+[EVIDENCE: Assets/Scripts/Gameplay/Recognition/StrokeGeometry.cs]
+[EVIDENCE: Assets/Scripts/Gameplay/Drawing/DrawingCanvas.cs]
 
 ---
 

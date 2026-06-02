@@ -1,7 +1,7 @@
 # 05 — Data Contracts and ScriptableObjects
 **Project:** Salinlahi
 **Version:** 2.0
-**Date:** 2026-06-01
+**Date:** 2026-06-03
 **Owner:** Chad Andrada (Product Owner / Designer)
 
 ---
@@ -214,11 +214,17 @@ Defined at the bottom of `EnemyDataSO.cs`:
 | `resamplePointCount` | `int` | 16–64 (`[Range]`) | `32` | Number of points $P resamples each stroke to. Reducing below 16 degrades accuracy. Increasing above 64 increases recognition latency beyond 50ms budget. |
 | `minimumConfidence` | `float` | 0–1 (`[Range]`) | `0.60` | Minimum score to accept a recognition result. Lowering increases false positives. Raising increases false negatives. Do not change without UAT re-validation. |
 | `multiStrokeWindowSeconds` | `float` | — | `1.5f` | Seconds after finger lift before recognition submits. Allows multi-stroke Baybayin characters. |
-| `minimumPointCount` | `int` | — | `8` | Minimum screen points in a stroke to be considered valid. Prevents taps from being interpreted as drawing attempts. |
+| `rawSampleMinDistancePixels` | `float` | — | `1.5f` | Minimum movement before a new raw sample is accepted. Keeps recognition geometry dense enough for mobile while filtering duplicate points. |
+| `visualSampleSpacingPixels` | `float` | — | `4f` | Target spacing for visual-only curve samples used by `DrawingCanvas`. Does not affect recognition input. |
+| `maxVisualSamplesPerSegment` | `int` | — | `8` | Safety cap for visual interpolation samples inserted per raw segment. Does not affect recognition input. |
+| `minimumStrokePathLengthPixels` | `float` | — | `18f` | Rejects tap-like strokes whose total raw path length is too short. |
+| `minimumStrokeBoundsPixels` | `float` | — | `10f` | Rejects tap-like strokes whose raw bounding box is too small. |
 
 **Validation Rules:**
 - `minimumConfidence` must not be changed from `0.60` without a documented UAT re-validation run.
 - `resamplePointCount` must not exceed 64 (latency constraint: <50ms).
+- Tap rejection is based on raw path length and raw bounds, not raw point count.
+- Visual interpolation is for rendering only. Recognition receives cloned raw stroke points captured before visual smoothing.
 
 [EVIDENCE: Assets/Scripts/Data/RecognitionConfigSO.cs]
 [EVIDENCE: docs/capstone/Salinlahi.md, §3.3.3 — 32 points, 0.60 threshold, 1.5s window]

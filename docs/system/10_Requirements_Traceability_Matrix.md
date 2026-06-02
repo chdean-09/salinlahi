@@ -36,7 +36,7 @@
 | REQ-11 | Recognition shall require minimum confidence score of 0.60 | Salinlahi.md Â§3.3.3; RecognitionConfigSO | P0 | `RecognitionConfigSO.minimumConfidence = 0.60f`; `DollarPRecognizer.cs` | RC-03 | âœ… Implemented | None |
 | REQ-12 | Recognition shall cover 17 Baybayin consonant characters | Salinlahi.md Â§1.5.1; Â§3.3.3 | P0 | `TemplateLoader.cs` loads from `Resources/Templates/`; template .txt files status unverified | RC-07 | âš  Partial | ðŸŸ  P1 |
 | REQ-13 | The multi-stroke window shall be 1.5 seconds after last finger lift | Salinlahi.md Â§3.3.3; RecognitionConfigSO | P1 | `RecognitionConfigSO.multiStrokeWindowSeconds = 1.5f`; `StrokeCapture.cs` | RC-05 | âœ… Implemented | None |
-| REQ-14 | Strokes with fewer than 8 points shall be rejected as taps | RecognitionConfigSO | P1 | `RecognitionConfigSO.minimumPointCount = 8`; `StrokeCapture.cs` | RC-06 | âœ… Implemented | None |
+| REQ-14 | Tap-like strokes shall be rejected by raw path length and bounds | RecognitionConfigSO | P1 | `RecognitionConfigSO.minimumStrokePathLengthPixels`; `RecognitionConfigSO.minimumStrokeBoundsPixels`; `StrokeCapture.cs` | RC-06 | âœ… Implemented | None |
 | REQ-15 | An enemy reaching the PlayerBase shall decrement hearts by 1 | GDD Â§2.3; TDD Â§3.3 | P0 | `EnemyMover.OnTriggerEnter2D` fires `RaiseBaseHit()`; `HeartSystem.cs` | WV-05 | âœ… Implemented | None |
 | REQ-16 | Hearts shall start at 3 per level | GDD Â§2.3 | P0 | `HeartSystem.cs` | WV-05 | âœ… Implemented | None |
 | REQ-17 | When hearts reach 0, GameOver state shall be triggered | GDD Â§2.3; TDD Â§3.3 | P0 | `HeartSystem.cs` fires `OnGameOver`; `GameManager.HandleGameOver()` responds | WV-06 | âœ… Implemented | None |
