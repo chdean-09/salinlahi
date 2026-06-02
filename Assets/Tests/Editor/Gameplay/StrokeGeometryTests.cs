@@ -57,26 +57,6 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
-        public void AppendVisualSegment_SubdividesLongSegmentWithoutChangingRawPoints()
-        {
-            var visualPoints = new List<Vector2> { new Vector2(0f, 0f) };
-            var rawPoints = new List<Vector2> { new Vector2(0f, 0f) };
-
-            StrokeGeometry.AppendVisualSegment(
-                visualPoints,
-                from: new Vector2(0f, 0f),
-                to: new Vector2(100f, 0f),
-                spacingPixels: 20f,
-                maxInsertedPoints: 8);
-
-            rawPoints.Add(new Vector2(100f, 0f));
-
-            Assert.AreEqual(2, rawPoints.Count, "Recognition raw points should remain real input samples only.");
-            Assert.AreEqual(6, visualPoints.Count, "0, 20, 40, 60, 80, and 100 should be rendered.");
-            Assert.AreEqual(new Vector2(100f, 0f), visualPoints[visualPoints.Count - 1]);
-        }
-
-        [Test]
         public void RebuildVisualCurve_CreatesCurvedIntermediatePointsWithoutChangingRawPoints()
         {
             var rawPoints = new List<Vector2>

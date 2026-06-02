@@ -48,31 +48,6 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         [UnityTest]
-        public IEnumerator AddPoints_AppendsBatchToCurrentStroke()
-        {
-            _cameraObject = new GameObject("Main Camera");
-            _cameraObject.tag = "MainCamera";
-            _cameraObject.AddComponent<Camera>();
-
-            _canvasObject = new GameObject("DrawingCanvas");
-            DrawingCanvas canvas = _canvasObject.AddComponent<DrawingCanvas>();
-
-            canvas.BeginStroke();
-            canvas.AddPoints(new[]
-            {
-                new Vector2(10f, 10f),
-                new Vector2(20f, 20f),
-                new Vector2(30f, 30f)
-            });
-
-            yield return null;
-
-            LineRenderer line = _canvasObject.GetComponentInChildren<LineRenderer>();
-            Assert.IsNotNull(line);
-            Assert.AreEqual(3, line.positionCount);
-        }
-
-        [UnityTest]
         public IEnumerator BeginStroke_ConfiguresRoundedLineJoins()
         {
             _cameraObject = new GameObject("Main Camera");
@@ -103,11 +78,8 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             DrawingCanvas canvas = _canvasObject.AddComponent<DrawingCanvas>();
 
             canvas.BeginStroke();
-            canvas.AddPoints(new[]
-            {
-                new Vector2(10f, 10f),
-                new Vector2(20f, 20f)
-            });
+            canvas.AddPoint(new Vector2(10f, 10f));
+            canvas.AddPoint(new Vector2(20f, 20f));
             canvas.SetPoints(new[]
             {
                 new Vector2(30f, 30f),

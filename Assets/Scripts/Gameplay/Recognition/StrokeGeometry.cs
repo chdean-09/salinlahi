@@ -59,32 +59,6 @@ public static class StrokeGeometry
         return new Vector2(maxX - minX, maxY - minY);
     }
 
-    public static void AppendVisualSegment(
-        List<Vector2> visualPoints,
-        Vector2 from,
-        Vector2 to,
-        float spacingPixels,
-        int maxInsertedPoints)
-    {
-        if (visualPoints == null)
-            return;
-
-        if (!IsFinite(from) || !IsFinite(to))
-            return;
-
-        float distance = Vector2.Distance(from, to);
-        float spacing = Mathf.Max(1f, spacingPixels);
-        int segmentCount = Mathf.Max(1, Mathf.CeilToInt(distance / spacing));
-        segmentCount = Mathf.Min(segmentCount, Mathf.Max(1, maxInsertedPoints + 1));
-
-        for (int i = 1; i <= segmentCount; i++)
-        {
-            Vector2 point = Vector2.Lerp(from, to, i / (float)segmentCount);
-            if (visualPoints.Count == 0 || Vector2.SqrMagnitude(visualPoints[visualPoints.Count - 1] - point) > 0.0001f)
-                visualPoints.Add(point);
-        }
-    }
-
     public static void RebuildVisualCurve(
         IReadOnlyList<Vector2> rawPoints,
         List<Vector2> visualPoints,

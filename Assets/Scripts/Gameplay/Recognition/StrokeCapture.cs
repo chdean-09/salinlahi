@@ -27,10 +27,18 @@ public class StrokeCapture : MonoBehaviour
     private bool _isDrawing;
     private bool _pendingRecognitionSubmit;
 
-    private float _strokeTimeoutEndTime = -1f;
-    private float _multiStrokeTimerEndTime = -1f;
-    private float _multiStrokeTimerEndScaledTime = -1f;
-    private float _pausedMultiStrokeRemainingSeconds = -1f;
+    private double _strokeTimeoutEndTime = -1d;
+    private double _multiStrokeTimerEndTime = -1d;
+    private double _pausedMultiStrokeRemainingSeconds = -1d;
+
+    private void Awake()
+    {
+        if (_config == null)
+            Debug.LogError("StrokeCapture: RecognitionConfigSO is not assigned. Drawing input will be disabled.", this);
+
+        if (_canvas == null)
+            Debug.LogError("StrokeCapture: DrawingCanvas is not assigned. Drawing input will be disabled.", this);
+    }
 
     private void OnEnable()
     {
@@ -54,21 +62,23 @@ public class StrokeCapture : MonoBehaviour
 
     private void Update()
     {
+        if (_config == null || _canvas == null)
+            return;
+
         if (_isDrawing && _activeFinger != null)
             ProcessTouchHistory(_activeFinger);
 
-        if (_strokeTimeoutEndTime > 0f && Time.time >= _strokeTimeoutEndTime)
+        if (_strokeTimeoutEndTime > 0d && Time.unscaledTimeAsDouble >= _strokeTimeoutEndTime)
         {
-            _strokeTimeoutEndTime = -1f;
+            _strokeTimeoutEndTime = -1d;
             DebugLogger.Log("StrokeCapture: Stroke timeout, auto-completing");
             CompleteCurrentStroke();
         }
 
-        if (_multiStrokeTimerEndTime > 0f && Time.time >= _multiStrokeTimerEndTime)
+        if (_multiStrokeTimerEndTime > 0d && Time.unscaledTimeAsDouble >= _multiStrokeTimerEndTime)
         {
-            _multiStrokeTimerEndTime = -1f;
-            _multiStrokeTimerEndScaledTime = -1f;
-            _pausedMultiStrokeRemainingSeconds = -1f;
+            _multiStrokeTimerEndTime = -1d;
+            _pausedMultiStrokeRemainingSeconds = -1d;
             SubmitForRecognition();
         }
     }
@@ -77,6 +87,9 @@ public class StrokeCapture : MonoBehaviour
     {
         if (GameManager.Instance == null ||
             !GameManager.Instance.AcceptsDrawingInput) return;
+
+        if (_config == null || _canvas == null)
+            return;
 
         if (IsScreenPositionOverUI(finger.screenPosition))
             return;
@@ -102,14 +115,14 @@ public class StrokeCapture : MonoBehaviour
         _currentStroke.Begin(startPosition);
         _lastProcessedTouchTime = startTime;
 
-        _multiStrokeTimerEndTime = -1f;
-        _strokeTimeoutEndTime = -1f;
+        _multiStrokeTimerEndTime = -1d;
+        _strokeTimeoutEndTime = -1d;
 
         EventBus.RaiseDrawingStarted();
         _canvas.BeginStroke();
         _canvas.AddPoint(startPosition);
 
-        _strokeTimeoutEndTime = Time.time + _strokeTimeoutSeconds;
+        _strokeTimeoutEndTime = Time.unscaledTimeAsDouble + _strokeTimeoutSeconds;
     }
 
     private void OnFingerMove(Finger finger)
@@ -133,7 +146,7 @@ public class StrokeCapture : MonoBehaviour
 
         _isDrawing = false;
         _activeFinger = null;
-        _strokeTimeoutEndTime = -1f;
+        _strokeTimeoutEndTime = -1d;
 
         CompleteCurrentStroke();
     }
@@ -169,16 +182,6 @@ public class StrokeCapture : MonoBehaviour
         StartMultiStrokeTimer(_config.multiStrokeWindowSeconds);
     }
 
-    private void CancelCurrentStroke()
-    {
-        _currentStroke?.Clear();
-        _currentStroke = null;
-        _activeFinger = null;
-        _isDrawing = false;
-        _canvas.DiscardCurrentStroke();
-        _strokeTimeoutEndTime = -1f;
-    }
-
     private void SubmitForRecognition()
     {
         if (GameManager.Instance == null ||
@@ -209,7 +212,7 @@ public class StrokeCapture : MonoBehaviour
             && !_isDrawing)
         {
             StartMultiStrokeTimer(_pausedMultiStrokeRemainingSeconds);
-            _pausedMultiStrokeRemainingSeconds = -1f;
+            _pausedMultiStrokeRemainingSeconds = -1d;
             return;
         }
 
@@ -224,34 +227,28 @@ public class StrokeCapture : MonoBehaviour
         if (_isDrawing)
         {
             _isDrawing = false;
-            _strokeTimeoutEndTime = -1f;
+            _strokeTimeoutEndTime = -1d;
 
-            if (_currentStroke != null && !StrokeValidation.IsTapLikeStroke(
-                _currentStroke.RawPoints,
-                _config.minimumStrokePathLengthPixels,
-                _config.minimumStrokeBoundsPixels))
+            if (_currentStroke != null)
             {
                 CompleteCurrentStroke();
             }
             else
             {
-                _currentStroke?.Clear();
-                _currentStroke = null;
                 _activeFinger = null;
                 _canvas.DiscardCurrentStroke();
             }
         }
 
-        if (_multiStrokeTimerEndTime > 0f)
+        if (_multiStrokeTimerEndTime > 0d)
         {
-            float remaining = _multiStrokeTimerEndScaledTime - Time.time;
-            _pausedMultiStrokeRemainingSeconds = Mathf.Max(0f, remaining);
-            _multiStrokeTimerEndTime = -1f;
-            _multiStrokeTimerEndScaledTime = -1f;
+            double remaining = _multiStrokeTimerEndTime - Time.unscaledTimeAsDouble;
+            _pausedMultiStrokeRemainingSeconds = System.Math.Max(0d, remaining);
+            _multiStrokeTimerEndTime = -1d;
         }
 
-        if (_strokeTimeoutEndTime > 0f)
-            _strokeTimeoutEndTime = -1f;
+        if (_strokeTimeoutEndTime > 0d)
+            _strokeTimeoutEndTime = -1d;
     }
 
     private void ProcessTouchHistory(Finger finger)
@@ -290,7 +287,7 @@ public class StrokeCapture : MonoBehaviour
         }
 
         _lastProcessedTouchTime = sampleTime;
-        _strokeTimeoutEndTime = Time.time + _strokeTimeoutSeconds;
+        _strokeTimeoutEndTime = Time.unscaledTimeAsDouble + _strokeTimeoutSeconds;
     }
 
     private bool IsInsideDrawableScreenArea(Vector2 pos)
@@ -303,12 +300,11 @@ public class StrokeCapture : MonoBehaviour
             && pos.y <= Screen.height - marginY;
     }
 
-    private void StartMultiStrokeTimer(float seconds)
+    private void StartMultiStrokeTimer(double seconds)
     {
-        float waitSeconds = Mathf.Max(0f, seconds);
-        _multiStrokeTimerEndTime = Time.time + waitSeconds;
-        _multiStrokeTimerEndScaledTime = Time.time + waitSeconds;
-        _pausedMultiStrokeRemainingSeconds = -1f;
+        double waitSeconds = System.Math.Max(0d, seconds);
+        _multiStrokeTimerEndTime = Time.unscaledTimeAsDouble + waitSeconds;
+        _pausedMultiStrokeRemainingSeconds = -1d;
     }
 
     private bool IsScreenPositionOverUI(Vector2 screenPosition)

@@ -17,9 +17,6 @@ public class RecognitionConfigSO : ScriptableObject
     [Tooltip("Seconds after lifting the finger before the system submits for recognition")]
     public float multiStrokeWindowSeconds = 1.5f;
 
-    [Tooltip("Minimum screen points in a stroke to be considered valid. Prevents taps.")]
-    public int minimumPointCount = 8;
-
     [Header("Mobile Stroke Sampling")]
     [Tooltip("Minimum screen-pixel distance before a real touch sample is appended to recognition input.")]
     public float rawSampleMinDistancePixels = 2f;

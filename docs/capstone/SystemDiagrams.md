@@ -148,7 +148,11 @@ erDiagram
         int resamplePointCount
         float minimumConfidence
         float multiStrokeWindowSeconds
-        int minimumPointCount
+        float rawSampleMinDistancePixels
+        float visualSampleSpacingPixels
+        int maxVisualSamplesPerSegment
+        float minimumStrokePathLengthPixels
+        float minimumStrokeBoundsPixels
     }
 
     GameConfigSO {
@@ -403,18 +407,21 @@ flowchart LR
     end
 
     subgraph Input["Player Input"]
-        T["Touch / Stroke"]
+        T["EnhancedTouch history"]
+        SC["StrokeCapture"]
         DC["DrawingCanvas"]
-        T --> DC
+        T --> SC
+        SC -- "visual-only curve" --> DC
     end
 
     subgraph Recognition["Recognition Pipeline"]
         RM["RecognitionManager"]
         DP["$P (DollarPRecognizer)"]
-        DC -- "point cloud" --> RM
+        SC -- "raw stroke points" --> RM
         RM --> DP
         DP -- "score >= 0.60" --> RM
         RC -. "threshold, resample" .-> RM
+        RC -. "sampling, tap rejection" .-> SC
     end
 
     subgraph FlowCtrl["Level Flow"]

@@ -35,11 +35,6 @@ public sealed class CapturedStroke
         return StrokeGeometry.TryAppendPoint(_rawPoints, point, rawMinDistancePixels);
     }
 
-    public void AddVisualSegment(Vector2 from, Vector2 to, float spacingPixels, int maxInsertedPoints)
-    {
-        StrokeGeometry.AppendVisualSegment(_visualPoints, from, to, spacingPixels, maxInsertedPoints);
-    }
-
     public void RebuildVisualCurve(float spacingPixels, int maxInsertedPointsPerSegment)
     {
         StrokeGeometry.RebuildVisualCurve(

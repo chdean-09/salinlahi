@@ -59,32 +59,6 @@ public class DrawingCanvas : MonoBehaviour
         _currentLine.SetPosition(index, world);
     }
 
-    public void AddPoints(IReadOnlyList<Vector2> screenPositions)
-    {
-        if (_currentLine == null || _cam == null || screenPositions == null)
-            return;
-
-        _worldPointBuffer.Clear();
-        for (int i = 0; i < screenPositions.Count; i++)
-        {
-            Vector2 screenPos = screenPositions[i];
-            if (!StrokeGeometry.IsFinite(screenPos))
-                continue;
-
-            _worldPointBuffer.Add(ScreenToStrokeWorld(screenPos));
-        }
-
-        if (_worldPointBuffer.Count == 0)
-            return;
-
-        int oldCount = _currentLine.positionCount;
-        int newCount = oldCount + _worldPointBuffer.Count;
-        _currentLine.positionCount = newCount;
-
-        for (int i = 0; i < _worldPointBuffer.Count; i++)
-            _currentLine.SetPosition(oldCount + i, _worldPointBuffer[i]);
-    }
-
     public void SetPoints(IReadOnlyList<Vector2> screenPositions)
     {
         if (_currentLine == null || _cam == null || screenPositions == null)

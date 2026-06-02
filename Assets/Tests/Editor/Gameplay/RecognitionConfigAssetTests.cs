@@ -16,6 +16,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
             StringAssert.Contains("maxVisualSamplesPerSegment: 24", yaml);
             StringAssert.Contains("minimumStrokePathLengthPixels: 40", yaml);
             StringAssert.Contains("minimumStrokeBoundsPixels: 12", yaml);
+            StringAssert.DoesNotContain("minimumPointCount", yaml);
         }
     }
 }
