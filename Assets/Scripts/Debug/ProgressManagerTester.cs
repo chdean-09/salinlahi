@@ -17,6 +17,9 @@ namespace Salinlahi.Debug
         [Tooltip("Show detailed debug output")]
         [SerializeField] private bool verboseLogging = true;
 
+        [Tooltip("Used by the character-unlock debug actions to enumerate all characters.")]
+        [SerializeField] private CharacterRegistrySO _characterRegistry;
+
         private void Start()
         {
             _progressManager = ProgressManager.Instance;
@@ -125,6 +128,35 @@ namespace Salinlahi.Debug
 
             _progressManager.UnlockAllLevels();
             if (verboseLogging) DebugLogger.Log("All levels unlocked");
+        }
+
+        [ContextMenu("Unlock All Characters")]
+        void UnlockAllCharacters()
+        {
+            if (_characterRegistry == null || _characterRegistry.All == null)
+            {
+                DebugLogger.LogError("ProgressManagerTester: Assign a CharacterRegistrySO to unlock characters.");
+                return;
+            }
+
+            int unlocked = 0;
+            foreach (BaybayinCharacterSO c in _characterRegistry.All)
+            {
+                if (c == null) continue;
+                if (CharacterUnlockProgress.TryMarkUnlocked(c, out _))
+                {
+                    EventBus.RaiseCharacterUnlocked(c);
+                    unlocked++;
+                }
+            }
+            if (verboseLogging) DebugLogger.Log($"ProgressManagerTester: Unlocked {unlocked} new character(s).");
+        }
+
+        [ContextMenu("Clear Character Unlocks")]
+        void ClearCharacterUnlocks()
+        {
+            CharacterUnlockProgress.ClearAllUnlocked();
+            if (verboseLogging) DebugLogger.Log("ProgressManagerTester: Character unlocks cleared.");
         }
 
         [ContextMenu("Show Progress")]
