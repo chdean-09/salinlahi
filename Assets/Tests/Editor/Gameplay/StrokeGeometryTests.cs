@@ -75,5 +75,21 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.AreEqual(6, visualPoints.Count, "0, 20, 40, 60, 80, and 100 should be rendered.");
             Assert.AreEqual(new Vector2(100f, 0f), visualPoints[visualPoints.Count - 1]);
         }
+
+        [Test]
+        public void CapturedStroke_BeginPointAppearsInRawAndVisualStreams()
+        {
+            var stroke = new CapturedStroke(fingerIndex: 7, touchId: 123, startTime: 5.0);
+
+            stroke.Begin(new Vector2(200f, 300f));
+
+            Assert.AreEqual(7, stroke.FingerIndex);
+            Assert.AreEqual(123, stroke.TouchId);
+            Assert.AreEqual(5.0, stroke.StartTime, 0.0001);
+            Assert.AreEqual(1, stroke.RawPoints.Count);
+            Assert.AreEqual(1, stroke.VisualPoints.Count);
+            Assert.AreEqual(new Vector2(200f, 300f), stroke.RawPoints[0]);
+            Assert.AreEqual(new Vector2(200f, 300f), stroke.VisualPoints[0]);
+        }
     }
 }
