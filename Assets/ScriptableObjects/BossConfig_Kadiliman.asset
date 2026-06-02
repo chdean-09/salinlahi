@@ -15,13 +15,24 @@ MonoBehaviour:
   bossName: Kadiliman
   bossID: KADILIMAN
   bossSprite: {fileID: 0}
-  bossEnemyData: {fileID: 11400000, guid: aa843150d07c87f439e39501b863853c, type: 2}
+  description: 
+  bossEnemyData: {fileID: 11400000, guid: 052b00742308dce4499cfb4cf6b8c33e, type: 2}
   phases:
-  - requiredCharacters:
-    - {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
+  - summonPhaseDuration: 30
+    delayBetweenSummons: 5
+    minionsPerSummonMin: 2
+    minionsPerSummonMax: 3
+    delayBetweenMinions: 0.6
+    summonEnemyTypes: []
+    summonSpawnRange: {x: 2, y: 0}
+    requiredCharacterCount: 3
+    vulnerabilityTimer: 12
     movementPattern: 0
     movementSpeed: 0
-    intermissionWave: {fileID: 0}
-    postIntermissionDelay: 0
+    paceHalfRange: 1.5
+    teleportHalfRange: {x: 2, y: 0}
+  fallbackEnemyTypes: []
+  summonHorizontalBounds: {x: 0, y: 0}
   introDuration: 2
   outroDuration: 2.5
+  audioBank: {fileID: 0}
