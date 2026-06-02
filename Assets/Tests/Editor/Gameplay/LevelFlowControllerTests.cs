@@ -143,8 +143,11 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
-        public void LevelOneTutorialDueWithoutOverlayControllerAbortsFlow()
+        public void LevelOneTutorialDueWithoutOnboardingControllerLogsError()
         {
+            // Ensure FTUE hasn't been marked seen from a prior run so the error path fires.
+            LevelTutorialProgress.ResetLevel1TutorialForTests();
+
             LevelConfigSO levelConfig = CreateLevelConfig();
             levelConfig.levelNumber = LevelTutorialProgress.TutorialLevelNumber;
 
@@ -154,10 +157,11 @@ namespace Salinlahi.Tests.Editor.Gameplay
             IEnumerator tutorialGate = InvokePrivate<IEnumerator>(controller, "PlayLevelTutorialIfNeeded");
             LogAssert.Expect(
                 LogType.Error,
-                "[Salinlahi] LevelFlowController: Level 1 FTUE is due, but TutorialOverlayController is not assigned.");
+                "[Salinlahi] LevelFlowController: Level 1 FTUE is due, but Level1OnboardingController is not in the scene. Run Salinlahi → Tutorial → 5. Wire Level 1 Scene.");
 
             Assert.IsFalse(tutorialGate.MoveNext());
-            Assert.IsTrue(GetPrivateField<bool>(controller, "_flowAborted"));
+            Assert.IsFalse(GetPrivateField<bool>(controller, "_flowAborted"),
+                "Missing controller should not abort the flow — waves must still start.");
         }
 
         [UnityTest]

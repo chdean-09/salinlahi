@@ -40,6 +40,9 @@ public class LevelConfigSO : ScriptableObject
     [Tooltip("Optional tutorial phase played before this level's waves. Level 1 uses this for embedded onboarding.")]
     public Level1TutorialSequenceSO tutorialSequence;
 
+    [Tooltip("Level 1 FTUE onboarding sequence. Only assign on the Level 1 config — drives the gradual mechanic introduction.")]
+    public OnboardingSequenceSO onboardingSequence;
+
     [Tooltip("Dialogue played before waves begin. Null = skip intro.")]
     public DialogueSO introDialogue;
 

@@ -15,6 +15,7 @@ public class ProgressManager : Singleton<ProgressManager>
     public const string EndlessModeKey = "salinlahi.progress.endless_unlocked";
     public const int Level1FtueTutorialLevelNumber = 1;
     public const string Level1FtueSeenKey = "salinlahi.tutorial.level1_ftue_seen";
+    public const string Level1FtueBeatIndexKey = "salinlahi.tutorial.level1_ftue_beat_index";
 
     private const string KeyPrefix = "salinlahi.progress.";
     private const int MaxStars = 3;
@@ -339,6 +340,7 @@ public class ProgressManager : Singleton<ProgressManager>
         }
         PlayerPrefs.DeleteKey(EndlessModeKey);
         PlayerPrefs.DeleteKey(Level1FtueSeenKey);
+        PlayerPrefs.DeleteKey(Level1FtueBeatIndexKey);
         CharacterUnlockProgress.ClearAllUnlocked();
 
         // Reset tracking
