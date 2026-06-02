@@ -17,6 +17,7 @@ public class DrawingCanvas : MonoBehaviour
 
     private LineRenderer _currentLine;
     private List<LineRenderer> _activeLines = new List<LineRenderer>();
+    private readonly List<Vector3> _worldPointBuffer = new List<Vector3>(256);
     private Camera _cam;
     private Vector3 _cameraRestWorldPosition;
 
@@ -48,9 +49,42 @@ public class DrawingCanvas : MonoBehaviour
     public void AddPoint(Vector2 screenPos)
     {
         if (_currentLine == null || _cam == null) return;
-        if (float.IsInfinity(screenPos.x) || float.IsInfinity(screenPos.y) ||
-            float.IsNaN(screenPos.x) || float.IsNaN(screenPos.y)) return;
+        if (!StrokeGeometry.IsFinite(screenPos)) return;
 
+        Vector3 world = ScreenToStrokeWorld(screenPos);
+        int index = _currentLine.positionCount;
+        _currentLine.positionCount = index + 1;
+        _currentLine.SetPosition(index, world);
+    }
+
+    public void AddPoints(IReadOnlyList<Vector2> screenPositions)
+    {
+        if (_currentLine == null || _cam == null || screenPositions == null)
+            return;
+
+        _worldPointBuffer.Clear();
+        for (int i = 0; i < screenPositions.Count; i++)
+        {
+            Vector2 screenPos = screenPositions[i];
+            if (!StrokeGeometry.IsFinite(screenPos))
+                continue;
+
+            _worldPointBuffer.Add(ScreenToStrokeWorld(screenPos));
+        }
+
+        if (_worldPointBuffer.Count == 0)
+            return;
+
+        int oldCount = _currentLine.positionCount;
+        int newCount = oldCount + _worldPointBuffer.Count;
+        _currentLine.positionCount = newCount;
+
+        for (int i = 0; i < _worldPointBuffer.Count; i++)
+            _currentLine.SetPosition(oldCount + i, _worldPointBuffer[i]);
+    }
+
+    private Vector3 ScreenToStrokeWorld(Vector2 screenPos)
+    {
         Vector3 world = _cam.ScreenToWorldPoint(
             new Vector3(screenPos.x, screenPos.y, Mathf.Abs(_cam.transform.position.z)));
 
@@ -61,11 +95,23 @@ public class DrawingCanvas : MonoBehaviour
         }
 
         world.z = 0f;
-        _currentLine.positionCount++;
-        _currentLine.SetPosition(_currentLine.positionCount - 1, world);
+        return world;
     }
 
     public void EndStroke() => _currentLine = null;
+
+    public void DiscardCurrentStroke()
+    {
+        if (_currentLine == null)
+            return;
+
+        LineRenderer line = _currentLine;
+        _currentLine = null;
+        _activeLines.Remove(line);
+
+        if (line != null)
+            Destroy(line.gameObject);
+    }
 
     public void ClearCanvas()
     {
