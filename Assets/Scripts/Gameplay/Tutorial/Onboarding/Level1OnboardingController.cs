@@ -32,6 +32,8 @@ public sealed class Level1OnboardingController : MonoBehaviour
     private bool _skipRequested;
     private bool[] _hiddenOriginalState;
     private bool _onboardingHudHidden;
+    private Level1TutorialSequenceSO _runtimeLegacySource;
+    private OnboardingSequenceSO _runtimeLegacySequence;
 
     public bool FirstManualSuccessRecorded => _firstManualSuccess;
     public bool SkipRequested => _skipRequested;
@@ -39,11 +41,23 @@ public sealed class Level1OnboardingController : MonoBehaviour
 
     private void Awake()
     {
+        EnsureRuntimeHelpers();
         CollectBeats();
         if (_guideUI == null)
             _guideUI = Level1TutorialGuideUI.CreateRuntime();
         if (_guideUI != null)
             _guideUI.Initialize(RequestSkip);
+    }
+
+    private void OnDestroy()
+    {
+        if (_runtimeLegacySequence == null)
+            return;
+
+        if (Application.isPlaying)
+            Destroy(_runtimeLegacySequence);
+        else
+            DestroyImmediate(_runtimeLegacySequence);
     }
 
     public void RequestSkip()
@@ -116,11 +130,14 @@ public sealed class Level1OnboardingController : MonoBehaviour
 
     private OnboardingContext BuildContext(OnboardingSequenceSO sequence)
     {
+        EnsureRuntimeHelpers();
         ProtagonistManager prot = _protagonistManager != null ? _protagonistManager : ProtagonistManager.Instance;
         Camera cam = _worldCamera != null ? _worldCamera : Camera.main;
         PlayerBase playerBase = _playerBase != null ? _playerBase : FindFirstObjectByType<PlayerBase>();
         WaveSpawner spawner = _waveSpawner != null ? _waveSpawner : FindFirstObjectByType<WaveSpawner>();
-        DialogueController dialogue = _dialogueController != null ? _dialogueController : FindFirstObjectByType<DialogueController>();
+        DialogueController dialogue = _dialogueController != null
+            ? _dialogueController
+            : FindActiveDialogueController();
         TutorialSpotlightOverlay spotlight = _spotlight != null ? _spotlight : FindFirstObjectByType<TutorialSpotlightOverlay>(FindObjectsInactive.Include);
         TutorialIntroPlayer introPlayer = _introPlayer != null ? _introPlayer : FindFirstObjectByType<TutorialIntroPlayer>(FindObjectsInactive.Include);
         DemoHeartSimulator demoHearts = _demoHeartSimulator != null ? _demoHeartSimulator : FindFirstObjectByType<DemoHeartSimulator>(FindObjectsInactive.Include);
@@ -141,11 +158,141 @@ public sealed class Level1OnboardingController : MonoBehaviour
             markFirstManualSuccess: () => _firstManualSuccess = true);
     }
 
+    private void EnsureRuntimeHelpers()
+    {
+        _dialogueController ??= FindActiveDialogueController();
+        if (_dialogueController == null)
+            _dialogueController = DialogueController.CreateRuntime();
+        _spotlight ??= FindFirstObjectByType<TutorialSpotlightOverlay>(FindObjectsInactive.Include);
+        if (_spotlight == null)
+            _spotlight = TutorialSpotlightOverlay.CreateRuntime();
+
+        _introPlayer ??= FindFirstObjectByType<TutorialIntroPlayer>(FindObjectsInactive.Include);
+        if (_introPlayer == null)
+            _introPlayer = TutorialIntroPlayer.CreateRuntime();
+
+        _demoHeartSimulator ??= FindFirstObjectByType<DemoHeartSimulator>(FindObjectsInactive.Include);
+        if (_demoHeartSimulator == null)
+        {
+            GameObject demoObject = new("[Runtime] DemoHeartSimulator");
+            demoObject.transform.SetParent(transform, false);
+            _demoHeartSimulator = demoObject.AddComponent<DemoHeartSimulator>();
+        }
+    }
+
+    private static DialogueController FindActiveDialogueController()
+    {
+        DialogueController[] controllers = FindObjectsByType<DialogueController>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+
+        for (int i = 0; i < controllers.Length; i++)
+        {
+            DialogueController controller = controllers[i];
+            if (controller != null && controller.gameObject.activeInHierarchy)
+                return controller;
+        }
+
+        return null;
+    }
+
     private OnboardingSequenceSO ResolveSequence(LevelConfigSO levelConfig)
     {
         if (levelConfig != null && levelConfig.onboardingSequence != null)
             return levelConfig.onboardingSequence;
-        return _fallbackSequence;
+        if (_fallbackSequence != null)
+            return _fallbackSequence;
+        if (levelConfig != null && levelConfig.tutorialSequence != null)
+            return ResolveLegacyTutorialSequence(levelConfig.tutorialSequence);
+        return null;
+    }
+
+    private OnboardingSequenceSO ResolveLegacyTutorialSequence(Level1TutorialSequenceSO legacySequence)
+    {
+        if (legacySequence == null)
+            return null;
+
+        if (_runtimeLegacySequence != null && _runtimeLegacySource == legacySequence)
+            return _runtimeLegacySequence;
+
+        if (_runtimeLegacySequence != null)
+        {
+            if (Application.isPlaying)
+                Destroy(_runtimeLegacySequence);
+            else
+                DestroyImmediate(_runtimeLegacySequence);
+        }
+
+        _runtimeLegacySource = legacySequence;
+        _runtimeLegacySequence = CreateRuntimeSequenceFromLegacy(legacySequence);
+        return _runtimeLegacySequence;
+    }
+
+    private static OnboardingSequenceSO CreateRuntimeSequenceFromLegacy(Level1TutorialSequenceSO legacySequence)
+    {
+        OnboardingSequenceSO sequence = ScriptableObject.CreateInstance<OnboardingSequenceSO>();
+        sequence.name = $"{legacySequence.name}_RuntimeOnboarding";
+        sequence.hideFlags = HideFlags.HideAndDontSave;
+
+        sequence.protagonistWalkSeconds = legacySequence.protagonistWalkSeconds;
+        sequence.failuresBeforeAssist = legacySequence.failuresBeforeAssist;
+        sequence.baseIntro = new OnboardingBeatCopy
+        {
+            fallbackText = CombineLines(legacySequence.baseIntroText, legacySequence.baseDefenseText),
+        };
+        sequence.soloTeachPreVideo = new OnboardingBeatCopy
+        {
+            fallbackText = legacySequence.drawPurposeText,
+        };
+        sequence.heartLossDialogue = new OnboardingBeatCopy
+        {
+            fallbackText = legacySequence.baseDamageText,
+        };
+        sequence.release = new OnboardingBeatCopy
+        {
+            fallbackText = legacySequence.finalReleaseText,
+        };
+
+        sequence.soloTeachStep = GetLegacyStep(legacySequence, 0);
+        sequence.comboTeachStep = GetLegacyStep(legacySequence, 1) ?? sequence.soloTeachStep;
+        Level1TutorialStepSO demoStep = GetLegacyStep(legacySequence, 2) ?? sequence.comboTeachStep ?? sequence.soloTeachStep;
+        if (demoStep != null)
+        {
+            sequence.heartLossDemoEnemyData = demoStep.enemyData;
+            sequence.heartLossDemoCharacter = demoStep.targetCharacter;
+        }
+
+        List<OnboardingBeatType> order = new()
+        {
+            OnboardingBeatType.ProtagonistIntro,
+            OnboardingBeatType.BaseIntro,
+        };
+        if (sequence.soloTeachStep != null)
+            order.Add(OnboardingBeatType.SoloTeach);
+        if (sequence.comboTeachStep != null)
+            order.Add(OnboardingBeatType.ComboTeach);
+        if (sequence.heartLossDemoEnemyData != null)
+            order.Add(OnboardingBeatType.HeartLossDemo);
+        order.Add(OnboardingBeatType.Release);
+        sequence.beatOrder = order.ToArray();
+
+        return sequence;
+    }
+
+    private static Level1TutorialStepSO GetLegacyStep(Level1TutorialSequenceSO sequence, int index)
+    {
+        if (sequence.steps == null || index < 0 || index >= sequence.steps.Length)
+            return null;
+        return sequence.steps[index];
+    }
+
+    private static string CombineLines(string first, string second)
+    {
+        if (string.IsNullOrWhiteSpace(first))
+            return second ?? "";
+        if (string.IsNullOrWhiteSpace(second))
+            return first;
+        return $"{first}\n{second}";
     }
 
     private void CollectBeats()

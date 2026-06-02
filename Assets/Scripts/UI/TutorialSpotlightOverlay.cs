@@ -39,6 +39,50 @@ public sealed class TutorialSpotlightOverlay : MonoBehaviour
 
     public bool IsVisible => _trackingActive;
 
+    public static TutorialSpotlightOverlay CreateRuntime()
+    {
+        GameObject canvasObject = new("TutorialSpotlightOverlay", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+        RectTransform root = canvasObject.GetComponent<RectTransform>();
+        root.anchorMin = Vector2.zero;
+        root.anchorMax = Vector2.one;
+        root.offsetMin = Vector2.zero;
+        root.offsetMax = Vector2.zero;
+
+        Canvas canvas = canvasObject.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = RenderOrder.SpotlightDim;
+
+        CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1080f, 1920f);
+
+        TutorialSpotlightOverlay overlay = canvasObject.AddComponent<TutorialSpotlightOverlay>();
+        overlay._topPanel = CreateDimPanel(root, "TopPanel");
+        overlay._bottomPanel = CreateDimPanel(root, "BottomPanel");
+        overlay._leftPanel = CreateDimPanel(root, "LeftPanel");
+        overlay._rightPanel = CreateDimPanel(root, "RightPanel");
+        overlay.SetPanelsAlpha(0f);
+        overlay.SetPanelsActive(false);
+        return overlay;
+    }
+
+    private static Image CreateDimPanel(Transform parent, string name)
+    {
+        GameObject panelObject = new(name, typeof(RectTransform), typeof(Image));
+        panelObject.transform.SetParent(parent, false);
+
+        RectTransform rect = panelObject.GetComponent<RectTransform>();
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        Image image = panelObject.GetComponent<Image>();
+        image.color = new Color(0f, 0f, 0f, 0f);
+        image.raycastTarget = false;
+        return image;
+    }
+
     private void Awake()
     {
         _rootRect = transform as RectTransform;

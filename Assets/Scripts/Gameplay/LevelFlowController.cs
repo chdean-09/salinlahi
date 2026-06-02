@@ -1,6 +1,7 @@
 using System.Collections;
 using Salinlahi.Runtime.Gameplay;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Orchestrates the full level lifecycle in the Gameplay scene:
@@ -90,10 +91,18 @@ public class LevelFlowController : MonoBehaviour
     {
         if (_runtimeBootstrapped)
             yield break;
+        if (!IsGameplayScene())
+            yield break;
 
         ResolveLevelConfig();
         EnsureRuntimeReferences(null, null);
         yield return RunLevelFlow();
+    }
+
+    private static bool IsGameplayScene()
+    {
+        string sceneName = SceneManager.GetActiveScene().name;
+        return sceneName == "Gameplay" || sceneName == "Level_01_Tutorial";
     }
 
     private IEnumerator RunLevelFlow()
@@ -177,7 +186,7 @@ public class LevelFlowController : MonoBehaviour
     private void EnsureRuntimeReferences(WaveSpawner waveSpawner, EnemyDataSO fallbackEnemyData)
     {
         _waveManager ??= FindFirstObjectByType<WaveManager>();
-        _dialogueController ??= FindFirstObjectByType<DialogueController>();
+        _dialogueController ??= FindActiveDialogueController();
         _cutscenePlayer ??= FindFirstObjectByType<CutscenePlayer>();
         _victoryScreen ??= FindFirstObjectByType<VictoryScreenUI>(FindObjectsInactive.Include);
         _defeatScreen ??= FindFirstObjectByType<DefeatScreenUI>(FindObjectsInactive.Include);
@@ -187,7 +196,46 @@ public class LevelFlowController : MonoBehaviour
             && _levelConfig.levelNumber == LevelTutorialProgress.TutorialLevelNumber)
         {
             _level1OnboardingController = FindFirstObjectByType<Level1OnboardingController>(FindObjectsInactive.Include);
+            if (_level1OnboardingController == null && ShouldCreateRuntimeOnboardingController())
+                _level1OnboardingController = CreateRuntimeOnboardingController();
         }
+    }
+
+    private bool ShouldCreateRuntimeOnboardingController()
+    {
+        return _levelConfig != null
+            && _levelConfig.levelNumber == LevelTutorialProgress.TutorialLevelNumber
+            && !LevelTutorialProgress.HasSeenLevel1Tutorial()
+            && (_levelConfig.onboardingSequence != null || _levelConfig.tutorialSequence != null);
+    }
+
+    private Level1OnboardingController CreateRuntimeOnboardingController()
+    {
+        GameObject go = new("[Runtime] Level1OnboardingController");
+        go.transform.SetParent(transform, false);
+        go.AddComponent<ProtagonistIntroBeat>();
+        go.AddComponent<BaseIntroBeat>();
+        go.AddComponent<SoloTeachBeat>();
+        go.AddComponent<ComboTeachBeat>();
+        go.AddComponent<HeartLossDemoBeat>();
+        go.AddComponent<ReleaseBeat>();
+        return go.AddComponent<Level1OnboardingController>();
+    }
+
+    private static DialogueController FindActiveDialogueController()
+    {
+        DialogueController[] controllers = FindObjectsByType<DialogueController>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+
+        for (int i = 0; i < controllers.Length; i++)
+        {
+            DialogueController controller = controllers[i];
+            if (controller != null && controller.gameObject.activeInHierarchy)
+                return controller;
+        }
+
+        return null;
     }
 
     private static ProtagonistManager EnsureProtagonistManager()

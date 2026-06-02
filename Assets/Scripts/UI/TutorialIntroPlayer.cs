@@ -39,6 +39,148 @@ public sealed class TutorialIntroPlayer : MonoBehaviour
     public bool IsPlaying => _isPlaying;
     public PlaybackMode CurrentMode { get; private set; } = PlaybackMode.None;
 
+    public static TutorialIntroPlayer CreateRuntime()
+    {
+        Canvas canvas = FindTutorialCanvas();
+        if (canvas == null)
+        {
+            GameObject canvasObject = new("TutorialCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            canvas = canvasObject.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+
+            CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1080f, 1920f);
+        }
+
+        GameObject playerObject = new("TutorialIntroPlayer", typeof(RectTransform));
+        playerObject.transform.SetParent(canvas.transform, false);
+        RectTransform playerRect = playerObject.GetComponent<RectTransform>();
+        Stretch(playerRect);
+
+        TutorialIntroPlayer player = playerObject.AddComponent<TutorialIntroPlayer>();
+        player._root = CreateRoot(playerObject.transform);
+        player._videoSurface = CreateVideoSurface(player._root.transform);
+        player._animationSurface = CreateAnimationSurface(player._root.transform);
+        player._tapToProceedLabel = CreateLabel(player._root.transform);
+        player._tapCatcher = CreateTapCatcher(playerObject.transform);
+        player._videoPlayer = playerObject.AddComponent<VideoPlayer>();
+        player._videoPlayer.playOnAwake = false;
+        player._videoPlayer.isLooping = true;
+        player._videoRenderTexture = new RenderTexture(1080, 1920, 0)
+        {
+            name = "TutorialIntroRuntimeTexture",
+            hideFlags = HideFlags.HideAndDontSave,
+        };
+        player._videoPlayer.targetTexture = player._videoRenderTexture;
+        player._videoSurface.texture = player._videoRenderTexture;
+        player._tapCatcher.onClick.AddListener(player.OnTapped);
+
+        player._root.SetActive(false);
+        player.SetTapCatcherActive(false);
+        return player;
+    }
+
+    private static Canvas FindTutorialCanvas()
+    {
+        Canvas[] canvases = FindObjectsByType<Canvas>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+
+        for (int i = 0; i < canvases.Length; i++)
+        {
+            Canvas canvas = canvases[i];
+            if (canvas != null && canvas.name == "TutorialCanvas")
+                return canvas;
+        }
+
+        return null;
+    }
+
+    private static GameObject CreateRoot(Transform parent)
+    {
+        GameObject root = new("IntroOverlayRoot", typeof(RectTransform), typeof(Image));
+        root.transform.SetParent(parent, false);
+        Stretch(root.GetComponent<RectTransform>());
+        Image background = root.GetComponent<Image>();
+        background.color = new Color(0f, 0f, 0f, 0.82f);
+        background.raycastTarget = false;
+        return root;
+    }
+
+    private static RawImage CreateVideoSurface(Transform parent)
+    {
+        GameObject surfaceObject = new("VideoSurface", typeof(RectTransform), typeof(RawImage));
+        surfaceObject.transform.SetParent(parent, false);
+        RectTransform rect = surfaceObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.08f, 0.22f);
+        rect.anchorMax = new Vector2(0.92f, 0.78f);
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        RawImage image = surfaceObject.GetComponent<RawImage>();
+        image.color = Color.white;
+        image.raycastTarget = false;
+        surfaceObject.SetActive(false);
+        return image;
+    }
+
+    private static Image CreateAnimationSurface(Transform parent)
+    {
+        GameObject surfaceObject = new("AnimationSurface", typeof(RectTransform), typeof(Image));
+        surfaceObject.transform.SetParent(parent, false);
+        RectTransform rect = surfaceObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.08f, 0.22f);
+        rect.anchorMax = new Vector2(0.92f, 0.78f);
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        Image image = surfaceObject.GetComponent<Image>();
+        image.color = new Color(1f, 1f, 1f, 0.18f);
+        image.raycastTarget = false;
+        surfaceObject.SetActive(false);
+        return image;
+    }
+
+    private static TMP_Text CreateLabel(Transform parent)
+    {
+        GameObject labelObject = new("TapToProceedLabel", typeof(RectTransform), typeof(TextMeshProUGUI));
+        labelObject.transform.SetParent(parent, false);
+        RectTransform rect = labelObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 0.12f);
+        rect.anchorMax = new Vector2(0.5f, 0.12f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = new Vector2(900f, 120f);
+
+        TextMeshProUGUI label = labelObject.GetComponent<TextMeshProUGUI>();
+        label.alignment = TextAlignmentOptions.Center;
+        label.fontSize = 34f;
+        label.color = Color.white;
+        label.raycastTarget = false;
+        TutorialFontProvider.ApplyTo(label);
+        return label;
+    }
+
+    private static Button CreateTapCatcher(Transform parent)
+    {
+        GameObject buttonObject = new("IntroTapCatcher", typeof(RectTransform), typeof(Image), typeof(Button));
+        buttonObject.transform.SetParent(parent, false);
+        Stretch(buttonObject.GetComponent<RectTransform>());
+
+        Image image = buttonObject.GetComponent<Image>();
+        image.color = new Color(0f, 0f, 0f, 0f);
+        image.raycastTarget = true;
+        return buttonObject.GetComponent<Button>();
+    }
+
+    private static void Stretch(RectTransform rect)
+    {
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+    }
+
     private void Awake()
     {
         if (_root != null) _root.SetActive(false);
@@ -68,6 +210,19 @@ public sealed class TutorialIntroPlayer : MonoBehaviour
         {
             _videoPlayer.loopPointReached -= OnVideoLoopPoint;
             _videoPlayer.errorReceived -= OnVideoError;
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (_videoRenderTexture != null && _videoRenderTexture.hideFlags == HideFlags.HideAndDontSave)
+        {
+            _videoRenderTexture.Release();
+            if (Application.isPlaying)
+                Destroy(_videoRenderTexture);
+            else
+                DestroyImmediate(_videoRenderTexture);
+            _videoRenderTexture = null;
         }
     }
 
