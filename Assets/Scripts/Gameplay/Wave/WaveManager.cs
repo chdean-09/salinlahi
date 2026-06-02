@@ -378,7 +378,7 @@ public class WaveManager : MonoBehaviour
                 yield break;
             }
 
-            WaveConfigSO wave = _levelConfig.waves[waveIndex];
+            WaveDefinition wave = _levelConfig.waves[waveIndex];
             if (wave == null)
             {
                 DebugLogger.LogWarning($"WaveManager: Wave at index {waveIndex} is null. Skipping.");
@@ -506,7 +506,7 @@ public class WaveManager : MonoBehaviour
         if (safeWaveIndex >= _levelConfig.waves.Count)
             return _levelConfig.waves.Count;
 
-        WaveConfigSO savedWave = _levelConfig.waves[safeWaveIndex];
+        WaveDefinition savedWave = _levelConfig.waves[safeWaveIndex];
         int enemyCount = savedWave != null ? Mathf.Max(0, savedWave.enemyCount) : 0;
         int safeSpawnedCount = Mathf.Clamp(savedWaveSpawnedCount, 0, enemyCount);
 
@@ -698,15 +698,24 @@ public class WaveManager : MonoBehaviour
 
     private static void AddEnemiesFromLevelForSandbox(List<EnemyDataSO> enemies, LevelConfigSO levelConfig)
     {
-        if (levelConfig?.waves == null)
+        if (levelConfig == null)
             return;
 
-        foreach (WaveConfigSO wave in levelConfig.waves)
+        if (levelConfig.allowedEnemyTypes != null)
         {
-            if (wave?.enemyTypesInWave == null)
+            foreach (EnemyDataSO enemy in levelConfig.allowedEnemyTypes)
+                AddEnemyForSandbox(enemies, enemy);
+        }
+
+        if (levelConfig.waves == null)
+            return;
+
+        foreach (WaveDefinition wave in levelConfig.waves)
+        {
+            if (wave?.enemyTypes == null)
                 continue;
 
-            foreach (EnemyDataSO enemy in wave.enemyTypesInWave)
+            foreach (EnemyDataSO enemy in wave.enemyTypes)
                 AddEnemyForSandbox(enemies, enemy);
         }
     }
@@ -744,12 +753,12 @@ public class WaveManager : MonoBehaviour
         if (levelConfig.waves == null)
             return;
 
-        foreach (WaveConfigSO wave in levelConfig.waves)
+        foreach (WaveDefinition wave in levelConfig.waves)
         {
-            if (wave?.charactersInWave == null)
+            if (wave?.characters == null)
                 continue;
 
-            foreach (BaybayinCharacterSO character in wave.charactersInWave)
+            foreach (BaybayinCharacterSO character in wave.characters)
                 AddCharacterForSandbox(characters, character);
         }
     }
@@ -854,44 +863,44 @@ public class WaveManager : MonoBehaviour
 
             for (int waveIndex = 0; waveIndex < level.waves.Count; waveIndex++)
             {
-                WaveConfigSO wave = level.waves[waveIndex];
+                WaveDefinition wave = level.waves[waveIndex];
                 if (wave == null)
                 {
                     Debug.LogError(
-                        $"WaveManager level '{level.name}' has a missing WaveConfigSO at waves[{waveIndex}].",
+                        $"WaveManager level '{level.name}' has a missing WaveDefinition at waves[{waveIndex}].",
                         level);
                     continue;
                 }
 
-                ValidateWaveRefs(level, wave);
+                ValidateWaveRefs(level, wave, waveIndex);
             }
         }
     }
 
-    private static void ValidateWaveRefs(LevelConfigSO level, WaveConfigSO wave)
+    private static void ValidateWaveRefs(LevelConfigSO level, WaveDefinition wave, int waveIndex)
     {
-        if (wave.enemyTypesInWave != null)
+        if (wave.enemyTypes != null)
         {
-            for (int i = 0; i < wave.enemyTypesInWave.Count; i++)
+            for (int i = 0; i < wave.enemyTypes.Count; i++)
             {
-                if (wave.enemyTypesInWave[i] == null)
+                if (wave.enemyTypes[i] == null)
                 {
                     Debug.LogError(
-                        $"Level '{level.name}' wave '{wave.name}' has a missing enemyTypesInWave[{i}] reference.",
-                        wave);
+                        $"Level '{level.name}' waves[{waveIndex}] has a missing enemyTypes[{i}] reference.",
+                        level);
                 }
             }
         }
 
-        if (wave.charactersInWave != null)
+        if (wave.characters != null)
         {
-            for (int i = 0; i < wave.charactersInWave.Count; i++)
+            for (int i = 0; i < wave.characters.Count; i++)
             {
-                if (wave.charactersInWave[i] == null)
+                if (wave.characters[i] == null)
                 {
                     Debug.LogError(
-                        $"Level '{level.name}' wave '{wave.name}' has a missing charactersInWave[{i}] reference.",
-                        wave);
+                        $"Level '{level.name}' waves[{waveIndex}] has a missing characters[{i}] reference.",
+                        level);
                 }
             }
         }

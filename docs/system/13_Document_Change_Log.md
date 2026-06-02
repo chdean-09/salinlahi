@@ -1,7 +1,7 @@
 # 13 — Document Change Log
 **Project:** Salinlahi
-**Version:** 1.8
-**Date:** 2026-05-27
+**Version:** 1.9
+**Date:** 2026-06-01
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -10,6 +10,7 @@
 
 | Version | Date | Author | Summary | Impacted Documents |
 |---------|------|--------|---------|-------------------|
+| 1.9 | 2026-06-01 | Sync pass | SALIN-109 — Replaced standalone `WaveConfigSO` ScriptableObject assets with embedded `WaveDefinition` value type inside `LevelConfigSO`. Added `allowedEnemyTypes` roster. Wave editing now happens in a single Level asset inspector with checkbox-grid cascade. Docs 04, 05, 07, and SystemDiagrams updated. | 04, 05, 07, SystemDiagrams |
 | 1.8 | 2026-05-27 | Sync pass | SALIN-98 — Boss audio volume controls: add per-category `*Volume` fields and `bgmVolume` to `BossAudioBankSO` (10 designer-side `[0..1]` sliders that stack on top of the master/BGM/SFX user sliders). `AudioManager.PlaySFX` now accepts a `volumeScale` parameter forwarded to `PlayOneShot`; `AudioManager.FadeInBGM` accepts a `volumeScale` stored as `_bgmScale` and applied for the duration of the BGM (reset to `1f` on `PlayBGM`/`StopBGM`/`FadeOutBGM`). `BossAudio` passes the matching bank volume on every audio call. | 03, 04, 05, 13 |
 | 1.7 | 2026-05-27 | Sync pass | SALIN-98 — Boss SFX & BGM: add `BossAudioBankSO` (per-boss audio clip bank SO), `BossAudio` component (9 EventBus subscriptions, footstep coroutine, no-immediate-repeat picker), three new EventBus boss audio events (`OnBossSummonTick`, `OnBossDrawHit`, `OnBossTeleport`), `AudioManager` fade helpers (`FadeInBGM`, `FadeOutBGM`), and `audioBank` field on `BossConfigSO`. | 02, 03, 04, 05, 13, SystemDiagrams |
 | 1.6 | 2026-05-26 | Sync pass | SALIN-98 — Boss summon staggered spawning. `BossPhase` field rename + new `delayBetweenMinions`: `summonDuration`→`summonPhaseDuration`, `summonInterval`→`delayBetweenSummons`, `summonBurstMin`→`minionsPerSummonMin`, `summonBurstMax`→`minionsPerSummonMax` (all guarded by `[FormerlySerializedAs]`). `BossSummonTicker` now streams minions one at a time instead of bursting in one frame. | 04, 05, 12, 13, SystemDiagrams |

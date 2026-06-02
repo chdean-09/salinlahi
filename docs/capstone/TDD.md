@@ -92,7 +92,7 @@ Enemies are managed through Unity's built-in ObjectPool<T> class. At scene load,
 
 ## 3.2 Wave Management
 
-WaveManager reads a LevelConfigSO at level load, which defines the sequence of WaveConfigSO assets for that level. Each WaveConfigSO specifies the enemy types, spawn count, spawn delay, and spawn positions for one wave. WaveManager triggers WaveSpawner per wave and fires OnWaveStarted and OnWaveCleared events so the HUD and GameManager can track progress.
+WaveManager reads a LevelConfigSO at level load, which embeds an ordered list of WaveDefinition values for that level. Each WaveDefinition specifies the enemy types, spawn count, spawn interval, and allowed character pool for one wave. WaveManager triggers WaveSpawner per wave and fires OnWaveStarted and OnWaveCleared events so the HUD and GameManager can track progress.
 
 For boss levels (5, 10, 15), a BossConfigSO defines the boss encounter. Boss enemies are 64x64 sprites: El Inquisidor (Spanish, summons Soldados), The Superintendent (American, decree-scrambles labels), and Kadiliman (Final, summons enemies from all eras). Bosses use a phase-based system with distinct mechanics per phase.
 
@@ -116,8 +116,8 @@ All game content is defined in ScriptableObject assets. This means that level de
 
 | **Asset Type** | **Defines** |
 | --- | --- |
-| LevelConfigSO | Chapter assignment, background theme, ordered list of WaveConfigSO references for that level. |
-| WaveConfigSO | Enemy types to spawn, count per type, spawn delay between enemies, spawn position columns. |
+| LevelConfigSO | Chapter assignment, background theme, ordered list of embedded WaveDefinition entries, allowed character and enemy-type rosters. |
+| WaveDefinition | Enemy types to spawn, count, spawn interval, wave start delay, and allowed character pool — stored as a serialized value type inside LevelConfigSO.waves. |
 | EnemyDataSO | Era assignment, movement speed, movement pattern (straight, fast, glide, zigzag, sprinter/charge, commander aura, censor), health / hits required (for shielded types like Capitan and Shokan), isDecoy flag (for Maestro), isPhaser flag and interval (for Fraile), corruption veil flag (for Shokan), reference to a BaybayinCharacterSO. |
 | BaybayinCharacterSO | Character ID string, display name, template file references, AudioClip for pronunciation, `badgeSprite` (framed glyph for `EnemyGlyphBadge`), optional `scrambledBadgeSprite` (glitched override variant). |
 | GlyphBadgeConfigSO | Global badge layout and animation tuning: default offset/scale, swap slide/durations, final-draw charge/release, decoy-reject flash/shake, boss fail-flash colors/durations. Single shared asset (`GlyphBadgeConfig_Default`). |
@@ -163,7 +163,7 @@ Both Salinlahi Lite and Salinlahi Full are built from the same Unity codebase. A
 | Assets/Scripts/Gameplay/ | Enemy.cs, EnemyMover.cs, EnemyPool.cs, WaveSpawner.cs, WaveManager.cs, PlayerBase.cs, HeartSystem.cs |
 | Assets/Scripts/UI/ | HUD.cs, MainMenu.cs, LevelSelect.cs, PauseMenu.cs |
 | Assets/Scripts/Audio/ | AudioManager.cs |
-| Assets/Data/ | All ScriptableObject assets (LevelConfigSO, WaveConfigSO, etc.) |
+| Assets/ScriptableObjects/ | All ScriptableObject assets (LevelConfigSO with embedded WaveDefinitions, EnemyDataSO, BaybayinCharacterSO, etc.) |
 | Assets/Resources/Templates/ | Baybayin character template .txt coordinate files |
 | Assets/Prefabs/Managers/ | All manager prefabs instantiated by Bootstrap |
 | Assets/Art/ | Sprite sheets, backgrounds, UI elements |

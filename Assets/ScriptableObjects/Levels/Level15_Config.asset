@@ -16,8 +16,17 @@ MonoBehaviour:
   levelNumber: 15
   chapterNumber: 1
   chapterName: Chapter 1
+  eraTheme: {fileID: 0}
+  numberSprite: {fileID: 0}
   waves: []
   allowedCharacters:
   - {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
+  allowedEnemyTypes: []
   bossConfig: {fileID: 11400000, guid: 0a29d2a7d971a498388b85daf1ab2ad8, type: 2}
   isAvailableInLite: 0
+  tutorialSequence: {fileID: 0}
+  introDialogue: {fileID: 0}
+  outroDialogue: {fileID: 0}
+  bgmClip: {fileID: 0}
+  hasProtagonist: 0
+  protagonistWalksIn: 0
