@@ -92,6 +92,7 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         text.alignment = alignment;
         text.color = Color.white;
         text.textWrappingMode = TextWrappingModes.Normal;
+        text.raycastTarget = false;
         TutorialFontProvider.ApplyTo(text);
         return text;
     }
@@ -144,13 +145,13 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
             GameObject canvasObject = new("TutorialCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             tutorialCanvas = canvasObject.GetComponent<Canvas>();
             tutorialCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            tutorialCanvas.sortingOrder = 20;
 
             CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1080f, 1920f);
         }
 
+        tutorialCanvas.sortingOrder = 110;
         tutorialCanvas.transform.localScale = Vector3.one;
         transform.SetParent(tutorialCanvas.transform, false);
     }

@@ -15,6 +15,12 @@ public class DialogueController : MonoBehaviour
     [Header("Typewriter Settings")]
     [SerializeField] private float _charsPerSecond = 30f;
 
+    // Render the dialogue above the tutorial spotlight dim (sortingOrder 100) and the
+    // Level 1 guide canvas (110) so instruction text / buttons are never darkened by the
+    // overlay. A nested Canvas with overrideSorting affects only this subtree, so the
+    // rest of the HUD is still dimmed normally by the spotlight.
+    private const int OverlaySortingOrder = 200;
+
     private DialogueSO _currentDialogue;
     private int _lineIndex;
     private bool _isTypewriting;
@@ -24,6 +30,17 @@ public class DialogueController : MonoBehaviour
     {
         if (_overlayPanel != null)
             _overlayPanel.SetActive(false);
+
+        // The full-screen tap-catcher is a SIBLING of _overlayPanel, so toggling the panel
+        // never turns it off. Manage it explicitly here so it can't sit active (and block
+        // drawing input via IsScreenPositionOverUI) while no dialogue is showing.
+        SetTapCatcherActive(false);
+    }
+
+    private void SetTapCatcherActive(bool active)
+    {
+        if (_tapCatcher != null)
+            _tapCatcher.gameObject.SetActive(active);
     }
 
     private void OnEnable()
@@ -52,13 +69,35 @@ public class DialogueController : MonoBehaviour
         _lineIndex = 0;
 
         if (_overlayPanel != null)
+        {
             _overlayPanel.SetActive(true);
+            EnsureOverlayOnTop();
+        }
+        SetTapCatcherActive(true);
 
         GameManager.Instance.EnterDialoguePause();
 
         EventBus.RaiseDialogueStarted();
 
         ShowLine(_currentDialogue.lines[0]);
+    }
+
+    // Promote the dialogue overlay's subtree to its own Canvas layered above the spotlight
+    // dim so the panel, text, and tap/Next button stay fully visible during enemy highlights.
+    private void EnsureOverlayOnTop()
+    {
+        if (_overlayPanel == null) return;
+
+        Canvas canvas = _overlayPanel.GetComponent<Canvas>();
+        if (canvas == null)
+            canvas = _overlayPanel.AddComponent<Canvas>();
+
+        canvas.overrideSorting = true;
+        canvas.sortingOrder = OverlaySortingOrder;
+
+        // A nested overrideSorting canvas needs its own raycaster for the tap-catcher/buttons.
+        if (_overlayPanel.GetComponent<GraphicRaycaster>() == null)
+            _overlayPanel.AddComponent<GraphicRaycaster>();
     }
 
     private void ShowLine(DialogueLine line)
@@ -167,6 +206,7 @@ public class DialogueController : MonoBehaviour
 
         if (_overlayPanel != null)
             _overlayPanel.SetActive(false);
+        SetTapCatcherActive(false);
 
         if (GameManager.Instance != null)
             GameManager.Instance.ExitDialoguePause();
