@@ -1,7 +1,7 @@
 # 03 — Core Systems
 **Project:** Salinlahi
-**Version:** 1.7
-**Date:** 2026-05-27
+**Version:** 1.8
+**Date:** 2026-06-03
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -70,6 +70,7 @@ private const string SCENE_MAIN_MENU    = "MainMenu";
 private const string SCENE_GAMEPLAY     = "Gameplay";
 private const string SCENE_LEVEL_SELECT = "LevelSelect";
 private const string SCENE_GAME_OVER    = "GameOver";
+private const string SCENE_ALMANAC      = "Almanac";
 ```
 
 ### 2.4 Public API
@@ -82,6 +83,7 @@ private const string SCENE_GAME_OVER    = "GameOver";
 | `LoadSandboxGameplay()` | `Gameplay` (editor/sandbox builds only) |
 | `LoadLevelSelect()` | `LevelSelect` |
 | `LoadGameOver()` | `[System.Obsolete]` — DefeatScreenUI overlay replaced this scene (SALIN-58); logs a warning |
+| `LoadAlmanac()` | `Almanac` |
 | `ReloadCurrentScene()` | Active scene (name retrieved at call time) |
 
 ### 2.5 Invariants
@@ -176,6 +178,7 @@ Owns two `AudioSource` components: `_bgmSource` (background music, looped) and `
 | Boss Audio | `OnBossTeleport` | `RaiseBossTeleport()` | none — raised by `PhaseBasedMovement.TeleportNow` on each snap |
 | Dialogue | `OnDialogueStarted` | `RaiseDialogueStarted()` | none |
 | Dialogue | `OnDialogueComplete` | `RaiseDialogueComplete()` | none |
+| Almanac | `OnCharacterUnlocked` | `RaiseCharacterUnlocked(BaybayinCharacterSO)` | `BaybayinCharacterSO` — raised after `CharacterUnlockProgress.TryMarkUnlocked` returns `true`; `AlmanacController` subscribes to rebuild the characters grid |
 
 ### 4.4 Usage Rules
 1. **Subscribe only in `OnEnable`.** Never subscribe in `Start` or `Awake`.
@@ -223,3 +226,91 @@ Adding a new Singleton requires:
 
 [EVIDENCE: Assets/Scripts/Utilities/DebugLogger.cs]
 [EVIDENCE: Assets/Scripts/Core/GameManager.cs, SetState() — uses DebugLogger.Log]
+
+---
+
+## 7. Almanac Systems
+
+### 7.1 `CharacterUnlockProgress` (static data helper)
+
+**Location:** `Assets/Scripts/Core/CharacterUnlockProgress.cs`
+**Type:** `static` class — no MonoBehaviour, no Singleton, no EventBus events raised internally.
+
+Persists the set of unlocked `BaybayinCharacterSO` IDs in `PlayerPrefs` under the key `salinlahi.almanac.character_ids`. IDs are stored as a pipe-separated string and normalized with `Trim().ToLowerInvariant()` on every read and write.
+
+| Method | Behavior |
+|--------|----------|
+| `HasUnlocked(BaybayinCharacterSO)` | Returns `true` if the character's normalized ID is in the persisted set. |
+| `TryMarkUnlocked(BaybayinCharacterSO, out string)` | Adds the normalized ID if not present, saves via `PlayerPrefs.Save()`, returns `true` on new unlock. |
+| `ClearAllUnlocked()` | Deletes the PlayerPrefs key and clears the in-memory set. |
+
+**Integration with ProgressManager:** `ProgressManager.ClearAllProgress()` calls `CharacterUnlockProgress.ClearAllUnlocked()` so a full progress reset also wipes the Almanac unlock state.
+
+[EVIDENCE: Assets/Scripts/Core/CharacterUnlockProgress.cs]
+[EVIDENCE: Assets/Scripts/Core/ProgressManager.cs — ClearAllProgress()]
+
+---
+
+### 7.2 `AlmanacController` (scene MonoBehaviour)
+
+**Location:** `Assets/Scripts/UI/Almanac/AlmanacController.cs`
+**Scene:** `Assets/_Scenes/Almanac.unity`
+
+Scene orchestrator for the Almanac screen. Reads `CharacterRegistrySO` and `AlmanacEnemyRegistrySO`, builds two grid views (Characters tab and Enemies tab) into `GridLayoutGroup`-backed `ScrollRect`s, and manages tab switching.
+
+**Public API:**
+
+| Member | Behavior |
+|--------|----------|
+| `ShowCharacters()` | Activates the Characters tab panel. |
+| `ShowEnemies()` | Activates the Enemies tab panel. |
+| `HandleCharacterUnlocked(BaybayinCharacterSO)` | EventBus subscriber for `OnCharacterUnlocked`; rebuilds the characters grid to reflect the new unlock. |
+| `CountUnlockedCharacters(IReadOnlyList<BaybayinCharacterSO>)` (static) | Returns the count of entries for which `CharacterUnlockProgress.HasUnlocked` is `true`. |
+| `CountDiscoveredEnemies(IReadOnlyList<AlmanacEnemyEntry>)` (static) | Returns the count of entries for which `AlmanacEnemyDiscovery.IsDiscovered` is `true`. |
+| `FormatCounter(int unlocked, int total)` (static) | Returns a `"x/y"` formatted string for the HUD counter labels. |
+
+[EVIDENCE: Assets/Scripts/UI/Almanac/AlmanacController.cs]
+
+---
+
+### 7.3 `AlmanacCell` (MonoBehaviour)
+
+**Location:** `Assets/Scripts/UI/Almanac/AlmanacCell.cs`
+
+One grid cell in the Almanac Characters or Enemies panel. Displays a portrait sprite (or a `?` silhouette when locked) and a boss border when applicable.
+
+| Member | Behavior |
+|--------|----------|
+| `Setup(Sprite, bool isRevealed, bool isBoss, Action onSelect)` | Configures the cell sprite, lock overlay, boss border, and tap callback. |
+| `ShouldShowBossBorder(bool isBoss, bool isRevealed)` (static) | Returns `true` when both flags are `true`. |
+| `ShouldBeInteractable(bool isRevealed)` (static) | Returns `isRevealed`. Locked cells are non-interactable. |
+
+[EVIDENCE: Assets/Scripts/UI/Almanac/AlmanacCell.cs]
+
+---
+
+### 7.4 `AlmanacDetailScroll` (MonoBehaviour)
+
+**Location:** `Assets/Scripts/UI/Almanac/AlmanacDetailScroll.cs`
+
+Overlay panel that expands into view when the player taps a revealed Almanac cell. Displays a portrait, name, and description. Animates via `CanvasGroup` (alpha fade) and `RectTransform` scale.
+
+| Method | Behavior |
+|--------|----------|
+| `Show(Sprite portrait, string title, string description)` | Populates fields and runs the expand animation. |
+| `Hide()` | Collapses and hides the overlay. |
+
+[EVIDENCE: Assets/Scripts/UI/Almanac/AlmanacDetailScroll.cs]
+
+---
+
+### 7.5 `AlmanacEnemyDiscovery` (static seam)
+
+**Location:** `Assets/Scripts/UI/Almanac/AlmanacEnemyDiscovery.cs`
+**Type:** `static` class.
+
+Single contact point between the Almanac UI and enemy discovery state. Currently a **temporary stub**: `IsDiscovered(EnemyDataSO data)` returns `data != null` (all non-null enemies appear discovered). This is intentionally isolated so a teammate's `EnemyDiscoveryProgress` feature can replace the implementation without touching any other Almanac code.
+
+**Integration note:** When `EnemyDiscoveryProgress` is merged, replace the body of `IsDiscovered` with `EnemyDiscoveryProgress.HasDiscovered(data)`.
+
+[EVIDENCE: Assets/Scripts/UI/Almanac/AlmanacEnemyDiscovery.cs]

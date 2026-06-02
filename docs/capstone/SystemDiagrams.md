@@ -48,6 +48,10 @@ erDiagram
 
     CharacterRegistrySO ||--|{ BaybayinCharacterSO : "All (master registry)"
 
+    AlmanacEnemyRegistrySO ||--|{ AlmanacEnemyEntry : "entries"
+    AlmanacEnemyEntry }o--|| EnemyDataSO : "enemyData"
+    AlmanacEnemyEntry |o--o| BossConfigSO : "bossConfig (optional; IsBoss = true when set)"
+
     EnemyGlyphBadge }o--|| GlyphBadgeConfigSO : "config"
 
     GlyphBadgeConfigSO {
@@ -65,6 +69,7 @@ erDiagram
         Sprite scrambledBadgeSprite
         AudioClip pronunciationClip
         string templateFileName
+        string description
     }
 
     EnemyDataSO {
@@ -77,6 +82,9 @@ erDiagram
         bool dealsContactDamage
         BaybayinCharacterSO assignedCharacter FK
         BaybayinCharacterSO postHurtCharacter FK
+        string displayName
+        string description
+        Sprite portraitSprite
     }
 
     WaveDefinition {
@@ -98,6 +106,7 @@ erDiagram
     BossConfigSO {
         string bossID PK
         string bossName
+        string description
         Sprite bossSprite
         float introDuration
         float outroDuration
@@ -166,6 +175,17 @@ erDiagram
     CharacterRegistrySO {
         string assetName PK
     }
+
+    AlmanacEnemyRegistrySO {
+        string assetName PK
+    }
+
+    AlmanacEnemyEntry {
+        bool IsBoss
+        string ResolveDisplayName
+        string ResolveDescription
+        Sprite ResolvePortrait
+    }
 ```
 
 **Reading the diagram:**
@@ -212,6 +232,7 @@ classDiagram
         +LoadLevelSelect()
         +LoadSandboxGameplay()
         +LoadGameOver() <<obsolete>>
+        +LoadAlmanac()
     }
     class AudioManager {
         +PlaySFX(AudioClip)
@@ -252,6 +273,7 @@ classDiagram
         +OnBossVulnerable
         +OnBossVulnerabilityWindowActive
         +OnBossDamaged
+        +OnCharacterUnlocked
     }
 
     class Enemy {
@@ -330,6 +352,34 @@ classDiagram
         +Recognize(points) RecognitionResult
     }
 
+    class CharacterUnlockProgress {
+        <<static>>
+        +HasUnlocked(BaybayinCharacterSO) bool
+        +TryMarkUnlocked(BaybayinCharacterSO, out string) bool
+        +ClearAllUnlocked()
+    }
+    class AlmanacController {
+        +ShowCharacters()
+        +ShowEnemies()
+        +HandleCharacterUnlocked(BaybayinCharacterSO)
+        +CountUnlockedCharacters(list) int
+        +CountDiscoveredEnemies(list) int
+        +FormatCounter(int, int) string
+    }
+    class AlmanacCell {
+        +Setup(Sprite, bool, bool, Action)
+        +ShouldShowBossBorder(bool, bool) bool
+        +ShouldBeInteractable(bool) bool
+    }
+    class AlmanacDetailScroll {
+        +Show(Sprite, string, string)
+        +Hide()
+    }
+    class AlmanacEnemyDiscovery {
+        <<static>>
+        +IsDiscovered(EnemyDataSO) bool
+    }
+
     Singleton <|-- GameManager
     Singleton <|-- SceneLoader
     Singleton <|-- AudioManager
@@ -380,6 +430,13 @@ classDiagram
     BossAudio ..> AudioManager : PlaySFX / FadeInBGM / FadeOutBGM
     BossAudio ..> BossAudioBankSO : reads
     BossController ..> BossConfigSO : uses
+
+    AlmanacController ..> CharacterUnlockProgress : reads
+    AlmanacController ..> AlmanacEnemyDiscovery : reads
+    AlmanacController ..> EventBus : subscribes OnCharacterUnlocked
+    AlmanacController --> AlmanacCell : creates
+    AlmanacController --> AlmanacDetailScroll : drives
+    AlmanacCell ..> EventBus : no subscription (UI only)
 ```
 
 **Notation:**
@@ -455,6 +512,19 @@ flowchart LR
         E4(["OnHeartsChanged"])
         E5(["OnGameOver"])
         E6(["OnBossDamaged / Defeated"])
+        E7(["OnCharacterUnlocked"])
+    end
+
+    subgraph Almanac["Almanac Scene"]
+        AC["AlmanacController"]
+        ACL["AlmanacCell (grid)"]
+        ADS["AlmanacDetailScroll (overlay)"]
+        CUP["CharacterUnlockProgress (static)"]
+        AED["AlmanacEnemyDiscovery (static seam)"]
+        AC --> ACL
+        AC --> ADS
+        AC ..> CUP
+        AC ..> AED
     end
 
     RM -- "raise" --> E1
@@ -481,6 +551,7 @@ flowchart LR
     GM --> DSU["DefeatScreenUI overlay"]
     BCtl --> E6
     E6 --> HUD2["Boss HUD"]
+    E7 --> AC
 ```
 
 **Reading the diagram:**
