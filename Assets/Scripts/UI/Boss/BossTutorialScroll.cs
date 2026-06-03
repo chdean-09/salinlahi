@@ -131,6 +131,26 @@ public class BossTutorialScroll : MonoBehaviour
         _art.color = Color.white;
     }
 
+    // Returns the first non-null frame so a page whose frames[0] is null
+    // (e.g. [null, validSprite]) still shows valid art on the first render.
+    private static bool TryGetFirstFrame(Sprite[] frames, out Sprite sprite, out int index)
+    {
+        if (frames != null)
+        {
+            for (int i = 0; i < frames.Length; i++)
+            {
+                if (frames[i] == null) continue;
+                sprite = frames[i];
+                index = i;
+                return true;
+            }
+        }
+
+        sprite = null;
+        index = 0;
+        return false;
+    }
+
     private void RenderCurrent()
     {
         if (_pages == null || _pages.Length == 0) return;
@@ -142,13 +162,13 @@ public class BossTutorialScroll : MonoBehaviour
 
         if (_art != null)
         {
-            bool hasArt = page.HasArt;
+            bool hasArt = TryGetFirstFrame(page.frames, out Sprite firstFrame, out int firstFrameIndex);
             _art.enabled = hasArt;
             if (hasArt)
             {
-                _art.sprite = page.frames[0];
+                _art.sprite = firstFrame;
                 // Start the combined frame-animation + effect coroutine.
-                _artEffectRoutine = StartCoroutine(RunArtEffects(page));
+                _artEffectRoutine = StartCoroutine(RunArtEffects(page, firstFrameIndex));
             }
         }
 
@@ -171,7 +191,7 @@ public class BossTutorialScroll : MonoBehaviour
     /// (panting bob + tint, collapsed squash) on the UI Image, using unscaled time
     /// so it runs even if the game is paused.
     /// </summary>
-    private IEnumerator RunArtEffects(BossTutorialPage page)
+    private IEnumerator RunArtEffects(BossTutorialPage page, int initialFrameIndex)
     {
         if (_art == null) yield break;
 
@@ -206,9 +226,16 @@ public class BossTutorialScroll : MonoBehaviour
 
         float frameDuration = animate ? 1f / fps : 0f;
         float frameTimer = 0f;
-        int frameIndex = 0;
+        int frameIndex = frames != null && frames.Length > 0
+            ? Mathf.Clamp(initialFrameIndex, 0, frames.Length - 1)
+            : 0;
         float effectTime = 0f;
-        float teleportTimer = 0f;
+        float teleportTimer = _teleportInterval;
+
+        // Defer all time-driven updates by one frame so the first rendered
+        // frame shows the static sprite/transform set above, never a mid-effect
+        // teleport jump or animation advance.
+        yield return null;
 
         while (true)
         {
