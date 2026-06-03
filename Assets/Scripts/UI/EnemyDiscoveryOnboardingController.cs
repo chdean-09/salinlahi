@@ -10,10 +10,13 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
     private const float DefaultRevealTimeoutSeconds = 4f;
     private const float DefaultSafeAreaViewportPadding = 0.02f;
     private const float FullyVisibleAlphaThreshold = 0.99f;
-    private const float ReadableBodyFontSize = 24f;
-    private const float DismissButtonFontSize = 24f;
-    private const float MinimumPanelWidth = 460f;
-    private const float MinimumPanelHeight = 220f;
+    private const float ReadableBodyFontSize = 42f;
+    private const float DismissButtonFontSize = 42f;
+    private const float MinimumPanelWidth = 840f;
+    private const float MinimumPanelHeight = 320f;
+    private const float PanelHorizontalPadding = 24f;
+    private const float PanelTopPadding = 18f;
+    private const float PanelButtonReserve = 110f;
 
     private static readonly Color MenuButtonTextColor = new(0.7019608f, 0.5019608f, 0.07450981f, 1f);
     private static readonly Color MenuButtonShadowColor = new(0.06f, 0.035f, 0.01f, 1f);
@@ -202,7 +205,23 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
 
         EnemyDiscoveryCopy copy = EnemyDiscoveryCopyProvider.Resolve(data);
         _bodyText.text = BuildFormattedCopy(copy);
+        ResizePanelToContent();
         StartTypewriter();
+    }
+
+    private void ResizePanelToContent()
+    {
+        if (_bodyText == null || _bodyText.rectTransform.parent is not RectTransform panelRect)
+            return;
+
+        float panelWidth = Mathf.Max(panelRect.sizeDelta.x, MinimumPanelWidth);
+        float textWidth = panelWidth - (2f * PanelHorizontalPadding);
+        float textHeight = _bodyText.GetPreferredValues(_bodyText.text, textWidth, 0f).y;
+        if (textHeight <= 0f)
+            return;
+
+        float desiredHeight = PanelTopPadding + textHeight + PanelButtonReserve;
+        panelRect.sizeDelta = new Vector2(panelWidth, Mathf.Max(desiredHeight, MinimumPanelHeight));
     }
 
     private void PositionFrameAndSpotlight()
@@ -442,10 +461,10 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
             _bodyText.raycastTarget = false;
 
             RectTransform textRect = _bodyText.rectTransform;
-            textRect.anchorMin = new Vector2(0f, 0.34f);
+            textRect.anchorMin = new Vector2(0f, 0f);
             textRect.anchorMax = Vector2.one;
-            textRect.offsetMin = new Vector2(24f, 10f);
-            textRect.offsetMax = new Vector2(-24f, -18f);
+            textRect.offsetMin = new Vector2(PanelHorizontalPadding, PanelButtonReserve);
+            textRect.offsetMax = new Vector2(-PanelHorizontalPadding, -PanelTopPadding);
 
             if (textRect.parent is RectTransform panelRect)
             {
@@ -466,7 +485,7 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
             buttonRect.anchorMax = new Vector2(0.5f, 0f);
             buttonRect.pivot = new Vector2(0.5f, 0f);
             buttonRect.anchoredPosition = new Vector2(0f, 16f);
-            buttonRect.sizeDelta = new Vector2(190f, 56f);
+            buttonRect.sizeDelta = new Vector2(260f, 76f);
         }
     }
 
@@ -538,7 +557,7 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
 
     private static string BuildFormattedCopy(EnemyDiscoveryCopy copy)
     {
-        return $"<size=28><b>{copy.Title}</b></size>\n<size=21>{copy.Description}</size>\n<size=22>Power: {copy.Power}</size>";
+        return $"<size=56><b>{copy.Title}</b></size>\n<size=42>{copy.Description}</size>\n<size=42>Power: {copy.Power}</size>";
     }
 
     private static int CountVisibleCharacters(string text)

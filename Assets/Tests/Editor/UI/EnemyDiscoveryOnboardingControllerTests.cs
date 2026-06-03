@@ -432,14 +432,14 @@ namespace Salinlahi.Tests.Editor.UI
             RectTransform textRect = text.rectTransform;
             RectTransform buttonRect = button.GetComponent<RectTransform>();
 
-            Assert.AreEqual(new Vector2(0f, 0.34f), textRect.anchorMin);
+            Assert.AreEqual(new Vector2(0f, 0f), textRect.anchorMin);
             Assert.AreEqual(Vector2.one, textRect.anchorMax);
-            Assert.AreEqual(new Vector2(24f, 10f), textRect.offsetMin);
+            Assert.AreEqual(new Vector2(24f, 110f), textRect.offsetMin);
             Assert.AreEqual(new Vector2(-24f, -18f), textRect.offsetMax);
-            Assert.AreEqual(24f, text.fontSize, 0.001f);
+            Assert.AreEqual(42f, text.fontSize, 0.001f);
             Assert.AreEqual(TextWrappingModes.Normal, text.textWrappingMode);
             Assert.AreEqual(TextOverflowModes.Truncate, text.overflowMode);
-            Assert.AreEqual(new Vector2(190f, 56f), buttonRect.sizeDelta);
+            Assert.AreEqual(new Vector2(260f, 76f), buttonRect.sizeDelta);
             Assert.AreEqual(new Vector2(0f, 16f), buttonRect.anchoredPosition);
             Assert.NotNull(controller);
         }
