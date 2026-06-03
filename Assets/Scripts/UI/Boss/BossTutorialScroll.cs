@@ -86,9 +86,8 @@ public class BossTutorialScroll : MonoBehaviour
         for (int i = 0; i < pages.Count; i++) _pages[i] = pages[i];
 
         _paging = new BossTutorialPaging(_pages.Length);
-        RenderCurrent();
-
         gameObject.SetActive(true);
+        RenderCurrent();
         if (_anim != null) StopCoroutine(_anim);
         _anim = StartCoroutine(Animate(0f, 1f, _startScale, 1f, deactivateAtEnd: false));
     }
