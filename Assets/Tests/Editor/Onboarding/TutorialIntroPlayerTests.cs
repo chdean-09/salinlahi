@@ -16,6 +16,25 @@ namespace Salinlahi.Tests.Editor.Onboarding
             => Assert.AreEqual(PlaybackMode.Gif, SelectMode(hasVideoClip: false, hasGifTexture: true, hasAnimationClip: false));
 
         [Test]
+        public void SelectMode_WhenOnlyGifFramesAssigned_ReturnsGif()
+        {
+            Texture2D texture = new(1, 1);
+            Sprite frame = Sprite.Create(texture, new Rect(0f, 0f, 1f, 1f), new Vector2(0.5f, 0.5f));
+
+            try
+            {
+                Assert.AreEqual(
+                    PlaybackMode.Gif,
+                    SelectMode(videoClip: null, gifTexture: null, gifFrames: new[] { frame }, animationClip: null));
+            }
+            finally
+            {
+                Object.DestroyImmediate(frame);
+                Object.DestroyImmediate(texture);
+            }
+        }
+
+        [Test]
         public void SelectMode_WhenOnlyAnimationClipAssigned_ReturnsAnimation()
             => Assert.AreEqual(PlaybackMode.Animation, SelectMode(hasVideoClip: false, hasGifTexture: false, hasAnimationClip: true));
 
