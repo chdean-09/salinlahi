@@ -19,7 +19,7 @@ MonoBehaviour:
     manuscripts during the Spanish era. He wants to erase the script and the memory
     of the people.
 
-    
+
 
     Power: Summons Spanish Era enemies.'
   bossEnemyData: {fileID: 11400000, guid: aa843150d07c87f439e39501b863853c, type: 2}
@@ -77,3 +77,4 @@ MonoBehaviour:
   introDuration: 1.5
   outroDuration: 0
   audioBank: {fileID: 11400000, guid: e1230ab6e2d4a074a912f176e29df4eb, type: 2}
+  tutorial: {fileID: 11400000, guid: 76ccbd223d3748a41a0bc222478f4351, type: 2}
