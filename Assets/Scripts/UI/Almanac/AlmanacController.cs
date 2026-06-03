@@ -35,13 +35,18 @@ public class AlmanacController : MonoBehaviour
 
     [Header("Nav")]
     [SerializeField] private Button _homeButton;
-    [Tooltip("BAYBAYIN tab.")]
-    [SerializeField] private Button _charactersTabButton;
-    [Tooltip("ENEMIES tab.")]
-    [SerializeField] private Button _enemiesTabButton;
+    [Tooltip("Single toggle button that switches between the two pages. Its icon names the page it switches TO.")]
+    [SerializeField] private Button _tabToggleButton;
+    [Tooltip("Image on the toggle button. Its sprite is swapped to the name of the page it switches TO.")]
+    [SerializeField] private Image _tabToggleIcon;
+    [Tooltip("Sprite shown on the toggle when it would switch to the Baybayin page (Baybayin.png).")]
+    [SerializeField] private Sprite _charactersTabSprite;
+    [Tooltip("Sprite shown on the toggle when it would switch to the Enemies page (Enemies.png).")]
+    [SerializeField] private Sprite _enemiesTabSprite;
 
     private bool _charactersBuilt;
     private bool _enemiesBuilt;
+    private bool _showingCharacters;
 
     private void OnEnable() => EventBus.OnCharacterUnlocked += HandleCharacterUnlocked;
     private void OnDisable() => EventBus.OnCharacterUnlocked -= HandleCharacterUnlocked;
@@ -49,8 +54,12 @@ public class AlmanacController : MonoBehaviour
     private void Start()
     {
         if (_homeButton != null) _homeButton.onClick.AddListener(OnHome);
-        if (_charactersTabButton != null) _charactersTabButton.onClick.AddListener(ShowCharacters);
-        if (_enemiesTabButton != null) _enemiesTabButton.onClick.AddListener(ShowEnemies);
+        if (_tabToggleButton != null) _tabToggleButton.onClick.AddListener(ToggleTab);
+        if (_detailScroll != null)
+        {
+            _detailScroll.OnShown += HideNav;
+            _detailScroll.OnHidden += ShowNav;
+        }
 
         ShowCharacters();
         DebugLogger.Log("AlmanacController: Initialized");
@@ -59,8 +68,22 @@ public class AlmanacController : MonoBehaviour
     private void OnDestroy()
     {
         if (_homeButton != null) _homeButton.onClick.RemoveListener(OnHome);
-        if (_charactersTabButton != null) _charactersTabButton.onClick.RemoveListener(ShowCharacters);
-        if (_enemiesTabButton != null) _enemiesTabButton.onClick.RemoveListener(ShowEnemies);
+        if (_tabToggleButton != null) _tabToggleButton.onClick.RemoveListener(ToggleTab);
+        if (_detailScroll != null)
+        {
+            _detailScroll.OnShown -= HideNav;
+            _detailScroll.OnHidden -= ShowNav;
+        }
+    }
+
+    // Hide the HOME and tab-toggle buttons while a detail scroll is open; restore them when it closes.
+    private void HideNav() => SetNavVisible(false);
+    private void ShowNav() => SetNavVisible(true);
+
+    private void SetNavVisible(bool visible)
+    {
+        if (_homeButton != null) _homeButton.gameObject.SetActive(visible);
+        if (_tabToggleButton != null) _tabToggleButton.gameObject.SetActive(visible);
     }
 
     public void ShowCharacters()
@@ -68,6 +91,8 @@ public class AlmanacController : MonoBehaviour
         BuildCharactersIfNeeded();
         if (_charactersPage != null) _charactersPage.SetActive(true);
         if (_enemiesPage != null) _enemiesPage.SetActive(false);
+        _showingCharacters = true;
+        RefreshTabToggle();
     }
 
     public void ShowEnemies()
@@ -75,6 +100,22 @@ public class AlmanacController : MonoBehaviour
         BuildEnemiesIfNeeded();
         if (_enemiesPage != null) _enemiesPage.SetActive(true);
         if (_charactersPage != null) _charactersPage.SetActive(false);
+        _showingCharacters = false;
+        RefreshTabToggle();
+    }
+
+    private void ToggleTab()
+    {
+        AudioManager.Instance?.PlayMenuButtonClick();
+        if (_showingCharacters) ShowEnemies();
+        else ShowCharacters();
+    }
+
+    // The toggle's icon names the page it switches TO: on Characters it shows the ENEMIES sprite, and vice versa.
+    private void RefreshTabToggle()
+    {
+        if (_tabToggleIcon != null)
+            _tabToggleIcon.sprite = _showingCharacters ? _enemiesTabSprite : _charactersTabSprite;
     }
 
     private void BuildCharactersIfNeeded()
@@ -91,10 +132,11 @@ public class AlmanacController : MonoBehaviour
             if (c == null) continue;
             BaybayinCharacterSO captured = c;
             bool revealed = CharacterUnlockProgress.HasUnlocked(captured);
+            Sprite glyph = captured.almanacSprite != null ? captured.almanacSprite : captured.displaySprite;
 
             AlmanacCell cell = Instantiate(_cellPrefab, _charactersGrid);
-            cell.Setup(captured.displaySprite, revealed, isBoss: false, () =>
-                _detailScroll?.Show(captured.displaySprite, $"\"{captured.characterID}\"", captured.description));
+            cell.Setup(glyph, revealed, isBoss: false, () =>
+                _detailScroll?.Show(glyph, $"\"{captured.characterID}\"", captured.description));
         }
 
         _charactersBuilt = true;
@@ -114,7 +156,10 @@ public class AlmanacController : MonoBehaviour
         {
             if (entry == null) continue;
             AlmanacEnemyEntry captured = entry;
-            bool revealed = AlmanacEnemyDiscovery.IsDiscovered(captured.enemyData);
+            // "currently" gate: enemies outside the Spanish era are placeholders for unfinished
+            // chapters, so they read as locked '?' cells (like a locked Baybayin character).
+            bool revealed = AlmanacEnemyDiscovery.IsDiscovered(captured.enemyData)
+                            && IsSpanishEra(captured.enemyData);
             Sprite portrait = captured.ResolvePortrait();
             string title = captured.ResolveDisplayName();
             string desc = captured.ResolveDescription();
@@ -138,7 +183,10 @@ public class AlmanacController : MonoBehaviour
     private void RefreshEnemiesCounter()
     {
         if (_enemiesCounter == null || _enemyRegistry == null) return;
-        int discovered = CountDiscoveredEnemies(_enemyRegistry.entries, AlmanacEnemyDiscovery.IsDiscovered);
+        // Mirror the reveal gate: a non-Spanish-era enemy shows as '?' and is not "Discovered" yet.
+        int discovered = CountDiscoveredEnemies(
+            _enemyRegistry.entries,
+            data => AlmanacEnemyDiscovery.IsDiscovered(data) && IsSpanishEra(data));
         _enemiesCounter.text = FormatCounter("Discovered", discovered, _enemyRegistry.entries.Count);
     }
 
@@ -190,4 +238,8 @@ public class AlmanacController : MonoBehaviour
     }
 
     public static string FormatCounter(string label, int revealed, int total) => $"{label} {revealed}/{total}";
+
+    // A non-Spanish-era enemy is treated as not-yet-revealed in the Almanac: it renders as a
+    // locked '?' (mirroring a locked Baybayin character) until that chapter's content ships.
+    public static bool IsSpanishEra(EnemyDataSO data) => data != null && data.era == Era.Spanish;
 }

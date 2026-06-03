@@ -14,7 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: HA
   syllable: ha
+  description: "HA lives through spoken stories passed by elders in villages. Juan
+    hears how memory survives even without written books.\n\r\n\u201CHA is carried
+    by the voice that refuses to fade.\u201D"
   displaySprite: {fileID: -6831661676589965225, guid: 8d666fe3219e3bb4b9f4d251d9a3947f, type: 3}
+  almanacSprite: {fileID: 7134149823137965258, guid: b52f26ae63a201f4f9b0fb7dbeafaf4a, type: 3}
   badgeSprite: {fileID: 1480245255709561063, guid: ebbaaeae6be7a804fa394d0d05ed68e3, type: 3}
   scrambledBadgeSprite: {fileID: 0}
   pronunciationClip: {fileID: 8300000, guid: 484cff6c993734c409c46a2bfa3de468, type: 3}

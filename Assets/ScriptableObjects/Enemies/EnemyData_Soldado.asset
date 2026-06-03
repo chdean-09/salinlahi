@@ -10,14 +10,24 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8bb4cd3e37d015f4f8d9baa6e4cc1ac5, type: 3}
-  m_Name: EnemyData_Boss_Superintendent
-  m_EditorClassIdentifier: Salinlahi.Runtime::EnemyDataSO
-  enemyID: superintendent
-  displayName: 
-  description: 
+  m_Name: EnemyData_Soldado
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyDataSO
+  enemyID: soldado
+  displayName: Soldado
+  description: 'During the Spanish occupation, many natives were forced into military
+    service under colonial command. They became symbols of obedience to foreign rule.
+
+    
+
+    Power:
+    Marches forward.'
   moveSpeed: 1.5
   maxHealth: 1
-  walkFrames: []
+  walkFrames:
+  - {fileID: -2143216508735518789, guid: b139e52f4aed3d04883ac3904a7d2724, type: 3}
+  - {fileID: -5628505256305780709, guid: b139e52f4aed3d04883ac3904a7d2724, type: 3}
+  - {fileID: -7729782106545461018, guid: b139e52f4aed3d04883ac3904a7d2724, type: 3}
+  - {fileID: -8457350457608720929, guid: b139e52f4aed3d04883ac3904a7d2724, type: 3}
   animatorController: {fileID: 0}
   portraitSprite: {fileID: 0}
   assignedCharacter: {fileID: 0}
@@ -45,7 +55,13 @@ MonoBehaviour:
   baseSpeedMultiplier: 1
   auraRadius: 0
   auraSpeedMultiplier: 1.3
-  deathFrames: []
+  deathFrames:
+  - {fileID: -1074557246447682435, guid: 028eb5121d2685b4a948ae711039121b, type: 3}
+  - {fileID: 1548315841026017609, guid: 028eb5121d2685b4a948ae711039121b, type: 3}
+  - {fileID: -4902526479422427647, guid: 028eb5121d2685b4a948ae711039121b, type: 3}
+  - {fileID: 4623920415941377412, guid: 028eb5121d2685b4a948ae711039121b, type: 3}
+  - {fileID: -4643599387954821807, guid: 028eb5121d2685b4a948ae711039121b, type: 3}
+  - {fileID: 317843196184462389, guid: 028eb5121d2685b4a948ae711039121b, type: 3}
   deathAnimationFps: 8
   useHurtFeedback: 1
   hurtPausesMovement: 1

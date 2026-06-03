@@ -13,6 +13,14 @@ MonoBehaviour:
   m_Name: EnemyData_Fraile
   m_EditorClassIdentifier: Salinlahi.Runtime::EnemyDataSO
   enemyID: fraile
+  displayName: Fraile
+  description: 'Frailes controlled education, religion, and writing, helping replace
+    Baybayin with the Latin alphabet. Their influence caused generations to forget
+    the old script.
+
+    
+
+    Power: Fades in and out.'
   moveSpeed: 1.7
   maxHealth: 1
   walkFrames:
@@ -21,6 +29,7 @@ MonoBehaviour:
   - {fileID: 2033604470429363863, guid: acb9af74d8766bf44b63d6cc473948ec, type: 3}
   - {fileID: -5104515681801800282, guid: acb9af74d8766bf44b63d6cc473948ec, type: 3}
   animatorController: {fileID: 0}
+  portraitSprite: {fileID: 0}
   assignedCharacter: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
   isDecoy: 0
   isPhaser: 1
@@ -37,6 +46,10 @@ MonoBehaviour:
   phaserFadeOutPulseAmplitude: 0.3
   dealsContactDamage: 1
   era: 0
+  overrideBadgeOffset: 0
+  glyphBadgeOffsetOverride: {x: 0, y: 0}
+  overrideBadgeScale: 0
+  glyphBadgeScaleOverride: 1
   zigzagAmplitude: 0
   zigzagFrequency: 0
   baseSpeedMultiplier: 1

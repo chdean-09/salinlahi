@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using TMPro;
 using UnityEngine;
@@ -25,6 +26,11 @@ public class AlmanacDetailScroll : MonoBehaviour
 
     private Coroutine _anim;
 
+    /// <summary>Raised when the detail scroll opens. The Almanac uses this to hide its nav buttons.</summary>
+    public event Action OnShown;
+    /// <summary>Raised when the detail scroll begins closing, so nav buttons can reappear.</summary>
+    public event Action OnHidden;
+
     private void Awake()
     {
         if (_closeButton != null) _closeButton.onClick.AddListener(Hide);
@@ -49,11 +55,13 @@ public class AlmanacDetailScroll : MonoBehaviour
         gameObject.SetActive(true);
         if (_anim != null) StopCoroutine(_anim);
         _anim = StartCoroutine(Animate(0f, 1f, _startScale, 1f, deactivateAtEnd: false));
+        OnShown?.Invoke();
     }
 
     public void Hide()
     {
         if (!gameObject.activeSelf) return;
+        OnHidden?.Invoke();
         AudioManager.Instance?.PlayMenuExitButtonClick();
         if (_anim != null) StopCoroutine(_anim);
         _anim = StartCoroutine(Animate(1f, 0f, 1f, _startScale, deactivateAtEnd: true));

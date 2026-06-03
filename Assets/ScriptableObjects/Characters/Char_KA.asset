@@ -14,7 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: KA
   syllable: ka
+  description: "KA is the final keeper of Baybayin knowledge during the colonial
+    era. Juan receives the last piece that completes the script.\n\r\n\u201CKA is
+    the choice to keep memory alive.\u201D"
   displaySprite: {fileID: -2353683099554400273, guid: 68b66762f83fcfc4eabf47ef3c60ab74, type: 3}
+  almanacSprite: {fileID: -3335155720216819904, guid: f6ea59257f41b724092e2fc5172eb8ac, type: 3}
   badgeSprite: {fileID: 3632636149465085345, guid: 02eb2696145ec0f4895294bf3b0e5552, type: 3}
   scrambledBadgeSprite: {fileID: 0}
   pronunciationClip: {fileID: 8300000, guid: 722c77ed9c66a084f9432b041b5edc4a, type: 3}

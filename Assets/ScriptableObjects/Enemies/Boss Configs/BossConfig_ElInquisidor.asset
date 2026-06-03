@@ -15,6 +15,13 @@ MonoBehaviour:
   bossName: El Inquisidor
   bossID: ELINQUISIDOR
   bossSprite: {fileID: 95172164111334305, guid: f6ede119ad3b6824b9652c0513057a7c, type: 3}
+  description: 'A corrupted high-ranking friar who ordered the burning of Baybayin
+    manuscripts during the Spanish era. He wants to erase the script and the memory
+    of the people.
+
+    
+
+    Power: Summons Spanish Era enemies.'
   bossEnemyData: {fileID: 11400000, guid: aa843150d07c87f439e39501b863853c, type: 2}
   phases:
   - summonPhaseDuration: 30

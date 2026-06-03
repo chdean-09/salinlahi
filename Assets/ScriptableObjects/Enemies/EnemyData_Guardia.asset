@@ -13,6 +13,14 @@ MonoBehaviour:
   m_Name: EnemyData_Guardia
   m_EditorClassIdentifier: Salinlahi.Runtime::EnemyDataSO
   enemyID: guardia
+  displayName: Guardia
+  description: 'The Guardia Civil enforced Spanish authority across towns and villages.
+    Their presence discouraged resistance and protected colonial rule.
+
+    
+
+    Power:
+    Moves faster.'
   moveSpeed: 2.25
   maxHealth: 1
   walkFrames:
@@ -21,10 +29,27 @@ MonoBehaviour:
   - {fileID: 4042630330847708697, guid: 8e1eb2eca7b184240b5ea1f599fc3149, type: 3}
   - {fileID: -260172027916605205, guid: 8e1eb2eca7b184240b5ea1f599fc3149, type: 3}
   animatorController: {fileID: 0}
+  portraitSprite: {fileID: 0}
   assignedCharacter: {fileID: 0}
   isDecoy: 0
+  isPhaser: 0
+  phaserInterval: 0.5
+  phaserInitialVisibleDelayMin: 0
+  phaserInitialVisibleDelayMax: 0
+  phaserVisibleHoldMin: 0
+  phaserVisibleHoldMax: 0
+  phaserInvisibleHoldMin: 0
+  phaserInvisibleHoldMax: 0
+  phaserFadeOutDuration: 0.3
+  phaserFadeInDuration: 0.2
+  phaserFadeOutPulseCount: 3
+  phaserFadeOutPulseAmplitude: 0.2
   dealsContactDamage: 1
   era: 0
+  overrideBadgeOffset: 0
+  glyphBadgeOffsetOverride: {x: 0, y: 0}
+  overrideBadgeScale: 0
+  glyphBadgeScaleOverride: 1
   zigzagAmplitude: 0
   zigzagFrequency: 0
   baseSpeedMultiplier: 1
@@ -47,7 +72,7 @@ MonoBehaviour:
   hurtShakeFrequency: 30
   hurtSwapsCharacter: 0
   postHurtCharacter: {fileID: 0}
-  hurtFrames:`r`n  - {fileID: 8783481094493475426, guid: a9db35f01cd66b4438a8169ebf94789d, type: 3}`r`n  - {fileID: 9180390179238202184, guid: a9db35f01cd66b4438a8169ebf94789d, type: 3}`r`n  - {fileID: -4445151505474273842, guid: a9db35f01cd66b4438a8169ebf94789d, type: 3}
+  hurtFrames: []
   hurtAnimationFps: 12
   chargeMultiplier: 2.5
   chargeTriggerYNormalized: 0.5

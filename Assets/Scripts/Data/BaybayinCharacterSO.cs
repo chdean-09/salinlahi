@@ -15,6 +15,9 @@ public class BaybayinCharacterSO : ScriptableObject
     [Header("Visuals")]
     public Sprite displaySprite; // The Baybayin glyph shown on the enemy
 
+    [Tooltip("Stylized glyph shown in the Almanac character grid and detail view (Art/UI/Almanac/[ID]-Almanac.png). If null, falls back to displaySprite.")]
+    public Sprite almanacSprite;
+
     [Tooltip("Framed Baybayin glyph displayed by EnemyGlyphBadge above each enemy during gameplay. Distinct from displaySprite, which is the bare glyph used by the Tracing Dojo.")]
     public Sprite badgeSprite;
 

@@ -14,7 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: SA
   syllable: sa
+  description: "SA marks the arrival of Spanish rule and new schools using the Latin
+    alphabet. Juan watches Baybayin slowly disappear from daily writing.\n\r\n\u201CSA
+    is the moment writing begins to shift.\u201D"
   displaySprite: {fileID: -6582686875119954690, guid: c8c94c8a0f22bb14da2303902b6392df, type: 3}
+  almanacSprite: {fileID: -3655509851135502575, guid: 1f5ad5257665b7042b5ccbae4c33acd5, type: 3}
   badgeSprite: {fileID: -1376931383015601363, guid: 9cfd94270482c3941baf99de008a269b, type: 3}
   scrambledBadgeSprite: {fileID: 0}
   pronunciationClip: {fileID: 8300000, guid: dac87cccb24e42246acbc0604c9d25bd, type: 3}

@@ -1,6 +1,6 @@
 # 03 — Core Systems
 **Project:** Salinlahi
-**Version:** 1.8
+**Version:** 1.9
 **Date:** 2026-06-03
 **Owner:** Jon Wayne Cabusbusan
 
@@ -258,6 +258,8 @@ Persists the set of unlocked `BaybayinCharacterSO` IDs in `PlayerPrefs` under th
 
 Scene orchestrator for the Almanac screen. Reads `CharacterRegistrySO` and `AlmanacEnemyRegistrySO`, builds two grid views (Characters tab and Enemies tab) into `GridLayoutGroup`-backed `ScrollRect`s, and manages tab switching.
 
+**Enemy reveal gate:** An enemy entry renders as a revealed cell only when it is **both** discovered (`AlmanacEnemyDiscovery.IsDiscovered`) **and** in the Spanish era (`IsSpanishEra`). Non-Spanish-era enemies are placeholders for chapters whose content has not shipped, so they fall through to the locked `?` rendering (non-interactable, no detail) — mirroring a locked Baybayin character. The "Discovered" counter applies the same gate, so a non-Spanish enemy counts toward the total but not toward the discovered numerator.
+
 **Public API:**
 
 | Member | Behavior |
@@ -266,8 +268,9 @@ Scene orchestrator for the Almanac screen. Reads `CharacterRegistrySO` and `Alma
 | `ShowEnemies()` | Activates the Enemies tab panel. |
 | `HandleCharacterUnlocked(BaybayinCharacterSO)` | EventBus subscriber for `OnCharacterUnlocked`; rebuilds the characters grid to reflect the new unlock. |
 | `CountUnlockedCharacters(IReadOnlyList<BaybayinCharacterSO>)` (static) | Returns the count of entries for which `CharacterUnlockProgress.HasUnlocked` is `true`. |
-| `CountDiscoveredEnemies(IReadOnlyList<AlmanacEnemyEntry>)` (static) | Returns the count of entries for which `AlmanacEnemyDiscovery.IsDiscovered` is `true`. |
-| `FormatCounter(int unlocked, int total)` (static) | Returns a `"x/y"` formatted string for the HUD counter labels. |
+| `CountDiscoveredEnemies(IReadOnlyList<AlmanacEnemyEntry>, Func<EnemyDataSO,bool>)` (static) | Returns the count of entries for which the supplied predicate is `true`. The controller passes `data => IsDiscovered(data) && IsSpanishEra(data)` so the counter matches the reveal gate. |
+| `IsSpanishEra(EnemyDataSO)` (static) | Returns `true` only for a non-null enemy whose `era == Era.Spanish`. The "currently" gate that hides unfinished-chapter enemies behind a `?`. |
+| `FormatCounter(string label, int revealed, int total)` (static) | Returns a `"label x/y"` formatted string for the HUD counter labels. |
 
 [EVIDENCE: Assets/Scripts/UI/Almanac/AlmanacController.cs]
 

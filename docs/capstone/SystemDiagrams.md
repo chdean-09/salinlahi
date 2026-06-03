@@ -65,6 +65,7 @@ erDiagram
         string characterID PK
         string syllable
         Sprite displaySprite
+        Sprite almanacSprite
         Sprite badgeSprite
         Sprite scrambledBadgeSprite
         AudioClip pronunciationClip
@@ -363,8 +364,9 @@ classDiagram
         +ShowEnemies()
         +HandleCharacterUnlocked(BaybayinCharacterSO)
         +CountUnlockedCharacters(list) int
-        +CountDiscoveredEnemies(list) int
-        +FormatCounter(int, int) string
+        +CountDiscoveredEnemies(list, predicate) int
+        +IsSpanishEra(EnemyDataSO) bool
+        +FormatCounter(string, int, int) string
     }
     class AlmanacCell {
         +Setup(Sprite, bool, bool, Action)

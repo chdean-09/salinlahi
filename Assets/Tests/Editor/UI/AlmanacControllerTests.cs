@@ -70,6 +70,57 @@ namespace Salinlahi.Tests.Editor.UI
         }
 
         [Test]
+        public void IsSpanishEra_TrueOnlyForSpanishEraNonNull()
+        {
+            EnemyDataSO spanish = ScriptableObject.CreateInstance<EnemyDataSO>();
+            spanish.era = Era.Spanish;
+            EnemyDataSO american = ScriptableObject.CreateInstance<EnemyDataSO>();
+            american.era = Era.American;
+            EnemyDataSO japanese = ScriptableObject.CreateInstance<EnemyDataSO>();
+            japanese.era = Era.Japanese;
+            try
+            {
+                Assert.IsTrue(AlmanacController.IsSpanishEra(spanish));
+                Assert.IsFalse(AlmanacController.IsSpanishEra(american),
+                    "non-Spanish-era enemies must read as a locked '?'");
+                Assert.IsFalse(AlmanacController.IsSpanishEra(japanese));
+                Assert.IsFalse(AlmanacController.IsSpanishEra(null));
+            }
+            finally
+            {
+                Object.DestroyImmediate(spanish);
+                Object.DestroyImmediate(american);
+                Object.DestroyImmediate(japanese);
+            }
+        }
+
+        [Test]
+        public void CountDiscoveredEnemies_ExcludesNonSpanishEra_WhenPredicateGatesOnEra()
+        {
+            EnemyDataSO spanish = ScriptableObject.CreateInstance<EnemyDataSO>();
+            spanish.era = Era.Spanish;
+            EnemyDataSO american = ScriptableObject.CreateInstance<EnemyDataSO>();
+            american.era = Era.American;
+            var entries = new List<AlmanacEnemyEntry>
+            {
+                new AlmanacEnemyEntry { enemyData = spanish },
+                new AlmanacEnemyEntry { enemyData = american },
+            };
+            try
+            {
+                // Both "discovered", but only the Spanish-era enemy is counted.
+                int count = AlmanacController.CountDiscoveredEnemies(
+                    entries, data => data != null && AlmanacController.IsSpanishEra(data));
+                Assert.AreEqual(1, count);
+            }
+            finally
+            {
+                Object.DestroyImmediate(spanish);
+                Object.DestroyImmediate(american);
+            }
+        }
+
+        [Test]
         public void CountHelpers_NullArgs_ReturnZero()
         {
             Assert.AreEqual(0, AlmanacController.CountUnlockedCharacters(null, c => true));
