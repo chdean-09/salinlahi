@@ -28,9 +28,9 @@ public class CutscenePlayer : MonoBehaviour
 
     [Header("Continue Prompt")]
     [SerializeField] private string _continuePromptMessage = "Tap anywhere to continue";
-    [SerializeField] private float _continuePromptTopPadding = 36f;
+    [SerializeField] private float _continuePromptTopPadding = 52f;
     [SerializeField] private float _continuePromptPulseSeconds = 1.35f;
-    [SerializeField] private float _continuePromptMinAlpha = 0.58f;
+    [SerializeField] private float _continuePromptMinAlpha = 0.72f;
     [SerializeField] private float _continuePromptMaxAlpha = 1f;
     [SerializeField] private float _continuePromptMinScale = 0.98f;
     [SerializeField] private float _continuePromptMaxScale = 1.04f;
@@ -248,25 +248,27 @@ public class CutscenePlayer : MonoBehaviour
         }
 
         RectTransform promptRect = _continuePromptText.rectTransform;
-        promptRect.anchorMin = new Vector2(0.08f, 1f);
-        promptRect.anchorMax = new Vector2(0.92f, 1f);
+        promptRect.anchorMin = new Vector2(0.04f, 1f);
+        promptRect.anchorMax = new Vector2(0.96f, 1f);
         promptRect.pivot = new Vector2(0.5f, 1f);
         promptRect.anchoredPosition = new Vector2(0f, -Mathf.Max(12f, _continuePromptTopPadding));
-        promptRect.sizeDelta = new Vector2(0f, 72f);
+        promptRect.sizeDelta = new Vector2(0f, 108f);
 
         _continuePromptText.text = _continuePromptMessage;
         _continuePromptText.alignment = TextAlignmentOptions.Center;
-        _continuePromptText.fontSize = 34f;
+        _continuePromptText.fontSize = 54f;
         _continuePromptText.enableAutoSizing = true;
-        _continuePromptText.fontSizeMin = 22f;
-        _continuePromptText.fontSizeMax = 34f;
-        _continuePromptText.color = new Color(1f, 1f, 1f, 0.92f);
+        _continuePromptText.fontSizeMin = 34f;
+        _continuePromptText.fontSizeMax = 54f;
+        _continuePromptText.fontStyle = FontStyles.Bold;
+        _continuePromptText.color = new Color(1f, 1f, 1f, 0.98f);
         _continuePromptText.raycastTarget = false;
         _continuePromptText.textWrappingMode = TextWrappingModes.NoWrap;
         if (_bodyFont != null)
             _continuePromptText.font = _bodyFont;
         if (_continuePromptText.fontMaterial != null)
-            ApplyCutsceneTextOutline(_continuePromptText, 0.35f, 0.15f);
+            ApplyCutsceneTextOutline(_continuePromptText, 0.42f, 0.15f);
+        ApplyContinuePromptGraphicEffects(_continuePromptText);
 
         if (_continuePromptCanvasGroup == null)
             _continuePromptCanvasGroup = _continuePromptText.GetComponent<CanvasGroup>();
@@ -336,11 +338,11 @@ public class CutscenePlayer : MonoBehaviour
 
             yield return TransitionIn(panel.image, transition, duration);
 
+            SetContinuePromptVisible(true);
             yield return TypewriterRoutine(panel.text ?? "", speed);
             _isTypewriting = false;
 
             _waitingForTap = true;
-            SetContinuePromptVisible(true);
             yield return new WaitUntil(() => _currentCutscene == null || !_waitingForTap);
             SetContinuePromptVisible(false);
 
@@ -700,5 +702,38 @@ public class CutscenePlayer : MonoBehaviour
         text.fontMaterial.SetFloat(Shader.PropertyToID("_OutlineWidth"), outlineWidth);
         text.fontMaterial.SetColor(Shader.PropertyToID("_OutlineColor"), Color.black);
         text.fontMaterial.SetFloat(Shader.PropertyToID("_FaceDilate"), faceDilate);
+    }
+
+    private static void ApplyContinuePromptGraphicEffects(TMP_Text text)
+    {
+        if (text == null)
+            return;
+
+        Outline outline = GetExactGraphicEffect<Outline>(text);
+        if (outline == null)
+            outline = text.gameObject.AddComponent<Outline>();
+        outline.effectColor = new Color(0f, 0f, 0f, 0.82f);
+        outline.effectDistance = new Vector2(3f, -3f);
+
+        Shadow shadow = GetExactGraphicEffect<Shadow>(text);
+        if (shadow == null)
+            shadow = text.gameObject.AddComponent<Shadow>();
+        shadow.effectColor = new Color(0f, 0f, 0f, 0.55f);
+        shadow.effectDistance = new Vector2(0f, -6f);
+    }
+
+    private static T GetExactGraphicEffect<T>(TMP_Text text) where T : Shadow
+    {
+        if (text == null)
+            return null;
+
+        Shadow[] effects = text.GetComponents<Shadow>();
+        for (int i = 0; i < effects.Length; i++)
+        {
+            if (effects[i] != null && effects[i].GetType() == typeof(T))
+                return effects[i] as T;
+        }
+
+        return null;
     }
 }

@@ -228,7 +228,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         [UnityTest]
-        public IEnumerator ContinuePrompt_AppearsOnlyWhileWaitingForTap()
+        public IEnumerator ContinuePrompt_AppearsWhileTypewritingAndWaitingForTap()
         {
             _cutscene.panels = new CutscenePanel[]
             {
@@ -243,7 +243,8 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             CanvasGroup promptGroup = GetPrivateField<CanvasGroup>(_player, "_continuePromptCanvasGroup");
             Assert.NotNull(prompt);
             Assert.AreEqual("Tap anywhere to continue", prompt.text);
-            Assert.IsFalse(prompt.gameObject.activeSelf, "Prompt should stay hidden while transition/typewriter is running.");
+            Assert.IsTrue(prompt.gameObject.activeSelf, "Prompt should show as soon as the panel can react to taps.");
+            Assert.Greater(promptGroup.alpha, 0.5f);
 
             float waited = 0f;
             while (waited < 1f && !GetPrivateField<bool>(_player, "_waitingForTap"))
@@ -294,6 +295,12 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Assert.AreEqual(new Vector2(0.5f, 1f), promptRect.pivot);
             Assert.AreEqual(0f, promptRect.anchoredPosition.x, 0.01f);
             Assert.Less(promptRect.anchoredPosition.y, 0f, "Prompt should sit below the safe-area top edge.");
+            Assert.GreaterOrEqual(promptRect.sizeDelta.y, 100f, "Prompt should reserve enough vertical room for readable type.");
+
+            TMP_Text promptText = GetPrivateField<TMP_Text>(_player, "_continuePromptText");
+            Assert.GreaterOrEqual(promptText.fontSizeMax, 50f, "Prompt should be large enough to read over cutscene art.");
+            Assert.GreaterOrEqual(promptText.fontSizeMin, 34f, "Prompt should not auto-size down into caption text.");
+            Assert.NotNull(promptText.GetComponent<Outline>(), "Prompt needs an outline for contrast over bright cutscene frames.");
         }
 
         [UnityTest]

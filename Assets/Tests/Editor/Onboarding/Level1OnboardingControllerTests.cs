@@ -174,6 +174,28 @@ namespace Salinlahi.Tests.Editor.Onboarding
         }
 
         [Test]
+        public void HeartLossDemo_RevealsInactiveHeartHudBeforeDemoDamage()
+        {
+            GameObject hudCanvas = new("HUDCanvas");
+            GameObject heartsPanel = new("HeartsPanel");
+
+            try
+            {
+                heartsPanel.transform.SetParent(hudCanvas.transform, false);
+                heartsPanel.AddComponent<HeartDisplay>();
+                heartsPanel.SetActive(false);
+
+                Assert.IsTrue(HeartLossDemoBeat.RevealHeartHudForDemo());
+                Assert.IsTrue(heartsPanel.activeInHierarchy,
+                    "The Level 1 heart-loss beat must reactivate HeartsPanel before raising the tutorial damage event.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(hudCanvas);
+            }
+        }
+
+        [Test]
         public void BuildContext_ForLevelTwo_PersistsCompletedBeatUnderLevelTwoKey()
         {
             OnboardingPersistence.Clear();

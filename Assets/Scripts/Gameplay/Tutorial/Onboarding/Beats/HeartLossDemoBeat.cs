@@ -68,6 +68,7 @@ public sealed class HeartLossDemoBeat : OnboardingBeat
         yield return SoloTeachBeat.WalkEnemyTo(controller, basePos, _descendDuration);
 
         controller.FreezeThreat();
+        RevealHeartHudForDemo();
 
         // The hit: empties a heart with shake/flash (DemoHeartSimulator → HeartDisplay /
         // BaseHitFeedbackController). No real HP is lost — tutorial-only events.
@@ -106,6 +107,45 @@ public sealed class HeartLossDemoBeat : OnboardingBeat
             ctx.GuideUI.Hide();
 
         if (ctx.Spotlight != null) ctx.Spotlight.Hide();
+    }
+
+    internal static bool RevealHeartHudForDemo()
+    {
+        HeartDisplay display = FindFirstObjectByType<HeartDisplay>(FindObjectsInactive.Include);
+        if (display == null)
+            return false;
+
+        Transform current = display.transform;
+        Transform root = current;
+        while (root.parent != null)
+            root = root.parent;
+
+        ActivateHierarchyPath(root, current);
+        return display.gameObject.activeInHierarchy;
+    }
+
+    private static bool ActivateHierarchyPath(Transform current, Transform target)
+    {
+        if (current == null)
+            return false;
+
+        if (current == target)
+        {
+            current.gameObject.SetActive(true);
+            return true;
+        }
+
+        for (int i = 0; i < current.childCount; i++)
+        {
+            Transform child = current.GetChild(i);
+            if (!ActivateHierarchyPath(child, target))
+                continue;
+
+            current.gameObject.SetActive(true);
+            return true;
+        }
+
+        return false;
     }
 
     // Brief slow-motion emphasis after the base hit. Uses unscaled real-time to time itself
