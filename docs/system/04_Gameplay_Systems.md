@@ -1,6 +1,6 @@
 # 04 — Gameplay Systems
 **Project:** Salinlahi
-**Version:** 2.2
+**Version:** 2.3
 **Date:** 2026-06-03
 
 **Owner:** Gameplay Developer (Jon Wayne Cabusbusan / Chad Andrada)
@@ -455,3 +455,67 @@ All gameplay rendering, input, and HUD anchoring are constrained to a fixed 9:16
 [EVIDENCE: Assets/Scripts/Gameplay/Environment/BaseZoneScaler.cs]
 [EVIDENCE: Assets/Scripts/Gameplay/Drawing/DrawingCanvas.cs]
 [EVIDENCE: Assets/Scripts/Gameplay/Rendering/RenderOrder.cs]
+
+---
+
+## 11. Boss Tutorial System (SALIN-123)
+
+### 11.1 Overview
+
+When a boss level begins, if `LevelConfigSO.bossConfig.tutorial != null`, a paged "boss tutorial" scroll opens automatically **after** any character-unlock reveals and **before** the boss encounter (before `WaveManager.StartLevel()`). The player reads the boss name + lore on page 1, then pages through mechanic explanations. The red X closes the scroll from any page and starts the encounter. Drawing input is suppressed while the scroll is open.
+
+Non-boss levels and boss levels without a `tutorial` reference are entirely unaffected — no scroll, no errors.
+
+### 11.2 Components
+
+| Script | Location | Role |
+|--------|----------|------|
+| `BossTutorialSO` | `Assets/Scripts/Data/BossTutorialSO.cs` | Content asset. Holds an ordered `List<BossTutorialPage>`. One asset per boss. |
+| `BossTutorialPage` | Same file | `[Serializable]` struct: `title`, `body`, `art` (Sprite, optional). |
+| `BossTutorialPaging` | `Assets/Scripts/UI/Boss/BossTutorialPaging.cs` | Pure struct (no Unity deps). Tracks `Index` over a fixed `Count`, exposes `CanGoLeft` / `CanGoRight`, clamps `Next()`/`Prev()`. Fully EditMode-testable. |
+| `BossTutorialScroll` | `Assets/Scripts/UI/Boss/BossTutorialScroll.cs` | MonoBehaviour overlay. Wires left/right arrow buttons and close button in `Awake`. `Show(pages)` activates + animates in; close button calls `Close()` (animates out, raises `OnClosed`). Mirrors `AlmanacDetailScroll`'s expand/fade animation using `Time.unscaledDeltaTime`. |
+| `BossTutorialController` | `Assets/Scripts/Gameplay/Boss/BossTutorialController.cs` | Scene MonoBehaviour. `Play(BossTutorialSO)` coroutine: shows the scroll, suppresses drawing input, waits for `OnClosed`, waits for close animation, restores drawing input. No-ops gracefully on null / empty / unwired. |
+
+### 11.3 Integration into `LevelFlowController`
+
+`LevelFlowController` owns a `[SerializeField] BossTutorialController _bossTutorialController` reference (resolved via `FindFirstObjectByType<BossTutorialController>` in `EnsureRuntimeReferences` if not wired in the Inspector).
+
+`PlayBossTutorialIfNeeded()` is called after `PlayRevealsIfAny()` and before the BGM / `WaveManager.StartLevel()` block:
+
+```csharp
+private IEnumerator PlayBossTutorialIfNeeded()
+{
+    if (_levelConfig == null
+        || _levelConfig.bossConfig == null
+        || _levelConfig.bossConfig.tutorial == null)
+        yield break;  // Not a boss level or no tutorial configured.
+
+    if (_bossTutorialController == null)
+    {
+        DebugLogger.LogWarning("...");  // Waves still start.
+        yield break;
+    }
+
+    yield return _bossTutorialController.Play(_levelConfig.bossConfig.tutorial);
+}
+```
+
+### 11.4 Scene Wiring (Gameplay.unity)
+
+1. Duplicate `CharacterUnlockRevealScroll` → rename `BossTutorialScroll` → swap `AlmanacDetailScroll` for `BossTutorialScroll`; wire `_art`, `_title`, `_body`, `_canvasGroup`, `_panel`, `_closeButton`; add `LeftArrow`/`RightArrow` buttons and `PageIndicator` text.
+2. Create empty GameObject `BossTutorialController` → add `BossTutorialController` component → wire `_scroll` → `BossTutorialScroll`.
+3. On `LevelFlowController`, wire `Boss Tutorial Controller` → the `BossTutorialController` object.
+4. On each `BossConfigSO`, set the `Tutorial` field to the matching `BossTutorialSO` asset.
+
+### 11.5 Drawing Input Suppression
+
+Same mechanism as `CharacterUnlockRevealController` (§9.4): `GameManager.SuppressDrawingInput(true/false)` wrapped in a `finally` block ensures suppression is always lifted even if the coroutine is interrupted.
+
+[EVIDENCE: Assets/Scripts/Data/BossTutorialSO.cs]
+[EVIDENCE: Assets/Scripts/UI/Boss/BossTutorialPaging.cs]
+[EVIDENCE: Assets/Scripts/UI/Boss/BossTutorialScroll.cs]
+[EVIDENCE: Assets/Scripts/Gameplay/Boss/BossTutorialController.cs]
+[EVIDENCE: Assets/Scripts/Gameplay/LevelFlowController.cs — PlayBossTutorialIfNeeded]
+[EVIDENCE: Assets/Tests/Editor/Boss/BossTutorialPagingTests.cs]
+[EVIDENCE: Assets/Tests/Editor/Boss/BossTutorialSOTests.cs]
+[EVIDENCE: Assets/Tests/Editor/Boss/BossTutorialControllerTests.cs]

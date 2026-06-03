@@ -1,6 +1,6 @@
 # 05 — Data Contracts and ScriptableObjects
 **Project:** Salinlahi
-**Version:** 2.2
+**Version:** 2.3
 **Date:** 2026-06-03
 **Owner:** Chad Andrada (Product Owner / Designer)
 
@@ -255,6 +255,7 @@ Defined at the bottom of `EnemyDataSO.cs`:
 | `introDuration` | `float` | Intro / Outro | YES | Seconds boss is invulnerable on entry. Default `2.0f`. |
 | `outroDuration` | `float` | Intro / Outro | YES | Seconds before `OnLevelComplete` after the last phase is cleared. Default `2.5f`. |
 | `audioBank` | `BossAudioBankSO` | Audio | NO | Per-boss audio bank. May be null — `BossAudio` no-ops cleanly if absent. |
+| `tutorial` | `BossTutorialSO` | Tutorial | NO | Optional upfront tutorial shown at level start before the encounter begins. `null` = no tutorial; `LevelFlowController` gates on this field. |
 
 **Validation Rules:**
 - `phases.Count ≥ 1` (zero phases → `BossController.StartBoss` aborts with a logged error).
@@ -451,6 +452,48 @@ One row in the Almanac enemy registry. Represents either a regular enemy or a bo
 | `ResolvePortrait()` | `Sprite` | Returns `bossConfig.bossSprite` for bosses; otherwise `enemyData.portraitSprite`. Falls back to `enemyData.walkFrames[0]` when both portrait fields are null. |
 
 [EVIDENCE: Assets/Scripts/Data/AlmanacEnemyRegistrySO.cs]
+
+---
+
+### 2.14 `BossTutorialSO` + `BossTutorialPage`
+
+**Menu path:** `Salinlahi/Boss Tutorial`
+**File:** `Assets/Scripts/Data/BossTutorialSO.cs`
+**Asset folder:** `Assets/ScriptableObjects/Enemies/Boss Configs/Boss Tutorials/` (recommended sibling folder)
+
+Holds an ordered list of `BossTutorialPage` structs displayed to the player before a boss encounter begins. `LevelFlowController` gates on `BossConfigSO.tutorial != null`; pages are shown in `BossTutorialScroll` and closeable at any time via the red X.
+
+#### `BossTutorialSO` fields
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `pages` | `List<BossTutorialPage>` | NO | Ordered pages. Empty list → `HasPages` is `false` → tutorial is skipped. Page 0 is conventionally the boss name + lore; subsequent pages cover mechanics. |
+
+**Computed properties:**
+
+| Property | Type | Behavior |
+|----------|------|----------|
+| `PageCount` | `int` | `pages?.Count ?? 0` |
+| `HasPages` | `bool` | `PageCount > 0` |
+
+#### `BossTutorialPage` struct fields (serializable)
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `title` | `string` | YES | Page heading shown in the scroll title label. Page 0 is the boss name; later pages are mechanic names (e.g. `"Summoning"`, `"Vulnerability"`). |
+| `body` | `string` | YES | Lore (page 0) or mechanic explanation text. `[TextArea(2,6)]` in the Inspector. Empty hides the body GameObject. |
+| `art` | `Sprite` | NO | Optional boss-state art for this page. `null` hides the art `Image` frame. Use boss state sprites or dedicated illustrations. |
+
+**Design guidance:**
+- A `BossTutorialSO` asset is shared across all plays of the same boss — page wording is not personalized.
+- Leave `art` null on any page that does not benefit from a visual; the art frame hides itself.
+- Add/remove pages freely. The paging math (`BossTutorialPaging`) and arrow disable logic handle any count ≥ 1 automatically.
+- If a future requirement adds "show once," add a `LevelTutorialProgress`-style PlayerPrefs gate in `LevelFlowController.PlayBossTutorialIfNeeded` — explicitly out of scope here (every-entry by design).
+
+[EVIDENCE: Assets/Scripts/Data/BossTutorialSO.cs]
+[EVIDENCE: Assets/Scripts/UI/Boss/BossTutorialPaging.cs]
+[EVIDENCE: Assets/Scripts/UI/Boss/BossTutorialScroll.cs]
+[EVIDENCE: Assets/Scripts/Gameplay/Boss/BossTutorialController.cs]
 
 ---
 
