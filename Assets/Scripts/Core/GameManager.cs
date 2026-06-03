@@ -14,8 +14,15 @@ public class GameManager : Singleton<GameManager>
     public BossController CurrentBoss { get; private set; }
     internal void SetCurrentBoss(BossController boss) => CurrentBoss = boss;
 
+    // When true, drawing input is suppressed even while Playing/Practicing (e.g. a modal
+    // level-start "New Character Unlocked!" reveal is open). General-purpose, not tutorial-scoped.
+    private bool _drawingSuppressed;
+
     public bool AcceptsDrawingInput =>
-        CurrentState == GameState.Playing || CurrentState == GameState.Practicing;
+        (CurrentState == GameState.Playing || CurrentState == GameState.Practicing) && !_drawingSuppressed;
+
+    /// <summary>Suppress/allow drawing input regardless of game state. Callers must always release it.</summary>
+    public void SuppressDrawingInput(bool suppressed) => _drawingSuppressed = suppressed;
 
 private bool _hasPausedRunSnapshot;
     private int _pausedRunLevelId = -1;
@@ -126,6 +133,8 @@ private bool _hasPausedRunSnapshot;
 
     private void SetState(GameState newState)
     {
+        if (newState == GameState.GameOver || newState == GameState.LevelComplete)
+            _drawingSuppressed = false;
         CurrentState = newState;
         DebugLogger.Log($"GameState -> {newState}");
     }

@@ -59,7 +59,7 @@ namespace Salinlahi.Tests.Editor.UI
             };
             try
             {
-                int count = AlmanacController.CountDiscoveredEnemies(entries, e => e == seen);
+                int count = AlmanacController.CountDiscoveredEnemies(entries, entry => entry.enemyData == seen);
                 Assert.AreEqual(1, count);
             }
             finally
@@ -110,7 +110,7 @@ namespace Salinlahi.Tests.Editor.UI
             {
                 // Both "discovered", but only the Spanish-era enemy is counted.
                 int count = AlmanacController.CountDiscoveredEnemies(
-                    entries, data => data != null && AlmanacController.IsSpanishEra(data));
+                    entries, entry => entry.enemyData != null && AlmanacController.IsSpanishEra(entry.enemyData));
                 Assert.AreEqual(1, count);
             }
             finally
@@ -124,7 +124,7 @@ namespace Salinlahi.Tests.Editor.UI
         public void CountHelpers_NullArgs_ReturnZero()
         {
             Assert.AreEqual(0, AlmanacController.CountUnlockedCharacters(null, c => true));
-            Assert.AreEqual(0, AlmanacController.CountDiscoveredEnemies(null, e => true));
+            Assert.AreEqual(0, AlmanacController.CountDiscoveredEnemies(null, entry => true));
         }
 
         [Test]

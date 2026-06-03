@@ -8,4 +8,7 @@ public static class AlmanacEnemyDiscovery
     {
         return EnemyDiscoveryProgress.HasDiscovered(data);
     }
+
+    public static bool IsBossDiscovered(BossConfigSO config) =>
+        BossDiscoveryProgress.HasDiscovered(config);
 }

@@ -356,6 +356,7 @@ public class ProgressManager : Singleton<ProgressManager>
         PlayerPrefs.DeleteKey(LegacyLevel2AdvancedFocusV2BeatIndexKey);
         CharacterUnlockProgress.ClearAllUnlocked();
         EnemyDiscoveryProgress.ClearAllDiscovered();
+        BossDiscoveryProgress.ClearAllDiscovered();
 
         // Reset tracking
         _lastProcessedLevelId = -1;

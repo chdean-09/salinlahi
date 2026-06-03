@@ -1,6 +1,6 @@
 # 04 — Gameplay Systems
 **Project:** Salinlahi
-**Version:** 2.1
+**Version:** 2.4
 **Date:** 2026-06-03
 
 **Owner:** Gameplay Developer (Jon Wayne Cabusbusan / Chad Andrada)
@@ -385,7 +385,61 @@ Boss HP equals `BossConfigSO.phases.Count`. There is **no separate `maxHealth`**
 
 ---
 
-## 9. Aspect-Locked Play Column
+## 9. Level Start — Character Unlock Reveal
+
+### 9.1 Overview
+
+When a level begins, any Baybayin characters that are **newly introduced by that level** (i.e., listed in `LevelConfigSO.allowedCharacters` but not yet persisted in `CharacterUnlockProgress`) are revealed to the player one at a time through an animated scroll overlay before waves start. This ensures every character a player may face in combat has been explicitly shown to them.
+
+On replay the entire reveal is skipped: `BuildRevealQueue` filters out already-unlocked characters, producing an empty list, so `Play` is a no-op.
+
+### 9.2 `CharacterUnlockRevealController` (MonoBehaviour)
+
+**Location:** `Assets/Scripts/Gameplay/CharacterUnlockRevealController.cs`
+
+Scene MonoBehaviour placed in the Gameplay scene. Orchestrates the reveal sequence.
+
+| Member | Description |
+|--------|-------------|
+| `[SerializeField] AlmanacDetailScroll _scroll` | The reused `AlmanacDetailScroll` overlay from the Almanac scene; repurposed here to show the character card. |
+| `static List<BaybayinCharacterSO> BuildRevealQueue(IReadOnlyList<BaybayinCharacterSO> allowed, Func<BaybayinCharacterSO, bool> isUnlocked)` | Pure static. Filters `allowed` to characters that are non-null and not yet unlocked (according to `isUnlocked`). Null arguments return an empty list. |
+| `IEnumerator Play(IReadOnlyList<BaybayinCharacterSO> toReveal)` | No-op if `_scroll` is null or `toReveal` is empty. Calls `GameManager.Instance.SuppressDrawingInput(true)` at start (finally-guarded). For each character: shows the card via `_scroll.Show(glyph, characterID, description)`, waits for the player to press ✕ (detected via `OnHidden` lambda), calls `CharacterUnlockProgress.TryMarkUnlocked` + `EventBus.RaiseCharacterUnlocked`, waits for the close animation to finish, then proceeds to the next. Calls `SuppressDrawingInput(false)` in `finally`. |
+
+[EVIDENCE: Assets/Scripts/Gameplay/CharacterUnlockRevealController.cs]
+
+### 9.3 Integration into `LevelFlowController`
+
+`LevelFlowController` owns a `[SerializeField] CharacterUnlockRevealController _revealController` reference (resolved via `FindFirstObjectByType` in `EnsureRuntimeReferences` if not wired in the Inspector).
+
+A `private enum RevealTiming { BeforeTutorial, AfterTutorial }` field (Inspector-configurable, default `AfterTutorial`) controls when reveals fire relative to the level tutorial:
+
+```
+RunLevelFlow():
+  intro dialogue
+  GameManager.StartGame()
+  ├─ RevealTiming.BeforeTutorial → PlayRevealsIfAny()
+  PlayLevelTutorialIfNeeded()
+  ├─ RevealTiming.AfterTutorial  → PlayRevealsIfAny()   ← default
+  AudioManager plays BGM
+  WaveManager.StartLevel()
+```
+
+`PlayRevealsIfAny()` is a no-op if `_levelConfig == null` or `_revealController == null`. It calls `BuildRevealQueue(_levelConfig.allowedCharacters, CharacterUnlockProgress.HasUnlocked)` and yields `_revealController.Play(queue)` only when the queue is non-empty.
+
+For non-tutorial levels the tutorial step is itself a no-op, so reveals fire at level start before waves for both timing values.
+
+[EVIDENCE: Assets/Scripts/Gameplay/LevelFlowController.cs]
+
+### 9.4 Drawing Input Suppression
+
+While a reveal scroll is open, `GameManager.SuppressDrawingInput(true)` is called, which makes `AcceptsDrawingInput` return `false` even when `GameState` is `Playing`. This prevents `StrokeCapture` from accepting drawing input during the overlay. `SuppressDrawingInput(false)` is called in a `finally` block so suppression is always lifted, even if the coroutine is interrupted. As an additional safety measure, `GameManager.SetState` resets `_drawingSuppressed = false` whenever state transitions to `GameOver` or `LevelComplete`, preventing a permanently locked input state if the level ends while a reveal is in progress.
+
+[EVIDENCE: Assets/Scripts/Core/GameManager.cs — SuppressDrawingInput, AcceptsDrawingInput]
+[EVIDENCE: Assets/Scripts/Gameplay/CharacterUnlockRevealController.cs — Play() finally block]
+
+---
+
+## 10. Aspect-Locked Play Column
 
 All gameplay rendering, input, and HUD anchoring are constrained to a fixed 9:16 play column so the game behaves identically on phone and tablet aspect ratios.
 
@@ -401,3 +455,69 @@ All gameplay rendering, input, and HUD anchoring are constrained to a fixed 9:16
 [EVIDENCE: Assets/Scripts/Gameplay/Environment/BaseZoneScaler.cs]
 [EVIDENCE: Assets/Scripts/Gameplay/Drawing/DrawingCanvas.cs]
 [EVIDENCE: Assets/Scripts/Gameplay/Rendering/RenderOrder.cs]
+
+---
+
+## 11. Boss Tutorial System (SALIN-123)
+
+### 11.1 Overview
+
+When a boss level begins, if `LevelConfigSO.bossConfig.tutorial != null`, a paged "boss tutorial" scroll opens automatically **after** any character-unlock reveals and **before** the boss encounter (before `WaveManager.StartLevel()`). The player reads the boss name + lore on page 1, then pages through mechanic explanations. The red X closes the scroll from any page and starts the encounter. Drawing input is suppressed while the scroll is open.
+
+Non-boss levels and boss levels without a `tutorial` reference are entirely unaffected — no scroll, no errors.
+
+### 11.2 Components
+
+| Script | Location | Role |
+|--------|----------|------|
+| `BossTutorialSO` | `Assets/Scripts/Data/BossTutorialSO.cs` | Content asset. Holds an ordered `List<BossTutorialPage>`. One asset per boss. |
+| `BossTutorialPage` | Same file | `[Serializable]` struct: `title`, `body`, `frames` (`Sprite[]`), `animationFps`, and `effect` (`BossTutorialArtEffect`). Empty/null frames hide art; single-frame pages are static; multi-frame pages animate. |
+| `BossTutorialPaging` | `Assets/Scripts/UI/Boss/BossTutorialPaging.cs` | Pure struct (no Unity deps). Tracks `Index` over a fixed `Count`, exposes `CanGoLeft` / `CanGoRight`, clamps `Next()`/`Prev()`. Fully EditMode-testable. |
+| `BossTutorialScroll` | `Assets/Scripts/UI/Boss/BossTutorialScroll.cs` | MonoBehaviour overlay. Wires left/right arrow buttons and close button in `Awake`. `Show(pages)` activates + animates in; close button calls `Close()` (animates out, raises `OnClosed`). Mirrors `AlmanacDetailScroll`'s expand/fade animation using `Time.unscaledDeltaTime`. |
+| `BossTutorialController` | `Assets/Scripts/Gameplay/Boss/BossTutorialController.cs` | Scene MonoBehaviour. `Play(BossTutorialSO)` coroutine: shows the scroll, suppresses drawing input, waits for `OnClosed`, waits for close animation, restores drawing input. No-ops gracefully on null / empty / unwired. |
+
+`BossTutorialArtEffect.Collapsed` is for boss-only sprites. If a page uses a composite UI preview image, keep `effect` as `None` so the glyph scroll/counter portion of the preview is not squashed or tinted.
+
+### 11.3 Integration into `LevelFlowController`
+
+`LevelFlowController` owns a `[SerializeField] BossTutorialController _bossTutorialController` reference (resolved via `FindFirstObjectByType<BossTutorialController>` in `EnsureRuntimeReferences` if not wired in the Inspector).
+
+`PlayBossTutorialIfNeeded()` is called after `PlayRevealsIfAny()` and before the BGM / `WaveManager.StartLevel()` block:
+
+```csharp
+private IEnumerator PlayBossTutorialIfNeeded()
+{
+    if (_levelConfig == null
+        || _levelConfig.bossConfig == null
+        || _levelConfig.bossConfig.tutorial == null)
+        yield break;  // Not a boss level or no tutorial configured.
+
+    if (_bossTutorialController == null)
+    {
+        DebugLogger.LogWarning("...");  // Waves still start.
+        yield break;
+    }
+
+    yield return _bossTutorialController.Play(_levelConfig.bossConfig.tutorial);
+}
+```
+
+### 11.4 Scene Wiring (Gameplay.unity)
+
+1. Duplicate `CharacterUnlockRevealScroll` → rename `BossTutorialScroll` → swap `AlmanacDetailScroll` for `BossTutorialScroll`; wire `_art`, `_title`, `_body`, `_canvasGroup`, `_panel`, `_closeButton`; add `LeftArrow`/`RightArrow` buttons and `PageIndicator` text.
+2. Create empty GameObject `BossTutorialController` → add `BossTutorialController` component → wire `_scroll` → `BossTutorialScroll`.
+3. On `LevelFlowController`, wire `Boss Tutorial Controller` → the `BossTutorialController` object.
+4. On each `BossConfigSO`, set the `Tutorial` field to the matching `BossTutorialSO` asset.
+
+### 11.5 Drawing Input Suppression
+
+Same mechanism as `CharacterUnlockRevealController` (§9.4): `GameManager.SuppressDrawingInput(true/false)` wrapped in a `finally` block ensures suppression is always lifted even if the coroutine is interrupted.
+
+[EVIDENCE: Assets/Scripts/Data/BossTutorialSO.cs]
+[EVIDENCE: Assets/Scripts/UI/Boss/BossTutorialPaging.cs]
+[EVIDENCE: Assets/Scripts/UI/Boss/BossTutorialScroll.cs]
+[EVIDENCE: Assets/Scripts/Gameplay/Boss/BossTutorialController.cs]
+[EVIDENCE: Assets/Scripts/Gameplay/LevelFlowController.cs — PlayBossTutorialIfNeeded]
+[EVIDENCE: Assets/Tests/Editor/Boss/BossTutorialPagingTests.cs]
+[EVIDENCE: Assets/Tests/Editor/Boss/BossTutorialSOTests.cs]
+[EVIDENCE: Assets/Tests/Editor/Boss/BossTutorialControllerTests.cs]

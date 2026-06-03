@@ -339,6 +339,18 @@ Two counters are displayed at the top of each tab:
 - **BAYBAYIN tab:** "Learned x/y" — x unlocked characters out of y total.
 - **ENEMIES tab:** "Discovered x/y" — x encountered enemy types out of y total.
 
+### "New Character Unlocked!" Reveal (SALIN-120)
+
+At the start of each level, any Baybayin characters newly introduced by that level are revealed to the player one at a time before waves begin. Each reveal shows:
+
+- The Baybayin glyph (portrait sprite)
+- The character's name (syllable / `characterID`)
+- A short lore or educational description
+
+The player dismisses each card by pressing ✕. Once dismissed, the character is registered in the Almanac and will appear in the Characters tab on the next visit. Drawing input is locked while any reveal card is open so enemies cannot spawn and be missed.
+
+On replay, no reveal cards appear — characters already registered are filtered out, so the level starts immediately.
+
 ### Persistence
 
 - Character unlock progress is saved in `PlayerPrefs` under key `salinlahi.almanac.character_ids`. It persists across sessions and survives scene transitions.
@@ -431,5 +443,6 @@ Both versions are distributed as separate app store listings built from the same
 | --- | --- |
 | v1.0 (March 2026) | Initial GDD. Covers full game vision including MVP scope and post-launch features. Chapter structure finalized at 3 chapters, 15 levels. Boss encounters at Levels 5, 10, 15. Endless Mode confirmed as Must Ship. Lite/Full business model confirmed. |
 | v1.1 (June 2026) | Added §5.4 Almanac. Documents the Baybayin and Enemies encyclopaedia feature (SALIN-118): Main Menu entry point, two tabs, cell states, detail scroll overlay, progress counters, and PlayerPrefs persistence model. Updated §5.1 and §5.3 to include ALMANAC button in Main Menu flow and menus table. |
+| v1.2 (June 2026) | Added "New Character Unlocked!" reveal subsection in §5.4 (SALIN-120). Documents level-start character reveal cards: per-character scroll overlay, ✕ dismissal, Almanac registration, and replay behaviour. |
 
 *This document is a living reference. Update it as design decisions change. Track every change in the changelog above.*
