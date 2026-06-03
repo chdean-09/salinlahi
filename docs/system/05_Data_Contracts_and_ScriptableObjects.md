@@ -482,11 +482,22 @@ Holds an ordered list of `BossTutorialPage` structs displayed to the player befo
 |-------|------|----------|-------|
 | `title` | `string` | YES | Page heading shown in the scroll title label. Page 0 is the boss name; later pages are mechanic names (e.g. `"Summoning"`, `"Vulnerability"`). |
 | `body` | `string` | YES | Lore (page 0) or mechanic explanation text. `[TextArea(2,6)]` in the Inspector. Empty hides the body GameObject. |
-| `art` | `Sprite` | NO | Optional boss-state art for this page. `null` hides the art `Image` frame. Use boss state sprites or dedicated illustrations. |
+| `frames` | `Sprite[]` | NO | Sprite frames for the page art. Single frame = static; multiple frames = animated at `animationFps`. Empty/null hides the art `Image`. Use the boss's `walkFrames` from `EnemyDataSO` directly — no extra assets needed. |
+| `animationFps` | `float` | NO | Frames per second for the art animation. `0` or negative = static (shows `frames[0]` only). Typical value: `8` (matching the boss’s walk animation). |
+| `effect` | `BossTutorialArtEffect` | NO | Visual effect applied to the art, mimicking actual boss battle state visuals. Default `None`. |
+
+**`BossTutorialArtEffect` enum:**
+
+| Value | Visual | Matches |
+|-------|--------|---------|
+| `None` | No special effect — static or frame-animated art only. | Normal boss walk/idle. |
+| `Panting` | Sinusoidal Y-bob (asymmetric, down-stroke 30% slower) + red tint lerp. | `BossStateVisuals.PantLoop` (WindingDown / exhausted state). |
+| `Collapsed` | Y-scale squash to 85% + downward offset + half-amplitude bob + red tint. | `BossStateVisuals.PlayCollapse` + half-amplitude panting (Vulnerable state). |
 
 **Design guidance:**
 - A `BossTutorialSO` asset is shared across all plays of the same boss — page wording is not personalized.
-- Leave `art` null on any page that does not benefit from a visual; the art frame hides itself.
+- For art, use the boss’s existing `walkFrames` from `EnemyDataSO` — no new art assets are required. The `Panting` and `Collapsed` effects mimic the runtime boss visuals.
+- Leave `frames` empty on any page that does not benefit from a visual; the art frame hides itself.
 - Add/remove pages freely. The paging math (`BossTutorialPaging`) and arrow disable logic handle any count ≥ 1 automatically.
 - If a future requirement adds "show once," add a `LevelTutorialProgress`-style PlayerPrefs gate in `LevelFlowController.PlayBossTutorialIfNeeded` — explicitly out of scope here (every-entry by design).
 
