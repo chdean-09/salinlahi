@@ -6,6 +6,11 @@ using UnityEngine.UI;
 
 public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
 {
+    private const float DefaultRevealViewportYFromBottom = 0.72f;
+    private const float DefaultRevealTimeoutSeconds = 4f;
+    private const float DefaultSafeAreaViewportPadding = 0.02f;
+    private const float FullyVisibleAlphaThreshold = 0.99f;
+
     [Header("UI References")]
     [SerializeField] private CanvasGroup _canvasGroup;
     [SerializeField] private RectTransform _targetFrame;
@@ -23,9 +28,9 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
     [SerializeField] private Vector2 _fallbackFrameSize = new Vector2(140f, 140f);
 
     [Header("Reveal Timing")]
-    [SerializeField, Range(0.05f, 0.95f)] private float _revealViewportYFromBottom = 0.72f;
-    [SerializeField] private float _revealTimeoutSeconds = 4f;
-    [SerializeField, Range(0f, 0.2f)] private float _safeAreaViewportPadding = 0.02f;
+    [SerializeField, Range(0.05f, 0.95f)] private float _revealViewportYFromBottom = DefaultRevealViewportYFromBottom;
+    [SerializeField] private float _revealTimeoutSeconds = DefaultRevealTimeoutSeconds;
+    [SerializeField, Range(0f, 0.2f)] private float _safeAreaViewportPadding = DefaultSafeAreaViewportPadding;
 
     [Header("Spotlight")]
     [SerializeField] private SpotlightOverlayGraphic _spotlightOverlay;
@@ -54,6 +59,8 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
 
     private void Awake()
     {
+        NormalizeRuntimeConfiguration();
+
         if (_canvasGroup == null)
             _canvasGroup = GetComponent<CanvasGroup>();
 
@@ -63,6 +70,11 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
         EnsureSpotlightOverlay();
         ConfigureTargetFrame();
         HideImmediate();
+    }
+
+    private void OnValidate()
+    {
+        NormalizeRuntimeConfiguration();
     }
 
     private void OnEnable()
@@ -124,8 +136,12 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
 
             Enemy enemy = pending.Enemy;
             EnemyDataSO data = pending.Data;
-            if (!IsPendingDiscoveryValid(data, enemy) || !IsEnemyPastRevealThreshold(enemy))
+            if (!IsPendingDiscoveryValid(data, enemy)
+                || !IsEnemyPastRevealThreshold(enemy)
+                || !IsEnemyVisibleForDiscovery(enemy))
+            {
                 continue;
+            }
 
             _targetEnemy = enemy;
             _targetData = data;
@@ -217,10 +233,11 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
             if (!IsPendingDiscoveryValid(pending.Data, pending.Enemy))
                 yield break;
 
-            if (IsEnemyPastRevealThreshold(pending.Enemy))
+            bool isPastRevealThreshold = IsEnemyPastRevealThreshold(pending.Enemy);
+            if (isPastRevealThreshold && IsEnemyVisibleForDiscovery(pending.Enemy))
                 yield break;
 
-            if (_revealTimeoutSeconds > 0f && Time.unscaledTime - startTime >= _revealTimeoutSeconds)
+            if (!isPastRevealThreshold && _revealTimeoutSeconds > 0f && Time.unscaledTime - startTime >= _revealTimeoutSeconds)
                 yield break;
 
             yield return null;
@@ -234,6 +251,47 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
             && data != null
             && enemy.gameObject.activeInHierarchy
             && enemy.Data == data;
+    }
+
+    private static bool IsEnemyVisibleForDiscovery(Enemy enemy)
+    {
+        if (enemy == null)
+            return false;
+
+        PhaserEnemy phaser = enemy.GetComponent<PhaserEnemy>();
+        if (phaser != null && !phaser.IsVisible)
+            return false;
+
+        bool requiresFullAlpha = phaser != null;
+        Renderer[] renderers = enemy.GetComponentsInChildren<Renderer>();
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+            if (renderer == null || !renderer.enabled || !renderer.gameObject.activeInHierarchy)
+                continue;
+
+            if (renderer is SpriteRenderer spriteRenderer)
+            {
+                if (requiresFullAlpha && spriteRenderer.color.a < FullyVisibleAlphaThreshold)
+                    return false;
+
+                if (!requiresFullAlpha && spriteRenderer.color.a <= 0.01f)
+                    continue;
+            }
+        }
+
+        TextMeshPro[] labels = enemy.GetComponentsInChildren<TextMeshPro>();
+        for (int i = 0; i < labels.Length; i++)
+        {
+            TextMeshPro label = labels[i];
+            if (label == null || !label.enabled || !label.gameObject.activeInHierarchy)
+                continue;
+
+            if (requiresFullAlpha && label.color.a < FullyVisibleAlphaThreshold)
+                return false;
+        }
+
+        return true;
     }
 
     private bool IsEnemyPastRevealThreshold(Enemy enemy)
@@ -272,6 +330,18 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
             _safeAreaViewportPadding);
     }
 
+    private void NormalizeRuntimeConfiguration()
+    {
+        if (_revealViewportYFromBottom <= 0f)
+            _revealViewportYFromBottom = DefaultRevealViewportYFromBottom;
+
+        if (_revealTimeoutSeconds <= 0f)
+            _revealTimeoutSeconds = DefaultRevealTimeoutSeconds;
+
+        if (_safeAreaViewportPadding < 0f)
+            _safeAreaViewportPadding = DefaultSafeAreaViewportPadding;
+    }
+
     private void EnsureSpotlightOverlay()
     {
         if (_spotlightOverlay == null)
@@ -307,6 +377,10 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
             frameImage.color = color;
             frameImage.raycastTarget = false;
         }
+
+        Shadow[] frameEffects = _targetFrame.GetComponents<Shadow>();
+        foreach (Shadow frameEffect in frameEffects)
+            frameEffect.useGraphicAlpha = true;
     }
 
     private void UpdateSpotlightCutout(RectTransform parentRect, Vector2 localCenter, Vector2 paddedFrameSize)
@@ -335,19 +409,49 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
 
     private static Bounds ResolveEnemyBounds(Enemy enemy)
     {
-        SpriteRenderer spriteRenderer = enemy.GetComponentInChildren<SpriteRenderer>();
-        if (spriteRenderer != null)
-            return spriteRenderer.bounds;
+        Renderer[] renderers = enemy.GetComponentsInChildren<Renderer>();
+        Bounds combinedBounds = default;
+        bool hasRendererBounds = false;
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+            if (renderer == null || !renderer.enabled || !renderer.gameObject.activeInHierarchy)
+                continue;
+
+            if (IsEnemyDebugLabelRenderer(renderer))
+                continue;
+
+            if (!hasRendererBounds)
+            {
+                combinedBounds = renderer.bounds;
+                hasRendererBounds = true;
+            }
+            else
+            {
+                combinedBounds.Encapsulate(renderer.bounds);
+            }
+        }
+
+        if (hasRendererBounds)
+            return combinedBounds;
 
         Collider2D collider = enemy.GetComponentInChildren<Collider2D>();
         if (collider != null)
             return collider.bounds;
 
-        Renderer renderer = enemy.GetComponentInChildren<Renderer>();
-        if (renderer != null)
-            return renderer.bounds;
-
         return new Bounds(enemy.transform.position, Vector3.one);
+    }
+
+    private static bool IsEnemyDebugLabelRenderer(Renderer renderer)
+    {
+        if (renderer == null)
+            return false;
+
+        if (renderer.GetComponent<TextMeshPro>() == null)
+            return false;
+
+        return renderer.gameObject.name == "BaybayinLabel"
+            || renderer.gameObject.name == "EnemyTypeLabel";
     }
 
     private bool CanShow()

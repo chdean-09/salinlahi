@@ -3,7 +3,8 @@
     "rootNamespace": "",
     "references": [
         "Salinlahi.Runtime",
-        "Salinlahi.Editor"
+        "Salinlahi.Editor",
+        "Unity.TextMeshPro"
     ],
     "includePlatforms": [
         "Editor"

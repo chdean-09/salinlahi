@@ -223,6 +223,10 @@ public class Enemy : MonoBehaviour
         }
         UpdateLabelLayout();
         HealthChanged?.Invoke(this, _currentHealth, _currentHealth);
+
+        if (!IsBoss && EnemyDiscoveryProgress.TryMarkDiscovered(_data, out _))
+            EventBus.RaiseEnemyDiscovered(_data, this);
+
         return true;
     }
 

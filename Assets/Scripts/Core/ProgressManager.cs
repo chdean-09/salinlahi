@@ -344,6 +344,7 @@ public class ProgressManager : Singleton<ProgressManager>
         }
         PlayerPrefs.DeleteKey(EndlessModeKey);
         PlayerPrefs.DeleteKey(Level1FtueSeenKey);
+        EnemyDiscoveryProgress.ClearAllDiscovered();
 
         // Reset tracking
         _lastProcessedLevelId = -1;
