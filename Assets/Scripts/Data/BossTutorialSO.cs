@@ -15,6 +15,9 @@ public enum BossTutorialArtEffect
 
     [Tooltip("Y-scale squash + downward offset + half-amplitude bob + red tint. Mimics the boss's Vulnerable collapsed state.")]
     Collapsed,
+
+    [Tooltip("Scales the boss down and teleports it to random positions within a bound. Mimics desperation/teleportation mechanics.")]
+    Teleporting,
 }
 
 [System.Serializable]

@@ -493,6 +493,7 @@ Holds an ordered list of `BossTutorialPage` structs displayed to the player befo
 | `None` | No special effect — static or frame-animated art only. | Normal boss walk/idle. |
 | `Panting` | Sinusoidal Y-bob (asymmetric, down-stroke 30% slower) + red tint lerp. | `BossStateVisuals.PantLoop` (WindingDown / exhausted state). |
 | `Collapsed` | Y-scale squash to 85% + downward offset + half-amplitude bob + red tint. | `BossStateVisuals.PlayCollapse` + half-amplitude panting (Vulnerable state). |
+| `Teleporting` | Scales down to 60% and teleports to random offsets on a timer. | Desperation / teleportation mechanics. |
 
 **Design guidance:**
 - A `BossTutorialSO` asset is shared across all plays of the same boss — page wording is not personalized.

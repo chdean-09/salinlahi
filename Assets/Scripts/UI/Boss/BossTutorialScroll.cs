@@ -55,6 +55,14 @@ public class BossTutorialScroll : MonoBehaviour
     [Tooltip("Anchored Y offset applied when Collapsed (pushes the art down).")]
     [SerializeField] private float _collapseYOffset = -8f;
 
+    [Header("Art Effects — Teleporting")]
+    [Tooltip("Scale multiplier when Teleporting.")]
+    [SerializeField] private float _teleportScale = 0.6f;
+    [Tooltip("How often (seconds, unscaled) the boss teleports to a new position.")]
+    [SerializeField] private float _teleportInterval = 0.5f;
+    [Tooltip("Maximum X/Y anchored position offset for the random teleport.")]
+    [SerializeField] private Vector2 _teleportBounds = new Vector2(40f, 20f);
+
     private BossTutorialPage[] _pages;
     private BossTutorialPaging _paging;
     private Coroutine _anim;
@@ -176,8 +184,9 @@ public class BossTutorialScroll : MonoBehaviour
         bool hasPanting = effect == BossTutorialArtEffect.Panting
                        || effect == BossTutorialArtEffect.Collapsed;
         bool isCollapsed = effect == BossTutorialArtEffect.Collapsed;
+        bool isTeleporting = effect == BossTutorialArtEffect.Teleporting;
 
-        // Apply the static collapse transform before starting the loop.
+        // Apply the static collapse or teleport transform before starting the loop.
         if (isCollapsed)
         {
             Vector3 s = _artBaseScale;
@@ -185,16 +194,21 @@ public class BossTutorialScroll : MonoBehaviour
             rt.localScale = s;
             rt.anchoredPosition = _artBaseAnchoredPos + new Vector2(0f, _collapseYOffset);
         }
+        else if (isTeleporting)
+        {
+            rt.localScale = _artBaseScale * _teleportScale;
+        }
 
         // If there's nothing to animate and no effect, bail — the static sprite
         // was already set in RenderCurrent.
-        if (!animate && !hasPanting)
+        if (!animate && !hasPanting && !isTeleporting)
             yield break;
 
         float frameDuration = animate ? 1f / fps : 0f;
         float frameTimer = 0f;
         int frameIndex = 0;
         float effectTime = 0f;
+        float teleportTimer = 0f;
 
         while (true)
         {
@@ -227,6 +241,19 @@ public class BossTutorialScroll : MonoBehaviour
                 rt.anchoredPosition = basePos + new Vector2(0f, weighted * amp);
 
                 _art.color = Color.Lerp(Color.white, _pantingTintColor, _pantingTintLerp);
+            }
+
+            // --- Teleporting ---
+            if (isTeleporting)
+            {
+                teleportTimer -= dt;
+                if (teleportTimer <= 0f)
+                {
+                    teleportTimer = _teleportInterval;
+                    float rx = UnityEngine.Random.Range(-_teleportBounds.x, _teleportBounds.x);
+                    float ry = UnityEngine.Random.Range(-_teleportBounds.y, _teleportBounds.y);
+                    rt.anchoredPosition = _artBaseAnchoredPos + new Vector2(rx, ry);
+                }
             }
 
             effectTime += dt;
