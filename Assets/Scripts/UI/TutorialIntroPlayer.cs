@@ -63,6 +63,8 @@ public sealed class TutorialIntroPlayer : MonoBehaviour
             CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1080f, 1920f);
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 0.5f;
         }
 
         GameObject playerObject = new("TutorialIntroPlayer", typeof(RectTransform));

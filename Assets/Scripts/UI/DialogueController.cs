@@ -5,6 +5,17 @@ using UnityEngine.UI;
 
 public class DialogueController : MonoBehaviour
 {
+    private const float DialoguePanelHeight = 0.30f;
+    private const float DialogueSidePadding = 0.08f;
+    private const float DialoguePortraitRight = 0.17f;
+    private const float DialogueTextWithPortraitMinX = 0.20f;
+
+    // The dialogue box stays pinned to the bottom of the screen and never rises past the
+    // base/shrine: its top edge tracks the base's bottom edge projected to the screen, so it
+    // adapts to every device aspect. Falls back to DialoguePanelHeight (and is clamped no
+    // smaller than this) in scenes with no PlayerBase, e.g. menus.
+    private const float DialoguePanelMinFraction = 0.10f;
+
     [Header("UI References")]
     [SerializeField] private GameObject _overlayPanel;
     [SerializeField] private TMP_Text _speakerText;
@@ -38,6 +49,8 @@ public class DialogueController : MonoBehaviour
             CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1080f, 1920f);
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 0.5f;
         }
 
         GameObject controllerObject = new("RuntimeDialogueController", typeof(RectTransform));
@@ -47,11 +60,17 @@ public class DialogueController : MonoBehaviour
 
         DialogueController controller = controllerObject.AddComponent<DialogueController>();
         controller._overlayPanel = CreateOverlay(controllerObject.transform);
-        controller._speakerText = CreateText(controller._overlayPanel.transform, "SpeakerText", new Vector2(0.08f, 0.62f), new Vector2(0.92f, 0.84f), 26f, TextAlignmentOptions.Center);
-        controller._bodyText = CreateText(controller._overlayPanel.transform, "BodyText", new Vector2(0.08f, 0.18f), new Vector2(0.92f, 0.62f), 32f, TextAlignmentOptions.Center);
+        controller._speakerText = CreateText(controller._overlayPanel.transform, "SpeakerText", new Vector2(0.08f, 0.68f), new Vector2(0.92f, 0.90f), 42f, TextAlignmentOptions.Center);
+        controller._bodyText = CreateText(controller._overlayPanel.transform, "BodyText", new Vector2(0.08f, 0.16f), new Vector2(0.92f, 0.70f), 60f, TextAlignmentOptions.Center);
         controller._portraitImage = CreatePortrait(controller._overlayPanel.transform);
         controller._tapCatcher = CreateTapCatcher(controllerObject.transform);
         controller._tapCatcher.onClick.AddListener(controller.OnTapCatcherPressed);
+        ApplyResponsiveDialogueLayout(
+            controller._overlayPanel.transform as RectTransform,
+            controller._speakerText,
+            controller._bodyText,
+            controller._portraitImage,
+            hasPortrait: false);
 
         controller._overlayPanel.SetActive(false);
         controller.SetTapCatcherActive(false);
@@ -80,9 +99,10 @@ public class DialogueController : MonoBehaviour
         panel.transform.SetParent(parent, false);
         RectTransform rect = panel.GetComponent<RectTransform>();
         rect.anchorMin = new Vector2(0f, 0f);
-        rect.anchorMax = new Vector2(1f, 0.145f);
+        rect.anchorMax = new Vector2(1f, DialoguePanelHeight);
         rect.offsetMin = Vector2.zero;
         rect.offsetMax = Vector2.zero;
+        rect.pivot = new Vector2(0.5f, 0f);
 
         Image image = panel.GetComponent<Image>();
         image.color = new Color(0.04f, 0.035f, 0.03f, 0.92f);
@@ -111,6 +131,7 @@ public class DialogueController : MonoBehaviour
         text.alignment = alignment;
         text.color = Color.white;
         text.textWrappingMode = TextWrappingModes.Normal;
+        text.overflowMode = TextOverflowModes.Overflow;
         text.raycastTarget = false;
         TutorialFontProvider.ApplyTo(text);
         return text;
@@ -155,6 +176,8 @@ public class DialogueController : MonoBehaviour
 
     private void Awake()
     {
+        ConfigureResponsiveLayout(hasPortrait: _portraitImage != null && _portraitImage.gameObject.activeSelf);
+
         if (_overlayPanel != null)
             _overlayPanel.SetActive(false);
 
@@ -172,6 +195,8 @@ public class DialogueController : MonoBehaviour
 
     private void OnEnable()
     {
+        ConfigureResponsiveLayout(hasPortrait: _portraitImage != null && _portraitImage.gameObject.activeSelf);
+
         if (_tapCatcher != null)
             _tapCatcher.onClick.AddListener(OnTapCatcherPressed);
     }
@@ -239,12 +264,14 @@ public class DialogueController : MonoBehaviour
         if (_speakerText != null)
             _speakerText.text = line.speakerName ?? "";
 
+        bool hasPortrait = false;
         if (_portraitImage != null)
         {
             if (line.portrait != null)
             {
                 _portraitImage.sprite = line.portrait;
                 _portraitImage.gameObject.SetActive(true);
+                hasPortrait = true;
             }
             else
             {
@@ -252,10 +279,154 @@ public class DialogueController : MonoBehaviour
             }
         }
 
+        ConfigureResponsiveLayout(hasPortrait);
+
         if (_typewriterRoutine != null)
             StopCoroutine(_typewriterRoutine);
 
         _typewriterRoutine = StartCoroutine(TypewriterRoutine(line.text ?? ""));
+    }
+
+    private void ConfigureResponsiveLayout(bool hasPortrait)
+    {
+        RectTransform panel = ResolvePanelRect();
+        ApplyResponsiveDialogueLayout(panel, _speakerText, _bodyText, _portraitImage, hasPortrait);
+        ClampPanelToBaseBottom(panel);
+    }
+
+    // Pins the panel top to the base's bottom edge so the dialogue box never overlaps the
+    // base/shrine. Text bands are anchored as fractions of the panel, so they re-fit (and
+    // auto-size) automatically when the panel shrinks. No-op in scenes without a base.
+    private void ClampPanelToBaseBottom(RectTransform panel)
+    {
+        if (panel == null)
+            return;
+
+        if (!TryGetBaseBottomScreenFraction(out float baseBottomFraction))
+            return;
+
+        float topFraction = Mathf.Clamp(baseBottomFraction, DialoguePanelMinFraction, DialoguePanelHeight);
+        Vector2 anchorMax = panel.anchorMax;
+        anchorMax.y = topFraction;
+        panel.anchorMax = anchorMax;
+        panel.offsetMin = Vector2.zero;
+        panel.offsetMax = Vector2.zero;
+    }
+
+    private static bool TryGetBaseBottomScreenFraction(out float fraction)
+    {
+        fraction = 0f;
+
+        PlayerBase playerBase = FindFirstObjectByType<PlayerBase>();
+        Camera worldCamera = Camera.main;
+        if (playerBase == null || worldCamera == null)
+            return false;
+
+        if (!TryGetBaseBottomWorldY(playerBase, out float baseBottomWorldY))
+            return false;
+
+        Vector3 viewport = worldCamera.WorldToViewportPoint(
+            new Vector3(playerBase.transform.position.x, baseBottomWorldY, 0f));
+        if (viewport.z < 0f)
+            return false;
+
+        fraction = viewport.y;
+        return true;
+    }
+
+    private static bool TryGetBaseBottomWorldY(PlayerBase playerBase, out float bottomWorldY)
+    {
+        bottomWorldY = 0f;
+
+        Collider2D collider = playerBase.GetComponent<Collider2D>();
+        if (collider != null)
+        {
+            bottomWorldY = collider.bounds.min.y;
+            return true;
+        }
+
+        SpriteRenderer renderer = playerBase.GetComponentInChildren<SpriteRenderer>();
+        if (renderer != null && renderer.sprite != null)
+        {
+            bottomWorldY = renderer.bounds.min.y;
+            return true;
+        }
+
+        return false;
+    }
+
+    private RectTransform ResolvePanelRect()
+    {
+        if (_overlayPanel != null && _overlayPanel.TryGetComponent(out RectTransform overlayRect))
+            return overlayRect;
+
+        if (_bodyText != null && _bodyText.rectTransform.parent is RectTransform bodyParent)
+            return bodyParent;
+
+        if (_speakerText != null && _speakerText.rectTransform.parent is RectTransform speakerParent)
+            return speakerParent;
+
+        return null;
+    }
+
+    public static void ApplyResponsiveDialogueLayout(
+        RectTransform panel,
+        TMP_Text speakerText,
+        TMP_Text bodyText,
+        Image portraitImage,
+        bool hasPortrait)
+    {
+        if (panel != null)
+        {
+            panel.anchorMin = new Vector2(0f, 0f);
+            panel.anchorMax = new Vector2(1f, DialoguePanelHeight);
+            panel.offsetMin = Vector2.zero;
+            panel.offsetMax = Vector2.zero;
+            panel.pivot = new Vector2(0.5f, 0f);
+        }
+
+        float textMinX = hasPortrait ? DialogueTextWithPortraitMinX : DialogueSidePadding;
+        ConfigureDialogueText(speakerText, new Vector2(textMinX, 0.68f), new Vector2(0.94f, 0.90f), 30f, 46f);
+        ConfigureDialogueText(bodyText, new Vector2(textMinX, 0.15f), new Vector2(0.94f, 0.70f), 36f, 62f);
+
+        if (portraitImage != null)
+        {
+            RectTransform portraitRect = portraitImage.rectTransform;
+            portraitRect.anchorMin = new Vector2(0.035f, 0.16f);
+            portraitRect.anchorMax = new Vector2(DialoguePortraitRight, 0.88f);
+            portraitRect.offsetMin = Vector2.zero;
+            portraitRect.offsetMax = Vector2.zero;
+            portraitRect.pivot = new Vector2(0.5f, 0.5f);
+            portraitImage.preserveAspect = true;
+            portraitImage.raycastTarget = false;
+        }
+    }
+
+    private static void ConfigureDialogueText(
+        TMP_Text text,
+        Vector2 anchorMin,
+        Vector2 anchorMax,
+        float minFontSize,
+        float maxFontSize)
+    {
+        if (text == null)
+            return;
+
+        RectTransform rect = text.rectTransform;
+        rect.anchorMin = anchorMin;
+        rect.anchorMax = anchorMax;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        text.alignment = TextAlignmentOptions.Center;
+        text.textWrappingMode = TextWrappingModes.Normal;
+        text.overflowMode = TextOverflowModes.Overflow;
+        text.enableAutoSizing = true;
+        text.fontSizeMin = minFontSize;
+        text.fontSizeMax = maxFontSize;
+        text.fontSize = maxFontSize;
+        text.raycastTarget = false;
+        TutorialFontProvider.ApplyTo(text);
     }
 
     private IEnumerator TypewriterRoutine(string fullText)

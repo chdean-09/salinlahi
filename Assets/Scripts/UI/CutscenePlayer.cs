@@ -15,7 +15,7 @@ public class CutscenePlayer : MonoBehaviour
     [SerializeField] private Image _exitTransitionImage;
     [SerializeField] private TMP_Text _bodyText;
     [SerializeField] private TMP_FontAsset _bodyFont;
-    [SerializeField] private float _bodyFontSize = 92f;
+    [SerializeField] private float _bodyFontSize = 80f;
     [SerializeField] private Button _tapCatcher;
     [SerializeField] private Button _skipButton;
     [SerializeField] private GameObject _skipButtonRoot;
@@ -55,6 +55,7 @@ public class CutscenePlayer : MonoBehaviour
     private void Awake()
     {
         transform.localScale = Vector3.one;
+        ConfigureCanvasScaler();
         ConfigureBottomGradientOverlay();
         ConfigureExitTransitionImage();
         ConfigureContinuePrompt();
@@ -225,13 +226,13 @@ public class CutscenePlayer : MonoBehaviour
             _continuePromptSafeAreaRoot = safeAreaObject.GetComponent<RectTransform>();
         }
 
-        _continuePromptSafeAreaRoot.anchorMin = Vector2.zero;
-        _continuePromptSafeAreaRoot.anchorMax = Vector2.one;
-        _continuePromptSafeAreaRoot.offsetMin = Vector2.zero;
-        _continuePromptSafeAreaRoot.offsetMax = Vector2.zero;
+        Stretch(_continuePromptSafeAreaRoot);
 
-        if (_continuePromptSafeAreaRoot.GetComponent<SafeAreaHandler>() == null)
-            _continuePromptSafeAreaRoot.gameObject.AddComponent<SafeAreaHandler>();
+        SafeAreaHandler safeAreaHandler = _continuePromptSafeAreaRoot.GetComponent<SafeAreaHandler>();
+        if (safeAreaHandler == null)
+            safeAreaHandler = _continuePromptSafeAreaRoot.gameObject.AddComponent<SafeAreaHandler>();
+        safeAreaHandler.SetIncludeAspectLockedPlayColumn(false);
+        safeAreaHandler.Refresh();
 
         if (_continuePromptText == null)
         {
@@ -247,23 +248,8 @@ public class CutscenePlayer : MonoBehaviour
             _continuePromptText = promptObject.GetComponent<TextMeshProUGUI>();
         }
 
-        RectTransform promptRect = _continuePromptText.rectTransform;
-        promptRect.anchorMin = new Vector2(0.04f, 1f);
-        promptRect.anchorMax = new Vector2(0.96f, 1f);
-        promptRect.pivot = new Vector2(0.5f, 1f);
-        promptRect.anchoredPosition = new Vector2(0f, -Mathf.Max(12f, _continuePromptTopPadding));
-        promptRect.sizeDelta = new Vector2(0f, 108f);
-
+        ApplyContinuePromptLayout(_continuePromptText, _continuePromptTopPadding);
         _continuePromptText.text = _continuePromptMessage;
-        _continuePromptText.alignment = TextAlignmentOptions.Center;
-        _continuePromptText.fontSize = 54f;
-        _continuePromptText.enableAutoSizing = true;
-        _continuePromptText.fontSizeMin = 34f;
-        _continuePromptText.fontSizeMax = 54f;
-        _continuePromptText.fontStyle = FontStyles.Bold;
-        _continuePromptText.color = new Color(1f, 1f, 1f, 0.98f);
-        _continuePromptText.raycastTarget = false;
-        _continuePromptText.textWrappingMode = TextWrappingModes.NoWrap;
         if (_bodyFont != null)
             _continuePromptText.font = _bodyFont;
         if (_continuePromptText.fontMaterial != null)
@@ -280,6 +266,55 @@ public class CutscenePlayer : MonoBehaviour
 
         SetContinuePromptVisible(false);
         EnsureCutsceneSiblingOrder();
+    }
+
+    private void ConfigureCanvasScaler()
+    {
+        CanvasScaler scaler = GetComponent<CanvasScaler>();
+        if (scaler == null)
+            scaler = GetComponentInParent<CanvasScaler>();
+        if (scaler == null)
+            return;
+
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1080f, 1920f);
+        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+        scaler.matchWidthOrHeight = 0.5f;
+    }
+
+    private static void Stretch(RectTransform rect)
+    {
+        if (rect == null)
+            return;
+
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+        rect.pivot = new Vector2(0.5f, 0.5f);
+    }
+
+    public static void ApplyContinuePromptLayout(TMP_Text promptText, float topPadding)
+    {
+        if (promptText == null)
+            return;
+
+        RectTransform promptRect = promptText.rectTransform;
+        promptRect.anchorMin = new Vector2(0.04f, 1f);
+        promptRect.anchorMax = new Vector2(0.96f, 1f);
+        promptRect.pivot = new Vector2(0.5f, 1f);
+        promptRect.anchoredPosition = new Vector2(0f, -Mathf.Max(16f, topPadding));
+        promptRect.sizeDelta = new Vector2(0f, 118f);
+
+        promptText.alignment = TextAlignmentOptions.Center;
+        promptText.fontSize = 58f;
+        promptText.enableAutoSizing = true;
+        promptText.fontSizeMin = 36f;
+        promptText.fontSizeMax = 58f;
+        promptText.fontStyle = FontStyles.Bold;
+        promptText.color = new Color(1f, 1f, 1f, 0.98f);
+        promptText.raycastTarget = false;
+        promptText.textWrappingMode = TextWrappingModes.NoWrap;
     }
 
     public void Play(CutsceneSO cutscene, bool playExitTransition = false)

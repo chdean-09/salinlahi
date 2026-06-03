@@ -1541,7 +1541,7 @@ MonoBehaviour:
   _exitTransitionImage: {fileID: 245319296}
   _bodyText: {fileID: 1322866062}
   _bodyFont: {fileID: 11400000, guid: b0c9d026a0a704757bc6758a107d6718, type: 2}
-  _bodyFontSize: 92
+  _bodyFontSize: 80
   _tapCatcher: {fileID: 756999031}
   _skipButton: {fileID: 1296541905}
   _skipButtonRoot: {fileID: 1296541901}

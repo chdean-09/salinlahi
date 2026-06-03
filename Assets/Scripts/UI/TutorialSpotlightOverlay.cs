@@ -55,6 +55,8 @@ public sealed class TutorialSpotlightOverlay : MonoBehaviour
         CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1080f, 1920f);
+        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+        scaler.matchWidthOrHeight = 0.5f;
 
         TutorialSpotlightOverlay overlay = canvasObject.AddComponent<TutorialSpotlightOverlay>();
         overlay._topPanel = CreateDimPanel(root, "TopPanel");

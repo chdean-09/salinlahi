@@ -4,6 +4,13 @@ using UnityEngine.UI;
 
 public sealed class Level1TutorialGuideUI : MonoBehaviour
 {
+    private const float PromptMinY = 0.895f;
+    private const float PromptMaxY = 0.965f;
+    private const float FeedbackMinY = 0.805f;
+    private const float FeedbackMaxY = 0.875f;
+    private const float TextMinX = 0.06f;
+    private const float TextMaxX = 0.94f;
+
     [Header("Panel")]
     [SerializeField] private GameObject _root;
     [SerializeField] private TMP_Text _promptText;
@@ -32,6 +39,7 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
     {
         TutorialFontProvider.ApplyTo(_promptText);
         TutorialFontProvider.ApplyTo(_feedbackText);
+        ApplyResponsiveTextLayout(_promptText, _feedbackText);
 
         if (_skipButton != null)
         {
@@ -51,6 +59,8 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
             CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1080f, 1920f);
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 0.5f;
         }
 
         GameObject root = new("Level1TutorialGuideUI", typeof(RectTransform));
@@ -65,6 +75,7 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         guide._root = root;
         guide._promptText = CreateText(root.transform, "PromptText", new Vector2(0.5f, 0.88f), 42, TextAlignmentOptions.Center);
         guide._feedbackText = CreateText(root.transform, "FeedbackText", new Vector2(0.5f, 0.76f), 28, TextAlignmentOptions.Center);
+        ApplyResponsiveTextLayout(guide._promptText, guide._feedbackText);
         guide._skipButton = CreateSkipButton(root.transform);
         root.SetActive(false);
         return guide;
@@ -92,9 +103,39 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         text.alignment = alignment;
         text.color = Color.white;
         text.textWrappingMode = TextWrappingModes.Normal;
+        text.overflowMode = TextOverflowModes.Overflow;
         text.raycastTarget = false;
         TutorialFontProvider.ApplyTo(text);
         return text;
+    }
+
+    public static void ApplyResponsiveTextLayout(TMP_Text promptText, TMP_Text feedbackText)
+    {
+        ConfigureTextBand(promptText, PromptMinY, PromptMaxY, 38f, 56f);
+        ConfigureTextBand(feedbackText, FeedbackMinY, FeedbackMaxY, 32f, 46f);
+    }
+
+    private static void ConfigureTextBand(TMP_Text text, float minY, float maxY, float minFontSize, float maxFontSize)
+    {
+        if (text == null)
+            return;
+
+        RectTransform rect = text.rectTransform;
+        rect.anchorMin = new Vector2(TextMinX, minY);
+        rect.anchorMax = new Vector2(TextMaxX, maxY);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = Vector2.zero;
+
+        text.alignment = TextAlignmentOptions.Center;
+        text.textWrappingMode = TextWrappingModes.Normal;
+        text.overflowMode = TextOverflowModes.Overflow;
+        text.enableAutoSizing = true;
+        text.fontSizeMin = minFontSize;
+        text.fontSizeMax = maxFontSize;
+        text.fontSize = maxFontSize;
+        text.raycastTarget = false;
+        TutorialFontProvider.ApplyTo(text);
     }
 
     private static Button CreateSkipButton(Transform parent)
@@ -124,6 +165,7 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
     public void Initialize(System.Action skipRequested)
     {
         EnsureRuntimeCanvas();
+        ApplyResponsiveTextLayout(_promptText, _feedbackText);
         _skipRequested = skipRequested;
         if (_skipButton != null)
             _skipButton.onClick.AddListener(HandleSkipClicked);
@@ -149,11 +191,14 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
             CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1080f, 1920f);
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 0.5f;
         }
 
         tutorialCanvas.sortingOrder = 110;
         tutorialCanvas.transform.localScale = Vector3.one;
         transform.SetParent(tutorialCanvas.transform, false);
+        transform.SetAsLastSibling();
     }
 
     private static Canvas FindTutorialCanvas()
@@ -182,6 +227,9 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
     {
         if (_root != null)
             _root.SetActive(true);
+
+        ApplyResponsiveTextLayout(_promptText, _feedbackText);
+        transform.SetAsLastSibling();
 
         if (_promptText != null)
             _promptText.text = step != null ? step.promptText : string.Empty;
@@ -249,6 +297,9 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         if (_root != null)
             _root.SetActive(true);
 
+        ApplyResponsiveTextLayout(_promptText, _feedbackText);
+        transform.SetAsLastSibling();
+
         if (_promptText != null)
             _promptText.text = message ?? string.Empty;
 
@@ -264,6 +315,9 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
 
     public void ShowFeedback(string message)
     {
+        ApplyResponsiveTextLayout(_promptText, _feedbackText);
+        transform.SetAsLastSibling();
+
         if (_feedbackText != null)
             _feedbackText.text = message ?? string.Empty;
     }
