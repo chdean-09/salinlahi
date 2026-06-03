@@ -91,7 +91,10 @@ public class StrokeCapture : MonoBehaviour
         if (_config == null || _canvas == null)
             return;
 
-        if (IsScreenPositionOverUI(finger.screenPosition))
+        if (TutorialRuntimeState.IsDrawingInputLocked)
+            return;
+
+        if (!TutorialRuntimeState.IsCombatOverrideActive && IsScreenPositionOverUI(finger.screenPosition))
             return;
 
         if (_pendingRecognitionSubmit && !_isDrawing)
@@ -129,6 +132,8 @@ public class StrokeCapture : MonoBehaviour
     {
         if (GameManager.Instance == null ||
             !GameManager.Instance.AcceptsDrawingInput) return;
+
+        if (TutorialRuntimeState.IsDrawingInputLocked) return;
 
         ProcessTouchHistory(finger);
     }

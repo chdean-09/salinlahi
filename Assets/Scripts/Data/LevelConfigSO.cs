@@ -36,9 +36,19 @@ public class LevelConfigSO : ScriptableObject
     [Header("Build Flags")]
     public bool isAvailableInLite = true;
 
+    [Header("Advanced Combat")]
+    [Tooltip("If false, combo streaks may be tracked internally but cannot activate Focus Mode in this level.")]
+    public bool focusModeEnabled = true;
+
+    [Tooltip("If false, matching multiple enemies resolves as a normal closest-target kill instead of a multi-kill chain.")]
+    public bool multiKillChainEnabled = true;
+
     [Header("Flow")]
-    [Tooltip("Optional tutorial phase played before this level's waves. Level 1 uses this for embedded onboarding.")]
+    [Tooltip("Optional legacy tutorial phase played before this level's waves.")]
     public Level1TutorialSequenceSO tutorialSequence;
+
+    [Tooltip("Optional onboarding sequence played before waves. Level 1 uses basic onboarding; Level 2 uses advanced combat onboarding.")]
+    public OnboardingSequenceSO onboardingSequence;
 
     [Tooltip("Dialogue played before waves begin. Null = skip intro.")]
     public DialogueSO introDialogue;

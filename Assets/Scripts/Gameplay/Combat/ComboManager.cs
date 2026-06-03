@@ -42,7 +42,8 @@ public class ComboManager : Singleton<ComboManager>
         EventBus.RaiseComboChanged(_currentStreak);
         DebugLogger.Log($"ComboManager: Streak = {_currentStreak}");
 
-        if (_currentStreak >= _config.focusModeThreshold)
+        if (IsFocusModeEnabledForCurrentLevel()
+            && _currentStreak >= _config.focusModeThreshold)
         {
             if (!_focusModeActive)
             {
@@ -84,6 +85,11 @@ public class ComboManager : Singleton<ComboManager>
             return;
 
         _suppressedHeartResetCount += count;
+    }
+
+    public void ResetStreakForTutorial()
+    {
+        ResetStreak();
     }
 
     private void HandleGameOver()
@@ -139,4 +145,7 @@ public class ComboManager : Singleton<ComboManager>
         EventBus.RaiseFocusModeDeactivated();
         DebugLogger.Log("ComboManager: Focus Mode expired");
     }
+
+    private static bool IsFocusModeEnabledForCurrentLevel()
+        => GameManager.CurrentLevelConfig?.focusModeEnabled ?? true;
 }

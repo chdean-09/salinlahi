@@ -35,11 +35,13 @@ public sealed class BaseHitFeedbackController : MonoBehaviour
     private void OnEnable()
     {
         EventBus.OnBaseHit += HandleBaseHit;
+        EventBus.OnTutorialBaseHitDemo += HandleBaseHit;
     }
 
     private void OnDisable()
     {
         EventBus.OnBaseHit -= HandleBaseHit;
+        EventBus.OnTutorialBaseHitDemo -= HandleBaseHit;
 
         if (_wobbleRoutine != null)
         {

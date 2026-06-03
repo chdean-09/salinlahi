@@ -15,7 +15,12 @@ public static class RenderOrder
     public const int EnemyGlyphBadge = 200;
     public const int EnemyDebugLabel = 500;
 
-    // World-space player input
+    // Tutorial spotlight dim. Rendered via a Screen Space - Camera canvas on the Default
+    // sorting layer so it sits ABOVE all gameplay sprites (which get dimmed) but BELOW the
+    // drawing strokes (which must stay fully visible while the player draws).
+    public const int SpotlightDim    = 900;
+
+    // World-space player input. MUST stay above SpotlightDim so strokes render over the dim.
     public const int DrawingStroke   = 1000;
 
     // Screen Space - Overlay canvases (separate axis from world sprites,

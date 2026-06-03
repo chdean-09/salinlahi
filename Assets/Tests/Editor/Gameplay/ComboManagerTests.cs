@@ -7,6 +7,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
     public class ComboManagerTests
     {
         private GameObject _gameObject;
+        private GameObject _gameManagerObject;
         private ComboManager _comboManager;
         private GameConfigSO _config;
         private int _lastComboValue;
@@ -17,6 +18,10 @@ namespace Salinlahi.Tests.Editor.Gameplay
         public void SetUp()
         {
             _gameObject = new GameObject("ComboManager_Test");
+            _gameManagerObject = new GameObject("GameManager_Combo_Test");
+            GameManager gameManager = _gameManagerObject.AddComponent<GameManager>();
+            SetSingletonInstance(gameManager);
+
             _config = ScriptableObject.CreateInstance<GameConfigSO>();
             _config.focusModeThreshold = 3;
             _config.focusModeDuration = 2f;
@@ -53,6 +58,8 @@ namespace Salinlahi.Tests.Editor.Gameplay
 
             if (_gameObject != null)
                 Object.DestroyImmediate(_gameObject);
+            if (_gameManagerObject != null)
+                Object.DestroyImmediate(_gameManagerObject);
             if (_config != null)
                 Object.DestroyImmediate(_config);
 
@@ -60,6 +67,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 "<Instance>k__BackingField",
                 System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
             instanceField?.SetValue(null, null);
+            ClearSingletonInstance<GameManager>();
         }
 
         private void OnComboChanged(int streak) => _lastComboValue = streak;
@@ -118,6 +126,57 @@ namespace Salinlahi.Tests.Editor.Gameplay
             EventBus.RaiseHeartsChanged(2);
 
             Assert.AreEqual(2, _comboManager.CurrentStreak);
+        }
+
+        [Test]
+        public void ResetStreakForTutorial_ClearsVisibleStreak()
+        {
+            EventBus.RaiseEnemyTargeted(null);
+            EventBus.RaiseEnemyTargeted(null);
+            Assert.AreEqual(2, _comboManager.CurrentStreak);
+
+            _comboManager.ResetStreakForTutorial();
+
+            Assert.AreEqual(0, _comboManager.CurrentStreak);
+            Assert.AreEqual(0, _lastComboValue);
+        }
+
+        [Test]
+        public void FocusMode_WhenCurrentLevelDisablesFocus_DoesNotActivateAtThreshold()
+        {
+            LevelConfigSO levelConfig = ScriptableObject.CreateInstance<LevelConfigSO>();
+            levelConfig.levelNumber = 1;
+            levelConfig.focusModeEnabled = false;
+            GameManager.Instance.SetLevel(levelConfig);
+
+            try
+            {
+                EventBus.RaiseEnemyTargeted(null);
+                EventBus.RaiseEnemyTargeted(null);
+                EventBus.RaiseEnemyTargeted(null);
+
+                Assert.AreEqual(3, _comboManager.CurrentStreak);
+                Assert.IsFalse(_comboManager.IsFocusModeActive);
+                Assert.AreEqual(0, _focusActivatedCount);
+            }
+            finally
+            {
+                Object.DestroyImmediate(levelConfig);
+            }
+        }
+
+        private static void SetSingletonInstance<T>(T instance) where T : MonoBehaviour
+        {
+            typeof(Singleton<T>).GetProperty("Instance")?
+                .GetSetMethod(true)?
+                .Invoke(null, new object[] { instance });
+        }
+
+        private static void ClearSingletonInstance<T>() where T : MonoBehaviour
+        {
+            typeof(Singleton<T>).GetProperty("Instance")?
+                .GetSetMethod(true)?
+                .Invoke(null, new object[] { null });
         }
     }
 }
