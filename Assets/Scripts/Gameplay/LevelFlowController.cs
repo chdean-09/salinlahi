@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using Salinlahi.Runtime.Gameplay;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -14,6 +15,7 @@ public class LevelFlowController : MonoBehaviour
     [SerializeField] private WaveManager _waveManager;
     [SerializeField] private DialogueController _dialogueController;
     [SerializeField] private Level1OnboardingController _level1OnboardingController;
+    [SerializeField] private CharacterUnlockRevealController _revealController;
     [SerializeField] private VictoryScreenUI _victoryScreen;
     [SerializeField] private DefeatScreenUI _defeatScreen;
 
@@ -25,6 +27,13 @@ public class LevelFlowController : MonoBehaviour
     [Header("Level Config")]
     [Tooltip("Resolved at runtime from GameManager.CurrentLevel or Inspector fallback.")]
     [SerializeField] private LevelConfigSO _levelConfig;
+
+    private enum RevealTiming { BeforeTutorial, AfterTutorial }
+
+    [Header("Character Unlock Reveal")]
+    [Tooltip("Whether the 'New Character Unlocked!' reveal plays before or after the tutorial. " +
+             "Global; non-tutorial levels play it at level start regardless.")]
+    [SerializeField] private RevealTiming _revealTiming = RevealTiming.AfterTutorial;
 
     private bool _levelEnded;
     private bool _waitingForDialogue;
@@ -161,10 +170,22 @@ public class LevelFlowController : MonoBehaviour
         if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
             GameManager.Instance.StartGame();
 
+        if (_revealTiming == RevealTiming.BeforeTutorial)
+        {
+            yield return PlayRevealsIfAny();
+            if (_flowAborted || _levelEnded) yield break;
+        }
+
         yield return PlayLevelTutorialIfNeeded();
 
         if (_flowAborted || _levelEnded)
             yield break;
+
+        if (_revealTiming == RevealTiming.AfterTutorial)
+        {
+            yield return PlayRevealsIfAny();
+            if (_flowAborted || _levelEnded) yield break;
+        }
 
         // AC-2: Start BGM from level config
         if (_levelConfig.bgmClip != null && AudioManager.Instance != null)
@@ -190,6 +211,7 @@ public class LevelFlowController : MonoBehaviour
         _cutscenePlayer ??= FindFirstObjectByType<CutscenePlayer>();
         _victoryScreen ??= FindFirstObjectByType<VictoryScreenUI>(FindObjectsInactive.Include);
         _defeatScreen ??= FindFirstObjectByType<DefeatScreenUI>(FindObjectsInactive.Include);
+        _revealController ??= FindFirstObjectByType<CharacterUnlockRevealController>(FindObjectsInactive.Include);
 
         if (_level1OnboardingController == null
             && _levelConfig != null
@@ -317,6 +339,20 @@ public class LevelFlowController : MonoBehaviour
         }
 
         yield return _level1OnboardingController.PlayIfNeeded(_levelConfig);
+    }
+
+    private IEnumerator PlayRevealsIfAny()
+    {
+        if (_levelConfig == null || _revealController == null)
+            yield break;
+
+        List<BaybayinCharacterSO> queue = CharacterUnlockRevealController.BuildRevealQueue(
+            _levelConfig.allowedCharacters, CharacterUnlockProgress.HasUnlocked);
+
+        if (queue.Count == 0)
+            yield break;
+
+        yield return _revealController.Play(queue);
     }
 
     // AC-5: Level complete → outro dialogue → [cutscene (after)] → victory screen
