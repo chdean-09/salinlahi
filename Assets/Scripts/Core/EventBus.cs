@@ -71,6 +71,9 @@ public static class EventBus
     // -- Environment Events --
     public static event Action<EraThemeSO> OnThemeApplied; // raised by EnvironmentThemeSwapper after ApplyTheme
 
+    // -- Progression Events --
+    public static event Action<BaybayinCharacterSO> OnCharacterUnlocked; // raised after CharacterUnlockProgress.TryMarkUnlocked succeeds
+
     // -- Raisers --
     public static void RaiseEnemyDefeated(BaybayinCharacterSO c) => OnEnemyDefeated?.Invoke(c);
     public static void RaiseBaseHit(int damage = 1) => OnBaseHit?.Invoke(damage);
@@ -113,4 +116,5 @@ public static class EventBus
     public static void RaiseCutsceneStarted() => OnCutsceneStarted?.Invoke();
     public static void RaiseCutsceneComplete() => OnCutsceneComplete?.Invoke();
     public static void RaiseThemeApplied(EraThemeSO theme) => OnThemeApplied?.Invoke(theme);
+    public static void RaiseCharacterUnlocked(BaybayinCharacterSO c) => OnCharacterUnlocked?.Invoke(c);
 }

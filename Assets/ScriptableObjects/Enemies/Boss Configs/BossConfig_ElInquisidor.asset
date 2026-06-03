@@ -1,0 +1,79 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5bcd7fccabc7c46ceb246e8068fbcf0e, type: 3}
+  m_Name: BossConfig_ElInquisidor
+  m_EditorClassIdentifier: Salinlahi.Runtime::BossConfigSO
+  bossName: El Inquisidor
+  bossID: ELINQUISIDOR
+  bossSprite: {fileID: 95172164111334305, guid: f6ede119ad3b6824b9652c0513057a7c, type: 3}
+  description: 'A corrupted high-ranking friar who ordered the burning of Baybayin
+    manuscripts during the Spanish era. He wants to erase the script and the memory
+    of the people.
+
+    
+
+    Power: Summons Spanish Era enemies.'
+  bossEnemyData: {fileID: 11400000, guid: aa843150d07c87f439e39501b863853c, type: 2}
+  phases:
+  - summonPhaseDuration: 30
+    delayBetweenSummons: 7
+    minionsPerSummonMin: 1
+    minionsPerSummonMax: 2
+    delayBetweenMinions: 0.8
+    summonEnemyTypes:
+    - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+    summonSpawnRange: {x: 3, y: 1.5}
+    requiredCharacterCount: 3
+    vulnerabilityTimer: 20
+    movementPattern: 1
+    movementSpeed: 1
+    paceHalfRange: 2.5
+    teleportHalfRange: {x: 2, y: 0}
+  - summonPhaseDuration: 30
+    delayBetweenSummons: 4
+    minionsPerSummonMin: 1
+    minionsPerSummonMax: 2
+    delayBetweenMinions: 1.2
+    summonEnemyTypes:
+    - {fileID: 11400000, guid: 5441937cc8c04b60b92b0112af80aac3, type: 2}
+    - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+    - {fileID: 11400000, guid: 92b7e894088646b8a8173cdbfda63679, type: 2}
+    summonSpawnRange: {x: 3, y: 1.5}
+    requiredCharacterCount: 3
+    vulnerabilityTimer: 20
+    movementPattern: 1
+    movementSpeed: 1.3
+    paceHalfRange: 2.5
+    teleportHalfRange: {x: 2.5, y: 0}
+  - summonPhaseDuration: 20
+    delayBetweenSummons: 4
+    minionsPerSummonMin: 2
+    minionsPerSummonMax: 3
+    delayBetweenMinions: 1
+    summonEnemyTypes:
+    - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+    - {fileID: 11400000, guid: 5441937cc8c04b60b92b0112af80aac3, type: 2}
+    - {fileID: 11400000, guid: 92b7e894088646b8a8173cdbfda63679, type: 2}
+    - {fileID: 11400000, guid: 55369c8c5f914966a731075c4b14742a, type: 2}
+    summonSpawnRange: {x: 3.5, y: 1}
+    requiredCharacterCount: 4
+    vulnerabilityTimer: 25
+    movementPattern: 2
+    movementSpeed: 0
+    paceHalfRange: 2
+    teleportHalfRange: {x: 2.5, y: 2.5}
+  fallbackEnemyTypes:
+  - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+  summonHorizontalBounds: {x: -2, y: 2}
+  introDuration: 1.5
+  outroDuration: 0
+  audioBank: {fileID: 11400000, guid: e1230ab6e2d4a074a912f176e29df4eb, type: 2}

@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0c01052006bbdee48a2d608811c4750b, type: 3}
+  m_Name: AlmanacEnemyRegistry_Default
+  m_EditorClassIdentifier: Salinlahi.Runtime::AlmanacEnemyRegistrySO
+  entries:
+  - enemyData: {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: 5441937cc8c04b60b92b0112af80aac3, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: 92b7e894088646b8a8173cdbfda63679, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: 55369c8c5f914966a731075c4b14742a, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: aa843150d07c87f439e39501b863853c, type: 2}
+    bossConfig: {fileID: 11400000, guid: 4b8095123334d644cafc8dbd8086b5e3, type: 2}
+  - enemyData: {fileID: 11400000, guid: b2d5819d4d6b4d8d9d1e4ef125ad2e61, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: 162b7d5e2b26d7442998aac326c48a06, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: e555cb9a9c190494d8ad490e246cc40c, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: 096df5d2077ab9d4c9ff3732f732f957, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: c5bafe37b5c66a74b886d3e91ea67e63, type: 2}
+    bossConfig: {fileID: 11400000, guid: 56283b9b09d5ccb468691c7195fb6ab6, type: 2}
+  - enemyData: {fileID: 11400000, guid: b1192b8ea41bc418cb84defa4321b63f, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: ccb6fd07e3fd94990a6944ec2b341e31, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: 5cc8877bb53ca480da124ff2ffaa9de0, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: 076fdd70b6855485eb5a08635478121b, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: 052b00742308dce4499cfb4cf6b8c33e, type: 2}
+    bossConfig: {fileID: 11400000, guid: 0a29d2a7d971a498388b85daf1ab2ad8, type: 2}

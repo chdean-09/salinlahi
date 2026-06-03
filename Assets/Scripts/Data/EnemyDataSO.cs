@@ -6,6 +6,13 @@ public class EnemyDataSO : ScriptableObject
     [Header("Identity")]
     public string enemyID;             // "standard", "fast", "chain"
 
+    [Tooltip("Almanac display name (e.g. \"Soldado\"). Optional — falls back to nothing if blank.")]
+    public string displayName;
+
+    [TextArea]
+    [Tooltip("Almanac detail copy. Optional — the detail view omits empty text.")]
+    public string description;
+
     [Header("Stats")]
     [Tooltip("World units per second the enemy moves toward the base")]
     public float moveSpeed = 1.5f;
@@ -17,6 +24,9 @@ public class EnemyDataSO : ScriptableObject
     [Header("Visuals")]
     public Sprite[] walkFrames;
     public RuntimeAnimatorController animatorController;
+
+    [Tooltip("Almanac grid thumbnail + detail picture. Optional — falls back to walkFrames[0].")]
+    public Sprite portraitSprite;
 
     [Header("Character")]
     [Tooltip("The Baybayin character this enemy actually requires to be defeated.")]

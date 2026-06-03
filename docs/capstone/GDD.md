@@ -266,7 +266,7 @@ The flow from app launch to gameplay is designed to have as few screens as possi
 
 - **Bootstrap Scene **(invisible) loads all manager singletons, then auto-transitions to Main Menu.
 
-- **Main Menu: **Play (Story Mode), Endless Mode, Tracing Dojo, Settings. Clean and minimal.
+- **Main Menu: **Play (Story Mode), Endless Mode, Tracing Dojo, Almanac, Settings. Clean and minimal.
 
 - **Level Select: **Shows all 15 levels with chapter groupings. Locked levels are grayed out. Progress is saved locally.
 
@@ -294,14 +294,58 @@ No score display during gameplay. Score is shown only on the Level Complete or G
 
 | **Screen** | **Contents** |
 | --- | --- |
-| Main Menu | Play, Endless Mode, Tracing Dojo, Settings, Credits. Simple pixel art background. |
+| Main Menu | Play, Endless Mode, Tracing Dojo, Almanac, Settings, Credits. Simple pixel art background. |
 | Level Select | 15 level buttons grouped by chapter. Stars or checkmarks for completed levels. Locked levels grayed out. |
 | Settings | Audio volume (BGM, SFX, Voice), recognition sensitivity display (fixed at 0.60, shown for transparency). |
 | Pause Menu | Resume, Restart Level, Return to Level Select, Settings. |
 | Game Over | Waves survived, enemies defeated, accuracy %. Retry, Level Select buttons. |
 | Level Complete | Same stats as Game Over plus Trivia Card and Next Level button. |
 
-## 5.4 Accessibility
+## 5.4 Almanac
+
+The Almanac is a persistent encyclopaedia accessible from the Main Menu via the **ALMANAC** button. It records every Baybayin character the player has learned and every enemy type they have encountered.
+
+### Entry Point
+
+Tapping **ALMANAC** on the Main Menu transitions to the dedicated Almanac scene. A back button returns to the Main Menu.
+
+### Tabs
+
+| Tab | Contents |
+| --- | --- |
+| **BAYBAYIN** | One cell per Baybayin character (17 total). Cells unlock as the player defeats enemies that carry that character. |
+| **ENEMIES** | One cell per enemy and boss type. Cells are revealed as the player encounters each enemy in gameplay. |
+
+### Cell States
+
+| State | Visual | Interaction |
+| --- | --- | --- |
+| Locked | Dimmed silhouette with a `?` overlay | Non-interactable |
+| Revealed (regular) | Full artwork portrait | Tappable |
+| Revealed (boss) | Full artwork portrait with a decorative boss border | Tappable |
+
+### Detail Panel
+
+Tapping a revealed cell opens an animated detail scroll overlay. The overlay displays:
+- Portrait sprite (full art)
+- Name (character syllable / enemy display name)
+- Description (short lore or educational note)
+
+The overlay dismisses when the player taps outside it or presses the close button.
+
+### Progress Counters
+
+Two counters are displayed at the top of each tab:
+- **BAYBAYIN tab:** "Learned x/y" — x unlocked characters out of y total.
+- **ENEMIES tab:** "Discovered x/y" — x encountered enemy types out of y total.
+
+### Persistence
+
+- Character unlock progress is saved in `PlayerPrefs` under key `salinlahi.almanac.character_ids`. It persists across sessions and survives scene transitions.
+- Enemy discovery progress is tracked separately by the enemy discovery system (see `AlmanacEnemyDiscovery` seam in `03_Core_Systems.md`).
+- A full progress reset (via the debug/settings flow) clears all Almanac unlock state.
+
+## 5.5 Accessibility
 
 - Full-screen drawing area means no precision targeting. The player draws anywhere, not inside a small box.
 
@@ -386,5 +430,6 @@ Both versions are distributed as separate app store listings built from the same
 | **Version** | **Changes** |
 | --- | --- |
 | v1.0 (March 2026) | Initial GDD. Covers full game vision including MVP scope and post-launch features. Chapter structure finalized at 3 chapters, 15 levels. Boss encounters at Levels 5, 10, 15. Endless Mode confirmed as Must Ship. Lite/Full business model confirmed. |
+| v1.1 (June 2026) | Added §5.4 Almanac. Documents the Baybayin and Enemies encyclopaedia feature (SALIN-118): Main Menu entry point, two tabs, cell states, detail scroll overlay, progress counters, and PlayerPrefs persistence model. Updated §5.1 and §5.3 to include ALMANAC button in Main Menu flow and menus table. |
 
 *This document is a living reference. Update it as design decisions change. Track every change in the changelog above.*

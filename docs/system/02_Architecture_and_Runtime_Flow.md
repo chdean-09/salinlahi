@@ -1,7 +1,7 @@
 # 02 — Architecture and Runtime Flow
 **Project:** Salinlahi
-**Version:** 1.6
-**Date:** 2026-05-27
+**Version:** 1.7
+**Date:** 2026-06-03
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -16,6 +16,7 @@
 | TracingDojo | `Assets/_Scenes/TracingDojo.unity` | Live; practice mode for tracing Baybayin glyphs |
 | Gameplay | `Assets/_Scenes/Gameplay.unity` | Core defense loop: enemies, drawing canvas, HUD |
 | GameOver | `Assets/_Scenes/GameOver.unity` | Deprecated — replaced by DefeatScreenUI overlay in Gameplay scene (SALIN-58) |
+| Almanac | `Assets/_Scenes/Almanac.unity` | Displays the Baybayin character and enemy encyclopaedia; accessible from Main Menu via ALMANAC button |
 
 [EVIDENCE: Assets/_Scenes/ directory listing]
 [EVIDENCE: docs/capstone/GDD.md, §5.1 Player Journey]
@@ -38,7 +39,12 @@ Cold Start
 │           └─ SceneLoader.LoadMainMenu()
 │
 ├─ MainMenu.unity loads
-│     └─ MainMenuUI.cs wires Play button → SceneLoader.LoadGameplay()
+│     ├─ MainMenuUI.cs wires Play button → SceneLoader.LoadGameplay()
+│     └─ MainMenuUI.cs wires Almanac button → SceneLoader.LoadAlmanac()
+│
+├─ Almanac.unity loads  (two-way navigation from MainMenu)
+│     └─ AlmanacController.cs builds Characters + Enemies grids
+│     └─ Back button → SceneLoader.LoadMainMenu()
 │
 └─ Gameplay.unity loads
       └─ GameManager.StartGame() called → GameState.Playing
@@ -150,6 +156,7 @@ All cross-system communication uses `EventBus.cs`. No direct manager-to-manager 
 | `OnBossTeleport` | none | `RaiseBossTeleport()` — raised by `PhaseBasedMovement.TeleportNow` on each Teleport-pattern snap |
 | `OnDialogueStarted` | none | `RaiseDialogueStarted()` |
 | `OnDialogueComplete` | none | `RaiseDialogueComplete()` |
+| `OnCharacterUnlocked` | `BaybayinCharacterSO` | `RaiseCharacterUnlocked(BaybayinCharacterSO)` |
 
 [EVIDENCE: Assets/Scripts/Core/EventBus.cs]
 

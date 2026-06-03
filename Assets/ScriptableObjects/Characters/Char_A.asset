@@ -14,6 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: A
   syllable: a
+  description: 
   displaySprite: {fileID: -8680797543115379092, guid: 086eb41909e2e2942abbbc0f1a3a1d06, type: 3}
+  almanacSprite: {fileID: 0}
+  badgeSprite: {fileID: 0}
+  scrambledBadgeSprite: {fileID: 0}
   pronunciationClip: {fileID: 0}
   templateFileName: A_template_01

@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5bcd7fccabc7c46ceb246e8068fbcf0e, type: 3}
+  m_Name: BossConfig_Superintendent
+  m_EditorClassIdentifier: Salinlahi.Runtime::BossConfigSO
+  bossName: The Superintendent
+  bossID: SUPERINTENDENT
+  bossSprite: {fileID: 0}
+  description: 
+  bossEnemyData: {fileID: 11400000, guid: c5bafe37b5c66a74b886d3e91ea67e63, type: 2}
+  phases:
+  - summonPhaseDuration: 30
+    delayBetweenSummons: 5
+    minionsPerSummonMin: 2
+    minionsPerSummonMax: 3
+    delayBetweenMinions: 0.6
+    summonEnemyTypes: []
+    summonSpawnRange: {x: 2, y: 0}
+    requiredCharacterCount: 3
+    vulnerabilityTimer: 12
+    movementPattern: 0
+    movementSpeed: 0
+    paceHalfRange: 1.5
+    teleportHalfRange: {x: 2, y: 0}
+  fallbackEnemyTypes: []
+  summonHorizontalBounds: {x: 0, y: 0}
+  introDuration: 2
+  outroDuration: 2.5
+  audioBank: {fileID: 0}

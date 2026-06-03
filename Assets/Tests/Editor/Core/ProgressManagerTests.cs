@@ -30,6 +30,7 @@ namespace Salinlahi.Tests.Editor.Core
                 PlayerPrefs.DeleteKey($"salinlahi.progress.unlocked.{i}");
                 PlayerPrefs.DeleteKey($"salinlahi.progress.stars.{i}");
             }
+            CharacterUnlockProgress.ClearAllUnlocked();
             PlayerPrefs.Save();
         }
 
@@ -178,6 +179,21 @@ namespace Salinlahi.Tests.Editor.Core
         public void IsLevelCompleted_ReturnsFalseWhenZeroStars()
         {
             Assert.IsFalse(_manager.IsLevelCompleted(1));
+        }
+
+        [Test]
+        public void ClearAllProgress_ClearsCharacterUnlocks()
+        {
+            BaybayinCharacterSO ba = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            ba.characterID = "BA";
+            CharacterUnlockProgress.TryMarkUnlocked(ba, out _);
+            Assert.IsTrue(CharacterUnlockProgress.HasUnlocked(ba));
+
+            _manager.ClearAllProgress();
+
+            Assert.IsFalse(CharacterUnlockProgress.HasUnlocked(ba),
+                "ClearAllProgress should also clear character unlocks");
+            Object.DestroyImmediate(ba);
         }
     }
 }

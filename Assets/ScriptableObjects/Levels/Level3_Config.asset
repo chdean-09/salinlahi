@@ -21,8 +21,8 @@ MonoBehaviour:
   waves:
   - isIntermissionWave: 0
     characters:
-    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
     - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
+    - {fileID: 11400000, guid: 117f4d54439c640abaac6d80f841ee03, type: 2}
     enemyTypes:
     - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
     enemyCount: 5
@@ -32,6 +32,7 @@ MonoBehaviour:
     characters:
     - {fileID: 11400000, guid: 117f4d54439c640abaac6d80f841ee03, type: 2}
     - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
+    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
     enemyTypes:
     - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
     - {fileID: 11400000, guid: 5441937cc8c04b60b92b0112af80aac3, type: 2}
