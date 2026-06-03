@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: BossAudioBank_ElInquisidor
   m_EditorClassIdentifier: Salinlahi.Runtime::BossAudioBankSO
   bgm: {fileID: 8300000, guid: 2c4b95783d12b6640971f04de5308a9f, type: 3}
-  bgmVolume: 0.4
+  bgmVolume: 0.6
   introGrowl: {fileID: 8300000, guid: b87a6b100c9b0c54cbb115819ccf870e, type: 3}
   introGrowlVolume: 1
   summonTick: {fileID: 8300000, guid: 1934090fbdd5d1f4ea616df9d9e34523, type: 3}
