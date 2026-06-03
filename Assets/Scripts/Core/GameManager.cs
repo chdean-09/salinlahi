@@ -133,6 +133,8 @@ private bool _hasPausedRunSnapshot;
 
     private void SetState(GameState newState)
     {
+        if (newState == GameState.GameOver || newState == GameState.LevelComplete)
+            _drawingSuppressed = false;
         CurrentState = newState;
         DebugLogger.Log($"GameState -> {newState}");
     }
