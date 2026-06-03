@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using System;
 using System.Globalization;
 using UnityEngine;
 
@@ -22,82 +22,49 @@ public readonly struct EnemyDiscoveryCopy
 
 public static class EnemyDiscoveryCopyProvider
 {
-    private static readonly Dictionary<string, EnemyDiscoveryCopy> CopyByEnemyID = new()
-    {
-        {
-            "soldado",
-            new EnemyDiscoveryCopy(
-                "Soldado - The Conscripted Shadows",
-                "During the Spanish occupation, many natives were forced into military service under colonial command. They became symbols of obedience to foreign rule.",
-                "Marches forward.")
-        },
-        {
-            "fraile",
-            new EnemyDiscoveryCopy(
-                "Fraile - The Word Keeper",
-                "Frailes controlled education, religion, and writing, helping replace Baybayin with the Latin alphabet. Their influence caused generations to forget the old script.",
-                "Fades in and out.")
-        },
-        {
-            "guardia",
-            new EnemyDiscoveryCopy(
-                "Guardia - The Patrol of Control",
-                "The Guardia Civil enforced Spanish authority across towns and villages. Their presence discouraged resistance and protected colonial rule.",
-                "Moves faster.")
-        },
-        {
-            "capitan",
-            new EnemyDiscoveryCopy(
-                "Capitan - The Armored Authority",
-                "Captains held positions of power and commanded colonial forces. Their rank and protection made them difficult to challenge.",
-                "Requires 2 hits.")
-        },
-        {
-            "highrankingfriar",
-            new EnemyDiscoveryCopy(
-                "High-ranking Friar",
-                "A corrupted high-ranking friar who ordered the burning of Baybayin manuscripts during the Spanish era. He wants to erase the script and the memory of the people.",
-                "Summons all enemies.")
-        },
-        {
-            "high_ranking_friar",
-            new EnemyDiscoveryCopy(
-                "High-ranking Friar",
-                "A corrupted high-ranking friar who ordered the burning of Baybayin manuscripts during the Spanish era. He wants to erase the script and the memory of the people.",
-                "Summons all enemies.")
-        },
-        {
-            "high-ranking-friar",
-            new EnemyDiscoveryCopy(
-                "High-ranking Friar",
-                "A corrupted high-ranking friar who ordered the burning of Baybayin manuscripts during the Spanish era. He wants to erase the script and the memory of the people.",
-                "Summons all enemies.")
-        }
-    };
+    private const string PowerSeparator = "Power:";
 
     public static EnemyDiscoveryCopy Resolve(EnemyDataSO data)
     {
-        string normalizedID = NormalizeEnemyID(data);
-        if (normalizedID != null && CopyByEnemyID.TryGetValue(normalizedID, out EnemyDiscoveryCopy copy))
-            return copy;
+        if (data == null)
+            return new EnemyDiscoveryCopy(null, null, null);
 
-        return CreateFallbackCopy(normalizedID);
+        SplitDescription(data.description, out string description, out string power);
+        return new EnemyDiscoveryCopy(BuildTitle(data), description, power);
     }
 
-    private static string NormalizeEnemyID(EnemyDataSO data)
+    private static string BuildTitle(EnemyDataSO data)
     {
-        return EnemyDiscoveryProgress.NormalizeEnemyID(data);
+        string name = string.IsNullOrWhiteSpace(data.displayName)
+            ? TitleCaseID(EnemyDiscoveryProgress.NormalizeEnemyID(data))
+            : data.displayName.Trim();
+
+        string subtitle = data.discoverySubtitle?.Trim();
+        return string.IsNullOrEmpty(subtitle) ? name : $"{name} - {subtitle}";
     }
 
-    private static EnemyDiscoveryCopy CreateFallbackCopy(string normalizedID)
+    private static void SplitDescription(string raw, out string description, out string power)
     {
-        string title = string.IsNullOrWhiteSpace(normalizedID)
+        description = null;
+        power = null;
+        if (string.IsNullOrWhiteSpace(raw))
+            return;
+
+        int idx = raw.IndexOf(PowerSeparator, StringComparison.OrdinalIgnoreCase);
+        if (idx < 0)
+        {
+            description = raw.Trim();
+            return;
+        }
+
+        description = raw.Substring(0, idx).Trim();
+        power = raw.Substring(idx + PowerSeparator.Length).Trim();
+    }
+
+    private static string TitleCaseID(string normalizedID)
+    {
+        return string.IsNullOrWhiteSpace(normalizedID)
             ? "Unknown"
             : CultureInfo.InvariantCulture.TextInfo.ToTitleCase(normalizedID.Replace('_', ' ').Replace('-', ' '));
-
-        return new EnemyDiscoveryCopy(
-            title,
-            "A new enemy has appeared.",
-            "Observe its movement and draw the matching Baybayin character.");
     }
 }

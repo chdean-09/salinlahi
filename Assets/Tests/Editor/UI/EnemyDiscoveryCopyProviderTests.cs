@@ -59,15 +59,14 @@ namespace Salinlahi.Tests.Editor.UI
         }
 
         [Test]
-        public void Resolve_WithHighRankingFriarAlias_ReturnsFriarCopy()
+        public void Resolve_WithHighRankingFriarAlias_ReturnsFallbackBecauseAliasesWereRemoved()
         {
             EnemyDataSO data = CreateEnemyData("high_ranking_friar");
 
             EnemyDiscoveryCopy copy = EnemyDiscoveryCopyProvider.Resolve(data);
 
-            Assert.AreEqual("High-ranking Friar", copy.Title);
-            StringAssert.Contains("burning of Baybayin manuscripts", copy.Description);
-            Assert.AreEqual("Summons all enemies.", copy.Power);
+            Assert.AreEqual("High Ranking Friar", copy.Title);
+            Assert.AreEqual("A new enemy has appeared.", copy.Description);
             Object.DestroyImmediate(data);
         }
 

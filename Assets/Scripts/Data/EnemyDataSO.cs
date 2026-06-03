@@ -9,8 +9,11 @@ public class EnemyDataSO : ScriptableObject
     [Tooltip("Almanac display name (e.g. \"Soldado\"). Optional — falls back to nothing if blank.")]
     public string displayName;
 
+    [Tooltip("Discovery overlay subtitle (e.g. \"The Conscripted Shadows\"). Optional — appended after the display name as \"Name - Subtitle\".")]
+    public string discoverySubtitle;
+
     [TextArea]
-    [Tooltip("Almanac detail copy. Optional — the detail view omits empty text.")]
+    [Tooltip("Almanac detail copy. The discovery overlay splits this on \"Power:\" into lore and power text. Optional — the detail view omits empty text.")]
     public string description;
 
     [Header("Stats")]
