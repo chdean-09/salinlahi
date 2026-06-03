@@ -152,9 +152,13 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
 
             Enemy enemy = pending.Enemy;
             EnemyDataSO data = pending.Data;
+            // Only abandon the overlay if there is nothing valid to frame: the
+            // enemy was killed/despawned, is currently hidden, or has not yet
+            // entered the viewport. A slow descent is NOT a reason to skip — the
+            // reveal wait above releases on the timeout once it is on-screen.
             if (!IsPendingDiscoveryValid(data, enemy)
-                || !IsEnemyPastRevealThreshold(enemy)
-                || !IsEnemyVisibleForDiscovery(enemy))
+                || !IsEnemyVisibleForDiscovery(enemy)
+                || !IsEnemyWithinViewport(enemy))
             {
                 continue;
             }
@@ -249,14 +253,24 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
         if (!IsPendingDiscoveryValid(pending.Data, pending.Enemy))
             return false;
 
-        bool isPastRevealThreshold = IsEnemyPastRevealThreshold(pending.Enemy);
-        if (isPastRevealThreshold && IsEnemyVisibleForDiscovery(pending.Enemy))
+        // The spotlight needs a live, fully-visible, on-screen enemy to frame.
+        // Keep waiting while the enemy is hidden (e.g. a phaser mid-fade) or has
+        // not yet descended into the visible viewport, regardless of the timeout.
+        if (!IsEnemyVisibleForDiscovery(pending.Enemy) || !IsEnemyWithinViewport(pending.Enemy))
+            return true;
+
+        // Ideal: reveal once the enemy has cleared the top HUD band.
+        if (IsEnemyPastRevealThreshold(pending.Enemy))
             return false;
 
-        if (!isPastRevealThreshold && _revealTimeoutSeconds > 0f && Time.unscaledTime - startTime >= _revealTimeoutSeconds)
-            return false;
-
-        return true;
+        // Fallback: a slow descent should still reveal once we have waited long
+        // enough — the enemy is already visible and on-screen (checked above).
+        // Previously this path abandoned the overlay, so the first enemy of each
+        // type (dequeued at spawn, before it could descend past the threshold)
+        // was never shown or recorded in the almanac.
+        bool timedOut = _revealTimeoutSeconds > 0f
+            && Time.unscaledTime - startTime >= _revealTimeoutSeconds;
+        return !timedOut;
     }
 
     private bool IsPendingDiscoveryValid(EnemyDataSO data, Enemy enemy)
@@ -318,6 +332,20 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
         Bounds bounds = ResolveEnemyBounds(enemy);
         Vector3 viewportCenter = camera.WorldToViewportPoint(bounds.center);
         return viewportCenter.z >= 0f && viewportCenter.y <= CurrentRevealViewportY();
+    }
+
+    // True once the enemy has descended below the top edge of the screen (and is
+    // in front of the camera). Used as the floor for the reveal-timeout fallback
+    // so the spotlight never frames an enemy that is still off-screen above.
+    private bool IsEnemyWithinViewport(Enemy enemy)
+    {
+        Camera camera = _gameplayCamera != null ? _gameplayCamera : Camera.main;
+        if (camera == null || enemy == null)
+            return true;
+
+        Bounds bounds = ResolveEnemyBounds(enemy);
+        Vector3 viewportCenter = camera.WorldToViewportPoint(bounds.center);
+        return viewportCenter.z >= 0f && viewportCenter.y <= 1f;
     }
 
     public static float ResolveRevealViewportY(float configuredViewportY, Rect safeArea, Vector2Int screenSize, float safeAreaViewportPadding)

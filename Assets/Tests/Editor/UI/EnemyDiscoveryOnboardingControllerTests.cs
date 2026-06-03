@@ -342,20 +342,53 @@ namespace Salinlahi.Tests.Editor.UI
         }
 
         [UnityTest]
-        public IEnumerator EnemyDiscovered_TimesOutBeforeThreshold_SkipsOverlay()
+        public IEnumerator EnemyDiscovered_TimesOutWhileOnScreen_ShowsOverlayAtCurrentPosition()
         {
             EnemyDiscoveryOnboardingController controller = CreateController(out CanvasGroup group, out _, out _, out _);
             SetPrivateField(controller, "_revealViewportYFromBottom", 0.72f);
             SetPrivateField(controller, "_revealTimeoutSeconds", 0.05f);
             EnemyDataSO data = CreateEnemyData("soldado");
             Enemy enemy = CreateEnemy(data);
+            // On-screen (viewport y ~0.95) but above the 0.72 reveal band, so it
+            // never reaches the ideal position — only the timeout fallback can
+            // reveal it. Regression guard: this used to be abandoned (skipped),
+            // which is why the first enemy of each type never made the almanac.
             enemy.transform.position = new Vector3(0f, 4.5f, 0f);
 
             EventBus.RaiseEnemyDiscovered(data, enemy);
             yield return new WaitForSecondsRealtime(0.12f);
-            yield return null;
+            yield return WaitFrames(2);
+
+            Assert.AreEqual(1f, group.alpha);
+            Assert.IsTrue(EnemyDiscoveryProgress.HasDiscovered(data));
+            Object.DestroyImmediate(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator EnemyDiscovered_TimesOutWhileAboveViewport_WaitsUntilOnScreen()
+        {
+            EnemyDiscoveryOnboardingController controller = CreateController(out CanvasGroup group, out _, out _, out _);
+            SetPrivateField(controller, "_revealViewportYFromBottom", 0.72f);
+            SetPrivateField(controller, "_revealTimeoutSeconds", 0.05f);
+            EnemyDataSO data = CreateEnemyData("soldado");
+            Enemy enemy = CreateEnemy(data);
+            // Above the top edge (viewport y > 1): the timeout must NOT frame an
+            // enemy that is still off-screen overhead.
+            enemy.transform.position = new Vector3(0f, 6f, 0f);
+
+            EventBus.RaiseEnemyDiscovered(data, enemy);
+            yield return new WaitForSecondsRealtime(0.12f);
+            yield return WaitFrames(2);
 
             Assert.AreEqual(0f, group.alpha);
+            Assert.IsFalse(EnemyDiscoveryProgress.HasDiscovered(data));
+
+            // Once it descends into view, the (already-elapsed) timeout reveals it.
+            enemy.transform.position = new Vector3(0f, 4.5f, 0f);
+            yield return WaitFrames(4);
+
+            Assert.AreEqual(1f, group.alpha);
+            Assert.IsTrue(EnemyDiscoveryProgress.HasDiscovered(data));
             Object.DestroyImmediate(controller.gameObject);
         }
 
