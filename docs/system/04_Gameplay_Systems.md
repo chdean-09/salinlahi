@@ -1,6 +1,6 @@
 # 04 — Gameplay Systems
 **Project:** Salinlahi
-**Version:** 2.3
+**Version:** 2.4
 **Date:** 2026-06-03
 
 **Owner:** Gameplay Developer (Jon Wayne Cabusbusan / Chad Andrada)
@@ -471,10 +471,12 @@ Non-boss levels and boss levels without a `tutorial` reference are entirely unaf
 | Script | Location | Role |
 |--------|----------|------|
 | `BossTutorialSO` | `Assets/Scripts/Data/BossTutorialSO.cs` | Content asset. Holds an ordered `List<BossTutorialPage>`. One asset per boss. |
-| `BossTutorialPage` | Same file | `[Serializable]` struct: `title`, `body`, `art` (Sprite, optional). |
+| `BossTutorialPage` | Same file | `[Serializable]` struct: `title`, `body`, `frames` (`Sprite[]`), `animationFps`, and `effect` (`BossTutorialArtEffect`). Empty/null frames hide art; single-frame pages are static; multi-frame pages animate. |
 | `BossTutorialPaging` | `Assets/Scripts/UI/Boss/BossTutorialPaging.cs` | Pure struct (no Unity deps). Tracks `Index` over a fixed `Count`, exposes `CanGoLeft` / `CanGoRight`, clamps `Next()`/`Prev()`. Fully EditMode-testable. |
 | `BossTutorialScroll` | `Assets/Scripts/UI/Boss/BossTutorialScroll.cs` | MonoBehaviour overlay. Wires left/right arrow buttons and close button in `Awake`. `Show(pages)` activates + animates in; close button calls `Close()` (animates out, raises `OnClosed`). Mirrors `AlmanacDetailScroll`'s expand/fade animation using `Time.unscaledDeltaTime`. |
 | `BossTutorialController` | `Assets/Scripts/Gameplay/Boss/BossTutorialController.cs` | Scene MonoBehaviour. `Play(BossTutorialSO)` coroutine: shows the scroll, suppresses drawing input, waits for `OnClosed`, waits for close animation, restores drawing input. No-ops gracefully on null / empty / unwired. |
+
+`BossTutorialArtEffect.Collapsed` is for boss-only sprites. If a page uses a composite UI preview image, keep `effect` as `None` so the glyph scroll/counter portion of the preview is not squashed or tinted.
 
 ### 11.3 Integration into `LevelFlowController`
 
