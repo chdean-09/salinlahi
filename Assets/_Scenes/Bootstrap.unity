@@ -488,7 +488,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 579cac120fe8f5740b89abadb824a4ab, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Salinlahi.Debug.ProgressManagerTester
-  runTestsOnStart: 1
+  runTestsOnStart: 0
   verboseLogging: 1
 --- !u!1 &1913551291
 GameObject:

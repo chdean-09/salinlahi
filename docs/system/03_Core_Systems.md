@@ -1,6 +1,6 @@
 # 03 — Core Systems
 **Project:** Salinlahi
-**Version:** 1.9
+**Version:** 2.0
 **Date:** 2026-06-03
 **Owner:** Jon Wayne Cabusbusan
 
@@ -33,14 +33,15 @@ public enum GameState { Idle, Playing, Paused, GameOver, LevelComplete, Practici
 | `ExitDialoguePause()` | state == `Paused` | `Time.timeScale = 1f`; state → previous (cached) state |
 | `SetLevel(LevelConfigSO)` | Any state | Sets `CurrentLevel` property |
 | `SetCurrentBoss(BossController)` | Internal | Setter used by `BossController.StartBoss` to publish `CurrentBoss` |
-| `HandleGameOver()` (private) | `OnGameOver` fired | state → `GameOver`; clears paused-run snapshot; DefeatScreenUI overlay handles UI |
-| `HandleLevelComplete()` (private) | `OnLevelComplete` fired | state → `LevelComplete`; clears paused-run snapshot |
+| `SuppressDrawingInput(bool suppressed)` | Any state | Suppresses (`true`) or restores (`false`) drawing input; `AcceptsDrawingInput` returns `false` while suppressed, even if `Playing`. Auto-released when state transitions to `GameOver` or `LevelComplete`. |
+| `HandleGameOver()` (private) | `OnGameOver` fired | state → `GameOver`; resets `_drawingSuppressed = false`; clears paused-run snapshot; DefeatScreenUI overlay handles UI |
+| `HandleLevelComplete()` (private) | `OnLevelComplete` fired | state → `LevelComplete`; resets `_drawingSuppressed = false`; clears paused-run snapshot |
 
 **Properties:**
 - `CurrentLevel` (`LevelConfigSO`) — the active level config; set via `SetLevel`.
 - `LastDefeatHearts` (`int`) — hearts remaining at last defeat (consumed by DefeatScreenUI).
 - `CurrentBoss` (`BossController`) — non-null during a boss encounter; set via `SetCurrentBoss`.
-- `AcceptsDrawingInput` (`bool`) — true when `CurrentState` is `Playing` or `Practicing`.
+- `AcceptsDrawingInput` (`bool`) — true when `CurrentState` is `Playing` or `Practicing` **and** drawing is not suppressed (`!_drawingSuppressed`). `StrokeCapture` gates all input on this property.
 
 ### 1.5 Invariants
 - `PauseGame()` is a no-op when `CurrentState != Playing`. Guard is enforced in code.
