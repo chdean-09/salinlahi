@@ -15,8 +15,6 @@ public class CharacterUnlockRevealController : MonoBehaviour
     [Tooltip("The reused 'New Character Unlocked!' scroll overlay in the Gameplay scene.")]
     [SerializeField] private AlmanacDetailScroll _scroll;
 
-    private bool _dismissed;
-
     /// <summary>
     /// Returns the characters in <paramref name="allowed"/>, in order, that are not yet unlocked
     /// (per <paramref name="isUnlocked"/>), skipping nulls. Null args yield an empty list.
@@ -46,20 +44,23 @@ public class CharacterUnlockRevealController : MonoBehaviour
         if (_scroll == null || toReveal == null || toReveal.Count == 0)
             yield break;
 
+        bool dismissed = false;
+        void OnHidden() => dismissed = true;
+
         GameManager.Instance?.SuppressDrawingInput(true);
-        _scroll.OnHidden += HandleScrollHidden;
+        _scroll.OnHidden += OnHidden;
         try
         {
             foreach (BaybayinCharacterSO c in toReveal)
             {
                 if (c == null) continue;
 
-                _dismissed = false;
+                dismissed = false;
                 Sprite glyph = c.almanacSprite != null ? c.almanacSprite : c.displaySprite;
                 _scroll.Show(glyph, $"\"{c.characterID}\"", c.description);
 
                 // Wait for the player to press ✕ (Hide raises OnHidden immediately).
-                yield return new WaitUntil(() => _dismissed);
+                yield return new WaitUntil(() => dismissed);
 
                 // Acknowledged → persist the unlock and let any Almanac listener refresh.
                 if (CharacterUnlockProgress.TryMarkUnlocked(c, out _))
@@ -72,10 +73,8 @@ public class CharacterUnlockRevealController : MonoBehaviour
         }
         finally
         {
-            if (_scroll != null) _scroll.OnHidden -= HandleScrollHidden;
+            if (_scroll != null) _scroll.OnHidden -= OnHidden;
             GameManager.Instance?.SuppressDrawingInput(false);
         }
     }
-
-    private void HandleScrollHidden() => _dismissed = true;
 }

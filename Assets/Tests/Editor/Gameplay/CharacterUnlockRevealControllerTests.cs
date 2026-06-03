@@ -68,7 +68,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
-        public void BuildRevealQueue_NullArgs_ReturnEmpty()
+        public void BuildRevealQueue_NullArgs_ReturnsEmpty()
         {
             Assert.IsEmpty(CharacterUnlockRevealController.BuildRevealQueue(null, _ => false));
 
