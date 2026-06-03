@@ -15,6 +15,14 @@ namespace Salinlahi.Tests.Editor.UI
         private readonly List<Object> _objectsToDestroy = new();
         private Camera _camera;
 
+        [SetUp]
+        public void SetUp()
+        {
+            TutorialRuntimeState.Clear();
+            EnemyDiscoveryProgress.ResetForTests();
+            Time.timeScale = 1f;
+        }
+
         [TearDown]
         public void TearDown()
         {
@@ -39,12 +47,14 @@ namespace Salinlahi.Tests.Editor.UI
             Enemy enemy = CreateEnemy(data);
             enemy.transform.position = new Vector3(0f, 4.5f, 0f);
 
+            Assert.IsFalse(EnemyDiscoveryProgress.HasDiscovered(data));
             EventBus.RaiseEnemyDiscovered(data, enemy);
             yield return WaitFrames(2);
             enemy.transform.position = new Vector3(0f, 1f, 0f);
             yield return WaitFrames(6);
 
             Assert.AreEqual(1f, group.alpha);
+            Assert.IsTrue(EnemyDiscoveryProgress.HasDiscovered(data));
             Assert.IsTrue(group.blocksRaycasts);
             Assert.IsTrue(frame.gameObject.activeSelf);
             StringAssert.Contains("Soldado - The Conscripted Shadows", text.text);
@@ -110,6 +120,9 @@ namespace Salinlahi.Tests.Editor.UI
             EnemyDataSO soldadoData = CreateEnemyData("soldado");
             Enemy soldado = CreateEnemy(soldadoData);
             soldado.transform.position = new Vector3(0f, 4.5f, 0f);
+            EnemyDataSO fraileData = CreateEnemyData("fraile");
+            Enemy fraile = CreateEnemy(fraileData);
+            fraile.transform.position = new Vector3(0f, 1f, 0f);
 
             EventBus.RaiseEnemyDiscovered(soldadoData, soldado);
             yield return WaitFrames(2);
@@ -118,6 +131,14 @@ namespace Salinlahi.Tests.Editor.UI
 
             Assert.AreEqual(1f, group.alpha);
             StringAssert.Contains("Soldado - The Conscripted Shadows", text.text);
+
+            EventBus.RaiseEnemyDiscovered(fraileData, fraile);
+            button.onClick.Invoke();
+            yield return WaitFrames(6);
+
+            Assert.AreEqual(1f, group.alpha);
+            StringAssert.Contains("Fraile - The Word Keeper", text.text);
+            Assert.IsTrue(EnemyDiscoveryProgress.HasDiscovered(fraileData));
 
             button.onClick.Invoke();
             Assert.AreEqual(0f, group.alpha);
@@ -493,10 +514,28 @@ namespace Salinlahi.Tests.Editor.UI
         {
             EnemyDataSO data = ScriptableObject.CreateInstance<EnemyDataSO>();
             data.enemyID = enemyID;
+            ApplyDiscoveryCopyFields(data);
             data.maxHealth = 1;
             data.moveSpeed = 1f;
             _objectsToDestroy.Add(data);
             return data;
+        }
+
+        private static void ApplyDiscoveryCopyFields(EnemyDataSO data)
+        {
+            switch (data.enemyID?.Trim().ToLowerInvariant())
+            {
+                case "soldado":
+                    data.displayName = "Soldado";
+                    data.discoverySubtitle = "The Conscripted Shadows";
+                    data.description = "During the Spanish occupation, many natives were forced into military service under colonial command. They became symbols of obedience to foreign rule.\n\nPower: Marches forward.";
+                    break;
+                case "fraile":
+                    data.displayName = "Fraile";
+                    data.discoverySubtitle = "The Word Keeper";
+                    data.description = "Frailes controlled education, religion, and writing, helping replace Baybayin with the Latin alphabet. Their influence caused generations to forget the old script.\n\nPower: Fades in and out.";
+                    break;
+            }
         }
 
         private TextMeshPro CreateEnemyDebugLabel(Enemy enemy, string labelName, string text, Vector3 localPosition)

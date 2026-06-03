@@ -108,7 +108,35 @@ namespace Salinlahi.Tests.Editor.UI
         {
             EnemyDataSO data = ScriptableObject.CreateInstance<EnemyDataSO>();
             data.enemyID = enemyID;
+            ApplyDiscoveryCopyFields(data);
             return data;
+        }
+
+        private static void ApplyDiscoveryCopyFields(EnemyDataSO data)
+        {
+            switch (data.enemyID?.Trim().ToLowerInvariant())
+            {
+                case "soldado":
+                    data.displayName = "Soldado";
+                    data.discoverySubtitle = "The Conscripted Shadows";
+                    data.description = "During the Spanish occupation, many natives were forced into military service under colonial command. They became symbols of obedience to foreign rule.\n\nPower: Marches forward.";
+                    break;
+                case "fraile":
+                    data.displayName = "Fraile";
+                    data.discoverySubtitle = "The Word Keeper";
+                    data.description = "Frailes controlled education, religion, and writing, helping replace Baybayin with the Latin alphabet. Their influence caused generations to forget the old script.\n\nPower: Fades in and out.";
+                    break;
+                case "guardia":
+                    data.displayName = "Guardia";
+                    data.discoverySubtitle = "The Patrol of Control";
+                    data.description = "The Guardia Civil enforced Spanish authority across towns and villages. Their presence discouraged resistance and protected colonial rule.\n\nPower: Moves faster.";
+                    break;
+                case "capitan":
+                    data.displayName = "Capitan";
+                    data.discoverySubtitle = "The Armored Authority";
+                    data.description = "Captains held positions of power and commanded colonial forces. Their rank and protection made them difficult to challenge.\n\nPower: Requires 2 hits.";
+                    break;
+            }
         }
     }
 }

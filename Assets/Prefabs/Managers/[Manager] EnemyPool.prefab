@@ -88,6 +88,14 @@ MonoBehaviour:
     prefab: {fileID: 8037671833055544141, guid: 8af0504b541264b64aad0cc3cef11412, type: 3}
     defaultCapacity: 10
     maxSize: 20
+  - enemyID: guardia
+    prefab: {fileID: 8037671833055544141, guid: 8ffc08ca659d467094885c5bf3a4437e, type: 3}
+    defaultCapacity: 10
+    maxSize: 20
+  - enemyID: capitan
+    prefab: {fileID: 8037671833055544141, guid: 5b9f514008014de4b8f6dd862682490a, type: 3}
+    defaultCapacity: 10
+    maxSize: 20
   - enemyID: elinquisidor
     prefab: {fileID: 8774765201253825161, guid: 3162ad5b896c54746a794736dc9371e4, type: 3}
     defaultCapacity: 1

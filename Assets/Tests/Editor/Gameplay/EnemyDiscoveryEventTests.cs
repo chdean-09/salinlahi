@@ -39,7 +39,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
-        public void Initialize_WithNewEnemyID_MarksDiscoveredAndRaisesOnce()
+        public void Initialize_WithNewEnemyID_RaisesDiscoveryWithoutMarkingDiscovered()
         {
             Enemy enemy = CreateEnemy();
             EnemyDataSO data = CreateEnemyData("soldado");
@@ -49,11 +49,11 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.AreEqual(1, _eventCount);
             Assert.AreSame(data, _lastData);
             Assert.AreSame(enemy, _lastEnemy);
-            Assert.IsTrue(EnemyDiscoveryProgress.HasDiscovered(data));
+            Assert.IsFalse(EnemyDiscoveryProgress.HasDiscovered(data));
         }
 
         [Test]
-        public void Initialize_WithRepeatedEnemyID_DoesNotRaiseAgain()
+        public void Initialize_WithRepeatedEnemyID_WhenAlreadyDiscovered_DoesNotRaiseAgain()
         {
             Enemy firstEnemy = CreateEnemy();
             Enemy secondEnemy = CreateEnemy();
@@ -61,6 +61,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
             EnemyDataSO secondData = CreateEnemyData("SOLDADO");
 
             Assert.IsTrue(firstEnemy.Initialize(firstData));
+            Assert.IsTrue(EnemyDiscoveryProgress.TryMarkDiscovered(firstData, out _));
             Assert.IsTrue(secondEnemy.Initialize(secondData));
 
             Assert.AreEqual(1, _eventCount);

@@ -146,7 +146,9 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
         while (_pendingDiscoveries.Count > 0)
         {
             PendingDiscovery pending = _pendingDiscoveries.Dequeue();
-            yield return WaitForRevealReady(pending);
+            float revealWaitStartTime = Time.unscaledTime;
+            while (ShouldContinueWaitingForReveal(pending, revealWaitStartTime))
+                yield return null;
 
             Enemy enemy = pending.Enemy;
             EnemyDataSO data = pending.Data;
@@ -157,10 +159,14 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
                 continue;
             }
 
+            if (EnemyDiscoveryProgress.HasDiscovered(data))
+                continue;
+
             _targetEnemy = enemy;
             _targetData = data;
             EnterPauseIfPossible();
             ShowImmediate();
+            EnemyDiscoveryProgress.TryMarkDiscovered(data, out _);
             RenderCopy(data);
             PositionFrameAndSpotlight();
 
@@ -238,24 +244,19 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
         UpdateSpotlightCutout(parentRect, _targetFrame.anchoredPosition, paddedFrameSize);
     }
 
-    private IEnumerator WaitForRevealReady(PendingDiscovery pending)
+    private bool ShouldContinueWaitingForReveal(PendingDiscovery pending, float startTime)
     {
-        float startTime = Time.unscaledTime;
+        if (!IsPendingDiscoveryValid(pending.Data, pending.Enemy))
+            return false;
 
-        while (true)
-        {
-            if (!IsPendingDiscoveryValid(pending.Data, pending.Enemy))
-                yield break;
+        bool isPastRevealThreshold = IsEnemyPastRevealThreshold(pending.Enemy);
+        if (isPastRevealThreshold && IsEnemyVisibleForDiscovery(pending.Enemy))
+            return false;
 
-            bool isPastRevealThreshold = IsEnemyPastRevealThreshold(pending.Enemy);
-            if (isPastRevealThreshold && IsEnemyVisibleForDiscovery(pending.Enemy))
-                yield break;
+        if (!isPastRevealThreshold && _revealTimeoutSeconds > 0f && Time.unscaledTime - startTime >= _revealTimeoutSeconds)
+            return false;
 
-            if (!isPastRevealThreshold && _revealTimeoutSeconds > 0f && Time.unscaledTime - startTime >= _revealTimeoutSeconds)
-                yield break;
-
-            yield return null;
-        }
+        return true;
     }
 
     private bool IsPendingDiscoveryValid(EnemyDataSO data, Enemy enemy)
