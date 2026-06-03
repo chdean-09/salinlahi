@@ -1,6 +1,6 @@
 # 02 — Architecture and Runtime Flow
 **Project:** Salinlahi
-**Version:** 1.7
+**Version:** 1.8
 **Date:** 2026-06-03
 **Owner:** Jon Wayne Cabusbusan
 
@@ -47,7 +47,14 @@ Cold Start
 │     └─ Back button → SceneLoader.LoadMainMenu()
 │
 └─ Gameplay.unity loads
-      └─ GameManager.StartGame() called → GameState.Playing
+      └─ LevelFlowController.RunLevelFlow() coroutine:
+            ├─ intro dialogue (DialogueController)
+            ├─ GameManager.StartGame() → GameState.Playing
+            ├─ [RevealTiming.BeforeTutorial] CharacterUnlockRevealController.Play(queue)
+            │     └─ SuppressDrawingInput(true); show each new character in AlmanacDetailScroll;
+            │        wait for ✕ press; TryMarkUnlocked + RaiseCharacterUnlocked; SuppressDrawingInput(false)
+            ├─ PlayLevelTutorialIfNeeded() (no-op on non-tutorial levels)
+            └─ [RevealTiming.AfterTutorial] CharacterUnlockRevealController.Play(queue)  ← default
       └─ WaveManager drives waves (all levels, including boss levels)
       └─ [All waves cleared]
             └─ WaveManager checks LevelConfigSO.bossConfig != null
@@ -156,7 +163,7 @@ All cross-system communication uses `EventBus.cs`. No direct manager-to-manager 
 | `OnBossTeleport` | none | `RaiseBossTeleport()` — raised by `PhaseBasedMovement.TeleportNow` on each Teleport-pattern snap |
 | `OnDialogueStarted` | none | `RaiseDialogueStarted()` |
 | `OnDialogueComplete` | none | `RaiseDialogueComplete()` |
-| `OnCharacterUnlocked` | `BaybayinCharacterSO` | `RaiseCharacterUnlocked(BaybayinCharacterSO)` |
+| `OnCharacterUnlocked` | `BaybayinCharacterSO` | `RaiseCharacterUnlocked(BaybayinCharacterSO)` — raised by `CharacterUnlockRevealController` after the player acknowledges a reveal (per-character, after `TryMarkUnlocked`); `AlmanacController` subscribes to rebuild the Characters grid |
 
 [EVIDENCE: Assets/Scripts/Core/EventBus.cs]
 

@@ -340,7 +340,13 @@ classDiagram
     }
     class LevelFlowController {
         -LevelConfigSO _level
+        -RevealTiming _revealTiming
         +RunLevel()
+        -PlayRevealsIfAny() Coroutine
+    }
+    class CharacterUnlockRevealController {
+        +BuildRevealQueue(allowed, isUnlocked)$ List
+        +Play(toReveal) Coroutine
     }
     class HeartSystem {
         +int CurrentHearts
@@ -410,6 +416,12 @@ classDiagram
     LevelFlowController ..> LevelConfigSO : reads
     LevelFlowController --> WaveManager : drives
     LevelFlowController --> BossController : activates
+    LevelFlowController --> CharacterUnlockRevealController : yields Play()
+
+    CharacterUnlockRevealController --> AlmanacDetailScroll : shows
+    CharacterUnlockRevealController ..> CharacterUnlockProgress : TryMarkUnlocked
+    CharacterUnlockRevealController ..> EventBus : RaiseCharacterUnlocked
+    CharacterUnlockRevealController ..> GameManager : SuppressDrawingInput
 
     WaveManager ..> WaveDefinition : reads
     WaveManager --> EnemyPool : gets enemies from
@@ -489,9 +501,11 @@ flowchart LR
         LFC["LevelFlowController"]
         WM["WaveManager"]
         BCtl["BossController"]
+        CUR["CharacterUnlockRevealController"]
         LC -. "config" .-> LFC
         LFC --> WM
         LFC -- "if boss level" --> BCtl
+        LFC -- "PlayRevealsIfAny()" --> CUR
         WC -. "config" .-> WM
         BCfg -. "config" .-> BCtl
     end
@@ -553,6 +567,7 @@ flowchart LR
     GM --> DSU["DefeatScreenUI overlay"]
     BCtl --> E6
     E6 --> HUD2["Boss HUD"]
+    CUR -- "raise (per acknowledged reveal)" --> E7
     E7 --> AC
 ```
 
