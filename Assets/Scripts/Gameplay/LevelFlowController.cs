@@ -39,7 +39,7 @@ public class LevelFlowController : MonoBehaviour
         EnemyDataSO fallbackEnemyData)
     {
         if (levelConfig == null
-            || levelConfig.levelNumber != LevelTutorialProgress.TutorialLevelNumber
+            || !LevelTutorialProgress.ShouldShowForLevelNumber(levelConfig.levelNumber)
             || (levelConfig.tutorialSequence == null && levelConfig.onboardingSequence == null)
             || waveManager == null)
         {
@@ -193,7 +193,7 @@ public class LevelFlowController : MonoBehaviour
 
         if (_level1OnboardingController == null
             && _levelConfig != null
-            && _levelConfig.levelNumber == LevelTutorialProgress.TutorialLevelNumber)
+            && IsTutorialLevelWithSequence(_levelConfig))
         {
             _level1OnboardingController = FindFirstObjectByType<Level1OnboardingController>(FindObjectsInactive.Include);
             if (_level1OnboardingController == null && ShouldCreateRuntimeOnboardingController())
@@ -204,8 +204,7 @@ public class LevelFlowController : MonoBehaviour
     private bool ShouldCreateRuntimeOnboardingController()
     {
         return _levelConfig != null
-            && _levelConfig.levelNumber == LevelTutorialProgress.TutorialLevelNumber
-            && !LevelTutorialProgress.HasSeenLevel1Tutorial()
+            && LevelTutorialProgress.ShouldShowForLevelNumber(_levelConfig.levelNumber)
             && (_levelConfig.onboardingSequence != null || _levelConfig.tutorialSequence != null);
     }
 
@@ -213,13 +212,29 @@ public class LevelFlowController : MonoBehaviour
     {
         GameObject go = new("[Runtime] Level1OnboardingController");
         go.transform.SetParent(transform, false);
-        go.AddComponent<ProtagonistIntroBeat>();
-        go.AddComponent<BaseIntroBeat>();
-        go.AddComponent<SoloTeachBeat>();
-        go.AddComponent<ComboTeachBeat>();
-        go.AddComponent<HeartLossDemoBeat>();
+
+        if (_levelConfig != null && _levelConfig.levelNumber == LevelTutorialProgress.Level2TutorialLevelNumber)
+        {
+            go.AddComponent<ComboTeachBeat>();
+            go.AddComponent<FocusModeTeachBeat>();
+        }
+        else
+        {
+            go.AddComponent<ProtagonistIntroBeat>();
+            go.AddComponent<BaseIntroBeat>();
+            go.AddComponent<SoloTeachBeat>();
+            go.AddComponent<HeartLossDemoBeat>();
+        }
+
         go.AddComponent<ReleaseBeat>();
         return go.AddComponent<Level1OnboardingController>();
+    }
+
+    private static bool IsTutorialLevelWithSequence(LevelConfigSO levelConfig)
+    {
+        return levelConfig != null
+            && LevelTutorialProgress.ShouldShowForLevelNumber(levelConfig.levelNumber)
+            && (levelConfig.onboardingSequence != null || levelConfig.tutorialSequence != null);
     }
 
     private static DialogueController FindActiveDialogueController()
@@ -283,22 +298,21 @@ public class LevelFlowController : MonoBehaviour
             yield break;
         }
 
-        bool isTutorialLevel = _levelConfig.levelNumber == LevelTutorialProgress.TutorialLevelNumber;
-        bool ftueAlreadySeen = LevelTutorialProgress.HasSeenLevel1Tutorial();
+        bool isTutorialLevel = LevelTutorialProgress.ShouldShowForLevelNumber(_levelConfig.levelNumber);
 
-        if (!isTutorialLevel || ftueAlreadySeen)
+        if (!isTutorialLevel)
             yield break;
 
-        // FTUE is due for Level 1 from this point on.
+        // Tutorial is due from this point on.
         if (_level1OnboardingController == null)
         {
-            DebugLogger.LogError("LevelFlowController: Level 1 FTUE is due, but Level1OnboardingController is not in the scene. Run Salinlahi → Tutorial → 5. Wire Level 1 Scene.");
+            DebugLogger.LogError($"LevelFlowController: Level {_levelConfig.levelNumber} tutorial is due, but Level1OnboardingController is not in the scene. Run Salinlahi → Tutorial → 5. Wire Level Scene.");
             yield break;
         }
 
         if (!_level1OnboardingController.IsSequenceResolvable(_levelConfig))
         {
-            DebugLogger.LogError("LevelFlowController: Level 1 FTUE is due, but no OnboardingSequenceSO is assigned. Set LevelConfig.onboardingSequence or the controller's Fallback Sequence field.");
+            DebugLogger.LogError($"LevelFlowController: Level {_levelConfig.levelNumber} tutorial is due, but no OnboardingSequenceSO is assigned. Set LevelConfig.onboardingSequence or the controller's Fallback Sequence field.");
             yield break;
         }
 

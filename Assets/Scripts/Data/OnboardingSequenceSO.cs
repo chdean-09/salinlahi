@@ -10,6 +10,7 @@ public enum OnboardingBeatType
     ComboTeach = 3,
     HeartLossDemo = 4,
     Release = 5,
+    FocusModeTeach = 6,
 }
 
 [Serializable]
@@ -51,13 +52,12 @@ public struct OnboardingVideoTemplate
 public sealed class OnboardingSequenceSO : ScriptableObject
 {
     [Header("Beat Order")]
-    [Tooltip("Beats run in this order. Default: ProtagonistIntro, BaseIntro, SoloTeach, ComboTeach, HeartLossDemo, Release.")]
+    [Tooltip("Beats run in this order. Default: ProtagonistIntro, BaseIntro, SoloTeach, HeartLossDemo, Release.")]
     public OnboardingBeatType[] beatOrder = new[]
     {
         OnboardingBeatType.ProtagonistIntro,
         OnboardingBeatType.BaseIntro,
         OnboardingBeatType.SoloTeach,
-        OnboardingBeatType.ComboTeach,
         OnboardingBeatType.HeartLossDemo,
         OnboardingBeatType.Release,
     };
@@ -80,6 +80,8 @@ public sealed class OnboardingSequenceSO : ScriptableObject
 
     [Header("Beat 3 — Solo Teach (HA)")]
     public Level1TutorialStepSO soloTeachStep;
+    [Tooltip("Optional ordered list of basic single-enemy teach steps. When assigned, SoloTeach runs each step in order.")]
+    public Level1TutorialStepSO[] basicTeachSteps;
     public OnboardingBeatCopy soloTeachPreVideo = new OnboardingBeatCopy
     {
         fallbackText = "When an enemy approaches, draw its mark to defeat it.",
@@ -88,6 +90,8 @@ public sealed class OnboardingSequenceSO : ScriptableObject
     {
         tapToProceedText = "Tap anywhere to continue",
     };
+    [Tooltip("Optional per-step media for basicTeachSteps. Empty slots fall back to soloTeachVideo.")]
+    public OnboardingVideoTemplate[] basicTeachVideos;
     public OnboardingBeatCopy soloTeachPostSuccess = new OnboardingBeatCopy
     {
         fallbackText = "Well drawn. There will be more.",
@@ -108,6 +112,31 @@ public sealed class OnboardingSequenceSO : ScriptableObject
     public OnboardingBeatCopy comboTeachPostSuccess = new OnboardingBeatCopy
     {
         fallbackText = "A true warrior strikes with rhythm.",
+    };
+
+    [Header("Level 2 — Focus Mode Teach")]
+    [Tooltip("Single-enemy practice step repeated before focus mode is introduced.")]
+    public Level1TutorialStepSO focusPracticeStep;
+    [Min(1)]
+    public int focusPracticeKillCount = 2;
+    public OnboardingBeatCopy focusPracticeIntro = new OnboardingBeatCopy
+    {
+        fallbackText = "Keep your rhythm. Defeat two more enemies.",
+    };
+    public OnboardingBeatCopy focusModeIntro = new OnboardingBeatCopy
+    {
+        fallbackText = "Focus mode helps you control heavier combat after building momentum through successful draws.",
+    };
+    public Level1TutorialStepSO focusChainStep;
+    [Min(3)]
+    public int focusChainEnemyCount = 3;
+    public OnboardingBeatCopy focusChainIntro = new OnboardingBeatCopy
+    {
+        fallbackText = "Focus is active. Watch how the next group slows down, then draw once to chain them.",
+    };
+    public OnboardingBeatCopy focusChainPostSuccess = new OnboardingBeatCopy
+    {
+        fallbackText = "Good. Focus gives you room to control heavier waves.",
     };
 
     [Header("Beat 5 — Heart-Loss Demo")]

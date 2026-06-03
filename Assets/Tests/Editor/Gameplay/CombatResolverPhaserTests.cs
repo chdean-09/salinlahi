@@ -24,6 +24,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
         public void TearDown()
         {
             ClearSingletonInstance<ActiveEnemyTracker>();
+            ClearSingletonInstance<GameManager>();
 
             for (int i = _objectsToDestroy.Count - 1; i >= 0; i--)
             {
@@ -112,6 +113,49 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
+        public void AOE_WhenCurrentLevelDisablesMultiKillChain_ResolvesOnlyClosestMatch()
+        {
+            GameManager gameManager = CreateGameManager();
+            LevelConfigSO levelConfig = ScriptableObject.CreateInstance<LevelConfigSO>();
+            levelConfig.levelNumber = 1;
+            levelConfig.multiKillChainEnabled = false;
+            gameManager.SetLevel(levelConfig);
+            _objectsToDestroy.Add(levelConfig);
+
+            BaybayinCharacterSO assigned = CreateCharacter("BA", "ba");
+            Enemy farthest = CreateEnemy(assigned, y: -1f, isPhaser: false);
+            Enemy middle = CreateEnemy(assigned, y: -2f, isPhaser: false);
+            Enemy closest = CreateEnemy(assigned, y: -3f, isPhaser: false);
+
+            CombatResolver resolver = CreateResolver();
+            SetPrivateField(resolver, "_pronunciationLeadSeconds", 0f);
+
+            int aoeTriggeredCount = 0;
+            int chainStepCount = 0;
+            EventBus.OnAOETriggered += HandleAoeTriggered;
+            EventBus.OnChainAttackStep += HandleChainStep;
+
+            try
+            {
+                InvokePrivate<object>(resolver, "HandleCharacterRecognized", assigned.characterID);
+
+                Assert.AreEqual(1, farthest.CurrentHealth);
+                Assert.AreEqual(1, middle.CurrentHealth);
+                Assert.AreEqual(0, closest.CurrentHealth);
+                Assert.AreEqual(0, aoeTriggeredCount);
+                Assert.AreEqual(0, chainStepCount);
+            }
+            finally
+            {
+                EventBus.OnAOETriggered -= HandleAoeTriggered;
+                EventBus.OnChainAttackStep -= HandleChainStep;
+            }
+
+            void HandleAoeTriggered(int _) => aoeTriggeredCount++;
+            void HandleChainStep(Enemy _) => chainStepCount++;
+        }
+
+        [Test]
         public void Awake_DestroysDuplicateResolverInstance()
         {
             CombatResolver first = CreateResolver();
@@ -167,6 +211,15 @@ namespace Salinlahi.Tests.Editor.Gameplay
             var go = new GameObject("CombatResolver_Phaser_Test");
             _objectsToDestroy.Add(go);
             return go.AddComponent<CombatResolver>();
+        }
+
+        private GameManager CreateGameManager()
+        {
+            var go = new GameObject("GameManager_CombatResolver_Test");
+            _objectsToDestroy.Add(go);
+            GameManager gameManager = go.AddComponent<GameManager>();
+            SetSingletonInstance(gameManager);
+            return gameManager;
         }
 
         private static void SetPhaserVisible(Enemy enemy, bool visible)

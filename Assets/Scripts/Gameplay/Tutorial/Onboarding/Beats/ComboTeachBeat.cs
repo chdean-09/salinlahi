@@ -101,27 +101,48 @@ public sealed class ComboTeachBeat : OnboardingBeat
         // (the dim overlay would otherwise darken the effect on the non-cutout enemies).
         if (ctx.Spotlight != null) ctx.Spotlight.Hide();
 
-        // Mirror the real combat AOE event sequence so the chain-lightning VFX plays:
+        DefeatChainTargets(enemies, awardComboCredit: true);
+        ctx.MarkFirstManualSuccess?.Invoke();
+
+        yield return OnboardingDialogueRunner.Play(ctx.Dialogue, ctx.Sequence.comboTeachPostSuccess);
+    }
+
+    internal static int DefeatChainTargets(
+        IReadOnlyList<Level1TutorialEnemyController> enemies,
+        bool awardComboCredit)
+    {
+        if (enemies == null || enemies.Count == 0)
+            return 0;
+
+        // Mirror the real combat AOE event sequence:
+        //   OnEnemyTargeted increments the visible streak,
         //   per-enemy OnChainAttackStep drives ChainAttackHitVfxController,
         //   OnChainAttackHit covers AOE-wide audio/systems,
         //   OnAOETriggered drives the mass-clear HUD badge.
         List<Enemy> defeated = new(enemies.Count);
-        foreach (Level1TutorialEnemyController e in enemies)
+        for (int i = 0; i < enemies.Count; i++)
         {
-            Enemy enemyRef = e != null ? e.Enemy : null;
+            Level1TutorialEnemyController controller = enemies[i];
+            Enemy enemyRef = controller != null ? controller.Enemy : null;
             if (enemyRef != null)
             {
+                if (awardComboCredit)
+                    EventBus.RaiseEnemyTargeted(enemyRef);
+
                 EventBus.RaiseChainAttackStep(enemyRef);
                 defeated.Add(enemyRef);
             }
-            e.Defeat();
-        }
-        if (defeated.Count > 0)
-            EventBus.RaiseChainAttackHit(defeated);
-        EventBus.RaiseAOETriggered(enemies.Count);
-        ctx.MarkFirstManualSuccess?.Invoke();
 
-        yield return OnboardingDialogueRunner.Play(ctx.Dialogue, ctx.Sequence.comboTeachPostSuccess);
+            controller?.Defeat();
+        }
+
+        if (defeated.Count > 0)
+        {
+            EventBus.RaiseChainAttackHit(defeated);
+            EventBus.RaiseAOETriggered(defeated.Count);
+        }
+
+        return defeated.Count;
     }
 
     private IEnumerator SpawnEnemyRowSequential(OnboardingContext ctx, Level1TutorialStepSO step, int count, float spacing, List<Level1TutorialEnemyController> spawned)

@@ -2,7 +2,7 @@ using System.Collections;
 using UnityEngine;
 
 /// <summary>
-/// Beat 6 — Final dialogue, mark tutorial as seen, clear resume progress, hand control
+/// Final dialogue, mark the active tutorial as seen, clear resume progress, hand control
 /// back to the LevelFlowController so normal waves can begin.
 /// </summary>
 public sealed class ReleaseBeat : OnboardingBeat
@@ -15,7 +15,7 @@ public sealed class ReleaseBeat : OnboardingBeat
 
         yield return OnboardingDialogueRunner.Play(ctx.Dialogue, ctx.Sequence.release);
 
-        LevelTutorialProgress.MarkLevel1TutorialSeen();
-        OnboardingPersistence.Clear();
+        LevelTutorialProgress.MarkTutorialSeen(ctx.LevelNumber);
+        OnboardingPersistence.Clear(ctx.LevelNumber);
     }
 }

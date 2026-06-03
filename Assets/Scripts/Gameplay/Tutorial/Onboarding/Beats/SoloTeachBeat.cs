@@ -21,15 +21,35 @@ public sealed class SoloTeachBeat : OnboardingBeat
         if (ctx == null || ctx.Sequence == null)
             yield break;
 
-        Level1TutorialStepSO step = ctx.Sequence.soloTeachStep;
-        if (step == null || step.targetCharacter == null)
+        Level1TutorialStepSO[] steps = ResolveTeachSteps(ctx.Sequence);
+        if (steps == null || steps.Length == 0)
         {
-            DebugLogger.LogError("SoloTeachBeat: soloTeachStep or its targetCharacter is missing on the sequence SO.");
+            DebugLogger.LogError("SoloTeachBeat: no soloTeachStep or basicTeachSteps are assigned on the sequence SO.");
             yield break;
         }
 
         yield return OnboardingDialogueRunner.Play(ctx.Dialogue, ctx.Sequence.soloTeachPreVideo);
 
+        for (int i = 0; i < steps.Length; i++)
+        {
+            Level1TutorialStepSO step = steps[i];
+            if (step == null || step.targetCharacter == null)
+            {
+                DebugLogger.LogError("SoloTeachBeat: teach step or its targetCharacter is missing on the sequence SO.");
+                continue;
+            }
+
+            yield return PlaySingleTeachStep(ctx, step, ResolveTeachMedia(ctx.Sequence, i));
+        }
+
+        yield return OnboardingDialogueRunner.Play(ctx.Dialogue, ctx.Sequence.soloTeachPostSuccess);
+    }
+
+    private IEnumerator PlaySingleTeachStep(
+        OnboardingContext ctx,
+        Level1TutorialStepSO step,
+        OnboardingVideoTemplate teachMedia)
+    {
         TutorialRuntimeState.SetCombatOverrideActive(true);
         Vector3 spawnPos = new(step.stopPosition.x, _walkInSpawnY, step.stopPosition.z);
         Level1TutorialEnemyController enemy = SpawnFrozenEnemy(ctx, step, spawnPos);
@@ -41,7 +61,6 @@ public sealed class SoloTeachBeat : OnboardingBeat
 
         yield return WalkEnemyTo(enemy, step.stopPosition, _walkInDuration);
 
-        OnboardingVideoTemplate teachMedia = ctx.Sequence.soloTeachVideo;
         bool showGifDuringDraw = ctx.IntroPlayer != null && TutorialIntroPlayer.TemplateUsesGif(teachMedia);
 
         // Non-GIF media stays modal before the draw phase. GIF hints are shown later,
@@ -111,8 +130,39 @@ public sealed class SoloTeachBeat : OnboardingBeat
         ctx.MarkFirstManualSuccess?.Invoke();
 
         if (ctx.Spotlight != null) ctx.Spotlight.Hide();
+    }
 
-        yield return OnboardingDialogueRunner.Play(ctx.Dialogue, ctx.Sequence.soloTeachPostSuccess);
+    private static Level1TutorialStepSO[] ResolveTeachSteps(OnboardingSequenceSO sequence)
+    {
+        if (sequence.basicTeachSteps != null && sequence.basicTeachSteps.Length > 0)
+            return sequence.basicTeachSteps;
+
+        return sequence.soloTeachStep != null
+            ? new[] { sequence.soloTeachStep }
+            : System.Array.Empty<Level1TutorialStepSO>();
+    }
+
+    private static OnboardingVideoTemplate ResolveTeachMedia(OnboardingSequenceSO sequence, int index)
+    {
+        if (sequence.basicTeachVideos != null
+            && index >= 0
+            && index < sequence.basicTeachVideos.Length)
+        {
+            OnboardingVideoTemplate media = sequence.basicTeachVideos[index];
+            if (TemplateHasMediaOrPrompt(media))
+                return media;
+        }
+
+        return sequence.soloTeachVideo;
+    }
+
+    private static bool TemplateHasMediaOrPrompt(OnboardingVideoTemplate media)
+    {
+        return media.videoClip != null
+            || media.gifTexture != null
+            || (media.gifFrames != null && media.gifFrames.Length > 0)
+            || media.animationClip != null
+            || !string.IsNullOrWhiteSpace(media.tapToProceedText);
     }
 
     internal static Level1TutorialEnemyController SpawnFrozenEnemy(OnboardingContext ctx, Level1TutorialStepSO step, Vector3 position)

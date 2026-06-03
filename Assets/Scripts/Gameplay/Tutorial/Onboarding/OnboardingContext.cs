@@ -10,6 +10,7 @@ using UnityEngine;
 public sealed class OnboardingContext
 {
     public OnboardingSequenceSO Sequence { get; }
+    public int LevelNumber { get; }
     public DialogueController Dialogue { get; }
     public TutorialSpotlightOverlay Spotlight { get; }
     public TutorialIntroPlayer IntroPlayer { get; }
@@ -26,6 +27,7 @@ public sealed class OnboardingContext
 
     public OnboardingContext(
         OnboardingSequenceSO sequence,
+        int levelNumber,
         DialogueController dialogue,
         TutorialSpotlightOverlay spotlight,
         TutorialIntroPlayer introPlayer,
@@ -40,6 +42,7 @@ public sealed class OnboardingContext
         System.Action markFirstManualSuccess)
     {
         Sequence = sequence;
+        LevelNumber = levelNumber;
         Dialogue = dialogue;
         Spotlight = spotlight;
         IntroPlayer = introPlayer;

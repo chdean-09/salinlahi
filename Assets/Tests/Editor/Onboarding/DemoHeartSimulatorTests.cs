@@ -92,12 +92,97 @@ namespace Salinlahi.Tests.Editor.Onboarding
             finally
             {
                 Object.DestroyImmediate(displayHost);
+                DestroyRuntimeObject("TutorialHeartDamageOverlay");
                 for (int i = 0; i < heartObjects.Length; i++)
                 {
                     if (heartObjects[i] != null)
                         Object.DestroyImmediate(heartObjects[i]);
                 }
             }
+        }
+
+        [Test]
+        public void HeartDisplay_TutorialDemoHit_StillShowsDamageWhenHeartCountHasNotSynced()
+        {
+            GameObject displayHost = new GameObject("HeartDisplayHost");
+            GameObject[] heartObjects = new GameObject[3];
+            try
+            {
+                HeartDisplay display = displayHost.AddComponent<HeartDisplay>();
+                Image[] icons = new Image[3];
+                for (int i = 0; i < icons.Length; i++)
+                {
+                    heartObjects[i] = new GameObject($"Heart_{i}", typeof(RectTransform), typeof(Image));
+                    heartObjects[i].transform.SetParent(displayHost.transform, false);
+                    icons[i] = heartObjects[i].GetComponent<Image>();
+                }
+
+                typeof(HeartDisplay)
+                    .GetField("_heartIcons", BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?.SetValue(display, icons);
+
+                EventBus.RaiseTutorialBaseHitDemo(1);
+
+                Assert.AreEqual(new Color(1f, 1f, 1f, 0.25f), icons[2].color);
+                Transform damageIndicator = FindTransformByName("TutorialHeartDamageIndicator");
+                Assert.NotNull(damageIndicator, "Tutorial heart hit should create a visible damage indicator on the damaged heart.");
+                AssertDamageIndicatorText(damageIndicator, "-1");
+
+                Canvas overlayCanvas = damageIndicator.GetComponentInParent<Canvas>();
+                Assert.NotNull(overlayCanvas);
+                Assert.AreEqual(RenderMode.ScreenSpaceOverlay, overlayCanvas.renderMode);
+                Assert.Greater(overlayCanvas.sortingOrder, RenderOrder.CutsceneCanvas,
+                    "Tutorial heart damage indicator should render above tutorial dialogue/cutscene canvases.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(displayHost);
+                DestroyRuntimeObject("TutorialHeartDamageOverlay");
+                for (int i = 0; i < heartObjects.Length; i++)
+                {
+                    if (heartObjects[i] != null)
+                        Object.DestroyImmediate(heartObjects[i]);
+                }
+            }
+        }
+
+        private static void AssertDamageIndicatorText(Transform marker, string expected)
+        {
+            Component[] components = marker.GetComponents<Component>();
+            for (int i = 0; i < components.Length; i++)
+            {
+                Component component = components[i];
+                if (component == null || component.GetType().Name != "TextMeshProUGUI")
+                    continue;
+
+                PropertyInfo textProperty = component.GetType().GetProperty("text");
+                Assert.NotNull(textProperty, "TextMeshProUGUI should expose a text property.");
+                Assert.AreEqual(expected, textProperty.GetValue(component));
+                return;
+            }
+
+            Assert.Fail("Tutorial damage indicator should include a TextMeshProUGUI component.");
+        }
+
+        private static Transform FindTransformByName(string objectName)
+        {
+            Transform[] transforms = Object.FindObjectsByType<Transform>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                if (transforms[i] != null && transforms[i].name == objectName)
+                    return transforms[i];
+            }
+
+            return null;
+        }
+
+        private static void DestroyRuntimeObject(string objectName)
+        {
+            GameObject go = GameObject.Find(objectName);
+            if (go != null)
+                Object.DestroyImmediate(go);
         }
     }
 }

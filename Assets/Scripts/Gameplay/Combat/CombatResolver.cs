@@ -97,7 +97,8 @@ public class CombatResolver : MonoBehaviour
             }
         }
 
-        if (realMatchCount >= _aoeThreshold)
+        if (IsMultiKillChainEnabledForCurrentLevel()
+            && realMatchCount >= _aoeThreshold)
         {
             // Snapshot to a local list because TakeDamage -> Defeat -> Unregister
             // mutates the tracker's shared buffer mid-iteration.
@@ -191,6 +192,15 @@ public class CombatResolver : MonoBehaviour
         // Bosses are excluded from AOE counts/bursts, but may still use the
         // single-target resolution path for boss-specific combat tuning.
         return true;
+    }
+
+    private static bool IsMultiKillChainEnabledForCurrentLevel()
+    {
+        LevelConfigSO levelConfig = GameManager.Instance != null
+            ? GameManager.Instance.CurrentLevel
+            : null;
+
+        return levelConfig == null || levelConfig.multiKillChainEnabled;
     }
 
     private static void ResolveMatchedEnemy(Enemy target, string characterID)

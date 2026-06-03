@@ -45,7 +45,11 @@ public sealed class HeartLossDemoBeat : OnboardingBeat
         if (demoEnemy == null) yield break;
 
         Level1TutorialEnemyController controller = new(demoEnemy);
-        controller.MarkAsTutorialTarget("DEMO");
+        BaybayinCharacterSO demoCharacter = ResolveDemoCharacter(ctx.Sequence, data);
+        if (demoCharacter != null)
+            demoEnemy.AssignCharacter(demoCharacter);
+
+        controller.MarkAsTutorialTarget(demoCharacter != null ? demoCharacter.characterID : "DEMO");
         controller.DisableContactDamage();
 
         if (ctx.Spotlight != null && ctx.PlayerBase != null)
@@ -68,7 +72,14 @@ public sealed class HeartLossDemoBeat : OnboardingBeat
         // The hit: empties a heart with shake/flash (DemoHeartSimulator → HeartDisplay /
         // BaseHitFeedbackController). No real HP is lost — tutorial-only events.
         if (ctx.DemoHearts != null)
+        {
             yield return ctx.DemoHearts.PlayDemoHit();
+        }
+        else
+        {
+            EventBus.RaiseTutorialBaseHitDemo(1);
+            yield return new WaitForSecondsRealtime(0.6f);
+        }
 
         controller.Defeat();
 
@@ -83,7 +94,14 @@ public sealed class HeartLossDemoBeat : OnboardingBeat
         if (ctx.GuideUI != null && !string.IsNullOrEmpty(_restoreMessage))
             ctx.GuideUI.ShowMessage(_restoreMessage, canSkip: false);
         if (ctx.DemoHearts != null)
+        {
             yield return ctx.DemoHearts.PlayDemoRestore();
+        }
+        else
+        {
+            EventBus.RaiseTutorialBaseRestoreDemo();
+            yield return new WaitForSecondsRealtime(0.6f);
+        }
         if (ctx.GuideUI != null)
             ctx.GuideUI.Hide();
 
@@ -109,14 +127,23 @@ public sealed class HeartLossDemoBeat : OnboardingBeat
         if (enemy == null) return null;
         float x = ctx.PlayerBase != null ? ctx.PlayerBase.transform.position.x : 0f;
         enemy.transform.position = new Vector3(x, _spawnY, 0f);
-        if (ctx.Sequence.heartLossDemoCharacter != null)
-            enemy.AssignCharacter(ctx.Sequence.heartLossDemoCharacter);
+        BaybayinCharacterSO character = ResolveDemoCharacter(ctx.Sequence, data);
+        if (character != null)
+            enemy.AssignCharacter(character);
 
         // Stop the data-driven mover; the descent is driven externally by WalkEnemyTo at a
         // fixed duration so Enemy.Update can't reset us back to the slow EnemyDataSO speed.
         EnemyMover mover = enemy.GetComponent<EnemyMover>();
         if (mover != null) mover.Stop();
         return enemy;
+    }
+
+    private static BaybayinCharacterSO ResolveDemoCharacter(OnboardingSequenceSO sequence, EnemyDataSO data)
+    {
+        if (sequence != null && sequence.heartLossDemoCharacter != null)
+            return sequence.heartLossDemoCharacter;
+
+        return data != null ? data.assignedCharacter : null;
     }
 
     private static Bounds ResolveBaseBounds(PlayerBase playerBase)

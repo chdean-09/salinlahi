@@ -38,6 +38,17 @@ namespace Salinlahi.Tests.Editor.Onboarding
         }
 
         [Test]
+        public void LevelTwoProgress_UsesSeparateBeatIndex()
+        {
+            OnboardingPersistence.SetLastCompletedBeatIndex(LevelTutorialProgress.Level1TutorialLevelNumber, 3);
+            OnboardingPersistence.SetLastCompletedBeatIndex(LevelTutorialProgress.Level2TutorialLevelNumber, 1);
+
+            Assert.AreEqual(3, OnboardingPersistence.GetLastCompletedBeatIndex(LevelTutorialProgress.Level1TutorialLevelNumber));
+            Assert.AreEqual(1, OnboardingPersistence.GetLastCompletedBeatIndex(LevelTutorialProgress.Level2TutorialLevelNumber));
+            Assert.AreEqual(2, OnboardingPersistence.GetResumeStartIndex(LevelTutorialProgress.Level2TutorialLevelNumber));
+        }
+
+        [Test]
         public void GetResumeStartIndex_AfterBeatCompletedReturnsNextBeat()
         {
             OnboardingPersistence.SetLastCompletedBeatIndex(2);
