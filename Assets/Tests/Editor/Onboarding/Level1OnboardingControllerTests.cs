@@ -173,6 +173,42 @@ namespace Salinlahi.Tests.Editor.Onboarding
             }
         }
 
+        [Test]
+        public void BuildContext_ForLevelTwo_PersistsCompletedBeatUnderLevelTwoKey()
+        {
+            OnboardingPersistence.Clear();
+            GameObject host = new("Level1OnboardingControllerHost");
+            OnboardingSequenceSO sequence = ScriptableObject.CreateInstance<OnboardingSequenceSO>();
+
+            try
+            {
+                Level1OnboardingController controller = host.AddComponent<Level1OnboardingController>();
+
+                OnboardingContext ctx = InvokePrivate<OnboardingContext>(
+                    controller,
+                    "BuildContext",
+                    sequence,
+                    LevelTutorialProgress.Level2TutorialLevelNumber);
+
+                ctx.SetBeatCompleted(1);
+
+                Assert.AreEqual(
+                    1,
+                    OnboardingPersistence.GetLastCompletedBeatIndex(LevelTutorialProgress.Level2TutorialLevelNumber),
+                    "Level 2 beat completion must persist under the Level 2 key.");
+                Assert.AreEqual(
+                    OnboardingPersistence.NoBeatCompleted,
+                    OnboardingPersistence.GetLastCompletedBeatIndex(LevelTutorialProgress.Level1TutorialLevelNumber),
+                    "Level 2 beat completion must not write the Level 1 key.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(host);
+                Object.DestroyImmediate(sequence);
+                OnboardingPersistence.Clear();
+            }
+        }
+
         private static void DestroyRuntimeObject(string objectName)
         {
             GameObject[] objects = Object.FindObjectsByType<GameObject>(

@@ -7,6 +7,9 @@ public class GameManager : Singleton<GameManager>
 {
     public GameState CurrentState { get; private set; } = GameState.Idle;
     public LevelConfigSO CurrentLevel { get; private set; }
+
+    /// <summary>Null-safe accessor for the active level config. Null when no GameManager/level is active.</summary>
+    public static LevelConfigSO CurrentLevelConfig => Instance != null ? Instance.CurrentLevel : null;
     public int LastDefeatHearts { get; private set; }
     public BossController CurrentBoss { get; private set; }
     internal void SetCurrentBoss(BossController boss) => CurrentBoss = boss;

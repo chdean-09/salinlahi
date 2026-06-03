@@ -53,6 +53,8 @@ public sealed class Level1OnboardingController : MonoBehaviour
     private OnboardingSequenceSO _runtimeLegacySequence;
     private OnboardingSequenceSO _runtimeSceneOverrideSource;
     private OnboardingSequenceSO _runtimeSceneOverrideSequence;
+    private OnboardingSequenceSO _runtimeNormalizedSource;
+    private OnboardingSequenceSO _runtimeNormalizedSequence;
 
     public bool FirstManualSuccessRecorded => _firstManualSuccess;
     public bool SkipRequested => _skipRequested;
@@ -73,8 +75,10 @@ public sealed class Level1OnboardingController : MonoBehaviour
     {
         DestroyRuntimeSequence(_runtimeLegacySequence);
         DestroyRuntimeSequence(_runtimeSceneOverrideSequence);
+        DestroyRuntimeSequence(_runtimeNormalizedSequence);
         _runtimeLegacySequence = null;
         _runtimeSceneOverrideSequence = null;
+        _runtimeNormalizedSequence = null;
     }
 
     public void RequestSkip()
@@ -116,6 +120,8 @@ public sealed class Level1OnboardingController : MonoBehaviour
         OnboardingSequenceSO sequence = ResolveSequence(levelConfig);
         if (sequence == null) yield break;
 
+        // Normalize a controller-owned copy so per-level adjustments never mutate the shared asset.
+        sequence = EnsureMutableSequence(sequence);
         NormalizeSequenceForLevel(sequence, levelConfig.levelNumber);
         EnsureBeatComponentsForSequence(sequence);
         CollectBeats();
@@ -133,7 +139,7 @@ public sealed class Level1OnboardingController : MonoBehaviour
             if (beat == null)
             {
                 DebugLogger.LogWarning($"Level1OnboardingController: No beat registered for type {order[i]} (index {i}). Skipping.");
-                OnboardingPersistence.SetLastCompletedBeatIndex(i);
+                OnboardingPersistence.SetLastCompletedBeatIndex(levelConfig.levelNumber, i);
                 continue;
             }
 
@@ -177,7 +183,7 @@ public sealed class Level1OnboardingController : MonoBehaviour
             playerBase,
             _guideUI,
             cam,
-            setBeatCompleted: OnboardingPersistence.SetLastCompletedBeatIndex,
+            setBeatCompleted: i => OnboardingPersistence.SetLastCompletedBeatIndex(levelNumber, i),
             skipRequested: () => _skipRequested,
             markFirstManualSuccess: () => _firstManualSuccess = true);
     }
@@ -249,6 +255,30 @@ public sealed class Level1OnboardingController : MonoBehaviour
         _runtimeSceneOverrideSequence.hideFlags = HideFlags.HideAndDontSave;
         ApplySceneGifFallbacks(_runtimeSceneOverrideSequence);
         return _runtimeSceneOverrideSequence;
+    }
+
+    /// <summary>
+    /// Returns a controller-owned, mutable copy of <paramref name="source"/> so per-level
+    /// normalization never writes back to the shared <see cref="OnboardingSequenceSO"/> asset.
+    /// Sequences already produced as runtime instances (scene-override / legacy) are returned as-is.
+    /// </summary>
+    private OnboardingSequenceSO EnsureMutableSequence(OnboardingSequenceSO source)
+    {
+        if (source == null)
+            return null;
+
+        if (source == _runtimeSceneOverrideSequence || source == _runtimeLegacySequence)
+            return source;
+
+        if (_runtimeNormalizedSequence != null && _runtimeNormalizedSource == source)
+            return _runtimeNormalizedSequence;
+
+        DestroyRuntimeSequence(_runtimeNormalizedSequence);
+        _runtimeNormalizedSource = source;
+        _runtimeNormalizedSequence = Instantiate(source);
+        _runtimeNormalizedSequence.name = $"{source.name}_RuntimeNormalized";
+        _runtimeNormalizedSequence.hideFlags = HideFlags.HideAndDontSave;
+        return _runtimeNormalizedSequence;
     }
 
     private OnboardingSequenceSO ResolveLegacyTutorialSequence(Level1TutorialSequenceSO legacySequence)

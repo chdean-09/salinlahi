@@ -195,13 +195,7 @@ public class CombatResolver : MonoBehaviour
     }
 
     private static bool IsMultiKillChainEnabledForCurrentLevel()
-    {
-        LevelConfigSO levelConfig = GameManager.Instance != null
-            ? GameManager.Instance.CurrentLevel
-            : null;
-
-        return levelConfig == null || levelConfig.multiKillChainEnabled;
-    }
+        => GameManager.CurrentLevelConfig?.multiKillChainEnabled ?? true;
 
     private static void ResolveMatchedEnemy(Enemy target, string characterID)
     {

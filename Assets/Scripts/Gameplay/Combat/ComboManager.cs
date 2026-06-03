@@ -147,11 +147,5 @@ public class ComboManager : Singleton<ComboManager>
     }
 
     private static bool IsFocusModeEnabledForCurrentLevel()
-    {
-        LevelConfigSO levelConfig = GameManager.Instance != null
-            ? GameManager.Instance.CurrentLevel
-            : null;
-
-        return levelConfig == null || levelConfig.focusModeEnabled;
-    }
+        => GameManager.CurrentLevelConfig?.focusModeEnabled ?? true;
 }
