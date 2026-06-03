@@ -22,14 +22,14 @@ namespace Salinlahi.Tests.Editor.Boss
         }
 
         [Test]
-        public void Play_WhenTutorialNull_ReturnsImmediately()
+        public void Play_WhenConfigNull_ReturnsImmediately()
         {
             GameObject host = new("BossTutorialControllerHost");
             try
             {
                 BossTutorialController controller = host.AddComponent<BossTutorialController>();
                 IEnumerator routine = controller.Play(null);
-                Assert.IsFalse(routine.MoveNext(), "Null tutorial must return immediately.");
+                Assert.IsFalse(routine.MoveNext(), "Null config must return immediately.");
             }
             finally { Object.DestroyImmediate(host); }
         }
@@ -38,17 +38,38 @@ namespace Salinlahi.Tests.Editor.Boss
         public void Play_WhenTutorialHasNoPages_ReturnsImmediately()
         {
             GameObject host = new("BossTutorialControllerHost");
-            BossTutorialSO so = ScriptableObject.CreateInstance<BossTutorialSO>();
+            BossConfigSO config = ScriptableObject.CreateInstance<BossConfigSO>();
+            config.tutorial = ScriptableObject.CreateInstance<BossTutorialSO>();
             try
             {
                 BossTutorialController controller = host.AddComponent<BossTutorialController>();
-                IEnumerator routine = controller.Play(so);
+                IEnumerator routine = controller.Play(config);
                 Assert.IsFalse(routine.MoveNext(), "Empty tutorial must return immediately without showing.");
             }
             finally
             {
                 Object.DestroyImmediate(host);
-                Object.DestroyImmediate(so);
+                Object.DestroyImmediate(config.tutorial);
+                Object.DestroyImmediate(config);
+            }
+        }
+
+        [Test]
+        public void Play_WhenTutorialNull_ReturnsImmediately()
+        {
+            GameObject host = new("BossTutorialControllerHost");
+            BossConfigSO config = ScriptableObject.CreateInstance<BossConfigSO>();
+            // config.tutorial intentionally left null
+            try
+            {
+                BossTutorialController controller = host.AddComponent<BossTutorialController>();
+                IEnumerator routine = controller.Play(config);
+                Assert.IsFalse(routine.MoveNext(), "Config with null tutorial must return immediately.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(host);
+                Object.DestroyImmediate(config);
             }
         }
 
@@ -56,19 +77,21 @@ namespace Salinlahi.Tests.Editor.Boss
         public void Play_WhenScrollUnwired_ReturnsImmediately()
         {
             GameObject host = new("BossTutorialControllerHost");
-            BossTutorialSO so = ScriptableObject.CreateInstance<BossTutorialSO>();
-            so.pages = new List<BossTutorialPage> { new BossTutorialPage { title = "Boss", body = "Lore" } };
+            BossConfigSO config = ScriptableObject.CreateInstance<BossConfigSO>();
+            config.tutorial = ScriptableObject.CreateInstance<BossTutorialSO>();
+            config.tutorial.pages = new List<BossTutorialPage> { new BossTutorialPage { title = "Boss", body = "Lore" } };
             try
             {
                 BossTutorialController controller = host.AddComponent<BossTutorialController>();
                 // No _scroll assigned.
-                IEnumerator routine = controller.Play(so);
+                IEnumerator routine = controller.Play(config);
                 Assert.IsFalse(routine.MoveNext(), "Unwired scroll must skip gracefully.");
             }
             finally
             {
                 Object.DestroyImmediate(host);
-                Object.DestroyImmediate(so);
+                Object.DestroyImmediate(config.tutorial);
+                Object.DestroyImmediate(config);
             }
         }
     }

@@ -158,8 +158,7 @@ public class AlmanacController : MonoBehaviour
             AlmanacEnemyEntry captured = entry;
             // "currently" gate: enemies outside the Spanish era are placeholders for unfinished
             // chapters, so they read as locked '?' cells (like a locked Baybayin character).
-            bool revealed = AlmanacEnemyDiscovery.IsDiscovered(captured.enemyData)
-                            && IsSpanishEra(captured.enemyData);
+            bool revealed = IsEntryDiscovered(captured) && IsSpanishEra(captured.enemyData);
             Sprite portrait = captured.ResolvePortrait();
             string title = captured.ResolveDisplayName();
             string desc = captured.ResolveDescription();
@@ -186,7 +185,7 @@ public class AlmanacController : MonoBehaviour
         // Mirror the reveal gate: a non-Spanish-era enemy shows as '?' and is not "Discovered" yet.
         int discovered = CountDiscoveredEnemies(
             _enemyRegistry.entries,
-            data => AlmanacEnemyDiscovery.IsDiscovered(data) && IsSpanishEra(data));
+            entry => IsEntryDiscovered(entry) && IsSpanishEra(entry.enemyData));
         _enemiesCounter.text = FormatCounter("Discovered", discovered, _enemyRegistry.entries.Count);
     }
 
@@ -228,13 +227,21 @@ public class AlmanacController : MonoBehaviour
     }
 
     public static int CountDiscoveredEnemies(
-        IReadOnlyList<AlmanacEnemyEntry> entries, Func<EnemyDataSO, bool> isDiscovered)
+        IReadOnlyList<AlmanacEnemyEntry> entries, Func<AlmanacEnemyEntry, bool> isDiscovered)
     {
         if (entries == null || isDiscovered == null) return 0;
         int n = 0;
         foreach (AlmanacEnemyEntry e in entries)
-            if (e != null && isDiscovered(e.enemyData)) n++;
+            if (e != null && isDiscovered(e)) n++;
         return n;
+    }
+
+    // Bosses are gated by boss tutorial acknowledgment; regular enemies use the temp stub.
+    private static bool IsEntryDiscovered(AlmanacEnemyEntry entry)
+    {
+        if (entry == null) return false;
+        if (entry.IsBoss) return AlmanacEnemyDiscovery.IsBossDiscovered(entry.bossConfig);
+        return AlmanacEnemyDiscovery.IsDiscovered(entry.enemyData);
     }
 
     public static string FormatCounter(string label, int revealed, int total) => $"{label} {revealed}/{total}";

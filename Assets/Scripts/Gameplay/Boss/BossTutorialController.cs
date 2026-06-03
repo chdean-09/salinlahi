@@ -6,14 +6,20 @@ using UnityEngine;
 /// to close it with the red X. LevelFlowController yields on Play() after the character-unlock
 /// reveal and before the boss encounter. Mirrors CharacterUnlockRevealController's shape:
 /// scene-wired, suppresses drawing input while open, no-ops gracefully when unconfigured.
+/// Closing the scroll also marks the boss as discovered in BossDiscoveryProgress (almanac gate).
 /// </summary>
 public class BossTutorialController : MonoBehaviour
 {
     [Tooltip("The paged boss tutorial scroll overlay in the Gameplay scene.")]
     [SerializeField] private BossTutorialScroll _scroll;
 
-    public IEnumerator Play(BossTutorialSO tutorial)
+    public IEnumerator Play(BossConfigSO config)
     {
+        if (config == null)
+            yield break;
+
+        BossTutorialSO tutorial = config.tutorial;
+
         if (tutorial == null)
             yield break; // No tutorial assigned — silent no-op.
 
@@ -46,5 +52,7 @@ public class BossTutorialController : MonoBehaviour
             if (_scroll != null) _scroll.OnClosed -= OnClosed;
             GameManager.Instance?.SuppressDrawingInput(false);
         }
+
+        BossDiscoveryProgress.TryMarkDiscovered(config, out _);
     }
 }

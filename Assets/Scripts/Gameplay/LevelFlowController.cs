@@ -361,7 +361,7 @@ public class LevelFlowController : MonoBehaviour
             yield break;
         }
 
-        yield return _bossTutorialController.Play(_levelConfig.bossConfig.tutorial);
+        yield return _bossTutorialController.Play(_levelConfig.bossConfig);
     }
 
     private IEnumerator PlayRevealsIfAny()
