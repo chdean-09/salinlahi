@@ -12,9 +12,9 @@ namespace Salinlahi.Tests.Editor.Gameplay
         public void Guardia_HasExpectedFastSpeedAndSpanishEra()
         {
             EnemyDataSO soldado = AssetDatabase.LoadAssetAtPath<EnemyDataSO>(
-                "Assets/ScriptableObjects/EnemyData_Soldado.asset");
+                "Assets/ScriptableObjects/Enemies/EnemyData_Soldado.asset");
             EnemyDataSO guardia = AssetDatabase.LoadAssetAtPath<EnemyDataSO>(
-                "Assets/ScriptableObjects/EnemyData_Guardia.asset");
+                "Assets/ScriptableObjects/Enemies/EnemyData_Guardia.asset");
 
             Assert.NotNull(soldado);
             Assert.NotNull(guardia);
@@ -28,9 +28,9 @@ namespace Salinlahi.Tests.Editor.Gameplay
         public void Capitan_HasExpectedShieldedAndSlowStats()
         {
             EnemyDataSO soldado = AssetDatabase.LoadAssetAtPath<EnemyDataSO>(
-                "Assets/ScriptableObjects/EnemyData_Soldado.asset");
+                "Assets/ScriptableObjects/Enemies/EnemyData_Soldado.asset");
             EnemyDataSO capitan = AssetDatabase.LoadAssetAtPath<EnemyDataSO>(
-                "Assets/ScriptableObjects/EnemyData_Capitan.asset");
+                "Assets/ScriptableObjects/Enemies/EnemyData_Capitan.asset");
 
             Assert.NotNull(soldado);
             Assert.NotNull(capitan);

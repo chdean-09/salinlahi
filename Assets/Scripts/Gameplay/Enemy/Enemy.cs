@@ -223,7 +223,18 @@ public class Enemy : MonoBehaviour
         }
         UpdateLabelLayout();
         HealthChanged?.Invoke(this, _currentHealth, _currentHealth);
+
+        if (ShouldRaiseEnemyDiscoveryEvent(_data))
+            EventBus.RaiseEnemyDiscovered(_data, this);
+
         return true;
+    }
+
+    private bool ShouldRaiseEnemyDiscoveryEvent(EnemyDataSO data)
+    {
+        return !IsBoss
+            && EnemyDiscoveryProgress.NormalizeEnemyID(data) != null
+            && !EnemyDiscoveryProgress.HasDiscovered(data);
     }
 
     public bool Initialize(EnemyDataSO data, IObjectPool<Enemy> pool, BaybayinCharacterSO character)

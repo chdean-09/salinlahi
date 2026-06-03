@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Salinlahi.Runtime::EnemyDataSO
   enemyID: guardia
   displayName: Guardia
+  discoverySubtitle: The Patrol of Control
   description: 'The Guardia Civil enforced Spanish authority across towns and villages.
     Their presence discouraged resistance and protected colonial rule.
 

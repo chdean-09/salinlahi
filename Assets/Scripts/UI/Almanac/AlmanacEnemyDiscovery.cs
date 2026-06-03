@@ -6,11 +6,7 @@ public static class AlmanacEnemyDiscovery
 {
     public static bool IsDiscovered(EnemyDataSO data)
     {
-        // TEMP: the teammate's EnemyDiscoveryProgress is not merged yet (they are blocked on a bug).
-        // Treat all non-boss enemies as discovered so the grid populates during development/demo.
-        // INTEGRATION: replace the body with:
-        //     return EnemyDiscoveryProgress.HasDiscovered(data);
-        return data != null;
+        return EnemyDiscoveryProgress.HasDiscovered(data);
     }
 
     public static bool IsBossDiscovered(BossConfigSO config) =>

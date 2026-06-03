@@ -111,6 +111,21 @@ namespace Salinlahi.Tests.Editor.Core
         }
 
         [Test]
+        public void ClearAllProgress_ResetsEnemyDiscovery()
+        {
+            EnemyDataSO data = ScriptableObject.CreateInstance<EnemyDataSO>();
+            data.enemyID = "soldado";
+
+            EnemyDiscoveryProgress.TryMarkDiscovered(data, out _);
+            Assert.IsTrue(EnemyDiscoveryProgress.HasDiscovered(data));
+
+            _manager.ClearAllProgress();
+
+            Assert.IsFalse(EnemyDiscoveryProgress.HasDiscovered(data));
+            Object.DestroyImmediate(data);
+        }
+
+        [Test]
         public void ClearAllProgress_DoesNotAffectOtherPlayerPrefs()
         {
             PlayerPrefs.SetString("unrelated_key", "test_value");

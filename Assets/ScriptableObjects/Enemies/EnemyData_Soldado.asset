@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyDataSO
   enemyID: soldado
   displayName: Soldado
+  discoverySubtitle: The Conscripted Shadows
   description: 'During the Spanish occupation, many natives were forced into military
     service under colonial command. They became symbols of obedience to foreign rule.
 

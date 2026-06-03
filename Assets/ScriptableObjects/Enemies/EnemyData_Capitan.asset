@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Salinlahi.Runtime::EnemyDataSO
   enemyID: capitan
   displayName: Capitan
+  discoverySubtitle: The Armored Authority
   description: 'Captains held positions of power and commanded colonial forces. Their
     rank and protection made them difficult to challenge.
 
