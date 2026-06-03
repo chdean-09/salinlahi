@@ -8,7 +8,7 @@ public class DrawingCanvas : MonoBehaviour
 {
     [Header("Line Appearance")]
     [SerializeField] private Material _lineMaterial;
-    [SerializeField] private float _lineWidth = 0.05f;
+    [SerializeField] private float _lineWidth = 0.15f;
     [SerializeField] private Color _strokeColor = Color.white;
 
     [Header("Clear")]
