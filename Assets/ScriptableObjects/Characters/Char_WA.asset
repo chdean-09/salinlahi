@@ -14,7 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: WA
   syllable: wa
+  description: "WA is found inside church walls where Baybayin was painted over.
+    Juan uncovers traces of writing that survived in silence.\n\r\n\u201CWA is what
+    stays even when covered.\u201D"
   displaySprite: {fileID: -3493063987729265783, guid: 14ccf3bb7b032d4489c4232ae5010853, type: 3}
+  almanacSprite: {fileID: -129360563802242312, guid: de8ae0f418874d74184d60d5e8fa9803, type: 3}
   badgeSprite: {fileID: 1820221823815775938, guid: ca1f080825aef994095f093a562c0b28, type: 3}
   scrambledBadgeSprite: {fileID: 0}
   pronunciationClip: {fileID: 8300000, guid: 8efac7f30c80fd04487330e616088ec9, type: 3}

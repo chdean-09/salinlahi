@@ -1,0 +1,88 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b739b8fcb7e84356a28d87ae5678db4, type: 3}
+  m_Name: Level2AdvancedOnboardingSequence
+  m_EditorClassIdentifier: Assembly-CSharp::OnboardingSequenceSO
+  beatOrder:
+  - 3
+  - 6
+  - 5
+  protagonistIntro:
+    fallbackText:
+    dialogue: {fileID: 0}
+  protagonistWalkSeconds: 1.75
+  baseIntro:
+    fallbackText:
+    dialogue: {fileID: 0}
+  baseSpotlightPadding: 0.5
+  soloTeachStep: {fileID: 0}
+  soloTeachPreVideo:
+    fallbackText:
+    dialogue: {fileID: 0}
+  soloTeachVideo:
+    videoClip: {fileID: 0}
+    gifTexture: {fileID: 0}
+    gifFrames: []
+    gifFramesPerSecond: 0
+    animationClip: {fileID: 0}
+    tapToProceedText: Tap anywhere to continue
+  soloTeachPostSuccess:
+    fallbackText:
+    dialogue: {fileID: 0}
+  comboTeachStep: {fileID: 11400000, guid: 570d304cd3744bb8984f246b1e280c64, type: 2}
+  comboEnemyCount: 3
+  comboTeachPreVideo:
+    fallbackText: Enemies can arrive together carrying the same Baybayin mark.
+    dialogue: {fileID: 0}
+  comboTeachVideo:
+    videoClip: {fileID: 0}
+    gifTexture: {fileID: 0}
+    gifFrames: []
+    gifFramesPerSecond: 0
+    animationClip: {fileID: 0}
+    tapToProceedText: Tap anywhere to continue
+  comboTeachPostSuccess:
+    fallbackText: One accurate draw can break the whole group.
+    dialogue: {fileID: 0}
+  focusPracticeStep: {fileID: 11400000, guid: ef95595956164dc4b7ba103c155ceaed, type: 2}
+  focusPracticeKillCount: 2
+  focusPracticeIntro:
+    fallbackText: Keep your rhythm. Defeat two more enemies.
+    dialogue: {fileID: 0}
+  focusModeIntro:
+    fallbackText: Focus mode helps you handle heavier combat after building momentum through successful draws.
+    dialogue: {fileID: 0}
+  focusChainStep: {fileID: 11400000, guid: 570d304cd3744bb8984f246b1e280c64, type: 2}
+  focusChainEnemyCount: 3
+  focusChainIntro:
+    fallbackText: Focus is active. Watch how the next group slows down, then draw once to chain them.
+    dialogue: {fileID: 0}
+  focusChainPostSuccess:
+    fallbackText: Good. Focus gives you room to control heavier waves.
+    dialogue: {fileID: 0}
+  heartLossDemoEnemyData: {fileID: 0}
+  heartLossDemoCharacter: {fileID: 0}
+  heartLossVideo:
+    videoClip: {fileID: 0}
+    gifTexture: {fileID: 0}
+    gifFrames: []
+    gifFramesPerSecond: 0
+    animationClip: {fileID: 0}
+    tapToProceedText: Tap anywhere to continue
+  heartLossDialogue:
+    fallbackText:
+    dialogue: {fileID: 0}
+  release:
+    fallbackText: You are ready. Use chain attacks and focus to protect the base.
+    dialogue: {fileID: 0}
+  fallbackMessageSeconds: 1.75
+  failuresBeforeAssist: 3

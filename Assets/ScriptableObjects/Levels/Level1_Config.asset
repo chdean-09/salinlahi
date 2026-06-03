@@ -75,7 +75,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
   bossConfig: {fileID: 0}
   isAvailableInLite: 1
+  focusModeEnabled: 0
+  multiKillChainEnabled: 0
   tutorialSequence: {fileID: 11400000, guid: 7369c0885d3f4f508ae62d77174c703a, type: 2}
+  onboardingSequence: {fileID: 0}
   introDialogue: {fileID: 0}
   outroDialogue: {fileID: 0}
   bgmClip: {fileID: 0}

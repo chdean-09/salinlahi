@@ -143,8 +143,11 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
-        public void LevelOneTutorialDueWithoutOverlayControllerAbortsFlow()
+        public void LevelOneTutorialDueWithoutOnboardingControllerLogsError()
         {
+            // Ensure FTUE hasn't been marked seen from a prior run so the error path fires.
+            LevelTutorialProgress.ResetLevel1TutorialForTests();
+
             LevelConfigSO levelConfig = CreateLevelConfig();
             levelConfig.levelNumber = LevelTutorialProgress.TutorialLevelNumber;
 
@@ -154,10 +157,86 @@ namespace Salinlahi.Tests.Editor.Gameplay
             IEnumerator tutorialGate = InvokePrivate<IEnumerator>(controller, "PlayLevelTutorialIfNeeded");
             LogAssert.Expect(
                 LogType.Error,
-                "[Salinlahi] LevelFlowController: Level 1 FTUE is due, but TutorialOverlayController is not assigned.");
+                "[Salinlahi] LevelFlowController: Level 1 tutorial is due, but Level1OnboardingController is not in the scene. Run Salinlahi → Tutorial → 5. Wire Level Scene.");
 
             Assert.IsFalse(tutorialGate.MoveNext());
-            Assert.IsTrue(GetPrivateField<bool>(controller, "_flowAborted"));
+            Assert.IsFalse(GetPrivateField<bool>(controller, "_flowAborted"),
+                "Missing controller should not abort the flow — waves must still start.");
+        }
+
+        [Test]
+        public void LevelOneTutorialDueWithLegacySequenceCreatesRuntimeOnboardingController()
+        {
+            LevelConfigSO levelConfig = CreateLevelConfig();
+            levelConfig.levelNumber = LevelTutorialProgress.TutorialLevelNumber;
+            levelConfig.tutorialSequence = CreateLegacyTutorialSequence();
+
+            LevelFlowController controller = CreateComponent<LevelFlowController>("LevelFlowController");
+            SetPrivateField(controller, "_levelConfig", levelConfig);
+
+            InvokePrivate(controller, "EnsureRuntimeReferences", null, null);
+
+            Level1OnboardingController onboardingController =
+                GetPrivateField<Level1OnboardingController>(controller, "_level1OnboardingController");
+
+            Assert.IsNotNull(onboardingController,
+                "Level 1 flow should create the onboarding controller at runtime when legacy tutorial data is assigned.");
+            Assert.IsTrue(onboardingController.IsSequenceResolvable(levelConfig),
+                "Runtime onboarding should be able to adapt legacy Level1TutorialSequenceSO data.");
+            Assert.IsNotNull(Object.FindFirstObjectByType<DialogueController>(FindObjectsInactive.Include),
+                "Runtime onboarding should find or create a skippable dialogue controller for tutorial copy.");
+            Assert.IsNotNull(Object.FindFirstObjectByType<TutorialSpotlightOverlay>(FindObjectsInactive.Include),
+                "Runtime onboarding should create the highlight/spotlight overlay when the scene does not provide one.");
+            Assert.IsNotNull(Object.FindFirstObjectByType<TutorialIntroPlayer>(FindObjectsInactive.Include),
+                "Runtime onboarding should create the tap/video intro overlay when the scene does not provide one.");
+            Assert.IsNotNull(Object.FindFirstObjectByType<DemoHeartSimulator>(FindObjectsInactive.Include),
+                "Runtime onboarding should create the heart-demo indicator driver when the scene does not provide one.");
+            Assert.IsNotNull(Object.FindFirstObjectByType<Level1TutorialGuideUI>(FindObjectsInactive.Include),
+                "Runtime onboarding should create the prompt/indicator guide UI when the scene does not provide one.");
+        }
+
+        [Test]
+        public void LevelOneRuntimeOnboardingController_DoesNotIncludeComboTeachBeat()
+        {
+            LevelConfigSO levelConfig = CreateLevelConfig();
+            levelConfig.levelNumber = LevelTutorialProgress.Level1TutorialLevelNumber;
+            levelConfig.tutorialSequence = CreateLegacyTutorialSequence();
+
+            LevelFlowController controller = CreateComponent<LevelFlowController>("LevelFlowController");
+            SetPrivateField(controller, "_levelConfig", levelConfig);
+
+            InvokePrivate(controller, "EnsureRuntimeReferences", null, null);
+
+            Level1OnboardingController onboardingController =
+                GetPrivateField<Level1OnboardingController>(controller, "_level1OnboardingController");
+
+            Assert.IsNotNull(onboardingController);
+            Assert.IsNull(onboardingController.GetComponent<ComboTeachBeat>(),
+                "Level 1 runtime onboarding must not include the multi-kill chain tutorial beat.");
+        }
+
+        [Test]
+        public void LevelTwoTutorialDueWithAdvancedSequenceCreatesRuntimeOnboardingController()
+        {
+            LevelConfigSO levelConfig = CreateLevelConfig();
+            levelConfig.levelNumber = LevelTutorialProgress.Level2TutorialLevelNumber;
+            levelConfig.onboardingSequence = CreateLevel2AdvancedSequence();
+
+            LevelFlowController controller = CreateComponent<LevelFlowController>("LevelFlowController");
+            SetPrivateField(controller, "_levelConfig", levelConfig);
+
+            InvokePrivate(controller, "EnsureRuntimeReferences", null, null);
+
+            Level1OnboardingController onboardingController =
+                GetPrivateField<Level1OnboardingController>(controller, "_level1OnboardingController");
+
+            Assert.IsNotNull(onboardingController,
+                "Level 2 flow should create the reusable onboarding controller for the advanced combat tutorial.");
+            Assert.IsTrue(onboardingController.IsSequenceResolvable(levelConfig));
+            Assert.IsNotNull(onboardingController.GetComponent<ComboTeachBeat>(),
+                "Level 2 advanced onboarding must include the multi-kill chain tutorial beat.");
+            Assert.IsNotNull(onboardingController.GetComponent<FocusModeTeachBeat>(),
+                "Level 2 advanced onboarding must include the focus mode tutorial beat.");
         }
 
         [UnityTest]
@@ -243,6 +322,26 @@ namespace Salinlahi.Tests.Editor.Gameplay
             return dialogue;
         }
 
+        private Level1TutorialSequenceSO CreateLegacyTutorialSequence()
+        {
+            Level1TutorialSequenceSO sequence = ScriptableObject.CreateInstance<Level1TutorialSequenceSO>();
+            _objectsToDestroy.Add(sequence);
+            return sequence;
+        }
+
+        private OnboardingSequenceSO CreateLevel2AdvancedSequence()
+        {
+            OnboardingSequenceSO sequence = ScriptableObject.CreateInstance<OnboardingSequenceSO>();
+            sequence.beatOrder = new[]
+            {
+                OnboardingBeatType.ComboTeach,
+                OnboardingBeatType.FocusModeTeach,
+                OnboardingBeatType.Release,
+            };
+            _objectsToDestroy.Add(sequence);
+            return sequence;
+        }
+
         private static void SetPrivateField(object target, string fieldName, object value)
         {
             FieldInfo field = target.GetType().GetField(
@@ -268,6 +367,15 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.IsNotNull(method, $"{target.GetType().Name}.{methodName} method not found.");
             method.Invoke(target, null);
+        }
+
+        private static void InvokePrivate(object target, string methodName, params object[] args)
+        {
+            MethodInfo method = target.GetType().GetMethod(
+                methodName,
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(method, $"{target.GetType().Name}.{methodName} method not found.");
+            method.Invoke(target, args);
         }
 
         private static T GetPrivateField<T>(object target, string fieldName)

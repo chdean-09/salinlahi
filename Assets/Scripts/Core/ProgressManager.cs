@@ -15,16 +15,19 @@ public class ProgressManager : Singleton<ProgressManager>
     public const string EndlessModeKey = "salinlahi.progress.endless_unlocked";
     public const int Level1FtueTutorialLevelNumber = 1;
     public const string Level1FtueSeenKey = "salinlahi.tutorial.level1_ftue_seen";
+    public const string Level1FtueBeatIndexKey = "salinlahi.tutorial.level1_ftue_beat_index";
+    public const int Level2AdvancedTutorialLevelNumber = 2;
+    public const string Level2AdvancedSeenKey = "salinlahi.tutorial.level2_advanced_focus_chain_v3_seen";
+    public const string Level2AdvancedBeatIndexKey = "salinlahi.tutorial.level2_advanced_focus_chain_v3_beat_index";
+    private const string LegacyLevel2AdvancedSeenKey = "salinlahi.tutorial.level2_advanced_seen";
+    private const string LegacyLevel2AdvancedBeatIndexKey = "salinlahi.tutorial.level2_advanced_beat_index";
+    private const string LegacyLevel2AdvancedFocusV2SeenKey = "salinlahi.tutorial.level2_advanced_focus_v2_seen";
+    private const string LegacyLevel2AdvancedFocusV2BeatIndexKey = "salinlahi.tutorial.level2_advanced_focus_v2_beat_index";
 
     private const string KeyPrefix = "salinlahi.progress.";
     private const int MaxStars = 3;
     private const int TotalLevels = 15;
-    private static bool UnlockAllLevelsForBossTesting =>
-#if UNITY_EDITOR
-        true;
-#else
-        false;
-#endif
+    private static bool UnlockAllLevelsForBossTesting => true;
 
     // Track which level we've processed to handle restarts properly
     private int _lastProcessedLevelId = -1;
@@ -344,6 +347,14 @@ public class ProgressManager : Singleton<ProgressManager>
         }
         PlayerPrefs.DeleteKey(EndlessModeKey);
         PlayerPrefs.DeleteKey(Level1FtueSeenKey);
+        PlayerPrefs.DeleteKey(Level1FtueBeatIndexKey);
+        PlayerPrefs.DeleteKey(Level2AdvancedSeenKey);
+        PlayerPrefs.DeleteKey(Level2AdvancedBeatIndexKey);
+        PlayerPrefs.DeleteKey(LegacyLevel2AdvancedSeenKey);
+        PlayerPrefs.DeleteKey(LegacyLevel2AdvancedBeatIndexKey);
+        PlayerPrefs.DeleteKey(LegacyLevel2AdvancedFocusV2SeenKey);
+        PlayerPrefs.DeleteKey(LegacyLevel2AdvancedFocusV2BeatIndexKey);
+        CharacterUnlockProgress.ClearAllUnlocked();
         EnemyDiscoveryProgress.ClearAllDiscovered();
 
         // Reset tracking

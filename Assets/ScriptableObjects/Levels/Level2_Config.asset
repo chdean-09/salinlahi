@@ -23,6 +23,7 @@ MonoBehaviour:
     characters:
     - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
     - {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
+    - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
     enemyTypes:
     - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
     enemyCount: 6
@@ -32,6 +33,7 @@ MonoBehaviour:
     characters:
     - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
     - {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
+    - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
     - {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
     enemyTypes:
     - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
@@ -40,8 +42,10 @@ MonoBehaviour:
     waveStartDelay: 1.5
   - isIntermissionWave: 0
     characters:
+    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
     - {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
     - {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
+    - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
     enemyTypes:
     - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
     - {fileID: 11400000, guid: 5441937cc8c04b60b92b0112af80aac3, type: 2}
@@ -51,13 +55,17 @@ MonoBehaviour:
   allowedCharacters:
   - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
   - {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
+  - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
   - {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
   allowedEnemyTypes:
   - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
   - {fileID: 11400000, guid: 5441937cc8c04b60b92b0112af80aac3, type: 2}
   bossConfig: {fileID: 0}
   isAvailableInLite: 1
+  focusModeEnabled: 1
+  multiKillChainEnabled: 1
   tutorialSequence: {fileID: 0}
+  onboardingSequence: {fileID: 11400000, guid: 2589c33ff75c4f87b136e80c7a60e17c, type: 2}
   introDialogue: {fileID: 0}
   outroDialogue: {fileID: 0}
   bgmClip: {fileID: 0}

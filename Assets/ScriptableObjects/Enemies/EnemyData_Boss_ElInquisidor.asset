@@ -1,0 +1,86 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bb4cd3e37d015f4f8d9baa6e4cc1ac5, type: 3}
+  m_Name: EnemyData_Boss_ElInquisidor
+  m_EditorClassIdentifier: Salinlahi.Runtime::EnemyDataSO
+  enemyID: elinquisidor
+  displayName: El Inquisidor
+  description: 'A corrupted high-ranking friar who ordered the burning of Baybayin
+    manuscripts during the Spanish era. He wants to erase the script and the memory
+    of the people.
+
+    
+
+    Power: Summons Spanish Era enemies.'
+  moveSpeed: 0
+  maxHealth: 1
+  walkFrames:
+  - {fileID: 95172164111334305, guid: f6ede119ad3b6824b9652c0513057a7c, type: 3}
+  - {fileID: -5963209368729282853, guid: f6ede119ad3b6824b9652c0513057a7c, type: 3}
+  - {fileID: 2359858629302205889, guid: f6ede119ad3b6824b9652c0513057a7c, type: 3}
+  - {fileID: 4081961212881063280, guid: f6ede119ad3b6824b9652c0513057a7c, type: 3}
+  - {fileID: 5473186506728689580, guid: f6ede119ad3b6824b9652c0513057a7c, type: 3}
+  - {fileID: -2617582732730828147, guid: f6ede119ad3b6824b9652c0513057a7c, type: 3}
+  animatorController: {fileID: 0}
+  portraitSprite: {fileID: 0}
+  assignedCharacter: {fileID: 0}
+  isDecoy: 0
+  isPhaser: 0
+  phaserInterval: 0.5
+  phaserInitialVisibleDelayMin: 0
+  phaserInitialVisibleDelayMax: 0
+  phaserVisibleHoldMin: 0
+  phaserVisibleHoldMax: 0
+  phaserInvisibleHoldMin: 0
+  phaserInvisibleHoldMax: 0
+  phaserFadeOutDuration: 0.3
+  phaserFadeInDuration: 0.2
+  phaserFadeOutPulseCount: 3
+  phaserFadeOutPulseAmplitude: 0.2
+  dealsContactDamage: 0
+  era: 0
+  overrideBadgeOffset: 1
+  glyphBadgeOffsetOverride: {x: 0, y: -3.5}
+  overrideBadgeScale: 1
+  glyphBadgeScaleOverride: 3
+  zigzagAmplitude: 0
+  zigzagFrequency: 0
+  baseSpeedMultiplier: 1
+  auraRadius: 0
+  auraSpeedMultiplier: 1.3
+  deathFrames:
+  - {fileID: 1359831216602190982, guid: 169deefe9b418a643b2833186985ab5e, type: 3}
+  - {fileID: 3328755274176622809, guid: 169deefe9b418a643b2833186985ab5e, type: 3}
+  - {fileID: -8064651326560014303, guid: 169deefe9b418a643b2833186985ab5e, type: 3}
+  - {fileID: 1210589677907472657, guid: 169deefe9b418a643b2833186985ab5e, type: 3}
+  - {fileID: 5530581184532523763, guid: 169deefe9b418a643b2833186985ab5e, type: 3}
+  - {fileID: 1091453580, guid: 169deefe9b418a643b2833186985ab5e, type: 3}
+  - {fileID: 136889218, guid: 169deefe9b418a643b2833186985ab5e, type: 3}
+  - {fileID: 1815518183, guid: 169deefe9b418a643b2833186985ab5e, type: 3}
+  deathAnimationFps: 8
+  useHurtFeedback: 1
+  hurtPausesMovement: 1
+  hurtPauseDuration: 0.25
+  hurtShakesSprite: 1
+  hurtShakeMagnitude: 0.08
+  hurtShakeDuration: 0.2
+  hurtShakeFrequency: 30
+  hurtSwapsCharacter: 0
+  postHurtCharacter: {fileID: 0}
+  hurtFrames: []
+  hurtAnimationFps: 12
+  chargeMultiplier: 2.5
+  chargeTriggerYNormalized: 0.5
+  pauseDuration: 0.35
+  scrambleRadius: 3
+  scrambleMinGlitchInterval: 0.18
+  scrambleMaxGlitchInterval: 0.36

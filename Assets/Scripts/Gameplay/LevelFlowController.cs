@@ -1,6 +1,7 @@
 using System.Collections;
 using Salinlahi.Runtime.Gameplay;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Orchestrates the full level lifecycle in the Gameplay scene:
@@ -12,8 +13,7 @@ public class LevelFlowController : MonoBehaviour
     [Header("References")]
     [SerializeField] private WaveManager _waveManager;
     [SerializeField] private DialogueController _dialogueController;
-    [SerializeField] private Level1InteractiveTutorialController _level1InteractiveTutorialController;
-    [SerializeField] private TutorialOverlayController _tutorialOverlayController;
+    [SerializeField] private Level1OnboardingController _level1OnboardingController;
     [SerializeField] private VictoryScreenUI _victoryScreen;
     [SerializeField] private DefeatScreenUI _defeatScreen;
 
@@ -39,8 +39,8 @@ public class LevelFlowController : MonoBehaviour
         EnemyDataSO fallbackEnemyData)
     {
         if (levelConfig == null
-            || levelConfig.levelNumber != LevelTutorialProgress.TutorialLevelNumber
-            || levelConfig.tutorialSequence == null
+            || !LevelTutorialProgress.ShouldShowForLevelNumber(levelConfig.levelNumber)
+            || (levelConfig.tutorialSequence == null && levelConfig.onboardingSequence == null)
             || waveManager == null)
         {
             return false;
@@ -91,10 +91,18 @@ public class LevelFlowController : MonoBehaviour
     {
         if (_runtimeBootstrapped)
             yield break;
+        if (!IsGameplayScene())
+            yield break;
 
         ResolveLevelConfig();
         EnsureRuntimeReferences(null, null);
         yield return RunLevelFlow();
+    }
+
+    private static bool IsGameplayScene()
+    {
+        string sceneName = SceneManager.GetActiveScene().name;
+        return sceneName == "Gameplay" || sceneName == "Level_01_Tutorial";
     }
 
     private IEnumerator RunLevelFlow()
@@ -169,9 +177,6 @@ public class LevelFlowController : MonoBehaviour
         if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
             GameManager.Instance.StartGame();
 
-        if (_levelConfig.levelNumber == LevelTutorialProgress.TutorialLevelNumber)
-            Level1InteractiveTutorialController.ForceGameplayHudVisible();
-
         if (_waveManager != null)
             _waveManager.StartLevel();
         else
@@ -181,27 +186,71 @@ public class LevelFlowController : MonoBehaviour
     private void EnsureRuntimeReferences(WaveSpawner waveSpawner, EnemyDataSO fallbackEnemyData)
     {
         _waveManager ??= FindFirstObjectByType<WaveManager>();
-        _dialogueController ??= FindFirstObjectByType<DialogueController>();
+        _dialogueController ??= FindActiveDialogueController();
         _cutscenePlayer ??= FindFirstObjectByType<CutscenePlayer>();
         _victoryScreen ??= FindFirstObjectByType<VictoryScreenUI>(FindObjectsInactive.Include);
         _defeatScreen ??= FindFirstObjectByType<DefeatScreenUI>(FindObjectsInactive.Include);
-        _tutorialOverlayController ??= FindFirstObjectByType<TutorialOverlayController>();
 
-        if (_level1InteractiveTutorialController == null
+        if (_level1OnboardingController == null
             && _levelConfig != null
-            && _levelConfig.tutorialSequence != null
-            && _levelConfig.levelNumber == LevelTutorialProgress.TutorialLevelNumber)
+            && IsTutorialLevelWithSequence(_levelConfig))
         {
-            _level1InteractiveTutorialController = FindFirstObjectByType<Level1InteractiveTutorialController>();
-            if (_level1InteractiveTutorialController == null)
-            {
-                GameObject tutorialObject = new("Level1InteractiveTutorialController");
-                _level1InteractiveTutorialController = tutorialObject.AddComponent<Level1InteractiveTutorialController>();
-            }
+            _level1OnboardingController = FindFirstObjectByType<Level1OnboardingController>(FindObjectsInactive.Include);
+            if (_level1OnboardingController == null && ShouldCreateRuntimeOnboardingController())
+                _level1OnboardingController = CreateRuntimeOnboardingController();
+        }
+    }
+
+    private bool ShouldCreateRuntimeOnboardingController()
+    {
+        return _levelConfig != null
+            && LevelTutorialProgress.ShouldShowForLevelNumber(_levelConfig.levelNumber)
+            && (_levelConfig.onboardingSequence != null || _levelConfig.tutorialSequence != null);
+    }
+
+    private Level1OnboardingController CreateRuntimeOnboardingController()
+    {
+        GameObject go = new("[Runtime] Level1OnboardingController");
+        go.transform.SetParent(transform, false);
+
+        if (_levelConfig != null && _levelConfig.levelNumber == LevelTutorialProgress.Level2TutorialLevelNumber)
+        {
+            go.AddComponent<ComboTeachBeat>();
+            go.AddComponent<FocusModeTeachBeat>();
+        }
+        else
+        {
+            go.AddComponent<ProtagonistIntroBeat>();
+            go.AddComponent<BaseIntroBeat>();
+            go.AddComponent<SoloTeachBeat>();
+            go.AddComponent<HeartLossDemoBeat>();
         }
 
-        if (_level1InteractiveTutorialController != null && _levelConfig != null)
-            _level1InteractiveTutorialController.ConfigureForLevel(_levelConfig, waveSpawner, fallbackEnemyData);
+        go.AddComponent<ReleaseBeat>();
+        return go.AddComponent<Level1OnboardingController>();
+    }
+
+    private static bool IsTutorialLevelWithSequence(LevelConfigSO levelConfig)
+    {
+        return levelConfig != null
+            && LevelTutorialProgress.ShouldShowForLevelNumber(levelConfig.levelNumber)
+            && (levelConfig.onboardingSequence != null || levelConfig.tutorialSequence != null);
+    }
+
+    private static DialogueController FindActiveDialogueController()
+    {
+        DialogueController[] controllers = FindObjectsByType<DialogueController>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+
+        for (int i = 0; i < controllers.Length; i++)
+        {
+            DialogueController controller = controllers[i];
+            if (controller != null && controller.gameObject.activeInHierarchy)
+                return controller;
+        }
+
+        return null;
     }
 
     private static ProtagonistManager EnsureProtagonistManager()
@@ -249,38 +298,25 @@ public class LevelFlowController : MonoBehaviour
             yield break;
         }
 
-        if (_level1InteractiveTutorialController != null
-            && _level1InteractiveTutorialController.ShouldRunFor(_levelConfig))
-        {
-            if (!_level1InteractiveTutorialController.IsConfigured)
-            {
-                _flowAborted = true;
-                DebugLogger.LogError("LevelFlowController: Level 1 interactive tutorial is due, but it is not configured (no steps).");
-                yield break;
-            }
+        bool isTutorialLevel = LevelTutorialProgress.ShouldShowForLevelNumber(_levelConfig.levelNumber);
 
-            yield return _level1InteractiveTutorialController.PlayIfNeeded(_levelConfig);
+        if (!isTutorialLevel)
+            yield break;
+
+        // Tutorial is due from this point on.
+        if (_level1OnboardingController == null)
+        {
+            DebugLogger.LogError($"LevelFlowController: Level {_levelConfig.levelNumber} tutorial is due, but Level1OnboardingController is not in the scene. Run Salinlahi → Tutorial → 5. Wire Level Scene.");
             yield break;
         }
 
-        if (!LevelTutorialProgress.ShouldShowForLevel(_levelConfig))
-            yield break;
-
-        if (_tutorialOverlayController == null)
+        if (!_level1OnboardingController.IsSequenceResolvable(_levelConfig))
         {
-            _flowAborted = true;
-            DebugLogger.LogError("LevelFlowController: Level 1 FTUE is due, but TutorialOverlayController is not assigned.");
+            DebugLogger.LogError($"LevelFlowController: Level {_levelConfig.levelNumber} tutorial is due, but no OnboardingSequenceSO is assigned. Set LevelConfig.onboardingSequence or the controller's Fallback Sequence field.");
             yield break;
         }
 
-        if (!_tutorialOverlayController.IsConfigured)
-        {
-            _flowAborted = true;
-            DebugLogger.LogError("LevelFlowController: Level 1 FTUE is due, but TutorialOverlayController is not fully configured.");
-            yield break;
-        }
-
-        yield return _tutorialOverlayController.PlayIfNeeded(_levelConfig);
+        yield return _level1OnboardingController.PlayIfNeeded(_levelConfig);
     }
 
     // AC-5: Level complete → outro dialogue → [cutscene (after)] → victory screen

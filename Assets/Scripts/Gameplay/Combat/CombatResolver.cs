@@ -97,7 +97,8 @@ public class CombatResolver : MonoBehaviour
             }
         }
 
-        if (realMatchCount >= _aoeThreshold)
+        if (IsMultiKillChainEnabledForCurrentLevel()
+            && realMatchCount >= _aoeThreshold)
         {
             // Snapshot to a local list because TakeDamage -> Defeat -> Unregister
             // mutates the tracker's shared buffer mid-iteration.
@@ -192,6 +193,9 @@ public class CombatResolver : MonoBehaviour
         // single-target resolution path for boss-specific combat tuning.
         return true;
     }
+
+    private static bool IsMultiKillChainEnabledForCurrentLevel()
+        => GameManager.CurrentLevelConfig?.multiKillChainEnabled ?? true;
 
     private static void ResolveMatchedEnemy(Enemy target, string characterID)
     {

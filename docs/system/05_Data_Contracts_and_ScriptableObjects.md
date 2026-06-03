@@ -1,6 +1,6 @@
 # 05 — Data Contracts and ScriptableObjects
 **Project:** Salinlahi
-**Version:** 2.0
+**Version:** 2.2
 **Date:** 2026-06-03
 **Owner:** Chad Andrada (Product Owner / Designer)
 
@@ -28,10 +28,12 @@ All game content is defined in ScriptableObject assets. Level designers can crea
 | `characterID` | `string` | Identity | YES | Must match template filename prefix. Example: `"BA"` → template file `BA_template.txt` in `Assets/Resources/Templates/`. Case-sensitive. |
 | `syllable` | `string` | Identity | YES | Lowercase Filipino syllable shown to player. Example: `"ba"`, `"ka"`, `"ga"`. Must not be empty. |
 | `displaySprite` | `Sprite` | Visuals | YES | The Baybayin glyph sprite rendered on the enemy body. Must not be null at runtime. |
+| `almanacSprite` | `Sprite` | Visuals | NO | Stylized glyph shown in the Almanac character grid and detail view (`Art/UI/Almanac/[ID]-Almanac.png`). Falls back to `displaySprite` when null. |
 | `badgeSprite` | `Sprite` | Visuals | NO | Framed glyph used by `EnemyGlyphBadge` during gameplay. Distinct from `displaySprite` (Tracing Dojo). |
 | `scrambledBadgeSprite` | `Sprite` | Visuals | NO | Optional framed + glitched variant when a visual override is active (e.g. Kempei scramble). Falls back to `badgeSprite` when null. |
 | `pronunciationClip` | `AudioClip` | Audio | YES | Played on every successful character recognition via `AudioManager`. Duration must be under 1 second to prevent overlap. Null triggers a silent defeat (no audio error). |
 | `templateFileName` | `string` | Recognition | YES | Filename in `Assets/Resources/Templates/` without extension. Example: `"BA_template"`. Must match a file loadable via `Resources.Load<TextAsset>`. |
+| `description` | `string` | Almanac | NO | Short player-facing description of the character shown in the Almanac detail panel. May be empty; Almanac UI falls back to an empty string gracefully. |
 
 **Validation Rules:**
 - `characterID` must be unique across all `BaybayinCharacterSO` assets in the project.
@@ -88,6 +90,9 @@ TDD §2.2 specifies that multiple templates per character are supported (e.g., `
 | `scrambleRadius` | `float` | Kempei Censor | NO | KempeiScrambleController radius. Default `3f`. |
 | `scrambleMinGlitchInterval` | `float` | Kempei Censor | NO | Default `0.18f`. |
 | `scrambleMaxGlitchInterval` | `float` | Kempei Censor | NO | Default `0.36f`. |
+| `displayName` | `string` | Almanac | NO | Human-readable name shown in the Almanac enemy detail panel (e.g. `"Soldado"`). Falls back to `enemyID` when empty. |
+| `description` | `string` | Almanac | NO | Short player-facing description of the enemy shown in the Almanac detail panel. May be empty. |
+| `portraitSprite` | `Sprite` | Almanac | NO | Portrait sprite used in the Almanac detail panel. When null, `AlmanacEnemyEntry.ResolvePortrait()` falls back to `walkFrames[0]`. |
 | `overrideBadgeOffset` | `bool` | Glyph Badge Override | NO | If true, `glyphBadgeOffsetOverride` replaces `GlyphBadgeConfigSO.defaultWorldOffset`. |
 | `glyphBadgeOffsetOverride` | `Vector2` | Glyph Badge Override | NO | Per-enemy badge offset; consulted only when `overrideBadgeOffset` is true. |
 | `overrideBadgeScale` | `bool` | Glyph Badge Override | NO | If true, `glyphBadgeScaleOverride` replaces `GlyphBadgeConfigSO.defaultWorldScale`. |
@@ -241,6 +246,7 @@ Defined at the bottom of `EnemyDataSO.cs`:
 |-------|------|--------|----------|-------|
 | `bossName` | `string` | Identity | YES | Display name. |
 | `bossID` | `string` | Identity | YES | Internal id (e.g. `el_inquisidor`). |
+| `description` | `string` | Almanac | NO | Short player-facing description of the boss shown in the Almanac detail panel. May be empty. |
 | `bossSprite` | `Sprite` | Visuals | NO | HUD/portrait sprite, distinct from the in-world enemy sprite. |
 | `bossEnemyData` | `EnemyDataSO` | Spawning | YES | Defines the boss's prefab, base sprite, animator, collision. Its `assignedCharacter` MUST be null so the boss is invisible to `FindClosestToBase`. |
 | `phases` | `List<BossPhase>` | Phases | YES | Ordered. Phase count = boss's effective HP. Last phase clear ends the encounter. |
@@ -404,9 +410,80 @@ Per-era visual + content bundle for the Level Select screen. `LevelSelectUI` hol
 
 ---
 
-## 3. Asset Authoring Guidelines
+### 2.13 `AlmanacEnemyRegistrySO`
 
-### 3.1 Naming Convention
+**Menu path:** `Salinlahi/Almanac Enemy Registry`
+**File:** `Assets/Scripts/Data/AlmanacEnemyRegistrySO.cs`
+**Asset folder:** `Assets/ScriptableObjects/` (single project-wide instance)
+
+Master list of all enemy entries surfaced in the Almanac. Holds a list of `AlmanacEnemyEntry` records. `OnValidate` automatically syncs each boss entry's `enemyData` field from `bossConfig.bossEnemyData`, so designer only needs to assign `bossConfig` — the enemy data reference is kept consistent by the Editor.
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `entries` | `List<AlmanacEnemyEntry>` | YES | Ordered list of all enemy entries. Empty = Almanac Enemies tab shows nothing. |
+
+[EVIDENCE: Assets/Scripts/Data/AlmanacEnemyRegistrySO.cs]
+
+---
+
+### 2.13.1 `AlmanacEnemyEntry`
+
+**Type:** `[System.Serializable]` class (not a ScriptableObject — no separate asset file)
+**File:** `Assets/Scripts/Data/AlmanacEnemyRegistrySO.cs` (same file as `AlmanacEnemyRegistrySO`)
+
+One row in the Almanac enemy registry. Represents either a regular enemy or a boss.
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `enemyData` | `EnemyDataSO` | YES (regular); auto-filled (boss) | The enemy's data asset. For boss entries, this field is auto-populated by `AlmanacEnemyRegistrySO.OnValidate` from `bossConfig.bossEnemyData`. |
+| `bossConfig` | `BossConfigSO` | NO | Assign for boss entries. Leaving null marks the entry as a regular enemy. |
+
+**Derived property:**
+
+- `IsBoss` → `bossConfig != null`
+
+**Methods:**
+
+| Method | Returns | Behavior |
+|--------|---------|----------|
+| `ResolveDisplayName()` | `string` | Returns `bossConfig.bossName` for bosses; otherwise `enemyData.displayName` (falling back to `enemyData.enemyID` if empty). |
+| `ResolveDescription()` | `string` | Returns `bossConfig.description` for bosses; otherwise `enemyData.description`. May return empty string. |
+| `ResolvePortrait()` | `Sprite` | Returns `bossConfig.bossSprite` for bosses; otherwise `enemyData.portraitSprite`. Falls back to `enemyData.walkFrames[0]` when both portrait fields are null. |
+
+[EVIDENCE: Assets/Scripts/Data/AlmanacEnemyRegistrySO.cs]
+
+---
+
+## 3. Static Data Helpers
+
+### 3.0 `CharacterUnlockProgress`
+
+**File:** `Assets/Scripts/Core/CharacterUnlockProgress.cs`
+**Type:** `static` class (no MonoBehaviour, no Singleton)
+**Persistence:** Unity `PlayerPrefs` — key `salinlahi.almanac.character_ids`
+
+Stores the set of unlocked `BaybayinCharacterSO` character IDs as a pipe-separated (`|`) string in PlayerPrefs. All IDs are normalized via `Trim().ToLowerInvariant()` before storage and lookup, so case differences do not produce duplicate entries.
+
+**Public API:**
+
+| Method | Signature | Behavior |
+|--------|-----------|----------|
+| `HasUnlocked` | `bool HasUnlocked(BaybayinCharacterSO data)` | Returns `true` if `data.characterID` (normalized) is in the persisted set. Returns `false` if `data` is null. |
+| `TryMarkUnlocked` | `bool TryMarkUnlocked(BaybayinCharacterSO data, out string normalizedID)` | If the normalized ID is not already in the set, adds it, persists via `PlayerPrefs.Save()`, and returns `true`. Returns `false` (already unlocked or null input). |
+| `ClearAllUnlocked` | `void ClearAllUnlocked()` | Deletes the PlayerPrefs key and clears the in-memory cache. Called by `ProgressManager.ClearAllProgress()`. |
+
+**Design notes:**
+- This class is **pure** — it raises no EventBus events. The caller (e.g., a wave-clear handler) is responsible for raising `EventBus.RaiseCharacterUnlocked(character)` after `TryMarkUnlocked` returns `true`.
+- `ProgressManager.ClearAllProgress()` calls `ClearAllUnlocked()` so that a full progress reset also wipes the Almanac character unlock state.
+
+[EVIDENCE: Assets/Scripts/Core/CharacterUnlockProgress.cs]
+[EVIDENCE: Assets/Scripts/Core/ProgressManager.cs — ClearAllProgress()]
+
+---
+
+## 4. Asset Authoring Guidelines
+
+### 4.1 Naming Convention
 
 | Asset Type | Pattern | Example |
 |------------|---------|---------|
@@ -416,7 +493,7 @@ Per-era visual + content bundle for the Level Select screen. `LevelSelectUI` hol
 | `RecognitionConfigSO` | `RecognitionConfig` | (singleton asset) |
 | `EraConfigSO` | `Era_[number]` | `Era_01`, `Era_02` |
 
-### 3.2 Asset Folder Map
+### 4.2 Asset Folder Map
 
 | Asset Type | Folder |
 |------------|--------|
@@ -431,7 +508,7 @@ Per-era visual + content bundle for the Level Select screen. `LevelSelectUI` hol
 [EVIDENCE: Assets/ScriptableObjects/ directory listing — Characters/, Levels/, Waves/ subdirs confirmed]
 [EVIDENCE: docs/capstone/TDD.md, §7.4 Folder Structure]
 
-### 3.3 Template File Format
+### 4.3 Template File Format
 
 Each `BaybayinCharacterSO.templateFileName` references a plain-text coordinate file in `Assets/Resources/Templates/`. Format is determined by the `TemplateLoader.cs` implementation. Expected content per `Salinlahi.md §3.3.3`: comma-separated 2D point coordinates representing the resampled $P point cloud for that character.
 

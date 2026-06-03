@@ -11,12 +11,14 @@ public class MainMenuUI : MonoBehaviour
     private const string SceneGameplay = "Gameplay";
     private const string SceneLevelSelect = "LevelSelect";
     private const string SceneTracingDojo = "TracingDojo";
+    private const string SceneAlmanac = "Almanac";
     private static readonly string[] MainMenuButtonNames =
     {
         "PlayButton",
         "LevelSelectButton",
         "EndlessModeButton",
         "TracingDojoButton",
+        "AlmanacButton",
         "SettingsButton"
     };
 
@@ -92,6 +94,13 @@ public class MainMenuUI : MonoBehaviour
     {
         AudioManager.Instance?.PlayMenuButtonClick();
         LoadTracingDojo();
+    }
+
+    public void OnAlmanacPressed()
+    {
+        AudioManager.Instance?.PlayMenuButtonClick();
+        DebugLogger.Log("MainMenuUI: Almanac pressed");
+        LoadAlmanac();
     }
 
     public void OnSettingsPressed()
@@ -222,6 +231,14 @@ public class MainMenuUI : MonoBehaviour
             SceneLoader.Instance.LoadScene(SceneTracingDojo);
         else
             LoadSceneDirect(SceneTracingDojo);
+    }
+
+    private static void LoadAlmanac()
+    {
+        if (SceneLoader.Instance != null)
+            SceneLoader.Instance.LoadAlmanac();
+        else
+            LoadSceneDirect(SceneAlmanac);
     }
 
     private static void LoadSceneDirect(string sceneName)

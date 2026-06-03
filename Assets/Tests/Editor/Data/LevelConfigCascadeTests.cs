@@ -1,5 +1,8 @@
 using System.Collections.Generic;
 using NUnit.Framework;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 using UnityEngine;
 
 namespace Salinlahi.Tests.Editor.Data
@@ -66,5 +69,44 @@ namespace Salinlahi.Tests.Editor.Data
                 Object.DestroyImmediate(keepChar);
             }
         }
+
+#if UNITY_EDITOR
+        [Test]
+        public void LevelOneConfig_DisablesAdvancedCombat()
+        {
+            LevelConfigSO level = AssetDatabase.LoadAssetAtPath<LevelConfigSO>(
+                "Assets/ScriptableObjects/Levels/Level1_Config.asset");
+
+            Assert.IsNotNull(level);
+            Assert.IsFalse(level.focusModeEnabled);
+            Assert.IsFalse(level.multiKillChainEnabled);
+        }
+
+        [Test]
+        public void LevelTwoConfig_EnablesAdvancedCombatAndAssignsTutorial()
+        {
+            LevelConfigSO level = AssetDatabase.LoadAssetAtPath<LevelConfigSO>(
+                "Assets/ScriptableObjects/Levels/Level2_Config.asset");
+
+            Assert.IsNotNull(level);
+            Assert.IsTrue(level.focusModeEnabled);
+            Assert.IsTrue(level.multiKillChainEnabled);
+            Assert.IsNotNull(level.onboardingSequence,
+                "Level 2 must have the advanced onboarding sequence assigned or the tutorial flow will not start.");
+            Assert.Contains(OnboardingBeatType.ComboTeach, level.onboardingSequence.beatOrder);
+            Assert.Contains(OnboardingBeatType.FocusModeTeach, level.onboardingSequence.beatOrder);
+        }
+
+        [Test]
+        public void DefaultGameConfig_ActivatesFocusAtFiveStreaks()
+        {
+            GameConfigSO config = AssetDatabase.LoadAssetAtPath<GameConfigSO>(
+                "Assets/ScriptableObjects/GameConfig_Default.asset");
+
+            Assert.IsNotNull(config);
+            Assert.AreEqual(5, config.focusModeThreshold,
+                "Focus Mode should activate when the visible streak reaches 5.");
+        }
+#endif
     }
 }

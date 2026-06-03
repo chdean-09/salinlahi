@@ -72,6 +72,16 @@ public static class EventBus
     // -- Environment Events --
     public static event Action<EraThemeSO> OnThemeApplied; // raised by EnvironmentThemeSwapper after ApplyTheme
 
+    // -- Progression Events --
+    public static event Action<BaybayinCharacterSO> OnCharacterUnlocked; // raised after CharacterUnlockProgress.TryMarkUnlocked succeeds
+
+    // -- Tutorial Events --
+    // Demo-only base hit emitted by the Level 1 onboarding heart-loss beat.
+    // Does NOT decrement real hearts; HUD listens and plays shake/flash.
+    public static event Action<int> OnTutorialBaseHitDemo;
+    // Demo-only restore: refills the heart that the demo hit emptied, with a visible pulse.
+    public static event Action OnTutorialBaseRestoreDemo;
+
     // -- Raisers --
     public static void RaiseEnemyDefeated(BaybayinCharacterSO c) => OnEnemyDefeated?.Invoke(c);
     public static void RaiseEnemyDiscovered(EnemyDataSO data, Enemy enemy) => OnEnemyDiscovered?.Invoke(data, enemy);
@@ -115,4 +125,7 @@ public static class EventBus
     public static void RaiseCutsceneStarted() => OnCutsceneStarted?.Invoke();
     public static void RaiseCutsceneComplete() => OnCutsceneComplete?.Invoke();
     public static void RaiseThemeApplied(EraThemeSO theme) => OnThemeApplied?.Invoke(theme);
+    public static void RaiseCharacterUnlocked(BaybayinCharacterSO c) => OnCharacterUnlocked?.Invoke(c);
+    public static void RaiseTutorialBaseHitDemo(int damage = 1) => OnTutorialBaseHitDemo?.Invoke(damage);
+    public static void RaiseTutorialBaseRestoreDemo() => OnTutorialBaseRestoreDemo?.Invoke();
 }
