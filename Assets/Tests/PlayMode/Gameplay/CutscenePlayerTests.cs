@@ -228,6 +228,75 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         [UnityTest]
+        public IEnumerator ContinuePrompt_AppearsOnlyWhileWaitingForTap()
+        {
+            _cutscene.panels = new CutscenePanel[]
+            {
+                new CutscenePanel { text = "Panel 1", typewriterSpeed = 200f },
+                new CutscenePanel { text = "Panel 2", typewriterSpeed = 200f }
+            };
+
+            _player.Play(_cutscene);
+            yield return null;
+
+            TMP_Text prompt = GetPrivateField<TMP_Text>(_player, "_continuePromptText");
+            CanvasGroup promptGroup = GetPrivateField<CanvasGroup>(_player, "_continuePromptCanvasGroup");
+            Assert.NotNull(prompt);
+            Assert.AreEqual("Tap anywhere to continue", prompt.text);
+            Assert.IsFalse(prompt.gameObject.activeSelf, "Prompt should stay hidden while transition/typewriter is running.");
+
+            float waited = 0f;
+            while (waited < 1f && !GetPrivateField<bool>(_player, "_waitingForTap"))
+            {
+                yield return null;
+                waited += Time.unscaledDeltaTime;
+            }
+
+            Assert.IsTrue(prompt.gameObject.activeSelf, "Prompt should show once the cutscene waits for player input.");
+            Assert.Greater(promptGroup.alpha, 0.5f);
+
+            _tapCatcher.onClick.Invoke();
+            yield return null;
+
+            Assert.IsFalse(prompt.gameObject.activeSelf, "Prompt should hide immediately after continuing.");
+        }
+
+        [UnityTest]
+        public IEnumerator Cutscene_DoesNotShowTopRightSkipButton()
+        {
+            _cutscene.panels = new CutscenePanel[] { new CutscenePanel { text = "Panel 1", typewriterSpeed = 200f } };
+
+            _player.Play(_cutscene);
+            yield return null;
+
+            GameObject skipRoot = GetPrivateField<GameObject>(_player, "_skipButtonRoot");
+            Assert.NotNull(skipRoot);
+            Assert.IsFalse(skipRoot.activeSelf, "Top-right skip button should not be visible during cutscenes.");
+        }
+
+        [UnityTest]
+        public IEnumerator ContinuePrompt_UsesSafeAreaTopCenterPlacement()
+        {
+            _cutscene.panels = new CutscenePanel[] { new CutscenePanel { text = "Panel 1", typewriterSpeed = 200f } };
+
+            _player.Play(_cutscene);
+            yield return null;
+
+            RectTransform safeAreaRoot = GetPrivateField<RectTransform>(_player, "_continuePromptSafeAreaRoot");
+            RectTransform promptRect = GetPrivateField<TMP_Text>(_player, "_continuePromptText").rectTransform;
+
+            Assert.NotNull(safeAreaRoot);
+            Assert.NotNull(safeAreaRoot.GetComponent<SafeAreaHandler>());
+            Assert.Less(promptRect.anchorMin.x, 0.5f);
+            Assert.Greater(promptRect.anchorMax.x, 0.5f);
+            Assert.AreEqual(1f, promptRect.anchorMin.y, 0.01f);
+            Assert.AreEqual(1f, promptRect.anchorMax.y, 0.01f);
+            Assert.AreEqual(new Vector2(0.5f, 1f), promptRect.pivot);
+            Assert.AreEqual(0f, promptRect.anchoredPosition.x, 0.01f);
+            Assert.Less(promptRect.anchoredPosition.y, 0f, "Prompt should sit below the safe-area top edge.");
+        }
+
+        [UnityTest]
         public IEnumerator OnTap_DuringTransition_IsIgnored()
         {
             _cutscene.panels = new CutscenePanel[]

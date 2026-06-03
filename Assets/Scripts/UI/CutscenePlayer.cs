@@ -19,9 +19,21 @@ public class CutscenePlayer : MonoBehaviour
     [SerializeField] private Button _tapCatcher;
     [SerializeField] private Button _skipButton;
     [SerializeField] private GameObject _skipButtonRoot;
+    [SerializeField] private TMP_Text _continuePromptText;
+    [SerializeField] private RectTransform _continuePromptSafeAreaRoot;
+    [SerializeField] private CanvasGroup _continuePromptCanvasGroup;
 
     [Header("Slide Transition")]
     [SerializeField] private float _slideDistance = 400f;
+
+    [Header("Continue Prompt")]
+    [SerializeField] private string _continuePromptMessage = "Tap anywhere to continue";
+    [SerializeField] private float _continuePromptTopPadding = 36f;
+    [SerializeField] private float _continuePromptPulseSeconds = 1.35f;
+    [SerializeField] private float _continuePromptMinAlpha = 0.58f;
+    [SerializeField] private float _continuePromptMaxAlpha = 1f;
+    [SerializeField] private float _continuePromptMinScale = 0.98f;
+    [SerializeField] private float _continuePromptMaxScale = 1.04f;
 
     [Header("Exit Transition")]
     [SerializeField] private float _exitFadeToBlackDuration = 0.45f;
@@ -38,12 +50,14 @@ public class CutscenePlayer : MonoBehaviour
     private bool _playExitTransition;
     private bool _isCompleting;
     private Coroutine _playRoutine;
+    private Coroutine _continuePromptPulseRoutine;
 
     private void Awake()
     {
         transform.localScale = Vector3.one;
         ConfigureBottomGradientOverlay();
         ConfigureExitTransitionImage();
+        ConfigureContinuePrompt();
 
         if (_canvasGroup != null)
         {
@@ -57,7 +71,9 @@ public class CutscenePlayer : MonoBehaviour
         if (_tapCatcher != null)
             _tapCatcher.onClick.AddListener(OnTap);
         if (_skipButton != null)
-            _skipButton.onClick.AddListener(SkipCutscene);
+            _skipButton.onClick.RemoveListener(SkipCutscene);
+
+        HideLegacySkipButton();
 
         if (_bodyFont != null && _bodyText != null)
             _bodyText.font = _bodyFont;
@@ -66,12 +82,13 @@ public class CutscenePlayer : MonoBehaviour
             _bodyText.fontSize = _bodyFontSize;
 
         if (_bodyText != null && _bodyText.fontMaterial != null)
-        {
-            _bodyText.fontMaterial.EnableKeyword("OUTLINE_ON");
-            _bodyText.fontMaterial.SetFloat(Shader.PropertyToID("_OutlineWidth"), 0.35f);
-            _bodyText.fontMaterial.SetColor(Shader.PropertyToID("_OutlineColor"), Color.black);
-            _bodyText.fontMaterial.SetFloat(Shader.PropertyToID("_FaceDilate"), 0.15f);
-        }
+            ApplyCutsceneTextOutline(_bodyText, 0.35f, 0.15f);
+
+        if (_bodyFont != null && _continuePromptText != null)
+            _continuePromptText.font = _bodyFont;
+
+        if (_continuePromptText != null && _continuePromptText.fontMaterial != null)
+            ApplyCutsceneTextOutline(_continuePromptText, 0.35f, 0.15f);
     }
 
     private void OnDisable()
@@ -80,6 +97,8 @@ public class CutscenePlayer : MonoBehaviour
             _tapCatcher.onClick.RemoveListener(OnTap);
         if (_skipButton != null)
             _skipButton.onClick.RemoveListener(SkipCutscene);
+
+        StopContinuePromptPulse();
     }
 
     private void ConfigureBottomGradientOverlay()
@@ -184,10 +203,81 @@ public class CutscenePlayer : MonoBehaviour
             _bodyText.transform.SetAsLastSibling();
         if (_tapCatcher != null)
             _tapCatcher.transform.SetAsLastSibling();
-        if (_skipButtonRoot != null)
-            _skipButtonRoot.transform.SetAsLastSibling();
+        if (_continuePromptSafeAreaRoot != null)
+            _continuePromptSafeAreaRoot.SetAsLastSibling();
         if (_exitTransitionImage != null)
             _exitTransitionImage.transform.SetAsLastSibling();
+    }
+
+    private void ConfigureContinuePrompt()
+    {
+        if (_continuePromptSafeAreaRoot == null)
+        {
+            Transform existing = transform.Find("ContinuePromptSafeArea");
+            if (existing != null)
+                _continuePromptSafeAreaRoot = existing as RectTransform;
+        }
+
+        if (_continuePromptSafeAreaRoot == null)
+        {
+            GameObject safeAreaObject = new("ContinuePromptSafeArea", typeof(RectTransform), typeof(SafeAreaHandler));
+            safeAreaObject.transform.SetParent(transform, false);
+            _continuePromptSafeAreaRoot = safeAreaObject.GetComponent<RectTransform>();
+        }
+
+        _continuePromptSafeAreaRoot.anchorMin = Vector2.zero;
+        _continuePromptSafeAreaRoot.anchorMax = Vector2.one;
+        _continuePromptSafeAreaRoot.offsetMin = Vector2.zero;
+        _continuePromptSafeAreaRoot.offsetMax = Vector2.zero;
+
+        if (_continuePromptSafeAreaRoot.GetComponent<SafeAreaHandler>() == null)
+            _continuePromptSafeAreaRoot.gameObject.AddComponent<SafeAreaHandler>();
+
+        if (_continuePromptText == null)
+        {
+            Transform existing = _continuePromptSafeAreaRoot.Find("ContinuePromptText");
+            if (existing != null)
+                _continuePromptText = existing.GetComponent<TMP_Text>();
+        }
+
+        if (_continuePromptText == null)
+        {
+            GameObject promptObject = new("ContinuePromptText", typeof(RectTransform), typeof(CanvasGroup), typeof(TextMeshProUGUI));
+            promptObject.transform.SetParent(_continuePromptSafeAreaRoot, false);
+            _continuePromptText = promptObject.GetComponent<TextMeshProUGUI>();
+        }
+
+        RectTransform promptRect = _continuePromptText.rectTransform;
+        promptRect.anchorMin = new Vector2(0.08f, 1f);
+        promptRect.anchorMax = new Vector2(0.92f, 1f);
+        promptRect.pivot = new Vector2(0.5f, 1f);
+        promptRect.anchoredPosition = new Vector2(0f, -Mathf.Max(12f, _continuePromptTopPadding));
+        promptRect.sizeDelta = new Vector2(0f, 72f);
+
+        _continuePromptText.text = _continuePromptMessage;
+        _continuePromptText.alignment = TextAlignmentOptions.Center;
+        _continuePromptText.fontSize = 34f;
+        _continuePromptText.enableAutoSizing = true;
+        _continuePromptText.fontSizeMin = 22f;
+        _continuePromptText.fontSizeMax = 34f;
+        _continuePromptText.color = new Color(1f, 1f, 1f, 0.92f);
+        _continuePromptText.raycastTarget = false;
+        _continuePromptText.textWrappingMode = TextWrappingModes.NoWrap;
+        if (_bodyFont != null)
+            _continuePromptText.font = _bodyFont;
+        if (_continuePromptText.fontMaterial != null)
+            ApplyCutsceneTextOutline(_continuePromptText, 0.35f, 0.15f);
+
+        if (_continuePromptCanvasGroup == null)
+            _continuePromptCanvasGroup = _continuePromptText.GetComponent<CanvasGroup>();
+        if (_continuePromptCanvasGroup == null)
+            _continuePromptCanvasGroup = _continuePromptText.gameObject.AddComponent<CanvasGroup>();
+
+        _continuePromptCanvasGroup.blocksRaycasts = false;
+        _continuePromptCanvasGroup.interactable = false;
+
+        SetContinuePromptVisible(false);
+        EnsureCutsceneSiblingOrder();
     }
 
     public void Play(CutsceneSO cutscene, bool playExitTransition = false)
@@ -212,8 +302,8 @@ public class CutscenePlayer : MonoBehaviour
 
         EventBus.RaiseCutsceneStarted();
 
-        if (_skipButtonRoot != null)
-            _skipButtonRoot.SetActive(true);
+        HideLegacySkipButton();
+        SetContinuePromptVisible(false);
 
         if (_canvasGroup != null)
         {
@@ -250,7 +340,9 @@ public class CutscenePlayer : MonoBehaviour
             _isTypewriting = false;
 
             _waitingForTap = true;
+            SetContinuePromptVisible(true);
             yield return new WaitUntil(() => _currentCutscene == null || !_waitingForTap);
+            SetContinuePromptVisible(false);
 
             _panelIndex++;
         }
@@ -376,7 +468,10 @@ public class CutscenePlayer : MonoBehaviour
         }
 
         if (_waitingForTap)
+        {
+            SetContinuePromptVisible(false);
             _waitingForTap = false;
+        }
     }
 
     private void SkipTypewriter()
@@ -471,6 +566,7 @@ public class CutscenePlayer : MonoBehaviour
 
         _isTypewriting = false;
         _waitingForTap = false;
+        SetContinuePromptVisible(false);
         _currentCutscene = null;
         _panelIndex = 0;
         _playExitTransition = false;
@@ -517,7 +613,92 @@ public class CutscenePlayer : MonoBehaviour
             _bodyText.gameObject.SetActive(visible);
         if (_tapCatcher != null)
             _tapCatcher.gameObject.SetActive(visible);
+        HideLegacySkipButton();
+        if (!visible)
+            SetContinuePromptVisible(false);
+    }
+
+    private void SetContinuePromptVisible(bool visible)
+    {
+        if (_continuePromptText == null || _continuePromptCanvasGroup == null)
+            return;
+
+        if (visible)
+        {
+            _continuePromptText.text = _continuePromptMessage;
+            _continuePromptText.gameObject.SetActive(true);
+            _continuePromptCanvasGroup.alpha = _continuePromptMaxAlpha;
+            _continuePromptText.rectTransform.localScale = Vector3.one;
+            StartContinuePromptPulse();
+        }
+        else
+        {
+            StopContinuePromptPulse();
+            _continuePromptCanvasGroup.alpha = 0f;
+            _continuePromptText.rectTransform.localScale = Vector3.one;
+            _continuePromptText.gameObject.SetActive(false);
+        }
+    }
+
+    private void StartContinuePromptPulse()
+    {
+        StopContinuePromptPulse();
+        if (isActiveAndEnabled)
+            _continuePromptPulseRoutine = StartCoroutine(ContinuePromptPulseRoutine());
+    }
+
+    private void StopContinuePromptPulse()
+    {
+        if (_continuePromptPulseRoutine != null)
+        {
+            StopCoroutine(_continuePromptPulseRoutine);
+            _continuePromptPulseRoutine = null;
+        }
+    }
+
+    private IEnumerator ContinuePromptPulseRoutine()
+    {
+        if (_continuePromptText == null || _continuePromptCanvasGroup == null)
+            yield break;
+
+        float duration = Mathf.Max(0.2f, _continuePromptPulseSeconds);
+        RectTransform rect = _continuePromptText.rectTransform;
+
+        while (_continuePromptText != null && _continuePromptText.gameObject.activeSelf)
+        {
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                if (_continuePromptText == null || !_continuePromptText.gameObject.activeSelf)
+                    yield break;
+
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+                float wave = 0.5f + 0.5f * Mathf.Sin((t * Mathf.PI * 2f) - (Mathf.PI * 0.5f));
+                float alpha = Mathf.Lerp(_continuePromptMinAlpha, _continuePromptMaxAlpha, wave);
+                float scale = Mathf.Lerp(_continuePromptMinScale, _continuePromptMaxScale, wave);
+
+                _continuePromptCanvasGroup.alpha = alpha;
+                rect.localScale = Vector3.one * scale;
+                yield return null;
+            }
+        }
+    }
+
+    private void HideLegacySkipButton()
+    {
         if (_skipButtonRoot != null)
-            _skipButtonRoot.SetActive(visible);
+            _skipButtonRoot.SetActive(false);
+    }
+
+    private static void ApplyCutsceneTextOutline(TMP_Text text, float outlineWidth, float faceDilate)
+    {
+        if (text == null || text.fontMaterial == null)
+            return;
+
+        text.fontMaterial.EnableKeyword("OUTLINE_ON");
+        text.fontMaterial.SetFloat(Shader.PropertyToID("_OutlineWidth"), outlineWidth);
+        text.fontMaterial.SetColor(Shader.PropertyToID("_OutlineColor"), Color.black);
+        text.fontMaterial.SetFloat(Shader.PropertyToID("_FaceDilate"), faceDilate);
     }
 }
