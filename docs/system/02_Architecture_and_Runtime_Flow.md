@@ -1,6 +1,6 @@
 # 02 — Architecture and Runtime Flow
 **Project:** Salinlahi
-**Version:** 1.8
+**Version:** 1.9
 **Date:** 2026-06-03
 **Owner:** Jon Wayne Cabusbusan
 
@@ -54,7 +54,10 @@ Cold Start
             │     └─ SuppressDrawingInput(true); show each new character in AlmanacDetailScroll;
             │        wait for ✕ press; TryMarkUnlocked + RaiseCharacterUnlocked; SuppressDrawingInput(false)
             ├─ PlayLevelTutorialIfNeeded() (no-op on non-tutorial levels)
-            └─ [RevealTiming.AfterTutorial] CharacterUnlockRevealController.Play(queue)  ← default
+            ├─ [RevealTiming.AfterTutorial] CharacterUnlockRevealController.Play(queue)  ← default
+            └─ PlayBossTutorialIfNeeded() (no-op when bossConfig.tutorial == null)
+                  └─ SuppressDrawingInput(true); show paged BossTutorialScroll;
+                     wait for red X; SuppressDrawingInput(false)
       └─ WaveManager drives waves (all levels, including boss levels)
       └─ [All waves cleared]
             └─ WaveManager checks LevelConfigSO.bossConfig != null

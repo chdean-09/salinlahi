@@ -16,6 +16,7 @@ public class LevelFlowController : MonoBehaviour
     [SerializeField] private DialogueController _dialogueController;
     [SerializeField] private Level1OnboardingController _level1OnboardingController;
     [SerializeField] private CharacterUnlockRevealController _revealController;
+    [SerializeField] private BossTutorialController _bossTutorialController;
     [SerializeField] private VictoryScreenUI _victoryScreen;
     [SerializeField] private DefeatScreenUI _defeatScreen;
 
@@ -187,6 +188,11 @@ public class LevelFlowController : MonoBehaviour
             if (_flowAborted || _levelEnded) yield break;
         }
 
+        yield return PlayBossTutorialIfNeeded();
+
+        if (_flowAborted || _levelEnded)
+            yield break;
+
         // AC-2: Start BGM from level config
         if (_levelConfig.bgmClip != null && AudioManager.Instance != null)
             AudioManager.Instance.PlayBGM(_levelConfig.bgmClip);
@@ -212,6 +218,7 @@ public class LevelFlowController : MonoBehaviour
         _victoryScreen ??= FindFirstObjectByType<VictoryScreenUI>(FindObjectsInactive.Include);
         _defeatScreen ??= FindFirstObjectByType<DefeatScreenUI>(FindObjectsInactive.Include);
         _revealController ??= FindFirstObjectByType<CharacterUnlockRevealController>(FindObjectsInactive.Include);
+        _bossTutorialController ??= FindFirstObjectByType<BossTutorialController>(FindObjectsInactive.Include);
 
         if (_level1OnboardingController == null
             && _levelConfig != null
@@ -339,6 +346,22 @@ public class LevelFlowController : MonoBehaviour
         }
 
         yield return _level1OnboardingController.PlayIfNeeded(_levelConfig);
+    }
+
+    private IEnumerator PlayBossTutorialIfNeeded()
+    {
+        if (_levelConfig == null
+            || _levelConfig.bossConfig == null
+            || _levelConfig.bossConfig.tutorial == null)
+            yield break;
+
+        if (_bossTutorialController == null)
+        {
+            DebugLogger.LogWarning("LevelFlowController: Boss tutorial is assigned, but no BossTutorialController is in the scene — skipping.");
+            yield break;
+        }
+
+        yield return _bossTutorialController.Play(_levelConfig.bossConfig.tutorial);
     }
 
     private IEnumerator PlayRevealsIfAny()

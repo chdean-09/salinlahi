@@ -490,6 +490,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Salinlahi.Debug.ProgressManagerTester
   runTestsOnStart: 0
   verboseLogging: 1
+  _characterRegistry: {fileID: 0}
 --- !u!1 &1913551291
 GameObject:
   m_ObjectHideFlags: 0

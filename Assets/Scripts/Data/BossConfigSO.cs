@@ -43,4 +43,8 @@ public class BossConfigSO : ScriptableObject
     [Header("Audio")]
     [Tooltip("Per-boss audio bank. May be left null — BossAudio will no-op cleanly if absent.")]
     public BossAudioBankSO audioBank;
+
+    [Header("Tutorial")]
+    [Tooltip("Optional upfront tutorial shown at level start before the encounter begins. Null = no tutorial.")]
+    public BossTutorialSO tutorial;
 }

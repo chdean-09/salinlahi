@@ -311,6 +311,23 @@ namespace Salinlahi.Tests.Editor.Gameplay
             return levelConfig;
         }
 
+        private BossConfigSO CreateBossConfig(bool withTutorial)
+        {
+            BossConfigSO boss = ScriptableObject.CreateInstance<BossConfigSO>();
+            if (withTutorial)
+            {
+                BossTutorialSO tutorial = ScriptableObject.CreateInstance<BossTutorialSO>();
+                tutorial.pages = new List<BossTutorialPage>
+                {
+                    new BossTutorialPage { title = "Boss", body = "Lore" },
+                };
+                boss.tutorial = tutorial;
+                _objectsToDestroy.Add(tutorial);
+            }
+            _objectsToDestroy.Add(boss);
+            return boss;
+        }
+
         private DialogueSO CreateDialogue()
         {
             DialogueSO dialogue = ScriptableObject.CreateInstance<DialogueSO>();
@@ -340,6 +357,42 @@ namespace Salinlahi.Tests.Editor.Gameplay
             };
             _objectsToDestroy.Add(sequence);
             return sequence;
+        }
+
+        [Test]
+        public void PlayBossTutorialIfNeeded_WhenNoBossConfig_NoOps()
+        {
+            LevelConfigSO levelConfig = CreateLevelConfig();
+            LevelFlowController controller = CreateComponent<LevelFlowController>("LevelFlowController");
+            SetPrivateField(controller, "_levelConfig", levelConfig);
+
+            IEnumerator gate = InvokePrivate<IEnumerator>(controller, "PlayBossTutorialIfNeeded");
+            Assert.IsFalse(gate.MoveNext(), "No bossConfig should yield break immediately.");
+        }
+
+        [Test]
+        public void PlayBossTutorialIfNeeded_WhenBossConfigButNoTutorial_NoOps()
+        {
+            LevelConfigSO levelConfig = CreateLevelConfig();
+            levelConfig.bossConfig = CreateBossConfig(withTutorial: false);
+            LevelFlowController controller = CreateComponent<LevelFlowController>("LevelFlowController");
+            SetPrivateField(controller, "_levelConfig", levelConfig);
+
+            IEnumerator gate = InvokePrivate<IEnumerator>(controller, "PlayBossTutorialIfNeeded");
+            Assert.IsFalse(gate.MoveNext(), "bossConfig without a tutorial should yield break immediately.");
+        }
+
+        [Test]
+        public void PlayBossTutorialIfNeeded_WhenTutorialButNoController_NoOps()
+        {
+            LevelConfigSO levelConfig = CreateLevelConfig();
+            levelConfig.bossConfig = CreateBossConfig(withTutorial: true);
+            LevelFlowController controller = CreateComponent<LevelFlowController>("LevelFlowController");
+            SetPrivateField(controller, "_levelConfig", levelConfig);
+            // _bossTutorialController intentionally left null.
+
+            IEnumerator gate = InvokePrivate<IEnumerator>(controller, "PlayBossTutorialIfNeeded");
+            Assert.IsFalse(gate.MoveNext(), "Missing controller should skip gracefully (waves still start).");
         }
 
         private static void SetPrivateField(object target, string fieldName, object value)
