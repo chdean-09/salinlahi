@@ -41,7 +41,7 @@ public static class EnemyDiscoveryProgress
     }
 #endif
 
-    private static string NormalizeEnemyID(EnemyDataSO data)
+    public static string NormalizeEnemyID(EnemyDataSO data)
     {
         if (data == null || string.IsNullOrWhiteSpace(data.enemyID))
             return null;

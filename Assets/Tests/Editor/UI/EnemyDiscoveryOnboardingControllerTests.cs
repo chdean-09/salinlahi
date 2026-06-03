@@ -444,7 +444,6 @@ namespace Salinlahi.Tests.Editor.UI
             SetPrivateField(controller, "_targetFrame", frame);
             SetPrivateField(controller, "_bodyText", text);
             SetPrivateField(controller, "_dismissButton", button);
-            SetPrivateField(controller, "_messageTemplate", "New enemy: {0}");
             SetPrivateField(controller, "_gameplayCamera", _camera);
             SetPrivateField(controller, "_revealViewportYFromBottom", revealViewportYFromBottom);
             SetPrivateField(controller, "_revealTimeoutSeconds", revealTimeoutSeconds);

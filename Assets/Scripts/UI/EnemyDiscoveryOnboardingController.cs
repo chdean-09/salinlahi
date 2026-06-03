@@ -25,11 +25,6 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
     [SerializeField] private TextMeshProUGUI _bodyText;
     [SerializeField] private Button _dismissButton;
 
-    [Header("Copy")]
-#pragma warning disable 0414
-    [SerializeField] private string _messageTemplate = "New enemy: {0}";
-#pragma warning restore 0414
-
     [Header("Positioning")]
     [SerializeField] private Camera _gameplayCamera;
     [SerializeField] private Vector2 _framePadding = new Vector2(28f, 28f);
@@ -173,8 +168,6 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
         }
 
         _queueRoutine = null;
-        if (_pendingDiscoveries.Count > 0 && isActiveAndEnabled)
-            _queueRoutine = StartCoroutine(ProcessDiscoveryQueue());
     }
 
     private void Update()

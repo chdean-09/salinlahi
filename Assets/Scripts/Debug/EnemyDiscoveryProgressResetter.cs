@@ -64,10 +64,7 @@ namespace Salinlahi.Debug
 
         private static string NormalizeEnemyID(EnemyDataSO data)
         {
-            if (data == null || string.IsNullOrWhiteSpace(data.enemyID))
-                return null;
-
-            return data.enemyID.Trim().ToLowerInvariant();
+            return EnemyDiscoveryProgress.NormalizeEnemyID(data);
         }
     }
 }
