@@ -10,6 +10,14 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
     private const float DefaultRevealTimeoutSeconds = 4f;
     private const float DefaultSafeAreaViewportPadding = 0.02f;
     private const float FullyVisibleAlphaThreshold = 0.99f;
+    private const float ReadableBodyFontSize = 24f;
+    private const float DismissButtonFontSize = 24f;
+    private const float MinimumPanelWidth = 460f;
+    private const float MinimumPanelHeight = 220f;
+
+    private static readonly Color MenuButtonTextColor = new(0.7019608f, 0.5019608f, 0.07450981f, 1f);
+    private static readonly Color MenuButtonShadowColor = new(0.06f, 0.035f, 0.01f, 1f);
+    private static readonly Vector2 MenuButtonShadowOffset = new(5f, -5f);
 
     [Header("UI References")]
     [SerializeField] private CanvasGroup _canvasGroup;
@@ -37,9 +45,17 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
     [SerializeField] private Vector2 _spotlightPadding = new Vector2(36f, 36f);
     [SerializeField] private Color _dimOverlayColor = new Color(0f, 0f, 0f, 0.78f);
 
+    [Header("Text Animation")]
+    [SerializeField] private bool _useTypewriter = true;
+    [SerializeField] private float _typewriterCharactersPerSecond = 42f;
+
     private Enemy _targetEnemy;
     private EnemyDataSO _targetData;
     private Coroutine _queueRoutine;
+    private bool _isTypewriterRunning;
+    private int _typewriterCharacterCount;
+    private float _typewriterVisibleCharacters;
+    private float _typewriterLastUpdateTime;
     private bool _enteredPause;
     private readonly Queue<PendingDiscovery> _pendingDiscoveries = new Queue<PendingDiscovery>();
 
@@ -67,6 +83,8 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
         if (_gameplayCamera == null)
             _gameplayCamera = Camera.main;
 
+        ConfigureDismissButtonVisuals();
+        ConfigureTextAndButtonLayout();
         EnsureSpotlightOverlay();
         ConfigureTargetFrame();
         HideImmediate();
@@ -98,6 +116,7 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
             _queueRoutine = null;
         }
 
+        StopTypewriter(revealAll: true);
         _pendingDiscoveries.Clear();
         ExitPauseIfNeeded();
         HideImmediate();
@@ -169,6 +188,7 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
             return;
         }
 
+        AdvanceTypewriter();
         PositionFrameAndSpotlight();
     }
 
@@ -178,7 +198,8 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
             return;
 
         EnemyDiscoveryCopy copy = EnemyDiscoveryCopyProvider.Resolve(data);
-        _bodyText.text = $"{copy.Title}\n{copy.Description}\n\nPower: {copy.Power}";
+        _bodyText.text = BuildFormattedCopy(copy);
+        StartTypewriter();
     }
 
     private void PositionFrameAndSpotlight()
@@ -383,6 +404,204 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
             frameEffect.useGraphicAlpha = true;
     }
 
+    private void ConfigureTextAndButtonLayout()
+    {
+        if (_bodyText != null)
+        {
+            TutorialFontProvider.ApplyTo(_bodyText);
+            _bodyText.enableAutoSizing = false;
+            _bodyText.fontSize = ReadableBodyFontSize;
+            _bodyText.fontSizeMin = 20f;
+            _bodyText.fontSizeMax = 28f;
+            _bodyText.alignment = TextAlignmentOptions.TopLeft;
+            _bodyText.textWrappingMode = TextWrappingModes.Normal;
+            _bodyText.overflowMode = TextOverflowModes.Truncate;
+            _bodyText.richText = true;
+            _bodyText.raycastTarget = false;
+
+            RectTransform textRect = _bodyText.rectTransform;
+            textRect.anchorMin = new Vector2(0f, 0.34f);
+            textRect.anchorMax = Vector2.one;
+            textRect.offsetMin = new Vector2(24f, 10f);
+            textRect.offsetMax = new Vector2(-24f, -18f);
+
+            if (textRect.parent is RectTransform panelRect)
+            {
+                Vector2 panelSize = panelRect.sizeDelta;
+                panelSize.x = Mathf.Max(panelSize.x, MinimumPanelWidth);
+                panelSize.y = Mathf.Max(panelSize.y, MinimumPanelHeight);
+                panelRect.sizeDelta = panelSize;
+            }
+        }
+
+        if (_dismissButton == null)
+            return;
+
+        RectTransform buttonRect = _dismissButton.GetComponent<RectTransform>();
+        if (buttonRect != null)
+        {
+            buttonRect.anchorMin = new Vector2(0.5f, 0f);
+            buttonRect.anchorMax = new Vector2(0.5f, 0f);
+            buttonRect.pivot = new Vector2(0.5f, 0f);
+            buttonRect.anchoredPosition = new Vector2(0f, 16f);
+            buttonRect.sizeDelta = new Vector2(190f, 56f);
+        }
+    }
+
+    private void ConfigureDismissButtonVisuals()
+    {
+        if (_dismissButton == null)
+            return;
+
+        Image buttonImage = _dismissButton.targetGraphic as Image;
+        if (buttonImage == null)
+        {
+            buttonImage = _dismissButton.GetComponent<Image>();
+            if (buttonImage == null)
+                buttonImage = _dismissButton.gameObject.AddComponent<Image>();
+
+            _dismissButton.targetGraphic = buttonImage;
+        }
+
+        buttonImage.color = Color.white;
+        buttonImage.raycastTarget = true;
+
+        ColorBlock colors = _dismissButton.colors;
+        colors.normalColor = Color.white;
+        colors.highlightedColor = new Color(1f, 0.94f, 0.72f, 1f);
+        colors.pressedColor = new Color(0.88f, 0.72f, 0.32f, 1f);
+        colors.selectedColor = colors.highlightedColor;
+        colors.disabledColor = new Color(0.42f, 0.39f, 0.32f, 0.75f);
+        _dismissButton.colors = colors;
+
+        TextMeshProUGUI label = ResolveDismissButtonLabel(_dismissButton);
+        if (label == null)
+            return;
+
+        TutorialFontProvider.ApplyTo(label);
+        label.text = "Got it";
+        label.fontSize = DismissButtonFontSize;
+        label.enableAutoSizing = false;
+        label.alignment = TextAlignmentOptions.Center;
+        label.textWrappingMode = TextWrappingModes.NoWrap;
+        label.overflowMode = TextOverflowModes.Truncate;
+        label.color = MenuButtonTextColor;
+        label.raycastTarget = false;
+
+        RectTransform labelRect = label.rectTransform;
+        labelRect.anchorMin = Vector2.zero;
+        labelRect.anchorMax = Vector2.one;
+        labelRect.offsetMin = Vector2.zero;
+        labelRect.offsetMax = Vector2.zero;
+
+        Shadow shadow = label.GetComponent<Shadow>();
+        if (shadow == null)
+            shadow = label.gameObject.AddComponent<Shadow>();
+
+        shadow.effectColor = MenuButtonShadowColor;
+        shadow.effectDistance = MenuButtonShadowOffset;
+        shadow.useGraphicAlpha = true;
+    }
+
+    private static TextMeshProUGUI ResolveDismissButtonLabel(Button button)
+    {
+        TextMeshProUGUI label = button.GetComponentInChildren<TextMeshProUGUI>(includeInactive: true);
+        if (label != null)
+            return label;
+
+        GameObject labelGo = new GameObject("Label", typeof(RectTransform));
+        labelGo.transform.SetParent(button.transform, false);
+        return labelGo.AddComponent<TextMeshProUGUI>();
+    }
+
+    private static string BuildFormattedCopy(EnemyDiscoveryCopy copy)
+    {
+        return $"<size=28><b>{copy.Title}</b></size>\n<size=21>{copy.Description}</size>\n<size=22>Power: {copy.Power}</size>";
+    }
+
+    private static int CountVisibleCharacters(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return 0;
+
+        int visibleCharacters = 0;
+        bool insideRichTextTag = false;
+        for (int i = 0; i < text.Length; i++)
+        {
+            char character = text[i];
+            if (character == '<')
+            {
+                insideRichTextTag = true;
+                continue;
+            }
+
+            if (insideRichTextTag)
+            {
+                if (character == '>')
+                    insideRichTextTag = false;
+
+                continue;
+            }
+
+            visibleCharacters++;
+        }
+
+        return visibleCharacters;
+    }
+
+    private void StartTypewriter()
+    {
+        StopTypewriter(revealAll: false);
+        if (_bodyText == null)
+            return;
+
+        int characterCount = CountVisibleCharacters(_bodyText.text);
+        if (!_useTypewriter || _typewriterCharactersPerSecond <= 0f || characterCount <= 0)
+        {
+            _bodyText.maxVisibleCharacters = int.MaxValue;
+            return;
+        }
+
+        _typewriterCharacterCount = characterCount;
+        _typewriterVisibleCharacters = 0f;
+        _typewriterLastUpdateTime = Time.realtimeSinceStartup;
+        _bodyText.maxVisibleCharacters = 0;
+        _isTypewriterRunning = true;
+    }
+
+    private void AdvanceTypewriter()
+    {
+        if (!_isTypewriterRunning || _bodyText == null)
+            return;
+
+        float currentTime = Time.realtimeSinceStartup;
+        float elapsedSeconds = Mathf.Max(Time.unscaledDeltaTime, currentTime - _typewriterLastUpdateTime);
+        _typewriterLastUpdateTime = currentTime;
+        if (elapsedSeconds <= 0f)
+            elapsedSeconds = 1f / 60f;
+
+        _typewriterVisibleCharacters += _typewriterCharactersPerSecond * elapsedSeconds;
+        int visibleCharacters = Mathf.Clamp(Mathf.FloorToInt(_typewriterVisibleCharacters), 0, _typewriterCharacterCount);
+        if (visibleCharacters >= _typewriterCharacterCount)
+        {
+            _bodyText.maxVisibleCharacters = int.MaxValue;
+            _isTypewriterRunning = false;
+            return;
+        }
+
+        _bodyText.maxVisibleCharacters = visibleCharacters;
+    }
+
+    private void StopTypewriter(bool revealAll)
+    {
+        _isTypewriterRunning = false;
+        _typewriterCharacterCount = 0;
+        _typewriterVisibleCharacters = 0f;
+
+        if (revealAll && _bodyText != null)
+            _bodyText.maxVisibleCharacters = int.MaxValue;
+    }
+
     private void UpdateSpotlightCutout(RectTransform parentRect, Vector2 localCenter, Vector2 paddedFrameSize)
     {
         if (_spotlightOverlay == null)
@@ -499,6 +718,8 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
 
     private void HideImmediate()
     {
+        StopTypewriter(revealAll: true);
+
         if (_targetFrame != null)
             _targetFrame.gameObject.SetActive(false);
 

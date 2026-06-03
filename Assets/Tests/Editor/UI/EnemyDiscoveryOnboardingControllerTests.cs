@@ -56,6 +56,54 @@ namespace Salinlahi.Tests.Editor.UI
         }
 
         [UnityTest]
+        public IEnumerator EnemyDiscovered_StartsTypewriterThenRevealsText()
+        {
+            EnemyDiscoveryOnboardingController controller = CreateController(out _, out _, out TextMeshProUGUI text, out _);
+            SetPrivateField(controller, "_typewriterCharactersPerSecond", 120f);
+            EnemyDataSO data = CreateEnemyData("fraile");
+            Enemy enemy = CreateEnemy(data);
+            enemy.transform.position = new Vector3(0f, 4.5f, 0f);
+
+            EventBus.RaiseEnemyDiscovered(data, enemy);
+            yield return WaitFrames(2);
+            enemy.transform.position = new Vector3(0f, 1f, 0f);
+            yield return WaitFrames(6);
+            int initialVisibleCharacters = text.maxVisibleCharacters;
+            Assert.NotNull(text.text);
+            Assert.Greater(text.text.Length, 0);
+            Assert.Greater(text.text.Length, initialVisibleCharacters);
+
+            yield return new WaitForSecondsRealtime(0.25f);
+            InvokePrivateMethod(controller, "Update");
+
+            Assert.Greater(text.maxVisibleCharacters, initialVisibleCharacters);
+            Object.DestroyImmediate(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator Dismiss_WhileTypewriterRunning_HidesOverlayAndLeavesFullTextReady()
+        {
+            EnemyDiscoveryOnboardingController controller = CreateController(out CanvasGroup group, out _, out TextMeshProUGUI text, out Button button);
+            SetPrivateField(controller, "_typewriterCharactersPerSecond", 8f);
+            EnemyDataSO data = CreateEnemyData("soldado");
+            Enemy enemy = CreateEnemy(data);
+            enemy.transform.position = new Vector3(0f, 4.5f, 0f);
+
+            EventBus.RaiseEnemyDiscovered(data, enemy);
+            yield return WaitFrames(2);
+            enemy.transform.position = new Vector3(0f, 1f, 0f);
+            yield return WaitFrames(6);
+            Assert.NotNull(text.text);
+            Assert.Less(text.maxVisibleCharacters, text.text.Length);
+
+            button.onClick.Invoke();
+
+            Assert.AreEqual(0f, group.alpha);
+            Assert.AreEqual(int.MaxValue, text.maxVisibleCharacters);
+            Object.DestroyImmediate(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator EnemyDiscovered_AfterDismiss_AllowsAnotherDiscoveryOverlay()
         {
             EnemyDiscoveryOnboardingController controller = CreateController(out CanvasGroup group, out _, out TextMeshProUGUI text, out Button button);
@@ -321,6 +369,41 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.AreEqual(0f, frameImage.color.a);
             Assert.IsFalse(frameImage.raycastTarget);
             Assert.IsTrue(outline.useGraphicAlpha);
+        }
+
+        [Test]
+        public void Awake_ConfiguresReadableTextAreaAndDismissButtonLayout()
+        {
+            EnemyDiscoveryOnboardingController controller = CreateController(out _, out _, out TextMeshProUGUI text, out Button button);
+            RectTransform textRect = text.rectTransform;
+            RectTransform buttonRect = button.GetComponent<RectTransform>();
+
+            Assert.AreEqual(new Vector2(0f, 0.34f), textRect.anchorMin);
+            Assert.AreEqual(Vector2.one, textRect.anchorMax);
+            Assert.AreEqual(new Vector2(24f, 10f), textRect.offsetMin);
+            Assert.AreEqual(new Vector2(-24f, -18f), textRect.offsetMax);
+            Assert.AreEqual(24f, text.fontSize, 0.001f);
+            Assert.AreEqual(TextWrappingModes.Normal, text.textWrappingMode);
+            Assert.AreEqual(TextOverflowModes.Truncate, text.overflowMode);
+            Assert.AreEqual(new Vector2(190f, 56f), buttonRect.sizeDelta);
+            Assert.AreEqual(new Vector2(0f, 16f), buttonRect.anchoredPosition);
+            Assert.NotNull(controller);
+        }
+
+        [Test]
+        public void Awake_StylesDismissButtonLikeMenuButton()
+        {
+            EnemyDiscoveryOnboardingController controller = CreateController(out _, out _, out _, out Button button);
+            TextMeshProUGUI label = button.GetComponentInChildren<TextMeshProUGUI>(true);
+            Image image = button.targetGraphic as Image;
+
+            Assert.NotNull(controller);
+            Assert.NotNull(label);
+            Assert.NotNull(image);
+            Assert.AreEqual("Got it", label.text);
+            Assert.AreEqual(new Color(0.7019608f, 0.5019608f, 0.07450981f, 1f), label.color);
+            Assert.AreEqual(Color.white, image.color);
+            Assert.NotNull(label.GetComponent<Shadow>());
         }
 
         private EnemyDiscoveryOnboardingController CreateController(
