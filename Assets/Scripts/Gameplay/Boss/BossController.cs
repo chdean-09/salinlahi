@@ -82,11 +82,32 @@ public class BossController : MonoBehaviour
 
     private void OnDisable()
     {
+        EventBus.OnLevelAttemptAborted -= HandleLevelAttemptAborted;
         if (_stateRoutine != null)
         {
             StopCoroutine(_stateRoutine);
             _stateRoutine = null;
         }
+        if (GameManager.Instance != null && GameManager.Instance.CurrentBoss == this)
+            GameManager.Instance.SetCurrentBoss(null);
+    }
+
+    private void OnEnable()
+    {
+        EventBus.OnLevelAttemptAborted += HandleLevelAttemptAborted;
+    }
+
+    private void HandleLevelAttemptAborted()
+    {
+        if (_stateRoutine != null)
+        {
+            StopCoroutine(_stateRoutine);
+            _stateRoutine = null;
+        }
+
+        IsDefeated = true;
+        _state = State.Defeated;
+        _isVulnerableActiveWindow = false;
         if (GameManager.Instance != null && GameManager.Instance.CurrentBoss == this)
             GameManager.Instance.SetCurrentBoss(null);
     }

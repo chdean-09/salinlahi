@@ -79,7 +79,7 @@ public sealed class HeartLossDemoBeat : OnboardingBeat
         else
         {
             EventBus.RaiseTutorialBaseHitDemo(1);
-            yield return new WaitForSecondsRealtime(0.6f);
+            yield return WaitForUnscaledSeconds(0.6f);
         }
 
         controller.Defeat();
@@ -101,7 +101,7 @@ public sealed class HeartLossDemoBeat : OnboardingBeat
         else
         {
             EventBus.RaiseTutorialBaseRestoreDemo();
-            yield return new WaitForSecondsRealtime(0.6f);
+            yield return WaitForUnscaledSeconds(0.6f);
         }
         if (ctx.GuideUI != null)
             ctx.GuideUI.Hide();
@@ -157,7 +157,7 @@ public sealed class HeartLossDemoBeat : OnboardingBeat
 
         float previous = Time.timeScale;
         Time.timeScale = Mathf.Clamp(_postHitSlowMoScale, 0.05f, 1f);
-        yield return new WaitForSecondsRealtime(seconds);
+        yield return WaitForUnscaledSeconds(seconds);
         Time.timeScale = previous <= 0f ? 1f : previous;
     }
 

@@ -82,6 +82,7 @@ public class LevelFlowController : MonoBehaviour
     private void OnEnable()
     {
         EventBus.OnLevelComplete += HandleLevelComplete;
+        EventBus.OnLevelAttemptAborted += HandleLevelAttemptAborted;
         EventBus.OnGameOver += HandleGameOver;
         EventBus.OnBossDefeated += HandleBossDefeated;
         EventBus.OnDialogueComplete += HandleDialogueComplete;
@@ -91,6 +92,7 @@ public class LevelFlowController : MonoBehaviour
     private void OnDisable()
     {
         EventBus.OnLevelComplete -= HandleLevelComplete;
+        EventBus.OnLevelAttemptAborted -= HandleLevelAttemptAborted;
         EventBus.OnGameOver -= HandleGameOver;
         EventBus.OnBossDefeated -= HandleBossDefeated;
         EventBus.OnDialogueComplete -= HandleDialogueComplete;
@@ -381,7 +383,7 @@ public class LevelFlowController : MonoBehaviour
     // AC-5: Level complete → outro dialogue → [cutscene (after)] → victory screen
     private void HandleLevelComplete()
     {
-        if (_levelEnded) return;
+        if (_levelEnded || _flowAborted || GameManager.Instance?.IsAttemptAbortInProgress == true) return;
         _levelEnded = true;
 
         StartCoroutine(PlayOutroThenVictory());
@@ -410,9 +412,18 @@ public class LevelFlowController : MonoBehaviour
     // AC-4: Game over → defeat screen directly (no outro)
     private void HandleGameOver()
     {
-        if (_levelEnded) return;
+        if (_levelEnded || _flowAborted) return;
         _levelEnded = true;
         ShowDefeatScreen();
+    }
+
+    private void HandleLevelAttemptAborted()
+    {
+        _flowAborted = true;
+        _levelEnded = true;
+        _waitingForDialogue = false;
+        _waitingForCutscene = false;
+        StopAllCoroutines();
     }
 
     // AC-7: Boss-specific hooks (chapter-complete dialogue can be added here)

@@ -96,6 +96,7 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
     private void OnEnable()
     {
         EventBus.OnEnemyDiscovered += HandleEnemyDiscovered;
+        EventBus.OnLevelAttemptAborted += HandleLevelAttemptAborted;
 
         if (_dismissButton != null)
             _dismissButton.onClick.AddListener(Dismiss);
@@ -104,6 +105,7 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
     private void OnDisable()
     {
         EventBus.OnEnemyDiscovered -= HandleEnemyDiscovered;
+        EventBus.OnLevelAttemptAborted -= HandleLevelAttemptAborted;
 
         if (_dismissButton != null)
             _dismissButton.onClick.RemoveListener(Dismiss);
@@ -149,9 +151,14 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
         while (_pendingDiscoveries.Count > 0)
         {
             PendingDiscovery pending = _pendingDiscoveries.Dequeue();
-            float revealWaitStartTime = Time.unscaledTime;
-            while (ShouldContinueWaitingForReveal(pending, revealWaitStartTime))
+            float revealWaitElapsed = 0f;
+            while (ShouldContinueWaitingForReveal(pending, revealWaitElapsed))
+            {
+                if (GameManager.Instance == null || !GameManager.Instance.IsUserPaused)
+                    revealWaitElapsed += Time.unscaledDeltaTime;
+
                 yield return null;
+            }
 
             Enemy enemy = pending.Enemy;
             EnemyDataSO data = pending.Data;
@@ -173,7 +180,6 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
             _targetData = data;
             EnterPauseIfPossible();
             ShowImmediate();
-            EnemyDiscoveryProgress.TryMarkDiscovered(data, out _);
             RenderCopy(data);
             PositionFrameAndSpotlight();
 
@@ -190,7 +196,7 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
 
         if (!_targetEnemy.gameObject.activeInHierarchy || _targetEnemy.Data != _targetData)
         {
-            Dismiss();
+            CancelCurrentDiscovery();
             return;
         }
 
@@ -267,7 +273,7 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
         UpdateSpotlightCutout(parentRect, _targetFrame.anchoredPosition, paddedFrameSize);
     }
 
-    private bool ShouldContinueWaitingForReveal(PendingDiscovery pending, float startTime)
+    private bool ShouldContinueWaitingForReveal(PendingDiscovery pending, float elapsed)
     {
         if (!IsPendingDiscoveryValid(pending.Data, pending.Enemy))
             return false;
@@ -288,7 +294,7 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
         // type (dequeued at spawn, before it could descend past the threshold)
         // was never shown or recorded in the almanac.
         bool timedOut = _revealTimeoutSeconds > 0f
-            && Time.unscaledTime - startTime >= _revealTimeoutSeconds;
+            && elapsed >= _revealTimeoutSeconds;
         return !timedOut;
     }
 
@@ -615,6 +621,12 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
         if (!_isTypewriterRunning || _bodyText == null)
             return;
 
+        if (GameManager.Instance != null && GameManager.Instance.IsUserPaused)
+        {
+            _typewriterLastUpdateTime = Time.realtimeSinceStartup;
+            return;
+        }
+
         float currentTime = Time.realtimeSinceStartup;
         float elapsedSeconds = Mathf.Max(Time.unscaledDeltaTime, currentTime - _typewriterLastUpdateTime);
         _typewriterLastUpdateTime = currentTime;
@@ -779,6 +791,36 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
     }
 
     public void Dismiss()
+    {
+        if (_targetData != null && _targetEnemy != null
+            && _targetEnemy.gameObject.activeInHierarchy
+            && _targetEnemy.Data == _targetData)
+        {
+            EnemyDiscoveryProgress.TryMarkDiscovered(_targetData, out _);
+        }
+
+        CloseCurrentDiscovery();
+    }
+
+    private void HandleLevelAttemptAborted()
+    {
+        if (_queueRoutine != null)
+        {
+            StopCoroutine(_queueRoutine);
+            _queueRoutine = null;
+        }
+
+        _pendingDiscoveries.Clear();
+        StopTypewriter(revealAll: false);
+        CancelCurrentDiscovery();
+    }
+
+    private void CancelCurrentDiscovery()
+    {
+        CloseCurrentDiscovery();
+    }
+
+    private void CloseCurrentDiscovery()
     {
         ExitPauseIfNeeded();
         HideImmediate();

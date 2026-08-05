@@ -31,6 +31,9 @@ private bool _hasPausedRunSnapshot;
     private int _pausedRunWaveSpawnedCount = 0;
     private readonly List<PausedEnemySnapshot> _pausedEnemies = new();
     private GameState _stateBeforeDialogue;
+    private bool _userPauseActive;
+    private bool _dialoguePauseActive;
+    private bool _attemptAbortInProgress;
 
     public readonly struct PausedEnemySnapshot
     {
@@ -68,12 +71,18 @@ private bool _hasPausedRunSnapshot;
 
     public void StartGame()
     {
+        _attemptAbortInProgress = false;
+        _userPauseActive = false;
+        _dialoguePauseActive = false;
         Time.timeScale = 1f;
         SetState(GameState.Playing);
     }
 
     public void EnterPractice()
     {
+        _attemptAbortInProgress = false;
+        _userPauseActive = false;
+        _dialoguePauseActive = false;
         Time.timeScale = 1f;
         SetState(GameState.Practicing);
     }
@@ -86,7 +95,8 @@ private bool _hasPausedRunSnapshot;
 
     public void PauseGame()
     {
-        if (CurrentState != GameState.Playing) return;
+        if (CurrentState != GameState.Playing || _userPauseActive || _dialoguePauseActive) return;
+        _userPauseActive = true;
         Time.timeScale = 0f;
         SetState(GameState.Paused);
         EventBus.RaiseGamePaused();
@@ -94,7 +104,9 @@ private bool _hasPausedRunSnapshot;
 
     public void ResumeGame()
     {
-        if (CurrentState != GameState.Paused) return;
+        if (CurrentState != GameState.Paused || !_userPauseActive) return;
+        _userPauseActive = false;
+        if (_dialoguePauseActive) return;
         Time.timeScale = 1f;
         SetState(GameState.Playing);
         EventBus.RaiseGameResumed();
@@ -103,6 +115,7 @@ private bool _hasPausedRunSnapshot;
     public void EnterDialoguePause()
     {
         if (CurrentState != GameState.Playing && CurrentState != GameState.LevelComplete) return;
+        _dialoguePauseActive = true;
         _stateBeforeDialogue = CurrentState;
         Time.timeScale = 0f;
         SetState(GameState.Paused);
@@ -110,13 +123,40 @@ private bool _hasPausedRunSnapshot;
 
     public void ExitDialoguePause()
     {
-        if (CurrentState != GameState.Paused) return;
+        if (CurrentState != GameState.Paused || !_dialoguePauseActive) return;
+        _dialoguePauseActive = false;
+        if (_userPauseActive) return;
         Time.timeScale = 1f;
         SetState(_stateBeforeDialogue);
     }
 
+    /// <summary>
+    /// Abandons only the active level attempt. Committed journey progress is owned by
+    /// ProgressManager and is intentionally not touched here.
+    /// </summary>
+    public void AbortCurrentLevelAttempt()
+    {
+        if (_attemptAbortInProgress)
+            return;
+
+        _attemptAbortInProgress = true;
+        _userPauseActive = false;
+        _dialoguePauseActive = false;
+        _drawingSuppressed = false;
+        _stateBeforeDialogue = GameState.Idle;
+        ClearPausedRunSnapshot();
+        Time.timeScale = 1f;
+        SetState(GameState.Idle);
+        EventBus.RaiseLevelAttemptAborted();
+    }
+
+    public bool IsAttemptAbortInProgress => _attemptAbortInProgress;
+    public bool IsUserPaused => _userPauseActive;
+
     private void HandleGameOver()
     {
+        if (_attemptAbortInProgress) return;
+
         HeartSystem heartSystem = FindFirstObjectByType<HeartSystem>();
         LastDefeatHearts = heartSystem != null ? heartSystem.GetCurrentHearts() : 0;
 
@@ -127,6 +167,8 @@ private bool _hasPausedRunSnapshot;
 
     private void HandleLevelComplete()
     {
+        if (_attemptAbortInProgress) return;
+
         ClearPausedRunSnapshot();
         SetState(GameState.LevelComplete);
     }

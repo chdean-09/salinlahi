@@ -48,6 +48,7 @@ public class StrokeCapture : MonoBehaviour
         Touch.onFingerUp += OnFingerUp;
         EventBus.OnGamePaused += HandleGamePaused;
         EventBus.OnGameResumed += HandleGameResumed;
+        EventBus.OnLevelAttemptAborted += HandleLevelAttemptAborted;
     }
 
     private void OnDisable()
@@ -57,12 +58,16 @@ public class StrokeCapture : MonoBehaviour
         Touch.onFingerUp -= OnFingerUp;
         EventBus.OnGamePaused -= HandleGamePaused;
         EventBus.OnGameResumed -= HandleGameResumed;
+        EventBus.OnLevelAttemptAborted -= HandleLevelAttemptAborted;
         EnhancedTouchSupport.Disable();
     }
 
     private void Update()
     {
         if (_config == null || _canvas == null)
+            return;
+
+        if (GameManager.Instance != null && GameManager.Instance.IsUserPaused)
             return;
 
         if (_isDrawing && _activeFinger != null)
@@ -227,6 +232,27 @@ public class StrokeCapture : MonoBehaviour
         SubmitForRecognition();
     }
 
+    private void HandleLevelAttemptAborted()
+    {
+        _isDrawing = false;
+        _activeFinger = null;
+        _pendingRecognitionSubmit = false;
+        _strokeTimeoutEndTime = -1d;
+        _multiStrokeTimerEndTime = -1d;
+        _pausedMultiStrokeRemainingSeconds = -1d;
+        _lastProcessedTouchTime = double.MinValue;
+        _strokes.Clear();
+
+        if (_currentStroke != null)
+        {
+            _currentStroke.Clear();
+            _currentStroke = null;
+        }
+
+        if (_canvas != null)
+            _canvas.ClearCanvas();
+    }
+
     private void HandleGamePaused()
     {
         if (_isDrawing)
@@ -248,7 +274,16 @@ public class StrokeCapture : MonoBehaviour
         if (_multiStrokeTimerEndTime > 0d)
         {
             double remaining = _multiStrokeTimerEndTime - Time.unscaledTimeAsDouble;
-            _pausedMultiStrokeRemainingSeconds = System.Math.Max(0d, remaining);
+            if (remaining <= 0d)
+            {
+                _pausedMultiStrokeRemainingSeconds = -1d;
+                _pendingRecognitionSubmit = _strokes.Count > 0;
+            }
+            else
+            {
+                _pausedMultiStrokeRemainingSeconds = remaining;
+            }
+
             _multiStrokeTimerEndTime = -1d;
         }
 

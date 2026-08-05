@@ -97,6 +97,33 @@ public class SceneLoader : Singleton<SceneLoader>
         LoadScene(SCENE_LEVEL_SELECT);
     }
 
+    /// <summary>
+    /// Reloads the selected level as a fresh attempt. This deliberately clears the
+    /// paused-run snapshot before loading so WaveManager cannot restore old enemies.
+    /// </summary>
+    public void RestartCurrentLevel()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        SandboxMode.Deactivate();
+#endif
+        GameManager.Instance?.AbortCurrentLevelAttempt();
+        CleanupGameplayRun();
+        LoadScene(SCENE_GAMEPLAY);
+    }
+
+    /// <summary>
+    /// Leaves the active attempt and opens Level Select without retaining a resumable snapshot.
+    /// </summary>
+    public void LeaveToLevelSelect()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        SandboxMode.Deactivate();
+#endif
+        GameManager.Instance?.AbortCurrentLevelAttempt();
+        CleanupGameplayRun();
+        LoadScene(SCENE_LEVEL_SELECT);
+    }
+
     public void LoadAlmanac()
     {
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
