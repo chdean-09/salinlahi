@@ -54,7 +54,8 @@ namespace Salinlahi.Tests.Editor.UI
             yield return WaitFrames(6);
 
             Assert.AreEqual(1f, group.alpha);
-            Assert.IsTrue(EnemyDiscoveryProgress.HasDiscovered(data));
+            Assert.IsFalse(EnemyDiscoveryProgress.HasDiscovered(data),
+                "An open discovery prompt must not persist memory progress before dismissal.");
             Assert.IsTrue(group.blocksRaycasts);
             Assert.IsTrue(frame.gameObject.activeSelf);
             StringAssert.Contains("Soldado - The Conscripted Shadows", text.text);
@@ -62,6 +63,7 @@ namespace Salinlahi.Tests.Editor.UI
 
             button.onClick.Invoke();
             Assert.AreEqual(0f, group.alpha);
+            Assert.IsTrue(EnemyDiscoveryProgress.HasDiscovered(data));
             Object.DestroyImmediate(controller.gameObject);
         }
 
@@ -138,10 +140,32 @@ namespace Salinlahi.Tests.Editor.UI
 
             Assert.AreEqual(1f, group.alpha);
             StringAssert.Contains("Fraile - The Word Keeper", text.text);
-            Assert.IsTrue(EnemyDiscoveryProgress.HasDiscovered(fraileData));
+            Assert.IsFalse(EnemyDiscoveryProgress.HasDiscovered(fraileData));
 
             button.onClick.Invoke();
             Assert.AreEqual(0f, group.alpha);
+            Assert.IsTrue(EnemyDiscoveryProgress.HasDiscovered(fraileData));
+            Object.DestroyImmediate(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator OpenDiscovery_AbortedAttempt_DoesNotPersistMemoryProgress()
+        {
+            EnemyDiscoveryOnboardingController controller = CreateController(out CanvasGroup group, out _, out _, out _);
+            EnemyDataSO data = CreateEnemyData("soldado");
+            Enemy enemy = CreateEnemy(data);
+            enemy.transform.position = new Vector3(0f, 4.5f, 0f);
+
+            EventBus.RaiseEnemyDiscovered(data, enemy);
+            yield return WaitFrames(2);
+            enemy.transform.position = new Vector3(0f, 1f, 0f);
+            yield return WaitFrames(6);
+
+            Assert.AreEqual(1f, group.alpha);
+            EventBus.RaiseLevelAttemptAborted();
+
+            Assert.IsFalse(group.alpha > 0f);
+            Assert.IsFalse(EnemyDiscoveryProgress.HasDiscovered(data));
             Object.DestroyImmediate(controller.gameObject);
         }
 
