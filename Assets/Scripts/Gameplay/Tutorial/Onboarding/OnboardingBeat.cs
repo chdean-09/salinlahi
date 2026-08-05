@@ -24,4 +24,16 @@ public abstract class OnboardingBeat : MonoBehaviour
     /// Default no-op. Beats that need to restore prerequisite scene state override this.
     /// </summary>
     public virtual void OnResumeFromHere(OnboardingContext ctx) { }
+
+    protected static IEnumerator WaitForUnscaledSeconds(float seconds)
+    {
+        float remaining = Mathf.Max(0f, seconds);
+        while (remaining > 0f)
+        {
+            if (GameManager.Instance == null || !GameManager.Instance.IsUserPaused)
+                remaining -= Time.unscaledDeltaTime;
+
+            yield return null;
+        }
+    }
 }

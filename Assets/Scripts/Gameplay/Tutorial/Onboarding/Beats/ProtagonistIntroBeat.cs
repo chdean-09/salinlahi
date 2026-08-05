@@ -40,6 +40,6 @@ public sealed class ProtagonistIntroBeat : OnboardingBeat
     private static IEnumerator WaitForWalkIn(float seconds)
     {
         if (seconds <= 0f) yield break;
-        yield return new WaitForSecondsRealtime(seconds);
+        yield return WaitForUnscaledSeconds(seconds);
     }
 }

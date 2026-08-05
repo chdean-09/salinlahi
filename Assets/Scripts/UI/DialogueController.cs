@@ -452,10 +452,22 @@ public class DialogueController : MonoBehaviour
         for (int i = 0; i < fullText.Length; i++)
         {
             _bodyText.text = fullText.Substring(0, i + 1);
-            yield return new WaitForSecondsRealtime(delay);
+            yield return WaitForUnscaledSeconds(delay);
         }
 
         _isTypewriting = false;
+    }
+
+    private static IEnumerator WaitForUnscaledSeconds(float seconds)
+    {
+        float remaining = Mathf.Max(0f, seconds);
+        while (remaining > 0f)
+        {
+            if (GameManager.Instance == null || !GameManager.Instance.IsUserPaused)
+                remaining -= Time.unscaledDeltaTime;
+
+            yield return null;
+        }
     }
 
     private void OnTapCatcherPressed()

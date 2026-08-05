@@ -24,6 +24,7 @@ public class ComboManager : Singleton<ComboManager>
         EventBus.OnHeartsChanged += HandleHeartsChanged;
         EventBus.OnGameOver += HandleGameOver;
         EventBus.OnLevelComplete += HandleLevelEnd;
+        EventBus.OnLevelAttemptAborted += HandleGameOver;
     }
 
     private void OnDisable()
@@ -34,6 +35,7 @@ public class ComboManager : Singleton<ComboManager>
         EventBus.OnHeartsChanged -= HandleHeartsChanged;
         EventBus.OnGameOver -= HandleGameOver;
         EventBus.OnLevelComplete -= HandleLevelEnd;
+        EventBus.OnLevelAttemptAborted -= HandleGameOver;
     }
 
     private void HandleEnemyTargeted(Enemy _)

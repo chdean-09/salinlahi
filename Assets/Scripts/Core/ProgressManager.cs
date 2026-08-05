@@ -47,6 +47,7 @@ public class ProgressManager : Singleton<ProgressManager>
     private void OnEnable()
     {
         EventBus.OnLevelComplete += HandleLevelComplete;
+        EventBus.OnLevelAttemptAborted += HandleLevelAttemptAborted;
         EventBus.OnWaveStarted += HandleWaveStarted;
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
@@ -54,6 +55,7 @@ public class ProgressManager : Singleton<ProgressManager>
     private void OnDisable()
     {
         EventBus.OnLevelComplete -= HandleLevelComplete;
+        EventBus.OnLevelAttemptAborted -= HandleLevelAttemptAborted;
         EventBus.OnWaveStarted -= HandleWaveStarted;
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
@@ -132,6 +134,12 @@ public class ProgressManager : Singleton<ProgressManager>
 
     private void HandleLevelComplete()
     {
+        if (GameManager.Instance != null && GameManager.Instance.IsAttemptAbortInProgress)
+        {
+            DebugLogger.Log("ProgressManager: Ignored LevelComplete outside an active completed attempt.");
+            return;
+        }
+
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
         if (SandboxMode.IsActive)
         {
@@ -168,6 +176,14 @@ public class ProgressManager : Singleton<ProgressManager>
         _lastProcessedLevelId = currentLevelId;
 
         DebugLogger.Log($"ProgressManager: Level {currentLevelId} completed with {stars} stars.");
+    }
+
+    private void HandleLevelAttemptAborted()
+    {
+        // The abort event exists to make the transaction boundary explicit. No
+        // committed PlayerPrefs are cleared here.
+        _cachedHeartSystem = null;
+        _currentPlayingLevelId = -1;
     }
 
     /// <summary>

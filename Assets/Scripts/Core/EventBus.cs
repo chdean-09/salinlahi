@@ -42,9 +42,10 @@ public static class EventBus
     public static event Action OnFocusModeActivated;
     public static event Action OnFocusModeDeactivated;
 
-// -- Pause Events --
+    // -- Pause Events --
     public static event Action OnGamePaused;
     public static event Action OnGameResumed;
+    public static event Action OnLevelAttemptAborted;
 
     // -- Boss Events --
     public static event Action<BossConfigSO> OnBossStarted;
@@ -109,6 +110,7 @@ public static class EventBus
     public static void RaiseFocusModeDeactivated() => OnFocusModeDeactivated?.Invoke();
     public static void RaiseGamePaused() => OnGamePaused?.Invoke();
     public static void RaiseGameResumed() => OnGameResumed?.Invoke();
+    public static void RaiseLevelAttemptAborted() => OnLevelAttemptAborted?.Invoke();
     public static void RaiseBossStarted(BossConfigSO config) => OnBossStarted?.Invoke(config);
     public static void RaiseBossPhaseStarted(int phaseIndex) => OnBossPhaseStarted?.Invoke(phaseIndex);
     public static void RaiseBossExhausted(int phaseIndex) => OnBossExhausted?.Invoke(phaseIndex);

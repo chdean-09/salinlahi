@@ -47,6 +47,7 @@ public sealed class Level1OnboardingController : MonoBehaviour
     private readonly List<OnboardingBeat> _beats = new();
     private bool _firstManualSuccess;
     private bool _skipRequested;
+    private bool _attemptAborted;
     private bool[] _hiddenOriginalState;
     private bool _onboardingHudHidden;
     private Level1TutorialSequenceSO _runtimeLegacySource;
@@ -69,6 +70,17 @@ public sealed class Level1OnboardingController : MonoBehaviour
             _guideUI = Level1TutorialGuideUI.CreateRuntime();
         if (_guideUI != null)
             _guideUI.Initialize(RequestSkip);
+    }
+
+    private void OnEnable()
+    {
+        EventBus.OnLevelAttemptAborted += HandleLevelAttemptAborted;
+    }
+
+    private void OnDisable()
+    {
+        EventBus.OnLevelAttemptAborted -= HandleLevelAttemptAborted;
+        RestoreOnboardingState();
     }
 
     private void OnDestroy()
@@ -113,6 +125,7 @@ public sealed class Level1OnboardingController : MonoBehaviour
 
     public IEnumerator PlayIfNeeded(LevelConfigSO levelConfig)
     {
+        _attemptAborted = false;
         EnsureDefaultBeatComponents();
 
         if (!ShouldRunFor(levelConfig)) yield break;
@@ -129,30 +142,52 @@ public sealed class Level1OnboardingController : MonoBehaviour
         TutorialRuntimeState.Begin(levelConfig.levelNumber);
         HideOnboardingBlockedUI();
 
-        OnboardingContext ctx = BuildContext(sequence, levelConfig.levelNumber);
-
-        int startIndex = OnboardingPersistence.GetResumeStartIndex(levelConfig.levelNumber);
-        OnboardingBeatType[] order = sequence.beatOrder;
-        for (int i = startIndex; i < order.Length; i++)
+        try
         {
-            OnboardingBeat beat = FindBeat(order[i]);
-            if (beat == null)
+            OnboardingContext ctx = BuildContext(sequence, levelConfig.levelNumber);
+
+            int startIndex = OnboardingPersistence.GetResumeStartIndex(levelConfig.levelNumber);
+            OnboardingBeatType[] order = sequence.beatOrder;
+            for (int i = startIndex; i < order.Length; i++)
             {
-                DebugLogger.LogWarning($"Level1OnboardingController: No beat registered for type {order[i]} (index {i}). Skipping.");
+                if (_attemptAborted)
+                    yield break;
+
+                OnboardingBeat beat = FindBeat(order[i]);
+                if (beat == null)
+                {
+                    DebugLogger.LogWarning($"Level1OnboardingController: No beat registered for type {order[i]} (index {i}). Skipping.");
+                    OnboardingPersistence.SetLastCompletedBeatIndex(levelConfig.levelNumber, i);
+                    continue;
+                }
+
+                if (i == startIndex && startIndex > 0)
+                    beat.OnResumeFromHere(ctx);
+
+                yield return beat.Play(ctx);
+
+                if (_attemptAborted)
+                    yield break;
+
                 OnboardingPersistence.SetLastCompletedBeatIndex(levelConfig.levelNumber, i);
-                continue;
+                if (_skipRequested && _firstManualSuccess)
+                    break;
             }
-
-            if (i == startIndex && startIndex > 0)
-                beat.OnResumeFromHere(ctx);
-
-            yield return beat.Play(ctx);
-
-            OnboardingPersistence.SetLastCompletedBeatIndex(levelConfig.levelNumber, i);
-            if (_skipRequested && _firstManualSuccess)
-                break;
         }
+        finally
+        {
+            RestoreOnboardingState();
+        }
+    }
 
+    private void HandleLevelAttemptAborted()
+    {
+        _attemptAborted = true;
+        RestoreOnboardingState();
+    }
+
+    private void RestoreOnboardingState()
+    {
         RestoreOnboardingHiddenUI();
         TutorialRuntimeState.Clear();
     }

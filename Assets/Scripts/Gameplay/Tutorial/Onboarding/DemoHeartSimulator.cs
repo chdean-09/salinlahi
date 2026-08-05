@@ -25,13 +25,25 @@ public sealed class DemoHeartSimulator : MonoBehaviour
     public IEnumerator PlayDemoHit()
     {
         EventBus.RaiseTutorialBaseHitDemo(Mathf.Max(0, _demoDamage));
-        yield return new WaitForSecondsRealtime(Mathf.Max(0f, _postHitHoldSeconds));
+        yield return WaitForUnscaledSeconds(Mathf.Max(0f, _postHitHoldSeconds));
     }
 
     /// <summary>Fires the demo restore event (visible heart refill pulse) and waits for it to play.</summary>
     public IEnumerator PlayDemoRestore()
     {
         EventBus.RaiseTutorialBaseRestoreDemo();
-        yield return new WaitForSecondsRealtime(Mathf.Max(0f, _postRestoreHoldSeconds));
+        yield return WaitForUnscaledSeconds(Mathf.Max(0f, _postRestoreHoldSeconds));
+    }
+
+    private static IEnumerator WaitForUnscaledSeconds(float seconds)
+    {
+        float remaining = Mathf.Max(0f, seconds);
+        while (remaining > 0f)
+        {
+            if (GameManager.Instance == null || !GameManager.Instance.IsUserPaused)
+                remaining -= Time.unscaledDeltaTime;
+
+            yield return null;
+        }
     }
 }

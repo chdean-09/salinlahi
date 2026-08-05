@@ -47,6 +47,7 @@ public class WaveManager : MonoBehaviour
     private void OnEnable()
     {
         EventBus.OnGameOver += HandleGameOver;
+        EventBus.OnLevelAttemptAborted += HandleLevelAttemptAborted;
 
         if (_currentAllowedCharactersOwner != null && _currentAllowedCharactersOwner != this)
         {
@@ -61,6 +62,7 @@ public class WaveManager : MonoBehaviour
     private void OnDisable()
     {
         EventBus.OnGameOver -= HandleGameOver;
+        EventBus.OnLevelAttemptAborted -= HandleLevelAttemptAborted;
 
         if (_currentAllowedCharactersOwner == this)
         {
@@ -228,6 +230,17 @@ public class WaveManager : MonoBehaviour
     }
 
     private void HandleGameOver()
+    {
+        _running = false;
+
+        if (_waveRoutine != null)
+            StopCoroutine(_waveRoutine);
+
+        ReturnAllActiveEnemies();
+        _waveRoutine = null;
+    }
+
+    private void HandleLevelAttemptAborted()
     {
         _running = false;
 

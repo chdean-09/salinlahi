@@ -131,11 +131,16 @@ public sealed class FocusModeTeachBeat : OnboardingBeat
         EventBus.OnFocusModeActivated += handler;
 
         float timeoutSeconds = 0.75f;
-        float start = Time.unscaledTime;
+        float elapsed = 0f;
         try
         {
-            while (!activated && Time.unscaledTime - start < timeoutSeconds)
+            while (!activated && elapsed < timeoutSeconds)
+            {
+                if (GameManager.Instance == null || !GameManager.Instance.IsUserPaused)
+                    elapsed += Time.unscaledDeltaTime;
+
                 yield return null;
+            }
         }
         finally
         {
