@@ -8,6 +8,7 @@ namespace Salinlahi.Tests.Editor.Core
     public class ProgressManagerTests
     {
         private GameObject _gameObject;
+        private GameObject _heartGameObject;
         private ProgressManager _manager;
 
         [SetUp]
@@ -21,6 +22,8 @@ namespace Salinlahi.Tests.Editor.Core
         [TearDown]
         public void TearDown()
         {
+            if (_heartGameObject != null)
+                Object.DestroyImmediate(_heartGameObject);
             if (_gameObject != null)
                 Object.DestroyImmediate(_gameObject);
             PlayerPrefs.DeleteKey(ProgressManager.SelectedLevelKey);
@@ -32,6 +35,30 @@ namespace Salinlahi.Tests.Editor.Core
             }
             CharacterUnlockProgress.ClearAllUnlocked();
             PlayerPrefs.Save();
+        }
+
+        [Test]
+        public void LevelCompleteCanBeProcessedAgainAfterAttemptAbort()
+        {
+            PlayerPrefs.SetInt(ProgressManager.SelectedLevelKey, 1);
+
+            _heartGameObject = new GameObject("ProgressManager_FirstAttempt_HeartSystem");
+            HeartSystem firstAttemptHearts = _heartGameObject.AddComponent<HeartSystem>();
+            EventBus.RaiseWaveStarted(0);
+            firstAttemptHearts.LoseHeart(2);
+            EventBus.RaiseLevelComplete();
+
+            Assert.AreEqual(2, _manager.GetStars(1));
+
+            EventBus.RaiseLevelAttemptAborted();
+            Object.DestroyImmediate(_heartGameObject);
+            _heartGameObject = new GameObject("ProgressManager_SecondAttempt_HeartSystem");
+            _heartGameObject.AddComponent<HeartSystem>();
+
+            EventBus.RaiseWaveStarted(0);
+            EventBus.RaiseLevelComplete();
+
+            Assert.AreEqual(3, _manager.GetStars(1));
         }
 
         [Test]

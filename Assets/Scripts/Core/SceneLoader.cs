@@ -108,7 +108,7 @@ public class SceneLoader : Singleton<SceneLoader>
 #endif
         GameManager.Instance?.AbortCurrentLevelAttempt();
         CleanupGameplayRun();
-        LoadScene(SCENE_GAMEPLAY);
+        LoadScene(SceneManager.GetActiveScene().name);
     }
 
     /// <summary>

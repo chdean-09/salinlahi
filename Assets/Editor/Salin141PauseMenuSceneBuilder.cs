@@ -80,8 +80,12 @@ public static class Salin141PauseMenuSceneBuilder
         if (clonedRestartButton != null)
             Object.DestroyImmediate(clonedRestartButton.gameObject);
 
-        Button confirmButton = FindDirectChild(confirmationPanel.transform, "ResumeButton")?.GetComponent<Button>();
-        Button cancelButton = FindDirectChild(confirmationPanel.transform, "QuitButton")?.GetComponent<Button>();
+        Button confirmButton = GetReference<Button>(serializedPauseMenu, "_confirmationConfirmButton")
+            ?? FindDirectChild(confirmationPanel.transform, "ConfirmButton")?.GetComponent<Button>()
+            ?? FindDirectChild(confirmationPanel.transform, "ResumeButton")?.GetComponent<Button>();
+        Button cancelButton = GetReference<Button>(serializedPauseMenu, "_confirmationCancelButton")
+            ?? FindDirectChild(confirmationPanel.transform, "CancelButton")?.GetComponent<Button>()
+            ?? FindDirectChild(confirmationPanel.transform, "QuitButton")?.GetComponent<Button>();
         if (confirmButton == null || cancelButton == null)
         {
             Debug.LogError($"SALIN-141: Confirmation panel needs Confirm and Cancel buttons in {scenePath}");

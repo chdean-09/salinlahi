@@ -148,16 +148,30 @@ public sealed class HeartLossDemoBeat : OnboardingBeat
         return false;
     }
 
-    // Brief slow-motion emphasis after the base hit. Uses unscaled real-time to time itself
-    // so it works regardless of the dipped timeScale, and always restores timeScale to 1.
+    // Brief slow-motion emphasis after the base hit. Uses unscaled real-time to time itself,
+    // but never overrides a lifecycle pause, abort, or terminal state.
     private IEnumerator PostHitSlowMo()
     {
         float seconds = Mathf.Max(0f, _postHitSlowMoSeconds);
         if (seconds <= 0f) yield break;
 
+        GameManager gameManager = GameManager.Instance;
+        if (gameManager != null
+            && (gameManager.IsAttemptAbortInProgress || gameManager.CurrentState == GameState.Paused))
+        {
+            yield break;
+        }
+
         float previous = Time.timeScale;
         Time.timeScale = Mathf.Clamp(_postHitSlowMoScale, 0.05f, 1f);
         yield return WaitForUnscaledSeconds(seconds);
+
+        if (gameManager != null
+            && (gameManager.IsAttemptAbortInProgress || gameManager.CurrentState != GameState.Playing))
+        {
+            yield break;
+        }
+
         Time.timeScale = previous <= 0f ? 1f : previous;
     }
 

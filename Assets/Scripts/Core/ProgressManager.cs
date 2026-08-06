@@ -94,6 +94,7 @@ public class ProgressManager : Singleton<ProgressManager>
         if (scene.name.Contains("Gameplay") || scene.name.Contains("Game"))
         {
             // Read the selected level when entering gameplay
+            _lastProcessedLevelId = -1;
             _currentPlayingLevelId = PlayerPrefs.GetInt(SelectedLevelKey, 1);
             DebugLogger.Log($"ProgressManager: Starting Level {_currentPlayingLevelId}");
         }
@@ -183,6 +184,7 @@ public class ProgressManager : Singleton<ProgressManager>
         // The abort event exists to make the transaction boundary explicit. No
         // committed PlayerPrefs are cleared here.
         _cachedHeartSystem = null;
+        _lastProcessedLevelId = -1;
         _currentPlayingLevelId = -1;
     }
 
