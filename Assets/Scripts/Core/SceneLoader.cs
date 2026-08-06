@@ -127,6 +127,17 @@ public class SceneLoader : Singleton<SceneLoader>
     private void CleanupGameplayRun()
     {
         EnemyPool.Instance?.ReturnAllCheckedOut();
+
+        // Ensure GameManager is in a clean state for the next attempt.
+        // On defeat, HandleGameOver already sets GameOver and clears the
+        // paused-run snapshot, but drawing suppression and the boss reference
+        // can linger if cleanup runs before BossController.OnDisable fires.
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.SuppressDrawingInput(false);
+            if (GameManager.Instance.CurrentBoss != null)
+                GameManager.Instance.SetCurrentBoss(null);
+        }
     }
 
     private IEnumerator LoadRoutine(string sceneName)

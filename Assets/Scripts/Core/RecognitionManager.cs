@@ -8,6 +8,12 @@ public class RecognitionManager : Singleton<RecognitionManager>
 
     private DollarPRecognizer _recognizer;
 
+    // Re-entrancy guard: ensures a single Recognize call produces exactly one
+    // feedback cycle. Without this, a re-entrant call (e.g. input system edge
+    // case) could raise OnCharacterRecognized / OnDrawingFailed twice for the
+    // same stroke, duplicating combat and word-restoration feedback.
+    private bool _isRecognizing;
+
     protected override void Awake()
     {
         base.Awake();
@@ -59,35 +65,49 @@ public class RecognitionManager : Singleton<RecognitionManager>
 
     public void Recognize(List<List<Vector2>> strokes)
     {
-        if (StrokeValidation.IsRecognitionDegenerate(strokes))
+        if (_isRecognizing)
         {
-            DebugLogger.Log("RecognitionManager: Degenerate stroke input -- ignoring.");
-            EventBus.RaiseDrawingFailed();
+            DebugLogger.LogWarning("RecognitionManager: Recognize called re-entrantly -- ignoring duplicate.");
             return;
         }
 
-        RecognitionResult result = _recognizer.Recognize(strokes);
-        DebugLogger.Log(
-            $"Recognized: {result.characterID} "
-            + $"Score: {result.score:F3} "
-            + $"Second: {result.secondBestID} "
-            + $"({result.secondBestScore:F3}) "
-            + $"Gap: {result.scoreGap:F3} "
-            + $"Threshold: {_config.minimumConfidence:F2}");
+        _isRecognizing = true;
+        try
+        {
+            if (StrokeValidation.IsRecognitionDegenerate(strokes))
+            {
+                DebugLogger.Log("RecognitionManager: Degenerate stroke input -- ignoring.");
+                EventBus.RaiseDrawingFailed();
+                return;
+            }
 
-        RecognitionLogger.LogAttempt(
-            result,
-            TestSessionController.IntendedCharacterID);
+            RecognitionResult result = _recognizer.Recognize(strokes);
+            DebugLogger.Log(
+                $"Recognized: {result.characterID} "
+                + $"Score: {result.score:F3} "
+                + $"Second: {result.secondBestID} "
+                + $"({result.secondBestScore:F3}) "
+                + $"Gap: {result.scoreGap:F3} "
+                + $"Threshold: {_config.minimumConfidence:F2}");
 
-        bool passedThreshold = result.score >= _config.minimumConfidence;
-        EventBus.RaiseRecognitionResolved(
-            result,
-            passedThreshold,
-            _config.minimumConfidence);
+            RecognitionLogger.LogAttempt(
+                result,
+                TestSessionController.IntendedCharacterID);
 
-        if (passedThreshold)
-            EventBus.RaiseCharacterRecognized(result.characterID);
-        else
-            EventBus.RaiseDrawingFailed();
+            bool passedThreshold = result.score >= _config.minimumConfidence;
+            EventBus.RaiseRecognitionResolved(
+                result,
+                passedThreshold,
+                _config.minimumConfidence);
+
+            if (passedThreshold)
+                EventBus.RaiseCharacterRecognized(result.characterID);
+            else
+                EventBus.RaiseDrawingFailed();
+        }
+        finally
+        {
+            _isRecognizing = false;
+        }
     }
 }

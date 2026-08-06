@@ -93,6 +93,13 @@ public class ProgressManager : Singleton<ProgressManager>
         {
             // Read the selected level when entering gameplay
             _currentPlayingLevelId = PlayerPrefs.GetInt(SelectedLevelKey, 1);
+
+            // Reset the idempotency guard so a fresh attempt (retry, replay,
+            // or return from menu) can complete and record stars. Without this,
+            // a level completed in a prior attempt would be silently skipped,
+            // leaving journey state stale after defeat/retry/exit.
+            _lastProcessedLevelId = -1;
+
             DebugLogger.Log($"ProgressManager: Starting Level {_currentPlayingLevelId}");
         }
         else
