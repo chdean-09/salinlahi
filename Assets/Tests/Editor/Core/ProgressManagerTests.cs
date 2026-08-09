@@ -1,3 +1,4 @@
+using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -14,18 +15,30 @@ namespace Salinlahi.Tests.Editor.Core
         [SetUp]
         public void SetUp()
         {
+            DestroyAllGameManagers();
+            ClearSingletonInstance<GameManager>();
+            DestroyAllProgressManagers();
+            ClearSingletonInstance<ProgressManager>();
             _gameObject = new GameObject("ProgressManager_Test");
             _manager = _gameObject.AddComponent<ProgressManager>();
+            InvokePrivate(_manager, "Awake");
+            InvokePrivate(_manager, "OnEnable");
             _manager.ClearAllProgress();
         }
 
         [TearDown]
         public void TearDown()
         {
+            if (_manager != null)
+                InvokePrivate(_manager, "OnDisable");
             if (_heartGameObject != null)
                 Object.DestroyImmediate(_heartGameObject);
             if (_gameObject != null)
                 Object.DestroyImmediate(_gameObject);
+            DestroyAllGameManagers();
+            ClearSingletonInstance<GameManager>();
+            DestroyAllProgressManagers();
+            ClearSingletonInstance<ProgressManager>();
             PlayerPrefs.DeleteKey(ProgressManager.SelectedLevelKey);
             PlayerPrefs.DeleteKey(ProgressManager.EndlessModeKey);
             for (int i = 1; i <= 15; i++)
@@ -41,24 +54,33 @@ namespace Salinlahi.Tests.Editor.Core
         public void LevelCompleteCanBeProcessedAgainAfterAttemptAbort()
         {
             PlayerPrefs.SetInt(ProgressManager.SelectedLevelKey, 1);
+            GameObject gameManagerObject = new GameObject("ProgressManager_Test_GameManager");
+            GameManager gameManager = gameManagerObject.AddComponent<GameManager>();
+            gameManager.StartGame();
 
             _heartGameObject = new GameObject("ProgressManager_FirstAttempt_HeartSystem");
             HeartSystem firstAttemptHearts = _heartGameObject.AddComponent<HeartSystem>();
+            InvokePrivate(firstAttemptHearts, "OnEnable");
+            SetPrivateField(firstAttemptHearts, "_currentHearts", 3);
             EventBus.RaiseWaveStarted(0);
-            firstAttemptHearts.LoseHeart(2);
+            firstAttemptHearts.LoseHeart(1);
             EventBus.RaiseLevelComplete();
 
             Assert.AreEqual(2, _manager.GetStars(1));
 
-            EventBus.RaiseLevelAttemptAborted();
+            gameManager.AbortCurrentLevelAttempt();
             Object.DestroyImmediate(_heartGameObject);
             _heartGameObject = new GameObject("ProgressManager_SecondAttempt_HeartSystem");
-            _heartGameObject.AddComponent<HeartSystem>();
+            HeartSystem secondAttemptHearts = _heartGameObject.AddComponent<HeartSystem>();
+            InvokePrivate(secondAttemptHearts, "OnEnable");
+            SetPrivateField(secondAttemptHearts, "_currentHearts", 3);
+            gameManager.StartGame();
 
             EventBus.RaiseWaveStarted(0);
             EventBus.RaiseLevelComplete();
 
             Assert.AreEqual(3, _manager.GetStars(1));
+            Object.DestroyImmediate(gameManagerObject);
         }
 
         [Test]
@@ -236,6 +258,51 @@ namespace Salinlahi.Tests.Editor.Core
             Assert.IsFalse(CharacterUnlockProgress.HasUnlocked(ba),
                 "ClearAllProgress should also clear character unlocks");
             Object.DestroyImmediate(ba);
+        }
+
+        private static void ClearSingletonInstance<T>() where T : MonoBehaviour
+        {
+            PropertyInfo property = typeof(Singleton<T>).GetProperty(
+                "Instance",
+                BindingFlags.Static | BindingFlags.Public);
+            MethodInfo setter = property?.GetSetMethod(nonPublic: true);
+            setter?.Invoke(null, new object[] { null });
+        }
+
+        private static void DestroyAllGameManagers()
+        {
+            GameManager[] gameManagers = Object.FindObjectsByType<GameManager>(FindObjectsSortMode.None);
+            for (int i = 0; i < gameManagers.Length; i++)
+            {
+                if (gameManagers[i] != null)
+                    Object.DestroyImmediate(gameManagers[i].gameObject);
+            }
+        }
+
+        private static void DestroyAllProgressManagers()
+        {
+            ProgressManager[] progressManagers = Object.FindObjectsByType<ProgressManager>(FindObjectsSortMode.None);
+            for (int i = 0; i < progressManagers.Length; i++)
+            {
+                if (progressManagers[i] != null)
+                    Object.DestroyImmediate(progressManagers[i].gameObject);
+            }
+        }
+
+        private static void SetPrivateField(object target, string fieldName, object value)
+        {
+            FieldInfo field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(field, $"{target.GetType().Name}.{fieldName} field not found.");
+            field.SetValue(target, value);
+        }
+
+        private static void InvokePrivate(object target, string methodName)
+        {
+            MethodInfo method = target.GetType().GetMethod(
+                methodName,
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(method, $"{target.GetType().Name}.{methodName} method not found.");
+            method.Invoke(target, null);
         }
     }
 }

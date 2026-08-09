@@ -315,6 +315,37 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 "Phase 1 should start with the Teleport pattern.");
         }
 
+        [UnityTest]
+        public IEnumerator LevelAttemptAbort_DoesNotReportBossDefeat()
+        {
+            DestroyAllGameManagers();
+            ClearSingletonInstance<GameManager>();
+
+            GameObject gameManagerObject = new GameObject("GameManager");
+            GameManager gameManager = gameManagerObject.AddComponent<GameManager>();
+            InvokePrivate(gameManager, "Awake");
+            InvokePrivate(gameManager, "OnEnable");
+            _objectsToDestroy.Add(gameManagerObject);
+
+            BaybayinCharacterSO ba = CreateChar("BA");
+            CreateLevelConfig(ba);
+            BossConfigSO config = CreateConfig(introDuration: 0f, outroDuration: 0f, phases:
+                new List<BossPhase> { CreatePhase(requiredCount: 1, vulnerabilityTimer: 100f) });
+
+            (BossController boss, _) = CreateBossWithFakeSpawner();
+            InvokePrivate(boss, "OnEnable");
+            boss.StartBoss(config, GetFakeSpawner());
+
+            gameManager.AbortCurrentLevelAttempt();
+            yield return null;
+
+            Assert.IsFalse(boss.IsDefeated, "Aborting the attempt must not mark the boss as defeated.");
+            Assert.IsFalse(boss.IsTargetable, "Aborting the attempt must clear boss targetability.");
+            Assert.AreEqual(0, _onBossDefeatedCount, "Attempt abort must not emit boss defeat.");
+            Assert.AreEqual(0, _onLevelCompleteCount, "Attempt abort must not complete the level.");
+            Assert.IsNull(gameManager.CurrentBoss, "Attempt abort must clear GameManager.CurrentBoss.");
+        }
+
         // ---- Helper polling for Vulnerable active window ----
         private IEnumerator WaitUntilTargetable(BossController boss, float timeout)
         {
@@ -434,6 +465,34 @@ namespace Salinlahi.Tests.Editor.Gameplay
 
             Assert.IsNotNull(f, $"Missing field '{fieldName}' on {target.GetType().Name}.");
             f.SetValue(target, value);
+        }
+
+        private static void ClearSingletonInstance<T>() where T : MonoBehaviour
+        {
+            PropertyInfo property = typeof(Singleton<T>).GetProperty(
+                "Instance",
+                BindingFlags.Static | BindingFlags.Public);
+            MethodInfo setter = property?.GetSetMethod(nonPublic: true);
+            setter?.Invoke(null, new object[] { null });
+        }
+
+        private static void InvokePrivate(object target, string methodName)
+        {
+            MethodInfo method = target.GetType().GetMethod(
+                methodName,
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(method, $"{target.GetType().Name}.{methodName} method not found.");
+            method.Invoke(target, null);
+        }
+
+        private static void DestroyAllGameManagers()
+        {
+            GameManager[] gameManagers = Object.FindObjectsByType<GameManager>(FindObjectsSortMode.None);
+            for (int i = 0; i < gameManagers.Length; i++)
+            {
+                if (gameManagers[i] != null)
+                    Object.DestroyImmediate(gameManagers[i].gameObject);
+            }
         }
 
         // ---- Test doubles ----

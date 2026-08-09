@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.Pool;
 
 public class SandboxModeTests
 {
@@ -109,7 +108,8 @@ public class SandboxModeTests
         try
         {
             InvokePrivate(enemy, "Awake");
-            enemy.Initialize(enemyData, new NoopEnemyPool(), overrideCharacter);
+            enemy.Initialize(enemyData);
+            enemy.AssignCharacter(overrideCharacter);
 
             Assert.AreSame(overrideCharacter, enemy.Character);
             Assert.AreSame(assetCharacter, enemyData.assignedCharacter);
@@ -642,19 +642,6 @@ public class SandboxModeTests
             ClearSingletonInstance<EnemyPool>();
             ClearSingletonInstance<ActiveEnemyTracker>();
         }
-    }
-
-    private sealed class NoopEnemyPool : IObjectPool<Enemy>
-    {
-        public int CountInactive => 0;
-        public Enemy Get() => null;
-        public UnityEngine.Pool.PooledObject<Enemy> Get(out Enemy v)
-        {
-            v = null;
-            return default;
-        }
-        public void Release(Enemy element) { }
-        public void Clear() { }
     }
 
     private static Enemy CreateEnemyPrefab(GameObject prefabObject)

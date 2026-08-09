@@ -105,9 +105,12 @@ public class BossController : MonoBehaviour
             _stateRoutine = null;
         }
 
-        IsDefeated = true;
-        _state = State.Defeated;
+        _phaseMovement?.StopPattern();
+        _stateVisuals?.EndPanting();
+        _state = State.Idle;
         _isVulnerableActiveWindow = false;
+        _currentExpectedCharacter = null;
+        _correctDrawsThisWindow = 0;
         if (GameManager.Instance != null && GameManager.Instance.CurrentBoss == this)
             GameManager.Instance.SetCurrentBoss(null);
     }

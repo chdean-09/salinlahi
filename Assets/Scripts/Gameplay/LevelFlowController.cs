@@ -119,6 +119,8 @@ public class LevelFlowController : MonoBehaviour
 
     private IEnumerator RunLevelFlow()
     {
+        _flowAborted = false;
+
         if (_levelConfig == null)
         {
             DebugLogger.LogError("LevelFlowController: No LevelConfigSO resolved. Aborting flow.");

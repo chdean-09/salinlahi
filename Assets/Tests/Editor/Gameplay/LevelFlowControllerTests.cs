@@ -216,6 +216,25 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
+        public void RunLevelFlow_ResetsFlowAbortedAtStart()
+        {
+            LevelConfigSO levelConfig = CreateLevelConfig();
+            levelConfig.levelNumber = 3;
+
+            LevelFlowController controller = CreateComponent<LevelFlowController>("LevelFlowController");
+            SetPrivateField(controller, "_levelConfig", levelConfig);
+            SetPrivateField(controller, "_flowAborted", true);
+
+            LogAssert.Expect(LogType.Error, "[Salinlahi] LevelFlowController: WaveManager reference missing.");
+
+            IEnumerator flow = InvokePrivate<IEnumerator>(controller, "RunLevelFlow");
+            while (flow.MoveNext()) { }
+
+            Assert.IsFalse(GetPrivateField<bool>(controller, "_flowAborted"),
+                "A new level-flow run must clear the stale abort flag before it evaluates flow gates.");
+        }
+
+        [Test]
         public void LevelTwoTutorialDueWithAdvancedSequenceCreatesRuntimeOnboardingController()
         {
             LevelConfigSO levelConfig = CreateLevelConfig();

@@ -100,6 +100,8 @@ public class SceneLoader : Singleton<SceneLoader>
     /// <summary>
     /// Reloads the selected level as a fresh attempt. This deliberately clears the
     /// paused-run snapshot before loading so WaveManager cannot restore old enemies.
+    /// Current SALIN-141 restart routing aborts the attempt instead of creating a
+    /// resumable snapshot first.
     /// </summary>
     public void RestartCurrentLevel()
     {
@@ -113,6 +115,8 @@ public class SceneLoader : Singleton<SceneLoader>
 
     /// <summary>
     /// Leaves the active attempt and opens Level Select without retaining a resumable snapshot.
+    /// Current SALIN-141 leave routing aborts the active attempt instead of caching
+    /// a paused-run snapshot for later resume.
     /// </summary>
     public void LeaveToLevelSelect()
     {

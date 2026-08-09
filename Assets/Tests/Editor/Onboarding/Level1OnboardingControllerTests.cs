@@ -290,6 +290,61 @@ namespace Salinlahi.Tests.Editor.Onboarding
             }
         }
 
+        [Test]
+        public void RestoreOnboardingState_RunsCleanupOnlyOncePerSequence()
+        {
+            GameObject host = new("Level1OnboardingControllerHost");
+            GameObject hiddenDuringOnboarding = new("HiddenDuringOnboarding");
+
+            try
+            {
+                Level1OnboardingController controller = host.AddComponent<Level1OnboardingController>();
+                SetPrivateField(controller, "_hideDuringOnboarding", new[] { hiddenDuringOnboarding });
+
+                InvokePrivate<object>(controller, "BeginOnboardingState", 1);
+                InvokePrivate<object>(controller, "RestoreOnboardingState");
+
+                hiddenDuringOnboarding.SetActive(false);
+                InvokePrivate<object>(controller, "RestoreOnboardingState");
+
+                Assert.IsFalse(hiddenDuringOnboarding.activeSelf,
+                    "Repeated cleanup calls must not restore the onboarding-hidden UI a second time.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(host);
+                Object.DestroyImmediate(hiddenDuringOnboarding);
+            }
+        }
+
+        [Test]
+        public void PlayIfNeeded_NoOpRunDoesNotClearExistingTutorialRuntimeStateOnDisable()
+        {
+            GameObject host = new("Level1OnboardingControllerHost");
+
+            try
+            {
+                TutorialRuntimeState.Begin(42);
+
+                Level1OnboardingController controller = host.AddComponent<Level1OnboardingController>();
+                System.Collections.IEnumerator play = controller.PlayIfNeeded(null);
+                while (play.MoveNext()) { }
+
+                Object.DestroyImmediate(host);
+                host = null;
+
+                Assert.IsTrue(TutorialRuntimeState.IsActive,
+                    "A no-op PlayIfNeeded path must not clear global tutorial runtime state during OnDisable.");
+                Assert.AreEqual(42, TutorialRuntimeState.ActiveLevelNumber);
+            }
+            finally
+            {
+                TutorialRuntimeState.Clear();
+                if (host != null)
+                    Object.DestroyImmediate(host);
+            }
+        }
+
         private static void DestroyRuntimeObject(string objectName)
         {
             GameObject[] objects = Object.FindObjectsByType<GameObject>(

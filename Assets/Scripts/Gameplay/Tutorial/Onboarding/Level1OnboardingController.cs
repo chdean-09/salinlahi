@@ -48,6 +48,7 @@ public sealed class Level1OnboardingController : MonoBehaviour
     private bool _firstManualSuccess;
     private bool _skipRequested;
     private bool _attemptAborted;
+    private bool _onboardingStateActive;
     private bool[] _hiddenOriginalState;
     private bool _onboardingHudHidden;
     private Level1TutorialSequenceSO _runtimeLegacySource;
@@ -139,8 +140,7 @@ public sealed class Level1OnboardingController : MonoBehaviour
         EnsureBeatComponentsForSequence(sequence);
         CollectBeats();
 
-        TutorialRuntimeState.Begin(levelConfig.levelNumber);
-        HideOnboardingBlockedUI();
+        BeginOnboardingState(levelConfig.levelNumber);
 
         try
         {
@@ -188,8 +188,19 @@ public sealed class Level1OnboardingController : MonoBehaviour
 
     private void RestoreOnboardingState()
     {
+        if (!_onboardingStateActive)
+            return;
+
+        _onboardingStateActive = false;
         RestoreOnboardingHiddenUI();
         TutorialRuntimeState.Clear();
+    }
+
+    private void BeginOnboardingState(int levelNumber)
+    {
+        TutorialRuntimeState.Begin(levelNumber);
+        HideOnboardingBlockedUI();
+        _onboardingStateActive = true;
     }
 
     private OnboardingContext BuildContext(OnboardingSequenceSO sequence, int levelNumber)
