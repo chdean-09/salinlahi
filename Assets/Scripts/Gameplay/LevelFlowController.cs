@@ -15,6 +15,7 @@ public class LevelFlowController : MonoBehaviour
     [SerializeField] private WaveManager _waveManager;
     [SerializeField] private DialogueController _dialogueController;
     [SerializeField] private Level1OnboardingController _level1OnboardingController;
+    [SerializeField] private ChallengeFlowController _challengeFlowController;
     [SerializeField] private CharacterUnlockRevealController _revealController;
     [SerializeField] private BossTutorialController _bossTutorialController;
     [SerializeField] private VictoryScreenUI _victoryScreen;
@@ -28,6 +29,8 @@ public class LevelFlowController : MonoBehaviour
     [Header("Level Config")]
     [Tooltip("Resolved at runtime from GameManager.CurrentLevel or Inspector fallback.")]
     [SerializeField] private LevelConfigSO _levelConfig;
+    [Tooltip("Opt-in switch for the generalized challenge prototype. Legacy onboarding remains the fallback when disabled.")]
+    [SerializeField] private bool _challengePrototypeEnabled;
 
     private enum RevealTiming { BeforeTutorial, AfterTutorial }
 
@@ -50,7 +53,7 @@ public class LevelFlowController : MonoBehaviour
     {
         if (levelConfig == null
             || !LevelTutorialProgress.ShouldShowForLevelNumber(levelConfig.levelNumber)
-            || (levelConfig.tutorialSequence == null && levelConfig.onboardingSequence == null)
+            || (levelConfig.tutorialSequence == null && levelConfig.onboardingSequence == null && levelConfig.challengeSequence == null)
             || waveManager == null)
         {
             return false;
@@ -177,7 +180,10 @@ public class LevelFlowController : MonoBehaviour
             if (_flowAborted || _levelEnded) yield break;
         }
 
-        yield return PlayLevelTutorialIfNeeded();
+        if (_challengePrototypeEnabled && _levelConfig.challengeSequence != null)
+            yield return PlayChallengeIfConfigured();
+        else
+            yield return PlayLevelTutorialIfNeeded();
 
         if (_flowAborted || _levelEnded)
             yield break;
@@ -219,6 +225,17 @@ public class LevelFlowController : MonoBehaviour
         _defeatScreen ??= FindFirstObjectByType<DefeatScreenUI>(FindObjectsInactive.Include);
         _revealController ??= FindFirstObjectByType<CharacterUnlockRevealController>(FindObjectsInactive.Include);
         _bossTutorialController ??= FindFirstObjectByType<BossTutorialController>(FindObjectsInactive.Include);
+
+        if (_challengePrototypeEnabled && _challengeFlowController == null)
+        {
+            _challengeFlowController = FindFirstObjectByType<ChallengeFlowController>(FindObjectsInactive.Include);
+            if (_challengeFlowController == null)
+            {
+                GameObject challengeObject = new GameObject("[Runtime] ChallengeFlowController");
+                challengeObject.transform.SetParent(transform, false);
+                _challengeFlowController = challengeObject.AddComponent<ChallengeFlowController>();
+            }
+        }
 
         if (_level1OnboardingController == null
             && _levelConfig != null
@@ -346,6 +363,22 @@ public class LevelFlowController : MonoBehaviour
         }
 
         yield return _level1OnboardingController.PlayIfNeeded(_levelConfig);
+    }
+
+    private IEnumerator PlayChallengeIfConfigured()
+    {
+        if (_levelConfig == null || _levelConfig.challengeSequence == null)
+            yield break;
+        if (_challengeFlowController == null)
+        {
+            DebugLogger.LogError("LevelFlowController: Challenge sequence is assigned but ChallengeFlowController is missing.");
+            _flowAborted = true;
+            yield break;
+        }
+
+        yield return _challengeFlowController.Play(_levelConfig.challengeSequence, _levelConfig.levelNumber);
+        if (_challengeFlowController.Session == null || _challengeFlowController.Session.State != ChallengeSessionState.Completed)
+            _flowAborted = true;
     }
 
     private IEnumerator PlayBossTutorialIfNeeded()

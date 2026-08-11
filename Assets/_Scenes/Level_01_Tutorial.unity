@@ -5182,11 +5182,13 @@ MonoBehaviour:
   _waveManager: {fileID: 920286447}
   _dialogueController: {fileID: 0}
   _level1OnboardingController: {fileID: 1758690417}
+  _challengeFlowController: {fileID: 0}
   _victoryScreen: {fileID: 0}
   _defeatScreen: {fileID: 0}
   _cutscenePlayer: {fileID: 1483122961}
   _levelCutsceneMapping: {fileID: 11400000, guid: 322b3c9460f494d95847cde13cb46dc1, type: 2}
   _levelConfig: {fileID: 11400000, guid: 0fb8a83456b92dd4aa1de31579baa559, type: 2}
+  _challengePrototypeEnabled: 1
 --- !u!4 &961118829
 Transform:
   m_ObjectHideFlags: 0
