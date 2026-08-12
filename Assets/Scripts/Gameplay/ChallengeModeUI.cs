@@ -244,7 +244,7 @@ public class ChallengeModeUI : MonoBehaviour
         return $"Hint: choose slot {session.CurrentSlotIndex + 1}";
     }
 
-    private ChallengeTokenDefinition FindToken(ChallengeUnitDefinition unit, string occurrenceId)
+    private static ChallengeTokenDefinition FindToken(ChallengeUnitDefinition unit, string occurrenceId)
     {
         foreach (ChallengeTokenDefinition token in unit.tokens ?? new ChallengeTokenDefinition[0])
         {

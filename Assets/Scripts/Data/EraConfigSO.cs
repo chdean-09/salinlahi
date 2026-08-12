@@ -13,6 +13,12 @@ public class EraConfigSO : ScriptableObject
     [Tooltip("Human-readable name for logs/debugging, e.g. \"Era One\".")]
     public string eraName;
 
+    [Header("Revised Campaign Identity")]
+    public string stableId;
+    [Range(1, 3)] public int order = 1;
+    public DialogueSO storyReference;
+    public CutsceneSO memoryReference;
+
     [Header("Visuals")]
     [Tooltip("Full-screen background sprite shown when this era is selected.")]
     public Sprite backgroundSprite;
