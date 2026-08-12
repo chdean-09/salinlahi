@@ -11,6 +11,22 @@ public class LevelConfigSO : ScriptableObject
     public int chapterNumber = 1;
     public string chapterName = "Chapter 1";
 
+    [Header("Revised Campaign Identity")]
+    public string stableId;
+    [Range(1, 5)] public int eraLocalOrder = 1;
+
+    [Header("Revised Campaign Content")]
+    public List<FocusWordDefinition> focusWords = new();
+    public List<SymbolValueReference> cumulativeSymbolPool = new();
+    public List<ContentRequirement> learningRequirements = new();
+    public List<ContentRequirement> practiceRequirements = new();
+    public ClueMode clueMode = ClueMode.FullGlyph;
+    public DefenseRules defenseRules = new();
+    public ContentMediaReferences contextMedia = new();
+    public SymbolValueReference finalRestorationValue = new();
+    public List<string> rewardIds = new();
+    public List<ContentRequirement> masteryRequirements = new();
+
     [Tooltip("Visual theme for this level's era (background, decorations, etc.)")]
     public EraThemeSO eraTheme;
 
