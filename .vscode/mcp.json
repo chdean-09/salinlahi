@@ -3,7 +3,8 @@
     "unity-mcp": {
       "type": "stdio",
       "command": "node",
-      "args": ["scripts/unity-mcp-launcher.js"]
+      "args": ["scripts/unity-mcp-launcher.js"],
+      "cwd": "${workspaceFolder}"
     }
   }
 }
