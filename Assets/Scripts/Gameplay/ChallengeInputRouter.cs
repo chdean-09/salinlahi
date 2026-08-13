@@ -9,6 +9,12 @@ public class ChallengeInputRouter : MonoBehaviour
         _controller = controller;
     }
 
+    public void Unbind(ChallengeFlowController controller)
+    {
+        if (_controller == controller)
+            _controller = null;
+    }
+
     private void OnEnable()
     {
         EventBus.OnRecognitionResolved += HandleRecognitionResolved;

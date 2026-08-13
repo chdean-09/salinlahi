@@ -15,7 +15,7 @@ public static class ChallengeRuntimeState
         IsDrawingInputLocked = false;
     }
 
-    public static void SetDrawingInputLocked(bool locked) => IsDrawingInputLocked = locked;
+    public static void SetDrawingInputLocked(bool locked) => IsDrawingInputLocked = IsActive && locked;
 
     public static void Clear()
     {

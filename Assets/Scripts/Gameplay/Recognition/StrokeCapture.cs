@@ -34,10 +34,10 @@ public class StrokeCapture : MonoBehaviour
     private void Awake()
     {
         if (_config == null)
-            Debug.LogError("StrokeCapture: RecognitionConfigSO is not assigned. Drawing input will be disabled.", this);
+            DebugLogger.LogError("StrokeCapture: RecognitionConfigSO is not assigned. Drawing input will be disabled.");
 
         if (_canvas == null)
-            Debug.LogError("StrokeCapture: DrawingCanvas is not assigned. Drawing input will be disabled.", this);
+            DebugLogger.LogError("StrokeCapture: DrawingCanvas is not assigned. Drawing input will be disabled.");
     }
 
     private void OnEnable()

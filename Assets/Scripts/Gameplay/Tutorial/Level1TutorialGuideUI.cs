@@ -40,6 +40,7 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         TutorialFontProvider.ApplyTo(_promptText);
         TutorialFontProvider.ApplyTo(_feedbackText);
         ApplyResponsiveTextLayout(_promptText, _feedbackText);
+        EnsureGuideVisuals();
 
         if (_skipButton != null)
         {
@@ -77,6 +78,7 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         guide._feedbackText = CreateText(root.transform, "FeedbackText", new Vector2(0.5f, 0.76f), 28, TextAlignmentOptions.Center);
         ApplyResponsiveTextLayout(guide._promptText, guide._feedbackText);
         guide._skipButton = CreateSkipButton(root.transform);
+        guide.EnsureGuideVisuals();
         root.SetActive(false);
         return guide;
     }
@@ -217,6 +219,12 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         return null;
     }
 
+    public void PrepareForChallenge()
+    {
+        EnsureRuntimeCanvas();
+        EnsureGuideVisuals();
+    }
+
     private void OnDestroy()
     {
         if (_skipButton != null)
@@ -225,6 +233,7 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
 
     public void ShowPrompt(Level1TutorialStepSO step, bool canSkip)
     {
+        EnsureGuideVisuals();
         if (_root != null)
             _root.SetActive(true);
 
@@ -257,6 +266,7 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
                 _guidePathRenderer.SetPosition(i, pos);
                 _originalGuidePathPoints[i] = pos;
             }
+            _guidePathRenderer.enabled = true;
             _guidePathRenderer.gameObject.SetActive(true);
         }
 
@@ -264,7 +274,7 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         {
             if (step != null && step.templatePoints != null && step.templatePoints.Length > 0)
             {
-                _startDot.position = step.templatePoints[0];
+                SetGuidePosition(_startDot, step.templatePoints[0]);
                 _startDot.gameObject.SetActive(true);
             }
             else
@@ -280,9 +290,9 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
                 Vector2 first = step.templatePoints[0];
                 Vector2 second = step.templatePoints[1];
                 Vector2 dir = (second - first).normalized;
-                _directionArrow.position = first + dir * 0.5f;
+                SetGuidePosition(_directionArrow, first + dir * 0.5f);
                 float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
-                _directionArrow.rotation = Quaternion.Euler(0, 0, angle);
+                _directionArrow.localRotation = Quaternion.Euler(0, 0, angle);
                 _directionArrow.gameObject.SetActive(true);
             }
             else
@@ -328,7 +338,10 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
             _root.SetActive(false);
 
         if (_guidePathRenderer != null)
+        {
+            _guidePathRenderer.enabled = false;
             _guidePathRenderer.gameObject.SetActive(false);
+        }
 
         if (_startDot != null)
             _startDot.gameObject.SetActive(false);
@@ -419,6 +432,93 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         _guideSpriteImage.color = new Color(1f, 1f, 1f, 0.55f);
         imageObject.SetActive(false);
         return _guideSpriteImage;
+    }
+
+    private void EnsureGuideVisuals()
+    {
+        Transform parent = _root != null ? _root.transform : transform;
+
+        if (_guidePathRenderer == null)
+        {
+            Transform existing = parent.Find("GuidePathRenderer");
+            if (existing != null)
+                _guidePathRenderer = existing.GetComponent<LineRenderer>();
+        }
+        if (_guidePathRenderer == null)
+        {
+            GameObject pathObject = new GameObject("GuidePathRenderer");
+            pathObject.transform.SetParent(parent, false);
+            _guidePathRenderer = pathObject.AddComponent<LineRenderer>();
+            _guidePathRenderer.useWorldSpace = false;
+            _guidePathRenderer.widthMultiplier = 5f;
+            _guidePathRenderer.startColor = new Color(0.1f, 0.95f, 0.45f, 0.9f);
+            _guidePathRenderer.endColor = new Color(0.1f, 0.95f, 0.45f, 0.9f);
+            Shader shader = Shader.Find("Sprites/Default");
+            if (shader != null)
+                _guidePathRenderer.material = new Material(shader);
+        }
+        _guidePathRenderer.gameObject.SetActive(false);
+
+        if (_startDot == null)
+        {
+            Transform existing = parent.Find("StartDot");
+            if (existing != null)
+                _startDot = existing;
+        }
+        if (_startDot == null)
+        {
+            GameObject dotObject = new GameObject("StartDot", typeof(RectTransform), typeof(Image));
+            dotObject.transform.SetParent(parent, false);
+            RectTransform dotRect = dotObject.GetComponent<RectTransform>();
+            dotRect.anchorMin = new Vector2(0.5f, 0.5f);
+            dotRect.anchorMax = new Vector2(0.5f, 0.5f);
+            dotRect.sizeDelta = new Vector2(26f, 26f);
+            Image dotImage = dotObject.GetComponent<Image>();
+            dotImage.color = new Color(0.1f, 1f, 0.2f, 1f);
+            dotImage.raycastTarget = false;
+            _startDot = dotObject.transform;
+        }
+        _startDot.gameObject.SetActive(false);
+
+        if (_directionArrow == null)
+        {
+            Transform existing = parent.Find("DirectionArrow");
+            if (existing != null)
+                _directionArrow = existing;
+        }
+        if (_directionArrow == null)
+        {
+            GameObject arrowObject = new GameObject("DirectionArrow", typeof(RectTransform), typeof(TextMeshProUGUI));
+            arrowObject.transform.SetParent(parent, false);
+            RectTransform arrowRect = arrowObject.GetComponent<RectTransform>();
+            arrowRect.anchorMin = new Vector2(0.5f, 0.5f);
+            arrowRect.anchorMax = new Vector2(0.5f, 0.5f);
+            arrowRect.sizeDelta = new Vector2(72f, 48f);
+            TextMeshProUGUI arrowText = arrowObject.GetComponent<TextMeshProUGUI>();
+            arrowText.text = "➜";
+            arrowText.fontSize = 38f;
+            arrowText.alignment = TextAlignmentOptions.Center;
+            arrowText.color = new Color(0.1f, 1f, 0.2f, 1f);
+            arrowText.raycastTarget = false;
+            TutorialFontProvider.ApplyTo(arrowText);
+            _directionArrow = arrowObject.transform;
+        }
+        _directionArrow.gameObject.SetActive(false);
+
+        if (_assistAnimationParent == null)
+            _assistAnimationParent = parent;
+    }
+
+    private static void SetGuidePosition(Transform target, Vector3 position)
+    {
+        if (target == null)
+            return;
+
+        RectTransform rect = target as RectTransform;
+        if (rect != null)
+            rect.anchoredPosition = position;
+        else
+            target.localPosition = position;
     }
 
     private void StopEffects()
