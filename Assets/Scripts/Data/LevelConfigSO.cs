@@ -50,6 +50,9 @@ public class LevelConfigSO : ScriptableObject
     [Tooltip("Optional onboarding sequence played before waves. Level 1 uses basic onboarding; Level 2 uses advanced combat onboarding.")]
     public OnboardingSequenceSO onboardingSequence;
 
+    [Tooltip("Optional generalized challenge sequence. LevelFlowController runs it only when the scene's challenge prototype opt-in is enabled.")]
+    public ChallengeSequenceSO challengeSequence;
+
     [Tooltip("Dialogue played before waves begin. Null = skip intro.")]
     public DialogueSO introDialogue;
 

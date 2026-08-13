@@ -1,0 +1,100 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b7c9d9cf2f34d9c9e1a0d437f2f6e90, type: 3}
+  m_Name: Level1_ChallengeSequence
+  m_EditorClassIdentifier: Assembly-CSharp::ChallengeSequenceSO
+  sequenceId: level-1-revised-challenges
+  displayName: Guided tracing and sentence restoration prototype
+  units:
+  - unitId: guided-ba
+    mode: 0
+    cluePolicy: 0
+    prompt: Trace BA. Start at the dot.
+    tokens:
+    - tokenId: BA
+      displayText: BA
+      occurrenceId: ba-1
+      role: 1
+      targetCharacter: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+    slots: []
+    candidateOccurrenceIds: []
+    guidedStep: {fileID: 11400000, guid: 570d304cd3744bb8984f246b1e280c64, type: 2}
+    timerSeconds: 0
+    allowHint: 1
+    checkpointOnSuccess: 1
+    maxErrors: 3
+    heartPenalty: 1
+  - unitId: guided-ou
+    mode: 0
+    cluePolicy: 0
+    prompt: Trace OU. Follow the guide.
+    tokens:
+    - tokenId: OU
+      displayText: OU
+      occurrenceId: ou-1
+      role: 0
+      targetCharacter: {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
+    slots: []
+    candidateOccurrenceIds: []
+    guidedStep: {fileID: 11400000, guid: c1fa5b94252c48bfb7044e94cb5d09c5, type: 2}
+    timerSeconds: 0
+    allowHint: 1
+    checkpointOnSuccess: 1
+    maxErrors: 3
+    heartPenalty: 1
+  - unitId: guided-ha
+    mode: 0
+    cluePolicy: 0
+    prompt: Trace HA. Follow the guide.
+    tokens:
+    - tokenId: HA
+      displayText: HA
+      occurrenceId: ha-1
+      role: 0
+      targetCharacter: {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
+    slots: []
+    candidateOccurrenceIds: []
+    guidedStep: {fileID: 11400000, guid: ef95595956164dc4b7ba103c155ceaed, type: 2}
+    timerSeconds: 0
+    allowHint: 1
+    checkpointOnSuccess: 1
+    maxErrors: 3
+    heartPenalty: 1
+  - unitId: restore-sentence
+    mode: 2
+    cluePolicy: 1
+    prompt: Restore the sentence: choose each word in order.
+    tokens:
+    - tokenId: word-1
+      displayText: Bata
+      occurrenceId: word-1
+      role: 1
+      targetCharacter: {fileID: 0}
+    - tokenId: word-2
+      displayText: ay masaya
+      occurrenceId: word-2
+      role: 1
+      targetCharacter: {fileID: 0}
+    slots:
+    - slotId: sentence-slot-1
+      expectedOccurrenceId: word-1
+    - slotId: sentence-slot-2
+      expectedOccurrenceId: word-2
+    candidateOccurrenceIds:
+    - word-2
+    - word-1
+    guidedStep: {fileID: 0}
+    timerSeconds: 0
+    allowHint: 1
+    checkpointOnSuccess: 1
+    maxErrors: 3
+    heartPenalty: 1

@@ -79,6 +79,7 @@ MonoBehaviour:
   multiKillChainEnabled: 0
   tutorialSequence: {fileID: 11400000, guid: 7369c0885d3f4f508ae62d77174c703a, type: 2}
   onboardingSequence: {fileID: 11400000, guid: 79f06c1e965e43b0891a696cf9cb3de6, type: 2}
+  challengeSequence: {fileID: 11400000, guid: 2d8e0a0d9f78405e9d5d0f7cbbde0f10, type: 2}
   introDialogue: {fileID: 0}
   outroDialogue: {fileID: 0}
   bgmClip: {fileID: 0}
