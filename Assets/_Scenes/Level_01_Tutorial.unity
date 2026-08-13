@@ -5188,7 +5188,7 @@ MonoBehaviour:
   _cutscenePlayer: {fileID: 1483122961}
   _levelCutsceneMapping: {fileID: 11400000, guid: 322b3c9460f494d95847cde13cb46dc1, type: 2}
   _levelConfig: {fileID: 11400000, guid: 0fb8a83456b92dd4aa1de31579baa559, type: 2}
-  _challengePrototypeEnabled: 1
+  _challengePrototypeEnabled: 0
 --- !u!4 &961118829
 Transform:
   m_ObjectHideFlags: 0

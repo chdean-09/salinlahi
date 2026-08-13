@@ -29,7 +29,7 @@ public class LevelFlowController : MonoBehaviour
     [Header("Level Config")]
     [Tooltip("Resolved at runtime from GameManager.CurrentLevel or Inspector fallback.")]
     [SerializeField] private LevelConfigSO _levelConfig;
-    [Tooltip("Opt-in switch for the generalized challenge prototype. Legacy onboarding remains the fallback when disabled.")]
+    [Tooltip("Legacy scene override for the generalized challenge prototype. Prefer LevelConfigSO.challengePrototypeEnabled for data-driven opt-in.")]
     [SerializeField] private bool _challengePrototypeEnabled;
 
     private enum RevealTiming { BeforeTutorial, AfterTutorial }
@@ -51,9 +51,14 @@ public class LevelFlowController : MonoBehaviour
         WaveSpawner waveSpawner,
         EnemyDataSO fallbackEnemyData)
     {
+        bool hasLegacyTutorial = levelConfig != null
+            && (levelConfig.tutorialSequence != null || levelConfig.onboardingSequence != null);
+        bool hasChallengePrototype = levelConfig != null
+            && levelConfig.challengePrototypeEnabled
+            && levelConfig.challengeSequence != null;
         if (levelConfig == null
             || !LevelTutorialProgress.ShouldShowForLevelNumber(levelConfig.levelNumber)
-            || (levelConfig.tutorialSequence == null && levelConfig.onboardingSequence == null && levelConfig.challengeSequence == null)
+            || (!hasLegacyTutorial && !hasChallengePrototype)
             || waveManager == null)
         {
             return false;
@@ -78,6 +83,8 @@ public class LevelFlowController : MonoBehaviour
         _runtimeBootstrapped = true;
         _levelConfig = levelConfig;
         _waveManager = waveManager;
+        _challengePrototypeEnabled = _challengePrototypeEnabled
+            || (levelConfig != null && levelConfig.challengePrototypeEnabled);
         EnsureRuntimeReferences(waveSpawner, fallbackEnemyData);
         StartCoroutine(RunLevelFlow());
     }
@@ -180,7 +187,7 @@ public class LevelFlowController : MonoBehaviour
             if (_flowAborted || _levelEnded) yield break;
         }
 
-        if (_challengePrototypeEnabled && _levelConfig.challengeSequence != null)
+        if (ShouldRunChallengePrototype())
             yield return PlayChallengeIfConfigured();
         else
             yield return PlayLevelTutorialIfNeeded();
@@ -226,7 +233,7 @@ public class LevelFlowController : MonoBehaviour
         _revealController ??= FindFirstObjectByType<CharacterUnlockRevealController>(FindObjectsInactive.Include);
         _bossTutorialController ??= FindFirstObjectByType<BossTutorialController>(FindObjectsInactive.Include);
 
-        if (_challengePrototypeEnabled && _challengeFlowController == null)
+        if (ShouldRunChallengePrototype() && _challengeFlowController == null)
         {
             _challengeFlowController = FindFirstObjectByType<ChallengeFlowController>(FindObjectsInactive.Include);
             if (_challengeFlowController == null)
@@ -372,13 +379,27 @@ public class LevelFlowController : MonoBehaviour
         if (_challengeFlowController == null)
         {
             DebugLogger.LogError("LevelFlowController: Challenge sequence is assigned but ChallengeFlowController is missing.");
-            _flowAborted = true;
+            yield return PlayLevelTutorialIfNeeded();
             yield break;
         }
 
         yield return _challengeFlowController.Play(_levelConfig.challengeSequence, _levelConfig.levelNumber);
+        if (_challengeFlowController.LastPlayResult == ChallengePlayResult.InvalidSequence)
+        {
+            DebugLogger.LogWarning("LevelFlowController: Invalid challenge sequence. Falling back to legacy onboarding.");
+            yield return PlayLevelTutorialIfNeeded();
+            yield break;
+        }
+
         if (_challengeFlowController.Session == null || _challengeFlowController.Session.State != ChallengeSessionState.Completed)
             _flowAborted = true;
+    }
+
+    private bool ShouldRunChallengePrototype()
+    {
+        return _levelConfig != null
+            && (_levelConfig.challengePrototypeEnabled || _challengePrototypeEnabled)
+            && _levelConfig.challengeSequence != null;
     }
 
     private IEnumerator PlayBossTutorialIfNeeded()
