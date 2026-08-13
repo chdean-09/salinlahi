@@ -39,6 +39,7 @@ public class ChallengeSequenceValidatorTests
         ChallengeSequenceSO sequence = ScriptableObject.CreateInstance<ChallengeSequenceSO>();
         sequence.units = new ChallengeUnitDefinition[15];
         List<BaybayinCharacterSO> characters = new List<BaybayinCharacterSO>();
+        List<Level1TutorialStepSO> steps = new List<Level1TutorialStepSO>();
         for (int i = 0; i < sequence.units.Length; i++)
         {
             BaybayinCharacterSO targetCharacter = null;
@@ -47,6 +48,9 @@ public class ChallengeSequenceValidatorTests
                 targetCharacter = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
                 targetCharacter.characterID = "CHAR-" + i;
                 characters.Add(targetCharacter);
+                Level1TutorialStepSO step = ScriptableObject.CreateInstance<Level1TutorialStepSO>();
+                step.targetCharacter = targetCharacter;
+                steps.Add(step);
             }
             sequence.units[i] = new ChallengeUnitDefinition
             {
@@ -54,6 +58,7 @@ public class ChallengeSequenceValidatorTests
                 mode = (ChallengeMode)(i % 5),
                 timerSeconds = (i % 5) == (int)ChallengeMode.TimedMemory ? 30f : 0f,
                 tokens = new[] { new ChallengeTokenDefinition { tokenId = "token-" + i, occurrenceId = "occurrence-" + i, targetCharacter = targetCharacter } },
+                guidedStep = (i % 5) == (int)ChallengeMode.GuidedTracing ? steps[steps.Count - 1] : null,
                 slots = new[] { new ChallengeSlotDefinition { slotId = "slot-" + i, expectedOccurrenceId = "occurrence-" + i } },
                 candidateOccurrenceIds = new[] { "occurrence-" + i }
             };
@@ -64,6 +69,8 @@ public class ChallengeSequenceValidatorTests
         Assert.That(result.IsValid, Is.True, string.Join("; ", result.Errors));
         foreach (BaybayinCharacterSO character in characters)
             Object.DestroyImmediate(character);
+        foreach (Level1TutorialStepSO step in steps)
+            Object.DestroyImmediate(step);
         Object.DestroyImmediate(sequence);
     }
 
@@ -107,6 +114,79 @@ public class ChallengeSequenceValidatorTests
         Object.DestroyImmediate(step);
         Object.DestroyImmediate(ba);
         Object.DestroyImmediate(ou);
+        Object.DestroyImmediate(sequence);
+    }
+
+    [Test]
+    public void TimedMemoryRequiresRecallSlotsAndSelectableCandidates()
+    {
+        ChallengeSequenceSO sequence = ScriptableObject.CreateInstance<ChallengeSequenceSO>();
+        sequence.units = new[]
+        {
+            new ChallengeUnitDefinition
+            {
+                unitId = "timed-memory",
+                mode = ChallengeMode.TimedMemory,
+                timerSeconds = 10f,
+                tokens = new[] { new ChallengeTokenDefinition { tokenId = "memory", occurrenceId = "memory" } }
+            }
+        };
+
+        ChallengeValidationResult result = ChallengeSequenceValidator.Validate(sequence);
+
+        Assert.That(result.IsValid, Is.False);
+        Assert.That(result.Errors, Has.Some.Contains("Timed memory unit"));
+        Object.DestroyImmediate(sequence);
+    }
+
+    [Test]
+    public void DuplicateExpectedSlotOccurrencesAreRejected()
+    {
+        ChallengeSequenceSO sequence = ScriptableObject.CreateInstance<ChallengeSequenceSO>();
+        sequence.units = new[]
+        {
+            new ChallengeUnitDefinition
+            {
+                unitId = "duplicate-slots",
+                mode = ChallengeMode.SentenceRestoration,
+                tokens = new[] { new ChallengeTokenDefinition { tokenId = "word", occurrenceId = "word" } },
+                slots = new[]
+                {
+                    new ChallengeSlotDefinition { slotId = "slot-1", expectedOccurrenceId = "word" },
+                    new ChallengeSlotDefinition { slotId = "slot-2", expectedOccurrenceId = "word" }
+                },
+                candidateOccurrenceIds = new[] { "word" }
+            }
+        };
+
+        ChallengeValidationResult result = ChallengeSequenceValidator.Validate(sequence);
+
+        Assert.That(result.IsValid, Is.False);
+        Assert.That(result.Errors, Has.Some.Contains("duplicate expected occurrenceId"));
+        Object.DestroyImmediate(sequence);
+    }
+
+    [Test]
+    public void GuidedTracingRequiresGuideStep()
+    {
+        ChallengeSequenceSO sequence = ScriptableObject.CreateInstance<ChallengeSequenceSO>();
+        BaybayinCharacterSO character = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+        character.characterID = "BA";
+        sequence.units = new[]
+        {
+            new ChallengeUnitDefinition
+            {
+                unitId = "unguided",
+                mode = ChallengeMode.GuidedTracing,
+                tokens = new[] { new ChallengeTokenDefinition { tokenId = "ba", occurrenceId = "ba", targetCharacter = character } }
+            }
+        };
+
+        ChallengeValidationResult result = ChallengeSequenceValidator.Validate(sequence);
+
+        Assert.That(result.IsValid, Is.False);
+        Assert.That(result.Errors, Has.Some.Contains("guidedStep"));
+        Object.DestroyImmediate(character);
         Object.DestroyImmediate(sequence);
     }
 

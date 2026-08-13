@@ -47,6 +47,7 @@ public class ChallengeUnitDefinition
     public float timerSeconds;
     public bool allowHint = true;
     public bool checkpointOnSuccess = true;
+    public float memoryRevealSeconds = 1f;
     public int maxErrors = 3;
     public int heartPenalty = 1;
 }
@@ -108,6 +109,8 @@ public static class ChallengeSequenceValidator
                 result.Errors.Add($"Unit '{unit.unitId}' cannot have a negative heart penalty.");
             if (unit.mode == ChallengeMode.TimedMemory && unit.timerSeconds <= 0f)
                 result.Errors.Add($"Timed unit '{unit.unitId}' must have a positive timerSeconds value.");
+            if (unit.mode == ChallengeMode.TimedMemory && unit.memoryRevealSeconds < 0f)
+                result.Errors.Add($"Timed memory unit '{unit.unitId}' cannot have a negative memoryRevealSeconds value.");
             if (unit.mode != ChallengeMode.TimedMemory && unit.timerSeconds < 0f)
                 result.Errors.Add($"Unit '{unit.unitId}' cannot have a negative timerSeconds value.");
 
@@ -139,6 +142,8 @@ public static class ChallengeSequenceValidator
 
             if (unit.mode == ChallengeMode.GuidedTracing)
             {
+                if (unit.guidedStep == null)
+                    result.Errors.Add($"Guided unit '{unit.unitId}' must define a guidedStep.");
                 foreach (ChallengeTokenDefinition token in unit.tokens ?? Array.Empty<ChallengeTokenDefinition>())
                 {
                     if (token != null && (token.targetCharacter == null || string.IsNullOrWhiteSpace(token.targetCharacter.characterID)))
@@ -147,6 +152,7 @@ public static class ChallengeSequenceValidator
             }
 
             HashSet<string> unitSlotIds = new HashSet<string>();
+            HashSet<string> unitExpectedOccurrenceIds = new HashSet<string>();
             foreach (ChallengeSlotDefinition slot in unit.slots ?? Array.Empty<ChallengeSlotDefinition>())
             {
                 if (slot == null)
@@ -165,6 +171,8 @@ public static class ChallengeSequenceValidator
                     result.Errors.Add($"Slot '{slot.slotId}' is missing expectedOccurrenceId.");
                 else if (!unitOccurrenceIds.Contains(slot.expectedOccurrenceId))
                     result.Errors.Add($"Slot '{slot.slotId}' references unknown occurrenceId '{slot.expectedOccurrenceId}'.");
+                else if (!unitExpectedOccurrenceIds.Add(slot.expectedOccurrenceId))
+                    result.Errors.Add($"Unit '{unit.unitId}' contains duplicate expected occurrenceId '{slot.expectedOccurrenceId}' across slots.");
             }
 
             foreach (string candidateOccurrenceId in unit.candidateOccurrenceIds ?? Array.Empty<string>())
@@ -180,7 +188,7 @@ public static class ChallengeSequenceValidator
                     result.Errors.Add($"Unit '{unit.unitId}' contains duplicate candidate occurrenceId '{candidateOccurrenceId}'.");
             }
 
-            if (unit.mode == ChallengeMode.WordPlacement || unit.mode == ChallengeMode.SentenceRestoration || unit.mode == ChallengeMode.ParagraphRestoration)
+            if (unit.mode == ChallengeMode.WordPlacement || unit.mode == ChallengeMode.SentenceRestoration || unit.mode == ChallengeMode.ParagraphRestoration || unit.mode == ChallengeMode.TimedMemory)
             {
                 foreach (ChallengeSlotDefinition slot in unit.slots ?? Array.Empty<ChallengeSlotDefinition>())
                 {
@@ -191,6 +199,8 @@ public static class ChallengeSequenceValidator
 
             if ((unit.mode == ChallengeMode.WordPlacement || unit.mode == ChallengeMode.SentenceRestoration || unit.mode == ChallengeMode.ParagraphRestoration) && (unit.slots == null || unit.slots.Length == 0))
                 result.Errors.Add($"Placement/restoration unit '{unit.unitId}' must define slots.");
+            if (unit.mode == ChallengeMode.TimedMemory && (unit.slots == null || unit.slots.Length == 0))
+                result.Errors.Add($"Timed memory unit '{unit.unitId}' must define recall slots.");
             if (unit.mode == ChallengeMode.GuidedTracing && (unit.tokens == null || unit.tokens.Length == 0))
                 result.Errors.Add($"Guided tracing unit '{unit.unitId}' must define tokens.");
         }

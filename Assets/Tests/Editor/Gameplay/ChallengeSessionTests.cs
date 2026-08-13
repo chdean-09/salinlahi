@@ -6,11 +6,14 @@ public class ChallengeSessionTests
 {
     private ChallengeSequenceSO _sequence;
     private BaybayinCharacterSO _baCharacter;
+    private Level1TutorialStepSO _baStep;
 
     [SetUp]
     public void SetUp()
     {
         _baCharacter = Character("BA");
+        _baStep = ScriptableObject.CreateInstance<Level1TutorialStepSO>();
+        _baStep.targetCharacter = _baCharacter;
         _sequence = ScriptableObject.CreateInstance<ChallengeSequenceSO>();
         _sequence.sequenceId = "prototype";
         _sequence.units = new[]
@@ -19,6 +22,7 @@ public class ChallengeSessionTests
             {
                 unitId = "trace-ba",
                 mode = ChallengeMode.GuidedTracing,
+                guidedStep = _baStep,
                 prompt = "Trace BA",
                 tokens = new[] { Token("ba-token-1", "ba-1", _baCharacter) },
                 maxErrors = 3,
@@ -43,6 +47,7 @@ public class ChallengeSessionTests
     {
         Object.DestroyImmediate(_sequence);
         Object.DestroyImmediate(_baCharacter);
+        Object.DestroyImmediate(_baStep);
     }
 
     [Test]
@@ -55,6 +60,23 @@ public class ChallengeSessionTests
         session.SubmitTrace("BA");
         Assert.That(session.CurrentUnitIndex, Is.EqualTo(1));
         session.SubmitRestoration(new[] { "word-1", "word-2" });
+
+        Assert.That(session.State, Is.EqualTo(ChallengeSessionState.Completed));
+        Assert.That(session.CommittedOccurrenceIds, Is.EquivalentTo(new[] { "ba-1", "word-1", "word-2" }));
+    }
+
+    [Test]
+    public void PlacementSubmissionAdvancesSentenceSlots()
+    {
+        ChallengeSession session = new ChallengeSession(_sequence);
+        session.Enter();
+        session.SubmitTrace("BA");
+
+        session.SubmitPlacement("slot-1", "word-1");
+        Assert.That(session.CurrentSlotIndex, Is.EqualTo(1));
+        Assert.That(session.State, Is.EqualTo(ChallengeSessionState.Active));
+
+        session.SubmitPlacement("slot-2", "word-2");
 
         Assert.That(session.State, Is.EqualTo(ChallengeSessionState.Completed));
         Assert.That(session.CommittedOccurrenceIds, Is.EquivalentTo(new[] { "ba-1", "word-1", "word-2" }));
@@ -90,6 +112,43 @@ public class ChallengeSessionTests
     }
 
     [Test]
+    public void ZeroHeartsFailsAfterPenaltyWithoutResettingProgress()
+    {
+        ChallengeSession session = new ChallengeSession(_sequence, startingHearts: 1);
+        session.Enter();
+
+        session.SubmitTrace("x");
+        session.SubmitTrace("y");
+        session.SubmitTrace("z");
+
+        Assert.That(session.State, Is.EqualTo(ChallengeSessionState.Failed));
+        Assert.That(session.HeartsRemaining, Is.Zero);
+        Assert.That(session.HeartPenalties, Is.EqualTo(1));
+        Assert.That(session.CurrentSlotIndex, Is.Zero);
+        Assert.That(session.CommittedOccurrenceIds, Is.Empty);
+    }
+
+    [Test]
+    public void SessionEventsExposeRetryPenaltyAndCheckpointTransitions()
+    {
+        ChallengeSession session = new ChallengeSession(_sequence);
+        List<ChallengeSessionEvent> events = new List<ChallengeSessionEvent>();
+        session.Changed += changed => events.Add(changed.LastEvent);
+        session.Enter();
+        events.Clear();
+
+        session.SubmitTrace("wrong");
+        Assert.That(events, Has.Some.EqualTo(ChallengeSessionEvent.SupportiveRetry));
+
+        events.Clear();
+        session.SubmitTrace("wrong");
+        session.SubmitTrace("wrong-again");
+
+        Assert.That(events, Has.Some.EqualTo(ChallengeSessionEvent.PenaltyApplied));
+        Assert.That(events, Has.Some.EqualTo(ChallengeSessionEvent.CheckpointReset));
+    }
+
+    [Test]
     public void HintChangesClueWithoutCountingAsError()
     {
         ChallengeSession session = new ChallengeSession(_sequence);
@@ -100,6 +159,7 @@ public class ChallengeSessionTests
         Assert.That(session.HintsUsed, Is.EqualTo(1));
         Assert.That(session.Errors, Is.Zero);
         Assert.That(session.CluePolicy, Is.EqualTo(ChallengeCluePolicy.Reduced));
+        Assert.That(session.HintOccurrenceId, Is.EqualTo("ba-1"));
     }
 
     [Test]
@@ -119,6 +179,20 @@ public class ChallengeSessionTests
     }
 
     [Test]
+    public void RetryWhilePausedDoesNotResumeSession()
+    {
+        _sequence.units[0].timerSeconds = 10f;
+        ChallengeSession session = new ChallengeSession(_sequence);
+        session.Enter();
+        session.Tick(2f);
+        session.Pause();
+        session.Retry();
+
+        Assert.That(session.State, Is.EqualTo(ChallengeSessionState.Paused));
+        Assert.That(session.RemainingTime, Is.EqualTo(8f).Within(0.01f));
+    }
+
+    [Test]
     public void TimerExpiryPenalizesAndRestoresCheckpoint()
     {
         _sequence.units[0].timerSeconds = 1f;
@@ -129,6 +203,48 @@ public class ChallengeSessionTests
         Assert.That(session.HeartPenalties, Is.EqualTo(1));
         Assert.That(session.State, Is.EqualTo(ChallengeSessionState.Active));
         Assert.That(session.RemainingTime, Is.EqualTo(1f).Within(0.01f));
+    }
+
+    [Test]
+    public void TimedMemoryRequiresRecallAfterRevealBeforeAcceptingPlacement()
+    {
+        _sequence.units = new[]
+        {
+            new ChallengeUnitDefinition
+            {
+                unitId = "timed-memory",
+                mode = ChallengeMode.TimedMemory,
+                prompt = "Remember the order",
+                memoryRevealSeconds = 1f,
+                timerSeconds = 5f,
+                tokens = new[]
+                {
+                    Token("memory-one", "memory-one"),
+                    Token("memory-two", "memory-two")
+                },
+                slots = new[]
+                {
+                    Slot("memory-slot-1", "memory-one"),
+                    Slot("memory-slot-2", "memory-two")
+                },
+                candidateOccurrenceIds = new[] { "memory-two", "memory-one" }
+            }
+        };
+
+        ChallengeSession session = new ChallengeSession(_sequence);
+        session.Enter();
+
+        Assert.That(session.IsMemoryRevealActive, Is.True);
+        session.SubmitPlacement("memory-slot-1", "memory-one");
+        Assert.That(session.CurrentSlotIndex, Is.Zero);
+
+        session.Tick(1f);
+
+        Assert.That(session.IsMemoryRevealActive, Is.False);
+        session.SubmitPlacement("memory-slot-1", "memory-one");
+        session.SubmitPlacement("memory-slot-2", "memory-two");
+
+        Assert.That(session.State, Is.EqualTo(ChallengeSessionState.Completed));
     }
 
     [Test]

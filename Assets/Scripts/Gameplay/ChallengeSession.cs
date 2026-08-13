@@ -19,6 +19,35 @@ public enum ChallengeSessionState
     Failed
 }
 
+public enum ChallengeSessionEvent
+{
+    None,
+    Entry,
+    Entered,
+    UnitStarted,
+    TraceAccepted,
+    PlacementAccepted,
+    RestorationAccepted,
+    SupportiveRetry,
+    RetryOpened,
+    HintShown,
+    HintApplied,
+    TimedOut,
+    PenaltyApplied,
+    CheckpointReset,
+    CheckpointReopened,
+    MemoryRevealStarted,
+    MemoryRevealTicked,
+    MemoryRecallStarted,
+    TimerTicked,
+    Paused,
+    Resumed,
+    UnitSucceeded,
+    Completed,
+    Exited,
+    Failed
+}
+
 public sealed class ChallengeSession
 {
     private readonly ChallengeSequenceSO _sequence;
@@ -28,13 +57,15 @@ public sealed class ChallengeSession
     private List<string> _checkpointCommitted = new List<string>();
     private int _checkpointSlotIndex;
     private float _checkpointTime;
-    private ChallengeCluePolicy _checkpointCluePolicy;
+    private float _checkpointMemoryReveal;
     private int _currentUnitIndex;
     private int _currentSlotIndex;
     private int _errors;
     private int _hintsUsed;
     private float _remainingTime;
+    private float _memoryRevealRemaining;
     private ChallengeCluePolicy _cluePolicy;
+    private string _hintOccurrenceId;
 
     public ChallengeSession(ChallengeSequenceSO sequence, int startingHearts = 3)
     {
@@ -44,6 +75,7 @@ public sealed class ChallengeSession
     }
 
     public ChallengeSessionState State { get; private set; }
+    public ChallengeSessionEvent LastEvent { get; private set; }
     public int CurrentUnitIndex => _currentUnitIndex;
     public int CurrentSlotIndex => _currentSlotIndex;
     public int Errors => _errors;
@@ -53,7 +85,14 @@ public sealed class ChallengeSession
     public float RemainingTime => _remainingTime;
     public ChallengeCluePolicy CluePolicy => _cluePolicy;
     public ChallengeUnitDefinition CurrentUnitDefinition => _sequence != null && _sequence.units != null && _currentUnitIndex >= 0 && _currentUnitIndex < _sequence.units.Length ? CurrentUnit : null;
-    public int RequiredSlotCount => CurrentUnit == null ? 0 : CurrentUnit.mode == ChallengeMode.GuidedTracing ? CurrentUnit.tokens.Length : CurrentUnit.slots.Length;
+    public int RequiredSlotCount => CurrentUnit == null
+        ? 0
+        : CurrentUnit.mode == ChallengeMode.GuidedTracing
+            ? (CurrentUnit.tokens == null ? 0 : CurrentUnit.tokens.Length)
+            : (CurrentUnit.slots == null ? 0 : CurrentUnit.slots.Length);
+    public bool IsMemoryRevealActive => CurrentUnit != null && CurrentUnit.mode == ChallengeMode.TimedMemory && _memoryRevealRemaining > 0f;
+    public float MemoryRevealRemaining => _memoryRevealRemaining;
+    public string HintOccurrenceId => _hintOccurrenceId;
     public IReadOnlyCollection<string> CommittedOccurrenceIds => _committedOccurrenceIds.AsReadOnly();
     public IReadOnlyCollection<string> CurrentProgress => _currentProgress;
     public event Action<ChallengeSession> Changed;
@@ -66,23 +105,29 @@ public sealed class ChallengeSession
             return;
 
         State = ChallengeSessionState.Entry;
+        NotifyChanged(ChallengeSessionEvent.Entry);
         _currentUnitIndex = 0;
         _committedOccurrenceIds.Clear();
         OpenCurrentUnit();
         State = ChallengeSessionState.Active;
-        NotifyChanged();
+        NotifyChanged(ChallengeSessionEvent.Entered);
+        if (IsMemoryRevealActive)
+            NotifyChanged(ChallengeSessionEvent.MemoryRevealStarted);
     }
 
     public void SubmitTrace(string characterId)
     {
         if (!CanSubmit() || CurrentUnit.mode != ChallengeMode.GuidedTracing)
             return;
-        ChallengeTokenDefinition token = CurrentUnit.tokens[Math.Min(_currentSlotIndex, CurrentUnit.tokens.Length - 1)];
+        if (CurrentUnit.tokens == null || _currentSlotIndex >= CurrentUnit.tokens.Length)
+            return;
+
+        ChallengeTokenDefinition token = CurrentUnit.tokens[_currentSlotIndex];
         if (token.targetCharacter != null && string.Equals(token.targetCharacter.characterID, characterId, StringComparison.OrdinalIgnoreCase))
         {
             _currentProgress.Add(token.occurrenceId);
             _currentSlotIndex++;
-            CompleteUnitIfReady();
+            CompleteUnitIfReady(ChallengeSessionEvent.TraceAccepted);
         }
         else
         {
@@ -92,9 +137,14 @@ public sealed class ChallengeSession
 
     public void SubmitPlacement(string slotId, string occurrenceId)
     {
-        if (!CanSubmit() || (CurrentUnit.mode != ChallengeMode.WordPlacement && CurrentUnit.mode != ChallengeMode.SentenceRestoration && CurrentUnit.mode != ChallengeMode.ParagraphRestoration))
+        if (!CanSubmit() || (CurrentUnit.mode != ChallengeMode.WordPlacement
+            && CurrentUnit.mode != ChallengeMode.SentenceRestoration
+            && CurrentUnit.mode != ChallengeMode.ParagraphRestoration
+            && CurrentUnit.mode != ChallengeMode.TimedMemory))
             return;
-        if (_currentSlotIndex >= CurrentUnit.slots.Length)
+        if (CurrentUnit.mode == ChallengeMode.TimedMemory && IsMemoryRevealActive)
+            return;
+        if (CurrentUnit.slots == null || _currentSlotIndex >= CurrentUnit.slots.Length)
             return;
 
         ChallengeSlotDefinition slot = CurrentUnit.slots[_currentSlotIndex];
@@ -102,7 +152,7 @@ public sealed class ChallengeSession
         {
             _currentProgress.Add(occurrenceId);
             _currentSlotIndex++;
-            CompleteUnitIfReady();
+            CompleteUnitIfReady(ChallengeSessionEvent.PlacementAccepted);
         }
         else
         {
@@ -114,13 +164,16 @@ public sealed class ChallengeSession
     {
         if (!CanSubmit() || (CurrentUnit.mode != ChallengeMode.SentenceRestoration && CurrentUnit.mode != ChallengeMode.ParagraphRestoration))
             return;
+        if (CurrentUnit.slots == null)
+            return;
+
         string[] expected = CurrentUnit.slots.Select(slot => slot.expectedOccurrenceId).ToArray();
         if (occurrenceIds != null && expected.SequenceEqual(occurrenceIds))
         {
             foreach (string occurrenceId in expected)
                 _currentProgress.Add(occurrenceId);
             _currentSlotIndex = expected.Length;
-            CompleteUnitIfReady();
+            CompleteUnitIfReady(ChallengeSessionEvent.RestorationAccepted);
         }
         else
         {
@@ -132,26 +185,47 @@ public sealed class ChallengeSession
     {
         if (!CanSubmit() || !CurrentUnit.allowHint)
             return;
+        if (CurrentUnit.mode == ChallengeMode.GuidedTracing
+            && (CurrentUnit.tokens == null || _currentSlotIndex >= CurrentUnit.tokens.Length))
+            return;
+        if (CurrentUnit.mode != ChallengeMode.GuidedTracing
+            && (CurrentUnit.slots == null || _currentSlotIndex >= CurrentUnit.slots.Length))
+            return;
         _hintsUsed++;
+        _hintOccurrenceId = CurrentUnit.mode == ChallengeMode.GuidedTracing
+            ? CurrentUnit.tokens[_currentSlotIndex].occurrenceId
+            : CurrentUnit.slots[_currentSlotIndex].expectedOccurrenceId;
         _cluePolicy = _cluePolicy == ChallengeCluePolicy.Full ? ChallengeCluePolicy.Reduced : ChallengeCluePolicy.Minimal;
         State = ChallengeSessionState.HintShown;
+        NotifyChanged(ChallengeSessionEvent.HintShown);
         State = ChallengeSessionState.Active;
-        NotifyChanged();
+        NotifyChanged(ChallengeSessionEvent.HintApplied);
     }
 
     public void Tick(float deltaSeconds)
     {
         if (State != ChallengeSessionState.Active || CurrentUnit.timerSeconds <= 0f || deltaSeconds <= 0f)
             return;
+
+        if (IsMemoryRevealActive)
+        {
+            _memoryRevealRemaining = Math.Max(0f, _memoryRevealRemaining - deltaSeconds);
+            NotifyChanged(_memoryRevealRemaining <= 0f
+                ? ChallengeSessionEvent.MemoryRecallStarted
+                : ChallengeSessionEvent.MemoryRevealTicked);
+            return;
+        }
+
         _remainingTime = Math.Max(0f, _remainingTime - deltaSeconds);
         if (_remainingTime <= 0f)
         {
             State = ChallengeSessionState.TimedOut;
+            NotifyChanged(ChallengeSessionEvent.TimedOut);
             ApplyPenalty();
         }
         else
         {
-            NotifyChanged();
+            NotifyChanged(ChallengeSessionEvent.TimerTicked);
         }
     }
 
@@ -160,7 +234,7 @@ public sealed class ChallengeSession
         if (State == ChallengeSessionState.Active)
         {
             State = ChallengeSessionState.Paused;
-            NotifyChanged();
+            NotifyChanged(ChallengeSessionEvent.Paused);
         }
     }
 
@@ -169,13 +243,13 @@ public sealed class ChallengeSession
         if (State == ChallengeSessionState.Paused)
         {
             State = ChallengeSessionState.Active;
-            NotifyChanged();
+            NotifyChanged(ChallengeSessionEvent.Resumed);
         }
     }
 
     public void Retry()
     {
-        if (State == ChallengeSessionState.Active || State == ChallengeSessionState.Paused)
+        if (State == ChallengeSessionState.Active)
             ResetToCheckpoint();
     }
 
@@ -190,10 +264,13 @@ public sealed class ChallengeSession
         _currentProgress.Clear();
         _currentSlotIndex = _checkpointSlotIndex;
         _remainingTime = _checkpointTime;
+        _memoryRevealRemaining = _checkpointMemoryReveal;
         _cluePolicy = ChallengeCluePolicy.Full;
+        _hintOccurrenceId = null;
         _errors = 0;
+        NotifyChanged(ChallengeSessionEvent.CheckpointReset);
         State = ChallengeSessionState.Active;
-        NotifyChanged();
+        NotifyChanged(ChallengeSessionEvent.CheckpointReopened);
     }
 
     public void Exit()
@@ -203,7 +280,7 @@ public sealed class ChallengeSession
         _currentProgress.Clear();
         _errors = 0;
         State = ChallengeSessionState.Exited;
-        NotifyChanged();
+        NotifyChanged(ChallengeSessionEvent.Exited);
     }
 
     private ChallengeUnitDefinition CurrentUnit => _sequence.units[_currentUnitIndex];
@@ -213,14 +290,19 @@ public sealed class ChallengeSession
         return State == ChallengeSessionState.Active && CurrentUnit != null;
     }
 
-    private void OpenCurrentUnit()
+    private void OpenCurrentUnit(bool saveCheckpoint = true)
     {
         _currentSlotIndex = 0;
         _currentProgress.Clear();
         _errors = 0;
         _cluePolicy = CurrentUnit.cluePolicy;
         _remainingTime = CurrentUnit.timerSeconds;
-        SaveCheckpoint();
+        _memoryRevealRemaining = CurrentUnit.mode == ChallengeMode.TimedMemory
+            ? Math.Max(0f, CurrentUnit.memoryRevealSeconds)
+            : 0f;
+        _hintOccurrenceId = null;
+        if (saveCheckpoint)
+            SaveCheckpoint();
     }
 
     private void SaveCheckpoint()
@@ -229,18 +311,19 @@ public sealed class ChallengeSession
         _checkpointCommitted = new List<string>(_committedOccurrenceIds);
         _checkpointSlotIndex = 0;
         _checkpointTime = CurrentUnit.timerSeconds;
-        _checkpointCluePolicy = CurrentUnit.cluePolicy;
+        _checkpointMemoryReveal = _memoryRevealRemaining;
     }
 
-    private void CompleteUnitIfReady()
+    private void CompleteUnitIfReady(ChallengeSessionEvent acceptedEvent)
     {
-        int required = CurrentUnit.mode == ChallengeMode.GuidedTracing ? CurrentUnit.tokens.Length : CurrentUnit.slots.Length;
+        int required = RequiredSlotCount;
         if (_currentSlotIndex < required)
         {
-            NotifyChanged();
+            NotifyChanged(acceptedEvent);
             return;
         }
 
+        bool createCheckpointForNextUnit = CurrentUnit.checkpointOnSuccess;
         State = ChallengeSessionState.Success;
         foreach (string occurrenceId in _currentProgress)
         {
@@ -248,17 +331,18 @@ public sealed class ChallengeSession
                 _committedOccurrenceIds.Add(occurrenceId);
         }
         _currentProgress.Clear();
+        NotifyChanged(ChallengeSessionEvent.UnitSucceeded);
         _currentUnitIndex++;
         if (_currentUnitIndex >= _sequence.units.Length)
         {
             State = ChallengeSessionState.Completed;
-            NotifyChanged();
+            NotifyChanged(ChallengeSessionEvent.Completed);
             return;
         }
 
-        OpenCurrentUnit();
+        OpenCurrentUnit(createCheckpointForNextUnit);
         State = ChallengeSessionState.Active;
-        NotifyChanged();
+        NotifyChanged(ChallengeSessionEvent.UnitStarted);
     }
 
     private void RegisterError()
@@ -271,8 +355,9 @@ public sealed class ChallengeSession
             return;
         }
         State = ChallengeSessionState.SupportiveRetry;
+        NotifyChanged(ChallengeSessionEvent.SupportiveRetry);
         State = ChallengeSessionState.Active;
-        NotifyChanged();
+        NotifyChanged(ChallengeSessionEvent.RetryOpened);
     }
 
     private void ApplyPenalty()
@@ -282,14 +367,16 @@ public sealed class ChallengeSession
         if (HeartsRemaining == 0)
         {
             State = ChallengeSessionState.Failed;
-            NotifyChanged();
+            NotifyChanged(ChallengeSessionEvent.Failed);
             return;
         }
+        NotifyChanged(ChallengeSessionEvent.PenaltyApplied);
         ResetToCheckpoint();
     }
 
-    private void NotifyChanged()
+    private void NotifyChanged(ChallengeSessionEvent sessionEvent)
     {
+        LastEvent = sessionEvent;
         Changed?.Invoke(this);
     }
 }
