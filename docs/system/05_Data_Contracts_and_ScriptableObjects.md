@@ -1,7 +1,7 @@
 # 05 — Data Contracts and ScriptableObjects
 **Project:** Salinlahi
-**Version:** 2.3
-**Date:** 2026-06-03
+**Version:** 2.7
+**Date:** 2026-08-13
 **Owner:** Chad Andrada (Product Owner / Designer)
 
 ---
@@ -14,6 +14,52 @@ All game content is defined in ScriptableObject assets. Level designers can crea
 [EVIDENCE: docs/capstone/Salinlahi.md, §3.5.1 — "data assets rather than in code"]
 
 ---
+
+## 1.1 Revised campaign frozen core (SALIN-170)
+
+`CampaignConfigSO` is the authoritative root for the revised campaign. It owns one
+`CampaignIdentityManifest`, one `CampaignTuning`, the ordered canonical symbol catalog,
+and the ordered era references. Its identity envelope is fixed at
+`campaign.revised-v1`, content schema `1`, save schema `1`, source schemas `0` and `1`,
+and source workbook SHA-256
+`33f7355fce8c0154650bf18589879e75a6da51538d1b798769242bebe47c8e83`.
+`CampaignTuning.defaultShrineHearts` defaults to `3`.
+
+The canonical campaign contains `era.ugat`, `era.ugnayan`, and `era.pamana`, with five
+levels per era. Level identity is stable (`level.<era>.<local-order>`); `levelNumber`
+remains global presentation order and is not revised campaign identity. A level owns
+exactly two inline `FocusWordDefinition` records, ordered decomposition references,
+cumulative symbol pool data, learning/practice/mastery requirements, clue and defense
+rules, context media, rewards, and a final restoration value.
+
+`BaybayinCharacterSO.stableId` identifies one visual symbol. Contextual spoken values
+are stored in `spokenValues` and referenced by `SymbolValueReference`; `symbol.dara`
+therefore carries both `value.da` and `value.ra` rather than becoming two learned
+visual symbols. Stable lookup methods fail when an ID is unknown or duplicated and do
+not fall back to display text, filenames, list position, or legacy aliases.
+
+Each canonical symbol declares a canonical `firstIntroductionLevelId`. The validator
+derives every level's expected cumulative pool from that metadata instead of symbol-list
+position, then requires focus decompositions and learning/practice/mastery requirements
+to reference symbols already present in the current pool. A `SymbolValueReference` must
+point to the canonical `BaybayinCharacterSO` configured in the campaign catalog; a
+separate asset with the same stable ID is an orphan reference and remains invalid. In
+the finale's ordered learning requirements, the first PA entry must be instruction
+before PA appears in later learning entries or practice, mastery, and focus content.
+
+`CampaignConfigValidator` is a pure, non-mutating traversal that reports structured
+issue codes and canonical paths. `Assets/Editor/CampaignConfigValidationMenu.cs` is
+the editor-only adapter and does not repair or save assets. SALIN-170 exposes
+compatibility metadata but performs no save I/O or migration; save conversion remains
+the SALIN-171 boundary. The complete production three-era/15-level asset set remains
+SALIN-172 authoring work.
+
+For a revised level, `challengePrototypeEnabled` is the authoring-validation gate. When
+false, `challengeSequence` may be null or may contain dormant staged authoring and
+`CampaignConfigValidator` does not inspect it. When true, `challengeSequence` is required
+and must pass `ChallengeSequenceValidator`. Missing and invalid sequences fail with
+`CHALLENGE_SEQUENCE_MISSING` and `CHALLENGE_SEQUENCE_INVALID` at the canonical level
+path. SALIN-168 remains the owner of internal sequence rules and runtime behavior.
 
 ## 2. ScriptableObject Schemas
 
@@ -169,6 +215,8 @@ Defined at the bottom of `EnemyDataSO.cs`:
 | `allowedCharacters` | `List<BaybayinCharacterSO>` | Characters | YES | Master allowed-character list for this level. All `WaveDefinition.characters` entries must be a subset of this list. |
 | `allowedEnemyTypes` | `List<EnemyDataSO>` | Characters | YES | Master enemy-type roster for this level. All `WaveDefinition.enemyTypes` entries must be a subset of this list. |
 | `bossConfig` | `BossConfigSO` | Boss | NO | If assigned, this level is a boss encounter. The level is treated as a boss level whenever this reference is non-null. |
+| `challengePrototypeEnabled` | `bool` | Challenge | NO | Enables SALIN-168 challenge-sequence authoring validation for this revised level. Default `false`; does not require challenge content when disabled. |
+| `challengeSequence` | `ChallengeSequenceSO` | Challenge | NO | Optional challenge sequence inspected only when `challengePrototypeEnabled` is `true`; dormant assigned content is allowed when disabled. |
 | `isAvailableInLite` | `bool` | Build Flags | YES | `true` for levels 1–3 (Salinlahi Lite). `false` for levels 4–15 (Full only). Default `true`. |
 
 **Validation Rules:**
@@ -177,6 +225,7 @@ Defined at the bottom of `EnemyDataSO.cs`:
 - When `bossConfig != null`, the level runs the boss encounter and the `waves` list is ignored (per the LevelConfigSO inspector tooltip and `WaveManager.RunAllWavesRoutine`).
 - For non-boss levels, the `waves` list must not be empty. An empty wave list causes immediate level-complete with no gameplay.
 - `chapterNumber` and `chapterName` are author-facing labels for HUD/level-select grouping.
+- When `challengePrototypeEnabled` is `false`, `challengeSequence` is ignored and may be null or dormant staged authoring. When enabled, the reference is required and must pass `ChallengeSequenceValidator`; campaign issues use `CHALLENGE_SEQUENCE_MISSING` or `CHALLENGE_SEQUENCE_INVALID`.
 
 [EVIDENCE: Assets/Scripts/Data/LevelConfigSO.cs]
 [EVIDENCE: docs/capstone/TDD.md, §5 Data Layer — LevelConfigSO row]
@@ -568,3 +617,23 @@ Stores the set of unlocked `BaybayinCharacterSO` character IDs as a pipe-separat
 Each `BaybayinCharacterSO.templateFileName` references a plain-text coordinate file in `Assets/Resources/Templates/`. Format is determined by the `TemplateLoader.cs` implementation. Expected content per `Salinlahi.md §3.3.3`: comma-separated 2D point coordinates representing the resampled $P point cloud for that character.
 
 Authoring rule: Template files must be validated against `RecognitionConfigSO.resamplePointCount` (default 32 points). A template with a different point count will cause a recognition error.
+
+### 4.4 CampaignSaveDocument
+
+Revised progression is stored as a versioned CampaignSaveDocument serialized with Unity JsonUtility.
+It contains campaign identity, content/save schema versions, a monotonic revision, committed
+transaction metadata, migration/recovery receipts, a lowercase SHA-256 integrity field, and
+stable-ID progress records. The clean v1 journey starts at level.ugat.01; legacy unlocks, stars,
+selected level, discoveries, tutorials, and endless evidence are archived but never mapped into
+revised progress.
+
+The file roles are fixed below Application.persistentDataPath: campaign-save.json (published
+primary), campaign-save.tmp (flushed candidate), campaign-save.bak (validated prior primary), and
+legacy-progress-v0.json (immutable typed archive). Integrity is computed over a clone with an empty
+checksum, encoded as UTF-8, and formatted as lowercase hexadecimal. A higher save schema is a
+blocking condition and is never reset or overwritten.
+
+The optional campaign root is the activation gate. Null retains legacy compatibility; an assigned
+root with validation errors blocks revised progress. Once revised mode is active, campaign
+consumers use CampaignProgressRepository and do not dual-write PlayerPrefs. Audio preferences
+remain outside this document and continue to use their existing PlayerPrefs keys.

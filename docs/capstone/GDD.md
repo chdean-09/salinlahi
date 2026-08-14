@@ -6,7 +6,8 @@ A 2D Pixel Art Defense Game
 
 **GAME DESIGN DOCUMENT**
 
-Version 1.0
+Version 1.1
+Date: August 13, 2026
 
 March 2026
 
@@ -356,6 +357,12 @@ On replay, no reveal cards appear — characters already registered are filtered
 - Character unlock progress is saved in `PlayerPrefs` under key `salinlahi.almanac.character_ids`. It persists across sessions and survives scene transitions.
 - Enemy discovery progress is tracked separately by the enemy discovery system (see `AlmanacEnemyDiscovery` seam in `03_Core_Systems.md`).
 - A full progress reset (via the debug/settings flow) clears all Almanac unlock state.
+
+When revised campaign content is enabled, the journey starts at Ugat Level 1 and progression is
+stored by stable content IDs. Existing journeys receive a one-time migration notice after their
+legacy evidence is archived; audio preferences are preserved. If local save candidates cannot be
+recovered, the game creates a clean journey, retains failed files for diagnostics, and shows a
+one-time recovery notice. A newer or incompatible save blocks the journey without resetting it.
 
 ## 5.5 Accessibility
 

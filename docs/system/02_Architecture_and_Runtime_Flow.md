@@ -1,7 +1,7 @@
 # 02 — Architecture and Runtime Flow
 **Project:** Salinlahi
-**Version:** 1.9
-**Date:** 2026-06-03
+**Version:** 2.0
+**Date:** 2026-08-13
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -257,3 +257,23 @@ SceneLoader.LoadXxx()
 ```
 
 [EVIDENCE: Assets/Scripts/Core/GameManager.cs, enum GameState; SetState()]
+
+## 7. Campaign Save Activation and Recovery
+
+BootstrapLoader initializes SaveManager after manager singletons awaken and before the Main Menu
+transition. A null CampaignConfigSO is an intentional compatibility gate: the runtime remains in
+Legacy mode and no revised JSON or archive file is read or written. An assigned campaign must
+pass CampaignConfigValidator; otherwise the manager enters RevisedBlocked and never falls back to
+legacy campaign keys.
+
+In RevisedReady mode, CampaignSaveService inspects the primary, temporary, and backup files,
+validating JSON integrity, identity, schema, transaction state, and content-aware progress before
+choosing the highest valid revision (primary wins ties). Unsupported schemas, wrong identity, and
+I/O failures block startup. Only unrecoverable corrupt evidence may be quarantined and replaced
+with a clean journey. Legacy PlayerPrefs are captured once in legacy-progress-v0.json; audio
+preference keys remain in PlayerPrefs.
+
+All revised progression mutations pass through CampaignProgressRepository. The commit boundary
+writes and flushes the temporary file, reads it back, optionally backs up a validated primary,
+promotes the temporary file, and validates the published primary before changing the in-memory
+snapshot. There is no dual-write period and no campaign persistence during paused combat.

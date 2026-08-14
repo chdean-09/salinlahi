@@ -1,0 +1,151 @@
+using System;
+using System.Collections.Generic;
+
+[Serializable]
+public sealed class CampaignSaveDocument
+{
+    public const int CurrentSaveSchemaVersion = 1;
+
+    public string fileFormat = "salinlahi-campaign-save";
+    public string campaignId;
+    public int contentSchemaVersion;
+    public int saveSchemaVersion = CurrentSaveSchemaVersion;
+    public string transactionId;
+    public long revision;
+    public string transactionState;
+    public string createdAtUtc;
+    public string updatedAtUtc;
+    public string integritySha256;
+    public CampaignMigrationReceipt migration = new CampaignMigrationReceipt();
+    public CampaignRecoveryReceipt recovery = new CampaignRecoveryReceipt();
+    public CampaignProgressData progress = new CampaignProgressData();
+}
+
+[Serializable]
+public sealed class CampaignProgressData
+{
+    public string activeLevelId;
+    public List<LevelProgressRecord> levelProgress = new List<LevelProgressRecord>();
+    public List<string> unlockedSymbolIds = new List<string>();
+    public List<string> discoveredEnemyIds = new List<string>();
+    public List<string> discoveredBossIds = new List<string>();
+    public List<string> unlockedMemoryIds = new List<string>();
+    public List<string> claimedRewardIds = new List<string>();
+    public List<TutorialProgressRecord> tutorialProgress = new List<TutorialProgressRecord>();
+    public bool endlessModeUnlocked;
+}
+
+[Serializable]
+public sealed class LevelProgressRecord
+{
+    public string levelId;
+    public bool unlocked;
+    public bool completed;
+    public int bestStars;
+}
+
+[Serializable]
+public sealed class TutorialProgressRecord
+{
+    public string levelId;
+    public bool seen;
+    public int lastCompletedBeatIndex = -1;
+}
+
+[Serializable]
+public sealed class CampaignMigrationReceipt
+{
+    public string migrationId;
+    public int sourceSaveSchemaVersion;
+    public CampaignMigrationState state = CampaignMigrationState.NotRequired;
+    public string legacyArchiveSha256;
+    public string completedAtUtc;
+    public bool noticeAcknowledged;
+}
+
+[Serializable]
+public sealed class CampaignRecoveryReceipt
+{
+    public string reasonCode;
+    public string occurredAtUtc;
+    public bool noticeAcknowledged;
+}
+
+public enum CampaignSaveFailureCode
+{
+    None,
+    Missing,
+    MalformedJson,
+    ChecksumMismatch,
+    UnsupportedSchema,
+    WrongIdentity,
+    IncompleteTransaction,
+    InvalidStructure,
+    InvalidCampaign,
+    IoFailure,
+}
+
+public enum CampaignMigrationState
+{
+    NotRequired,
+    Completed,
+}
+
+public enum CampaignSaveNoticeKind
+{
+    None,
+    Migration,
+    Recovery,
+    Blocking,
+}
+
+public static class CampaignSaveTransactionState
+{
+    public const string Committed = "committed";
+}
+
+[Serializable]
+public sealed class CampaignSaveNotice
+{
+    public CampaignSaveNoticeKind kind;
+    public string reasonCode;
+
+    public CampaignSaveNotice()
+    {
+        kind = CampaignSaveNoticeKind.None;
+    }
+
+    public CampaignSaveNotice(CampaignSaveNoticeKind kind, string reasonCode)
+    {
+        this.kind = kind;
+        this.reasonCode = reasonCode;
+    }
+}
+
+public sealed class CampaignSaveParseResult
+{
+    public bool Success { get; private set; }
+    public CampaignSaveDocument Document { get; private set; }
+    public CampaignSaveFailureCode FailureCode { get; private set; }
+    public string ErrorMessage { get; private set; }
+
+    public static CampaignSaveParseResult Succeeded(CampaignSaveDocument document)
+    {
+        return new CampaignSaveParseResult
+        {
+            Success = true,
+            Document = document,
+            FailureCode = CampaignSaveFailureCode.None,
+        };
+    }
+
+    public static CampaignSaveParseResult Failed(CampaignSaveFailureCode code, string message = null)
+    {
+        return new CampaignSaveParseResult
+        {
+            Success = false,
+            FailureCode = code,
+            ErrorMessage = message,
+        };
+    }
+}

@@ -1,6 +1,7 @@
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
 using Salinlahi.Debug.Sandbox;
 #endif
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -27,8 +28,6 @@ public class ProgressManager : Singleton<ProgressManager>
     private const string KeyPrefix = "salinlahi.progress.";
     private const int MaxStars = 3;
     private const int TotalLevels = 15;
-    private static bool UnlockAllLevelsForBossTesting => true;
-
     // Track which level we've processed to handle restarts properly
     private int _lastProcessedLevelId = -1;
 
@@ -42,6 +41,63 @@ public class ProgressManager : Singleton<ProgressManager>
     {
         base.Awake();
         DebugLogger.Log("ProgressManager: Initialized");
+    }
+
+    private bool UsesRevisedProgress => SaveManager.Instance != null &&
+        SaveManager.Instance.Mode == SaveManagerMode.RevisedReady && SaveManager.Instance.Repository != null;
+
+    private bool IsRevisedBlocked => SaveManager.Instance != null &&
+        SaveManager.Instance.Mode == SaveManagerMode.RevisedBlocked;
+
+    public int GetSelectedLevelNumber()
+    {
+        if (UsesRevisedProgress)
+        {
+            string selectedId = SaveManager.Instance.Repository.ActiveLevelId;
+            if (SaveManager.Instance.Campaign.TryGetLevel(selectedId, out LevelConfigSO selected))
+                return selected.levelNumber;
+            return 1;
+        }
+        return PlayerPrefs.GetInt(SelectedLevelKey, 1);
+    }
+
+    public string GetSelectedLevelId()
+    {
+        if (UsesRevisedProgress)
+            return SaveManager.Instance.Repository.ActiveLevelId;
+        return ResolveLegacyLevelId(PlayerPrefs.GetInt(SelectedLevelKey, 1));
+    }
+
+    public bool TrySetSelectedLevel(LevelConfigSO level)
+    {
+        if (level == null) return false;
+        if (UsesRevisedProgress)
+            return SaveManager.Instance.Repository.TrySetActiveLevel(level.stableId);
+        if (IsRevisedBlocked) return false;
+        PlayerPrefs.SetInt(SelectedLevelKey, level.levelNumber);
+        PlayerPrefs.Save();
+        return true;
+    }
+
+    public bool TrySetSelectedLevelNumber(int levelNumber)
+    {
+        if (UsesRevisedProgress)
+        {
+            if (!TryResolveRevisedLevel(levelNumber, out LevelConfigSO level)) return false;
+            return TrySetSelectedLevel(level);
+        }
+        if (IsRevisedBlocked || levelNumber < 1 || levelNumber > TotalLevels) return false;
+        PlayerPrefs.SetInt(SelectedLevelKey, levelNumber);
+        PlayerPrefs.Save();
+        return true;
+    }
+
+    public bool TryGetSelectedLevel(out LevelConfigSO level)
+    {
+        level = null;
+        if (UsesRevisedProgress)
+            return SaveManager.Instance.Campaign.TryGetLevel(GetSelectedLevelId(), out level);
+        return false;
     }
 
     private void OnEnable()
@@ -92,7 +148,7 @@ public class ProgressManager : Singleton<ProgressManager>
         if (scene.name.Contains("Gameplay") || scene.name.Contains("Game"))
         {
             // Read the selected level when entering gameplay
-            _currentPlayingLevelId = PlayerPrefs.GetInt(SelectedLevelKey, 1);
+            _currentPlayingLevelId = GetSelectedLevelNumber();
             DebugLogger.Log($"ProgressManager: Starting Level {_currentPlayingLevelId}");
         }
         else
@@ -119,7 +175,7 @@ public class ProgressManager : Singleton<ProgressManager>
             }
 
             // Update current level ID from PlayerPrefs (in case it changed)
-            int levelId = PlayerPrefs.GetInt(SelectedLevelKey, 1);
+            int levelId = GetSelectedLevelNumber();
             if (levelId != _currentPlayingLevelId)
             {
                 _currentPlayingLevelId = levelId;
@@ -141,7 +197,7 @@ public class ProgressManager : Singleton<ProgressManager>
 #endif
 
         // Get current level ID from tracking or PlayerPrefs
-        int currentLevelId = _currentPlayingLevelId > 0 ? _currentPlayingLevelId : PlayerPrefs.GetInt(SelectedLevelKey, 1);
+        int currentLevelId = _currentPlayingLevelId > 0 ? _currentPlayingLevelId : GetSelectedLevelNumber();
 
         // Validate level ID
         if (currentLevelId < 1 || currentLevelId > TotalLevels)
@@ -209,6 +265,15 @@ public class ProgressManager : Singleton<ProgressManager>
     /// <param name="stars">Star count (0-3), will be clamped</param>
     public void MarkLevelComplete(int levelID, int stars)
     {
+        if (UsesRevisedProgress)
+        {
+            if (TryResolveRevisedLevel(levelID, out LevelConfigSO revisedLevel))
+                SaveManager.Instance.Repository.TryCompleteLevel(revisedLevel.stableId, Mathf.Clamp(stars, 1, MaxStars));
+            return;
+        }
+        if (IsRevisedBlocked)
+            return;
+
         // Validate level ID
         if (levelID < 1 || levelID > TotalLevels)
         {
@@ -261,11 +326,9 @@ public class ProgressManager : Singleton<ProgressManager>
             return false;
         }
 
-        if (UnlockAllLevelsForBossTesting)
-        {
-            // TEMP: all levels unlocked for boss testing
-            return true;
-        }
+        if (UsesRevisedProgress)
+            return SaveManager.Instance.Repository.IsLevelUnlocked(GetRevisedLevelId(levelID));
+        if (IsRevisedBlocked) return false;
 
         // Level 1 is always unlocked by default
         if (levelID == 1)
@@ -297,6 +360,9 @@ public class ProgressManager : Singleton<ProgressManager>
             return 0;
         }
 
+        if (UsesRevisedProgress)
+            return SaveManager.Instance.Repository.GetBestStars(GetRevisedLevelId(levelID));
+        if (IsRevisedBlocked) return 0;
         return PlayerPrefs.GetInt(StarsKey(levelID), 0);
     }
 
@@ -319,6 +385,9 @@ public class ProgressManager : Singleton<ProgressManager>
     /// </summary>
     public bool IsEndlessModeUnlocked()
     {
+        if (UsesRevisedProgress)
+            return SaveManager.Instance.Repository.IsEndlessModeUnlocked;
+        if (IsRevisedBlocked) return false;
         return PlayerPrefs.GetInt(EndlessModeKey, 0) == 1;
     }
 
@@ -327,6 +396,12 @@ public class ProgressManager : Singleton<ProgressManager>
     /// </summary>
     public void UnlockEndlessMode()
     {
+        if (UsesRevisedProgress)
+        {
+            SaveManager.Instance.Repository.TryUnlockEndlessMode();
+            return;
+        }
+        if (IsRevisedBlocked) return;
         if (!IsEndlessModeUnlocked())
         {
             PlayerPrefs.SetInt(EndlessModeKey, 1);
@@ -340,6 +415,14 @@ public class ProgressManager : Singleton<ProgressManager>
     /// </summary>
     public void ClearAllProgress()
     {
+        if (UsesRevisedProgress)
+        {
+            SaveManager.Instance.Repository.TryResetJourney();
+            _lastProcessedLevelId = -1;
+            _currentPlayingLevelId = -1;
+            return;
+        }
+        if (IsRevisedBlocked) return;
         for (int i = 1; i <= TotalLevels; i++)
         {
             PlayerPrefs.DeleteKey(UnlockedKey(i));
@@ -371,6 +454,8 @@ public class ProgressManager : Singleton<ProgressManager>
     /// </summary>
     public void UnlockAllLevels()
     {
+        if (UsesRevisedProgress || IsRevisedBlocked)
+            return;
         for (int i = 1; i <= TotalLevels; i++)
         {
             PlayerPrefs.SetInt(UnlockedKey(i), 1);
@@ -389,6 +474,29 @@ public class ProgressManager : Singleton<ProgressManager>
 
     private static string UnlockedKey(int id) => $"{KeyPrefix}unlocked.{id}";
     private static string StarsKey(int id) => $"{KeyPrefix}stars.{id}";
+
+    private string GetRevisedLevelId(int levelNumber)
+    {
+        return TryResolveRevisedLevel(levelNumber, out LevelConfigSO level) ? level.stableId : string.Empty;
+    }
+
+    private bool TryResolveRevisedLevel(int levelNumber, out LevelConfigSO level)
+    {
+        level = null;
+        if (SaveManager.Instance?.Campaign == null)
+            return false;
+        IReadOnlyList<string> levelIds = ContentIdentity.RevisedLevelIds;
+        if (levelNumber < 1 || levelNumber > levelIds.Count)
+            return false;
+        return SaveManager.Instance.Campaign.TryGetLevel(levelIds[levelNumber - 1], out level);
+    }
+
+    private string ResolveLegacyLevelId(int levelNumber)
+    {
+        if (levelNumber < 1 || levelNumber > ContentIdentity.RevisedLevelIds.Count)
+            return ContentIdentity.RevisedLevelIds[0];
+        return ContentIdentity.RevisedLevelIds[levelNumber - 1];
+    }
 
     #endregion
 }

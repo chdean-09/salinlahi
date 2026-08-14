@@ -94,14 +94,16 @@ public class WaveManager : MonoBehaviour
 
         if (!_waitForExternalStart)
         {
-            int selectedLevel = PlayerPrefs.GetInt(ProgressManager.SelectedLevelKey, 1);
+            int selectedLevel = ProgressManager.Instance != null
+                ? ProgressManager.Instance.GetSelectedLevelNumber() : 1;
             StartLevel(selectedLevel);
         }
     }
 
     private void EnsureLevelConfigResolvedAndPropagated()
     {
-        int selectedLevel = PlayerPrefs.GetInt(ProgressManager.SelectedLevelKey, 1);
+        int selectedLevel = ProgressManager.Instance != null
+            ? ProgressManager.Instance.GetSelectedLevelNumber() : 1;
         LevelConfigSO existing = GameManager.Instance != null
             ? GameManager.Instance.CurrentLevel
             : null;
@@ -147,7 +149,8 @@ public class WaveManager : MonoBehaviour
     /// </summary>
     public void StartLevel()
     {
-        int selectedLevel = PlayerPrefs.GetInt(ProgressManager.SelectedLevelKey, 1);
+        int selectedLevel = ProgressManager.Instance != null
+            ? ProgressManager.Instance.GetSelectedLevelNumber() : 1;
         StartLevel(selectedLevel);
     }
 
@@ -785,6 +788,14 @@ public class WaveManager : MonoBehaviour
 
     private void LoadLevelConfig(int levelNumber)
     {
+        if (SaveManager.Instance != null && SaveManager.Instance.Mode == SaveManagerMode.RevisedReady &&
+            ProgressManager.Instance != null && ProgressManager.Instance.TryGetSelectedLevel(out LevelConfigSO revisedLevel))
+        {
+            _levelConfig = revisedLevel;
+            DebugLogger.Log($"WaveManager: Loaded revised level {_levelConfig.stableId}.");
+            return;
+        }
+
         // Try to find config in the registry array first.
         if (_levelConfigs != null && _levelConfigs.Length > 0)
         {
