@@ -1,14 +1,15 @@
 # 09 — Test Strategy and Acceptance Criteria
 **Project:** Salinlahi
-**Version:** 1.4
-**Date:** 2026-05-23
+**Version:** 1.7
+**Date:** 2026-08-13
 **Owner:** Whole Team (QA responsibility shared)
 
 ---
 
 ## 1. Testing Philosophy
 
-Salinlahi has no automated unit test suite in its current implementation. All testing is manual, device-based, and sprint-end structured. Testing prioritizes:
+Salinlahi uses Unity Test Framework EditMode tests for deterministic data and gameplay
+contracts, complemented by manual device-based and sprint-end testing. Testing prioritizes:
 
 1. **Core loop integrity** — draw → defeat → win/lose must be unbreakable.
 2. **Recognition accuracy** — $P must pass the 60% confidence threshold for correctly shaped characters.
@@ -17,7 +18,45 @@ Salinlahi has no automated unit test suite in its current implementation. All te
 
 ---
 
+### 1.1 SALIN-170 frozen-core acceptance
+
+The Editor data suite covers the revised campaign contract without authoring production
+campaign assets:
+
+| Acceptance ID | Coverage | Evidence |
+|---|---|---|
+| DATA-170-01 | Frozen manifest values, version compatibility, and canonical ID syntax | `CampaignIdentityManifestTests` |
+| DATA-170-02 | Three-era/15-level topology, fixed membership, local/global order, and duplicate IDs | `CampaignConfigValidatorTests` |
+| DATA-170-03 | Stable lookup independent of display text, asset name, and list order | `CampaignLookupTests` |
+| DATA-170-04 | One visual symbol with contextual spoken values, including DA/RA on `symbol.dara` | `CampaignSymbolValueTests` |
+| DATA-170-05 | Two inline focus slots, decomposition validity, no-kudlit rule, canonical first-introduction metadata, exact cumulative pools, and introduced-symbol membership for focus/requirement references | `CampaignConfigValidatorTests` |
+| DATA-170-06 | Final restoration value, ordered PA instruction before later exposure, required media, and required references | `CampaignConfigValidatorTests` |
+| DATA-170-07 | Pure validation does not mutate the campaign or referenced objects | `CampaignConfigValidatorTests` |
+| DATA-170-08 | Editor menu adapter delegates to the pure validator without changing selection | `CampaignConfigValidationMenuTests` |
+| DATA-170-09 | Existing EraConfigSO, LevelConfigSO, and BaybayinCharacterSO assets deserialize with legacy fields intact | `CampaignSerializationCompatibilityTests` and `LevelConfigCascadeTests` |
+| DATA-170-10 | Disabled revised levels ignore dormant challenge data; enabled levels require a sequence and adapt every SALIN-168 validation error in deterministic order without mutation | `CampaignConfigValidatorTests` and `ChallengeSequenceValidatorTests` |
+
+SALIN-170 does not migrate saves, implement learning/challenge behavior, or author the
+production revised campaign. Those boundaries remain SALIN-171, SALIN-168, and SALIN-172
+respectively.
+
 ## 2. Test Matrix by System Area
+
+### 1.2 SALIN-171 persistence acceptance
+
+The persistence suite covers deterministic serializer round trips and tamper rejection,
+campaign-aware validation, flushed four-role storage with fault injection, the exact 46-key typed
+legacy archive, primary/temporary/backup recovery precedence, atomic commit rollback behavior,
+fresh-journey migration and safe-reset recovery, repository idempotency, SaveManager activation
+modes, and one-time notice acknowledgement. Higher schemas, wrong campaign identity, invalid
+campaign content, and storage I/O failures are blocking and must not write or reset data.
+
+Legacy-mode smoke coverage verifies that a null campaign root leaves selected-level and existing
+progress PlayerPrefs behavior unchanged, creates no revised files, and preserves audio values.
+Revised-mode integration verifies stable IDs are shared by level selection, victory completion,
+heart setup, wave setup, discovery, and tutorial consumers. Scene coverage verifies the Main Menu
+notice has assigned root/title/body/button references and that SaveManager survives the Bootstrap
+to Main Menu transition as one singleton.
 
 ### 2.1 Core Systems
 

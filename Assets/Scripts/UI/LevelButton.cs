@@ -65,8 +65,11 @@ public class LevelButton : MonoBehaviour
         AudioManager.Instance?.PlayMenuButtonClick();
         DebugLogger.Log($"LevelButton: Level {_config.levelNumber} selected");
 
-        PlayerPrefs.SetInt(ProgressManager.SelectedLevelKey, _config.levelNumber);
-        PlayerPrefs.Save();
+        if (ProgressManager.Instance == null || !ProgressManager.Instance.TrySetSelectedLevel(_config))
+        {
+            DebugLogger.LogWarning("LevelButton: Selected level could not be persisted.");
+            return;
+        }
 
         if (GameManager.Instance != null)
         {

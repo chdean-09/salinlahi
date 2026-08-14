@@ -7,6 +7,7 @@ public class BootstrapLoader : MonoBehaviour
     {
         // Wait one frame so all Singleton Awake() calls finish first
         yield return null;
+        SaveManager.Instance?.Initialize();
         DebugLogger.Log("Bootstrap complete. Loading MainMenu.");
         SceneLoader.Instance.LoadMainMenu();
     }

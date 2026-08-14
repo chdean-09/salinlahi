@@ -41,7 +41,8 @@ public class VictoryScreenUI : MonoBehaviour
         if (_panel != null)
             _panel.SetActive(true);
 
-        int currentLevel = PlayerPrefs.GetInt(ProgressManager.SelectedLevelKey, 1);
+        int currentLevel = ProgressManager.Instance != null
+            ? ProgressManager.Instance.GetSelectedLevelNumber() : 1;
         int stars = ProgressManager.Instance != null
             ? ProgressManager.Instance.GetStars(currentLevel)
             : 0;
@@ -68,7 +69,8 @@ public class VictoryScreenUI : MonoBehaviour
     private void OnNextLevelPressed()
     {
         AudioManager.Instance?.PlayMenuButtonClick();
-        int currentLevel = PlayerPrefs.GetInt(ProgressManager.SelectedLevelKey, 1);
+        int currentLevel = ProgressManager.Instance != null
+            ? ProgressManager.Instance.GetSelectedLevelNumber() : 1;
         int nextLevel = currentLevel + 1;
 
         if (nextLevel > 15)
@@ -78,8 +80,11 @@ public class VictoryScreenUI : MonoBehaviour
             return;
         }
 
-        PlayerPrefs.SetInt(ProgressManager.SelectedLevelKey, nextLevel);
-        PlayerPrefs.Save();
+        if (ProgressManager.Instance == null || !ProgressManager.Instance.TrySetSelectedLevelNumber(nextLevel))
+        {
+            DebugLogger.LogWarning("VictoryScreenUI: Next level could not be persisted.");
+            return;
+        }
 
         if (GameManager.Instance != null)
             GameManager.Instance.SetLevel(null);

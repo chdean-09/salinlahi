@@ -9,6 +9,8 @@ public static class BossDiscoveryProgress
     {
         string id = Normalize(config);
         if (string.IsNullOrEmpty(id)) return false;
+        if (UsesRevisedProgress())
+            return SaveManager.Instance.Repository.IsBossDiscovered(config.bossID);
         return Load().Contains(id);
     }
 
@@ -16,6 +18,11 @@ public static class BossDiscoveryProgress
     {
         bossID = Normalize(config);
         if (string.IsNullOrEmpty(bossID)) return false;
+
+        if (UsesRevisedProgress())
+            return SaveManager.Instance.Repository.TryDiscoverBoss(config.bossID);
+        if (SaveManager.Instance != null && SaveManager.Instance.Mode == SaveManagerMode.RevisedBlocked)
+            return false;
 
         HashSet<string> set = Load();
         if (!set.Add(bossID)) return false;
@@ -26,6 +33,8 @@ public static class BossDiscoveryProgress
 
     public static void ClearAllDiscovered()
     {
+        if (UsesRevisedProgress())
+            return;
         PlayerPrefs.DeleteKey(Key);
         PlayerPrefs.Save();
     }
@@ -38,6 +47,12 @@ public static class BossDiscoveryProgress
     {
         if (config == null || string.IsNullOrWhiteSpace(config.bossID)) return null;
         return config.bossID.Trim().ToLowerInvariant();
+    }
+
+    private static bool UsesRevisedProgress()
+    {
+        return SaveManager.Instance != null && SaveManager.Instance.Mode == SaveManagerMode.RevisedReady &&
+            SaveManager.Instance.Repository != null;
     }
 
     private static HashSet<string> Load()

@@ -34,6 +34,7 @@ public class MainMenuUI : MonoBehaviour
     [Header("Overlay Panels")]
     [SerializeField] private SettingsPanel _settingsPanel;
     [SerializeField] private CreditsPanel _creditsPanel;
+    [SerializeField] private CampaignSaveNoticePanel _campaignSaveNoticePanel;
 
     private void Start()
     {
@@ -47,6 +48,8 @@ public class MainMenuUI : MonoBehaviour
         }
 
         EnsureSandboxEntryPoint();
+        if (SaveManager.Instance != null && _campaignSaveNoticePanel != null)
+            _campaignSaveNoticePanel.Present(SaveManager.Instance.PendingNotice);
     }
 
     public void OnPlayButtonPressed()
@@ -62,8 +65,11 @@ public class MainMenuUI : MonoBehaviour
             DebugLogger.Log($"MainMenuUI: Resuming paused run on level {selectedLevel}.");
         }
 
-        PlayerPrefs.SetInt(ProgressManager.SelectedLevelKey, selectedLevel);
-        PlayerPrefs.Save();
+        if (ProgressManager.Instance != null && !ProgressManager.Instance.TrySetSelectedLevelNumber(selectedLevel))
+        {
+            DebugLogger.LogWarning("MainMenuUI: Selected level could not be persisted.");
+            return;
+        }
 
         if (GameManager.Instance != null)
             GameManager.Instance.SetLevel(null);

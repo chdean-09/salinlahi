@@ -1,7 +1,7 @@
 # 03 — Core Systems
 **Project:** Salinlahi
-**Version:** 2.0
-**Date:** 2026-06-03
+**Version:** 2.1
+**Date:** 2026-08-13
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -318,3 +318,22 @@ Single contact point between the Almanac UI and enemy discovery state. Currently
 **Integration note:** When `EnemyDiscoveryProgress` is merged, replace the body of `IsDiscovered` with `EnemyDiscoveryProgress.HasDiscovered(data)`.
 
 [EVIDENCE: Assets/Scripts/UI/Almanac/AlmanacEnemyDiscovery.cs]
+
+## 2.8 Campaign Persistence — SaveManager.cs
+
+SaveManager is the thin singleton activation gate for revised campaign persistence. Its modes are
+Uninitialized, Legacy, RevisedReady, and RevisedBlocked. It owns the optional CampaignConfigSO
+reference and exposes the active CampaignProgressRepository and pending migration/recovery notice.
+Runtime dependencies are CampaignSaveFileStorage, PlayerPrefsLegacyProgressSource, and the system
+transaction metadata provider.
+
+The repository is the only public mutation surface for revised active-level, completion, stable-ID
+unlock/discovery, tutorial, reward, endless-mode, reset, and notice state. Storage uses fixed
+campaign-save.json, campaign-save.tmp, campaign-save.bak, and legacy-progress-v0.json roles.
+Primary, temporary, and backup candidates are validated before recovery; failed files are retained
+through quarantine for diagnostics. Audio volume remains owned by AudioManager and its PlayerPrefs
+keys.
+
+BootstrapLoader calls SaveManager.Initialize() after the first-frame singleton availability wait
+and before SceneLoader.LoadMainMenu(). This preserves existing build behavior while the revised
+campaign reference remains unassigned.

@@ -9,6 +9,8 @@ public static class CharacterUnlockProgress
     {
         string id = Normalize(data);
         if (string.IsNullOrEmpty(id)) return false;
+        if (UsesRevisedProgress())
+            return SaveManager.Instance.Repository.IsSymbolUnlocked(data.stableId);
         return Load().Contains(id);
     }
 
@@ -16,6 +18,11 @@ public static class CharacterUnlockProgress
     {
         characterID = Normalize(data);
         if (string.IsNullOrEmpty(characterID)) return false;
+
+        if (UsesRevisedProgress())
+            return SaveManager.Instance.Repository.TryUnlockSymbol(data.stableId);
+        if (SaveManager.Instance != null && SaveManager.Instance.Mode == SaveManagerMode.RevisedBlocked)
+            return false;
 
         HashSet<string> set = Load();
         if (!set.Add(characterID)) return false;
@@ -26,6 +33,8 @@ public static class CharacterUnlockProgress
 
     public static void ClearAllUnlocked()
     {
+        if (UsesRevisedProgress())
+            return;
         PlayerPrefs.DeleteKey(Key);
         PlayerPrefs.Save();
     }
@@ -38,6 +47,12 @@ public static class CharacterUnlockProgress
     {
         if (data == null || string.IsNullOrWhiteSpace(data.characterID)) return null;
         return data.characterID.Trim().ToLowerInvariant();
+    }
+
+    private static bool UsesRevisedProgress()
+    {
+        return SaveManager.Instance != null && SaveManager.Instance.Mode == SaveManagerMode.RevisedReady &&
+            SaveManager.Instance.Repository != null;
     }
 
     private static HashSet<string> Load()

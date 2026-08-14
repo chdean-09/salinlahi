@@ -4,7 +4,9 @@ A 2D Pixel Art Defense Game
 
 **TECHNICAL DESIGN DOCUMENT**
 
-Version 1.0 | March 2026
+Version 1.4 | August 13, 2026
+
+Updated: 2026-08-13
 
 **Engine: **Unity 6 LTS | URP 2D | C#
 
@@ -110,16 +112,40 @@ The EventBus is a static class that acts as the central messaging hub. No manage
 
 # 5. Data Layer
 
-All game content is defined in ScriptableObject assets. This means that level designers (in this case, Chad) can create new levels, adjust enemy speeds, change wave compositions, and tune difficulty entirely through the Unity Inspector without writing code or recompiling.
+All game content is defined in ScriptableObject assets. The revised frozen core adds a
+`CampaignConfigSO` root with a versioned `CampaignIdentityManifest`, campaign tuning,
+stable canonical IDs, ordered `EraConfigSO` and `LevelConfigSO` references, inline
+focus-word records, and one visual `BaybayinCharacterSO` identity with contextual
+spoken-value definitions. `levelNumber` remains presentation order only. Consumers
+resolve content through duplicate-safe stable-ID lookup rather than filenames, display
+text, or numeric gameplay branches.
+
+`CampaignConfigValidator` is a pure, non-mutating traversal used by an editor-only
+validation menu. It validates the 3-era/15-level/30-focus/17-symbol/18-spoken-value
+shape, canonical symbol-introduction level metadata, exact cumulative pools, focus and
+requirement membership in the introduced pool, PA sequencing, required media, and
+compatibility metadata. Opted-in revised levels also require a SALIN-168-valid
+`ChallengeSequenceSO`; disabled levels ignore dormant sequence authoring. Symbol-value references must point to the campaign catalog's
+canonical symbol asset; a separate same-ID asset is invalid. Existing serialized fields
+remain in place so legacy assets continue to deserialize. The schema exposes save
+compatibility metadata but does not implement save migration; that is SALIN-171 work.
+Production campaign authoring remains SALIN-172 work.
 
 *Figure 6. ScriptableObject data architecture*
 
 | **Asset Type** | **Defines** |
 | --- | --- |
-| LevelConfigSO | Chapter assignment, background theme, ordered list of embedded WaveDefinition entries, allowed character and enemy-type rosters. |
+| CampaignConfigSO | Revised campaign root: manifest, tuning, canonical symbols, and ordered eras. |
+| CampaignIdentityManifest | `campaign.revised-v1`, content/save schema versions, supported source schemas, migration metadata, readable save range, and starting level ID. |
+| EraConfigSO | Legacy presentation fields plus stable era ID/order, story/memory references, and five ordered levels. |
+| LevelConfigSO | Legacy wave/roster data plus stable ID, era-local order, two inline focus words, cumulative symbol pool, requirements, clue/defense rules, media, rewards, mastery, final restoration value, and optional `challengePrototypeEnabled` / `challengeSequence` authoring-validation references. |
+| FocusWordDefinition | Inline focus-slot ID, Latin/display labels, ordered `SymbolValueReference` decomposition, and required media. |
+| SpokenValueDefinition | Contextual spoken-value ID, display value, and pronunciation clip. |
+| SymbolValueReference | A canonical `BaybayinCharacterSO` reference plus a spoken-value ID supported by that symbol. |
+| LevelConfigSO (legacy contract) | Chapter assignment, background theme, ordered list of embedded WaveDefinition entries, allowed character and enemy-type rosters. |
 | WaveDefinition | Enemy types to spawn, count, spawn interval, wave start delay, and allowed character pool — stored as a serialized value type inside LevelConfigSO.waves. |
 | EnemyDataSO | Era assignment, movement speed, movement pattern (straight, fast, glide, zigzag, sprinter/charge, commander aura, censor), health / hits required (for shielded types like Capitan and Shokan), isDecoy flag (for Maestro), isPhaser flag and interval (for Fraile), corruption veil flag (for Shokan), reference to a BaybayinCharacterSO. |
-| BaybayinCharacterSO | Character ID string, display name, template file references, AudioClip for pronunciation, `badgeSprite` (framed glyph for `EnemyGlyphBadge`), optional `scrambledBadgeSprite` (glitched override variant). |
+| BaybayinCharacterSO | Legacy character/template fields plus stable visual ID, explicit legacy aliases, contextual spoken values, and first-introduction level metadata. |
 | GlyphBadgeConfigSO | Global badge layout and animation tuning: default offset/scale, swap slide/durations, final-draw charge/release, decoy-reject flash/shake, boss fail-flash colors/durations. Single shared asset (`GlyphBadgeConfig_Default`). |
 | EnemyDataSO (glyph badge) | Optional per-enemy overrides: `overrideBadgeOffset`, `glyphBadgeOffsetOverride`, `overrideBadgeScale`, `glyphBadgeScaleOverride`. |
 | BossConfigSO | Boss name (El Inquisidor, The Superintendent, Kadiliman), boss health pool, number of phases, required characters per phase, timing windows, summon ability configuration, special ability (decree scramble for Superintendent). |
@@ -174,5 +200,10 @@ Both Salinlahi Lite and Salinlahi Full are built from the same Unity codebase. A
 | **Version** | **Changes** |
 | --- | --- |
 | v1.0 (March 2026) | Initial TDD. Covers system architecture, recognition pipeline, combat system, EventBus pattern, data layer, audio system, build configuration, and folder structure. Six architecture diagrams included. |
+| v1.1 (Updated 2026-08-11) | Adds the SALIN-170 frozen revised campaign data root, stable identity/value references, compatibility boundary, and pure validation contract. |
+| v1.2 (Updated 2026-08-13) | Makes SALIN-170 introduction and cumulative-pool validation data-driven, enforces introduced-symbol references and ordered PA instruction, and clarifies canonical catalog-asset references. |
+| v1.3 (Updated 2026-08-13) | Integrates SALIN-168 challenge-sequence authoring into SALIN-170 campaign validation through an opt-in, non-mutating delegation boundary. |
+
+| v1.4 (Updated 2026-08-13) | Adds SALIN-171 validated atomic campaign JSON persistence, immutable legacy archive migration, recovery precedence, and SaveManager activation modes. |
 
 *This document is a living reference. Update it whenever a system**'**s design changes. Track every change in the changelog above.*

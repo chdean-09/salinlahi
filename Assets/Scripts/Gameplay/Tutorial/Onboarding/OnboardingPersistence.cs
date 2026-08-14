@@ -17,6 +17,11 @@ public static class OnboardingPersistence
 
     public static int GetLastCompletedBeatIndex(int levelNumber)
     {
+        if (UsesRevisedProgress())
+        {
+            TutorialProgressRecord record = SaveManager.Instance.Repository.GetTutorialProgress(GetStableLevelId(levelNumber));
+            return record == null ? NoBeatCompleted : record.lastCompletedBeatIndex;
+        }
         return PlayerPrefs.GetInt(GetBeatIndexKey(levelNumber), NoBeatCompleted);
     }
 
@@ -29,6 +34,12 @@ public static class OnboardingPersistence
     public static void SetLastCompletedBeatIndex(int levelNumber, int index)
     {
         int clamped = index < NoBeatCompleted ? NoBeatCompleted : index;
+        if (UsesRevisedProgress())
+        {
+            SaveManager.Instance.Repository.TryRecordTutorialProgress(
+                GetStableLevelId(levelNumber), false, clamped);
+            return;
+        }
         PlayerPrefs.SetInt(GetBeatIndexKey(levelNumber), clamped);
         PlayerPrefs.Save();
     }
@@ -48,6 +59,8 @@ public static class OnboardingPersistence
     /// <summary>Clears stored progress. Called when the full tutorial completes or on global reset.</summary>
     public static void Clear()
     {
+        if (UsesRevisedProgress())
+            return;
         PlayerPrefs.DeleteKey(ProgressManager.Level1FtueBeatIndexKey);
         PlayerPrefs.DeleteKey(ProgressManager.Level2AdvancedBeatIndexKey);
         PlayerPrefs.Save();
@@ -55,6 +68,8 @@ public static class OnboardingPersistence
 
     public static void Clear(int levelNumber)
     {
+        if (UsesRevisedProgress())
+            return;
         PlayerPrefs.DeleteKey(GetBeatIndexKey(levelNumber));
         PlayerPrefs.Save();
     }
@@ -65,5 +80,18 @@ public static class OnboardingPersistence
             return ProgressManager.Level2AdvancedBeatIndexKey;
 
         return ProgressManager.Level1FtueBeatIndexKey;
+    }
+
+    private static bool UsesRevisedProgress()
+    {
+        return SaveManager.Instance != null && SaveManager.Instance.Mode == SaveManagerMode.RevisedReady &&
+            SaveManager.Instance.Repository != null;
+    }
+
+    private static string GetStableLevelId(int levelNumber)
+    {
+        return levelNumber >= 1 && levelNumber <= ContentIdentity.RevisedLevelIds.Count
+            ? ContentIdentity.RevisedLevelIds[levelNumber - 1]
+            : null;
     }
 }

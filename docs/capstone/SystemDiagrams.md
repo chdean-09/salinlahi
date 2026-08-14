@@ -26,11 +26,23 @@ references between assets. This is the closest analogue to a relational ERD for 
 
 ```mermaid
 erDiagram
+    CampaignConfigSO ||--|| CampaignIdentityManifest : "manifest"
+    CampaignConfigSO ||--|| CampaignTuning : "tuning"
+    CampaignConfigSO ||--|{ EraConfigSO : "3 ordered eras"
+    CampaignConfigSO ||--|{ BaybayinCharacterSO : "17 canonical symbols"
+    EraConfigSO ||--|{ LevelConfigSO : "5 ordered levels"
+    LevelConfigSO ||--|{ FocusWordDefinition : "2 inline focus slots"
+    FocusWordDefinition ||--|{ SymbolValueReference : "ordered decomposition"
+    SymbolValueReference }o--|| BaybayinCharacterSO : "visual symbol"
+    SymbolValueReference }o--|| SpokenValueDefinition : "contextual value ID"
+    BaybayinCharacterSO }o--|| LevelConfigSO : "first introduction level"
+
     LevelConfigSO ||--o{ WaveDefinition : "waves (embedded list)"
     LevelConfigSO ||--|{ BaybayinCharacterSO : "allowedCharacters"
     LevelConfigSO ||--o{ EnemyDataSO : "allowedEnemyTypes"
     LevelConfigSO }o--|| EraThemeSO : "eraTheme"
     LevelConfigSO |o--o| BossConfigSO : "bossConfig (optional)"
+    LevelConfigSO |o--o| ChallengeSequenceSO : "optional opt-in sequence"
     EraConfigSO ||--o{ LevelConfigSO : "levels (ordered list)"
 
     WaveDefinition ||--|{ BaybayinCharacterSO : "characters (subset)"
@@ -61,9 +73,32 @@ erDiagram
         float swapInDuration
     }
 
+    CampaignConfigSO {
+        CampaignIdentityManifest manifest
+        CampaignTuning tuning
+        List_BaybayinCharacterSO symbols
+        List_EraConfigSO eras
+    }
+
+    CampaignIdentityManifest {
+        int identityManifestVersion
+        string campaignId PK
+        int contentSchemaVersion
+        int saveSchemaVersion
+        string migrationId
+        string startingLevelId
+    }
+
+    CampaignTuning {
+        int defaultShrineHearts
+    }
+
     BaybayinCharacterSO {
+        string stableId PK
         string characterID PK
         string syllable
+        List_SpokenValueDefinition spokenValues
+        string firstIntroductionLevelId
         Sprite displaySprite
         Sprite almanacSprite
         Sprite badgeSprite
@@ -97,11 +132,67 @@ erDiagram
 
     LevelConfigSO {
         string levelName
-        int levelNumber PK
+        string stableId PK
+        int levelNumber
+        int eraLocalOrder
         int chapterNumber
+        List_FocusWordDefinition focusWords
+        List_SymbolValueReference cumulativeSymbolPool
+        List_ContentRequirement learningRequirements
+        List_ContentRequirement practiceRequirements
+        DefenseRules defenseRules
+        ContentMediaReferences contextMedia
+        List_string rewardIds
+        bool challengePrototypeEnabled
+        ChallengeSequenceSO challengeSequence FK
         bool isAvailableInLite
         Sprite numberSprite
         List_EnemyDataSO allowedEnemyTypes FK
+    }
+
+    EraConfigSO {
+        string stableId PK
+        int order
+        string eraName
+        Sprite backgroundSprite
+        Sprite bannerSprite
+    }
+
+    FocusWordDefinition {
+        string stableId PK
+        string latinSpelling
+        string displayLabel
+        List_SymbolValueReference decomposition
+    }
+
+    SymbolValueReference {
+        BaybayinCharacterSO symbol FK
+        string spokenValueId
+    }
+
+    SpokenValueDefinition {
+        string stableId PK
+        string displayValue
+        AudioClip pronunciationClip
+    }
+
+    ContentRequirement {
+        ContentRequirementKind kind
+        SymbolValueReference symbolValue
+        int requiredSuccesses
+    }
+
+    DefenseRules {
+        int shrineHearts
+        bool focusModeEnabled
+        bool multiKillChainEnabled
+    }
+
+    ContentMediaReferences {
+        Sprite contextImage
+        AudioClip narrationClip
+        DialogueSO dialogue FK
+        CutsceneSO cutscene FK
     }
 
     BossConfigSO {
@@ -148,12 +239,6 @@ erDiagram
         Sprite groundSprite
         Sprite shrineSprite
         Sprite baseZoneSprite
-    }
-
-    EraConfigSO {
-        string eraName PK
-        Sprite backgroundSprite
-        Sprite bannerSprite
     }
 
     RecognitionConfigSO {
@@ -470,14 +555,38 @@ runtime systems in the middle; EventBus is the central hub; consumers on the rig
 ```mermaid
 flowchart LR
     subgraph SO_Assets["Content (ScriptableObjects)"]
+        CCfg["CampaignConfigSO"]
+        CIM["CampaignIdentityManifest"]
+        CT["CampaignTuning"]
         LC["LevelConfigSO"]
+        EW["FocusWordDefinition (inline x2)"]
+        SVR["SymbolValueReference"]
+        SVD["SpokenValueDefinition"]
         WC["WaveDefinition (embedded)"]
         ED["EnemyDataSO"]
         BC["BaybayinCharacterSO"]
         BCfg["BossConfigSO"]
         GBCfg["GlyphBadgeConfigSO"]
         RC["RecognitionConfigSO"]
+        CS["ChallengeSequenceSO"]
     end
+
+    CV["CampaignConfigValidator"]
+    CSV["ChallengeSequenceValidator"]
+    LK["Stable-ID lookup"]
+    CCfg --> CIM
+    CCfg --> CT
+    CCfg --> CV
+    CV -- "valid manifest, topology, and introduction pools" --> LK
+    LC --> CS
+    CV -- "when challenge opt-in is enabled" --> CSV
+    CSV --> CS
+    LK --> LC
+    CCfg --> LC
+    LC --> EW
+    EW --> SVR
+    SVR --> BC
+    SVR --> SVD
 
     subgraph Input["Player Input"]
         T["EnhancedTouch history"]
@@ -663,3 +772,27 @@ Update this file whenever any of the following change:
 - The boss state machine in `BossController.cs` gains or removes a state.
 
 Treat it as a living artifact alongside `docs/system/05_Data_Contracts_and_ScriptableObjects.md`.
+
+## 5. Campaign Save and Migration Flow (SALIN-171)
+
+```mermaid
+flowchart TD
+    A[BootstrapLoader] --> B[SaveManager activation gate]
+    B -->|campaign root null| L[Legacy PlayerPrefs compatibility]
+    B -->|valid campaign root| C[Inspect primary temp backup]
+    C --> D{Validated candidate?}
+    D -->|primary or newer temp| R[Publish revised snapshot]
+    D -->|backup| K[Commit backup as newer revision]
+    D -->|no save or corrupt evidence| H[Load/create immutable 46-key archive]
+    H --> I[Create clean Ugat Level 1 journey]
+    I --> R
+    D -->|higher schema identity or I/O| X[RevisedBlocked notice]
+    R --> P[CampaignProgressRepository]
+    P --> M[Atomic temp write, backup, promote, post-validate]
+    P --> N[Migration/recovery notice]
+    N --> Q[Main Menu acknowledgement commit]
+```
+
+The revised branch has one persistence writer: the repository commit boundary. Audio volume
+continues through the legacy PlayerPrefs audio adapter and is intentionally absent from the JSON
+campaign document.

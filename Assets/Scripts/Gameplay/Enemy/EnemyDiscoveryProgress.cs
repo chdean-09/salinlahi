@@ -11,6 +11,9 @@ public static class EnemyDiscoveryProgress
         if (enemyID == null)
             return false;
 
+        if (UsesRevisedProgress())
+            return SaveManager.Instance.Repository.IsEnemyDiscovered(data.enemyID);
+
         return LoadDiscoveredIDs().Contains(enemyID);
     }
 
@@ -18,6 +21,11 @@ public static class EnemyDiscoveryProgress
     {
         enemyID = NormalizeEnemyID(data);
         if (enemyID == null)
+            return false;
+
+        if (UsesRevisedProgress())
+            return SaveManager.Instance.Repository.TryDiscoverEnemy(data.enemyID);
+        if (SaveManager.Instance != null && SaveManager.Instance.Mode == SaveManagerMode.RevisedBlocked)
             return false;
 
         HashSet<string> discovered = LoadDiscoveredIDs();
@@ -30,6 +38,8 @@ public static class EnemyDiscoveryProgress
 
     public static void ClearAllDiscovered()
     {
+        if (UsesRevisedProgress())
+            return;
         PlayerPrefs.DeleteKey(DiscoveredEnemyIDsKey);
         PlayerPrefs.Save();
     }
@@ -47,6 +57,12 @@ public static class EnemyDiscoveryProgress
             return null;
 
         return data.enemyID.Trim().ToLowerInvariant();
+    }
+
+    private static bool UsesRevisedProgress()
+    {
+        return SaveManager.Instance != null && SaveManager.Instance.Mode == SaveManagerMode.RevisedReady &&
+            SaveManager.Instance.Repository != null;
     }
 
     private static HashSet<string> LoadDiscoveredIDs()

@@ -442,6 +442,7 @@ GameObject:
   - component: {fileID: 1681108567}
   - component: {fileID: 1681108566}
   - component: {fileID: 1681108568}
+  - component: {fileID: 1681108569}
   m_Layer: 0
   m_Name: '[Manager] ProgressManager'
   m_TagString: Untagged
@@ -491,6 +492,19 @@ MonoBehaviour:
   runTestsOnStart: 0
   verboseLogging: 1
   _characterRegistry: {fileID: 0}
+--- !u!114 &1681108569
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1681108565}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f6b6b5d1d3748b3a2e9c0f1a4b7d8e9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveManager
+  _campaign: {fileID: 0}
 --- !u!1 &1913551291
 GameObject:
   m_ObjectHideFlags: 0
