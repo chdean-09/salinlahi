@@ -97,6 +97,8 @@ public static class CampaignSaveSerializer
             document.progress.unlockedMemoryIds = new System.Collections.Generic.List<string>();
         if (document.progress.claimedRewardIds == null)
             document.progress.claimedRewardIds = new System.Collections.Generic.List<string>();
+        if (document.progress.appliedOutcomeReceipts == null)
+            document.progress.appliedOutcomeReceipts = new System.Collections.Generic.List<AppliedOutcomeReceipt>();
         if (document.progress.tutorialProgress == null)
             document.progress.tutorialProgress = new System.Collections.Generic.List<TutorialProgressRecord>();
     }

@@ -1,7 +1,7 @@
 # 09 — Test Strategy and Acceptance Criteria
 **Project:** Salinlahi
-**Version:** 1.7
-**Date:** 2026-08-13
+**Version:** 1.8
+**Date:** 2026-08-17
 **Owner:** Whole Team (QA responsibility shared)
 
 ---
@@ -57,6 +57,26 @@ Revised-mode integration verifies stable IDs are shared by level selection, vict
 heart setup, wave setup, discovery, and tutorial consumers. Scene coverage verifies the Main Menu
 notice has assigned root/title/body/button references and that SaveManager survives the Bootstrap
 to Main Menu transition as one singleton.
+
+### 1.3 SALIN-174 atomic outcome acceptance
+
+The atomic outcome suite covers schema-v2 migration, checksummed journal serialization, pure
+outcome validation, temporary/published interruption recovery, campaign rollback, exact duplicate
+replay, monotonic unions, reset-generation invalidation, and explicit Victory gating.
+
+| Test area | Required interruption or invariant | Test class |
+|-----------|------------------------------------|------------|
+| Schema and migration | v1 upgrades to schema v2; higher schema remains unchanged and blocked | `CampaignSaveMigrationTests`, `CampaignSaveValidatorTests` |
+| Journal integrity | Round-trip checksum succeeds; tamper, wrong generation, unknown level, invalid stars, duplicate IDs, and higher journal schema are rejected | `CampaignOutcomeSerializerTests`, `CampaignOutcomeValidatorTests` |
+| Journal recovery | Temporary write failure, temporary-only promotion, identical published/temp cleanup, different published/temp block, corrupt quarantine, and clear | `CampaignOutcomeJournalTests` |
+| One transaction | Completion, max stars, next level/Endless, symbols, memory, rewards, and one receipt publish together | `CampaignOutcomeCoordinatorTests` |
+| Replay and duplicate | Startup/retry reads the durable payload; duplicate receipt does not increment revision | `CampaignOutcomeCoordinatorTests` |
+| Campaign publication | Published read-back failure restores the validated backup; rollback failure is surfaced | `CampaignSaveCommitterTests`, `CampaignSaveServiceTests` |
+| UI gate | Victory appears only for accepted typed results; pending/rejected/blocked results show retry panel | `LevelFlowControllerOutcomeTests`, `CampaignOutcomeSaveFailurePanelTests` |
+
+The manual acceptance matrix also arms the Editor-only SALIN-174 one-shot promotion fault, verifies
+retry and Main Menu preservation, confirms startup replay clears the journal exactly once, and
+confirms Reset Journey changes generation while preserving settings outside campaign progress.
 
 ### 2.1 Core Systems
 

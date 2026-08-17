@@ -30,6 +30,8 @@ public sealed class CampaignSaveService
 
     public CampaignSaveDocument Current { get; private set; }
     public CampaignConfigSO Campaign => _campaign;
+    public ICampaignSaveStorage Storage => _storage;
+    public ITransactionMetadataProvider Metadata => _metadata;
 
     public CampaignSaveService(
         ICampaignSaveStorage storage,
@@ -86,12 +88,13 @@ public sealed class CampaignSaveService
 
         if (decision.Kind == RecoveryDecisionKind.UsePrimary)
         {
-            Current = primary.Document;
-            return new CampaignSaveInitializationResult { Status = CampaignSaveInitializationStatus.Ready, Document = Current };
+            return PublishSelectedCandidate(primary, CampaignSaveInitializationStatus.Ready);
         }
 
         if (decision.Kind == RecoveryDecisionKind.PromoteTemporary)
         {
+            if (temporary.IsMigratableV1)
+                return PublishSelectedCandidate(temporary, CampaignSaveInitializationStatus.Migrated);
             CampaignSaveCommitResult promoted = _committer.TryPromoteValidatedTemporary(
                 temporary.Document, primary.Document);
             if (!promoted.Success)
@@ -102,6 +105,8 @@ public sealed class CampaignSaveService
 
         if (decision.Kind == RecoveryDecisionKind.RestoreBackup)
         {
+            if (backup.IsMigratableV1)
+                return PublishSelectedCandidate(backup, CampaignSaveInitializationStatus.Migrated);
             CampaignSaveCommitResult restored = _committer.TryCommit(
                 backup.Document, null, new CampaignSaveCommitContext());
             if (!restored.Success)
@@ -158,16 +163,22 @@ public sealed class CampaignSaveService
         return new CampaignSaveInitializationResult { Status = initStatus, Document = Current };
     }
 
-    public bool TryUpdate(Action<CampaignSaveDocument> mutation)
+    public CampaignSaveCommitResult TryCommit(Action<CampaignSaveDocument> mutation)
     {
         if (_committer == null || Current == null)
-            return false;
+            return CampaignSaveCommitResult.Failed(
+                CampaignSaveFailureCode.InvalidStructure,
+                "Campaign save service is not initialized.");
         CampaignSaveCommitResult result = _committer.TryCommit(Current, mutation,
             new CampaignSaveCommitContext { CanBackupValidatedPrimary = true });
-        if (!result.Success)
-            return false;
-        Current = result.Document;
-        return true;
+        if (result.Success)
+            Current = result.Document;
+        return result;
+    }
+
+    public bool TryUpdate(Action<CampaignSaveDocument> mutation)
+    {
+        return TryCommit(mutation).Success;
     }
 
     public void RetryReadOnlyInitialization()
@@ -215,6 +226,28 @@ public sealed class CampaignSaveService
                     IntegritySha256 = archiveChecksum,
                 };
             }
+            if (parsed.Document.saveSchemaVersion == 1)
+            {
+                CampaignSaveMigrationResult migration = CampaignSaveMigrator.TryUpgradeV1(
+                    parsed.Document, _campaign, "journey.00000000000000000000000000000001");
+                if (migration.Success)
+                {
+                    CampaignSaveValidationResult migratedValidation = CampaignSaveValidator.Validate(
+                        migration.Document, _campaign, archiveChecksum);
+                    if (!migratedValidation.IsValid)
+                        migration = CampaignSaveMigrationResult.Failed(
+                            migratedValidation.FailureCode, migratedValidation.ErrorMessage);
+                }
+                return new CandidateInspection
+                {
+                    Role = role,
+                    Exists = true,
+                    Document = migration.Success ? parsed.Document : null,
+                    FailureCode = migration.Success ? CampaignSaveFailureCode.None : migration.FailureCode,
+                    ReasonCode = migration.Success ? "v1-migratable" : migration.ErrorMessage,
+                    IsMigratableV1 = migration.Success,
+                };
+            }
             CampaignSaveValidationResult validation = CampaignSaveValidator.Validate(parsed.Document, _campaign, archiveChecksum);
             return new CandidateInspection
             {
@@ -254,5 +287,33 @@ public sealed class CampaignSaveService
             FailureCode = code,
             ReasonCode = reason,
         };
+    }
+
+    private CampaignSaveInitializationResult PublishSelectedCandidate(
+        CandidateInspection selected,
+        CampaignSaveInitializationStatus status)
+    {
+        if (!selected.IsMigratableV1)
+        {
+            Current = selected.Document;
+            return new CampaignSaveInitializationResult { Status = status, Document = Current };
+        }
+
+        CampaignSaveMigrationResult migrated = CampaignSaveMigrator.TryUpgradeV1(
+            selected.Document,
+            _campaign,
+            "journey." + Guid.NewGuid().ToString("N"));
+        if (!migrated.Success)
+            return Blocked(CampaignSaveInitializationStatus.BlockedIo,
+                migrated.FailureCode, "save-migration-failed");
+        CampaignSaveCommitResult published = _committer.TryCommit(
+            migrated.Document,
+            null,
+            new CampaignSaveCommitContext { CanBackupValidatedPrimary = true });
+        if (!published.Success)
+            return Blocked(CampaignSaveInitializationStatus.BlockedIo,
+                published.FailureCode, "save-migration-publication-failed");
+        Current = published.Document;
+        return new CampaignSaveInitializationResult { Status = status, Document = Current };
     }
 }

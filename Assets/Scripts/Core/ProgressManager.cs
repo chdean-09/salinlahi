@@ -1,6 +1,7 @@
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
 using Salinlahi.Debug.Sandbox;
 #endif
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -36,6 +37,7 @@ public class ProgressManager : Singleton<ProgressManager>
 
     // Track current level being played for validation
     private int _currentPlayingLevelId = -1;
+    private CampaignProgressOutcome _cachedLevelOutcome;
 
     protected override void Awake()
     {
@@ -44,7 +46,8 @@ public class ProgressManager : Singleton<ProgressManager>
     }
 
     private bool UsesRevisedProgress => SaveManager.Instance != null &&
-        SaveManager.Instance.Mode == SaveManagerMode.RevisedReady && SaveManager.Instance.Repository != null;
+        SaveManager.Instance.Mode == SaveManagerMode.RevisedReady &&
+        SaveManager.Instance.Repository != null && SaveManager.Instance.OutcomeCoordinator != null;
 
     private bool IsRevisedBlocked => SaveManager.Instance != null &&
         SaveManager.Instance.Mode == SaveManagerMode.RevisedBlocked;
@@ -144,6 +147,7 @@ public class ProgressManager : Singleton<ProgressManager>
         // Clear cached HeartSystem when entering a new scene;
         // HeartSystem will re-register via its OnEnable.
         _cachedHeartSystem = null;
+        _cachedLevelOutcome = null;
 
         if (scene.name.Contains("Gameplay") || scene.name.Contains("Game"))
         {
@@ -179,6 +183,7 @@ public class ProgressManager : Singleton<ProgressManager>
             if (levelId != _currentPlayingLevelId)
             {
                 _currentPlayingLevelId = levelId;
+                _cachedLevelOutcome = null;
                 DebugLogger.Log($"ProgressManager: Level changed to {_currentPlayingLevelId}");
             }
 
@@ -195,6 +200,9 @@ public class ProgressManager : Singleton<ProgressManager>
             return;
         }
 #endif
+
+        if (UsesRevisedProgress)
+            return;
 
         // Get current level ID from tracking or PlayerPrefs
         int currentLevelId = _currentPlayingLevelId > 0 ? _currentPlayingLevelId : GetSelectedLevelNumber();
@@ -268,7 +276,11 @@ public class ProgressManager : Singleton<ProgressManager>
         if (UsesRevisedProgress)
         {
             if (TryResolveRevisedLevel(levelID, out LevelConfigSO revisedLevel))
-                SaveManager.Instance.Repository.TryCompleteLevel(revisedLevel.stableId, Mathf.Clamp(stars, 1, MaxStars));
+            {
+                _cachedLevelOutcome = BuildOutcome(
+                    revisedLevel, Mathf.Clamp(stars, 1, MaxStars), null, null, null);
+                SaveManager.Instance.OutcomeCoordinator.TryCommit(_cachedLevelOutcome);
+            }
             return;
         }
         if (IsRevisedBlocked)
@@ -417,9 +429,17 @@ public class ProgressManager : Singleton<ProgressManager>
     {
         if (UsesRevisedProgress)
         {
-            SaveManager.Instance.Repository.TryResetJourney();
+            CampaignOutcomeCommitResult resetResult = SaveManager.Instance.ResetJourneyAtomically();
+            if (resetResult.IsAccepted)
+            {
+                CharacterUnlockProgress.ClearAllUnlocked();
+                EnemyDiscoveryProgress.ClearAllDiscovered();
+                BossDiscoveryProgress.ClearAllDiscovered();
+                PlayerPrefs.Save();
+            }
             _lastProcessedLevelId = -1;
             _currentPlayingLevelId = -1;
+            _cachedLevelOutcome = null;
             return;
         }
         if (IsRevisedBlocked) return;
@@ -447,6 +467,76 @@ public class ProgressManager : Singleton<ProgressManager>
 
         PlayerPrefs.Save();
         DebugLogger.Log("ProgressManager: All progress cleared.");
+    }
+
+    public CampaignOutcomeCommitResult CommitCurrentLevelOutcome(
+        IReadOnlyList<string> unlockedSymbolIds = null,
+        IReadOnlyList<string> unlockedMemoryIds = null,
+        IReadOnlyList<string> claimedRewardIds = null)
+    {
+        if (UsesRevisedProgress)
+        {
+            if (_cachedLevelOutcome == null)
+            {
+                if (!TryGetSelectedLevel(out LevelConfigSO level))
+                    return CampaignOutcomeCommitResult.Rejected(
+                        null, CampaignSaveFailureCode.InvalidStructure, "active-level-missing");
+                _cachedLevelOutcome = BuildOutcome(
+                    level, CalculateStars(), unlockedSymbolIds, unlockedMemoryIds, claimedRewardIds);
+            }
+            return SaveManager.Instance.OutcomeCoordinator.TryCommit(_cachedLevelOutcome);
+        }
+
+        if (IsRevisedBlocked)
+            return CampaignOutcomeCommitResult.Blocked(
+                null, CampaignSaveFailureCode.InvalidStructure, "revised-save-blocked");
+
+        int currentLevelId = _currentPlayingLevelId > 0 ? _currentPlayingLevelId : GetSelectedLevelNumber();
+        if (currentLevelId < 1 || currentLevelId > TotalLevels)
+            currentLevelId = 1;
+        MarkLevelComplete(currentLevelId, CalculateStars());
+        return CampaignOutcomeCommitResult.Committed(null);
+    }
+
+    public CampaignOutcomeCommitResult RetryPendingLevelOutcome()
+    {
+        if (SaveManager.Instance == null)
+            return CampaignOutcomeCommitResult.Blocked(
+                null, CampaignSaveFailureCode.InvalidStructure, "save-manager-missing");
+        return SaveManager.Instance.RetryPendingOutcome();
+    }
+
+    private CampaignProgressOutcome BuildOutcome(
+        LevelConfigSO level,
+        int stars,
+        IReadOnlyList<string> unlockedSymbolIds,
+        IReadOnlyList<string> unlockedMemoryIds,
+        IReadOnlyList<string> claimedRewardIds)
+    {
+        return new CampaignProgressOutcome
+        {
+            outcomeSchemaVersion = CampaignProgressOutcome.CurrentOutcomeSchemaVersion,
+            outcomeId = "outcome." + Guid.NewGuid().ToString("N"),
+            journeyGenerationId = SaveManager.Instance.Repository.CurrentJourneyGenerationId,
+            campaignId = SaveManager.Instance.Campaign.manifest.campaignId,
+            contentSchemaVersion = SaveManager.Instance.Campaign.manifest.contentSchemaVersion,
+            levelId = level.stableId,
+            stars = Mathf.Clamp(stars, 1, MaxStars),
+            unlockedSymbolIds = CopyAndSort(unlockedSymbolIds),
+            unlockedMemoryIds = CopyAndSort(unlockedMemoryIds),
+            claimedRewardIds = CopyAndSort(claimedRewardIds),
+            completedAtUtc = DateTime.UtcNow.ToString("O"),
+        };
+    }
+
+    private static List<string> CopyAndSort(IReadOnlyList<string> values)
+    {
+        List<string> copy = new List<string>();
+        if (values != null)
+            for (int i = 0; i < values.Count; i++)
+                copy.Add(values[i]);
+        copy.Sort(StringComparer.Ordinal);
+        return copy;
     }
 
     /// <summary>
