@@ -62,6 +62,8 @@ public sealed class CampaignSaveCommitter
         Action<CampaignSaveDocument> mutation,
         CampaignSaveCommitContext context = null)
     {
+        bool backupCreated = false;
+        bool promoted = false;
         try
         {
             CampaignSaveDocument candidate = current == null
@@ -92,22 +94,60 @@ public sealed class CampaignSaveCommitter
 
             if (context != null && context.CanBackupValidatedPrimary && current != null &&
                 _storage.Exists(CampaignSaveFileRole.Primary))
+            {
                 _storage.Copy(CampaignSaveFileRole.Primary, CampaignSaveFileRole.Backup, true);
+                backupCreated = true;
+            }
 
             _storage.PromoteTemporaryToPrimary();
+            promoted = true;
             CampaignSaveParseResult published = CampaignSaveSerializer.TryDeserialize(
                 _storage.ReadAllText(CampaignSaveFileRole.Primary));
             if (!published.Success)
-                return CampaignSaveCommitResult.Failed(published.FailureCode, "The published save failed validation.");
+                return RollbackAfterPublishedFailure(
+                    backupCreated, published.FailureCode, "The published save failed validation.");
             CampaignSaveValidationResult publishedValidation = CampaignSaveValidator.Validate(
                 published.Document, _campaign, _archiveChecksumProvider?.Invoke());
             if (!publishedValidation.IsValid)
-                return CampaignSaveCommitResult.Failed(publishedValidation.FailureCode, publishedValidation.ErrorMessage);
+                return RollbackAfterPublishedFailure(
+                    backupCreated, publishedValidation.FailureCode, publishedValidation.ErrorMessage);
             return CampaignSaveCommitResult.Succeeded(published.Document);
         }
         catch (Exception exception)
         {
+            if (promoted)
+                return RollbackAfterPublishedFailure(
+                    backupCreated, CampaignSaveFailureCode.IoFailure, exception.Message);
             return CampaignSaveCommitResult.Failed(CampaignSaveFailureCode.IoFailure, exception.Message);
+        }
+    }
+
+    private CampaignSaveCommitResult RollbackAfterPublishedFailure(
+        bool backupCreated,
+        CampaignSaveFailureCode originalCode,
+        string originalMessage)
+    {
+        if (!backupCreated)
+            return CampaignSaveCommitResult.Failed(originalCode, originalMessage);
+
+        try
+        {
+            _storage.RestoreBackupToPrimary();
+            CampaignSaveParseResult restored = CampaignSaveSerializer.TryDeserialize(
+                _storage.ReadAllText(CampaignSaveFileRole.Primary));
+            CampaignSaveValidationResult validation = restored.Success
+                ? CampaignSaveValidator.Validate(restored.Document, _campaign, _archiveChecksumProvider?.Invoke())
+                : CampaignSaveValidationResult.Invalid(restored.FailureCode, "The restored save could not be parsed.");
+            if (!restored.Success || !validation.IsValid)
+                return CampaignSaveCommitResult.Failed(
+                    CampaignSaveFailureCode.IoFailure, "rollback-failed");
+            return CampaignSaveCommitResult.Failed(
+                originalCode, "published-validation-failed-rolled-back");
+        }
+        catch (Exception exception)
+        {
+            return CampaignSaveCommitResult.Failed(
+                CampaignSaveFailureCode.IoFailure, "rollback-failed: " + exception.Message);
         }
     }
 
@@ -115,6 +155,8 @@ public sealed class CampaignSaveCommitter
         CampaignSaveDocument selectedTemporary,
         CampaignSaveDocument validatedPrimary = null)
     {
+        bool backupCreated = false;
+        bool promoted = false;
         try
         {
             CampaignSaveParseResult readBack = CampaignSaveSerializer.TryDeserialize(
@@ -123,20 +165,29 @@ public sealed class CampaignSaveCommitter
                 readBack.Document.revision != selectedTemporary.revision)
                 return CampaignSaveCommitResult.Failed(CampaignSaveFailureCode.InvalidStructure, "Temporary changed during recovery.");
             if (validatedPrimary != null)
+            {
                 _storage.Copy(CampaignSaveFileRole.Primary, CampaignSaveFileRole.Backup, true);
+                backupCreated = true;
+            }
             _storage.PromoteTemporaryToPrimary();
+            promoted = true;
             CampaignSaveParseResult published = CampaignSaveSerializer.TryDeserialize(
                 _storage.ReadAllText(CampaignSaveFileRole.Primary));
             if (!published.Success)
-                return CampaignSaveCommitResult.Failed(published.FailureCode, "Recovered save failed validation.");
+                return RollbackAfterPublishedFailure(
+                    backupCreated, published.FailureCode, "Recovered save failed validation.");
             CampaignSaveValidationResult validation = CampaignSaveValidator.Validate(
                 published.Document, _campaign, _archiveChecksumProvider?.Invoke());
             return validation.IsValid
                 ? CampaignSaveCommitResult.Succeeded(published.Document)
-                : CampaignSaveCommitResult.Failed(validation.FailureCode, validation.ErrorMessage);
+                : RollbackAfterPublishedFailure(
+                    backupCreated, validation.FailureCode, validation.ErrorMessage);
         }
         catch (Exception exception)
         {
+            if (promoted)
+                return RollbackAfterPublishedFailure(
+                    backupCreated, CampaignSaveFailureCode.IoFailure, exception.Message);
             return CampaignSaveCommitResult.Failed(CampaignSaveFailureCode.IoFailure, exception.Message);
         }
     }

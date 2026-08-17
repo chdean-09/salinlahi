@@ -6,8 +6,8 @@ A 2D Pixel Art Defense Game
 
 **GAME DESIGN DOCUMENT**
 
-Version 1.1
-Date: August 13, 2026
+Version 1.3
+Date: August 17, 2026
 
 March 2026
 
@@ -364,6 +364,11 @@ legacy evidence is archived; audio preferences are preserved. If local save cand
 recovered, the game creates a clean journey, retains failed files for diagnostics, and shows a
 one-time recovery notice. A newer or incompatible save blocks the journey without resetting it.
 
+When a level completion cannot be saved, Victory and Next remain unavailable until the player
+successfully retries. The player may retry immediately or return to the Main Menu; a valid pending
+completion remains queued for the next launch. If the completion could not be made valid for
+recovery, the player is told that replaying the level may be necessary.
+
 ## 5.5 Accessibility
 
 - Full-screen drawing area means no precision targeting. The player draws anywhere, not inside a small box.
@@ -451,5 +456,6 @@ Both versions are distributed as separate app store listings built from the same
 | v1.0 (March 2026) | Initial GDD. Covers full game vision including MVP scope and post-launch features. Chapter structure finalized at 3 chapters, 15 levels. Boss encounters at Levels 5, 10, 15. Endless Mode confirmed as Must Ship. Lite/Full business model confirmed. |
 | v1.1 (June 2026) | Added §5.4 Almanac. Documents the Baybayin and Enemies encyclopaedia feature (SALIN-118): Main Menu entry point, two tabs, cell states, detail scroll overlay, progress counters, and PlayerPrefs persistence model. Updated §5.1 and §5.3 to include ALMANAC button in Main Menu flow and menus table. |
 | v1.2 (June 2026) | Added "New Character Unlocked!" reveal subsection in §5.4 (SALIN-120). Documents level-start character reveal cards: per-character scroll overlay, ✕ dismissal, Almanac registration, and replay behaviour. |
+| v1.3 (August 17, 2026) | Clarifies that unsaved level completion blocks Victory/Next, offers Retry or Main Menu, and preserves recoverable completion for the next launch. |
 
 *This document is a living reference. Update it as design decisions change. Track every change in the changelog above.*

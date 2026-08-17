@@ -1,7 +1,7 @@
 # 03 — Core Systems
 **Project:** Salinlahi
-**Version:** 2.1
-**Date:** 2026-08-13
+**Version:** 2.2
+**Date:** 2026-08-17
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -323,17 +323,26 @@ Single contact point between the Almanac UI and enemy discovery state. Currently
 
 SaveManager is the thin singleton activation gate for revised campaign persistence. Its modes are
 Uninitialized, Legacy, RevisedReady, and RevisedBlocked. It owns the optional CampaignConfigSO
-reference and exposes the active CampaignProgressRepository and pending migration/recovery notice.
-Runtime dependencies are CampaignSaveFileStorage, PlayerPrefsLegacyProgressSource, and the system
-transaction metadata provider.
+reference, the CampaignProgressRepository, and the CampaignOutcomeCoordinator. Runtime dependencies
+are CampaignSaveFileStorage, PlayerPrefsLegacyProgressSource, and the system transaction metadata
+provider.
 
-The repository is the only public mutation surface for revised active-level, completion, stable-ID
-unlock/discovery, tutorial, reward, endless-mode, reset, and notice state. Storage uses fixed
-campaign-save.json, campaign-save.tmp, campaign-save.bak, and legacy-progress-v0.json roles.
-Primary, temporary, and backup candidates are validated before recovery; failed files are retained
-through quarantine for diagnostics. Audio volume remains owned by AudioManager and its PlayerPrefs
-keys.
+SaveManager initializes the service, migrates v1 candidates to save schema v2, constructs the outcome
+journal/coordinator, replays a recoverable pending outcome, and only then publishes `RevisedReady`.
+The repository remains the public query/mutation surface for stable-ID state, while the coordinator
+is the only completion transaction owner. `RetryPendingOutcome()` and `ResetJourneyAtomically()` are
+typed entry points for the failure panel and reset flow.
 
-BootstrapLoader calls SaveManager.Initialize() after the first-frame singleton availability wait
-and before SceneLoader.LoadMainMenu(). This preserves existing build behavior while the revised
-campaign reference remains unassigned.
+The coordinator writes `campaign-outcome.pending.tmp`, validates its checksum and identity, promotes
+it to `campaign-outcome.pending.json`, merges monotonic progress, and delegates campaign publication
+to the existing `campaign-save.tmp` → backup → `campaign-save.json` committer. A receipt ledger makes
+replay exact and idempotent. A reset replaces `journeyGenerationId`, clears all progression domains,
+and removes the pending journal only after the new save is verified. A different generation is stale
+and cannot be replayed.
+
+Primary, temporary, backup, and journal candidates are validated before recovery; failed files are
+retained through quarantine for diagnostics. Audio volume remains owned by AudioManager and its
+PlayerPrefs keys. A null campaign reference preserves the legacy path and creates no revised files.
+
+BootstrapLoader calls SaveManager.Initialize() after the first-frame singleton availability wait and
+before SceneLoader.LoadMainMenu().

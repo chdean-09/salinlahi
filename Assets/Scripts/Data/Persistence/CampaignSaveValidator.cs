@@ -65,11 +65,25 @@ public static class CampaignSaveValidator
             return CampaignSaveValidationResult.Invalid(
                 CampaignSaveFailureCode.InvalidCampaign, "The campaign has no levels.");
 
+        if (document.progress.levelProgress == null ||
+            document.progress.unlockedSymbolIds == null ||
+            document.progress.discoveredEnemyIds == null ||
+            document.progress.discoveredBossIds == null ||
+            document.progress.unlockedMemoryIds == null ||
+            document.progress.claimedRewardIds == null ||
+            document.progress.tutorialProgress == null)
+            return CampaignSaveValidationResult.Invalid(
+                CampaignSaveFailureCode.InvalidStructure, "Progress collections are missing.");
+
         if (document.progress.levelProgress.Count != levelIds.Count)
             return CampaignSaveValidationResult.Invalid(
                 CampaignSaveFailureCode.InvalidStructure, "The save does not contain one record per level.");
 
         HashSet<string> configuredLevels = new HashSet<string>(levelIds, StringComparer.Ordinal);
+        if (!ValidateOutcomeReceipts(document.progress, configuredLevels))
+            return CampaignSaveValidationResult.Invalid(
+                CampaignSaveFailureCode.InvalidStructure, "Outcome receipts or journey generation are invalid.");
+
         HashSet<string> seenLevels = new HashSet<string>(StringComparer.Ordinal);
         for (int i = 0; i < document.progress.levelProgress.Count; i++)
         {
@@ -180,6 +194,28 @@ public static class CampaignSaveValidator
         for (int i = 0; i < values.Count; i++)
             if (!ContentIdentity.IsCanonical(values[i]) || !seen.Add(values[i]))
                 return false;
+        return true;
+    }
+
+    private static bool ValidateOutcomeReceipts(
+        CampaignProgressData progress,
+        HashSet<string> configuredLevels)
+    {
+        if (!ContentIdentity.IsCanonical(progress.journeyGenerationId) ||
+            progress.appliedOutcomeReceipts == null)
+            return false;
+
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        for (int i = 0; i < progress.appliedOutcomeReceipts.Count; i++)
+        {
+            AppliedOutcomeReceipt receipt = progress.appliedOutcomeReceipts[i];
+            if (receipt == null || !ContentIdentity.IsCanonical(receipt.outcomeId) ||
+                !seen.Add(receipt.outcomeId) || !configuredLevels.Contains(receipt.levelId) ||
+                !DateTime.TryParse(receipt.appliedAtUtc, null,
+                    System.Globalization.DateTimeStyles.RoundtripKind, out DateTime parsed) ||
+                parsed.Kind != DateTimeKind.Utc)
+                return false;
+        }
         return true;
     }
 

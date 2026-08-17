@@ -429,6 +429,41 @@ classDiagram
         +RunLevel()
         -PlayRevealsIfAny() Coroutine
     }
+    class SaveManager {
+        +SaveManagerMode Mode
+        +CampaignProgressRepository Repository
+        +CampaignOutcomeCoordinator OutcomeCoordinator
+        +RetryPendingOutcome() CampaignOutcomeCommitResult
+        +ResetJourneyAtomically() CampaignOutcomeCommitResult
+    }
+    class ProgressManager {
+        +CommitCurrentLevelOutcome() CampaignOutcomeCommitResult
+        +RetryPendingLevelOutcome() CampaignOutcomeCommitResult
+    }
+    class CampaignProgressRepository {
+        +string CurrentJourneyGenerationId
+        +TrySetActiveLevel(levelId) bool
+    }
+    class CampaignOutcomeCoordinator {
+        +TryCommit(outcome) CampaignOutcomeCommitResult
+        +ReplayPendingOnStartup() CampaignOutcomeCommitResult
+        +TryResetJourney() CampaignOutcomeCommitResult
+    }
+    class CampaignOutcomeJournal {
+        +TryPersist(outcome, current)
+        +TryLoadRecoverable(current)
+        +Clear() bool
+    }
+    class CampaignOutcomeSaveFailurePanel {
+        +Present(result, retry, accepted, mainMenu)
+        +Hide()
+    }
+    class CampaignProgressOutcome {
+        +string outcomeId
+        +string journeyGenerationId
+        +string levelId
+        +int stars
+    }
     class CharacterUnlockRevealController {
         +BuildRevealQueue(allowed, isUnlocked)$ List
         +Play(toReveal) Coroutine
@@ -481,6 +516,8 @@ classDiagram
     Singleton <|-- ComboManager
     Singleton <|-- ActiveEnemyTracker
     Singleton <|-- CombatResolver
+    Singleton <|-- SaveManager
+    Singleton <|-- ProgressManager
 
     Enemy --> EnemyMover : requires
     Enemy --> EnemyGlyphBadge : child
@@ -502,6 +539,14 @@ classDiagram
     LevelFlowController --> WaveManager : drives
     LevelFlowController --> BossController : activates
     LevelFlowController --> CharacterUnlockRevealController : yields Play()
+    LevelFlowController --> ProgressManager : commits outcome
+    LevelFlowController --> CampaignOutcomeSaveFailurePanel : gates Victory
+    ProgressManager --> SaveManager : asks for coordinator
+    SaveManager --> CampaignProgressRepository : exposes
+    SaveManager --> CampaignOutcomeCoordinator : initializes/replays
+    CampaignOutcomeCoordinator --> CampaignOutcomeJournal : journals
+    CampaignOutcomeCoordinator --> CampaignProgressRepository : publishes monotonic state
+    CampaignOutcomeCoordinator ..> CampaignProgressOutcome : validates/applies
 
     CharacterUnlockRevealController --> AlmanacDetailScroll : shows
     CharacterUnlockRevealController ..> CharacterUnlockProgress : TryMarkUnlocked
@@ -619,6 +664,19 @@ flowchart LR
         BCfg -. "config" .-> BCtl
     end
 
+    subgraph Persistence["Atomic Progress Outcome"]
+        PM["ProgressManager"]
+        OJ["CampaignOutcomeJournal"]
+        OC["CampaignOutcomeCoordinator"]
+        CSS["CampaignSaveService"]
+        SFP["CampaignOutcomeSaveFailurePanel"]
+        LFC --> PM
+        PM --> OJ
+        OJ --> OC
+        OC --> CSS
+        LFC -->|"PendingRetry / Rejected / Blocked"| SFP
+    end
+
     subgraph Spawning["Enemy Spawning"]
         EP["EnemyPool"]
         WS["WaveSpawner"]
@@ -674,6 +732,8 @@ flowchart LR
     HS -- "hearts == 0" --> E5
     E5 --> GM["GameManager"]
     GM --> DSU["DefeatScreenUI overlay"]
+    CSS -->|"verified campaign snapshot"| OC
+    OC -->|"Committed / AlreadyCommitted"| VSU["VictoryScreenUI"]
     BCtl --> E6
     E6 --> HUD2["Boss HUD"]
     CUR -- "raise (per acknowledged reveal)" --> E7
@@ -796,3 +856,37 @@ flowchart TD
 The revised branch has one persistence writer: the repository commit boundary. Audio volume
 continues through the legacy PlayerPrefs audio adapter and is intentionally absent from the JSON
 campaign document.
+
+## 6. Atomic Progress Outcome Flow (SALIN-174)
+
+```mermaid
+flowchart TD
+    A["OnLevelComplete"] --> B["LevelFlowController"]
+    B --> C["ProgressManager builds immutable outcome"]
+    C --> D["Outcome journal temp write + validation"]
+    D --> E["Pending journal published"]
+    E --> F["CampaignOutcomeCoordinator merges candidate"]
+    F --> G["Campaign save temp write + validation"]
+    G --> H["Backup previous primary"]
+    H --> I["Publish and verify primary"]
+    I --> J["Record receipt and clear journal"]
+    J --> K["Victory screen"]
+    D -->|"failure"| L["Save failure panel"]
+    G -->|"failure"| L
+    I -->|"failure + rollback"| L
+
+    M["Bootstrap / SaveManager"] --> N["Recover save → migrate v1 → initialize coordinator"]
+    N --> O["Recover journal → replay pending outcome"]
+    O --> P["RevisedReady"]
+    O -->|"higher schema or unresolved I/O"| Q["RevisedBlocked"]
+
+    R["Reset Journey"] --> S["Create new journeyGenerationId"]
+    S --> T["Clear progress and receipts"]
+    T --> U["Quarantine stale-generation journal"]
+    U --> V["Publish verified clean save"]
+```
+
+The completion branch cannot reach Victory until the receipt and published campaign snapshot have
+been verified. Startup replay uses the durable journal payload rather than a runtime callback.
+Reset generation mismatch makes an older pending outcome stale, so it cannot restore progress from
+the previous journey.

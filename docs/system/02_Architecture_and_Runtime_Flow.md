@@ -1,7 +1,7 @@
 # 02 — Architecture and Runtime Flow
 **Project:** Salinlahi
-**Version:** 2.0
-**Date:** 2026-08-13
+**Version:** 2.1
+**Date:** 2026-08-17
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -258,22 +258,34 @@ SceneLoader.LoadXxx()
 
 [EVIDENCE: Assets/Scripts/Core/GameManager.cs, enum GameState; SetState()]
 
-## 7. Campaign Save Activation and Recovery
+## 7. Campaign Save Activation, Outcomes, and Recovery
 
 BootstrapLoader initializes SaveManager after manager singletons awaken and before the Main Menu
 transition. A null CampaignConfigSO is an intentional compatibility gate: the runtime remains in
-Legacy mode and no revised JSON or archive file is read or written. An assigned campaign must
-pass CampaignConfigValidator; otherwise the manager enters RevisedBlocked and never falls back to
-legacy campaign keys.
+Legacy mode and no revised JSON or outcome journal file is read or written. An assigned campaign
+must pass CampaignConfigValidator; otherwise the manager enters RevisedBlocked and never falls back
+to legacy campaign keys.
 
-In RevisedReady mode, CampaignSaveService inspects the primary, temporary, and backup files,
-validating JSON integrity, identity, schema, transaction state, and content-aware progress before
-choosing the highest valid revision (primary wins ties). Unsupported schemas, wrong identity, and
-I/O failures block startup. Only unrecoverable corrupt evidence may be quarantined and replaced
-with a clean journey. Legacy PlayerPrefs are captured once in legacy-progress-v0.json; audio
-preference keys remain in PlayerPrefs.
+Revised initialization is ordered: recover the campaign candidate, migrate v1 to save schema v2,
+initialize the CampaignOutcomeCoordinator, recover the outcome journal, replay one pending outcome,
+then expose `RevisedReady`. Higher save or journal schemas, identity mismatches, and unresolved I/O
+leave the data in place and enter `RevisedBlocked`.
 
-All revised progression mutations pass through CampaignProgressRepository. The commit boundary
-writes and flushes the temporary file, reads it back, optionally backs up a validated primary,
-promotes the temporary file, and validates the published primary before changing the in-memory
-snapshot. There is no dual-write period and no campaign persistence during paused combat.
+Save schema v2 adds `journeyGenerationId` and a lifetime `AppliedOutcomeReceipt` ledger. A level-end
+`CampaignProgressOutcome` is first written to `campaign-outcome.pending.tmp`, read back and
+checksummed, then promoted to `campaign-outcome.pending.json`. The coordinator merges it
+monotonically into a cloned campaign document, which is published through the existing
+`campaign-save.tmp` → validated backup → `campaign-save.json` boundary. Only after post-publication
+verification is the receipt recorded and the outcome journal cleared. SHA-256 is lowercase hex over
+the UTF-8 JSON with its integrity field empty.
+
+The typed result is `Committed`, `AlreadyCommitted`, `PendingRetry`, `Rejected`, or `Blocked`.
+Victory and Next are available only for the first two statuses. `LevelFlowController` calls the
+coordinator synchronously at `OnLevelComplete` and gates the Victory screen on that result; the
+failure panel exposes retry and Main Menu without deleting a valid pending journal. Replay never
+lowers stars, relocks levels, removes IDs, or duplicates a receipt.
+
+Reset creates a new `journeyGenerationId`, clears level, symbol, memory, reward, endless, and receipt
+progress, preserves approved migration/recovery metadata and settings outside the campaign document,
+then clears pending outcomes. A journal from an older generation is quarantined as stale and cannot
+be applied to the new journey. Audio preference keys remain in PlayerPrefs.

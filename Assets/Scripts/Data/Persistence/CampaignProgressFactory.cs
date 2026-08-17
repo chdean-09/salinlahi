@@ -26,6 +26,8 @@ public static class CampaignProgressFactory
             },
             progress = new CampaignProgressData
             {
+                journeyGenerationId = "journey." + Guid.NewGuid().ToString("N"),
+                appliedOutcomeReceipts = new List<AppliedOutcomeReceipt>(),
                 activeLevelId = campaign.manifest.startingLevelId,
             },
         };
