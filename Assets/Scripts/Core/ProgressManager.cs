@@ -449,8 +449,11 @@ public class ProgressManager : Singleton<ProgressManager>
         DebugLogger.Log("ProgressManager: All progress cleared.");
     }
 
+#if SALINLAHI_DEV || UNITY_EDITOR
     /// <summary>
     /// Unlocks all levels (dev/debug utility).
+    /// Compiled only under UNITY_EDITOR or SALINLAHI_DEV — never in a release build.
+    /// See docs/release/RELEASE-PROFILE.md §6.
     /// </summary>
     public void UnlockAllLevels()
     {
@@ -464,6 +467,7 @@ public class ProgressManager : Singleton<ProgressManager>
         PlayerPrefs.Save();
         DebugLogger.Log("ProgressManager: All levels unlocked.");
     }
+#endif
 
     /// <summary>
     /// Gets the currently playing level ID (if in gameplay scene, -1 otherwise).

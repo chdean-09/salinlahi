@@ -1,10 +1,13 @@
+#if SALINLAHI_DEV || UNITY_EDITOR
 using UnityEngine;
 
 namespace Salinlahi.Debug
 {
     /// <summary>
-    /// Test component for SALIN-48: Progress Manager functionality
-    /// Add this to an empty GameObject in the Bootstrap scene for testing
+    /// Test component for SALIN-48: Progress Manager functionality.
+    /// Add this to an empty GameObject in the Bootstrap scene for testing.
+    /// Compiled only under UNITY_EDITOR or SALINLAHI_DEV — never in a release build.
+    /// See docs/release/RELEASE-PROFILE.md §6.
     /// </summary>
     public class ProgressManagerTester : MonoBehaviour
     {
@@ -182,3 +185,4 @@ namespace Salinlahi.Debug
         }
     }
 }
+#endif
