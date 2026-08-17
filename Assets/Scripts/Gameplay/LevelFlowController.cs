@@ -20,6 +20,7 @@ public class LevelFlowController : MonoBehaviour
     [SerializeField] private BossTutorialController _bossTutorialController;
     [SerializeField] private VictoryScreenUI _victoryScreen;
     [SerializeField] private DefeatScreenUI _defeatScreen;
+    [SerializeField] private CampaignOutcomeSaveFailurePanel _saveFailurePanel;
 
     [Header("Cutscene")]
     [SerializeField] private CutscenePlayer _cutscenePlayer;
@@ -44,6 +45,7 @@ public class LevelFlowController : MonoBehaviour
     private bool _waitingForCutscene;
     private bool _flowAborted;
     private bool _runtimeBootstrapped;
+    private CampaignOutcomeCommitResult _completionCommitResult;
 
     public static bool TryStartRuntimeTutorialFlow(
         LevelConfigSO levelConfig,
@@ -230,6 +232,7 @@ public class LevelFlowController : MonoBehaviour
         _cutscenePlayer ??= FindFirstObjectByType<CutscenePlayer>();
         _victoryScreen ??= FindFirstObjectByType<VictoryScreenUI>(FindObjectsInactive.Include);
         _defeatScreen ??= FindFirstObjectByType<DefeatScreenUI>(FindObjectsInactive.Include);
+        _saveFailurePanel ??= FindFirstObjectByType<CampaignOutcomeSaveFailurePanel>(FindObjectsInactive.Include);
         _revealController ??= FindFirstObjectByType<CharacterUnlockRevealController>(FindObjectsInactive.Include);
         _bossTutorialController ??= FindFirstObjectByType<BossTutorialController>(FindObjectsInactive.Include);
 
@@ -437,8 +440,27 @@ public class LevelFlowController : MonoBehaviour
     {
         if (_levelEnded) return;
         _levelEnded = true;
+        _completionCommitResult = CommitCompletion();
 
         StartCoroutine(PlayOutroThenVictory());
+    }
+
+    protected virtual CampaignOutcomeCommitResult CommitCompletion()
+    {
+        if (SaveManager.Instance != null &&
+            SaveManager.Instance.Mode == SaveManagerMode.RevisedReady &&
+            ProgressManager.Instance != null)
+            return ProgressManager.Instance.CommitCurrentLevelOutcome();
+
+        if (SaveManager.Instance == null || SaveManager.Instance.Mode == SaveManagerMode.Legacy)
+            return CampaignOutcomeCommitResult.Committed(null);
+
+        if (SaveManager.Instance.Mode == SaveManagerMode.RevisedBlocked)
+            return CampaignOutcomeCommitResult.Blocked(
+                null, CampaignSaveFailureCode.InvalidStructure, "revised-save-blocked");
+
+        return CampaignOutcomeCommitResult.Blocked(
+            null, CampaignSaveFailureCode.InvalidStructure, "progress-manager-missing");
     }
 
     private IEnumerator PlayOutroThenVictory()
@@ -458,7 +480,10 @@ public class LevelFlowController : MonoBehaviour
             yield return new WaitUntil(() => !_waitingForCutscene);
         }
 
-        ShowVictoryScreen();
+        if (_completionCommitResult != null && _completionCommitResult.IsAccepted)
+            ShowVictoryScreen();
+        else
+            ShowSaveFailurePanel(_completionCommitResult);
     }
 
     // AC-4: Game over → defeat screen directly (no outro)
@@ -501,6 +526,27 @@ public class LevelFlowController : MonoBehaviour
     {
         if (_victoryScreen != null)
             _victoryScreen.Show();
+    }
+
+    private void ShowSaveFailurePanel(CampaignOutcomeCommitResult result)
+    {
+        if (_saveFailurePanel == null)
+            _saveFailurePanel = FindFirstObjectByType<CampaignOutcomeSaveFailurePanel>(FindObjectsInactive.Include);
+        if (_saveFailurePanel == null)
+            return;
+
+        _saveFailurePanel.Present(
+            result,
+            () => ProgressManager.Instance != null
+                ? ProgressManager.Instance.RetryPendingLevelOutcome()
+                : CampaignOutcomeCommitResult.Blocked(
+                    result?.Outcome, CampaignSaveFailureCode.InvalidStructure, "progress-manager-missing"),
+            ShowVictoryScreen,
+            () =>
+            {
+                if (SceneLoader.Instance != null)
+                    SceneLoader.Instance.LoadMainMenu();
+            });
     }
 
     private void ShowDefeatScreen()

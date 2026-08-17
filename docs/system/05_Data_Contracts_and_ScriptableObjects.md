@@ -1,7 +1,7 @@
 # 05 — Data Contracts and ScriptableObjects
 **Project:** Salinlahi
-**Version:** 2.7
-**Date:** 2026-08-13
+**Version:** 2.8
+**Date:** 2026-08-17
 **Owner:** Chad Andrada (Product Owner / Designer)
 
 ---
@@ -618,22 +618,38 @@ Each `BaybayinCharacterSO.templateFileName` references a plain-text coordinate f
 
 Authoring rule: Template files must be validated against `RecognitionConfigSO.resamplePointCount` (default 32 points). A template with a different point count will cause a recognition error.
 
-### 4.4 CampaignSaveDocument
+### 4.4 CampaignSaveDocument (schema v2)
 
 Revised progression is stored as a versioned CampaignSaveDocument serialized with Unity JsonUtility.
-It contains campaign identity, content/save schema versions, a monotonic revision, committed
-transaction metadata, migration/recovery receipts, a lowercase SHA-256 integrity field, and
-stable-ID progress records. The clean v1 journey starts at level.ugat.01; legacy unlocks, stars,
-selected level, discoveries, tutorials, and endless evidence are archived but never mapped into
-revised progress.
+Schema v2 contains campaign identity, content/save schema versions, a monotonic revision, committed
+transaction metadata, migration/recovery receipts, a lowercase SHA-256 integrity field, stable-ID
+progress records, `progress.journeyGenerationId`, and the lifetime
+`progress.appliedOutcomeReceipts` ledger. A receipt stores canonical outcome ID, level ID, and UTC
+application time. The clean journey starts at level.ugat.01; v1 saves migrate atomically and receive
+a new generation plus an empty receipt ledger.
 
-The file roles are fixed below Application.persistentDataPath: campaign-save.json (published
-primary), campaign-save.tmp (flushed candidate), campaign-save.bak (validated prior primary), and
-legacy-progress-v0.json (immutable typed archive). Integrity is computed over a clone with an empty
-checksum, encoded as UTF-8, and formatted as lowercase hexadecimal. A higher save schema is a
-blocking condition and is never reset or overwritten.
+The campaign file roles are fixed below Application.persistentDataPath: campaign-save.json
+(published primary), campaign-save.tmp (flushed candidate), campaign-save.bak (validated prior
+primary), and legacy-progress-v0.json (immutable typed archive). Integrity is computed over a clone
+with an empty checksum, encoded as UTF-8, and formatted as lowercase hexadecimal. A higher save
+schema is a blocking condition and is never reset or overwritten.
 
 The optional campaign root is the activation gate. Null retains legacy compatibility; an assigned
-root with validation errors blocks revised progress. Once revised mode is active, campaign
-consumers use CampaignProgressRepository and do not dual-write PlayerPrefs. Audio preferences
-remain outside this document and continue to use their existing PlayerPrefs keys.
+root with validation errors blocks revised progress. Once revised mode is active, campaign consumers
+use CampaignProgressRepository and CampaignOutcomeCoordinator and do not dual-write PlayerPrefs.
+Audio preferences remain outside this document and continue to use their existing PlayerPrefs keys.
+
+### 4.5 CampaignProgressOutcome and outcome journal (SALIN-174)
+
+`CampaignProgressOutcome` is the immutable level-end payload: outcome schema, outcome ID, journey
+generation, campaign/content identity, level ID, stars, unlocked symbol IDs, unlocked memory IDs,
+claimed reward IDs, and UTC completion time. The journal wrapper uses schema 1 and the file format
+`salinlahi-campaign-outcome-journal`.
+
+The two journal roles are `campaign-outcome.pending.tmp` and
+`campaign-outcome.pending.json`. The temporary file is flushed and read back before promotion; the
+published file is read back again before the coordinator applies it. A lowercase SHA-256 checksum
+covers the UTF-8 JSON with `integritySha256` empty. Unknown higher journal schemas remain in place
+and block startup. Valid pending outcomes replay monotonically, exact receipt duplicates return
+`AlreadyCommitted`, and journal files are cleared only after the campaign publication is verified.
+Reset creates a new generation and quarantines any stale-generation pending outcome.

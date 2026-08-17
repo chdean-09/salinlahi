@@ -7,6 +7,32 @@ namespace Salinlahi.Tests.Editor.Persistence
     public sealed class CampaignSaveValidatorTests
     {
         [Test]
+        public void CreateClean_InitializesSchemaTwoJourneyGenerationAndReceipts()
+        {
+            using CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair();
+
+            Assert.That(pair.Document.saveSchemaVersion, Is.EqualTo(2));
+            Assert.That(pair.Document.progress.journeyGenerationId,
+                Does.Match("^journey\\.[0-9a-f]{32}$"));
+            Assert.That(pair.Document.progress.appliedOutcomeReceipts, Is.Empty);
+        }
+
+        [Test]
+        public void Validate_WhenOutcomeReceiptsContainDuplicateId_ReturnsInvalidStructure()
+        {
+            using CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair();
+            pair.Document.progress.appliedOutcomeReceipts.Add(
+                new AppliedOutcomeReceipt("outcome.01", "level.ugat.01", "2026-08-17T00:00:00.0000000Z"));
+            pair.Document.progress.appliedOutcomeReceipts.Add(
+                new AppliedOutcomeReceipt("outcome.01", "level.ugat.01", "2026-08-17T00:00:01.0000000Z"));
+
+            CampaignSaveValidationResult result =
+                CampaignSaveValidator.Validate(pair.Document, pair.Campaign);
+
+            Assert.That(result.FailureCode, Is.EqualTo(CampaignSaveFailureCode.InvalidStructure));
+        }
+
+        [Test]
         public void CreateClean_StartsAtUgatOneWithOnlyThatLevelUnlocked()
         {
             using (CampaignTestFixture fixture = CampaignTestFixture.CreateValid())

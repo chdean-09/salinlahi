@@ -4,7 +4,7 @@ using System.Collections.Generic;
 [Serializable]
 public sealed class CampaignSaveDocument
 {
-    public const int CurrentSaveSchemaVersion = 1;
+    public const int CurrentSaveSchemaVersion = 2;
 
     public string fileFormat = "salinlahi-campaign-save";
     public string campaignId;
@@ -24,6 +24,7 @@ public sealed class CampaignSaveDocument
 [Serializable]
 public sealed class CampaignProgressData
 {
+    public string journeyGenerationId;
     public string activeLevelId;
     public List<LevelProgressRecord> levelProgress = new List<LevelProgressRecord>();
     public List<string> unlockedSymbolIds = new List<string>();
@@ -31,8 +32,26 @@ public sealed class CampaignProgressData
     public List<string> discoveredBossIds = new List<string>();
     public List<string> unlockedMemoryIds = new List<string>();
     public List<string> claimedRewardIds = new List<string>();
+    public List<AppliedOutcomeReceipt> appliedOutcomeReceipts = new List<AppliedOutcomeReceipt>();
     public List<TutorialProgressRecord> tutorialProgress = new List<TutorialProgressRecord>();
     public bool endlessModeUnlocked;
+}
+
+[Serializable]
+public sealed class AppliedOutcomeReceipt
+{
+    public string outcomeId;
+    public string levelId;
+    public string appliedAtUtc;
+
+    public AppliedOutcomeReceipt() { }
+
+    public AppliedOutcomeReceipt(string outcomeId, string levelId, string appliedAtUtc)
+    {
+        this.outcomeId = outcomeId;
+        this.levelId = levelId;
+        this.appliedAtUtc = appliedAtUtc;
+    }
 }
 
 [Serializable]

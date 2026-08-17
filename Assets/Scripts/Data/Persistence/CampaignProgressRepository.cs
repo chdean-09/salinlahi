@@ -13,6 +13,7 @@ public sealed class CampaignProgressRepository
     }
 
     public string ActiveLevelId => _service.Current?.progress?.activeLevelId;
+    public string CurrentJourneyGenerationId => _service.Current?.progress?.journeyGenerationId;
     public bool IsEndlessModeUnlocked => _service.Current?.progress?.endlessModeUnlocked == true;
 
     public bool TrySetActiveLevel(string levelId)
@@ -39,29 +40,6 @@ public sealed class CampaignProgressRepository
         int index = LevelIds().IndexOf(levelId);
         if (index > 0 && !FindLevel(LevelIds()[index - 1]).completed) return false;
         return _service.TryUpdate(document => FindLevel(document, levelId).unlocked = true);
-    }
-
-    public bool TryCompleteLevel(string levelId, int stars)
-    {
-        if (!IsKnownLevel(levelId) || stars < 1 || stars > 3) return false;
-        LevelProgressRecord record = FindLevel(levelId);
-        if (!record.unlocked) return false;
-        if (record.completed && record.bestStars >= stars &&
-            (LevelIds().IndexOf(levelId) == LevelIds().Count - 1 ||
-             FindLevel(LevelIds()[LevelIds().IndexOf(levelId) + 1]).unlocked))
-            return true;
-        return _service.TryUpdate(document =>
-        {
-            LevelProgressRecord current = FindLevel(document, levelId);
-            current.completed = true;
-            current.unlocked = true;
-            current.bestStars = Math.Max(current.bestStars, stars);
-            int index = LevelIds().IndexOf(levelId);
-            if (index + 1 < LevelIds().Count)
-                FindLevel(document, LevelIds()[index + 1]).unlocked = true;
-            else
-                document.progress.endlessModeUnlocked = true;
-        });
     }
 
     public bool TryUnlockSymbol(string symbolId) => TryAddId(symbolId, document => document.progress.unlockedSymbolIds,
@@ -114,17 +92,8 @@ public sealed class CampaignProgressRepository
 
     public bool TryResetJourney()
     {
-        CampaignSaveDocument current = _service.Current;
-        if (current == null) return false;
-        CampaignSaveDocument clean = CampaignProgressFactory.CreateClean(_campaign, DateTime.UtcNow);
-        clean.migration = current.migration;
-        clean.recovery = current.recovery;
-        return _service.TryUpdate(document =>
-        {
-            document.progress = clean.progress;
-            document.migration = clean.migration;
-            document.recovery = clean.recovery;
-        });
+        return SaveManager.Instance != null &&
+            SaveManager.Instance.ResetJourneyAtomically().IsAccepted;
     }
 
     public CampaignSaveNotice GetPendingNotice()

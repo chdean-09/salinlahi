@@ -4,9 +4,9 @@ A 2D Pixel Art Defense Game
 
 **TECHNICAL DESIGN DOCUMENT**
 
-Version 1.4 | August 13, 2026
+Version 1.5 | August 17, 2026
 
-Updated: 2026-08-13
+Updated: 2026-08-17
 
 **Engine: **Unity 6 LTS | URP 2D | C#
 
@@ -131,6 +131,13 @@ remain in place so legacy assets continue to deserialize. The schema exposes sav
 compatibility metadata but does not implement save migration; that is SALIN-171 work.
 Production campaign authoring remains SALIN-172 work.
 
+SALIN-174 adds the completion transaction boundary: the `LevelFlowController` asks
+`ProgressManager` for one immutable outcome, `CampaignOutcomeCoordinator` journals and validates
+it, and the existing campaign publisher commits the monotonic merge with backup rollback. Save
+schema v2 carries a journey generation and receipt ledger. Startup recovers and replays pending
+outcomes before `RevisedReady`; Victory is gated on `Committed` or `AlreadyCommitted`, while the
+retry/Main Menu panel preserves a valid pending journal.
+
 *Figure 6. ScriptableObject data architecture*
 
 | **Asset Type** | **Defines** |
@@ -205,5 +212,6 @@ Both Salinlahi Lite and Salinlahi Full are built from the same Unity codebase. A
 | v1.3 (Updated 2026-08-13) | Integrates SALIN-168 challenge-sequence authoring into SALIN-170 campaign validation through an opt-in, non-mutating delegation boundary. |
 
 | v1.4 (Updated 2026-08-13) | Adds SALIN-171 validated atomic campaign JSON persistence, immutable legacy archive migration, recovery precedence, and SaveManager activation modes. |
+| v1.5 (Updated 2026-08-17) | Adds SALIN-174 checksummed outcome journaling, schema-v2 migration, monotonic receipt replay, rollback verification, reset-generation invalidation, and the explicit Victory/save-failure gate. |
 
 *This document is a living reference. Update it whenever a system**'**s design changes. Track every change in the changelog above.*

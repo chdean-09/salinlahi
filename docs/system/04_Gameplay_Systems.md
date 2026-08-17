@@ -1,7 +1,7 @@
 # 04 — Gameplay Systems
 **Project:** Salinlahi
-**Version:** 2.4
-**Date:** 2026-06-03
+**Version:** 2.5
+**Date:** 2026-08-17
 
 **Owner:** Gameplay Developer (Jon Wayne Cabusbusan / Chad Andrada)
 
@@ -194,8 +194,22 @@ Tap-like strokes are rejected by raw path length and raw bounds (`minimumStrokeP
 
 | Condition | Trigger | Outcome |
 |-----------|---------|---------|
-| Win | All waves in a level cleared without hearts reaching 0 (boss levels: boss also defeated) | `EventBus.RaiseLevelComplete()` → `GameState.LevelComplete` |
+| Win | All waves in a level cleared without hearts reaching 0 (boss levels: boss also defeated) | `EventBus.RaiseLevelComplete()` → `LevelFlowController` commits one typed outcome; Victory appears only for `Committed` or `AlreadyCommitted` |
 | Lose | Shrine (PlayerBase) loses all 3 hearts | `EventBus.RaiseGameOver()` → `GameState.GameOver` → `SceneLoader.LoadGameOver()` |
+
+### 5.1.1 Revised completion transaction (SALIN-174)
+
+At level end, `LevelFlowController` synchronously asks `ProgressManager` for one immutable
+`CampaignProgressOutcome`. `CampaignOutcomeCoordinator` validates it against the current campaign,
+publishes the checksummed pending journal, merges level completion, best stars, next-level/Endless
+access, symbol IDs, memory IDs, reward IDs, and one receipt, then verifies the published campaign
+save before clearing the journal. Replays are monotonic and exact duplicates return
+`AlreadyCommitted` without incrementing the revision.
+
+If the result is `PendingRetry`, `Rejected`, or `Blocked`, the outro may finish but Victory and Next
+remain hidden. `CampaignOutcomeSaveFailurePanel` lets the player retry or return to Main Menu; Main
+Menu preserves a valid pending journal for startup replay. A full reset creates a new journey
+generation and invalidates any stale outcome from the previous journey.
 
 ### 5.2 Endless Mode
 
