@@ -67,6 +67,7 @@ public sealed class CampaignOutcomeCoordinator
             return CampaignOutcomeCommitResult.Blocked(null, loaded.FailureCode, loaded.ReasonCode);
         if (loaded.Status != CampaignOutcomeCommitStatus.PendingRetry || loaded.Outcome == null)
             return CampaignOutcomeCommitResult.Rejected(null, loaded.FailureCode, loaded.ReasonCode);
+        CampaignOutcomeValidator.UpgradeToCurrent(loaded.Outcome);
         if (HasReceipt(_service.Current, loaded.Outcome.outcomeId))
         {
             if (!_journal.Clear())
@@ -183,6 +184,53 @@ public sealed class CampaignOutcomeCoordinator
 
     private void ApplyOutcome(CampaignSaveDocument document, CampaignProgressOutcome outcome)
     {
+        if (outcome.sessionKind == LearningSessionKind.LevelAttempt)
+            ApplyLevelProgression(document, outcome);
+
+        LearningProgressWriter.Apply(
+            document.progress, outcome.evidence, _campaign.learningTuning);
+
+        document.progress.appliedOutcomeReceipts.Add(new AppliedOutcomeReceipt(
+            outcome.outcomeId,
+            outcome.levelId,
+            _metadata.UtcNow.ToUniversalTime().ToString("O"),
+            outcome.sessionKind));
+        PruneReceipts(document.progress, outcome.outcomeId);
+        document.progress.appliedOutcomeReceipts.Sort((left, right) =>
+            string.CompareOrdinal(left?.outcomeId, right?.outcomeId));
+    }
+
+    /// <summary>
+    /// LevelAttempt receipts are the durable idempotency record and are always kept. Practice and
+    /// review receipts are bounded, because the journal only ever holds one pending outcome so the
+    /// deduplication window is one outcome deep. The receipt just written is never a candidate -
+    /// evicting it would fail VerifyPublishedOutcome's HasReceipt check and wedge the journal.
+    /// </summary>
+    private static void PruneReceipts(CampaignProgressData progress, string protectedOutcomeId)
+    {
+        const int MaxNonLevelReceipts = 32;
+
+        var candidates = new List<AppliedOutcomeReceipt>();
+        for (int i = 0; i < progress.appliedOutcomeReceipts.Count; i++)
+        {
+            AppliedOutcomeReceipt receipt = progress.appliedOutcomeReceipts[i];
+            if (receipt == null ||
+                receipt.sessionKind == LearningSessionKind.LevelAttempt ||
+                string.Equals(receipt.outcomeId, protectedOutcomeId, StringComparison.Ordinal))
+                continue;
+            candidates.Add(receipt);
+        }
+
+        // Candidates are taken in existing list order, which after the previous commit's sort is
+        // ordinal by outcomeId. Do not sort by appliedAtUtc: the test metadata provider returns a
+        // constant, so every timestamp is identical and List<T>.Sort is unstable.
+        int excess = candidates.Count + 1 - MaxNonLevelReceipts;
+        for (int i = 0; i < excess && i < candidates.Count; i++)
+            progress.appliedOutcomeReceipts.Remove(candidates[i]);
+    }
+
+    private void ApplyLevelProgression(CampaignSaveDocument document, CampaignProgressOutcome outcome)
+    {
         LevelProgressRecord level = FindLevel(document, outcome.levelId);
         level.completed = true;
         level.unlocked = true;
@@ -198,18 +246,19 @@ public sealed class CampaignOutcomeCoordinator
         UnionSorted(document.progress.unlockedSymbolIds, outcome.unlockedSymbolIds);
         UnionSorted(document.progress.unlockedMemoryIds, outcome.unlockedMemoryIds);
         UnionSorted(document.progress.claimedRewardIds, outcome.claimedRewardIds);
-        document.progress.appliedOutcomeReceipts.Add(new AppliedOutcomeReceipt(
-            outcome.outcomeId,
-            outcome.levelId,
-            _metadata.UtcNow.ToUniversalTime().ToString("O")));
-        document.progress.appliedOutcomeReceipts.Sort((left, right) =>
-            string.CompareOrdinal(left?.outcomeId, right?.outcomeId));
     }
 
     private bool VerifyPublishedOutcome(CampaignSaveDocument document, CampaignProgressOutcome outcome)
     {
         if (document == null || !HasReceipt(document, outcome.outcomeId))
             return false;
+
+        if (!VerifyEvidenceApplied(document, outcome.evidence))
+            return false;
+
+        if (outcome.sessionKind != LearningSessionKind.LevelAttempt)
+            return true;
+
         LevelProgressRecord level = FindLevel(document, outcome.levelId);
         if (level == null || !level.completed || level.bestStars < outcome.stars)
             return false;
@@ -222,6 +271,30 @@ public sealed class CampaignOutcomeCoordinator
         return ContainsAll(document.progress.unlockedSymbolIds, outcome.unlockedSymbolIds) &&
             ContainsAll(document.progress.unlockedMemoryIds, outcome.unlockedMemoryIds) &&
             ContainsAll(document.progress.claimedRewardIds, outcome.claimedRewardIds);
+    }
+
+    private static bool VerifyEvidenceApplied(
+        CampaignSaveDocument document, LearningEvidenceBatch batch)
+    {
+        if (batch?.instructedContentIds == null)
+            return true;
+
+        for (int i = 0; i < batch.instructedContentIds.Count; i++)
+            if (!HasMasteryRecord(document.progress, batch.instructedContentIds[i]))
+                return false;
+
+        return true;
+    }
+
+    private static bool HasMasteryRecord(CampaignProgressData progress, string contentId)
+    {
+        for (int i = 0; i < progress.symbolMastery.Count; i++)
+            if (string.Equals(progress.symbolMastery[i]?.symbolId, contentId, StringComparison.Ordinal))
+                return true;
+        for (int i = 0; i < progress.wordMastery.Count; i++)
+            if (string.Equals(progress.wordMastery[i]?.wordId, contentId, StringComparison.Ordinal))
+                return true;
+        return false;
     }
 
     private static bool ContainsAll(List<string> values, List<string> expected)

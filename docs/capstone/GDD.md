@@ -377,7 +377,9 @@ recovery, the player is told that replaying the level may be necessary.
 
 - Failed strokes show a clear visual rejection (red flash, X mark) so the player always knows the outcome.
 
-- Tracing Dojo provides a zero-pressure practice space for players who want to learn characters before entering combat.
+- Tracing Dojo provides a zero-pressure practice space for players who want to learn characters before entering combat. Time spent there counts: the Dojo only offers characters the player has already been taught, and tracing one contributes recall evidence toward that character's mastery. It can never advance, unlock, or re-score a Story Mode level.
+
+- Every character and focus word the player learns carries a mastery state that Results and review screens surface: **Introduced** (taught), **Practiced** (drawn correctly with the shape in view), **Recalled** (drawn correctly from memory in a later session), and **Mastered** (recalled from memory across separate sessions). Progress here never goes backwards -- a bad run cannot demote a character the player has already mastered. Reaching Recalled and Mastered deliberately requires returning on a *later* session, so mastery reflects durable memory rather than one lucky streak.
 
 - Portrait-mode, one-handed play. The game is designed to be held and played with one hand.
 
@@ -457,5 +459,6 @@ Both versions are distributed as separate app store listings built from the same
 | v1.1 (June 2026) | Added §5.4 Almanac. Documents the Baybayin and Enemies encyclopaedia feature (SALIN-118): Main Menu entry point, two tabs, cell states, detail scroll overlay, progress counters, and PlayerPrefs persistence model. Updated §5.1 and §5.3 to include ALMANAC button in Main Menu flow and menus table. |
 | v1.2 (June 2026) | Added "New Character Unlocked!" reveal subsection in §5.4 (SALIN-120). Documents level-start character reveal cards: per-character scroll overlay, ✕ dismissal, Almanac registration, and replay behaviour. |
 | v1.3 (August 17, 2026) | Clarifies that unsaved level completion blocks Victory/Next, offers Retry or Main Menu, and preserves recoverable completion for the next launch. |
+| v1.4 (August 18, 2026) | Adds player-facing mastery states (Introduced, Practiced, Recalled, Mastered) surfaced in Results and review, and documents that Tracing Dojo practice contributes recall evidence but can never alter Story Mode level progression. |
 
 *This document is a living reference. Update it as design decisions change. Track every change in the changelog above.*

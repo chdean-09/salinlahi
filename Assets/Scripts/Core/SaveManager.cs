@@ -12,8 +12,17 @@ public sealed class SaveManager : Singleton<SaveManager>
 {
     [SerializeField] private CampaignConfigSO _campaign;
 
+    private LearningProgressRepository _learningRepository;
+
     public SaveManagerMode Mode { get; private set; } = SaveManagerMode.Uninitialized;
     public CampaignProgressRepository Repository { get; private set; }
+
+    /// <summary>
+    /// Read-only learning projection. Outside RevisedReady this is a snapshot over empty progress
+    /// rather than null, so consumers get empty collections instead of a NullReferenceException.
+    /// </summary>
+    public LearningStateSnapshot LearningState =>
+        _learningRepository?.Snapshot ?? new LearningStateSnapshot(new CampaignProgressData(), _campaign);
     public CampaignSaveNotice PendingNotice { get; private set; } = new CampaignSaveNotice();
     public CampaignSaveInitializationResult InitializationResult { get; private set; }
     public CampaignOutcomeCoordinator OutcomeCoordinator { get; private set; }
@@ -26,6 +35,7 @@ public sealed class SaveManager : Singleton<SaveManager>
         {
             Mode = SaveManagerMode.Legacy;
             Repository = null;
+            _learningRepository = null;
             OutcomeCoordinator = null;
             LastOutcomeResult = null;
             PendingNotice = new CampaignSaveNotice();
@@ -43,6 +53,7 @@ public sealed class SaveManager : Singleton<SaveManager>
         {
             Mode = SaveManagerMode.Legacy;
             Repository = null;
+            _learningRepository = null;
             OutcomeCoordinator = null;
             LastOutcomeResult = null;
             PendingNotice = new CampaignSaveNotice();
@@ -54,6 +65,7 @@ public sealed class SaveManager : Singleton<SaveManager>
         {
             Mode = SaveManagerMode.RevisedBlocked;
             Repository = null;
+            _learningRepository = null;
             OutcomeCoordinator = null;
             PendingNotice = new CampaignSaveNotice(
                 CampaignSaveNoticeKind.Blocking,
@@ -71,6 +83,7 @@ public sealed class SaveManager : Singleton<SaveManager>
         {
             Mode = SaveManagerMode.RevisedBlocked;
             Repository = null;
+            _learningRepository = null;
             PendingNotice = new CampaignSaveNotice(
                 CampaignSaveNoticeKind.Blocking,
                 LastOutcomeResult.ReasonCode ?? LastOutcomeResult.FailureCode.ToString());
@@ -79,6 +92,7 @@ public sealed class SaveManager : Singleton<SaveManager>
 
         Mode = SaveManagerMode.RevisedReady;
         Repository = new CampaignProgressRepository(service, _campaign);
+        _learningRepository = new LearningProgressRepository(service, _campaign);
         PendingNotice = Repository.GetPendingNotice();
         if (LastOutcomeResult.Status == CampaignOutcomeCommitStatus.PendingRetry)
             PendingNotice = new CampaignSaveNotice(

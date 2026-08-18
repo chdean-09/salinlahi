@@ -38,6 +38,7 @@ public class ProgressManager : Singleton<ProgressManager>
     // Track current level being played for validation
     private int _currentPlayingLevelId = -1;
     private CampaignProgressOutcome _cachedLevelOutcome;
+    private LearningEvidenceRecorder _levelEvidence;
 
     protected override void Awake()
     {
@@ -148,6 +149,7 @@ public class ProgressManager : Singleton<ProgressManager>
         // HeartSystem will re-register via its OnEnable.
         _cachedHeartSystem = null;
         _cachedLevelOutcome = null;
+        _levelEvidence = null;
 
         if (scene.name.Contains("Gameplay") || scene.name.Contains("Game"))
         {
@@ -526,7 +528,67 @@ public class ProgressManager : Singleton<ProgressManager>
             unlockedMemoryIds = CopyAndSort(unlockedMemoryIds),
             claimedRewardIds = CopyAndSort(claimedRewardIds),
             completedAtUtc = DateTime.UtcNow.ToString("O"),
+            sessionKind = LearningSessionKind.LevelAttempt,
+            evidence = _levelEvidence?.Build() ?? new LearningEvidenceBatch
+            {
+                levelId = level.stableId,
+                sessionKind = LearningSessionKind.LevelAttempt,
+            },
         };
+    }
+
+    /// <summary>
+    /// Session-scoped evidence recorder for the level currently being played. Created on demand so
+    /// callers never have to null-check, and discarded in OnSceneLoaded when the level is left.
+    /// </summary>
+    public LearningEvidenceRecorder LevelEvidence
+    {
+        get
+        {
+            if (_levelEvidence == null)
+                _levelEvidence = new LearningEvidenceRecorder(
+                    GetSelectedLevelId(), LearningSessionKind.LevelAttempt);
+            return _levelEvidence;
+        }
+    }
+
+    /// <summary>
+    /// Commits a free-practice or scheduled-review batch. The result is returned rather than
+    /// surfaced: per spec 11 a practice commit failure must not raise the blocking save panel.
+    /// </summary>
+    public CampaignOutcomeCommitResult CommitPracticeSession(LearningEvidenceBatch batch)
+    {
+        if (batch == null)
+            return CampaignOutcomeCommitResult.Rejected(
+                null, CampaignSaveFailureCode.InvalidStructure, "evidence-batch-missing");
+        if (!UsesRevisedProgress)
+            return CampaignOutcomeCommitResult.Rejected(
+                null, CampaignSaveFailureCode.InvalidStructure, "revised-progress-unavailable");
+        if (!TryGetSelectedLevel(out LevelConfigSO level))
+            return CampaignOutcomeCommitResult.Rejected(
+                null, CampaignSaveFailureCode.InvalidStructure, "active-level-missing");
+
+        batch.levelId = level.stableId;
+        CampaignProgressOutcome outcome = new CampaignProgressOutcome
+        {
+            outcomeSchemaVersion = CampaignProgressOutcome.CurrentOutcomeSchemaVersion,
+            outcomeId = "outcome." + Guid.NewGuid().ToString("N"),
+            journeyGenerationId = SaveManager.Instance.Repository.CurrentJourneyGenerationId,
+            campaignId = SaveManager.Instance.Campaign.manifest.campaignId,
+            contentSchemaVersion = SaveManager.Instance.Campaign.manifest.contentSchemaVersion,
+            levelId = level.stableId,
+            stars = 0,
+            unlockedSymbolIds = new List<string>(),
+            unlockedMemoryIds = new List<string>(),
+            claimedRewardIds = new List<string>(),
+            completedAtUtc = DateTime.UtcNow.ToString("O"),
+            sessionKind = batch.sessionKind == LearningSessionKind.LevelAttempt
+                ? LearningSessionKind.FreePractice
+                : batch.sessionKind,
+            evidence = batch,
+        };
+
+        return SaveManager.Instance.OutcomeCoordinator.TryCommit(outcome);
     }
 
     private static List<string> CopyAndSort(IReadOnlyList<string> values)

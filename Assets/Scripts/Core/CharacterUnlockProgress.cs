@@ -7,20 +7,31 @@ public static class CharacterUnlockProgress
 
     public static bool HasUnlocked(BaybayinCharacterSO data)
     {
-        string id = Normalize(data);
-        if (string.IsNullOrEmpty(id)) return false;
+        if (data == null) return false;
         if (UsesRevisedProgress())
-            return SaveManager.Instance.Repository.IsSymbolUnlocked(data.stableId);
-        return Load().Contains(id);
+            return ContentIdentity.IsCanonical(data.stableId) &&
+                SaveManager.Instance.Repository.IsSymbolUnlocked(data.stableId);
+
+        string id = Normalize(data);
+        return !string.IsNullOrEmpty(id) && Load().Contains(id);
     }
 
     public static bool TryMarkUnlocked(BaybayinCharacterSO data, out string characterID)
     {
-        characterID = Normalize(data);
-        if (string.IsNullOrEmpty(characterID)) return false;
+        characterID = null;
+        if (data == null) return false;
 
         if (UsesRevisedProgress())
-            return SaveManager.Instance.Repository.TryUnlockSymbol(data.stableId);
+        {
+            // Assign before returning: an unassigned out parameter is CS0177, and both callers
+            // (CharacterUnlockRevealController.cs, ProgressManagerTester.cs) pass `out _`.
+            characterID = data.stableId;
+            return ContentIdentity.IsCanonical(data.stableId) &&
+                SaveManager.Instance.Repository.TryUnlockSymbol(data.stableId);
+        }
+
+        characterID = Normalize(data);
+        if (string.IsNullOrEmpty(characterID)) return false;
         if (SaveManager.Instance != null && SaveManager.Instance.Mode == SaveManagerMode.RevisedBlocked)
             return false;
 

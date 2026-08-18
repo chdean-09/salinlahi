@@ -890,3 +890,159 @@ The completion branch cannot reach Victory until the receipt and published campa
 been verified. Startup replay uses the durable journal payload rather than a runtime callback.
 Reset generation mismatch makes an older pending outcome stale, so it cannot restore progress from
 the previous journey.
+
+---
+
+## 7. Learning, Practice, and Mastery Data (SALIN-175)
+
+### 7.1 Class diagram — the learning layer
+
+`MasteryEvaluator`, `ReviewScheduler`, and `PracticePriority` are pure: no Unity, no I/O, no
+EventBus. Persistence access is confined to `LearningProgressRepository`.
+
+```mermaid
+classDiagram
+    class CampaignConfigSO {
+        +CampaignIdentityManifest manifest
+        +LearningTuningSO learningTuning
+        +List~BaybayinCharacterSO~ symbols
+        +List~EraConfigSO~ eras
+    }
+    class LearningTuningSO {
+        +int immediateSuccessesForPracticed
+        +int delayedSuccessesForRecalled
+        +int delayedSuccessesForMastered
+        +int delayedSessionsForMastered
+        +int nextLevelOffset
+        +int laterLevelOffset
+    }
+    class CampaignProgressData {
+        +List~SymbolMasteryRecord~ symbolMastery
+        +List~WordMasteryRecord~ wordMastery
+        +List~AppliedOutcomeReceipt~ appliedOutcomeReceipts
+    }
+    class SymbolMasteryRecord {
+        +string symbolId
+        +string introducedAtLevelId
+        +List~DimensionEvidence~ dimensions
+    }
+    class WordMasteryRecord {
+        +string wordId
+        +string sourceLevelId
+        +List~string~ satisfiedReviewCheckpoints
+        +List~DimensionEvidence~ dimensions
+    }
+    class DimensionEvidence {
+        +MasteryDimension dimension
+        +int immediateSuccesses
+        +int delayedSuccesses
+        +int delayedSessionCount
+        +MasteryState highWaterState
+    }
+    class LearningEvidenceBatch {
+        +string levelId
+        +LearningSessionKind sessionKind
+        +List~string~ instructedContentIds
+        +List~LearningEvidenceEntry~ entries
+    }
+    class CampaignProgressOutcome {
+        +LearningSessionKind sessionKind
+        +LearningEvidenceBatch evidence
+        +int stars
+    }
+    class MasteryEvaluator {
+        <<pure>>
+        +Evaluate(DimensionEvidence, LearningTuningSO) MasteryState
+        +Aggregate(dimensions, kind) MasteryState
+    }
+    class LearningProgressWriter {
+        <<pure>>
+        +Apply(CampaignProgressData, batch, tuning)
+    }
+    class LearningEvidenceRecorder {
+        +RecordInstruction(id, kind)
+        +RecordAttempt(id, kind, dim, success, answerWasVisible)
+        +Build() LearningEvidenceBatch
+    }
+    class LearningProgressRepository {
+        +Snapshot LearningStateSnapshot
+    }
+    class LearningStateSnapshot {
+        +IntroducedSymbolIds
+        +GetSymbolState(id) MasteryState
+        +GetRequiredReviewItems(levelId)
+        +GetSuggestedPracticeItems(levelId, maxCount)
+    }
+    class SaveManager {
+        +LearningState LearningStateSnapshot
+    }
+
+    CampaignConfigSO --> LearningTuningSO
+    CampaignProgressData --> SymbolMasteryRecord
+    CampaignProgressData --> WordMasteryRecord
+    SymbolMasteryRecord --> DimensionEvidence
+    WordMasteryRecord --> DimensionEvidence
+    CampaignProgressOutcome --> LearningEvidenceBatch
+    LearningEvidenceRecorder --> LearningEvidenceBatch
+    LearningProgressWriter --> CampaignProgressData
+    LearningProgressWriter ..> MasteryEvaluator
+    LearningProgressRepository --> LearningStateSnapshot
+    SaveManager --> LearningProgressRepository
+```
+
+### 7.2 Data flow — evidence rides the atomic boundary
+
+```mermaid
+flowchart TD
+    A["Session: level attempt, dojo practice, or review"] --> B["LearningEvidenceRecorder"]
+    B --> C["Build() sorted LearningEvidenceBatch"]
+    C --> D["CampaignProgressOutcome.evidence"]
+    D --> E["Outcome journal temp write + read-back"]
+    E --> F["Pending journal published"]
+    F --> G{"outcome.sessionKind"}
+    G -->|"LevelAttempt"| H["ApplyLevelProgression: completion, unlocks, stars"]
+    G -->|"FreePractice / ScheduledReview"| I["skip progression"]
+    H --> J["LearningProgressWriter.Apply"]
+    I --> J
+    J --> K["Add receipt with sessionKind, prune non-level receipts"]
+    K --> L["Publish and verify campaign save"]
+    L --> M["VerifyPublishedOutcome: evidence for all kinds, level assertions only for LevelAttempt"]
+    M --> N["Clear journal"]
+
+    O["LearningProgressRepository"] --> P["LearningStateSnapshot"]
+    P --> Q["IntroducedSymbolIds -> Tracing Dojo list, SALIN-133"]
+    P --> R["Required review items + suggested practice"]
+```
+
+There is no second write path for learning data. A practice session that fails to commit leaves
+level progression untouched, because the coordinator never calls the progression branch for a
+non-`LevelAttempt` outcome and the validator rejects one that carries stars or unlocks.
+
+### 7.3 State diagram — per-dimension mastery
+
+Each `(contentId, dimension)` pair holds its own state. `highWaterState` never regresses, and
+`MasteryEvaluator.Aggregate` reports the weakest applicable dimension for the content as a whole.
+
+```mermaid
+stateDiagram-v2
+    [*] --> None
+    None --> Introduced : instructed in a committed session<br/>(seeds every applicable dimension, no attempt recorded)
+    Introduced --> Practiced : immediateSuccesses >= immediateSuccessesForPracticed<br/>(answer may have been visible)
+    Practiced --> Recalled : delayedSuccesses >= delayedSuccessesForRecalled<br/>(retrieval only - answer not visible)
+    Recalled --> Mastered : delayedSuccesses >= delayedSuccessesForMastered<br/>AND delayedSessionCount >= delayedSessionsForMastered
+    Mastered --> [*]
+
+    note right of Practiced
+        Immediate successes cap here.
+        Only delayed retrieval advances further.
+    end note
+    note right of Recalled
+        delayedSessionCount increments at most
+        once per committed session, so one
+        grinding session cannot reach Mastered.
+    end note
+```
+
+Evidence alone never creates a record: only `instructedContentIds` may move content out of `None`.
+Practice on never-taught content is therefore discarded rather than silently self-introducing the
+content and corrupting `IntroducedSymbolIds`.

@@ -176,6 +176,10 @@ public sealed class CampaignOutcomeJournal
                 IsUnsupported = parsed.FailureCode == CampaignSaveFailureCode.UnsupportedSchema,
             };
 
+        // Upgrade at the parse boundary: SameOutcome compares serialized JSON from five call
+        // sites, and every one of them must see a v2 outcome.
+        CampaignOutcomeValidator.UpgradeToCurrent(parsed.Document.outcome);
+
         CampaignSaveValidationResult validation = CampaignOutcomeValidator.Validate(
             parsed.Document.outcome, _campaign, current);
         return new JournalCandidate

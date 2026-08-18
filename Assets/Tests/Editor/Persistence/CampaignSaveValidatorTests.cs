@@ -7,11 +7,11 @@ namespace Salinlahi.Tests.Editor.Persistence
     public sealed class CampaignSaveValidatorTests
     {
         [Test]
-        public void CreateClean_InitializesSchemaTwoJourneyGenerationAndReceipts()
+        public void CreateClean_InitializesCurrentSchemaJourneyGenerationAndReceipts()
         {
             using CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair();
 
-            Assert.That(pair.Document.saveSchemaVersion, Is.EqualTo(2));
+            Assert.That(pair.Document.saveSchemaVersion, Is.EqualTo(3));
             Assert.That(pair.Document.progress.journeyGenerationId,
                 Does.Match("^journey\\.[0-9a-f]{32}$"));
             Assert.That(pair.Document.progress.appliedOutcomeReceipts, Is.Empty);

@@ -28,7 +28,7 @@ public sealed class CampaignSaveMigrationResult
 
 public static class CampaignSaveMigrator
 {
-    public static CampaignSaveMigrationResult TryUpgradeV1(
+    public static CampaignSaveMigrationResult TryUpgradeToCurrent(
         CampaignSaveDocument source,
         CampaignConfigSO campaign,
         string journeyGenerationId)
@@ -42,7 +42,7 @@ public static class CampaignSaveMigrator
         if (source.saveSchemaVersion > CampaignSaveDocument.CurrentSaveSchemaVersion)
             return CampaignSaveMigrationResult.Failed(
                 CampaignSaveFailureCode.UnsupportedSchema, "The save was created by a newer version.");
-        if (source.saveSchemaVersion != 1 && source.saveSchemaVersion != CampaignSaveDocument.CurrentSaveSchemaVersion)
+        if (source.saveSchemaVersion < 1)
             return CampaignSaveMigrationResult.Failed(
                 CampaignSaveFailureCode.InvalidStructure, "The save schema is not supported.");
         if (!ContentIdentity.IsCanonical(journeyGenerationId) ||
@@ -51,11 +51,19 @@ public static class CampaignSaveMigrator
                 CampaignSaveFailureCode.InvalidStructure, "The journey generation is invalid.");
 
         CampaignSaveDocument candidate = CampaignSaveSerializer.DeepClone(source);
-        if (source.saveSchemaVersion == 1)
+
+        if (candidate.saveSchemaVersion == 1)
         {
-            candidate.saveSchemaVersion = CampaignSaveDocument.CurrentSaveSchemaVersion;
             candidate.progress.journeyGenerationId = journeyGenerationId;
             candidate.progress.appliedOutcomeReceipts = new List<AppliedOutcomeReceipt>();
+            candidate.saveSchemaVersion = 2;
+        }
+
+        if (candidate.saveSchemaVersion == 2)
+        {
+            // DeepClone's Normalize guarantees non-null mastery collections; this step exists to
+            // move the version and to give a future v3-specific transform somewhere to live.
+            candidate.saveSchemaVersion = 3;
         }
 
         CampaignSaveValidationResult validation = CampaignSaveValidator.Validate(

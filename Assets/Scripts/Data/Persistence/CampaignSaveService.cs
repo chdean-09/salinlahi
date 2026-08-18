@@ -88,7 +88,9 @@ public sealed class CampaignSaveService
 
         if (decision.Kind == RecoveryDecisionKind.UsePrimary)
         {
-            return PublishSelectedCandidate(primary, CampaignSaveInitializationStatus.Ready);
+            return PublishSelectedCandidate(primary, primary.IsMigratableV1
+                ? CampaignSaveInitializationStatus.Migrated
+                : CampaignSaveInitializationStatus.Ready);
         }
 
         if (decision.Kind == RecoveryDecisionKind.PromoteTemporary)
@@ -228,7 +230,7 @@ public sealed class CampaignSaveService
             }
             if (parsed.Document.saveSchemaVersion == 1)
             {
-                CampaignSaveMigrationResult migration = CampaignSaveMigrator.TryUpgradeV1(
+                CampaignSaveMigrationResult migration = CampaignSaveMigrator.TryUpgradeToCurrent(
                     parsed.Document, _campaign, "journey.00000000000000000000000000000001");
                 if (migration.Success)
                 {
@@ -299,7 +301,7 @@ public sealed class CampaignSaveService
             return new CampaignSaveInitializationResult { Status = status, Document = Current };
         }
 
-        CampaignSaveMigrationResult migrated = CampaignSaveMigrator.TryUpgradeV1(
+        CampaignSaveMigrationResult migrated = CampaignSaveMigrator.TryUpgradeToCurrent(
             selected.Document,
             _campaign,
             "journey." + Guid.NewGuid().ToString("N"));

@@ -1,7 +1,7 @@
 # 09 — Test Strategy and Acceptance Criteria
 **Project:** Salinlahi
-**Version:** 1.8
-**Date:** 2026-08-17
+**Version:** 1.9
+**Date:** 2026-08-18
 **Owner:** Whole Team (QA responsibility shared)
 
 ---
@@ -167,6 +167,33 @@ confirms Reset Journey changes generation while preserving settings outside camp
 | PL-02 | Portrait-only orientation enforced | Rotate device to landscape during gameplay | Screen does not rotate; game remains in portrait | P0 |
 | PL-03 | Zero crashes in 15-level playthrough | UAT participant plays all 15 levels | 0 crash reports via Play Store/TestFlight | P0 |
 | PL-04 | Keystore-signed Android build installs | Install release APK on physical device | App installs and launches without error | P1 |
+
+### 2.7 Learning, Practice, and Mastery Data (SALIN-175)
+
+| Test ID | Requirement | Test Procedure | Pass Criterion | Priority |
+|---------|-------------|---------------|---------------|----------|
+| LM-01 | Symbols carry three dimensions, words four | `MasteryDimensions.For` for each kind | Symbol excludes `Meaning`; word includes it | P0 |
+| LM-02 | Immediate successes cannot exceed Practiced | Evaluate evidence with only immediate successes | State caps at `Practiced` | P0 |
+| LM-03 | Mastery never regresses | Evaluate weaker evidence after a high-water state | `highWaterState` is retained | P0 |
+| LM-04 | Mastered needs distinct sessions | One session with many delayed successes | State stops below `Mastered` | P0 |
+| LM-05 | Aggregate is the weakest applicable dimension | Mixed per-dimension states | Aggregate equals the lowest | P1 |
+| LM-06 | Evidence alone never creates a record | Apply a batch with entries but no instructed IDs | No mastery record is created | P0 |
+| LM-07 | Instruction seeds all dimensions at Introduced | Apply an instruction-only batch | Every applicable dimension exists at `Introduced`, zero attempts | P0 |
+| LM-08 | Visible answers cannot reach Recalled | Delayed success with `retrievalSuccessCount = 0` | State stays `Practiced`; session count unchanged | P0 |
+| LM-09 | Records are deterministically sorted | Instruct out of order | Records sorted ordinally by content ID | P1 |
+| LM-10 | Review schedule respects era boundaries | Build a schedule near an era end | Era-ending and later-era checkpoints resolve correctly | P1 |
+| LM-11 | Save schema v2 upgrades rather than being discarded | `TryUpgradeToCurrent` on a v2 source | Succeeds at schema 3 | P0 |
+| LM-12 | Newer-than-current saves are rejected | `TryUpgradeToCurrent` on a v4 source | Fails with `UnsupportedSchema` | P0 |
+| LM-13 | v1 outcome journals survive upgrade | `UpgradeToCurrent` then validate | Valid, `LevelAttempt`, non-null evidence | P0 |
+| LM-14 | Practice may not change progression | Practice outcome carrying stars or unlocks | Rejected | P0 |
+| LM-15 | Evidence identity and counts are validated | Meaning-on-symbol, duplicate pair, counts over attempts, unknown ID, locked symbol | Each rejected | P0 |
+| LM-16 | Practice leaves level progress byte-identical | Commit a practice outcome | Serialized `levelProgress` unchanged | P0 |
+| LM-17 | Level outcomes apply progression and evidence | Commit a level outcome with evidence | Level completed and mastery records written | P0 |
+| LM-18 | Receipt pruning never evicts the newest | Commit 40 practice outcomes | All level receipts kept, 32 non-level kept, newest present | P0 |
+| LM-19 | Blocked mode yields empty learning state | Query `LearningState` outside `RevisedReady` | Empty collections, no exception | P1 |
+| LM-20 | Recorder folds attempts into count shape | Repeated attempts on one content/dimension | One entry with summed counts, deterministic order | P0 |
+| LM-21 | Unlock resolves by stable ID | Revised-mode asset with blank legacy `characterID` | Reported unlocked | P1 |
+| LM-22 | Dojo records Form only | Resolve a matching trace | `Form` dimension, success and retrieval both 1 | P0 |
 
 ---
 
