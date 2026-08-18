@@ -6,7 +6,7 @@ namespace Salinlahi.Tests.Editor.Persistence
     public sealed class CampaignSaveServiceTests
     {
         [Test]
-        public void Initialize_WhenPrimaryIsV1PublishesMigratedSchemaTwoSave()
+        public void Initialize_WhenPrimaryIsV1PublishesMigratedCurrentSave()
         {
             using CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair();
             InMemoryCampaignSaveStorage storage = new InMemoryCampaignSaveStorage();
@@ -20,12 +20,12 @@ namespace Salinlahi.Tests.Editor.Persistence
             CampaignSaveInitializationResult result = service.Initialize(pair.Campaign);
 
             Assert.That(result.Status, Is.EqualTo(CampaignSaveInitializationStatus.Migrated));
-            Assert.That(service.Current.saveSchemaVersion, Is.EqualTo(2));
+            Assert.That(service.Current.saveSchemaVersion, Is.EqualTo(3));
             Assert.That(service.Current.progress.journeyGenerationId, Does.StartWith("journey."));
             Assert.That(storage.Exists(CampaignSaveFileRole.Primary), Is.True);
             Assert.That(CampaignSaveSerializer.TryDeserialize(
                 storage.ReadAllText(CampaignSaveFileRole.Primary)).Document.saveSchemaVersion,
-                Is.EqualTo(2));
+                Is.EqualTo(3));
         }
 
         [Test]

@@ -7,6 +7,9 @@ public sealed class CampaignConfigSO : ScriptableObject
 {
     public CampaignIdentityManifest manifest = CampaignIdentityManifest.CreateRevisedV1();
     public CampaignTuning tuning = new();
+
+    [Tooltip("Mastery thresholds and review offsets. Required - validation fails when absent.")]
+    public LearningTuningSO learningTuning;
     public List<BaybayinCharacterSO> symbols = new();
     public List<EraConfigSO> eras = new();
 

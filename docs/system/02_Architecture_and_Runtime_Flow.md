@@ -1,7 +1,7 @@
 # 02 — Architecture and Runtime Flow
 **Project:** Salinlahi
-**Version:** 2.1
-**Date:** 2026-08-17
+**Version:** 2.2
+**Date:** 2026-08-18
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -266,12 +266,13 @@ Legacy mode and no revised JSON or outcome journal file is read or written. An a
 must pass CampaignConfigValidator; otherwise the manager enters RevisedBlocked and never falls back
 to legacy campaign keys.
 
-Revised initialization is ordered: recover the campaign candidate, migrate v1 to save schema v2,
+Revised initialization is ordered: recover the campaign candidate, migrate older saves to the current schema,
 initialize the CampaignOutcomeCoordinator, recover the outcome journal, replay one pending outcome,
 then expose `RevisedReady`. Higher save or journal schemas, identity mismatches, and unresolved I/O
 leave the data in place and enter `RevisedBlocked`.
 
-Save schema v2 adds `journeyGenerationId` and a lifetime `AppliedOutcomeReceipt` ledger. A level-end
+Save schema v2 adds `journeyGenerationId` and a lifetime `AppliedOutcomeReceipt` ledger. Save schema v3
+adds `progress.symbolMastery`, `progress.wordMastery`, and a `sessionKind` on each receipt. A session-end
 `CampaignProgressOutcome` is first written to `campaign-outcome.pending.tmp`, read back and
 checksummed, then promoted to `campaign-outcome.pending.json`. The coordinator merges it
 monotonically into a cloned campaign document, which is published through the existing
@@ -289,3 +290,30 @@ Reset creates a new `journeyGenerationId`, clears level, symbol, memory, reward,
 progress, preserves approved migration/recovery metadata and settings outside the campaign document,
 then clears pending outcomes. A journal from an older generation is quarantined as stale and cannot
 be applied to the new journey. Audio preference keys remain in PlayerPrefs.
+
+### 7.1 Learning evidence flow and session-kind dispatch (SALIN-175)
+
+Every session — level attempt, free practice, or scheduled review — accumulates evidence in a
+session-scoped `LearningEvidenceRecorder`, which folds per-attempt `answerWasVisible` booleans into
+the persisted count shape. `Build()` emits a `LearningEvidenceBatch` with entries sorted by
+`contentId` then `dimension`, and instructed IDs sorted ordinally; deterministic ordering matters
+because the journal's `SameOutcome` compares serialized JSON.
+
+The batch rides inside `CampaignProgressOutcome.evidence` and therefore crosses the *same* atomic
+boundary as level progression — journal write, read-back, publication, verification, receipt. There
+is no second write path for learning data.
+
+`CampaignOutcomeCoordinator.ApplyOutcome` dispatches on `sessionKind`:
+
+- `LevelAttempt` → `ApplyLevelProgression` (completion, unlocks, stars, endless) **and** evidence.
+- `FreePractice` / `ScheduledReview` → evidence only.
+
+This is what makes practice **structurally unable** to alter level completion: the validator rejects
+a non-level outcome carrying stars or unlocks, and the coordinator never calls the progression path
+for one. `VerifyPublishedOutcome` asserts evidence application for every kind and level assertions
+only for `LevelAttempt`.
+
+Instruction is the only thing that creates a mastery record, and it seeds every applicable dimension
+at `Introduced` without recording an attempt. Evidence for content instructed in the same batch
+counts as **immediate**; evidence for content with a pre-existing record counts as **delayed**, and
+only delayed retrieval successes advance a dimension past `Practiced`.

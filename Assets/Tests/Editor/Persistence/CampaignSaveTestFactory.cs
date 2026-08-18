@@ -36,7 +36,9 @@ namespace Salinlahi.Tests.Editor.Persistence
         {
             return new CampaignProgressOutcome
             {
-                outcomeSchemaVersion = 1,
+                outcomeSchemaVersion = CampaignProgressOutcome.CurrentOutcomeSchemaVersion,
+                sessionKind = LearningSessionKind.LevelAttempt,
+                evidence = new LearningEvidenceBatch { levelId = "level.ugat.01" },
                 outcomeId = "outcome.00000000000000000000000000000001",
                 journeyGenerationId = current.progress.journeyGenerationId,
                 campaignId = current.campaignId,

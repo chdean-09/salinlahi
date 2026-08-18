@@ -71,7 +71,9 @@ public static class CampaignSaveValidator
             document.progress.discoveredBossIds == null ||
             document.progress.unlockedMemoryIds == null ||
             document.progress.claimedRewardIds == null ||
-            document.progress.tutorialProgress == null)
+            document.progress.tutorialProgress == null ||
+            document.progress.symbolMastery == null ||
+            document.progress.wordMastery == null)
             return CampaignSaveValidationResult.Invalid(
                 CampaignSaveFailureCode.InvalidStructure, "Progress collections are missing.");
 

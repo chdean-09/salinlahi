@@ -45,6 +45,10 @@ namespace Salinlahi.Tests.Editor.Data
                 fixture.Campaign.eras[0].levels[0].focusWords[0].decomposition[0].spokenValueId = "value.unknown");
             AssertMutation("DARA_VISUAL_IDENTITY_INVALID", fixture =>
                 FindSymbol(fixture, "symbol.dara").spokenValues.RemoveAt(1));
+            AssertMutation(ContentValidationCode.FocusMeaningMissing, fixture =>
+                fixture.Campaign.eras[0].levels[0].focusWords[0].meaning = string.Empty);
+            AssertMutation(ContentValidationCode.LearningTuningMissing, fixture =>
+                fixture.Campaign.learningTuning = null);
             AssertMutation("FOCUS_DECOMPOSITION_EMPTY", fixture =>
                 fixture.Campaign.eras[0].levels[0].focusWords[0].decomposition.Clear());
             AssertMutation("FOCUS_DECOMPOSITION_INVALID", fixture =>

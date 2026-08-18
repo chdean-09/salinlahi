@@ -101,5 +101,9 @@ public static class CampaignSaveSerializer
             document.progress.appliedOutcomeReceipts = new System.Collections.Generic.List<AppliedOutcomeReceipt>();
         if (document.progress.tutorialProgress == null)
             document.progress.tutorialProgress = new System.Collections.Generic.List<TutorialProgressRecord>();
+        if (document.progress.symbolMastery == null)
+            document.progress.symbolMastery = new System.Collections.Generic.List<SymbolMasteryRecord>();
+        if (document.progress.wordMastery == null)
+            document.progress.wordMastery = new System.Collections.Generic.List<WordMasteryRecord>();
     }
 }

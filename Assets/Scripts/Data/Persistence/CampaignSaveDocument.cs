@@ -4,7 +4,7 @@ using System.Collections.Generic;
 [Serializable]
 public sealed class CampaignSaveDocument
 {
-    public const int CurrentSaveSchemaVersion = 2;
+    public const int CurrentSaveSchemaVersion = 3;
 
     public string fileFormat = "salinlahi-campaign-save";
     public string campaignId;
@@ -34,6 +34,8 @@ public sealed class CampaignProgressData
     public List<string> claimedRewardIds = new List<string>();
     public List<AppliedOutcomeReceipt> appliedOutcomeReceipts = new List<AppliedOutcomeReceipt>();
     public List<TutorialProgressRecord> tutorialProgress = new List<TutorialProgressRecord>();
+    public List<SymbolMasteryRecord> symbolMastery = new List<SymbolMasteryRecord>();
+    public List<WordMasteryRecord> wordMastery = new List<WordMasteryRecord>();
     public bool endlessModeUnlocked;
 }
 
@@ -43,14 +45,20 @@ public sealed class AppliedOutcomeReceipt
     public string outcomeId;
     public string levelId;
     public string appliedAtUtc;
+    public LearningSessionKind sessionKind;
 
     public AppliedOutcomeReceipt() { }
 
     public AppliedOutcomeReceipt(string outcomeId, string levelId, string appliedAtUtc)
+        : this(outcomeId, levelId, appliedAtUtc, LearningSessionKind.LevelAttempt) { }
+
+    public AppliedOutcomeReceipt(
+        string outcomeId, string levelId, string appliedAtUtc, LearningSessionKind sessionKind)
     {
         this.outcomeId = outcomeId;
         this.levelId = levelId;
         this.appliedAtUtc = appliedAtUtc;
+        this.sessionKind = sessionKind;
     }
 }
 

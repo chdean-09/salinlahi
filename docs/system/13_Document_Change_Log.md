@@ -1,7 +1,7 @@
 # 13 — Document Change Log
 **Project:** Salinlahi
-**Version:** 1.9
-**Date:** 2026-06-01
+**Version:** 2.0
+**Date:** 2026-08-18
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -10,6 +10,7 @@
 
 | Version | Date | Author | Summary | Impacted Documents |
 |---------|------|--------|---------|-------------------|
+| 2.0 | 2026-08-18 | Sync pass | SALIN-175 -- Unified learning, practice, recall, and mastery data. Save schema v3 adds `progress.symbolMastery` / `progress.wordMastery` and `AppliedOutcomeReceipt.sessionKind`; `CampaignSaveMigrator.TryUpgradeV1` becomes `TryUpgradeToCurrent`, a range-guarded step chain. Outcome schema v2 adds `sessionKind` and an `evidence` batch, with `CampaignOutcomeValidator.UpgradeToCurrent` at the journal parse boundary. New `LearningTuningSO` referenced from `CampaignConfigSO.learningTuning`; new required `FocusWordDefinition.meaning`. New pure layer under `Assets/Scripts/Data/Learning/` (`MasteryEvaluator`, `ReviewScheduler`, `PracticePriority`, `LearningProgressWriter`, `LearningEvidenceRecorder`) plus the read-only `SaveManager.LearningState` surface. Coordinator dispatches on session kind so practice is structurally unable to alter level completion; Tracing Dojo records Form evidence only. | 02, 03, 04, 05, 09, 13, SystemDiagrams, TDD, GDD |
 | 1.9 | 2026-06-01 | Sync pass | SALIN-109 — Replaced standalone `WaveConfigSO` ScriptableObject assets with embedded `WaveDefinition` value type inside `LevelConfigSO`. Added `allowedEnemyTypes` roster. Wave editing now happens in a single Level asset inspector with checkbox-grid cascade. Docs 04, 05, 07, and SystemDiagrams updated. | 04, 05, 07, SystemDiagrams |
 | 1.8 | 2026-05-27 | Sync pass | SALIN-98 — Boss audio volume controls: add per-category `*Volume` fields and `bgmVolume` to `BossAudioBankSO` (10 designer-side `[0..1]` sliders that stack on top of the master/BGM/SFX user sliders). `AudioManager.PlaySFX` now accepts a `volumeScale` parameter forwarded to `PlayOneShot`; `AudioManager.FadeInBGM` accepts a `volumeScale` stored as `_bgmScale` and applied for the duration of the BGM (reset to `1f` on `PlayBGM`/`StopBGM`/`FadeOutBGM`). `BossAudio` passes the matching bank volume on every audio call. | 03, 04, 05, 13 |
 | 1.7 | 2026-05-27 | Sync pass | SALIN-98 — Boss SFX & BGM: add `BossAudioBankSO` (per-boss audio clip bank SO), `BossAudio` component (9 EventBus subscriptions, footstep coroutine, no-immediate-repeat picker), three new EventBus boss audio events (`OnBossSummonTick`, `OnBossDrawHit`, `OnBossTeleport`), `AudioManager` fade helpers (`FadeInBGM`, `FadeOutBGM`), and `audioBank` field on `BossConfigSO`. | 02, 03, 04, 05, 13, SystemDiagrams |

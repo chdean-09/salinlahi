@@ -4,8 +4,11 @@ using System.Collections.Generic;
 [Serializable]
 public sealed class CampaignProgressOutcome
 {
-    public const int CurrentOutcomeSchemaVersion = 1;
+    public const int CurrentOutcomeSchemaVersion = 2;
+    public const int MinimumOutcomeSchemaVersion = 1;
     public int outcomeSchemaVersion = CurrentOutcomeSchemaVersion;
+    public LearningSessionKind sessionKind = LearningSessionKind.LevelAttempt;
+    public LearningEvidenceBatch evidence = new LearningEvidenceBatch();
     public string outcomeId;
     public string journeyGenerationId;
     public string campaignId;

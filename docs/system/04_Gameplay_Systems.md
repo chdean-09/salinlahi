@@ -1,7 +1,7 @@
 # 04 — Gameplay Systems
 **Project:** Salinlahi
-**Version:** 2.5
-**Date:** 2026-08-17
+**Version:** 2.6
+**Date:** 2026-08-18
 
 **Owner:** Gameplay Developer (Jon Wayne Cabusbusan / Chad Andrada)
 
@@ -535,3 +535,50 @@ Same mechanism as `CharacterUnlockRevealController` (§9.4): `GameManager.Suppre
 [EVIDENCE: Assets/Tests/Editor/Boss/BossTutorialPagingTests.cs]
 [EVIDENCE: Assets/Tests/Editor/Boss/BossTutorialSOTests.cs]
 [EVIDENCE: Assets/Tests/Editor/Boss/BossTutorialControllerTests.cs]
+
+---
+
+## 12. Learning Evidence Intake (SALIN-175)
+
+Learning, practice, and review sessions all report evidence through the same recorder and the same
+atomic commit boundary. What differs is only the `LearningSessionKind` on the batch.
+
+### 12.1 Intake rules
+
+| Session | Kind | Instructed content | Counts as | May change level progression |
+|---------|------|--------------------|-----------|------------------------------|
+| Level attempt | `LevelAttempt` | The level's newly taught symbols/words | Immediate for instructed content, delayed for everything else | Yes |
+| Tracing Dojo / free practice | `FreePractice` | None | Delayed retrieval | No |
+| Scheduled review | `ScheduledReview` | None | Delayed retrieval | No |
+
+Only delayed retrieval successes -- a correct answer where the answer was not already visible --
+advance a dimension past `Practiced`. Immediate successes cap at `Practiced` no matter how many
+accumulate. `delayedSessionCount` increments at most once per committed session, not once per
+success, so grinding one session cannot reach `Mastered`.
+
+### 12.2 Tracing Dojo -- Form evidence only
+
+The dojo records the **Form** dimension and nothing else. `OnResolved` plays `pronunciationClip`
+after a correct trace, but that is reinforcement the learner *hears*, not a match the learner
+*makes*; recording it as Sound would inflate that dimension with no retrieval behind it. Sound
+intake arrives with SALIN-159's screen.
+
+`TracingDojoEvidence.Resolve` is the pure decision -- extracted from the MonoBehaviour so the rule is
+unit-testable. Identity is the canonical `stableId`, resolved from the recognizer's legacy
+`characterID` through the campaign symbol catalogue and its `legacyAliases`.
+
+The dojo's selectable list is filtered through `SaveManager.LearningState.IntroducedSymbolIds`, so it
+can only offer symbols the player has actually been taught. Its batch carries **no** instructed
+content, which is exactly what makes dojo work count as delayed retrieval and let it advance a
+symbol toward `Recalled`. The session commits on `OnDisable`; a failed practice commit is logged and
+the player continues to the menu -- it never raises `CampaignOutcomeSaveFailurePanel`.
+
+While `SaveManager` is in `Legacy` mode (no authored campaign asset yet -- SALIN-172), the dojo falls
+back to `CharacterRegistrySO` for its list and to legacy `characterID` matching, so it behaves
+exactly as before.
+
+[EVIDENCE: Assets/Scripts/UI/TracingDojo/TracingDojoEvidence.cs]
+[EVIDENCE: Assets/Scripts/UI/TracingDojo/TracingDojoController.cs]
+[EVIDENCE: Assets/Scripts/UI/TracingDojo/CharacterListPopulator.cs]
+[EVIDENCE: Assets/Scripts/Data/Learning/LearningEvidenceRecorder.cs]
+[EVIDENCE: Assets/Tests/Editor/UI/TracingDojoControllerTests.cs]
