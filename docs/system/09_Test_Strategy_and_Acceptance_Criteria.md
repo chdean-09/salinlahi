@@ -1,7 +1,7 @@
 # 09 — Test Strategy and Acceptance Criteria
 **Project:** Salinlahi
-**Version:** 1.9
-**Date:** 2026-08-18
+**Version:** 2.0
+**Date:** 2026-08-19
 **Owner:** Whole Team (QA responsibility shared)
 
 ---
@@ -58,7 +58,20 @@ heart setup, wave setup, discovery, and tutorial consumers. Scene coverage verif
 notice has assigned root/title/body/button references and that SaveManager survives the Bootstrap
 to Main Menu transition as one singleton.
 
-### 1.3 SALIN-174 atomic outcome acceptance
+### 1.3 SALIN-143 resume-safety acceptance
+
+`CampaignSaveResumeSafetyTests` verifies the returning-player flow end to end over
+in-memory storage with one-shot fault injection; `LegacyArchiveServiceTests` covers
+archive idempotency and capture fidelity at the unit seam.
+
+| Acceptance criterion | Coverage | Evidence |
+|---|---|---|
+| AC1 — historical save evaluated and archived before revised progress is used | Archive exists with all 46 typed records and its checksum is referenced by the committed migration receipt | `Initialize_WithHistoricalPlayerPrefs_ArchivesThenStartsCleanJourneyAtLevelOne` |
+| AC2 — revised journey starts at Level 1 with one migration notice | Clean Level-1 state, `Migration` notice pending until acknowledged, acknowledgment persists across relaunch | `AcknowledgedMigrationNotice_DoesNotReturnAfterRelaunch` |
+| AC3 — audio preferences preserved | Audio values captured into the archive; `ILegacyProgressSource` is read-only, so migration cannot mutate PlayerPrefs. Accessibility preferences do not exist yet (vacuously satisfied) | `Initialize_WithHistoricalPlayerPrefs_CapturesAudioPreferencesAndLeavesSourceReadable` |
+| AC4 — interrupted migration resumes or safely repeats | Archive-write failure blocks without writing and retries cleanly; interrupted initial commit resumes byte-identically; relaunch after success is `Ready`; stale-generation journals are quarantined, never applied; corrupt archives rebuild or safe-reset with a recovery notice | `Initialize_WhenArchiveWriteFails_BlocksWithoutWritingThenRetrySucceeds`, `Initialize_WhenInitialCommitInterrupted_RelaunchReusesArchiveByteIdentically`, `Initialize_RelaunchAfterSuccessfulMigration_IsReadyAndDoesNotTouchArchive`, `ReplayPendingOnStartup_WithStaleGenerationJournal_DoesNotApplyOutcome`, `Initialize_WithCorruptArchiveAndLegacyDataPresent_QuarantinesAndRebuilds`, `Initialize_WithCorruptArchiveAndNoLegacyData_SafeResetsWithRecoveryNotice`, `Initialize_WithCorruptRevisedSaveAndValidArchive_QuarantinesAndRemigrates` |
+
+### 1.4 SALIN-174 atomic outcome acceptance
 
 The atomic outcome suite covers schema-v2 migration, checksummed journal serialization, pure
 outcome validation, temporary/published interruption recovery, campaign rollback, exact duplicate
