@@ -288,6 +288,52 @@ namespace Salinlahi.Tests.Editor.Persistence
             AssertCleanLevelOneState(relaunched.Current, pair.Campaign);
         }
 
+        [Test]
+        public void Initialize_RelaunchAfterSafeReset_IsReadyAndReusesTheSafeResetJourney()
+        {
+            using CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair();
+            InMemoryCampaignSaveStorage storage = new InMemoryCampaignSaveStorage();
+            storage.Set(CampaignSaveFileRole.LegacyArchive, "{ this is not a valid archive");
+            CampaignSaveInitializationResult first =
+                CreateService(storage, new DictionaryLegacySource()).Initialize(pair.Campaign);
+
+            CampaignSaveService relaunched = CreateService(storage, new DictionaryLegacySource());
+            CampaignSaveInitializationResult second = relaunched.Initialize(pair.Campaign);
+
+            Assert.That(first.Status, Is.EqualTo(CampaignSaveInitializationStatus.SafeReset));
+            Assert.That(second.Status, Is.EqualTo(CampaignSaveInitializationStatus.Ready),
+                "A safe reset must not repeat on the next launch.");
+            Assert.That(second.Document.progress.journeyGenerationId,
+                Is.EqualTo(first.Document.progress.journeyGenerationId),
+                "Relaunch must reuse the safe-reset journey, not create another.");
+            Assert.That(relaunched.Current.recovery.reasonCode, Is.EqualTo("safe-reset"),
+                "The recovery receipt must persist for the pending notice.");
+        }
+
+        [Test]
+        public void Initialize_RepeatedLaunchWithHigherSchema_StaysBlockedWithoutMutatingFiles()
+        {
+            using CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair();
+            InMemoryCampaignSaveStorage storage = new InMemoryCampaignSaveStorage();
+            CampaignSaveDocument source = CampaignSaveSerializer.DeepClone(pair.Document);
+            source.saveSchemaVersion = 99;
+            string original = CampaignSaveSerializer.Serialize(source);
+            storage.Set(CampaignSaveFileRole.Primary, original);
+
+            CampaignSaveInitializationResult first =
+                CreateService(storage, new DictionaryLegacySource()).Initialize(pair.Campaign);
+            CampaignSaveInitializationResult second =
+                CreateService(storage, new DictionaryLegacySource()).Initialize(pair.Campaign);
+
+            Assert.That(first.Status, Is.EqualTo(CampaignSaveInitializationStatus.BlockedUnsupportedSchema));
+            Assert.That(second.Status, Is.EqualTo(CampaignSaveInitializationStatus.BlockedUnsupportedSchema),
+                "Blocked stays deterministically blocked across launches.");
+            Assert.That(storage.ReadAllText(CampaignSaveFileRole.Primary), Is.EqualTo(original),
+                "A newer-version save must never be modified.");
+            Assert.That(storage.QuarantinedRoles, Is.Empty,
+                "Blocked is not corruption; nothing may be quarantined.");
+        }
+
         private static void AssertArchivedFloat(LegacyProgressArchive archive, string key, float expected)
         {
             for (int i = 0; i < archive.records.Count; i++)

@@ -114,7 +114,10 @@ public class MainMenuUI : MonoBehaviour
         AudioManager.Instance?.PlayMenuButtonClick();
         DebugLogger.Log("MainMenuUI: Settings pressed");
         if (_settingsPanel != null)
+        {
+            _settingsPanel.EnableJourneyReset();
             _settingsPanel.Show();
+        }
     }
 
     public void OnCreditsPressed()
