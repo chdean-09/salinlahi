@@ -48,6 +48,8 @@ public class Enemy : MonoBehaviour
     private readonly Dictionary<object, float> _speedBuffs = new Dictionary<object, float>();
     private bool _isDying;
     private Coroutine _deathRoutine;
+    private static long _spawnSequenceCounter;
+    private long _spawnSequence;
 
     public BaybayinCharacterSO Character => _runtimeCharacter != null ? _runtimeCharacter : _data?.assignedCharacter;
     public BaybayinCharacterSO VisualCharacter => ResolveVisualCharacter();
@@ -59,6 +61,11 @@ public class Enemy : MonoBehaviour
     public bool IsDecoy => _data != null && _data.isDecoy;
     public bool IsDying => _isDying;
     public bool IsPhaserVisible => _phaserEnemy == null || _phaserEnemy.IsVisible;
+    /// <summary>
+    /// Monotonic per-spawn number. Stable while this enemy is alive and reassigned when a
+    /// pooled enemy re-enters play. It is the deterministic tiebreaker for active clues.
+    /// </summary>
+    public long SpawnSequence => _spawnSequence;
     // placeholder for now. will be replaced in salin 68
     public virtual bool IsBoss => false;
     public event Action<Enemy, int, int> HealthChanged;
@@ -213,6 +220,7 @@ public class Enemy : MonoBehaviour
             ResetShieldBreakVisual();
         }
 
+        _spawnSequence = ++_spawnSequenceCounter;
         ActiveEnemyTracker.Instance?.Register(this);
         _phaserEnemy?.RefreshPhaserState();
         RefreshDebugLabels();
