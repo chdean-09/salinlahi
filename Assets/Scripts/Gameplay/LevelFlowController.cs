@@ -45,6 +45,18 @@ public class LevelFlowController : MonoBehaviour
     private bool _waitingForCutscene;
     private bool _flowAborted;
     private bool _runtimeBootstrapped;
+    private LevelFlowMachine _machine;
+
+    // The controller currently driving a live LF-CONTRACT-v2 machine, if any.
+    // WaveManager/BossController consult this to decide whether their completion
+    // raises OnDefenseComplete (machine flow) or the legacy OnLevelComplete
+    // (sandbox scenes and bare controllers with no running flow).
+    private static LevelFlowController s_activeFlow;
+
+    public static bool RoutesDefenseCompletion =>
+        s_activeFlow != null
+        && s_activeFlow._machine != null
+        && !s_activeFlow._machine.IsTerminal;
     private CampaignOutcomeCommitResult _completionCommitResult;
     private ActiveClueDirector _activeClueDirector;
     private ActiveCluePresenter _activeCluePresenter;
@@ -96,19 +108,28 @@ public class LevelFlowController : MonoBehaviour
     private void OnEnable()
     {
         EventBus.OnLevelComplete += HandleLevelComplete;
+        EventBus.OnDefenseComplete += HandleDefenseComplete;
         EventBus.OnGameOver += HandleGameOver;
         EventBus.OnBossDefeated += HandleBossDefeated;
         EventBus.OnDialogueComplete += HandleDialogueComplete;
         EventBus.OnCutsceneComplete += HandleCutsceneComplete;
+        EventBus.OnGamePaused += HandleGamePaused;
+        EventBus.OnGameResumed += HandleGameResumed;
     }
 
     private void OnDisable()
     {
         EventBus.OnLevelComplete -= HandleLevelComplete;
+        EventBus.OnDefenseComplete -= HandleDefenseComplete;
         EventBus.OnGameOver -= HandleGameOver;
         EventBus.OnBossDefeated -= HandleBossDefeated;
         EventBus.OnDialogueComplete -= HandleDialogueComplete;
         EventBus.OnCutsceneComplete -= HandleCutsceneComplete;
+        EventBus.OnGamePaused -= HandleGamePaused;
+        EventBus.OnGameResumed -= HandleGameResumed;
+
+        if (s_activeFlow == this)
+            s_activeFlow = null;
     }
 
     private IEnumerator Start()
@@ -129,6 +150,14 @@ public class LevelFlowController : MonoBehaviour
         return sceneName == "Gameplay" || sceneName == "Level_01_Tutorial";
     }
 
+    /// <summary>
+    /// Drives the LF-CONTRACT-v2 machine: one executor coroutine per planned phase,
+    /// in machine order. Executors either report their own completion (Defense via
+    /// OnDefenseComplete, AtomicSave via ReportSaveResult, Results explicitly) or
+    /// fall through and let the driver auto-complete the phase (content stubs until
+    /// SALIN-138/181/202 land their surfaces). One machine per controller instance;
+    /// retry/restart/relaunch reload the scene and construct a fresh machine.
+    /// </summary>
     private IEnumerator RunLevelFlow()
     {
         if (_levelConfig == null)
@@ -139,6 +168,49 @@ public class LevelFlowController : MonoBehaviour
 
         ConfigureActiveClueSystems();
 
+        _machine = new LevelFlowMachine(LevelPhasePlan.FromConfig(_levelConfig));
+        _machine.PhaseChanged += HandleMachinePhaseChanged;
+        s_activeFlow = this;
+        _machine.Begin();
+
+        while (!_machine.IsTerminal && !_flowAborted)
+        {
+            LevelPhase phase = _machine.Phase;
+            yield return ExecutePhase(phase);
+
+            if (_flowAborted)
+                yield break;
+
+            // A stub executor finished without reporting: advance so the flow
+            // cannot deadlock on a phase that has no surface yet.
+            if (!_machine.IsTerminal && _machine.Phase == phase)
+                _machine.ReportPhaseComplete(phase);
+        }
+    }
+
+    private IEnumerator ExecutePhase(LevelPhase phase)
+    {
+        switch (phase)
+        {
+            case LevelPhase.Story: return ExecuteStory();
+            case LevelPhase.Defense: return ExecuteDefense();
+            case LevelPhase.AtomicSave: return ExecuteAtomicSave();
+            case LevelPhase.Results: return ExecuteResults();
+            // Content phases whose surfaces land with SALIN-138 (FocusWords),
+            // SALIN-181 (ContextChallenge), and SALIN-202 (MemoryReward);
+            // SymbolLearning/RequiredPractice route through learning surfaces
+            // in the same tickets. The driver auto-completes them until then.
+            default: return ExecuteStubPhase();
+        }
+    }
+
+    private static IEnumerator ExecuteStubPhase()
+    {
+        yield break;
+    }
+
+    private IEnumerator ExecuteStory()
+    {
         // Spawn protagonist if level has one configured
         if (_levelConfig.hasProtagonist)
         {
@@ -161,13 +233,13 @@ public class LevelFlowController : MonoBehaviour
             _waitingForCutscene = true;
             bool playExitTransition = _levelConfig.levelNumber == 1;
             _cutscenePlayer.Play(beforeCutscene, playExitTransition);
-            yield return new WaitUntil(() => !_waitingForCutscene);
+            yield return new WaitUntil(() => !_waitingForCutscene || _machine.IsTerminal);
 
-            if (_levelEnded)
+            if (_machine.IsTerminal)
                 yield break;
         }
 
-        // AC-1: Play intro dialogue before starting waves
+        // AC-1: Play intro dialogue before combat begins
         if (_levelConfig.introDialogue != null && _dialogueController != null)
         {
             if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
@@ -175,22 +247,21 @@ public class LevelFlowController : MonoBehaviour
 
             _waitingForDialogue = true;
             _dialogueController.Play(_levelConfig.introDialogue);
-            yield return new WaitUntil(() => !_waitingForDialogue);
-
-            if (_levelEnded)
-                yield break;
+            yield return new WaitUntil(() => !_waitingForDialogue || _machine.IsTerminal);
         }
+    }
 
-        if (_levelEnded)
-            yield break;
-
+    private IEnumerator ExecuteDefense()
+    {
         if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
             GameManager.Instance.StartGame();
 
+        // Legacy pre-wave beats stay inside the Defense executor so unauthored
+        // levels behave exactly as before the phase machine existed.
         if (_revealTiming == RevealTiming.BeforeTutorial)
         {
             yield return PlayRevealsIfAny();
-            if (_flowAborted || _levelEnded) yield break;
+            if (_flowAborted || _machine.IsTerminal) yield break;
         }
 
         if (ShouldRunChallengePrototype())
@@ -198,25 +269,25 @@ public class LevelFlowController : MonoBehaviour
         else
             yield return PlayLevelTutorialIfNeeded();
 
-        if (_flowAborted || _levelEnded)
+        if (_flowAborted || _machine.IsTerminal)
             yield break;
 
         if (_revealTiming == RevealTiming.AfterTutorial)
         {
             yield return PlayRevealsIfAny();
-            if (_flowAborted || _levelEnded) yield break;
+            if (_flowAborted || _machine.IsTerminal) yield break;
         }
 
         yield return PlayBossTutorialIfNeeded();
 
-        if (_flowAborted || _levelEnded)
+        if (_flowAborted || _machine.IsTerminal)
             yield break;
 
         // AC-2: Start BGM from level config
         if (_levelConfig.bgmClip != null && AudioManager.Instance != null)
             AudioManager.Instance.PlayBGM(_levelConfig.bgmClip);
 
-        if (_levelEnded)
+        if (_machine.IsTerminal)
             yield break;
 
         // AC-3: Start waves — no isBossLevel branching; WaveManager handles it internally
@@ -227,6 +298,51 @@ public class LevelFlowController : MonoBehaviour
             _waveManager.StartLevel();
         else
             DebugLogger.LogError("LevelFlowController: WaveManager reference missing.");
+
+        // Defense systems report defense completion only (OnDefenseComplete →
+        // ReportDefenseComplete). They can never mark the level complete.
+        yield return new WaitUntil(() => _machine.Phase != LevelPhase.Defense || _machine.IsTerminal);
+    }
+
+    private IEnumerator ExecuteAtomicSave()
+    {
+        _levelEnded = true;
+
+        // The flow, not the defense layer, owns "level complete": GameManager
+        // clears the pause snapshot and enters LevelComplete, the legacy
+        // ProgressManager path writes stars, ComboManager resets. Our own
+        // HandleLevelComplete ignores this raise because a machine is running.
+        EventBus.RaiseLevelComplete();
+
+        _completionCommitResult = CommitCompletion();
+        if (_completionCommitResult != null && _completionCommitResult.IsAccepted)
+        {
+            _machine.ReportSaveResult(accepted: true);
+            yield break;
+        }
+
+        _machine.ReportSaveResult(accepted: false);
+        ShowSaveFailurePanel(_completionCommitResult);
+        yield return new WaitUntil(() => _machine.Phase != LevelPhase.AtomicSave || _machine.IsTerminal);
+    }
+
+    private IEnumerator ExecuteResults()
+    {
+        yield return PlayOutroSequence();
+        ShowVictoryScreen();
+        _machine.ReportPhaseComplete(LevelPhase.Results);
+    }
+
+    private void HandleMachinePhaseChanged(LevelPhase from, LevelPhase to)
+    {
+        // Terminal cleanup: no stale waits may survive a defeat or exit. Deeper
+        // per-phase surfaces (prompts, timers) clean up inside their own tickets'
+        // executors as they land.
+        if (_machine != null && _machine.IsTerminal)
+        {
+            _waitingForDialogue = false;
+            _waitingForCutscene = false;
+        }
     }
 
     private void EnsureRuntimeReferences(WaveSpawner waveSpawner, EnemyDataSO fallbackEnemyData)
@@ -476,14 +592,36 @@ public class LevelFlowController : MonoBehaviour
         yield return _revealController.Play(queue);
     }
 
-    // AC-5: Level complete → outro dialogue → [cutscene (after)] → victory screen
+    // AC-5: Level complete → outro dialogue → [cutscene (after)] → victory screen.
+    // With a running machine this event is raised BY the flow itself at AtomicSave
+    // and is otherwise ignored — an external completion event can never commit or
+    // open Results. The machine-less path preserves the legacy synchronous routing
+    // for bare controllers (existing EditMode tests, sandbox scenes).
     private void HandleLevelComplete()
     {
+        if (_machine != null)
+            return;
+
         if (_levelEnded) return;
         _levelEnded = true;
         _completionCommitResult = CommitCompletion();
 
         StartCoroutine(PlayOutroThenVictory());
+    }
+
+    private void HandleDefenseComplete()
+    {
+        _machine?.ReportDefenseComplete();
+    }
+
+    private void HandleGamePaused()
+    {
+        _machine?.NotifyPaused();
+    }
+
+    private void HandleGameResumed()
+    {
+        _machine?.NotifyResumed();
     }
 
     protected virtual CampaignOutcomeCommitResult CommitCompletion()
@@ -506,6 +644,16 @@ public class LevelFlowController : MonoBehaviour
 
     private IEnumerator PlayOutroThenVictory()
     {
+        yield return PlayOutroSequence();
+
+        if (_completionCommitResult != null && _completionCommitResult.IsAccepted)
+            ShowVictoryScreen();
+        else
+            ShowSaveFailurePanel(_completionCommitResult);
+    }
+
+    private IEnumerator PlayOutroSequence()
+    {
         if (_levelConfig != null && _levelConfig.outroDialogue != null && _dialogueController != null)
         {
             _waitingForDialogue = true;
@@ -520,16 +668,20 @@ public class LevelFlowController : MonoBehaviour
             _cutscenePlayer.Play(afterCutscene);
             yield return new WaitUntil(() => !_waitingForCutscene);
         }
-
-        if (_completionCommitResult != null && _completionCommitResult.IsAccepted)
-            ShowVictoryScreen();
-        else
-            ShowSaveFailurePanel(_completionCommitResult);
     }
 
     // AC-4: Game over → defeat screen directly (no outro)
     private void HandleGameOver()
     {
+        if (_machine != null)
+        {
+            // Legal from every non-terminal phase; the driver loop unwinds on the
+            // terminal transition and terminal cleanup clears stale waits.
+            if (_machine.ReportDefeat())
+                ShowDefeatScreen();
+            return;
+        }
+
         if (_levelEnded) return;
         _levelEnded = true;
         ShowDefeatScreen();
@@ -578,16 +730,34 @@ public class LevelFlowController : MonoBehaviour
 
         _saveFailurePanel.Present(
             result,
-            () => ProgressManager.Instance != null
-                ? ProgressManager.Instance.RetryPendingLevelOutcome()
-                : CampaignOutcomeCommitResult.Blocked(
-                    result?.Outcome, CampaignSaveFailureCode.InvalidStructure, "progress-manager-missing"),
-            ShowVictoryScreen,
+            RetryCompletion,
+            OnSaveRetryAccepted,
             () =>
             {
+                _machine?.RequestExit();
                 if (SceneLoader.Instance != null)
                     SceneLoader.Instance.LoadMainMenu();
             });
+    }
+
+    private void OnSaveRetryAccepted()
+    {
+        // Machine flow: an accepted retry releases the AtomicSave gate and the
+        // Results executor opens the victory screen. Legacy flow shows it directly.
+        if (_machine != null)
+            _machine.ReportSaveResult(accepted: true);
+        else
+            ShowVictoryScreen();
+    }
+
+    protected virtual CampaignOutcomeCommitResult RetryCompletion()
+    {
+        return ProgressManager.Instance != null
+            ? ProgressManager.Instance.RetryPendingLevelOutcome()
+            : CampaignOutcomeCommitResult.Blocked(
+                _completionCommitResult?.Outcome,
+                CampaignSaveFailureCode.InvalidStructure,
+                "progress-manager-missing");
     }
 
     private void ShowDefeatScreen()
