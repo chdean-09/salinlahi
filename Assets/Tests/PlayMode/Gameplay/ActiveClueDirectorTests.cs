@@ -152,7 +152,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         [Test]
-        public void Reevaluate_AfterConsumingClue_SelectsAnotherEligibleEnemy()
+        public void ConsumedClueRemoved_MarkMovesAndNextClueIsConsumable()
         {
             EnemyDataSO data = CreateEnemyData();
             Enemy consumed = CreateEnemyAt(data, y: 2f);
@@ -161,12 +161,15 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             ActiveClueDirector director = CreateDirector(clueCombatActive: true);
             director.Reevaluate();
             Assert.That(director.CurrentClue, Is.EqualTo(consumed));
-
             Assert.IsTrue(director.TryConsumeClue(consumed));
+
+            Object.DestroyImmediate(consumed.gameObject);
             director.Reevaluate();
 
             Assert.That(director.CurrentClue, Is.EqualTo(next),
-                "A consumed clue is ineligible for the next selection.");
+                "Removing the consumed clue must re-derive the mark to the next eligible enemy.");
+            Assert.IsTrue(director.TryConsumeClue(next),
+                "Consumption is per clue instance; a freshly derived clue must credit again.");
         }
 
         [Test]
