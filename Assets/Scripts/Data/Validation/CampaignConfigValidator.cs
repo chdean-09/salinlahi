@@ -327,6 +327,7 @@ public static class CampaignConfigValidator
                 ValidateRequiredReferences(level, path, issues);
                 ValidatePaInstructionOrder(level, path, issues);
                 ValidateChallengeSequence(level, path, issues);
+                ValidateClueChannels(level, path, issues);
                 globalIndex++;
             }
         }
@@ -365,6 +366,25 @@ public static class CampaignConfigValidator
             AddError(issues, ContentValidationCode.ChallengeSequenceInvalid, challengePath,
                 "Challenge sequence is invalid: " + error, sequence);
         }
+    }
+
+    private static void ValidateClueChannels(
+        LevelConfigSO level,
+        string path,
+        List<ContentValidationIssue> issues)
+    {
+        if (!level.activeClueCombatEnabled)
+            return;
+
+        ClueChannels resolved = ClueChannelResolver.Resolve(
+            level.clueChannels, level.audioVisualFallback);
+
+        if (ClueChannelResolver.HasReadableVisual(resolved))
+            return;
+
+        AddError(issues, ContentValidationCode.ClueChannelsInvalid, path + ".clueChannels",
+            "A level with active-clue combat enabled must resolve to at least one readable "
+            + "visual channel so the clue stays playable when audio is unavailable.", level);
     }
 
     private static void ValidateFocusWords(

@@ -164,6 +164,42 @@ namespace Salinlahi.Tests.Editor.Data
         }
 
         [Test]
+        public void Validate_ReportsClueChannelIssues()
+        {
+            AssertMutation(ContentValidationCode.ClueChannelsInvalid, fixture =>
+            {
+                LevelConfigSO level = fixture.Campaign.eras[0].levels[0];
+                level.activeClueCombatEnabled = true;
+                level.clueChannels = ClueChannels.SpokenAudio;
+                level.audioVisualFallback = ClueChannels.None;
+            });
+
+            AssertMutation(ContentValidationCode.ClueChannelsInvalid, fixture =>
+            {
+                LevelConfigSO level = fixture.Campaign.eras[0].levels[0];
+                level.activeClueCombatEnabled = true;
+                level.clueChannels = ClueChannels.None;
+            });
+        }
+
+        [Test]
+        public void Validate_ClueChannelsIgnoredWhenActiveClueCombatDisabled()
+        {
+            using CampaignTestFixture fixture = CampaignTestFixture.CreateValid();
+            LevelConfigSO level = fixture.Campaign.eras[0].levels[0];
+            level.activeClueCombatEnabled = false;
+            level.clueChannels = ClueChannels.None;
+            level.audioVisualFallback = ClueChannels.None;
+
+            IReadOnlyList<ContentValidationIssue> issues =
+                CampaignConfigValidator.Validate(fixture.Campaign);
+
+            Assert.That(issues, Has.None.Matches<ContentValidationIssue>(
+                issue => issue.Code == ContentValidationCode.ClueChannelsInvalid),
+                "Levels that never arm clue combat must not be validated against clue rules.");
+        }
+
+        [Test]
         public void Validate_DisabledChallengeWithoutSequence_HasNoChallengeIssue()
         {
             using CampaignTestFixture fixture = CampaignTestFixture.CreateValid();
