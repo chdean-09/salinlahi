@@ -154,7 +154,11 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         // null at runtime and the panel renders as flat untextured quads. Acceptable because
         // this whole panel is the no-Inspector-wiring fallback -- an authored HUD supplies
         // its own art and never reaches here. Do not ship a level relying on this path.
-        Sprite defaultUiSprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/UISprite.psd");
+        // Batch mode: the builtin lookup logs an assert with no graphics device, which
+        // fails any headless test that arms a level; the styling is invisible there anyway.
+        Sprite defaultUiSprite = Application.isBatchMode
+            ? null
+            : Resources.GetBuiltinResource<Sprite>("UI/Skin/UISprite.psd");
 
         GameObject panel = new GameObject("[Runtime] ActiveCluePanel", typeof(RectTransform), typeof(Image));
         panel.transform.SetParent(canvas.transform, false);
