@@ -53,6 +53,12 @@ public class LevelFlowController : MonoBehaviour
     // (sandbox scenes and bare controllers with no running flow).
     private static LevelFlowController s_activeFlow;
 
+    /// <summary>Metrics computed for the current completion (SALIN-202); null until AtomicSave runs.</summary>
+    public LevelResults LastResults { get; private set; }
+
+    /// <summary>Rewards resolved for the current completion (SALIN-202); null until AtomicSave runs.</summary>
+    public RewardGrant LastRewardGrant { get; private set; }
+
     public static bool RoutesDefenseCompletion =>
         s_activeFlow != null
         && s_activeFlow._machine != null
@@ -195,12 +201,12 @@ public class LevelFlowController : MonoBehaviour
             case LevelPhase.Story: return ExecuteStory();
             case LevelPhase.Defense: return ExecuteDefense();
             case LevelPhase.ContextChallenge: return ExecuteContextChallenge();
+            case LevelPhase.MemoryReward: return ExecuteMemoryReward();
             case LevelPhase.AtomicSave: return ExecuteAtomicSave();
             case LevelPhase.Results: return ExecuteResults();
-            // Content phases whose surfaces land with SALIN-138 (FocusWords) and
-            // SALIN-202 (MemoryReward); SymbolLearning/RequiredPractice route
-            // through learning surfaces in the same tickets. The driver
-            // auto-completes them until then.
+            // Content phases whose surfaces land with SALIN-138 (FocusWords);
+            // SymbolLearning/RequiredPractice route through learning surfaces in
+            // the same ticket. The driver auto-completes them until then.
             default: return ExecuteStubPhase();
         }
     }
@@ -337,9 +343,27 @@ public class LevelFlowController : MonoBehaviour
         }
     }
 
+    private IEnumerator ExecuteMemoryReward()
+    {
+        // The restored-memory cutscene (SALIN-200 content). Graceful skip when the
+        // scene has no cutscene player or the level has no memory authored — the
+        // driver auto-completes the phase so nothing can deadlock.
+        CutsceneSO memory = _levelConfig.contextMedia?.cutscene;
+        if (memory == null || _cutscenePlayer == null)
+            yield break;
+
+        _waitingForCutscene = true;
+        _cutscenePlayer.Play(memory);
+        yield return new WaitUntil(() => !_waitingForCutscene || _machine.IsTerminal);
+    }
+
     private IEnumerator ExecuteAtomicSave()
     {
         _levelEnded = true;
+
+        // SALIN-202: compute the documented metrics and reward grant BEFORE the
+        // commit, from the same evidence batch the outcome will carry.
+        ComputeCompletionResults();
 
         // The flow, not the defense layer, owns "level complete": GameManager
         // clears the pause snapshot and enters LevelComplete, the legacy
@@ -362,8 +386,64 @@ public class LevelFlowController : MonoBehaviour
     private IEnumerator ExecuteResults()
     {
         yield return PlayOutroSequence();
+        if (_victoryScreen != null && LastResults != null)
+            _victoryScreen.ShowResultsSummary(BuildResultsSummary());
         ShowVictoryScreen();
         _machine.ReportPhaseComplete(LevelPhase.Results);
+    }
+
+    private void ComputeCompletionResults()
+    {
+        LearningEvidenceBatch evidence = ProgressManager.Instance != null
+            ? ProgressManager.Instance.LevelEvidence.Build()
+            : new LearningEvidenceBatch();
+
+        HeartSystem heartSystem = FindFirstObjectByType<HeartSystem>();
+        int hearts = heartSystem != null ? heartSystem.GetCurrentHearts() : 1;
+        int maxHearts = heartSystem != null ? heartSystem.GetMaxHearts() : 1;
+
+        ChallengeSession session = _challengeFlowController != null
+            ? _challengeFlowController.Session
+            : null;
+
+        LastResults = LevelResultsCalculator.Compute(
+            evidence,
+            hearts,
+            maxHearts,
+            session?.HintsUsed ?? 0,
+            session?.EmergencyHintScorePenalty ?? 0f);
+        LastRewardGrant = LevelRewardResolver.Resolve(_levelConfig);
+        ProgressManager.Instance?.SetPendingLevelResults(LastResults);
+    }
+
+    private string BuildResultsSummary()
+    {
+        var builder = new System.Text.StringBuilder();
+        builder.Append("Stars ").Append(LastResults.Stars).Append("/3");
+        if (LastResults.Metrics.TryGetValue(LevelResultsCalculator.ScoreMetricId, out float score))
+            builder.Append("   Score ").Append(Mathf.RoundToInt(score));
+        if (LastResults.Metrics.TryGetValue(LevelResultsCalculator.TracingAccuracyMetricId, out float tracing)
+            && LastResults.Metrics.TryGetValue(LevelResultsCalculator.ContextAccuracyMetricId, out float context))
+        {
+            builder.Append('\n')
+                .Append("Tracing ").Append(Mathf.RoundToInt(tracing * 100f)).Append('%')
+                .Append("   Context ").Append(Mathf.RoundToInt(context * 100f)).Append('%');
+        }
+
+        if (_levelConfig.focusWords != null && _levelConfig.focusWords.Count > 0)
+        {
+            builder.Append('\n').Append("Restored: ");
+            for (int i = 0; i < _levelConfig.focusWords.Count; i++)
+            {
+                if (i > 0) builder.Append(", ");
+                builder.Append(_levelConfig.focusWords[i].displayLabel);
+            }
+        }
+
+        if (LastRewardGrant != null && LastRewardGrant.UnlockedSymbolIds.Count > 0)
+            builder.Append('\n').Append("New symbols: ").Append(LastRewardGrant.UnlockedSymbolIds.Count);
+
+        return builder.ToString();
     }
 
     private void HandleMachinePhaseChanged(LevelPhase from, LevelPhase to)
@@ -662,7 +742,10 @@ public class LevelFlowController : MonoBehaviour
         if (SaveManager.Instance != null &&
             SaveManager.Instance.Mode == SaveManagerMode.RevisedReady &&
             ProgressManager.Instance != null)
-            return ProgressManager.Instance.CommitCurrentLevelOutcome();
+            return ProgressManager.Instance.CommitCurrentLevelOutcome(
+                LastRewardGrant?.UnlockedSymbolIds,
+                LastRewardGrant?.UnlockedMemoryIds,
+                LastRewardGrant?.ClaimedRewardIds);
 
         if (SaveManager.Instance == null || SaveManager.Instance.Mode == SaveManagerMode.Legacy)
             return CampaignOutcomeCommitResult.Committed(null);

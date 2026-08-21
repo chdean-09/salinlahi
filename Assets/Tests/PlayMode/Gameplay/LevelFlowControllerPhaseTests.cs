@@ -416,6 +416,50 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Assert.AreEqual(LevelPhase.Exited, MachineOf(controller).Phase);
         }
 
+        [UnityTest]
+        public IEnumerator AcceptedSave_PopulatesResultsAndRewardGrant()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            BaybayinCharacterSO introduced = null;
+            TestPhaseFlowController controller = BootstrapFlow(
+                config =>
+                {
+                    config.stableId = "level.test.01";
+                    config.rewardIds.Add("memory.test");
+                    config.rewardIds.Add("title.test");
+                    introduced = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+                    introduced.stableId = "symbol.test";
+                    introduced.firstIntroductionLevelId = "level.test.01";
+                    _objectsToDestroy.Add(introduced);
+                    config.cumulativeSymbolPool.Add(new SymbolValueReference
+                    {
+                        symbol = introduced,
+                        spokenValueId = "value.test",
+                    });
+                },
+                out GameObject victoryPanel, out _, out _, dialogueController: null);
+
+            yield return WaitFrames(10);
+            EventBus.RaiseDefenseComplete();
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(1, controller.CommitCalls);
+            Assert.IsTrue(victoryPanel.activeSelf);
+
+            Assert.IsNotNull(controller.LastResults,
+                "AtomicSave must compute the level results before committing.");
+            Assert.GreaterOrEqual(controller.LastResults.Stars, 1);
+            Assert.IsNotNull(controller.LastRewardGrant,
+                "AtomicSave must resolve the reward grant before committing.");
+            CollectionAssert.AreEqual(new[] { "symbol.test" }, controller.LastRewardGrant.UnlockedSymbolIds);
+            CollectionAssert.AreEqual(new[] { "memory.test" }, controller.LastRewardGrant.UnlockedMemoryIds);
+
+            GameObject summary = GameObject.Find("[Runtime] ResultsSummary");
+            Assert.IsNotNull(summary, "Results must present the learning outcome summary.");
+            Assert.IsFalse(string.IsNullOrWhiteSpace(
+                summary.GetComponent<TMPro.TextMeshProUGUI>().text));
+        }
+
         private void ConfigureContextChallenge(LevelConfigSO config)
         {
             ChallengeSequenceSO sequence = ScriptableObject.CreateInstance<ChallengeSequenceSO>();
