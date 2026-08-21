@@ -14,6 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: SA
   syllable: sa
+  stableId: symbol.sa
+  legacyAliases: []
+  spokenValues:
+  - stableId: value.sa
+    displayValue: sa
+    pronunciationClip: {fileID: 8300000, guid: dac87cccb24e42246acbc0604c9d25bd, type: 3}
+  firstIntroductionLevelId: level.ugnayan.02
   description: "SA marks the arrival of Spanish rule and new schools using the Latin
     alphabet. Juan watches Baybayin slowly disappear from daily writing.\n\r\n\u201CSA
     is the moment writing begins to shift.\u201D"

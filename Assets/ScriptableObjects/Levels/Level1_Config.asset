@@ -16,13 +16,135 @@ MonoBehaviour:
   levelNumber: 1
   chapterNumber: 1
   chapterName: Chapter 1
+  stableId: level.ugat.01
+  eraLocalOrder: 1
+  focusWords:
+  - stableId: level.ugat.01.focus.01
+    latinSpelling: INA
+    displayLabel: INA
+    meaning: mother
+    decomposition:
+    - symbol: {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+      spokenValueId: value.ei
+    - symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+      spokenValueId: value.na
+    media:
+      contextImage: {fileID: 0}
+      narrationClip: {fileID: 0}
+      dialogue: {fileID: 0}
+      cutscene: {fileID: 0}
+  - stableId: level.ugat.01.focus.02
+    latinSpelling: AMA
+    displayLabel: AMA
+    meaning: father
+    decomposition:
+    - symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+      spokenValueId: value.a
+    - symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+      spokenValueId: value.ma
+    media:
+      contextImage: {fileID: 0}
+      narrationClip: {fileID: 0}
+      dialogue: {fileID: 0}
+      cutscene: {fileID: 0}
+  cumulativeSymbolPool:
+  - symbol: {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+    spokenValueId: value.ei
+  - symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+    spokenValueId: value.na
+  - symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+    spokenValueId: value.a
+  - symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+    spokenValueId: value.ma
+  learningRequirements:
+  - kind: 0
+    symbolValue:
+      symbol: {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+      spokenValueId: value.ei
+    requiredSuccesses: 1
+  - kind: 0
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+      spokenValueId: value.na
+    requiredSuccesses: 1
+  - kind: 0
+    symbolValue:
+      symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+      spokenValueId: value.a
+    requiredSuccesses: 1
+  - kind: 0
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+      spokenValueId: value.ma
+    requiredSuccesses: 1
+  practiceRequirements:
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+      spokenValueId: value.ei
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+      spokenValueId: value.na
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+      spokenValueId: value.a
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+      spokenValueId: value.ma
+    requiredSuccesses: 2
+  activeClueCombatEnabled: 1
+  clueChannels: 1
+  audioVisualFallback: 4
+  defenseRules:
+    shrineHearts: 3
+    focusModeEnabled: 1
+    multiKillChainEnabled: 1
+  contextMedia:
+    contextImage: {fileID: 0}
+    narrationClip: {fileID: 0}
+    dialogue: {fileID: 0}
+    cutscene: {fileID: 0}
+  finalRestorationValue:
+    symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+    spokenValueId: value.na
+  rewardIds:
+  - memory.ugat.01
+  masteryRequirements:
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+      spokenValueId: value.ei
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+      spokenValueId: value.na
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+      spokenValueId: value.a
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+      spokenValueId: value.ma
+    requiredSuccesses: 1
   eraTheme: {fileID: 11400000, guid: 4a3f16684c91d284eafb13ac69eecbfc, type: 2}
   numberSprite: {fileID: -8255703752285137255, guid: 1f48d5c864048764490aef7ead1b86fc, type: 3}
   waves:
   - isIntermissionWave: 0
     characters:
-    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
-    - {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
+    - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+    - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+    - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+    - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
     enemyTypes:
     - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
     enemyCount: 3
@@ -30,8 +152,10 @@ MonoBehaviour:
     waveStartDelay: 2
   - isIntermissionWave: 0
     characters:
-    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
-    - {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
+    - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+    - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+    - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+    - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
     enemyTypes:
     - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
     enemyCount: 5
@@ -39,9 +163,10 @@ MonoBehaviour:
     waveStartDelay: 2
   - isIntermissionWave: 0
     characters:
-    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
-    - {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
-    - {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
+    - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+    - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+    - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+    - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
     enemyTypes:
     - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
     enemyCount: 7
@@ -49,9 +174,10 @@ MonoBehaviour:
     waveStartDelay: 2
   - isIntermissionWave: 0
     characters:
-    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
-    - {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
-    - {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
+    - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+    - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+    - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+    - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
     enemyTypes:
     - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
     enemyCount: 8
@@ -59,18 +185,20 @@ MonoBehaviour:
     waveStartDelay: 2
   - isIntermissionWave: 0
     characters:
-    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
-    - {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
-    - {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
+    - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+    - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+    - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+    - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
     enemyTypes:
     - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
     enemyCount: 10
     spawnInterval: 2.5
     waveStartDelay: 2
   allowedCharacters:
-  - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
-  - {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
-  - {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
+  - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+  - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+  - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+  - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
   allowedEnemyTypes:
   - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
   bossConfig: {fileID: 0}
@@ -80,7 +208,15 @@ MonoBehaviour:
   tutorialSequence: {fileID: 11400000, guid: 7369c0885d3f4f508ae62d77174c703a, type: 2}
   onboardingSequence: {fileID: 11400000, guid: 79f06c1e965e43b0891a696cf9cb3de6, type: 2}
   challengePrototypeEnabled: 1
-  challengeSequence: {fileID: 11400000, guid: 2d8e0a0d9f78405e9d5d0f7cbbde0f10, type: 2}
+  challengeSequence: {fileID: 11400000, guid: a4e56a21abe8f19459aa7c5fc613a0bf, type: 2}
+  challengePolicy:
+    tier: 1
+    heartPenaltiesEnabled: 0
+    errorsPerPenalty: 3
+    checkpointResetOnPenalty: 1
+    emergencyHintEnabled: 0
+    emergencyHintsPerAttempt: 1
+    emergencyHintScorePenalty: 0.1
   introDialogue: {fileID: 0}
   outroDialogue: {fileID: 0}
   bgmClip: {fileID: 0}

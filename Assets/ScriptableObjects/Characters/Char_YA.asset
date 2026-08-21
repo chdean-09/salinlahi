@@ -14,6 +14,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: YA
   syllable: ya
+  stableId: symbol.ya
+  legacyAliases: []
+  spokenValues:
+  - stableId: value.ya
+    displayValue: ya
+    pronunciationClip: {fileID: 0}
+  firstIntroductionLevelId: level.ugnayan.03
+  description: 
   displaySprite: {fileID: -8685243623993888310, guid: 7c42c3d432e88b2448b72d3da94d9a87, type: 3}
+  almanacSprite: {fileID: 0}
+  badgeSprite: {fileID: 0}
+  scrambledBadgeSprite: {fileID: 0}
   pronunciationClip: {fileID: 0}
   templateFileName: YA_template_01

@@ -14,6 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: OU
   syllable: o/u
+  stableId: symbol.ou
+  legacyAliases: []
+  spokenValues:
+  - stableId: value.ou
+    displayValue: o/u
+    pronunciationClip: {fileID: 8300000, guid: 34ea5307ae3df8347b49edec05625ba0, type: 3}
+  firstIntroductionLevelId: level.ugat.04
   description: "O is carved in wood, stone, and tools used by early communities.
     Juan learns it represents how Filipinos once wrote their own life.\n\r\n\u201CO
     holds the shape of who you are."

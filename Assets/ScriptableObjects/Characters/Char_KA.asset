@@ -14,6 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: KA
   syllable: ka
+  stableId: symbol.ka
+  legacyAliases: []
+  spokenValues:
+  - stableId: value.ka
+    displayValue: ka
+    pronunciationClip: {fileID: 8300000, guid: 722c77ed9c66a084f9432b041b5edc4a, type: 3}
+  firstIntroductionLevelId: level.ugnayan.02
   description: "KA is the final keeper of Baybayin knowledge during the colonial
     era. Juan receives the last piece that completes the script.\n\r\n\u201CKA is
     the choice to keep memory alive.\u201D"

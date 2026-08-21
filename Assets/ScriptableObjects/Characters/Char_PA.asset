@@ -14,6 +14,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: PA
   syllable: pa
+  stableId: symbol.pa
+  legacyAliases: []
+  spokenValues:
+  - stableId: value.pa
+    displayValue: pa
+    pronunciationClip: {fileID: 0}
+  firstIntroductionLevelId: level.pamana.05
+  description: 
   displaySprite: {fileID: -5509107429510252872, guid: cf97d3f6516c4d042b1f618be6afa0ee, type: 3}
+  almanacSprite: {fileID: 0}
+  badgeSprite: {fileID: 0}
+  scrambledBadgeSprite: {fileID: 0}
   pronunciationClip: {fileID: 0}
   templateFileName: PA_template_01

@@ -14,6 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: HA
   syllable: ha
+  stableId: symbol.ha
+  legacyAliases: []
+  spokenValues:
+  - stableId: value.ha
+    displayValue: ha
+    pronunciationClip: {fileID: 8300000, guid: 484cff6c993734c409c46a2bfa3de468, type: 3}
+  firstIntroductionLevelId: level.pamana.02
   description: "HA lives through spoken stories passed by elders in villages. Juan
     hears how memory survives even without written books.\n\r\n\u201CHA is carried
     by the voice that refuses to fade.\u201D"

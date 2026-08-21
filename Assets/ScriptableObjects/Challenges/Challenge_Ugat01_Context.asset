@@ -1,0 +1,79 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b7c9d9cf2f34d9c9e1a0d437f2f6e90, type: 3}
+  m_Name: Challenge_Ugat01_Context
+  m_EditorClassIdentifier: Salinlahi.Runtime::ChallengeSequenceSO
+  sequenceId: challenge.ugat.01
+  displayName: Unang Alaala
+  units:
+  - unitId: ugat01-place-ina
+    mode: 1
+    cluePolicy: 0
+    prompt: Ibalik ang INA sa alaala. (Restore INA to the memory.)
+    tokens:
+    - tokenId: ugat01-ina
+      displayText: INA
+      occurrenceId: ugat01-ina
+      role: 1
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugat01-ama-decoy
+      displayText: AMA
+      occurrenceId: ugat01-ama-decoy
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    slots:
+    - slotId: ugat01-place-ina-slot
+      expectedOccurrenceId: ugat01-ina
+    candidateOccurrenceIds:
+    - ugat01-ina
+    - ugat01-ama-decoy
+    guidedStep: {fileID: 0}
+    timerSeconds: 0
+    allowHint: 1
+    checkpointOnSuccess: 1
+    memoryRevealSeconds: 1
+    maxErrors: 3
+    heartPenalty: 1
+    evidenceContentId: level.ugat.01.focus.01
+  - unitId: ugat01-place-ama
+    mode: 1
+    cluePolicy: 0
+    prompt: Ibalik ang AMA sa alaala. (Restore AMA to the memory.)
+    tokens:
+    - tokenId: ugat01-ama
+      displayText: AMA
+      occurrenceId: ugat01-ama
+      role: 1
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugat01-ina-decoy
+      displayText: INA
+      occurrenceId: ugat01-ina-decoy
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    slots:
+    - slotId: ugat01-place-ama-slot
+      expectedOccurrenceId: ugat01-ama
+    candidateOccurrenceIds:
+    - ugat01-ama
+    - ugat01-ina-decoy
+    guidedStep: {fileID: 0}
+    timerSeconds: 0
+    allowHint: 1
+    checkpointOnSuccess: 1
+    memoryRevealSeconds: 1
+    maxErrors: 3
+    heartPenalty: 1
+    evidenceContentId: level.ugat.01.focus.02
