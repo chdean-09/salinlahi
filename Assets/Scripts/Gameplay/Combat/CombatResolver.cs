@@ -26,6 +26,19 @@ public class CombatResolver : MonoBehaviour
     [SerializeField, Min(0f)] private float _pronunciationLeadSeconds = 0.06f;
     private static CombatResolver _instance;
 
+    /// <summary>
+    /// Window in which an identical characterID is treated as an echo of the same finger-lift
+    /// rather than a fresh attempt. Comfortably longer than the pronunciation lead and far
+    /// shorter than any real repeated draw.
+    /// </summary>
+    private const float EchoedRecognitionSeconds = 0.15f;
+
+    private string _lastRecognizedCharacterId;
+    private float _lastRecognizedTime = float.NegativeInfinity;
+
+    /// <summary>Cached so a correct hit does not trigger a scene-wide type scan.</summary>
+    private ActiveCluePresenter _cachedPresenter;
+
     private void Awake()
     {
         if (_instance != null && _instance != this)
@@ -71,6 +84,16 @@ public class CombatResolver : MonoBehaviour
             BossRouteResult routed = boss.TryRouteDraw(characterID);
             if (routed != BossRouteResult.NotRouted)
                 return;
+        }
+
+        // Active-clue combat (SALIN-180). This gate intentionally runs after boss routing:
+        // bosses are not eligible clues, but targetable bosses must retain their existing draw
+        // route on a clue-enabled level.
+        ActiveClueDirector clueDirector = ActiveClueDirector.Instance;
+        if (clueDirector != null && clueDirector.IsClueCombatActive)
+        {
+            ResolveActiveClueDraw(clueDirector, characterID);
+            return;
         }
 
         ActiveEnemyTracker tracker = ActiveEnemyTracker.Instance;
@@ -149,6 +172,98 @@ public class CombatResolver : MonoBehaviour
         }
 
         ResolveMatchedEnemy(closestTarget, characterID);
+    }
+
+    /// <summary>
+    /// Strict active-clue resolution: only the marked enemy is drawable. A non-match is a miss
+    /// with corrective feedback and no language progress; the AOE path is bypassed entirely.
+    /// </summary>
+    /// <summary>
+    /// True when this recognition repeats the previous one inside the echo window, meaning it
+    /// is the same finger-lift arriving twice rather than a second attempt.
+    /// </summary>
+    private bool IsEchoedRecognition(string characterID)
+    {
+        float now = Time.unscaledTime;
+        bool echoed = characterID == _lastRecognizedCharacterId
+                      && now - _lastRecognizedTime < EchoedRecognitionSeconds;
+
+        _lastRecognizedCharacterId = characterID;
+        _lastRecognizedTime = now;
+        return echoed;
+    }
+
+    /// <summary>
+    /// Returns the active clue presenter, re-scanning only when the cached one is gone.
+    /// Uses Unity's null semantics, so a destroyed presenter is refreshed rather than kept.
+    /// </summary>
+    private ActiveCluePresenter ResolvePresenter()
+    {
+        if (_cachedPresenter == null)
+            _cachedPresenter = FindFirstObjectByType<ActiveCluePresenter>();
+
+        return _cachedPresenter;
+    }
+
+    private void ResolveActiveClueDraw(ActiveClueDirector director, string characterID)
+    {
+        // A single finger-lift can raise OnCharacterRecognized more than once inside the
+        // pronunciation-lead window. The director's TryConsumeClue already protects objective
+        // credit, but the miss path records evidence unconditionally, so an echoed event
+        // would inflate attemptCount and depress the mastery ratio for a single user action.
+        // No human draws the same character twice this fast.
+        if (IsEchoedRecognition(characterID))
+            return;
+
+        Enemy clue = director.CurrentClue;
+        bool matchesClue = clue != null
+                           && clue.Character != null
+                           && clue.Character.characterID == characterID;
+
+        if (!matchesClue)
+        {
+            EventBus.RaiseDrawingMissed();
+            if (clue != null && clue.GlyphBadge != null)
+                clue.GlyphBadge.PlayFailFlash();
+
+            if (clue != null && clue.Character != null && ProgressManager.Instance != null
+                && !string.IsNullOrEmpty(clue.Character.stableId))
+            {
+                ProgressManager.Instance.LevelEvidence.RecordAttempt(
+                    contentId: clue.Character.stableId,
+                    contentKind: LearningContentKind.Symbol,
+                    dimension: MasteryDimension.Form,
+                    success: false,
+                    answerWasVisible: false);
+            }
+
+            DebugLogger.Log($"CombatResolver: {characterID} is not the active clue -- miss");
+            return;
+        }
+
+        // Consume before the pronunciation-lead coroutine: recognition can fire twice inside
+        // that window, and objective credit is guarded by the director.
+        bool creditsObjective = director.TryConsumeClue(clue);
+
+        if (clue.Character != null)
+            EventBus.RaisePronunciationRequested(clue.Character);
+
+        StartCoroutine(ResolveMatchedEnemyAfterPronunciationLead(clue, characterID));
+
+        if (creditsObjective && ProgressManager.Instance != null
+            && !string.IsNullOrEmpty(clue.Character.stableId))
+        {
+            ActiveCluePresenter presenter = ResolvePresenter();
+            ProgressManager.Instance.LevelEvidence.RecordAttempt(
+                contentId: clue.Character.stableId,
+                contentKind: LearningContentKind.Symbol,
+                dimension: MasteryDimension.Form,
+                success: true,
+                answerWasVisible: presenter != null && presenter.AnswerWasVisible);
+        }
+
+        DebugLogger.Log(
+            $"CombatResolver: Active clue hit {characterID} (credits objective: {creditsObjective})");
     }
 
     private static Enemy FindClosestEligibleMatch(List<Enemy> matches)
