@@ -2155,8 +2155,29 @@ git commit -m "chore(scene): SALIN-180 wire active clue director and presenter"
 
 ## Final verification before the pull request
 
-- [ ] Full EditMode suite passes. Record the actual counts.
-- [ ] Full PlayMode suite passes. Record the actual counts.
+- [x] Full EditMode suite run. Record the actual counts.
+- [x] Full PlayMode suite run. Record the actual counts.
+
+### Verification evidence (2026-08-22, Unity 6000.3.9f1, headless `-runTests` CLI)
+
+Unity MCP was unavailable (no interactive editor session), so both suites ran via the Unity
+Test Framework command line and counts were read from the generated NUnit XML.
+
+| Suite | Branch | Clean `dev` baseline | Delta |
+| --- | --- | --- | --- |
+| EditMode | 602 total / 541 passed / 61 failed | 576 / 515 / 61 | +26 tests, all passing; the 61 failures are name-for-name identical to `dev` (pre-existing) |
+| PlayMode | 69 total / 53 passed / 15 failed* | 47 / 32 / 14 | +22 tests, all passing; the 14 failures reproduce on `dev` (one further test is skipped on both sides) |
+
+*The 15th branch-run failure, `BossSummonStreamTests.IsPlayingSummonAnimation_StaysTrue_ThroughStreamAndTail`,
+is a pre-existing flaky timing test: it passed in one branch run and on `dev`, and failed in another branch run.
+It is unrelated to this ticket.
+
+One SALIN-180 test was corrected during verification: `Reevaluate_AfterConsumingClue_SelectsAnotherEligibleEnemy`
+still encoded the pre-review "consumption makes the clue ineligible" behavior, contradicting post-review
+invariant 2 below and its sibling tests. It is now `ConsumedClueRemoved_MarkMovesAndNextClueIsConsumable`,
+covering the previously untested removal path.
+
+No compiler errors appear in any run log.
 
 SALIN-180 contributes **48 tests** across four fixtures. Anything materially below this means a task was skipped:
 
@@ -2170,15 +2191,15 @@ SALIN-180 contributes **48 tests** across four fixtures. Anything materially bel
 
 Note `AbandonedStroke_FreezeExpiresSoTheMarkResumesTracking` waits out `ActiveClueDirector.MaxFreezeSeconds`, so the PlayMode suite runs ~3s longer than it otherwise would. That is expected, not a hang.
 
-- [ ] `mcp__unity-mcp__Unity_GetConsoleLogs` reports `errorCount == 0`.
-- [ ] `git diff dev...HEAD` reviewed for stray `.meta`, `.unity`, `.prefab`, `Packages/`, `ProjectSettings/`, or generated `*.csproj` changes.
-- [ ] Every new `.cs` under `Assets/` has its `.meta` committed.
-- [ ] `bash docs/jira/validate-git-conventions.sh pr "SALIN-180: Implement active-clue combat and configurable clue modes"` exits 0.
-- [ ] PR body states plainly that the Paglimot-identity criterion is **not** closed (needs SALIN-184) and that SALIN-188 remains the acceptance gate.
-- [ ] PR body notes that SALIN-178 integration is one interface implementation (`IClueObjectiveSource`), not a rewrite.
-- [ ] PR body states that `LevelFlowController` now constructs an `ActiveClueDirector` and `ActiveCluePresenter` on **every** level, so default-off rests on `IsClueCombatActive` rather than on the components being absent. Name `ClueCombatDisabled_CombatResolverUsesLegacyTargeting` as the regression test that covers it.
-- [ ] PR body notes the runtime HUD panel is an Editor-styled fallback (`Resources.GetBuiltinResource` is null in player builds); shipping levels should use authored HUD wiring.
-- [ ] Any check that did not run is reported `NOT RUN` or `BLOCKED`. Never claim a suite passed unless it actually ran.
+- [x] Console error check: `errorCount == 0` equivalent — no Unity MCP session was available, so all four headless run logs were scanned for `error CS` / `Compilation failed` / `CompilerException`; zero matches.
+- [x] `git diff dev...HEAD` reviewed for stray `.meta`, `.unity`, `.prefab`, `Packages/`, `ProjectSettings/`, or generated `*.csproj` changes — 31 files, all under `Assets/Scripts`, `Assets/Tests`, or `docs/`.
+- [x] Every new `.cs` under `Assets/` has its `.meta` committed.
+- [x] `bash docs/jira/validate-git-conventions.sh pr "SALIN-180: Implement active-clue combat and configurable clue modes"` exits 0.
+- [x] PR body states plainly that the Paglimot-identity criterion is **not** closed (needs SALIN-184) and that SALIN-188 remains the acceptance gate.
+- [x] PR body notes that SALIN-178 integration is one interface implementation (`IClueObjectiveSource`), not a rewrite.
+- [x] PR body states that `LevelFlowController` now constructs an `ActiveClueDirector` and `ActiveCluePresenter` on **every** level, so default-off rests on `IsClueCombatActive` rather than on the components being absent. Name `ClueCombatDisabled_CombatResolverUsesLegacyTargeting` as the regression test that covers it.
+- [x] PR body notes the runtime HUD panel is an Editor-styled fallback (`Resources.GetBuiltinResource` is null in player builds); shipping levels should use authored HUD wiring.
+- [x] Any check that did not run is reported `NOT RUN` or `BLOCKED`: **Step 7 manual in-Editor playthrough is NOT RUN** (headless session); the PR requests a reviewer smoke-run before merge.
 
 ---
 
