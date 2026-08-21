@@ -183,6 +183,13 @@ public static class RevisedCampaignBootstrap
         if (ei == null || na == null || a == null || ma == null)
             return;
 
+        // Re-running must not wipe attachments made by later bootstraps
+        // (Level1NarrativeBootstrap wires media dialogue/cutscene onto these).
+        ContentMediaReferences inaMedia =
+            level.focusWords != null && level.focusWords.Count > 0 ? level.focusWords[0].media : null;
+        ContentMediaReferences amaMedia =
+            level.focusWords != null && level.focusWords.Count > 1 ? level.focusWords[1].media : null;
+
         level.focusWords = new List<FocusWordDefinition>
         {
             new FocusWordDefinition
@@ -195,6 +202,7 @@ public static class RevisedCampaignBootstrap
                 {
                     Reference(ei), Reference(na),
                 },
+                media = inaMedia,
             },
             new FocusWordDefinition
             {
@@ -206,6 +214,7 @@ public static class RevisedCampaignBootstrap
                 {
                     Reference(a), Reference(ma),
                 },
+                media = amaMedia,
             },
         };
 
