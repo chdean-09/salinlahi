@@ -277,13 +277,15 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         [UnityTest]
-        public IEnumerator FullPlanConfig_AutoCompletesStubPhasesToDefense()
+        public IEnumerator StubLearningPhases_AutoCompleteToDefense()
         {
+            // FocusWords gained its surface with SALIN-138 and now holds for the
+            // preview; SymbolLearning and RequiredPractice remain auto-completing
+            // stubs until their campaign gates land.
             LogAssert.Expect(LogType.Error, MissingWaveManagerError);
             TestPhaseFlowController controller = BootstrapFlow(
                 config =>
                 {
-                    config.focusWords.Add(new FocusWordDefinition());
                     config.learningRequirements.Add(new ContentRequirement());
                     config.practiceRequirements.Add(new ContentRequirement());
                 },
@@ -292,7 +294,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             yield return WaitFrames(20);
 
             Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
-                "Stub executors (FocusWords, SymbolLearning, RequiredPractice) must auto-complete.");
+                "Stub executors (SymbolLearning, RequiredPractice) must auto-complete.");
         }
 
         [UnityTest]
@@ -414,6 +416,114 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 "Exiting the challenge must never commit partial campaign progress.");
             Assert.IsFalse(victoryPanel.activeSelf);
             Assert.AreEqual(LevelPhase.Exited, MachineOf(controller).Phase);
+        }
+
+        [UnityTest]
+        public IEnumerator FocusWordPreview_RendersConfigCopyWhileDrawingStaysDisabled()
+        {
+            DialogueController dialogue = CreateComponent<DialogueController>("DialogueController");
+            SetPrivateField(dialogue, "_overlayPanel", CreatePanel("DialogueOverlay"));
+            TestPhaseFlowController controller = BootstrapFlow(
+                ConfigureFocusWordLevel, out _, out _, out _, dialogue);
+
+            yield return WaitFrames(5);
+            EventBus.RaiseDialogueComplete();
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.FocusWords, MachineOf(controller).Phase,
+                "The flow must hold in FocusWords while the preview is up.");
+            Assert.IsFalse(GameManager.Instance.AcceptsDrawingInput,
+                "Both words and decompositions must be readable BEFORE drawing begins.");
+
+            FocusWordPreviewController preview =
+                Object.FindFirstObjectByType<FocusWordPreviewController>();
+            Assert.IsNotNull(preview, "The flow must provide the focus-word preview surface.");
+            Assert.IsTrue(preview.IsPresenting);
+            StringAssert.Contains("LUNA", preview.RenderedText);
+            StringAssert.Contains("test-moon", preview.RenderedText);
+            StringAssert.Contains("TALA", preview.RenderedText);
+            StringAssert.Contains("test-star", preview.RenderedText);
+            StringAssert.Contains("lu", preview.RenderedText);
+            StringAssert.Contains("ta", preview.RenderedText);
+        }
+
+        [UnityTest]
+        public IEnumerator FocusWordPreview_ContinueEnablesDrawingExactlyOnceAtDefense()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            DialogueController dialogue = CreateComponent<DialogueController>("DialogueController");
+            SetPrivateField(dialogue, "_overlayPanel", CreatePanel("DialogueOverlay"));
+            TestPhaseFlowController controller = BootstrapFlow(
+                ConfigureFocusWordLevel, out _, out _, out _, dialogue);
+
+            yield return WaitFrames(5);
+            EventBus.RaiseDialogueComplete();
+            yield return WaitFrames(10);
+            Assert.AreEqual(LevelPhase.FocusWords, MachineOf(controller).Phase,
+                "Setup: the preview must be open before Continue.");
+
+            FocusWordPreviewController preview =
+                Object.FindFirstObjectByType<FocusWordPreviewController>();
+            Assert.IsNotNull(preview);
+
+            int enableTransitions = 0;
+            bool previous = GameManager.Instance.AcceptsDrawingInput;
+            Assert.IsFalse(previous, "Setup: drawing must be disabled while the preview is up.");
+
+            preview.Continue();
+            for (int frame = 0; frame < 30; frame++)
+            {
+                yield return null;
+                bool current = GameManager.Instance.AcceptsDrawingInput;
+                if (current && !previous)
+                    enableTransitions++;
+                previous = current;
+            }
+
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "Continue must carry the flow into Defense.");
+            Assert.AreEqual(1, enableTransitions,
+                "Drawing input must be enabled exactly once, when the defense sequence begins.");
+            Assert.IsTrue(GameManager.Instance.AcceptsDrawingInput);
+        }
+
+        private void ConfigureFocusWordLevel(LevelConfigSO config)
+        {
+            ConfigureIntroDialogue(config);
+
+            BaybayinCharacterSO lu = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            lu.characterID = "LU";
+            lu.syllable = "lu";
+            lu.stableId = "symbol.test-lu";
+            _objectsToDestroy.Add(lu);
+            BaybayinCharacterSO ta = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            ta.characterID = "TA2";
+            ta.syllable = "ta";
+            ta.stableId = "symbol.test-ta";
+            _objectsToDestroy.Add(ta);
+
+            config.focusWords.Add(new FocusWordDefinition
+            {
+                stableId = "level.test.focus.01",
+                latinSpelling = "LUNA",
+                displayLabel = "LUNA",
+                meaning = "test-moon",
+                decomposition = new System.Collections.Generic.List<SymbolValueReference>
+                {
+                    new SymbolValueReference { symbol = lu, spokenValueId = "value.test-lu" },
+                },
+            });
+            config.focusWords.Add(new FocusWordDefinition
+            {
+                stableId = "level.test.focus.02",
+                latinSpelling = "TALA",
+                displayLabel = "TALA",
+                meaning = "test-star",
+                decomposition = new System.Collections.Generic.List<SymbolValueReference>
+                {
+                    new SymbolValueReference { symbol = ta, spokenValueId = "value.test-ta" },
+                },
+            });
         }
 
         [UnityTest]

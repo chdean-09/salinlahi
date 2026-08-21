@@ -66,6 +66,7 @@ public class LevelFlowController : MonoBehaviour
     private CampaignOutcomeCommitResult _completionCommitResult;
     private ActiveClueDirector _activeClueDirector;
     private ActiveCluePresenter _activeCluePresenter;
+    private FocusWordPreviewController _focusWordPreview;
 
     public static bool TryStartRuntimeTutorialFlow(
         LevelConfigSO levelConfig,
@@ -199,14 +200,15 @@ public class LevelFlowController : MonoBehaviour
         switch (phase)
         {
             case LevelPhase.Story: return ExecuteStory();
+            case LevelPhase.FocusWords: return ExecuteFocusWords();
             case LevelPhase.Defense: return ExecuteDefense();
             case LevelPhase.ContextChallenge: return ExecuteContextChallenge();
             case LevelPhase.MemoryReward: return ExecuteMemoryReward();
             case LevelPhase.AtomicSave: return ExecuteAtomicSave();
             case LevelPhase.Results: return ExecuteResults();
-            // Content phases whose surfaces land with SALIN-138 (FocusWords);
-            // SymbolLearning/RequiredPractice route through learning surfaces in
-            // the same ticket. The driver auto-completes them until then.
+            // SymbolLearning/RequiredPractice route through the learning surfaces
+            // when their campaign gates land (SALIN-172 scope). The driver
+            // auto-completes them until then.
             default: return ExecuteStubPhase();
         }
     }
@@ -258,6 +260,29 @@ public class LevelFlowController : MonoBehaviour
         }
     }
 
+    private IEnumerator ExecuteFocusWords()
+    {
+        if (_levelConfig.focusWords == null || _levelConfig.focusWords.Count == 0)
+            yield break;
+
+        // Both words and their decompositions must be readable BEFORE drawing
+        // begins; the Defense executor releases this exactly once at wave start.
+        GameManager.Instance?.SuppressDrawingInput(true);
+
+        if (_focusWordPreview == null)
+        {
+            _focusWordPreview = FindFirstObjectByType<FocusWordPreviewController>(FindObjectsInactive.Include);
+            if (_focusWordPreview == null)
+            {
+                GameObject previewObject = new GameObject("[Runtime] FocusWordPreviewController");
+                previewObject.transform.SetParent(transform, false);
+                _focusWordPreview = previewObject.AddComponent<FocusWordPreviewController>();
+            }
+        }
+
+        yield return _focusWordPreview.Present(_levelConfig);
+    }
+
     private IEnumerator ExecuteDefense()
     {
         if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
@@ -300,6 +325,10 @@ public class LevelFlowController : MonoBehaviour
         // AC-3: Start waves — no isBossLevel branching; WaveManager handles it internally
         if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
             GameManager.Instance.StartGame();
+
+        // Drawing input opens exactly once, when the defense sequence begins
+        // (SALIN-138). Idempotent for levels that never suppressed it.
+        GameManager.Instance?.SuppressDrawingInput(false);
 
         if (_waveManager != null)
             _waveManager.StartLevel();
@@ -455,6 +484,10 @@ public class LevelFlowController : MonoBehaviour
         {
             _waitingForDialogue = false;
             _waitingForCutscene = false;
+            // A defeat or exit must never leave drawing suppressed for the
+            // terminal screens (GameManager also clears it on its own terminal
+            // states; this covers Exited).
+            GameManager.Instance?.SuppressDrawingInput(false);
         }
     }
 
