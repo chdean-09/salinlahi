@@ -20,7 +20,16 @@ public class LevelConfigSO : ScriptableObject
     public List<SymbolValueReference> cumulativeSymbolPool = new();
     public List<ContentRequirement> learningRequirements = new();
     public List<ContentRequirement> practiceRequirements = new();
-    public ClueMode clueMode = ClueMode.FullGlyph;
+    [Header("Active-Clue Combat")]
+    [Tooltip("Arms active-clue combat for this level. Default false so existing levels keep legacy combat.")]
+    public bool activeClueCombatEnabled;
+
+    [Tooltip("Presentation channels used to cue the active clue.")]
+    public ClueChannels clueChannels = ClueChannels.Glyph;
+
+    [Tooltip("Visual channel added automatically when clueChannels is audio-only.")]
+    public ClueChannels audioVisualFallback = ClueChannels.LatinText;
+
     public DefenseRules defenseRules = new();
     public ContentMediaReferences contextMedia = new();
     public SymbolValueReference finalRestorationValue = new();

@@ -9,14 +9,6 @@ public enum ContentRequirementKind
     Mastery,
 }
 
-public enum ClueMode
-{
-    FullGlyph,
-    SpokenAndLatin,
-    LatinOnly,
-    None,
-}
-
 [System.Serializable]
 public sealed class ContentRequirement
 {
