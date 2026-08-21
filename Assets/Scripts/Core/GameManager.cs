@@ -167,12 +167,29 @@ private bool _hasPausedRunSnapshot;
 
         if (activeEnemies != null)
         {
+            // PausedEnemySnapshot carries no identity and WaveManager restores enemies in list
+            // order. Capture by threat distance so a resumed run re-derives the same mark.
+            List<Enemy> ordered = new List<Enemy>(activeEnemies.Count);
             for (int i = 0; i < activeEnemies.Count; i++)
             {
                 Enemy enemy = activeEnemies[i];
                 if (enemy == null || enemy.Data == null)
                     continue;
 
+                ordered.Add(enemy);
+            }
+
+            ordered.Sort((left, right) =>
+            {
+                int byDistance = left.transform.position.y.CompareTo(right.transform.position.y);
+                return byDistance != 0
+                    ? byDistance
+                    : left.SpawnSequence.CompareTo(right.SpawnSequence);
+            });
+
+            for (int i = 0; i < ordered.Count; i++)
+            {
+                Enemy enemy = ordered[i];
                 _pausedEnemies.Add(new PausedEnemySnapshot(
                     enemy.Data,
                     enemy.Character,
