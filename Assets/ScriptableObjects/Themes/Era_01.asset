@@ -15,8 +15,8 @@ MonoBehaviour:
   eraName: Era One
   stableId: era.ugat
   order: 1
-  storyReference: {fileID: 0}
-  memoryReference: {fileID: 0}
+  storyReference: {fileID: 11400000, guid: 7c51a663500102547bfa9ac106c463e3, type: 2}
+  memoryReference: {fileID: 11400000, guid: d3689aff49a70224d940bf273beed6bb, type: 2}
   backgroundSprite: {fileID: -8410918290169310731, guid: c31990d003e308a42894ccd057dd6548, type: 3}
   bannerSprite: {fileID: 21300000, guid: 733e95c8b2636974c95813cec85cdcd0, type: 3}
   levels:
