@@ -67,12 +67,39 @@ public sealed class ChallengeSession
     private ChallengeCluePolicy _cluePolicy;
     private string _hintOccurrenceId;
 
-    public ChallengeSession(ChallengeSequenceSO sequence, int startingHearts = 3)
+    private readonly ChallengeTierPolicy _policy;
+    private readonly IChallengeEvidenceSink _evidence;
+
+    public ChallengeSession(
+        ChallengeSequenceSO sequence,
+        int startingHearts = 3,
+        ChallengeTierPolicy policy = null,
+        IChallengeEvidenceSink evidence = null)
     {
         _sequence = sequence;
+        _policy = policy;
+        _evidence = evidence;
         HeartsRemaining = startingHearts;
         State = ChallengeSessionState.Idle;
     }
+
+    private int _emergencyHintsUsed;
+
+    /// <summary>Emergency hints consumed this level attempt (tier 5). Survives checkpoint resets.</summary>
+    public int EmergencyHintsUsed => _emergencyHintsUsed;
+
+    /// <summary>Recorded score deduction from emergency hints; consumed by Results (SALIN-202).</summary>
+    public float EmergencyHintScorePenalty =>
+        _policy != null && _policy.emergencyHintEnabled
+            ? _emergencyHintsUsed * _policy.emergencyHintScorePenalty
+            : 0f;
+
+    private bool HeartPenaltiesEnabled => _policy == null || _policy.heartPenaltiesEnabled;
+
+    // A set tier overrides per-unit error limits; tier 0 / null preserves legacy unit data.
+    private int ErrorThreshold => _policy != null && _policy.tier > 0
+        ? Math.Max(1, _policy.errorsPerPenalty)
+        : Math.Max(1, CurrentUnit.maxErrors);
 
     public ChallengeSessionState State { get; private set; }
     public ChallengeSessionEvent LastEvent { get; private set; }
@@ -123,7 +150,10 @@ public sealed class ChallengeSession
             return;
 
         ChallengeTokenDefinition token = CurrentUnit.tokens[_currentSlotIndex];
-        if (token.targetCharacter != null && string.Equals(token.targetCharacter.characterID, characterId, StringComparison.OrdinalIgnoreCase))
+        bool correct = token.targetCharacter != null
+            && string.Equals(token.targetCharacter.characterID, characterId, StringComparison.OrdinalIgnoreCase);
+        RecordTokenEvidence(token, correct);
+        if (correct)
         {
             _currentProgress.Add(token.occurrenceId);
             _currentSlotIndex++;
@@ -148,7 +178,10 @@ public sealed class ChallengeSession
             return;
 
         ChallengeSlotDefinition slot = CurrentUnit.slots[_currentSlotIndex];
-        if (string.Equals(slot.slotId, slotId, StringComparison.Ordinal) && string.Equals(slot.expectedOccurrenceId, occurrenceId, StringComparison.Ordinal))
+        bool correct = string.Equals(slot.slotId, slotId, StringComparison.Ordinal)
+            && string.Equals(slot.expectedOccurrenceId, occurrenceId, StringComparison.Ordinal);
+        RecordUnitEvidence(correct);
+        if (correct)
         {
             _currentProgress.Add(occurrenceId);
             _currentSlotIndex++;
@@ -168,7 +201,9 @@ public sealed class ChallengeSession
             return;
 
         string[] expected = CurrentUnit.slots.Select(slot => slot.expectedOccurrenceId).ToArray();
-        if (occurrenceIds != null && expected.SequenceEqual(occurrenceIds))
+        bool restorationCorrect = occurrenceIds != null && expected.SequenceEqual(occurrenceIds);
+        RecordUnitEvidence(restorationCorrect);
+        if (restorationCorrect)
         {
             foreach (string occurrenceId in expected)
                 _currentProgress.Add(occurrenceId);
@@ -185,6 +220,11 @@ public sealed class ChallengeSession
     {
         if (!CanSubmit() || !CurrentUnit.allowHint)
             return;
+        // Tier 5: the emergency hint budget is per level attempt and survives
+        // checkpoint resets; requests beyond it are rejected outright.
+        if (_policy != null && _policy.emergencyHintEnabled
+            && _emergencyHintsUsed >= Math.Max(0, _policy.emergencyHintsPerAttempt))
+            return;
         if (CurrentUnit.mode == ChallengeMode.GuidedTracing
             && (CurrentUnit.tokens == null || _currentSlotIndex >= CurrentUnit.tokens.Length))
             return;
@@ -192,6 +232,8 @@ public sealed class ChallengeSession
             && (CurrentUnit.slots == null || _currentSlotIndex >= CurrentUnit.slots.Length))
             return;
         _hintsUsed++;
+        if (_policy != null && _policy.emergencyHintEnabled)
+            _emergencyHintsUsed++;
         _hintOccurrenceId = CurrentUnit.mode == ChallengeMode.GuidedTracing
             ? CurrentUnit.tokens[_currentSlotIndex].occurrenceId
             : CurrentUnit.slots[_currentSlotIndex].expectedOccurrenceId;
@@ -283,7 +325,13 @@ public sealed class ChallengeSession
         NotifyChanged(ChallengeSessionEvent.Exited);
     }
 
-    private ChallengeUnitDefinition CurrentUnit => _sequence.units[_currentUnitIndex];
+    // Bounds-safe: after the final unit completes, _currentUnitIndex points past
+    // the array while the Completed notification is still being rendered.
+    private ChallengeUnitDefinition CurrentUnit =>
+        _sequence != null && _sequence.units != null
+        && _currentUnitIndex >= 0 && _currentUnitIndex < _sequence.units.Length
+            ? _sequence.units[_currentUnitIndex]
+            : null;
 
     private bool CanSubmit()
     {
@@ -348,7 +396,8 @@ public sealed class ChallengeSession
     private void RegisterError()
     {
         _errors++;
-        if (_errors >= Math.Max(1, CurrentUnit.maxErrors))
+        // Tiers 1-2: every error is a supportive retry; hearts are never at stake.
+        if (HeartPenaltiesEnabled && _errors >= ErrorThreshold)
         {
             State = ChallengeSessionState.Penalty;
             ApplyPenalty();
@@ -362,16 +411,58 @@ public sealed class ChallengeSession
 
     private void ApplyPenalty()
     {
-        HeartPenalties += Math.Max(0, CurrentUnit.heartPenalty);
-        HeartsRemaining = Math.Max(0, HeartsRemaining - Math.Max(0, CurrentUnit.heartPenalty));
-        if (HeartsRemaining == 0)
+        if (HeartPenaltiesEnabled)
         {
-            State = ChallengeSessionState.Failed;
-            NotifyChanged(ChallengeSessionEvent.Failed);
-            return;
+            HeartPenalties += Math.Max(0, CurrentUnit.heartPenalty);
+            HeartsRemaining = Math.Max(0, HeartsRemaining - Math.Max(0, CurrentUnit.heartPenalty));
+            if (HeartsRemaining == 0)
+            {
+                State = ChallengeSessionState.Failed;
+                NotifyChanged(ChallengeSessionEvent.Failed);
+                return;
+            }
+            NotifyChanged(ChallengeSessionEvent.PenaltyApplied);
         }
-        NotifyChanged(ChallengeSessionEvent.PenaltyApplied);
-        ResetToCheckpoint();
+
+        if (_policy == null || _policy.checkpointResetOnPenalty)
+            ResetToCheckpoint();
+        else
+        {
+            State = ChallengeSessionState.Active;
+            NotifyChanged(ChallengeSessionEvent.CheckpointReopened);
+        }
+    }
+
+    private void RecordTokenEvidence(ChallengeTokenDefinition token, bool success)
+    {
+        if (_evidence == null || token == null || string.IsNullOrEmpty(token.evidenceContentId))
+            return;
+
+        _evidence.RecordAttempt(
+            token.evidenceContentId,
+            LearningContentKind.Symbol,
+            MasteryDimension.Form,
+            success,
+            answerWasVisible: _hintOccurrenceId != null);
+    }
+
+    private void RecordUnitEvidence(bool success)
+    {
+        if (_evidence == null || CurrentUnit == null || string.IsNullOrEmpty(CurrentUnit.evidenceContentId))
+            return;
+
+        // Word placement evidences Assembly; sentence, paragraph, and timed-memory
+        // units evidence Meaning. A hinted or revealed answer is immediate
+        // retrieval, not recall.
+        MasteryDimension dimension = CurrentUnit.mode == ChallengeMode.WordPlacement
+            ? MasteryDimension.Assembly
+            : MasteryDimension.Meaning;
+        _evidence.RecordAttempt(
+            CurrentUnit.evidenceContentId,
+            LearningContentKind.Word,
+            dimension,
+            success,
+            answerWasVisible: _hintOccurrenceId != null || IsMemoryRevealActive);
     }
 
     private void NotifyChanged(ChallengeSessionEvent sessionEvent)
