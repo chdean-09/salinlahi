@@ -10,6 +10,16 @@
 
 **Spec:** `docs/salin-180-spec.md` — read it before starting. This plan argues from it.
 
+## Implementation status
+
+All nine tasks are implemented in the working tree and have been through code review. This document has since been corrected against the shipped code, so it now describes what the implementation *is*, not only what was originally intended. Three tasks diverged from the original draft:
+
+- **Task 3** — `SelectIndex` is two passes, not one. The single-pass version was order-dependent.
+- **Task 6** — the director releases its freeze on two paths (`OnDrawingFailed` plus a deadline), and consumption does **not** affect eligibility.
+- **Task 9** — Step 6 is a `LevelFlowController` code bootstrap, not Editor prefab wiring, and the presenter is materially larger than the sketch here.
+
+Checkboxes remain unchecked because **compilation and both test suites are still `NOT RUN`** — Unity MCP was disconnected. Nothing here should be treated as verified until the suites actually execute. Read **Post-review corrections** at the end before changing any of this code.
+
 ## Global Constraints
 
 - **Unity version:** `6000.3.9f1` (pinned in `ProjectSettings/ProjectVersion.txt`). Do not upgrade Unity or any package.
@@ -55,8 +65,9 @@ After any code change, confirm compilation with `mcp__unity-mcp__Unity_GetConsol
 | `Assets/Scripts/Data/LevelConfigSO.cs:23` | Replace `clueMode` with three clue fields. |
 | `Assets/Scripts/Data/Validation/CampaignConfigValidator.cs` | Add `ValidateClueChannels` + call site. |
 | `Assets/Scripts/Gameplay/Enemy/Enemy.cs` | Add `SpawnSequence`, assigned in `Initialize`. |
-| `Assets/Scripts/Gameplay/Combat/CombatResolver.cs` | One gate after boss routing. |
+| `Assets/Scripts/Gameplay/Combat/CombatResolver.cs` | One gate after boss routing, plus the echoed-recognition guard. |
 | `Assets/Scripts/Core/GameManager.cs` | Order the pause snapshot by distance to base. |
+| `Assets/Scripts/Gameplay/LevelFlowController.cs` | Bootstrap: construct and configure the director and presenter. See Task 9. |
 
 **Test files**
 
@@ -64,8 +75,8 @@ After any code change, confirm compilation with `mcp__unity-mcp__Unity_GetConsol
 | --- | --- |
 | `Assets/Tests/Editor/Data/ClueChannelResolverTests.cs` | Task 1 |
 | `Assets/Tests/Editor/Data/CampaignConfigValidatorTests.cs` (modify) | Task 2 |
-| `Assets/Tests/Editor/Gameplay/ActiveClueSelectorTests.cs` | Task 3 |
-| `Assets/Tests/PlayMode/Gameplay/ActiveClueDirectorTests.cs` | Tasks 4, 6, 7, 8 |
+| `Assets/Tests/Editor/Gameplay/ActiveClueSelectorTests.cs` | Tasks 3 and 5 (two fixtures in one file) |
+| `Assets/Tests/PlayMode/Gameplay/ActiveClueDirectorTests.cs` | Tasks 4, 6, 7, 8, 9 |
 
 ---
 
@@ -626,6 +637,27 @@ public static class ActiveClueSelector
         if (candidates == null)
             return -1;
 
+        // First pass: the globally closest eligible distance.
+        float minimumDistance = float.MaxValue;
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            ClueCandidate candidate = candidates[i];
+            if (candidate.IsEligible && candidate.DistanceToBase < minimumDistance)
+                minimumDistance = candidate.DistanceToBase;
+        }
+
+        if (minimumDistance == float.MaxValue)
+            return -1;
+
+        // Second pass: among everything inside the tie band of that global minimum, the
+        // lowest spawn sequence wins.
+        //
+        // TWO passes, not one. Epsilon comparison is not transitive: with a chain of
+        // candidates each within TieEpsilon of its neighbour but not of the far end,
+        // comparing against a running best makes the winner depend on list order --
+        // {0.0 seq3, 0.00008 seq2, 0.00016 seq1} yields seq1 ascending and seq3 descending.
+        // Anchoring the band to the global minimum keeps the function order-independent.
+        float tieBandLimit = minimumDistance + TieEpsilon;
         int best = -1;
         for (int i = 0; i < candidates.Count; i++)
         {
@@ -633,24 +665,10 @@ public static class ActiveClueSelector
             if (!candidate.IsEligible)
                 continue;
 
-            if (best < 0)
-            {
-                best = i;
-                continue;
-            }
-
-            float delta = candidate.DistanceToBase - candidates[best].DistanceToBase;
-
-            if (delta < -TieEpsilon)
-            {
-                best = i;
-                continue;
-            }
-
-            if (delta > TieEpsilon)
+            if (candidate.DistanceToBase > tieBandLimit)
                 continue;
 
-            if (candidate.SpawnSequence < candidates[best].SpawnSequence)
+            if (best < 0 || candidate.SpawnSequence < candidates[best].SpawnSequence)
                 best = i;
         }
 
@@ -663,7 +681,7 @@ public static class ActiveClueSelector
 
 `mcp__unity-mcp__Unity_GetConsoleLogs` → `errorCount == 0`.
 Unity Test Runner → EditMode → `ActiveClueSelectorTests`.
-Expected: 11 tests PASS.
+Expected: all 12 tests in `ActiveClueSelectorTests` PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -751,8 +769,21 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             data.enemyID = "enemy.test.soldado";
             data.maxHealth = 1;
             data.moveSpeed = 1f;
+            // Required: IsEligibleClue rejects an enemy with a null Character, so without
+            // this every director test in Task 6 would fail.
+            data.assignedCharacter = CreateTestCharacter("BA", "symbol.ba");
             _objectsToDestroy.Add(data);
             return data;
+        }
+
+        private BaybayinCharacterSO CreateTestCharacter(string characterId, string stableId)
+        {
+            BaybayinCharacterSO character = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            character.characterID = characterId;   // combat/template id, e.g. "BA"
+            character.stableId = stableId;         // canonical learning id, e.g. "symbol.ba"
+            character.syllable = characterId.ToLowerInvariant();
+            _objectsToDestroy.Add(character);
+            return character;
         }
 
         private Enemy CreateEnemyShell()
@@ -811,7 +842,7 @@ Do not assign it on any of the early-return failure paths — a failed initializ
 
 `mcp__unity-mcp__Unity_GetConsoleLogs` → `errorCount == 0`.
 Unity Test Runner → PlayMode → `ActiveClueDirectorTests`.
-Expected: 2 tests PASS.
+Expected: both new tests PASS.
 
 - [ ] **Step 6: Commit**
 
@@ -835,7 +866,7 @@ git commit -m "feat(enemy): SALIN-180 add monotonic spawn sequence"
 
 **Context:** This is the seam that decouples SALIN-180 from SALIN-178. When the nine-phase flow lands, its Defense phase implements this same interface and `ActiveClueDirector` needs no change.
 
-The `isPlayingProbe` delegate is injected rather than reading `GameManager.Instance` directly, so this class is testable without a scene. Production wiring passes `() => GameManager.Instance != null && GameManager.Instance.CurrentState == GameState.Playing`.
+The `isPlayingProbe` delegate is injected rather than reading `GameManager.Instance` directly, so this class is testable without a scene. Production wiring passes `() => GameManager.Instance != null && GameManager.Instance.AcceptsDrawingInput` — that property is `(Playing || Practicing) && !_drawingSuppressed`, so clue combat is active exactly when the player can actually draw. Probing `CurrentState == GameState.Playing` instead would silently revert a Practicing-state level to legacy targeting.
 
 `ContentRequirement` exposes `symbolValue` (a `SymbolValueReference`) — inspect `Assets/Scripts/Data/Campaign/FocusWordDefinition.cs` and `SpokenValueDefinition.cs` to confirm the field used for the content id before writing Step 3, and use whatever that file actually names it.
 
@@ -946,7 +977,7 @@ public sealed class LevelConfigClueObjectiveSource : IClueObjectiveSource
     /// <param name="isPlayingProbe">
     /// Injected rather than reading GameManager directly, so this type is testable without a scene.
     /// Production passes () =&gt; GameManager.Instance != null
-    ///     &amp;&amp; GameManager.Instance.CurrentState == GameState.Playing.
+    ///     &amp;&amp; GameManager.Instance.AcceptsDrawingInput.
     /// </param>
     public LevelConfigClueObjectiveSource(LevelConfigSO level, Func<bool> isPlayingProbe)
     {
@@ -975,7 +1006,13 @@ public sealed class LevelConfigClueObjectiveSource : IClueObjectiveSource
             _objectiveContentIds.Clear();
             Collect(_level.learningRequirements);
             Collect(_level.practiceRequirements);
-            return _objectiveContentIds;
+
+            // Return a COPY. The internal list is reused to keep the read allocation-light,
+            // but handing it out directly aliases a buffer the next read clears -- a trap
+            // for the SALIN-178 consumer that will hold this across frames.
+            return _objectiveContentIds.Count == 0
+                ? Empty
+                : _objectiveContentIds.ToArray();
         }
     }
 
@@ -1006,7 +1043,7 @@ public sealed class LevelConfigClueObjectiveSource : IClueObjectiveSource
 
 `mcp__unity-mcp__Unity_GetConsoleLogs` → `errorCount == 0`.
 Unity Test Runner → EditMode → `LevelConfigClueObjectiveSourceTests`.
-Expected: 4 tests PASS.
+Expected: all 6 tests in `LevelConfigClueObjectiveSourceTests` PASS.
 
 - [ ] **Step 6: Commit**
 
@@ -1194,9 +1231,17 @@ public sealed class ActiveClueDirector : MonoBehaviour
     private readonly List<Enemy> _enemyBuffer = new List<Enemy>();
     private readonly List<ClueCandidate> _candidateBuffer = new List<ClueCandidate>();
 
+    /// <summary>
+    /// Longest the mark may stay frozen after a stroke begins, refreshed on every stroke.
+    /// Required because StrokeCapture can discard a stroke without ever reaching
+    /// RecognitionManager, raising no resolution event at all.
+    /// </summary>
+    public const float MaxFreezeSeconds = 3f;
+
     private IClueObjectiveSource _objectiveSource;
     private Enemy _currentClue;
     private bool _frozen;
+    private float _freezeDeadline;
     private bool _currentClueConsumed;
 
     public static ActiveClueDirector Instance { get; private set; }
@@ -1223,12 +1268,16 @@ public sealed class ActiveClueDirector : MonoBehaviour
     {
         EventBus.OnDrawingStarted += HandleDrawingStarted;
         EventBus.OnRecognitionResolved += HandleRecognitionResolved;
+        // RecognitionManager raises DrawingFailed instead of RecognitionResolved for a
+        // degenerate stroke. Without this the mark would freeze permanently.
+        EventBus.OnDrawingFailed += HandleDrawingFailed;
     }
 
     private void OnDisable()
     {
         EventBus.OnDrawingStarted -= HandleDrawingStarted;
         EventBus.OnRecognitionResolved -= HandleRecognitionResolved;
+        EventBus.OnDrawingFailed -= HandleDrawingFailed;
     }
 
     private void OnDestroy()
@@ -1243,12 +1292,21 @@ public sealed class ActiveClueDirector : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (_frozen)
-            return;
-
         // Paused runs must neither re-select nor clear: GameManager.PausedEnemySnapshot
         // carries no identity, so the mark is re-derived after restore instead.
         if (GameManager.Instance != null && GameManager.Instance.CurrentState == GameState.Paused)
+        {
+            // The freeze must not expire while paused -- StrokeCapture preserves an
+            // in-flight multi-stroke draw across pause.
+            if (_frozen)
+                _freezeDeadline = Time.unscaledTime + MaxFreezeSeconds;
+            return;
+        }
+
+        if (_frozen && Time.unscaledTime >= _freezeDeadline)
+            _frozen = false;
+
+        if (_frozen)
             return;
 
         Reevaluate();
@@ -1257,6 +1315,12 @@ public sealed class ActiveClueDirector : MonoBehaviour
     /// <summary>
     /// Re-runs selection unless frozen. The mark latches: an eligible current clue is kept
     /// even when another enemy is now closer.
+    ///
+    /// DO NOT gate eligibility on _currentClueConsumed. Consumption guards objective credit
+    /// only. If a consumed clue becomes ineligible, a multi-hit enemy loses its mark after
+    /// one hit and -- under the strict gate -- becomes undrawable while it walks to the
+    /// shrine, violating the spec's "Armor: mark holds" criterion. CombatResolver still
+    /// applies damage when TryConsumeClue refuses credit.
     /// </summary>
     public void Reevaluate()
     {
@@ -1339,9 +1403,19 @@ public sealed class ActiveClueDirector : MonoBehaviour
         OnActiveClueChanged?.Invoke(previous, next);
     }
 
-    private void HandleDrawingStarted() => _frozen = true;
+    private void HandleDrawingStarted()
+    {
+        _frozen = true;
+        // Refreshed per stroke so a deliberate multi-stroke character never times out.
+        _freezeDeadline = Time.unscaledTime + MaxFreezeSeconds;
+    }
 
     private void HandleRecognitionResolved(RecognitionResult result, bool passedThreshold, float threshold)
+        => Unfreeze();
+
+    private void HandleDrawingFailed() => Unfreeze();
+
+    private void Unfreeze()
     {
         _frozen = false;
         Reevaluate();
@@ -1349,11 +1423,13 @@ public sealed class ActiveClueDirector : MonoBehaviour
 }
 ```
 
+**Two freeze-release paths are required, not one.** `StrokeCapture.CompleteCurrentStroke` discards a tap-like stroke and returns *before* `StartMultiStrokeTimer`, so `SubmitForRecognition` never runs and `RecognitionManager` is never invoked — that path raises **neither** `RecognitionResolved` **nor** `DrawingFailed`. Subscribing to `OnDrawingFailed` alone does not cover it. The `LateUpdate` deadline above is what stops a stray tap from deadlocking clue combat for the rest of the level.
+
 - [ ] **Step 4: Verify compilation, then run tests**
 
 `mcp__unity-mcp__Unity_GetConsoleLogs` → `errorCount == 0`.
 Unity Test Runner → PlayMode → `ActiveClueDirectorTests`.
-Expected: 8 tests PASS (2 from Task 4 plus 6 new).
+Expected: every test in `ActiveClueDirectorTests` PASS, including the 2 from Task 4.
 
 - [ ] **Step 5: Commit**
 
@@ -1518,12 +1594,16 @@ Objective crediting through `ProgressManager.LevelEvidence` is wired in Task 9, 
 
 `mcp__unity-mcp__Unity_GetConsoleLogs` → `errorCount == 0`.
 Unity Test Runner → PlayMode → `ActiveClueDirectorTests`.
-Expected: 10 tests PASS.
+Expected: every test in `ActiveClueDirectorTests` PASS.
 
 - [ ] **Step 5: Run the regression suite**
 
-Run the **entire** PlayMode `Gameplay` suite and the entire EditMode suite. No `ActiveClueDirector` exists in any current scene, so `Instance` is null and every existing test must behave exactly as before.
+Run the **entire** PlayMode `Gameplay` suite and the entire EditMode suite.
 Expected: no new failures. If any existing test fails, the gate is in the wrong place — recheck Step 3.
+
+**Read this before relying on the regression argument.** An earlier draft of this plan claimed "no `ActiveClueDirector` exists in any current scene, so `Instance` is null and every existing test must behave exactly as before." **That is no longer true.** Task 9 has `LevelFlowController` construct a director on *every* level, so `Instance` is non-null everywhere and default-off rests entirely on `IsClueCombatActive` returning `false`.
+
+That makes `ClueCombatDisabled_CombatResolverUsesLegacyTargeting` (Task 9) the single most important regression test in this plan: it stands a director up with clue combat off and asserts `CombatResolver` still resolves through the legacy closest-match path. Do not treat Task 7 as complete until that test exists and passes.
 
 - [ ] **Step 6: Commit**
 
@@ -1632,7 +1712,7 @@ In `Assets/Scripts/Core/GameManager.cs`, replace the capture loop body (lines 16
 
 `mcp__unity-mcp__Unity_GetConsoleLogs` → `errorCount == 0`.
 Unity Test Runner → PlayMode → `ActiveClueDirectorTests`.
-Expected: 11 tests PASS.
+Expected: every test in `ActiveClueDirectorTests` PASS.
 
 - [ ] **Step 5: Run the pause/resume regression**
 
@@ -1818,6 +1898,16 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 }
 ```
 
+**The class above is the minimum contract, not the finished presenter.** The shipped `ActiveCluePresenter` is substantially larger and adds five things this sketch omits. Each is load-bearing — do not drop them when re-implementing:
+
+1. **An armed-level guard on every side effect.** `HandleActiveClueChanged` returns immediately unless `_level.activeClueCombatEnabled`. The badge sweep hides every badge that is not the current clue, and on a legacy level the clue is always `null` — without the guard a `(null, null)` change blanks every glyph on screen.
+2. **A full badge sweep, not just previous-and-current.** `EnemyGlyphBadge` is visible by default for legacy combat, so hiding only the previous clue leaks answers. Sweep the `ActiveEnemyTracker` snapshot into a **reused** buffer; do not allocate per clue change.
+3. **`SubscribeToDirector()` inside `ApplyLevel`.** See Task 9 Step 6.
+4. **A pronunciation debounce.** `AudioManager.PlayPronunciation` uses `PlayOneShot`, so clips overlap rather than interrupt. The presenter stamps every `OnPronunciationRequested` on the bus and suppresses its own announcement within the debounce window, because `CombatResolver` announces the drawn character just before the mark moves. The replay button raises directly and is intentionally not debounced.
+5. **A runtime HUD fallback** for levels with no Inspector wiring. Note `Resources.GetBuiltinResource` returns `null` in player builds, so that panel is Editor-only styling — an authored HUD is the shipping path.
+
+See **Post-review corrections** at the end of this document for the full list of invariants.
+
 The Latin-text and incomplete-word *content* comes from the level's `FocusWordDefinition` records. Add these members to the presenter and call `SetClueText(clue)` from `UpdateCluePanel` after the channel visibility is applied:
 
 ```csharp
@@ -1900,7 +1990,8 @@ In `ResolveActiveClueDraw` (Task 7), replace the `DebugLogger.Log` line with:
         if (creditsObjective && ProgressManager.Instance != null
             && !string.IsNullOrEmpty(clue.Character.stableId))
         {
-            ActiveCluePresenter presenter = FindFirstObjectByType<ActiveCluePresenter>();
+            // Cached, not a scene-wide scan: this runs on every correct hit.
+            ActiveCluePresenter presenter = ResolvePresenter();
             ProgressManager.Instance.LevelEvidence.RecordAttempt(
                 contentId: clue.Character.stableId,
                 contentKind: LearningContentKind.Symbol,
@@ -1911,6 +2002,52 @@ In `ResolveActiveClueDraw` (Task 7), replace the `DebugLogger.Log` line with:
 
         DebugLogger.Log(
             $"CombatResolver: Active clue hit {characterID} (credits objective: {creditsObjective})");
+```
+
+Add the two supporting members to `CombatResolver` as well — a cached presenter reference and the echoed-recognition guard:
+
+```csharp
+    /// <summary>
+    /// Window in which an identical characterID is treated as an echo of the same finger-lift
+    /// rather than a fresh attempt. Longer than the pronunciation lead, far shorter than any
+    /// real repeated draw.
+    /// </summary>
+    private const float EchoedRecognitionSeconds = 0.15f;
+
+    private string _lastRecognizedCharacterId;
+    private float _lastRecognizedTime = float.NegativeInfinity;
+    private ActiveCluePresenter _cachedPresenter;
+
+    private bool IsEchoedRecognition(string characterID)
+    {
+        float now = Time.unscaledTime;
+        bool echoed = characterID == _lastRecognizedCharacterId
+                      && now - _lastRecognizedTime < EchoedRecognitionSeconds;
+
+        _lastRecognizedCharacterId = characterID;
+        _lastRecognizedTime = now;
+        return echoed;
+    }
+
+    private ActiveCluePresenter ResolvePresenter()
+    {
+        // Unity null semantics: a destroyed presenter is re-scanned rather than kept.
+        if (_cachedPresenter == null)
+            _cachedPresenter = FindFirstObjectByType<ActiveCluePresenter>();
+
+        return _cachedPresenter;
+    }
+```
+
+Then guard the top of `ResolveActiveClueDraw`:
+
+```csharp
+        // A single finger-lift can raise OnCharacterRecognized more than once inside the
+        // pronunciation-lead window. TryConsumeClue already protects objective credit, but
+        // the miss path records evidence unconditionally, so an echoed event would inflate
+        // attemptCount for one user action.
+        if (IsEchoedRecognition(characterID))
+            return;
 ```
 
 And in the miss branch of the same method, before its `DebugLogger.Log`, add:
@@ -1932,13 +2069,68 @@ And in the miss branch of the same method, before its `DebugLogger.Log`, add:
 
 `mcp__unity-mcp__Unity_GetConsoleLogs` → `errorCount == 0`.
 Unity Test Runner → PlayMode → `ActiveClueDirectorTests`, then the full EditMode and PlayMode suites.
-Expected: 13 tests PASS in the fixture; no regressions elsewhere.
+Expected: every test in `ActiveClueDirectorTests` PASS; no regressions elsewhere.
 
-- [ ] **Step 6: Wire the HUD prefab in the Editor**
+- [ ] **Step 6: Bootstrap the director and presenter from `LevelFlowController`**
 
-Add `ActiveCluePresenter` to the level HUD and assign `_cluePanelRoot`, `_clueText`, `_clueImage`, and `_replayAudioButton`. Add `ActiveClueDirector` to the level scene alongside `CombatResolver`, and call `SetObjectiveSource(new LevelConfigClueObjectiveSource(levelConfig, () => GameManager.Instance != null && GameManager.Instance.CurrentState == GameState.Playing))` plus `ApplyLevel(levelConfig)` from the level bootstrap.
+The original plan called for Editor prefab and scene wiring here. **The shipped approach is a code bootstrap instead**, which avoids the `.prefab`/`.unity` churn `AGENTS.md` §Unity Asset Safety warns about and keeps all 15 levels consistent without touching serialized assets.
 
-Review the resulting `.prefab` and `.unity` diffs as serialized-object changes per `AGENTS.md` §Unity Asset Safety. Confirm no unrelated GUID, sorting-layer, or transform churn.
+In `LevelFlowController`, add two fields:
+
+```csharp
+    private ActiveClueDirector _activeClueDirector;
+    private ActiveCluePresenter _activeCluePresenter;
+```
+
+In the method that resolves runtime references (alongside the existing `??=` lookups), find or create both. Use `FindObjectsInactive.Include` so an authored component on a disabled HUD object is still found rather than duplicated:
+
+```csharp
+        _activeClueDirector ??= FindFirstObjectByType<ActiveClueDirector>(FindObjectsInactive.Include);
+        _activeCluePresenter ??= FindFirstObjectByType<ActiveCluePresenter>(FindObjectsInactive.Include);
+
+        if (_activeClueDirector == null)
+        {
+            GameObject directorObject = new GameObject("[Runtime] ActiveClueDirector");
+            directorObject.transform.SetParent(transform, false);
+            _activeClueDirector = directorObject.AddComponent<ActiveClueDirector>();
+        }
+
+        if (_activeCluePresenter == null)
+        {
+            GameObject presenterObject = new GameObject("[Runtime] ActiveCluePresenter");
+            presenterObject.transform.SetParent(transform, false);
+            _activeCluePresenter = presenterObject.AddComponent<ActiveCluePresenter>();
+        }
+```
+
+Then configure them, and call it from level start before waves begin:
+
+```csharp
+    private void ConfigureActiveClueSystems()
+    {
+        if (_levelConfig == null)
+            return;
+
+        if (_activeClueDirector != null)
+        {
+            // Clue combat is active exactly when the player can draw. Probing only for
+            // GameState.Playing would silently revert a Practicing-state level to legacy
+            // targeting, and would keep the mark live while drawing is suppressed for a
+            // cutscene or tutorial beat.
+            _activeClueDirector.SetObjectiveSource(
+                new LevelConfigClueObjectiveSource(
+                    _levelConfig,
+                    () => GameManager.Instance != null
+                        && GameManager.Instance.AcceptsDrawingInput));
+        }
+
+        _activeCluePresenter?.ApplyLevel(_levelConfig);
+    }
+```
+
+**Two consequences you must not skip.** First, a director now exists on *every* level, so Task 7's regression argument changes — see the note in Task 7 Step 5. Second, an Inspector-authored presenter's `OnEnable` and `Start` both run before this bootstrap, so both find `ActiveClueDirector.Instance` null; `ApplyLevel` must call `SubscribeToDirector()` or the authored HUD path silently presents nothing.
+
+An authored HUD is still supported and still preferred for shipping art: assign `_cluePanelRoot`, `_clueText`, `_clueImage`, and `_replayAudioButton` in the Inspector and the runtime panel is never built. Review any resulting `.prefab`/`.unity` diff as a serialized-object change; confirm no unrelated GUID, sorting-layer, or transform churn.
 
 - [ ] **Step 7: Manual verification**
 
@@ -1965,10 +2157,58 @@ git commit -m "chore(scene): SALIN-180 wire active clue director and presenter"
 
 - [ ] Full EditMode suite passes. Record the actual counts.
 - [ ] Full PlayMode suite passes. Record the actual counts.
+
+SALIN-180 contributes **48 tests** across four fixtures. Anything materially below this means a task was skipped:
+
+| Fixture | Mode | Tests |
+| --- | --- | --- |
+| `ClueChannelResolverTests` | EditMode | 6 |
+| `ActiveClueSelectorTests` | EditMode | 12 |
+| `LevelConfigClueObjectiveSourceTests` (same file) | EditMode | 6 |
+| `CampaignConfigValidatorTests` (added to existing) | EditMode | 2 |
+| `ActiveClueDirectorTests` | PlayMode | 22 |
+
+Note `AbandonedStroke_FreezeExpiresSoTheMarkResumesTracking` waits out `ActiveClueDirector.MaxFreezeSeconds`, so the PlayMode suite runs ~3s longer than it otherwise would. That is expected, not a hang.
+
 - [ ] `mcp__unity-mcp__Unity_GetConsoleLogs` reports `errorCount == 0`.
 - [ ] `git diff dev...HEAD` reviewed for stray `.meta`, `.unity`, `.prefab`, `Packages/`, `ProjectSettings/`, or generated `*.csproj` changes.
 - [ ] Every new `.cs` under `Assets/` has its `.meta` committed.
 - [ ] `bash docs/jira/validate-git-conventions.sh pr "SALIN-180: Implement active-clue combat and configurable clue modes"` exits 0.
 - [ ] PR body states plainly that the Paglimot-identity criterion is **not** closed (needs SALIN-184) and that SALIN-188 remains the acceptance gate.
 - [ ] PR body notes that SALIN-178 integration is one interface implementation (`IClueObjectiveSource`), not a rewrite.
+- [ ] PR body states that `LevelFlowController` now constructs an `ActiveClueDirector` and `ActiveCluePresenter` on **every** level, so default-off rests on `IsClueCombatActive` rather than on the components being absent. Name `ClueCombatDisabled_CombatResolverUsesLegacyTargeting` as the regression test that covers it.
+- [ ] PR body notes the runtime HUD panel is an Editor-styled fallback (`Resources.GetBuiltinResource` is null in player builds); shipping levels should use authored HUD wiring.
 - [ ] Any check that did not run is reported `NOT RUN` or `BLOCKED`. Never claim a suite passed unless it actually ran.
+
+---
+
+## Post-review corrections
+
+Invariants found during code review that are not obvious from the task descriptions above. Preserve these in any re-implementation.
+
+**1. The freeze needs two release paths, not one.**
+`StrokeCapture.CompleteCurrentStroke` discards a tap-like stroke and returns before `StartMultiStrokeTimer`, so `SubmitForRecognition` never runs and `RecognitionManager` is never invoked. That path raises neither `RecognitionResolved` nor `DrawingFailed`. Subscribing to `OnDrawingFailed` covers the degenerate-stroke case only; the `MaxFreezeSeconds` deadline in `LateUpdate` is what stops a stray tap from freezing the mark for the rest of the level. The deadline refreshes on every `OnDrawingStarted` so a multi-stroke character cannot time out mid-draw, and is pushed forward while paused.
+
+**2. Consumption must not affect eligibility.**
+`TryConsumeClue` guards objective credit only. `CombatResolver` starts the damage coroutine regardless of what it returns, so a consumed clue still takes damage. Making a consumed clue ineligible causes a multi-hit enemy to lose its mark after one hit and — under the strict gate — become undrawable while it walks to the shrine, violating the spec's "Armor: mark holds" criterion.
+
+**3. `SelectIndex` needs two passes.**
+Epsilon comparison is not transitive. Comparing against a running best makes the winner order-dependent: `{0.0 seq3, 0.00008 seq2, 0.00016 seq1}` yields seq1 ascending and seq3 descending. Anchor the tie band to the global minimum instead.
+
+**4. Every presenter side effect must be guarded on an armed level.**
+`LevelFlowController` constructs a director and presenter on **every** level, so the plan's original regression-safety argument — "no `ActiveClueDirector` exists in any current scene, so `Instance` is null" — no longer holds. Default-off now rests entirely on `IsClueCombatActive`. In particular the badge sweep hides every enemy badge that is not the current clue, and on a legacy level the clue is always null, which would blank every glyph on screen. `ClueCombatDisabled_CombatResolverUsesLegacyTargeting` is now the key regression test.
+
+**5. An Inspector-wired presenter must subscribe from `ApplyLevel`.**
+Its `OnEnable` and `Start` both run before `LevelFlowController` creates the director, so both find `ActiveClueDirector.Instance` null. Without a `SubscribeToDirector()` call in `ApplyLevel`, an authored HUD silently presents nothing.
+
+**6. Pronunciation overlaps rather than interrupts.**
+`AudioManager.PlayPronunciation` uses `PlayOneShot`. When a hit resolves, `CombatResolver` announces the drawn character and the mark then moves, so the presenter would stack a second clip. The presenter stamps every pronunciation on the bus and suppresses its own announcement within `PronunciationDebounceSeconds`. The replay button bypasses the debounce — explicit user action always plays.
+
+**7. One finger-lift can raise `OnCharacterRecognized` twice.**
+`TryConsumeClue` protects objective credit, but the miss path records evidence unconditionally, so an echoed event inflates `attemptCount` for a single user action. `CombatResolver.IsEchoedRecognition` drops an identical `characterID` inside `EchoedRecognitionSeconds`.
+
+**8. Clue combat follows `AcceptsDrawingInput`, not `GameState.Playing`.**
+`GameManager.AcceptsDrawingInput` is `(Playing || Practicing) && !_drawingSuppressed`. Probing only for `GameState.Playing` would silently revert a Practicing-state level to legacy targeting, and would keep the mark live while drawing is suppressed for a cutscene or tutorial beat. `LevelConfigClueObjectiveSource` is constructed with that probe so the two can never drift apart.
+
+**9. `CurrentObjectiveContentIds` returns a copy.**
+The internal list is reused to keep the read allocation-light, but returning it directly would alias a buffer the next read clears — a trap for the SALIN-178 consumer that will hold the collection across frames.
