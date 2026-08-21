@@ -80,6 +80,8 @@ public class LevelConfigSO : ScriptableObject
 
     [Tooltip("Optional generalized challenge sequence. It is used only when challengePrototypeEnabled is true.")]
     public ChallengeSequenceSO challengeSequence;
+    [Tooltip("Difficulty tier overlay for the context challenge (SALIN-181). Tier 0 = legacy per-unit behavior.")]
+    public ChallengeTierPolicy challengePolicy = new ChallengeTierPolicy();
 
     [Tooltip("Dialogue played before waves begin. Null = skip intro.")]
     public DialogueSO introDialogue;

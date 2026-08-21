@@ -50,6 +50,14 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 Object.DestroyImmediate(runtimePanel);
                 runtimePanel = GameObject.Find("[Runtime] ActiveCluePanel");
             }
+
+            ChallengeRuntimeState.Clear();
+            foreach (Level1TutorialGuideUI guide in Object.FindObjectsByType<Level1TutorialGuideUI>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (guide != null)
+                    Object.DestroyImmediate(guide.gameObject);
+            }
         }
 
         [UnityTest]
@@ -353,6 +361,87 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Assert.AreEqual(1, controller.CommitCalls,
                 "With no machine the legacy OnLevelComplete path still owns completion.");
             Assert.IsTrue(victoryPanel.activeSelf);
+        }
+
+        [UnityTest]
+        public IEnumerator ContextChallenge_RunsAfterDefense_AndCompletionCommits()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapFlow(
+                ConfigureContextChallenge, out GameObject victoryPanel, out _, out _,
+                dialogueController: null);
+
+            yield return WaitFrames(10);
+            EventBus.RaiseDefenseComplete();
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.ContextChallenge, MachineOf(controller).Phase,
+                "The context challenge must run as phase 6, after Defense.");
+            Assert.AreEqual(0, controller.CommitCalls,
+                "No campaign progress may commit while the challenge is open.");
+
+            ChallengeFlowController challenge =
+                GetPrivateField<ChallengeFlowController>(controller, "_challengeFlowController");
+            Assert.IsNotNull(challenge, "The flow must provide a ChallengeFlowController for phase 6.");
+            challenge.SubmitPlacement("w-1");
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(1, controller.CommitCalls);
+            Assert.IsTrue(victoryPanel.activeSelf);
+            Assert.AreEqual(LevelPhase.Completed, MachineOf(controller).Phase);
+        }
+
+        [UnityTest]
+        public IEnumerator ContextChallenge_ExitDoesNotCommitProgress()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapFlow(
+                ConfigureContextChallenge, out GameObject victoryPanel, out _, out _,
+                dialogueController: null);
+
+            yield return WaitFrames(10);
+            EventBus.RaiseDefenseComplete();
+            yield return WaitFrames(10);
+            Assert.AreEqual(LevelPhase.ContextChallenge, MachineOf(controller).Phase,
+                "Setup: the challenge phase must be open.");
+
+            ChallengeFlowController challenge =
+                GetPrivateField<ChallengeFlowController>(controller, "_challengeFlowController");
+            challenge.Exit();
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(0, controller.CommitCalls,
+                "Exiting the challenge must never commit partial campaign progress.");
+            Assert.IsFalse(victoryPanel.activeSelf);
+            Assert.AreEqual(LevelPhase.Exited, MachineOf(controller).Phase);
+        }
+
+        private void ConfigureContextChallenge(LevelConfigSO config)
+        {
+            ChallengeSequenceSO sequence = ScriptableObject.CreateInstance<ChallengeSequenceSO>();
+            _objectsToDestroy.Add(sequence);
+            sequence.sequenceId = "phase6-test";
+            sequence.units = new[]
+            {
+                new ChallengeUnitDefinition
+                {
+                    unitId = "place-1",
+                    mode = ChallengeMode.WordPlacement,
+                    tokens = new[]
+                    {
+                        new ChallengeTokenDefinition { tokenId = "t1", displayText = "t1", occurrenceId = "w-1" },
+                        new ChallengeTokenDefinition { tokenId = "t2", displayText = "t2", occurrenceId = "w-2" },
+                    },
+                    slots = new[]
+                    {
+                        new ChallengeSlotDefinition { slotId = "s1", expectedOccurrenceId = "w-1" },
+                    },
+                    candidateOccurrenceIds = new[] { "w-1", "w-2" },
+                    maxErrors = 3,
+                    heartPenalty = 1,
+                },
+            };
+            config.challengeSequence = sequence;
         }
 
         // ---------------------------------------------------------------------
