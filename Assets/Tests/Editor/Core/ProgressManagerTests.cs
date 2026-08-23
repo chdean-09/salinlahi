@@ -1,3 +1,4 @@
+using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -194,6 +195,56 @@ namespace Salinlahi.Tests.Editor.Core
         public void IsLevelCompleted_ReturnsFalseWhenZeroStars()
         {
             Assert.IsFalse(_manager.IsLevelCompleted(1));
+        }
+
+        /// <summary>
+        /// SALIN-202: the accuracy-aware star formula belongs to revised saves only.
+        /// A legacy PlayerPrefs save must keep the hearts-only formula even when the
+        /// level flow has computed and handed over its results.
+        /// </summary>
+        [Test]
+        public void CommitCurrentLevelOutcome_LegacySave_KeepsTheHeartsOnlyStarFormula()
+        {
+            GameObject heartHost = new GameObject("HeartSystem_Test");
+            try
+            {
+                HeartSystem hearts = heartHost.AddComponent<HeartSystem>();
+                // EditMode does not run Awake on AddComponent, so seed a full run directly.
+                FieldInfo currentHearts = typeof(HeartSystem).GetField(
+                    "_currentHearts", BindingFlags.Instance | BindingFlags.NonPublic);
+                Assert.IsNotNull(currentHearts, "HeartSystem must carry a current-heart field.");
+                currentHearts.SetValue(hearts, hearts.GetMaxHearts());
+                _manager.RegisterHeartSystem(hearts);
+                _manager.TrySetSelectedLevelNumber(1);
+
+                var evidence = new LearningEvidenceBatch { levelId = "level.ugat.01" };
+                evidence.entries.Add(new LearningEvidenceEntry
+                {
+                    contentId = "symbol.na",
+                    contentKind = LearningContentKind.Symbol,
+                    dimension = MasteryDimension.Form,
+                    attemptCount = 4,
+                    successCount = 3,
+                });
+                LevelResults pending = LevelResultsCalculator.Compute(
+                    evidence,
+                    heartsRemaining: hearts.GetMaxHearts(),
+                    maxHearts: hearts.GetMaxHearts(),
+                    hintsUsed: 0,
+                    emergencyHintPenalty: 0f);
+                Assert.AreEqual(2, pending.Stars,
+                    "Fixture check: weak tracing caps the revised formula at two stars.");
+
+                _manager.SetPendingLevelResults(pending);
+                _manager.CommitCurrentLevelOutcome();
+
+                Assert.AreEqual(3, _manager.GetStars(1),
+                    "Full hearts is three stars on a legacy save; pending results must not apply.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(heartHost);
+            }
         }
 
         [Test]

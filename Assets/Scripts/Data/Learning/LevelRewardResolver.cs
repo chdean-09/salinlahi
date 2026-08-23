@@ -54,8 +54,10 @@ public static class LevelRewardResolver
             {
                 if (string.IsNullOrWhiteSpace(rewardId))
                     continue;
-                claimedRewards.Add(rewardId);
-                if (rewardId.StartsWith(MemoryRewardPrefix, System.StringComparison.Ordinal))
+                if (!claimedRewards.Contains(rewardId))
+                    claimedRewards.Add(rewardId);
+                if (rewardId.StartsWith(MemoryRewardPrefix, System.StringComparison.Ordinal)
+                    && !unlockedMemories.Contains(rewardId))
                     unlockedMemories.Add(rewardId);
             }
         }

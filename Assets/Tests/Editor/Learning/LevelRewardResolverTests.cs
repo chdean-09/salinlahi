@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Salinlahi.Tests.Editor.Persistence;
 using UnityEngine;
 
 namespace Salinlahi.Tests.Editor.Learning
@@ -94,6 +95,43 @@ namespace Salinlahi.Tests.Editor.Learning
             Assert.IsEmpty(grant.UnlockedSymbolIds);
             Assert.IsEmpty(grant.UnlockedMemoryIds);
             Assert.IsEmpty(grant.ClaimedRewardIds);
+        }
+
+        [Test]
+        public void DuplicateRewardIds_AreClaimedOnceInAuthoredOrder()
+        {
+            LevelConfigSO level = Level("level.ugat.01");
+            level.rewardIds.Add("memory.ugat.ina");
+            level.rewardIds.Add("reward.ugat.01");
+            level.rewardIds.Add("memory.ugat.ina");
+            level.rewardIds.Add("reward.ugat.01");
+
+            RewardGrant grant = LevelRewardResolver.Resolve(level);
+
+            CollectionAssert.AreEqual(
+                new[] { "memory.ugat.ina", "reward.ugat.01" }, grant.ClaimedRewardIds.ToList());
+            CollectionAssert.AreEqual(
+                new[] { "memory.ugat.ina" }, grant.UnlockedMemoryIds.ToList());
+        }
+
+        [Test]
+        public void DuplicateRewardIds_StillProduceACommittableOutcome()
+        {
+            using CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair();
+            LevelConfigSO level = Level("level.ugat.01");
+            level.rewardIds.Add("memory.ugat.ina");
+            level.rewardIds.Add("memory.ugat.ina");
+            level.rewardIds.Add("reward.ugat.01");
+
+            RewardGrant grant = LevelRewardResolver.Resolve(level);
+            CampaignProgressOutcome outcome = CampaignSaveTestFactory.CreateValidOutcome(pair.Document);
+            outcome.unlockedMemoryIds = new List<string>(grant.UnlockedMemoryIds);
+            outcome.claimedRewardIds = new List<string>(grant.ClaimedRewardIds);
+
+            CampaignSaveValidationResult result = CampaignOutcomeValidator.Validate(
+                outcome, pair.Campaign, pair.Document);
+
+            Assert.That(result.IsValid, Is.True, result.ErrorMessage);
         }
 
         [Test]

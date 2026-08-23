@@ -279,9 +279,10 @@ public class ProgressManager : Singleton<ProgressManager>
     /// </summary>
     private int CalculateStars()
     {
-        // SALIN-202: the documented accuracy-aware formula wins when the flow
-        // computed results for this completion; hearts-only remains the legacy path.
-        if (_pendingLevelResults != null)
+        // SALIN-202: on revised saves the documented accuracy-aware formula wins
+        // when the flow computed results for this completion; the legacy
+        // PlayerPrefs path stays hearts-only.
+        if (UsesRevisedProgress && _pendingLevelResults != null)
             return Mathf.Clamp(_pendingLevelResults.Stars, 1, MaxStars);
 
         // HeartSystem should have already registered via OnEnable

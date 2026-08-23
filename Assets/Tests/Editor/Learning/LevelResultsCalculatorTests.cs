@@ -115,6 +115,66 @@ namespace Salinlahi.Tests.Editor.Learning
         }
 
         [Test]
+        public void Stars_HeartsRatioExactlyAtTheTwoStarThreshold_EarnsTwo()
+        {
+            LevelResults results = LevelResultsCalculator.Compute(
+                Batch(), heartsRemaining: 2, maxHearts: 4, hintsUsed: 0, emergencyHintPenalty: 0f);
+
+            Assert.AreEqual(0.5f, results.Metrics[LevelResultsCalculator.HeartsRatioMetricId], 0.0001f);
+            Assert.AreEqual(2, results.Stars,
+                "The documented two-star hearts threshold is inclusive at exactly 0.5.");
+        }
+
+        [Test]
+        public void Stars_ContextAccuracyExactlyAtTheTwoStarThreshold_EarnsTwo()
+        {
+            LevelResults results = LevelResultsCalculator.Compute(
+                Batch(Entry(MasteryDimension.Assembly, attempts: 5, successes: 3,
+                    contentId: "level.ugat.01.focus.01", kind: LearningContentKind.Word)),
+                heartsRemaining: 3, maxHearts: 3, hintsUsed: 0, emergencyHintPenalty: 0f);
+
+            Assert.AreEqual(0.6f, results.Metrics[LevelResultsCalculator.ContextAccuracyMetricId], 0.0001f);
+            Assert.AreEqual(2, results.Stars,
+                "The documented two-star context threshold is inclusive at exactly 0.6.");
+        }
+
+        [Test]
+        public void Stars_TracingAccuracyExactlyAtTheThreeStarThreshold_EarnsThree()
+        {
+            LevelResults results = LevelResultsCalculator.Compute(
+                Batch(Entry(MasteryDimension.Form, attempts: 5, successes: 4)),
+                heartsRemaining: 3, maxHearts: 3, hintsUsed: 0, emergencyHintPenalty: 0f);
+
+            Assert.AreEqual(0.8f, results.Metrics[LevelResultsCalculator.TracingAccuracyMetricId], 0.0001f);
+            Assert.AreEqual(3, results.Stars,
+                "The documented three-star tracing threshold is inclusive at exactly 0.8.");
+        }
+
+        [Test]
+        public void Stars_ContextAccuracyExactlyAtTheThreeStarThreshold_EarnsThree()
+        {
+            LevelResults results = LevelResultsCalculator.Compute(
+                Batch(Entry(MasteryDimension.Meaning, attempts: 5, successes: 4,
+                    contentId: "level.ugat.01.focus.01", kind: LearningContentKind.Word)),
+                heartsRemaining: 3, maxHearts: 3, hintsUsed: 0, emergencyHintPenalty: 0f);
+
+            Assert.AreEqual(0.8f, results.Metrics[LevelResultsCalculator.ContextAccuracyMetricId], 0.0001f);
+            Assert.AreEqual(3, results.Stars,
+                "The documented three-star context threshold is inclusive at exactly 0.8.");
+        }
+
+        [Test]
+        public void Stars_HeartsRatioExactlyAtTheFullHeartsTolerance_EarnsThree()
+        {
+            LevelResults results = LevelResultsCalculator.Compute(
+                Batch(), heartsRemaining: 99, maxHearts: 100, hintsUsed: 0, emergencyHintPenalty: 0f);
+
+            Assert.AreEqual(0.99f, results.Metrics[LevelResultsCalculator.HeartsRatioMetricId], 0.0001f);
+            Assert.AreEqual(3, results.Stars,
+                "The documented three-star hearts threshold is inclusive at exactly 0.99.");
+        }
+
+        [Test]
         public void ZeroMaxHearts_IsSafeAndScoresOneStar()
         {
             LevelResults results = LevelResultsCalculator.Compute(
