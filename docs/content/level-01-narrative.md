@@ -16,6 +16,15 @@
 
 ## 2. Focus-word explanations
 
+Each focus slot also carries authored label and meaning copy (`Level1_Config.focusWords`,
+authored by SALIN-198). The meaning is what the Meaning mastery dimension matches on, so
+the adviser approves it as content, not as a support gloss.
+
+| Slot | Display label | Meaning | Status |
+| --- | --- | --- | --- |
+| `level.ugat.01.focus.01` | INA | mother | PENDING SALIN-188 REVIEW |
+| `level.ugat.01.focus.02` | AMA | father | PENDING SALIN-188 REVIEW |
+
 ### INA (`Dialogue_Ugat01_Ina`, attached to focus slot 01)
 
 | # | Speaker | Filipino | English (support) | Status |
@@ -32,10 +41,11 @@
 
 ## 3. Context-challenge copy (`Challenge_Ugat01_Context`, authored by SALIN-198)
 
-| Unit | Filipino prompt | English (support) | Status |
+| Element | Filipino | English (support) | Status |
 | --- | --- | --- | --- |
-| ugat01-place-ina | Ibalik ang INA sa alaala. | Restore INA to the memory. | PENDING SALIN-188 REVIEW |
-| ugat01-place-ama | Ibalik ang AMA sa alaala. | Restore AMA to the memory. | PENDING SALIN-188 REVIEW |
+| `displayName` (sequence title) | Unang Alaala | First Memory | PENDING SALIN-188 REVIEW |
+| ugat01-place-ina prompt | Ibalik ang INA sa alaala. | Restore INA to the memory. | PENDING SALIN-188 REVIEW |
+| ugat01-place-ama prompt | Ibalik ang AMA sa alaala. | Restore AMA to the memory. | PENDING SALIN-188 REVIEW |
 
 ## 4. Restored memory cutscene (`Cutscene_Ugat01_Memory`, era memory reward)
 
@@ -70,6 +80,10 @@ authors the campaign-wide narrative.
 | `Era_01.storyReference` | `Dialogue_Ugat01_Intro` |
 | `Era_01.memoryReference` | `Cutscene_Ugat01_Memory` |
 
-Historical Level 1 copy (`Level1_Opening.asset`, colonial-era framing) conflicts with
-the revised story and is superseded for the revised flow; the asset itself is left in
-place as legacy evidence per SALIN-187.
+## Superseded assets
+
+`Level1_Opening.asset` is the original Level 1 opening cutscene — an English-language
+colonial-era origin story. It contradicts the pre-colonial Ugat framing authored here,
+so its `LevelCutsceneMapping` entry (level 1, BeforeLevel) is removed and Level 1 now
+opens on `Dialogue_Ugat01_Intro`. The cutscene asset stays in the project, unreferenced,
+as legacy evidence per SALIN-187.

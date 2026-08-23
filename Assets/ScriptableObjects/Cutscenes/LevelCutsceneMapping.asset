@@ -12,7 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5f2f704c31e584da3bd0ca3379e0457a, type: 3}
   m_Name: LevelCutsceneMapping
   m_EditorClassIdentifier: Salinlahi.Runtime::LevelCutsceneMappingSO
-  entries:
-  - levelNumber: 1
-    cutscene: {fileID: 11400000, guid: aec36e2ee108f42cdb9f47056c15c180, type: 2}
-    triggerType: 0
+  entries: []
