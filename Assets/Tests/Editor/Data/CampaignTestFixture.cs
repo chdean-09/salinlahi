@@ -39,6 +39,7 @@ namespace Salinlahi.Tests.Editor.Data
             Campaign = Track(ScriptableObject.CreateInstance<CampaignConfigSO>());
             Campaign.manifest = CampaignIdentityManifest.CreateRevisedV1();
             Campaign.tuning = new CampaignTuning { defaultShrineHearts = 3 };
+            Campaign.learningTuning = Track(ScriptableObject.CreateInstance<LearningTuningSO>());
 
             Sprite contextSprite = CreateContextSprite();
             AudioClip narrationClip = Track(AudioClip.Create("SALIN170_Test", 64, 1, 44100, false));
@@ -205,6 +206,7 @@ namespace Salinlahi.Tests.Editor.Data
                 stableId = stableId,
                 latinSpelling = symbol.syllable,
                 displayLabel = symbol.syllable.ToUpperInvariant(),
+                meaning = "Synthetic meaning for " + symbol.syllable + ".",
                 media = CreateMediaReferences(contextSprite, narrationClip, dialogue, cutscene),
             };
             focusWord.decomposition.Add(new SymbolValueReference

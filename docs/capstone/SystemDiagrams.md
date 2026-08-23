@@ -429,6 +429,41 @@ classDiagram
         +RunLevel()
         -PlayRevealsIfAny() Coroutine
     }
+    class SaveManager {
+        +SaveManagerMode Mode
+        +CampaignProgressRepository Repository
+        +CampaignOutcomeCoordinator OutcomeCoordinator
+        +RetryPendingOutcome() CampaignOutcomeCommitResult
+        +ResetJourneyAtomically() CampaignOutcomeCommitResult
+    }
+    class ProgressManager {
+        +CommitCurrentLevelOutcome() CampaignOutcomeCommitResult
+        +RetryPendingLevelOutcome() CampaignOutcomeCommitResult
+    }
+    class CampaignProgressRepository {
+        +string CurrentJourneyGenerationId
+        +TrySetActiveLevel(levelId) bool
+    }
+    class CampaignOutcomeCoordinator {
+        +TryCommit(outcome) CampaignOutcomeCommitResult
+        +ReplayPendingOnStartup() CampaignOutcomeCommitResult
+        +TryResetJourney() CampaignOutcomeCommitResult
+    }
+    class CampaignOutcomeJournal {
+        +TryPersist(outcome, current)
+        +TryLoadRecoverable(current)
+        +Clear() bool
+    }
+    class CampaignOutcomeSaveFailurePanel {
+        +Present(result, retry, accepted, mainMenu)
+        +Hide()
+    }
+    class CampaignProgressOutcome {
+        +string outcomeId
+        +string journeyGenerationId
+        +string levelId
+        +int stars
+    }
     class CharacterUnlockRevealController {
         +BuildRevealQueue(allowed, isUnlocked)$ List
         +Play(toReveal) Coroutine
@@ -481,6 +516,8 @@ classDiagram
     Singleton <|-- ComboManager
     Singleton <|-- ActiveEnemyTracker
     Singleton <|-- CombatResolver
+    Singleton <|-- SaveManager
+    Singleton <|-- ProgressManager
 
     Enemy --> EnemyMover : requires
     Enemy --> EnemyGlyphBadge : child
@@ -502,6 +539,14 @@ classDiagram
     LevelFlowController --> WaveManager : drives
     LevelFlowController --> BossController : activates
     LevelFlowController --> CharacterUnlockRevealController : yields Play()
+    LevelFlowController --> ProgressManager : commits outcome
+    LevelFlowController --> CampaignOutcomeSaveFailurePanel : gates Victory
+    ProgressManager --> SaveManager : asks for coordinator
+    SaveManager --> CampaignProgressRepository : exposes
+    SaveManager --> CampaignOutcomeCoordinator : initializes/replays
+    CampaignOutcomeCoordinator --> CampaignOutcomeJournal : journals
+    CampaignOutcomeCoordinator --> CampaignProgressRepository : publishes monotonic state
+    CampaignOutcomeCoordinator ..> CampaignProgressOutcome : validates/applies
 
     CharacterUnlockRevealController --> AlmanacDetailScroll : shows
     CharacterUnlockRevealController ..> CharacterUnlockProgress : TryMarkUnlocked
@@ -619,6 +664,19 @@ flowchart LR
         BCfg -. "config" .-> BCtl
     end
 
+    subgraph Persistence["Atomic Progress Outcome"]
+        PM["ProgressManager"]
+        OJ["CampaignOutcomeJournal"]
+        OC["CampaignOutcomeCoordinator"]
+        CSS["CampaignSaveService"]
+        SFP["CampaignOutcomeSaveFailurePanel"]
+        LFC --> PM
+        PM --> OJ
+        OJ --> OC
+        OC --> CSS
+        LFC -->|"PendingRetry / Rejected / Blocked"| SFP
+    end
+
     subgraph Spawning["Enemy Spawning"]
         EP["EnemyPool"]
         WS["WaveSpawner"]
@@ -674,6 +732,8 @@ flowchart LR
     HS -- "hearts == 0" --> E5
     E5 --> GM["GameManager"]
     GM --> DSU["DefeatScreenUI overlay"]
+    CSS -->|"verified campaign snapshot"| OC
+    OC -->|"Committed / AlreadyCommitted"| VSU["VictoryScreenUI"]
     BCtl --> E6
     E6 --> HUD2["Boss HUD"]
     CUR -- "raise (per acknowledged reveal)" --> E7
@@ -796,3 +856,193 @@ flowchart TD
 The revised branch has one persistence writer: the repository commit boundary. Audio volume
 continues through the legacy PlayerPrefs audio adapter and is intentionally absent from the JSON
 campaign document.
+
+## 6. Atomic Progress Outcome Flow (SALIN-174)
+
+```mermaid
+flowchart TD
+    A["OnLevelComplete"] --> B["LevelFlowController"]
+    B --> C["ProgressManager builds immutable outcome"]
+    C --> D["Outcome journal temp write + validation"]
+    D --> E["Pending journal published"]
+    E --> F["CampaignOutcomeCoordinator merges candidate"]
+    F --> G["Campaign save temp write + validation"]
+    G --> H["Backup previous primary"]
+    H --> I["Publish and verify primary"]
+    I --> J["Record receipt and clear journal"]
+    J --> K["Victory screen"]
+    D -->|"failure"| L["Save failure panel"]
+    G -->|"failure"| L
+    I -->|"failure + rollback"| L
+
+    M["Bootstrap / SaveManager"] --> N["Recover save → migrate v1 → initialize coordinator"]
+    N --> O["Recover journal → replay pending outcome"]
+    O --> P["RevisedReady"]
+    O -->|"higher schema or unresolved I/O"| Q["RevisedBlocked"]
+
+    R["Reset Journey"] --> S["Create new journeyGenerationId"]
+    S --> T["Clear progress and receipts"]
+    T --> U["Quarantine stale-generation journal"]
+    U --> V["Publish verified clean save"]
+```
+
+The completion branch cannot reach Victory until the receipt and published campaign snapshot have
+been verified. Startup replay uses the durable journal payload rather than a runtime callback.
+Reset generation mismatch makes an older pending outcome stale, so it cannot restore progress from
+the previous journey.
+
+---
+
+## 7. Learning, Practice, and Mastery Data (SALIN-175)
+
+### 7.1 Class diagram — the learning layer
+
+`MasteryEvaluator`, `ReviewScheduler`, and `PracticePriority` are pure: no Unity, no I/O, no
+EventBus. Persistence access is confined to `LearningProgressRepository`.
+
+```mermaid
+classDiagram
+    class CampaignConfigSO {
+        +CampaignIdentityManifest manifest
+        +LearningTuningSO learningTuning
+        +List~BaybayinCharacterSO~ symbols
+        +List~EraConfigSO~ eras
+    }
+    class LearningTuningSO {
+        +int immediateSuccessesForPracticed
+        +int delayedSuccessesForRecalled
+        +int delayedSuccessesForMastered
+        +int delayedSessionsForMastered
+        +int nextLevelOffset
+        +int laterLevelOffset
+    }
+    class CampaignProgressData {
+        +List~SymbolMasteryRecord~ symbolMastery
+        +List~WordMasteryRecord~ wordMastery
+        +List~AppliedOutcomeReceipt~ appliedOutcomeReceipts
+    }
+    class SymbolMasteryRecord {
+        +string symbolId
+        +string introducedAtLevelId
+        +List~DimensionEvidence~ dimensions
+    }
+    class WordMasteryRecord {
+        +string wordId
+        +string sourceLevelId
+        +List~string~ satisfiedReviewCheckpoints
+        +List~DimensionEvidence~ dimensions
+    }
+    class DimensionEvidence {
+        +MasteryDimension dimension
+        +int immediateSuccesses
+        +int delayedSuccesses
+        +int delayedSessionCount
+        +MasteryState highWaterState
+    }
+    class LearningEvidenceBatch {
+        +string levelId
+        +LearningSessionKind sessionKind
+        +List~string~ instructedContentIds
+        +List~LearningEvidenceEntry~ entries
+    }
+    class CampaignProgressOutcome {
+        +LearningSessionKind sessionKind
+        +LearningEvidenceBatch evidence
+        +int stars
+    }
+    class MasteryEvaluator {
+        <<pure>>
+        +Evaluate(DimensionEvidence, LearningTuningSO) MasteryState
+        +Aggregate(dimensions, kind) MasteryState
+    }
+    class LearningProgressWriter {
+        <<pure>>
+        +Apply(CampaignProgressData, batch, tuning)
+    }
+    class LearningEvidenceRecorder {
+        +RecordInstruction(id, kind)
+        +RecordAttempt(id, kind, dim, success, answerWasVisible)
+        +Build() LearningEvidenceBatch
+    }
+    class LearningProgressRepository {
+        +Snapshot LearningStateSnapshot
+    }
+    class LearningStateSnapshot {
+        +IntroducedSymbolIds
+        +GetSymbolState(id) MasteryState
+        +GetRequiredReviewItems(levelId)
+        +GetSuggestedPracticeItems(levelId, maxCount)
+    }
+    class SaveManager {
+        +LearningState LearningStateSnapshot
+    }
+
+    CampaignConfigSO --> LearningTuningSO
+    CampaignProgressData --> SymbolMasteryRecord
+    CampaignProgressData --> WordMasteryRecord
+    SymbolMasteryRecord --> DimensionEvidence
+    WordMasteryRecord --> DimensionEvidence
+    CampaignProgressOutcome --> LearningEvidenceBatch
+    LearningEvidenceRecorder --> LearningEvidenceBatch
+    LearningProgressWriter --> CampaignProgressData
+    LearningProgressWriter ..> MasteryEvaluator
+    LearningProgressRepository --> LearningStateSnapshot
+    SaveManager --> LearningProgressRepository
+```
+
+### 7.2 Data flow — evidence rides the atomic boundary
+
+```mermaid
+flowchart TD
+    A["Session: level attempt, dojo practice, or review"] --> B["LearningEvidenceRecorder"]
+    B --> C["Build() sorted LearningEvidenceBatch"]
+    C --> D["CampaignProgressOutcome.evidence"]
+    D --> E["Outcome journal temp write + read-back"]
+    E --> F["Pending journal published"]
+    F --> G{"outcome.sessionKind"}
+    G -->|"LevelAttempt"| H["ApplyLevelProgression: completion, unlocks, stars"]
+    G -->|"FreePractice / ScheduledReview"| I["skip progression"]
+    H --> J["LearningProgressWriter.Apply"]
+    I --> J
+    J --> K["Add receipt with sessionKind, prune non-level receipts"]
+    K --> L["Publish and verify campaign save"]
+    L --> M["VerifyPublishedOutcome: evidence for all kinds, level assertions only for LevelAttempt"]
+    M --> N["Clear journal"]
+
+    O["LearningProgressRepository"] --> P["LearningStateSnapshot"]
+    P --> Q["IntroducedSymbolIds -> Tracing Dojo list, SALIN-133"]
+    P --> R["Required review items + suggested practice"]
+```
+
+There is no second write path for learning data. A practice session that fails to commit leaves
+level progression untouched, because the coordinator never calls the progression branch for a
+non-`LevelAttempt` outcome and the validator rejects one that carries stars or unlocks.
+
+### 7.3 State diagram — per-dimension mastery
+
+Each `(contentId, dimension)` pair holds its own state. `highWaterState` never regresses, and
+`MasteryEvaluator.Aggregate` reports the weakest applicable dimension for the content as a whole.
+
+```mermaid
+stateDiagram-v2
+    [*] --> None
+    None --> Introduced : instructed in a committed session<br/>(seeds every applicable dimension, no attempt recorded)
+    Introduced --> Practiced : immediateSuccesses >= immediateSuccessesForPracticed<br/>(answer may have been visible)
+    Practiced --> Recalled : delayedSuccesses >= delayedSuccessesForRecalled<br/>(retrieval only - answer not visible)
+    Recalled --> Mastered : delayedSuccesses >= delayedSuccessesForMastered<br/>AND delayedSessionCount >= delayedSessionsForMastered
+    Mastered --> [*]
+
+    note right of Practiced
+        Immediate successes cap here.
+        Only delayed retrieval advances further.
+    end note
+    note right of Recalled
+        delayedSessionCount increments at most
+        once per committed session, so one
+        grinding session cannot reach Mastered.
+    end note
+```
+
+Evidence alone never creates a record: only `instructedContentIds` may move content out of `None`.
+Practice on never-taught content is therefore discarded rather than silently self-introducing the
+content and corrupting `IntroducedSymbolIds`.

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Salinlahi.Tests.Editor.Data;
 
 namespace Salinlahi.Tests.Editor.Persistence
@@ -29,6 +30,26 @@ namespace Salinlahi.Tests.Editor.Persistence
         {
             using (CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair())
                 return CampaignSaveSerializer.DeepClone(pair.Document);
+        }
+
+        public static CampaignProgressOutcome CreateValidOutcome(CampaignSaveDocument current)
+        {
+            return new CampaignProgressOutcome
+            {
+                outcomeSchemaVersion = CampaignProgressOutcome.CurrentOutcomeSchemaVersion,
+                sessionKind = LearningSessionKind.LevelAttempt,
+                evidence = new LearningEvidenceBatch { levelId = "level.ugat.01" },
+                outcomeId = "outcome.00000000000000000000000000000001",
+                journeyGenerationId = current.progress.journeyGenerationId,
+                campaignId = current.campaignId,
+                contentSchemaVersion = current.contentSchemaVersion,
+                levelId = "level.ugat.01",
+                stars = 3,
+                unlockedSymbolIds = new List<string>(),
+                unlockedMemoryIds = new List<string> { "memory.ugat.ina" },
+                claimedRewardIds = new List<string> { "reward.ugat.01" },
+                completedAtUtc = "2026-08-17T00:00:00.0000000Z",
+            };
         }
     }
 }

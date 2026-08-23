@@ -1,152 +1,71 @@
-# 🚀 SALIN Jira-GitHub Workflow — Setup Guide
+# Git Delivery Quick Start
 
-## For Team Members: Quick Setup (2 minutes)
+Jira linkage is optional. The required workflow is typed branches, Conventional Commit subjects, explicit verification, and a pull request to `dev`.
 
-### 1. Read the Handbook
-📖 **Start here:** `docs/jira/TEAM-HANDBOOK.md`
+## 1. Know the Formats
 
-This contains everything you need to know about branches, commits, and PRs.
+```text
+Branch:  docs/improve-ai-workflow
+         feature/SALIN-123-improve-scene-loading
 
-### 2. Install Git Hook (Recommended)
+Commit:  docs(ai): improve delivery workflow
+         fix(ui): SALIN-123 resolve null reference
 
-This will validate your commit messages locally before pushing:
+PR:      Improve AI delivery workflow
+         SALIN-123: Improve AI delivery workflow
+```
+
+- Branch types: `feature`, `bugfix`, `hotfix`, `chore`, `refactor`, `docs`, `test`, `spike`.
+- Branch descriptions: lowercase kebab-case, 2–5 words, no more than 60 characters for the complete branch name.
+- Commit types: `feat`, `fix`, `chore`, `refactor`, `docs`, `test`, `style`, `perf`, `ci`, `revert`; scope is optional.
+- Jira keys: optional, but uppercase and well formed when present.
+
+## 2. Install the Local Commit Hook
+
+First confirm `.git/hooks/commit-msg` does not already exist. If it does, inspect and integrate it deliberately instead of overwriting it. When the path is absent, run from the repository root:
 
 ```bash
-# From repo root
 cp docs/jira/commit-msg-hook.sh .git/hooks/commit-msg
 chmod +x .git/hooks/commit-msg
 ```
 
-### 3. Use the Quick Reference
+The hook resolves the repository root and delegates to `docs/jira/validate-git-conventions.sh`. Do not maintain a separate local regex.
 
-**Print this and keep it handy:**
+## 3. Deliver a Change
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    SALIN QUICK REFERENCE                     │
-├─────────────────────────────────────────────────────────────┤
-│  BRANCH:  feature/SALIN-11-implement-scene-loader           │
-│  COMMIT:  feat(scope): SALIN-11 add async loading           │
-│  PR:      SALIN-11: Implement scene loader                  │
-├─────────────────────────────────────────────────────────────┤
-│  TYPES: feature/ bugfix/ hotfix/ chore/ refactor/ docs/     │
-│         test/ spike/                                        │
-├─────────────────────────────────────────────────────────────┤
-│  30-SEC CHECKLIST:                                          │
-│  [ ] Branch has SALIN-XX                                    │
-│  [ ] Commits have SALIN-XX                                  │
-│  [ ] PR title starts with SALIN-XX:                         │
-│  [ ] PR description filled in                               │
-│  [ ] CI passing                                             │
-└─────────────────────────────────────────────────────────────┘
-```
+1. Start from `dev` and create a typed task branch. A Jira key may be included but is not required.
+2. Inspect the relevant code, tests, and Unity serialized consumers before editing.
+3. Make the smallest coherent change and preserve unrelated worktree modifications.
+4. Run the relevant verification, then review the complete diff before staging.
+5. Stage only task-owned files and create a compliant Conventional Commit.
+6. Push the task branch and open a pull request targeting `dev`.
+7. Use a ready PR only when every required check is `PASS` or `NOT APPLICABLE`. Otherwise use a draft and document each `FAIL`, `NOT RUN`, or `BLOCKED` check.
+8. Do not merge automatically.
 
----
+For Codex, the exact request `ship this` authorizes the delivery actions above for the current task, including creating a compliant branch first when the current branch is `dev` or `main`. It does not authorize merging, force-pushing, bypassing validation, or staging unrelated files.
 
-## For Repo Admins: Enable Automation (5 minutes)
+## 4. Validate Before Delivery
 
-### 1. Enable GitHub Actions
-
-The validation workflow is already in `.github/workflows/jira-validation.yml`. 
-
-Just push it to main:
 ```bash
-git add .github/workflows/jira-validation.yml
-git commit -m "chore(ci): SALIN-X add PR validation workflow"
-git push origin main
+docs/jira/validate-git-conventions.sh branch "docs/improve-ai-workflow"
+docs/jira/validate-git-conventions.sh commit "docs(ai): improve delivery workflow"
+docs/jira/validate-git-conventions.sh pr "Improve AI delivery workflow"
 ```
 
-This will automatically check every PR for:
-- ✅ Title starts with `SALIN-XX:`
-- ✅ Branch follows naming convention
+`.github/workflows/git-conventions.yml` repeats these checks for the PR branch and title and for every commit subject in the PR's base-to-head range. It does not compile Unity or run Unity tests.
 
-### 2. Configure Jira Automation
+## 5. Fill In Verification and Impact
 
-In Jira, go to **Project Settings → Automation** and create these rules:
+Use `.github/PULL_REQUEST_TEMPLATE.md` and report one of `PASS`, `FAIL`, `NOT RUN`, `BLOCKED`, or `NOT APPLICABLE` for:
 
-**Rule 1: Branch Created → In Progress**
-- **Trigger:** Branch created
-- **Condition:** Branch name contains `SALIN-`
-- **Action:** Transition issue to "In Progress"
+- Unity compilation;
+- Unity Console;
+- Edit Mode tests;
+- Play Mode tests;
+- relevant manual regression.
 
-**Rule 2: PR Opened → In Review**
-- **Trigger:** Pull request opened
-- **Condition:** PR title contains `SALIN-`
-- **Action:** Transition issue to "In Review"
+Also state whether the diff affects `.meta` files/GUIDs, scenes, prefabs, ScriptableObjects or other `.asset` files, `Packages/`, or `ProjectSettings/`.
 
-**Rule 3: PR Merged → Done**
-- **Trigger:** Pull request merged to `main`
-- **Condition:** PR title contains `SALIN-`
-- **Action:** Transition issue to "Done"
+## Optional Jira Behavior
 
-**Rule 4: Done → Comment with PR Link**
-- **Trigger:** Issue transitioned to Done
-- **Action:** Add comment: "Merged in {triggerIssue.pr.url}"
-
-### 3. Verify GitHub-Jira Integration
-
-1. Go to Jira → Project Settings → GitHub
-2. Connect your repository
-3. Verify the integration is active
-
----
-
-## Troubleshooting
-
-### PR validation is failing
-
-Check the PR title format:
-```
-❌ "Implement scene loader"
-❌ "SALIN-11 implement scene loader"
-✅ "SALIN-11: Implement scene loader"
-```
-
-### Commits are being rejected
-
-Check your commit message:
-```
-❌ "work in progress"
-❌ "SALIN-11"
-✅ "feat(scene-loader): SALIN-11 add async loading"
-✅ "SALIN-11: Add scene loader"
-```
-
-### Jira isn't showing my branch/PR
-
-- Ensure your branch name contains `SALIN-XX` in UPPERCASE
-- Ensure your PR title starts with `SALIN-XX:`
-- Wait 1-2 minutes for sync (sometimes delayed)
-- Check the Development panel on the right side of the Jira issue
-
-### I need to bypass validation (emergency hotfix)
-
-Repo admins can override by adding the label `skip-validation` to the PR.
-
----
-
-## File Structure
-
-```
-.github/
-├── workflows/
-│   └── jira-validation.yml    # PR validation automation
-├── PULL_REQUEST_TEMPLATE.md   # Updated with Jira format
-docs/
-├── jira/
-│   ├── TEAM-HANDBOOK.md       # Complete workflow guide
-│   ├── QUICK-START.md         # This file
-│   └── commit-msg-hook.sh     # Local commit validation
-```
-
----
-
-## Need Help?
-
-1. Check `docs/jira/TEAM-HANDBOOK.md` for detailed examples
-2. Look at recent PRs for examples of correct formatting
-3. Ask in team chat or ping a maintainer
-
----
-
-*Setup Guide v1.0*
+When a valid `SALIN-<number>` key is present, external Jira/GitHub integration may link the branch, commits, and PR and may run configured transitions. Ticketless work has no Jira transition. The external Jira automation and GitHub required-check settings are `NOT VERIFIED` by repository files.

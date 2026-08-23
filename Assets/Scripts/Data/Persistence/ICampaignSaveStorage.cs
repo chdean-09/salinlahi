@@ -8,6 +8,8 @@ public enum CampaignSaveFileRole
     Temporary,
     Backup,
     LegacyArchive,
+    PendingOutcome,
+    PendingOutcomeTemporary,
 }
 
 public interface ICampaignSaveStorage
@@ -16,7 +18,10 @@ public interface ICampaignSaveStorage
     string ReadAllText(CampaignSaveFileRole role);
     void WriteAllTextFlushed(CampaignSaveFileRole role, string contents);
     void Copy(CampaignSaveFileRole source, CampaignSaveFileRole destination, bool overwrite);
+    void Delete(CampaignSaveFileRole role);
     void PromoteTemporaryToPrimary();
+    void PromotePendingOutcomeTemporary();
+    void RestoreBackupToPrimary();
     string Quarantine(CampaignSaveFileRole role, string reason, DateTime utcNow);
 }
 
@@ -36,15 +41,27 @@ public sealed class CampaignSaveFileStorage : ICampaignSaveStorage
         Directory.CreateDirectory(_root);
     }
 
+#if UNITY_EDITOR
+    public static StorageFaultPoint EditorFailNextAt { get; set; }
+#endif
+
     public bool Exists(CampaignSaveFileRole role) => File.Exists(GetPath(role));
 
     public string ReadAllText(CampaignSaveFileRole role)
     {
+#if UNITY_EDITOR
+        if (role == CampaignSaveFileRole.Primary)
+            ThrowEditorFaultIf(StorageFaultPoint.PublishedReadBack);
+#endif
         return File.ReadAllText(GetPath(role));
     }
 
     public void WriteAllTextFlushed(CampaignSaveFileRole role, string contents)
     {
+#if UNITY_EDITOR
+        if (role == CampaignSaveFileRole.PendingOutcomeTemporary)
+            ThrowEditorFaultIf(StorageFaultPoint.JournalTemporaryWrite);
+#endif
         string path = GetPath(role);
         Directory.CreateDirectory(_root);
         using (FileStream stream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None))
@@ -61,14 +78,51 @@ public sealed class CampaignSaveFileStorage : ICampaignSaveStorage
         File.Copy(GetPath(source), GetPath(destination), overwrite);
     }
 
+    public void Delete(CampaignSaveFileRole role)
+    {
+#if UNITY_EDITOR
+        if (role == CampaignSaveFileRole.PendingOutcome || role == CampaignSaveFileRole.PendingOutcomeTemporary)
+            ThrowEditorFaultIf(StorageFaultPoint.JournalDelete);
+#endif
+        string path = GetPath(role);
+        if (File.Exists(path))
+            File.Delete(path);
+    }
+
     public void PromoteTemporaryToPrimary()
     {
+#if UNITY_EDITOR
+        ThrowEditorFaultIf(StorageFaultPoint.PromoteTemporary);
+#endif
         string temporary = GetPath(CampaignSaveFileRole.Temporary);
         string primary = GetPath(CampaignSaveFileRole.Primary);
         if (File.Exists(primary))
             File.Replace(temporary, primary, null);
         else
             File.Move(temporary, primary);
+    }
+
+    public void PromotePendingOutcomeTemporary()
+    {
+#if UNITY_EDITOR
+        ThrowEditorFaultIf(StorageFaultPoint.PromoteJournal);
+#endif
+        string temporary = GetPath(CampaignSaveFileRole.PendingOutcomeTemporary);
+        string pending = GetPath(CampaignSaveFileRole.PendingOutcome);
+        if (File.Exists(pending))
+            File.Replace(temporary, pending, null);
+        else
+            File.Move(temporary, pending);
+    }
+
+    public void RestoreBackupToPrimary()
+    {
+#if UNITY_EDITOR
+        ThrowEditorFaultIf(StorageFaultPoint.RestoreBackup);
+#endif
+        string backup = GetPath(CampaignSaveFileRole.Backup);
+        string primary = GetPath(CampaignSaveFileRole.Primary);
+        File.Copy(backup, primary, true);
     }
 
     public string Quarantine(CampaignSaveFileRole role, string reason, DateTime utcNow)
@@ -101,6 +155,8 @@ public sealed class CampaignSaveFileStorage : ICampaignSaveStorage
             case CampaignSaveFileRole.Temporary: filename = "campaign-save.tmp"; break;
             case CampaignSaveFileRole.Backup: filename = "campaign-save.bak"; break;
             case CampaignSaveFileRole.LegacyArchive: filename = "legacy-progress-v0.json"; break;
+            case CampaignSaveFileRole.PendingOutcome: filename = "campaign-outcome.pending.json"; break;
+            case CampaignSaveFileRole.PendingOutcomeTemporary: filename = "campaign-outcome.pending.tmp"; break;
             default: throw new ArgumentOutOfRangeException(nameof(role));
         }
         return Path.Combine(_root, filename);
@@ -114,6 +170,15 @@ public sealed class CampaignSaveFileStorage : ICampaignSaveStorage
             if (!char.IsLetterOrDigit(chars[i]) && chars[i] != '-') chars[i] = '-';
         return new string(chars);
     }
+
+#if UNITY_EDITOR
+    private static void ThrowEditorFaultIf(StorageFaultPoint point)
+    {
+        if (EditorFailNextAt != point) return;
+        EditorFailNextAt = StorageFaultPoint.None;
+        throw new IOException("Injected one-shot Editor storage failure at " + point + ".");
+    }
+#endif
 }
 
 public enum StorageFaultPoint
@@ -125,6 +190,11 @@ public enum StorageFaultPoint
     PrimaryBackup,
     PromoteTemporary,
     Quarantine,
+    JournalTemporaryWrite,
+    PromoteJournal,
+    JournalDelete,
+    PublishedReadBack,
+    RestoreBackup,
 }
 
 public sealed class InMemoryCampaignSaveStorage : ICampaignSaveStorage
@@ -140,12 +210,15 @@ public sealed class InMemoryCampaignSaveStorage : ICampaignSaveStorage
     public string ReadAllText(CampaignSaveFileRole role)
     {
         ThrowIf(StorageFaultPoint.Read);
+        if (role == CampaignSaveFileRole.Primary)
+            ThrowIf(StorageFaultPoint.PublishedReadBack);
         return _files[role];
     }
 
     public void WriteAllTextFlushed(CampaignSaveFileRole role, string contents)
     {
         if (role == CampaignSaveFileRole.Temporary) ThrowIf(StorageFaultPoint.TemporaryWrite);
+        if (role == CampaignSaveFileRole.PendingOutcomeTemporary) ThrowIf(StorageFaultPoint.JournalTemporaryWrite);
         if (role == CampaignSaveFileRole.LegacyArchive) ThrowIf(StorageFaultPoint.ArchiveWrite);
         _files[role] = contents;
     }
@@ -157,11 +230,30 @@ public sealed class InMemoryCampaignSaveStorage : ICampaignSaveStorage
         _files[destination] = _files[source];
     }
 
+    public void Delete(CampaignSaveFileRole role)
+    {
+        ThrowIf(StorageFaultPoint.JournalDelete);
+        _files.Remove(role);
+    }
+
     public void PromoteTemporaryToPrimary()
     {
         ThrowIf(StorageFaultPoint.PromoteTemporary);
         _files[CampaignSaveFileRole.Primary] = _files[CampaignSaveFileRole.Temporary];
         _files.Remove(CampaignSaveFileRole.Temporary);
+    }
+
+    public void PromotePendingOutcomeTemporary()
+    {
+        ThrowIf(StorageFaultPoint.PromoteJournal);
+        _files[CampaignSaveFileRole.PendingOutcome] = _files[CampaignSaveFileRole.PendingOutcomeTemporary];
+        _files.Remove(CampaignSaveFileRole.PendingOutcomeTemporary);
+    }
+
+    public void RestoreBackupToPrimary()
+    {
+        ThrowIf(StorageFaultPoint.RestoreBackup);
+        _files[CampaignSaveFileRole.Primary] = _files[CampaignSaveFileRole.Backup];
     }
 
     public string Quarantine(CampaignSaveFileRole role, string reason, DateTime utcNow)
@@ -179,6 +271,8 @@ public sealed class InMemoryCampaignSaveStorage : ICampaignSaveStorage
 
     private void ThrowIf(StorageFaultPoint point)
     {
-        if (FailAt == point) throw new IOException("Injected storage failure at " + point + ".");
+        if (FailAt != point) return;
+        FailAt = StorageFaultPoint.None;
+        throw new IOException("Injected storage failure at " + point + ".");
     }
 }

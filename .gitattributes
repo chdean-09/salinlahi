@@ -14,3 +14,5 @@
 
 # C# source line endings (reduces whitespace-only diff churn)
 *.cs text eol=lf
+# Set the default behavior, in case people don't have core.autocrlf set.
+* text=auto
