@@ -12,6 +12,7 @@
 - Asset / doc path: <repo path or workbook reference>
 - Quoted content: "<exact copy under review>"
 - Issue: <what is linguistically or culturally wrong or risky>
+- Severity: <Blocking / Advisory>
 - Proposed correction: <adviser's proposal>
 - Resolution: <accepted / adapted / declined + rationale>
 - Follow-up ticket: <SALIN-... if repo changes are needed>
