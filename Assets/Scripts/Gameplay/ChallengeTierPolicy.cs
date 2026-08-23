@@ -30,10 +30,19 @@ public sealed class ChallengeTierPolicy
     [Tooltip("Score fraction deducted per emergency hint used (consumed by Results/SALIN-202).")]
     [Range(0f, 1f)] public float emergencyHintScorePenalty = 0.10f;
 
+    /// <summary>Lowest authored workbook tier.</summary>
+    public const int MinTier = 1;
+
+    /// <summary>Highest authored workbook tier.</summary>
+    public const int MaxTier = 5;
+
+    /// <summary>True when <paramref name="tier"/> names one of the authored presets.</summary>
+    public static bool IsDefinedTier(int tier) => tier >= MinTier && tier <= MaxTier;
+
     /// <summary>Canonical preset for a workbook tier (1-5).</summary>
     public static ChallengeTierPolicy ForTier(int tier)
     {
-        int clamped = Mathf.Clamp(tier, 1, 5);
+        int clamped = Mathf.Clamp(tier, MinTier, MaxTier);
         return new ChallengeTierPolicy
         {
             tier = clamped,

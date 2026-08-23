@@ -77,7 +77,7 @@ public sealed class ChallengeSession
         IChallengeEvidenceSink evidence = null)
     {
         _sequence = sequence;
-        _policy = policy;
+        _policy = ResolveEffectivePolicy(policy);
         _evidence = evidence;
         HeartsRemaining = startingHearts;
         State = ChallengeSessionState.Idle;
@@ -325,6 +325,19 @@ public sealed class ChallengeSession
         NotifyChanged(ChallengeSessionEvent.Exited);
     }
 
+    /// <summary>
+    /// A tier inside the authored preset range (<see cref="ChallengeTierPolicy.MinTier"/>-
+    /// <see cref="ChallengeTierPolicy.MaxTier"/>) snaps every flag to its canonical preset,
+    /// so authoring only has to set the tier. Any other tier value — including 0/unset on
+    /// legacy serialized levels — keeps the raw serialized flags exactly as authored.
+    /// </summary>
+    private static ChallengeTierPolicy ResolveEffectivePolicy(ChallengeTierPolicy policy)
+    {
+        return policy != null && ChallengeTierPolicy.IsDefinedTier(policy.tier)
+            ? ChallengeTierPolicy.ForTier(policy.tier)
+            : policy;
+    }
+
     // Bounds-safe: after the final unit completes, _currentUnitIndex points past
     // the array while the Completed notification is still being rendered.
     private ChallengeUnitDefinition CurrentUnit =>
@@ -428,6 +441,10 @@ public sealed class ChallengeSession
             ResetToCheckpoint();
         else
         {
+            // Reopening in place still has to restock the unit's own budget: a timed
+            // unit left on an expired clock re-times-out on every subsequent tick.
+            _errors = 0;
+            _remainingTime = CurrentUnit == null ? 0f : CurrentUnit.timerSeconds;
             State = ChallengeSessionState.Active;
             NotifyChanged(ChallengeSessionEvent.CheckpointReopened);
         }

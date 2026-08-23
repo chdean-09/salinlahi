@@ -168,6 +168,150 @@ public class ChallengeTierAndEvidenceTests
     }
 
     // -------------------------------------------------------------------------
+    // Authored (production-shaped) policies: only the tier is set, every flag is
+    // left at its serialized default, exactly as LevelConfigSO.challengePolicy
+    // reaches the session through LevelFlowController.
+    // -------------------------------------------------------------------------
+
+    [TestCase(1)]
+    [TestCase(2)]
+    public void AuthoredLowTier_WithDefaultFlags_NeverSpendsHearts(int tier)
+    {
+        ChallengeSession session = CreateSession(new ChallengeTierPolicy { tier = tier });
+        session.Enter();
+
+        for (int i = 0; i < 5; i++)
+            session.SubmitPlacement("slot-1", "wrong");
+
+        Assert.AreEqual(0, session.HeartPenalties,
+            "The authored tier must select the preset; the default heartPenaltiesEnabled = true is not authoring intent.");
+        Assert.AreEqual(3, session.HeartsRemaining);
+        Assert.AreEqual(ChallengeSessionState.Active, session.State);
+    }
+
+    [Test]
+    public void AuthoredTierFive_WithDefaultFlags_GrantsTheEmergencyHintBudget()
+    {
+        ChallengeSession session = CreateSession(new ChallengeTierPolicy { tier = 5 });
+        session.Enter();
+
+        session.RequestHint();
+
+        Assert.AreEqual(1, session.EmergencyHintsUsed,
+            "The authored tier must select the preset; the default emergencyHintEnabled = false is not authoring intent.");
+        Assert.AreEqual(0.10f, session.EmergencyHintScorePenalty, 0.0001f);
+
+        session.RequestHint();
+
+        Assert.AreEqual(1, session.EmergencyHintsUsed,
+            "Tier 5 still permits only one emergency hint per level attempt.");
+    }
+
+    [Test]
+    public void AuthoredTierFour_WithDefaultFlags_SpendsOneHeartEveryThreeErrors()
+    {
+        ChallengeSession session = CreateSession(new ChallengeTierPolicy { tier = 4 }, unitMaxErrors: 99);
+        session.Enter();
+
+        session.SubmitPlacement("slot-1", "wrong");
+        session.SubmitPlacement("slot-1", "wrong");
+        Assert.AreEqual(0, session.HeartPenalties);
+
+        session.SubmitPlacement("slot-1", "wrong");
+
+        Assert.AreEqual(1, session.HeartPenalties,
+            "The tier-4 preset overrides the unit's own maxErrors.");
+    }
+
+    [Test]
+    public void UnsetTier_KeepsTheRawSerializedFlags()
+    {
+        ChallengeTierPolicy authored = new ChallengeTierPolicy
+        {
+            tier = 0,
+            heartPenaltiesEnabled = false,
+            emergencyHintEnabled = true,
+            emergencyHintsPerAttempt = 2,
+        };
+        ChallengeSession session = CreateSession(authored);
+        session.Enter();
+
+        for (int i = 0; i < 5; i++)
+            session.SubmitPlacement("slot-1", "wrong");
+        Assert.AreEqual(0, session.HeartPenalties,
+            "Tier 0 is outside the preset range: the authored flags stand unchanged.");
+
+        session.RequestHint();
+        session.RequestHint();
+        session.RequestHint();
+
+        Assert.AreEqual(2, session.EmergencyHintsUsed,
+            "Tier 0 keeps the authored hint budget instead of snapping to a preset.");
+    }
+
+    [Test]
+    public void UnsetTierWithoutCheckpointReset_TimerExpiry_RestocksInsteadOfRepeating()
+    {
+        // The zero-initialized shape a legacy asset deserializes into: no tier and
+        // checkpointResetOnPenalty left false.
+        ChallengeSession session = CreateTimedSession(new ChallengeTierPolicy
+        {
+            tier = 0,
+            checkpointResetOnPenalty = false,
+        });
+        session.Enter();
+        session.SubmitPlacement("slot-1", "word-1");
+        session.SubmitPlacement("slot-2", "word-2");
+        Assert.AreEqual(1, session.CurrentUnitIndex, "Setup: the timed unit must be open.");
+
+        int timeouts = 0;
+        session.Changed += changed =>
+        {
+            if (changed.LastEvent == ChallengeSessionEvent.TimedOut)
+                timeouts++;
+        };
+
+        session.Tick(5f);
+
+        Assert.AreEqual(1, timeouts);
+        Assert.AreEqual(1, session.HeartPenalties);
+        Assert.AreEqual(2f, session.RemainingTime, 0.0001f,
+            "Reopening in place must restock the unit's configured time.");
+
+        for (int i = 0; i < 30; i++)
+            session.Tick(0.016f);
+
+        Assert.AreEqual(1, timeouts, "The expired clock must not re-fire on every tick.");
+        Assert.AreEqual(1, session.HeartPenalties, "One expiry costs exactly one heart.");
+        Assert.AreEqual(3 - 1, session.HeartsRemaining);
+        Assert.AreEqual(ChallengeSessionState.Active, session.State);
+    }
+
+    [Test]
+    public void UnsetTierWithoutCheckpointReset_Penalty_ClearsErrorsAndKeepsSlotProgress()
+    {
+        ChallengeSession session = CreateSession(new ChallengeTierPolicy
+        {
+            tier = 0,
+            checkpointResetOnPenalty = false,
+        });
+        session.Enter();
+        session.SubmitPlacement("slot-1", "word-1");
+
+        for (int i = 0; i < 3; i++)
+            session.SubmitPlacement("slot-2", "wrong");
+
+        Assert.AreEqual(1, session.HeartPenalties);
+        Assert.AreEqual(0, session.Errors, "Reopening in place must clear the spent error budget.");
+        Assert.AreEqual(1, session.CurrentSlotIndex, "Reopening in place keeps slot progress.");
+
+        session.SubmitPlacement("slot-2", "wrong");
+
+        Assert.AreEqual(1, session.HeartPenalties,
+            "The error budget restarts after a penalty instead of penalizing every further error.");
+    }
+
+    // -------------------------------------------------------------------------
     // Evidence recording
     // -------------------------------------------------------------------------
 
