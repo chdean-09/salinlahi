@@ -44,6 +44,7 @@ public class LevelFlowController : MonoBehaviour
     private bool _waitingForDialogue;
     private bool _waitingForCutscene;
     private bool _flowAborted;
+    private bool _drawingSuppressedByFlow;
     private bool _runtimeBootstrapped;
     private LevelFlowMachine _machine;
 
@@ -66,6 +67,7 @@ public class LevelFlowController : MonoBehaviour
     private CampaignOutcomeCommitResult _completionCommitResult;
     private ActiveClueDirector _activeClueDirector;
     private ActiveCluePresenter _activeCluePresenter;
+    private FocusWordPreviewController _focusWordPreview;
 
     public static bool TryStartRuntimeTutorialFlow(
         LevelConfigSO levelConfig,
@@ -138,6 +140,14 @@ public class LevelFlowController : MonoBehaviour
             s_activeFlow = null;
     }
 
+    private void OnDestroy()
+    {
+        // A destroyed host never runs its coroutines' finally blocks, so a scene
+        // unload during the preview would strand the suppression on the persistent
+        // GameManager.
+        ReleaseDrawingSuppression();
+    }
+
     private IEnumerator Start()
     {
         if (_runtimeBootstrapped)
@@ -185,7 +195,12 @@ public class LevelFlowController : MonoBehaviour
             yield return ExecutePhase(phase);
 
             if (_flowAborted)
+            {
+                // An aborted flow leaves the machine non-terminal, so the terminal
+                // cleanup never runs: no exit from here may hold suppression.
+                ReleaseDrawingSuppression();
                 yield break;
+            }
 
             // A stub executor finished without reporting: advance so the flow
             // cannot deadlock on a phase that has no surface yet.
@@ -199,14 +214,15 @@ public class LevelFlowController : MonoBehaviour
         switch (phase)
         {
             case LevelPhase.Story: return ExecuteStory();
+            case LevelPhase.FocusWords: return ExecuteFocusWords();
             case LevelPhase.Defense: return ExecuteDefense();
             case LevelPhase.ContextChallenge: return ExecuteContextChallenge();
             case LevelPhase.MemoryReward: return ExecuteMemoryReward();
             case LevelPhase.AtomicSave: return ExecuteAtomicSave();
             case LevelPhase.Results: return ExecuteResults();
-            // Content phases whose surfaces land with SALIN-138 (FocusWords);
-            // SymbolLearning/RequiredPractice route through learning surfaces in
-            // the same ticket. The driver auto-completes them until then.
+            // SymbolLearning/RequiredPractice route through the learning surfaces
+            // when their campaign gates land (SALIN-172 scope). The driver
+            // auto-completes them until then.
             default: return ExecuteStubPhase();
         }
     }
@@ -258,10 +274,38 @@ public class LevelFlowController : MonoBehaviour
         }
     }
 
+    private IEnumerator ExecuteFocusWords()
+    {
+        if (_levelConfig.focusWords == null || _levelConfig.focusWords.Count == 0)
+            yield break;
+
+        // Both words and their decompositions must be readable BEFORE drawing
+        // begins; the Defense executor releases this exactly once as it opens.
+        SuppressDrawingForPreview();
+
+        if (_focusWordPreview == null)
+        {
+            _focusWordPreview = FindFirstObjectByType<FocusWordPreviewController>(FindObjectsInactive.Include);
+            if (_focusWordPreview == null)
+            {
+                GameObject previewObject = new GameObject("[Runtime] FocusWordPreviewController");
+                previewObject.transform.SetParent(transform, false);
+                _focusWordPreview = previewObject.AddComponent<FocusWordPreviewController>();
+            }
+        }
+
+        yield return _focusWordPreview.Present(_levelConfig);
+    }
+
     private IEnumerator ExecuteDefense()
     {
         if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
             GameManager.Instance.StartGame();
+
+        // Drawing input opens as the defense sequence begins (SALIN-138), ahead of
+        // the pre-wave beats: those beats own their own suppression via try/finally
+        // and their StartGame() remedy cannot clear the preview's flag.
+        ReleaseDrawingSuppression();
 
         // Legacy pre-wave beats stay inside the Defense executor so unauthored
         // levels behave exactly as before the phase machine existed.
@@ -455,7 +499,31 @@ public class LevelFlowController : MonoBehaviour
         {
             _waitingForDialogue = false;
             _waitingForCutscene = false;
+            // A defeat or exit must never leave drawing suppressed for the
+            // terminal screens (GameManager also clears it on its own terminal
+            // states; this covers Exited).
+            _drawingSuppressedByFlow = false;
+            GameManager.Instance?.SuppressDrawingInput(false);
         }
+    }
+
+    private void SuppressDrawingForPreview()
+    {
+        _drawingSuppressedByFlow = true;
+        GameManager.Instance?.SuppressDrawingInput(true);
+    }
+
+    /// <summary>
+    /// Releases the preview's drawing suppression, and only that: a flow that never
+    /// suppressed cannot stomp a beat or cutscene that currently owns the flag.
+    /// </summary>
+    private void ReleaseDrawingSuppression()
+    {
+        if (!_drawingSuppressedByFlow)
+            return;
+
+        _drawingSuppressedByFlow = false;
+        GameManager.Instance?.SuppressDrawingInput(false);
     }
 
     private void EnsureRuntimeReferences(WaveSpawner waveSpawner, EnemyDataSO fallbackEnemyData)

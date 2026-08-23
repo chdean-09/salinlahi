@@ -277,13 +277,15 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         [UnityTest]
-        public IEnumerator FullPlanConfig_AutoCompletesStubPhasesToDefense()
+        public IEnumerator StubLearningPhases_AutoCompleteToDefense()
         {
+            // FocusWords gained its surface with SALIN-138 and now holds for the
+            // preview; SymbolLearning and RequiredPractice remain auto-completing
+            // stubs until their campaign gates land.
             LogAssert.Expect(LogType.Error, MissingWaveManagerError);
             TestPhaseFlowController controller = BootstrapFlow(
                 config =>
                 {
-                    config.focusWords.Add(new FocusWordDefinition());
                     config.learningRequirements.Add(new ContentRequirement());
                     config.practiceRequirements.Add(new ContentRequirement());
                 },
@@ -292,7 +294,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             yield return WaitFrames(20);
 
             Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
-                "Stub executors (FocusWords, SymbolLearning, RequiredPractice) must auto-complete.");
+                "Stub executors (SymbolLearning, RequiredPractice) must auto-complete.");
         }
 
         [UnityTest]
@@ -414,6 +416,229 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 "Exiting the challenge must never commit partial campaign progress.");
             Assert.IsFalse(victoryPanel.activeSelf);
             Assert.AreEqual(LevelPhase.Exited, MachineOf(controller).Phase);
+        }
+
+        [UnityTest]
+        public IEnumerator FocusWordPreview_RendersConfigCopyWhileDrawingStaysDisabled()
+        {
+            DialogueController dialogue = CreateComponent<DialogueController>("DialogueController");
+            SetPrivateField(dialogue, "_overlayPanel", CreatePanel("DialogueOverlay"));
+            TestPhaseFlowController controller = BootstrapFlow(
+                ConfigureFocusWordLevel, out _, out _, out _, dialogue);
+
+            yield return WaitFrames(5);
+            EventBus.RaiseDialogueComplete();
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.FocusWords, MachineOf(controller).Phase,
+                "The flow must hold in FocusWords while the preview is up.");
+            Assert.IsFalse(GameManager.Instance.AcceptsDrawingInput,
+                "Both words and decompositions must be readable BEFORE drawing begins.");
+
+            FocusWordPreviewController preview =
+                Object.FindFirstObjectByType<FocusWordPreviewController>();
+            Assert.IsNotNull(preview, "The flow must provide the focus-word preview surface.");
+            Assert.IsTrue(preview.IsPresenting);
+            StringAssert.Contains("LUNA", preview.RenderedText);
+            StringAssert.Contains("test-moon", preview.RenderedText);
+            StringAssert.Contains("TALA", preview.RenderedText);
+            StringAssert.Contains("test-star", preview.RenderedText);
+            StringAssert.Contains("lu", preview.RenderedText);
+            StringAssert.Contains("ta", preview.RenderedText);
+        }
+
+        [UnityTest]
+        public IEnumerator FocusWordPreview_ContinueEnablesDrawingExactlyOnceAtDefense()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            DialogueController dialogue = CreateComponent<DialogueController>("DialogueController");
+            SetPrivateField(dialogue, "_overlayPanel", CreatePanel("DialogueOverlay"));
+            TestPhaseFlowController controller = BootstrapFlow(
+                ConfigureFocusWordLevel, out _, out _, out _, dialogue);
+
+            yield return WaitFrames(5);
+            EventBus.RaiseDialogueComplete();
+            yield return WaitFrames(10);
+            Assert.AreEqual(LevelPhase.FocusWords, MachineOf(controller).Phase,
+                "Setup: the preview must be open before Continue.");
+
+            FocusWordPreviewController preview =
+                Object.FindFirstObjectByType<FocusWordPreviewController>();
+            Assert.IsNotNull(preview);
+
+            int enableTransitions = 0;
+            bool previous = GameManager.Instance.AcceptsDrawingInput;
+            Assert.IsFalse(previous, "Setup: drawing must be disabled while the preview is up.");
+
+            preview.Continue();
+            for (int frame = 0; frame < 30; frame++)
+            {
+                yield return null;
+                bool current = GameManager.Instance.AcceptsDrawingInput;
+                if (current && !previous)
+                    enableTransitions++;
+                previous = current;
+            }
+
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "Continue must carry the flow into Defense.");
+            Assert.AreEqual(1, enableTransitions,
+                "Drawing input must be enabled exactly once, when the defense sequence begins.");
+            Assert.IsTrue(GameManager.Instance.AcceptsDrawingInput);
+        }
+
+        private void ConfigureFocusWordLevel(LevelConfigSO config)
+        {
+            ConfigureIntroDialogue(config);
+
+            BaybayinCharacterSO lu = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            lu.characterID = "LU";
+            lu.syllable = "lu";
+            lu.stableId = "symbol.test-lu";
+            _objectsToDestroy.Add(lu);
+            BaybayinCharacterSO ta = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            ta.characterID = "TA2";
+            ta.syllable = "ta";
+            ta.stableId = "symbol.test-ta";
+            _objectsToDestroy.Add(ta);
+
+            config.focusWords.Add(new FocusWordDefinition
+            {
+                stableId = "level.test.focus.01",
+                latinSpelling = "LUNA",
+                displayLabel = "LUNA",
+                meaning = "test-moon",
+                decomposition = new System.Collections.Generic.List<SymbolValueReference>
+                {
+                    new SymbolValueReference { symbol = lu, spokenValueId = "value.test-lu" },
+                },
+            });
+            config.focusWords.Add(new FocusWordDefinition
+            {
+                stableId = "level.test.focus.02",
+                latinSpelling = "TALA",
+                displayLabel = "TALA",
+                meaning = "test-star",
+                decomposition = new System.Collections.Generic.List<SymbolValueReference>
+                {
+                    new SymbolValueReference { symbol = ta, spokenValueId = "value.test-ta" },
+                },
+            });
+        }
+
+        [UnityTest]
+        public IEnumerator FocusWordPreview_ReleasesDrawingBeforeThePreWaveBeats()
+        {
+            TestPhaseFlowController controller = BootstrapPreWaveBeatFlow();
+
+            yield return WaitFrames(5);
+            EventBus.RaiseDialogueComplete();
+            yield return WaitFrames(10);
+            Assert.AreEqual(LevelPhase.FocusWords, MachineOf(controller).Phase,
+                "Setup: the preview must be open before Continue.");
+            Assert.IsFalse(GameManager.Instance.AcceptsDrawingInput,
+                "Setup: drawing must be suppressed while the preview is up.");
+
+            FocusWordPreviewController preview =
+                Object.FindFirstObjectByType<FocusWordPreviewController>();
+            Assert.IsNotNull(preview, "Setup: the flow must provide the preview surface.");
+            preview.Continue();
+            yield return WaitFrames(15);
+
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "Setup: Continue must carry the flow into Defense.");
+            Assert.IsFalse(PreWaveBeatOf(controller).IsFinished,
+                "Setup: the pre-wave beat must still be holding the Defense executor.");
+            Assert.IsTrue(GameManager.Instance.AcceptsDrawingInput,
+                "Suppression must be released ahead of the pre-wave beats — a beat's "
+                + "StartGame() remedy cannot clear it, so a late release hard-locks the level.");
+        }
+
+        [UnityTest]
+        public IEnumerator AbortedPreWaveBeat_ReleasesDrawingSuppression()
+        {
+            TestPhaseFlowController controller = BootstrapPreWaveBeatFlow();
+
+            yield return WaitFrames(5);
+            EventBus.RaiseDialogueComplete();
+            yield return WaitFrames(10);
+            Assert.IsFalse(GameManager.Instance.AcceptsDrawingInput,
+                "Setup: drawing must be suppressed while the preview is up.");
+
+            FocusWordPreviewController preview =
+                Object.FindFirstObjectByType<FocusWordPreviewController>();
+            Assert.IsNotNull(preview, "Setup: the flow must provide the preview surface.");
+            preview.Continue();
+            yield return WaitFrames(15);
+            Assert.IsFalse(PreWaveBeatOf(controller).IsFinished,
+                "Setup: the pre-wave beat must be open before the exit.");
+
+            PreWaveBeatOf(controller).Exit();
+            yield return WaitFrames(15);
+
+            Assert.IsFalse(MachineOf(controller).IsTerminal,
+                "Setup: an aborted flow leaves the machine non-terminal, so terminal "
+                + "cleanup cannot be the thing that releases suppression.");
+            Assert.IsTrue(GameManager.Instance.AcceptsDrawingInput,
+                "An aborted flow must not strand drawing suppression on the persistent "
+                + "GameManager — it survives scene loads and kills drawing everywhere.");
+        }
+
+        [UnityTest]
+        public IEnumerator TeardownMidPreview_ReleasesDrawingSuppression()
+        {
+            DialogueController dialogue = CreateComponent<DialogueController>("DialogueController");
+            SetPrivateField(dialogue, "_overlayPanel", CreatePanel("DialogueOverlay"));
+            TestPhaseFlowController controller = BootstrapFlow(
+                ConfigureFocusWordLevel, out _, out _, out _, dialogue);
+
+            yield return WaitFrames(5);
+            // The intro dialogue parks GameManager in Paused, and the real controller
+            // lifts that pause itself before it raises the event (DialogueController:
+            // ExitDialoguePause then RaiseDialogueComplete). Faking only the event
+            // strands the fixture in Paused, where AcceptsDrawingInput is false whatever
+            // the suppression flag holds — every assertion below would then pass on the
+            // pause alone. The other release tests reach Defense, whose StartGame()
+            // restores Playing for them; this one is torn down before Defense opens.
+            GameManager.Instance.ExitDialoguePause();
+            EventBus.RaiseDialogueComplete();
+            yield return WaitFrames(10);
+            Assert.AreEqual(GameState.Playing, GameManager.Instance.CurrentState,
+                "Setup: only a Playing GameManager lets AcceptsDrawingInput report "
+                + "the suppression flag rather than the pause.");
+            Assert.AreEqual(LevelPhase.FocusWords, MachineOf(controller).Phase,
+                "Setup: the preview must be open.");
+            Assert.IsFalse(GameManager.Instance.AcceptsDrawingInput,
+                "Setup: drawing must be suppressed while the preview is up.");
+
+            Object.DestroyImmediate(controller.gameObject);
+            yield return WaitFrames(2);
+
+            Assert.IsTrue(GameManager.Instance.AcceptsDrawingInput,
+                "A scene unload mid-preview must release suppression: coroutines never "
+                + "run their finally blocks when the host is destroyed.");
+        }
+
+        private TestPhaseFlowController BootstrapPreWaveBeatFlow()
+        {
+            DialogueController dialogue = CreateComponent<DialogueController>("DialogueController");
+            SetPrivateField(dialogue, "_overlayPanel", CreatePanel("DialogueOverlay"));
+            return BootstrapFlow(
+                config =>
+                {
+                    ConfigureFocusWordLevel(config);
+                    ConfigureContextChallenge(config);
+                    // The prototype path runs the sequence as a pre-wave beat inside
+                    // the Defense executor instead of planning it as phase 6.
+                    config.challengePrototypeEnabled = true;
+                },
+                out _, out _, out _, dialogue);
+        }
+
+        private static ChallengeFlowController PreWaveBeatOf(LevelFlowController controller)
+        {
+            return GetPrivateField<ChallengeFlowController>(controller, "_challengeFlowController")
+                ?? throw new AssertionException("The flow has no pre-wave beat controller.");
         }
 
         [UnityTest]
