@@ -14,6 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: DA
   syllable: da
+  stableId: symbol.dara
+  legacyAliases: []
+  spokenValues:
+  - stableId: value.da
+    displayValue: da
+    pronunciationClip: {fileID: 8300000, guid: 15bb1b815d17d21459f70bfdc306e281, type: 3}
+  - stableId: value.ra
+    displayValue: ra
+    pronunciationClip: {fileID: 8300000, guid: 15bb1b815d17d21459f70bfdc306e281, type: 3}
+  firstIntroductionLevelId: level.pamana.01
   description: "DA appears in forgotten manuscripts and abandoned records. Juan sees
     how stories fade when they are no longer copied.\n\r\n\u201CDA is what remains
     when history is not preserved.\u201D"

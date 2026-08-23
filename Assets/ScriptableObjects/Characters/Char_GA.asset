@@ -14,6 +14,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: GA
   syllable: ga
+  stableId: symbol.ga
+  legacyAliases: []
+  spokenValues:
+  - stableId: value.ga
+    displayValue: ga
+    pronunciationClip: {fileID: 0}
+  firstIntroductionLevelId: level.ugnayan.01
+  description: 
   displaySprite: {fileID: 4035763599135563830, guid: 90454863e23df514eb040ab91266f844, type: 3}
+  almanacSprite: {fileID: 0}
+  badgeSprite: {fileID: 0}
+  scrambledBadgeSprite: {fileID: 0}
   pronunciationClip: {fileID: 0}
   templateFileName: GA_template_01

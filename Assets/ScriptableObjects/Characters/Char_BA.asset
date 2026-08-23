@@ -14,6 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: BA
   syllable: ba
+  stableId: symbol.ba
+  legacyAliases: []
+  spokenValues:
+  - stableId: value.ba
+    displayValue: ba
+    pronunciationClip: {fileID: 8300000, guid: e60c6d3fb4f3cea4b8f529136adb5826, type: 3}
+  firstIntroductionLevelId: level.ugat.02
   description: "BA starts with BA in early Filipino villages before Spanish rule.
     Juan sees children learning Baybayin from their elders.\n\r\n\u201CBA begins
     where the script begins.\u201D"

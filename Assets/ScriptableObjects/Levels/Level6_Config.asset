@@ -16,6 +16,29 @@ MonoBehaviour:
   levelNumber: 6
   chapterNumber: 2
   chapterName: American Era
+  stableId: level.ugnayan.01
+  eraLocalOrder: 1
+  focusWords: []
+  cumulativeSymbolPool: []
+  learningRequirements: []
+  practiceRequirements: []
+  activeClueCombatEnabled: 0
+  clueChannels: 1
+  audioVisualFallback: 4
+  defenseRules:
+    shrineHearts: 3
+    focusModeEnabled: 1
+    multiKillChainEnabled: 1
+  contextMedia:
+    contextImage: {fileID: 0}
+    narrationClip: {fileID: 0}
+    dialogue: {fileID: 0}
+    cutscene: {fileID: 0}
+  finalRestorationValue:
+    symbol: {fileID: 0}
+    spokenValueId: 
+  rewardIds: []
+  masteryRequirements: []
   eraTheme: {fileID: 0}
   numberSprite: {fileID: 0}
   waves:
@@ -92,7 +115,20 @@ MonoBehaviour:
   - {fileID: 11400000, guid: b2d5819d4d6b4d8d9d1e4ef125ad2e61, type: 2}
   bossConfig: {fileID: 0}
   isAvailableInLite: 0
+  focusModeEnabled: 1
+  multiKillChainEnabled: 1
   tutorialSequence: {fileID: 0}
+  onboardingSequence: {fileID: 0}
+  challengePrototypeEnabled: 0
+  challengeSequence: {fileID: 0}
+  challengePolicy:
+    tier: 0
+    heartPenaltiesEnabled: 1
+    errorsPerPenalty: 3
+    checkpointResetOnPenalty: 1
+    emergencyHintEnabled: 0
+    emergencyHintsPerAttempt: 1
+    emergencyHintScorePenalty: 0.1
   introDialogue: {fileID: 0}
   outroDialogue: {fileID: 0}
   bgmClip: {fileID: 0}

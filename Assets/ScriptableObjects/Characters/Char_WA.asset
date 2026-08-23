@@ -14,6 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: WA
   syllable: wa
+  stableId: symbol.wa
+  legacyAliases: []
+  spokenValues:
+  - stableId: value.wa
+    displayValue: wa
+    pronunciationClip: {fileID: 8300000, guid: 8efac7f30c80fd04487330e616088ec9, type: 3}
+  firstIntroductionLevelId: level.ugnayan.01
   description: "WA is found inside church walls where Baybayin was painted over.
     Juan uncovers traces of writing that survived in silence.\n\r\n\u201CWA is what
     stays even when covered.\u201D"

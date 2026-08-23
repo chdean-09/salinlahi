@@ -14,6 +14,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: EI
   syllable: e/i
+  stableId: symbol.ei
+  legacyAliases: []
+  spokenValues:
+  - stableId: value.ei
+    displayValue: e/i
+    pronunciationClip: {fileID: 0}
+  firstIntroductionLevelId: level.ugat.01
+  description: 
   displaySprite: {fileID: -2869617533910908798, guid: 3b7c4fb0744a29e4a991dd555bae27f9, type: 3}
+  almanacSprite: {fileID: 0}
+  badgeSprite: {fileID: 0}
+  scrambledBadgeSprite: {fileID: 0}
   pronunciationClip: {fileID: 0}
   templateFileName: EI_template_01

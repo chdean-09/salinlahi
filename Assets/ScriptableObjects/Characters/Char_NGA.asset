@@ -14,6 +14,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: NGA
   syllable: nga
+  stableId: symbol.nga
+  legacyAliases: []
+  spokenValues:
+  - stableId: value.nga
+    displayValue: nga
+    pronunciationClip: {fileID: 0}
+  firstIntroductionLevelId: level.pamana.02
+  description: 
   displaySprite: {fileID: -7703411166872595400, guid: bdbf9d593588e3040919a6c4c6334aa9, type: 3}
+  almanacSprite: {fileID: 0}
+  badgeSprite: {fileID: 0}
+  scrambledBadgeSprite: {fileID: 0}
   pronunciationClip: {fileID: 0}
   templateFileName: NGA_template_01

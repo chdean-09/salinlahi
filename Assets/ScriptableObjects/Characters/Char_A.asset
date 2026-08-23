@@ -14,6 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: A
   syllable: a
+  stableId: symbol.a
+  legacyAliases: []
+  spokenValues:
+  - stableId: value.a
+    displayValue: a
+    pronunciationClip: {fileID: 0}
+  firstIntroductionLevelId: level.ugat.01
   description: 
   displaySprite: {fileID: -8680797543115379092, guid: 086eb41909e2e2942abbbc0f1a3a1d06, type: 3}
   almanacSprite: {fileID: 0}
