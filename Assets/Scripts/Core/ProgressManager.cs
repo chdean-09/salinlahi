@@ -107,6 +107,61 @@ public class ProgressManager : Singleton<ProgressManager>
         return true;
     }
 
+    /// <summary>
+    /// SALIN-136: classifies where Play should route — a new journey at Level 1, the
+    /// next incomplete unlocked level, the completed-journey review state, or Blocked
+    /// while a blocking save notice is pending. <paramref name="levelNumber"/> is the
+    /// routable target for <see cref="JourneyEntryKind.NewJourney"/> and
+    /// <see cref="JourneyEntryKind.ContinueLevel"/> (1 otherwise). Read-only: the
+    /// routed selection is committed separately via <see cref="TrySetSelectedLevelNumber"/>.
+    /// </summary>
+    public JourneyEntryKind GetJourneyEntryPoint(out int levelNumber)
+    {
+        levelNumber = 1;
+        if (UsesRevisedProgress)
+        {
+            JourneyEntryPoint entry = SaveManager.Instance.Repository.ResolveJourneyEntryPoint();
+            if ((entry.Kind == JourneyEntryKind.NewJourney || entry.Kind == JourneyEntryKind.ContinueLevel)
+                && SaveManager.Instance.Campaign.TryGetLevel(entry.LevelId, out LevelConfigSO level))
+                levelNumber = level.levelNumber;
+            return entry.Kind;
+        }
+        if (IsRevisedBlocked)
+            return JourneyEntryKind.Blocked;
+        return ResolveLegacyJourneyEntry(out levelNumber);
+    }
+
+    private JourneyEntryKind ResolveLegacyJourneyEntry(out int levelNumber)
+    {
+        levelNumber = 1;
+        bool anyCompleted = false;
+        bool allCompleted = true;
+        int firstUnlockedIncomplete = -1;
+        int firstIncomplete = -1;
+
+        for (int i = 1; i <= TotalLevels; i++)
+        {
+            if (IsLevelCompleted(i))
+            {
+                anyCompleted = true;
+                continue;
+            }
+            allCompleted = false;
+            if (firstIncomplete < 0)
+                firstIncomplete = i;
+            if (firstUnlockedIncomplete < 0 && IsLevelUnlocked(i))
+                firstUnlockedIncomplete = i;
+        }
+
+        if (allCompleted)
+            return JourneyEntryKind.CompletedJourney;
+        if (!anyCompleted)
+            return JourneyEntryKind.NewJourney;
+
+        levelNumber = firstUnlockedIncomplete > 0 ? firstUnlockedIncomplete : firstIncomplete;
+        return JourneyEntryKind.ContinueLevel;
+    }
+
     public bool TryGetSelectedLevel(out LevelConfigSO level)
     {
         level = null;

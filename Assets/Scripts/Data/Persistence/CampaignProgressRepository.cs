@@ -26,6 +26,14 @@ public sealed class CampaignProgressRepository
 
     public bool IsLevelUnlocked(string levelId) => FindLevel(levelId)?.unlocked == true;
 
+    /// <summary>
+    /// SALIN-136: read-only classification of the next meaningful journey entry point
+    /// over the committed document snapshot. Never mutates state — committing a routed
+    /// selection stays with <see cref="TrySetActiveLevel"/>.
+    /// </summary>
+    public JourneyEntryPoint ResolveJourneyEntryPoint() =>
+        JourneyEntryResolver.Resolve(_service.Current, LevelIds());
+
     public bool IsSymbolUnlocked(string symbolId) => _service.Current.progress.unlockedSymbolIds.Contains(symbolId);
     public bool IsEnemyDiscovered(string enemyId) => _service.Current.progress.discoveredEnemyIds.Contains(enemyId);
     public bool IsBossDiscovered(string bossId) => _service.Current.progress.discoveredBossIds.Contains(bossId);

@@ -98,6 +98,16 @@ public class LevelSelectUI : MonoBehaviour
         if (!pmAvailable)
             DebugLogger.LogWarning("LevelSelectUI: ProgressManager not available. Defaulting all levels to unlocked.");
 
+        // SALIN-136: identify the journey's next meaningful level so the player can
+        // clearly see where to continue (no highlight once the journey is complete).
+        int nextLevelNumber = -1;
+        if (pmAvailable)
+        {
+            JourneyEntryKind entryKind = ProgressManager.Instance.GetJourneyEntryPoint(out int entryLevel);
+            if (entryKind == JourneyEntryKind.NewJourney || entryKind == JourneyEntryKind.ContinueLevel)
+                nextLevelNumber = entryLevel;
+        }
+
         for (int i = 0; i < _levelButtons.Count; i++)
         {
             LevelButton button = _levelButtons[i];
@@ -113,16 +123,17 @@ public class LevelSelectUI : MonoBehaviour
             LevelConfigSO levelConfig = era.levels[i];
 
             bool unlocked = true;
-            // bool completed = false;
+            bool completed = false;
 
             if (pmAvailable)
             {
                 unlocked = ProgressManager.Instance.IsLevelUnlocked(levelConfig.levelNumber);
-                // completed = ProgressManager.Instance.IsLevelCompleted(levelConfig.levelNumber);
+                completed = ProgressManager.Instance.IsLevelCompleted(levelConfig.levelNumber);
             }
 
             button.gameObject.SetActive(true);
-            button.Setup(levelConfig, unlocked, false);
+            button.Setup(levelConfig, unlocked, completed);
+            button.SetHighlighted(unlocked && levelConfig.levelNumber == nextLevelNumber);
         }
 
         UpdateNavigationButtons();

@@ -1,5 +1,7 @@
 using System.Reflection;
 using NUnit.Framework;
+using Salinlahi.Tests.Editor.Data;
+using Salinlahi.Tests.Editor.Persistence;
 using UnityEngine;
 using UnityEngine.TestTools;
 
@@ -260,6 +262,121 @@ namespace Salinlahi.Tests.Editor.Core
             Assert.IsFalse(CharacterUnlockProgress.HasUnlocked(ba),
                 "ClearAllProgress should also clear character unlocks");
             Object.DestroyImmediate(ba);
+        }
+
+        // -------------------------------------------------------------------
+        // SALIN-136: journey entry routing
+        // -------------------------------------------------------------------
+
+        [Test]
+        public void GetJourneyEntryPoint_FreshLegacySave_IsNewJourneyAtLevelOne()
+        {
+            JourneyEntryKind kind = _manager.GetJourneyEntryPoint(out int levelNumber);
+
+            Assert.AreEqual(JourneyEntryKind.NewJourney, kind);
+            Assert.AreEqual(1, levelNumber);
+        }
+
+        [Test]
+        public void GetJourneyEntryPoint_MidLegacyJourney_ContinuesAtNextIncompleteLevel()
+        {
+            _manager.MarkLevelComplete(1, 3);
+            _manager.MarkLevelComplete(2, 2);
+
+            JourneyEntryKind kind = _manager.GetJourneyEntryPoint(out int levelNumber);
+
+            Assert.AreEqual(JourneyEntryKind.ContinueLevel, kind);
+            Assert.AreEqual(3, levelNumber);
+        }
+
+        [Test]
+        public void GetJourneyEntryPoint_AllLegacyLevelsComplete_IsCompletedJourney()
+        {
+            for (int i = 1; i <= 15; i++)
+                _manager.MarkLevelComplete(i, 3);
+
+            JourneyEntryKind kind = _manager.GetJourneyEntryPoint(out _);
+
+            Assert.AreEqual(JourneyEntryKind.CompletedJourney, kind);
+        }
+
+        [Test]
+        public void GetJourneyEntryPoint_RevisedBlockedSave_IsBlockedAndNotRoutable()
+        {
+            using CampaignTestFixture fixture = CampaignTestFixture.CreateValid();
+            GameObject saveHost = new GameObject("SaveManager_Test");
+            try
+            {
+                SaveManager saveManager = saveHost.AddComponent<SaveManager>();
+                InvokeLifecycle(saveManager, "Awake");
+                saveManager.SetCampaignForTests(fixture.Campaign);
+                InMemoryCampaignSaveStorage storage = new InMemoryCampaignSaveStorage
+                {
+                    FailAt = StorageFaultPoint.ArchiveWrite,
+                };
+                saveManager.SetServiceForTests(new CampaignSaveService(
+                    storage, DictionaryLegacySource.CreateRepresentativeHistoricalSave()));
+                Assert.AreEqual(SaveManagerMode.RevisedBlocked, saveManager.Mode, "precondition");
+
+                JourneyEntryKind kind = _manager.GetJourneyEntryPoint(out int levelNumber);
+
+                Assert.AreEqual(JourneyEntryKind.Blocked, kind,
+                    "A blocked revised save must never route into gameplay.");
+                Assert.AreEqual(1, levelNumber);
+            }
+            finally
+            {
+                Object.DestroyImmediate(saveHost);
+                ClearSingletonInstance<SaveManager>();
+            }
+        }
+
+        [Test]
+        public void GetJourneyEntryPoint_RevisedSaveInProgress_MapsContinueTargetToLevelNumber()
+        {
+            using CampaignTestFixture fixture = CampaignTestFixture.CreateValid();
+            GameObject saveHost = new GameObject("SaveManager_Test");
+            try
+            {
+                SaveManager saveManager = saveHost.AddComponent<SaveManager>();
+                InvokeLifecycle(saveManager, "Awake");
+                saveManager.SetCampaignForTests(fixture.Campaign);
+                CampaignSaveService service = new CampaignSaveService(
+                    new InMemoryCampaignSaveStorage(), new DictionaryLegacySource());
+                saveManager.SetServiceForTests(service);
+                Assert.AreEqual(SaveManagerMode.RevisedReady, saveManager.Mode, "precondition");
+                Assert.IsTrue(service.TryUpdate(document =>
+                {
+                    document.progress.levelProgress[0].completed = true;
+                    document.progress.levelProgress[0].bestStars = 3;
+                    document.progress.levelProgress[1].unlocked = true;
+                }), "precondition");
+
+                JourneyEntryKind kind = _manager.GetJourneyEntryPoint(out int levelNumber);
+
+                Assert.AreEqual(JourneyEntryKind.ContinueLevel, kind);
+                Assert.AreEqual(2, levelNumber);
+            }
+            finally
+            {
+                Object.DestroyImmediate(saveHost);
+                ClearSingletonInstance<SaveManager>();
+            }
+        }
+
+        private static void InvokeLifecycle(MonoBehaviour target, string methodName)
+        {
+            MethodInfo method = target.GetType().GetMethod(
+                methodName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            Assert.IsNotNull(method, methodName);
+            method.Invoke(target, null);
+        }
+
+        private static void ClearSingletonInstance<T>() where T : MonoBehaviour
+        {
+            typeof(Singleton<T>).GetProperty("Instance")
+                .GetSetMethod(true)
+                .Invoke(null, new object[] { null });
         }
     }
 }
