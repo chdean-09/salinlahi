@@ -15,6 +15,12 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     [SerializeField] private Image _clueImage;
     [SerializeField] private GameObject _replayAudioButton;
 
+    [Header("Active Clue Mark")]
+    [Tooltip("Optional authored marker for the active enemy. A procedural ring is built when empty.")]
+    [SerializeField] private GameObject _activeClueMarkPrefab;
+    [SerializeField] private Vector2 _activeClueMarkOffset = Vector2.zero;
+    [SerializeField] private float _activeClueMarkScale = 1.6f;
+
     /// <summary>
     /// Suppresses a clue announcement that lands on top of one CombatResolver just made.
     /// AudioManager uses PlayOneShot, so pronunciation clips overlap rather than interrupt.
@@ -27,6 +33,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private ActiveClueDirector _subscribedDirector;
     private Button _replayAudioButtonComponent;
     private float _lastPronunciationTime = float.NegativeInfinity;
+    private GameObject _activeClueMark;
+    private Sprite _runtimeMarkSprite;
 
     /// <summary>Reused by HandleActiveClueChanged so badge sweeps do not allocate per clue.</summary>
     private readonly System.Collections.Generic.List<Enemy> _badgeSweepBuffer =
@@ -44,11 +52,18 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     public bool AnswerWasVisible =>
         (_resolvedChannels & ClueChannels.Glyph) != ClueChannels.None;
 
+    /// <summary>
+    /// The channel-independent mark riding on the active enemy, or null while nothing is
+    /// marked. Only ever created for a level that arms clue combat.
+    /// </summary>
+    public GameObject ActiveClueMark => _activeClueMark;
+
     private void OnEnable()
     {
         SubscribeToDirector();
         BindReplayAudioButton();
         EventBus.OnPronunciationRequested += HandlePronunciationRequested;
+        EventBus.OnEnemySpawned += HandleEnemySpawned;
     }
 
     private void Start()
@@ -65,6 +80,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private void OnDisable()
     {
         EventBus.OnPronunciationRequested -= HandlePronunciationRequested;
+        EventBus.OnEnemySpawned -= HandleEnemySpawned;
+        DestroyActiveClueMark();
 
         if (_subscribedDirector != null)
             _subscribedDirector.OnActiveClueChanged -= HandleActiveClueChanged;
@@ -269,16 +286,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         {
             tracker.FillActiveEnemiesSnapshot(_badgeSweepBuffer);
             for (int i = 0; i < _badgeSweepBuffer.Count; i++)
-            {
-                Enemy enemy = _badgeSweepBuffer[i];
-                if (enemy == null || enemy.GlyphBadge == null)
-                    continue;
-
-                if (showGlyph && enemy == current)
-                    enemy.GlyphBadge.Show();
-                else
-                    enemy.GlyphBadge.Hide();
-            }
+                ApplyBadgePolicy(_badgeSweepBuffer[i], current, showGlyph);
         }
 
         if (previous != null && previous != current && previous.GlyphBadge != null)
@@ -292,7 +300,163 @@ public sealed class ActiveCluePresenter : MonoBehaviour
                 current.GlyphBadge.Hide();
         }
 
+        UpdateActiveClueMark(current);
         UpdateCluePanel(current);
+    }
+
+    /// <summary>One enemy's badge state under the current clue: the mark shows, everyone hides.</summary>
+    private static void ApplyBadgePolicy(Enemy enemy, Enemy clue, bool showGlyph)
+    {
+        if (enemy == null || enemy.GlyphBadge == null)
+            return;
+
+        if (showGlyph && enemy == clue)
+            enemy.GlyphBadge.Show();
+        else
+            enemy.GlyphBadge.Hide();
+    }
+
+    /// <summary>
+    /// The mark latches, so an enemy that spawns mid-latch raises no clue change and the sweep
+    /// in HandleActiveClueChanged never reaches it. Without this it walks on screen still
+    /// showing its glyph answer.
+    /// </summary>
+    private void HandleEnemySpawned(Enemy enemy)
+    {
+        if (!IsClueCombatArmed)
+            return;
+
+        ApplyBadgePolicy(
+            enemy, _currentClue, (_resolvedChannels & ClueChannels.Glyph) != ClueChannels.None);
+    }
+
+    /// <summary>
+    /// Keeps the mark on the marked enemy as it advances. Inert until a mark exists, which only
+    /// happens on a level that arms clue combat.
+    /// </summary>
+    private void LateUpdate()
+    {
+        if (_activeClueMark == null)
+            return;
+
+        if (!IsClueCombatArmed || _currentClue == null)
+        {
+            if (_activeClueMark.activeSelf)
+                _activeClueMark.SetActive(false);
+            return;
+        }
+
+        _activeClueMark.transform.position =
+            _currentClue.transform.position + (Vector3)_activeClueMarkOffset;
+    }
+
+    /// <summary>
+    /// Spec section 3.5: the mark is a marker treatment on the active enemy driven independently
+    /// of channel, so a sound-only or text-only level still shows which enemy is the clue.
+    /// </summary>
+    private void UpdateActiveClueMark(Enemy clue)
+    {
+        if (clue == null)
+        {
+            if (_activeClueMark != null)
+                _activeClueMark.SetActive(false);
+            return;
+        }
+
+        EnsureActiveClueMark();
+        if (_activeClueMark == null)
+            return;
+
+        _activeClueMark.transform.position =
+            clue.transform.position + (Vector3)_activeClueMarkOffset;
+        _activeClueMark.SetActive(true);
+    }
+
+    /// <summary>
+    /// An authored prefab wins. The procedural ring is the no-art fallback, generated rather
+    /// than taken from builtin resources so it also renders in a player build.
+    /// </summary>
+    private void EnsureActiveClueMark()
+    {
+        if (_activeClueMark != null)
+            return;
+
+        if (_activeClueMarkPrefab != null)
+        {
+            _activeClueMark = Instantiate(_activeClueMarkPrefab);
+            _activeClueMark.name = "[Runtime] ActiveClueMark";
+            _activeClueMark.SetActive(false);
+            return;
+        }
+
+        _runtimeMarkSprite = CreateRingSprite();
+
+        _activeClueMark = new GameObject("[Runtime] ActiveClueMark", typeof(SpriteRenderer));
+        SpriteRenderer markRenderer = _activeClueMark.GetComponent<SpriteRenderer>();
+        markRenderer.sprite = _runtimeMarkSprite;
+        markRenderer.color = new Color(1f, 0.84f, 0.29f, 0.85f);
+        markRenderer.sortingOrder = RenderOrder.ActiveClueMark;
+        _activeClueMark.transform.localScale =
+            new Vector3(_activeClueMarkScale, _activeClueMarkScale, 1f);
+        _activeClueMark.SetActive(false);
+    }
+
+    /// <summary>A one world unit hollow ring, so the mark frames the enemy without hiding it.</summary>
+    private static Sprite CreateRingSprite()
+    {
+        const int size = 64;
+        const float outerRadius = 0.5f;
+        const float innerRadius = 0.38f;
+
+        var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+        {
+            filterMode = FilterMode.Bilinear,
+            wrapMode = TextureWrapMode.Clamp
+        };
+
+        var pixels = new Color32[size * size];
+        var opaque = new Color32(255, 255, 255, 255);
+        var clear = new Color32(255, 255, 255, 0);
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float dx = ((x + 0.5f) / size) - 0.5f;
+                float dy = ((y + 0.5f) / size) - 0.5f;
+                float distance = Mathf.Sqrt((dx * dx) + (dy * dy));
+                pixels[(y * size) + x] =
+                    distance <= outerRadius && distance >= innerRadius ? opaque : clear;
+            }
+        }
+
+        texture.SetPixels32(pixels);
+        texture.Apply();
+
+        return Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f), size);
+    }
+
+    private void DestroyActiveClueMark()
+    {
+        Texture2D generatedTexture =
+            _runtimeMarkSprite != null ? _runtimeMarkSprite.texture : null;
+
+        DestroyOwnedObject(_activeClueMark);
+        DestroyOwnedObject(_runtimeMarkSprite);
+        DestroyOwnedObject(generatedTexture);
+
+        _activeClueMark = null;
+        _runtimeMarkSprite = null;
+    }
+
+    private static void DestroyOwnedObject(UnityEngine.Object owned)
+    {
+        if (owned == null)
+            return;
+
+        if (Application.isPlaying)
+            Destroy(owned);
+        else
+            DestroyImmediate(owned);
     }
 
     private void UpdateCluePanel(Enemy clue)

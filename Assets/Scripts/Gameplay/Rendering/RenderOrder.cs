@@ -12,6 +12,8 @@ public static class RenderOrder
     public const int Boss            = 10;
     public const int BossSummon      = 15;
     public const int Protagonist     = 50;
+    // Channel-independent mark on the active clue. Above the enemy sprite, below its badge.
+    public const int ActiveClueMark  = 150;
     public const int EnemyGlyphBadge = 200;
     public const int EnemyDebugLabel = 500;
 

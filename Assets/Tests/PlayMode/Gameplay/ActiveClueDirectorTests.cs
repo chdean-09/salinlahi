@@ -26,6 +26,15 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 runtimePanel = GameObject.Find("[Runtime] ActiveCluePanel");
             }
 
+            // Same problem for the channel-independent mark: the presenter parents it to
+            // nothing so it survives the presenter unless it is swept by name.
+            GameObject runtimeMark = GameObject.Find("[Runtime] ActiveClueMark");
+            while (runtimeMark != null)
+            {
+                Object.DestroyImmediate(runtimeMark);
+                runtimeMark = GameObject.Find("[Runtime] ActiveClueMark");
+            }
+
             for (int i = _objectsToDestroy.Count - 1; i >= 0; i--)
             {
                 if (_objectsToDestroy[i] != null)
@@ -547,6 +556,136 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
 
             Assert.That(badgeRenderer.color.a, Is.EqualTo(alphaBefore).Within(0.001f),
                 "A legacy level's glyph badges must not be hidden by the clue presenter.");
+        }
+
+        // The mark latches, so an enemy that spawns while it is held raises no clue change and
+        // the sweep in HandleActiveClueChanged never reaches it. "One visibly marked clue"
+        // would fail in steady state on a glyph level.
+        [UnityTest]
+        public IEnumerator Presenter_EnemySpawnedWhileMarkLatched_HidesItsBadge()
+        {
+            LevelConfigSO level = ScriptableObject.CreateInstance<LevelConfigSO>();
+            level.activeClueCombatEnabled = true;
+            level.clueChannels = ClueChannels.Glyph;
+            _objectsToDestroy.Add(level);
+
+            GlyphBadgeConfigSO badgeConfig = GlyphBadgePlayModeTestHelpers.CreateBadgeConfig();
+            _objectsToDestroy.Add(badgeConfig);
+
+            EnemyDataSO data = CreateEnemyData();
+            Sprite badgeSprite = GlyphBadgePlayModeTestHelpers.CreateSprite(Color.white);
+            data.assignedCharacter.badgeSprite = badgeSprite;
+            _objectsToDestroy.Add(badgeSprite);
+
+            Enemy marked = CreateEnemyAt(data, y: 2f);
+
+            ActiveClueDirector director = CreateDirector(clueCombatActive: true);
+            director.Reevaluate();
+            Assert.That(director.CurrentClue, Is.EqualTo(marked));
+
+            GameObject go = new GameObject("ActiveCluePresenter_LateSpawn_Test");
+            ActiveCluePresenter presenter = go.AddComponent<ActiveCluePresenter>();
+            _objectsToDestroy.Add(go);
+
+            presenter.ApplyLevel(level);
+            yield return null;
+
+            // Enemy.Awake caches the badge, and this shell was already active before the badge
+            // child existed, so the cached reference has to be supplied directly.
+            Enemy lateSpawn = CreateEnemyShell();
+            (EnemyGlyphBadge badge, SpriteRenderer badgeRenderer) =
+                GlyphBadgePlayModeTestHelpers.AddGlyphBadgeChild(lateSpawn.gameObject, badgeConfig);
+            GlyphBadgePlayModeTestHelpers.SetPrivateField(lateSpawn, "_glyphBadge", badge);
+            lateSpawn.transform.position = new Vector3(0f, 7f, 0f);
+            Assert.IsTrue(lateSpawn.Initialize(data));
+            yield return null;
+
+            Assert.That(director.CurrentClue, Is.EqualTo(marked),
+                "The mark must still be latched, or this test would not exercise the spawn path.");
+            Assert.IsTrue(badgeRenderer.enabled,
+                "The late spawn must actually carry a renderable badge for this test to bite.");
+            Assert.That(badgeRenderer.color.a, Is.EqualTo(0f).Within(0.001f),
+                "An enemy spawned while the mark is latched must not display its answer badge.");
+        }
+
+        // Spec section 3.5: the mark is a marker treatment on the active enemy, driven
+        // independently of channel. On a SpokenAudio + LatinText level every badge is hidden,
+        // so without it nothing on screen says which enemy is the clue.
+        [UnityTest]
+        public IEnumerator Presenter_NonGlyphChannels_StillMarkTheActiveEnemy()
+        {
+            LevelConfigSO level = ScriptableObject.CreateInstance<LevelConfigSO>();
+            level.activeClueCombatEnabled = true;
+            level.clueChannels = ClueChannels.SpokenAudio | ClueChannels.LatinText;
+            _objectsToDestroy.Add(level);
+
+            EnemyDataSO data = CreateEnemyData();
+            Enemy marked = CreateEnemyAt(data, y: 2f);
+
+            ActiveClueDirector director = CreateDirector(clueCombatActive: true);
+            director.Reevaluate();
+            Assert.That(director.CurrentClue, Is.EqualTo(marked));
+
+            GameObject go = new GameObject("ActiveCluePresenter_Mark_Test");
+            ActiveCluePresenter presenter = go.AddComponent<ActiveCluePresenter>();
+            _objectsToDestroy.Add(go);
+
+            presenter.ApplyLevel(level);
+            yield return null;
+
+            Assert.That(presenter.ResolvedChannels & ClueChannels.Glyph,
+                Is.EqualTo(ClueChannels.None),
+                "This level must not reveal the glyph, or the badge would be doing the marking.");
+            Assert.IsNotNull(presenter.ActiveClueMark,
+                "A non-glyph level still needs one visibly marked active enemy.");
+            Assert.IsTrue(presenter.ActiveClueMark.activeInHierarchy,
+                "The mark must be on screen, not merely constructed.");
+
+            // The enemy walks itself down the field in EnemyMover.Update, and a coroutine
+            // resuming from `yield return null` runs after Update but before LateUpdate. So a
+            // position sampled here is always one frame ahead of the LateUpdate that last moved
+            // the mark -- a gap wider than any tolerance worth asserting. Park the mover, then
+            // drive the enemy by hand so the comparison is between two stationary transforms.
+            marked.GetComponent<EnemyMover>().Stop();
+            float markBeforeMove = presenter.ActiveClueMark.transform.position.y;
+            Assert.That(markBeforeMove, Is.GreaterThan(1f),
+                "The mark must start at the latch position, or the follow assertion is vacuous.");
+
+            marked.transform.position = new Vector3(0f, 0.5f, 0f);
+            yield return null;
+
+            // Deliberately 1.5 units of travel: a mark that is only placed once when the clue
+            // latches stays up at y=2 and misses by a mile, so this still proves tracking.
+            Assert.That(presenter.ActiveClueMark.transform.position.y,
+                Is.EqualTo(marked.transform.position.y).Within(0.001f),
+                "The mark must follow the active enemy, not sit where it first latched.");
+        }
+
+        // The mark is a presentation side effect like every other, so a level that never arms
+        // clue combat must not construct one.
+        [UnityTest]
+        public IEnumerator Presenter_ClueCombatDisabled_BuildsNoMark()
+        {
+            LevelConfigSO level = ScriptableObject.CreateInstance<LevelConfigSO>();
+            level.activeClueCombatEnabled = false;
+            _objectsToDestroy.Add(level);
+
+            EnemyDataSO data = CreateEnemyData();
+            CreateEnemyAt(data, y: 2f);
+
+            ActiveClueDirector director = CreateDirector(clueCombatActive: false);
+            director.Reevaluate();
+
+            GameObject go = new GameObject("ActiveCluePresenter_NoMark_Test");
+            ActiveCluePresenter presenter = go.AddComponent<ActiveCluePresenter>();
+            _objectsToDestroy.Add(go);
+
+            presenter.ApplyLevel(level);
+            yield return null;
+
+            Assert.IsNull(presenter.ActiveClueMark,
+                "A legacy level must gain no clue mark.");
+            Assert.IsNull(GameObject.Find("[Runtime] ActiveClueMark"));
         }
 
         private sealed class StubObjectiveSource : IClueObjectiveSource

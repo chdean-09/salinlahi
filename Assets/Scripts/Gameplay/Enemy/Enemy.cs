@@ -235,6 +235,10 @@ public class Enemy : MonoBehaviour
         if (ShouldRaiseEnemyDiscoveryEvent(_data))
             EventBus.RaiseEnemyDiscovered(_data, this);
 
+        // Raised after the badge has been laid out and refreshed, so a listener that changes
+        // badge visibility is not overwritten by this spawn's own refresh.
+        EventBus.RaiseEnemySpawned(this);
+
         return true;
     }
 
