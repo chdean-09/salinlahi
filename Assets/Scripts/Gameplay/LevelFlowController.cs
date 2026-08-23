@@ -194,12 +194,13 @@ public class LevelFlowController : MonoBehaviour
         {
             case LevelPhase.Story: return ExecuteStory();
             case LevelPhase.Defense: return ExecuteDefense();
+            case LevelPhase.ContextChallenge: return ExecuteContextChallenge();
             case LevelPhase.AtomicSave: return ExecuteAtomicSave();
             case LevelPhase.Results: return ExecuteResults();
-            // Content phases whose surfaces land with SALIN-138 (FocusWords),
-            // SALIN-181 (ContextChallenge), and SALIN-202 (MemoryReward);
-            // SymbolLearning/RequiredPractice route through learning surfaces
-            // in the same tickets. The driver auto-completes them until then.
+            // Content phases whose surfaces land with SALIN-138 (FocusWords) and
+            // SALIN-202 (MemoryReward); SymbolLearning/RequiredPractice route
+            // through learning surfaces in the same tickets. The driver
+            // auto-completes them until then.
             default: return ExecuteStubPhase();
         }
     }
@@ -304,6 +305,38 @@ public class LevelFlowController : MonoBehaviour
         yield return new WaitUntil(() => _machine.Phase != LevelPhase.Defense || _machine.IsTerminal);
     }
 
+    private IEnumerator ExecuteContextChallenge()
+    {
+        if (_challengeFlowController == null || _levelConfig.challengeSequence == null)
+            yield break; // driver auto-completes the phase
+
+        yield return _challengeFlowController.Play(
+            _levelConfig.challengeSequence,
+            _levelConfig.levelNumber,
+            _levelConfig.challengePolicy,
+            new ProgressManagerEvidenceSink());
+
+        switch (_challengeFlowController.LastPlayResult)
+        {
+            case ChallengePlayResult.Completed:
+                _machine.ReportPhaseComplete(LevelPhase.ContextChallenge);
+                break;
+            case ChallengePlayResult.Exited:
+                // Evidence stays uncommitted in the level recorder; only the
+                // AtomicSave phase can commit campaign progress.
+                _machine.RequestExit();
+                break;
+            case ChallengePlayResult.Failed:
+                // ChallengeFlowController normally raises GameOver itself when
+                // hearts reach zero; this is the fallback when it could not.
+                if (!_machine.IsTerminal && _machine.ReportDefeat())
+                    ShowDefeatScreen();
+                break;
+            // MissingSequence / InvalidSequence: fall through and let the driver
+            // auto-complete the phase so a bad asset cannot deadlock the level.
+        }
+    }
+
     private IEnumerator ExecuteAtomicSave()
     {
         _levelEnded = true;
@@ -372,7 +405,7 @@ public class LevelFlowController : MonoBehaviour
             _activeCluePresenter = presenterObject.AddComponent<ActiveCluePresenter>();
         }
 
-        if (ShouldRunChallengePrototype() && _challengeFlowController == null)
+        if (_levelConfig != null && _levelConfig.challengeSequence != null && _challengeFlowController == null)
         {
             _challengeFlowController = FindFirstObjectByType<ChallengeFlowController>(FindObjectsInactive.Include);
             if (_challengeFlowController == null)

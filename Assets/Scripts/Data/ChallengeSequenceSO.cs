@@ -50,6 +50,8 @@ public class ChallengeUnitDefinition
     public float memoryRevealSeconds = 1f;
     public int maxErrors = 3;
     public int heartPenalty = 1;
+    [Tooltip("Word stableId this unit evidences (Assembly for placements, Meaning for sentence/paragraph/memory). Empty = record nothing.")]
+    public string evidenceContentId = string.Empty;
 }
 
 [Serializable]
@@ -60,6 +62,8 @@ public class ChallengeTokenDefinition
     public string occurrenceId;
     public ChallengeTokenRole role = ChallengeTokenRole.Neutral;
     public BaybayinCharacterSO targetCharacter;
+    [Tooltip("Symbol stableId this token evidences (Form for guided tracing). Empty = record nothing.")]
+    public string evidenceContentId = string.Empty;
 }
 
 [Serializable]

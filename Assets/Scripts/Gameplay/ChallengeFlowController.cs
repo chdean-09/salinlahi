@@ -26,7 +26,25 @@ public class ChallengeFlowController : MonoBehaviour
     private Level1TutorialStepSO _renderedGuideStep;
     private bool _guideVisible;
 
+    public IEnumerator Play(
+        ChallengeSequenceSO sequence,
+        int levelNumber,
+        ChallengeTierPolicy policy,
+        IChallengeEvidenceSink evidence)
+    {
+        return PlayCore(sequence, levelNumber, policy, evidence);
+    }
+
     public IEnumerator Play(ChallengeSequenceSO sequence, int levelNumber)
+    {
+        return PlayCore(sequence, levelNumber, null, null);
+    }
+
+    private IEnumerator PlayCore(
+        ChallengeSequenceSO sequence,
+        int levelNumber,
+        ChallengeTierPolicy policy,
+        IChallengeEvidenceSink evidence)
     {
         if (Session != null && !IsFinished)
         {
@@ -53,7 +71,11 @@ public class ChallengeFlowController : MonoBehaviour
         }
         EnsureRuntimeReferences();
         ChallengeRuntimeState.Begin(levelNumber);
-        Session = new ChallengeSession(sequence, _heartSystem == null ? 3 : _heartSystem.GetCurrentHearts());
+        Session = new ChallengeSession(
+            sequence,
+            _heartSystem == null ? 3 : _heartSystem.GetCurrentHearts(),
+            policy,
+            evidence);
         Session.Changed += HandleSessionChanged;
         _inputRouter.Bind(this);
         _ui.Bind(this);
