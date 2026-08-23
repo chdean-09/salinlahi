@@ -46,6 +46,8 @@ public class LevelFlowController : MonoBehaviour
     private bool _flowAborted;
     private bool _runtimeBootstrapped;
     private CampaignOutcomeCommitResult _completionCommitResult;
+    private ActiveClueDirector _activeClueDirector;
+    private ActiveCluePresenter _activeCluePresenter;
 
     public static bool TryStartRuntimeTutorialFlow(
         LevelConfigSO levelConfig,
@@ -134,6 +136,8 @@ public class LevelFlowController : MonoBehaviour
             DebugLogger.LogError("LevelFlowController: No LevelConfigSO resolved. Aborting flow.");
             yield break;
         }
+
+        ConfigureActiveClueSystems();
 
         // Spawn protagonist if level has one configured
         if (_levelConfig.hasProtagonist)
@@ -235,6 +239,22 @@ public class LevelFlowController : MonoBehaviour
         _saveFailurePanel ??= FindFirstObjectByType<CampaignOutcomeSaveFailurePanel>(FindObjectsInactive.Include);
         _revealController ??= FindFirstObjectByType<CharacterUnlockRevealController>(FindObjectsInactive.Include);
         _bossTutorialController ??= FindFirstObjectByType<BossTutorialController>(FindObjectsInactive.Include);
+        _activeClueDirector ??= FindFirstObjectByType<ActiveClueDirector>(FindObjectsInactive.Include);
+        _activeCluePresenter ??= FindFirstObjectByType<ActiveCluePresenter>(FindObjectsInactive.Include);
+
+        if (_activeClueDirector == null)
+        {
+            GameObject directorObject = new GameObject("[Runtime] ActiveClueDirector");
+            directorObject.transform.SetParent(transform, false);
+            _activeClueDirector = directorObject.AddComponent<ActiveClueDirector>();
+        }
+
+        if (_activeCluePresenter == null)
+        {
+            GameObject presenterObject = new GameObject("[Runtime] ActiveCluePresenter");
+            presenterObject.transform.SetParent(transform, false);
+            _activeCluePresenter = presenterObject.AddComponent<ActiveCluePresenter>();
+        }
 
         if (ShouldRunChallengePrototype() && _challengeFlowController == null)
         {
@@ -255,6 +275,27 @@ public class LevelFlowController : MonoBehaviour
             if (_level1OnboardingController == null && ShouldCreateRuntimeOnboardingController())
                 _level1OnboardingController = CreateRuntimeOnboardingController();
         }
+    }
+
+    private void ConfigureActiveClueSystems()
+    {
+        if (_levelConfig == null)
+            return;
+
+        if (_activeClueDirector != null)
+        {
+            // Clue combat is active exactly when the player can draw. Probing only for
+            // GameState.Playing would silently revert a Practicing-state level to legacy
+            // targeting, and would keep the mark live while drawing is suppressed for a
+            // cutscene or tutorial beat.
+            _activeClueDirector.SetObjectiveSource(
+                new LevelConfigClueObjectiveSource(
+                    _levelConfig,
+                    () => GameManager.Instance != null
+                        && GameManager.Instance.AcceptsDrawingInput));
+        }
+
+        _activeCluePresenter?.ApplyLevel(_levelConfig);
     }
 
     private bool ShouldCreateRuntimeOnboardingController()
