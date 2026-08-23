@@ -24,6 +24,22 @@ public class GameManager : Singleton<GameManager>
     /// <summary>Suppress/allow drawing input regardless of game state. Callers must always release it.</summary>
     public void SuppressDrawingInput(bool suppressed) => _drawingSuppressed = suppressed;
 
+    // GameState.Paused has two independent sources — the player's pause menu and a
+    // dialogue/cutscene beat — and the state alone cannot tell them apart. Without
+    // this split, Resume lifts a dialogue pause (dropping the player into gameplay
+    // underneath an open dialogue box) and ExitDialoguePause lifts a user pause.
+    // Invariant, enforced in SetState: a latch is only ever set while Paused.
+    private bool _userPauseActive;
+    private bool _dialoguePauseActive;
+
+    // Set for the duration of a level-attempt teardown (restart / leave level) so a
+    // late defeat or completion event cannot re-enter an attempt that is being
+    // discarded. Cleared when the next attempt starts.
+    private bool _attemptAbortInProgress;
+
+    /// <summary>True while the current level attempt is being torn down (SALIN-141).</summary>
+    public bool IsAttemptAbortInProgress => _attemptAbortInProgress;
+
 private bool _hasPausedRunSnapshot;
     private int _pausedRunLevelId = -1;
     private int _pausedRunHearts = -1;
@@ -68,12 +84,14 @@ private bool _hasPausedRunSnapshot;
 
     public void StartGame()
     {
+        _attemptAbortInProgress = false;
         Time.timeScale = 1f;
         SetState(GameState.Playing);
     }
 
     public void EnterPractice()
     {
+        _attemptAbortInProgress = false;
         Time.timeScale = 1f;
         SetState(GameState.Practicing);
     }
@@ -86,7 +104,9 @@ private bool _hasPausedRunSnapshot;
 
     public void PauseGame()
     {
+        if (_userPauseActive || _dialoguePauseActive) return;
         if (CurrentState != GameState.Playing) return;
+        _userPauseActive = true;
         Time.timeScale = 0f;
         SetState(GameState.Paused);
         EventBus.RaiseGamePaused();
@@ -94,7 +114,10 @@ private bool _hasPausedRunSnapshot;
 
     public void ResumeGame()
     {
-        if (CurrentState != GameState.Paused) return;
+        // Only the user's own pause is liftable here. Resuming a dialogue-driven
+        // pause would restart combat underneath an open dialogue box.
+        if (!_userPauseActive || CurrentState != GameState.Paused) return;
+        _userPauseActive = false;
         Time.timeScale = 1f;
         SetState(GameState.Playing);
         EventBus.RaiseGameResumed();
@@ -102,7 +125,9 @@ private bool _hasPausedRunSnapshot;
 
     public void EnterDialoguePause()
     {
+        if (_userPauseActive || _dialoguePauseActive) return;
         if (CurrentState != GameState.Playing && CurrentState != GameState.LevelComplete) return;
+        _dialoguePauseActive = true;
         _stateBeforeDialogue = CurrentState;
         Time.timeScale = 0f;
         SetState(GameState.Paused);
@@ -110,13 +135,43 @@ private bool _hasPausedRunSnapshot;
 
     public void ExitDialoguePause()
     {
-        if (CurrentState != GameState.Paused) return;
+        // Mirror of ResumeGame: a beat unwinding must not lift the player's pause.
+        if (!_dialoguePauseActive || CurrentState != GameState.Paused) return;
+        _dialoguePauseActive = false;
         Time.timeScale = 1f;
         SetState(_stateBeforeDialogue);
     }
 
+    /// <summary>
+    /// SALIN-141. Ends the current level attempt as a transaction: every pause source
+    /// is released, drawing suppression is dropped, the clock is restored, and one
+    /// <see cref="EventBus.OnLevelAttemptAborted"/> is raised so each system that owns
+    /// per-attempt state tears it down while the gameplay objects still exist.
+    /// Idempotent. Deliberately does NOT touch the paused-run snapshot — restart and
+    /// leave have different snapshot policies and decide that at their own call site.
+    /// </summary>
+    public void AbortCurrentLevelAttempt()
+    {
+        if (_attemptAbortInProgress) return;
+        _attemptAbortInProgress = true;
+
+        _userPauseActive = false;
+        _dialoguePauseActive = false;
+        _drawingSuppressed = false;
+        _stateBeforeDialogue = GameState.Idle;
+        Time.timeScale = 1f;
+        SetState(GameState.Idle);
+
+        DebugLogger.Log("GameManager: Level attempt aborted. No progress will be committed.");
+        EventBus.RaiseLevelAttemptAborted();
+    }
+
     private void HandleGameOver()
     {
+        // A straggler defeat from an attempt already being torn down must not
+        // re-open the defeat flow on top of the abort.
+        if (_attemptAbortInProgress) return;
+
         HeartSystem heartSystem = FindFirstObjectByType<HeartSystem>();
         LastDefeatHearts = heartSystem != null ? heartSystem.GetCurrentHearts() : 0;
 
@@ -127,6 +182,9 @@ private bool _hasPausedRunSnapshot;
 
     private void HandleLevelComplete()
     {
+        // An aborted attempt can never complete; see HandleGameOver.
+        if (_attemptAbortInProgress) return;
+
         ClearPausedRunSnapshot();
         SetState(GameState.LevelComplete);
     }
@@ -135,6 +193,16 @@ private bool _hasPausedRunSnapshot;
     {
         if (newState == GameState.GameOver || newState == GameState.LevelComplete)
             _drawingSuppressed = false;
+
+        // Keeps the pause latches derived from state: leaving Paused by any route
+        // (StartGame after a teaching beat, defeat, completion, abort) releases both,
+        // so neither source can strand a latch and block the next PauseGame.
+        if (newState != GameState.Paused)
+        {
+            _userPauseActive = false;
+            _dialoguePauseActive = false;
+        }
+
         CurrentState = newState;
         DebugLogger.Log($"GameState -> {newState}");
     }

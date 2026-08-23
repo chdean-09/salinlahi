@@ -40,6 +40,14 @@ public class SceneLoader : Singleton<SceneLoader>
         _loadingCanvasGroup ??= CreateLoadingCanvas();
     }
 
+    /// <summary>
+    /// SALIN-141. True while a scene load is in flight, i.e. while <see cref="LoadScene"/>
+    /// declines new requests. Callers that do destructive work before asking for a load —
+    /// aborting the level attempt, for one — read this first so they never start a
+    /// sequence the load guard will refuse to finish.
+    /// </summary>
+    public bool IsLoading => _isLoading;
+
     // Unified internal entry point. Convenience wrappers below all funnel here
     // so the in-progress guard lives in exactly one place.
     public void LoadScene(string sceneName)
@@ -93,6 +101,40 @@ public class SceneLoader : Singleton<SceneLoader>
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
         SandboxMode.Deactivate();
 #endif
+        CleanupGameplayRun();
+        LoadScene(SCENE_LEVEL_SELECT);
+    }
+
+    /// <summary>
+    /// SALIN-141. Reloads the active level as a genuinely fresh attempt. Ordering is
+    /// load-bearing: the snapshot is discarded and the attempt aborted BEFORE the load
+    /// starts, so subscribers tear down while the gameplay objects still exist and
+    /// ProgressManager.OnSceneLoaded runs after the abort, not before it.
+    /// </summary>
+    public void RestartCurrentLevel()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        SandboxMode.Deactivate();
+#endif
+        // Without this, WaveManager.TryRestorePausedRun would resurrect the previous
+        // attempt's enemies and hearts into the restarted level.
+        GameManager.Instance?.DiscardPausedRunSnapshot();
+        GameManager.Instance?.AbortCurrentLevelAttempt();
+        CleanupGameplayRun();
+        LoadScene(SceneManager.GetActiveScene().name);
+    }
+
+    /// <summary>
+    /// SALIN-141. Leaves the current level for the level-select screen. The attempt is
+    /// aborted first so no incomplete word, memory, completion, or unlock is committed.
+    /// The paused-run snapshot is left alone here — leaving is resumable, restarting is not.
+    /// </summary>
+    public void LeaveToLevelSelect()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        SandboxMode.Deactivate();
+#endif
+        GameManager.Instance?.AbortCurrentLevelAttempt();
         CleanupGameplayRun();
         LoadScene(SCENE_LEVEL_SELECT);
     }
