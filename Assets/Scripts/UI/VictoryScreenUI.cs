@@ -66,6 +66,43 @@ public class VictoryScreenUI : MonoBehaviour
         DebugLogger.Log($"VictoryScreenUI: Level {currentLevel} complete with {stars} stars.");
     }
 
+    /// <summary>
+    /// SALIN-202: renders the learning-outcome summary on the victory panel. The
+    /// summary object is created at runtime when the scene does not author one,
+    /// mirroring the other no-Inspector-wiring fallbacks.
+    /// </summary>
+    public void ShowResultsSummary(string summaryText)
+    {
+        if (_panel == null || string.IsNullOrWhiteSpace(summaryText))
+            return;
+
+        Transform existing = _panel.transform.Find("[Runtime] ResultsSummary");
+        GameObject summaryObject;
+        if (existing != null)
+        {
+            summaryObject = existing.gameObject;
+        }
+        else
+        {
+            summaryObject = new GameObject("[Runtime] ResultsSummary", typeof(RectTransform));
+            summaryObject.transform.SetParent(_panel.transform, false);
+            RectTransform rect = summaryObject.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 0f);
+            rect.anchorMax = new Vector2(0.5f, 0f);
+            rect.pivot = new Vector2(0.5f, 0f);
+            rect.anchoredPosition = new Vector2(0f, 40f);
+            rect.sizeDelta = new Vector2(520f, 200f);
+        }
+
+        TextMeshProUGUI text = summaryObject.GetComponent<TextMeshProUGUI>();
+        if (text == null)
+            text = summaryObject.AddComponent<TextMeshProUGUI>();
+        text.fontSize = 24f;
+        text.alignment = TextAlignmentOptions.Center;
+        text.raycastTarget = false;
+        text.text = summaryText;
+    }
+
     private void OnNextLevelPressed()
     {
         AudioManager.Instance?.PlayMenuButtonClick();

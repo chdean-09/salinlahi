@@ -39,6 +39,17 @@ public class ProgressManager : Singleton<ProgressManager>
     private int _currentPlayingLevelId = -1;
     private CampaignProgressOutcome _cachedLevelOutcome;
     private LearningEvidenceRecorder _levelEvidence;
+    private LevelResults _pendingLevelResults;
+
+    /// <summary>
+    /// SALIN-202: the level flow computes LevelResults before committing; the
+    /// star calculation consults them so revised outcomes reflect learning
+    /// accuracy, not hearts alone. Cleared on scene change with the outcome cache.
+    /// </summary>
+    public void SetPendingLevelResults(LevelResults results)
+    {
+        _pendingLevelResults = results;
+    }
 
     protected override void Awake()
     {
@@ -108,6 +119,7 @@ public class ProgressManager : Singleton<ProgressManager>
     {
         EventBus.OnLevelComplete += HandleLevelComplete;
         EventBus.OnWaveStarted += HandleWaveStarted;
+        EventBus.OnPronunciationRequested += HandlePronunciationRequested;
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
@@ -115,7 +127,31 @@ public class ProgressManager : Singleton<ProgressManager>
     {
         EventBus.OnLevelComplete -= HandleLevelComplete;
         EventBus.OnWaveStarted -= HandleWaveStarted;
+        EventBus.OnPronunciationRequested -= HandlePronunciationRequested;
         SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    /// <summary>
+    /// SALIN-202: Sound-dimension evidence flows through this defined event — an
+    /// audible pronunciation records one exposure on the symbol. Exposure is not
+    /// recall, so the answer counts as visible.
+    /// </summary>
+    private void HandlePronunciationRequested(BaybayinCharacterSO character)
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        if (SandboxMode.IsActive)
+            return;
+#endif
+        if (character == null || character.pronunciationClip == null ||
+            string.IsNullOrEmpty(character.stableId))
+            return;
+
+        LevelEvidence.RecordAttempt(
+            character.stableId,
+            LearningContentKind.Symbol,
+            MasteryDimension.Sound,
+            success: true,
+            answerWasVisible: true);
     }
 
     /// <summary>
@@ -150,6 +186,7 @@ public class ProgressManager : Singleton<ProgressManager>
         _cachedHeartSystem = null;
         _cachedLevelOutcome = null;
         _levelEvidence = null;
+        _pendingLevelResults = null;
 
         if (scene.name.Contains("Gameplay") || scene.name.Contains("Game"))
         {
@@ -242,6 +279,12 @@ public class ProgressManager : Singleton<ProgressManager>
     /// </summary>
     private int CalculateStars()
     {
+        // SALIN-202: on revised saves the documented accuracy-aware formula wins
+        // when the flow computed results for this completion; the legacy
+        // PlayerPrefs path stays hearts-only.
+        if (UsesRevisedProgress && _pendingLevelResults != null)
+            return Mathf.Clamp(_pendingLevelResults.Stars, 1, MaxStars);
+
         // HeartSystem should have already registered via OnEnable
         HeartSystem heartSystem = _cachedHeartSystem;
 
