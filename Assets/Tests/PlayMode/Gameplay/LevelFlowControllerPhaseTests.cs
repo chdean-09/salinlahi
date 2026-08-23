@@ -527,6 +527,121 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         [UnityTest]
+        public IEnumerator FocusWordPreview_ReleasesDrawingBeforeThePreWaveBeats()
+        {
+            TestPhaseFlowController controller = BootstrapPreWaveBeatFlow();
+
+            yield return WaitFrames(5);
+            EventBus.RaiseDialogueComplete();
+            yield return WaitFrames(10);
+            Assert.AreEqual(LevelPhase.FocusWords, MachineOf(controller).Phase,
+                "Setup: the preview must be open before Continue.");
+            Assert.IsFalse(GameManager.Instance.AcceptsDrawingInput,
+                "Setup: drawing must be suppressed while the preview is up.");
+
+            FocusWordPreviewController preview =
+                Object.FindFirstObjectByType<FocusWordPreviewController>();
+            Assert.IsNotNull(preview, "Setup: the flow must provide the preview surface.");
+            preview.Continue();
+            yield return WaitFrames(15);
+
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "Setup: Continue must carry the flow into Defense.");
+            Assert.IsFalse(PreWaveBeatOf(controller).IsFinished,
+                "Setup: the pre-wave beat must still be holding the Defense executor.");
+            Assert.IsTrue(GameManager.Instance.AcceptsDrawingInput,
+                "Suppression must be released ahead of the pre-wave beats — a beat's "
+                + "StartGame() remedy cannot clear it, so a late release hard-locks the level.");
+        }
+
+        [UnityTest]
+        public IEnumerator AbortedPreWaveBeat_ReleasesDrawingSuppression()
+        {
+            TestPhaseFlowController controller = BootstrapPreWaveBeatFlow();
+
+            yield return WaitFrames(5);
+            EventBus.RaiseDialogueComplete();
+            yield return WaitFrames(10);
+            Assert.IsFalse(GameManager.Instance.AcceptsDrawingInput,
+                "Setup: drawing must be suppressed while the preview is up.");
+
+            FocusWordPreviewController preview =
+                Object.FindFirstObjectByType<FocusWordPreviewController>();
+            Assert.IsNotNull(preview, "Setup: the flow must provide the preview surface.");
+            preview.Continue();
+            yield return WaitFrames(15);
+            Assert.IsFalse(PreWaveBeatOf(controller).IsFinished,
+                "Setup: the pre-wave beat must be open before the exit.");
+
+            PreWaveBeatOf(controller).Exit();
+            yield return WaitFrames(15);
+
+            Assert.IsFalse(MachineOf(controller).IsTerminal,
+                "Setup: an aborted flow leaves the machine non-terminal, so terminal "
+                + "cleanup cannot be the thing that releases suppression.");
+            Assert.IsTrue(GameManager.Instance.AcceptsDrawingInput,
+                "An aborted flow must not strand drawing suppression on the persistent "
+                + "GameManager — it survives scene loads and kills drawing everywhere.");
+        }
+
+        [UnityTest]
+        public IEnumerator TeardownMidPreview_ReleasesDrawingSuppression()
+        {
+            DialogueController dialogue = CreateComponent<DialogueController>("DialogueController");
+            SetPrivateField(dialogue, "_overlayPanel", CreatePanel("DialogueOverlay"));
+            TestPhaseFlowController controller = BootstrapFlow(
+                ConfigureFocusWordLevel, out _, out _, out _, dialogue);
+
+            yield return WaitFrames(5);
+            // The intro dialogue parks GameManager in Paused, and the real controller
+            // lifts that pause itself before it raises the event (DialogueController:
+            // ExitDialoguePause then RaiseDialogueComplete). Faking only the event
+            // strands the fixture in Paused, where AcceptsDrawingInput is false whatever
+            // the suppression flag holds — every assertion below would then pass on the
+            // pause alone. The other release tests reach Defense, whose StartGame()
+            // restores Playing for them; this one is torn down before Defense opens.
+            GameManager.Instance.ExitDialoguePause();
+            EventBus.RaiseDialogueComplete();
+            yield return WaitFrames(10);
+            Assert.AreEqual(GameState.Playing, GameManager.Instance.CurrentState,
+                "Setup: only a Playing GameManager lets AcceptsDrawingInput report "
+                + "the suppression flag rather than the pause.");
+            Assert.AreEqual(LevelPhase.FocusWords, MachineOf(controller).Phase,
+                "Setup: the preview must be open.");
+            Assert.IsFalse(GameManager.Instance.AcceptsDrawingInput,
+                "Setup: drawing must be suppressed while the preview is up.");
+
+            Object.DestroyImmediate(controller.gameObject);
+            yield return WaitFrames(2);
+
+            Assert.IsTrue(GameManager.Instance.AcceptsDrawingInput,
+                "A scene unload mid-preview must release suppression: coroutines never "
+                + "run their finally blocks when the host is destroyed.");
+        }
+
+        private TestPhaseFlowController BootstrapPreWaveBeatFlow()
+        {
+            DialogueController dialogue = CreateComponent<DialogueController>("DialogueController");
+            SetPrivateField(dialogue, "_overlayPanel", CreatePanel("DialogueOverlay"));
+            return BootstrapFlow(
+                config =>
+                {
+                    ConfigureFocusWordLevel(config);
+                    ConfigureContextChallenge(config);
+                    // The prototype path runs the sequence as a pre-wave beat inside
+                    // the Defense executor instead of planning it as phase 6.
+                    config.challengePrototypeEnabled = true;
+                },
+                out _, out _, out _, dialogue);
+        }
+
+        private static ChallengeFlowController PreWaveBeatOf(LevelFlowController controller)
+        {
+            return GetPrivateField<ChallengeFlowController>(controller, "_challengeFlowController")
+                ?? throw new AssertionException("The flow has no pre-wave beat controller.");
+        }
+
+        [UnityTest]
         public IEnumerator AcceptedSave_PopulatesResultsAndRewardGrant()
         {
             LogAssert.Expect(LogType.Error, MissingWaveManagerError);

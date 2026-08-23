@@ -44,6 +44,7 @@ public class LevelFlowController : MonoBehaviour
     private bool _waitingForDialogue;
     private bool _waitingForCutscene;
     private bool _flowAborted;
+    private bool _drawingSuppressedByFlow;
     private bool _runtimeBootstrapped;
     private LevelFlowMachine _machine;
 
@@ -139,6 +140,14 @@ public class LevelFlowController : MonoBehaviour
             s_activeFlow = null;
     }
 
+    private void OnDestroy()
+    {
+        // A destroyed host never runs its coroutines' finally blocks, so a scene
+        // unload during the preview would strand the suppression on the persistent
+        // GameManager.
+        ReleaseDrawingSuppression();
+    }
+
     private IEnumerator Start()
     {
         if (_runtimeBootstrapped)
@@ -186,7 +195,12 @@ public class LevelFlowController : MonoBehaviour
             yield return ExecutePhase(phase);
 
             if (_flowAborted)
+            {
+                // An aborted flow leaves the machine non-terminal, so the terminal
+                // cleanup never runs: no exit from here may hold suppression.
+                ReleaseDrawingSuppression();
                 yield break;
+            }
 
             // A stub executor finished without reporting: advance so the flow
             // cannot deadlock on a phase that has no surface yet.
@@ -266,8 +280,8 @@ public class LevelFlowController : MonoBehaviour
             yield break;
 
         // Both words and their decompositions must be readable BEFORE drawing
-        // begins; the Defense executor releases this exactly once at wave start.
-        GameManager.Instance?.SuppressDrawingInput(true);
+        // begins; the Defense executor releases this exactly once as it opens.
+        SuppressDrawingForPreview();
 
         if (_focusWordPreview == null)
         {
@@ -287,6 +301,11 @@ public class LevelFlowController : MonoBehaviour
     {
         if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
             GameManager.Instance.StartGame();
+
+        // Drawing input opens as the defense sequence begins (SALIN-138), ahead of
+        // the pre-wave beats: those beats own their own suppression via try/finally
+        // and their StartGame() remedy cannot clear the preview's flag.
+        ReleaseDrawingSuppression();
 
         // Legacy pre-wave beats stay inside the Defense executor so unauthored
         // levels behave exactly as before the phase machine existed.
@@ -325,10 +344,6 @@ public class LevelFlowController : MonoBehaviour
         // AC-3: Start waves — no isBossLevel branching; WaveManager handles it internally
         if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
             GameManager.Instance.StartGame();
-
-        // Drawing input opens exactly once, when the defense sequence begins
-        // (SALIN-138). Idempotent for levels that never suppressed it.
-        GameManager.Instance?.SuppressDrawingInput(false);
 
         if (_waveManager != null)
             _waveManager.StartLevel();
@@ -487,8 +502,28 @@ public class LevelFlowController : MonoBehaviour
             // A defeat or exit must never leave drawing suppressed for the
             // terminal screens (GameManager also clears it on its own terminal
             // states; this covers Exited).
+            _drawingSuppressedByFlow = false;
             GameManager.Instance?.SuppressDrawingInput(false);
         }
+    }
+
+    private void SuppressDrawingForPreview()
+    {
+        _drawingSuppressedByFlow = true;
+        GameManager.Instance?.SuppressDrawingInput(true);
+    }
+
+    /// <summary>
+    /// Releases the preview's drawing suppression, and only that: a flow that never
+    /// suppressed cannot stomp a beat or cutscene that currently owns the flag.
+    /// </summary>
+    private void ReleaseDrawingSuppression()
+    {
+        if (!_drawingSuppressedByFlow)
+            return;
+
+        _drawingSuppressedByFlow = false;
+        GameManager.Instance?.SuppressDrawingInput(false);
     }
 
     private void EnsureRuntimeReferences(WaveSpawner waveSpawner, EnemyDataSO fallbackEnemyData)
