@@ -282,7 +282,12 @@ public class BossController : MonoBehaviour
         _state = State.Defeated;
         _stateRoutine = null;  // Clear before ReturnToPool triggers OnDisable
         EventBus.RaiseBossDefeated();
-        EventBus.RaiseLevelComplete();
+        // SALIN-178: defense systems report defense completion only; the flow
+        // machine owns OnLevelComplete. Sandbox/legacy scenes keep the direct raise.
+        if (LevelFlowController.RoutesDefenseCompletion)
+            EventBus.RaiseDefenseComplete();
+        else
+            EventBus.RaiseLevelComplete();
 
         if (bossEnemy != null)
             bossEnemy.ReturnToPool();

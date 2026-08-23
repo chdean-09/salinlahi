@@ -623,7 +623,13 @@ public class WaveManager : MonoBehaviour
 
     private void RaiseLevelCompleted()
     {
-        EventBus.RaiseLevelComplete();
+        // SALIN-178: defense systems report defense completion only. The level-flow
+        // machine converts an accepted atomic save into OnLevelComplete. Scenes with
+        // no running flow machine (sandbox, legacy tests) keep the direct raise.
+        if (LevelFlowController.RoutesDefenseCompletion)
+            EventBus.RaiseDefenseComplete();
+        else
+            EventBus.RaiseLevelComplete();
     }
 
     private void AbortRun()

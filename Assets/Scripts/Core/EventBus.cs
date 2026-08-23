@@ -16,6 +16,10 @@ public static class EventBus
     // -- Game State Events --
     public static event Action OnGameOver;
     public static event Action OnLevelComplete;
+    // Defense systems report defense completion only (SALIN-178). The level-flow
+    // machine converts an accepted atomic save into OnLevelComplete; defense
+    // systems can never mark a level complete or write campaign rewards.
+    public static event Action OnDefenseComplete;
     public static event Action<int> OnWaveStarted; // int = wave index
     public static event Action<int> OnWaveCleared; // int = wave index
 
@@ -92,6 +96,7 @@ public static class EventBus
     public static void RaiseBaseDamageApplied(int amount) => OnBaseDamageApplied?.Invoke(amount);
     public static void RaiseGameOver() => OnGameOver?.Invoke();
     public static void RaiseLevelComplete() => OnLevelComplete?.Invoke();
+    public static void RaiseDefenseComplete() => OnDefenseComplete?.Invoke();
     public static void RaiseWaveStarted(int index) => OnWaveStarted?.Invoke(index);
     public static void RaiseWaveCleared(int index) => OnWaveCleared?.Invoke(index);
     public static void RaiseCharacterRecognized(string id) => OnCharacterRecognized?.Invoke(id);
