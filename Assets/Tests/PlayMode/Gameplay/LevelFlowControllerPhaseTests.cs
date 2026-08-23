@@ -367,7 +367,10 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         [UnityTest]
         public IEnumerator SymbolLearning_ActiveCardAnnouncesOnce_AndReplayReRaisesOnDemand()
         {
-            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            // No MissingWaveManagerError expectation here: unlike its sibling above,
+            // this case deliberately ends while card 2 of 2 is still up, so the flow
+            // never enters Defense and never reaches the WaveManager handoff that
+            // logs it. The closing phase assertion pins that down.
             DialogueController dialogue = CreateComponent<DialogueController>("DialogueController");
             SetPrivateField(dialogue, "_overlayPanel", CreatePanel("DialogueOverlay"));
             TestPhaseFlowController controller = BootstrapFlow(
@@ -421,6 +424,16 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Assert.AreEqual("value.test-ei", lastSpokenValueId);
             Assert.IsNotNull(lastSymbol);
             Assert.AreEqual("symbol.test-ei", lastSymbol.stableId);
+
+            yield return WaitFrames(3);
+
+            Assert.AreEqual(1, cards.CurrentCardIndex,
+                "Replaying audio must not advance the deck.");
+            Assert.AreEqual(2, spokenRaises,
+                "Replay must announce once per press, not re-announce on later frames.");
+            Assert.AreEqual(LevelPhase.SymbolLearning, MachineOf(controller).Phase,
+                "The flow must still be holding on card 2 — it never reaches Defense, "
+                + "which is why no WaveManager-missing error is expected here.");
         }
 
         private System.Action<BaybayinCharacterSO, string> _spokenPronunciationProbe;
