@@ -18,15 +18,10 @@ namespace Salinlahi.Tests.Editor.Data
     [TestFixture]
     public sealed class RevisedCampaignAssetTests
     {
-        private static readonly string[] DeferredMediaCodes =
-        {
-            ContentValidationCode.RequiredMediaMissing,
-            ContentValidationCode.RequiredReferenceMissing,
-        };
-
         private static CampaignConfigSO LoadCampaign()
         {
             RevisedCampaignBootstrap.Run();
+            Level1NarrativeBootstrap.Run();
             return AssetDatabase.LoadAssetAtPath<CampaignConfigSO>(
                 RevisedCampaignBootstrap.CampaignAssetPath);
         }
@@ -49,11 +44,11 @@ namespace Salinlahi.Tests.Editor.Data
 
         private static bool IsDeferredMediaIssue(ContentValidationIssue issue)
         {
-            return DeferredMediaCodes.Contains(issue.Code)
-                && (issue.Path.Contains(".media")
-                    || issue.Path.Contains(".contextMedia")
-                    || issue.Path.Contains(".storyReference")
-                    || issue.Path.Contains(".memoryReference"));
+            // After SALIN-200, the only deferred Level-1 media are the context
+            // image and narration audio — SALIN-199's manifest scope. Dialogue,
+            // cutscene, and era story/memory references must all resolve.
+            return issue.Code == ContentValidationCode.RequiredMediaMissing
+                && (issue.Path.Contains(".media") || issue.Path.Contains(".contextMedia"));
         }
 
         [Test]
@@ -155,6 +150,35 @@ namespace Salinlahi.Tests.Editor.Data
                 Assert.AreEqual("level.ugat.01", symbol.firstIntroductionLevelId,
                     $"{symbolId} is introduced by Level 1.");
             }
+        }
+
+        [Test]
+        public void LevelOne_NarrativeReferencesResolve()
+        {
+            CampaignConfigSO campaign = LoadCampaign();
+            Assert.IsNotNull(campaign);
+
+            Assert.IsTrue(campaign.TryGetLevel("level.ugat.01", out LevelConfigSO level));
+            Assert.IsNotNull(level.introDialogue, "Level 1 must open with its intro dialogue.");
+            Assert.IsNotEmpty(level.introDialogue.lines);
+            Assert.IsNotNull(level.outroDialogue, "Level 1 must close with its completion dialogue.");
+
+            foreach (FocusWordDefinition focus in level.focusWords)
+            {
+                Assert.IsNotNull(focus.media?.dialogue,
+                    $"{focus.stableId} needs its explanation dialogue.");
+                Assert.IsNotEmpty(focus.media.dialogue.lines);
+                Assert.IsNotNull(focus.media.cutscene,
+                    $"{focus.stableId} needs its memory cutscene reference.");
+            }
+
+            Assert.IsNotNull(level.contextMedia?.dialogue);
+            Assert.IsNotNull(level.contextMedia?.cutscene);
+
+            Assert.IsTrue(campaign.TryGetEra("era.ugat", out EraConfigSO era));
+            Assert.IsNotNull(era.storyReference, "The Ugat era needs its story reference.");
+            Assert.IsNotNull(era.memoryReference, "The Ugat era needs its memory cutscene.");
+            Assert.IsNotEmpty(era.memoryReference.panels);
         }
 
         [Test]
