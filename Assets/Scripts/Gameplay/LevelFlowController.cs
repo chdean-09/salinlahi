@@ -673,6 +673,11 @@ public class LevelFlowController : MonoBehaviour
     // AC-4: Game over → defeat screen directly (no outro)
     private void HandleGameOver()
     {
+        // Once the outcome is owned — AtomicSave entered on the machine path, or
+        // the legacy path already routed — a late game over can never reopen defeat
+        // on top of a saved level.
+        if (_levelEnded) return;
+
         if (_machine != null)
         {
             // Legal from every non-terminal phase; the driver loop unwinds on the
@@ -682,7 +687,6 @@ public class LevelFlowController : MonoBehaviour
             return;
         }
 
-        if (_levelEnded) return;
         _levelEnded = true;
         ShowDefeatScreen();
     }

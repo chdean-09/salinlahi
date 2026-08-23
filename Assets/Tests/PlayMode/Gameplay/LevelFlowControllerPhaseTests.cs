@@ -201,6 +201,74 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         [UnityTest]
+        public IEnumerator GameOver_DuringBlockedSave_IsIgnoredAndRetryStillCompletes()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapLegacyFlow(
+                out GameObject victoryPanel, out GameObject failureOverlay, out GameObject defeatPanel);
+            controller.NextResult = CampaignOutcomeCommitResult.PendingRetry(
+                null, CampaignSaveFailureCode.IoFailure, "journal-pending");
+            controller.RetryResult = CampaignOutcomeCommitResult.Committed(null);
+
+            yield return WaitFrames(10);
+            EventBus.RaiseDefenseComplete();
+            yield return WaitFrames(10);
+            Assert.AreEqual(LevelPhase.AtomicSave, MachineOf(controller).Phase,
+                "Setup: the flow must be holding the atomic-save retry gate.");
+
+            EventBus.RaiseGameOver();
+            yield return WaitFrames(5);
+
+            Assert.IsFalse(defeatPanel.activeSelf,
+                "A game over raised at the save gate must not open the defeat screen.");
+            Assert.AreEqual(LevelPhase.AtomicSave, MachineOf(controller).Phase);
+
+            ClickRetryButton(failureOverlay);
+            yield return WaitFrames(10);
+
+            Assert.IsTrue(victoryPanel.activeSelf,
+                "The level must still complete after the ignored defeat.");
+            Assert.IsFalse(defeatPanel.activeSelf);
+            Assert.AreEqual(LevelPhase.Completed, MachineOf(controller).Phase);
+        }
+
+        [UnityTest]
+        public IEnumerator GameOver_DuringOutro_IsIgnoredAndVictoryStillShows()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            DialogueController dialogue = CreateComponent<DialogueController>("DialogueController");
+            SetPrivateField(dialogue, "_overlayPanel", CreatePanel("DialogueOverlay"));
+
+            TestPhaseFlowController controller = BootstrapFlow(
+                ConfigureOutroDialogue, out GameObject victoryPanel, out _,
+                out GameObject defeatPanel, dialogue);
+
+            yield return WaitFrames(10);
+            EventBus.RaiseDefenseComplete();
+            yield return WaitFrames(10);
+            Assert.AreEqual(LevelPhase.Results, MachineOf(controller).Phase,
+                "Setup: the flow must be waiting on the outro inside Results.");
+
+            EventBus.RaiseGameOver();
+            yield return WaitFrames(5);
+
+            Assert.IsFalse(defeatPanel.activeSelf,
+                "A straggler kill during the outro must not open the defeat screen on a saved level.");
+            Assert.IsFalse(victoryPanel.activeSelf,
+                "The ignored defeat must not release the outro wait early either.");
+            Assert.AreEqual(LevelPhase.Results, MachineOf(controller).Phase);
+
+            EventBus.RaiseDialogueComplete();
+            yield return WaitFrames(5);
+
+            Assert.IsTrue(victoryPanel.activeSelf);
+            Assert.IsFalse(defeatPanel.activeSelf,
+                "Victory and defeat panels must never be up together.");
+            Assert.AreEqual(1, controller.CommitCalls);
+            Assert.AreEqual(LevelPhase.Completed, MachineOf(controller).Phase);
+        }
+
+        [UnityTest]
         public IEnumerator FullPlanConfig_AutoCompletesStubPhasesToDefense()
         {
             LogAssert.Expect(LogType.Error, MissingWaveManagerError);
@@ -254,6 +322,36 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
 
             Assert.AreEqual(1, controller.CommitCalls,
                 "WaveManager completion must route through DefenseComplete into the atomic save.");
+            Assert.IsTrue(victoryPanel.activeSelf);
+        }
+
+        [UnityTest]
+        public IEnumerator NoRunningMachine_WaveManagerCompletion_KeepsTheLegacyLevelCompleteRaise()
+        {
+            // Same bare-scene config-resolution noise as the routed case above; the
+            // branch taken, not the log count, is the subject under test.
+            LogAssert.ignoreFailingMessages = true;
+            GameManager gameManager = CreateComponent<GameManager>("GameManager");
+            SetSingletonInstance(gameManager);
+
+            VictoryScreenUI victory = CreateComponent<VictoryScreenUI>("VictoryScreen");
+            GameObject victoryPanel = CreatePanel("VictoryPanel");
+            SetPrivateField(victory, "_panel", victoryPanel);
+
+            TestPhaseFlowController controller =
+                CreateComponent<TestPhaseFlowController>("LevelFlowController");
+            SetPrivateField(controller, "_victoryScreen", victory);
+
+            WaveManager waveManager = CreateComponent<WaveManager>("WaveManager");
+            yield return WaitFrames(5);
+            Assert.IsFalse(LevelFlowController.RoutesDefenseCompletion,
+                "Setup: a controller with no running flow must not claim defense routing.");
+
+            InvokePrivate(waveManager, "CompleteRun");
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(1, controller.CommitCalls,
+                "With no machine the legacy OnLevelComplete path still owns completion.");
             Assert.IsTrue(victoryPanel.activeSelf);
         }
 
@@ -317,6 +415,14 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             dialogue.lines = new[] { new DialogueLine { speakerName = "Test", text = "Line" } };
             _objectsToDestroy.Add(dialogue);
             config.introDialogue = dialogue;
+        }
+
+        private void ConfigureOutroDialogue(LevelConfigSO config)
+        {
+            DialogueSO dialogue = ScriptableObject.CreateInstance<DialogueSO>();
+            dialogue.lines = new[] { new DialogueLine { speakerName = "Test", text = "Line" } };
+            _objectsToDestroy.Add(dialogue);
+            config.outroDialogue = dialogue;
         }
 
         private CampaignOutcomeSaveFailurePanel CreateFailurePanel(out GameObject overlay)
