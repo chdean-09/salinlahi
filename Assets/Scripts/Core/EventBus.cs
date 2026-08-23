@@ -88,6 +88,13 @@ public static class EventBus
     // Demo-only restore: refills the heart that the demo hit emptied, with a visible pulse.
     public static event Action OnTutorialBaseRestoreDemo;
 
+    // -- Learning Events --
+    // SALIN-157: spoken-value-aware pronunciation. AudioManager resolves the clip
+    // per the requirement's spokenValueId so E/I, O/U, and DA/RA follow the
+    // approved level context. The legacy OnPronunciationRequested event above is
+    // untouched and keeps playing the character-level clip for existing callers.
+    public static event Action<BaybayinCharacterSO, string> OnSpokenPronunciationRequested;
+
     // -- Raisers --
     public static void RaiseEnemyDefeated(BaybayinCharacterSO c) => OnEnemyDefeated?.Invoke(c);
     public static void RaiseEnemyDiscovered(EnemyDataSO data, Enemy enemy) => OnEnemyDiscovered?.Invoke(data, enemy);
@@ -136,4 +143,6 @@ public static class EventBus
     public static void RaiseCharacterUnlocked(BaybayinCharacterSO c) => OnCharacterUnlocked?.Invoke(c);
     public static void RaiseTutorialBaseHitDemo(int damage = 1) => OnTutorialBaseHitDemo?.Invoke(damage);
     public static void RaiseTutorialBaseRestoreDemo() => OnTutorialBaseRestoreDemo?.Invoke();
+    public static void RaiseSpokenPronunciationRequested(BaybayinCharacterSO character, string spokenValueId)
+        => OnSpokenPronunciationRequested?.Invoke(character, spokenValueId);
 }
