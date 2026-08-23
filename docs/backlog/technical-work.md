@@ -2,6 +2,15 @@
 
 Spike and technical-work specifications for the Salinlahi campaign.
 
+**Related references**
+
+- **Authoritative tracker:** the SALIN Jira project (epics SALIN-126–132). Each `TW-*`
+  planning ID appears in its ticket's description (for example `TW-TASK-011` → SALIN-180).
+- **Per-ticket specs and plans:** `docs/salin-166-spec.md`, `docs/salin-180-spec.md`,
+  `docs/salin-180-plan.md`, and successors under `docs/`.
+- **Legacy ticket dispositions:** [legacy-traceability.md](legacy-traceability.md)
+  (SALIN-187 / TW-CHORE-003).
+
 ---
 
 ## TW-SPK-003 — Validate the three Paglimot mastery encounters

@@ -28,6 +28,7 @@ public static class ContentValidationCode
     public const string SpokenValueUnknown = "SPOKEN_VALUE_UNKNOWN";
     public const string DaraVisualIdentityInvalid = "DARA_VISUAL_IDENTITY_INVALID";
     public const string FocusDecompositionEmpty = "FOCUS_DECOMPOSITION_EMPTY";
+    public const string FocusMeaningMissing = "FOCUS_MEANING_MISSING";
     public const string FocusDecompositionInvalid = "FOCUS_DECOMPOSITION_INVALID";
     public const string KudlitUnsupported = "KUDLIT_UNSUPPORTED";
     public const string CumulativePoolInvalid = "CUMULATIVE_POOL_INVALID";
@@ -37,6 +38,7 @@ public static class ContentValidationCode
     public const string RequiredReferenceMissing = "REQUIRED_REFERENCE_MISSING";
     public const string LegacyEraIdentityActive = "LEGACY_ERA_IDENTITY_ACTIVE";
     public const string TuningInvalid = "TUNING_INVALID";
+    public const string LearningTuningMissing = "LEARNING_TUNING_MISSING";
     public const string RequirementInvalid = "REQUIREMENT_INVALID";
     public const string ChallengeSequenceMissing = "CHALLENGE_SEQUENCE_MISSING";
     public const string ChallengeSequenceInvalid = "CHALLENGE_SEQUENCE_INVALID";

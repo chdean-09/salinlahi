@@ -20,6 +20,7 @@ public static class CampaignConfigValidator
 
             ValidateManifest(campaign, issues);
             ValidateTuning(campaign, issues);
+            ValidateLearningTuning(campaign, issues);
             ValidateEraTopology(campaign, issues);
             ValidateSymbolCatalog(campaign, issues);
             ValidateLevelTopology(campaign, issues);
@@ -75,6 +76,18 @@ public static class CampaignConfigValidator
         {
             AddError(issues, ContentValidationCode.TuningInvalid, CampaignPath + ".tuning.defaultShrineHearts",
                 "Default shrine hearts must be greater than zero.", campaign);
+        }
+    }
+
+    private static void ValidateLearningTuning(
+        CampaignConfigSO campaign,
+        List<ContentValidationIssue> issues)
+    {
+        if (campaign.learningTuning == null)
+        {
+            AddError(issues, ContentValidationCode.LearningTuningMissing,
+                CampaignPath + ".learningTuning",
+                "The campaign has no learning tuning asset assigned.", campaign);
         }
     }
 
@@ -394,6 +407,12 @@ public static class CampaignConfigValidator
             {
                 AddError(issues, ContentValidationCode.FocusDecompositionInvalid, focusPath + ".stableId",
                     "Focus stable ID must match its inline slot.", level);
+            }
+
+            if (string.IsNullOrWhiteSpace(focus.meaning))
+            {
+                AddError(issues, ContentValidationCode.FocusMeaningMissing, focusPath + ".meaning",
+                    $"Focus word '{focus.stableId}' has no meaning.", level);
             }
 
             ValidateMedia(focus.media, focusPath + ".media", level, issues);

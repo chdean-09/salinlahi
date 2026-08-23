@@ -48,6 +48,11 @@ public sealed class FocusWordDefinition
     public string stableId;
     public string latinSpelling;
     public string displayLabel;
+
+    [Tooltip("Approved plain-language meaning of the whole word. Required. Authored by SALIN-172 " +
+             "against the SALIN-167/SALIN-188 matrix; the Meaning mastery dimension matches on this.")]
+    public string meaning;
+
     public List<SymbolValueReference> decomposition = new();
     public ContentMediaReferences media = new();
 }

@@ -24,11 +24,17 @@ public class SettingsPanel : MonoBehaviour
     [SerializeField] private Color _modalBackdropColor = new(0.02f, 0.03f, 0.06f, 0.94f);
     [SerializeField] private Sprite _sliderFallbackSprite;
 
+    [Header("Journey Reset")]
+    [SerializeField] private bool _allowJourneyReset = false;
+    [SerializeField] private Button _journeyResetButton;
+    [SerializeField] private ResetJourneyConfirmationPanel _resetConfirmationPanel;
+
     private static readonly Color TrackColor = new(0.2f, 0.23f, 0.3f, 1f);
     private static readonly Color FillColor = new(0.08f, 0.56f, 1f, 1f);
     private static readonly Color HandleColor = new(0.95f, 0.98f, 1f, 1f);
     private static readonly Color LabelColor = new(1f, 1f, 1f, 1f);
     private static readonly Color CardColor = new(0.07f, 0.1f, 0.17f, 1f);
+    private static readonly Color JourneyResetButtonColor = new(0.72f, 0.18f, 0.15f, 1f);
     private static readonly Color MainMenuButtonTextColor = new(0.7019608f, 0.5019608f, 0.07450981f, 1f);
     private static readonly Color MainMenuTextShadowColor = new(0.06f, 0.035f, 0.01f, 1f);
     private static readonly Vector2 MainMenuTextShadowOffset = new(5f, -5f);
@@ -63,6 +69,7 @@ public class SettingsPanel : MonoBehaviour
         ResolveLabelReferencesIfMissing();
         EnsureSliderVisuals();
         EnsureCardLayout();
+        EnsureJourneyResetButton();
         SyncSlidersToAudioManager();
         UpdateVolumeLabels();
         SetSlidersInteractable(true);
@@ -71,6 +78,7 @@ public class SettingsPanel : MonoBehaviour
         if (_bgmSlider != null) _bgmSlider.onValueChanged.AddListener(OnBgmChanged);
         if (_sfxSlider != null) _sfxSlider.onValueChanged.AddListener(OnSfxChanged);
         if (_closeButton != null) _closeButton.onClick.AddListener(Hide);
+        if (_journeyResetButton != null) _journeyResetButton.onClick.AddListener(OnJourneyResetPressed);
         Opened?.Invoke();
     }
 
@@ -82,6 +90,7 @@ public class SettingsPanel : MonoBehaviour
         if (_bgmSlider != null) _bgmSlider.onValueChanged.RemoveListener(OnBgmChanged);
         if (_sfxSlider != null) _sfxSlider.onValueChanged.RemoveListener(OnSfxChanged);
         if (_closeButton != null) _closeButton.onClick.RemoveListener(Hide);
+        if (_journeyResetButton != null) _journeyResetButton.onClick.RemoveListener(OnJourneyResetPressed);
         Closed?.Invoke();
     }
 
@@ -94,6 +103,91 @@ public class SettingsPanel : MonoBehaviour
     {
         AudioManager.Instance?.PlayMenuExitButtonClick();
         gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Called by the main-menu context before Show(). The pause-menu instance never
+    /// calls this, so Reset Journey stays unavailable mid-level (SALIN-142).
+    /// </summary>
+    public void EnableJourneyReset()
+    {
+        _allowJourneyReset = true;
+    }
+
+    private bool IsJourneyResetAvailable()
+    {
+        return _allowJourneyReset && SaveManager.Instance != null &&
+            ProgressManager.Instance != null && SceneLoader.Instance != null &&
+            ResetJourneyFlow.CanOfferReset(SaveManager.Instance.Mode);
+    }
+
+    private void EnsureJourneyResetButton()
+    {
+        if (!IsJourneyResetAvailable())
+        {
+            if (_journeyResetButton != null)
+                _journeyResetButton.gameObject.SetActive(false);
+            return;
+        }
+
+        if (_journeyResetButton == null)
+            _journeyResetButton = BuildJourneyResetButton();
+        _journeyResetButton.gameObject.SetActive(true);
+    }
+
+    private Button BuildJourneyResetButton()
+    {
+        GameObject buttonObject = new("JourneyResetButton_Runtime",
+            typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+        buttonObject.transform.SetParent(transform, false);
+        Image image = buttonObject.GetComponent<Image>();
+        image.color = JourneyResetButtonColor;
+
+        RectTransform rect = buttonObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.2f, 0.17f);
+        rect.anchorMax = new Vector2(0.8f, 0.25f);
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        GameObject labelObject = new("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+        labelObject.transform.SetParent(buttonObject.transform, false);
+        RectTransform labelRect = labelObject.GetComponent<RectTransform>();
+        labelRect.anchorMin = Vector2.zero;
+        labelRect.anchorMax = Vector2.one;
+        labelRect.offsetMin = Vector2.zero;
+        labelRect.offsetMax = Vector2.zero;
+        TextMeshProUGUI label = labelObject.GetComponent<TextMeshProUGUI>();
+        label.text = ResetJourneyFlow.ConfirmButtonLabel;
+        label.fontSize = CloseButtonMinFontSize;
+        label.alignment = TextAlignmentOptions.Center;
+        label.color = Color.white;
+        label.raycastTarget = false;
+        EnsureTextShadow(labelObject);
+
+        return buttonObject.GetComponent<Button>();
+    }
+
+    private void OnJourneyResetPressed()
+    {
+        AudioManager.Instance?.PlayMenuButtonClick();
+        EnsureResetConfirmationPanel();
+        _resetConfirmationPanel.Present(
+            ResetJourneyFlow.Execute,
+            () => SceneLoader.Instance?.LoadMainMenu());
+    }
+
+    private void EnsureResetConfirmationPanel()
+    {
+        if (_resetConfirmationPanel != null)
+            return;
+        GameObject panelObject = new("ResetJourneyConfirmationPanel", typeof(RectTransform));
+        panelObject.transform.SetParent(transform, false);
+        RectTransform rect = panelObject.GetComponent<RectTransform>();
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+        _resetConfirmationPanel = panelObject.AddComponent<ResetJourneyConfirmationPanel>();
     }
 
     private void SyncSlidersToAudioManager()

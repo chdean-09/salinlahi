@@ -4,9 +4,9 @@ A 2D Pixel Art Defense Game
 
 **TECHNICAL DESIGN DOCUMENT**
 
-Version 1.4 | August 13, 2026
+Version 1.5 | August 17, 2026
 
-Updated: 2026-08-13
+Updated: 2026-08-17
 
 **Engine: **Unity 6 LTS | URP 2D | C#
 
@@ -131,11 +131,35 @@ remain in place so legacy assets continue to deserialize. The schema exposes sav
 compatibility metadata but does not implement save migration; that is SALIN-171 work.
 Production campaign authoring remains SALIN-172 work.
 
+SALIN-174 adds the completion transaction boundary: the `LevelFlowController` asks
+`ProgressManager` for one immutable outcome, `CampaignOutcomeCoordinator` journals and validates
+it, and the existing campaign publisher commits the monotonic merge with backup rollback. Save
+schema v2 carries a journey generation and receipt ledger. Startup recovers and replays pending
+outcomes before `RevisedReady`; Victory is gated on `Committed` or `AlreadyCommitted`, while the
+retry/Main Menu panel preserves a valid pending journal.
+
+SALIN-175 makes learning evidence first-class save data on that same boundary. Save schema v3 adds
+per-dimension mastery records for symbols and words, and `CampaignSaveMigrator.TryUpgradeToCurrent`
+replaces the single-step v1 upgrade with a range-guarded chain so every save the shipped build has
+written upgrades rather than being discarded. Outcome schema v2 adds a `sessionKind` and an evidence
+batch to `CampaignProgressOutcome`, so a practice or review session commits through the identical
+journal, publication, and verification path a level completion uses -- there is no second write path
+for learning data.
+
+The coordinator dispatches on `sessionKind`: only a `LevelAttempt` reaches level progression, while
+evidence is applied for every kind. Combined with a validator that rejects any non-level outcome
+carrying stars or unlocks, practice is *structurally* unable to alter level completion rather than
+merely conventionally discouraged. Mastery rules live in pure functions -- `MasteryEvaluator`,
+`ReviewScheduler`, `PracticePriority` -- with no Unity, I/O, or EventBus dependency, and persistence
+access is confined to `LearningProgressRepository`, whose `LearningStateSnapshot` is the read-only
+surface consumers query.
+
 *Figure 6. ScriptableObject data architecture*
 
 | **Asset Type** | **Defines** |
 | --- | --- |
-| CampaignConfigSO | Revised campaign root: manifest, tuning, canonical symbols, and ordered eras. |
+| CampaignConfigSO | Revised campaign root: manifest, tuning, learning tuning, canonical symbols, and ordered eras. |
+| LearningTuningSO | Mastery thresholds, review offsets, and suggested-practice priority weights. Required on the revised path. |
 | CampaignIdentityManifest | `campaign.revised-v1`, content/save schema versions, supported source schemas, migration metadata, readable save range, and starting level ID. |
 | EraConfigSO | Legacy presentation fields plus stable era ID/order, story/memory references, and five ordered levels. |
 | LevelConfigSO | Legacy wave/roster data plus stable ID, era-local order, two inline focus words, cumulative symbol pool, requirements, clue/defense rules, media, rewards, mastery, final restoration value, and optional `challengePrototypeEnabled` / `challengeSequence` authoring-validation references. |
@@ -205,5 +229,7 @@ Both Salinlahi Lite and Salinlahi Full are built from the same Unity codebase. A
 | v1.3 (Updated 2026-08-13) | Integrates SALIN-168 challenge-sequence authoring into SALIN-170 campaign validation through an opt-in, non-mutating delegation boundary. |
 
 | v1.4 (Updated 2026-08-13) | Adds SALIN-171 validated atomic campaign JSON persistence, immutable legacy archive migration, recovery precedence, and SaveManager activation modes. |
+| v1.5 (Updated 2026-08-17) | Adds SALIN-174 checksummed outcome journaling, schema-v2 migration, monotonic receipt replay, rollback verification, reset-generation invalidation, and the explicit Victory/save-failure gate. |
+| v1.6 (Updated 2026-08-18) | Adds SALIN-175 unified learning data: save schema v3 mastery records, outcome schema v2 with session kind and evidence batch, chained save migration, session-kind dispatch that keeps practice out of level progression, the pure mastery/review/priority layer, and the read-only LearningState snapshot surface. |
 
 *This document is a living reference. Update it whenever a system**'**s design changes. Track every change in the changelog above.*

@@ -1,7 +1,7 @@
 # 05 — Data Contracts and ScriptableObjects
 **Project:** Salinlahi
-**Version:** 2.7
-**Date:** 2026-08-13
+**Version:** 2.9
+**Date:** 2026-08-18
 **Owner:** Chad Andrada (Product Owner / Designer)
 
 ---
@@ -230,6 +230,18 @@ Defined at the bottom of `EnemyDataSO.cs`:
 [EVIDENCE: Assets/Scripts/Data/LevelConfigSO.cs]
 [EVIDENCE: docs/capstone/TDD.md, §5 Data Layer — LevelConfigSO row]
 [EVIDENCE: docs/capstone/Salinlahi.md, §3.4 Business Model — Lite = levels 1–3]
+
+---
+
+### 2.3.1 `FocusWordDefinition.meaning`
+
+Each inline focus word carries a required `meaning` — the approved plain-language meaning of the
+whole word. The word `Meaning` mastery dimension matches on this field, so it is unimplementable
+without it. A blank or whitespace-only value raises `FOCUS_MEANING_MISSING`. Copy is authored by
+SALIN-172 against the SALIN-167/SALIN-188 matrix.
+
+[EVIDENCE: Assets/Scripts/Data/Campaign/FocusWordDefinition.cs]
+[EVIDENCE: Assets/Scripts/Data/Validation/CampaignConfigValidator.cs, ValidateFocusWords]
 
 ---
 
@@ -558,6 +570,68 @@ Holds an ordered list of `BossTutorialPage` structs displayed to the player befo
 
 ---
 
+### 2.15 `LearningTuningSO`
+
+**Menu path:** `Salinlahi/Learning Tuning`
+**File:** `Assets/Scripts/Data/Learning/LearningTuningSO.cs`
+**Asset folder:** `Assets/ScriptableObjects/`
+
+Referenced from `CampaignConfigSO.learningTuning`. Required on the revised path — a campaign with no
+tuning asset fails validation with `LEARNING_TUNING_MISSING`. Hanging tuning off the campaign root
+makes it reachable everywhere the campaign already is, without widening a constructor.
+
+| Field | Type | Header | Required | Invariants |
+|-------|------|--------|----------|------------|
+| `immediateSuccessesForPracticed` | `int` | Mastery thresholds | YES | `[Min(1)]`, default `2`. Immediate successes in one dimension required to reach Practiced. |
+| `delayedSuccessesForRecalled` | `int` | Mastery thresholds | YES | `[Min(1)]`, default `1`. Delayed retrieval successes required to reach Recalled. |
+| `delayedSuccessesForMastered` | `int` | Mastery thresholds | YES | `[Min(1)]`, default `2`. Delayed retrieval successes required to reach Mastered. |
+| `delayedSessionsForMastered` | `int` | Mastery thresholds | YES | `[Min(1)]`, default `2`. Distinct committed sessions carrying delayed successes. Sessions rather than levels, so finale content stays reachable. |
+| `nextLevelOffset` | `int` | Review offsets | YES | `[Min(1)]`, default `1`. |
+| `laterLevelOffset` | `int` | Review offsets | YES | `[Min(1)]`, default `3`. |
+| `accuracyWeight` | `float` | Priority weights | YES | Default `1`. Weight on `(1 - accuracy)`. |
+| `stateGapWeight` | `float` | Priority weights | YES | Default `1`. Weight on distance below Mastered. |
+| `overdueWeight` | `float` | Priority weights | YES | Default `2`. Weight on overdue review checkpoint count. |
+
+[EVIDENCE: Assets/Scripts/Data/Learning/LearningTuningSO.cs]
+[EVIDENCE: Assets/Scripts/Data/Validation/CampaignConfigValidator.cs, ValidateLearningTuning]
+
+---
+
+### 2.16 Mastery evidence records (SALIN-175)
+
+**File:** `Assets/Scripts/Data/Learning/LearningEvidence.cs`
+
+Serializable records persisted inside `CampaignProgressData` and inside `CampaignProgressOutcome`.
+
+- `MasteryDimension` — `Form`, `Sound`, `Assembly`, `Meaning`.
+- `MasteryState` — `None`, `Introduced`, `Practiced`, `Recalled`, `Mastered`. `None = 0`.
+- `LearningContentKind` — `Symbol`, `Word`. `MasteryDimensions.For(kind)` gives the applicable
+  dimensions: symbols carry three (no `Meaning`), words carry all four.
+- `LearningSessionKind` — `LevelAttempt`, `FreePractice`, `ScheduledReview`. `LevelAttempt` is `0`
+  so a record written before this field existed deserializes with correct semantics. The bare value
+  `Practice` is deliberately avoided because `ContentRequirementKind.Practice` already exists on a
+  different axis.
+- `DimensionEvidence` — per-dimension counters (`immediateSuccesses`/`immediateAttempts`,
+  `delayedSuccesses`/`delayedAttempts`, `delayedSessionCount`), plus `highWaterState` and
+  `lastEvidenceLevelId`. Mastery never regresses: `highWaterState` is a high-water mark.
+- `SymbolMasteryRecord` / `WordMasteryRecord` — one record per content ID, each holding its
+  `DimensionEvidence` list. Word records also carry `satisfiedReviewCheckpoints`.
+- `LearningEvidenceEntry` — a **session summary for one `(contentId, dimension)` pair**, not one
+  entry per attempt. Invariant: `0 <= retrievalSuccessCount <= successCount <= attemptCount`. Counts
+  and a per-attempt `answerWasVisible` boolean cannot coexist, because one entry folding three
+  attempts cannot say which of them showed the answer; `LearningEvidenceRecorder` performs that fold.
+- `LearningEvidenceBatch` — `levelId`, `sessionKind`, `instructedContentIds`, `entries`.
+
+**Rule: evidence alone never creates a record.** Only `instructedContentIds` may introduce content,
+and instruction seeds every applicable dimension at `Introduced` without recording an attempt.
+Otherwise practice on never-taught content would silently self-introduce it and corrupt
+`IntroducedSymbolIds`.
+
+[EVIDENCE: Assets/Scripts/Data/Learning/LearningEvidence.cs]
+[EVIDENCE: Assets/Scripts/Data/Learning/LearningProgressWriter.cs]
+
+---
+
 ## 3. Static Data Helpers
 
 ### 3.0 `CharacterUnlockProgress`
@@ -618,22 +692,70 @@ Each `BaybayinCharacterSO.templateFileName` references a plain-text coordinate f
 
 Authoring rule: Template files must be validated against `RecognitionConfigSO.resamplePointCount` (default 32 points). A template with a different point count will cause a recognition error.
 
-### 4.4 CampaignSaveDocument
+### 4.4 CampaignSaveDocument (schema v3)
 
 Revised progression is stored as a versioned CampaignSaveDocument serialized with Unity JsonUtility.
-It contains campaign identity, content/save schema versions, a monotonic revision, committed
-transaction metadata, migration/recovery receipts, a lowercase SHA-256 integrity field, and
-stable-ID progress records. The clean v1 journey starts at level.ugat.01; legacy unlocks, stars,
-selected level, discoveries, tutorials, and endless evidence are archived but never mapped into
-revised progress.
+Schema v3 contains campaign identity, content/save schema versions, a monotonic revision, committed
+transaction metadata, migration/recovery receipts, a lowercase SHA-256 integrity field, stable-ID
+progress records, `progress.journeyGenerationId`, and the lifetime
+`progress.appliedOutcomeReceipts` ledger. A receipt stores canonical outcome ID, level ID, and UTC
+application time. The clean journey starts at level.ugat.01; v1 saves migrate atomically and receive
+a new generation plus an empty receipt ledger.
 
-The file roles are fixed below Application.persistentDataPath: campaign-save.json (published
-primary), campaign-save.tmp (flushed candidate), campaign-save.bak (validated prior primary), and
-legacy-progress-v0.json (immutable typed archive). Integrity is computed over a clone with an empty
-checksum, encoded as UTF-8, and formatted as lowercase hexadecimal. A higher save schema is a
-blocking condition and is never reset or overwritten.
+Schema v3 (SALIN-175) adds `progress.symbolMastery` and `progress.wordMastery`, and adds
+`sessionKind` to `AppliedOutcomeReceipt`. Both mastery lists are null-defended by
+`CampaignSaveSerializer.Normalize` and required non-null by `CampaignSaveValidator`. Records are
+sorted by content ID on every write: the journal's `SameOutcome` compares serialized JSON, so
+unstable ordering would make an identical replay look like a different outcome.
+
+`CampaignSaveMigrator.TryUpgradeToCurrent` (renamed from `TryUpgradeV1`) is now a step chain — 1→2
+fills the journey generation and empties the receipt ledger, 2→3 moves the version — guarded by a
+range check rather than an equality check, so adding schema 4 later needs one more step block and no
+guard edit. Every save the shipped build has written is a v2 save, and it upgrades rather than being
+discarded.
+
+`LevelAttempt` receipts are the durable idempotency record and are kept for the lifetime of the
+journey. Practice and review receipts are bounded at 32, because the journal only ever holds one
+pending outcome so the deduplication window is one outcome deep. The receipt just written is never a
+pruning candidate — evicting it would fail the coordinator's `HasReceipt` check and wedge the
+journal.
+
+The campaign file roles are fixed below Application.persistentDataPath: campaign-save.json
+(published primary), campaign-save.tmp (flushed candidate), campaign-save.bak (validated prior
+primary), and legacy-progress-v0.json (immutable typed archive). Integrity is computed over a clone
+with an empty checksum, encoded as UTF-8, and formatted as lowercase hexadecimal. A higher save
+schema is a blocking condition and is never reset or overwritten.
 
 The optional campaign root is the activation gate. Null retains legacy compatibility; an assigned
-root with validation errors blocks revised progress. Once revised mode is active, campaign
-consumers use CampaignProgressRepository and do not dual-write PlayerPrefs. Audio preferences
-remain outside this document and continue to use their existing PlayerPrefs keys.
+root with validation errors blocks revised progress. Once revised mode is active, campaign consumers
+use CampaignProgressRepository and CampaignOutcomeCoordinator and do not dual-write PlayerPrefs.
+Audio preferences remain outside this document and continue to use their existing PlayerPrefs keys.
+
+### 4.5 CampaignProgressOutcome and outcome journal (SALIN-174, SALIN-175)
+
+`CampaignProgressOutcome` is the immutable session-end payload: outcome schema, outcome ID, journey
+generation, campaign/content identity, level ID, stars, unlocked symbol IDs, unlocked memory IDs,
+claimed reward IDs, UTC completion time, and — at outcome schema 2 — `sessionKind` and an
+`evidence` batch. The journal wrapper uses schema 1 and the file format
+`salinlahi-campaign-outcome-journal`.
+
+Outcome schema 2 accepts a range (`MinimumOutcomeSchemaVersion`..`CurrentOutcomeSchemaVersion`)
+rather than an exact match. `CampaignOutcomeValidator.UpgradeToCurrent` stamps a v1 outcome loaded
+from a journal written by an older build; without it the version check would silently discard an
+in-flight level completion on upgrade. The upgrade runs at the journal's single parse boundary
+(`ReadCandidate`), so all five `SameOutcome` comparison sites see a v2 outcome.
+
+Validation is session-kind aware. A `LevelAttempt` requires 1–3 stars. Any other kind must carry
+zero stars and empty unlock/reward lists — **practice is structurally unable to alter level
+completion**. Evidence entries are rejected when the dimension does not apply to the content kind,
+when a `(contentId, dimension)` pair repeats, when the count invariant is violated, when the content
+is unknown to the campaign, or when a symbol is neither already unlocked nor instructed in the same
+batch.
+
+The two journal roles are `campaign-outcome.pending.tmp` and
+`campaign-outcome.pending.json`. The temporary file is flushed and read back before promotion; the
+published file is read back again before the coordinator applies it. A lowercase SHA-256 checksum
+covers the UTF-8 JSON with `integritySha256` empty. Unknown higher journal schemas remain in place
+and block startup. Valid pending outcomes replay monotonically, exact receipt duplicates return
+`AlreadyCommitted`, and journal files are cleared only after the campaign publication is verified.
+Reset creates a new generation and quarantines any stale-generation pending outcome.
