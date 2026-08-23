@@ -56,6 +56,73 @@ namespace Salinlahi.Tests.Editor.Core
             Assert.IsTrue(_manager.IsLevelUnlocked(2));
         }
 
+        // ---------------------------------------------------------------
+        // SALIN-137 — legacy PlayerPrefs mirror of the lock explanation.
+        // No SaveManager is present in this fixture, so GetLevelLockState
+        // takes the legacy branch. The legacy path unlocks levelID + 1 on
+        // completion, matching the revised rule, but has no era concept.
+        // ---------------------------------------------------------------
+
+        [Test]
+        public void GetLevelLockState_Level1_IsUnlockedWithNoPrerequisite()
+        {
+            LevelLockState state = _manager.GetLevelLockState(1, out int required, out bool crossesEra);
+
+            Assert.AreEqual(LevelLockState.Unlocked, state);
+            Assert.AreEqual(0, required);
+            Assert.IsFalse(crossesEra);
+        }
+
+        [Test]
+        public void GetLevelLockState_Level2_IsLockedBehindLevel1BeforeCompletion()
+        {
+            LevelLockState state = _manager.GetLevelLockState(2, out int required, out bool crossesEra);
+
+            Assert.AreEqual(LevelLockState.Locked, state);
+            Assert.AreEqual(1, required, "AC2: the immediately preceding requirement only.");
+            Assert.IsFalse(crossesEra, "The legacy progress path has no era concept.");
+        }
+
+        [Test]
+        public void GetLevelLockState_Level2_IsUnlockedAfterCompletingLevel1()
+        {
+            _manager.MarkLevelComplete(1, 3);
+
+            LevelLockState state = _manager.GetLevelLockState(2, out int required, out _);
+
+            Assert.AreEqual(LevelLockState.Unlocked, state);
+            Assert.AreEqual(0, required);
+        }
+
+        [Test]
+        public void GetLevelLockState_CompletedLevel_IsCompletedNotMerelyUnlocked()
+        {
+            _manager.MarkLevelComplete(1, 3);
+
+            Assert.AreEqual(LevelLockState.Completed, _manager.GetLevelLockState(1, out _, out _));
+        }
+
+        [Test]
+        public void GetLevelLockState_EraEdgeInLegacyMode_StillNamesThePrecedingLevelNumber()
+        {
+            // Level 6 is the first level of the second era in the revised campaign, but
+            // the legacy path only knows "the previous number".
+            LevelLockState state = _manager.GetLevelLockState(6, out int required, out bool crossesEra);
+
+            Assert.AreEqual(LevelLockState.Locked, state);
+            Assert.AreEqual(5, required);
+            Assert.IsFalse(crossesEra);
+        }
+
+        [Test]
+        public void GetLevelLockState_OutOfRangeLevel_IsUnknownWithNothingToExplain()
+        {
+            Assert.AreEqual(LevelLockState.Unknown, _manager.GetLevelLockState(0, out int belowRequired, out _));
+            Assert.AreEqual(0, belowRequired);
+            Assert.AreEqual(LevelLockState.Unknown, _manager.GetLevelLockState(16, out int aboveRequired, out _));
+            Assert.AreEqual(0, aboveRequired);
+        }
+
         [Test]
         public void MarkLevelComplete_NeverDowngradesStars()
         {
