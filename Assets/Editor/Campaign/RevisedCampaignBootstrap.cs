@@ -50,8 +50,13 @@ public static class RevisedCampaignBootstrap
     [MenuItem("Salinlahi/Campaign/Bootstrap Revised Campaign (Level 1)")]
     public static void Run()
     {
-        List<BaybayinCharacterSO> symbols = BackfillSymbolCatalog();
+        // Level identities are positional: era rosters and the Level 1 authoring
+        // both index the list, so a short list would author the wrong assets.
         List<LevelConfigSO> levels = BackfillLevelIdentities();
+        if (levels == null)
+            return;
+
+        List<BaybayinCharacterSO> symbols = BackfillSymbolCatalog();
         List<EraConfigSO> eras = EnsureEraShells(levels);
         AuthorLevelOne(levels[0], symbols);
         EnsureCampaignRoot(symbols, eras);
@@ -108,6 +113,10 @@ public static class RevisedCampaignBootstrap
         };
     }
 
+    /// <summary>
+    /// Loads all fifteen level configs before writing to any of them. Returns null
+    /// when one is missing so the caller aborts with nothing modified.
+    /// </summary>
     private static List<LevelConfigSO> BackfillLevelIdentities()
     {
         var levels = new List<LevelConfigSO>(ContentIdentity.RevisedLevelIds.Count);
@@ -117,15 +126,22 @@ public static class RevisedCampaignBootstrap
                 $"{LevelFolder}/Level{index + 1}_Config.asset");
             if (level == null)
             {
-                Debug.LogError($"RevisedCampaignBootstrap: missing Level{index + 1}_Config asset.");
-                continue;
+                Debug.LogError(
+                    $"RevisedCampaignBootstrap: missing Level{index + 1}_Config asset. "
+                    + "Aborting; no assets were modified.");
+                return null;
             }
 
+            levels.Add(level);
+        }
+
+        for (int index = 0; index < levels.Count; index++)
+        {
+            LevelConfigSO level = levels[index];
             level.stableId = ContentIdentity.RevisedLevelIds[index];
             level.levelNumber = index + 1;
             level.eraLocalOrder = (index % ContentIdentity.RevisedLevelsPerEra) + 1;
             EditorUtility.SetDirty(level);
-            levels.Add(level);
         }
 
         return levels;
@@ -199,6 +215,8 @@ public static class RevisedCampaignBootstrap
         };
 
         level.learningRequirements = Requirements(ContentRequirementKind.Instruction, 1, ei, na, a, ma);
+        // The x2 practice and x1 mastery success thresholds are provisional until
+        // the workbook matrix confirms them (SALIN-188 review input).
         level.practiceRequirements = Requirements(ContentRequirementKind.Practice, 2, ei, na, a, ma);
         level.masteryRequirements = Requirements(ContentRequirementKind.Mastery, 1, ei, na, a, ma);
 
@@ -208,10 +226,15 @@ public static class RevisedCampaignBootstrap
         level.rewardIds = new List<string> { "memory.ugat.01" };
 
         level.activeClueCombatEnabled = true;
-        level.clueChannels = ClueChannels.Glyph;
+        // Glyph badge art for EI/NA/A/MA is tracked by the SALIN-199 manifest, so
+        // the Latin text channel is declared alongside it to keep the clue visible.
+        level.clueChannels = ClueChannels.Glyph | ClueChannels.LatinText;
         level.audioVisualFallback = ClueChannels.LatinText;
         level.challengePolicy = ChallengeTierPolicy.ForTier(1);
         level.challengeSequence = EnsureLevelOneChallengeSequence();
+        // The context challenge is phase 6 of the nine-phase plan; the pre-wave
+        // prototype path bypasses the tier policy and the evidence sink.
+        level.challengePrototypeEnabled = false;
 
         // The revised roster: waves carry only the Level 1 syllables. Enemy
         // movement/attack behavior is reused per SALIN-180; glyph badge art for
@@ -244,7 +267,7 @@ public static class RevisedCampaignBootstrap
         {
             PlacementUnit(
                 unitId: "ugat01-place-ina",
-                prompt: "Ibalik ang INA sa alaala. (Restore INA to the memory.)",
+                prompt: "Ibalik ang INA sa alaala.",
                 evidenceContentId: "level.ugat.01.focus.01",
                 correctTokenId: "ugat01-ina",
                 correctText: "INA",
@@ -252,7 +275,7 @@ public static class RevisedCampaignBootstrap
                 decoyText: "AMA"),
             PlacementUnit(
                 unitId: "ugat01-place-ama",
-                prompt: "Ibalik ang AMA sa alaala. (Restore AMA to the memory.)",
+                prompt: "Ibalik ang AMA sa alaala.",
                 evidenceContentId: "level.ugat.01.focus.02",
                 correctTokenId: "ugat01-ama",
                 correctText: "AMA",

@@ -99,7 +99,7 @@ MonoBehaviour:
       spokenValueId: value.ma
     requiredSuccesses: 2
   activeClueCombatEnabled: 1
-  clueChannels: 1
+  clueChannels: 5
   audioVisualFallback: 4
   defenseRules:
     shrineHearts: 3
@@ -207,7 +207,7 @@ MonoBehaviour:
   multiKillChainEnabled: 0
   tutorialSequence: {fileID: 11400000, guid: 7369c0885d3f4f508ae62d77174c703a, type: 2}
   onboardingSequence: {fileID: 11400000, guid: 79f06c1e965e43b0891a696cf9cb3de6, type: 2}
-  challengePrototypeEnabled: 1
+  challengePrototypeEnabled: 0
   challengeSequence: {fileID: 11400000, guid: a4e56a21abe8f19459aa7c5fc613a0bf, type: 2}
   challengePolicy:
     tier: 1

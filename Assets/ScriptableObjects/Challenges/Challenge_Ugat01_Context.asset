@@ -18,7 +18,7 @@ MonoBehaviour:
   - unitId: ugat01-place-ina
     mode: 1
     cluePolicy: 0
-    prompt: Ibalik ang INA sa alaala. (Restore INA to the memory.)
+    prompt: Ibalik ang INA sa alaala.
     tokens:
     - tokenId: ugat01-ina
       displayText: INA
@@ -49,7 +49,7 @@ MonoBehaviour:
   - unitId: ugat01-place-ama
     mode: 1
     cluePolicy: 0
-    prompt: Ibalik ang AMA sa alaala. (Restore AMA to the memory.)
+    prompt: Ibalik ang AMA sa alaala.
     tokens:
     - tokenId: ugat01-ama
       displayText: AMA

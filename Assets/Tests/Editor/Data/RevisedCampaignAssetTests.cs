@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using UnityEditor;
+using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace Salinlahi.Tests.Editor.Data
 {
@@ -118,8 +120,17 @@ namespace Salinlahi.Tests.Editor.Data
             Assert.AreEqual(4, level.cumulativeSymbolPool.Count,
                 "Level 1 introduces exactly EI, NA, A, MA.");
             Assert.IsTrue(level.activeClueCombatEnabled);
+            Assert.AreEqual(ClueChannels.Glyph | ClueChannels.LatinText, level.clueChannels,
+                "Level 1 must declare a readable visual channel while badge art is missing.");
+            Assert.IsTrue(
+                ClueChannelResolver.HasReadableVisual(
+                    ClueChannelResolver.Resolve(level.clueChannels, level.audioVisualFallback)),
+                "Level 1's resolved clue must be readable without audio.");
             Assert.IsNotNull(level.challengeSequence,
                 "Level 1 must carry its context-challenge sequence.");
+            Assert.IsFalse(level.challengePrototypeEnabled,
+                "Level 1's challenge must run as the planned phase so the tier policy "
+                + "and the evidence sink engage.");
             Assert.AreEqual(1, level.challengePolicy.tier);
             CollectionAssert.IsNotEmpty(level.rewardIds);
         }
@@ -160,6 +171,43 @@ namespace Salinlahi.Tests.Editor.Data
             Assert.AreSame(first, second, "Re-running must update in place, never recreate.");
             Assert.AreEqual(firstIssueCount, CampaignConfigValidator.Validate(second).Count,
                 "A second run must not change the validation outcome.");
+        }
+
+        [Test]
+        public void Bootstrap_AbortsWithoutWritingWhenALevelConfigIsMissing()
+        {
+            const string levelOnePath = "Assets/ScriptableObjects/Levels/Level1_Config.asset";
+            const string stagedPath = "Assets/ScriptableObjects/Levels/Level1_Config_Staged.asset";
+
+            Assert.IsNotNull(LoadCampaign());
+            var levelTwo = AssetDatabase.LoadAssetAtPath<LevelConfigSO>(
+                "Assets/ScriptableObjects/Levels/Level2_Config.asset");
+            Assert.IsNotNull(levelTwo);
+
+            string moveError = AssetDatabase.MoveAsset(levelOnePath, stagedPath);
+            Assert.IsTrue(string.IsNullOrEmpty(moveError),
+                $"Could not stage the missing-level case: {moveError}");
+
+            try
+            {
+                LogAssert.Expect(LogType.Error,
+                    "RevisedCampaignBootstrap: missing Level1_Config asset. "
+                    + "Aborting; no assets were modified.");
+
+                Assert.DoesNotThrow(() => RevisedCampaignBootstrap.Run(),
+                    "A missing level config must abort cleanly instead of throwing mid-write.");
+
+                Assert.AreEqual("level.ugat.02", levelTwo.stableId,
+                    "An aborted run must not shift level identities.");
+                Assert.AreEqual(2, levelTwo.levelNumber);
+                CollectionAssert.IsEmpty(levelTwo.focusWords,
+                    "An aborted run must not author Level 1's focus words into Level 2.");
+            }
+            finally
+            {
+                AssetDatabase.MoveAsset(stagedPath, levelOnePath);
+                RevisedCampaignBootstrap.Run();
+            }
         }
     }
 }
