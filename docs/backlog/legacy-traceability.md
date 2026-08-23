@@ -29,7 +29,7 @@ at code paths or branches in this repository.
 | --- | --- | --- |
 | SALIN-1 Core Architecture & Infrastructure | reusable-evidence | Singleton, EventBus, SceneLoader, ObjectPool, GameManager remain the runtime backbone (`Assets/Scripts/Core/`) |
 | SALIN-2 Enemy System | reusable-evidence | Enemy lifecycle, variants, waves, boss reused by revised combat; presentation identities to be replaced under SALIN-184 (Paglimot) |
-| SALIN-3 Baybayin Recognition System | reusable-evidence | $P recognizer, stroke capture, template library power all revised tracing (`Assets/Scripts/Recognition`, `Assets/Resources/Templates/`) |
+| SALIN-3 Baybayin Recognition System | reusable-evidence | $P recognizer, stroke capture, template library power all revised tracing (`Assets/Scripts/Gameplay/Recognition/`, `Assets/Resources/Templates/`) |
 | SALIN-4 Player & Combat System | reusable-evidence | CombatResolver, hearts, combo/focus reused; active-clue gate added by SALIN-180 |
 | SALIN-5 Level Design & Progression | obsolete | Colonial-era 15-level design replaced by the revised era/content model (SALIN-166); level assets remain but are re-authored per era slices |
 | SALIN-6 UI, Scenes & UX | reusable-evidence | Scene flow, HUD, dialogue, cutscenes, level select reused; Results surface superseded by SALIN-202 work |
@@ -37,7 +37,7 @@ at code paths or branches in this repository.
 | SALIN-8 Release & Technical Quality | open | Lite flag, permissions, profiling, store prep remain open (SALIN-59, 64, 71–73, 79); target profile superseded by SALIN-179 |
 | SALIN-36 Art & Visual Assets | open | Batches 1–4 delivered (SALIN-49, 60); revised-content assets tracked by SALIN-176/199/206 |
 | SALIN-51 Research, Testing & Analytics | open | SUS/GEQ questionnaires and confusion-matrix export (SALIN-61–63, 76, 78) feed the capstone evaluation protocol (SALIN-191) |
-| SALIN-83 Code Health & Tech Debt | reusable-evidence | Audit outcomes merged (SALIN-84–89, 96); recurring health work continues per sprint |
+| SALIN-83 Code Health & Tech Debt | reusable-evidence | Audit outcomes merged (SALIN-85–89, 96); recurring health work continues per sprint |
 
 ## Per-epic legacy references
 
@@ -48,7 +48,7 @@ at code paths or branches in this repository.
 | SALIN-29 Core combat resolution | reusable-evidence | `Assets/Scripts/Gameplay/Combat/CombatResolver.cs`; extended by SALIN-180 active-clue gate |
 | SALIN-30 Levels 1–5 configuration | obsolete | Colonial-era configs at `Assets/ScriptableObjects/Levels/` superseded by INA/AMA authoring (SALIN-198) |
 | SALIN-46 LevelFlowController | reusable-evidence | `Assets/Scripts/Gameplay/LevelFlowController.cs`; restructured into the nine-phase flow by SALIN-178 |
-| SALIN-93 / SALIN-110–117 Onboarding & tutorial stories | reusable-evidence | Beat-driven onboarding (`Assets/Scripts/Onboarding/`) reused as Symbol Learning / Required Practice surfaces |
+| SALIN-93 / SALIN-110–117 Onboarding & tutorial stories | reusable-evidence | Beat-driven onboarding (`Assets/Scripts/Gameplay/Tutorial/Onboarding/`) reused as Symbol Learning / Required Practice surfaces |
 | SALIN-50 FTUE overlay | reusable-evidence | Level 1 first-time tutorial flow |
 | SALIN-97 / SALIN-120 Badges & unlock prompts | reusable-evidence | Glyph badges reused by active-clue presentation |
 | SALIN-105 Victory/GameOver fix | reusable-evidence | Terminal-screen routing behavior preserved by the phase machine |
@@ -61,6 +61,7 @@ at code paths or branches in this repository.
 | SALIN-43 Level select lock/unlock | reusable-evidence | `LevelSelectUI` reused; unlock now driven by revised progress (SALIN-175) |
 | SALIN-84 15-level scrollable grid | reusable-evidence | Level select scale work |
 | SALIN-102 Cutscene content between levels | reusable-evidence | `CutscenePlayer` + mapping reused; narrative content replaced per era (SALIN-173/200/205) |
+| Level1_Opening cutscene | obsolete | English colonial origin-story opening cutscene superseded by the revised pre-colonial Ugat intro (SALIN-200); its `BeforeLevel` mapping entry for level 1 is removed from `Assets/ScriptableObjects/Cutscenes/LevelCutsceneMapping.asset` (PR #114), the cutscene asset itself is retained; kept for history only |
 | SALIN-45/47 Dialogue system & content | reusable-evidence / obsolete | DialogueController reused; colonial-era copy superseded by revised narrative |
 
 ### SALIN-126 / SALIN-129 / SALIN-130 — Era Journeys (Ugat, Ugnayan, Pamana)
