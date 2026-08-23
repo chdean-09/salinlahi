@@ -10,8 +10,8 @@ namespace Salinlahi.Tests.Editor.Data
     /// docs/content/level-01-asset-manifest.md. Every EXISTS row a fallback
     /// depends on is asserted here so a deleted template or sprite fails loudly,
     /// and the audio-unavailable path is proven readable. MISSING rows (badges,
-    /// pronunciation, tracing animations, context art) are human follow-ups and
-    /// deliberately not asserted.
+    /// pronunciation, tracing animations, context art) are human follow-ups; they
+    /// are asserted only through the fallback that has to stand in for them.
     /// </summary>
     [TestFixture]
     public sealed class Level1AssetReadinessTests
@@ -48,7 +48,7 @@ namespace Salinlahi.Tests.Editor.Data
                 Assert.IsNotNull(Resources.Load<TextAsset>($"Templates/{symbol.templateFileName}"),
                     $"{symbol.stableId}: template Resources/Templates/{symbol.templateFileName}.txt must load.");
                 Assert.IsNotNull(symbol.displaySprite,
-                    $"{symbol.stableId} needs its enemy glyph sprite.");
+                    $"{symbol.stableId} needs its bare glyph sprite (Tracing Dojo).");
             }
         }
 
@@ -63,14 +63,50 @@ namespace Salinlahi.Tests.Editor.Data
                 "Level 1 clues must resolve to a readable visual channel; EI/NA/A/MA "
                 + "pronunciation clips do not exist yet (manifest MISSING rows).");
 
+            // A level-wide channel bit says nothing about art, so each symbol has to
+            // carry a prompt a player can actually see: its badge sprite, or the HUD's
+            // Latin text. Pronunciation audio cannot rescue either (manifest MISSING rows).
+            bool glyphChannel = (resolved & ClueChannels.Glyph) != ClueChannels.None;
+            bool latinTextChannel = (resolved & ClueChannels.LatinText) != ClueChannels.None;
+
             foreach (SymbolValueReference reference in level.cumulativeSymbolPool)
             {
-                // The readable-visual guarantee cannot depend on audio that is
-                // not recorded yet; AudioManager.PlayPronunciation null-guards.
-                Assert.IsTrue(ClueChannelResolver.HasReadableVisual(resolved)
-                    || reference.symbol.pronunciationClip != null,
-                    $"{reference.symbol.stableId} would be unplayable without audio.");
+                BaybayinCharacterSO symbol = reference.symbol;
+                bool badgeRenders = glyphChannel && symbol.badgeSprite != null;
+                bool latinTextRenders = latinTextChannel
+                    && !string.IsNullOrWhiteSpace(FindClueLatinSpelling(level, symbol.stableId));
+
+                Assert.IsTrue(badgeRenders || latinTextRenders,
+                    $"{symbol.stableId} would present no clue at all: badge art is missing "
+                    + "and no Latin text renders for it. The badge fallback the manifest "
+                    + "documents needs LatinText in clueChannels plus a focus word whose "
+                    + "decomposition contains this symbol.");
             }
+        }
+
+        /// <summary>
+        /// Mirrors ActiveCluePresenter.SetClueText: the HUD's Latin text is the spelling of
+        /// the focus word containing the clue symbol, so a symbol outside every decomposition
+        /// renders an empty string no matter which channels resolve.
+        /// </summary>
+        private static string FindClueLatinSpelling(LevelConfigSO level, string symbolStableId)
+        {
+            if (level.focusWords == null)
+                return null;
+
+            foreach (FocusWordDefinition word in level.focusWords)
+            {
+                if (word?.decomposition == null)
+                    continue;
+
+                foreach (SymbolValueReference reference in word.decomposition)
+                {
+                    if (reference?.symbol != null && reference.symbol.stableId == symbolStableId)
+                        return word.latinSpelling;
+                }
+            }
+
+            return null;
         }
 
         [Test]

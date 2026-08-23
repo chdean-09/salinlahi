@@ -10,19 +10,19 @@
 
 | Asset | Symbol | Kind | Status | Runtime fallback | Owner |
 | --- | --- | --- | --- | --- | --- |
-| `Assets/ScriptableObjects/Characters/Char_EI.asset` → displaySprite | symbol.ei | Enemy glyph sprite | EXISTS | — | — |
-| `Assets/ScriptableObjects/Characters/Char_NA.asset` → displaySprite | symbol.na | Enemy glyph sprite | EXISTS | — | — |
-| `Assets/ScriptableObjects/Characters/Char_A.asset` → displaySprite | symbol.a | Enemy glyph sprite | EXISTS | — | — |
-| `Assets/ScriptableObjects/Characters/Char_MA.asset` → displaySprite | symbol.ma | Enemy glyph sprite | EXISTS | — | — |
+| `Assets/ScriptableObjects/Characters/Char_EI.asset` → displaySprite | symbol.ei | Bare glyph sprite (Tracing Dojo) | EXISTS | — | — |
+| `Assets/ScriptableObjects/Characters/Char_NA.asset` → displaySprite | symbol.na | Bare glyph sprite (Tracing Dojo) | EXISTS | — | — |
+| `Assets/ScriptableObjects/Characters/Char_A.asset` → displaySprite | symbol.a | Bare glyph sprite (Tracing Dojo) | EXISTS | — | — |
+| `Assets/ScriptableObjects/Characters/Char_MA.asset` → displaySprite | symbol.ma | Bare glyph sprite (Tracing Dojo) | EXISTS | — | — |
 | `Assets/Resources/Templates/EI_template_*.txt` | symbol.ei | Stroke recognition templates | EXISTS | — | — |
 | `Assets/Resources/Templates/NA_template_*.txt` | symbol.na | Stroke recognition templates | EXISTS | — | — |
 | `Assets/Resources/Templates/A_template_*.txt` | symbol.a | Stroke recognition templates | EXISTS | — | — |
 | `Assets/Resources/Templates/MA_template_*.txt` | symbol.ma | Stroke recognition templates | EXISTS | — | — |
-| `Assets/Art/UI/GlyphBadges/EI.png` | symbol.ei | HUD/enemy glyph badge | **MISSING** | Badge renderer disables; active-clue HUD shows Latin text | Art |
-| `Assets/Art/UI/GlyphBadges/NA.png` | symbol.na | HUD/enemy glyph badge | **MISSING** | Same | Art |
-| `Assets/Art/UI/GlyphBadges/A.png` | symbol.a | HUD/enemy glyph badge | **MISSING** | Same | Art |
-| `Assets/Art/UI/GlyphBadges/MA.png` | symbol.ma | HUD/enemy glyph badge | **MISSING** | Same | Art |
-| `Assets/Audio/Pronunciation/EI.wav` | symbol.ei / value.ei | Pronunciation clip | **MISSING** | `audioVisualFallback = LatinText` (ClueChannelResolver); post-trace playback null-guarded | Audio |
+| `Assets/Art/UI/GlyphBadges/EI.png` | symbol.ei | HUD/enemy glyph badge (`badgeSprite`) | **MISSING** | Badge renderer disables; the active-clue HUD's Latin text carries the prompt **because** Level 1 authors `LatinText` in `clueChannels` | Art |
+| `Assets/Art/UI/GlyphBadges/NA.png` | symbol.na | HUD/enemy glyph badge (`badgeSprite`) | **MISSING** | Same | Art |
+| `Assets/Art/UI/GlyphBadges/A.png` | symbol.a | HUD/enemy glyph badge (`badgeSprite`) | **MISSING** | Same | Art |
+| `Assets/Art/UI/GlyphBadges/MA.png` | symbol.ma | HUD/enemy glyph badge (`badgeSprite`) | **MISSING** | Same | Art |
+| `Assets/Audio/Pronunciation/EI.wav` | symbol.ei / value.ei | Pronunciation clip | **MISSING** | No clue depends on audio — Level 1's authored `clueChannels` are already visual (`Glyph` + `LatinText`), so `audioVisualFallback` never has to fire; post-trace playback null-guarded | Audio |
 | `Assets/Audio/Pronunciation/NA.wav` | symbol.na / value.na | Pronunciation clip | **MISSING** | Same | Audio |
 | `Assets/Audio/Pronunciation/A.wav` | symbol.a / value.a | Pronunciation clip | **MISSING** | Same | Audio |
 | `Assets/Audio/Pronunciation/MA.wav` | symbol.ma / value.ma | Pronunciation clip | **MISSING** | Same | Audio |
@@ -60,9 +60,13 @@ tracing GIFs) serves later levels; none of those glyphs are in the Level 1 pool.
 
 - **Blocks SALIN-134 acceptance**: badge art and pronunciation audio for EI/NA/A/MA are
   the highest-priority MISSING rows — without badges, enemies carry no visible glyph and
-  the active-clue HUD's Latin text is the only prompt.
-- Audio clues have readable visual equivalents by construction: Level 1 resolves
-  `Glyph` + `LatinText` fallback (validated by `CampaignConfigValidator.ValidateClueChannels`
-  and covered by `Level1AssetReadinessTests`).
+  the active-clue HUD's Latin text is the only prompt. That prompt exists only because
+  Level 1 authors `clueChannels = Glyph | LatinText` (SALIN-198): `ClueChannelResolver`
+  merges `audioVisualFallback` into audio-only channel sets, so it would not add
+  `LatinText` to a Glyph-only Level 1, and the badgeless enemies would cue nothing.
+- Audio clues have readable visual equivalents by construction: Level 1 authors both
+  `Glyph` and `LatinText`, so no clue waits on the unrecorded pronunciation clips
+  (validated by `CampaignConfigValidator.ValidateClueChannels`; `Level1AssetReadinessTests`
+  additionally asserts per symbol that a badge sprite or a rendered Latin spelling exists).
 - Optional polish (tracing GIFs, panel art) cannot block the Must Have flow — every row
   lists a working fallback.
