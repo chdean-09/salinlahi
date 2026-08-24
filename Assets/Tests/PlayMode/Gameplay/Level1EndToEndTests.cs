@@ -260,6 +260,141 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 "Completing Level 1 must make Level 2 available.");
         }
 
+        /// <summary>
+        /// SALIN-201 / BL-E2-S7: the failure-and-retry half of the Level 1 slice.
+        /// The happy path above proves a won attempt commits once; the phase
+        /// fixture proves a defeat is refused at each individual phase. Neither
+        /// drives a *lost* Level 1 attempt and a *replacement* attempt end to
+        /// end, which is the pairing this asserts: losing writes nothing at all,
+        /// and the retry that follows commits exactly once — not twice, and not
+        /// on top of a half-written first attempt.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LoseLevelOne_CommitsNothing_ThenTheRetryCompletesAndCommitsOnce()
+        {
+            // Two Defense entries, so the bare scene reports its missing wiring twice.
+            LogAssert.Expect(LogType.Error, MissingOnboardingControllerError);
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            LogAssert.Expect(LogType.Error, MissingOnboardingControllerError);
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+
+            GameManager gameManager = CreateComponent<GameManager>("GameManager");
+            SetSingletonInstance(gameManager);
+            ProgressManager progressManager = CreateComponent<ProgressManager>("ProgressManager");
+            SetSingletonInstance(progressManager);
+
+            DialogueController dialogue = CreateComponent<DialogueController>("DialogueController");
+            SetPrivateField(dialogue, "_overlayPanel", CreatePanel("DialogueOverlay"));
+            VictoryScreenUI victory = CreateComponent<VictoryScreenUI>("VictoryScreen");
+            GameObject victoryPanel = CreatePanel("VictoryPanel");
+            SetPrivateField(victory, "_panel", victoryPanel);
+            DefeatScreenUI defeat = CreateComponent<DefeatScreenUI>("DefeatScreen");
+            GameObject defeatPanel = CreatePanel("DefeatPanel");
+            SetPrivateField(defeat, "_panel", defeatPanel);
+
+            LevelConfigSO config = BuildInaAmaConfig(
+                out string[] symbolIds, out ChallengeSequenceSO _);
+
+            // ---- Attempt 1: reach Defense, then lose. ----
+            TestE2EFlowController lost = CreateComponent<TestE2EFlowController>("FlowController_Lost");
+            SetPrivateField(lost, "_victoryScreen", victory);
+            SetPrivateField(lost, "_defeatScreen", defeat);
+            SetPrivateField(lost, "_dialogueController", dialogue);
+            InvokePrivate(lost, "BootstrapRuntimeFlow", new object[] { config, null, null, null });
+            yield return TraverseToDefense(lost, gameManager);
+
+            EventBus.RaiseGameOver();
+            yield return WaitFrames(10);
+
+            Assert.IsTrue(defeatPanel.activeSelf, "A lost attempt must show Defeat.");
+            Assert.IsFalse(victoryPanel.activeSelf, "A lost attempt must not show Results.");
+            Assert.AreEqual(0, lost.CommitCalls,
+                "AC: a defeat must not commit — no partial outcome may reach the save.");
+            Assert.AreEqual(0, progressManager.GetStars(1),
+                "A lost attempt must earn no stars.");
+            Assert.IsFalse(progressManager.IsLevelUnlocked(2),
+                "A lost attempt must not unlock the next level.");
+
+            // Retry reloads the level in production, so the attempt-scoped flow is
+            // replaced rather than reused. Destroying it also takes the runtime
+            // surfaces it parented, so attempt 2 finds its own.
+            Object.Destroy(lost.gameObject);
+            yield return WaitFrames(5);
+            defeatPanel.SetActive(false);
+
+            // ---- Attempt 2: the retry completes. ----
+            TestE2EFlowController won = CreateComponent<TestE2EFlowController>("FlowController_Won");
+            SetPrivateField(won, "_victoryScreen", victory);
+            SetPrivateField(won, "_defeatScreen", defeat);
+            SetPrivateField(won, "_dialogueController", dialogue);
+            InvokePrivate(won, "BootstrapRuntimeFlow", new object[] { config, null, null, null });
+            yield return TraverseToDefense(won, gameManager);
+
+            foreach (string symbolId in symbolIds)
+            {
+                progressManager.LevelEvidence.RecordAttempt(
+                    symbolId, LearningContentKind.Symbol, MasteryDimension.Form,
+                    success: true, answerWasVisible: false);
+            }
+
+            EventBus.RaiseDefenseComplete();
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.ContextChallenge, MachineOf(won).Phase);
+            ChallengeFlowController challenge =
+                GetPrivateField<ChallengeFlowController>(won, "_challengeFlowController");
+            Assert.IsNotNull(challenge);
+            challenge.SubmitPlacement("e2e-ina");
+            yield return WaitFrames(5);
+            challenge.SubmitPlacement("e2e-ama");
+            yield return WaitFrames(15);
+
+            Assert.AreEqual(LevelPhase.Completed, MachineOf(won).Phase);
+            Assert.AreEqual(1, won.CommitCalls,
+                "AC: the retry must commit exactly once.");
+            Assert.AreEqual(0, lost.CommitCalls,
+                "The discarded attempt must still have committed nothing after the retry.");
+            Assert.IsTrue(victoryPanel.activeSelf, "The retry must reach Results.");
+            Assert.IsTrue(progressManager.IsLevelUnlocked(2),
+                "Only the completed attempt may unlock Level 2.");
+        }
+
+        /// <summary>
+        /// Story → focus-word preview → the four authored learning cards → Defense.
+        /// Shared by the traversals above so a retry drives the same path a first
+        /// attempt does.
+        /// </summary>
+        private IEnumerator TraverseToDefense(
+            TestE2EFlowController controller, GameManager gameManager)
+        {
+            yield return WaitFrames(5);
+            Assert.AreEqual(LevelPhase.Story, MachineOf(controller).Phase);
+            EventBus.RaiseDialogueComplete();
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.FocusWords, MachineOf(controller).Phase);
+            FocusWordPreviewController preview =
+                Object.FindFirstObjectByType<FocusWordPreviewController>();
+            Assert.IsNotNull(preview, "The flow must provide the focus-word preview.");
+            preview.Continue();
+
+            yield return WaitFrames(10);
+            Assert.AreEqual(LevelPhase.SymbolLearning, MachineOf(controller).Phase);
+            SymbolLearningCardController learningCards =
+                Object.FindFirstObjectByType<SymbolLearningCardController>();
+            Assert.IsNotNull(learningCards, "The flow must provide the learning cards.");
+            for (int card = 0; card < learningCards.CardCount; card++)
+            {
+                learningCards.Continue();
+                yield return WaitFrames(3);
+            }
+
+            yield return WaitFrames(15);
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase);
+            Assert.IsTrue(gameManager.AcceptsDrawingInput,
+                "Defense opens drawing input for the attempt.");
+        }
+
         // ---------------------------------------------------------------------
         // Config
         // ---------------------------------------------------------------------
