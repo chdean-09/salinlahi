@@ -24,6 +24,9 @@ public class ComboManager : Singleton<ComboManager>
         EventBus.OnHeartsChanged += HandleHeartsChanged;
         EventBus.OnGameOver += HandleGameOver;
         EventBus.OnLevelComplete += HandleLevelEnd;
+        // SALIN-141: ComboManager is a persistent singleton, so an abandoned attempt
+        // would otherwise carry its streak and Focus Mode into the next one.
+        EventBus.OnLevelAttemptAborted += HandleLevelEnd;
     }
 
     private void OnDisable()
@@ -34,6 +37,7 @@ public class ComboManager : Singleton<ComboManager>
         EventBus.OnHeartsChanged -= HandleHeartsChanged;
         EventBus.OnGameOver -= HandleGameOver;
         EventBus.OnLevelComplete -= HandleLevelEnd;
+        EventBus.OnLevelAttemptAborted -= HandleLevelEnd;
     }
 
     private void HandleEnemyTargeted(Enemy _)

@@ -1,5 +1,7 @@
 using System.Reflection;
 using NUnit.Framework;
+using Salinlahi.Tests.Editor.Data;
+using Salinlahi.Tests.Editor.Persistence;
 using UnityEngine;
 using UnityEngine.TestTools;
 
@@ -52,6 +54,73 @@ namespace Salinlahi.Tests.Editor.Core
         {
             _manager.MarkLevelComplete(1, 3);
             Assert.IsTrue(_manager.IsLevelUnlocked(2));
+        }
+
+        // ---------------------------------------------------------------
+        // SALIN-137 — legacy PlayerPrefs mirror of the lock explanation.
+        // No SaveManager is present in this fixture, so GetLevelLockState
+        // takes the legacy branch. The legacy path unlocks levelID + 1 on
+        // completion, matching the revised rule, but has no era concept.
+        // ---------------------------------------------------------------
+
+        [Test]
+        public void GetLevelLockState_Level1_IsUnlockedWithNoPrerequisite()
+        {
+            LevelLockState state = _manager.GetLevelLockState(1, out int required, out bool crossesEra);
+
+            Assert.AreEqual(LevelLockState.Unlocked, state);
+            Assert.AreEqual(0, required);
+            Assert.IsFalse(crossesEra);
+        }
+
+        [Test]
+        public void GetLevelLockState_Level2_IsLockedBehindLevel1BeforeCompletion()
+        {
+            LevelLockState state = _manager.GetLevelLockState(2, out int required, out bool crossesEra);
+
+            Assert.AreEqual(LevelLockState.Locked, state);
+            Assert.AreEqual(1, required, "AC2: the immediately preceding requirement only.");
+            Assert.IsFalse(crossesEra, "The legacy progress path has no era concept.");
+        }
+
+        [Test]
+        public void GetLevelLockState_Level2_IsUnlockedAfterCompletingLevel1()
+        {
+            _manager.MarkLevelComplete(1, 3);
+
+            LevelLockState state = _manager.GetLevelLockState(2, out int required, out _);
+
+            Assert.AreEqual(LevelLockState.Unlocked, state);
+            Assert.AreEqual(0, required);
+        }
+
+        [Test]
+        public void GetLevelLockState_CompletedLevel_IsCompletedNotMerelyUnlocked()
+        {
+            _manager.MarkLevelComplete(1, 3);
+
+            Assert.AreEqual(LevelLockState.Completed, _manager.GetLevelLockState(1, out _, out _));
+        }
+
+        [Test]
+        public void GetLevelLockState_EraEdgeInLegacyMode_StillNamesThePrecedingLevelNumber()
+        {
+            // Level 6 is the first level of the second era in the revised campaign, but
+            // the legacy path only knows "the previous number".
+            LevelLockState state = _manager.GetLevelLockState(6, out int required, out bool crossesEra);
+
+            Assert.AreEqual(LevelLockState.Locked, state);
+            Assert.AreEqual(5, required);
+            Assert.IsFalse(crossesEra);
+        }
+
+        [Test]
+        public void GetLevelLockState_OutOfRangeLevel_IsUnknownWithNothingToExplain()
+        {
+            Assert.AreEqual(LevelLockState.Unknown, _manager.GetLevelLockState(0, out int belowRequired, out _));
+            Assert.AreEqual(0, belowRequired);
+            Assert.AreEqual(LevelLockState.Unknown, _manager.GetLevelLockState(16, out int aboveRequired, out _));
+            Assert.AreEqual(0, aboveRequired);
         }
 
         [Test]
@@ -260,6 +329,249 @@ namespace Salinlahi.Tests.Editor.Core
             Assert.IsFalse(CharacterUnlockProgress.HasUnlocked(ba),
                 "ClearAllProgress should also clear character unlocks");
             Object.DestroyImmediate(ba);
+        }
+
+        // ------------------------------------------------------------------
+        // SALIN-141 — an abandoned attempt must leave committed progress alone
+        // ------------------------------------------------------------------
+
+        [Test]
+        public void LevelAttemptAborted_KeepsCommittedProgressAndDropsAttemptCaches()
+        {
+            _manager.MarkLevelComplete(1, 3);
+            Assert.AreEqual(3, _manager.GetStars(1), "Setup: level 1 must be committed at 3 stars.");
+            Assert.IsTrue(_manager.IsLevelUnlocked(2), "Setup: level 2 must be unlocked.");
+
+            // Seed the attempt-scoped caches the way a live level would.
+            Assert.IsNotNull(_manager.LevelEvidence, "Setup: the evidence recorder must exist.");
+            SetPrivateField(_manager, "_lastProcessedLevelId", 1);
+
+            InvokeAbort(_manager);
+
+            Assert.AreEqual(3, _manager.GetStars(1),
+                "AC-3: committed journey progress must survive an abandoned attempt.");
+            Assert.IsTrue(_manager.IsLevelUnlocked(2),
+                "AC-3: an abort must not revoke an unlock earned earlier.");
+            Assert.IsNull(GetPrivateField<object>(_manager, "_levelEvidence"),
+                "AC-4: uncommitted learning evidence must not reach the next attempt.");
+            Assert.IsNull(GetPrivateField<object>(_manager, "_cachedLevelOutcome"));
+            Assert.IsNull(GetPrivateField<object>(_manager, "_pendingLevelResults"));
+            Assert.AreEqual(-1, GetPrivateField<int>(_manager, "_lastProcessedLevelId"));
+        }
+
+        [Test]
+        public void LevelAttemptAborted_WritesNoProgressKeyOfItsOwn()
+        {
+            _manager.MarkLevelComplete(1, 2);
+            _manager.TrySetSelectedLevelNumber(2);
+
+            InvokeAbort(_manager);
+
+            Assert.AreEqual(2, _manager.GetStars(1));
+            Assert.AreEqual(0, _manager.GetStars(2),
+                "An abort must never write a star for the level it discarded.");
+            Assert.AreEqual(2, _manager.GetSelectedLevelNumber(),
+                "The selected level is committed navigation state, not attempt state.");
+            Assert.IsFalse(_manager.IsLevelUnlocked(3),
+                "AC-4: no unlock may be committed by an abandoned attempt.");
+        }
+
+        [Test]
+        public void CommitCurrentLevelOutcome_WhileAborting_IsRefusedAndWritesNothing()
+        {
+            GameObject gameManagerHost = new GameObject("GameManager_AbortGuard");
+            try
+            {
+                GameManager gameManager = gameManagerHost.AddComponent<GameManager>();
+                SetSingletonInstance(gameManager);
+                gameManager.StartGame();
+
+                // Control. The same call, on the same fixture, with the attempt still live.
+                // It pins down what an ACCEPTED commit writes, so the "nothing was written"
+                // assertions further down cannot quietly pass with the guard deleted.
+                CampaignOutcomeCommitResult liveResult = _manager.CommitCurrentLevelOutcome();
+                Assert.IsTrue(liveResult.IsAccepted,
+                    "Control: a live attempt must still be allowed to commit.");
+                Assert.AreEqual(1, _manager.GetStars(1),
+                    "Control: an accepted commit stars the level.");
+                Assert.IsTrue(_manager.IsLevelUnlocked(2),
+                    "Control: an accepted commit unlocks the next level.");
+
+                _manager.ClearAllProgress();
+                Assert.AreEqual(0, _manager.GetStars(1), "Setup: the control write is rolled back.");
+                Assert.IsFalse(_manager.IsLevelUnlocked(2));
+
+                gameManager.AbortCurrentLevelAttempt();
+
+                CampaignOutcomeCommitResult result = _manager.CommitCurrentLevelOutcome();
+
+                Assert.IsFalse(result.IsAccepted,
+                    "AC-4: the commit choke point must refuse an aborted attempt.");
+                Assert.AreEqual("level-attempt-aborted", result.ReasonCode,
+                    "The refusal must come from the abort guard, not an unrelated rejection.");
+                Assert.AreEqual(0, _manager.GetStars(1),
+                    "AC-4: a refused commit must not star the level it discarded.");
+                Assert.IsFalse(_manager.IsLevelUnlocked(2),
+                    "AC-4: a refused commit must not unlock the next level.");
+            }
+            finally
+            {
+                ClearSingletonInstance<GameManager>();
+                Object.DestroyImmediate(gameManagerHost);
+                Time.timeScale = 1f;
+            }
+        }
+
+        // EditMode never runs OnEnable, so the EventBus subscription is absent here and
+        // the handler is invoked directly. PlayMode covers the wiring.
+        private static void InvokeAbort(ProgressManager manager)
+        {
+            MethodInfo handler = typeof(ProgressManager).GetMethod(
+                "HandleLevelAttemptAborted", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(handler, "ProgressManager.HandleLevelAttemptAborted not found.");
+            handler.Invoke(manager, System.Array.Empty<object>());
+        }
+
+        private static void SetPrivateField(object target, string fieldName, object value)
+        {
+            FieldInfo field = target.GetType().GetField(
+                fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(field, $"{target.GetType().Name}.{fieldName} field not found.");
+            field.SetValue(target, value);
+        }
+
+        private static T GetPrivateField<T>(object target, string fieldName)
+        {
+            FieldInfo field = target.GetType().GetField(
+                fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(field, $"{target.GetType().Name}.{fieldName} field not found.");
+            return (T)field.GetValue(target);
+        }
+
+        private static void SetSingletonInstance<T>(T instance) where T : MonoBehaviour
+        {
+            MethodInfo setter = typeof(Singleton<T>)
+                .GetProperty("Instance", BindingFlags.Static | BindingFlags.Public)
+                ?.GetSetMethod(nonPublic: true);
+            Assert.IsNotNull(setter);
+            setter.Invoke(null, new object[] { instance });
+        }
+
+        // -------------------------------------------------------------------
+        // SALIN-136: journey entry routing
+        // -------------------------------------------------------------------
+
+        [Test]
+        public void GetJourneyEntryPoint_FreshLegacySave_IsNewJourneyAtLevelOne()
+        {
+            JourneyEntryKind kind = _manager.GetJourneyEntryPoint(out int levelNumber);
+
+            Assert.AreEqual(JourneyEntryKind.NewJourney, kind);
+            Assert.AreEqual(1, levelNumber);
+        }
+
+        [Test]
+        public void GetJourneyEntryPoint_MidLegacyJourney_ContinuesAtNextIncompleteLevel()
+        {
+            _manager.MarkLevelComplete(1, 3);
+            _manager.MarkLevelComplete(2, 2);
+
+            JourneyEntryKind kind = _manager.GetJourneyEntryPoint(out int levelNumber);
+
+            Assert.AreEqual(JourneyEntryKind.ContinueLevel, kind);
+            Assert.AreEqual(3, levelNumber);
+        }
+
+        [Test]
+        public void GetJourneyEntryPoint_AllLegacyLevelsComplete_IsCompletedJourney()
+        {
+            for (int i = 1; i <= 15; i++)
+                _manager.MarkLevelComplete(i, 3);
+
+            JourneyEntryKind kind = _manager.GetJourneyEntryPoint(out _);
+
+            Assert.AreEqual(JourneyEntryKind.CompletedJourney, kind);
+        }
+
+        [Test]
+        public void GetJourneyEntryPoint_RevisedBlockedSave_IsBlockedAndNotRoutable()
+        {
+            using CampaignTestFixture fixture = CampaignTestFixture.CreateValid();
+            GameObject saveHost = new GameObject("SaveManager_Test");
+            try
+            {
+                SaveManager saveManager = saveHost.AddComponent<SaveManager>();
+                InvokeLifecycle(saveManager, "Awake");
+                saveManager.SetCampaignForTests(fixture.Campaign);
+                InMemoryCampaignSaveStorage storage = new InMemoryCampaignSaveStorage
+                {
+                    FailAt = StorageFaultPoint.ArchiveWrite,
+                };
+                saveManager.SetServiceForTests(new CampaignSaveService(
+                    storage, DictionaryLegacySource.CreateRepresentativeHistoricalSave()));
+                Assert.AreEqual(SaveManagerMode.RevisedBlocked, saveManager.Mode, "precondition");
+
+                JourneyEntryKind kind = _manager.GetJourneyEntryPoint(out int levelNumber);
+
+                Assert.AreEqual(JourneyEntryKind.Blocked, kind,
+                    "A blocked revised save must never route into gameplay.");
+                Assert.AreEqual(1, levelNumber);
+            }
+            finally
+            {
+                Object.DestroyImmediate(saveHost);
+                ClearSingletonInstance<SaveManager>();
+            }
+        }
+
+        [Test]
+        public void GetJourneyEntryPoint_RevisedSaveInProgress_MapsContinueTargetToLevelNumber()
+        {
+            using CampaignTestFixture fixture = CampaignTestFixture.CreateValid();
+            GameObject saveHost = new GameObject("SaveManager_Test");
+            try
+            {
+                SaveManager saveManager = saveHost.AddComponent<SaveManager>();
+                InvokeLifecycle(saveManager, "Awake");
+                saveManager.SetCampaignForTests(fixture.Campaign);
+                CampaignSaveService service = new CampaignSaveService(
+                    new InMemoryCampaignSaveStorage(), new DictionaryLegacySource());
+                saveManager.SetServiceForTests(service);
+                Assert.AreEqual(SaveManagerMode.RevisedReady, saveManager.Mode, "precondition");
+                Assert.IsTrue(service.TryUpdate(document =>
+                {
+                    document.progress.levelProgress[0].completed = true;
+                    document.progress.levelProgress[0].bestStars = 3;
+                    document.progress.levelProgress[1].unlocked = true;
+                }), "precondition");
+
+                JourneyEntryKind kind = _manager.GetJourneyEntryPoint(out int levelNumber);
+
+                Assert.AreEqual(JourneyEntryKind.ContinueLevel, kind);
+                Assert.AreEqual(2, levelNumber);
+            }
+            finally
+            {
+                Object.DestroyImmediate(saveHost);
+                ClearSingletonInstance<SaveManager>();
+            }
+        }
+
+        private static void InvokeLifecycle(MonoBehaviour target, string methodName)
+        {
+            MethodInfo method = target.GetType().GetMethod(
+                methodName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            Assert.IsNotNull(method, methodName);
+            method.Invoke(target, null);
+        }
+
+        private static void ClearSingletonInstance<T>() where T : MonoBehaviour
+        {
+            MethodInfo setter = typeof(Singleton<T>)
+                .GetProperty("Instance", BindingFlags.Static | BindingFlags.Public)
+                ?.GetSetMethod(nonPublic: true);
+            Assert.IsNotNull(setter);
+            setter.Invoke(null, new object[] { null });
         }
     }
 }

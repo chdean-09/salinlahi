@@ -107,6 +107,122 @@ public class ProgressManager : Singleton<ProgressManager>
         return true;
     }
 
+    /// <summary>
+    /// SALIN-136: classifies where Play should route — a new journey at Level 1, the
+    /// next incomplete unlocked level, the completed-journey review state, or Blocked
+    /// while a blocking save notice is pending. <paramref name="levelNumber"/> is the
+    /// routable target for <see cref="JourneyEntryKind.NewJourney"/> and
+    /// <see cref="JourneyEntryKind.ContinueLevel"/> (1 otherwise). Read-only: the
+    /// routed selection is committed separately via <see cref="TrySetSelectedLevelNumber"/>.
+    /// </summary>
+    public JourneyEntryKind GetJourneyEntryPoint(out int levelNumber)
+    {
+        levelNumber = 1;
+        if (UsesRevisedProgress)
+        {
+            JourneyEntryPoint entry = SaveManager.Instance.Repository.ResolveJourneyEntryPoint();
+            if ((entry.Kind == JourneyEntryKind.NewJourney || entry.Kind == JourneyEntryKind.ContinueLevel)
+                && SaveManager.Instance.Campaign.TryGetLevel(entry.LevelId, out LevelConfigSO level))
+                levelNumber = level.levelNumber;
+            return entry.Kind;
+        }
+        if (IsRevisedBlocked)
+            return JourneyEntryKind.Blocked;
+        return ResolveLegacyJourneyEntry(out levelNumber);
+    }
+
+    private JourneyEntryKind ResolveLegacyJourneyEntry(out int levelNumber)
+    {
+        levelNumber = 1;
+        bool anyCompleted = false;
+        bool allCompleted = true;
+        int firstUnlockedIncomplete = -1;
+        int firstIncomplete = -1;
+
+        for (int i = 1; i <= TotalLevels; i++)
+        {
+            if (IsLevelCompleted(i))
+            {
+                anyCompleted = true;
+                continue;
+            }
+            allCompleted = false;
+            if (firstIncomplete < 0)
+                firstIncomplete = i;
+            if (firstUnlockedIncomplete < 0 && IsLevelUnlocked(i))
+                firstUnlockedIncomplete = i;
+        }
+
+        if (allCompleted)
+            return JourneyEntryKind.CompletedJourney;
+        if (!anyCompleted)
+            return JourneyEntryKind.NewJourney;
+
+        levelNumber = firstUnlockedIncomplete > 0 ? firstUnlockedIncomplete : firstIncomplete;
+        return JourneyEntryKind.ContinueLevel;
+    }
+
+    /// <summary>
+    /// SALIN-137: classifies one level as locked / unlocked / completed and names the
+    /// single preceding level that would unlock it. Read-only — this restates the
+    /// authored rule in <see cref="CampaignOutcomeCoordinator.ApplyLevelProgression"/>
+    /// for display and never unlocks anything.
+    /// <paramref name="requiredLevelNumber"/> is 0 when there is nothing to explain
+    /// (the level is reachable, is the first level, or the state is
+    /// <see cref="LevelLockState.Unknown"/>).
+    /// A blocked save resolves to <see cref="LevelLockState.Unknown"/> so callers stay
+    /// silent instead of blaming a prerequisite — <see cref="CampaignSaveNoticePanel"/>
+    /// already owns that story.
+    /// </summary>
+    public LevelLockState GetLevelLockState(
+        int levelNumber, out int requiredLevelNumber, out bool requirementCrossesEra)
+    {
+        requiredLevelNumber = 0;
+        requirementCrossesEra = false;
+
+        if (levelNumber < 1 || levelNumber > TotalLevels)
+            return LevelLockState.Unknown;
+
+        if (UsesRevisedProgress)
+        {
+            LevelLockStatus status =
+                SaveManager.Instance.Repository.ResolveLevelLock(GetRevisedLevelId(levelNumber));
+            if (status.HasRequirement)
+            {
+                requiredLevelNumber =
+                    SaveManager.Instance.Campaign != null &&
+                    SaveManager.Instance.Campaign.TryGetLevel(status.RequiredLevelId, out LevelConfigSO required)
+                        ? required.levelNumber
+                        : status.RequiredLevelOrder;
+                requirementCrossesEra = status.RequirementCrossesEra;
+            }
+            return status.State;
+        }
+
+        if (IsRevisedBlocked)
+            return LevelLockState.Unknown;
+
+        return ResolveLegacyLevelLock(levelNumber, out requiredLevelNumber);
+    }
+
+    /// <summary>
+    /// Legacy PlayerPrefs mirror of <see cref="GetLevelLockState"/>. The legacy path
+    /// unlocks <c>levelID + 1</c> on completion, which matches the revised rule, but it
+    /// has no era concept — era-crossing phrasing degrades to the plain "complete the
+    /// previous level" form there.
+    /// </summary>
+    private LevelLockState ResolveLegacyLevelLock(int levelNumber, out int requiredLevelNumber)
+    {
+        requiredLevelNumber = 0;
+        if (IsLevelCompleted(levelNumber))
+            return LevelLockState.Completed;
+        if (IsLevelUnlocked(levelNumber))
+            return LevelLockState.Unlocked;
+        if (levelNumber > 1)
+            requiredLevelNumber = levelNumber - 1;
+        return LevelLockState.Locked;
+    }
+
     public bool TryGetSelectedLevel(out LevelConfigSO level)
     {
         level = null;
@@ -120,6 +236,7 @@ public class ProgressManager : Singleton<ProgressManager>
         EventBus.OnLevelComplete += HandleLevelComplete;
         EventBus.OnWaveStarted += HandleWaveStarted;
         EventBus.OnPronunciationRequested += HandlePronunciationRequested;
+        EventBus.OnLevelAttemptAborted += HandleLevelAttemptAborted;
         EventBus.OnSpokenPronunciationRequested += HandleSpokenPronunciationRequested;
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
@@ -129,8 +246,27 @@ public class ProgressManager : Singleton<ProgressManager>
         EventBus.OnLevelComplete -= HandleLevelComplete;
         EventBus.OnWaveStarted -= HandleWaveStarted;
         EventBus.OnPronunciationRequested -= HandlePronunciationRequested;
+        EventBus.OnLevelAttemptAborted -= HandleLevelAttemptAborted;
         EventBus.OnSpokenPronunciationRequested -= HandleSpokenPronunciationRequested;
         SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    /// <summary>
+    /// SALIN-141. Discards the ATTEMPT-scoped caches for a level the player restarted or
+    /// left. Committed progress is untouched: no PlayerPrefs key is written or deleted,
+    /// and no SaveManager repository state is disturbed. In particular the outcome
+    /// coordinator is not driven from here — a pending outcome belonging to a previously
+    /// completed level must survive an abort of the level after it.
+    /// </summary>
+    private void HandleLevelAttemptAborted()
+    {
+        _cachedLevelOutcome = null;
+        _levelEvidence = null;
+        _pendingLevelResults = null;
+        _cachedHeartSystem = null;
+        _lastProcessedLevelId = -1;
+
+        DebugLogger.Log("ProgressManager: Level attempt aborted. Uncommitted attempt state discarded.");
     }
 
     /// <summary>
@@ -264,6 +400,14 @@ public class ProgressManager : Singleton<ProgressManager>
             return;
         }
 #endif
+
+        // SALIN-141: an attempt being torn down can never write stars or unlock the
+        // next level, however late the completion event arrives.
+        if (GameManager.Instance != null && GameManager.Instance.IsAttemptAbortInProgress)
+        {
+            DebugLogger.Log("ProgressManager: Ignored LevelComplete for an aborted level attempt.");
+            return;
+        }
 
         if (UsesRevisedProgress)
             return;
@@ -544,6 +688,15 @@ public class ProgressManager : Singleton<ProgressManager>
         IReadOnlyList<string> unlockedMemoryIds = null,
         IReadOnlyList<string> claimedRewardIds = null)
     {
+        // SALIN-141: the commit choke point for both save paths. An attempt the player
+        // restarted or left must never write stars, unlocks, or a campaign outcome.
+        if (GameManager.Instance != null && GameManager.Instance.IsAttemptAbortInProgress)
+        {
+            DebugLogger.Log("ProgressManager: Refused to commit an aborted level attempt.");
+            return CampaignOutcomeCommitResult.Rejected(
+                null, CampaignSaveFailureCode.InvalidStructure, "level-attempt-aborted");
+        }
+
         if (UsesRevisedProgress)
         {
             if (_cachedLevelOutcome == null)

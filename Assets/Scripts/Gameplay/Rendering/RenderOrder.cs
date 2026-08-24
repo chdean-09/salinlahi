@@ -28,6 +28,9 @@ public static class RenderOrder
     // Screen Space - Overlay canvases (separate axis from world sprites,
     // but kept in a high band so the numeric ordering still reads top-to-bottom)
     public const int CutsceneCanvas  = 8500;
+    // Pause-menu restart / leave-level confirmation. Above the pause panel and every
+    // gameplay surface, below the loading canvas so a committed transition covers it.
+    public const int PauseConfirmation = 8900;
     public const int LoadingCanvas   = 9000;
     public const int SandboxOverlay  = 9500;
 }

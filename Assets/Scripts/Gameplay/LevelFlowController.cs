@@ -124,6 +124,7 @@ public class LevelFlowController : MonoBehaviour
         EventBus.OnCutsceneComplete += HandleCutsceneComplete;
         EventBus.OnGamePaused += HandleGamePaused;
         EventBus.OnGameResumed += HandleGameResumed;
+        EventBus.OnLevelAttemptAborted += HandleLevelAttemptAborted;
     }
 
     private void OnDisable()
@@ -136,6 +137,7 @@ public class LevelFlowController : MonoBehaviour
         EventBus.OnCutsceneComplete -= HandleCutsceneComplete;
         EventBus.OnGamePaused -= HandleGamePaused;
         EventBus.OnGameResumed -= HandleGameResumed;
+        EventBus.OnLevelAttemptAborted -= HandleLevelAttemptAborted;
 
         if (s_activeFlow == this)
             s_activeFlow = null;
@@ -534,6 +536,11 @@ public class LevelFlowController : MonoBehaviour
             // states; this covers Exited).
             _drawingSuppressedByFlow = false;
             GameManager.Instance?.SuppressDrawingInput(false);
+            // SALIN-135: the tutorial statics are static, so a defeat or exit landing
+            // mid-beat would otherwise carry a combat override or an input lock into the
+            // retried attempt. Clearing is idempotent and, once IsActive is false, a beat
+            // still unwinding can no longer re-latch either flag.
+            TutorialRuntimeState.Clear();
         }
     }
 
@@ -833,6 +840,26 @@ public class LevelFlowController : MonoBehaviour
     private void HandleGameResumed()
     {
         _machine?.NotifyResumed();
+    }
+
+    /// <summary>
+    /// SALIN-141. The player restarted or left the level. The abort is routed THROUGH
+    /// the machine — never around it: RequestExit is the only thing that makes the
+    /// transition terminal, and only a terminal transition runs
+    /// <see cref="HandleMachinePhaseChanged"/>, which clears the stale dialogue and
+    /// cutscene waits, releases drawing suppression, and closes the SALIN-135 tutorial
+    /// statics. Stopping the coroutines instead would leave the machine live, keep
+    /// RoutesDefenseCompletion true, and carry that state into the next attempt.
+    /// Never commits: an exited attempt can no longer reach AtomicSave.
+    /// </summary>
+    private void HandleLevelAttemptAborted()
+    {
+        _machine?.RequestExit();
+
+        // Also latches the machine-less legacy path (bare controllers, sandbox
+        // scenes, EditMode fixtures) so a late OnLevelComplete cannot commit there.
+        _levelEnded = true;
+        _flowAborted = true;
     }
 
     protected virtual CampaignOutcomeCommitResult CommitCompletion()

@@ -88,6 +88,12 @@ public static class EventBus
     // Demo-only restore: refills the heart that the demo hit emptied, with a visible pulse.
     public static event Action OnTutorialBaseRestoreDemo;
 
+    // -- Level Lifecycle Events --
+    // SALIN-141. Raised once by GameManager.AbortCurrentLevelAttempt when the player
+    // restarts or leaves a level. Every system holding per-attempt state (waves, boss,
+    // combo, stroke capture, progress caches) tears it down here, before the scene
+    // unloads, so nothing from the discarded attempt survives into the next one.
+    public static event Action OnLevelAttemptAborted;
     // -- Learning Events --
     // SALIN-157: spoken-value-aware pronunciation. AudioManager resolves the clip
     // per the requirement's spokenValueId so E/I, O/U, and DA/RA follow the
@@ -143,6 +149,7 @@ public static class EventBus
     public static void RaiseCharacterUnlocked(BaybayinCharacterSO c) => OnCharacterUnlocked?.Invoke(c);
     public static void RaiseTutorialBaseHitDemo(int damage = 1) => OnTutorialBaseHitDemo?.Invoke(damage);
     public static void RaiseTutorialBaseRestoreDemo() => OnTutorialBaseRestoreDemo?.Invoke();
+    public static void RaiseLevelAttemptAborted() => OnLevelAttemptAborted?.Invoke();
     public static void RaiseSpokenPronunciationRequested(BaybayinCharacterSO character, string spokenValueId)
         => OnSpokenPronunciationRequested?.Invoke(character, spokenValueId);
 }

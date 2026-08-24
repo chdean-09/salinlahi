@@ -86,6 +86,15 @@ public class CombatResolver : MonoBehaviour
                 return;
         }
 
+        // Echo gate (SALIN-135). A single finger-lift can raise OnCharacterRecognized more than
+        // once inside the pronunciation-lead window; every downstream path — active clue, AOE
+        // burst, closest match, and the miss branch — must treat that as one attempt so a single
+        // user action produces exactly one combat and feedback response. Placed after the boss
+        // route on purpose: BossController owns its own BossRouteResult.Duplicate semantics and
+        // must keep seeing the raw event stream.
+        if (IsEchoedRecognition(characterID))
+            return;
+
         // Active-clue combat (SALIN-180). This gate intentionally runs after boss routing:
         // bosses are not eligible clues, but targetable bosses must retain their existing draw
         // route on a clue-enabled level.
@@ -175,10 +184,6 @@ public class CombatResolver : MonoBehaviour
     }
 
     /// <summary>
-    /// Strict active-clue resolution: only the marked enemy is drawable. A non-match is a miss
-    /// with corrective feedback and no language progress; the AOE path is bypassed entirely.
-    /// </summary>
-    /// <summary>
     /// True when this recognition repeats the previous one inside the echo window, meaning it
     /// is the same finger-lift arriving twice rather than a second attempt.
     /// </summary>
@@ -205,16 +210,14 @@ public class CombatResolver : MonoBehaviour
         return _cachedPresenter;
     }
 
+    /// <summary>
+    /// Strict active-clue resolution: only the marked enemy is drawable. A non-match is a miss
+    /// with corrective feedback and no language progress; the AOE path is bypassed entirely.
+    /// </summary>
     private void ResolveActiveClueDraw(ActiveClueDirector director, string characterID)
     {
-        // A single finger-lift can raise OnCharacterRecognized more than once inside the
-        // pronunciation-lead window. The director's TryConsumeClue already protects objective
-        // credit, but the miss path records evidence unconditionally, so an echoed event
-        // would inflate attemptCount and depress the mastery ratio for a single user action.
-        // No human draws the same character twice this fast.
-        if (IsEchoedRecognition(characterID))
-            return;
-
+        // Echo suppression lives in HandleCharacterRecognized (SALIN-135) so the legacy
+        // AOE/closest-match paths get the same single-fire guarantee this path already had.
         Enemy clue = director.CurrentClue;
         bool matchesClue = clue != null
                            && clue.Character != null

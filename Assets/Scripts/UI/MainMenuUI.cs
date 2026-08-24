@@ -48,8 +48,60 @@ public class MainMenuUI : MonoBehaviour
         }
 
         EnsureSandboxEntryPoint();
+        UpdatePlayButtonLabel();
         if (SaveManager.Instance != null && _campaignSaveNoticePanel != null)
             _campaignSaveNoticePanel.Present(SaveManager.Instance.PendingNotice);
+    }
+
+    /// <summary>
+    /// SALIN-136: reflects the journey entry point on the Play button without new
+    /// serialized fields — a fresh save reads as a new journey, an in-progress one as
+    /// continue, and a finished one as review. Leaves the label untouched when the
+    /// entry point is blocked or the label object cannot be found.
+    /// </summary>
+    private void UpdatePlayButtonLabel()
+    {
+        if (ProgressManager.Instance == null)
+            return;
+
+        string label;
+        if (GameManager.Instance != null && GameManager.Instance.TryGetPausedRunLevelId(out _))
+        {
+            label = "Continue";
+        }
+        else
+        {
+            switch (ProgressManager.Instance.GetJourneyEntryPoint(out _))
+            {
+                case JourneyEntryKind.NewJourney:
+                    label = "Start Journey";
+                    break;
+                case JourneyEntryKind.ContinueLevel:
+                    label = "Continue";
+                    break;
+                case JourneyEntryKind.CompletedJourney:
+                    label = "Review Journey";
+                    break;
+                default:
+                    return;
+            }
+        }
+
+        Text playLabel = FindPlayButtonLabel();
+        if (playLabel != null)
+            playLabel.text = label;
+    }
+
+    private Text FindPlayButtonLabel()
+    {
+        Text[] labels = GetComponentsInChildren<Text>(true);
+        foreach (Text label in labels)
+        {
+            if (label != null && label.transform.parent != null
+                && label.transform.parent.name == "PlayButton")
+                return label;
+        }
+        return null;
     }
 
     public void OnPlayButtonPressed()
@@ -61,8 +113,28 @@ public class MainMenuUI : MonoBehaviour
         if (GameManager.Instance != null
             && GameManager.Instance.TryGetPausedRunLevelId(out int pausedLevelId))
         {
+            // SALIN-143: an in-session paused run keeps highest precedence.
             selectedLevel = pausedLevelId;
             DebugLogger.Log($"MainMenuUI: Resuming paused run on level {selectedLevel}.");
+        }
+        else if (ProgressManager.Instance != null)
+        {
+            // SALIN-136: continue from the next meaningful point in the journey.
+            JourneyEntryKind entryKind = ProgressManager.Instance.GetJourneyEntryPoint(out int entryLevel);
+            if (entryKind == JourneyEntryKind.Blocked)
+            {
+                DebugLogger.LogWarning("MainMenuUI: Journey routing is blocked; save notice pending.");
+                return;
+            }
+            if (entryKind == JourneyEntryKind.CompletedJourney)
+            {
+                DebugLogger.Log("MainMenuUI: Journey complete — opening Level Select for review/replay.");
+                LoadLevelSelect();
+                return;
+            }
+
+            selectedLevel = entryLevel;
+            DebugLogger.Log($"MainMenuUI: Journey entry '{entryKind}' routes to level {selectedLevel}.");
         }
 
         if (ProgressManager.Instance != null && !ProgressManager.Instance.TrySetSelectedLevelNumber(selectedLevel))
