@@ -48,6 +48,7 @@ public class StrokeCapture : MonoBehaviour
         Touch.onFingerUp += OnFingerUp;
         EventBus.OnGamePaused += HandleGamePaused;
         EventBus.OnGameResumed += HandleGameResumed;
+        EventBus.OnLevelAttemptAborted += HandleLevelAttemptAborted;
     }
 
     private void OnDisable()
@@ -57,12 +58,19 @@ public class StrokeCapture : MonoBehaviour
         Touch.onFingerUp -= OnFingerUp;
         EventBus.OnGamePaused -= HandleGamePaused;
         EventBus.OnGameResumed -= HandleGameResumed;
+        EventBus.OnLevelAttemptAborted -= HandleLevelAttemptAborted;
         EnhancedTouchSupport.Disable();
     }
 
     private void Update()
     {
         if (_config == null || _canvas == null)
+            return;
+
+        // Both timers below run on unscaled time, so Time.timeScale = 0 does not stop
+        // them. A stroke or multi-stroke window armed just before the pause — or
+        // re-armed during it — would otherwise expire and submit behind the pause menu.
+        if (GameManager.Instance != null && GameManager.Instance.CurrentState == GameState.Paused)
             return;
 
         if (_isDrawing && _activeFinger != null)
@@ -254,6 +262,33 @@ public class StrokeCapture : MonoBehaviour
 
         if (_strokeTimeoutEndTime > 0d)
             _strokeTimeoutEndTime = -1d;
+    }
+
+    /// <summary>
+    /// SALIN-141. Drops every scrap of the aborted attempt's drawing state so a
+    /// restarted level cannot inherit a half-drawn stroke, a parked multi-stroke
+    /// window, or a queued recognition submit.
+    /// </summary>
+    private void HandleLevelAttemptAborted()
+    {
+        _isDrawing = false;
+        _activeFinger = null;
+        _pendingRecognitionSubmit = false;
+        _strokeTimeoutEndTime = -1d;
+        _multiStrokeTimerEndTime = -1d;
+        _pausedMultiStrokeRemainingSeconds = -1d;
+        _lastProcessedTouchTime = double.MinValue;
+
+        if (_currentStroke != null)
+        {
+            _currentStroke.Clear();
+            _currentStroke = null;
+        }
+
+        _strokes.Clear();
+
+        if (_canvas != null)
+            _canvas.ClearCanvas();
     }
 
     private void ProcessTouchHistory(Finger finger)

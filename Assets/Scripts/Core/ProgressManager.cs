@@ -175,6 +175,7 @@ public class ProgressManager : Singleton<ProgressManager>
         EventBus.OnLevelComplete += HandleLevelComplete;
         EventBus.OnWaveStarted += HandleWaveStarted;
         EventBus.OnPronunciationRequested += HandlePronunciationRequested;
+        EventBus.OnLevelAttemptAborted += HandleLevelAttemptAborted;
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
@@ -183,7 +184,26 @@ public class ProgressManager : Singleton<ProgressManager>
         EventBus.OnLevelComplete -= HandleLevelComplete;
         EventBus.OnWaveStarted -= HandleWaveStarted;
         EventBus.OnPronunciationRequested -= HandlePronunciationRequested;
+        EventBus.OnLevelAttemptAborted -= HandleLevelAttemptAborted;
         SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    /// <summary>
+    /// SALIN-141. Discards the ATTEMPT-scoped caches for a level the player restarted or
+    /// left. Committed progress is untouched: no PlayerPrefs key is written or deleted,
+    /// and no SaveManager repository state is disturbed. In particular the outcome
+    /// coordinator is not driven from here — a pending outcome belonging to a previously
+    /// completed level must survive an abort of the level after it.
+    /// </summary>
+    private void HandleLevelAttemptAborted()
+    {
+        _cachedLevelOutcome = null;
+        _levelEvidence = null;
+        _pendingLevelResults = null;
+        _cachedHeartSystem = null;
+        _lastProcessedLevelId = -1;
+
+        DebugLogger.Log("ProgressManager: Level attempt aborted. Uncommitted attempt state discarded.");
     }
 
     /// <summary>
@@ -294,6 +314,14 @@ public class ProgressManager : Singleton<ProgressManager>
             return;
         }
 #endif
+
+        // SALIN-141: an attempt being torn down can never write stars or unlock the
+        // next level, however late the completion event arrives.
+        if (GameManager.Instance != null && GameManager.Instance.IsAttemptAbortInProgress)
+        {
+            DebugLogger.Log("ProgressManager: Ignored LevelComplete for an aborted level attempt.");
+            return;
+        }
 
         if (UsesRevisedProgress)
             return;
@@ -574,6 +602,15 @@ public class ProgressManager : Singleton<ProgressManager>
         IReadOnlyList<string> unlockedMemoryIds = null,
         IReadOnlyList<string> claimedRewardIds = null)
     {
+        // SALIN-141: the commit choke point for both save paths. An attempt the player
+        // restarted or left must never write stars, unlocks, or a campaign outcome.
+        if (GameManager.Instance != null && GameManager.Instance.IsAttemptAbortInProgress)
+        {
+            DebugLogger.Log("ProgressManager: Refused to commit an aborted level attempt.");
+            return CampaignOutcomeCommitResult.Rejected(
+                null, CampaignSaveFailureCode.InvalidStructure, "level-attempt-aborted");
+        }
+
         if (UsesRevisedProgress)
         {
             if (_cachedLevelOutcome == null)

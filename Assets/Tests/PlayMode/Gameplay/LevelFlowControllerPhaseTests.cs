@@ -52,6 +52,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             }
 
             ChallengeRuntimeState.Clear();
+            TutorialRuntimeState.Clear();
             foreach (Level1TutorialGuideUI guide in Object.FindObjectsByType<Level1TutorialGuideUI>(
                 FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
@@ -312,6 +313,42 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase);
         }
 
+        // SALIN-141 AC-1/AC-2. The test above drives the EventBus directly, which proves the
+        // subscription but not the route the pause button actually takes. This one goes
+        // through GameManager, so a pause that fails to reach the flow machine -- leaving it
+        // accepting phase reports behind the pause menu -- is caught.
+        [UnityTest]
+        public IEnumerator PauseGame_DuringDefense_ReachesTheFlowMachineAndResumeRestoresIt()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapLegacyFlow(out _, out _);
+
+            yield return WaitFrames(10);
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "Setup: the flow must be live in Defense before the pause.");
+
+            // PauseGame only acts from Playing; the bootstrap leaves GameManager wherever the
+            // flow put it, so state the precondition rather than assuming it.
+            GameManager.Instance.StartGame();
+            GameManager.Instance.PauseGame();
+            yield return null;
+
+            Assert.AreEqual(GameState.Paused, GameManager.Instance.CurrentState);
+            Assert.AreEqual(0f, Time.timeScale, "AC-1: gameplay timers ride Time.timeScale.");
+            Assert.IsTrue(MachineOf(controller).IsPaused,
+                "AC-1: the flow machine must pause with the rest of the level.");
+
+            GameManager.Instance.ResumeGame();
+            yield return null;
+
+            Assert.AreEqual(GameState.Playing, GameManager.Instance.CurrentState);
+            Assert.AreEqual(1f, Time.timeScale);
+            Assert.IsFalse(MachineOf(controller).IsPaused,
+                "AC-2: resume must hand the same attempt back, not a paused one.");
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "AC-2: the attempt continues in the phase it was paused in.");
+        }
+
         [UnityTest]
         public IEnumerator WaveManagerCompletion_RoutesThroughDefenseCompleteToVictory()
         {
@@ -416,6 +453,157 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 "Exiting the challenge must never commit partial campaign progress.");
             Assert.IsFalse(victoryPanel.activeSelf);
             Assert.AreEqual(LevelPhase.Exited, MachineOf(controller).Phase);
+        }
+
+        // SALIN-135 AC3/AC4. TutorialRuntimeState is static, so it outlives the scene. A defeat
+        // landing mid-beat skips the beat's own unwind, and the retried attempt would inherit a
+        // combat override or an input lock -- combat or drawing dead on arrival, with no way for
+        // the player to tell why. Only a tutorial that actually replays would self-heal, and a
+        // resumed or completed sequence does not replay.
+        [UnityTest]
+        public IEnumerator GameOver_WithTutorialStateOpen_ClearsTheTutorialRuntimeStatics()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapLegacyFlow(
+                out _, out _, out GameObject defeatPanel);
+
+            yield return WaitFrames(10);
+
+            // Stand in for a defeat arriving in the middle of a teaching beat.
+            TutorialRuntimeState.Begin(1);
+            TutorialRuntimeState.SetCombatOverrideActive(true);
+            TutorialRuntimeState.SetDrawingInputLocked(true);
+            Assert.IsTrue(TutorialRuntimeState.IsCombatOverrideActive,
+                "Setup: the beat must actually hold the override for this test to bite.");
+
+            EventBus.RaiseGameOver();
+            yield return WaitFrames(5);
+
+            Assert.AreEqual(LevelPhase.Defeated, MachineOf(controller).Phase);
+            Assert.IsTrue(defeatPanel.activeSelf);
+            Assert.AreEqual(0, controller.CommitCalls,
+                "A defeat must never commit campaign progress.");
+            Assert.IsFalse(TutorialRuntimeState.IsActive,
+                "Terminal cleanup must close the tutorial statics.");
+            Assert.IsFalse(TutorialRuntimeState.IsCombatOverrideActive,
+                "A retried attempt must start with combat live.");
+            Assert.IsFalse(TutorialRuntimeState.IsDrawingInputLocked,
+                "A retried attempt must start with drawing unlocked.");
+        }
+
+        [UnityTest]
+        public IEnumerator Exit_WithTutorialStateOpen_ClearsTheTutorialRuntimeStatics()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapFlow(
+                ConfigureContextChallenge, out _, out _, out _, dialogueController: null);
+
+            yield return WaitFrames(10);
+            EventBus.RaiseDefenseComplete();
+            yield return WaitFrames(10);
+            Assert.AreEqual(LevelPhase.ContextChallenge, MachineOf(controller).Phase,
+                "Setup: the challenge phase must be open.");
+
+            TutorialRuntimeState.Begin(1);
+            TutorialRuntimeState.SetDrawingInputLocked(true);
+
+            ChallengeFlowController challenge =
+                GetPrivateField<ChallengeFlowController>(controller, "_challengeFlowController");
+            challenge.Exit();
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.Exited, MachineOf(controller).Phase);
+            Assert.AreEqual(0, controller.CommitCalls,
+                "Exiting must never commit partial campaign progress.");
+            Assert.IsFalse(TutorialRuntimeState.IsDrawingInputLocked,
+                "Exiting mid-beat must not strand the input lock for the next attempt.");
+            Assert.IsFalse(TutorialRuntimeState.IsActive);
+        }
+
+        // SALIN-141 AC-3/AC-4. The abort must be routed THROUGH the machine. Stopping the
+        // coroutines instead would leave the machine non-terminal, keep
+        // RoutesDefenseCompletion true, and skip the terminal cleanup entirely -- which is
+        // exactly how a discarded attempt leaks a combat override or an input lock into
+        // the next one.
+        [UnityTest]
+        public IEnumerator LevelAttemptAborted_DuringDefense_ExitsTheMachineWithoutCommitting()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapLegacyFlow(
+                out GameObject victoryPanel, out _, out GameObject defeatPanel);
+
+            yield return WaitFrames(10);
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "Setup: the flow must be live in Defense before the abort.");
+            Assert.IsTrue(LevelFlowController.RoutesDefenseCompletion,
+                "Setup: a live flow must be routing defense completion.");
+
+            GameManager.Instance.AbortCurrentLevelAttempt();
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.Exited, MachineOf(controller).Phase,
+                "The abort must drive the machine to a terminal phase, not around it.");
+            Assert.IsFalse(LevelFlowController.RoutesDefenseCompletion,
+                "An exited attempt must stop routing defense completion.");
+            Assert.AreEqual(0, controller.CommitCalls,
+                "AC-4: an abandoned attempt must never commit campaign progress.");
+            Assert.IsFalse(victoryPanel.activeSelf);
+            Assert.IsFalse(defeatPanel.activeSelf,
+                "Leaving a level is not a defeat.");
+        }
+
+        [UnityTest]
+        public IEnumerator LevelAttemptAborted_MidTutorialBeat_ClearsTheRuntimeStatics()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapLegacyFlow(out _, out _);
+
+            yield return WaitFrames(10);
+
+            // Stand in for a restart landing in the middle of a teaching beat.
+            TutorialRuntimeState.Begin(1);
+            TutorialRuntimeState.SetCombatOverrideActive(true);
+            TutorialRuntimeState.SetDrawingInputLocked(true);
+            GameManager.Instance.SuppressDrawingInput(true);
+
+            GameManager.Instance.AbortCurrentLevelAttempt();
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.Exited, MachineOf(controller).Phase);
+            Assert.IsFalse(TutorialRuntimeState.IsActive,
+                "SALIN-135 terminal cleanup must run on an abort, exactly as on a defeat.");
+            Assert.IsFalse(TutorialRuntimeState.IsCombatOverrideActive);
+            Assert.IsFalse(TutorialRuntimeState.IsDrawingInputLocked);
+
+            GameManager.Instance.StartGame();
+            Assert.IsTrue(GameManager.Instance.AcceptsDrawingInput,
+                "The restarted attempt must start with drawing live.");
+        }
+
+        [UnityTest]
+        public IEnumerator LevelAttemptAborted_ThenLateCompletionEvents_StillCommitNothing()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapLegacyFlow(
+                out GameObject victoryPanel, out _, out GameObject defeatPanel);
+
+            yield return WaitFrames(10);
+            GameManager.Instance.AbortCurrentLevelAttempt();
+            yield return WaitFrames(5);
+
+            // Stragglers from the discarded attempt: a last enemy resolving, a wave
+            // completing, a heart draining.
+            EventBus.RaiseDefenseComplete();
+            EventBus.RaiseLevelComplete();
+            EventBus.RaiseGameOver();
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.Exited, MachineOf(controller).Phase,
+                "A terminal machine must reject every late report.");
+            Assert.AreEqual(0, controller.CommitCalls,
+                "AC-4: no incomplete completion may be committed after leaving.");
+            Assert.IsFalse(victoryPanel.activeSelf);
+            Assert.IsFalse(defeatPanel.activeSelf);
         }
 
         [UnityTest]

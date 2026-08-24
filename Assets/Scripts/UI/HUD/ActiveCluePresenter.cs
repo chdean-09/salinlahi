@@ -1,3 +1,4 @@
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -21,11 +22,21 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     [SerializeField] private Vector2 _activeClueMarkOffset = Vector2.zero;
     [SerializeField] private float _activeClueMarkScale = 1.6f;
 
+    [Header("Word Restoration Cue")]
+    [Tooltip("Optional authored label for the at-accept word-restoration cue. "
+             + "A runtime label is built when empty.")]
+    [SerializeField] private TextMeshProUGUI _wordRestoredText;
+    [Tooltip("How long the restored word stays on screen, in unscaled seconds.")]
+    [SerializeField, Min(0f)] private float _wordRestoredDurationSeconds = 1.4f;
+
     /// <summary>
     /// Suppresses a clue announcement that lands on top of one CombatResolver just made.
     /// AudioManager uses PlayOneShot, so pronunciation clips overlap rather than interrupt.
     /// </summary>
     private const float PronunciationDebounceSeconds = 0.5f;
+
+    /// <summary>Prefix on the at-accept cue, matching the victory summary's "Restored:" surface.</summary>
+    private const string WordRestoredPrefix = "Restored: ";
 
     private ClueChannels _resolvedChannels = ClueChannels.Glyph;
     private Enemy _currentClue;
@@ -35,6 +46,10 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private float _lastPronunciationTime = float.NegativeInfinity;
     private GameObject _activeClueMark;
     private Sprite _runtimeMarkSprite;
+    private GameObject _runtimeWordRestoredObject;
+    private Coroutine _wordRestoredRoutine;
+    private int _wordRestoredCueCount;
+    private string _lastWordRestoredMessage;
 
     /// <summary>Reused by HandleActiveClueChanged so badge sweeps do not allocate per clue.</summary>
     private readonly System.Collections.Generic.List<Enemy> _badgeSweepBuffer =
@@ -57,6 +72,21 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     /// marked. Only ever created for a level that arms clue combat.
     /// </summary>
     public GameObject ActiveClueMark => _activeClueMark;
+
+    /// <summary>
+    /// The at-accept word-restoration label, or null until an accepted draw first needs one.
+    /// Authored wiring wins; otherwise a runtime label is built on the HUD canvas.
+    /// </summary>
+    public TextMeshProUGUI WordRestoredLabel => _wordRestoredText;
+
+    /// <summary>
+    /// How many word-restoration cues this presenter has raised. Exists so a test can assert
+    /// "exactly once per accepted draw" without reaching into coroutine or canvas state.
+    /// </summary>
+    public int WordRestoredCueCount => _wordRestoredCueCount;
+
+    /// <summary>The text of the most recent word-restoration cue, or null before the first.</summary>
+    public string LastWordRestoredMessage => _lastWordRestoredMessage;
 
     private void OnEnable()
     {
@@ -82,9 +112,13 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         EventBus.OnPronunciationRequested -= HandlePronunciationRequested;
         EventBus.OnEnemySpawned -= HandleEnemySpawned;
         DestroyActiveClueMark();
+        DestroyRuntimeWordRestoredLabel();
 
         if (_subscribedDirector != null)
+        {
             _subscribedDirector.OnActiveClueChanged -= HandleActiveClueChanged;
+            _subscribedDirector.OnActiveClueResolved -= HandleActiveClueResolved;
+        }
         _subscribedDirector = null;
 
         if (_replayAudioButtonComponent != null)
@@ -120,10 +154,14 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             return;
 
         if (_subscribedDirector != null)
+        {
             _subscribedDirector.OnActiveClueChanged -= HandleActiveClueChanged;
+            _subscribedDirector.OnActiveClueResolved -= HandleActiveClueResolved;
+        }
 
         _subscribedDirector = director;
         _subscribedDirector.OnActiveClueChanged += HandleActiveClueChanged;
+        _subscribedDirector.OnActiveClueResolved += HandleActiveClueResolved;
     }
 
     /// <summary>
@@ -135,16 +173,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         if (_cluePanelRoot != null)
             return;
 
-        Canvas canvas = GetComponentInParent<Canvas>();
-        if (canvas == null)
-        {
-            GameObject hudCanvas = GameObject.Find("HUDCanvas");
-            canvas = hudCanvas != null ? hudCanvas.GetComponent<Canvas>() : null;
-        }
-
-        if (canvas == null)
-            canvas = FindFirstObjectByType<Canvas>();
-
+        Canvas canvas = ResolveHudCanvas();
         if (canvas == null)
             return;
 
@@ -523,6 +552,171 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private void HandlePronunciationRequested(BaybayinCharacterSO character)
     {
         _lastPronunciationTime = Time.unscaledTime;
+    }
+
+    /// <summary>
+    /// AC1's word-restoration half (SALIN-135). An accepted draw earns two answers: the combat
+    /// response the enemy plays, and a language response saying which word just got its symbol
+    /// back. Before this the only "Restored:" surface was the end-of-level summary, so a player
+    /// mid-defense never saw the point of the symbol they had just drawn.
+    ///
+    /// Fired from ActiveClueDirector.TryConsumeClue, so it is already exactly-once per clue and
+    /// an echoed recognition cannot double it.
+    /// </summary>
+    private void HandleActiveClueResolved(Enemy clue)
+    {
+        if (!IsClueCombatArmed || clue == null || clue.Character == null)
+            return;
+
+        // Legacy content and any symbol outside this level's focus words have nothing to
+        // restore; staying silent beats announcing an empty word.
+        FocusWordDefinition word = FindFocusWordContaining(clue.Character.stableId);
+        if (word == null)
+            return;
+
+        string restored = BuildRestoredWordLabel(word);
+        if (string.IsNullOrEmpty(restored))
+            return;
+
+        ShowWordRestoredCue(restored);
+    }
+
+    /// <summary>
+    /// Prefers the authored display label, falling back to the Latin spelling that the masked
+    /// IncompleteWord channel was hiding.
+    /// </summary>
+    private static string BuildRestoredWordLabel(FocusWordDefinition word)
+    {
+        if (word == null)
+            return null;
+
+        string spelling = !string.IsNullOrEmpty(word.displayLabel)
+            ? word.displayLabel
+            : word.latinSpelling;
+
+        return string.IsNullOrEmpty(spelling) ? null : WordRestoredPrefix + spelling;
+    }
+
+    private void ShowWordRestoredCue(string message)
+    {
+        // Counted at the decision, not at the draw call: a HUD with no canvas to build on must
+        // still be provably raising one cue per accepted draw and not two.
+        _wordRestoredCueCount++;
+        _lastWordRestoredMessage = message;
+
+        EnsureWordRestoredLabel();
+        if (_wordRestoredText == null)
+            return;
+
+        _wordRestoredText.text = message;
+        _wordRestoredText.gameObject.SetActive(true);
+
+        // A disabled presenter cannot run a coroutine. Leaving the label up is the harmless
+        // outcome: OnDisable tears the runtime label down anyway.
+        if (!isActiveAndEnabled)
+            return;
+
+        if (_wordRestoredRoutine != null)
+            StopCoroutine(_wordRestoredRoutine);
+
+        _wordRestoredRoutine = StartCoroutine(HideWordRestoredCueAfterDelay());
+    }
+
+    /// <summary>
+    /// Unscaled so the cue still clears while the game is paused mid-flash, matching
+    /// DrawingFeedback's flash timing.
+    /// </summary>
+    private IEnumerator HideWordRestoredCueAfterDelay()
+    {
+        float duration = Mathf.Max(0f, _wordRestoredDurationSeconds);
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        if (_wordRestoredText != null)
+            _wordRestoredText.gameObject.SetActive(false);
+
+        _wordRestoredRoutine = null;
+    }
+
+    /// <summary>
+    /// Built independently of EnsureRuntimePanel so the cue also reaches an authored HUD that
+    /// predates this ticket and therefore has no serialized reference to wire.
+    /// </summary>
+    private void EnsureWordRestoredLabel()
+    {
+        if (_wordRestoredText != null)
+            return;
+
+        Canvas canvas = ResolveHudCanvas();
+        if (canvas == null)
+            return;
+
+        TextMeshProUGUI textTemplate = _clueText != null
+            ? _clueText
+            : FindFirstObjectByType<TextMeshProUGUI>();
+
+        _runtimeWordRestoredObject =
+            new GameObject("[Runtime] WordRestoredCue", typeof(RectTransform));
+        _runtimeWordRestoredObject.transform.SetParent(canvas.transform, false);
+
+        var label = _runtimeWordRestoredObject.AddComponent<TextMeshProUGUI>();
+        CopyFont(textTemplate, label);
+        label.fontSize = 32f;
+        label.alignment = TextAlignmentOptions.Center;
+        label.color = new Color(1f, 0.84f, 0.29f, 1f);
+        label.raycastTarget = false;
+
+        RectTransform rect = _runtimeWordRestoredObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 1f);
+        rect.anchorMax = new Vector2(0.5f, 1f);
+        rect.pivot = new Vector2(0.5f, 1f);
+        rect.anchoredPosition = new Vector2(0f, -280f);
+        rect.sizeDelta = new Vector2(520f, 60f);
+
+        _runtimeWordRestoredObject.SetActive(false);
+        _wordRestoredText = label;
+    }
+
+    /// <summary>Same canvas search EnsureRuntimePanel uses, shared so the two agree.</summary>
+    private Canvas ResolveHudCanvas()
+    {
+        Canvas canvas = GetComponentInParent<Canvas>();
+        if (canvas != null)
+            return canvas;
+
+        GameObject hudCanvas = GameObject.Find("HUDCanvas");
+        canvas = hudCanvas != null ? hudCanvas.GetComponent<Canvas>() : null;
+        if (canvas != null)
+            return canvas;
+
+        return FindFirstObjectByType<Canvas>();
+    }
+
+    private void DestroyRuntimeWordRestoredLabel()
+    {
+        _wordRestoredRoutine = null;
+
+        if (_runtimeWordRestoredObject == null)
+        {
+            // An authored label is not ours to destroy; just stop showing the last cue.
+            if (_wordRestoredText != null)
+                _wordRestoredText.gameObject.SetActive(false);
+            return;
+        }
+
+        // Only the runtime label is presenter-owned, so only it is torn down.
+        if (_wordRestoredText != null
+            && _wordRestoredText.gameObject == _runtimeWordRestoredObject)
+        {
+            _wordRestoredText = null;
+        }
+
+        DestroyOwnedObject(_runtimeWordRestoredObject);
+        _runtimeWordRestoredObject = null;
     }
 
     /// <summary>

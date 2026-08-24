@@ -37,6 +37,18 @@ public sealed class ActiveClueDirector : MonoBehaviour
     /// <summary>Fires as (previous, current). Either value may be null.</summary>
     public event Action<Enemy, Enemy> OnActiveClueChanged;
 
+    /// <summary>
+    /// Fires once per clue instance, at the moment an accepted draw claims its credit
+    /// (SALIN-135). This is the at-accept "the word just got this symbol back" signal that the
+    /// HUD hangs its word-restoration cue on; once-ness comes from <see cref="TryConsumeClue"/>
+    /// rather than from any timing guard on the listener side.
+    ///
+    /// Deliberately a director-scoped event rather than an EventBus one: the presenter already
+    /// tracks this director, and an instance event cannot survive a scene reload the way a
+    /// static subscription can.
+    /// </summary>
+    public event Action<Enemy> OnActiveClueResolved;
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -164,6 +176,10 @@ public sealed class ActiveClueDirector : MonoBehaviour
             return false;
 
         _currentClueConsumed = true;
+
+        // Raised from the single winning consume so the at-accept cue inherits the same
+        // once-per-clue guarantee the objective credit has (SALIN-135).
+        OnActiveClueResolved?.Invoke(enemy);
         return true;
     }
 
