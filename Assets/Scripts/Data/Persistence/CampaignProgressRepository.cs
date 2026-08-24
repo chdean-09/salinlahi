@@ -34,6 +34,16 @@ public sealed class CampaignProgressRepository
     public JourneyEntryPoint ResolveJourneyEntryPoint() =>
         JourneyEntryResolver.Resolve(_service.Current, LevelIds());
 
+    /// <summary>
+    /// SALIN-137: read-only classification of one level's locked / unlocked / completed
+    /// state plus the single prerequisite that would unlock it, over the committed
+    /// document snapshot. Never mutates state — unlocking stays with
+    /// <see cref="TryUnlockLevel"/> and the authored rule stays with
+    /// <see cref="CampaignOutcomeCoordinator.ApplyLevelProgression"/>.
+    /// </summary>
+    public LevelLockStatus ResolveLevelLock(string levelId) =>
+        LevelLockResolver.Resolve(_service.Current, LevelIds(), levelId);
+
     public bool IsSymbolUnlocked(string symbolId) => _service.Current.progress.unlockedSymbolIds.Contains(symbolId);
     public bool IsEnemyDiscovered(string enemyId) => _service.Current.progress.discoveredEnemyIds.Contains(enemyId);
     public bool IsBossDiscovered(string bossId) => _service.Current.progress.discoveredBossIds.Contains(bossId);

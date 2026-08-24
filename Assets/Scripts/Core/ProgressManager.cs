@@ -162,6 +162,67 @@ public class ProgressManager : Singleton<ProgressManager>
         return JourneyEntryKind.ContinueLevel;
     }
 
+    /// <summary>
+    /// SALIN-137: classifies one level as locked / unlocked / completed and names the
+    /// single preceding level that would unlock it. Read-only — this restates the
+    /// authored rule in <see cref="CampaignOutcomeCoordinator.ApplyLevelProgression"/>
+    /// for display and never unlocks anything.
+    /// <paramref name="requiredLevelNumber"/> is 0 when there is nothing to explain
+    /// (the level is reachable, is the first level, or the state is
+    /// <see cref="LevelLockState.Unknown"/>).
+    /// A blocked save resolves to <see cref="LevelLockState.Unknown"/> so callers stay
+    /// silent instead of blaming a prerequisite — <see cref="CampaignSaveNoticePanel"/>
+    /// already owns that story.
+    /// </summary>
+    public LevelLockState GetLevelLockState(
+        int levelNumber, out int requiredLevelNumber, out bool requirementCrossesEra)
+    {
+        requiredLevelNumber = 0;
+        requirementCrossesEra = false;
+
+        if (levelNumber < 1 || levelNumber > TotalLevels)
+            return LevelLockState.Unknown;
+
+        if (UsesRevisedProgress)
+        {
+            LevelLockStatus status =
+                SaveManager.Instance.Repository.ResolveLevelLock(GetRevisedLevelId(levelNumber));
+            if (status.HasRequirement)
+            {
+                requiredLevelNumber =
+                    SaveManager.Instance.Campaign != null &&
+                    SaveManager.Instance.Campaign.TryGetLevel(status.RequiredLevelId, out LevelConfigSO required)
+                        ? required.levelNumber
+                        : status.RequiredLevelOrder;
+                requirementCrossesEra = status.RequirementCrossesEra;
+            }
+            return status.State;
+        }
+
+        if (IsRevisedBlocked)
+            return LevelLockState.Unknown;
+
+        return ResolveLegacyLevelLock(levelNumber, out requiredLevelNumber);
+    }
+
+    /// <summary>
+    /// Legacy PlayerPrefs mirror of <see cref="GetLevelLockState"/>. The legacy path
+    /// unlocks <c>levelID + 1</c> on completion, which matches the revised rule, but it
+    /// has no era concept — era-crossing phrasing degrades to the plain "complete the
+    /// previous level" form there.
+    /// </summary>
+    private LevelLockState ResolveLegacyLevelLock(int levelNumber, out int requiredLevelNumber)
+    {
+        requiredLevelNumber = 0;
+        if (IsLevelCompleted(levelNumber))
+            return LevelLockState.Completed;
+        if (IsLevelUnlocked(levelNumber))
+            return LevelLockState.Unlocked;
+        if (levelNumber > 1)
+            requiredLevelNumber = levelNumber - 1;
+        return LevelLockState.Locked;
+    }
+
     public bool TryGetSelectedLevel(out LevelConfigSO level)
     {
         level = null;
