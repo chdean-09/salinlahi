@@ -47,6 +47,7 @@ public class WaveManager : MonoBehaviour
     private void OnEnable()
     {
         EventBus.OnGameOver += HandleGameOver;
+        EventBus.OnLevelAttemptAborted += HandleLevelAttemptAborted;
 
         if (_currentAllowedCharactersOwner != null && _currentAllowedCharactersOwner != this)
         {
@@ -61,6 +62,7 @@ public class WaveManager : MonoBehaviour
     private void OnDisable()
     {
         EventBus.OnGameOver -= HandleGameOver;
+        EventBus.OnLevelAttemptAborted -= HandleLevelAttemptAborted;
 
         if (_currentAllowedCharactersOwner == this)
         {
@@ -240,6 +242,13 @@ public class WaveManager : MonoBehaviour
         ReturnAllActiveEnemies();
         _waveRoutine = null;
     }
+
+    /// <summary>
+    /// SALIN-141. Same teardown as a defeat: stop spawning and return every live enemy
+    /// to the pool before the scene unloads, so a restarted level cannot start with the
+    /// aborted attempt's enemies still checked out.
+    /// </summary>
+    private void HandleLevelAttemptAborted() => HandleGameOver();
 
     private bool TryRestorePausedRun(int selectedLevel)
     {

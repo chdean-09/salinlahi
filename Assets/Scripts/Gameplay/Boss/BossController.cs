@@ -80,13 +80,48 @@ public class BossController : MonoBehaviour
         _stateRoutine = StartCoroutine(RunEncounter());
     }
 
+    private void OnEnable()
+    {
+        EventBus.OnLevelAttemptAborted += HandleLevelAttemptAborted;
+    }
+
     private void OnDisable()
+    {
+        EventBus.OnLevelAttemptAborted -= HandleLevelAttemptAborted;
+
+        if (_stateRoutine != null)
+        {
+            StopCoroutine(_stateRoutine);
+            _stateRoutine = null;
+        }
+        if (GameManager.Instance != null && GameManager.Instance.CurrentBoss == this)
+            GameManager.Instance.SetCurrentBoss(null);
+    }
+
+    /// <summary>
+    /// SALIN-141. Ends the encounter for an attempt that is being discarded: the state
+    /// routine stops, movement and panting visuals unwind, and the boss releases its
+    /// GameManager.CurrentBoss claim so the next attempt starts with no boss registered.
+    /// Deliberately raises no boss events — nothing about this attempt happened.
+    /// </summary>
+    private void HandleLevelAttemptAborted()
     {
         if (_stateRoutine != null)
         {
             StopCoroutine(_stateRoutine);
             _stateRoutine = null;
         }
+
+        _state = State.Idle;
+        _isVulnerableActiveWindow = false;
+        _currentExpectedCharacter = null;
+        _correctDrawsThisWindow = 0;
+
+        if (_phaseMovement != null)
+            _phaseMovement.StopPattern();
+        if (_stateVisuals != null)
+            _stateVisuals.EndPanting();
+
         if (GameManager.Instance != null && GameManager.Instance.CurrentBoss == this)
             GameManager.Instance.SetCurrentBoss(null);
     }
