@@ -237,6 +237,7 @@ public class ProgressManager : Singleton<ProgressManager>
         EventBus.OnWaveStarted += HandleWaveStarted;
         EventBus.OnPronunciationRequested += HandlePronunciationRequested;
         EventBus.OnLevelAttemptAborted += HandleLevelAttemptAborted;
+        EventBus.OnSpokenPronunciationRequested += HandleSpokenPronunciationRequested;
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
@@ -246,6 +247,7 @@ public class ProgressManager : Singleton<ProgressManager>
         EventBus.OnWaveStarted -= HandleWaveStarted;
         EventBus.OnPronunciationRequested -= HandlePronunciationRequested;
         EventBus.OnLevelAttemptAborted -= HandleLevelAttemptAborted;
+        EventBus.OnSpokenPronunciationRequested -= HandleSpokenPronunciationRequested;
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
@@ -280,6 +282,29 @@ public class ProgressManager : Singleton<ProgressManager>
 #endif
         if (character == null || character.pronunciationClip == null ||
             string.IsNullOrEmpty(character.stableId))
+            return;
+
+        LevelEvidence.RecordAttempt(
+            character.stableId,
+            LearningContentKind.Symbol,
+            MasteryDimension.Sound,
+            success: true,
+            answerWasVisible: true);
+    }
+
+    /// <summary>
+    /// SALIN-157: the spoken-value-aware pronunciation event records the same
+    /// Sound-dimension exposure, guarded on the resolved clip — mirroring the
+    /// legacy guard above — so a clipless learning card records nothing.
+    /// </summary>
+    private void HandleSpokenPronunciationRequested(BaybayinCharacterSO character, string spokenValueId)
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        if (SandboxMode.IsActive)
+            return;
+#endif
+        if (character == null || string.IsNullOrEmpty(character.stableId) ||
+            SpokenValueResolver.ResolveClip(character, spokenValueId) == null)
             return;
 
         LevelEvidence.RecordAttempt(

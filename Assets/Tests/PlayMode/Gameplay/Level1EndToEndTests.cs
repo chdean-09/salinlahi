@@ -141,7 +141,29 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 "Both words must be readable before drawing begins.");
             preview.Continue();
 
-            // 3. Learning/practice stubs auto-advance into Defense.
+            // 3. Symbol learning: one card per Level 1 learning requirement
+            //    (SALIN-157) — the shipped config authors four. Level 1 ships no
+            //    approved pronunciation clips, so every card is the visual-only
+            //    path with the replay control hidden. The practice stub then
+            //    auto-advances into Defense.
+            yield return WaitFrames(10);
+            Assert.AreEqual(LevelPhase.SymbolLearning, MachineOf(controller).Phase,
+                "The four authored learning requirements must hold the flow on their cards.");
+            SymbolLearningCardController learningCards =
+                Object.FindFirstObjectByType<SymbolLearningCardController>();
+            Assert.IsNotNull(learningCards, "The flow must provide the learning card surface.");
+            Assert.AreEqual(4, learningCards.CardCount);
+            Assert.IsFalse(gameManager.AcceptsDrawingInput,
+                "Every card must be readable before drawing begins.");
+            for (int card = 0; card < 4; card++)
+            {
+                Assert.AreEqual(card, learningCards.CurrentCardIndex);
+                Assert.IsFalse(learningCards.IsReplayAvailable,
+                    "Level 1 has no approved clips yet; its cards must stay visual-only.");
+                learningCards.Continue();
+                yield return WaitFrames(3);
+            }
+
             yield return WaitFrames(15);
             Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase);
             Assert.IsTrue(gameManager.AcceptsDrawingInput,

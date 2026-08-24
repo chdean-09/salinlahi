@@ -97,6 +97,7 @@ public class AudioManager : Singleton<AudioManager>
     {
         SceneManager.sceneLoaded += HandleSceneLoaded;
         EventBus.OnPronunciationRequested += PlayPronunciationClip;
+        EventBus.OnSpokenPronunciationRequested += PlaySpokenPronunciationClip;
         EventBus.OnBaseDamageApplied += PlayBaseHitSound;
         EventBus.OnChainAttackHit += PlayChainLightningSfx;
     }
@@ -105,6 +106,7 @@ public class AudioManager : Singleton<AudioManager>
     {
         SceneManager.sceneLoaded -= HandleSceneLoaded;
         EventBus.OnPronunciationRequested -= PlayPronunciationClip;
+        EventBus.OnSpokenPronunciationRequested -= PlaySpokenPronunciationClip;
         EventBus.OnBaseDamageApplied -= PlayBaseHitSound;
         EventBus.OnChainAttackHit -= PlayChainLightningSfx;
 
@@ -188,6 +190,17 @@ public class AudioManager : Singleton<AudioManager>
     private void PlayPronunciationClip(BaybayinCharacterSO character)
     {
         PlayPronunciation(character?.pronunciationClip);
+    }
+
+    /// <summary>
+    /// SALIN-157: plays the approved clip for one spoken value (E/I, O/U, DA/RA
+    /// follow the level context), falling back to the character-level clip. A
+    /// null resolution is a silent no-op — the learning card keeps everything
+    /// essential visible on its own.
+    /// </summary>
+    private void PlaySpokenPronunciationClip(BaybayinCharacterSO character, string spokenValueId)
+    {
+        PlayPronunciation(SpokenValueResolver.ResolveClip(character, spokenValueId));
     }
 
     public void PlayPronunciation(AudioClip clip)

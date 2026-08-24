@@ -68,6 +68,7 @@ public class LevelFlowController : MonoBehaviour
     private ActiveClueDirector _activeClueDirector;
     private ActiveCluePresenter _activeCluePresenter;
     private FocusWordPreviewController _focusWordPreview;
+    private SymbolLearningCardController _symbolLearningCards;
 
     public static bool TryStartRuntimeTutorialFlow(
         LevelConfigSO levelConfig,
@@ -217,14 +218,15 @@ public class LevelFlowController : MonoBehaviour
         {
             case LevelPhase.Story: return ExecuteStory();
             case LevelPhase.FocusWords: return ExecuteFocusWords();
+            case LevelPhase.SymbolLearning: return ExecuteSymbolLearning();
             case LevelPhase.Defense: return ExecuteDefense();
             case LevelPhase.ContextChallenge: return ExecuteContextChallenge();
             case LevelPhase.MemoryReward: return ExecuteMemoryReward();
             case LevelPhase.AtomicSave: return ExecuteAtomicSave();
             case LevelPhase.Results: return ExecuteResults();
-            // SymbolLearning/RequiredPractice route through the learning surfaces
-            // when their campaign gates land (SALIN-172 scope). The driver
-            // auto-completes them until then.
+            // RequiredPractice routes through its practice surface when its
+            // campaign gate lands (SALIN-172 scope). The driver auto-completes
+            // it until then.
             default: return ExecuteStubPhase();
         }
     }
@@ -297,6 +299,34 @@ public class LevelFlowController : MonoBehaviour
         }
 
         yield return _focusWordPreview.Present(_levelConfig);
+    }
+
+    private IEnumerator ExecuteSymbolLearning()
+    {
+        // SALIN-157: one learning card per Instruction-kind requirement. A level
+        // with none presentable skips without touching drawing suppression and
+        // the driver auto-completes the phase.
+        if (!SymbolLearningCardController.HasPresentableRequirement(_levelConfig))
+            yield break;
+
+        // Every card must be readable before drawing begins. FocusWords already
+        // holds suppression through this phase when it ran; a level authored
+        // with learning requirements but no focus words takes it here. Either
+        // way the Defense executor releases it exactly once as it opens.
+        SuppressDrawingForPreview();
+
+        if (_symbolLearningCards == null)
+        {
+            _symbolLearningCards = FindFirstObjectByType<SymbolLearningCardController>(FindObjectsInactive.Include);
+            if (_symbolLearningCards == null)
+            {
+                GameObject cardObject = new GameObject("[Runtime] SymbolLearningCardController");
+                cardObject.transform.SetParent(transform, false);
+                _symbolLearningCards = cardObject.AddComponent<SymbolLearningCardController>();
+            }
+        }
+
+        yield return _symbolLearningCards.Present(_levelConfig);
     }
 
     private IEnumerator ExecuteDefense()

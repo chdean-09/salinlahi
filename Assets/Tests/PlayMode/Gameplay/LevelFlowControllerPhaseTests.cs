@@ -32,6 +32,12 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         public void TearDown()
         {
             LogAssert.ignoreFailingMessages = false;
+            if (_spokenPronunciationProbe != null)
+            {
+                EventBus.OnSpokenPronunciationRequested -= _spokenPronunciationProbe;
+                _spokenPronunciationProbe = null;
+            }
+
             ClearSingletonInstance<GameManager>();
             LevelTutorialProgress.ResetLevel1TutorialForTests();
             Time.timeScale = 1f;
@@ -280,9 +286,11 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         [UnityTest]
         public IEnumerator StubLearningPhases_AutoCompleteToDefense()
         {
-            // FocusWords gained its surface with SALIN-138 and now holds for the
-            // preview; SymbolLearning and RequiredPractice remain auto-completing
-            // stubs until their campaign gates land.
+            // FocusWords (SALIN-138) and SymbolLearning (SALIN-157) hold for their
+            // surfaces; RequiredPractice remains an auto-completing stub until its
+            // campaign gate lands. A learning requirement with no symbol authored
+            // is not presentable, so SymbolLearning must also fall through here
+            // rather than deadlock on an empty card deck.
             LogAssert.Expect(LogType.Error, MissingWaveManagerError);
             TestPhaseFlowController controller = BootstrapFlow(
                 config =>
@@ -295,7 +303,194 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             yield return WaitFrames(20);
 
             Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
-                "Stub executors (SymbolLearning, RequiredPractice) must auto-complete.");
+                "The RequiredPractice stub and a card-less SymbolLearning phase must auto-complete.");
+        }
+
+        [UnityTest]
+        public IEnumerator SymbolLearning_HoldsPerCard_AndLabelsFollowTheSpokenValueContext()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            DialogueController dialogue = CreateComponent<DialogueController>("DialogueController");
+            SetPrivateField(dialogue, "_overlayPanel", CreatePanel("DialogueOverlay"));
+            TestPhaseFlowController controller = BootstrapFlow(
+                config => ConfigureSymbolLearningLevel(config, withClips: false),
+                out _, out _, out _, dialogue);
+
+            yield return WaitFrames(5);
+            // Only a Playing GameManager lets AcceptsDrawingInput report the
+            // suppression flag rather than the dialogue pause (see
+            // TeardownMidPreview_ReleasesDrawingSuppression for the full rationale).
+            GameManager.Instance.ExitDialoguePause();
+            EventBus.RaiseDialogueComplete();
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.SymbolLearning, MachineOf(controller).Phase,
+                "The flow must hold in SymbolLearning while a card is up.");
+            Assert.AreEqual(GameState.Playing, GameManager.Instance.CurrentState,
+                "Setup: the suppression assertions below need a Playing GameManager.");
+            Assert.IsFalse(GameManager.Instance.AcceptsDrawingInput,
+                "Every card must be readable before drawing begins — this level has no "
+                + "focus words, so the SymbolLearning executor must take suppression itself.");
+
+            SymbolLearningCardController cards =
+                Object.FindFirstObjectByType<SymbolLearningCardController>();
+            Assert.IsNotNull(cards, "The flow must provide the syllable learning card surface.");
+            Assert.IsTrue(cards.IsPresenting);
+            Assert.AreEqual(2, cards.CardCount,
+                "One card per Instruction-kind learning requirement.");
+            Assert.AreEqual(0, cards.CurrentCardIndex);
+            Assert.AreEqual("ra", cards.CurrentLabel,
+                "The DA/RA card's label must follow the requirement's spokenValueId (level "
+                + "context), not the glyph's default syllable.");
+            Assert.IsFalse(cards.IsReplayAvailable,
+                "A clipless card must stay visual-only with the replay control hidden.");
+
+            cards.Continue();
+            yield return WaitFrames(3);
+
+            Assert.AreEqual(LevelPhase.SymbolLearning, MachineOf(controller).Phase,
+                "Advancing past card 1 of 2 must hold the phase on card 2.");
+            Assert.AreEqual(1, cards.CurrentCardIndex);
+            Assert.AreEqual("e/i", cards.CurrentLabel,
+                "The E/I card must show the approved level-context label.");
+            Assert.IsFalse(cards.IsReplayAvailable);
+
+            cards.Continue();
+            yield return WaitFrames(15);
+
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "Advancing past the last card must carry the flow into Defense.");
+            Assert.IsFalse(cards.IsPresenting);
+            Assert.IsTrue(GameManager.Instance.AcceptsDrawingInput,
+                "The Defense executor must release the suppression the card phase took.");
+        }
+
+        [UnityTest]
+        public IEnumerator SymbolLearning_ActiveCardAnnouncesOnce_AndReplayReRaisesOnDemand()
+        {
+            // No MissingWaveManagerError expectation here: unlike its sibling above,
+            // this case deliberately ends while card 2 of 2 is still up, so the flow
+            // never enters Defense and never reaches the WaveManager handoff that
+            // logs it. The closing phase assertion pins that down.
+            DialogueController dialogue = CreateComponent<DialogueController>("DialogueController");
+            SetPrivateField(dialogue, "_overlayPanel", CreatePanel("DialogueOverlay"));
+            TestPhaseFlowController controller = BootstrapFlow(
+                config => ConfigureSymbolLearningLevel(config, withClips: true),
+                out _, out _, out _, dialogue);
+
+            int spokenRaises = 0;
+            BaybayinCharacterSO lastSymbol = null;
+            string lastSpokenValueId = null;
+            _spokenPronunciationProbe = (symbol, spokenValueId) =>
+            {
+                spokenRaises++;
+                lastSymbol = symbol;
+                lastSpokenValueId = spokenValueId;
+            };
+            EventBus.OnSpokenPronunciationRequested += _spokenPronunciationProbe;
+
+            yield return WaitFrames(5);
+            EventBus.RaiseDialogueComplete();
+            yield return WaitFrames(10);
+            Assert.AreEqual(LevelPhase.SymbolLearning, MachineOf(controller).Phase,
+                "Setup: the card phase must be open.");
+
+            SymbolLearningCardController cards =
+                Object.FindFirstObjectByType<SymbolLearningCardController>();
+            Assert.IsNotNull(cards);
+            Assert.IsTrue(cards.IsReplayAvailable,
+                "A card whose spoken value resolves a clip must offer replay.");
+            Assert.AreEqual(1, spokenRaises,
+                "The card becoming active must announce its pronunciation exactly once.");
+            Assert.AreEqual("value.test-ra", lastSpokenValueId,
+                "The announcement must carry the requirement's spoken value, not the "
+                + "character default, so DA/RA follows the level context.");
+
+            cards.Continue();
+            yield return WaitFrames(3);
+
+            // Card 2 activates inside the 0.5s debounce window stamped by card 1's
+            // announcement, so it must stay silent rather than stack an overlapping
+            // clip. (Frame-paced: 3 frames are far inside the window.)
+            Assert.AreEqual(1, cards.CurrentCardIndex, "Setup: card 2 must be active.");
+            Assert.AreEqual(1, spokenRaises,
+                "A card activating while another pronunciation is within the debounce "
+                + "window must not stack an overlapping clip.");
+            Assert.IsTrue(cards.IsReplayAvailable,
+                "The debounced card must still offer its audio on demand.");
+
+            cards.ReplayAudio();
+
+            Assert.AreEqual(2, spokenRaises, "Replay must re-raise on demand.");
+            Assert.AreEqual("value.test-ei", lastSpokenValueId);
+            Assert.IsNotNull(lastSymbol);
+            Assert.AreEqual("symbol.test-ei", lastSymbol.stableId);
+
+            yield return WaitFrames(3);
+
+            Assert.AreEqual(1, cards.CurrentCardIndex,
+                "Replaying audio must not advance the deck.");
+            Assert.AreEqual(2, spokenRaises,
+                "Replay must announce once per press, not re-announce on later frames.");
+            Assert.AreEqual(LevelPhase.SymbolLearning, MachineOf(controller).Phase,
+                "The flow must still be holding on card 2 — it never reaches Defense, "
+                + "which is why no WaveManager-missing error is expected here.");
+        }
+
+        private System.Action<BaybayinCharacterSO, string> _spokenPronunciationProbe;
+
+        private void ConfigureSymbolLearningLevel(LevelConfigSO config, bool withClips)
+        {
+            ConfigureIntroDialogue(config);
+
+            BaybayinCharacterSO dara = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            dara.characterID = "DARA";
+            dara.syllable = "da";
+            dara.stableId = "symbol.test-dara";
+            dara.spokenValues = new System.Collections.Generic.List<SpokenValueDefinition>
+            {
+                new SpokenValueDefinition { stableId = "value.test-da", displayValue = "da" },
+                new SpokenValueDefinition
+                {
+                    stableId = "value.test-ra",
+                    displayValue = "ra",
+                    pronunciationClip = withClips ? CreateRuntimeClip("test-ra-clip") : null,
+                },
+            };
+            _objectsToDestroy.Add(dara);
+
+            BaybayinCharacterSO ei = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            ei.characterID = "EI";
+            ei.syllable = "e";
+            ei.stableId = "symbol.test-ei";
+            ei.spokenValues = new System.Collections.Generic.List<SpokenValueDefinition>
+            {
+                new SpokenValueDefinition
+                {
+                    stableId = "value.test-ei",
+                    displayValue = "e/i",
+                    pronunciationClip = withClips ? CreateRuntimeClip("test-ei-clip") : null,
+                },
+            };
+            _objectsToDestroy.Add(ei);
+
+            config.learningRequirements.Add(new ContentRequirement
+            {
+                kind = ContentRequirementKind.Instruction,
+                symbolValue = new SymbolValueReference { symbol = dara, spokenValueId = "value.test-ra" },
+            });
+            config.learningRequirements.Add(new ContentRequirement
+            {
+                kind = ContentRequirementKind.Instruction,
+                symbolValue = new SymbolValueReference { symbol = ei, spokenValueId = "value.test-ei" },
+            });
+        }
+
+        private AudioClip CreateRuntimeClip(string name)
+        {
+            AudioClip clip = AudioClip.Create(name, 441, 1, 44100, false);
+            _objectsToDestroy.Add(clip);
+            return clip;
         }
 
         [UnityTest]

@@ -94,6 +94,12 @@ public static class EventBus
     // combo, stroke capture, progress caches) tears it down here, before the scene
     // unloads, so nothing from the discarded attempt survives into the next one.
     public static event Action OnLevelAttemptAborted;
+    // -- Learning Events --
+    // SALIN-157: spoken-value-aware pronunciation. AudioManager resolves the clip
+    // per the requirement's spokenValueId so E/I, O/U, and DA/RA follow the
+    // approved level context. The legacy OnPronunciationRequested event above is
+    // untouched and keeps playing the character-level clip for existing callers.
+    public static event Action<BaybayinCharacterSO, string> OnSpokenPronunciationRequested;
 
     // -- Raisers --
     public static void RaiseEnemyDefeated(BaybayinCharacterSO c) => OnEnemyDefeated?.Invoke(c);
@@ -144,4 +150,6 @@ public static class EventBus
     public static void RaiseTutorialBaseHitDemo(int damage = 1) => OnTutorialBaseHitDemo?.Invoke(damage);
     public static void RaiseTutorialBaseRestoreDemo() => OnTutorialBaseRestoreDemo?.Invoke();
     public static void RaiseLevelAttemptAborted() => OnLevelAttemptAborted?.Invoke();
+    public static void RaiseSpokenPronunciationRequested(BaybayinCharacterSO character, string spokenValueId)
+        => OnSpokenPronunciationRequested?.Invoke(character, spokenValueId);
 }
