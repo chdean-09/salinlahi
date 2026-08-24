@@ -22,8 +22,14 @@ public class LevelButton : MonoBehaviour
     [SerializeField] private Color _unlockedColor = Color.white;
     [SerializeField] private Color _lockedColor   = new Color(0.55f, 0.55f, 0.55f, 1f);
 
+    // SALIN-136: emphasis applied to the journey's next meaningful level. Uses only
+    // already-wired components (the button transform), so no scene edits are needed.
+    private static readonly Vector3 HighlightScale = new(1.08f, 1.08f, 1f);
+
     private LevelConfigSO _config;
     private bool _isUnlocked;
+    private Vector3 _baseScale = Vector3.one;
+    private bool _baseScaleCaptured;
 
     /// <summary>
     /// Configures this button for the given level config and progress state.
@@ -56,6 +62,24 @@ public class LevelButton : MonoBehaviour
             _button.onClick.RemoveListener(OnPressed);
             _button.onClick.AddListener(OnPressed);
         }
+    }
+
+    /// <summary>
+    /// SALIN-136: marks this button as the journey's next meaningful level.
+    /// Safe to call repeatedly (buttons are reused across eras) — the base scale is
+    /// captured once and restored when the highlight moves elsewhere.
+    /// </summary>
+    public void SetHighlighted(bool highlighted)
+    {
+        if (!_baseScaleCaptured)
+        {
+            _baseScale = transform.localScale;
+            _baseScaleCaptured = true;
+        }
+
+        transform.localScale = highlighted
+            ? Vector3.Scale(_baseScale, HighlightScale)
+            : _baseScale;
     }
 
     private void OnPressed()
