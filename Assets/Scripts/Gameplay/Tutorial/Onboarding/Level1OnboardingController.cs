@@ -56,6 +56,12 @@ public sealed class Level1OnboardingController : MonoBehaviour
     private OnboardingSequenceSO _runtimeNormalizedSource;
     private OnboardingSequenceSO _runtimeNormalizedSequence;
 
+    /// <summary>
+    /// True between <see cref="TutorialRuntimeState.Begin"/> and the matching clear, so teardown
+    /// only ever clears state this controller actually opened.
+    /// </summary>
+    private bool _ownsTutorialRuntimeState;
+
     public bool FirstManualSuccessRecorded => _firstManualSuccess;
     public bool SkipRequested => _skipRequested;
     public bool CanRequestSkip => _firstManualSuccess;
@@ -73,12 +79,34 @@ public sealed class Level1OnboardingController : MonoBehaviour
 
     private void OnDestroy()
     {
+        // TutorialRuntimeState is static, so it outlives the scene. PlayIfNeeded clears it only
+        // at the natural end of the sequence, and a destroyed host never runs a coroutine's
+        // remaining statements — so a defeat or exit mid-beat used to strand
+        // IsCombatOverrideActive / IsDrawingInputLocked and carry them into the next attempt,
+        // where combat or drawing would be dead on arrival. Mirrors
+        // ChallengeFlowController.OnDisable -> AbortRuntime -> ChallengeRuntimeState.Clear().
+        // OnDestroy rather than OnDisable: the controller may be toggled inside one attempt.
+        ReleaseTutorialRuntimeState();
+
         DestroyRuntimeSequence(_runtimeLegacySequence);
         DestroyRuntimeSequence(_runtimeSceneOverrideSequence);
         DestroyRuntimeSequence(_runtimeNormalizedSequence);
         _runtimeLegacySequence = null;
         _runtimeSceneOverrideSequence = null;
         _runtimeNormalizedSequence = null;
+    }
+
+    /// <summary>
+    /// Clears the shared tutorial statics, but only when this controller is the one that opened
+    /// them. Idempotent, so the natural end of the sequence and teardown can both call it.
+    /// </summary>
+    private void ReleaseTutorialRuntimeState()
+    {
+        if (!_ownsTutorialRuntimeState)
+            return;
+
+        _ownsTutorialRuntimeState = false;
+        TutorialRuntimeState.Clear();
     }
 
     public void RequestSkip()
@@ -127,6 +155,7 @@ public sealed class Level1OnboardingController : MonoBehaviour
         CollectBeats();
 
         TutorialRuntimeState.Begin(levelConfig.levelNumber);
+        _ownsTutorialRuntimeState = true;
         HideOnboardingBlockedUI();
 
         OnboardingContext ctx = BuildContext(sequence, levelConfig.levelNumber);
@@ -154,7 +183,7 @@ public sealed class Level1OnboardingController : MonoBehaviour
         }
 
         RestoreOnboardingHiddenUI();
-        TutorialRuntimeState.Clear();
+        ReleaseTutorialRuntimeState();
     }
 
     private OnboardingContext BuildContext(OnboardingSequenceSO sequence, int levelNumber)

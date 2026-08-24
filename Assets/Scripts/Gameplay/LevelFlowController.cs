@@ -504,6 +504,11 @@ public class LevelFlowController : MonoBehaviour
             // states; this covers Exited).
             _drawingSuppressedByFlow = false;
             GameManager.Instance?.SuppressDrawingInput(false);
+            // SALIN-135: the tutorial statics are static, so a defeat or exit landing
+            // mid-beat would otherwise carry a combat override or an input lock into the
+            // retried attempt. Clearing is idempotent and, once IsActive is false, a beat
+            // still unwinding can no longer re-latch either flag.
+            TutorialRuntimeState.Clear();
         }
     }
 

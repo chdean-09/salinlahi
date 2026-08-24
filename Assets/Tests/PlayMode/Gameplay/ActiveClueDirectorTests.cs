@@ -35,6 +35,15 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 runtimeMark = GameObject.Find("[Runtime] ActiveClueMark");
             }
 
+            // The word-restoration label is built on the HUD canvas, which the presenter does
+            // not own, so a deferred Destroy could otherwise outlive this test.
+            GameObject restoredCue = GameObject.Find("[Runtime] WordRestoredCue");
+            while (restoredCue != null)
+            {
+                Object.DestroyImmediate(restoredCue);
+                restoredCue = GameObject.Find("[Runtime] WordRestoredCue");
+            }
+
             for (int i = _objectsToDestroy.Count - 1; i >= 0; i--)
             {
                 if (_objectsToDestroy[i] != null)
@@ -686,6 +695,141 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Assert.IsNull(presenter.ActiveClueMark,
                 "A legacy level must gain no clue mark.");
             Assert.IsNull(GameObject.Find("[Runtime] ActiveClueMark"));
+        }
+
+        // SALIN-135 AC1. An accepted draw owes the player two answers: the combat response the
+        // enemy already plays, and a language response naming the word that just got its symbol
+        // back. Before this the only "Restored:" surface was the end-of-level summary.
+        [Test]
+        public void AcceptedClueDraw_RaisesTheWordRestorationCueExactlyOnce()
+        {
+            EnemyDataSO data = CreateEnemyData();
+            data.maxHealth = 3;
+            Enemy marked = CreateEnemyAt(data, y: 2f);
+
+            ActiveClueDirector director = CreateDirector(clueCombatActive: true);
+            director.Reevaluate();
+            Assert.That(director.CurrentClue, Is.EqualTo(marked));
+
+            ActiveCluePresenter presenter = CreateFocusWordPresenter(data.assignedCharacter);
+            Assert.That(presenter.WordRestoredCueCount, Is.EqualTo(0),
+                "Setup: nothing has been restored yet.");
+
+            Assert.IsTrue(director.TryConsumeClue(marked), "Setup: the first draw must credit.");
+
+            Assert.That(presenter.WordRestoredCueCount, Is.EqualTo(1),
+                "An accepted draw must announce the word it just restored.");
+            Assert.That(presenter.LastWordRestoredMessage, Does.Contain("BAHAY"),
+                "The cue must unmask the focus word the IncompleteWord channel was hiding.");
+
+            // The pronunciation lead is a double-credit window; the cue rides the same guard.
+            Assert.IsFalse(director.TryConsumeClue(marked));
+            Assert.That(presenter.WordRestoredCueCount, Is.EqualTo(1),
+                "A second consume inside the lead window must not repeat the cue.");
+        }
+
+        // AC1's "exactly once" across the real pipeline: recognition echo included.
+        [UnityTest]
+        public IEnumerator EchoedAcceptedDraw_RaisesTheWordRestorationCueOnce()
+        {
+            EnemyDataSO data = CreateEnemyData();
+            data.maxHealth = 3;
+            Enemy marked = CreateEnemyAt(data, y: 2f);
+
+            ActiveClueDirector director = CreateDirector(clueCombatActive: true);
+            director.Reevaluate();
+            Assert.That(director.CurrentClue, Is.EqualTo(marked));
+
+            ActiveCluePresenter presenter = CreateFocusWordPresenter(data.assignedCharacter);
+
+            GameObject resolverGo = new GameObject("CombatResolver_Restore_Test");
+            resolverGo.AddComponent<CombatResolver>();
+            _objectsToDestroy.Add(resolverGo);
+            yield return null;
+
+            EventBus.RaiseCharacterRecognized("BA");
+            EventBus.RaiseCharacterRecognized("BA");
+            yield return new WaitForSeconds(0.3f);
+
+            Assert.That(presenter.WordRestoredCueCount, Is.EqualTo(1),
+                "One finger-lift must restore the word once, however many times it echoes.");
+        }
+
+        // SALIN-135 AC2. A rejected draw is a correction, not a setback: no restoration cue, and
+        // the target the player must still draw does not move.
+        [UnityTest]
+        public IEnumerator RejectedDraw_ShowsNoRestorationCueAndDoesNotAdvanceTheTarget()
+        {
+            EnemyDataSO markedData = CreateEnemyData();
+            markedData.maxHealth = 3;
+            Enemy marked = CreateEnemyAt(markedData, y: 2f);
+
+            EnemyDataSO otherData = CreateEnemyData();
+            otherData.maxHealth = 3;
+            otherData.assignedCharacter = CreateTestCharacter("MA", "symbol.ma");
+            CreateEnemyAt(otherData, y: 9f);
+
+            ActiveClueDirector director = CreateDirector(clueCombatActive: true);
+            director.Reevaluate();
+            Assert.That(director.CurrentClue, Is.EqualTo(marked));
+
+            ActiveCluePresenter presenter = CreateFocusWordPresenter(markedData.assignedCharacter);
+
+            GameObject resolverGo = new GameObject("CombatResolver_Reject_Test");
+            resolverGo.AddComponent<CombatResolver>();
+            _objectsToDestroy.Add(resolverGo);
+            yield return null;
+
+            bool missed = false;
+            void OnMiss() => missed = true;
+            EventBus.OnDrawingMissed += OnMiss;
+            try
+            {
+                EventBus.RaiseCharacterRecognized("MA");
+                yield return new WaitForSeconds(0.3f);
+            }
+            finally
+            {
+                EventBus.OnDrawingMissed -= OnMiss;
+            }
+
+            Assert.IsTrue(missed, "A wrong draw must raise the correction cue.");
+            Assert.That(presenter.WordRestoredCueCount, Is.EqualTo(0),
+                "Nothing was restored, so nothing may claim to have been.");
+            Assert.That(director.CurrentClue, Is.EqualTo(marked),
+                "A rejected draw must leave the player the same target to retry.");
+            Assert.That(marked.CurrentHealth, Is.EqualTo(markedData.maxHealth),
+                "A rejected draw is non-destructive on both sides of the fight.");
+        }
+
+        /// <summary>
+        /// A presenter armed on a level whose single focus word contains the given symbol, so
+        /// the restoration cue has something to unmask.
+        /// </summary>
+        private ActiveCluePresenter CreateFocusWordPresenter(BaybayinCharacterSO symbol)
+        {
+            LevelConfigSO level = ScriptableObject.CreateInstance<LevelConfigSO>();
+            level.activeClueCombatEnabled = true;
+            level.clueChannels = ClueChannels.IncompleteWord;
+            level.focusWords.Add(new FocusWordDefinition
+            {
+                stableId = "level.test.focus.bahay",
+                latinSpelling = "bahay",
+                displayLabel = "BAHAY",
+                meaning = "test-house",
+                decomposition = new List<SymbolValueReference>
+                {
+                    new SymbolValueReference { symbol = symbol, spokenValueId = "value.test-ba" },
+                },
+            });
+            _objectsToDestroy.Add(level);
+
+            GameObject go = new GameObject("ActiveCluePresenter_Restore_Test");
+            ActiveCluePresenter presenter = go.AddComponent<ActiveCluePresenter>();
+            _objectsToDestroy.Add(go);
+
+            presenter.ApplyLevel(level);
+            return presenter;
         }
 
         private sealed class StubObjectiveSource : IClueObjectiveSource

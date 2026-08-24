@@ -52,6 +52,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             }
 
             ChallengeRuntimeState.Clear();
+            TutorialRuntimeState.Clear();
             foreach (Level1TutorialGuideUI guide in Object.FindObjectsByType<Level1TutorialGuideUI>(
                 FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
@@ -416,6 +417,71 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 "Exiting the challenge must never commit partial campaign progress.");
             Assert.IsFalse(victoryPanel.activeSelf);
             Assert.AreEqual(LevelPhase.Exited, MachineOf(controller).Phase);
+        }
+
+        // SALIN-135 AC3/AC4. TutorialRuntimeState is static, so it outlives the scene. A defeat
+        // landing mid-beat skips the beat's own unwind, and the retried attempt would inherit a
+        // combat override or an input lock -- combat or drawing dead on arrival, with no way for
+        // the player to tell why. Only a tutorial that actually replays would self-heal, and a
+        // resumed or completed sequence does not replay.
+        [UnityTest]
+        public IEnumerator GameOver_WithTutorialStateOpen_ClearsTheTutorialRuntimeStatics()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapLegacyFlow(
+                out _, out _, out GameObject defeatPanel);
+
+            yield return WaitFrames(10);
+
+            // Stand in for a defeat arriving in the middle of a teaching beat.
+            TutorialRuntimeState.Begin(1);
+            TutorialRuntimeState.SetCombatOverrideActive(true);
+            TutorialRuntimeState.SetDrawingInputLocked(true);
+            Assert.IsTrue(TutorialRuntimeState.IsCombatOverrideActive,
+                "Setup: the beat must actually hold the override for this test to bite.");
+
+            EventBus.RaiseGameOver();
+            yield return WaitFrames(5);
+
+            Assert.AreEqual(LevelPhase.Defeated, MachineOf(controller).Phase);
+            Assert.IsTrue(defeatPanel.activeSelf);
+            Assert.AreEqual(0, controller.CommitCalls,
+                "A defeat must never commit campaign progress.");
+            Assert.IsFalse(TutorialRuntimeState.IsActive,
+                "Terminal cleanup must close the tutorial statics.");
+            Assert.IsFalse(TutorialRuntimeState.IsCombatOverrideActive,
+                "A retried attempt must start with combat live.");
+            Assert.IsFalse(TutorialRuntimeState.IsDrawingInputLocked,
+                "A retried attempt must start with drawing unlocked.");
+        }
+
+        [UnityTest]
+        public IEnumerator Exit_WithTutorialStateOpen_ClearsTheTutorialRuntimeStatics()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapFlow(
+                ConfigureContextChallenge, out _, out _, out _, dialogueController: null);
+
+            yield return WaitFrames(10);
+            EventBus.RaiseDefenseComplete();
+            yield return WaitFrames(10);
+            Assert.AreEqual(LevelPhase.ContextChallenge, MachineOf(controller).Phase,
+                "Setup: the challenge phase must be open.");
+
+            TutorialRuntimeState.Begin(1);
+            TutorialRuntimeState.SetDrawingInputLocked(true);
+
+            ChallengeFlowController challenge =
+                GetPrivateField<ChallengeFlowController>(controller, "_challengeFlowController");
+            challenge.Exit();
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.Exited, MachineOf(controller).Phase);
+            Assert.AreEqual(0, controller.CommitCalls,
+                "Exiting must never commit partial campaign progress.");
+            Assert.IsFalse(TutorialRuntimeState.IsDrawingInputLocked,
+                "Exiting mid-beat must not strand the input lock for the next attempt.");
+            Assert.IsFalse(TutorialRuntimeState.IsActive);
         }
 
         [UnityTest]
