@@ -10,6 +10,14 @@ public class DrawingFeedback : MonoBehaviour
     [SerializeField] private float _rejectDuration = 0.5f;
     [SerializeField] private float _successDuration = 0.3f;
 
+    [Header("Supportive Feedback")]
+    [Tooltip("Consecutive rejected drawings before the optional trace hint is offered. 0 disables the offer.")]
+    [Min(0)]
+    [SerializeField] private int _attemptsBeforeHelpOffer = 3;
+
+    [Tooltip("Optional prompt inviting the player to see the stroke traced. Safe to leave unwired.")]
+    [SerializeField] private GameObject _traceHintPrompt;
+
     /// <summary>
     /// How many correction cues this HUD has been asked for. The flash itself lives on
     /// serialized scene references that may or may not be wired, so this is the assertable
@@ -17,11 +25,28 @@ public class DrawingFeedback : MonoBehaviour
     /// </summary>
     public int RejectCueCount { get; private set; }
 
+    /// <summary>
+    /// Rejections since the last accepted character. Unlike <see cref="RejectCueCount"/> this
+    /// resets on success, because it drives the help offer rather than recording history.
+    /// </summary>
+    public int ConsecutiveRejectCount { get; private set; }
+
+    /// <summary>True once the configured help threshold has been reached (SALIN-163 AC2).</summary>
+    public bool HelpAvailable { get; private set; }
+
+    /// <summary>
+    /// The wording last handed to the player. Held here for the same reason as
+    /// <see cref="RejectCueCount"/>: the label that renders it is a scene reference that may
+    /// not be wired, so this is the assertable record of what the player was actually told.
+    /// </summary>
+    public string LastMessage { get; private set; } = string.Empty;
+
     private void Awake()
     {
         if (_rejectFlash != null) _rejectFlash.alpha = 0f;
         if (_rejectXMark != null) _rejectXMark.SetActive(false);
         if (_successFlash != null) _successFlash.alpha = 0f;
+        if (_traceHintPrompt != null) _traceHintPrompt.SetActive(false);
     }
 
     private void OnEnable()
@@ -45,6 +70,14 @@ public class DrawingFeedback : MonoBehaviour
     private void ShowRejectFeedback()
     {
         RejectCueCount++;
+        ConsecutiveRejectCount++;
+
+        // AC2. Once offered, the hint stays offered for the rest of this run of failures.
+        // Withdrawing it on the next attempt would be worse than never having offered it.
+        if (_attemptsBeforeHelpOffer > 0 && ConsecutiveRejectCount >= _attemptsBeforeHelpOffer)
+            SetHelpAvailable(true);
+
+        LastMessage = DrawingFeedbackVocabulary.ForRejection(ConsecutiveRejectCount, HelpAvailable);
 
         // FlashFeedback yields immediately without a CanvasGroup, so an unwired HUD gains
         // nothing from starting the coroutine at all.
@@ -56,10 +89,26 @@ public class DrawingFeedback : MonoBehaviour
 
     private void ShowSuccessFeedback(BaybayinCharacterSO _)
     {
+        // AC3. Accepting the character clears the entire help run -- counter, offer and prompt --
+        // before the flash is even considered, so a player who succeeded *because* of the hint
+        // carries nothing forward from having needed it. Kept above the null guard for the same
+        // reason the reject counter is: an unwired HUD must still settle its state correctly.
+        ConsecutiveRejectCount = 0;
+        SetHelpAvailable(false);
+        LastMessage = DrawingFeedbackVocabulary.Accepted;
+
         if (_successFlash == null)
             return;
 
         StartCoroutine(FlashFeedback(_successFlash, null, _successDuration));
+    }
+
+    private void SetHelpAvailable(bool available)
+    {
+        HelpAvailable = available;
+
+        if (_traceHintPrompt != null)
+            _traceHintPrompt.SetActive(available);
     }
 
     private IEnumerator FlashFeedback(CanvasGroup flash, GameObject mark, float duration)
