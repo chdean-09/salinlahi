@@ -1,7 +1,7 @@
 # 04 — Gameplay Systems
 **Project:** Salinlahi
-**Version:** 2.6
-**Date:** 2026-08-18
+**Version:** 2.7
+**Date:** 2026-08-27
 
 **Owner:** Gameplay Developer (Jon Wayne Cabusbusan / Chad Andrada)
 
@@ -582,3 +582,35 @@ exactly as before.
 [EVIDENCE: Assets/Scripts/UI/TracingDojo/CharacterListPopulator.cs]
 [EVIDENCE: Assets/Scripts/Data/Learning/LearningEvidenceRecorder.cs]
 [EVIDENCE: Assets/Tests/Editor/UI/TracingDojoControllerTests.cs]
+
+---
+
+## 13. Active-Clue Combat (SALIN-180)
+
+Before SALIN-180 an enemy displayed its target glyph directly. Active clues generalise that: a level
+declares *how* it is allowed to cue the character, and the clue channel becomes a difficulty lever
+rather than a fixed presentation.
+
+`ClueChannels` is a `[System.Flags]` enum, so channels compose — an audio clue can declare a readable
+visual equivalent in the same value, which is what keeps a level playable with sound off:
+
+| Flag | Value | Cue |
+|---|---|---|
+| `None` | 0 | — |
+| `Glyph` | 1 << 0 | the Baybayin character itself |
+| `SpokenAudio` | 1 << 1 | spoken syllable value |
+| `LatinText` | 1 << 2 | Latin transliteration |
+| `ContextImage` | 1 << 3 | context artwork |
+| `IncompleteWord` | 1 << 4 | the focus word with the target omitted |
+
+`ActiveClueSelector` (pure static) chooses the clue for an enemy from the level's permitted channels;
+`ActiveClueDirector` (MonoBehaviour) drives presentation and subscribes to `OnDrawingFailed`.
+
+**Accessibility consequence, and a live gap.** Because channels compose, a level that permits only
+`SpokenAudio` is unplayable for a player who cannot hear it — the composed-equivalent rule exists to
+prevent exactly that. `Level1AssetReadinessTests.ClueChannels_StayReadableWithoutPronunciationAudio`
+asserts the fallback holds. Note this is currently load-bearing rather than belt-and-braces:
+**21 of 30 `pronunciationClip` fields are unassigned**, so the audio channel frequently has nothing to
+play and the visual equivalent is what the player actually gets. See doc 09 §CS-05.
+
+[EVIDENCE: Assets/Scripts/Data/Campaign/ClueChannels.cs; Assets/Scripts/Gameplay/Combat/ActiveClueSelector.cs; ActiveClueDirector.cs]
