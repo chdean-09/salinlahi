@@ -177,7 +177,7 @@ public sealed class CampaignOutcomeJournal
             };
 
         // Upgrade at the parse boundary: SameOutcome compares serialized JSON from five call
-        // sites, and every one of them must see a v2 outcome.
+        // sites, and every one of them must see a v3 outcome.
         CampaignOutcomeValidator.UpgradeToCurrent(parsed.Document.outcome);
 
         CampaignSaveValidationResult validation = CampaignOutcomeValidator.Validate(

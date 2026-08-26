@@ -42,7 +42,10 @@ public static class CampaignOutcomeValidator
         else if (outcome.stars != 0 ||
                  outcome.unlockedSymbolIds.Count > 0 ||
                  outcome.unlockedMemoryIds.Count > 0 ||
-                 outcome.claimedRewardIds.Count > 0)
+                 outcome.claimedRewardIds.Count > 0 ||
+                 // SALIN-140: level metrics are level-attempt results. A practice or review session
+                 // carrying them would write a level score it never earned.
+                 (outcome.metrics != null && outcome.metrics.Count > 0))
         {
             return Invalid("A non-level outcome may not change progression.");
         }
@@ -56,6 +59,9 @@ public static class CampaignOutcomeValidator
             !ValidateCanonicalList(outcome.claimedRewardIds))
             return Invalid("The outcome collections contain an unknown or duplicate ID.");
 
+        if (!ValidateMetrics(outcome.metrics))
+            return Invalid("The outcome metrics contain an invalid or duplicate ID.");
+
         if (!ValidateEvidence(outcome.evidence, campaign, current))
             return Invalid("The outcome evidence is invalid.");
 
@@ -63,18 +69,63 @@ public static class CampaignOutcomeValidator
     }
 
     /// <summary>
-    /// Stamps a version 1 outcome loaded from a journal written by an older build. Without this the
-    /// version check would silently discard an in-flight level completion on upgrade.
+    /// Upgrades an outcome loaded from a journal written by an older build. Without this the version
+    /// check would silently discard an in-flight level completion on upgrade.
     /// </summary>
+    /// <remarks>
+    /// A range-guarded **step chain**, matching what SALIN-175 did to
+    /// <c>CampaignSaveMigrator.TryUpgradeToCurrent</c>. The previous single-step form returned early
+    /// unless the version was exactly 1 and then stamped it straight to "current" — correct only while
+    /// current happened to be 2. With v3 (SALIN-140) that shape would both skip the v1→v2 step and
+    /// leave a v2 outcome unconverted. Each step now moves exactly one version.
+    /// </remarks>
     public static void UpgradeToCurrent(CampaignProgressOutcome outcome)
     {
-        if (outcome == null || outcome.outcomeSchemaVersion != 1)
+        if (outcome == null ||
+            outcome.outcomeSchemaVersion < CampaignProgressOutcome.MinimumOutcomeSchemaVersion ||
+            outcome.outcomeSchemaVersion > CampaignProgressOutcome.CurrentOutcomeSchemaVersion)
             return;
 
-        outcome.sessionKind = LearningSessionKind.LevelAttempt;
-        if (outcome.evidence == null)
-            outcome.evidence = new LearningEvidenceBatch();
-        outcome.outcomeSchemaVersion = CampaignProgressOutcome.CurrentOutcomeSchemaVersion;
+        if (outcome.outcomeSchemaVersion == 1)
+        {
+            outcome.sessionKind = LearningSessionKind.LevelAttempt;
+            if (outcome.evidence == null)
+                outcome.evidence = new LearningEvidenceBatch();
+            outcome.outcomeSchemaVersion = 2;
+        }
+
+        if (outcome.outcomeSchemaVersion == 2)
+        {
+            // v3 adds metrics. A v2 outcome recorded none, which is absence of history rather than
+            // partial migration: the level's committed progress is untouched and stays coherent.
+            if (outcome.metrics == null)
+                outcome.metrics = new List<LevelMetricRecord>();
+            outcome.outcomeSchemaVersion = 3;
+        }
+    }
+
+    /// <summary>
+    /// SALIN-140. Metric IDs must be canonical-shaped and unique, and values finite — a NaN reaching
+    /// the save would poison every later score comparison, and JsonUtility serializes it happily.
+    /// </summary>
+    private static bool ValidateMetrics(List<LevelMetricRecord> metrics)
+    {
+        if (metrics == null)
+            return true;
+
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        for (int i = 0; i < metrics.Count; i++)
+        {
+            LevelMetricRecord metric = metrics[i];
+            if (metric == null || string.IsNullOrEmpty(metric.metricId))
+                return false;
+            if (float.IsNaN(metric.value) || float.IsInfinity(metric.value))
+                return false;
+            if (!seen.Add(metric.metricId))
+                return false;
+        }
+
+        return true;
     }
 
     private static bool ValidateEvidence(

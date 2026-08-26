@@ -69,6 +69,22 @@ public sealed class LevelProgressRecord
     public bool unlocked;
     public bool completed;
     public int bestStars;
+
+    /// <summary>
+    /// Best recorded score (SALIN-140) and the metric set from that same attempt.
+    /// </summary>
+    /// <remarks>
+    /// These two move together, and only when the score improves, so the stored metrics always
+    /// describe one real run rather than a mix of several. <see cref="bestStars"/> deliberately keeps
+    /// its own independent max -- pre-existing committed-save behaviour -- so after several attempts
+    /// bestStars and bestMetrics can describe different runs. Documented rather than silently
+    /// redefined, because changing it would alter the meaning of saves already on players' devices.
+    ///
+    /// Both live inside CampaignProgressData, so TryResetJourney clears them by construction: it
+    /// replaces progress wholesale from CampaignProgressFactory.CreateClean.
+    /// </remarks>
+    public float bestScore;
+    public List<LevelMetricRecord> bestMetrics = new List<LevelMetricRecord>();
 }
 
 [Serializable]

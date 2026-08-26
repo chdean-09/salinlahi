@@ -246,6 +246,55 @@ public sealed class CampaignOutcomeCoordinator
         UnionSorted(document.progress.unlockedSymbolIds, outcome.unlockedSymbolIds);
         UnionSorted(document.progress.unlockedMemoryIds, outcome.unlockedMemoryIds);
         UnionSorted(document.progress.claimedRewardIds, outcome.claimedRewardIds);
+        ApplyBestMetrics(level, outcome);
+    }
+
+    /// <summary>
+    /// SALIN-140. Records the attempt's metrics inside the same commit as completion, stars and
+    /// unlocks, so there is one transaction rather than a second write that could land alone.
+    /// </summary>
+    /// <remarks>
+    /// Score and metric set move together and only on improvement, so the stored set always describes
+    /// a single real attempt. A first completion always writes, including a zero score -- otherwise a
+    /// legitimately scoreless run would leave the record looking as though nothing was ever played.
+    /// </remarks>
+    private static void ApplyBestMetrics(LevelProgressRecord level, CampaignProgressOutcome outcome)
+    {
+        if (level.bestMetrics == null)
+            level.bestMetrics = new List<LevelMetricRecord>();
+
+        float score = ScoreOf(outcome.metrics);
+        bool firstCompletion = level.bestMetrics.Count == 0;
+        if (!firstCompletion && score <= level.bestScore)
+            return;
+
+        level.bestScore = score;
+        level.bestMetrics.Clear();
+        if (outcome.metrics == null)
+            return;
+
+        for (int i = 0; i < outcome.metrics.Count; i++)
+        {
+            LevelMetricRecord metric = outcome.metrics[i];
+            if (metric != null && !string.IsNullOrEmpty(metric.metricId))
+                level.bestMetrics.Add(new LevelMetricRecord(metric.metricId, metric.value));
+        }
+
+        level.bestMetrics.Sort((left, right) =>
+            string.CompareOrdinal(left?.metricId, right?.metricId));
+    }
+
+    private static float ScoreOf(List<LevelMetricRecord> metrics)
+    {
+        if (metrics == null)
+            return 0f;
+
+        for (int i = 0; i < metrics.Count; i++)
+            if (metrics[i] != null &&
+                string.Equals(metrics[i].metricId, LevelResultsCalculator.ScoreMetricId, StringComparison.Ordinal))
+                return metrics[i].value;
+
+        return 0f;
     }
 
     private bool VerifyPublishedOutcome(CampaignSaveDocument document, CampaignProgressOutcome outcome)
@@ -262,6 +311,8 @@ public sealed class CampaignOutcomeCoordinator
         LevelProgressRecord level = FindLevel(document, outcome.levelId);
         if (level == null || !level.completed || level.bestStars < outcome.stars)
             return false;
+        if (!VerifyMetricsApplied(level, outcome))
+            return false;
         List<string> levels = CampaignSaveValidator.GetConfiguredLevelIds(_campaign);
         int index = levels.IndexOf(outcome.levelId);
         if (index >= 0 && index + 1 < levels.Count && !FindLevel(document, levels[index + 1]).unlocked)
@@ -271,6 +322,30 @@ public sealed class CampaignOutcomeCoordinator
         return ContainsAll(document.progress.unlockedSymbolIds, outcome.unlockedSymbolIds) &&
             ContainsAll(document.progress.unlockedMemoryIds, outcome.unlockedMemoryIds) &&
             ContainsAll(document.progress.claimedRewardIds, outcome.claimedRewardIds);
+    }
+
+    /// <summary>
+    /// SALIN-140. Without this the commit would report success while the metrics half of the
+    /// transaction had silently not landed.
+    /// </summary>
+    /// <remarks>
+    /// The check is the invariant, not equality: after a commit the level either holds this attempt's
+    /// metrics or a better attempt's, and both mean the recorded score is at least this attempt's.
+    /// Asserting equality would wrongly fail a replay of a weaker attempt against a stronger record.
+    /// </remarks>
+    private static bool VerifyMetricsApplied(
+        LevelProgressRecord level, CampaignProgressOutcome outcome)
+    {
+        const float Epsilon = 0.0001f;
+
+        int recorded = outcome.metrics?.Count ?? 0;
+        if (recorded == 0)
+            return true;
+
+        if (level.bestMetrics == null || level.bestMetrics.Count == 0)
+            return false;
+
+        return level.bestScore >= ScoreOf(outcome.metrics) - Epsilon;
     }
 
     private static bool VerifyEvidenceApplied(
