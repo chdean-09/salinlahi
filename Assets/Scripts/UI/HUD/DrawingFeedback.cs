@@ -1,4 +1,5 @@
 using System.Collections;
+using TMPro;
 using UnityEngine;
 
 public class DrawingFeedback : MonoBehaviour
@@ -17,6 +18,9 @@ public class DrawingFeedback : MonoBehaviour
 
     [Tooltip("Optional prompt inviting the player to see the stroke traced. Safe to leave unwired.")]
     [SerializeField] private GameObject _traceHintPrompt;
+
+    [Tooltip("Optional label carrying the player-facing message. Safe to leave unwired.")]
+    [SerializeField] private TMP_Text _messageLabel;
 
     /// <summary>
     /// How many correction cues this HUD has been asked for. The flash itself lives on
@@ -77,7 +81,7 @@ public class DrawingFeedback : MonoBehaviour
         if (_attemptsBeforeHelpOffer > 0 && ConsecutiveRejectCount >= _attemptsBeforeHelpOffer)
             SetHelpAvailable(true);
 
-        LastMessage = DrawingFeedbackVocabulary.ForRejection(ConsecutiveRejectCount, HelpAvailable);
+        SetMessage(DrawingFeedbackVocabulary.ForRejection(ConsecutiveRejectCount, HelpAvailable));
 
         // FlashFeedback yields immediately without a CanvasGroup, so an unwired HUD gains
         // nothing from starting the coroutine at all.
@@ -95,12 +99,25 @@ public class DrawingFeedback : MonoBehaviour
         // reason the reject counter is: an unwired HUD must still settle its state correctly.
         ConsecutiveRejectCount = 0;
         SetHelpAvailable(false);
-        LastMessage = DrawingFeedbackVocabulary.Accepted;
+        SetMessage(DrawingFeedbackVocabulary.Accepted);
 
         if (_successFlash == null)
             return;
 
         StartCoroutine(FlashFeedback(_successFlash, null, _successDuration));
+    }
+
+    /// <summary>
+    /// Records the wording and renders it if a label is wired. The label is optional on purpose:
+    /// no HUD in either scene carries one yet, and the state has to stay correct and assertable
+    /// in the meantime rather than depending on scene work that has not happened.
+    /// </summary>
+    private void SetMessage(string message)
+    {
+        LastMessage = message;
+
+        if (_messageLabel != null)
+            _messageLabel.text = message;
     }
 
     private void SetHelpAvailable(bool available)
