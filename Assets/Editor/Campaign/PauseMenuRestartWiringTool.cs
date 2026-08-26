@@ -55,21 +55,26 @@ namespace Salinlahi.EditorTools
                 throw new System.InvalidOperationException(
                     $"{RestartButtonField} not found on PauseMenuUI — is SALIN-141 merged into this branch?");
 
-            if (restart.objectReferenceValue != null)
-            {
-                UnityEngine.Debug.Log("[Salinlahi] PauseMenuRestartWiringTool: already wired.");
-                return;
-            }
-
             Button resume = FindButton(pauseMenu, ResumeButtonName);
             Button quit = FindButton(pauseMenu, QuitButtonName);
+
+            if (restart.objectReferenceValue != null)
+            {
+                // Already wired — still normalise the column so a re-run repairs spacing.
+                NormaliseButtonColumn(resume, (Button)restart.objectReferenceValue, quit);
+                EditorSceneManager.MarkSceneDirty(scene);
+                EditorSceneManager.SaveScene(scene);
+                UnityEngine.Debug.Log("[Salinlahi] PauseMenuRestartWiringTool: already wired; column normalised.");
+                return;
+            }
 
             // Clone Resume so the new button inherits its exact size, colours and label style.
             GameObject clone = Object.Instantiate(resume.gameObject, resume.transform.parent);
             clone.name = RestartButtonName;
 
-            // Sit between Resume and Quit; the parent is a HorizontalLayoutGroup, so sibling
-            // order is what positions it — no manual RectTransform maths.
+            // PausePanel is a plain full-screen stretch with no layout group, so sibling
+            // order does NOT position anything — the clone would sit exactly on top of
+            // Resume. Positions are normalised explicitly below.
             clone.transform.SetSiblingIndex(quit.transform.GetSiblingIndex());
 
             // Relabel, covering both TMP and legacy Text so this survives either authoring style.
@@ -92,6 +97,8 @@ namespace Salinlahi.EditorTools
 
             restart.objectReferenceValue = cloneButton;
             so.ApplyModifiedPropertiesWithoutUndo();
+
+            NormaliseButtonColumn(resume, cloneButton, quit);
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
@@ -116,6 +123,36 @@ namespace Salinlahi.EditorTools
                 UnityEngine.Debug.LogError($"[Salinlahi] PauseMenuRestartWiringTool failed: {ex}");
                 EditorApplication.Exit(1);
             }
+        }
+
+        /// <summary>
+        /// Places Resume / Restart / Quit as an evenly spaced vertical column.
+        /// The authored layout was Resume y=20 and Quit y=-150 — a 170-unit rhythm for
+        /// 150-tall buttons, centred on -65. Adding a third button expands the column
+        /// symmetrically about that same centre (105 / -65 / -235) so the group grows
+        /// equally up and down instead of drifting into the PausedTitle above.
+        /// Applied every run, so re-running also repairs a column edited by hand.
+        /// </summary>
+        private static void NormaliseButtonColumn(Button resume, Button restart, Button quit)
+        {
+            const float Spacing = 170f;
+            const float Centre = -65f;
+
+            SetAnchoredY(resume, Centre + Spacing);
+            SetAnchoredY(restart, Centre);
+            SetAnchoredY(quit, Centre - Spacing);
+        }
+
+        private static void SetAnchoredY(Button button, float y)
+        {
+            var rect = button.GetComponent<RectTransform>();
+            if (rect == null)
+                throw new System.InvalidOperationException($"'{button.name}' has no RectTransform.");
+
+            var so = new SerializedObject(rect);
+            SerializedProperty pos = so.FindProperty("m_AnchoredPosition");
+            pos.vector2Value = new Vector2(pos.vector2Value.x, y);
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static Button FindButton(Component pauseMenu, string name)
