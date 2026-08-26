@@ -87,7 +87,16 @@ discovering it the hard way. Each needs its own ticket.
 classic Baybayin folds it into `DA` — and 121 recognition templates cover all 18. Doc 10 REQ-42 now
 records this.
 
-This is **not purely a documentation typo**: two of those five mentions describe the Kadiliman final
-boss as defeated by "drawing all 17 characters in a timed sequence". If the encounter is implemented
-against 17, one authored character is unreachable in the final fight. **Check the boss implementation
-before editing the prose to match.**
+Two of those five mentions describe the Kadiliman final boss as defeated by "drawing all 17 characters
+in a timed sequence". **That was checked rather than left as a worry, and the answer is narrower than
+feared:** no character is unreachable, because the sequence does not exist. `BossConfig_Kadiliman.asset`
+is a **single placeholder phase** on the legacy schema, with `summonEnemyTypes: []` — an empty roster —
+against `BossConfig_ElInquisidor.asset`, the one fully-authored encounter. Nothing in
+`Assets/Scripts/Gameplay/Boss/` hardcodes any character count; `BossPhase` drives requirements from data
+("number of correct random glyphs the player must draw to damage the boss this phase").
+
+So the GDD describes an **unimplemented** final-boss mechanic, and describes it with the **wrong count**.
+Correcting the prose to 18 is safe and correct today. The real work — building the full-set timed
+sequence, and giving Kadiliman a real phase table and summon roster — is unticketed and is a Sprint 10
+concern (SALIN-158 owns the final Pamana story; REQ-25 already records Levels 10 and 15 as placeholder
+boss configs at 🟠 P1).
