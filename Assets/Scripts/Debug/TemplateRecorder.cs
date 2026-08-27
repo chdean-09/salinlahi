@@ -378,11 +378,13 @@ public class TemplateRecorder : MonoBehaviour
 
     private string BuildOutputDirectory()
     {
-        string resourcesDir = Path.Combine(Application.dataPath, "Resources");
+        // SALIN-185: recorded test draws go to Assets/Tests/Fixtures, not Resources -- anything
+        // under Resources is built into the player, and these are fixtures. Templates stay put:
+        // TemplateLoader reads them at runtime through Resources.LoadAll.
         if (_saveMode == SaveMode.TestDraw)
-            return Path.Combine(resourcesDir, "TestDraws");
+            return Path.Combine(Application.dataPath, "Tests", "Fixtures", "TestDraws");
 
-        return Path.Combine(resourcesDir, "Templates");
+        return Path.Combine(Application.dataPath, "Resources", "Templates");
     }
 
     private void ConfigureLineRenderer(LineRenderer renderer)

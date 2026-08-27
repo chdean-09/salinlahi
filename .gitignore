@@ -26,3 +26,9 @@ Thumbs.db
 .codex
 docs/superpowers
 docs/reviews
+# SALIN-185: written by the Unity Performance Testing package on every batchmode run.
+# Committing them made every test run dirty the working tree.
+/Assets/Resources/PerformanceTestRunInfo.json
+/Assets/Resources/PerformanceTestRunInfo.json.meta
+/Assets/Resources/PerformanceTestRunSettings.json
+/Assets/Resources/PerformanceTestRunSettings.json.meta

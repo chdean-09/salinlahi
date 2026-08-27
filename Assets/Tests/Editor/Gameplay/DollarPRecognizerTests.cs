@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 
 namespace Salinlahi.Tests.Editor.Gameplay
@@ -150,8 +151,11 @@ namespace Salinlahi.Tests.Editor.Gameplay
             var templates = new TemplateLoader().LoadAll();
             recognizer.SetTemplateStrokeVariants(templates);
 
-            TextAsset drawAsset = Resources.Load<TextAsset>($"TestDraws/{drawAssetName}");
-            Assert.IsNotNull(drawAsset, $"Missing Resources/TestDraws/{drawAssetName}.txt");
+            // SALIN-185: fixtures moved out of Resources, so Resources.Load no longer finds them.
+            // AssetDatabase is fine here -- this is an Edit Mode test and never runs in a player.
+            string fixturePath = $"Assets/Tests/Fixtures/TestDraws/{drawAssetName}.txt";
+            TextAsset drawAsset = AssetDatabase.LoadAssetAtPath<TextAsset>(fixturePath);
+            Assert.IsNotNull(drawAsset, $"Missing {fixturePath}");
 
             List<List<Vector2>> strokes = StrokeTextParser.ParseStrokes(drawAsset.text);
             RecognitionResult result = recognizer.Recognize(strokes);
