@@ -26,3 +26,6 @@ Thumbs.db
 .codex
 docs/superpowers
 docs/reviews
+# Scratch asset written by BossPhaseSerializationTests; never commit it.
+/Assets/__TestBossPhaseLegacy.asset
+/Assets/__TestBossPhaseLegacy.asset.meta
