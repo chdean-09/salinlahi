@@ -745,6 +745,7 @@ public class ProgressManager : Singleton<ProgressManager>
             contentSchemaVersion = SaveManager.Instance.Campaign.manifest.contentSchemaVersion,
             levelId = level.stableId,
             stars = Mathf.Clamp(stars, 1, MaxStars),
+            metrics = BuildMetrics(_pendingLevelResults),
             unlockedSymbolIds = CopyAndSort(unlockedSymbolIds),
             unlockedMemoryIds = CopyAndSort(unlockedMemoryIds),
             claimedRewardIds = CopyAndSort(claimedRewardIds),
@@ -756,6 +757,33 @@ public class ProgressManager : Singleton<ProgressManager>
                 sessionKind = LearningSessionKind.LevelAttempt,
             },
         };
+    }
+
+    /// <summary>
+    /// SALIN-140. Carries the computed results into the outcome so they commit with it. Before this,
+    /// only <c>Stars</c> was read off the pending results and every other metric — including
+    /// <c>metric.score</c> — was discarded once the Results screen closed.
+    /// </summary>
+    /// <remarks>
+    /// Sorted by metric ID: the journal's integrity hash covers the serialized document, so a
+    /// dictionary's arbitrary enumeration order would checksum identical data differently.
+    /// </remarks>
+    private static List<LevelMetricRecord> BuildMetrics(LevelResults results)
+    {
+        var records = new List<LevelMetricRecord>();
+        if (results?.Metrics == null)
+            return records;
+
+        foreach (KeyValuePair<string, float> metric in results.Metrics)
+        {
+            if (string.IsNullOrEmpty(metric.Key) ||
+                float.IsNaN(metric.Value) || float.IsInfinity(metric.Value))
+                continue;
+            records.Add(new LevelMetricRecord(metric.Key, metric.Value));
+        }
+
+        records.Sort((left, right) => string.CompareOrdinal(left.metricId, right.metricId));
+        return records;
     }
 
     /// <summary>

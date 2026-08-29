@@ -1,10 +1,32 @@
 using System;
 using System.Collections.Generic;
 
+/// <summary>
+/// One recorded level metric. A plain record rather than a dictionary entry because persistence
+/// runs through JsonUtility, which does not serialize Dictionary at all.
+/// </summary>
+[Serializable]
+public sealed class LevelMetricRecord
+{
+    public string metricId;
+    public float value;
+
+    public LevelMetricRecord() { }
+
+    public LevelMetricRecord(string metricId, float value)
+    {
+        this.metricId = metricId;
+        this.value = value;
+    }
+}
+
 [Serializable]
 public sealed class CampaignProgressOutcome
 {
-    public const int CurrentOutcomeSchemaVersion = 2;
+    // v3 (SALIN-140) adds `metrics`. Metrics were computed by LevelResultsCalculator, shown on the
+    // Results screen and then discarded, so a completed level's score was unrecoverable the moment
+    // that screen closed -- and SALIN-160/161/190 all read progress that was never written.
+    public const int CurrentOutcomeSchemaVersion = 3;
     public const int MinimumOutcomeSchemaVersion = 1;
     public int outcomeSchemaVersion = CurrentOutcomeSchemaVersion;
     public LearningSessionKind sessionKind = LearningSessionKind.LevelAttempt;
@@ -15,6 +37,13 @@ public sealed class CampaignProgressOutcome
     public int contentSchemaVersion;
     public string levelId;
     public int stars;
+
+    /// <summary>
+    /// Metrics for this attempt, sorted by <see cref="LevelMetricRecord.metricId"/>. Order is part of
+    /// the contract: the journal's integrity hash is computed over the serialized document, so an
+    /// unstable order would produce a different checksum for identical data.
+    /// </summary>
+    public List<LevelMetricRecord> metrics = new List<LevelMetricRecord>();
     public List<string> unlockedSymbolIds = new List<string>();
     public List<string> unlockedMemoryIds = new List<string>();
     public List<string> claimedRewardIds = new List<string>();
