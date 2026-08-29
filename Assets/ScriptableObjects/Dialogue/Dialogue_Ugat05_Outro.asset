@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 38eca7172864c470fb6cd1ee26d93838, type: 3}
+  m_Name: Dialogue_Ugat05_Outro
+  m_EditorClassIdentifier: Salinlahi.Runtime::DialogueSO
+  lines:
+  - speakerName: Juan
+    portrait: {fileID: 0}
+    text: "Iba na nga ang panahon. Ngunit ang mana ko ay nasa akin pa rin \u2014
+      nasa mga titik na natutunan kong bakasin."
+  - speakerName: Tagapagsalaysay
+    portrait: {fileID: 0}
+    text: 'Ito ang Ugat, Juan: ang pinanggalingan. Malalim na ang iyong ugat ngayon.'
+  - speakerName: Tagapagsalaysay
+    portrait: {fileID: 0}
+    text: "Sa susunod na yugto, ang Ugnayan \u2014 kung paano nagkakaugnay-ugnay
+      ang isa't isa."
