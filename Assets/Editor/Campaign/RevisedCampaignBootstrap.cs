@@ -24,8 +24,10 @@ public static class RevisedCampaignBootstrap
 
     // Visual symbol -> (character asset, introduction level). DA and RA are
     // contextual values of the single symbol.dara identity (Char_DA); Char_RA
-    // stays a legacy asset outside the revised catalog. OU's introduction level
-    // is provisional until the workbook matrix confirms it (SALIN-188/204).
+    // stays a legacy asset outside the revised catalog. OU is introduced at
+    // level.ugnayan.04 (OO/UNA), confirmed against the approved workbook matrix
+    // under SALIN-204; it was previously level.ugat.04, which put OU in the Ugat
+    // Levels 4-5 pools even though no Ugat focus word uses it.
     private static readonly (string SymbolId, string AssetName, string IntroLevelId)[] SymbolMap =
     {
         ("symbol.a", "Char_A", "level.ugat.01"),
@@ -34,7 +36,7 @@ public static class RevisedCampaignBootstrap
         ("symbol.ma", "Char_MA", "level.ugat.01"),
         ("symbol.na", "Char_NA", "level.ugat.01"),
         ("symbol.ta", "Char_TA", "level.ugat.02"),
-        ("symbol.ou", "Char_OU", "level.ugat.04"),
+        ("symbol.ou", "Char_OU", "level.ugnayan.04"),
         ("symbol.ka", "Char_KA", "level.ugnayan.02"),
         ("symbol.ga", "Char_GA", "level.ugnayan.01"),
         ("symbol.sa", "Char_SA", "level.ugnayan.02"),

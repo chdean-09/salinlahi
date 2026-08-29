@@ -224,8 +224,15 @@ namespace Salinlahi.Tests.Editor.Data
                 Assert.AreEqual("level.ugat.02", levelTwo.stableId,
                     "An aborted run must not shift level identities.");
                 Assert.AreEqual(2, levelTwo.levelNumber);
-                CollectionAssert.IsEmpty(levelTwo.focusWords,
-                    "An aborted run must not author Level 1's focus words into Level 2.");
+
+                // SALIN-204 authored Level 2's own focus words, so emptiness is no longer the
+                // signal. The invariant this test protects is unchanged: an aborted run must not
+                // leak Level 1's focus identities into Level 2.
+                foreach (FocusWordDefinition focusWord in levelTwo.focusWords)
+                {
+                    StringAssert.StartsWith("level.ugat.02.focus.", focusWord.stableId,
+                        "An aborted run must not author another level's focus words into Level 2.");
+                }
             }
             finally
             {

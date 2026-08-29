@@ -323,6 +323,7 @@ public static class CampaignConfigValidator
                 ValidateFocusWords(campaign, level, path, issues);
                 ValidateRequirements(campaign, level, path, issues);
                 ValidateCumulativePool(campaign, level, globalIndex, path, issues);
+                ValidateCombatRoster(campaign, level, globalIndex, path, issues);
                 ValidateFinalRestoration(campaign, level, path, issues);
                 ValidateRequiredReferences(level, path, issues);
                 ValidatePaInstructionOrder(level, path, issues);
@@ -528,18 +529,7 @@ public static class CampaignConfigValidator
         string path,
         List<ContentValidationIssue> issues)
     {
-        var expected = new HashSet<string>(StringComparer.Ordinal);
-        if (campaign.symbols != null)
-        {
-            for (int symbolIndex = 0; symbolIndex < campaign.symbols.Count; symbolIndex++)
-            {
-                BaybayinCharacterSO symbol = campaign.symbols[symbolIndex];
-                int introductionIndex = IndexOfOrdinal(
-                    ContentIdentity.RevisedLevelIds, symbol?.firstIntroductionLevelId);
-                if (introductionIndex >= 0 && introductionIndex <= globalIndex && symbol != null)
-                    expected.Add(symbol.stableId);
-            }
-        }
+        HashSet<string> expected = ExpectedPoolSymbolIds(campaign, globalIndex);
 
         var actual = new HashSet<string>(StringComparer.Ordinal);
         if (level.cumulativeSymbolPool != null)
@@ -560,6 +550,70 @@ public static class CampaignConfigValidator
             AddError(issues, ContentValidationCode.CumulativePoolInvalid, path + ".cumulativeSymbolPool",
                 "Cumulative symbol pool does not match the symbols introduced through this level.", level);
         }
+    }
+
+    /// <summary>
+    /// The symbols a level may legitimately use: every catalog symbol introduced at or before it.
+    /// Derived from symbol metadata, never from the level's own authored fields.
+    /// </summary>
+    private static HashSet<string> ExpectedPoolSymbolIds(CampaignConfigSO campaign, int globalIndex)
+    {
+        var expected = new HashSet<string>(StringComparer.Ordinal);
+        if (campaign?.symbols == null)
+            return expected;
+
+        for (int symbolIndex = 0; symbolIndex < campaign.symbols.Count; symbolIndex++)
+        {
+            BaybayinCharacterSO symbol = campaign.symbols[symbolIndex];
+            int introductionIndex = IndexOfOrdinal(
+                ContentIdentity.RevisedLevelIds, symbol?.firstIntroductionLevelId);
+            if (introductionIndex >= 0 && introductionIndex <= globalIndex && symbol != null)
+                expected.Add(symbol.stableId);
+        }
+
+        return expected;
+    }
+
+    /// <summary>
+    /// SALIN-204: the combat roster gates which glyphs waves may demand
+    /// (LevelConfigSO.PruneToRoster). It must match the symbols the player has been taught by
+    /// this level, or the level asks for glyphs it never introduced. The validator previously
+    /// never read this field, so Ugat Levels 2-5 shipped rosters drawn from later eras.
+    /// </summary>
+    private static void ValidateCombatRoster(
+        CampaignConfigSO campaign,
+        LevelConfigSO level,
+        int globalIndex,
+        string path,
+        List<ContentValidationIssue> issues)
+    {
+        HashSet<string> expected = ExpectedPoolSymbolIds(campaign, globalIndex);
+        var actual = new HashSet<string>(StringComparer.Ordinal);
+
+        if (level.allowedCharacters != null)
+        {
+            for (int index = 0; index < level.allowedCharacters.Count; index++)
+            {
+                BaybayinCharacterSO symbol = level.allowedCharacters[index];
+                if (symbol != null && !string.IsNullOrEmpty(symbol.stableId))
+                    actual.Add(symbol.stableId);
+            }
+        }
+
+        if (actual.SetEquals(expected))
+            return;
+
+        var untaught = new List<string>(actual);
+        untaught.RemoveAll(expected.Contains);
+        untaught.Sort(StringComparer.Ordinal);
+
+        string detail = untaught.Count > 0
+            ? "Combat roster includes symbols this level has not taught: " +
+              string.Join(", ", untaught) + "."
+            : "Combat roster does not cover every symbol introduced through this level.";
+
+        AddError(issues, ContentValidationCode.CombatRosterInvalid, path + ".allowedCharacters",
+            detail, level);
     }
 
     private static bool IsSymbolIntroduced(
