@@ -1,0 +1,72 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bb4cd3e37d015f4f8d9baa6e4cc1ac5, type: 3}
+  m_Name: EnemyData_Uhaw
+  m_EditorClassIdentifier: Salinlahi.Runtime::EnemyDataSO
+  enemyID: uhaw
+  displayName: Uhaw
+  discoverySubtitle: 
+  description: A hollow creature with a large empty mouth and a body made of dry
+    soil. It drains sound from nearby words.
+  moveSpeed: 1.5
+  maxHealth: 1
+  walkFrames:
+  - {fileID: -2418290129826604303, guid: e20bd411ac3454eff93e0ee2fc303e5a, type: 3}
+  - {fileID: 5340328922013193927, guid: e20bd411ac3454eff93e0ee2fc303e5a, type: 3}
+  - {fileID: 80975869463761943, guid: e20bd411ac3454eff93e0ee2fc303e5a, type: 3}
+  - {fileID: 6017356237278562909, guid: e20bd411ac3454eff93e0ee2fc303e5a, type: 3}
+  animatorController: {fileID: 0}
+  portraitSprite: {fileID: 0}
+  assignedCharacter: {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
+  isDecoy: 0
+  isPhaser: 0
+  phaserInterval: 0.5
+  phaserInitialVisibleDelayMin: 0
+  phaserInitialVisibleDelayMax: 0
+  phaserVisibleHoldMin: 0
+  phaserVisibleHoldMax: 0
+  phaserInvisibleHoldMin: 0
+  phaserInvisibleHoldMax: 0
+  phaserFadeOutDuration: 0.3
+  phaserFadeInDuration: 0.2
+  phaserFadeOutPulseCount: 3
+  phaserFadeOutPulseAmplitude: 0.2
+  dealsContactDamage: 1
+  era: 0
+  overrideBadgeOffset: 0
+  glyphBadgeOffsetOverride: {x: 0, y: 0}
+  overrideBadgeScale: 0
+  glyphBadgeScaleOverride: 1
+  zigzagAmplitude: 0
+  zigzagFrequency: 0
+  baseSpeedMultiplier: 1
+  auraRadius: 0
+  auraSpeedMultiplier: 1.3
+  deathFrames: []
+  deathAnimationFps: 8
+  useHurtFeedback: 1
+  hurtPausesMovement: 1
+  hurtPauseDuration: 0.25
+  hurtShakesSprite: 1
+  hurtShakeMagnitude: 0.08
+  hurtShakeDuration: 0.2
+  hurtShakeFrequency: 30
+  hurtSwapsCharacter: 0
+  postHurtCharacter: {fileID: 0}
+  hurtFrames: []
+  hurtAnimationFps: 12
+  chargeMultiplier: 2.5
+  chargeTriggerYNormalized: 0.5
+  pauseDuration: 0.35
+  scrambleRadius: 3
+  scrambleMinGlitchInterval: 0.18
+  scrambleMaxGlitchInterval: 0.36

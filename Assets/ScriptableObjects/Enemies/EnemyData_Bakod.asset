@@ -1,0 +1,72 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bb4cd3e37d015f4f8d9baa6e4cc1ac5, type: 3}
+  m_Name: EnemyData_Bakod
+  m_EditorClassIdentifier: Salinlahi.Runtime::EnemyDataSO
+  enemyID: bakod
+  displayName: Bakod
+  discoverySubtitle: 
+  description: A wide stone creature shaped like a moving wall. It blocks paths,
+    separates family members, and prevents Juan from moving forward.
+  moveSpeed: 1.5
+  maxHealth: 1
+  walkFrames:
+  - {fileID: -1482015613377898020, guid: 039e07690bd594bc49fee6226b8f5847, type: 3}
+  - {fileID: 6680222527540671204, guid: 039e07690bd594bc49fee6226b8f5847, type: 3}
+  - {fileID: -5268742417072764580, guid: 039e07690bd594bc49fee6226b8f5847, type: 3}
+  - {fileID: 8783759873441989083, guid: 039e07690bd594bc49fee6226b8f5847, type: 3}
+  animatorController: {fileID: 0}
+  portraitSprite: {fileID: 0}
+  assignedCharacter: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+  isDecoy: 0
+  isPhaser: 0
+  phaserInterval: 0.5
+  phaserInitialVisibleDelayMin: 0
+  phaserInitialVisibleDelayMax: 0
+  phaserVisibleHoldMin: 0
+  phaserVisibleHoldMax: 0
+  phaserInvisibleHoldMin: 0
+  phaserInvisibleHoldMax: 0
+  phaserFadeOutDuration: 0.3
+  phaserFadeInDuration: 0.2
+  phaserFadeOutPulseCount: 3
+  phaserFadeOutPulseAmplitude: 0.2
+  dealsContactDamage: 1
+  era: 0
+  overrideBadgeOffset: 0
+  glyphBadgeOffsetOverride: {x: 0, y: 0}
+  overrideBadgeScale: 0
+  glyphBadgeScaleOverride: 1
+  zigzagAmplitude: 0
+  zigzagFrequency: 0
+  baseSpeedMultiplier: 1
+  auraRadius: 0
+  auraSpeedMultiplier: 1.3
+  deathFrames: []
+  deathAnimationFps: 8
+  useHurtFeedback: 1
+  hurtPausesMovement: 1
+  hurtPauseDuration: 0.25
+  hurtShakesSprite: 1
+  hurtShakeMagnitude: 0.08
+  hurtShakeDuration: 0.2
+  hurtShakeFrequency: 30
+  hurtSwapsCharacter: 0
+  postHurtCharacter: {fileID: 0}
+  hurtFrames: []
+  hurtAnimationFps: 12
+  chargeMultiplier: 2.5
+  chargeTriggerYNormalized: 0.5
+  pauseDuration: 0.35
+  scrambleRadius: 3
+  scrambleMinGlitchInterval: 0.18
+  scrambleMaxGlitchInterval: 0.36
