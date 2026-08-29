@@ -1,7 +1,7 @@
 # 03 — Core Systems
 **Project:** Salinlahi
-**Version:** 2.3
-**Date:** 2026-08-18
+**Version:** 2.4
+**Date:** 2026-08-27
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -359,3 +359,62 @@ coordinator, returning the typed result rather than raising the blocking failure
 
 BootstrapLoader calls SaveManager.Initialize() after the first-frame singleton availability wait and
 before SceneLoader.LoadMainMenu().
+
+---
+
+## 8. Level Attempt Abort and Pause Latches (SALIN-141)
+
+### 8.1 Two independent pause latches
+
+`GameManager` tracks **two** booleans, not one: `_userPauseActive` and `_dialoguePauseActive`. Both
+map to `GameState.Paused`, but they are latched separately so that a dialogue opening while the player
+has the pause menu up cannot resume the game underneath them, and dismissing a dialogue cannot clear a
+pause the player asked for.
+
+Each pair of enter/exit methods refuses to act on the other's latch: a resume path checks
+`if (!_userPauseActive || CurrentState != GameState.Paused) return;` and vice versa. Neither latch is
+a counter — re-entering an already-held pause is a no-op rather than an increment.
+
+### 8.2 `AbortCurrentLevelAttempt()`
+
+The single entry point for leaving a level attempt without completing it — restart and quit-to-menu
+both route through it. It is idempotent: a second call after the attempt has already been abandoned
+does nothing, so a double-tapped Restart cannot raise two aborts.
+
+It raises `EventBus.OnLevelAttemptAborted`, which has **nine** call sites across the codebase:
+
+| Subscriber | Responsibility on abort |
+|---|---|
+| `Gameplay/LevelFlowController.cs` | drops the in-flight attempt; no outcome is committed |
+| `Gameplay/Wave/WaveManager.cs` | stops spawning and clears the active wave |
+| `Gameplay/Boss/BossController.cs` | leaves the boss state machine |
+| `Gameplay/Combat/ComboManager.cs` | clears the streak so it cannot carry into the retry |
+| `Gameplay/Recognition/StrokeCapture.cs` | discards partial stroke input |
+| `Core/ProgressManager.cs` | ensures no progress is recorded for the abandoned attempt |
+| `Core/GameManager.cs` | clears both pause latches and returns to a clean state |
+| `UI/PauseMenuUI.cs` | closes the menu |
+| `Core/EventBus.cs` | declaration and `RaiseLevelAttemptAborted()` |
+
+**Why this matters for correctness:** an abort must leave *no* residue that a subsequent attempt could
+inherit — no combo streak, no partial stroke, no half-written progress, and no committed outcome. The
+subscriber list above is the enumeration of that guarantee; adding a system that holds per-attempt
+state without subscribing here is the way to reintroduce the bug.
+
+[EVIDENCE: Assets/Scripts/Core/GameManager.cs (_userPauseActive, _dialoguePauseActive, AbortCurrentLevelAttempt); Assets/Scripts/Core/EventBus.cs (OnLevelAttemptAborted)]
+
+## 9. Journey Entry Routing (SALIN-136)
+
+`JourneyEntryResolver.Resolve()` decides where "Continue" sends the player, returning an immutable
+`JourneyEntryPoint` with one of four kinds:
+
+| `JourneyEntryKind` | Meaning | Carries `LevelId` |
+|---|---|---|
+| `NewJourney` | no level completed — start at the first level | yes |
+| `ContinueLevel` | journey in progress — resume at the resolved level | yes |
+| `CompletedJourney` | every configured level completed — show review/replay, **never** a next-level prompt | no |
+| `Blocked` | blocked save or unresolvable campaign — **do not enter gameplay** | no |
+
+`Blocked` is the safety case: it is returned rather than falling back to level 1, because silently
+restarting a player whose save could not be read would look like progress loss.
+
+[EVIDENCE: Assets/Scripts/.../JourneyEntryResolver.cs, enum JourneyEntryKind; JourneyEntryPoint]

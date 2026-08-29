@@ -1,7 +1,7 @@
 # 09 — Test Strategy and Acceptance Criteria
 **Project:** Salinlahi
-**Version:** 2.0
-**Date:** 2026-08-19
+**Version:** 2.1
+**Date:** 2026-08-27
 **Owner:** Whole Team (QA responsibility shared)
 
 ---
@@ -39,8 +39,6 @@ campaign assets:
 SALIN-170 does not migrate saves, implement learning/challenge behavior, or author the
 production revised campaign. Those boundaries remain SALIN-171, SALIN-168, and SALIN-172
 respectively.
-
-## 2. Test Matrix by System Area
 
 ### 1.2 SALIN-171 persistence acceptance
 
@@ -91,6 +89,45 @@ The manual acceptance matrix also arms the Editor-only SALIN-174 one-shot promot
 retry and Main Menu preservation, confirms startup replay clears the journal exactly once, and
 confirms Reset Journey changes generation while preserving settings outside campaign progress.
 
+### 1.5 Verification reality — measured, not aspirational (SALIN-186)
+
+Everything below this line describes tests that *should* pass. This subsection records what the suite
+actually does today, so that no reader mistakes the matrix for a green build.
+
+**Measured on `dev` @ `1a4f28a`, Unity 6000.3.9f1 batchmode:**
+
+| Platform | Total | Passed | **Failed** |
+|---|---|---|---|
+| Edit Mode | 782 | 713 | **69** |
+| Play Mode | 132 | 117 | **14** |
+
+These 83 failures are **pre-existing and long-standing**, not a regression from recent work. Every
+ticket merged in Sprints 5–7 was gated on *not increasing* these counts, which is the standard in
+force. They concentrate in boss and enemy visual-feedback fixtures rather than being spread evenly:
+
+- Edit Mode, 69 across 21 fixtures — `BossGlyphVisibilityBinderTests` (10), `BossControllerTests` (8),
+  `EnemyGlyphBadgeTests` (8), `EnemyHurtFeedbackTests` (8), `Salin169AcceptanceTests` (7),
+  `LevelFlowControllerTests` (6); the rest are 1–4 each.
+- Play Mode, 14 across 9 fixtures — `CutscenePlayerTests` (5), `SpanishVariantSpawnIntegrationTests` (2),
+  and seven single-failure integration fixtures.
+
+**Fixing them is not owned by any current ticket.** Recording that here is the point: an unowned,
+uncharacterised failure baseline is how a real regression gets mistaken for pre-existing noise.
+
+### 1.6 What CI does and does not do
+
+The repository has exactly one workflow, `.github/workflows/git-conventions.yml`, whose own header
+line reads *"Validates Git naming conventions only. Unity compilation and tests run elsewhere."*
+
+**There is no "elsewhere."** No workflow compiles the Unity project or runs either test suite. A green
+check on a pull request means the branch name, PR title and commit subjects parse — nothing more. It
+is not evidence of compilation, and it is not evidence of tests.
+
+Test evidence therefore comes from a local batchmode run, quoted with both the branch result and the
+`dev` baseline it is compared against. A PR that cites a green check as test coverage is misreporting.
+
+## 2. Test Matrix by System Area
+
 ### 2.1 Core Systems
 
 | Test ID | Requirement | Test Procedure | Pass Criterion | Priority |
@@ -99,8 +136,21 @@ confirms Reset Journey changes generation while preserving settings outside camp
 | CS-02 | SceneLoader resets Time.timeScale before every scene load | Pause game (timeScale=0), trigger GameOver | Next scene runs at normal speed (1f) | P0 |
 | CS-03 | EventBus subscriptions do not leak across scenes | Play Gameplay, go to GameOver, return to Gameplay | No duplicate event handler errors; `OnGameOver` fires exactly once per game-over event | P0 |
 | CS-04 | BootstrapLoader auto-navigates to MainMenu after one frame | Launch app | MainMenu scene loads within 2 seconds of cold start | P0 |
-| CS-05 | AudioManager plays pronunciation clip on enemy defeat | Defeat an enemy with correct drawing | Device audio emits pronunciation clip within 50ms of defeat | P1 |
+| CS-05 ⛔ **BLOCKED** | AudioManager plays pronunciation clip on enemy defeat | Defeat an enemy with correct drawing | Device audio emits pronunciation clip within 50ms of defeat | P1 |
 | CS-06 | DebugLogger produces zero output in release build | Install release APK; monitor logcat | No `[Salinlahi]` or DebugLogger output in logcat | P1 |
+
+> **CS-05 is blocked on content, not code (SALIN-186).** The criterion cannot pass as written because
+> the clips do not exist: **21 of the 30 `pronunciationClip` fields** across the character and
+> spoken-value assets are `{fileID: 0}` — unassigned. Level 1's own required values (`value.a`,
+> `value.ei`, `value.na`, `value.ma`) are among the missing, and `Level1AssetReadinessTests` records
+> them as manifest MISSING rows.
+>
+> What ships today is the **audio-unavailable fallback**, which is deliberately tested:
+> `Level1AssetReadinessTests.ClueChannels_StayReadableWithoutPronunciationAudio` asserts a clue stays
+> readable with no pronunciation audio at all. CS-05 should be read as *pending clip production*
+> (SALIN-176 territory), and must not be counted toward the readiness gate in §4.1 until clips are
+> authored. Re-scope it to the eight characters that do have clips, or leave it blocked — but do not
+> leave it looking passable.
 
 ### 2.2 Enemy System
 

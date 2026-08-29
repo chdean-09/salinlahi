@@ -1,7 +1,7 @@
 # 02 — Architecture and Runtime Flow
 **Project:** Salinlahi
-**Version:** 2.2
-**Date:** 2026-08-18
+**Version:** 2.3
+**Date:** 2026-08-27
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -257,6 +257,52 @@ SceneLoader.LoadXxx()
 ```
 
 [EVIDENCE: Assets/Scripts/Core/GameManager.cs, enum GameState; SetState()]
+
+### 6.1 Level Phase Flow — LF-CONTRACT-v2 (SALIN-178)
+
+`GameState` above is the **app-level** state (is a level running, is it paused). It does not describe
+*where inside a level* the player is. That is `LevelFlowMachine`, a pure-C# state machine introduced by
+SALIN-178 and depended on by SALIN-135, 136, 137, 141 and 157. It is the single choke point for
+level-flow state, and it holds no Unity references.
+
+The nine playable phases, in contract order:
+
+```
+NotStarted
+   │ Begin()
+   ▼
+Story → FocusWords → SymbolLearning → RequiredPractice → Defense
+                                                            │
+        Results ◄── AtomicSave ◄── MemoryReward ◄── ContextChallenge
+           │            ▲   │
+           │            └───┘ save rejected: hold for retry
+           ▼
+       Completed                    ReportDefeat() → Defeated   (from any non-terminal phase)
+                                    RequestExit()  → Exited     (from any non-terminal phase)
+```
+
+**Phases are planned, not fixed.** `LevelPhasePlan.FromConfig()` inspects the `LevelConfigSO` once and
+marks `FocusWords`, `SymbolLearning`, `RequiredPractice`, `ContextChallenge` and `MemoryReward` as
+planned only when the corresponding content exists. An unplanned phase is skipped by the machine with
+no executor involvement. This is how a legacy config — one with no revised content authored — traverses
+the same machine unchanged as **`Story → Defense → AtomicSave → Results`**. `Story`, `Defense`,
+`AtomicSave` and `Results` are always planned.
+
+**The guarantees the machine exists to enforce**, each of which rejects without a state change:
+
+| Rule | Effect |
+|---|---|
+| A completion report for a phase other than the current one | rejected |
+| A duplicate report for a phase already left | rejected |
+| Any report after a terminal state | rejected |
+| `ReportPhaseComplete(AtomicSave)` | **rejected** — `AtomicSave` advances only through `ReportSaveResult(true)`, so Results cannot open without a committed save |
+| Defense systems calling anything but `ReportDefenseComplete()` | not expressible — defense can never mark the level complete or write campaign rewards |
+| `ReportSaveResult(false)` | holds the machine in `AtomicSave` for the retry loop rather than failing the level |
+
+Terminal states are `Completed`, `Defeated` and `Exited`; `IsTerminal` covers all three, and a terminal
+transition clears `IsPaused`. Every state change raises `PhaseChanged(previous, next)`.
+
+[EVIDENCE: Assets/Scripts/Gameplay/Flow/LevelFlowMachine.cs; LevelPhase.cs; LevelPhasePlan.cs, PhaseOrder and FromConfig()]
 
 ## 7. Campaign Save Activation, Outcomes, and Recovery
 

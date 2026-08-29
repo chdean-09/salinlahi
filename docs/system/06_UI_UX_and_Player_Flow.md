@@ -1,7 +1,7 @@
 # 06 — UI/UX and Player Flow
 **Project:** Salinlahi
-**Version:** 1.6
-**Date:** 2026-05-27
+**Version:** 1.7
+**Date:** 2026-08-27
 **Owner:** Jeff Andre Millan (UI/UX Developer)
 
 ---
@@ -265,3 +265,39 @@ User-facing behavior per GDD:
 **Constraint:** No virtual joystick, no attack buttons, no gesture shortcuts. Drawing is the only combat input.
 
 [EVIDENCE: docs/capstone/GDD.md, §2.2 Controls Summary]
+
+---
+
+## 10. Revised-Campaign Surfaces — Implemented vs Player-Reachable (SALIN-186)
+
+**Read this section before treating any surface below as shipped.** Several are code-complete and
+covered by passing tests while being *invisible to the player*, because the scene reference they
+render through is unwired or the asset they display does not exist. Code coverage is not reach.
+
+State recorded against `dev` @ `1a4f28a`.
+
+| Surface | Ticket | Code | Player-reachable? |
+|---|---|---|---|
+| Journey entry routing (Continue) | SALIN-136 | ✅ `JourneyEntryResolver`, 4 outcomes | ✅ yes |
+| Level lock states and prerequisites | SALIN-137 | ✅ `LevelLockResolver`, `LevelLockStatus` incl. cross-era requirements | ⚠ partly — see below |
+| Level-select completion badge | SALIN-137 | ✅ `_completionBadge` field exists | ❌ **no** — `_completionBadge` appears **0 times** in `LevelSelect.unity`; unwired on every `LevelButton` |
+| Lock notice | SALIN-137 | ✅ resolver supplies the reason | ⚠ runtime-built placeholder; no authored surface |
+| Pause / restart / leave | SALIN-141 | ✅ `AbortCurrentLevelAttempt`, 9 subscribers (doc 03 §8) | ❌ **no Restart button** — `_restartButton` is absent from `Gameplay.unity` |
+| Restart confirmation | SALIN-141 | ✅ | ⚠ runtime-built placeholder |
+| Per-card symbol learning | SALIN-157 | ✅ `SymbolLearningCardController`, `SpokenValueResolver` | ✅ visual path yes |
+| Syllable audio at learning time | SALIN-157 | ✅ resolver + fallback | ❌ **no** for Level 1 — `value.a`, `value.ei`, `value.na`, `value.ma` have no clips; **21 of 30** `pronunciationClip` fields are unassigned. The visual-only fallback is what ships |
+| Focus-word preview | SALIN-138 | ✅ | ✅ yes |
+| Level number art, eras 2–3 | SALIN-176 | n/a (content) | ❌ **no** — `numberSprite` is assigned for Levels **1–5 only**; **Levels 6–15 are all missing**, so those scrolls render blank |
+
+### Why this table exists
+
+A reader comparing the ticket list to the game would otherwise conclude that SALIN-137 and SALIN-141
+shipped nothing, when in fact both landed complete logic with passing tests and are waiting only on
+Editor wiring. The opposite error is worse: presenting a runtime-built placeholder as a finished
+feature would misrepresent readiness to the capstone review.
+
+**In flight at time of writing:** PRs #126 (completion badge + era list) and #127 (Restart button) wire
+the two ❌ rows above. They are not merged, so the table records `dev`, not those branches. Re-verify
+this table after they land rather than assuming it.
+
+[EVIDENCE: Assets/_Scenes/LevelSelect.unity; Assets/_Scenes/Gameplay.unity; Assets/ScriptableObjects/Levels/Level*_Config.asset (numberSprite); Assets/Tests/Editor/Data/Level1AssetReadinessTests.cs]

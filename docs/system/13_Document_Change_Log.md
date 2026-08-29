@@ -1,7 +1,7 @@
 # 13 — Document Change Log
 **Project:** Salinlahi
-**Version:** 2.1
-**Date:** 2026-08-19
+**Version:** 2.2
+**Date:** 2026-08-27
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -10,6 +10,7 @@
 
 | Version | Date | Author | Summary | Impacted Documents |
 |---------|------|--------|---------|-------------------|
+| 2.2 | 2026-08-27 | Sync pass | **SALIN-186 — documentation sync after Sprints 5–7.** Fourteen tickets merged and the docs did not move with them: `LevelFlowMachine`, `LevelPhase`, `JourneyEntryResolver`, `LevelLockResolver`, `SymbolLearningCardController`, `SpokenValueResolver`, `OnLevelAttemptAborted`, `AbortCurrentLevelAttempt`, `ActiveClueDirector` and `ClueChannels` each appeared **zero** times in `docs/system/` while all ten exist in `Assets/Scripts/`. **P0:** doc 02 gains §6.1, the nine-phase LF-CONTRACT-v2 machine (SALIN-178) with its plan-driven skipping and reject rules; doc 09 gains §1.5 measured verification reality (EditMode 782/713/**69 failed**, PlayMode 132/117/**14 failed** at `1a4f28a`, characterised by fixture) and §1.6 stating that CI validates naming only and never compiles or tests, and marks CS-05 ⛔ BLOCKED (21 of 30 `pronunciationClip` fields unassigned); doc 10 was **repaired from double-encoded UTF-8** (55 of 90 lines mojibake, BOM removed), had **seven factually wrong rows corrected** — most seriously REQ-45, recorded ❌ NOT FOUND at P0 while `RecognitionLogger.cs` has been writing `recognition_log.csv` all along, and REQ-32, recorded NOT FOUND while `TracingDojo.unity` exists — had its summary counts recomputed (they did not match their own rows), and gained a Backlog Linkage section, since it previously held **zero** `SALIN-` keys. **P1:** doc 03 §8–§9 (abort semantics, dual pause latches, 9 abort subscribers, journey routing); doc 04 §13 (active-clue channels and the accessibility fallback); doc 06 §10, an implemented-vs-player-reachable table. **P2** drift is registered below rather than half-fixed. | 02, 03, 04, 06, 09, 10, 13 |
 | 2.1 | 2026-08-19 | Sync pass | SALIN-143 — Resume-safety verification suite for the revised-content migration: `CampaignSaveResumeSafetyTests` (fresh install, archive-first migration, audio-preference capture, one-shot interruption at archive write and initial commit, relaunch convergence with byte-identical archive reuse, one-time notice acknowledgment, stale-generation journal quarantine, corrupt archive rebuild/safe-reset, corrupt revised-save re-migration) plus `LegacyArchiveServiceTests` idempotency/capture/wrong-campaign coverage and the shared `DictionaryLegacySource` fake. No production contract changes. | 09, 13 |
 | 2.0 | 2026-08-18 | Sync pass | SALIN-175 -- Unified learning, practice, recall, and mastery data. Save schema v3 adds `progress.symbolMastery` / `progress.wordMastery` and `AppliedOutcomeReceipt.sessionKind`; `CampaignSaveMigrator.TryUpgradeV1` becomes `TryUpgradeToCurrent`, a range-guarded step chain. Outcome schema v2 adds `sessionKind` and an `evidence` batch, with `CampaignOutcomeValidator.UpgradeToCurrent` at the journal parse boundary. New `LearningTuningSO` referenced from `CampaignConfigSO.learningTuning`; new required `FocusWordDefinition.meaning`. New pure layer under `Assets/Scripts/Data/Learning/` (`MasteryEvaluator`, `ReviewScheduler`, `PracticePriority`, `LearningProgressWriter`, `LearningEvidenceRecorder`) plus the read-only `SaveManager.LearningState` surface. Coordinator dispatches on session kind so practice is structurally unable to alter level completion; Tracing Dojo records Form evidence only. | 02, 03, 04, 05, 09, 13, SystemDiagrams, TDD, GDD |
 | 1.9 | 2026-06-01 | Sync pass | SALIN-109 — Replaced standalone `WaveConfigSO` ScriptableObject assets with embedded `WaveDefinition` value type inside `LevelConfigSO`. Added `allowedEnemyTypes` roster. Wave editing now happens in a single Level asset inspector with checkbox-grid cascade. Docs 04, 05, 07, and SystemDiagrams updated. | 04, 05, 07, SystemDiagrams |
@@ -44,15 +45,58 @@ When updating any document in `docs/system/`:
 
 ## Planned Update Triggers
 
+Refreshed by SALIN-186. The previous table was keyed to Sprint 2–6 events that have all since passed
+(and asked for "all 17" `BaybayinCharacterSO` assets, when the authored set is **18**), so it could no
+longer fire on anything.
+
 | Trigger Event | Documents to Update |
 |--------------|---------------------|
-| Sprint 2 complete (recognition + WaveManager implemented) | 03, 04, 09, 10, 11 |
-| BaybayinCharacterSO assets authored (all 17) | 05, 07, 10 |
-| HUD implemented | 06, 09, 10 |
-| HeartSystem implemented | 04, 09, 10 |
-| Boss system implemented (Sprint 3) | 04, 05, 07, 10 |
-| Lite/Full build split implemented | 08, 10 |
-| UAT completed (Sprint 5) | 09, 10, 11 |
-| Store submission (Sprint 6) | 08, 11, 13 |
-| Dialogue system implemented (Sprint 3) | 03, 06, 09, 10 |
-| Era-themed enemies implemented | 04, 07, 09, 10 |
+| PRs #126 / #127 merge (completion badge, Restart button wired) | **06** — the implemented-vs-reachable table in §10 |
+| Pronunciation clips authored for `value.a` / `value.ei` / `value.na` / `value.ma` | 04, 06, **09 (unblocks CS-05)**, 10 |
+| `numberSprite` authored for Levels 6–15 | 06, 07, 10 |
+| Ugat Levels 2–5 narrative and assets land (SALIN-205, 206) | 04, 06, 07, 10 |
+| Atomic persistence lands (SALIN-140) | 02 §7, 03, 05, 09, 10 |
+| Campaign-wide regression coverage lands (SALIN-177) | 09, 10 |
+| `QuestionnaireController` implemented (**REQ-44, the last P0 gap**) | 06, 09, 10, and `docs/capstone/EVALUATION-PROTOCOL.md` |
+| Lite/Full build split implemented (REQ-28) | 08, 10 |
+| Endless Mode implemented (REQ-33) | 04, 06, 10 |
+| Any era's levels become playable end-to-end | 04, 06, 09, 10 |
+
+---
+
+## Known-Stale Register (SALIN-186, P2 — recorded not fixed)
+
+A 3-point ticket cannot resync fourteen documents. The P0 and P1 drift above was corrected; the
+following is **known-stale and deliberately left**, so that a reader knows not to trust it rather than
+discovering it the hard way. Each needs its own ticket.
+
+| Document | Known drift |
+|---|---|
+| `05_Data_Contracts_and_ScriptableObjects.md` | Missing `ClueChannels`, `LevelPhasePlan`, the learning-requirement contracts, and `SpokenValueDefinition`. The campaign/era identity text is current. |
+| `01_System_Overview.md` | Not reassessed this pass; predates the revised-campaign model. |
+| `07_Content_Pipeline.md` | Not reassessed; does not describe authoring `level.<era>.<order>` identities or focus-word decompositions. |
+| `08_Mobile_Performance_and_Offline_Constraints.md` | Not reassessed. REQ-03/04/06 remain unmeasured on device. |
+| `11_Risks_Dependencies_and_Mitigations.md` | Does not carry the two live content risks: 21 of 30 missing pronunciation clips, and missing `numberSprite` for Levels 6–15. |
+| `12_Glossary_and_Naming_Standard.md` | Missing `LevelPhase`, `ClueChannels`, `JourneyEntryKind`, `LevelLockState`, era/level stable-id conventions. |
+| `00_Documentation_Index.md` | Not verified against the sections added in this pass. |
+
+### Cross-repository inconsistency found while syncing
+
+**`docs/capstone/GDD.md` states the game has 17 Baybayin characters in five places** (lines 104, 147,
+194, 241, 259). The authored set is **18** — 3 vowels and 15 consonants, `RA` being its own glyph where
+classic Baybayin folds it into `DA` — and 121 recognition templates cover all 18. Doc 10 REQ-42 now
+records this.
+
+Two of those five mentions describe the Kadiliman final boss as defeated by "drawing all 17 characters
+in a timed sequence". **That was checked rather than left as a worry, and the answer is narrower than
+feared:** no character is unreachable, because the sequence does not exist. `BossConfig_Kadiliman.asset`
+is a **single placeholder phase** on the legacy schema, with `summonEnemyTypes: []` — an empty roster —
+against `BossConfig_ElInquisidor.asset`, the one fully-authored encounter. Nothing in
+`Assets/Scripts/Gameplay/Boss/` hardcodes any character count; `BossPhase` drives requirements from data
+("number of correct random glyphs the player must draw to damage the boss this phase").
+
+So the GDD describes an **unimplemented** final-boss mechanic, and describes it with the **wrong count**.
+Correcting the prose to 18 is safe and correct today. The real work — building the full-set timed
+sequence, and giving Kadiliman a real phase table and summon roster — is unticketed and is a Sprint 10
+concern (SALIN-158 owns the final Pamana story; REQ-25 already records Levels 10 and 15 as placeholder
+boss configs at 🟠 P1).
