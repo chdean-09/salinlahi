@@ -1,0 +1,265 @@
+fileFormatVersion: 2
+guid: e8decc99d6abe44c09898eb16ad3e8ba
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 3424335488969304202
+    second: sprite_enemy_salungat_walk-Sheet_0
+  - first:
+      213: -5397086322818256449
+    second: sprite_enemy_salungat_walk-Sheet_1
+  - first:
+      213: 7937194777417555568
+    second: sprite_enemy_salungat_walk-Sheet_2
+  - first:
+      213: -2721476543187208366
+    second: sprite_enemy_salungat_walk-Sheet_3
+  - first:
+      213: 7916943780166592364
+    second: sprite_enemy_salungat_walk-Sheet_4
+  - first:
+      213: -6459643035317282964
+    second: sprite_enemy_salungat_walk-Sheet_5
+  - first:
+      213: -1817101756016585397
+    second: sprite_enemy_salungat_walk-Sheet_6
+  - first:
+      213: 6796740578522174163
+    second: sprite_enemy_salungat_walk-Sheet_7
+  - first:
+      213: 6704831079772278222
+    second: sprite_enemy_salungat_walk-Sheet_8
+  - first:
+      213: 902590658091594942
+    second: sprite_enemy_salungat_walk-Sheet_9
+  - first:
+      213: 427568449657009050
+    second: sprite_enemy_salungat_walk-Sheet_10
+  - first:
+      213: -7279349884303702238
+    second: salungat_walk_01
+  - first:
+      213: 5014218004139942751
+    second: salungat_walk_02
+  - first:
+      213: -8282516676546848157
+    second: salungat_walk_03
+  - first:
+      213: -4975391706310199947
+    second: salungat_walk_04
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 192
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: salungat_walk_01
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1024
+        width: 1024
+        height: 1024
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2270c4e09dd8afa90800000000000000
+      internalID: -7279349884303702238
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: salungat_walk_02
+      rect:
+        serializedVersion: 2
+        x: 1024
+        y: 1024
+        width: 1024
+        height: 1024
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f53212355b4169540800000000000000
+      internalID: 5014218004139942751
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: salungat_walk_03
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 1024
+        height: 1024
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 36a1d2027f69e0d80800000000000000
+      internalID: -8282516676546848157
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: salungat_walk_04
+      rect:
+        serializedVersion: 2
+        x: 1024
+        y: 0
+        width: 1024
+        height: 1024
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 575b4f69a9bd3fab0800000000000000
+      internalID: -4975391706310199947
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      salungat_walk_01: -7279349884303702238
+      salungat_walk_02: 5014218004139942751
+      salungat_walk_03: -8282516676546848157
+      salungat_walk_04: -4975391706310199947
+      sprite_enemy_salungat_walk-Sheet_0: 3424335488969304202
+      sprite_enemy_salungat_walk-Sheet_1: -5397086322818256449
+      sprite_enemy_salungat_walk-Sheet_10: 427568449657009050
+      sprite_enemy_salungat_walk-Sheet_2: 7937194777417555568
+      sprite_enemy_salungat_walk-Sheet_3: -2721476543187208366
+      sprite_enemy_salungat_walk-Sheet_4: 7916943780166592364
+      sprite_enemy_salungat_walk-Sheet_5: -6459643035317282964
+      sprite_enemy_salungat_walk-Sheet_6: -1817101756016585397
+      sprite_enemy_salungat_walk-Sheet_7: 6796740578522174163
+      sprite_enemy_salungat_walk-Sheet_8: 6704831079772278222
+      sprite_enemy_salungat_walk-Sheet_9: 902590658091594942
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
