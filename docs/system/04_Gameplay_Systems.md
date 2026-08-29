@@ -51,7 +51,7 @@ Pool (inactive, SetActive(false))
   │
   ├─ EnemyPool.Get(EnemyDataSO data)
   │     └─ pool.Get() → OnGet: SetActive(true)
-  │     └─ Enemy.Initialize(data, pool)
+  │     └─ Enemy.Initialize(data)
   │           ├─ _data = data
   │           ├─ _mover.SetSpeed(data.moveSpeed)  → _active = true
   │           └─ _renderer.sprite = data.walkFrames[0]
@@ -83,7 +83,7 @@ OnDisable() called on either path:
 |--------|------|-------------|
 | `Character` | `BaybayinCharacterSO` (get) | Baybayin character this enemy carries; sourced from `_data.assignedCharacter` |
 | `EnemyID` | `string` (get) | Enemy type identifier; sourced from `_data.enemyID` |
-| `Initialize(EnemyDataSO, IObjectPool<Enemy>)` | method | Called by EnemyPool; sets data and speed |
+| `Initialize(EnemyDataSO)` | method | Called by EnemyPool; sets data and speed |
 | `Defeat()` | method | Raises defeated event and returns to pool |
 | `ReturnToPool()` | method | Returns to pool without raising event; used on base-hit path |
 
@@ -140,7 +140,7 @@ transform.Translate(Vector2.down * _speed * Time.deltaTime, Space.World);
 **Rule:** No `Instantiate` or `Destroy` call is permitted in the gameplay loop. All enemy creation and destruction must go through `EnemyPool`.
 
 [EVIDENCE: Assets/Scripts/Gameplay/Enemy/EnemyPool.cs]
-[EVIDENCE: Assets/Scripts/Utilities/ObjectPool.cs — `PooledObject<T>` base]
+[EVIDENCE: Assets/Scripts/Gameplay/Enemy/EnemyPool.cs — Unity `ObjectPool<Enemy>` implementation]
 
 ---
 

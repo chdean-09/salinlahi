@@ -15,7 +15,7 @@ MonoBehaviour:
   levelName: Kempei Patrol
   levelNumber: 13
   chapterNumber: 1
-  chapterName: Chapter 1
+  chapterName: Pamana
   stableId: level.pamana.03
   eraLocalOrder: 3
   focusWords: []

@@ -205,10 +205,10 @@ Defined at the bottom of `EnemyDataSO.cs`:
 
 | Field | Type | Header | Required | Invariants |
 |-------|------|--------|----------|------------|
-| `levelName` | `string` | Identity | YES | Human-readable display name. Example: `"Chapter 1 - Level 1"`. |
+| `levelName` | `string` | Identity | YES | Human-readable display name. Generic levels use `"Level N"`; authored encounters may use a title. |
 | `levelNumber` | `int` | Identity | YES | 1-indexed. Story Mode range: 1–15. Must be globally unique. |
 | `chapterNumber` | `int` | Identity | YES | Default `1`. Author-facing label for HUD/level-select grouping. |
-| `chapterName` | `string` | Identity | YES | Default `"Chapter 1"`. Author-facing label for HUD/level-select grouping. |
+| `chapterName` | `string` | Identity | YES | Default `"Ugat"`. Approved active campaign label for HUD/level-select grouping. |
 | `eraTheme` | `EraThemeSO` | Identity | NO | Visual theme for this level's era (background, ground, shrine, decorations). Consumed by `EnvironmentThemeSwapper`. |
 | `numberSprite` | `Sprite` | Identity | NO | Baked-in numbered scroll sprite displayed on this level's Level Select button. Null triggers a warning log from LevelButton; the scroll image is unchanged. |
 | `waves` | `List<WaveDefinition>` | Waves | YES (non-boss) | Ordered list of embedded waves. Each `WaveDefinition`'s character/enemy subset is kept ⊆ the level rosters by `ReconcileWavesToRoster()`. Ignored when `bossConfig != null`. |
@@ -458,9 +458,9 @@ Per-era visual + content bundle for the Level Select screen. `LevelSelectUI` hol
 
 | Field | Type | Header | Required | Notes |
 |-------|------|--------|----------|-------|
-| `eraName` | `string` | Identity | YES | Human-readable name for logs/debugging (e.g. `"Era One"`). |
+| `eraName` | `string` | Identity | YES | Human-readable active campaign name for logs/debugging (e.g. `"Ugat"`). |
 | `backgroundSprite` | `Sprite` | Visuals | YES | Full-screen background sprite shown when this era is active. Assigned to `_eraBackgroundImage.sprite` by `LevelSelectUI.ShowEra`. |
-| `bannerSprite` | `Sprite` | Visuals | YES | Baked-in banner sprite for this era (e.g. the ERA ONE scroll). Assigned to `_eraBannerImage.sprite` by `LevelSelectUI.ShowEra`. |
+| `bannerSprite` | `Sprite` | Visuals | YES | Baked-in campaign banner sprite assigned to `_eraBannerImage.sprite` by `LevelSelectUI.ShowEra`. |
 | `levels` | `List<LevelConfigSO>` | Levels | YES | Ordered list of levels in this era. Expected length matches `LevelSelectUI._levelButtons.Count` (5). Shorter lists cause the surplus `LevelButton` slots to be hidden (`SetActive(false)`). |
 
 **Validation Rules:**

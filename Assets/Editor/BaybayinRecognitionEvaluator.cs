@@ -8,7 +8,7 @@ using UnityEngine;
 
 public static class BaybayinRecognitionEvaluator
 {
-    private const string TestDrawsFolder = "Assets/Resources/TestDraws";
+    private const string TestDrawsFolder = "Assets/Tests/Fixtures/TestDraws";
     private static readonly string[] ExpectedCharacterIDs =
     {
         "A", "BA", "DA", "EI", "GA", "HA", "KA", "LA", "MA", "NA", "NGA", "OU", "PA", "RA", "SA", "TA", "WA", "YA"
@@ -32,7 +32,7 @@ public static class BaybayinRecognitionEvaluator
             if (!Directory.Exists(TestDrawsFolder))
             {
                 Debug.LogError($"[BaybayinEval] Missing test draws folder: {TestDrawsFolder}");
-                Debug.Log("[BaybayinEval] Add test draw files named like BA_draw_01.txt under Assets/Resources/TestDraws/");
+                Debug.Log("[BaybayinEval] Add test draw files named like BA_draw_01.txt under Assets/Tests/Fixtures/TestDraws/");
                 EditorUtility.DisplayDialog(
                     "Baybayin Recognition Evaluation",
                     $"Missing test draws folder:\n{TestDrawsFolder}\n\nCheck the Console for details.",
@@ -55,7 +55,7 @@ public static class BaybayinRecognitionEvaluator
                 Debug.LogError("[BaybayinEval] No draw sample files found.");
                 EditorUtility.DisplayDialog(
                     "Baybayin Recognition Evaluation",
-                    "No draw sample files were found in Assets/Resources/TestDraws.\n\nCheck the Console for details.",
+                    "No draw sample files were found in Assets/Tests/Fixtures/TestDraws.\n\nCheck the Console for details.",
                     "OK");
                 return;
             }

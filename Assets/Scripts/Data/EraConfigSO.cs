@@ -10,7 +10,7 @@ using UnityEngine;
 public class EraConfigSO : ScriptableObject
 {
     [Header("Identity")]
-    [Tooltip("Human-readable name for logs/debugging, e.g. \"Era One\".")]
+    [Tooltip("Human-readable campaign name for logs/debugging, e.g. \"Ugat\".")]
     public string eraName;
 
     [Header("Revised Campaign Identity")]
@@ -23,7 +23,7 @@ public class EraConfigSO : ScriptableObject
     [Tooltip("Full-screen background sprite shown when this era is selected.")]
     public Sprite backgroundSprite;
 
-    [Tooltip("Baked-in scroll banner sprite for this era (e.g. ERA ONE).")]
+    [Tooltip("Baked-in scroll banner sprite for this campaign.")]
     public Sprite bannerSprite;
 
     [Header("Levels")]

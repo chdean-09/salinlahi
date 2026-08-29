@@ -73,7 +73,7 @@ Pronunciation clips (DEP-03)
 
 | Item | Mitigation Applied | Evidence |
 |------|-------------------|----------|
-| Runtime Instantiate/Destroy risk | EnemyPool with ObjectPool<Enemy> eliminates game-loop allocations | EnemyPool.cs; ObjectPool.cs comment |
+| Runtime Instantiate/Destroy risk | EnemyPool with Unity ObjectPool<Enemy> eliminates game-loop allocations | EnemyPool.cs lifecycle |
 | Scene timeScale lock risk | SceneLoader always resets Time.timeScale = 1f before load | SceneLoader.cs, LoadRoutine() |
 | Duplicate Singleton risk | Singleton<T> destroys duplicates in Awake | Singleton.cs |
 | EventBus memory leak risk | OnEnable/OnDisable pattern enforced + documented | EventBus.cs comment; GameManager.cs; AudioManager.cs |

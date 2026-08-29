@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using Salinlahi.Debug.Sandbox;
 #endif
 using TMPro;
-using UnityEngine.Pool;
 
 // Attach to Enemy prefab root. Holds data reference and returns itself to EnemyPool.
 [RequireComponent(typeof(EnemyMover))]
@@ -247,15 +246,6 @@ public class Enemy : MonoBehaviour
         return !IsBoss
             && EnemyDiscoveryProgress.NormalizeEnemyID(data) != null
             && !EnemyDiscoveryProgress.HasDiscovered(data);
-    }
-
-    public bool Initialize(EnemyDataSO data, IObjectPool<Enemy> pool, BaybayinCharacterSO character)
-    {
-        bool initialized = Initialize(data);
-        if (initialized)
-            AssignCharacter(character);
-
-        return initialized;
     }
 
     public void ResetForPool()

@@ -142,6 +142,17 @@
 | Boss animations | `boss_[chapter]_[phase].anim` | `boss_chapter1_phase1.anim` |
 | UI animations | `ui_[element]_[state].anim` | `ui_heart_break.anim` |
 
+### 3.8 Active Campaign Identifiers
+
+| Campaign | Levels / encounters | Usage |
+|----------|---------------------|-------|
+| `Ugat` | Levels 1–5 | First active story campaign |
+| `Ugnayan` | Levels 6–10 | Second active story campaign |
+| `Pamana` | Levels 11–15 | Third active story campaign |
+| `Paglimot` | Three mastery encounters | Post-story mastery content; not a five-level campaign |
+
+`Liwanag`, `Paglaban`, and `Pagbalik` remain historical names in capstone and Jira evidence. They are not revised active campaign labels.
+
 ---
 
 ## 4. Tag Conventions

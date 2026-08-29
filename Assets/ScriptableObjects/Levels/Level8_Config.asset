@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 98c3e4f7bd9686740a8cd775acf3cbef, type: 3}
   m_Name: Level8_Config
   m_EditorClassIdentifier: Salinlahi.Runtime::LevelConfigSO
-  levelName: Chapter 2 - Level 3
+  levelName: Level 8
   levelNumber: 8
   chapterNumber: 2
-  chapterName: American Era
+  chapterName: Ugnayan
   stableId: level.ugnayan.03
   eraLocalOrder: 3
   focusWords: []
