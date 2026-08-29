@@ -45,6 +45,39 @@ public static class CorruptionEnemyBootstrap
     {
         new Corruption
         {
+            Key = "abongsimula", EnemyId = "abo-ng-simula", DisplayName = "Abo ng Simula",
+            SymbolId = "symbol.a",
+            Appearance = "A small humanoid made of ash. Its face disappears whenever the wind blows.",
+            Ability = "It covers the first symbol of a word with ash.",
+        },
+        new Corruption
+        {
+            Key = "iligaw", EnemyId = "iligaw", DisplayName = "Iligaw", SymbolId = "symbol.ei",
+            Appearance = "A thin mirror-like creature with two faces. One face says E, while the "
+                         + "other says I.",
+            Ability = "It changes directions and creates false copies of the correct symbol.",
+        },
+        new Corruption
+        {
+            Key = "uhaw", EnemyId = "uhaw", DisplayName = "Uhaw", SymbolId = "symbol.ou",
+            Appearance = "A hollow creature with a large empty mouth and a body made of dry soil.",
+            Ability = "It drains sound from nearby words.",
+        },
+        new Corruption
+        {
+            Key = "bakod", EnemyId = "bakod", DisplayName = "Bakod", SymbolId = "symbol.ba",
+            Appearance = "A wide stone creature shaped like a moving wall.",
+            Ability = "It blocks paths, separates family members, and prevents Juan from moving "
+                      + "forward.",
+        },
+        new Corruption
+        {
+            Key = "kadena", EnemyId = "kadena", DisplayName = "Kadena", SymbolId = "symbol.ka",
+            Appearance = "A warrior made of chains and broken locks.",
+            Ability = "It binds villagers and prevents them from helping Juan.",
+        },
+        new Corruption
+        {
             Key = "mantsa", EnemyId = "mantsa", DisplayName = "Mantsa", SymbolId = "symbol.ma",
             Appearance = "A crawling mass of black ink that spreads across family portraits.",
             Ability = "It stains correct symbols and changes them into incorrect forms.",
