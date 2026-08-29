@@ -78,6 +78,28 @@ public static class CorruptionEnemyBootstrap
         },
         new Corruption
         {
+            Key = "gapos", EnemyId = "gapos", DisplayName = "Gapos", SymbolId = "symbol.ga",
+            Appearance = "A creature made of dark roots and ropes.",
+            Ability = "It traps Juan's hands and slows down symbol tracing.",
+        },
+        new Corruption
+        {
+            Key = "hati", EnemyId = "hati", DisplayName = "Hati", SymbolId = "symbol.ha",
+            Appearance = "A masked creature that splits into two smaller enemies.",
+            Ability = "It divides villagers and creates arguments between them.",
+        },
+        new Corruption
+        {
+            // DA and RA are contextual values of the single symbol.dara identity, and the workbook
+            // makes that shared form this enemy's mechanic: "Da and Ra share one ancestral Baybayin
+            // form. Daan-Lihis uses this connection to confuse Juan."
+            Key = "daanlihis", EnemyId = "daan-lihis", DisplayName = "Daan-Lihis",
+            SymbolId = "symbol.dara",
+            Appearance = "A long serpent with road markings across its body.",
+            Ability = "It changes the direction of paths and sends Juan back to previous areas.",
+        },
+        new Corruption
+        {
             Key = "mantsa", EnemyId = "mantsa", DisplayName = "Mantsa", SymbolId = "symbol.ma",
             Appearance = "A crawling mass of black ink that spreads across family portraits.",
             Ability = "It stains correct symbols and changes them into incorrect forms.",
