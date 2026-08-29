@@ -27,11 +27,26 @@ public class CombatResolver : MonoBehaviour
     private static CombatResolver _instance;
 
     /// <summary>
-    /// Window in which an identical characterID is treated as an echo of the same finger-lift
-    /// rather than a fresh attempt. Comfortably longer than the pronunciation lead and far
-    /// shorter than any real repeated draw.
+    /// Fallback window in which an identical characterID is treated as an echo of the same
+    /// finger-lift rather than a fresh attempt. Comfortably longer than the pronunciation lead and
+    /// far shorter than any real repeated draw.
     /// </summary>
-    private const float EchoedRecognitionSeconds = 0.15f;
+    /// <remarks>
+    /// SALIN-182 asks for shorter correction windows as a difficulty lever, so the live value now
+    /// comes from <c>GameConfigSO.echoedRecognitionSeconds</c>. This constant remains the default
+    /// and the fallback when no config is assigned, which keeps current behaviour byte-identical.
+    ///
+    /// Shortening this affects more than the echo guard: SALIN-135 hoisted it into
+    /// HandleCharacterRecognized, so it also gates the AOE, closest-match and miss paths.
+    /// </remarks>
+    private const float DefaultEchoedRecognitionSeconds = 0.15f;
+
+    [Header("Correction Window (SALIN-182)")]
+    [Tooltip("Optional tuning source for the echo window. Falls back to 0.15s when unassigned.")]
+    [SerializeField] private GameConfigSO _config;
+
+    private float EchoedRecognitionSeconds =>
+        _config != null ? Mathf.Max(0f, _config.echoedRecognitionSeconds) : DefaultEchoedRecognitionSeconds;
 
     private string _lastRecognizedCharacterId;
     private float _lastRecognizedTime = float.NegativeInfinity;
@@ -364,6 +379,89 @@ public class CombatResolver : MonoBehaviour
         EventBus.RaiseSingleAttackHit(target);
         target.TakeDamage(1);
         DebugLogger.Log($"CombatResolver: Hit {characterID}");
+
+        ApplyComboPowerEffects(target, characterID);
+    }
+
+    /// <summary>
+    /// SALIN-182 Tiers 2-4. Extra damage, and nothing else.
+    /// </summary>
+    /// <remarks>
+    /// This is where the ticket's "cannot duplicate word progress or bypass the active clue"
+    /// criterion is met, and it is met structurally rather than by assertion. Two calls are
+    /// deliberately absent:
+    ///
+    /// <c>TryConsumeClue</c> — the single gate that credits the language objective. It is reached
+    /// only from the recognition path, so no power can advance the objective a second time.
+    ///
+    /// <c>RaiseEnemyTargeted</c> — what ComboManager counts to build the streak. Raising it here
+    /// would let a granted power feed the very streak that granted it.
+    /// </remarks>
+    private static void ApplyComboPowerEffects(Enemy target, string characterID)
+    {
+        ComboManager combo = ComboManager.Instance;
+        if (combo == null)
+            return;
+
+        while (combo.TryConsumeRapidShotHit())
+        {
+            if (!IsEligibleCombatTarget(target))
+                break;
+
+            EventBus.RaiseSingleAttackHit(target);
+            target.TakeDamage(1);
+            DebugLogger.Log($"CombatResolver: Rapid Shot bonus hit on {characterID}");
+        }
+
+        if (!combo.PiercingArrowActive)
+            return;
+
+        Enemy aligned = FindAlignedTarget(target);
+        if (aligned == null)
+            return;
+
+        EventBus.RaiseSingleAttackHit(aligned);
+        aligned.TakeDamage(1);
+        DebugLogger.Log($"CombatResolver: Piercing Arrow struck an aligned target");
+    }
+
+    /// <summary>
+    /// Stands in for the ticket's "one aligned target" until the lane model exists (SALIN-182b):
+    /// the eligible enemy nearest the base other than the one just hit.
+    /// </summary>
+    /// <remarks>
+    /// Enemies advance top-to-bottom in a single column, so lowest Y is nearest the base — the same
+    /// metric ActiveEnemyTracker.FindClosestToBase uses. With one lane that enemy is the one the
+    /// player would face next, which is the closest honest reading of "aligned". **This rule is an
+    /// interpretation, not an approved design**, and should be revisited when lanes land.
+    /// </remarks>
+    private static Enemy FindAlignedTarget(Enemy exclude)
+    {
+        ActiveEnemyTracker tracker = ActiveEnemyTracker.Instance;
+        if (tracker == null)
+            return null;
+
+        List<Enemy> active = tracker.GetActiveEnemiesSnapshot();
+        if (active == null)
+            return null;
+
+        Enemy closest = null;
+        float lowestY = float.MaxValue;
+        for (int i = 0; i < active.Count; i++)
+        {
+            Enemy candidate = active[i];
+            if (candidate == exclude || !IsEligibleCombatTarget(candidate))
+                continue;
+
+            float y = candidate.transform.position.y;
+            if (y < lowestY)
+            {
+                lowestY = y;
+                closest = candidate;
+            }
+        }
+
+        return closest;
     }
 
     private IEnumerator ApplyAoeDefeatAfterPronunciationLead(List<Enemy> targets)

@@ -54,6 +54,19 @@ public class HeartSystem : MonoBehaviour
         }
 #endif
 
+        // SALIN-182 Tier 5. The shield blocks the heart loss itself, not merely its side effects, so
+        // it returns before any heart is deducted. One consequence is deliberate: because no heart
+        // is lost, OnHeartsChanged never fires, so the combo streak survives too -- a blocked hit
+        // should not silently cost the player their streak.
+        if (Mathf.Max(0, amount) > 0
+            && ComboManager.Instance != null
+            && ComboManager.Instance.TryConsumeShield())
+        {
+            DebugLogger.Log(
+                $"HeartSystem: Shield blocked the heart loss. Hearts remain {_currentHearts}/{_maxHearts}.");
+            return;
+        }
+
         int safeAmount = Mathf.Max(0, amount);
         int previousHearts = _currentHearts;
         _currentHearts = Mathf.Max(0, _currentHearts - safeAmount);
