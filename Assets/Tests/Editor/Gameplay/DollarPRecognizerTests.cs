@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 
 namespace Salinlahi.Tests.Editor.Gameplay
@@ -150,8 +151,9 @@ namespace Salinlahi.Tests.Editor.Gameplay
             var templates = new TemplateLoader().LoadAll();
             recognizer.SetTemplateStrokeVariants(templates);
 
-            TextAsset drawAsset = Resources.Load<TextAsset>($"TestDraws/{drawAssetName}");
-            Assert.IsNotNull(drawAsset, $"Missing Resources/TestDraws/{drawAssetName}.txt");
+            string fixturePath = $"Assets/Tests/Fixtures/TestDraws/{drawAssetName}.txt";
+            TextAsset drawAsset = AssetDatabase.LoadAssetAtPath<TextAsset>(fixturePath);
+            Assert.IsNotNull(drawAsset, $"Missing {fixturePath}");
 
             List<List<Vector2>> strokes = StrokeTextParser.ParseStrokes(drawAsset.text);
             RecognitionResult result = recognizer.Recognize(strokes);

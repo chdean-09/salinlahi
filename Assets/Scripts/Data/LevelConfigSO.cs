@@ -9,7 +9,7 @@ public class LevelConfigSO : ScriptableObject
     public string levelName;
     public int levelNumber;
     public int chapterNumber = 1;
-    public string chapterName = "Chapter 1";
+    public string chapterName = "Ugat";
 
     [Header("Revised Campaign Identity")]
     public string stableId;

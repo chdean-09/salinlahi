@@ -378,11 +378,10 @@ public class TemplateRecorder : MonoBehaviour
 
     private string BuildOutputDirectory()
     {
-        string resourcesDir = Path.Combine(Application.dataPath, "Resources");
         if (_saveMode == SaveMode.TestDraw)
-            return Path.Combine(resourcesDir, "TestDraws");
+            return Path.Combine(Application.dataPath, "Tests", "Fixtures", "TestDraws");
 
-        return Path.Combine(resourcesDir, "Templates");
+        return Path.Combine(Application.dataPath, "Resources", "Templates");
     }
 
     private void ConfigureLineRenderer(LineRenderer renderer)

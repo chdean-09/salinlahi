@@ -100,11 +100,13 @@ As of Sprint 1: **placeholder assets only**. No BaybayinCharacterSO assets have 
 
 ### 3.1 Level Structure
 
-| Chapter | Name | Levels | Era | Gameplay Theme | Boss Level |
-|---------|------|--------|-----|---------------|------------|
-| Chapter 1 | Liwanag (Light) | 1–5 | Spanish Colonization | Drawing mastery | Level 5 |
-| Chapter 2 | Paglaban (Resistance) | 6–10 | American Occupation | Tactical thinking | Level 10 |
-| Chapter 3 | Pagbalik (Reclamation) | 11–15 | Japanese Occupation | Mastery and chaos | Level 15 |
+| Campaign | Levels | Historical Era | Gameplay Theme | Boss Level |
+|----------|--------|----------------|-----------------|------------|
+| Ugat | 1–5 | Spanish Colonization | Drawing mastery | Level 5 |
+| Ugnayan | 6–10 | American Occupation | Tactical thinking | Level 10 |
+| Pamana | 11–15 | Japanese Occupation | Mastery and chaos | Level 15 |
+
+Paglimot is a separate set of three mastery encounters after the story campaigns, not a fourth five-level campaign. The historical campaign names in the capstone and Jira evidence remain unchanged.
 
 [EVIDENCE: docs/capstone/GDD.md, §4.1 Levels/Maps — chapter names and historical eras]
 [EVIDENCE: Team README §9 — chapter gameplay themes]
@@ -117,7 +119,7 @@ As of Sprint 1: **placeholder assets only**. No BaybayinCharacterSO assets have 
 
 **Note:** Authored on-disk pattern is `Level[N]_Config.asset` (e.g. `Level1_Config.asset`); the doc's `Level_##` example is the planned convention. Levels 1–3 are populated; the remaining 12 are PLANNED. Wave data is now embedded inside each `LevelConfigSO` as `List<WaveDefinition>` — there are no separate wave `.asset` files.
 
-**Current status:** `Assets/ScriptableObjects/Levels/` contains `Level1_Config.asset`, `Level2_Config.asset`, `Level3_Config.asset` (and additional configs for higher levels).
+**Current status:** `Assets/ScriptableObjects/Levels/` contains `Level1_Config.asset` through `Level15_Config.asset`; all active assets use the campaign mapping above.
 
 [EVIDENCE: Assets/ScriptableObjects/Levels/Level1_Config.asset, Level2_Config.asset, Level3_Config.asset]
 

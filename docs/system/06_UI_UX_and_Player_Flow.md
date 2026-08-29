@@ -18,7 +18,7 @@
 | Level Complete | (overlay or separate scene) | `VictoryScreenUI.cs` | Implemented |
 | Game Over | `GameOver.unity` | `GameOverUI.cs` / `DefeatScreenUI.cs` | Deprecated — replaced by `DefeatScreenUI` overlay in Gameplay scene (SALIN-58) |
 | Tracing Dojo | `TracingDojo.unity` | `TracingDojoController.cs` (+ `CharacterDropdown`, `CharacterListPopulator`, `CharacterListRow`, `DojoNavigator`, `FeedbackToast`, `GhostStrokeRenderer`) | Implemented |
-| Create Baybayin Template (editor-only) | `CreateBaybayinTemplate.unity` | — | Editor tooling |
+| Template Recorder (editor-only) | `TemplateRecorder.unity` | `TemplateRecorder.cs` | Editor tooling |
 | Settings | (overlay) | `SettingsPanel.cs` | Implemented |
 | Credits | (overlay) | `CreditsPanel.cs` | Implemented |
 | Dialogue Panel (Type A) | (overlay in Gameplay) | `DialogueController.cs` | Implemented |
@@ -26,7 +26,7 @@
 | Endless Mode | (shares Gameplay scene) | (PLANNED) | PLANNED |
 | SUS/GEQ-S Questionnaire | (overlay or separate scene) | `QuestionnaireController.cs` (PLANNED) | PLANNED |
 
-[EVIDENCE: Assets/_Scenes/ — Bootstrap, MainMenu, LevelSelect, TracingDojo, Gameplay, GameOver, CreateBaybayinTemplate scenes confirmed]
+[EVIDENCE: Assets/_Scenes/ — Bootstrap, MainMenu, LevelSelect, TracingDojo, Gameplay, GameOver, TemplateRecorder scenes confirmed]
 [EVIDENCE: Assets/Scripts/UI/TracingDojo/ — TracingDojoController.cs and supporting scripts]
 [EVIDENCE: Assets/Scripts/UI/DefeatScreenUI.cs; Assets/Scripts/Core/SceneLoader.cs — `LoadGameOver()` marked `[System.Obsolete]`]
 [EVIDENCE: docs/capstone/GDD.md, §5.1 Player Journey]

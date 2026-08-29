@@ -15,7 +15,7 @@ MonoBehaviour:
   levelName: Kadiliman
   levelNumber: 15
   chapterNumber: 1
-  chapterName: Chapter 1
+  chapterName: Pamana
   stableId: level.pamana.05
   eraLocalOrder: 5
   focusWords: []

@@ -109,7 +109,8 @@ public class SandboxModeTests
         try
         {
             InvokePrivate(enemy, "Awake");
-            enemy.Initialize(enemyData, new NoopEnemyPool(), overrideCharacter);
+            enemy.Initialize(enemyData);
+            enemy.AssignCharacter(overrideCharacter);
 
             Assert.AreSame(overrideCharacter, enemy.Character);
             Assert.AreSame(assetCharacter, enemyData.assignedCharacter);

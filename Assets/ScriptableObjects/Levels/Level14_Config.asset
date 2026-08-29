@@ -15,7 +15,7 @@ MonoBehaviour:
   levelName: Gauntlet
   levelNumber: 14
   chapterNumber: 1
-  chapterName: Chapter 1
+  chapterName: Pamana
   stableId: level.pamana.04
   eraLocalOrder: 4
   focusWords: []
