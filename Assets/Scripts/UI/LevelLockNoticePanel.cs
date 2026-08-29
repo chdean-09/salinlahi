@@ -175,13 +175,11 @@ public sealed class LevelLockNoticePanel : MonoBehaviour
             return;
         }
 
-        // Editor-only: builtin UI resources are not included in player builds, and the
-        // lookup asserts under batch mode with no graphics device. Null simply renders
-        // flat untextured quads — acceptable for a no-Inspector-wiring fallback, and
-        // invisible in headless tests. Authored art must replace this before release.
-        Sprite uiSprite = Application.isBatchMode
-            ? null
-            : Resources.GetBuiltinResource<Sprite>("UI/Skin/UISprite.psd");
+        // No builtin-sprite lookup: UISprite.psd lives in unity_builtin_extra, which
+        // Resources.GetBuiltinResource cannot serve, so the call only asserts (and fails
+        // headless tests). Null renders flat tinted quads — acceptable for a
+        // no-Inspector-wiring fallback. Authored art must replace this before release.
+        Sprite uiSprite = null;
         Font font = ResolveFont();
 
         GameObject root = new GameObject("[Runtime] LevelLockNotice", typeof(RectTransform), typeof(Image));
