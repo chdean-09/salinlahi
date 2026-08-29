@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 38eca7172864c470fb6cd1ee26d93838, type: 3}
+  m_Name: Dialogue_Ugat05_Intro
+  m_EditorClassIdentifier: Salinlahi.Runtime::DialogueSO
+  lines:
+  - speakerName: Tagapagsalaysay
+    portrait: {fileID: 0}
+    text: "Sa dulo ng Ugat, hinarap ni Juan ang Paglimot \u2014 ang anino na kumain
+      sa mga alaala ng kanyang pamilya."
+  - speakerName: Juan
+    portrait: {fileID: 0}
+    text: Iba na ang panahon. Iba na ang mundo. Ngunit hindi ibig sabihin niyon ay
+      wala na akong natira.
+  - speakerName: Tagapagsalaysay
+    portrait: {fileID: 0}
+    text: Tama ka, Juan. May mana kang hindi kayang kainin ng Paglimot. Bakasin mo
+      ang IBA at ang MANA.

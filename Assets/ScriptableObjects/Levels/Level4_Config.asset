@@ -137,7 +137,8 @@ MonoBehaviour:
   finalRestorationValue:
     symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
     spokenValueId: value.ma
-  rewardIds: []
+  rewardIds:
+  - memory.ugat.04
   masteryRequirements:
   - kind: 3
     symbolValue:
@@ -237,8 +238,8 @@ MonoBehaviour:
     emergencyHintEnabled: 0
     emergencyHintsPerAttempt: 1
     emergencyHintScorePenalty: 0.1
-  introDialogue: {fileID: 0}
-  outroDialogue: {fileID: 0}
+  introDialogue: {fileID: 11400000, guid: 4306ae5adc5ca4106ad4486332de37ac, type: 2}
+  outroDialogue: {fileID: 11400000, guid: 13dc4b7bf33054f6c9182e7df9b5dc4f, type: 2}
   bgmClip: {fileID: 0}
   hasProtagonist: 1
   protagonistWalksIn: 0
