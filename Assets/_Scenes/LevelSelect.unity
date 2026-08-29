@@ -258,6 +258,11 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 1590632968362237474, guid: 5279bdc95d7e5485e990e2529698d71d, type: 3}
   m_PrefabInstance: {fileID: 72061775}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &72061777 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6100931867097971686, guid: 5279bdc95d7e5485e990e2529698d71d, type: 3}
+  m_PrefabInstance: {fileID: 72061775}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &72061778 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 8643733574217965651, guid: 5279bdc95d7e5485e990e2529698d71d, type: 3}
@@ -305,6 +310,7 @@ MonoBehaviour:
   _button: {fileID: 72061780}
   _scrollImage: {fileID: 72061781}
   _lockIcon: {fileID: 72061778}
+  _completionBadge: {fileID: 72061777}
   _unlockedColor: {r: 1, g: 1, b: 1, a: 1}
   _lockedColor: {r: 0.55, g: 0.55, b: 0.55, a: 1}
 --- !u!1 &158144177
@@ -590,6 +596,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+--- !u!1 &375080907 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6100931867097971686, guid: 5279bdc95d7e5485e990e2529698d71d, type: 3}
+  m_PrefabInstance: {fileID: 375080905}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &375134857
 GameObject:
   m_ObjectHideFlags: 0
@@ -892,6 +903,7 @@ MonoBehaviour:
   _button: {fileID: 845387014}
   _scrollImage: {fileID: 1112715380}
   _lockIcon: {fileID: 426096395}
+  _completionBadge: {fileID: 1112715381}
   _unlockedColor: {r: 1, g: 1, b: 1, a: 1}
   _lockedColor: {r: 0.55, g: 0.55, b: 0.55, a: 1}
 --- !u!1 &852129665
@@ -1051,6 +1063,7 @@ MonoBehaviour:
   _button: {fileID: 854982944}
   _scrollImage: {fileID: 1153097949}
   _lockIcon: {fileID: 931653512}
+  _completionBadge: {fileID: 1153097950}
   _unlockedColor: {r: 1, g: 1, b: 1, a: 1}
   _lockedColor: {r: 0.55, g: 0.55, b: 0.55, a: 1}
 --- !u!1 &889984519
@@ -1084,6 +1097,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LevelSelectUI
   _eras:
   - {fileID: 11400000, guid: 4ce5a10b7df974c4d8398edd339bdb73, type: 2}
+  - {fileID: 11400000, guid: f34b61ff919b352448dec0972c145b7c, type: 2}
+  - {fileID: 11400000, guid: fb396dc6692c77347a3ed5100e40dbac, type: 2}
   _eraBackgroundImage: {fileID: 1343015535}
   _eraBannerImage: {fileID: 794790961}
   _levelButtons:
@@ -1095,6 +1110,7 @@ MonoBehaviour:
   _prevEraButton: {fileID: 1236581998}
   _nextEraButton: {fileID: 1246264551}
   _backButton: {fileID: 852129666}
+  _lockNoticePanel: {fileID: 0}
 --- !u!4 &889984521
 Transform:
   m_ObjectHideFlags: 0
@@ -1341,6 +1357,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+--- !u!1 &1112715381 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6100931867097971686, guid: 5279bdc95d7e5485e990e2529698d71d, type: 3}
+  m_PrefabInstance: {fileID: 1112715379}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1153097948
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1482,6 +1503,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+--- !u!1 &1153097950 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6100931867097971686, guid: 5279bdc95d7e5485e990e2529698d71d, type: 3}
+  m_PrefabInstance: {fileID: 1153097948}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1236581996
 GameObject:
   m_ObjectHideFlags: 0
@@ -1758,6 +1784,7 @@ MonoBehaviour:
   _button: {fileID: 1250510608}
   _scrollImage: {fileID: 375080906}
   _lockIcon: {fileID: 959480364}
+  _completionBadge: {fileID: 375080907}
   _unlockedColor: {r: 1, g: 1, b: 1, a: 1}
   _lockedColor: {r: 0.55, g: 0.55, b: 0.55, a: 1}
 --- !u!1 &1289674700
@@ -2040,6 +2067,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+--- !u!1 &1367614987 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6100931867097971686, guid: 5279bdc95d7e5485e990e2529698d71d, type: 3}
+  m_PrefabInstance: {fileID: 1367614985}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1538221232 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5288809830755546078, guid: 5279bdc95d7e5485e990e2529698d71d, type: 3}
@@ -2076,6 +2108,7 @@ MonoBehaviour:
   _button: {fileID: 1538221234}
   _scrollImage: {fileID: 1367614986}
   _lockIcon: {fileID: 1558318798}
+  _completionBadge: {fileID: 1367614987}
   _unlockedColor: {r: 1, g: 1, b: 1, a: 1}
   _lockedColor: {r: 0.55, g: 0.55, b: 0.55, a: 1}
 --- !u!1 &1558318798 stripped
