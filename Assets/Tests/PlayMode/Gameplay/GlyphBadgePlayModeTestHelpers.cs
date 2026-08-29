@@ -69,20 +69,31 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
 
         public static void SetPrivateField(object target, string fieldName, object value)
         {
-            FieldInfo field = target.GetType().GetField(
-                fieldName,
-                BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo field = FindInstanceField(target, fieldName);
             Assert.IsNotNull(field, $"Missing field '{fieldName}' on {target.GetType().Name}.");
             field.SetValue(target, value);
         }
 
         public static T GetPrivateField<T>(object target, string fieldName)
         {
-            FieldInfo field = target.GetType().GetField(
-                fieldName,
-                BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo field = FindInstanceField(target, fieldName);
             Assert.IsNotNull(field, $"Missing field '{fieldName}' on {target.GetType().Name}.");
             return (T)field.GetValue(target);
+        }
+
+        // Walk the inheritance chain: GetField never returns private fields
+        // declared on base types (e.g. Enemy fields on BossEnemy).
+        private static FieldInfo FindInstanceField(object target, string fieldName)
+        {
+            for (Type type = target.GetType(); type != null; type = type.BaseType)
+            {
+                FieldInfo field = type.GetField(
+                    fieldName,
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+                if (field != null)
+                    return field;
+            }
+            return null;
         }
 
         public static void SetBossVulnerable(BossController boss, BossConfigSO config, int phaseIndex = 0)

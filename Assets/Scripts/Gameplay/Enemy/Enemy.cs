@@ -152,6 +152,9 @@ public class Enemy : MonoBehaviour
         if (_renderer == null)
             _renderer = GetComponent<SpriteRenderer>();
 
+        if (_glyphBadge == null)
+            _glyphBadge = GetComponentInChildren<EnemyGlyphBadge>(includeInactive: true);
+
         _runtimeCharacter = null;
 
         if (data == null)

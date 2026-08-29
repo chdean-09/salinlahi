@@ -194,6 +194,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
             SetPrivateField(enemy, "_showDebugLabels", false);
             _objectsToDestroy.Add(root);
             root.SetActive(true);
+            InvokeBadgeAwake(badge);
             return (enemy, badge, renderer);
         }
 
@@ -217,6 +218,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
 
             SetPrivateField(enemy, "_showDebugLabels", false);
             root.SetActive(true);
+            InvokeBadgeAwake(badge);
 
             EnemyDataSO data = ScriptableObject.CreateInstance<EnemyDataSO>();
             data.enemyID = "test";
@@ -252,6 +254,17 @@ namespace Salinlahi.Tests.Editor.Gameplay
             _objectsToDestroy.Add(tex);
             _objectsToDestroy.Add(sprite);
             return sprite;
+        }
+
+        // EditMode never runs Awake when the rig activates; the badge caches
+        // its enemy, renderer, and base transform state there, so drive it by
+        // hand once the hierarchy is assembled.
+        private static void InvokeBadgeAwake(EnemyGlyphBadge badge)
+        {
+            MethodInfo awake = typeof(EnemyGlyphBadge).GetMethod(
+                "Awake", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(awake, "Missing Awake on EnemyGlyphBadge.");
+            awake.Invoke(badge, null);
         }
 
         private static void SetPrivateField(object target, string fieldName, object value)

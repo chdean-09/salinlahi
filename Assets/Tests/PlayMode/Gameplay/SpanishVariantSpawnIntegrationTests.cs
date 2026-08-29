@@ -30,7 +30,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         public IEnumerator Capitan_RequiresTwoHitsBeforeDefeat()
         {
             EnemyDataSO capitanData = AssetDatabase.LoadAssetAtPath<EnemyDataSO>(
-                "Assets/ScriptableObjects/EnemyData_Capitan.asset");
+                "Assets/ScriptableObjects/Enemies/EnemyData_Capitan.asset");
 
             GameObject go = new GameObject("Capitan_Test");
             go.AddComponent<SpriteRenderer>();
@@ -56,15 +56,20 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         public IEnumerator Capitan_ShieldBreak_PausesThenResumesMovement()
         {
             EnemyDataSO capitanData = AssetDatabase.LoadAssetAtPath<EnemyDataSO>(
-                "Assets/ScriptableObjects/EnemyData_Capitan.asset");
+                "Assets/ScriptableObjects/Enemies/EnemyData_Capitan.asset");
 
             GameObject go = new GameObject("Capitan_ShieldBreak_Test");
             go.SetActive(false);
             go.AddComponent<SpriteRenderer>();
             go.AddComponent<BoxCollider2D>();
             EnemyMover mover = go.AddComponent<EnemyMover>();
-            go.AddComponent<EnemyHurtFeedback>();
+            // Enemy must be added BEFORE EnemyHurtFeedback: the feedback's
+            // [RequireComponent(typeof(Enemy))] otherwise auto-inserts a
+            // duplicate Enemy, the feedback binds to that uninitialized one,
+            // and OnHurt silently no-ops (data == null) — so the shield-break
+            // pause never plays.
             Enemy enemy = go.AddComponent<Enemy>();
+            go.AddComponent<EnemyHurtFeedback>();
             go.SetActive(true);
 
             Assert.IsTrue(enemy.Initialize(capitanData));

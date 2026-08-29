@@ -29,8 +29,14 @@ namespace Salinlahi.Tests.Editor.Gameplay
             try
             {
                 go.AddComponent<SpriteRenderer>();
+                // BossController requires BossEnemy -> Enemy -> EnemyMover,
+                // whose RequireComponent(BoxCollider2D) cannot auto-resolve;
+                // without it AddComponent<BossController> fails and returns null.
+                go.AddComponent<BoxCollider2D>();
                 go.AddComponent<BossController>();
                 BossDamageFeedback feedback = go.AddComponent<BossDamageFeedback>();
+                // EditMode never runs Awake; resolve the renderer cache by hand.
+                InvokePrivateVoid(feedback, "Awake");
 
                 Time.timeScale = 0.5f;
                 IEnumerator routine = InvokePrivate<IEnumerator>(
@@ -58,6 +64,13 @@ namespace Salinlahi.Tests.Editor.Gameplay
             MethodInfo method = target.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.IsNotNull(method, $"Missing method '{methodName}' on {target.GetType().Name}.");
             return (T)method.Invoke(target, args);
+        }
+
+        private static void InvokePrivateVoid(object target, string methodName)
+        {
+            MethodInfo method = target.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(method, $"Missing method '{methodName}' on {target.GetType().Name}.");
+            method.Invoke(target, null);
         }
     }
 }

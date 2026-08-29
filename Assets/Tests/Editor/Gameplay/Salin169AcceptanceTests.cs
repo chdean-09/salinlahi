@@ -73,6 +73,40 @@ namespace Salinlahi.Tests.Editor.Gameplay
 
             if (GameManager.Instance != null)
                 GameManager.Instance.SetCurrentBoss(null);
+
+            if (_createdGameManager)
+            {
+                ClearSingletonInstance<GameManager>();
+                _createdGameManager = false;
+            }
+        }
+
+        private bool _createdGameManager;
+
+        private void CreateGameManagerSingleton()
+        {
+            GameObject host = new GameObject("GameManager_SALIN169_Test");
+            GameManager gameManager = host.AddComponent<GameManager>();
+            _objectsToDestroy.Add(host);
+            SetSingletonInstance(gameManager);
+            _createdGameManager = true;
+        }
+
+        private static void SetSingletonInstance<T>(T instance) where T : MonoBehaviour
+        {
+            PropertyInfo property = typeof(Singleton<T>).GetProperty(
+                "Instance", BindingFlags.Static | BindingFlags.Public);
+            MethodInfo setter = property?.GetSetMethod(nonPublic: true);
+            Assert.IsNotNull(setter, "Singleton<T>.Instance setter not found.");
+            setter.Invoke(null, new object[] { instance });
+        }
+
+        private static void ClearSingletonInstance<T>() where T : MonoBehaviour
+        {
+            PropertyInfo property = typeof(Singleton<T>).GetProperty(
+                "Instance", BindingFlags.Static | BindingFlags.Public);
+            MethodInfo setter = property?.GetSetMethod(nonPublic: true);
+            setter?.Invoke(null, new object[] { null });
         }
 
         private void ResetCounters()
@@ -97,6 +131,10 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 phases: new List<BossPhase> { CreatePhase(requiredCount: 1, vulnerabilityTimer: 100f) });
 
             (BossController boss, _) = CreateBossWithFakeSpawner();
+
+            // StartBoss only records CurrentBoss when a GameManager exists.
+            // EditMode never runs Awake, so install the singleton by hand.
+            CreateGameManagerSingleton();
 
             Assert.IsNull(GameManager.Instance != null ? GameManager.Instance.CurrentBoss : null,
                 "CurrentBoss must be null before StartBoss.");

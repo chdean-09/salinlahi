@@ -163,6 +163,11 @@ public class WaveManager : MonoBehaviour
         if (_spawner != null)
             _spawner.SetFallbackEnemyDataIfMissing(_fallbackEnemyData);
 
+        // Sandbox must be handled before the level-config guard: sandbox mode
+        // explicitly starts without a LevelConfigSO (see SandboxModeTests).
+        if (TryHandleSandboxMode(selectedLevel))
+            return;
+
         if (_levelConfig == null)
         {
             DebugLogger.LogError("WaveManager.StartLevel: No LevelConfigSO assigned.");
@@ -170,9 +175,6 @@ public class WaveManager : MonoBehaviour
         }
 
         SetCurrentAllowedCharacters(_levelConfig.allowedCharacters);
-
-        if (TryHandleSandboxMode())
-            return;
 
         if (TryRestorePausedRun(selectedLevel))
             return;
@@ -199,11 +201,22 @@ public class WaveManager : MonoBehaviour
         _waveRoutine = StartCoroutine(RunAllWavesRoutine(0, 0));
     }
 
-    private bool TryHandleSandboxMode()
+    private bool TryHandleSandboxMode(int selectedLevel)
     {
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
         if (!SandboxMode.IsActive)
             return false;
+
+        // Sandbox runs without a config, but when the registry can supply one
+        // use it so the sandbox catalog gets the level's allowed characters.
+        // Quiet resolution only — no LoadLevelConfig, whose no-match path logs
+        // an error that sandbox starts must not produce.
+        if (_levelConfig == null && _levelConfigs != null)
+        {
+            int index = selectedLevel - 1;
+            if (index >= 0 && index < _levelConfigs.Length && _levelConfigs[index] != null)
+                _levelConfig = _levelConfigs[index];
+        }
 
         SetCurrentAllowedCharacters(_levelConfig != null
             ? _levelConfig.allowedCharacters

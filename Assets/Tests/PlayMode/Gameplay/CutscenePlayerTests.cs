@@ -167,13 +167,16 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
 
             _player.Play(_cutscene);
 
-            float waited = 0f;
-            while (waited < 1f && GetPrivateField<bool>(_player, "_isTypewriting"))
-            {
-                yield return null;
-                waited += Time.unscaledDeltaTime;
-            }
+            // Wait out the forced first-panel transition until the typewriter
+            // has started (or already finished into the waiting-for-tap state).
+            yield return WaitUntilRealtime(
+                () => GetPrivateField<bool>(_player, "_isTypewriting")
+                      || GetPrivateField<bool>(_player, "_waitingForTap"),
+                timeoutSeconds: 2f);
 
+            yield return WaitUntilRealtime(
+                () => !GetPrivateField<bool>(_player, "_isTypewriting"),
+                timeoutSeconds: 2f);
             yield return null;
 
             TMP_Text bodyText = GetPrivateField<TMP_Text>(_player, "_bodyText");
@@ -187,8 +190,11 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             _cutscene.panels = new CutscenePanel[] { new CutscenePanel { text = "Long test message here", typewriterSpeed = 3f } };
 
             _player.Play(_cutscene);
-            yield return null;
-            yield return null;
+            // Wait out the forced first-panel transition; at 3 chars/sec the
+            // typewriter then stays busy for seconds, so no race on the assert.
+            yield return WaitUntilRealtime(
+                () => GetPrivateField<bool>(_player, "_isTypewriting"),
+                timeoutSeconds: 2f);
 
             Assert.IsTrue(GetPrivateField<bool>(_player, "_isTypewriting"), "Typewriter should be running");
 
@@ -237,11 +243,14 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             };
 
             _player.Play(_cutscene);
-            yield return null;
 
             TMP_Text prompt = GetPrivateField<TMP_Text>(_player, "_continuePromptText");
             CanvasGroup promptGroup = GetPrivateField<CanvasGroup>(_player, "_continuePromptCanvasGroup");
             Assert.NotNull(prompt);
+            // The prompt appears right after the forced first-panel transition;
+            // wait that transition out on real time before asserting.
+            yield return WaitUntilRealtime(
+                () => prompt.gameObject.activeSelf, timeoutSeconds: 2f);
             Assert.AreEqual("Tap anywhere to continue", prompt.text);
             Assert.IsTrue(prompt.gameObject.activeSelf, "Prompt should show as soon as the panel can react to taps.");
             Assert.Greater(promptGroup.alpha, 0.5f);
@@ -344,12 +353,11 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
 
             _player.Play(_cutscene);
 
-            float waited = 0f;
-            while (waited < 1f && GetPrivateField<bool>(_player, "_isTypewriting"))
-            {
-                yield return null;
-                waited += Time.unscaledDeltaTime;
-            }
+            // OnTap only ends the cutscene once the player waits for input; a
+            // tap during the forced first-panel transition is swallowed.
+            yield return WaitUntilRealtime(
+                () => GetPrivateField<bool>(_player, "_waitingForTap"),
+                timeoutSeconds: 2f);
             yield return null;
 
             _tapCatcher.onClick.Invoke();
@@ -374,10 +382,15 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             };
 
             _player.Play(_cutscene);
-            yield return null;
 
+            // The player deliberately coerces the FIRST panel's None into a
+            // Fade (PlayRoutine), so "instantly" cannot hold for panel 0; the
+            // guarantee is that the panel becomes fully visible once that
+            // forced transition finishes.
             CanvasGroup cg = GetPrivateField<CanvasGroup>(_player, "_canvasGroup");
-            Assert.AreEqual(1f, cg.alpha, "Alpha should be 1 for None transition");
+            yield return WaitUntilRealtime(() => cg.alpha >= 1f, timeoutSeconds: 2f);
+
+            Assert.AreEqual(1f, cg.alpha, "Alpha should reach 1 after the forced first-panel fade");
         }
 
         [UnityTest]
@@ -427,6 +440,16 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         // ─── Reflection helpers ───────────────────────────────────────────────
+
+        // The first panel's transition runs on realtime for at least the
+        // default duration; batchmode frames are ~1 ms, so fixed one-frame
+        // yields fire mid-transition. Poll the condition on real time instead.
+        private static IEnumerator WaitUntilRealtime(System.Func<bool> condition, float timeoutSeconds)
+        {
+            float deadline = Time.realtimeSinceStartup + timeoutSeconds;
+            while (!condition() && Time.realtimeSinceStartup < deadline)
+                yield return null;
+        }
 
         private static void SetPrivateField(object target, string fieldName, object value)
         {
