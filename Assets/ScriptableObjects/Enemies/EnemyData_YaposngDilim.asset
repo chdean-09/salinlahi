@@ -1,0 +1,72 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bb4cd3e37d015f4f8d9baa6e4cc1ac5, type: 3}
+  m_Name: EnemyData_YaposngDilim
+  m_EditorClassIdentifier: Salinlahi.Runtime::EnemyDataSO
+  enemyID: yapos-ng-dilim
+  displayName: Yapos ng Dilim
+  discoverySubtitle: 
+  description: A tall shadow with long arms wrapped around a glowing child. It traps
+    the final symbol of important words such as saya, haraya, and malaya.
+  moveSpeed: 1.5
+  maxHealth: 1
+  walkFrames:
+  - {fileID: 817186214586947369, guid: f59dd658772274ead811097a689a7845, type: 3}
+  - {fileID: -4734520517766040561, guid: f59dd658772274ead811097a689a7845, type: 3}
+  - {fileID: 2150873182626429162, guid: f59dd658772274ead811097a689a7845, type: 3}
+  - {fileID: 3935407279098691711, guid: f59dd658772274ead811097a689a7845, type: 3}
+  animatorController: {fileID: 0}
+  portraitSprite: {fileID: 0}
+  assignedCharacter: {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
+  isDecoy: 0
+  isPhaser: 0
+  phaserInterval: 0.5
+  phaserInitialVisibleDelayMin: 0
+  phaserInitialVisibleDelayMax: 0
+  phaserVisibleHoldMin: 0
+  phaserVisibleHoldMax: 0
+  phaserInvisibleHoldMin: 0
+  phaserInvisibleHoldMax: 0
+  phaserFadeOutDuration: 0.3
+  phaserFadeInDuration: 0.2
+  phaserFadeOutPulseCount: 3
+  phaserFadeOutPulseAmplitude: 0.2
+  dealsContactDamage: 1
+  era: 0
+  overrideBadgeOffset: 0
+  glyphBadgeOffsetOverride: {x: 0, y: 0}
+  overrideBadgeScale: 0
+  glyphBadgeScaleOverride: 1
+  zigzagAmplitude: 0
+  zigzagFrequency: 0
+  baseSpeedMultiplier: 1
+  auraRadius: 0
+  auraSpeedMultiplier: 1.3
+  deathFrames: []
+  deathAnimationFps: 8
+  useHurtFeedback: 1
+  hurtPausesMovement: 1
+  hurtPauseDuration: 0.25
+  hurtShakesSprite: 1
+  hurtShakeMagnitude: 0.08
+  hurtShakeDuration: 0.2
+  hurtShakeFrequency: 30
+  hurtSwapsCharacter: 0
+  postHurtCharacter: {fileID: 0}
+  hurtFrames: []
+  hurtAnimationFps: 12
+  chargeMultiplier: 2.5
+  chargeTriggerYNormalized: 0.5
+  pauseDuration: 0.35
+  scrambleRadius: 3
+  scrambleMinGlitchInterval: 0.18
+  scrambleMaxGlitchInterval: 0.36

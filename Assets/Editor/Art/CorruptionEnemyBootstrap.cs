@@ -113,6 +113,31 @@ public static class CorruptionEnemyBootstrap
             Appearance = "A swarm of ink moths with sharp paper-like wings.",
             Ability = "It eats letters, woven patterns, documents, and inscriptions.",
         },
+        new Corruption
+        {
+            Key = "walangawa", EnemyId = "walang-awa", DisplayName = "Walang-Awa",
+            SymbolId = "symbol.wa",
+            Appearance = "An armored creature with an empty space where its heart should be.",
+            Ability = "It weakens villagers and prevents Juan from healing or helping them.",
+        },
+        new Corruption
+        {
+            Key = "punit", EnemyId = "punit", DisplayName = "Punit", SymbolId = "symbol.pa",
+            Appearance = "A beast formed from torn pages, broken cloth, and ripped letters.",
+            Ability = "It tears sentences into separate pieces.",
+        },
+        new Corruption
+        {
+            // The workbook calls this Paglimot's strongest servant, guarding YA because it
+            // completes MALAYA. It is delivered on the same 1024x1024 canvas as every other
+            // creature, so it imports at the standard tier; whether it should render at boss
+            // scale is an open decision.
+            Key = "yaposngdilim", EnemyId = "yapos-ng-dilim", DisplayName = "Yapos ng Dilim",
+            SymbolId = "symbol.ya",
+            Appearance = "A tall shadow with long arms wrapped around a glowing child.",
+            Ability = "It traps the final symbol of important words such as saya, haraya, and "
+                      + "malaya.",
+        },
     };
 
     [MenuItem("Salinlahi/Art/Author Corruption Enemies")]

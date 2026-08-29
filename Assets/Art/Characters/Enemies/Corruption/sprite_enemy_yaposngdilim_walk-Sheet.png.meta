@@ -1,0 +1,285 @@
+fileFormatVersion: 2
+guid: f59dd658772274ead811097a689a7845
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -7677064529986994383
+    second: sprite_enemy_yaposngdilim_walk-Sheet_0
+  - first:
+      213: -4961800598131966099
+    second: sprite_enemy_yaposngdilim_walk-Sheet_1
+  - first:
+      213: -2959099214322747255
+    second: sprite_enemy_yaposngdilim_walk-Sheet_2
+  - first:
+      213: 4323269505176191546
+    second: sprite_enemy_yaposngdilim_walk-Sheet_3
+  - first:
+      213: 6241809242220386672
+    second: sprite_enemy_yaposngdilim_walk-Sheet_4
+  - first:
+      213: -8399006478181497857
+    second: sprite_enemy_yaposngdilim_walk-Sheet_5
+  - first:
+      213: -7381900472002421595
+    second: sprite_enemy_yaposngdilim_walk-Sheet_6
+  - first:
+      213: -3184428380428644356
+    second: sprite_enemy_yaposngdilim_walk-Sheet_7
+  - first:
+      213: 5736645999865585131
+    second: sprite_enemy_yaposngdilim_walk-Sheet_8
+  - first:
+      213: -1879072170031916269
+    second: sprite_enemy_yaposngdilim_walk-Sheet_9
+  - first:
+      213: -6710683832607300512
+    second: sprite_enemy_yaposngdilim_walk-Sheet_10
+  - first:
+      213: -8254615437758168244
+    second: sprite_enemy_yaposngdilim_walk-Sheet_11
+  - first:
+      213: -5079356936671831075
+    second: sprite_enemy_yaposngdilim_walk-Sheet_12
+  - first:
+      213: -8802808316816759974
+    second: sprite_enemy_yaposngdilim_walk-Sheet_13
+  - first:
+      213: 2119570928467533717
+    second: sprite_enemy_yaposngdilim_walk-Sheet_14
+  - first:
+      213: -7131157812987473486
+    second: sprite_enemy_yaposngdilim_walk-Sheet_15
+  - first:
+      213: 817186214586947369
+    second: yaposngdilim_walk_01
+  - first:
+      213: -4734520517766040561
+    second: yaposngdilim_walk_02
+  - first:
+      213: 2150873182626429162
+    second: yaposngdilim_walk_03
+  - first:
+      213: 3935407279098691711
+    second: yaposngdilim_walk_04
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 192
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: yaposngdilim_walk_01
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1024
+        width: 1024
+        height: 1024
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9271dc3588a375b00800000000000000
+      internalID: 817186214586947369
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yaposngdilim_walk_02
+      rect:
+        serializedVersion: 2
+        x: 1024
+        y: 1024
+        width: 1024
+        height: 1024
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f04b1c47caa9b4eb0800000000000000
+      internalID: -4734520517766040561
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yaposngdilim_walk_03
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 1024
+        height: 1024
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ae8bc5783cf69dd10800000000000000
+      internalID: 2150873182626429162
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yaposngdilim_walk_04
+      rect:
+        serializedVersion: 2
+        x: 1024
+        y: 0
+        width: 1024
+        height: 1024
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f700a25d1106d9630800000000000000
+      internalID: 3935407279098691711
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      sprite_enemy_yaposngdilim_walk-Sheet_0: -7677064529986994383
+      sprite_enemy_yaposngdilim_walk-Sheet_1: -4961800598131966099
+      sprite_enemy_yaposngdilim_walk-Sheet_10: -6710683832607300512
+      sprite_enemy_yaposngdilim_walk-Sheet_11: -8254615437758168244
+      sprite_enemy_yaposngdilim_walk-Sheet_12: -5079356936671831075
+      sprite_enemy_yaposngdilim_walk-Sheet_13: -8802808316816759974
+      sprite_enemy_yaposngdilim_walk-Sheet_14: 2119570928467533717
+      sprite_enemy_yaposngdilim_walk-Sheet_15: -7131157812987473486
+      sprite_enemy_yaposngdilim_walk-Sheet_2: -2959099214322747255
+      sprite_enemy_yaposngdilim_walk-Sheet_3: 4323269505176191546
+      sprite_enemy_yaposngdilim_walk-Sheet_4: 6241809242220386672
+      sprite_enemy_yaposngdilim_walk-Sheet_5: -8399006478181497857
+      sprite_enemy_yaposngdilim_walk-Sheet_6: -7381900472002421595
+      sprite_enemy_yaposngdilim_walk-Sheet_7: -3184428380428644356
+      sprite_enemy_yaposngdilim_walk-Sheet_8: 5736645999865585131
+      sprite_enemy_yaposngdilim_walk-Sheet_9: -1879072170031916269
+      yaposngdilim_walk_01: 817186214586947369
+      yaposngdilim_walk_02: -4734520517766040561
+      yaposngdilim_walk_03: 2150873182626429162
+      yaposngdilim_walk_04: 3935407279098691711
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
