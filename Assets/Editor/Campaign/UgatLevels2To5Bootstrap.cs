@@ -139,6 +139,16 @@ public static class UgatLevels2To5Bootstrap
             foreach (string symbolId in plan.Pool)
                 level.cumulativeSymbolPool.Add(Reference(campaign, symbolId));
 
+            // The combat roster gates which glyphs waves may demand (PruneToRoster). It must equal
+            // the taught pool, as Level 1 already does. Before this, Levels 2-5 drew from later
+            // eras -- Level 4 shared no symbol at all with its own focus words.
+            level.allowedCharacters = new List<BaybayinCharacterSO>();
+            foreach (string symbolId in plan.Pool)
+            {
+                campaign.TryGetSymbol(symbolId, out BaybayinCharacterSO symbol);
+                level.allowedCharacters.Add(symbol);
+            }
+
             // Level 1's convention: one requirement per pooled symbol, per phase.
             level.learningRequirements = Requirements(campaign, plan.Pool, ContentRequirementKind.Instruction, 1);
             level.practiceRequirements = Requirements(campaign, plan.Pool, ContentRequirementKind.Practice, 2);

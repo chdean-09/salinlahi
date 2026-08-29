@@ -32,6 +32,7 @@ public static class ContentValidationCode
     public const string FocusDecompositionInvalid = "FOCUS_DECOMPOSITION_INVALID";
     public const string KudlitUnsupported = "KUDLIT_UNSUPPORTED";
     public const string CumulativePoolInvalid = "CUMULATIVE_POOL_INVALID";
+    public const string CombatRosterInvalid = "COMBAT_ROSTER_INVALID";
     public const string FinalRestorationInvalid = "FINAL_RESTORATION_INVALID";
     public const string PaInstructionOrderInvalid = "PA_INSTRUCTION_ORDER_INVALID";
     public const string RequiredMediaMissing = "REQUIRED_MEDIA_MISSING";

@@ -143,6 +143,9 @@ namespace Salinlahi.Tests.Editor.Data
                     };
 
                     level.cumulativeSymbolPool = new List<SymbolValueReference>();
+                    // The combat roster gates which glyphs waves may demand, so a valid campaign
+                    // keeps it equal to the taught pool (SALIN-204, COMBAT_ROSTER_INVALID).
+                    level.allowedCharacters = new List<BaybayinCharacterSO>();
                     for (int i = 0; i < introducedSymbolIds.Count; i++)
                     {
                         string symbolId = introducedSymbolIds[i];
@@ -151,6 +154,7 @@ namespace Salinlahi.Tests.Editor.Data
                             symbol = symbolsById[symbolId],
                             spokenValueId = GetPrimaryValueId(symbolId),
                         });
+                        level.allowedCharacters.Add(symbolsById[symbolId]);
                     }
 
                     level.learningRequirements = new List<ContentRequirement>();
