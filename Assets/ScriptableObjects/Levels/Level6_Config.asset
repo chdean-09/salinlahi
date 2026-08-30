@@ -43,58 +43,54 @@ MonoBehaviour:
   numberSprite: {fileID: 0}
   waves:
   - isIntermissionWave: 0
-    characters:
-    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
-    - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
-    - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+    characters: []
     enemyTypes:
-    - {fileID: 11400000, guid: b2d5819d4d6b4d8d9d1e4ef125ad2e61, type: 2}
+    - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
+    - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
+    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
     enemyCount: 3
     spawnInterval: 2.8
     waveStartDelay: 1.5
   - isIntermissionWave: 0
-    characters:
-    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
-    - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
-    - {fileID: 11400000, guid: 9aae464ed65b8416b9aa3ad6ee4ce2c4, type: 2}
-    - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
-    - {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
+    characters: []
     enemyTypes:
-    - {fileID: 11400000, guid: b2d5819d4d6b4d8d9d1e4ef125ad2e61, type: 2}
+    - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
+    - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
+    - {fileID: 11400000, guid: e89a049d218824eb18439081351d8c5e, type: 2}
+    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
+    - {fileID: 11400000, guid: c5f91a4c7515047cabd59ea63b9bfef6, type: 2}
     enemyCount: 4
     spawnInterval: 2.5
     waveStartDelay: 1.2
   - isIntermissionWave: 0
-    characters:
-    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
-    - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
-    - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
-    - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
-    - {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
-    - {fileID: 11400000, guid: 9aae464ed65b8416b9aa3ad6ee4ce2c4, type: 2}
-    - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
-    - {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
+    characters: []
     enemyTypes:
-    - {fileID: 11400000, guid: b2d5819d4d6b4d8d9d1e4ef125ad2e61, type: 2}
+    - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
+    - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
+    - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
+    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
+    - {fileID: 11400000, guid: c5f91a4c7515047cabd59ea63b9bfef6, type: 2}
+    - {fileID: 11400000, guid: e89a049d218824eb18439081351d8c5e, type: 2}
+    - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+    - {fileID: 11400000, guid: d32d963289bb94a54ba971ec25be3bbf, type: 2}
     enemyCount: 5
     spawnInterval: 2.3
     waveStartDelay: 1.2
   - isIntermissionWave: 0
-    characters:
-    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
-    - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
-    - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
-    - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
-    - {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
-    - {fileID: 11400000, guid: 9aae464ed65b8416b9aa3ad6ee4ce2c4, type: 2}
-    - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
-    - {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
-    - {fileID: 11400000, guid: 01bec631a12545f091f1348d9408ad47, type: 2}
-    - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
-    - {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
-    - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+    characters: []
     enemyTypes:
-    - {fileID: 11400000, guid: b2d5819d4d6b4d8d9d1e4ef125ad2e61, type: 2}
+    - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
+    - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
+    - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
+    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
+    - {fileID: 11400000, guid: c5f91a4c7515047cabd59ea63b9bfef6, type: 2}
+    - {fileID: 11400000, guid: e89a049d218824eb18439081351d8c5e, type: 2}
+    - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+    - {fileID: 11400000, guid: d32d963289bb94a54ba971ec25be3bbf, type: 2}
+    - {fileID: 11400000, guid: 3beab354ec73c4942a045607153e984b, type: 2}
+    - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
+    - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
+    - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
     enemyCount: 6
     spawnInterval: 2.1
     waveStartDelay: 1
@@ -113,6 +109,18 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
   allowedEnemyTypes:
   - {fileID: 11400000, guid: b2d5819d4d6b4d8d9d1e4ef125ad2e61, type: 2}
+  - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
+  - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
+  - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
+  - {fileID: 11400000, guid: e89a049d218824eb18439081351d8c5e, type: 2}
+  - {fileID: 11400000, guid: c5f91a4c7515047cabd59ea63b9bfef6, type: 2}
+  - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
+  - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+  - {fileID: 11400000, guid: d32d963289bb94a54ba971ec25be3bbf, type: 2}
+  - {fileID: 11400000, guid: 3beab354ec73c4942a045607153e984b, type: 2}
+  - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
+  - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
+  - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
   bossConfig: {fileID: 0}
   isAvailableInLite: 0
   focusModeEnabled: 1

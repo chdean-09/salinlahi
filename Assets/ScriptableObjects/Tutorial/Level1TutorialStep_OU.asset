@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Level1TutorialStepSO
   promptId: OU
   targetCharacter: {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
-  enemyData: {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+  enemyData: {fileID: 11400000, guid: 8e024019aad5441b2b201c95419d99c7, type: 2}
   stopPosition: {x: -0.010000229, y: 2.9275002, z: 0}
   promptFreezeDelaySeconds: 2.3
   templatePoints:
@@ -29,7 +29,6 @@ MonoBehaviour:
   - {x: 50, y: 10}
   guideSprite: {fileID: -5378085687522739872, guid: 390e5ce5ec3cdd741a3772288f739c1c, type: 3}
   tolerancePixels: 15
-  widenedTolerancePixels: 20
   promptText: Now draw O.
   successText: 
   idleHint: Trace the glowing guide.
