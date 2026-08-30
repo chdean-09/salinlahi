@@ -10,16 +10,46 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
     public class EnemyBadgeFinalDrawOnDefeatTest
     {
         private readonly List<Object> _objectsToDestroy = new();
+        private EnemyPool _stashedPool;
+
+        [SetUp]
+        public void SetUp()
+        {
+            // A leaked EnemyPool from an earlier scene-loading fixture makes
+            // ReturnToPool route through EnemyPool.Return, which ignores this
+            // rig's pool-less enemy ("no owning pool") and leaves it active
+            // forever. Stash the singleton so ReturnToPool takes the
+            // no-pool SetActive(false) fallback, and restore it afterwards.
+            _stashedPool = EnemyPool.Instance;
+            if (_stashedPool != null)
+                SetSingletonInstance<EnemyPool>(null);
+        }
 
         [TearDown]
         public void TearDown()
         {
+            if (_stashedPool != null)
+            {
+                SetSingletonInstance(_stashedPool);
+                _stashedPool = null;
+            }
+
             for (int i = _objectsToDestroy.Count - 1; i >= 0; i--)
             {
                 if (_objectsToDestroy[i] != null)
                     Object.DestroyImmediate(_objectsToDestroy[i]);
             }
             _objectsToDestroy.Clear();
+        }
+
+        private static void SetSingletonInstance<T>(T instance) where T : MonoBehaviour
+        {
+            System.Reflection.PropertyInfo property = typeof(Singleton<T>).GetProperty(
+                "Instance",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+            System.Reflection.MethodInfo setter = property?.GetSetMethod(nonPublic: true);
+            Assert.IsNotNull(setter, "Singleton<T>.Instance setter not found.");
+            setter.Invoke(null, new object[] { instance });
         }
 
         // Regression: enemies without deathFrames (e.g. Kisha, Kempei, Maestro,

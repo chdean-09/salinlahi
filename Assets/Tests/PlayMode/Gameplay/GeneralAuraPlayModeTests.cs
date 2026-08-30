@@ -17,23 +17,43 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         [SetUp]
         public void SetUp()
         {
-            _gameManagerGO = new GameObject("GameManager_PlayMode_Aura_Test");
-            GameManager gm = _gameManagerGO.AddComponent<GameManager>();
-            SetSingletonInstance(gm);
+            // Earlier fixtures boot real scenes (e.g. ElInquisidorTest loads
+            // Bootstrap) whose DontDestroyOnLoad singletons survive into this
+            // fixture. Creating a fresh manager while a leaked Instance is
+            // alive makes the new one's Awake duplicate-guard destroy it a
+            // frame later, and Singleton.OnDestroy then nulls the forced
+            // Instance — silently disabling the aura. Reuse a live leaked
+            // instance instead of fighting it (destroying it would starve the
+            // later fixtures that also lean on it), and only create our own
+            // when none exists.
+            GameManager gm = GameManager.Instance;
+            if (gm == null)
+            {
+                _gameManagerGO = new GameObject("GameManager_PlayMode_Aura_Test");
+                gm = _gameManagerGO.AddComponent<GameManager>();
+                SetSingletonInstance(gm);
+                _objectsToDestroy.Add(_gameManagerGO);
+            }
             gm.StartGame();
-            _objectsToDestroy.Add(_gameManagerGO);
 
-            _trackerGO = new GameObject("ActiveEnemyTracker_PlayMode_Aura_Test");
-            ActiveEnemyTracker tracker = _trackerGO.AddComponent<ActiveEnemyTracker>();
-            SetSingletonInstance(tracker);
-            _objectsToDestroy.Add(_trackerGO);
+            if (ActiveEnemyTracker.Instance == null)
+            {
+                _trackerGO = new GameObject("ActiveEnemyTracker_PlayMode_Aura_Test");
+                ActiveEnemyTracker tracker = _trackerGO.AddComponent<ActiveEnemyTracker>();
+                SetSingletonInstance(tracker);
+                _objectsToDestroy.Add(_trackerGO);
+            }
         }
 
         [TearDown]
         public void TearDown()
         {
-            ClearSingletonInstance<GameManager>();
-            ClearSingletonInstance<ActiveEnemyTracker>();
+            // Only clear singletons this fixture installed itself; a reused
+            // leaked instance stays untouched for the fixtures after us.
+            if (_gameManagerGO != null)
+                ClearSingletonInstance<GameManager>();
+            if (_trackerGO != null)
+                ClearSingletonInstance<ActiveEnemyTracker>();
 
             for (int i = _objectsToDestroy.Count - 1; i >= 0; i--)
             {
@@ -42,6 +62,8 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             }
 
             _objectsToDestroy.Clear();
+            _gameManagerGO = null;
+            _trackerGO = null;
         }
 
         [UnityTest]

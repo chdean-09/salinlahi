@@ -114,6 +114,12 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 frameCount++;
             }
 
+            // EditMode never resumes the hurt routine past its first yield, so
+            // the natural-completion restore cannot run here. Drive the same
+            // cleanup Defeat()/pool return use; natural-exit restoration is
+            // PlayMode territory.
+            enemy.GetComponent<EnemyHurtFeedback>().ResetState();
+
             Vector3 after = enemy.transform.position;
             Assert.That((after - before).magnitude, Is.LessThan(0.001f),
                 "Expected shake to leave the root position unchanged on exit.");
@@ -400,10 +406,15 @@ namespace Salinlahi.Tests.Editor.Gameplay
             go.AddComponent<BoxCollider2D>();
             go.AddComponent<EnemyMover>();
             Enemy enemy = go.AddComponent<Enemy>();
-            go.AddComponent<EnemyHurtFeedback>();
+            EnemyHurtFeedback feedback = go.AddComponent<EnemyHurtFeedback>();
             SetPrivateField(enemy, "_showDebugLabels", false);
             go.SetActive(true);
             _objectsToDestroy.Add(go);
+
+            // EditMode never runs Awake on activation; both components cache
+            // their sibling references there, so drive them by hand.
+            InvokeLifecycle(enemy, "Awake");
+            InvokeLifecycle(feedback, "Awake");
 
             Assert.IsTrue(enemy.Initialize(data));
             return enemy;
@@ -416,6 +427,16 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.IsNotNull(field, $"Missing field '{fieldName}' on {target.GetType().Name}.");
             field.SetValue(target, value);
+        }
+
+        private static void InvokeLifecycle(MonoBehaviour target, string methodName)
+        {
+            MethodInfo method = null;
+            for (var type = target.GetType(); type != null && method == null; type = type.BaseType)
+                method = type.GetMethod(
+                    methodName, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(method, $"Missing lifecycle method '{methodName}' on {target.GetType().Name}.");
+            method.Invoke(target, null);
         }
     }
 }

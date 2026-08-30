@@ -30,6 +30,10 @@ namespace Salinlahi.Tests.Editor.Gameplay
 
             SingleAttackHitSpriteVfx vfxPrefab = CreateVfxPrefabWithCenterPivotSprite();
             SetPrivateField(controller, "_chainVfxPrefab", vfxPrefab);
+            // _detachFromEnemy defaults true, so SpawnAtTarget parents the
+            // instance under _vfxRoot; point it at the controller so the
+            // GetComponentsInChildren assertion below can see the spawn.
+            SetPrivateField(controller, "_vfxRoot", controllerGo.transform);
             SetPrivateField(controller, "_useSpriteBoundsCenter", true);
             SetPrivateField(controller, "_anchorAtFeet", true);
             SetPrivateField(controller, "_anchorAtWaist", false);

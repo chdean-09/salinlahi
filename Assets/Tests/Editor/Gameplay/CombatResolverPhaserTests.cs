@@ -158,15 +158,29 @@ namespace Salinlahi.Tests.Editor.Gameplay
         [Test]
         public void Awake_DestroysDuplicateResolverInstance()
         {
-            CombatResolver first = CreateResolver();
-            Assert.IsNotNull(first);
+            try
+            {
+                CombatResolver first = CreateResolver();
+                Assert.IsNotNull(first);
+                // EditMode never runs Awake on AddComponent; drive the
+                // singleton guard by hand for both instances.
+                InvokePrivate<object>(first, "Awake");
 
-            var duplicateGo = new GameObject("CombatResolver_Duplicate_Test");
-            _objectsToDestroy.Add(duplicateGo);
-            CombatResolver duplicate = duplicateGo.AddComponent<CombatResolver>();
+                var duplicateGo = new GameObject("CombatResolver_Duplicate_Test");
+                _objectsToDestroy.Add(duplicateGo);
+                CombatResolver duplicate = duplicateGo.AddComponent<CombatResolver>();
+                InvokePrivate<object>(duplicate, "Awake");
 
-            Assert.IsTrue(duplicate == null);
-            Assert.AreEqual(1, Object.FindObjectsByType<CombatResolver>(FindObjectsSortMode.None).Length);
+                Assert.IsTrue(duplicate == null);
+                Assert.AreEqual(1, Object.FindObjectsByType<CombatResolver>(FindObjectsSortMode.None).Length);
+            }
+            finally
+            {
+                // Restore the pristine static state other tests rely on.
+                typeof(CombatResolver)
+                    .GetField("_instance", BindingFlags.Static | BindingFlags.NonPublic)
+                    ?.SetValue(null, null);
+            }
         }
 
         private BaybayinCharacterSO CreateCharacter(string id, string syllable)
