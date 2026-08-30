@@ -420,6 +420,17 @@ public class DollarPRecognizer
 
         return clone;
     }
+    // Per-axis scaling erases aspect ratio, which is most of the signal a near-1D
+    // glyph has: HA's flat wave stretched to a square becomes amplified capture
+    // noise, so real HA draws scored below WA/SA/LA/MA. Wobbrock et al.'s $1 paper
+    // (UIST 2007, "Limitations") prescribes uniform scaling for 1D gestures via a
+    // bounding-box ratio test; template aspect ratios cluster at <= 3.94 for 2D
+    // glyphs vs 5.53-12.77 for HA, so 4.5 separates the classes. Verified against
+    // the full template bank + Assets/Tests/Fixtures/TestDraws: leave-one-out goes
+    // 119/121 -> 121/121 and all 20 recorded draws stay correct, where always-uniform
+    // scaling regresses every RA draw to KA.
+    private const float ONE_D_ASPECT_THRESHOLD = 4.5f;
+
     private List<Vector2> ScaleToSquare(List<Vector2> pts, float size)
     {
         float minX = float.MaxValue, minY = float.MaxValue;
@@ -429,8 +440,21 @@ public class DollarPRecognizer
             if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
             if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
         }
-        float sx = (maxX - minX) > 1e-6f ? size / (maxX - minX) : 1f;
-        float sy = (maxY - minY) > 1e-6f ? size / (maxY - minY) : 1f;
+        float width = maxX - minX;
+        float height = maxY - minY;
+        float longer = Mathf.Max(width, height);
+        float shorter = Mathf.Max(Mathf.Min(width, height), 1e-6f);
+
+        float sx, sy;
+        if (longer > 1e-6f && longer / shorter >= ONE_D_ASPECT_THRESHOLD)
+        {
+            sx = sy = size / longer;
+        }
+        else
+        {
+            sx = width > 1e-6f ? size / width : 1f;
+            sy = height > 1e-6f ? size / height : 1f;
+        }
         var result = new List<Vector2>(pts.Count);
         foreach (var p in pts) result.Add(new Vector2(p.x * sx, p.y * sy));
         return result;
