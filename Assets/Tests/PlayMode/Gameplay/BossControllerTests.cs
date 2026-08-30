@@ -5,7 +5,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-namespace Salinlahi.Tests.Editor.Gameplay
+namespace Salinlahi.Tests.PlayMode.Gameplay
 {
     [TestFixture]
     public class BossControllerTests
@@ -388,9 +388,16 @@ namespace Salinlahi.Tests.Editor.Gameplay
             _objectsToDestroy.Add(lc);
             _testLevelConfig = lc;
 
-            // Wire GameManager.CurrentLevel so BossController.SampleNextExpectedCharacter resolves.
-            if (GameManager.Instance != null)
-                GameManager.Instance.SetLevel(lc);
+            // SampleNextExpectedCharacter resolves the glyph pool through
+            // GameManager.CurrentLevel, and the bare PlayMode test scene ships
+            // no GameManager — create one (Awake installs the singleton).
+            if (GameManager.Instance == null)
+            {
+                GameObject host = new GameObject("GameManager_BossController_Test");
+                host.AddComponent<GameManager>();
+                _objectsToDestroy.Add(host);
+            }
+            GameManager.Instance.SetLevel(lc);
 
             return lc;
         }
@@ -408,6 +415,9 @@ namespace Salinlahi.Tests.Editor.Gameplay
             BossEnemy enemy = bossGO.AddComponent<BossEnemy>();
             // Suppress debug label creation during Awake in the Editor test runner.
             SetField(enemy, "_showDebugLabels", false);
+            // SALIN-98 routes summon spawns through the ticker; without the
+            // component the summoning phase never calls the spawner at all.
+            bossGO.AddComponent<BossSummonTicker>();
             BossController controller = bossGO.AddComponent<BossController>();
             bossGO.SetActive(true);
             _objectsToDestroy.Add(bossGO);

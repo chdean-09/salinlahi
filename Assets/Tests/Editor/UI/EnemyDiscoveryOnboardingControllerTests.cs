@@ -341,28 +341,10 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.AreEqual(body.bounds.max.y, bounds.max.y, 0.001f);
         }
 
-        [UnityTest]
-        public IEnumerator EnemyDiscovered_TimesOutWhileOnScreen_ShowsOverlayAtCurrentPosition()
-        {
-            EnemyDiscoveryOnboardingController controller = CreateController(out CanvasGroup group, out _, out _, out _);
-            SetPrivateField(controller, "_revealViewportYFromBottom", 0.72f);
-            SetPrivateField(controller, "_revealTimeoutSeconds", 0.05f);
-            EnemyDataSO data = CreateEnemyData("soldado");
-            Enemy enemy = CreateEnemy(data);
-            // On-screen (viewport y ~0.95) but above the 0.72 reveal band, so it
-            // never reaches the ideal position — only the timeout fallback can
-            // reveal it. Regression guard: this used to be abandoned (skipped),
-            // which is why the first enemy of each type never made the almanac.
-            enemy.transform.position = new Vector3(0f, 4.5f, 0f);
-
-            EventBus.RaiseEnemyDiscovered(data, enemy);
-            yield return new WaitForSecondsRealtime(0.12f);
-            yield return WaitFrames(2);
-
-            Assert.AreEqual(1f, group.alpha);
-            Assert.IsTrue(EnemyDiscoveryProgress.HasDiscovered(data));
-            Object.DestroyImmediate(controller.gameObject);
-        }
+        // EnemyDiscovered_TimesOutWhileOnScreen_ShowsOverlayAtCurrentPosition
+        // moved to EnemyDiscoveryTimeoutPlayModeTests: the reveal-timeout
+        // fallback measures real Time.unscaledTime, which stands still across
+        // batch-EditMode frames.
 
         [UnityTest]
         public IEnumerator EnemyDiscovered_TimesOutWhileAboveViewport_WaitsUntilOnScreen()

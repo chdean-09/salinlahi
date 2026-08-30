@@ -5,10 +5,16 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-namespace Salinlahi.Tests.Editor.Gameplay
+namespace Salinlahi.Tests.PlayMode.Gameplay
 {
+    /// <summary>
+    /// The frame-driven half of the pool-unregister coverage: a defeat WITH a
+    /// death animation returns to the pool only when that animation's coroutine
+    /// completes, which EditMode never advances. The synchronous variants stay
+    /// in the EditMode EnemyPoolUnregisterLifecycleTests.
+    /// </summary>
     [TestFixture]
-    public class EnemyPoolUnregisterLifecycleTests
+    public class EnemyPoolLifecyclePlayModeTests
     {
         private readonly List<Object> _objectsToDestroy = new();
         private ActiveEnemyTracker _tracker;
@@ -32,48 +38,33 @@ namespace Salinlahi.Tests.Editor.Gameplay
             for (int i = _objectsToDestroy.Count - 1; i >= 0; i--)
             {
                 if (_objectsToDestroy[i] != null)
-                    Object.DestroyImmediate(_objectsToDestroy[i]);
+                    Object.Destroy(_objectsToDestroy[i]);
             }
 
             _objectsToDestroy.Clear();
         }
 
-        // Defeat_ReturnsToPool_AndUnregistersCleanly (the death-animation
-        // variant) moved to EnemyPoolLifecyclePlayModeTests: the pool return
-        // rides on the death-animation coroutine completing across frames,
-        // which EditMode never advances.
-
-        [Test]
-        public void Defeat_WithoutDeathAnimation_ReturnsToPool_AndUnregistersCleanly()
+        [UnityTest]
+        public IEnumerator Defeat_ReturnsToPool_AndUnregistersCleanly()
         {
             Enemy prefab = CreateEnemyPrefab();
             EnemyPool pool = CreateEnemyPool(prefab);
-            EnemyDataSO data = CreateEnemyDataWithoutDeathAnimation();
+            EnemyDataSO data = CreateEnemyDataWithDeathAnimation();
 
             Enemy enemy = pool.Get(data);
             Assert.IsNotNull(enemy);
             Assert.AreEqual(1, _tracker.ActiveCount);
 
             enemy.Defeat();
+            Assert.IsTrue(enemy.IsDying);
 
-            Assert.IsFalse(pool.IsCheckedOut(enemy));
-            Assert.AreEqual(0, _tracker.ActiveCount);
-            Assert.IsFalse(enemy.gameObject.activeInHierarchy);
-        }
-
-        [Test]
-        public void ApplyDecoyPenalty_ReturnsToPool_AndUnregistersCleanly()
-        {
-            Enemy prefab = CreateEnemyPrefab();
-            EnemyPool pool = CreateEnemyPool(prefab);
-            EnemyDataSO data = CreateEnemyDataWithoutDeathAnimation();
-            data.isDecoy = true;
-
-            Enemy enemy = pool.Get(data);
-            Assert.IsNotNull(enemy);
-            Assert.AreEqual(1, _tracker.ActiveCount);
-
-            enemy.ApplyDecoyPenalty();
+            float timeout = 2f;
+            float elapsed = 0f;
+            while (pool.IsCheckedOut(enemy) && elapsed < timeout)
+            {
+                yield return null;
+                elapsed += Time.deltaTime;
+            }
 
             Assert.IsFalse(pool.IsCheckedOut(enemy));
             Assert.AreEqual(0, _tracker.ActiveCount);
@@ -105,7 +96,6 @@ namespace Salinlahi.Tests.Editor.Gameplay
             SetPrivateField(pool, "_defaultCapacity", 0);
             SetPrivateField(pool, "_maxSize", 8);
             poolGo.SetActive(true);
-            InvokePrivate<object>(pool, "Awake");
             return pool;
         }
 
@@ -123,24 +113,6 @@ namespace Salinlahi.Tests.Editor.Gameplay
             data.assignedCharacter = character;
             data.deathFrames = new[] { CreateSprite(Color.red) };
             data.deathAnimationFps = 120f;
-            _objectsToDestroy.Add(data);
-            return data;
-        }
-
-        private EnemyDataSO CreateEnemyDataWithoutDeathAnimation()
-        {
-            BaybayinCharacterSO character = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
-            character.characterID = "BA";
-            character.syllable = "ba";
-            _objectsToDestroy.Add(character);
-
-            EnemyDataSO data = ScriptableObject.CreateInstance<EnemyDataSO>();
-            data.enemyID = "soldado";
-            data.maxHealth = 1;
-            data.moveSpeed = 1f;
-            data.assignedCharacter = character;
-            data.deathFrames = System.Array.Empty<Sprite>();
-            data.deathAnimationFps = 0f;
             _objectsToDestroy.Add(data);
             return data;
         }
@@ -176,13 +148,6 @@ namespace Salinlahi.Tests.Editor.Gameplay
             FieldInfo field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.IsNotNull(field, $"Missing field '{fieldName}' on {target.GetType().Name}.");
             field.SetValue(target, value);
-        }
-
-        private static T InvokePrivate<T>(object target, string methodName, params object[] args)
-        {
-            MethodInfo method = target.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
-            Assert.IsNotNull(method, $"Missing method '{methodName}' on {target.GetType().Name}.");
-            return (T)method.Invoke(target, args);
         }
     }
 }
