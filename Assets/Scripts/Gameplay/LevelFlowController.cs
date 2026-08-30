@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using Salinlahi.Runtime.Gameplay;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+using Salinlahi.Debug.Sandbox;
+#endif
 
 /// <summary>
 /// Orchestrates the full level lifecycle in the Gameplay scene:
@@ -212,8 +215,24 @@ public class LevelFlowController : MonoBehaviour
         }
     }
 
+    // Sandbox is a developer spawning surface: only the Defense phase means
+    // anything there, and the content phases (story, learning cards, challenge,
+    // save, results) would gate manual spawn testing behind the full level-one
+    // onboarding. The driver auto-completes every other phase in sandbox.
+    private static bool IsSandboxRun()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        return SandboxMode.IsActive;
+#else
+        return false;
+#endif
+    }
+
     private IEnumerator ExecutePhase(LevelPhase phase)
     {
+        if (IsSandboxRun() && phase != LevelPhase.Defense)
+            return ExecuteStubPhase();
+
         switch (phase)
         {
             case LevelPhase.Story: return ExecuteStory();
@@ -723,6 +742,10 @@ public class LevelFlowController : MonoBehaviour
 
     private IEnumerator PlayLevelTutorialIfNeeded()
     {
+        // Sandbox skips the onboarding gates so manual spawn testing is reachable.
+        if (IsSandboxRun())
+            yield break;
+
         if (_levelConfig == null)
         {
             DebugLogger.LogError("LevelFlowController: _levelConfig is null. Cannot determine if tutorial is needed.");
@@ -752,6 +775,8 @@ public class LevelFlowController : MonoBehaviour
 
     private IEnumerator PlayChallengeIfConfigured()
     {
+        if (IsSandboxRun())
+            yield break;
         if (_levelConfig == null || _levelConfig.challengeSequence == null)
             yield break;
         if (_challengeFlowController == null)
@@ -782,6 +807,8 @@ public class LevelFlowController : MonoBehaviour
 
     private IEnumerator PlayBossTutorialIfNeeded()
     {
+        if (IsSandboxRun())
+            yield break;
         if (_levelConfig == null
             || _levelConfig.bossConfig == null
             || _levelConfig.bossConfig.tutorial == null)
@@ -798,6 +825,8 @@ public class LevelFlowController : MonoBehaviour
 
     private IEnumerator PlayRevealsIfAny()
     {
+        if (IsSandboxRun())
+            yield break;
         if (_levelConfig == null || _revealController == null)
             yield break;
 
