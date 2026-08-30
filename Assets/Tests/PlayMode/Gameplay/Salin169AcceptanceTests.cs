@@ -5,7 +5,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-namespace Salinlahi.Tests.Editor.Gameplay
+namespace Salinlahi.Tests.PlayMode.Gameplay
 {
     /// <summary>
     /// Acceptance tests for TW-SPK-003 / SALIN-169 — Validate the three
@@ -85,6 +85,11 @@ namespace Salinlahi.Tests.Editor.Gameplay
 
         private void CreateGameManagerSingleton()
         {
+            // CreateLevelConfig may already have installed one; a second
+            // GameManager would trip the singleton's duplicate guard.
+            if (GameManager.Instance != null)
+                return;
+
             GameObject host = new GameObject("GameManager_SALIN169_Test");
             GameManager gameManager = host.AddComponent<GameManager>();
             _objectsToDestroy.Add(host);
@@ -511,9 +516,12 @@ namespace Salinlahi.Tests.Editor.Gameplay
             lc.allowedCharacters = new List<BaybayinCharacterSO>(allowed);
             _objectsToDestroy.Add(lc);
 
-            // Wire GameManager.CurrentLevel so BossController.SampleNextExpectedCharacter resolves.
-            if (GameManager.Instance != null)
-                GameManager.Instance.SetLevel(lc);
+            // SampleNextExpectedCharacter resolves the glyph pool through
+            // GameManager.CurrentLevel, and the bare PlayMode test scene ships
+            // no GameManager — create one (Awake installs the singleton).
+            if (GameManager.Instance == null)
+                CreateGameManagerSingleton();
+            GameManager.Instance.SetLevel(lc);
 
             return lc;
         }

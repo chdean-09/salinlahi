@@ -166,8 +166,21 @@ public class LevelFlowController : MonoBehaviour
         yield return RunLevelFlow();
     }
 
+#if UNITY_INCLUDE_TESTS
+    // EditMode tests pump Start() by hand inside the test runner's untitled
+    // scene, which the gameplay-scene guard below would reject before any flow
+    // logic runs. Set via reflection by LevelFlowControllerTests and reset in
+    // its teardown; compiled out of player builds. Mirrors the
+    // SandboxMode._availabilityOverride test-seam precedent.
+    private static bool s_forceGameplaySceneForTests;
+#endif
+
     private static bool IsGameplayScene()
     {
+#if UNITY_INCLUDE_TESTS
+        if (s_forceGameplaySceneForTests)
+            return true;
+#endif
         string sceneName = SceneManager.GetActiveScene().name;
         return sceneName == "Gameplay" || sceneName == "Level_01_Tutorial";
     }
@@ -853,7 +866,31 @@ public class LevelFlowController : MonoBehaviour
         _levelEnded = true;
         _completionCommitResult = CommitCompletion();
 
+        // With no outro content there is nothing to wait for, and StartCoroutine
+        // would defer the victory/save-failure routing to a later player-loop
+        // frame — a frame bare EditMode fixtures never get, and a needless one
+        // at runtime.
+        if (!HasOutroContent())
+        {
+            FinishLegacyCompletion();
+            return;
+        }
+
         StartCoroutine(PlayOutroThenVictory());
+    }
+
+    private bool HasOutroContent()
+    {
+        return (_levelConfig != null && _levelConfig.outroDialogue != null && _dialogueController != null)
+            || (ResolveCutscene(CutsceneTriggerType.AfterLevel) != null && _cutscenePlayer != null);
+    }
+
+    private void FinishLegacyCompletion()
+    {
+        if (_completionCommitResult != null && _completionCommitResult.IsAccepted)
+            ShowVictoryScreen();
+        else
+            ShowSaveFailurePanel(_completionCommitResult);
     }
 
     private void HandleDefenseComplete()
@@ -915,11 +952,7 @@ public class LevelFlowController : MonoBehaviour
     private IEnumerator PlayOutroThenVictory()
     {
         yield return PlayOutroSequence();
-
-        if (_completionCommitResult != null && _completionCommitResult.IsAccepted)
-            ShowVictoryScreen();
-        else
-            ShowSaveFailurePanel(_completionCommitResult);
+        FinishLegacyCompletion();
     }
 
     private IEnumerator PlayOutroSequence()

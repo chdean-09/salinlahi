@@ -127,16 +127,30 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Assert.IsTrue(_ticker.IsPlayingSummonAnimation,
                 "Flag must remain true mid-stream.");
 
-            // Wait long enough to finish the last spawn (~0.6s total) but
-            // still be inside the _holdLastFrameDuration tail. The ticker's
-            // default _holdLastFrameDuration is 0.3s, so sampling at ~0.7s
-            // total elapsed should still see the flag raised.
-            yield return new WaitForSeconds(0.35f);  // ~0.7s total
+            // Sample the tail deterministically: wait for the third spawn (the
+            // stream's end) rather than a wall-clock offset — WaitForSeconds
+            // overshoot under load could land past the 0.3s pose tail and turn
+            // this assert into a flake.
+            float guard = 0f;
+            while (_spawner.SpawnEnemyCallCount < 3 && guard < 5f)
+            {
+                yield return null;
+                guard += Time.deltaTime;
+            }
+            Assert.AreEqual(3, _spawner.SpawnEnemyCallCount,
+                "All three stream spawns must arrive.");
+            yield return null;
             Assert.IsTrue(_ticker.IsPlayingSummonAnimation,
                 "Flag must remain true during the post-stream pose tail.");
 
-            // Now wait past the full tail → flag should be false.
-            yield return new WaitForSeconds(0.5f);  // ~1.2s total, well past tail
+            // The flag must clear once the _holdLastFrameDuration tail elapses;
+            // poll with a generous guard instead of a fixed sleep.
+            guard = 0f;
+            while (_ticker.IsPlayingSummonAnimation && guard < 2f)
+            {
+                yield return null;
+                guard += Time.deltaTime;
+            }
             Assert.IsFalse(_ticker.IsPlayingSummonAnimation,
                 "Flag must clear after _holdLastFrameDuration tail elapses.");
         }
