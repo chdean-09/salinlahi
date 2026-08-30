@@ -13,6 +13,16 @@ namespace Salinlahi.Tests.Editor.Gameplay
         [TearDown]
         public void TearDown()
         {
+            // CreateController drove OnEnable by hand (EditMode runs no lifecycle),
+            // so the matching OnDisable must run too or the EventBus subscription
+            // leaks into the next test.
+            if (_controllerObject != null)
+            {
+                var controller = _controllerObject.GetComponent<TestLevelFlowController>();
+                if (controller != null)
+                    InvokeLifecycle(controller, "OnDisable");
+            }
+
             if (_controllerObject != null) Object.DestroyImmediate(_controllerObject);
             if (_victoryObject != null) Object.DestroyImmediate(_victoryObject);
             if (_failureObject != null) Object.DestroyImmediate(_failureObject);
@@ -83,7 +93,22 @@ namespace Salinlahi.Tests.Editor.Gameplay
         private TestLevelFlowController CreateController(out GameObject owner)
         {
             owner = new GameObject("LevelFlowController");
-            return owner.AddComponent<TestLevelFlowController>();
+            TestLevelFlowController controller = owner.AddComponent<TestLevelFlowController>();
+            // EditMode never runs OnEnable on AddComponent, and the controller
+            // subscribes to EventBus.OnLevelComplete there — drive it by hand.
+            InvokeLifecycle(controller, "OnEnable");
+            return controller;
+        }
+
+        private static void InvokeLifecycle(MonoBehaviour target, string methodName)
+        {
+            MethodInfo method = null;
+            for (var type = target.GetType(); type != null && method == null; type = type.BaseType)
+                method = type.GetMethod(
+                    methodName, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(method, Is.Not.Null,
+                $"Missing lifecycle method '{methodName}' on {target.GetType().Name}.");
+            method.Invoke(target, null);
         }
 
         private VictoryScreenUI CreateVictory(out GameObject owner)

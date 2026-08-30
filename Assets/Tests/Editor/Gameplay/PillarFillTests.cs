@@ -85,15 +85,21 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
-        public void Apply_ModeColor_DisablesRenderers_AndOverwritesCameraColor()
+        public void Apply_ModeColor_WithoutPlayColumn_TintsPillars_AndLeavesCameraAlone()
         {
+            // Color mode tints the pillar renderers; it has never painted the
+            // camera background (the old assert pinned unimplemented behavior).
+            // Without an AspectLockedCamera the resize fallback then disables
+            // the renderers, but the tint and the untouched camera still hold.
             var go = MakeRig(out var pf, out var cam, out var left, out var right);
             try
             {
                 pf.ApplyForTests(PillarFillMode.Color, color: Color.green, sprite: null);
                 Assert.IsFalse(left.enabled);
                 Assert.IsFalse(right.enabled);
-                Assert.AreEqual(Color.green, cam.backgroundColor);
+                Assert.AreEqual(Color.green, left.color);
+                Assert.AreEqual(Color.green, right.color);
+                Assert.AreEqual(Color.red, cam.backgroundColor);
             }
             finally { Object.DestroyImmediate(go); }
         }

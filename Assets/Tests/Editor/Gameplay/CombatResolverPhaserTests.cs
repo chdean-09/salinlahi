@@ -104,6 +104,9 @@ namespace Salinlahi.Tests.Editor.Gameplay
             SetPhaserVisible(invisiblePhaser, false);
 
             CombatResolver resolver = CreateResolver();
+            // Zero lead resolves synchronously; the default lead defers the kill
+            // into a WaitForSeconds coroutine EditMode never resumes.
+            SetPrivateField(resolver, "_pronunciationLeadSeconds", 0f);
             InvokePrivate<object>(resolver, "HandleCharacterRecognized", assigned.characterID);
 
             Assert.AreEqual(0, visible1.CurrentHealth);
