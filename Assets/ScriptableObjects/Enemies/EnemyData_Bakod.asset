@@ -17,8 +17,8 @@ MonoBehaviour:
   discoverySubtitle: 
   description: A wide stone creature shaped like a moving wall. It blocks paths,
     separates family members, and prevents Juan from moving forward.
-  moveSpeed: 1.5
-  maxHealth: 1
+  moveSpeed: 0.85
+  maxHealth: 2
   walkFrames:
   - {fileID: -1482015613377898020, guid: 039e07690bd594bc49fee6226b8f5847, type: 3}
   - {fileID: 6680222527540671204, guid: 039e07690bd594bc49fee6226b8f5847, type: 3}

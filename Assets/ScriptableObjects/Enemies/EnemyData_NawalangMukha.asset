@@ -17,7 +17,7 @@ MonoBehaviour:
   discoverySubtitle: 
   description: A faceless figure carrying stolen nameplates. It removes names from
     characters and dialogue boxes.
-  moveSpeed: 1.5
+  moveSpeed: 1.45
   maxHealth: 1
   walkFrames:
   - {fileID: 1930719436269211102, guid: 340be9ed58a8d4a27abb83d1af5415cd, type: 3}

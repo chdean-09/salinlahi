@@ -17,7 +17,7 @@ MonoBehaviour:
   discoverySubtitle: 
   description: A masked creature that splits into two smaller enemies. It divides
     villagers and creates arguments between them.
-  moveSpeed: 1.5
+  moveSpeed: 1.4
   maxHealth: 1
   walkFrames:
   - {fileID: 3696259674939557706, guid: 1fc0821d2ea364f7e805d99e4d570ca3, type: 3}

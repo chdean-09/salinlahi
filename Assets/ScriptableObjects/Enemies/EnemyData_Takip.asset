@@ -17,7 +17,7 @@ MonoBehaviour:
   discoverySubtitle: 
   description: A cloaked creature with a large hand covering its single eye. It hides
     correct answers and covers important objects.
-  moveSpeed: 1.5
+  moveSpeed: 1.3
   maxHealth: 1
   walkFrames:
   - {fileID: 3350047397970353336, guid: be34ef98a4b02421f927c05d1695f1fd, type: 3}

@@ -243,7 +243,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
       propertyPath: _registeredEnemyPrefabs.Array.size
-      value: 9
+      value: 11
       objectReference: {fileID: 0}
     - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
       propertyPath: _registeredEnemyPrefabs.Array.data[4].prefab
@@ -265,6 +265,14 @@ PrefabInstance:
       propertyPath: _registeredEnemyPrefabs.Array.data[8].prefab
       value: 
       objectReference: {fileID: 8037671833055544141, guid: 5b9f514008014de4b8f6dd862682490a, type: 3}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[9].prefab
+      value: 
+      objectReference: {fileID: 1914812031678044928, guid: 80b849e6fceae47eb9458f09d5602200, type: 3}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[10].prefab
+      value: 
+      objectReference: {fileID: 7439480076651400108, guid: 14e0fa15338b247169af3e276ae63245, type: 3}
     - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
       propertyPath: _registeredEnemyPrefabs.Array.data[4].enemyID
       value: pensionado
@@ -304,6 +312,14 @@ PrefabInstance:
     - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
       propertyPath: _registeredEnemyPrefabs.Array.data[8].maxSize
       value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[9].enemyID
+      value: labo
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[10].enemyID
+      value: daan-lihis
       objectReference: {fileID: 0}
     - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
       propertyPath: _registeredEnemyPrefabs.Array.data[4].defaultCapacity

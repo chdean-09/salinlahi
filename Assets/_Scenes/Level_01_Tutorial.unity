@@ -907,7 +907,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1674972531125546073, guid: 674653939623d4b4f84959935f178284, type: 3}
       propertyPath: _gameplayCamera
-      value:
+      value: 
       objectReference: {fileID: 573789166}
     - target: {fileID: 2075269775461731631, guid: 674653939623d4b4f84959935f178284, type: 3}
       propertyPath: m_Pivot.x
@@ -1225,6 +1225,11 @@ MonoBehaviour:
   _quitButton: {fileID: 2031741189}
   _settingsButton: {fileID: 0}
   _settingsPanel: {fileID: 2122817635}
+  _restartButton: {fileID: 0}
+  _confirmationPanel: {fileID: 0}
+  _confirmationConfirmButton: {fileID: 0}
+  _confirmationCancelButton: {fileID: 0}
+  _confirmationPromptLabel: {fileID: 0}
 --- !u!114 &200905674
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2967,7 +2972,7 @@ Camera:
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 12.169976
+  orthographic size: 10
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -5183,12 +5188,16 @@ MonoBehaviour:
   _dialogueController: {fileID: 0}
   _level1OnboardingController: {fileID: 1758690417}
   _challengeFlowController: {fileID: 0}
+  _revealController: {fileID: 0}
+  _bossTutorialController: {fileID: 0}
   _victoryScreen: {fileID: 0}
   _defeatScreen: {fileID: 0}
+  _saveFailurePanel: {fileID: 0}
   _cutscenePlayer: {fileID: 1483122961}
   _levelCutsceneMapping: {fileID: 11400000, guid: 322b3c9460f494d95847cde13cb46dc1, type: 2}
   _levelConfig: {fileID: 11400000, guid: 0fb8a83456b92dd4aa1de31579baa559, type: 2}
   _challengePrototypeEnabled: 0
+  _revealTiming: 1
 --- !u!4 &961118829
 Transform:
   m_ObjectHideFlags: 0
@@ -5805,6 +5814,8 @@ MonoBehaviour:
   _heartEmpty: {fileID: -995616824291215981, guid: 7a5d8ccd8077a3d44a6f70ff32da33a0, type: 3}
   _heartShakeDuration: 0.3
   _heartPunchScale: 1.2
+  _tutorialDamageIndicatorSeconds: 0.95
+  _tutorialDamageIndicatorColor: {r: 1, g: 0.1, b: 0.1, a: 1}
 --- !u!1 &1149843348
 GameObject:
   m_ObjectHideFlags: 0
@@ -6038,7 +6049,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -7458,7 +7469,17 @@ MonoBehaviour:
   _tapCatcher: {fileID: 684413638}
   _skipButton: {fileID: 1342197446}
   _skipButtonRoot: {fileID: 1342197442}
+  _continuePromptText: {fileID: 0}
+  _continuePromptSafeAreaRoot: {fileID: 0}
+  _continuePromptCanvasGroup: {fileID: 0}
   _slideDistance: 400
+  _continuePromptMessage: Tap anywhere to continue
+  _continuePromptTopPadding: 52
+  _continuePromptPulseSeconds: 1.35
+  _continuePromptMinAlpha: 0.72
+  _continuePromptMaxAlpha: 1
+  _continuePromptMinScale: 0.98
+  _continuePromptMaxScale: 1.04
   _exitFadeToBlackDuration: 0.45
   _exitBlackHoldDuration: 0.1
   _exitFadeFromBlackDuration: 0.35
@@ -7532,7 +7553,7 @@ Canvas:
   m_OverridePixelPerfect: 0
   m_SortingBucketNormalizedSize: 0
   m_VertexColorAlwaysGammaSpace: 0
-  m_AdditionalShaderChannelsFlag: 0
+  m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
   m_SortingOrder: 8500
@@ -7820,6 +7841,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HUD
   _pauseButton: {fileID: 2039041609}
+  _safeAreaHandler: {fileID: 0}
+  _hudLayer: {fileID: 0}
 --- !u!114 &1512931227
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7832,6 +7855,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f6ea44b5cccae4e118554ec196924b29, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SafeAreaHandler
+  _includeAspectLockedPlayColumn: 0
 --- !u!114 &1512931228
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8998,7 +9022,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
       propertyPath: _registeredEnemyPrefabs.Array.size
-      value: 11
+      value: 13
       objectReference: {fileID: 0}
     - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
       propertyPath: _registeredEnemyPrefabs.Array.data[3].prefab
@@ -9024,6 +9048,22 @@ PrefabInstance:
       propertyPath: _registeredEnemyPrefabs.Array.data[8].prefab
       value: 
       objectReference: {fileID: 8037671833055544141, guid: 8af0504b541264b64aad0cc3cef11412, type: 3}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[9].prefab
+      value: 
+      objectReference: {fileID: 8037671833055544141, guid: 8ffc08ca659d467094885c5bf3a4437e, type: 3}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[10].prefab
+      value: 
+      objectReference: {fileID: 8037671833055544141, guid: 5b9f514008014de4b8f6dd862682490a, type: 3}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[11].prefab
+      value: 
+      objectReference: {fileID: 1914812031678044928, guid: 80b849e6fceae47eb9458f09d5602200, type: 3}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[12].prefab
+      value: 
+      objectReference: {fileID: 7439480076651400108, guid: 14e0fa15338b247169af3e276ae63245, type: 3}
     - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
       propertyPath: _registeredEnemyPrefabs.Array.data[3].enemyID
       value: sprinter
@@ -9073,6 +9113,34 @@ PrefabInstance:
       value: 20
       objectReference: {fileID: 0}
     - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[9].enemyID
+      value: guardia
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[9].maxSize
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[10].enemyID
+      value: capitan
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[10].maxSize
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[11].enemyID
+      value: labo
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[12].enemyID
+      value: daan-lihis
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[12].maxSize
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
       propertyPath: _registeredEnemyPrefabs.Array.data[3].defaultCapacity
       value: 10
       objectReference: {fileID: 0}
@@ -9097,35 +9165,15 @@ PrefabInstance:
       value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
-      propertyPath: _registeredEnemyPrefabs.Array.data[9].prefab
-      value:
-      objectReference: {fileID: 8037671833055544141, guid: 8ffc08ca659d467094885c5bf3a4437e, type: 3}
-    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
-      propertyPath: _registeredEnemyPrefabs.Array.data[9].enemyID
-      value: guardia
-      objectReference: {fileID: 0}
-    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
-      propertyPath: _registeredEnemyPrefabs.Array.data[9].maxSize
-      value: 20
-      objectReference: {fileID: 0}
-    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
       propertyPath: _registeredEnemyPrefabs.Array.data[9].defaultCapacity
       value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
-      propertyPath: _registeredEnemyPrefabs.Array.data[10].prefab
-      value:
-      objectReference: {fileID: 8037671833055544141, guid: 5b9f514008014de4b8f6dd862682490a, type: 3}
-    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
-      propertyPath: _registeredEnemyPrefabs.Array.data[10].enemyID
-      value: capitan
-      objectReference: {fileID: 0}
-    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
-      propertyPath: _registeredEnemyPrefabs.Array.data[10].maxSize
-      value: 20
-      objectReference: {fileID: 0}
-    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
       propertyPath: _registeredEnemyPrefabs.Array.data[10].defaultCapacity
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[12].defaultCapacity
       value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 655216211397709316, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
@@ -10070,6 +10118,12 @@ MonoBehaviour:
   _baGifTexture: {fileID: 0}
   _baGifFrames: []
   _baGifFramesPerSecond: 15
+  _haGifTexture: {fileID: 0}
+  _haGifFrames: []
+  _haGifFramesPerSecond: 8
+  _ouGifTexture: {fileID: 0}
+  _ouGifFrames: []
+  _ouGifFramesPerSecond: 8
 --- !u!4 &1758690418
 Transform:
   m_ObjectHideFlags: 0
@@ -11472,6 +11526,8 @@ MonoBehaviour:
   _aoeExtraRandomDelay: 0.12
   _aoeInitialDelayMin: 0.08
   _aoeInitialDelayMax: 0.2
+  _pronunciationLeadSeconds: 0.06
+  _config: {fileID: 0}
 --- !u!4 &2022306083
 Transform:
   m_ObjectHideFlags: 0
@@ -11914,7 +11970,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -12098,7 +12154,16 @@ MonoBehaviour:
   _masterSlider: {fileID: 1843140223}
   _bgmSlider: {fileID: 267527111}
   _sfxSlider: {fileID: 1245624141}
+  _masterLabel: {fileID: 0}
+  _bgmLabel: {fileID: 0}
+  _sfxLabel: {fileID: 0}
   _closeButton: {fileID: 956525798}
+  _hideSiblingUiWhileOpen: 0
+  _modalBackdropColor: {r: 0.02, g: 0.03, b: 0.06, a: 0.94}
+  _sliderFallbackSprite: {fileID: 0}
+  _allowJourneyReset: 0
+  _journeyResetButton: {fileID: 0}
+  _resetConfirmationPanel: {fileID: 0}
 --- !u!224 &2122817636
 RectTransform:
   m_ObjectHideFlags: 0

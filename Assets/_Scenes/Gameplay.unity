@@ -6566,7 +6566,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1121753266}
   m_HandleRect: {fileID: 1121753265}
   m_Direction: 2
-  m_Value: 0
+  m_Value: 1
   m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
@@ -9930,7 +9930,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1620074148}
   m_HandleRect: {fileID: 1620074147}
   m_Direction: 2
-  m_Value: 0
+  m_Value: 1
   m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
@@ -12208,7 +12208,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
       propertyPath: _registeredEnemyPrefabs.Array.size
-      value: 11
+      value: 13
       objectReference: {fileID: 0}
     - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
       propertyPath: _registeredEnemyPrefabs.Array.data[3].prefab
@@ -12242,6 +12242,14 @@ PrefabInstance:
       propertyPath: _registeredEnemyPrefabs.Array.data[10].prefab
       value: 
       objectReference: {fileID: 8037671833055544141, guid: 5b9f514008014de4b8f6dd862682490a, type: 3}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[11].prefab
+      value: 
+      objectReference: {fileID: 1914812031678044928, guid: 80b849e6fceae47eb9458f09d5602200, type: 3}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[12].prefab
+      value: 
+      objectReference: {fileID: 7439480076651400108, guid: 14e0fa15338b247169af3e276ae63245, type: 3}
     - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
       propertyPath: _registeredEnemyPrefabs.Array.data[3].enemyID
       value: sprinter
@@ -12307,6 +12315,18 @@ PrefabInstance:
       value: 20
       objectReference: {fileID: 0}
     - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[11].enemyID
+      value: labo
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[12].enemyID
+      value: daan-lihis
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[12].maxSize
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
       propertyPath: _registeredEnemyPrefabs.Array.data[3].defaultCapacity
       value: 10
       objectReference: {fileID: 0}
@@ -12336,6 +12356,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
       propertyPath: _registeredEnemyPrefabs.Array.data[10].defaultCapacity
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 313714368473254892, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
+      propertyPath: _registeredEnemyPrefabs.Array.data[12].defaultCapacity
       value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 655216211397709316, guid: f54582f366eca0b4f8aae4ca00b7d9cd, type: 3}
@@ -15313,6 +15337,7 @@ MonoBehaviour:
   _aoeInitialDelayMin: 0.08
   _aoeInitialDelayMax: 0.2
   _pronunciationLeadSeconds: 0.06
+  _config: {fileID: 0}
 --- !u!4 &2022306083
 Transform:
   m_ObjectHideFlags: 0

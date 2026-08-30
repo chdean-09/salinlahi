@@ -17,8 +17,8 @@ MonoBehaviour:
   discoverySubtitle: 
   description: A tall shadow with long arms wrapped around a glowing child. It traps
     the final symbol of important words such as saya, haraya, and malaya.
-  moveSpeed: 1.5
-  maxHealth: 1
+  moveSpeed: 1.1
+  maxHealth: 3
   walkFrames:
   - {fileID: 817186214586947369, guid: f59dd658772274ead811097a689a7845, type: 3}
   - {fileID: -4734520517766040561, guid: f59dd658772274ead811097a689a7845, type: 3}

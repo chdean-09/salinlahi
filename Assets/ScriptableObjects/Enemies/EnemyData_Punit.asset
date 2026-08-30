@@ -17,7 +17,7 @@ MonoBehaviour:
   discoverySubtitle: 
   description: A beast formed from torn pages, broken cloth, and ripped letters.
     It tears sentences into separate pieces.
-  moveSpeed: 1.5
+  moveSpeed: 1.7
   maxHealth: 1
   walkFrames:
   - {fileID: -3111564021919153098, guid: 281b22392b5374f2494343a9433b0f4a, type: 3}

@@ -17,8 +17,8 @@ MonoBehaviour:
   discoverySubtitle: 
   description: A hollow creature with a large empty mouth and a body made of dry
     soil. It drains sound from nearby words.
-  moveSpeed: 1.5
-  maxHealth: 1
+  moveSpeed: 1.25
+  maxHealth: 2
   walkFrames:
   - {fileID: -2418290129826604303, guid: e20bd411ac3454eff93e0ee2fc303e5a, type: 3}
   - {fileID: 5340328922013193927, guid: e20bd411ac3454eff93e0ee2fc303e5a, type: 3}

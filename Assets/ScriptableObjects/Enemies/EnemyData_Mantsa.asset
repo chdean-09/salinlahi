@@ -17,7 +17,7 @@ MonoBehaviour:
   discoverySubtitle: 
   description: A crawling mass of black ink that spreads across family portraits.
     It stains correct symbols and changes them into incorrect forms.
-  moveSpeed: 1.5
+  moveSpeed: 1.15
   maxHealth: 1
   walkFrames:
   - {fileID: 7413555598204502151, guid: a464990bd41564e29bf7e12e074c9095, type: 3}

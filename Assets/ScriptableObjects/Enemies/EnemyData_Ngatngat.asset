@@ -17,7 +17,7 @@ MonoBehaviour:
   discoverySubtitle: 
   description: A swarm of ink moths with sharp paper-like wings. It eats letters,
     woven patterns, documents, and inscriptions.
-  moveSpeed: 1.5
+  moveSpeed: 1.9
   maxHealth: 1
   walkFrames:
   - {fileID: -2146378899329549479, guid: 1ba588477072b44b19bfc2474e23997a, type: 3}

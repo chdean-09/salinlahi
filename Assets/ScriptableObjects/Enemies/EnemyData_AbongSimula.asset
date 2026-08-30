@@ -17,7 +17,7 @@ MonoBehaviour:
   discoverySubtitle: 
   description: A small humanoid made of ash. Its face disappears whenever the wind
     blows. It covers the first symbol of a word with ash.
-  moveSpeed: 1.5
+  moveSpeed: 1.6
   maxHealth: 1
   walkFrames:
   - {fileID: -3122106924584807407, guid: 17b6e6dc334c84c91a8a30ba2cb17bfd, type: 3}
