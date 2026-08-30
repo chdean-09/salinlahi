@@ -60,8 +60,8 @@ public static class CorruptionStatsAuthoringTool
                    Rationale = "\"A crawling mass of black ink that spreads\" - crawling, so clearly slow." },
 
         // ---- Level 2-3 ----
-        new Spec { Asset = "EnemyData_Bakod",         Speed = 0.85f, Health = 2,
-                   Rationale = "\"A wide stone creature shaped like a moving wall... prevents Juan from moving forward\" - the slowest, and the only early enemy worth 2 HP; a wall should have to be broken." },
+        new Spec { Asset = "EnemyData_Bakod",         Speed = 0.85f, Health = 1,
+                   Rationale = "\"A wide stone creature shaped like a moving wall... prevents Juan from moving forward\" - the slowest in the roster, which carries the wall on its own. NOT 2 HP: Bakod is the only BA form and BA is Level 2's only syllable, so every enemy in that level's first two waves is a Bakod - 2 HP would double the required draws from 6 to 12 in the second level of the game, and a correct draw that does not kill reads to a learner as a failed draw. If the wall should tank, the lever is Level 2's wave composition, not this number." },
         new Spec { Asset = "EnemyData_Takip",         Speed = 1.30f, Health = 1,
                    Rationale = "\"A cloaked creature with a large hand covering its single eye\" - deliberate, unhurried; hiding answers needs a new mechanic." },
 
