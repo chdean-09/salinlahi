@@ -12,18 +12,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b739b8fcb7e84356a28d87ae5678db4, type: 3}
   m_Name: Level1OnboardingSequence
   m_EditorClassIdentifier: Assembly-CSharp::OnboardingSequenceSO
-  beatOrder:
-  - 0
-  - 1
-  - 2
-  - 4
-  - 5
+  beatOrder: 0000000001000000020000000400000005000000
   protagonistIntro:
     fallbackText: The ancestors have called me back.
     dialogue: {fileID: 0}
   protagonistWalkSeconds: 1.75
   baseIntro:
-    fallbackText: "This is the base.\nKeep enemies away from it."
+    fallbackText: 'This is the base.
+
+      Keep enemies away from it.'
     dialogue: {fileID: 0}
   baseSpotlightPadding: 0.5
   soloTeachStep: {fileID: 11400000, guid: 570d304cd3744bb8984f246b1e280c64, type: 2}
@@ -309,17 +306,19 @@ MonoBehaviour:
     fallbackText: Keep your rhythm. Defeat two more enemies.
     dialogue: {fileID: 0}
   focusModeIntro:
-    fallbackText: Focus mode helps you control heavier combat after building momentum through successful draws.
+    fallbackText: Focus mode helps you control heavier combat after building momentum
+      through successful draws.
     dialogue: {fileID: 0}
   focusChainStep: {fileID: 0}
   focusChainEnemyCount: 3
   focusChainIntro:
-    fallbackText: Focus is active. Watch how the next group slows down, then draw once to chain them.
+    fallbackText: Focus is active. Watch how the next group slows down, then draw
+      once to chain them.
     dialogue: {fileID: 0}
   focusChainPostSuccess:
     fallbackText: Good. Focus gives you room to control heavier waves.
     dialogue: {fileID: 0}
-  heartLossDemoEnemyData: {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+  heartLossDemoEnemyData: {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
   heartLossDemoCharacter: {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
   heartLossVideo:
     videoClip: {fileID: 0}

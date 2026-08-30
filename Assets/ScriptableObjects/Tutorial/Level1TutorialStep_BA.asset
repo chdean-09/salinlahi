@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Level1TutorialStepSO
   promptId: BA
   targetCharacter: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
-  enemyData: {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+  enemyData: {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
   stopPosition: {x: -0.010000229, y: 2.9275002, z: 0}
   promptFreezeDelaySeconds: 2.3
   templatePoints:
@@ -24,7 +24,6 @@ MonoBehaviour:
   - {x: 40, y: 92}
   guideSprite: {fileID: -7019089095972263220, guid: ceb87f9375157e64690dafe395aab3b8, type: 3}
   tolerancePixels: 15
-  widenedTolerancePixels: 20
   promptText: Draw BA. Start at the dot.
   successText: Great job. Drawing protects the base.
   idleHint: Trace the glowing guide.

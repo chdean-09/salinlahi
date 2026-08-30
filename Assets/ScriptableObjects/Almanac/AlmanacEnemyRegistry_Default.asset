@@ -43,3 +43,37 @@ MonoBehaviour:
     bossConfig: {fileID: 0}
   - enemyData: {fileID: 11400000, guid: 052b00742308dce4499cfb4cf6b8c33e, type: 2}
     bossConfig: {fileID: 11400000, guid: 0a29d2a7d971a498388b85daf1ab2ad8, type: 2}
+  - enemyData: {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: 896d01723b3854769ba12aa04eff2181, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: c5f91a4c7515047cabd59ea63b9bfef6, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: e89a049d218824eb18439081351d8c5e, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: d32d963289bb94a54ba971ec25be3bbf, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: 3beab354ec73c4942a045607153e984b, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: 8e024019aad5441b2b201c95419d99c7, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
+    bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
+    bossConfig: {fileID: 0}
