@@ -108,8 +108,81 @@ namespace Salinlahi.Debug.Sandbox
                 AddCharacters(_waveManager.GetConfiguredCharactersForSandbox());
             }
 
+            SortCatalogIntoGroups();
+
             _selectedEnemyIndex = Mathf.Clamp(_selectedEnemyIndex, 0, Mathf.Max(0, _enemyTypes.Count - 1));
             _selectedCharacterIndex = Mathf.Clamp(_selectedCharacterIndex, 0, Mathf.Max(0, _characters.Count - 1));
+        }
+
+        /// <summary>
+        /// The catalog is accumulated from the fallback, the runtime spawns, every
+        /// level config and then every EnemyDataSO asset, so it arrives as one
+        /// arbitrary run of ~30 entries — stepping through it to find a specific
+        /// creature means many blind presses. Group it instead: the corrupted forms
+        /// first, ordered by the syllable each one owns, then the era rosters in
+        /// chapter order. Paired with the group shown in the label, this makes the
+        /// list navigable by prediction rather than by hunting.
+        /// </summary>
+        private void SortCatalogIntoGroups()
+        {
+            _enemyTypes.Sort((a, b) =>
+            {
+                int groupCompare = GetGroupRank(a).CompareTo(GetGroupRank(b));
+                if (groupCompare != 0)
+                    return groupCompare;
+
+                // Within the corrupted forms, order by the syllable they carry so
+                // the list reads in the same order as the character catalog.
+                string keyA = GetSortKey(a);
+                string keyB = GetSortKey(b);
+                return string.Compare(keyA, keyB, System.StringComparison.OrdinalIgnoreCase);
+            });
+        }
+
+        /// <summary>Corrupted forms (0) sort ahead of the era rosters (1 + era).</summary>
+        private static int GetGroupRank(EnemyDataSO enemy)
+        {
+            if (enemy == null)
+                return int.MaxValue;
+
+            return IsCorruptedForm(enemy) ? 0 : 1 + (int)enemy.era;
+        }
+
+        /// <summary>
+        /// A corrupted form owns its syllable in data; every era enemy takes its
+        /// glyph from the wave roster instead and leaves assignedCharacter empty.
+        /// </summary>
+        private static bool IsCorruptedForm(EnemyDataSO enemy)
+        {
+            return enemy != null && enemy.assignedCharacter != null;
+        }
+
+        private static string GetSortKey(EnemyDataSO enemy)
+        {
+            if (enemy == null)
+                return string.Empty;
+
+            return IsCorruptedForm(enemy)
+                ? enemy.assignedCharacter.characterID ?? string.Empty
+                : GetEnemyDisplayName(enemy);
+        }
+
+        /// <summary>The group an enemy belongs to, shown beside its name.</summary>
+        private static string GetGroupLabel(EnemyDataSO enemy)
+        {
+            if (enemy == null)
+                return string.Empty;
+
+            if (IsCorruptedForm(enemy))
+                return $"Corruption · {enemy.assignedCharacter.characterID}";
+
+            return enemy.era switch
+            {
+                Era.Spanish => "Spanish era",
+                Era.American => "American era",
+                Era.Japanese => "Japanese era",
+                _ => "Era roster",
+            };
         }
 
         private void AddEnemies(IReadOnlyList<EnemyDataSO> enemies)
@@ -348,9 +421,19 @@ namespace Salinlahi.Debug.Sandbox
 
             if (_enemyLabel != null)
             {
-                _enemyLabel.text = hasEnemies
-                    ? $"Enemy: {GetEnemyDisplayName(_enemyTypes[_selectedEnemyIndex])}"
-                    : "Enemy: no enemy data configured";
+                if (hasEnemies)
+                {
+                    EnemyDataSO selected = _enemyTypes[_selectedEnemyIndex];
+                    // Group and position turn a blind step-through into a predictable
+                    // one: the reader can see which run they are in and how far along.
+                    _enemyLabel.text =
+                        $"Enemy: {GetEnemyDisplayName(selected)}  [{GetGroupLabel(selected)}]"
+                        + $"  {_selectedEnemyIndex + 1}/{_enemyTypes.Count}";
+                }
+                else
+                {
+                    _enemyLabel.text = "Enemy: no enemy data configured";
+                }
             }
 
             if (_modeLabel != null)
