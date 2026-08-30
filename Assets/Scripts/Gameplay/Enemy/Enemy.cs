@@ -151,6 +151,12 @@ public class Enemy : MonoBehaviour
         if (_renderer == null)
             _renderer = GetComponent<SpriteRenderer>();
 
+        // Awake resolves the badge once, but pool rigs (and tests) attach the
+        // badge child after Awake has already run — re-resolve on every
+        // initialize so Defeat's final-draw path can see it.
+        if (_glyphBadge == null)
+            _glyphBadge = GetComponentInChildren<EnemyGlyphBadge>(includeInactive: true);
+
         _runtimeCharacter = null;
 
         if (data == null)
