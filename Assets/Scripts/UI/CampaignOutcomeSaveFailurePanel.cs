@@ -188,7 +188,7 @@ public sealed class CampaignOutcomeSaveFailurePanel : MonoBehaviour
         label.text = text;
         label.fontSize = fontSize;
         label.alignment = TextAlignmentOptions.Center;
-        label.enableWordWrapping = true;
+        label.textWrappingMode = TextWrappingModes.Normal;
         label.raycastTarget = false;
         if (TMP_Settings.defaultFontAsset != null)
             label.font = TMP_Settings.defaultFontAsset;

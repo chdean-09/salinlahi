@@ -29,6 +29,19 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         [UnityTest]
         public IEnumerator ElInquisidor_IntroThreePhasesTwoIntermissionsOutro_RaisesOnLevelComplete()
         {
+            // Check the rig asset BEFORE loading any scene. An Inconclusive
+            // exit after loading Bootstrap/Gameplay leaks the scenes and their
+            // DontDestroyOnLoad singletons into every later fixture — the rest
+            // of the PlayMode suite assumes a bare test scene.
+            LevelConfigSO level = Resources.Load<LevelConfigSO>("Test/Level5_ElInquisidor_TestRig");
+            Assume.That(level, Is.Not.Null,
+                "Test rig level not found. Author Resources/Test/Level5_ElInquisidor_TestRig.asset.");
+
+            // NOTE for when the rig asset exists: this test still leaks the
+            // Gameplay scene and Bootstrap singletons after it finishes. Author
+            // an explicit teardown (unload scenes, destroy leaked singletons)
+            // before relying on any test that runs after this fixture.
+
             // Load the production Bootstrap scene first so all manager
             // singletons (GameManager, EnemyPool, ActiveEnemyTracker, etc.)
             // come up. Bootstrap auto-transitions to MainMenu — bypass that
@@ -36,14 +49,16 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             SceneManager.LoadScene("Bootstrap", LoadSceneMode.Single);
             yield return null; yield return null;
 
+            // Bootstrap's auto-transition already queued SceneLoader.LoadMainMenu.
+            // The loader lives in DontDestroyOnLoad, so left alone its async load
+            // completes DURING A LATER TEST and single-mode-swaps that test's
+            // scene out from under it. Kill it before its pre-load fade reaches
+            // LoadSceneAsync — this test drives scene loads directly.
+            if (SceneLoader.Instance != null)
+                Object.DestroyImmediate(SceneLoader.Instance.gameObject);
+
             SceneManager.LoadScene("Gameplay", LoadSceneMode.Single);
             yield return null; yield return null;
-
-            // Wire the level config — point WaveManager at a LevelConfig
-            // that references BossConfig_ElInquisidor.
-            LevelConfigSO level = Resources.Load<LevelConfigSO>("Test/Level5_ElInquisidor_TestRig");
-            Assume.That(level, Is.Not.Null,
-                "Test rig level not found. Author Resources/Test/Level5_ElInquisidor_TestRig.asset.");
 
             GameManager.Instance.SetLevel(level);
 

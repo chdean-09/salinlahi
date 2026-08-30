@@ -8,10 +8,20 @@ namespace Salinlahi.Tests.Editor.Gameplay
     public class BossGlyphVisibilityBinderTests
     {
         private readonly List<Object> _objectsToDestroy = new();
+        private readonly List<BossGlyphVisibilityBinder> _activeBinders = new();
 
         [TearDown]
         public void TearDown()
         {
+            // Unsubscribe hand-enabled binders from the static EventBus before
+            // destruction so later tests never invoke destroyed handlers.
+            for (int i = _activeBinders.Count - 1; i >= 0; i--)
+                if (_activeBinders[i] != null)
+                    TestPrivateFields.Invoke(_activeBinders[i], "OnDisable");
+            _activeBinders.Clear();
+
+            ClearSingletonInstance<GameManager>();
+
             for (int i = _objectsToDestroy.Count - 1; i >= 0; i--)
                 if (_objectsToDestroy[i] != null)
                     Object.DestroyImmediate(_objectsToDestroy[i]);
@@ -187,12 +197,44 @@ namespace Salinlahi.Tests.Editor.Gameplay
             GameObject gmGO = new GameObject("GameManager");
             GameManager gm = gmGO.AddComponent<GameManager>();
             _objectsToDestroy.Add(gmGO);
+            // EditMode never runs Awake, so the Singleton registration the
+            // binder reads CurrentBoss through must be installed by hand.
+            SetSingletonInstance(gm);
             gm.SetCurrentBoss(fake);
 
-            root.AddComponent<BossGlyphVisibilityBinder>();
+            BossGlyphVisibilityBinder binder = root.AddComponent<BossGlyphVisibilityBinder>();
             _objectsToDestroy.Add(root);
             root.SetActive(true);
+
+            // EditMode never runs lifecycle methods. Wire the badge caches,
+            // the enemy's badge reference, and the binder's caches + EventBus
+            // subscriptions by hand, mirroring the Awake/OnEnable order.
+            TestPrivateFields.Invoke(badge, "Awake");
+            TestPrivateFields.Set(enemy, "_glyphBadge", badge);
+            TestPrivateFields.Invoke(binder, "Awake");
+            TestPrivateFields.Invoke(binder, "OnEnable");
+            _activeBinders.Add(binder);
+
             return (root, badge, renderer, fake);
+        }
+
+        private static void SetSingletonInstance<T>(T instance) where T : MonoBehaviour
+        {
+            System.Reflection.PropertyInfo property = typeof(Singleton<T>).GetProperty(
+                "Instance",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+            System.Reflection.MethodInfo setter = property?.GetSetMethod(nonPublic: true);
+            Assert.IsNotNull(setter, "Singleton<T>.Instance setter not found.");
+            setter.Invoke(null, new object[] { instance });
+        }
+
+        private static void ClearSingletonInstance<T>() where T : MonoBehaviour
+        {
+            System.Reflection.PropertyInfo property = typeof(Singleton<T>).GetProperty(
+                "Instance",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+            System.Reflection.MethodInfo setter = property?.GetSetMethod(nonPublic: true);
+            setter?.Invoke(null, new object[] { null });
         }
 
         private BaybayinCharacterSO CreateCharacter(string id, Sprite badge)
@@ -267,10 +309,24 @@ namespace Salinlahi.Tests.Editor.Gameplay
     {
         public static void Set(object target, string fieldName, object value)
         {
-            var field = target.GetType().GetField(fieldName,
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            // Walk the inheritance chain: GetField never returns private
+            // fields declared on base types (e.g. Enemy fields on BossEnemy).
+            System.Reflection.FieldInfo field = null;
+            for (var type = target.GetType(); type != null && field == null; type = type.BaseType)
+                field = type.GetField(fieldName,
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
             Assert.IsNotNull(field, $"Missing field '{fieldName}' on {target.GetType().Name}.");
             field.SetValue(target, value);
+        }
+
+        public static void Invoke(object target, string methodName)
+        {
+            System.Reflection.MethodInfo method = null;
+            for (var type = target.GetType(); type != null && method == null; type = type.BaseType)
+                method = type.GetMethod(methodName,
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            Assert.IsNotNull(method, $"Missing method '{methodName}' on {target.GetType().Name}.");
+            method.Invoke(target, null);
         }
     }
 }

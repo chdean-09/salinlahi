@@ -126,7 +126,7 @@ namespace Salinlahi.Tests.Editor.Data
             Assert.AreSame(before, Resolve(3, CutsceneTriggerType.BeforeLevel));
             Assert.AreSame(after, Resolve(3, CutsceneTriggerType.AfterLevel));
             Assert.IsNull(Resolve(5, CutsceneTriggerType.BeforeLevel));
-            Assert.IsNull(Resolve(3, CutsceneTriggerType.BeforeLevel)); // still matches correctly
+            Assert.AreSame(before, Resolve(3, CutsceneTriggerType.BeforeLevel)); // still matches correctly
 
             Object.DestroyImmediate(mapping);
             Object.DestroyImmediate(before);

@@ -20,7 +20,11 @@ namespace Salinlahi.Tests.Editor.Onboarding
             GameObject host = new("Level1OnboardingControllerHost");
             try
             {
-                host.AddComponent<Level1OnboardingController>();
+                Level1OnboardingController controller = host.AddComponent<Level1OnboardingController>();
+                // EditMode never runs Awake on AddComponent. Awake would also
+                // spawn the runtime guide UI, so drive only the unit under
+                // test: the default-beat attachment step.
+                InvokePrivate<object>(controller, "EnsureDefaultBeatComponents");
 
                 Assert.NotNull(host.GetComponent<ProtagonistIntroBeat>());
                 Assert.NotNull(host.GetComponent<BaseIntroBeat>());

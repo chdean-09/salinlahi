@@ -13,10 +13,12 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         [SetUp]
         public void Setup()
         {
-            // Clean up any existing instances
+            // Clean up any existing instances. DestroyImmediate, not Destroy:
+            // deferred destruction leaves the old manager registered as
+            // Instance while the next test's Awake runs its duplicate guard.
             if (ProtagonistManager.Instance != null)
             {
-                Object.Destroy(ProtagonistManager.Instance.gameObject);
+                Object.DestroyImmediate(ProtagonistManager.Instance.gameObject);
             }
         }
 
@@ -25,7 +27,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         {
             if (_manager != null)
             {
-                Object.Destroy(_manager.gameObject);
+                Object.DestroyImmediate(_manager.gameObject);
             }
         }
 

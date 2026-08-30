@@ -12,6 +12,10 @@ namespace Salinlahi.Tests.Editor.Boss
         public void Scroll_ShowWithEmptyPages_StaysHidden()
         {
             GameObject host = new("BossTutorialScrollHost");
+            // The scroll starts hidden in the scene; Show must not activate it
+            // for an empty page list. A fresh GameObject defaults to active, so
+            // mirror the production starting state before calling Show.
+            host.SetActive(false);
             try
             {
                 BossTutorialScroll scroll = host.AddComponent<BossTutorialScroll>();

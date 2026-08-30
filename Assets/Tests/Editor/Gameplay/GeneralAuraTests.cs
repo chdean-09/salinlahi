@@ -233,14 +233,25 @@ namespace Salinlahi.Tests.Editor.Gameplay
         {
             GeneralAura aura = general.GetComponent<GeneralAura>();
             Assert.IsNotNull(aura, "Test setup error: General is missing GeneralAura.");
+            // EditMode never runs OnEnable, so _self stays null and Update
+            // early-returns. Wire it once — guarded, because OnEnable also
+            // clears the _affected bookkeeping that later ticks rely on.
+            FieldInfo selfField = typeof(GeneralAura).GetField(
+                "_self", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(selfField, "Missing field '_self' on GeneralAura.");
+            if (selfField.GetValue(aura) == null)
+                InvokePrivateMethod(aura, "OnEnable");
             SetPrivateField(aura, "_nextTick", 0f);
             InvokePrivateMethod(aura, "Update");
         }
 
         private static void SetPrivateField(object target, string fieldName, object value)
         {
-            FieldInfo f = target.GetType().GetField(
-                fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+            // Walk the inheritance chain: GetField never returns private
+            // fields declared on base types (e.g. Enemy fields on TestBossEnemy).
+            FieldInfo f = null;
+            for (var type = target.GetType(); type != null && f == null; type = type.BaseType)
+                f = type.GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.IsNotNull(f, $"Missing field '{fieldName}' on {target.GetType().Name}.");
             f.SetValue(target, value);
         }

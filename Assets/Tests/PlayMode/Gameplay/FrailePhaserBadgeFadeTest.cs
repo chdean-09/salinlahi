@@ -50,17 +50,29 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             data.phaserFadeOutPulseAmplitude = 1f;
             _objectsToDestroy.Add(data);
 
+            // Attach the badge while the shell is still inactive: PhaserEnemy
+            // caches its child renderers once in Awake/OnEnable, so a badge
+            // added after activation is never driven by the phaser fade (on
+            // the real prefab the badge exists before Awake).
             Enemy enemy = CreateFraileShell();
             (EnemyGlyphBadge badge, SpriteRenderer badgeRenderer) =
                 GlyphBadgePlayModeTestHelpers.AddGlyphBadgeChild(enemy.gameObject, config);
+            enemy.gameObject.SetActive(true);
             PhaserEnemy phaser = enemy.GetComponent<PhaserEnemy>();
             SpriteRenderer enemyRenderer = enemy.GetComponent<SpriteRenderer>();
             Assert.IsTrue(enemy.Initialize(data));
             badge.ApplyLayout();
             badge.Refresh();
 
+            // Wait until BOTH renderers are mid-fade: the badge binder copies
+            // the enemy alpha a frame behind the fade's first dip, so gating on
+            // the enemy alone samples the one frame where they legitimately
+            // disagree (the fade pulses, so that first-frame gap can exceed
+            // the tracking tolerance).
             yield return GlyphBadgePlayModeTestHelpers.WaitUntilOrTimeout(
-                () => enemyRenderer.color.a < 0.95f && phaser.IsVisible,
+                () => enemyRenderer.color.a < 0.95f
+                      && badgeRenderer.color.a < 0.95f
+                      && phaser.IsVisible,
                 timeoutSeconds: 0.8f);
 
             Assert.Less(enemyRenderer.color.a, 0.95f,
@@ -82,7 +94,8 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Enemy enemy = go.AddComponent<Enemy>();
             go.AddComponent<PhaserEnemy>();
             GlyphBadgePlayModeTestHelpers.DisableDebugLabels(enemy);
-            go.SetActive(true);
+            // Left inactive: the caller attaches the badge child first, then
+            // activates, so PhaserEnemy's one-time renderer cache includes it.
             _objectsToDestroy.Add(go);
             return enemy;
         }

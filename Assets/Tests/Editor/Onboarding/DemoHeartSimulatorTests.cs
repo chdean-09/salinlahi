@@ -80,6 +80,9 @@ namespace Salinlahi.Tests.Editor.Onboarding
                     .GetField("_heartIcons", BindingFlags.Instance | BindingFlags.NonPublic)
                     ?.SetValue(display, icons);
 
+                // EditMode never runs OnEnable; subscribe to EventBus by hand.
+                InvokeLifecycle(display, "OnEnable");
+
                 EventBus.RaiseHeartsChanged(3);
                 Assert.AreEqual(Color.red, icons[2].color);
 
@@ -91,6 +94,9 @@ namespace Salinlahi.Tests.Editor.Onboarding
             }
             finally
             {
+                // Unsubscribe even on assert failure so EventBus never keeps a
+                // destroyed HeartDisplay registered for later tests.
+                InvokeLifecycle(displayHost.GetComponent<HeartDisplay>(), "OnDisable");
                 Object.DestroyImmediate(displayHost);
                 DestroyRuntimeObject("TutorialHeartDamageOverlay");
                 for (int i = 0; i < heartObjects.Length; i++)
@@ -121,6 +127,9 @@ namespace Salinlahi.Tests.Editor.Onboarding
                     .GetField("_heartIcons", BindingFlags.Instance | BindingFlags.NonPublic)
                     ?.SetValue(display, icons);
 
+                // EditMode never runs OnEnable; subscribe to EventBus by hand.
+                InvokeLifecycle(display, "OnEnable");
+
                 EventBus.RaiseTutorialBaseHitDemo(1);
 
                 Assert.AreEqual(new Color(1f, 1f, 1f, 0.25f), icons[2].color);
@@ -136,6 +145,9 @@ namespace Salinlahi.Tests.Editor.Onboarding
             }
             finally
             {
+                // Unsubscribe even on assert failure so EventBus never keeps a
+                // destroyed HeartDisplay registered for later tests.
+                InvokeLifecycle(displayHost.GetComponent<HeartDisplay>(), "OnDisable");
                 Object.DestroyImmediate(displayHost);
                 DestroyRuntimeObject("TutorialHeartDamageOverlay");
                 for (int i = 0; i < heartObjects.Length; i++)
@@ -144,6 +156,16 @@ namespace Salinlahi.Tests.Editor.Onboarding
                         Object.DestroyImmediate(heartObjects[i]);
                 }
             }
+        }
+
+        private static void InvokeLifecycle(MonoBehaviour target, string methodName)
+        {
+            if (target == null)
+                return;
+            MethodInfo method = target.GetType().GetMethod(
+                methodName, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(method, $"Missing lifecycle method '{methodName}' on {target.GetType().Name}.");
+            method.Invoke(target, null);
         }
 
         private static void AssertDamageIndicatorText(Transform marker, string expected)
