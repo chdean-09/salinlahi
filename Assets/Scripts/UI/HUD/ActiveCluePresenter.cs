@@ -179,15 +179,12 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
         TextMeshProUGUI textTemplate = FindFirstObjectByType<TextMeshProUGUI>();
 
-        // Editor-only: builtin UI resources are not included in player builds, so this is
-        // null at runtime and the panel renders as flat untextured quads. Acceptable because
-        // this whole panel is the no-Inspector-wiring fallback -- an authored HUD supplies
-        // its own art and never reaches here. Do not ship a level relying on this path.
-        // Batch mode: the builtin lookup logs an assert with no graphics device, which
-        // fails any headless test that arms a level; the styling is invisible there anyway.
-        Sprite defaultUiSprite = Application.isBatchMode
-            ? null
-            : Resources.GetBuiltinResource<Sprite>("UI/Skin/UISprite.psd");
+        // No builtin-sprite lookup: UISprite.psd lives in unity_builtin_extra, which
+        // Resources.GetBuiltinResource cannot serve, so the call only asserts (and fails
+        // any headless test that arms a level). Null renders flat tinted quads. Acceptable
+        // because this whole panel is the no-Inspector-wiring fallback -- an authored HUD
+        // supplies its own art and never reaches here. Do not ship a level relying on this.
+        Sprite defaultUiSprite = null;
 
         GameObject panel = new GameObject("[Runtime] ActiveCluePanel", typeof(RectTransform), typeof(Image));
         panel.transform.SetParent(canvas.transform, false);

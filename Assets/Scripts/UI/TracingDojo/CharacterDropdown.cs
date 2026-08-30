@@ -9,7 +9,7 @@ public class CharacterDropdown : MonoBehaviour
     [SerializeField] private GameObject _panel;
     [SerializeField] private GameObject _backdrop;
     [SerializeField] private Button _backdropButton;
-    [SerializeField] private string _placeholderText = "Select \u25BE";
+    [SerializeField] private string _placeholderText = "Select \u25BC";
 
     private void Awake()
     {
@@ -22,7 +22,7 @@ public class CharacterDropdown : MonoBehaviour
     public void SetCurrentCharacter(BaybayinCharacterSO character)
     {
         _headerLabel.text = character != null
-            ? $"{character.characterID} \u25BE"
+            ? $"{character.characterID} \u25BC"
             : _placeholderText;
     }
 
