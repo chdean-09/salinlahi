@@ -18,7 +18,10 @@ MonoBehaviour:
   - unitId: ugat03-restore-sentence
     mode: 2
     cluePolicy: 0
-    prompt: Ang mabuting ______ ay gumagawa ng ______.
+    prompt: 'Isang salita lamang ang kulang sa pangungusap ni Ama. Ilagay mo ang
+      tamang salita sa tamang puwang.
+
+      Ang mabuting ______ ay gumagawa ng ______.'
     tokens:
     - tokenId: ugat03-bata
       displayText: BATA
