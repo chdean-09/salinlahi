@@ -15,24 +15,88 @@ MonoBehaviour:
   bossName: Kadiliman
   bossID: KADILIMAN
   bossSprite: {fileID: 0}
-  description: 
+  description: 'Kadiliman is the Darkness itself, the embodiment of cultural forgetting.
+    A formless shadow entity that combines all three eras of corruption.
+
+
+
+
+    Power:
+    Summons enemies from every era. Drawing all 18 characters in a timed sequence
+    restores Baybayin to the world.'
   bossEnemyData: {fileID: 11400000, guid: 052b00742308dce4499cfb4cf6b8c33e, type: 2}
   phases:
+  - summonPhaseDuration: 30
+    delayBetweenSummons: 6
+    minionsPerSummonMin: 1
+    minionsPerSummonMax: 2
+    delayBetweenMinions: 0.8
+    summonEnemyTypes:
+    - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+    - {fileID: 11400000, guid: 5441937cc8c04b60b92b0112af80aac3, type: 2}
+    summonSpawnRange: {x: 3, y: 1.5}
+    requiredCharacterCount: 4
+    vulnerabilityTimer: 25
+    movementPattern: 1
+    movementSpeed: 1
+    paceHalfRange: 2.5
+    teleportHalfRange: {x: 2, y: 0}
   - summonPhaseDuration: 30
     delayBetweenSummons: 5
     minionsPerSummonMin: 2
     minionsPerSummonMax: 3
-    delayBetweenMinions: 0.6
-    summonEnemyTypes: []
-    summonSpawnRange: {x: 2, y: 0}
-    requiredCharacterCount: 3
-    vulnerabilityTimer: 12
-    movementPattern: 0
+    delayBetweenMinions: 0.8
+    summonEnemyTypes:
+    - {fileID: 11400000, guid: b2d5819d4d6b4d8d9d1e4ef125ad2e61, type: 2}
+    - {fileID: 11400000, guid: 162b7d5e2b26d7442998aac326c48a06, type: 2}
+    - {fileID: 11400000, guid: e555cb9a9c190494d8ad490e246cc40c, type: 2}
+    summonSpawnRange: {x: 3, y: 1.5}
+    requiredCharacterCount: 4
+    vulnerabilityTimer: 24
+    movementPattern: 1
+    movementSpeed: 1.3
+    paceHalfRange: 2.5
+    teleportHalfRange: {x: 2.5, y: 0}
+  - summonPhaseDuration: 30
+    delayBetweenSummons: 4
+    minionsPerSummonMin: 2
+    minionsPerSummonMax: 3
+    delayBetweenMinions: 0.7
+    summonEnemyTypes:
+    - {fileID: 11400000, guid: b1192b8ea41bc418cb84defa4321b63f, type: 2}
+    - {fileID: 11400000, guid: ccb6fd07e3fd94990a6944ec2b341e31, type: 2}
+    - {fileID: 11400000, guid: 5cc8877bb53ca480da124ff2ffaa9de0, type: 2}
+    summonSpawnRange: {x: 3.5, y: 1}
+    requiredCharacterCount: 5
+    vulnerabilityTimer: 22
+    movementPattern: 2
     movementSpeed: 0
-    paceHalfRange: 1.5
-    teleportHalfRange: {x: 2, y: 0}
-  fallbackEnemyTypes: []
-  summonHorizontalBounds: {x: 0, y: 0}
+    paceHalfRange: 2
+    teleportHalfRange: {x: 2.5, y: 2.5}
+  - summonPhaseDuration: 35
+    delayBetweenSummons: 3.5
+    minionsPerSummonMin: 3
+    minionsPerSummonMax: 4
+    delayBetweenMinions: 0.6
+    summonEnemyTypes:
+    - {fileID: 11400000, guid: 55369c8c5f914966a731075c4b14742a, type: 2}
+    - {fileID: 11400000, guid: 096df5d2077ab9d4c9ff3732f732f957, type: 2}
+    - {fileID: 11400000, guid: 076fdd70b6855485eb5a08635478121b, type: 2}
+    - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+    - {fileID: 11400000, guid: b1192b8ea41bc418cb84defa4321b63f, type: 2}
+    summonSpawnRange: {x: 3.5, y: 1}
+    requiredCharacterCount: 5
+    vulnerabilityTimer: 22
+    movementPattern: 2
+    movementSpeed: 0
+    paceHalfRange: 2
+    teleportHalfRange: {x: 3, y: 3}
+  fallbackEnemyTypes:
+  - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+  - {fileID: 11400000, guid: b2d5819d4d6b4d8d9d1e4ef125ad2e61, type: 2}
+  - {fileID: 11400000, guid: b1192b8ea41bc418cb84defa4321b63f, type: 2}
+  summonHorizontalBounds: {x: -2, y: 2}
   introDuration: 2
   outroDuration: 2.5
   audioBank: {fileID: 0}
+  tutorial: {fileID: 0}
