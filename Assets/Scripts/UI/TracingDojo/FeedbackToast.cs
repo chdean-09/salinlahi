@@ -1,12 +1,18 @@
 using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class FeedbackToast : MonoBehaviour
 {
     [SerializeField] private CanvasGroup _group;
     [SerializeField] private TMP_Text _verdictLabel;
-    [SerializeField] private TMP_Text _confidenceLabel;
+
+    // Was _confidenceLabel, which printed the recognizer score as a percentage (SALIN-163 AC1).
+    // FormerlySerializedAs keeps the existing binding in TracingDojo.unity attached through the
+    // rename; dropping it would silently leave the label unassigned in the scene.
+    [FormerlySerializedAs("_confidenceLabel")]
+    [SerializeField] private TMP_Text _encouragementLabel;
     [SerializeField] private float _holdSeconds = 1.5f;
     [SerializeField] private float _fadeSeconds = 0.2f;
 
@@ -20,11 +26,18 @@ public class FeedbackToast : MonoBehaviour
         _group.alpha = 0f;
     }
 
-    public void Show(string characterID, float score, bool pass)
+    /// <summary>
+    /// SALIN-163 AC1. The recognizer score is not a parameter: the toast used to render it as
+    /// "83%", grading the player against an internal threshold instead of telling them what to
+    /// change. Taking it out of the signature is what keeps it out of the UI for good.
+    /// </summary>
+    public void Show(string characterID, bool pass)
     {
         _verdictLabel.text = characterID;
         _verdictLabel.color = pass ? PassColor : FailColor;
-        _confidenceLabel.text = $"{score * 100f:F0}%";
+        _encouragementLabel.text = pass
+            ? DrawingFeedbackVocabulary.Accepted
+            : DrawingFeedbackVocabulary.RejectedFirstAttempt;
 
         if (_running != null) StopCoroutine(_running);
         _running = StartCoroutine(FadeCycle());
