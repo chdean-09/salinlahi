@@ -73,17 +73,32 @@ The era-themed roster in §2.1 is **being superseded** by a corrupted-enemy rost
 | Aspect | State on `dev` |
 |--------|----------------|
 | Enemy data assets | 32 `EnemyData_*.asset` total |
-| With `assignedCharacter` set | **19** (AbongSimula, Bakod, Daan-Lihis, Fraile, Gapos, Hati, Iligaw, Kadena, Labo, Maestro, Mantsa, NawalangMukha, Ngatngat, Punit, Salungat, Takip, Uhaw, Walang-Awa, YaposngDilim) |
-| Per-enemy stats and abilities | **Not on `dev`** — authored in draft PR #144 |
-| `[Enemy] Labo` / `[Enemy] Daan-Lihis` prefab variants | **Not on `dev`** — added by draft PR #144 |
+| With `assignedCharacter` set | **17** (AbongSimula, Bakod, Daan-Lihis, Gapos, Hati, Iligaw, Kadena, Labo, Mantsa, NawalangMukha, Ngatngat, Punit, Salungat, Takip, Uhaw, Walang-Awa, YaposngDilim) |
+| Per-enemy stats and abilities | ✅ **On `dev`** — landed via PR #144 |
+| `[Enemy] Labo` / `[Enemy] Daan-Lihis` prefab variants | ✅ **On `dev`** — landed via PR #144, registered on the EnemyPool prefab *and* its scene instances |
+
+**Shipped stats** (`maxHealth` / `moveSpeed`, read from the assets on `dev`):
+
+| Enemy | HP | Speed | Enemy | HP | Speed |
+|-------|----|-------|-------|----|-------|
+| Abo ng Simula | 1 | 1.60 | Ngatngat | 1 | 1.90 |
+| Bakod | 1 | 0.85 | Punit | 1 | 1.70 |
+| Daan-Lihis | 1 | 1.50 | Salungat | 1 | 1.50 |
+| Gapos | 2 | 1.00 | Takip | 1 | 1.30 |
+| Hati | 1 | 1.40 | Uhaw | 2 | 1.25 |
+| Iligaw | 1 | 1.50 | Walang-Awa | 3 | 0.95 |
+| Kadena | 2 | 1.05 | Yapos ng Dilim | 3 | 1.10 |
+| Labo | 1 | 1.35 | Mantsa | 1 | 1.15 |
+
+Health is deliberately concentrated at 1 HP. Only Gapos, Kadena and Uhaw take 2, and only Walang-Awa and Yapos ng Dilim take 3. **Bakod is 1 HP on purpose:** an earlier draft gave it 2, which doubled the required draws in the Level 2 waves it dominates (6 → 12) and broke the draw-to-kill feedback loop in what is still a teaching level. Raising any early-level enemy's HP has this multiplying effect and should be checked against the wave composition, not judged per-enemy.
 
 Two consequences worth stating plainly, because both have already cost debugging time:
 
-1. **The two rosters currently coexist.** The era-themed enemies (Soldado, Maestro, …) and the corrupted enemies are both live, which is why the sandbox catalog lists both. Retiring the era-themed roster is a **product decision that has not been made** — do not delete those assets on the assumption that the corruption roster replaced them.
+1. **The two rosters currently coexist.** The era-themed enemies (Soldado, Maestro, …) and the corrupted enemies are both live, which is why the sandbox catalog lists both. Retiring the era-themed roster is a **product decision that has not been made** — do not delete those assets on the assumption that the corruption roster replaced them. PR #144 did free the contested BA pins: `Fraile` and `Maestro` no longer carry an `assignedCharacter`, so each assigned syllable now maps to exactly one corrupted enemy. That is why this count is 17 and not the 19 recorded before #144.
 2. **Registering a new enemy prefab takes two steps, not one.** Adding the prefab to the `[Manager] EnemyPool` prefab's `_registeredEnemyPrefabs` is not sufficient: **scene instances of the pool override the array**, including its size. A prefab registered only at the prefab level fails at runtime with `EnemyPool: Unknown enemyID '<id>'. Falling back to default pool.` The scene instances in `Bootstrap`, `Gameplay`, and `Level_01_Tutorial` must be updated too.
 
 [EVIDENCE: Assets/Scripts/Data/EnemyDataSO.cs — `assignedCharacter`]
-[EVIDENCE: `Assets/ScriptableObjects/Enemies/` — 32 assets, 19 with `assignedCharacter`]
+[EVIDENCE: `Assets/ScriptableObjects/Enemies/` — 32 assets, 17 with `assignedCharacter`]
 [EVIDENCE: Assets/Prefabs/Managers/[Manager] EnemyPool.prefab — `_registeredEnemyPrefabs`]
 
 [EVIDENCE: Assets/Prefabs/Enemies/ — Soldado, Soldier, Heitai, Maestro, Pensionado, General, Kisha, Kempei, Shokan, Boss_ElInquisidor prefabs confirmed]
