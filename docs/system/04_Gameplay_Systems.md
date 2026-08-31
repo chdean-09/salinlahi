@@ -301,24 +301,27 @@ The following enemy types are specified in the GDD §4.3 and the Team README §9
 |---------|-----|-------|----------|--------|
 | `"el_inquisidor"` | Spanish | 5 | Phase-based. Can summon Soldado reinforcements during phases. | Implemented (`[Enemy] Boss_ElInquisidor.prefab`) |
 | `"superintendent"` | American | 10 | Phase-based. Decree ability temporarily scrambles nearby Baybayin labels. | PLANNED |
-| `"kadiliman"` | Final | 15 | **Designed:** phase-based formless shadow entity, summons enemies from all three eras, drawing all 18 characters defeats it. **Authored:** see the gap note below. | ⚠️ STUB — config exists, does not implement the design |
+| `"kadiliman"` | Final | 15 | Phase-based formless shadow entity. Four phases walking through the three eras and then combining them; drawing all 18 characters defeats it. | ✅ Authored — see the encounter table below |
 
-> **Kadiliman is authored, but as a stub that does not match its design (measured 2026-08-31).**
-> `BossConfig_Kadiliman.asset` exists and is referenced by `Level15_Config`, so the row above is no
-> longer simply "PLANNED". What is configured, however, diverges sharply from the design:
+> **Kadiliman encounter, authored 2026-08-31 (SALIN-207).** It previously shipped as a stub: 1 phase,
+> `requiredCharacterCount: 3`, `summonEnemyTypes: []` — a final boss easier than the first one, that
+> summoned nothing. `BossConfig_Kadiliman.asset` now reads:
 >
-> | | Designed (GDD §4.3, §4.5) | Authored in `BossConfig_Kadiliman.asset` |
-> |---|---|---|
-> | Phases | timed sequence | **1** |
-> | Required draws | all 18 characters | **3** (`requiredCharacterCount: 3`) |
-> | Summons | enemies from all three eras | **none** — `summonEnemyTypes: []` |
-> | Audio bank | — | none (`fileID: 0`) |
+> | Phase | Era | Required draws | Vulnerability | Movement | Summons |
+> |---|---|---|---|---|---|
+> | 1 | Spanish | 4 | 25s | Pace | Soldado, Fraile |
+> | 2 | American | 4 | 24s | Pace | Soldier, Maestro, Pensionado |
+> | 3 | Japanese | 5 | 22s | Teleport | Heitai, Kisha, Kempei |
+> | 4 | All three | 5 | 22s | Teleport | Capitan, General, Shokan, Soldado, Heitai |
 >
-> For scale, `BossConfig_ElInquisidor` — the **first** boss, at Level 5 — has 3 phases and 10 total
-> required draws. As configured, the final boss is easier than the first and summons nothing.
+> **Total: 18 required draws across 4 phases**, matching the GDD's "all 18 characters in a timed
+> sequence". For scale, `BossConfig_ElInquisidor` (Level 5, the first boss) is 3 phases / 10 draws.
 >
-> Raising Kadiliman to 18 required draws is a **balance and design decision, not a documentation fix**,
-> so it is recorded here rather than applied. Tracked as **SALIN-207**; update this row when that lands.
+> **These numbers are a starting point, not tuned values.** Per RISK-14 in doc 11, boss timers start
+> generous and tighten on playtest feedback. Nobody has played this encounter yet.
+>
+> **Still missing:** `bossSprite` is empty (needs art) and `audioBank` is empty (no Kadiliman bank
+> exists). Both are content gaps, not configuration ones.
 
 
 [EVIDENCE: Assets/Prefabs/Enemies/ — Soldado, Soldier, Heitai, Maestro, Pensionado, General, Kisha, Kempei, Shokan, Boss_ElInquisidor]
