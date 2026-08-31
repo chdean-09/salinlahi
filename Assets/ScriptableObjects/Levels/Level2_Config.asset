@@ -214,7 +214,7 @@ MonoBehaviour:
   tutorialSequence: {fileID: 0}
   onboardingSequence: {fileID: 11400000, guid: 2589c33ff75c4f87b136e80c7a60e17c, type: 2}
   challengePrototypeEnabled: 0
-  challengeSequence: {fileID: 0}
+  challengeSequence: {fileID: 11400000, guid: 075735be0cfab4031bc150b6f0bc65cc, type: 2}
   challengePolicy:
     tier: 0
     heartPenaltiesEnabled: 1

@@ -1,0 +1,79 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b7c9d9cf2f34d9c9e1a0d437f2f6e90, type: 3}
+  m_Name: Challenge_Ugat02_Context
+  m_EditorClassIdentifier: Salinlahi.Runtime::ChallengeSequenceSO
+  sequenceId: challenge.ugat.02
+  displayName: Ikalawang Alaala
+  units:
+  - unitId: ugat02-complete-bata
+    mode: 1
+    cluePolicy: 0
+    prompt: Buuin ang salitang BATA.
+    tokens:
+    - tokenId: ugat02-ba
+      displayText: BA
+      occurrenceId: ugat02-ba
+      role: 1
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugat02-ma-decoy
+      displayText: MA
+      occurrenceId: ugat02-ma-decoy
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    slots:
+    - slotId: ugat02-complete-bata-slot
+      expectedOccurrenceId: ugat02-ba
+    candidateOccurrenceIds:
+    - ugat02-ba
+    - ugat02-ma-decoy
+    guidedStep: {fileID: 0}
+    timerSeconds: 0
+    allowHint: 1
+    checkpointOnSuccess: 1
+    memoryRevealSeconds: 1
+    maxErrors: 3
+    heartPenalty: 1
+    evidenceContentId: level.ugat.02.focus.01
+  - unitId: ugat02-complete-mata
+    mode: 1
+    cluePolicy: 0
+    prompt: Buuin ang salitang MATA.
+    tokens:
+    - tokenId: ugat02-ta
+      displayText: TA
+      occurrenceId: ugat02-ta
+      role: 1
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugat02-na-decoy
+      displayText: NA
+      occurrenceId: ugat02-na-decoy
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    slots:
+    - slotId: ugat02-complete-mata-slot
+      expectedOccurrenceId: ugat02-ta
+    candidateOccurrenceIds:
+    - ugat02-ta
+    - ugat02-na-decoy
+    guidedStep: {fileID: 0}
+    timerSeconds: 0
+    allowHint: 1
+    checkpointOnSuccess: 1
+    memoryRevealSeconds: 1
+    maxErrors: 3
+    heartPenalty: 1
+    evidenceContentId: level.ugat.02.focus.02
