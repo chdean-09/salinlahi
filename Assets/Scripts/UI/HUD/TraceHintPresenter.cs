@@ -110,17 +110,19 @@ public sealed class TraceHintPresenter : MonoBehaviour
     }
 
     /// <summary>
-    /// Prefers <c>badgeSprite</c>, the bare framed glyph.
+    /// Prefers <c>glyphOutlineSprite</c> — the bare glyph generated from the recognition templates
+    /// (SALIN-209), which is the shape the player is actually being asked to draw.
     ///
-    /// Deliberately NOT <c>displaySprite</c>, despite its tooltip calling itself the bare glyph:
-    /// in the shipped data it points at the `Resources/[ID].png` learning card, which has the
-    /// romanised syllable printed on it (`BA-VA.png` reads "ba, va"). Showing that as a drawing
-    /// hint would hand the player the answer in Latin script, which is a larger giveaway than the
-    /// recognizer score this whole ticket removed. Falls back only if no badge art exists.
+    /// Falls back to <c>badgeSprite</c>, the scroll-framed plate, and never to
+    /// <c>displaySprite</c>: despite its old tooltip calling itself the bare glyph, that is the
+    /// `Resources/[ID].png` learning card with the romanised syllable printed on it (`BA-VA.png`
+    /// reads "ba, va"). Showing that as a hint would hand the player the answer in Latin script —
+    /// a larger giveaway than the recognizer score this ticket set out to remove.
     /// </summary>
     private static Sprite ResolveGlyphSprite(BaybayinCharacterSO character)
     {
         if (character == null) return null;
+        if (character.glyphOutlineSprite != null) return character.glyphOutlineSprite;
         return character.badgeSprite != null ? character.badgeSprite : character.almanacSprite;
     }
 }

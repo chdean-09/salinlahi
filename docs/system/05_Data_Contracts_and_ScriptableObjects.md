@@ -73,10 +73,11 @@ path. SALIN-168 remains the owner of internal sequence rules and runtime behavio
 |-------|------|--------|----------|------------|
 | `characterID` | `string` | Identity | YES | Must match template filename prefix. Example: `"BA"` → template file `BA_template.txt` in `Assets/Resources/Templates/`. Case-sensitive. |
 | `syllable` | `string` | Identity | YES | Lowercase Filipino syllable shown to player. Example: `"ba"`, `"ka"`, `"ga"`. Must not be empty. |
-| `displaySprite` | `Sprite` | Visuals | YES | The Baybayin glyph sprite rendered on the enemy body. Must not be null at runtime. |
+| `displaySprite` | `Sprite` | Visuals | YES | **Learning CARD, not a bare glyph** — `Resources/[ID].png` is a filled panel carrying the glyph *and its romanised syllable* (`BA-VA.png` reads "ba, va"). Consumed by the Tracing Dojo character list and `SymbolLearningCardController`. **Not** what appears on enemies; that is `badgeSprite`. |
 | `almanacSprite` | `Sprite` | Visuals | NO | Stylized glyph shown in the Almanac character grid and detail view (`Art/UI/Almanac/[ID]-Almanac.png`). Falls back to `displaySprite` when null. |
-| `badgeSprite` | `Sprite` | Visuals | NO | Framed glyph used by `EnemyGlyphBadge` during gameplay. Distinct from `displaySprite` (Tracing Dojo). |
+| `badgeSprite` | `Sprite` | Visuals | NO | Scroll-framed glyph plate (`Art/UI/GlyphBadges/[ID].png`) used by `EnemyGlyphBadge` during gameplay. This — not `displaySprite` — is what appears on enemies. Carries no romanisation. |
 | `scrambledBadgeSprite` | `Sprite` | Visuals | NO | Optional framed + glitched variant when a visual override is active (e.g. Kempei scramble). Falls back to `badgeSprite` when null. |
+| `glyphOutlineSprite` | `Sprite` | Visuals | NO | **Bare glyph on a transparent background** (`Art/UI/GlyphOutlines/[ID].png`) — the only sprite here with no card, frame or romanisation. Generated from the recognition templates by `GlyphOutlineGenerator`, so it is exactly the shape `DollarPRecognizer` scores against. Used as the Tracing Dojo guide (`GhostStrokeRenderer`) and the gameplay trace hint (`TraceHintPresenter`). White, so consumers tint and fade it. Falls back to `displaySprite` / `badgeSprite` respectively when null. |
 | `pronunciationClip` | `AudioClip` | Audio | YES | Played on every successful character recognition via `AudioManager`. Duration must be under 1 second to prevent overlap. Null triggers a silent defeat (no audio error). |
 | `templateFileName` | `string` | Recognition | YES | Filename in `Assets/Resources/Templates/` without extension. Example: `"BA_template"`. Must match a file loadable via `Resources.Load<TextAsset>`. |
 | `description` | `string` | Almanac | NO | Short player-facing description of the character shown in the Almanac detail panel. May be empty; Almanac UI falls back to an empty string gracefully. |
@@ -85,7 +86,7 @@ path. SALIN-168 remains the owner of internal sequence rules and runtime behavio
 - `characterID` must be unique across all `BaybayinCharacterSO` assets in the project.
 - `templateFileName` must reference a file that exists in `Assets/Resources/Templates/`.
 - `pronunciationClip` must be assigned before Sprint 2 UAT.
-- 17 total assets must exist at content-complete milestone (one per Baybayin consonant).
+- **18** total assets must exist at content-complete milestone: 15 consonants + 3 vowels. (Was stated as 17 "one per consonant"; corrected under the REQ-42 ruling that `RA` is its own glyph. All 18 exist today.)
 
 **Multi-Template Note:**
 TDD §2.2 specifies that multiple templates per character are supported (e.g., `BA_template_01.txt`, `BA_template_02.txt`) to handle handwriting variation. The current `templateFileName` field is a single `string`, which covers the base case of one template per character. If recognition accuracy tuning in Sprint 2 requires multiple templates per character, this field must either be changed to `List<string> templateFileNames` or the team must create multiple `BaybayinCharacterSO` assets per character. This decision is deferred to Sprint 2 integration.

@@ -28,5 +28,6 @@ MonoBehaviour:
   almanacSprite: {fileID: 1746279500494357454, guid: 3062a7588b57c374292c27f23d2bba94, type: 3}
   badgeSprite: {fileID: -5378085687522739872, guid: 390e5ce5ec3cdd741a3772288f739c1c, type: 3}
   scrambledBadgeSprite: {fileID: 0}
+  glyphOutlineSprite: {fileID: 21300000, guid: 168b5bdd3becb4e26b1c362ea955b75e, type: 3}
   pronunciationClip: {fileID: 8300000, guid: 34ea5307ae3df8347b49edec05625ba0, type: 3}
   templateFileName: OU_template_01

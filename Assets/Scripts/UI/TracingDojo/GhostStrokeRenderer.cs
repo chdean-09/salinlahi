@@ -4,19 +4,14 @@ using UnityEngine.UI;
 /// <summary>
 /// Draws the tracing guide under the player's strokes in the Tracing Dojo.
 ///
-/// KNOWN LIMITATION (measured 2026-08-31, SALIN-163): this renders
-/// <see cref="BaybayinCharacterSO.displaySprite"/>, which is a learning CARD rather than a bare
-/// glyph — a filled panel carrying the glyph and its romanised syllable. At 35% alpha the card's
-/// background washes across the whole tracing area instead of leaving a faint outline to trace
-/// over, and the romanisation rides along with it.
+/// Renders <see cref="BaybayinCharacterSO.glyphOutlineSprite"/> — a bare glyph on a transparent
+/// background, generated from the recognition templates, so the guide is exactly the shape the
+/// recognizer scores against (SALIN-209).
 ///
-/// It was left as-is because the alternatives are no better: badgeSprite is a framed plate and
-/// almanacSprite is another card. No bare-glyph art exists in the project, so fixing this properly
-/// needs new art (a transparent-background glyph per character), not a different field.
-///
-/// The romanisation is defensible HERE — the player picked the character they are practising, so
-/// nothing is given away. It is not defensible in gameplay, which is why
-/// <c>TraceHintPresenter</c> deliberately uses badgeSprite instead.
+/// It previously rendered displaySprite, which is a learning CARD: at 35% alpha the card's filled
+/// panel washed across the whole tracing area instead of leaving an outline to trace over, and it
+/// carried the romanised syllable along with it. displaySprite remains the fallback for any
+/// character with no outline art, so nothing breaks if art is missing.
 /// </summary>
 public class GhostStrokeRenderer : MonoBehaviour
 {
@@ -44,18 +39,26 @@ public class GhostStrokeRenderer : MonoBehaviour
 
     public void Render(BaybayinCharacterSO character)
     {
-        if (character == null || character.displaySprite == null)
+        Sprite guide = ResolveGuideSprite(character);
+        if (guide == null)
         {
             if (character != null)
                 Debug.LogWarning(
-                    $"GhostStrokeRenderer: no displaySprite for {character.characterID}");
+                    $"GhostStrokeRenderer: no glyph art for {character.characterID}");
             Clear();
             return;
         }
 
-        _ghostImage.sprite = character.displaySprite;
+        _ghostImage.sprite = guide;
         _ghostImage.color = new Color(1f, 1f, 1f, _ghostAlpha);
         _ghostImage.enabled = true;
+    }
+
+    /// <summary>Bare outline first; the learning card only if a character has no outline art yet.</summary>
+    private static Sprite ResolveGuideSprite(BaybayinCharacterSO character)
+    {
+        if (character == null) return null;
+        return character.glyphOutlineSprite != null ? character.glyphOutlineSprite : character.displaySprite;
     }
 
     public void Clear()
