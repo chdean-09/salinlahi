@@ -31,7 +31,7 @@ MonoBehaviour:
   - {fileID: -5104515681801800282, guid: acb9af74d8766bf44b63d6cc473948ec, type: 3}
   animatorController: {fileID: 0}
   portraitSprite: {fileID: 0}
-  assignedCharacter: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+  assignedCharacter: {fileID: 0}
   isDecoy: 0
   isPhaser: 1
   phaserInterval: 1

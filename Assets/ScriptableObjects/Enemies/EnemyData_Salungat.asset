@@ -27,7 +27,7 @@ MonoBehaviour:
   animatorController: {fileID: 0}
   portraitSprite: {fileID: 0}
   assignedCharacter: {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
-  isDecoy: 0
+  isDecoy: 1
   isPhaser: 0
   phaserInterval: 0.5
   phaserInitialVisibleDelayMin: 0
@@ -40,7 +40,7 @@ MonoBehaviour:
   phaserFadeInDuration: 0.2
   phaserFadeOutPulseCount: 3
   phaserFadeOutPulseAmplitude: 0.2
-  dealsContactDamage: 1
+  dealsContactDamage: 0
   era: 0
   overrideBadgeOffset: 0
   glyphBadgeOffsetOverride: {x: 0, y: 0}

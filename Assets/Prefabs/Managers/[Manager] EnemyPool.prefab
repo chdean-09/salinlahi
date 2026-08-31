@@ -65,11 +65,11 @@ MonoBehaviour:
     defaultCapacity: 8
     maxSize: 16
   - enemyID: sprinter
-    prefab: {fileID: 8037671833055544141, guid: 43217bd7f21c474ea553c2206be5e444, type: 3}
+    prefab: {fileID: 0}
     defaultCapacity: 10
     maxSize: 20
   - enemyID: shielded
-    prefab: {fileID: 8037671833055544141, guid: c4eac3d9938a4d6ea54c26e243d40211, type: 3}
+    prefab: {fileID: 0}
     defaultCapacity: 10
     maxSize: 20
   - enemyID: heitai
@@ -100,3 +100,11 @@ MonoBehaviour:
     prefab: {fileID: 8774765201253825161, guid: 3162ad5b896c54746a794736dc9371e4, type: 3}
     defaultCapacity: 1
     maxSize: 1
+  - enemyID: labo
+    prefab: {fileID: 1914812031678044928, guid: 80b849e6fceae47eb9458f09d5602200, type: 3}
+    defaultCapacity: 10
+    maxSize: 20
+  - enemyID: daan-lihis
+    prefab: {fileID: 7439480076651400108, guid: 14e0fa15338b247169af3e276ae63245, type: 3}
+    defaultCapacity: 10
+    maxSize: 20

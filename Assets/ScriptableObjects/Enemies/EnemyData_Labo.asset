@@ -17,7 +17,7 @@ MonoBehaviour:
   discoverySubtitle: 
   description: A floating figure surrounded by thick gray fog. It hides symbols,
     faces, paths, and environmental clues.
-  moveSpeed: 1.5
+  moveSpeed: 1.35
   maxHealth: 1
   walkFrames:
   - {fileID: -2915414647358796944, guid: 3750cd06f0c7642ae95848b3743bc981, type: 3}
@@ -28,18 +28,18 @@ MonoBehaviour:
   portraitSprite: {fileID: 0}
   assignedCharacter: {fileID: 11400000, guid: 9aae464ed65b8416b9aa3ad6ee4ce2c4, type: 2}
   isDecoy: 0
-  isPhaser: 0
-  phaserInterval: 0.5
-  phaserInitialVisibleDelayMin: 0
-  phaserInitialVisibleDelayMax: 0
-  phaserVisibleHoldMin: 0
-  phaserVisibleHoldMax: 0
-  phaserInvisibleHoldMin: 0
-  phaserInvisibleHoldMax: 0
-  phaserFadeOutDuration: 0.3
-  phaserFadeInDuration: 0.2
-  phaserFadeOutPulseCount: 3
-  phaserFadeOutPulseAmplitude: 0.2
+  isPhaser: 1
+  phaserInterval: 1
+  phaserInitialVisibleDelayMin: 0.6
+  phaserInitialVisibleDelayMax: 1.2
+  phaserVisibleHoldMin: 2.2
+  phaserVisibleHoldMax: 3.2
+  phaserInvisibleHoldMin: 0.7
+  phaserInvisibleHoldMax: 1.2
+  phaserFadeOutDuration: 0.8
+  phaserFadeInDuration: 0.12
+  phaserFadeOutPulseCount: 1
+  phaserFadeOutPulseAmplitude: 0.3
   dealsContactDamage: 1
   era: 0
   overrideBadgeOffset: 0
