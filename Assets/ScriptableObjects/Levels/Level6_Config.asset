@@ -159,8 +159,8 @@ MonoBehaviour:
     dialogue: {fileID: 0}
     cutscene: {fileID: 0}
   finalRestorationValue:
-    symbol: {fileID: 0}
-    spokenValueId: 
+    symbol: {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+    spokenValueId: value.wa
   rewardIds: []
   masteryRequirements:
   - kind: 3
