@@ -1,0 +1,94 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b7c9d9cf2f34d9c9e1a0d437f2f6e90, type: 3}
+  m_Name: Challenge_Ugat05_Context
+  m_EditorClassIdentifier: Salinlahi.Runtime::ChallengeSequenceSO
+  sequenceId: challenge.ugat.05
+  displayName: Ikalimang Alaala
+  units:
+  - unitId: ugat05-complete-iba
+    mode: 1
+    cluePolicy: 2
+    prompt: Nagbago man ang panahon, may naiwan pa ring hindi kayang kunin ng Paglimot.
+      Buuin mo kung ano iyon.
+    tokens:
+    - tokenId: ugat05-ei
+      displayText: EI
+      occurrenceId: ugat05-ei
+      role: 1
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugat05-a-decoy-ugat05-complete-iba
+      displayText: A
+      occurrenceId: ugat05-a-decoy-ugat05-complete-iba
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugat05-ma-decoy-ugat05-complete-iba
+      displayText: MA
+      occurrenceId: ugat05-ma-decoy-ugat05-complete-iba
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    slots:
+    - slotId: ugat05-complete-iba-slot
+      expectedOccurrenceId: ugat05-ei
+    candidateOccurrenceIds:
+    - ugat05-ei
+    - ugat05-a-decoy-ugat05-complete-iba
+    - ugat05-ma-decoy-ugat05-complete-iba
+    guidedStep: {fileID: 0}
+    timerSeconds: 0
+    allowHint: 1
+    checkpointOnSuccess: 1
+    memoryRevealSeconds: 1
+    maxErrors: 3
+    heartPenalty: 1
+    evidenceContentId: level.ugat.05.focus.01
+  - unitId: ugat05-complete-mana
+    mode: 1
+    cluePolicy: 2
+    prompt: Buuin mo kung ano iyon.
+    tokens:
+    - tokenId: ugat05-na
+      displayText: NA
+      occurrenceId: ugat05-na
+      role: 1
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugat05-ma-decoy-ugat05-complete-mana
+      displayText: MA
+      occurrenceId: ugat05-ma-decoy-ugat05-complete-mana
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugat05-ta-decoy-ugat05-complete-mana
+      displayText: TA
+      occurrenceId: ugat05-ta-decoy-ugat05-complete-mana
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    slots:
+    - slotId: ugat05-complete-mana-slot
+      expectedOccurrenceId: ugat05-na
+    candidateOccurrenceIds:
+    - ugat05-na
+    - ugat05-ma-decoy-ugat05-complete-mana
+    - ugat05-ta-decoy-ugat05-complete-mana
+    guidedStep: {fileID: 0}
+    timerSeconds: 0
+    allowHint: 1
+    checkpointOnSuccess: 1
+    memoryRevealSeconds: 1
+    maxErrors: 3
+    heartPenalty: 1
+    evidenceContentId: level.ugat.05.focus.02
