@@ -21,15 +21,8 @@ MonoBehaviour:
     prompt: 'Wala nang larawang gagabay sa iyo. Piliin mo ang salitang nararapat,
       mula lamang sa iyong alaala.
 
-      Ang ______ at ______ ang unang guro sa
-      tahanan.'
+      Ang INA at ______ ang unang guro sa tahanan.'
     tokens:
-    - tokenId: ugat04-ina
-      displayText: INA
-      occurrenceId: ugat04-ina
-      role: 1
-      targetCharacter: {fileID: 0}
-      evidenceContentId: 
     - tokenId: ugat04-ama
       displayText: AMA
       occurrenceId: ugat04-ama
@@ -42,15 +35,19 @@ MonoBehaviour:
       role: 0
       targetCharacter: {fileID: 0}
       evidenceContentId: 
+    - tokenId: ugat04-mata-decoy
+      displayText: MATA
+      occurrenceId: ugat04-mata-decoy
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
     slots:
     - slotId: ugat04-slot-01
-      expectedOccurrenceId: ugat04-ina
-    - slotId: ugat04-slot-02
       expectedOccurrenceId: ugat04-ama
     candidateOccurrenceIds:
-    - ugat04-ina
     - ugat04-ama
     - ugat04-bata-decoy
+    - ugat04-mata-decoy
     guidedStep: {fileID: 0}
     timerSeconds: 0
     allowHint: 1
@@ -58,4 +55,4 @@ MonoBehaviour:
     memoryRevealSeconds: 1
     maxErrors: 3
     heartPenalty: 1
-    evidenceContentId: level.ugat.04.focus.01
+    evidenceContentId: level.ugat.04.focus.02
