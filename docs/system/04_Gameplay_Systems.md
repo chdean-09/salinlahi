@@ -318,7 +318,7 @@ The following enemy types are specified in the GDD §4.3 and the Team README §9
 > required draws. As configured, the final boss is easier than the first and summons nothing.
 >
 > Raising Kadiliman to 18 required draws is a **balance and design decision, not a documentation fix**,
-> so it is recorded here rather than applied. It needs its own ticket.
+> so it is recorded here rather than applied. Tracked as **SALIN-207**; update this row when that lands.
 
 
 [EVIDENCE: Assets/Prefabs/Enemies/ — Soldado, Soldier, Heitai, Maestro, Pensionado, General, Kisha, Kempei, Shokan, Boss_ElInquisidor]
