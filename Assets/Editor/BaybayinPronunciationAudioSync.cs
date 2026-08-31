@@ -121,7 +121,20 @@ public static class BaybayinPronunciationAudioSync
                 continue;
 
             if (!clipMap.ContainsKey(canonicalId))
+            {
                 clipMap.Add(canonicalId, clip);
+                continue;
+            }
+
+            // Two files canonicalize to the same character -- e.g. E.wav and I.wav both map to
+            // EI, FA.wav and PA.wav both map to PA. Silently keeping whichever AssetDatabase
+            // happened to return first makes the winner non-deterministic, so a re-import could
+            // swap the clip a character speaks. Say so instead of dropping one quietly.
+            DebugLogger.LogWarning(
+                $"BaybayinPronunciationAudioSync: '{Path.GetFileName(path)}' also canonicalizes to " +
+                $"'{canonicalId}', which is already served by " +
+                $"'{clipMap[canonicalId].name}'. Keeping the existing clip. Remove one of the two " +
+                $"files so the assignment is deterministic.");
         }
 
         return clipMap;
