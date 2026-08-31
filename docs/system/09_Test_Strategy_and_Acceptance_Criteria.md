@@ -295,7 +295,7 @@ All the following must be true before UAT begins:
 | Levels 1–10 are playable end-to-end | Verified by internal playthrough |
 | Recognition accuracy ≥ 80% for correctly shaped draws on device | Measured across 10 players × 5 characters each |
 | 0 crashes in 2-hour internal session | Logged via Unity Cloud Diagnostics or manual log review |
-| Audio plays on all 17 character defeats | All `pronunciationClip` fields assigned |
+| Audio plays on all 18 character defeats | ⛔ **BLOCKED** — 7 of 18 `pronunciationClip` fields assigned; 11 missing (DEP-03, doc 11) |
 | HUD shows correct heart count and wave number | Functional HUD with EventBus integration |
 | Game Over screen shows stats | Final stats display implemented |
 

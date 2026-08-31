@@ -29,7 +29,7 @@
 | **EventBus** | The static C# event hub used for all cross-system communication. No direct inter-manager references except through `Instance` accessor and EventBus. | EventBus.cs |
 | **Lite Build** | The free version of Salinlahi. Includes Story Mode levels 1–3 only. Endless Mode disabled. Separate app identifier. | TDD §7.2; Salinlahi.md §3.4 |
 | **Full Build** | The premium version of Salinlahi (PHP 149). All 15 story levels, Endless Mode, all boss encounters. | TDD §7.2; Salinlahi.md §3.4 |
-| **Tracing Dojo** | A pressure-free practice mode where players trace all 17 Baybayin characters with no enemies, no timer, and no penalty. | GDD §2.4 |
+| **Tracing Dojo** | A pressure-free practice mode where players trace all 18 Baybayin characters with no enemies, no timer, and no penalty. | GDD §2.4; doc 10 REQ-32 |
 | **Intrinsic Integration** | A game design principle where the educational content (Baybayin drawing) is inseparable from the core gameplay mechanic (attacking enemies). The opposite of "chocolate-covered broccoli." | Salinlahi.md §2.1.2 |
 | **Drawing Effect** | The cognitive science finding that drawing information to be learned produces superior memory retention compared to writing, visualizing, or viewing. The theoretical basis for Baybayin-as-attack-input. | Salinlahi.md §1.7.2; Fernandes et al., 2018 |
 | **Multi-stroke Window** | The 1.5-second timer that begins after a finger lifts, during which additional strokes are accepted as part of the same drawing before recognition is submitted. | RecognitionConfigSO.cs |

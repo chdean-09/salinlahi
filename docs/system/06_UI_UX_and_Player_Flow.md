@@ -227,7 +227,7 @@ Scene: `Assets/_Scenes/TracingDojo.unity`. Script suite: `Assets/Scripts/UI/Trac
 User-facing behavior per GDD:
 
 - Accessible from Main Menu at any time.
-- Shows all 17 Baybayin characters in a practice grid.
+- Shows all 18 Baybayin characters in a practice grid.
 - Player can select any character and trace it freely.
 - No enemies, no timer, no penalty for incorrect strokes.
 - Provides visual guide overlay for each character's expected shape (`GhostStrokeRenderer`).
