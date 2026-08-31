@@ -1,6 +1,23 @@
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// Draws the tracing guide under the player's strokes in the Tracing Dojo.
+///
+/// KNOWN LIMITATION (measured 2026-08-31, SALIN-163): this renders
+/// <see cref="BaybayinCharacterSO.displaySprite"/>, which is a learning CARD rather than a bare
+/// glyph — a filled panel carrying the glyph and its romanised syllable. At 35% alpha the card's
+/// background washes across the whole tracing area instead of leaving a faint outline to trace
+/// over, and the romanisation rides along with it.
+///
+/// It was left as-is because the alternatives are no better: badgeSprite is a framed plate and
+/// almanacSprite is another card. No bare-glyph art exists in the project, so fixing this properly
+/// needs new art (a transparent-background glyph per character), not a different field.
+///
+/// The romanisation is defensible HERE — the player picked the character they are practising, so
+/// nothing is given away. It is not defensible in gameplay, which is why
+/// <c>TraceHintPresenter</c> deliberately uses badgeSprite instead.
+/// </summary>
 public class GhostStrokeRenderer : MonoBehaviour
 {
     [SerializeField] private RectTransform _canvasArea;
