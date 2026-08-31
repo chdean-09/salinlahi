@@ -18,7 +18,11 @@ MonoBehaviour:
   - unitId: ugat04-restore-sentence
     mode: 2
     cluePolicy: 1
-    prompt: Ang ______ at ______ ang unang guro sa tahanan.
+    prompt: 'Wala nang larawang gagabay sa iyo. Piliin mo ang salitang nararapat,
+      mula lamang sa iyong alaala.
+
+      Ang ______ at ______ ang unang guro sa
+      tahanan.'
     tokens:
     - tokenId: ugat04-ina
       displayText: INA
