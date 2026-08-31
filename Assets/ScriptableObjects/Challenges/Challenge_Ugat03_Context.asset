@@ -21,14 +21,8 @@ MonoBehaviour:
     prompt: 'Isang salita lamang ang kulang sa pangungusap ni Ama. Ilagay mo ang
       tamang salita sa tamang puwang.
 
-      Ang mabuting ______ ay gumagawa ng ______.'
+      Ang mabuting BATA ay gumagawa ng ______.'
     tokens:
-    - tokenId: ugat03-bata
-      displayText: BATA
-      occurrenceId: ugat03-bata
-      role: 1
-      targetCharacter: {fileID: 0}
-      evidenceContentId: 
     - tokenId: ugat03-tama
       displayText: TAMA
       occurrenceId: ugat03-tama
@@ -41,15 +35,19 @@ MonoBehaviour:
       role: 0
       targetCharacter: {fileID: 0}
       evidenceContentId: 
+    - tokenId: ugat03-ama-decoy
+      displayText: AMA
+      occurrenceId: ugat03-ama-decoy
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
     slots:
     - slotId: ugat03-slot-01
-      expectedOccurrenceId: ugat03-bata
-    - slotId: ugat03-slot-02
       expectedOccurrenceId: ugat03-tama
     candidateOccurrenceIds:
-    - ugat03-bata
     - ugat03-tama
     - ugat03-mata-decoy
+    - ugat03-ama-decoy
     guidedStep: {fileID: 0}
     timerSeconds: 0
     allowHint: 1
