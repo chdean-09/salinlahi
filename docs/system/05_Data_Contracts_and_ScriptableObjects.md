@@ -1,7 +1,7 @@
 # 05 — Data Contracts and ScriptableObjects
 **Project:** Salinlahi
-**Version:** 2.9
-**Date:** 2026-08-18
+**Version:** 3.0
+**Date:** 2026-08-31
 **Owner:** Chad Andrada (Product Owner / Designer)
 
 ---
@@ -285,6 +285,14 @@ SALIN-172 against the SALIN-167/SALIN-188 matrix.
 | `maxVisualSamplesPerSegment` | `int` | — | `8` | Safety cap for visual interpolation samples inserted per raw segment. Does not affect recognition input. |
 | `minimumStrokePathLengthPixels` | `float` | — | `18f` | Rejects tap-like strokes whose total raw path length is too short. |
 | `minimumStrokeBoundsPixels` | `float` | — | `10f` | Rejects tap-like strokes whose raw bounding box is too small. |
+
+**Not every recognition tuning lever lives here.** These are hardcoded constants in `DollarPRecognizer.cs`, deliberately not exposed on the SO, and changing them affects every character at once:
+
+| Constant | Value | Effect |
+|----------|-------|--------|
+| `CLEAR_WIN_GAP` | `0.08f` | Margin by which the shape-score leader must beat the runner-up to be returned without semantic penalties. |
+| `DISAMBIGUATION_TOP_K` | `3` | How many close candidates get re-ranked by the composite (stroke-count + aspect) score. |
+| `ONE_D_ASPECT_THRESHOLD` | `4.5f` | Bounding-box aspect at or above which `ScaleToSquare` scales **uniformly** instead of per-axis, preserving the aspect of essentially one-dimensional characters (HA). Lowering it toward 1 approaches always-uniform scaling, which was measured to be worse overall — it regresses RA toward KA. |
 
 **Validation Rules:**
 - `minimumConfidence` must not be changed from `0.60` without a documented UAT re-validation run.
@@ -688,9 +696,25 @@ Stores the set of unlocked `BaybayinCharacterSO` character IDs as a pipe-separat
 
 ### 4.3 Template File Format
 
-Each `BaybayinCharacterSO.templateFileName` references a plain-text coordinate file in `Assets/Resources/Templates/`. Format is determined by the `TemplateLoader.cs` implementation. Expected content per `Salinlahi.md §3.3.3`: comma-separated 2D point coordinates representing the resampled $P point cloud for that character.
+Template files live in `Assets/Resources/Templates/` and are named `[ID]_template_[NN].txt` — **each character has multiple numbered variants**, not a single file (121 files across 18 characters as of 2026-08-31).
 
-Authoring rule: Template files must be validated against `RecognitionConfigSO.resamplePointCount` (default 32 points). A template with a different point count will cause a recognition error.
+**Format**, per `TemplateLoader.cs` → `StrokeTextParser.ParseStrokes`:
+
+- **One point per line**, as `x, y`. It is *not* one comma-separated list of all points.
+- Coordinates are **normalized floats**, not pixels — e.g. `0.1353, 0.0590`.
+- **A blank line separates strokes.** A file with no blank lines is a single-stroke character.
+- Empty/whitespace lines at the end are harmless; a file that parses to zero points logs `TemplateLoader: Template '<id>' had no valid points after parsing strokes.`
+
+**Authoring rules** (corrected — the previous version of this section was wrong):
+
+- ~~Templates must contain exactly `resamplePointCount` (32) points.~~ **False, and actively misleading.** Raw templates vary widely in point count — measured on `dev`: HA 251, A 537, RA 586, BA 670. `DollarPRecognizer.Normalize` calls `ResampleStrokes(strokes, _n)` to bring every cloud to `resamplePointCount` before scoring. **Author at whatever density the capture produces; do not hand-decimate to 32.**
+- **Stroke count is semantically meaningful.** It feeds the stroke-count mismatch penalty in top-K disambiguation, so blank-line placement must reflect how the character is genuinely drawn.
+- **Aspect ratio is meaningful and must be preserved.** `ScaleToSquare` scales uniformly for clouds whose bounding box exceeds `ONE_D_ASPECT_THRESHOLD` (4.5), which is what keeps a near-one-dimensional character such as HA distinguishable. A template captured with a distorted aspect will not normalize back to the right shape.
+- **Y is up.** Templates are authored in a y-up frame; feeding y-down screen coordinates in directly produces a vertically mirrored cloud that scores poorly.
+- Adding more variants is the **first and cheapest** lever for a character that recognizes poorly. Prefer it to changing `minimumConfidence`, which is global and needs UAT re-validation.
+
+[EVIDENCE: Assets/Scripts/Gameplay/Recognition/TemplateLoader.cs — "Each non-empty line is an x,y point and blank lines separate strokes"]
+[EVIDENCE: Assets/Scripts/Gameplay/Recognition/DollarPRecognizer.cs — `ResampleStrokes`, `ScaleToSquare`]
 
 ### 4.4 CampaignSaveDocument (schema v3)
 
