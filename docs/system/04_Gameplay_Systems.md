@@ -301,7 +301,25 @@ The following enemy types are specified in the GDD §4.3 and the Team README §9
 |---------|-----|-------|----------|--------|
 | `"el_inquisidor"` | Spanish | 5 | Phase-based. Can summon Soldado reinforcements during phases. | Implemented (`[Enemy] Boss_ElInquisidor.prefab`) |
 | `"superintendent"` | American | 10 | Phase-based. Decree ability temporarily scrambles nearby Baybayin labels. | PLANNED |
-| `"kadiliman"` | Final | 15 | Phase-based. Formless shadow entity. Summons enemies from all three eras. Drawing all 17 characters defeats it. | PLANNED |
+| `"kadiliman"` | Final | 15 | **Designed:** phase-based formless shadow entity, summons enemies from all three eras, drawing all 18 characters defeats it. **Authored:** see the gap note below. | ⚠️ STUB — config exists, does not implement the design |
+
+> **Kadiliman is authored, but as a stub that does not match its design (measured 2026-08-31).**
+> `BossConfig_Kadiliman.asset` exists and is referenced by `Level15_Config`, so the row above is no
+> longer simply "PLANNED". What is configured, however, diverges sharply from the design:
+>
+> | | Designed (GDD §4.3, §4.5) | Authored in `BossConfig_Kadiliman.asset` |
+> |---|---|---|
+> | Phases | timed sequence | **1** |
+> | Required draws | all 18 characters | **3** (`requiredCharacterCount: 3`) |
+> | Summons | enemies from all three eras | **none** — `summonEnemyTypes: []` |
+> | Audio bank | — | none (`fileID: 0`) |
+>
+> For scale, `BossConfig_ElInquisidor` — the **first** boss, at Level 5 — has 3 phases and 10 total
+> required draws. As configured, the final boss is easier than the first and summons nothing.
+>
+> Raising Kadiliman to 18 required draws is a **balance and design decision, not a documentation fix**,
+> so it is recorded here rather than applied. It needs its own ticket.
+
 
 [EVIDENCE: Assets/Prefabs/Enemies/ — Soldado, Soldier, Heitai, Maestro, Pensionado, General, Kisha, Kempei, Shokan, Boss_ElInquisidor]
 [EVIDENCE: Assets/ScriptableObjects/EnemyData_*.asset]
