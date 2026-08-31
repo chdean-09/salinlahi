@@ -46,7 +46,7 @@ You are **Salinlahi**, the inheritor. A young Filipino who discovers a bamboo sc
 | Entertainment First | Every design decision serves fun before education. If a feature does not make the game more exciting, it does not ship. The learning is a byproduct of good gameplay, not the other way around. |
 | Intrinsic Integration | Drawing Baybayin is the combat mechanic. It is not a quiz, not a mini-game, and not a reward condition. Playing the game and practicing the script are the same single activity. You cannot separate them. |
 | Pressure Creates Mastery | Enemies keep coming. The base keeps taking hits. You draw faster and more accurately because you have to, not because a tutor told you to practice. Time pressure and stakes replace rote memorization. |
-| Progressive Scaffolding | New characters are introduced gradually across levels. Early levels use only 3 characters. By the final levels, all 17 are active. The player builds familiarity through repetition under escalating difficulty. |
+| Progressive Scaffolding | New characters are introduced gradually across levels. Early levels use only 3 characters. By the final levels, all 18 are active. The player builds familiarity through repetition under escalating difficulty. |
 | Filipino Heritage, Modern Craft | The art, narrative, music, and design are rooted in Philippine history and identity. But the game itself is built to the same quality standard as any commercial indie title. Heritage is the soul, not the excuse. |
 
 ## 1.6 Non-Goals
@@ -101,7 +101,7 @@ There are no virtual joysticks, no attack buttons, and no gesture shortcuts. Dra
 | --- | --- |
 | Story Mode (15 levels) | Three chapters of 5 levels each. Each chapter covers a different era of Philippine history. New characters and enemy types are introduced progressively. Levels 5, 10, and 15 end with boss encounters. |
 | Endless Mode | Unlocked after completing the Story Mode or defeating the final boss. Random Baybayin characters, progressively faster enemies, no level cap. High score tracking. |
-| Tracing Dojo (Tutorial) | A pressure-free practice mode accessible from the main menu. Players can trace all 17 Baybayin characters at their own pace with no enemies, no timer, and no penalties. |
+| Tracing Dojo (Tutorial) | A pressure-free practice mode accessible from the main menu. Players can trace all 18 Baybayin characters at their own pace with no enemies, no timer, and no penalties. |
 
 # 3. Systems (Rules)
 
@@ -144,7 +144,19 @@ Character introduction follows a strict scaffolding system. The player never enc
 | --- | --- | --- |
 | Chapter 1: Liwanag (Light) | 1 to 5 | BA, KA, DA, GA, HA, LA, MA, NA (8 characters). Start with 3, add 1 per level. |
 | Chapter 2: Paglaban (Resistance) | 6 to 10 | NGA, PA, SA, TA, WA, YA (6 characters) plus the Kudlit modifier system (post-launch). |
-| Chapter 3: Pagbalik (Reclamation) | 11 to 15 | All 17 characters active simultaneously. No new characters, but enemy speeds and spawn rates reach maximum. Complex combinations appear. |
+| Chapter 3: Pagbalik (Reclamation) | 11 to 15 | All 18 characters active simultaneously. No new characters, but enemy speeds and spawn rates reach maximum. Complex combinations appear. |
+
+> **Character set: 18, not 17 (ruled 2026-08-31).** This build treats **`RA` as its own glyph**, where
+> classic Baybayin folds RA into DA. The set is therefore **15 consonants + 3 vowels = 18**, matching the
+> 18 `BaybayinCharacterSO` assets in `Assets/ScriptableObjects/Characters/`. This document previously said
+> 17 in nine places; those are corrected. Tracked as REQ-42 in
+> [docs/system/10_Requirements_Traceability_Matrix.md](../system/10_Requirements_Traceability_Matrix.md).
+>
+> **Open gap in the table above.** The two chapters introduce 8 + 6 = **14** characters, yet Chapter 3
+> declares all 18 active. `RA` and the three vowels (`A`, `E/I`, `O/U`) are never listed as introduced
+> anywhere. Where those four enter the scaffolding is an unresolved content question — the authoritative
+> introduction order lives in the campaign data (`firstIntroductionLevelId`), not here.
+
 
 After each level, a short trivia card appears showing one fact about Baybayin or pre-colonial Philippine history. It is brief, visual, and never interrupts gameplay.
 
@@ -174,7 +186,7 @@ There is no machine learning, no difficulty adaptation, and no procedural genera
 | --- | --- |
 | Enemy speed | Chapter 1 is slow. Chapter 2 is medium. Chapter 3 is fast. Exact values tuned during playtesting. |
 | Spawn rate | Increases per wave within a level and per level within a chapter. Late Chapter 3 levels should feel chaotic. |
-| Active character count | Chapter 1 levels start with 3 and build to 8. Chapter 2 adds 6 more. Chapter 3 uses all 17. |
+| Active character count | Chapter 1 levels start with 3 and build to 8. Chapter 2 adds 6 more. Chapter 3 uses all 18. |
 | Enemy variety | Chapter 1 has Soldado, Fraile (phaser), Guardia (fast), and Capitan (shielded elite). Chapter 2 has Soldier, Maestro (decoy), Pensionado (zigzag), and General (commander elite). Chapter 3 has Heitai (fast regular), Kisha (sprinter), Kempei (censor), and Shokan (shielded + corruption veil elite). |
 | Hearts | Default is 3 hearts per level. No extra lives, no health pickups. The pressure must feel real. |
 | Recognition threshold | Fixed at 0.60 confidence across all levels. The difficulty comes from time pressure and character volume, not from stricter recognition. |
@@ -191,7 +203,7 @@ The game has 15 story mode levels divided into 3 chapters of 5 levels each. Each
 | 2: Paglaban | American Occupation | 6 to 10 | A new system replaces the old tongue with a foreign language. You battle to preserve what was nearly lost. Map: top-down cold grey cobblestone street with colonial buildings, lamp posts, American flags. |
 | 3: Pagbalik | Japanese Occupation | 11 to 15 | Another wave of occupation and cultural disruption. You make your final stand as the last guardian. Map: top-down bombed cobblestone (Map 2 destroyed), bombed buildings, fires in rubble, ash particles, rising sun flags. |
 
-Boss encounters happen at Level 5 (El Inquisidor), Level 10 (The Superintendent), and Level 15 (Kadiliman). The final boss is Kadiliman (Darkness itself), the embodiment of cultural erasure. Defeating Kadiliman requires the player to draw all 17 Baybayin characters in a timed sequence.
+Boss encounters happen at Level 5 (El Inquisidor), Level 10 (The Superintendent), and Level 15 (Kadiliman). The final boss is Kadiliman (Darkness itself), the embodiment of cultural erasure. Defeating Kadiliman requires the player to draw all 18 Baybayin characters in a timed sequence.
 
 Each era has its own shrine/base structure at 64x96: Baybayin Altar (Spanish), Ancestral Door (American), Scroll Shrine (Japanese). Each shrine has 4 visual damage states (full, crack 1, crack 2, destroyed).
 
@@ -238,7 +250,7 @@ All enemies are era-themed historical figures corrupted by shadow. Each era has 
 | --- | --- | --- | --- |
 | El Inquisidor | Spanish | 5 | Phase-based. Can summon Soldado reinforcements during phases. |
 | The Superintendent | American | 10 | Phase-based. Decree ability temporarily scrambles nearby Baybayin labels. |
-| Kadiliman | Final | 15 | Phase-based. Formless shadow entity. Summons enemies from all three eras. Drawing all 17 characters defeats it. |
+| Kadiliman | Final | 15 | Phase-based. Formless shadow entity. Summons enemies from all three eras. Drawing all 18 characters defeats it. |
 
 ## 4.4 Items
 
@@ -256,7 +268,7 @@ The story is delivered through short dialogue panels that appear at the start an
 | Chapter 2 Intro | A new era. A new occupier. The old tongue is being replaced by a foreign language. The script is fading from memory. |
 | Chapter 2 Boss | The Superintendent, an American colonial education administrator wielding the power of institutional erasure. |
 | Chapter 3 Intro | The final stand. Another wave of occupation. The script is almost gone. You are the last one who can bring it back. |
-| Final Boss | Kadiliman, the Darkness itself. The embodiment of cultural forgetting. A formless shadow entity combining all three eras of corruption. Drawing all 17 characters in a timed sequence restores Baybayin to the world. |
+| Final Boss | Kadiliman, the Darkness itself. The embodiment of cultural forgetting. A formless shadow entity combining all three eras of corruption. Drawing all 18 characters in a timed sequence restores Baybayin to the world. |
 | Ending | The script returns. The world remembers. Endless Mode unlocks. |
 
 # 5. UX and UI
@@ -314,7 +326,7 @@ Tapping **ALMANAC** on the Main Menu transitions to the dedicated Almanac scene.
 
 | Tab | Contents |
 | --- | --- |
-| **BAYBAYIN** | One cell per Baybayin character (17 total). Cells unlock as the player defeats enemies that carry that character. |
+| **BAYBAYIN** | One cell per Baybayin character (18 total). Cells unlock as the player defeats enemies that carry that character. |
 | **ENEMIES** | One cell per enemy and boss type. Cells are revealed as the player encounters each enemy in gameplay. |
 
 ### Cell States
@@ -418,7 +430,7 @@ Development follows Agile Scrum with 2-week sprints. Total development timeline 
 | Art Batch 2 (Capitan, all American + Japanese enemies, remaining protagonists, El Inquisidor boss) | End of Week 5 | Recolor Soldado sprites as temporary substitutes |
 | Art Batch 3 (UI, portraits, Map 2 + Map 3 tilesets, dialogue panel, Superintendent + Kadiliman bosses) | End of Week 7 | Plain Unity UI, text-only dialogue |
 | Art Batch 4 (Spawn/hurt anims, FX polish, app icon) | End of Week 8 | Ship without spawn/hurt anims, use placeholder icon |
-| Pronunciation audio clips (17 characters) | End of Week 3 | Team records their own voices, replace later if professional clips are commissioned |
+| Pronunciation audio clips (18 characters) | End of Week 3 | Team records their own voices, replace later if professional clips are commissioned |
 | Boss theme BGM (1 to 3 tracks) | End of Week 7 | Use modified gameplay BGM as placeholder |
 | UAT participants (50 to 100 people) | Week 9 | Start recruiting in Week 6, confirm in Week 8 |
 | Google Play Developer account ($25) | Week 1 | Apply on Day 1 |

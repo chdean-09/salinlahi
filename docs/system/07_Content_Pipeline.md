@@ -12,7 +12,7 @@
 
 The shipped game covers **18 Baybayin characters: 15 consonants (BA, DA, GA, HA, KA, LA, MA, NA, NGA, PA, RA, SA, TA, WA, YA) and 3 vowels (A, E/I, O/U)**. Diacritical marks (kudlit) are explicitly out of MVP scope (Should Ship, may be deferred post-launch).
 
-> **Known discrepancy — open content decision.** The GDD states 17 characters (14 consonants) in five places. The authored set is 18 because **`RA` is authored as its own glyph**, where classic Baybayin folds RA into DA. The code and assets are correct at 18; the requirement text is the thing that is wrong. This is tracked as REQ-42 (⚠ Partial, P1) in doc 10 and discussed in doc 13 — it needs a product decision, not a code change. Do not "fix" the asset count down to 17 to match the GDD.
+> **Settled (2026-08-31): the set is 18.** `RA` is its own glyph, where classic Baybayin folds RA into DA, giving **15 consonants + 3 vowels**. The code and assets were always correct; the requirement text was wrong, and the GDD has been corrected in nine places. Tracked as REQ-42 in doc 10, now ✅ Resolved. Do not "fix" the asset count down to 17 to match older documents.
 
 [EVIDENCE: `Assets/ScriptableObjects/Characters/` — 18 `Char_*.asset` files]
 [EVIDENCE: docs/system/10_Requirements_Traceability_Matrix.md, REQ-12 and REQ-42]
