@@ -120,6 +120,7 @@ GameObject:
   - component: {fileID: 8037671833055544141}
   - component: {fileID: 3113497809838385314}
   - component: {fileID: 5774001207331981101}
+  - component: {fileID: 2524881973347211465}
   m_Layer: 0
   m_Name: '[Enemy] Fraile'
   m_TagString: Untagged
@@ -324,3 +325,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PhaserEnemy
   _renderers:
   - {fileID: 6330742590155926061}
+--- !u!114 &2524881973347211465
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8620596032087142478}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 719ec8fed91aaf248bafa2f655012d40, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Salinlahi.Runtime::EnemyHurtFeedback
