@@ -86,7 +86,7 @@ path. SALIN-168 remains the owner of internal sequence rules and runtime behavio
 - `characterID` must be unique across all `BaybayinCharacterSO` assets in the project.
 - `templateFileName` must reference a file that exists in `Assets/Resources/Templates/`.
 - `pronunciationClip` must be assigned before Sprint 2 UAT.
-- **18** total assets must exist at content-complete milestone: 15 consonants + 3 vowels. (Was stated as 17 "one per consonant"; corrected under the REQ-42 ruling that `RA` is its own glyph. All 18 exist today.)
+- **18** `Char_*.asset` files exist on disk, but only **17** are taught: `CampaignConfig_RevisedV1.symbols` holds 17 and excludes `Char_RA`, which has no spoken value and no `firstIntroductionLevelId`. The 18th file is vestigial and is referenced only by the legacy `CharacterRegistry_Default.asset` (SALIN-212). Content-complete is measured against the **17** in the campaign catalog; see REQ-42 in doc 10.
 
 **Multi-Template Note:**
 TDD §2.2 specifies that multiple templates per character are supported (e.g., `BA_template_01.txt`, `BA_template_02.txt`) to handle handwriting variation. The current `templateFileName` field is a single `string`, which covers the base case of one template per character. If recognition accuracy tuning in Sprint 2 requires multiple templates per character, this field must either be changed to `List<string> templateFileNames` or the team must create multiple `BaybayinCharacterSO` assets per character. This decision is deferred to Sprint 2 integration.

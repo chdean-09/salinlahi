@@ -10,9 +10,21 @@
 
 ### 1.1 Character Set Scope
 
-The shipped game covers **18 Baybayin characters: 15 consonants (BA, DA, GA, HA, KA, LA, MA, NA, NGA, PA, RA, SA, TA, WA, YA) and 3 vowels (A, E/I, O/U)**. Diacritical marks (kudlit) are explicitly out of MVP scope (Should Ship, may be deferred post-launch).
+The shipped game **teaches 17 visual identities**: 14 consonants (BA, GA, HA, KA, LA, MA, NA, NGA, PA, SA, TA, WA, YA, and DA — which carries both the `da` and `ra` readings) and 3 vowels (A, E/I, O/U). The **recognizer separately distinguishes 18 glyph shapes**, because `RA` has its own templates and art. Diacritical marks (kudlit) are explicitly out of MVP scope (Should Ship, may be deferred post-launch).
 
-> **Settled (2026-08-31): the set is 18.** `RA` is its own glyph, where classic Baybayin folds RA into DA, giving **15 consonants + 3 vowels**. The code and assets were always correct; the requirement text was wrong, and the GDD has been corrected in nine places. Tracked as REQ-42 in doc 10, now ✅ Resolved. Do not "fix" the asset count down to 17 to match older documents.
+> **Corrected 2026-09-01: the taught set is 17, and "the set" means two things.** A 2026-08-31 ruling
+> that `RA` is its own glyph was read as making every count 18. That is reverted.
+>
+> | Scope | Count | Evidence |
+> |---|---:|---|
+> | **Taught / curriculum** | **17** | `CampaignConfig_RevisedV1.symbols` holds 17 and excludes `RA`; `Char_DA` carries both `value.da` and `value.ra`; spoken values total 18 across those 17 symbols |
+> | **Recognised glyph shapes** | **18** | `RA` has its own 5 templates and its own art; the `$P` recognizer tells the shapes apart |
+> | **`Char_*.asset` files on disk** | **18** | Includes the vestigial `Char_RA.asset` |
+>
+> `Char_RA` has no spoken value, no `firstIntroductionLevelId`, and is referenced by exactly one
+> thing in the project — the legacy `CharacterRegistry_Default.asset`. Nothing else reads it.
+> Reconciling the registry with the campaign catalog is tracked as SALIN-212. Tracked as REQ-42 in
+> doc 10.
 
 [EVIDENCE: `Assets/ScriptableObjects/Characters/` — 18 `Char_*.asset` files]
 [EVIDENCE: docs/system/10_Requirements_Traceability_Matrix.md, REQ-12 and REQ-42]

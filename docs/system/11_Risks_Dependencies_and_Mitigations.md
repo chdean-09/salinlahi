@@ -34,7 +34,7 @@
 |--------|-----------|------|-------|------------|--------|
 | DEP-01 | All 18 BaybayinCharacterSO assets authored with valid `characterID`, `syllable`, `displaySprite` | Content | Chad | Sprint 2 integration | ✅ DONE — 18 `Char_*.asset` present |
 | DEP-02 | Recognition template `.txt` files in `Assets/Resources/Templates/` covering all 18 characters | Content | Chad | Sprint 2 DollarPRecognizer | ✅ DONE — 121 template files present |
-| DEP-03 | All 18 pronunciation `AudioClip` assets assigned in `BaybayinCharacterSO.pronunciationClip` | Content/Audio | Ian Clyde | Sprint 2 audio integration | ⚠️ PARTIAL — 7 of 18 assigned; **11 missing**. Audio feedback on recognition is silent for those 11 characters. |
+| DEP-03 | All 17 taught-set pronunciation `AudioClip` assets assigned in `BaybayinCharacterSO.pronunciationClip` (`Char_RA` excluded: no spoken value, taught by no level) | Content/Audio | Ian Clyde | Sprint 2 audio integration | ⚠️ PARTIAL — 7 of 18 assigned; **11 missing**. Audio feedback on recognition is silent for those 11 characters. |
 | DEP-04 | `[Enemy] Standard.prefab` has `EnemyDataSO` assigned in Inspector | Configuration | Chad | Sprint 1 wave testing | LIKELY DONE — prefab exists |
 | DEP-05 | PlayerBase `GameObject` exists in Gameplay scene with tag `"PlayerBase"` | Scene setup | Jon Wayne | Sprint 2 `EnemyMover` base-hit test | ✅ DONE — tag defined in `ProjectSettings/TagManager.asset`; present in `Gameplay.unity` and `Level_01_Tutorial.unity` |
 | DEP-06 | Android keystore signed and configured | Build | Ian Clyde | Sprint 1 Android build (confirmed via git commit) | ✅ DONE — commit `ddc6ea3` |

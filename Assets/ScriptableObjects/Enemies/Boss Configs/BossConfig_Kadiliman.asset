@@ -67,7 +67,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: ccb6fd07e3fd94990a6944ec2b341e31, type: 2}
     - {fileID: 11400000, guid: 5cc8877bb53ca480da124ff2ffaa9de0, type: 2}
     summonSpawnRange: {x: 3.5, y: 1}
-    requiredCharacterCount: 5
+    requiredCharacterCount: 4
     vulnerabilityTimer: 22
     movementPattern: 2
     movementSpeed: 0

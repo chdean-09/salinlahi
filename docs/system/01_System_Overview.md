@@ -24,10 +24,10 @@ Salinlahi is a 2D pixel art mobile defense game whose core mechanic is drawing B
 | In Scope | Evidence |
 |----------|----------|
 | Portrait-mode vertical defense gameplay on Android and iOS | GDD §1.3 Platforms |
-| $P Point-Cloud gesture recognition for 18 Baybayin characters (15 consonants + 3 vowels) | Salinlahi.md §3.3.3; RecognitionConfigSO.cs; `Assets/ScriptableObjects/Characters/` (18 `Char_*.asset`) |
+| $P Point-Cloud gesture recognition for 18 Baybayin **glyph shapes** (recognition scope; the curriculum teaches **17** identities — `DA` carries both `da` and `ra`. See REQ-42, doc 10) | Salinlahi.md §3.3.3; RecognitionConfigSO.cs; `Assets/ScriptableObjects/Characters/` (18 `Char_*.asset`) |
 | Story Mode: 15 levels across 3 chapters, boss encounters at levels 5, 10, 15 | GDD §2.4 |
 | Endless Mode: Unlocked after completing Story Mode or defeating the final boss, random characters, high-score tracking | GDD §2.4 |
-| Tracing Dojo: Pressure-free practice mode for all 18 characters, no enemies | GDD §2.4; `Assets/_Scenes/TracingDojo.unity`; doc 10 REQ-32 |
+| Tracing Dojo: Pressure-free practice mode, no enemies (grid is registry-driven and currently shows 18; the taught set is 17 — SALIN-212) | GDD §2.4; `Assets/_Scenes/TracingDojo.unity`; doc 10 REQ-32 |
 | Enemy wave system driven by ScriptableObject data (LevelConfigSO with embedded WaveDefinitions) | Salinlahi.md §3.5.1; LevelConfigSO.cs |
 | Corrupted-enemy roster: enemies carry an `assignedCharacter` binding them to the Baybayin syllable that defeats them. **Implemented:** 32 `EnemyData_*` assets exist, 19 with `assignedCharacter` set. **Planned:** per-enemy stat/ability tuning and the Labo / Daan-Lihis prefab variants are not yet on `dev` — see PR #144. | `Assets/ScriptableObjects/Enemies/`; EnemyDataSO.cs `assignedCharacter` |
 | Two-build split: Salinlahi Lite (free, levels 1–3) and Salinlahi Full (PHP 149, all content) | TDD §7.2; Salinlahi.md §3.4 |
@@ -49,7 +49,7 @@ Salinlahi is a 2D pixel art mobile defense game whose core mechanic is drawing B
 | Machine learning / CNN-based recognition | Requires training data and model binary; not in scope |
 | Android/iOS cloud save | Not specified in any source document |
 | In-app purchases or advertising | Business model is premium + lite; no IAP or ads |
-| Diacritical marks (kudlit) recognition in MVP | Recognition scope limited to 18 base characters (15 consonants + 3 vowels); kudlit modifier mechanic is a Should Ship feature that may be deferred post-launch (GDD §3.3 Chapter 2; Team README Feature Priority Matrix) |
+| Diacritical marks (kudlit) recognition in MVP | Recognition scope limited to the 18 base glyph shapes; kudlit modifier mechanic is a Should Ship feature that may be deferred post-launch (GDD §3.3 Chapter 2; Team README Feature Priority Matrix) |
 | Roman-alphabet romanization input | Drawing is the only combat input; no alternative input path |
 | 3D geometry or 3D renderer | URP 2D only; no 3D geometry anywhere in project |
 
