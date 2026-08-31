@@ -41,6 +41,12 @@ public class BaybayinCharacterSO : ScriptableObject
     [Tooltip("Optional. Framed + glitched variant shown when a visual override (e.g. Kempei scramble) is active. If null, falls back to badgeSprite.")]
     public Sprite scrambledBadgeSprite;
 
+    [Tooltip("Bare glyph on a transparent background (Art/UI/GlyphOutlines/[ID].png) — the only " +
+             "sprite here with no card, frame or romanisation. Generated from the recognition " +
+             "templates, so it shows exactly the shape the recognizer scores against. Used as the " +
+             "Tracing Dojo guide and the gameplay trace hint. White, so consumers tint and fade it.")]
+    public Sprite glyphOutlineSprite;
+
     [Header("Audio")]
     public AudioClip pronunciationClip;
 

@@ -14,6 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: RA
   syllable: ra
+  stableId: 
+  legacyAliases: []
+  spokenValues: []
+  firstIntroductionLevelId: 
+  description: 
   displaySprite: {fileID: -4082948466674284124, guid: 6fe326552750eee4fb1e4ddedf481626, type: 3}
+  almanacSprite: {fileID: 0}
+  badgeSprite: {fileID: 0}
+  scrambledBadgeSprite: {fileID: 0}
+  glyphOutlineSprite: {fileID: 21300000, guid: b2602bad396e640408ec400313a9701a, type: 3}
   pronunciationClip: {fileID: 0}
   templateFileName: RA_template_01

@@ -31,5 +31,6 @@ MonoBehaviour:
   almanacSprite: {fileID: 6705563550888200435, guid: 9dc1daf3564406d4fa1b0baa99a2e2ec, type: 3}
   badgeSprite: {fileID: -3153685488524106912, guid: 7b8942c51615a774e8a631fee6cf1132, type: 3}
   scrambledBadgeSprite: {fileID: 0}
+  glyphOutlineSprite: {fileID: 21300000, guid: 88f64a0ccc1314770aae94bea7e7b12b, type: 3}
   pronunciationClip: {fileID: 8300000, guid: 15bb1b815d17d21459f70bfdc306e281, type: 3}
   templateFileName: DA_template_01

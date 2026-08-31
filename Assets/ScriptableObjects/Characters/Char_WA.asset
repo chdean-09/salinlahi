@@ -28,5 +28,6 @@ MonoBehaviour:
   almanacSprite: {fileID: -129360563802242312, guid: de8ae0f418874d74184d60d5e8fa9803, type: 3}
   badgeSprite: {fileID: 1820221823815775938, guid: ca1f080825aef994095f093a562c0b28, type: 3}
   scrambledBadgeSprite: {fileID: 0}
+  glyphOutlineSprite: {fileID: 21300000, guid: c9e586b055d4c4612939c67de212eb06, type: 3}
   pronunciationClip: {fileID: 8300000, guid: 8efac7f30c80fd04487330e616088ec9, type: 3}
   templateFileName: WA_template_01

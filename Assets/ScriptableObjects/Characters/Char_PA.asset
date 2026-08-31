@@ -26,5 +26,6 @@ MonoBehaviour:
   almanacSprite: {fileID: 0}
   badgeSprite: {fileID: 0}
   scrambledBadgeSprite: {fileID: 0}
+  glyphOutlineSprite: {fileID: 21300000, guid: a17c86eab7d834613a09bec43288f710, type: 3}
   pronunciationClip: {fileID: 0}
   templateFileName: PA_template_01
