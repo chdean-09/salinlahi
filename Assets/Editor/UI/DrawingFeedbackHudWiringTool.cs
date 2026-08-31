@@ -98,7 +98,7 @@ public static class DrawingFeedbackHudWiringTool
             label.fontSize = 40f;
             label.color = Color.white;
             label.alignment = TextAlignmentOptions.Center;
-            label.enableWordWrapping = true;
+            label.textWrappingMode = TextWrappingModes.Normal;
             label.text = string.Empty;                  // nothing until the player draws
             label.raycastTarget = false;                // must never eat drawing input
 

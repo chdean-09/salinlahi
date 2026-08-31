@@ -56,7 +56,7 @@ public static class FeedbackToastLayoutTool
             encouragement.enableAutoSizing = true;           // longest wording still fits
             encouragement.fontSizeMin = 16f;
             encouragement.fontSizeMax = 28f;
-            encouragement.enableWordWrapping = true;
+            encouragement.textWrappingMode = TextWrappingModes.Normal;
             encouragement.alignment = TextAlignmentOptions.Bottom;
             encouragement.name = "EncouragementLabel";       // was ConfidenceLabel; binding is by fileID
 
