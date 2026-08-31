@@ -120,6 +120,7 @@ GameObject:
   - component: {fileID: 8037671833055544141}
   - component: {fileID: 3113497809838385314}
   - component: {fileID: 6739210088254948050}
+  - component: {fileID: 4176329660482210352}
   m_Layer: 0
   m_Name: '[Enemy] Pensionado'
   m_TagString: Untagged
@@ -322,3 +323,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: da80584c092e38d42b379eb48516a709, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Salinlahi.Runtime::PensionadoMover
+--- !u!114 &4176329660482210352
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8620596032087142478}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 719ec8fed91aaf248bafa2f655012d40, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Salinlahi.Runtime::EnemyHurtFeedback
