@@ -207,7 +207,7 @@ Test evidence therefore comes from a local batchmode run, quoted with both the b
 | BS-01 | Boss spawns at boss level (5, 10, 15) | Play Level 5 to final wave completion | Boss encounter activates after waves; `OnBossStarted(BossConfigSO)` fires | P0 |
 | BS-02 | Boss phase transitions work | During the `Vulnerable` window, player draws `phase.requiredCharacterCount` correct random glyphs within `phase.vulnerabilityTimer` seconds | `OnBossDamaged(phaseIndex, hpRemaining)` fires; boss advances to next phase (or `Outro` on the final phase) | P0 |
 | BS-03 | Boss defeat triggers level complete | Clear all boss phases | `OnBossDefeated` fires; `OnLevelComplete` fires | P0 |
-| BS-04 | Kadiliman requires all 18 characters | Play Level 15 boss | Player must draw all 18 characters to defeat Kadiliman | P1 |
+| BS-04 | Kadiliman requires all 17 characters | Play Level 15 boss | Player must draw all 17 characters to defeat Kadiliman | P1 |
 | BS-05 | Vulnerability timer expiry repeats the phase without HP loss | Enter `Vulnerable` window; do not satisfy `requiredCharacterCount` before `vulnerabilityTimer` elapses | `OnBossVulnerabilityExpired(phaseIndex)` fires; `HPRemaining` unchanged after window expires with `CorrectDrawsThisWindow < requiredCharacterCount`; phase loop repeats | P0 |
 | BS-06 | Boss minion summons appear at boss position with horizontal clamp | Allow `BossSummonTicker` to fire a summon tick on a phase that moves (Pace/Teleport) | Spawned minion X is within `summonSpawnRange.x` of boss X AND inside `BossConfigSO.summonHorizontalBounds` when configured | P1 |
 
@@ -295,7 +295,7 @@ All the following must be true before UAT begins:
 | Levels 1–10 are playable end-to-end | Verified by internal playthrough |
 | Recognition accuracy ≥ 80% for correctly shaped draws on device | Measured across 10 players × 5 characters each |
 | 0 crashes in 2-hour internal session | Logged via Unity Cloud Diagnostics or manual log review |
-| Audio plays on all 18 character defeats | ⛔ **BLOCKED** — 7 of 18 `pronunciationClip` fields assigned; 11 missing (DEP-03, doc 11) |
+| Audio plays on all 17 taught character defeats | ⛔ **BLOCKED** — 7 of 17 `pronunciationClip` fields assigned; **10 missing** (DEP-03, doc 11). `Char_RA` also has no clip, but it carries no spoken value and no level teaches it, so it is not counted. |
 | HUD shows correct heart count and wave number | Functional HUD with EventBus integration |
 | Game Over screen shows stats | Final stats display implemented |
 

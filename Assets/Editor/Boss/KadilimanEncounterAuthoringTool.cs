@@ -7,15 +7,21 @@ using UnityEngine;
 /// SALIN-207. Authors the Kadiliman final encounter.
 ///
 /// It shipped as a stub: 1 phase, requiredCharacterCount 3, summonEnemyTypes empty — against a
-/// design of "all 18 characters in a timed sequence" with summons from all three eras. As
+/// design of "all characters in a timed sequence" with summons from all three eras. As
 /// configured the final boss was easier than El Inquisidor at Level 5, which has 3 phases and 10
 /// required draws, and it summoned nothing at all.
 ///
 /// The shape here follows the GDD: four phases that walk forward through the three eras of
-/// corruption and then combine them, summing to 18 required draws.
+/// corruption and then combine them, summing to the full taught set.
 ///
 ///   P1 Spanish -> P2 American -> P3 Japanese -> P4 all three, elites included
-///   required draws 4 + 4 + 5 + 5 = 18
+///   required draws 4 + 4 + 4 + 5 = 17
+///
+/// 17, not 18. The taught set is 17 visual identities -- the campaign catalog holds 17 symbols and
+/// DA carries both spoken values, value.da and value.ra. RA is not in the catalog and no level
+/// introduces it, so a boss demanding 18 draws would demand one the player was never taught. The
+/// recognizer separately supports 18 glyph SHAPES (RA has its own 5 templates); that is recognition
+/// scope, not curriculum scope, and the two are no longer conflated here.
 ///
 /// Pacing is deliberately generous, per RISK-14 in doc 11: start boss timers loose and tighten on
 /// playtest feedback. Every number below is a starting point for playtesting, not a tuned value.
@@ -50,7 +56,7 @@ public static class KadilimanEncounterAuthoringTool
         },
         new PhaseSpec {
             Era = "Japanese", Duration = 30f, DelaySummons = 4f, MinionsMin = 2, MinionsMax = 3,
-            DelayMinions = 0.7f, Required = 5, VulnTimer = 22f, MovementPattern = 2, MoveSpeed = 0f,
+            DelayMinions = 0.7f, Required = 4, VulnTimer = 22f, MovementPattern = 2, MoveSpeed = 0f,
             PaceHalf = 2f, SpawnRange = new Vector2(3.5f, 1f), TeleportHalf = new Vector2(2.5f, 2.5f),
             Summons = new[] { "Heitai", "Kisha", "Kempei" },
         },
@@ -67,7 +73,7 @@ public static class KadilimanEncounterAuthoringTool
     private const string Description =
         "Kadiliman is the Darkness itself, the embodiment of cultural forgetting. A formless " +
         "shadow entity that combines all three eras of corruption.\n\n\n\n" +
-        "Power: Summons enemies from every era. Drawing all 18 characters in a timed sequence " +
+        "Power: Summons enemies from every era. Drawing all 17 characters in a timed sequence " +
         "restores Baybayin to the world.";
 
     [MenuItem("Salinlahi/SALIN-207/Author Kadiliman Encounter")]
