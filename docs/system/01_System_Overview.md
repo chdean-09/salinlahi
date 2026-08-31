@@ -1,7 +1,7 @@
 # 01 — System Overview
 **Project:** Salinlahi
-**Version:** 1.5
-**Date:** 2026-05-27
+**Version:** 1.6
+**Date:** 2026-08-31
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -24,11 +24,12 @@ Salinlahi is a 2D pixel art mobile defense game whose core mechanic is drawing B
 | In Scope | Evidence |
 |----------|----------|
 | Portrait-mode vertical defense gameplay on Android and iOS | GDD §1.3 Platforms |
-| $P Point-Cloud gesture recognition for 17 Baybayin characters (14 consonants + 3 vowels) | Salinlahi.md §3.3.3; RecognitionConfigSO.cs |
+| $P Point-Cloud gesture recognition for 18 Baybayin characters (15 consonants + 3 vowels) | Salinlahi.md §3.3.3; RecognitionConfigSO.cs; `Assets/ScriptableObjects/Characters/` (18 `Char_*.asset`) |
 | Story Mode: 15 levels across 3 chapters, boss encounters at levels 5, 10, 15 | GDD §2.4 |
 | Endless Mode: Unlocked after completing Story Mode or defeating the final boss, random characters, high-score tracking | GDD §2.4 |
-| Tracing Dojo: Pressure-free practice mode for all 17 characters, no enemies | GDD §2.4 |
+| Tracing Dojo: Pressure-free practice mode for all 18 characters, no enemies | GDD §2.4; `Assets/_Scenes/TracingDojo.unity`; doc 10 REQ-32 |
 | Enemy wave system driven by ScriptableObject data (LevelConfigSO with embedded WaveDefinitions) | Salinlahi.md §3.5.1; LevelConfigSO.cs |
+| Corrupted-enemy roster: enemies carry an `assignedCharacter` binding them to the Baybayin syllable that defeats them. **Implemented:** 32 `EnemyData_*` assets exist, 19 with `assignedCharacter` set. **Planned:** per-enemy stat/ability tuning and the Labo / Daan-Lihis prefab variants are not yet on `dev` — see PR #144. | `Assets/ScriptableObjects/Enemies/`; EnemyDataSO.cs `assignedCharacter` |
 | Two-build split: Salinlahi Lite (free, levels 1–3) and Salinlahi Full (PHP 149, all content) | TDD §7.2; Salinlahi.md §3.4 |
 | Fully offline operation — zero network calls at runtime | GDD §1.3; TDD header |
 | Singleton manager architecture with DontDestroyOnLoad | GameManager.cs; Singleton.cs |
@@ -48,7 +49,7 @@ Salinlahi is a 2D pixel art mobile defense game whose core mechanic is drawing B
 | Machine learning / CNN-based recognition | Requires training data and model binary; not in scope |
 | Android/iOS cloud save | Not specified in any source document |
 | In-app purchases or advertising | Business model is premium + lite; no IAP or ads |
-| Diacritical marks (kudlit) recognition in MVP | Recognition scope limited to 17 base characters (14 consonants + 3 vowels); kudlit modifier mechanic is a Should Ship feature that may be deferred post-launch (GDD §3.3 Chapter 2; Team README Feature Priority Matrix) |
+| Diacritical marks (kudlit) recognition in MVP | Recognition scope limited to 18 base characters (15 consonants + 3 vowels); kudlit modifier mechanic is a Should Ship feature that may be deferred post-launch (GDD §3.3 Chapter 2; Team README Feature Priority Matrix) |
 | Roman-alphabet romanization input | Drawing is the only combat input; no alternative input path |
 | 3D geometry or 3D renderer | URP 2D only; no 3D geometry anywhere in project |
 
@@ -85,7 +86,11 @@ Game content (levels, waves, enemies, characters, recognition configuration) is 
 
 Enemy objects are managed through a **Unity `ObjectPool<Enemy>`** instance in `EnemyPool`. No `Instantiate` or `Destroy` call occurs during the gameplay loop. Enemies are retrieved from the pool (`EnemyPool.Get(data)`) and returned to it on defeat or base-hit.
 
-The **$P Point-Cloud Recognizer** operates fully on-device against 17 pre-loaded template files stored in `Assets/Resources/Templates/`. Recognition runs in two stages: (1) pure $P shape scoring picks a leader across all characters; if that leader beats the runner-up by at least `0.08`, it is returned untaxed. (2) Otherwise the top three candidates are re-ranked by a composite score that multiplies shape score by stroke-count and aspect-ratio mismatch penalties. This top-K disambiguation isolates semantic penalties to close-call candidates only, so characters that are unambiguous by shape do not pay a tax. Scores at or above `0.60` are accepted.
+The **$P Point-Cloud Recognizer** operates fully on-device against 121 pre-loaded template files covering all 18 characters, stored in `Assets/Resources/Templates/`. Recognition runs in two stages: (1) pure $P shape scoring picks a leader across all characters; if that leader beats the runner-up by at least `CLEAR_WIN_GAP` (`0.08`), it is returned untaxed. (2) Otherwise the top `DISAMBIGUATION_TOP_K` (`3`) candidates are re-ranked by a composite score that multiplies shape score by stroke-count and aspect-ratio mismatch penalties. This top-K disambiguation isolates semantic penalties to close-call candidates only, so characters that are unambiguous by shape do not pay a tax. Scores at or above `minimumConfidence` (`0.60`) are accepted.
+
+Before scoring, candidate and template point clouds are normalized by `ScaleToSquare`, which is **aspect-aware rather than purely per-axis**. A gesture whose bounding box is at least `ONE_D_ASPECT_THRESHOLD` (`4.5`) times longer on one axis than the other is scaled *uniformly* by its longer side; everything else is scaled per-axis to fill the square. This matters because per-axis scaling discards the aspect ratio, which is the only distinguishing feature of essentially one-dimensional characters — HA is drawn at a measured bounding-box aspect of 5.53–12.77, while every other character sits at or below 3.94. Scaling HA per-axis inflated it into a square and made it unrecognizable. Applying uniform scaling to *all* characters was measured to be worse overall (it regresses RA toward KA), so the threshold deliberately selects the hybrid.
+
+[EVIDENCE: Assets/Scripts/Gameplay/Recognition/DollarPRecognizer.cs, `ScaleToSquare`, `CLEAR_WIN_GAP`, `DISAMBIGUATION_TOP_K`, `ONE_D_ASPECT_THRESHOLD`]
 
 ```
 App Launch

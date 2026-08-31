@@ -1,7 +1,7 @@
 # 07 — Content Pipeline
 **Project:** Salinlahi
-**Version:** 1.5
-**Date:** 2026-06-01
+**Version:** 1.6
+**Date:** 2026-08-31
 **Owner:** Chad Andrada (Product Owner / Designer)
 
 ---
@@ -10,10 +10,13 @@
 
 ### 1.1 Character Set Scope
 
-The game covers **17 Baybayin characters: 14 consonants (BA, KA, DA, GA, HA, LA, MA, NA, NGA, PA, SA, TA, WA, YA) and 3 vowels (A, E/I, O/U)**. Diacritical marks (kudlit) are explicitly out of MVP scope (Should Ship, may be deferred post-launch).
+The shipped game covers **18 Baybayin characters: 15 consonants (BA, DA, GA, HA, KA, LA, MA, NA, NGA, PA, RA, SA, TA, WA, YA) and 3 vowels (A, E/I, O/U)**. Diacritical marks (kudlit) are explicitly out of MVP scope (Should Ship, may be deferred post-launch).
 
-[EVIDENCE: docs/capstone/Salinlahi.md, §1.5.1 Scope — "17 Baybayin consonant characters"; §3.3.3]
-[EVIDENCE: Assets/Scripts/Data/RecognitionConfigSO.cs — context implies 17 templates]
+> **Known discrepancy — open content decision.** The GDD states 17 characters (14 consonants) in five places. The authored set is 18 because **`RA` is authored as its own glyph**, where classic Baybayin folds RA into DA. The code and assets are correct at 18; the requirement text is the thing that is wrong. This is tracked as REQ-42 (⚠ Partial, P1) in doc 10 and discussed in doc 13 — it needs a product decision, not a code change. Do not "fix" the asset count down to 17 to match the GDD.
+
+[EVIDENCE: `Assets/ScriptableObjects/Characters/` — 18 `Char_*.asset` files]
+[EVIDENCE: docs/system/10_Requirements_Traceability_Matrix.md, REQ-12 and REQ-42]
+[EVIDENCE: docs/capstone/Salinlahi.md, §1.5.1 Scope — "17 Baybayin consonant characters" (superseded by the authored set)]
 
 ### 1.2 Each character requires these assets
 
@@ -22,14 +25,23 @@ The game covers **17 Baybayin characters: 14 consonants (BA, KA, DA, GA, HA, LA,
 | `BaybayinCharacterSO` asset | `.asset` | `Assets/ScriptableObjects/Characters/Char_[ID].asset` | All gameplay systems |
 | Display sprite (glyph) | `.png` | `Assets/Art/UI/` or `Assets/Art/Characters/` | Enemy renderer; Tracing Dojo |
 | Pronunciation audio clip | `.wav` / `.mp3` | `Assets/Audio/` | AudioManager |
-| Recognition template file | `.txt` (point coordinates) | `Assets/Resources/Templates/[ID]_template.txt` | `DollarPRecognizer.cs` |
+| Recognition template file(s) | `.txt` (point coordinates) | `Assets/Resources/Templates/[ID]_template_[NN].txt` — **multiple numbered variants per character**, not one file | `DollarPRecognizer.cs` via `TemplateLoader.cs` |
 
 ### 1.3 Current Status
 
-As of Sprint 1: **placeholder assets only**. No BaybayinCharacterSO assets have been confirmed in `Assets/ScriptableObjects/Characters/`. No template `.txt` files have been confirmed in `Assets/Resources/Templates/`.
+**Superseded — the Sprint 1 "placeholder assets only" note no longer holds.** Verified state on `dev` as of 2026-08-31:
 
-[EVIDENCE: Assets/Art/Characters/ — placeholder sprites only confirmed]
-[EVIDENCE: Assets/ScriptableObjects/Characters/ — folder exists, asset contents unverified]
+| Asset class | Status | Detail |
+|-------------|--------|--------|
+| `BaybayinCharacterSO` assets | ✅ Complete | 18 `Char_*.asset` files, plus `CharacterRegistry_Default.asset` |
+| Recognition templates | ✅ Complete | **121 `.txt` files** across all 18 characters (~6–7 variants each; HA carries 15, authored while resolving its recognition failure) |
+| Display sprites | ✅ Present | Assigned on the character SOs |
+| Pronunciation clips | ⚠️ **Partial — 7 of 18 assigned; 11 missing** | `BaybayinCharacterSO.pronunciationClip`. Recognition audio feedback is silent for the 11 unassigned characters. Tracked as DEP-03 in doc 11. |
+
+Template variant counts are deliberately uneven: characters that proved harder to recognize received more authored variants. Adding templates is the first, cheapest lever for a character that recognizes poorly — before touching `minimumConfidence`, which is global and affects every character.
+
+[EVIDENCE: `Assets/ScriptableObjects/Characters/`; `Assets/Resources/Templates/`]
+[EVIDENCE: Assets/Scripts/Data/BaybayinCharacterSO.cs — `pronunciationClip`]
 
 ---
 
@@ -40,9 +52,9 @@ As of Sprint 1: **placeholder assets only**. No BaybayinCharacterSO assets have 
 | Enemy Type | `enemyID` | Era | Tier | First Appears | Priority | Prefab | Status |
 |------------|-----------|-----|------|--------------|----------|--------|--------|
 | Soldado | `"soldado"` | Spanish | Regular (32×32) | Level 1 | Must Ship | `[Enemy] Soldado.prefab` | Implemented (`[Enemy] Soldado.prefab` + `EnemyData_Soldado.asset`) |
-| Fraile | `"fraile"` | Spanish | Variant (32×32) | Level 2 | Must Ship | (PLANNED) | PLANNED |
-| Guardia | `"guardia"` | Spanish | Variant (32×32) | Level 3 | Must Ship | (PLANNED) | PLANNED |
-| Capitan | `"capitan"` | Spanish | Elite (48×48) | Level 4 | Must Ship | (PLANNED) | PLANNED |
+| Fraile | `"fraile"` | Spanish | Variant (32×32) | Level 2 | Must Ship | `[Enemy] Fraile.prefab` | Implemented (`[Enemy] Fraile.prefab` + `EnemyData_Fraile.asset`) |
+| Guardia | `"guardia"` | Spanish | Variant (32×32) | Level 3 | Must Ship | `[Enemy] Guardia.prefab` | Implemented (`[Enemy] Guardia.prefab` + `EnemyData_Guardia.asset`) |
+| Capitan | `"capitan"` | Spanish | Elite (48×48) | Level 4 | Must Ship | `[Enemy] Capitan.prefab` | Implemented (`[Enemy] Capitan.prefab` + `EnemyData_Capitan.asset`) |
 | Soldier | `"soldier"` | American | Regular (32×32) | Level 6 | Must Ship | `[Enemy] Soldier.prefab` | Implemented (`[Enemy] Soldier.prefab` + `EnemyData_Soldier.asset`) |
 | Maestro | `"maestro"` | American | Variant (32×32) | Level 7 | Should Ship | `[Enemy] Maestro.prefab` | Implemented (`[Enemy] Maestro.prefab` + `EnemyData_Maestro.asset`) |
 | Pensionado | `"pensionado"` | American | Variant (32×32) | Level 8 | Should Ship | `[Enemy] Pensionado.prefab` | Implemented (`[Enemy] Pensionado.prefab` + `EnemyData_Pensionado.asset`) |
@@ -53,6 +65,26 @@ As of Sprint 1: **placeholder assets only**. No BaybayinCharacterSO assets have 
 | Shokan | `"shokan"` | Japanese | Elite (48×48) | Level 14 | Should Ship | `[Enemy] Shokan.prefab` | Implemented (`[Enemy] Shokan.prefab` + `EnemyData_Shokan.asset`) |
 
 **Note:** `[Enemy] Shielded.prefab` and `[Enemy] Sprinter.prefab` were removed from the repo. The matching `EnemyData_Shielded.asset` / `EnemyData_Sprinter.asset` SOs may still exist as legacy placeholders and are not referenced by any current `LevelConfigSO` or its embedded `WaveDefinition` waves.
+
+### 2.2 Corrupted-Enemy Roster (in transition)
+
+The era-themed roster in §2.1 is **being superseded** by a corrupted-enemy roster in which each enemy is bound to the specific Baybayin syllable that defeats it, via `EnemyDataSO.assignedCharacter`.
+
+| Aspect | State on `dev` |
+|--------|----------------|
+| Enemy data assets | 32 `EnemyData_*.asset` total |
+| With `assignedCharacter` set | **19** (AbongSimula, Bakod, Daan-Lihis, Fraile, Gapos, Hati, Iligaw, Kadena, Labo, Maestro, Mantsa, NawalangMukha, Ngatngat, Punit, Salungat, Takip, Uhaw, Walang-Awa, YaposngDilim) |
+| Per-enemy stats and abilities | **Not on `dev`** — authored in draft PR #144 |
+| `[Enemy] Labo` / `[Enemy] Daan-Lihis` prefab variants | **Not on `dev`** — added by draft PR #144 |
+
+Two consequences worth stating plainly, because both have already cost debugging time:
+
+1. **The two rosters currently coexist.** The era-themed enemies (Soldado, Maestro, …) and the corrupted enemies are both live, which is why the sandbox catalog lists both. Retiring the era-themed roster is a **product decision that has not been made** — do not delete those assets on the assumption that the corruption roster replaced them.
+2. **Registering a new enemy prefab takes two steps, not one.** Adding the prefab to the `[Manager] EnemyPool` prefab's `_registeredEnemyPrefabs` is not sufficient: **scene instances of the pool override the array**, including its size. A prefab registered only at the prefab level fails at runtime with `EnemyPool: Unknown enemyID '<id>'. Falling back to default pool.` The scene instances in `Bootstrap`, `Gameplay`, and `Level_01_Tutorial` must be updated too.
+
+[EVIDENCE: Assets/Scripts/Data/EnemyDataSO.cs — `assignedCharacter`]
+[EVIDENCE: `Assets/ScriptableObjects/Enemies/` — 32 assets, 19 with `assignedCharacter`]
+[EVIDENCE: Assets/Prefabs/Managers/[Manager] EnemyPool.prefab — `_registeredEnemyPrefabs`]
 
 [EVIDENCE: Assets/Prefabs/Enemies/ — Soldado, Soldier, Heitai, Maestro, Pensionado, General, Kisha, Kempei, Shokan, Boss_ElInquisidor prefabs confirmed]
 [EVIDENCE: Assets/ScriptableObjects/ — matching `EnemyData_*.asset` files confirmed]
