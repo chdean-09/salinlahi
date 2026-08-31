@@ -1,0 +1,57 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b7c9d9cf2f34d9c9e1a0d437f2f6e90, type: 3}
+  m_Name: Challenge_Ugat04_Context
+  m_EditorClassIdentifier: Salinlahi.Runtime::ChallengeSequenceSO
+  sequenceId: challenge.ugat.04
+  displayName: Ikaapat na Alaala
+  units:
+  - unitId: ugat04-restore-sentence
+    mode: 2
+    cluePolicy: 1
+    prompt: Ang ______ at ______ ang unang guro sa tahanan.
+    tokens:
+    - tokenId: ugat04-ina
+      displayText: INA
+      occurrenceId: ugat04-ina
+      role: 1
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugat04-ama
+      displayText: AMA
+      occurrenceId: ugat04-ama
+      role: 1
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugat04-bata-decoy
+      displayText: BATA
+      occurrenceId: ugat04-bata-decoy
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    slots:
+    - slotId: ugat04-slot-01
+      expectedOccurrenceId: ugat04-ina
+    - slotId: ugat04-slot-02
+      expectedOccurrenceId: ugat04-ama
+    candidateOccurrenceIds:
+    - ugat04-ina
+    - ugat04-ama
+    - ugat04-bata-decoy
+    guidedStep: {fileID: 0}
+    timerSeconds: 0
+    allowHint: 1
+    checkpointOnSuccess: 1
+    memoryRevealSeconds: 1
+    maxErrors: 3
+    heartPenalty: 1
+    evidenceContentId: level.ugat.04.focus.01
