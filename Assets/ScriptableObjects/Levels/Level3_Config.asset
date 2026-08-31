@@ -237,7 +237,7 @@ MonoBehaviour:
   tutorialSequence: {fileID: 0}
   onboardingSequence: {fileID: 0}
   challengePrototypeEnabled: 0
-  challengeSequence: {fileID: 0}
+  challengeSequence: {fileID: 11400000, guid: cc972c612b2df42c8b584ca5f706ac96, type: 2}
   challengePolicy:
     tier: 0
     heartPenaltiesEnabled: 1
