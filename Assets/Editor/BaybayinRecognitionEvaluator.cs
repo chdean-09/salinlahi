@@ -8,6 +8,7 @@ using UnityEngine;
 
 public static class BaybayinRecognitionEvaluator
 {
+    // SALIN-185: fixtures live outside Resources so they are not built into the player.
     private const string TestDrawsFolder = "Assets/Tests/Fixtures/TestDraws";
     private static readonly string[] ExpectedCharacterIDs =
     {
