@@ -30,6 +30,9 @@ public static class DrawingFeedbackHudWiringTool
 
     private const string MessageName = "FeedbackMessage";
     private const string PromptName  = "TraceHintPrompt";
+    private const string GhostName   = "TraceHintGhost";
+    private const float  GhostSize   = 320f;
+    private const float  GhostDropBelowCentre = -320f;
 
     // Below MassClearBadge (top band, 140 tall) with clear separation.
     private const float MessageTopOffset = -320f;
@@ -53,13 +56,39 @@ public static class DrawingFeedbackHudWiringTool
 
             TMP_FontAsset font = FindFont();
 
-            // Prompt first so it renders BEHIND the message: it is an emphasis pill, not a control.
+            // Ghost overlay first so it renders behind everything else in this group. Centred over
+            // the play column, large enough to read as a stroke guide rather than an icon.
+            var ghost = EnsureChild(overlay.transform, GhostName);
+            var ghostRect = ghost.GetComponent<RectTransform>();
+            ghostRect.anchorMin = ghostRect.anchorMax = new Vector2(0.5f, 0.5f);
+            ghostRect.pivot = new Vector2(0.5f, 0.5f);
+            // Below centre: dead centre collides with the combo counter and boss health bar.
+            ghostRect.anchoredPosition = new Vector2(0f, GhostDropBelowCentre);
+            ghostRect.sizeDelta = new Vector2(GhostSize, GhostSize);
+            ghostRect.localScale = Vector3.one;
+            var ghostImage = Ensure<Image>(ghost);
+            ghostImage.preserveAspect = true;
+            ghostImage.raycastTarget = false;           // a guide, never a control
+            ghostImage.enabled = false;                 // nothing to show until the player taps
+
+            // Prompt renders BEHIND the message but IN FRONT of the ghost.
             var prompt = EnsureChild(overlay.transform, PromptName);
             var promptRect = prompt.GetComponent<RectTransform>();
             Anchor(promptRect, MessageTopOffset + 6f, MessageHeight - 12f, 0.06f);
             var pill = Ensure<Image>(prompt);
             pill.color = new Color(0.10f, 0.08f, 0.02f, 0.72f);
-            pill.raycastTarget = false;                 // must never eat drawing input
+
+            // The pill IS a control now (SALIN-163 AC2), so unlike the message label it must
+            // receive raycasts. It only blocks input while the prompt is active, which happens
+            // solely after the help threshold is crossed -- so drawing is unaffected until the
+            // player has already failed repeatedly and is being offered help.
+            pill.raycastTarget = true;
+            var button = Ensure<Button>(prompt);
+            button.targetGraphic = pill;
+            var presenter = Ensure<TraceHintPresenter>(prompt);
+            var pso = new SerializedObject(presenter);
+            pso.FindProperty("_ghostImage").objectReferenceValue = ghostImage;
+            pso.ApplyModifiedPropertiesWithoutUndo();
 
             var message = EnsureChild(overlay.transform, MessageName);
             var messageRect = message.GetComponent<RectTransform>();
@@ -82,7 +111,8 @@ public static class DrawingFeedbackHudWiringTool
             so.ApplyModifiedPropertiesWithoutUndo();
 
             log.AppendLine($"  wired _messageLabel    -> {MessageName} (raycastTarget={label.raycastTarget})");
-            log.AppendLine($"  wired _traceHintPrompt -> {PromptName} (active={prompt.activeSelf}, raycastTarget={pill.raycastTarget})");
+            log.AppendLine($"  wired _traceHintPrompt -> {PromptName} (active={prompt.activeSelf}, raycastTarget={pill.raycastTarget}, button={button != null})");
+            log.AppendLine($"  wired TraceHintPresenter._ghostImage -> {GhostName} (enabled={ghostImage.enabled}, raycastTarget={ghostImage.raycastTarget})");
             log.AppendLine(OverlapReport(overlay.transform, messageRect));
 
             EditorSceneManager.MarkSceneDirty(scene);
@@ -135,7 +165,7 @@ public static class DrawingFeedbackHudWiringTool
         bool any = false;
         foreach (Transform sib in overlay)
         {
-            if (sib == mine.transform || sib.name == PromptName) continue;
+            if (sib == mine.transform || sib.name == PromptName || sib.name == GhostName) continue;
             var srt = sib as RectTransform;
             if (srt == null || !sib.gameObject.activeSelf) continue;
             Rect b = WorldRect(srt);
