@@ -104,9 +104,10 @@ public static class Ugat05ChallengeAuthoringTool
         {
             unitId = unitId,
             mode = ChallengeMode.WordPlacement,
-            // The era culmination, one step beyond Level 4's Reduced. See the PR note: this is an
-            // inference from "without a fully guided trace sequence", not a confirmed decision.
-            cluePolicy = ChallengeCluePolicy.Minimal,
+            // Reduced, matching Level 4 — confirmed 2026-09-01. Minimal was proposed as the era
+            // culmination but ruled against: "without a fully guided trace sequence" is satisfied
+            // by Reduced, and the Ugat curve tops out there rather than escalating again.
+            cluePolicy = ChallengeCluePolicy.Reduced,
             prompt = prompt,
             tokens = tokens.ToArray(),
             slots = new[]

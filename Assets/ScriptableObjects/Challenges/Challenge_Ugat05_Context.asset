@@ -17,7 +17,7 @@ MonoBehaviour:
   units:
   - unitId: ugat05-complete-iba
     mode: 1
-    cluePolicy: 2
+    cluePolicy: 1
     prompt: Nagbago man ang panahon, may naiwan pa ring hindi kayang kunin ng Paglimot.
       Buuin mo kung ano iyon.
     tokens:
@@ -56,7 +56,7 @@ MonoBehaviour:
     evidenceContentId: level.ugat.05.focus.01
   - unitId: ugat05-complete-mana
     mode: 1
-    cluePolicy: 2
+    cluePolicy: 1
     prompt: Buuin mo kung ano iyon.
     tokens:
     - tokenId: ugat05-na
