@@ -181,6 +181,34 @@ public static class CampaignLevelDataTool
                 new FocusSpec { Word = "MAHALAGA", Meaning = "precious",  Syllables = new[] { "MA", "HA", "LA", "GA" } },
             },
         },
+        new LevelSpec
+        {
+            AssetPath = "Assets/ScriptableObjects/Levels/Level15_Config.asset",
+            StableId  = "level.pamana.05",
+            Ticket    = "SALIN-158",
+            // PA, NOT the matrix's "Workbook last syllable" column, which reads YA for row 15.
+            // That column is the last syllable of the level's second focus word, and it matches
+            // finalRestorationValue for every other level -- but the finale is a deliberate special
+            // case in code: CampaignConfigValidator requires level.pamana.05 to restore
+            // symbol.pa / value.pa, with its own error message. Following the matrix here produced
+            // a FINAL_RESTORATION_INVALID that only the validator caught.
+            FinalSyllable = "PA",
+            Focus = new[]
+            {
+                // SALIN-158 states no decompositions. Both are derived and spell-checked:
+                // PA+MA+NA reads "pamana", MA+LA+YA reads "malaya".
+                //
+                // This level introduces PA, the seventeenth and last symbol, so its pool is the
+                // ENTIRE taught set -- the same 17 that BossConfig_Kadiliman requires as draws.
+                //
+                // AC1 requires PA instruction before PAMANA assesses it. The generated requirement
+                // lists satisfy the validator's PaInstructionOrderInvalid rule structurally: PA's
+                // first learningRequirements entry is Instruction, and PA also appears in
+                // practiceRequirements, masteryRequirements and in the PAMANA focus word.
+                new FocusSpec { Word = "PAMANA", Meaning = "inheritance", Syllables = new[] { "PA", "MA", "NA" } },
+                new FocusSpec { Word = "MALAYA", Meaning = "free",        Syllables = new[] { "MA", "LA", "YA" } },
+            },
+        },
     };
 
     [MenuItem("Salinlahi/Campaign/Populate Level Data")]

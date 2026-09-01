@@ -1,0 +1,95 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b7c9d9cf2f34d9c9e1a0d437f2f6e90, type: 3}
+  m_Name: Challenge_Pamana15_Context
+  m_EditorClassIdentifier: Salinlahi.Runtime::ChallengeSequenceSO
+  sequenceId: challenge.pamana.15
+  displayName: Huling Alaala
+  units:
+  - unitId: pamana15-complete-pamana
+    mode: 1
+    cluePolicy: 1
+    prompt: Ito ang huling salitang ibinigay sa iyo ng mga nauna. Buuin mo ang pangalan
+      ng iniwan nila sa iyo.
+    tokens:
+    - tokenId: pamana15-pamana
+      displayText: PAMANA
+      occurrenceId: pamana15-pamana
+      role: 1
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: pamana15-mana-decoy
+      displayText: MANA
+      occurrenceId: pamana15-mana-decoy
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: pamana15-alaala-decoy
+      displayText: ALAALA
+      occurrenceId: pamana15-alaala-decoy
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    slots:
+    - slotId: pamana15-complete-pamana-slot
+      expectedOccurrenceId: pamana15-pamana
+    candidateOccurrenceIds:
+    - pamana15-pamana
+    - pamana15-mana-decoy
+    - pamana15-alaala-decoy
+    guidedStep: {fileID: 0}
+    timerSeconds: 0
+    allowHint: 1
+    checkpointOnSuccess: 1
+    memoryRevealSeconds: 1
+    maxErrors: 3
+    heartPenalty: 1
+    evidenceContentId: level.pamana.05.focus.01
+  - unitId: pamana15-complete-malaya
+    mode: 1
+    cluePolicy: 1
+    prompt: Hindi na makukuha ng Paglimot ang naibalik mo. Buuin mo ang salitang
+      nagsasabi kung ano ka na ngayon.
+    tokens:
+    - tokenId: pamana15-malaya
+      displayText: MALAYA
+      occurrenceId: pamana15-malaya
+      role: 1
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: pamana15-saya-decoy
+      displayText: SAYA
+      occurrenceId: pamana15-saya-decoy
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: pamana15-mahalaga-decoy
+      displayText: MAHALAGA
+      occurrenceId: pamana15-mahalaga-decoy
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    slots:
+    - slotId: pamana15-complete-malaya-slot
+      expectedOccurrenceId: pamana15-malaya
+    candidateOccurrenceIds:
+    - pamana15-malaya
+    - pamana15-saya-decoy
+    - pamana15-mahalaga-decoy
+    guidedStep: {fileID: 0}
+    timerSeconds: 0
+    allowHint: 1
+    checkpointOnSuccess: 1
+    memoryRevealSeconds: 1
+    maxErrors: 3
+    heartPenalty: 1
+    evidenceContentId: level.pamana.05.focus.02
