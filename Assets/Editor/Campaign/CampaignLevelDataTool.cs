@@ -146,6 +146,22 @@ public static class CampaignLevelDataTool
                 new FocusSpec { Word = "DAMA", Meaning = "to feel",  Syllables = new[] { "DA", "MA" } },
             },
         },
+        new LevelSpec
+        {
+            AssetPath = "Assets/ScriptableObjects/Levels/Level12_Config.asset",
+            StableId  = "level.pamana.02",
+            Ticket    = "SALIN-154",
+            FinalSyllable = "GA",
+            Focus = new[]
+            {
+                // SALIN-154 AC1: "HANGA is HA + NGA and HALAGA is HA + LA + GA".
+                // HALAGA reuses GA, learned back in Ugnayan. AC2 requires that reuse to happen
+                // "without a duplicate introduction" -- which the derived pool gives for free, since
+                // GA entered at level.ugnayan.01 and simply stays in every later pool.
+                new FocusSpec { Word = "HANGA",  Meaning = "admiration", Syllables = new[] { "HA", "NGA" } },
+                new FocusSpec { Word = "HALAGA", Meaning = "worth",      Syllables = new[] { "HA", "LA", "GA" } },
+            },
+        },
     };
 
     [MenuItem("Salinlahi/Campaign/Populate Level Data")]
