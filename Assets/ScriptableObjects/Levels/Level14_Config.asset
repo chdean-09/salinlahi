@@ -18,10 +18,238 @@ MonoBehaviour:
   chapterName: Pamana
   stableId: level.pamana.04
   eraLocalOrder: 4
-  focusWords: []
-  cumulativeSymbolPool: []
-  learningRequirements: []
-  practiceRequirements: []
+  focusWords:
+  - stableId: level.pamana.04.focus.01
+    latinSpelling: ALAALA
+    displayLabel: ALAALA
+    meaning: memory
+    decomposition:
+    - symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+      spokenValueId: value.a
+    - symbol: {fileID: 11400000, guid: 9aae464ed65b8416b9aa3ad6ee4ce2c4, type: 2}
+      spokenValueId: value.la
+    - symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+      spokenValueId: value.a
+    - symbol: {fileID: 11400000, guid: 9aae464ed65b8416b9aa3ad6ee4ce2c4, type: 2}
+      spokenValueId: value.la
+    media:
+      contextImage: {fileID: 0}
+      narrationClip: {fileID: 0}
+      dialogue: {fileID: 0}
+      cutscene: {fileID: 0}
+  - stableId: level.pamana.04.focus.02
+    latinSpelling: MAHALAGA
+    displayLabel: MAHALAGA
+    meaning: precious
+    decomposition:
+    - symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+      spokenValueId: value.ma
+    - symbol: {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
+      spokenValueId: value.ha
+    - symbol: {fileID: 11400000, guid: 9aae464ed65b8416b9aa3ad6ee4ce2c4, type: 2}
+      spokenValueId: value.la
+    - symbol: {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+      spokenValueId: value.ga
+    media:
+      contextImage: {fileID: 0}
+      narrationClip: {fileID: 0}
+      dialogue: {fileID: 0}
+      cutscene: {fileID: 0}
+  cumulativeSymbolPool:
+  - symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+    spokenValueId: value.a
+  - symbol: {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+    spokenValueId: value.ei
+  - symbol: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+    spokenValueId: value.ba
+  - symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+    spokenValueId: value.ma
+  - symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+    spokenValueId: value.na
+  - symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+    spokenValueId: value.ta
+  - symbol: {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
+    spokenValueId: value.ou
+  - symbol: {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
+    spokenValueId: value.ka
+  - symbol: {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+    spokenValueId: value.ga
+  - symbol: {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
+    spokenValueId: value.sa
+  - symbol: {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+    spokenValueId: value.wa
+  - symbol: {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
+    spokenValueId: value.ya
+  - symbol: {fileID: 11400000, guid: 117f4d54439c640abaac6d80f841ee03, type: 2}
+    spokenValueId: value.da
+  - symbol: {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
+    spokenValueId: value.ha
+  - symbol: {fileID: 11400000, guid: 9aae464ed65b8416b9aa3ad6ee4ce2c4, type: 2}
+    spokenValueId: value.la
+  - symbol: {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
+    spokenValueId: value.nga
+  learningRequirements:
+  - kind: 0
+    symbolValue:
+      symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+      spokenValueId: value.a
+    requiredSuccesses: 1
+  - kind: 0
+    symbolValue:
+      symbol: {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+      spokenValueId: value.ei
+    requiredSuccesses: 1
+  - kind: 0
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+      spokenValueId: value.ba
+    requiredSuccesses: 1
+  - kind: 0
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+      spokenValueId: value.ma
+    requiredSuccesses: 1
+  - kind: 0
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+      spokenValueId: value.na
+    requiredSuccesses: 1
+  - kind: 0
+    symbolValue:
+      symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+      spokenValueId: value.ta
+    requiredSuccesses: 1
+  - kind: 0
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
+      spokenValueId: value.ou
+    requiredSuccesses: 1
+  - kind: 0
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
+      spokenValueId: value.ka
+    requiredSuccesses: 1
+  - kind: 0
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+      spokenValueId: value.ga
+    requiredSuccesses: 1
+  - kind: 0
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
+      spokenValueId: value.sa
+    requiredSuccesses: 1
+  - kind: 0
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+      spokenValueId: value.wa
+    requiredSuccesses: 1
+  - kind: 0
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
+      spokenValueId: value.ya
+    requiredSuccesses: 1
+  - kind: 0
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 117f4d54439c640abaac6d80f841ee03, type: 2}
+      spokenValueId: value.da
+    requiredSuccesses: 1
+  - kind: 0
+    symbolValue:
+      symbol: {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
+      spokenValueId: value.ha
+    requiredSuccesses: 1
+  - kind: 0
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 9aae464ed65b8416b9aa3ad6ee4ce2c4, type: 2}
+      spokenValueId: value.la
+    requiredSuccesses: 1
+  - kind: 0
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
+      spokenValueId: value.nga
+    requiredSuccesses: 1
+  practiceRequirements:
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+      spokenValueId: value.a
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+      spokenValueId: value.ei
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+      spokenValueId: value.ba
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+      spokenValueId: value.ma
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+      spokenValueId: value.na
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+      spokenValueId: value.ta
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
+      spokenValueId: value.ou
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
+      spokenValueId: value.ka
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+      spokenValueId: value.ga
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
+      spokenValueId: value.sa
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+      spokenValueId: value.wa
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
+      spokenValueId: value.ya
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 117f4d54439c640abaac6d80f841ee03, type: 2}
+      spokenValueId: value.da
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
+      spokenValueId: value.ha
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 9aae464ed65b8416b9aa3ad6ee4ce2c4, type: 2}
+      spokenValueId: value.la
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
+      spokenValueId: value.nga
+    requiredSuccesses: 2
   activeClueCombatEnabled: 0
   clueChannels: 1
   audioVisualFallback: 4
@@ -35,10 +263,90 @@ MonoBehaviour:
     dialogue: {fileID: 0}
     cutscene: {fileID: 0}
   finalRestorationValue:
-    symbol: {fileID: 0}
-    spokenValueId: 
+    symbol: {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+    spokenValueId: value.ga
   rewardIds: []
-  masteryRequirements: []
+  masteryRequirements:
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+      spokenValueId: value.a
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+      spokenValueId: value.ei
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+      spokenValueId: value.ba
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+      spokenValueId: value.ma
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+      spokenValueId: value.na
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+      spokenValueId: value.ta
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
+      spokenValueId: value.ou
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
+      spokenValueId: value.ka
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+      spokenValueId: value.ga
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
+      spokenValueId: value.sa
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+      spokenValueId: value.wa
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
+      spokenValueId: value.ya
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 117f4d54439c640abaac6d80f841ee03, type: 2}
+      spokenValueId: value.da
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
+      spokenValueId: value.ha
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 9aae464ed65b8416b9aa3ad6ee4ce2c4, type: 2}
+      spokenValueId: value.la
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
+      spokenValueId: value.nga
+    requiredSuccesses: 1
   eraTheme: {fileID: 0}
   numberSprite: {fileID: 0}
   waves:
@@ -203,7 +511,7 @@ MonoBehaviour:
   tutorialSequence: {fileID: 0}
   onboardingSequence: {fileID: 0}
   challengePrototypeEnabled: 0
-  challengeSequence: {fileID: 0}
+  challengeSequence: {fileID: 11400000, guid: 40c7d6c3365a345f996426f0990a8b37, type: 2}
   challengePolicy:
     tier: 0
     heartPenaltiesEnabled: 1

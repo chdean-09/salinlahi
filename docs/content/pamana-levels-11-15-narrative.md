@@ -99,9 +99,10 @@ imagines (13), why memory matters (14), and what is finally passed on (15). Juan
    pronunciation follow the approved educational convention"* — no document defines what the player
    sees or hears when the shared `ᜇ` glyph is read as RA rather than DA. This needs a ruling, and it
    is a language-and-culture question, not an engineering one.
-3. **`ALAALA` decomposition.** `A + LA + A + LA + A`? The matrix is explicit that occurrences are
-   never deduplicated, and SALIN-156 AC1 asks for repeated syllables "accurately and in order", but
-   neither states the split. Confirm before authoring.
+3. ~~**`ALAALA` decomposition.**~~ **Resolved 2026-09-01: `A + LA + A + LA`, four syllables.** This
+   entry originally guessed five (`A + LA + A + LA + A`), which spells *alaalaa*. The trailing vowel
+   of *alaala* is the inherent vowel of the second LA, not a further standalone A. Authored in
+   SALIN-156.
 4. **`MAHALAGA`, `PAMANA`, `MALAYA` decompositions** are likewise unstated. Presumed
    `MA + HA + LA + GA`, `PA + MA + NA`, `MA + LA + YA`.
 5. **Level 14's timed memory.** SALIN-156 AC3 requires a timer whose expiry applies "the approved
