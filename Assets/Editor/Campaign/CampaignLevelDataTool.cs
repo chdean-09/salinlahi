@@ -6,11 +6,13 @@ using UnityEditor;
 using UnityEngine;
 
 /// <summary>
-/// Populates the Ugnayan level configs with their focus words, cumulative symbol pools, and the
-/// three requirement lists. Every Ugnayan level shipped as a shell with all five fields empty.
+/// Populates level configs with their focus words, cumulative symbol pools, the three requirement
+/// lists, and the final restoration syllable. Every level past Ugat 5 shipped as a shell with all of
+/// those empty.
 ///
-/// Covers SALIN-148 (Level 6), SALIN-150 (Level 7), SALIN-151 (Level 8) and SALIN-152 (Level 10).
-/// Note the ticket numbering does NOT track level numbers -- SALIN-149 is Level 9, not Level 7.
+/// Covers Ugnayan -- SALIN-148 (L6), SALIN-150 (L7), SALIN-151 (L8), SALIN-149 (L9), SALIN-152 (L10)
+/// -- and Pamana, starting with SALIN-153 (L11). Note the ticket numbering does NOT track level
+/// numbers: SALIN-149 is Level 9, not Level 7.
 ///
 /// LEVEL 9 WAS BRIEFLY THOUGHT BLOCKED, AND IS NOT. SALIN-149 AC1 asks for the decompositions
 /// O + O and U + NA "using the basic O/U character defined by the plan". That phrase is the answer,
@@ -38,7 +40,7 @@ using UnityEngine;
 /// The `meaning` strings are English developer- and matrix-facing glosses rather than player-facing
 /// copy, and are the only authored values here. See the PR note.
 /// </summary>
-public static class UgnayanLevelDataTool
+public static class CampaignLevelDataTool
 {
     private const string CampaignPath = "Assets/ScriptableObjects/Campaign/CampaignConfig_RevisedV1.asset";
 
@@ -128,12 +130,28 @@ public static class UgnayanLevelDataTool
                 new FocusSpec { Word = "SAYA", Meaning = "joy",  Syllables = new[] { "SA", "YA" } },
             },
         },
+        new LevelSpec
+        {
+            AssetPath = "Assets/ScriptableObjects/Levels/Level11_Config.asset",
+            StableId  = "level.pamana.01",
+            Ticket    = "SALIN-153",
+            FinalSyllable = "MA",
+            Focus = new[]
+            {
+                // SALIN-153 AC2: "DALA is DA + LA and DAMA is DA + MA".
+                // Both start on DA, which is the only symbol carrying two spoken values
+                // (value.da and value.ra). SpokenValueId takes the first, value.da, which is the
+                // reading both of these words use. AC1 calls the taught unit "DA/RA", one identity.
+                new FocusSpec { Word = "DALA", Meaning = "to carry", Syllables = new[] { "DA", "LA" } },
+                new FocusSpec { Word = "DAMA", Meaning = "to feel",  Syllables = new[] { "DA", "MA" } },
+            },
+        },
     };
 
-    [MenuItem("Salinlahi/Ugnayan/Populate Level Data")]
+    [MenuItem("Salinlahi/Campaign/Populate Level Data")]
     public static void Apply()
     {
-        var log = new StringBuilder("=== Ugnayan level data ===\n");
+        var log = new StringBuilder("=== Campaign level data ===\n");
 
         var campaign = AssetDatabase.LoadAssetAtPath<CampaignConfigSO>(CampaignPath);
         if (campaign == null) { Debug.LogError("Campaign config not found."); return; }
@@ -155,7 +173,7 @@ public static class UgnayanLevelDataTool
 
         AssetDatabase.SaveAssets();
         Debug.Log(log.ToString());
-        File.WriteAllText("ugnayan-level-data-report.txt", log.ToString());
+        File.WriteAllText("campaign-level-data-report.txt", log.ToString());
     }
 
     private static bool ApplyLevel(LevelSpec spec, CampaignConfigSO campaign,
