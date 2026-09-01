@@ -162,6 +162,25 @@ public static class CampaignLevelDataTool
                 new FocusSpec { Word = "HALAGA", Meaning = "worth",      Syllables = new[] { "HA", "LA", "GA" } },
             },
         },
+        new LevelSpec
+        {
+            AssetPath = "Assets/ScriptableObjects/Levels/Level14_Config.asset",
+            StableId  = "level.pamana.04",
+            Ticket    = "SALIN-156",
+            FinalSyllable = "GA",
+            Focus = new[]
+            {
+                // SALIN-156 states no decompositions, only that "repeated syllables are represented
+                // accurately and in order" (AC1). Both are derived and spell-checked against the
+                // written form: A+LA+A+LA reads "alaala", MA+HA+LA+GA reads "mahalaga".
+                //
+                // ALAALA is FOUR syllables, not five. The trailing vowel of "alaala" is the inherent
+                // vowel of the second LA, not a further standalone A -- A+LA+A+LA+A would read
+                // "alaalaa". The Pamana scaffold guessed five and is corrected in this change.
+                new FocusSpec { Word = "ALAALA",   Meaning = "memory",    Syllables = new[] { "A", "LA", "A", "LA" } },
+                new FocusSpec { Word = "MAHALAGA", Meaning = "precious",  Syllables = new[] { "MA", "HA", "LA", "GA" } },
+            },
+        },
     };
 
     [MenuItem("Salinlahi/Campaign/Populate Level Data")]
