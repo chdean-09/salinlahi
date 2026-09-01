@@ -140,10 +140,13 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 "A thin horizontal gesture should not match a square-aspect template even when stroke count agrees.");
         }
 
+        // The RA draws expect DA on purpose. RA folds into DA (SALIN-212) -- one glyph, two
+        // readings -- so an RA-shaped stroke is a correct DA. Before the fold these returned "RA",
+        // which matched no enemy, clue or boss requirement and scored a correct draw as a miss.
         [TestCase("KA_draw_01", "KA")]
-        [TestCase("RA_draw_01", "RA")]
-        [TestCase("RA_draw_02", "RA")]
-        [TestCase("RA_draw_03", "RA")]
+        [TestCase("RA_draw_01", "DA")]
+        [TestCase("RA_draw_02", "DA")]
+        [TestCase("RA_draw_03", "DA")]
         [TestCase("HA_draw_01", "HA")]
         public void Recognize_ResourceDrawRegression_ReturnsExpectedCharacter(string drawAssetName, string expectedCharacter)
         {
