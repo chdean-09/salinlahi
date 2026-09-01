@@ -12,10 +12,14 @@ using UnityEngine;
 /// Covers SALIN-148 (Level 6), SALIN-150 (Level 7), SALIN-151 (Level 8) and SALIN-152 (Level 10).
 /// Note the ticket numbering does NOT track level numbers -- SALIN-149 is Level 9, not Level 7.
 ///
-/// LEVEL 9 IS DELIBERATELY ABSENT. SALIN-149 AC1 requires the decompositions O + O and U + NA, which
-/// needs distinct spoken values for O and for U. `Char_OU` carries exactly one, `value.ou`. Authoring
-/// Level 9 would mean inventing a spoken value the character data does not define, so it is blocked
-/// on that data gap rather than guessed at here. Same shape applies to `Char_EI` / `value.ei`.
+/// LEVEL 9 WAS BRIEFLY THOUGHT BLOCKED, AND IS NOT. SALIN-149 AC1 asks for the decompositions
+/// O + O and U + NA "using the basic O/U character defined by the plan". That phrase is the answer,
+/// not the problem: the plan defines ONE shared vowel symbol, `Char_OU`, and O versus U is a
+/// romanisation of the same glyph rather than two spoken values to invent.
+///
+/// The precedent already shipped. Level 1 authors `INA` as `EI + NA` with `value.ei` -- the shared
+/// vowel character carrying its single shared spoken value for a word romanised with "I". `OO` and
+/// `UNA` follow that exactly, with `value.ou`.
 ///
 /// Everything below is DERIVED from existing authoritative data, not chosen:
 ///
@@ -94,6 +98,20 @@ public static class UgnayanLevelDataTool
                 // SALIN-151 AC2: "the player restores GA + NA and KA + YA".
                 new FocusSpec { Word = "GANA", Meaning = "drive",      Syllables = new[] { "GA", "NA" } },
                 new FocusSpec { Word = "KAYA", Meaning = "capability", Syllables = new[] { "KA", "YA" } },
+            },
+        },
+        new LevelSpec
+        {
+            AssetPath = "Assets/ScriptableObjects/Levels/Level9_Config.asset",
+            StableId  = "level.ugnayan.04",
+            Ticket    = "SALIN-149",
+            FinalSyllable = "NA",
+            Focus = new[]
+            {
+                // SALIN-149 AC1: "their decompositions are O + O and U + NA using the basic O/U
+                // character defined by the plan". Both O and U resolve to the shared OU symbol.
+                new FocusSpec { Word = "OO",  Meaning = "yes",   Syllables = new[] { "OU", "OU" } },
+                new FocusSpec { Word = "UNA", Meaning = "first", Syllables = new[] { "OU", "NA" } },
             },
         },
         new LevelSpec

@@ -1,0 +1,69 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b7c9d9cf2f34d9c9e1a0d437f2f6e90, type: 3}
+  m_Name: Challenge_Ugnayan09_Context
+  m_EditorClassIdentifier: Salinlahi.Runtime::ChallengeSequenceSO
+  sequenceId: challenge.ugnayan.09
+  displayName: Ikasiyam na Alaala
+  units:
+  - unitId: ugnayan09-restore-sentence
+    mode: 2
+    cluePolicy: 1
+    prompt: 'Dalawang salita ang kulang sa alaala ng pagtulong. Ilagay mo ang bawat
+      isa sa tamang puwang.
+
+
+      Sinabi niyang ______ at siya ang naging ______
+      sa pagtulong.'
+    tokens:
+    - tokenId: ugnayan09-oo
+      displayText: OO
+      occurrenceId: ugnayan09-oo
+      role: 1
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugnayan09-una
+      displayText: UNA
+      occurrenceId: ugnayan09-una
+      role: 1
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugnayan09-sana-decoy
+      displayText: SANA
+      occurrenceId: ugnayan09-sana-decoy
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugnayan09-gana-decoy
+      displayText: GANA
+      occurrenceId: ugnayan09-gana-decoy
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    slots:
+    - slotId: ugnayan09-slot-01
+      expectedOccurrenceId: ugnayan09-oo
+    - slotId: ugnayan09-slot-02
+      expectedOccurrenceId: ugnayan09-una
+    candidateOccurrenceIds:
+    - ugnayan09-oo
+    - ugnayan09-una
+    - ugnayan09-sana-decoy
+    - ugnayan09-gana-decoy
+    guidedStep: {fileID: 0}
+    timerSeconds: 0
+    allowHint: 1
+    checkpointOnSuccess: 1
+    memoryRevealSeconds: 0
+    maxErrors: 3
+    heartPenalty: 1
+    evidenceContentId: level.ugnayan.04.focus.01
