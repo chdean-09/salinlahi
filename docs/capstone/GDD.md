@@ -167,11 +167,12 @@ Character introduction follows a strict scaffolding system. The player never enc
 > which was the tell that 18 was wrong. `Char_RA` has no `firstIntroductionLevelId` and appears in no
 > level, so no level ever taught it.
 >
-> **Residual inconsistency, tracked as SALIN-212.** The legacy `CharacterRegistry_Default.asset` still
-> holds 18 entries including `RA`, so surfaces driven by the registry rather than the campaign catalog
-> — the Tracing Dojo among them — still present an 18th cell the curriculum never teaches. The
-> registry, not this document, is the thing to fix. Tracked as REQ-42 in
-> [doc 10](../system/10_Requirements_Traceability_Matrix.md).
+> **Registry aligned 2026-09-01 (SALIN-212).** `CharacterRegistry_Default.asset` previously held 18
+> entries including `RA`, so registry-driven surfaces presented a cell the curriculum never teaches.
+> It now holds 17. This was a live bug, not tidiness: the Almanac renders "Learned *n* / *registry
+> count*", and enemies carry only 17 distinct characters with none carrying `RA` — so at 18 the
+> counter could never reach 100%. `Char_RA.asset` itself is kept for its recognition templates and
+> art. Tracked as REQ-42 in [doc 10](../system/10_Requirements_Traceability_Matrix.md).
 >
 > **Note the manuscript disagrees.** `Salinlahi.md` scopes the study to "18 base Baybayin characters"
 > and its pre/post-test uses 18 items. That predates this ruling and is a research-instrument
