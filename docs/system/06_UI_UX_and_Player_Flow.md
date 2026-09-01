@@ -228,8 +228,9 @@ User-facing behavior per GDD:
 
 - Accessible from Main Menu at any time.
 - Shows the taught character set in a practice grid (**17**).
-- ⚠️ **Currently renders 18 cells.** The grid is driven by `CharacterRegistry_Default.asset`, which still
-  holds a vestigial `Char_RA` entry that the campaign catalog excludes. Tracked as SALIN-212.
+- The grid is built at runtime from the taught set. On the revised save path it comes from the campaign
+  catalog; in Legacy mode it falls back to `CharacterRegistry_Default.asset`. Both now hold **17**
+  (SALIN-212 removed the vestigial `Char_RA` entry on 2026-09-01).
 - Player can select any character and trace it freely.
 - No enemies, no timer, no penalty for incorrect strokes.
 - Provides visual guide overlay for each character's expected shape (`GhostStrokeRenderer`).

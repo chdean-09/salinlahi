@@ -27,7 +27,7 @@ Salinlahi is a 2D pixel art mobile defense game whose core mechanic is drawing B
 | $P Point-Cloud gesture recognition for 18 Baybayin **glyph shapes** (recognition scope; the curriculum teaches **17** identities — `DA` carries both `da` and `ra`. See REQ-42, doc 10) | Salinlahi.md §3.3.3; RecognitionConfigSO.cs; `Assets/ScriptableObjects/Characters/` (18 `Char_*.asset`) |
 | Story Mode: 15 levels across 3 chapters, boss encounters at levels 5, 10, 15 | GDD §2.4 |
 | Endless Mode: Unlocked after completing Story Mode or defeating the final boss, random characters, high-score tracking | GDD §2.4 |
-| Tracing Dojo: Pressure-free practice mode, no enemies (grid is registry-driven and currently shows 18; the taught set is 17 — SALIN-212) | GDD §2.4; `Assets/_Scenes/TracingDojo.unity`; doc 10 REQ-32 |
+| Tracing Dojo: Pressure-free practice mode for the 17 taught characters, no enemies | GDD §2.4; `Assets/_Scenes/TracingDojo.unity`; doc 10 REQ-32 |
 | Enemy wave system driven by ScriptableObject data (LevelConfigSO with embedded WaveDefinitions) | Salinlahi.md §3.5.1; LevelConfigSO.cs |
 | Corrupted-enemy roster: enemies carry an `assignedCharacter` binding them to the Baybayin syllable that defeats them. **Implemented:** 32 `EnemyData_*` assets exist, 19 with `assignedCharacter` set. **Planned:** per-enemy stat/ability tuning and the Labo / Daan-Lihis prefab variants are not yet on `dev` — see PR #144. | `Assets/ScriptableObjects/Enemies/`; EnemyDataSO.cs `assignedCharacter` |
 | Two-build split: Salinlahi Lite (free, levels 1–3) and Salinlahi Full (PHP 149, all content) | TDD §7.2; Salinlahi.md §3.4 |
