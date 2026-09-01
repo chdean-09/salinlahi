@@ -3,7 +3,20 @@ using System.Collections.Generic;
 public static class BaybayinIdCanonicalizer
 {
     // Canonical equivalence groups:
-    // I-E, O-U, PA-FA, BA-VA, SA-ZA.
+    // I-E, O-U, PA-FA, BA-VA, SA-ZA, DA-RA.
+    //
+    // DA-RA (SALIN-212) is the only group whose members BOTH have template files on disk, so it is
+    // the only one that actually merges template sets: RA_template_01..05 now load under "DA"
+    // alongside DA_template_01..12, giving one key with 17 variants. That is correct -- they are 17
+    // recorded samples of one glyph. Measured with the project's own recognizer: with the RA key
+    // removed, all five RA templates match DA and nothing else, scoring 0.756-0.839 against a 0.60
+    // confidence floor. No other symbol competes.
+    //
+    // Without this group the recognizer could return "RA" for a correctly drawn glyph, and every
+    // consumer compares raw ids -- ActiveEnemyTracker.FindAllWithCharacter, the active-clue check in
+    // CombatResolver, and BossController.TryRouteDraw. No enemy, clue or boss requirement carries
+    // RA, so that draw matched nothing and scored as a miss. The reading (da versus ra) comes from
+    // level content via spokenValueId, never from recognition.
     private static readonly Dictionary<string, string> s_aliasToCanonical = new Dictionary<string, string>
     {
         { "E", "EI" },
@@ -25,6 +38,10 @@ public static class BaybayinIdCanonicalizer
         { "SA", "SA" },
         { "ZA", "SA" },
         { "SAZA", "SA" },
+
+        { "DA", "DA" },
+        { "RA", "DA" },
+        { "DARA", "DA" },
     };
 
     public static string Canonicalize(string rawID)
@@ -56,6 +73,7 @@ public static class BaybayinIdCanonicalizer
         if (canonical == "PA") AddUnique(candidates, "PA-FA");
         if (canonical == "BA") AddUnique(candidates, "BA-VA");
         if (canonical == "SA") AddUnique(candidates, "SA-ZA");
+        if (canonical == "DA") AddUnique(candidates, "DA-RA");
 
         return candidates;
     }
