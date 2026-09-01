@@ -212,22 +212,26 @@ public static class CampaignLevelDataTool
         for (int i = 0; i < spec.Focus.Length; i++)
         {
             FocusSpec f = spec.Focus[i];
-            var syllables = new List<BaybayinCharacterSO>();
-            foreach (string id in f.Syllables)
+            var syllables = new List<(BaybayinCharacterSO Symbol, string ValueId)>();
+            foreach (string token in f.Syllables)
             {
-                BaybayinCharacterSO s = pool.FirstOrDefault(p => p.characterID == id);
-                if (s == null)
+                if (!TryResolveSyllable(pool, token, out BaybayinCharacterSO s, out string valueId))
                 {
-                    Debug.LogError($"{spec.StableId}: {f.Word} needs {id}, which is not in the pool.");
+                    Debug.LogError($"{spec.StableId}: {f.Word} needs '{token}', which no pool symbol " +
+                                   "provides as a character id or as a spoken value.");
                     return false;
                 }
-                syllables.Add(s);
+                syllables.Add((s, valueId));
             }
 
             WriteFocus(focus.GetArrayElementAtIndex(i),
                        $"{spec.StableId}.focus.{(i + 1):00}", f.Word, f.Meaning, syllables);
+
+            // Log the resolved symbol and value per syllable, not just the token, so a contextual
+            // reading like RA -> DA/value.ra is visible in the report rather than silent.
+            string resolved = string.Join(" + ", syllables.Select(x => $"{x.Symbol.characterID}({x.ValueId})"));
             log.AppendLine($"  focus {i + 1}: {f.Word} = {string.Join(" + ", f.Syllables)}" +
-                           $"  (meaning \"{f.Meaning}\")");
+                           $"  ->  {resolved}  (meaning \"{f.Meaning}\")");
         }
 
         // Final restoration syllable, from the matrix's "Workbook last syllable" column.
@@ -255,7 +259,8 @@ public static class CampaignLevelDataTool
     }
 
     private static void WriteFocus(SerializedProperty entry, string stableId, string word,
-                                   string meaning, List<BaybayinCharacterSO> decomposition)
+                                   string meaning,
+                                   List<(BaybayinCharacterSO Symbol, string ValueId)> decomposition)
     {
         entry.FindPropertyRelative("stableId").stringValue = stableId;
         entry.FindPropertyRelative("latinSpelling").stringValue = word;
@@ -267,8 +272,8 @@ public static class CampaignLevelDataTool
         for (int i = 0; i < decomposition.Count; i++)
         {
             SerializedProperty s = d.GetArrayElementAtIndex(i);
-            s.FindPropertyRelative("symbol").objectReferenceValue = decomposition[i];
-            s.FindPropertyRelative("spokenValueId").stringValue = SpokenValueId(decomposition[i]);
+            s.FindPropertyRelative("symbol").objectReferenceValue = decomposition[i].Symbol;
+            s.FindPropertyRelative("spokenValueId").stringValue = decomposition[i].ValueId;
         }
 
         // Media stays unassigned, exactly as every authored Ugat focus word has it.
@@ -303,13 +308,69 @@ public static class CampaignLevelDataTool
         }
     }
 
+    /// <summary>
+    /// Resolves one decomposition token to the symbol that carries it and the spoken value it should
+    /// be written with.
+    ///
+    /// A token normally names a symbol's own characterID: "HA" resolves to Char_HA with its first
+    /// spoken value. A token may instead name a CONTEXTUAL READING that some symbol carries as a
+    /// later spoken value -- "RA" resolves to Char_DA with value.ra, because RA is not a separate
+    /// taught symbol. DA and RA share one glyph with two readings, which is the whole point of the
+    /// 17-visual / 18-spoken model (SALIN-212).
+    ///
+    /// SALIN-155's HARAYA = HA + RA + YA is the only place in the campaign that needs this, but the
+    /// contextual case is resolved FROM THE CHARACTER DATA rather than from a hardcoded DA/RA alias,
+    /// so any contextual value added later works without touching this method.
+    ///
+    /// A character id always wins over a contextual value, so a token naming a real symbol can never
+    /// be captured by some other symbol's spoken value.
+    /// </summary>
+    public static bool TryResolveSyllable(IReadOnlyList<BaybayinCharacterSO> pool, string token,
+                                          out BaybayinCharacterSO symbol, out string spokenValueId)
+    {
+        symbol = null;
+        spokenValueId = null;
+        if (pool == null || string.IsNullOrWhiteSpace(token)) return false;
+
+        foreach (BaybayinCharacterSO candidate in pool)
+        {
+            if (candidate == null || candidate.characterID != token) continue;
+            symbol = candidate;
+            spokenValueId = SpokenValueId(candidate);
+            return true;
+        }
+
+        string wanted = "value." + token.ToLowerInvariant();
+        foreach (BaybayinCharacterSO candidate in pool)
+        {
+            if (candidate == null) continue;
+            foreach (string id in SpokenValueIds(candidate))
+            {
+                if (id != wanted) continue;
+                symbol = candidate;
+                spokenValueId = id;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /// <summary>A symbol's own first spoken value -- never a guessed "value." + id string.</summary>
     private static string SpokenValueId(BaybayinCharacterSO symbol)
     {
+        foreach (string id in SpokenValueIds(symbol)) return id;
+        return string.Empty;
+    }
+
+    /// <summary>Every spoken value id a symbol declares, in authored order.</summary>
+    private static IEnumerable<string> SpokenValueIds(BaybayinCharacterSO symbol)
+    {
+        if (symbol == null) yield break;
         var so = new SerializedObject(symbol);
         SerializedProperty values = so.FindProperty("spokenValues");
-        return values != null && values.arraySize > 0
-            ? values.GetArrayElementAtIndex(0).FindPropertyRelative("stableId").stringValue
-            : string.Empty;
+        if (values == null) yield break;
+        for (int i = 0; i < values.arraySize; i++)
+            yield return values.GetArrayElementAtIndex(i).FindPropertyRelative("stableId").stringValue;
     }
 }
