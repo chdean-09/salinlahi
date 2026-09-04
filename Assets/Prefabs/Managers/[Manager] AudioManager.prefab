@@ -81,6 +81,22 @@ MonoBehaviour:
   _baseHitVolumeMax: 1
   _baseHitPitchMin: 0.96
   _baseHitPitchMax: 1.04
+  _trimSilenceThreshold: 0.0025
+  _maxLeadingSilenceTrimSeconds: 0.12
+  _trimTrailingSilence: 1
+  _trailingSilencePadSeconds: 0.03
+  _pronunciationTrimSilenceThreshold: 0.01
+  _maxPronunciationLeadingTrimSeconds: 0.6
+  _enablePronunciationModulation: 1
+  _pronunciationPitchMin: 0.96
+  _pronunciationPitchMax: 1.04
+  _pronunciationVolumeMin: 0.94
+  _pronunciationVolumeMax: 1
+  _duckBgmDuringPronunciation: 1
+  _pronunciationDuckLevel: 0.35
+  _pronunciationDuckFadeOutSeconds: 0.08
+  _pronunciationDuckHoldSeconds: 0.15
+  _pronunciationDuckFadeInSeconds: 0.45
   _enablePerEnemyChainZap: 1
   _maxChainZapOneShots: 3
   _chainZapVolumeScale: 0.3
