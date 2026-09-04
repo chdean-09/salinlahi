@@ -201,7 +201,9 @@ public class LevelButton : MonoBehaviour
         // owner so the prerequisite can be explained in place.
         if (!_isUnlocked)
         {
-            AudioManager.Instance?.PlayMenuButtonClick();
+            // A refused press must not sound like an accepted one -- this path used to play the
+            // same affirmative click as an unlocked level.
+            AudioManager.Instance?.PlayLevelLockedDenied();
             DebugLogger.Log($"LevelButton: Level {_config.levelNumber} is locked");
             _lockedPressHandler?.Invoke(_config);
             return;

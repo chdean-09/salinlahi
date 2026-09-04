@@ -55,6 +55,24 @@ MonoBehaviour:
   _baseHitClips:
   - {fileID: 8300000, guid: c4ac9746bfe721240ae773e4c895c9d4, type: 3}
   - {fileID: 8300000, guid: cabe2af8c7b99b641b25abd2f50a9291, type: 3}
+  _correctGlyphClip: {fileID: 8300000, guid: cab18ec5efa24f87a7394bd5945eb8dc, type: 3}
+  _correctGlyphVolume: 0.31
+  _wrongGlyphClip: {fileID: 8300000, guid: 3dc36acde0ca4866b18326f3024d85ed, type: 3}
+  _wrongGlyphVolume: 0.67
+  _enemyDefeatedClip: {fileID: 8300000, guid: d1ce4cc0e4f54d7287689ed4e4623b14, type: 3}
+  _enemyDefeatedVolume: 0.29
+  _maxEnemyDeathsPerBurst: 3
+  _enemyDeathBurstWindow: 0.14
+  _enemyDeathPitchMin: 0.94
+  _enemyDeathPitchMax: 1.06
+  _levelLockedClip: {fileID: 8300000, guid: 043114e68ebc47c6ba6fc12384ac7251, type: 3}
+  _levelLockedVolume: 0.5
+  _characterUnlockedClip: {fileID: 8300000, guid: a0a4099c67f447a4b4bfd9db435fabad, type: 3}
+  _characterUnlockedVolume: 0.5
+  _victoryStingClip: {fileID: 8300000, guid: b64d7ecd3700412a902bacd63817a7a7, type: 3}
+  _defeatStingClip: {fileID: 8300000, guid: 8bd0fd4925df4e6fab0466374f2880ff, type: 3}
+  _stingVolume: 1
+  _duckBgmDuringSting: 1
   _homeScreenBgmClip: {fileID: 8300000, guid: 1e4282e2179138c49a9c3c7f72641d5e, type: 3}
   _gameplayBgmClip: {fileID: 8300000, guid: 30ff0000af0ce964782acd90a13a79dc, type: 3}
   _contextBgmFadeOutSeconds: 0.15
@@ -63,6 +81,22 @@ MonoBehaviour:
   _baseHitVolumeMax: 1
   _baseHitPitchMin: 0.96
   _baseHitPitchMax: 1.04
+  _trimSilenceThreshold: 0.0025
+  _maxLeadingSilenceTrimSeconds: 0.12
+  _trimTrailingSilence: 1
+  _trailingSilencePadSeconds: 0.03
+  _pronunciationTrimSilenceThreshold: 0.01
+  _maxPronunciationLeadingTrimSeconds: 0.6
+  _enablePronunciationModulation: 1
+  _pronunciationPitchMin: 0.96
+  _pronunciationPitchMax: 1.04
+  _pronunciationVolumeMin: 0.94
+  _pronunciationVolumeMax: 1
+  _duckBgmDuringPronunciation: 1
+  _pronunciationDuckLevel: 0.35
+  _pronunciationDuckFadeOutSeconds: 0.08
+  _pronunciationDuckHoldSeconds: 0.15
+  _pronunciationDuckFadeInSeconds: 0.45
   _enablePerEnemyChainZap: 1
   _maxChainZapOneShots: 3
   _chainZapVolumeScale: 0.3
@@ -179,7 +213,7 @@ AudioSource:
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
-  m_PlayOnAwake: 1
+  m_PlayOnAwake: 0
   m_Volume: 1
   m_Pitch: 1
   Loop: 0
