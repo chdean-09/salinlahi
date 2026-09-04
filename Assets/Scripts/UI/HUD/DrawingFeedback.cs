@@ -22,6 +22,11 @@ public class DrawingFeedback : MonoBehaviour
     [Tooltip("Optional label carrying the player-facing message. Safe to leave unwired.")]
     [SerializeField] private TMP_Text _messageLabel;
 
+    [Tooltip("Seconds a transient message stays on screen before the label clears. "
+        + "0 leaves it up until the next message. The help offer ignores this and stays.")]
+    [Min(0f)]
+    [SerializeField] private float _messageHoldSeconds = 3f;
+
     /// <summary>
     /// How many correction cues this HUD has been asked for. The flash itself lives on
     /// serialized scene references that may or may not be wired, so this is the assertable
@@ -44,6 +49,8 @@ public class DrawingFeedback : MonoBehaviour
     /// not be wired, so this is the assertable record of what the player was actually told.
     /// </summary>
     public string LastMessage { get; private set; } = string.Empty;
+
+    private Coroutine _clearRoutine;
 
     private void Awake()
     {
@@ -116,8 +123,39 @@ public class DrawingFeedback : MonoBehaviour
     {
         LastMessage = message;
 
-        if (_messageLabel != null)
-            _messageLabel.text = message;
+        if (_messageLabel == null)
+            return;
+
+        _messageLabel.text = message;
+
+        // Nothing used to take the text back down, so the label kept the last thing it was
+        // handed for the rest of the level: "Nice - that's the one." was still sitting over
+        // the play area several dialogue beats and an enemy breach later. LastMessage is
+        // deliberately NOT cleared -- it is the assertable record of what the player was told.
+        if (_clearRoutine != null)
+        {
+            StopCoroutine(_clearRoutine);
+            _clearRoutine = null;
+        }
+
+        // The help offer is not transient: AC2 keeps it standing for the rest of the run of
+        // failures, so it must outlive the hold that clears ordinary encouragement.
+        if (_messageHoldSeconds <= 0f || HelpAvailable || !isActiveAndEnabled)
+            return;
+
+        _clearRoutine = StartCoroutine(ClearMessageAfterHold());
+    }
+
+    private IEnumerator ClearMessageAfterHold()
+    {
+        // Unscaled: a message raised just before a pause must still time out behind it,
+        // matching how the flash coroutine above measures its own fade.
+        yield return new WaitForSecondsRealtime(_messageHoldSeconds);
+
+        if (_messageLabel != null && !HelpAvailable)
+            _messageLabel.text = string.Empty;
+
+        _clearRoutine = null;
     }
 
     private void SetHelpAvailable(bool available)

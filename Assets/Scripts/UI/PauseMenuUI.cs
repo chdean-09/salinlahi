@@ -97,7 +97,16 @@ public class PauseMenuUI : MonoBehaviour
 
     private void Show()
     {
-        if (_panel != null) _panel.SetActive(true);
+        if (_panel != null)
+        {
+            _panel.SetActive(true);
+
+            // Pausing on top of a character-unlock reveal used to interleave the two panels:
+            // "PAUSED" rendered behind the unlock card while Resume/Restart/Quit rendered in
+            // front of it, leaving both unreadable. The player asked for the pause menu, so it
+            // takes the top of the stack and its own dim covers whatever was underneath.
+            _panel.transform.SetAsLastSibling();
+        }
     }
 
     private void Hide()

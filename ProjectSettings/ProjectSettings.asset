@@ -168,7 +168,7 @@ PlayerSettings:
   androidMinAspectRatio: 1
   applicationIdentifier:
     Android: com.salinlahi.game
-    Standalone: com.DefaultCompany.2D-URP
+    Standalone: com.salinlahi.game
   buildNumber:
     Standalone: 0
     VisionOS: 0

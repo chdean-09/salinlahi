@@ -342,9 +342,12 @@ public class ProgressManager : Singleton<ProgressManager>
     /// </summary>
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        // Clear cached HeartSystem when entering a new scene;
-        // HeartSystem will re-register via its OnEnable.
-        _cachedHeartSystem = null;
+        // The HeartSystem of the scene being loaded has ALREADY registered by the time this
+        // runs: Unity raises sceneLoaded after the new scene's Awake/OnEnable pass. Clearing
+        // the cache here therefore discarded the live registration rather than a stale one,
+        // and every level start logged "HeartSystem not registered at wave 0 start".
+        // Lifetime is handled by DeregisterHeartSystem, whose identity check already refuses
+        // to unseat a newer HeartSystem when the outgoing scene's copy tears down late.
         _cachedLevelOutcome = null;
         _levelEvidence = null;
         _pendingLevelResults = null;
