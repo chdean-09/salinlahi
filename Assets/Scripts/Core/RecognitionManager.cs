@@ -11,6 +11,13 @@ public class RecognitionManager : Singleton<RecognitionManager>
     protected override void Awake()
     {
         base.Awake();
+
+        // base.Awake() only returns out of ITSELF when this is a duplicate, so without this
+        // guard the doomed copy still ran LoadTemplates() before its deferred Destroy landed --
+        // re-parsing all 121 stroke templates on every single level load. Same guard the other
+        // singletons here already use (SceneLoader, AudioManager, EnemyPool).
+        if (Instance != this) return;
+
         _recognizer = new DollarPRecognizer(_config.resamplePointCount);
         LoadTemplates();
     }

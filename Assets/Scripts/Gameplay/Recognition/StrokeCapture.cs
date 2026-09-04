@@ -43,12 +43,32 @@ public class StrokeCapture : MonoBehaviour
     private void OnEnable()
     {
         EnhancedTouchSupport.Enable();
+        EnableMouseAsTouchOnDesktop();
         Touch.onFingerDown += OnFingerDown;
         Touch.onFingerMove += OnFingerMove;
         Touch.onFingerUp += OnFingerUp;
         EventBus.OnGamePaused += HandleGamePaused;
         EventBus.OnGameResumed += HandleGameResumed;
         EventBus.OnLevelAttemptAborted += HandleLevelAttemptAborted;
+    }
+
+    /// <summary>
+    /// Drawing is the only combat input and it is captured exclusively from EnhancedTouch
+    /// fingers, so on a machine with no touchscreen the recognizer never receives a stroke:
+    /// menus respond to the mouse but the player can never attack. That makes the Editor and
+    /// any desktop build unplayable past the first tutorial prompt, which also blocks manual
+    /// playtesting of the core loop. TouchSimulation republishes mouse events as touches, so
+    /// the same finger code path runs unchanged.
+    ///
+    /// Device builds are untouched: the guard compiles this out everywhere except the Editor
+    /// and desktop players, and even there it defers to a real touchscreen when one exists.
+    /// </summary>
+    private static void EnableMouseAsTouchOnDesktop()
+    {
+#if UNITY_EDITOR || UNITY_STANDALONE
+        if (UnityEngine.InputSystem.Touchscreen.current == null && TouchSimulation.instance == null)
+            TouchSimulation.Enable();
+#endif
     }
 
     private void OnDisable()

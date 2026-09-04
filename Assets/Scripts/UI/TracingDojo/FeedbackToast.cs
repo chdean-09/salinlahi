@@ -31,9 +31,13 @@ public class FeedbackToast : MonoBehaviour
     /// "83%", grading the player against an internal threshold instead of telling them what to
     /// change. Taking it out of the signature is what keeps it out of the UI for good.
     /// </summary>
-    public void Show(string characterID, bool pass)
+    public void Show(string characterID, bool pass, bool recognized = true)
     {
-        _verdictLabel.text = characterID;
+        // A rejected stroke has no character to name: `characterID` is only the closest
+        // template, which the recognizer already decided was not close enough.
+        _verdictLabel.text = recognized
+            ? characterID
+            : DrawingFeedbackVocabulary.UnrecognizedVerdict;
         _verdictLabel.color = pass ? PassColor : FailColor;
         _encouragementLabel.text = pass
             ? DrawingFeedbackVocabulary.Accepted

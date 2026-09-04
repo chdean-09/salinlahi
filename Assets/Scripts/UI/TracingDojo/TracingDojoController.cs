@@ -74,7 +74,7 @@ public class TracingDojoController : MonoBehaviour
 
         bool pass = passedThreshold && matchesSelected;
 
-        _toast.Show(result.characterID, pass);
+        _toast.Show(result.characterID, pass, passedThreshold);
 
         if (_recorder != null && ContentIdentity.IsCanonical(selectedStableId))
         {

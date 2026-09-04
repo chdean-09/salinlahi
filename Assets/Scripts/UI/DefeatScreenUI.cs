@@ -14,6 +14,9 @@ public class DefeatScreenUI : MonoBehaviour
     [Header("Panel")]
     [SerializeField] private GameObject _panel;
 
+    [Tooltip("Gameplay HUD root, hidden while the defeat overlay is up. Safe to leave unwired.")]
+    [SerializeField] private GameObject _hudRoot;
+
     private void Awake()
     {
         if (_panel != null) _panel.SetActive(false);
@@ -39,6 +42,13 @@ public class DefeatScreenUI : MonoBehaviour
     {
         if (_panel != null)
             _panel.SetActive(true);
+
+        // The wave label, the spent hearts and the pause button were painting straight through
+        // the 85%-opaque defeat background. Sibling order cannot settle it -- the HUD sits under
+        // its own Canvas -- so the HUD is taken down instead. Both buttons below leave the scene,
+        // so nothing has to put it back: the reload does.
+        if (_hudRoot != null)
+            _hudRoot.SetActive(false);
 
         int hearts = GameManager.Instance != null ? GameManager.Instance.LastDefeatHearts : 0;
         HeartSystem heartSystem = FindFirstObjectByType<HeartSystem>();

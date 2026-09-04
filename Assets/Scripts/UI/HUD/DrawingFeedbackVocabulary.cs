@@ -10,6 +10,15 @@
 public static class DrawingFeedbackVocabulary
 {
     public const string Accepted = "Nice — that's the one.";
+
+    /// <summary>
+    /// Shown in the verdict slot instead of a character name when the stroke did not clear
+    /// the recognition threshold. The toast used to print the recognizer's best guess even
+    /// then, so a stroke scoring 0.48 against a 0.60 threshold — a no-match — was reported to
+    /// the player as a confident "GA". In a game whose whole purpose is fixing glyph-to-syllable
+    /// pairs in memory, naming a character the recognizer rejected teaches the wrong pair.
+    /// </summary>
+    public const string UnrecognizedVerdict = "Not recognized";
     public const string RejectedFirstAttempt = "Not quite. Give that stroke another try.";
     public const string RejectedAgain = "Almost. Take your time with the shape.";
     public const string HelpOffered = "Want to see how this one is drawn?";
