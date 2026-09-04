@@ -92,6 +92,100 @@ namespace Salinlahi.Tests.Editor.Core
             }
         }
 
+        // ---- Pronunciation ducking (BGM dips under a syllable) ----------------------------
+        //
+        // The duck is a multiplier kept separate from _bgmScale on purpose: _bgmScale belongs
+        // to the fade/crossfade system and is reset to 1 at several points, so folding the two
+        // together would let a scene crossfade cancel a duck mid-syllable or strand the music
+        // quiet. These tests pin that separation, because nothing else would catch it -- a
+        // stuck duck is silent, literally.
+
+        [Test]
+        public void ApplyVolumes_AppliesTheDuckMultiplierToBgm()
+        {
+            _audioManager.SetMasterVolume(1f);
+            _audioManager.SetBgmVolume(1f);
+
+            SetPrivateField(_audioManager, "_bgmDuck", 0.35f);
+            InvokePrivateMethod(_audioManager, "ApplyVolumes");
+
+            Assert.AreEqual(0.35f, _bgmSource.volume, 0.0001f,
+                "A duck must scale the BGM source; the syllable is inaudible otherwise.");
+        }
+
+        [Test]
+        public void Duck_ComposesWithBgmScale_RatherThanReplacingIt()
+        {
+            _audioManager.SetMasterVolume(1f);
+            _audioManager.SetBgmVolume(0.5f);
+
+            SetPrivateField(_audioManager, "_bgmScale", 0.5f);
+            SetPrivateField(_audioManager, "_bgmDuck", 0.4f);
+            InvokePrivateMethod(_audioManager, "ApplyVolumes");
+
+            Assert.AreEqual(0.5f * 0.5f * 0.4f, _bgmSource.volume, 0.0001f,
+                "Duck, fade scale and the player's slider must all multiply; if any one wins "
+                + "outright, either the fade jumps or the duck is lost.");
+        }
+
+        [Test]
+        public void VolumeSliderChangeDuringADuck_KeepsTheDuck()
+        {
+            SetPrivateField(_audioManager, "_bgmDuck", 0.35f);
+
+            _audioManager.SetBgmVolume(0.8f);
+
+            Assert.AreEqual(0.8f * 0.35f, _bgmSource.volume, 0.0001f,
+                "Moving the BGM slider mid-syllable must not undo the duck.");
+        }
+
+        [Test]
+        public void CancelBgmDuck_RestoresFullBgmLevel()
+        {
+            _audioManager.SetMasterVolume(1f);
+            _audioManager.SetBgmVolume(1f);
+            SetPrivateField(_audioManager, "_bgmDuck", 0.2f);
+            InvokePrivateMethod(_audioManager, "ApplyVolumes");
+
+            InvokePrivateMethod(_audioManager, "CancelBgmDuck");
+
+            Assert.AreEqual(1f, _bgmSource.volume, 0.0001f,
+                "A duck interrupted by a scene change must not leave the music held down.");
+        }
+
+        [Test]
+        public void SceneLoad_ClearsAnInFlightDuck()
+        {
+            _audioManager.SetMasterVolume(1f);
+            _audioManager.SetBgmVolume(1f);
+            SetPrivateField(_audioManager, "_bgmDuck", 0.25f);
+
+            InvokePrivateMethod(_audioManager, "CancelBgmDuck");
+
+            Assert.AreEqual(
+                1f,
+                (float)typeof(AudioManager)
+                    .GetField("_bgmDuck", BindingFlags.Instance | BindingFlags.NonPublic)
+                    .GetValue(_audioManager),
+                0.0001f,
+                "Leaving a level mid-syllable must reset the duck for the next scene.");
+        }
+
+        [Test]
+        public void DuckingDisabled_LeavesBgmUntouched()
+        {
+            SetPrivateField(_audioManager, "_duckBgmDuringPronunciation", false);
+            _audioManager.SetMasterVolume(1f);
+            _audioManager.SetBgmVolume(1f);
+            InvokePrivateMethod(_audioManager, "ApplyVolumes");
+            float before = _bgmSource.volume;
+
+            InvokePrivateMethod(_audioManager, "DuckBgmForPronunciation", 0.5f);
+
+            Assert.AreEqual(before, _bgmSource.volume, 0.0001f,
+                "The feature must be switchable off from the inspector without side effects.");
+        }
+
         private static void SetPrivateField(object target, string fieldName, object value)
         {
             FieldInfo field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);

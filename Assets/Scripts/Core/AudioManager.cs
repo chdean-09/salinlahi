@@ -48,6 +48,24 @@ public class AudioManager : Singleton<AudioManager>
     [SerializeField, Min(0f)] private float _pronunciationVolumeMin = 0.94f;
     [SerializeField, Min(0f)] private float _pronunciationVolumeMax = 1f;
 
+    [Header("Pronunciation Ducking")]
+    [Tooltip("Dip the music while a syllable plays. The pronunciation clip is the game's "
+        + "phonological-loop mechanism, and after the loudness pass it still sits only ~2.5 dB "
+        + "over the music bed -- too little for a syllable to read clearly.")]
+    [SerializeField] private bool _duckBgmDuringPronunciation = true;
+
+    [Tooltip("BGM level while ducked, as a fraction of its normal volume. 0.35 is about -9 dB.")]
+    [SerializeField, Range(0.05f, 1f)] private float _pronunciationDuckLevel = 0.35f;
+
+    [Tooltip("Seconds to dip in. Short, so the music is already down before the syllable lands.")]
+    [SerializeField, Min(0f)] private float _pronunciationDuckFadeOutSeconds = 0.08f;
+
+    [Tooltip("Seconds to hold the dip after the clip ends, before the music comes back.")]
+    [SerializeField, Min(0f)] private float _pronunciationDuckHoldSeconds = 0.15f;
+
+    [Tooltip("Seconds to bring the music back. Longer than the dip so the recovery is unobtrusive.")]
+    [SerializeField, Min(0f)] private float _pronunciationDuckFadeInSeconds = 0.45f;
+
     [Header("Chain Lightning Mix")]
     [SerializeField] private bool _enablePerEnemyChainZap = true;
     [SerializeField, Min(0)] private int _maxChainZapOneShots = 3;
@@ -76,6 +94,19 @@ public class AudioManager : Singleton<AudioManager>
     // changes during a track preserve the bank's authored level.
     private float _bgmScale = 1f;
     private Coroutine _bgmFadeRoutine;
+
+    // Ducking is deliberately a SEPARATE multiplier from _bgmScale. _bgmScale belongs to the
+    // fade/crossfade system, which resets it to 1 at several points; folding the duck into it
+    // would let a scene crossfade cancel a duck mid-syllable, or leave the duck stuck on.
+    private float _bgmDuck = 1f;
+    private Coroutine _bgmDuckRoutine;
+
+    /// <summary>
+    /// The one place BGM level is composed. Kept as a property so a live volume-slider change,
+    /// an in-flight fade and an active duck all read the same value instead of three call sites
+    /// disagreeing about which factors apply.
+    /// </summary>
+    private float BgmTargetVolume => _masterVolume * _bgmVolume * _bgmScale * _bgmDuck;
     private BgmContext _currentBgmContext = BgmContext.None;
 
     public float MasterVolume => _masterVolume;
@@ -121,10 +152,20 @@ public class AudioManager : Singleton<AudioManager>
             StopCoroutine(_bgmFadeRoutine);
             _bgmFadeRoutine = null;
         }
+
+        if (_bgmDuckRoutine != null)
+        {
+            StopCoroutine(_bgmDuckRoutine);
+            _bgmDuckRoutine = null;
+        }
+        _bgmDuck = 1f;
     }
 
     private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        // A syllable can be cut off mid-duck by a scene change (leaving a level during a
+        // learning card, say). Without this the next scene's music would come up dipped.
+        CancelBgmDuck();
         ApplyContextBgmForScene(scene.name);
     }
 
@@ -230,6 +271,95 @@ public class AudioManager : Singleton<AudioManager>
 
         _pronunciationSfxSource.pitch = pitch;
         _pronunciationSfxSource.PlayOneShot(prepared, volumeScale);
+
+        // pitch is a playback-rate change, so the audible length is the clip divided by it.
+        DuckBgmForPronunciation(prepared.length / Mathf.Max(0.01f, pitch));
+    }
+
+    /// <summary>
+    /// Dips the music under a syllable and brings it back.
+    ///
+    /// After the loudness pass the pronunciation clips sit at -17.5 LUFS against a -20 LUFS
+    /// music bed -- only about +2.5 dB, and they could not be pushed louder because they were
+    /// already near full scale. Ducking is what actually makes the syllable read, and the
+    /// syllable is the phonological-loop mechanism the whole learning model rests on.
+    ///
+    /// Retriggering restarts the envelope from wherever it currently is rather than stacking,
+    /// so a rapid run of cards holds one continuous dip instead of stepping the music down.
+    /// </summary>
+    private void DuckBgmForPronunciation(float clipSeconds)
+    {
+        if (!_duckBgmDuringPronunciation || _bgmSource == null)
+            return;
+
+        if (_bgmDuckRoutine != null)
+            StopCoroutine(_bgmDuckRoutine);
+
+        _bgmDuckRoutine = StartCoroutine(DuckBgmRoutine(clipSeconds));
+    }
+
+    private IEnumerator DuckBgmRoutine(float clipSeconds)
+    {
+        float target = Mathf.Clamp(_pronunciationDuckLevel, 0.05f, 1f);
+
+        // Unscaled throughout: learning cards pause the game, and a syllable that plays behind
+        // a paused screen must still duck and recover.
+        yield return FadeBgmDuckTo(target, _pronunciationDuckFadeOutSeconds);
+
+        float hold = Mathf.Max(0f, clipSeconds) + Mathf.Max(0f, _pronunciationDuckHoldSeconds);
+        float elapsed = 0f;
+        while (elapsed < hold)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            // Re-apply every tick so a volume-slider change mid-duck is picked up.
+            ApplyVolumes();
+            yield return null;
+        }
+
+        yield return FadeBgmDuckTo(1f, _pronunciationDuckFadeInSeconds);
+        _bgmDuckRoutine = null;
+    }
+
+    private IEnumerator FadeBgmDuckTo(float target, float seconds)
+    {
+        float from = _bgmDuck;
+        if (seconds <= 0f)
+        {
+            _bgmDuck = target;
+            ApplyVolumes();
+            yield break;
+        }
+
+        float elapsed = 0f;
+        while (elapsed < seconds)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            _bgmDuck = Mathf.Lerp(from, target, Mathf.Clamp01(elapsed / seconds));
+            ApplyVolumes();
+            yield return null;
+        }
+
+        _bgmDuck = target;
+        ApplyVolumes();
+    }
+
+    /// <summary>
+    /// Drops any duck immediately. A duck left half-applied would quietly hold the music down
+    /// for the rest of the session, so anything that tears down or re-points the BGM clears it.
+    /// </summary>
+    private void CancelBgmDuck()
+    {
+        if (_bgmDuckRoutine != null)
+        {
+            StopCoroutine(_bgmDuckRoutine);
+            _bgmDuckRoutine = null;
+        }
+
+        if (Mathf.Approximately(_bgmDuck, 1f))
+            return;
+
+        _bgmDuck = 1f;
+        ApplyVolumes();
     }
 
     private void PlayBaseHitSound(int appliedDamage)
@@ -341,7 +471,7 @@ public class AudioManager : Singleton<AudioManager>
         _bgmScale = 1f;
         _bgmSource.clip = clip;
         _bgmSource.loop = true;
-        _bgmSource.volume = _masterVolume * _bgmVolume;
+        _bgmSource.volume = BgmTargetVolume;
         _bgmSource.Play();
     }
 
@@ -370,7 +500,7 @@ public class AudioManager : Singleton<AudioManager>
         {
             _bgmSource.clip = clip;
             _bgmSource.loop = true;
-            _bgmSource.volume = _masterVolume * _bgmVolume * _bgmScale;
+            _bgmSource.volume = BgmTargetVolume;
             _bgmSource.Play();
             _bgmFadeRoutine = null;
             return null;
@@ -391,7 +521,7 @@ public class AudioManager : Singleton<AudioManager>
         {
             _bgmSource.Stop();
             _bgmScale = 1f;
-            _bgmSource.volume = _masterVolume * _bgmVolume;
+            _bgmSource.volume = BgmTargetVolume;
             _bgmFadeRoutine = null;
             return null;
         }
@@ -411,12 +541,12 @@ public class AudioManager : Singleton<AudioManager>
         while (elapsed < seconds)
         {
             elapsed += Time.unscaledDeltaTime;
-            float target = _masterVolume * _bgmVolume * _bgmScale;
+            float target = BgmTargetVolume;
             _bgmSource.volume = Mathf.Lerp(0f, target, Mathf.Clamp01(elapsed / seconds));
             yield return null;
         }
 
-        _bgmSource.volume = _masterVolume * _bgmVolume * _bgmScale;
+        _bgmSource.volume = BgmTargetVolume;
         _bgmFadeRoutine = null;
     }
 
@@ -429,7 +559,7 @@ public class AudioManager : Singleton<AudioManager>
             elapsed += Time.unscaledDeltaTime;
             // Recompute the upper bound each tick so volume slider changes
             // mid-fade are respected.
-            float upper = _masterVolume * _bgmVolume * _bgmScale;
+            float upper = BgmTargetVolume;
             float from = Mathf.Min(startVolume, upper);
             _bgmSource.volume = Mathf.Lerp(from, 0f, Mathf.Clamp01(elapsed / seconds));
             yield return null;
@@ -437,7 +567,7 @@ public class AudioManager : Singleton<AudioManager>
 
         _bgmSource.Stop();
         _bgmScale = 1f;
-        _bgmSource.volume = _masterVolume * _bgmVolume;
+        _bgmSource.volume = BgmTargetVolume;
         _bgmFadeRoutine = null;
     }
 
@@ -468,7 +598,7 @@ public class AudioManager : Singleton<AudioManager>
     private void ApplyVolumes()
     {
         if (_bgmSource != null)
-            _bgmSource.volume = _masterVolume * _bgmVolume * _bgmScale;
+            _bgmSource.volume = BgmTargetVolume;
 
         float sfxVolume = _masterVolume * _sfxVolume;
         if (_sfxSource != null)
