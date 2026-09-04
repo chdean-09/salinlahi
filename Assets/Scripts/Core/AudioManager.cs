@@ -23,6 +23,57 @@ public class AudioManager : Singleton<AudioManager>
     [SerializeField] private AudioClip _menuExitButtonClickClip;
     [SerializeField] private AudioClip[] _baseHitClips;
 
+    [Header("Recognition Feedback SFX")]
+    [Tooltip("Plays when a drawn glyph passes the recognition threshold. This is the core "
+        + "learning loop's success signal -- before it the game answered a correct glyph with "
+        + "silence.")]
+    [SerializeField] private AudioClip _correctGlyphClip;
+
+    [Tooltip("Kenney's clips are mastered near full scale. 0.31 puts this ~10 dB down, level "
+        + "with the pronunciation clips rather than 10 dB over the music bed.")]
+    [SerializeField, Range(0f, 1f)] private float _correctGlyphVolume = 0.31f;
+
+    [Tooltip("Plays on a failed submission (below threshold, degenerate stroke, or a wrong "
+        + "glyph against the boss). Fires on the commit path only, never on live preview.")]
+    [SerializeField] private AudioClip _wrongGlyphClip;
+
+    [SerializeField, Range(0f, 1f)] private float _wrongGlyphVolume = 0.67f;
+
+    [Header("Reward & Threat SFX")]
+    [Tooltip("Plays on OnEnemyDefeated. Deliberately quiet: this is the most frequent event in "
+        + "the game and belongs under the mix, not on top of it.")]
+    [SerializeField] private AudioClip _enemyDefeatedClip;
+    [SerializeField, Range(0f, 1f)] private float _enemyDefeatedVolume = 0.29f;
+
+    [Tooltip("A mass clear defeats every enemy in the same frame. Without a cap that is one "
+        + "death one-shot per enemy stacked on a single frame, which reads as a burst of noise "
+        + "rather than as kills.")]
+    [SerializeField, Min(1)] private int _maxEnemyDeathsPerBurst = 3;
+
+    [Tooltip("Window over which the burst cap applies.")]
+    [SerializeField, Min(0f)] private float _enemyDeathBurstWindow = 0.14f;
+
+    [SerializeField, Min(0.1f)] private float _enemyDeathPitchMin = 0.94f;
+    [SerializeField, Min(0.1f)] private float _enemyDeathPitchMax = 1.06f;
+
+    [Tooltip("Plays when a locked level is pressed. Before this the locked path played the same "
+        + "affirmative click as an unlocked one, so a refused press sounded like an accepted one.")]
+    [SerializeField] private AudioClip _levelLockedClip;
+    [SerializeField, Range(0f, 1f)] private float _levelLockedVolume = 0.5f;
+
+    [Tooltip("Plays on OnCharacterUnlocked -- the game's main reward moment.")]
+    [SerializeField] private AudioClip _characterUnlockedClip;
+    [SerializeField, Range(0f, 1f)] private float _characterUnlockedVolume = 0.5f;
+
+    [Header("Outcome Stingers")]
+    [SerializeField] private AudioClip _victoryStingClip;
+    [SerializeField] private AudioClip _defeatStingClip;
+    [SerializeField, Range(0f, 1f)] private float _stingVolume = 1f;
+
+    [Tooltip("Neither screen stops the gameplay BGM, so without a dip the sting competes with a "
+        + "track that is still looping underneath it.")]
+    [SerializeField] private bool _duckBgmDuringSting = true;
+
     [Header("Context BGM")]
     [SerializeField] private AudioClip _homeScreenBgmClip;
     [SerializeField] private AudioClip _gameplayBgmClip;
@@ -38,6 +89,16 @@ public class AudioManager : Singleton<AudioManager>
     [Header("SFX Playback Polish")]
     [SerializeField, Min(0f)] private float _trimSilenceThreshold = 0.0025f;
     [SerializeField, Min(0f)] private float _maxLeadingSilenceTrimSeconds = 0.12f;
+
+    [Tooltip("Trailing silence is trimmed as well as leading. The shipped UI clips carry long "
+        + "dead tails -- the exit/back clip is 0.39s of sound followed by 7.6s of silence -- and "
+        + "PlayOneShot holds a voice for the whole clip, so a back press kept a voice alive for "
+        + "eight seconds and bled across the scene load that followed it.")]
+    [SerializeField] private bool _trimTrailingSilence = true;
+
+    [Tooltip("Seconds of the fade-out kept after the last audible sample, so a decaying tail is "
+        + "not cut to an audible click.")]
+    [SerializeField, Min(0f)] private float _trailingSilencePadSeconds = 0.03f;
     [Header("Pronunciation Playback Polish")]
     [SerializeField, Min(0f)] private float _pronunciationTrimSilenceThreshold = 0.01f;
     [SerializeField, Min(0f)] private float _maxPronunciationLeadingTrimSeconds = 0.6f;
@@ -78,6 +139,17 @@ public class AudioManager : Singleton<AudioManager>
     private Coroutine _chainZapRoutine;
     private AudioSource _baseHitSfxSource;
     private AudioSource _pronunciationSfxSource;
+
+    // Stingers get their own source so a scene change can stop them without touching any other
+    // SFX. The victory sting runs ~12s and the player can dismiss the screen in two, so without
+    // this it would play on into LevelSelect.
+    private AudioSource _stingSfxSource;
+
+    // Enemy deaths are pitch-varied, and pitch is a property of the source rather than of the
+    // one-shot. Sharing _baseHitSfxSource would let a death re-pitch a base hit already in flight.
+    private AudioSource _enemyDeathSfxSource;
+    private float _enemyDeathBurstStartedAt = -1f;
+    private int _enemyDeathsThisBurst;
     private readonly Dictionary<AudioClip, AudioClip> _trimmedClipCache = new();
     private readonly Dictionary<AudioClip, AudioClip> _trimmedPronunciationClipCache = new();
 
@@ -119,6 +191,8 @@ public class AudioManager : Singleton<AudioManager>
         if (Instance != this) return;
         EnsureBaseHitSfxSource();
         EnsurePronunciationSfxSource();
+        EnsureEnemyDeathSfxSource();
+        EnsureStingSfxSource();
         WarmupSfxClips();
         LoadSavedVolumes();
         ApplyContextBgmForScene(SceneManager.GetActiveScene().name);
@@ -131,6 +205,12 @@ public class AudioManager : Singleton<AudioManager>
         EventBus.OnSpokenPronunciationRequested += PlaySpokenPronunciationClip;
         EventBus.OnBaseDamageApplied += PlayBaseHitSound;
         EventBus.OnChainAttackHit += PlayChainLightningSfx;
+        EventBus.OnCharacterRecognized += PlayCorrectGlyphSfx;
+        EventBus.OnDrawingFailed += PlayWrongGlyphSfx;
+        EventBus.OnLevelComplete += PlayVictorySting;
+        EventBus.OnGameOver += PlayDefeatSting;
+        EventBus.OnEnemyDefeated += PlayEnemyDefeatedSfx;
+        EventBus.OnCharacterUnlocked += PlayCharacterUnlockedSfx;
     }
 
     private void OnDisable()
@@ -140,6 +220,12 @@ public class AudioManager : Singleton<AudioManager>
         EventBus.OnSpokenPronunciationRequested -= PlaySpokenPronunciationClip;
         EventBus.OnBaseDamageApplied -= PlayBaseHitSound;
         EventBus.OnChainAttackHit -= PlayChainLightningSfx;
+        EventBus.OnCharacterRecognized -= PlayCorrectGlyphSfx;
+        EventBus.OnDrawingFailed -= PlayWrongGlyphSfx;
+        EventBus.OnLevelComplete -= PlayVictorySting;
+        EventBus.OnGameOver -= PlayDefeatSting;
+        EventBus.OnEnemyDefeated -= PlayEnemyDefeatedSfx;
+        EventBus.OnCharacterUnlocked -= PlayCharacterUnlockedSfx;
 
         if (_chainZapRoutine != null)
         {
@@ -166,6 +252,7 @@ public class AudioManager : Singleton<AudioManager>
         // A syllable can be cut off mid-duck by a scene change (leaving a level during a
         // learning card, say). Without this the next scene's music would come up dipped.
         CancelBgmDuck();
+        StopSting();
         ApplyContextBgmForScene(scene.name);
     }
 
@@ -289,7 +376,19 @@ public class AudioManager : Singleton<AudioManager>
     /// </summary>
     private void DuckBgmForPronunciation(float clipSeconds)
     {
-        if (!_duckBgmDuringPronunciation || _bgmSource == null)
+        if (!_duckBgmDuringPronunciation)
+            return;
+
+        DuckBgmFor(clipSeconds);
+    }
+
+    /// <summary>
+    /// The duck envelope itself, with no feature flag of its own. Pronunciation and the outcome
+    /// stingers each own their own toggle and share this.
+    /// </summary>
+    private void DuckBgmFor(float clipSeconds)
+    {
+        if (_bgmSource == null)
             return;
 
         if (_bgmDuckRoutine != null)
@@ -362,6 +461,139 @@ public class AudioManager : Singleton<AudioManager>
         ApplyVolumes();
     }
 
+    /// <summary>
+    /// SALIN-audit: the success half of the core learning loop. Raised once per submission that
+    /// clears the recognition threshold, from gameplay and the Tracing Dojo alike.
+    /// </summary>
+    private void PlayCorrectGlyphSfx(string characterId)
+    {
+        PlayFeedbackSfx(_correctGlyphClip, _correctGlyphVolume);
+    }
+
+    /// <summary>
+    /// The failure half. Bound to OnDrawingFailed rather than OnRecognitionResolved because
+    /// PreviewRecognize raises the latter continuously while the player is still drawing --
+    /// an error tone on every preview frame would be unusable. OnDrawingFailed is raised only
+    /// from the commit path (below threshold, degenerate submission, or a wrong glyph against
+    /// the boss), so it fires once per real attempt.
+    /// </summary>
+    private void PlayWrongGlyphSfx()
+    {
+        PlayFeedbackSfx(_wrongGlyphClip, _wrongGlyphVolume);
+    }
+
+    private void PlayFeedbackSfx(AudioClip clip, float volumeScale)
+    {
+        if (clip == null || _sfxSource == null)
+            return;
+
+        AudioClip prepared = PrepareClipForImmediateAttack(clip);
+        if (prepared == null)
+            return;
+
+        _sfxSource.PlayOneShot(prepared, Mathf.Clamp01(volumeScale));
+    }
+
+    /// <summary>
+    /// Enemy defeat. Capped per burst because CombatResolver raises OnAOETriggered alongside one
+    /// OnEnemyDefeated per enemy, so a mass clear arrives as N events in a single frame.
+    /// </summary>
+    private void PlayEnemyDefeatedSfx(BaybayinCharacterSO character)
+    {
+        if (_enemyDefeatedClip == null)
+            return;
+
+        EnsureEnemyDeathSfxSource();
+        if (_enemyDeathSfxSource == null)
+            return;
+
+        // Unscaled: a mass clear can land on the same frame as a hit-stop.
+        float now = Time.unscaledTime;
+        if (_enemyDeathBurstStartedAt < 0f || now - _enemyDeathBurstStartedAt > _enemyDeathBurstWindow)
+        {
+            _enemyDeathBurstStartedAt = now;
+            _enemyDeathsThisBurst = 0;
+        }
+
+        if (_enemyDeathsThisBurst >= Mathf.Max(1, _maxEnemyDeathsPerBurst))
+            return;
+
+        _enemyDeathsThisBurst++;
+
+        AudioClip prepared = PrepareClipForImmediateAttack(_enemyDefeatedClip);
+        if (prepared == null)
+            return;
+
+        float pitchMin = Mathf.Min(_enemyDeathPitchMin, _enemyDeathPitchMax);
+        float pitchMax = Mathf.Max(_enemyDeathPitchMin, _enemyDeathPitchMax);
+        _enemyDeathSfxSource.pitch = Random.Range(pitchMin, pitchMax);
+        _enemyDeathSfxSource.PlayOneShot(prepared, Mathf.Clamp01(_enemyDefeatedVolume));
+    }
+
+    private void PlayCharacterUnlockedSfx(BaybayinCharacterSO character)
+    {
+        PlayFeedbackSfx(_characterUnlockedClip, _characterUnlockedVolume);
+    }
+
+    /// <summary>
+    /// Pressing a locked level. Called directly by LevelButton rather than driven from an event,
+    /// because a refused press raises nothing on the bus -- it only reports back to its owner.
+    /// </summary>
+    public void PlayLevelLockedDenied()
+    {
+        if (_levelLockedClip == null)
+        {
+            // No dedicated clip assigned: the affirmative click is worse than nothing here, so
+            // stay silent rather than tell the player the press was accepted.
+            return;
+        }
+
+        PlayFeedbackSfx(_levelLockedClip, _levelLockedVolume);
+    }
+
+    private void PlayVictorySting()
+    {
+        PlaySting(_victoryStingClip);
+    }
+
+    private void PlayDefeatSting()
+    {
+        PlaySting(_defeatStingClip);
+    }
+
+    /// <summary>
+    /// Neither the victory nor the defeat screen stops the gameplay BGM, so the sting is ducked
+    /// over a track that keeps looping underneath. Retriggering replaces the previous sting
+    /// rather than stacking -- a defeat arriving on the heels of a victory should not play both.
+    /// </summary>
+    private void PlaySting(AudioClip clip)
+    {
+        if (clip == null)
+            return;
+
+        EnsureStingSfxSource();
+        if (_stingSfxSource == null)
+            return;
+
+        // Deliberately NOT run through PrepareClipForImmediateAttack. That path caches a decoded
+        // PCM copy of the clip, which is worth it for a 0.5s UI blip and wasteful for 10-12s of
+        // music -- roughly 4 MB resident per sting, plus a decode hitch on the first victory. The
+        // stingers are topped and tailed at authoring time (0.13s and 0.20s of lead-in), so there
+        // is nothing for the trim to recover.
+        _stingSfxSource.Stop();
+        _stingSfxSource.clip = clip;
+        _stingSfxSource.Play();
+
+        if (_duckBgmDuringSting)
+            DuckBgmFor(clip.length);
+    }
+
+    private void StopSting()
+    {
+        if (_stingSfxSource != null)
+            _stingSfxSource.Stop();
+    }
+
     private void PlayBaseHitSound(int appliedDamage)
     {
         if (appliedDamage <= 0 || _baseHitClips == null || _baseHitClips.Length == 0)
@@ -405,10 +637,23 @@ public class AudioManager : Singleton<AudioManager>
         if (startDelay > 0f)
             yield return new WaitForSeconds(startDelay);
 
+        if (_sfxSource == null)
+        {
+            _chainZapRoutine = null;
+            yield break;
+        }
+
         if (_chainLightningSfxClip != null)
             _sfxSource.PlayOneShot(_chainLightningSfxClip);
 
-        if (!_enablePerEnemyChainZap || _chainLightningZapSfxClip == null || zapCount <= 0 || targetCount <= 0)
+        // The per-enemy layer only works with a clip of its own. Both fields currently point at the
+        // same 1.1s lightning strike, and replaying one recording against a 60ms-offset copy of
+        // itself comb-filters instead of reading as separate zaps -- it just smears the strike.
+        // Skipping the layer is the honest behaviour until a distinct short zap is authored.
+        bool zapClipIsDistinct = _chainLightningZapSfxClip != null
+            && _chainLightningZapSfxClip != _chainLightningSfxClip;
+
+        if (!_enablePerEnemyChainZap || !zapClipIsDistinct || zapCount <= 0 || targetCount <= 0)
         {
             _chainZapRoutine = null;
             yield break;
@@ -467,7 +712,11 @@ public class AudioManager : Singleton<AudioManager>
 
     public void PlayBGM(AudioClip clip)
     {
-        if (clip == null || _bgmSource == null || _bgmSource.clip == clip) return;
+        if (clip == null || _bgmSource == null) return;
+
+        // Stop() leaves .clip assigned, so guarding on the clip alone made this a no-op after any
+        // fade-out -- the track that was faded down could never be started again by name.
+        if (_bgmSource.clip == clip && _bgmSource.isPlaying) return;
         _bgmScale = 1f;
         _bgmSource.clip = clip;
         _bgmSource.loop = true;
@@ -607,6 +856,10 @@ public class AudioManager : Singleton<AudioManager>
             _baseHitSfxSource.volume = sfxVolume;
         if (_pronunciationSfxSource != null)
             _pronunciationSfxSource.volume = sfxVolume;
+        if (_enemyDeathSfxSource != null)
+            _enemyDeathSfxSource.volume = sfxVolume;
+        if (_stingSfxSource != null)
+            _stingSfxSource.volume = sfxVolume * Mathf.Clamp01(_stingVolume);
     }
 
     private void LoadSavedVolumes()
@@ -674,10 +927,76 @@ public class AudioManager : Singleton<AudioManager>
         _pronunciationSfxSource.maxDistance = _sfxSource.maxDistance;
     }
 
+    private void EnsureEnemyDeathSfxSource()
+    {
+        if (_enemyDeathSfxSource != null)
+            return;
+
+        if (_sfxSource == null)
+            return;
+
+        _enemyDeathSfxSource = gameObject.AddComponent<AudioSource>();
+        _enemyDeathSfxSource.outputAudioMixerGroup = _sfxSource.outputAudioMixerGroup;
+        _enemyDeathSfxSource.playOnAwake = false;
+        _enemyDeathSfxSource.loop = false;
+        _enemyDeathSfxSource.mute = _sfxSource.mute;
+        _enemyDeathSfxSource.bypassEffects = _sfxSource.bypassEffects;
+        _enemyDeathSfxSource.bypassListenerEffects = _sfxSource.bypassListenerEffects;
+        _enemyDeathSfxSource.bypassReverbZones = _sfxSource.bypassReverbZones;
+        _enemyDeathSfxSource.priority = _sfxSource.priority;
+        _enemyDeathSfxSource.panStereo = _sfxSource.panStereo;
+        _enemyDeathSfxSource.spatialBlend = _sfxSource.spatialBlend;
+        _enemyDeathSfxSource.reverbZoneMix = _sfxSource.reverbZoneMix;
+        _enemyDeathSfxSource.dopplerLevel = _sfxSource.dopplerLevel;
+        _enemyDeathSfxSource.spread = _sfxSource.spread;
+        _enemyDeathSfxSource.rolloffMode = _sfxSource.rolloffMode;
+        _enemyDeathSfxSource.minDistance = _sfxSource.minDistance;
+        _enemyDeathSfxSource.maxDistance = _sfxSource.maxDistance;
+        ApplyVolumes();
+    }
+
+    private void EnsureStingSfxSource()
+    {
+        if (_stingSfxSource != null)
+            return;
+
+        if (_sfxSource == null)
+            return;
+
+        _stingSfxSource = gameObject.AddComponent<AudioSource>();
+        _stingSfxSource.outputAudioMixerGroup = _sfxSource.outputAudioMixerGroup;
+        _stingSfxSource.playOnAwake = false;
+        _stingSfxSource.loop = false;
+        _stingSfxSource.mute = _sfxSource.mute;
+        _stingSfxSource.bypassEffects = _sfxSource.bypassEffects;
+        _stingSfxSource.bypassListenerEffects = _sfxSource.bypassListenerEffects;
+        _stingSfxSource.bypassReverbZones = _sfxSource.bypassReverbZones;
+        _stingSfxSource.priority = _sfxSource.priority;
+        _stingSfxSource.volume = _sfxSource.volume;
+        _stingSfxSource.panStereo = _sfxSource.panStereo;
+        _stingSfxSource.spatialBlend = _sfxSource.spatialBlend;
+        _stingSfxSource.reverbZoneMix = _sfxSource.reverbZoneMix;
+        _stingSfxSource.dopplerLevel = _sfxSource.dopplerLevel;
+        _stingSfxSource.spread = _sfxSource.spread;
+        _stingSfxSource.rolloffMode = _sfxSource.rolloffMode;
+        _stingSfxSource.minDistance = _sfxSource.minDistance;
+        _stingSfxSource.maxDistance = _sfxSource.maxDistance;
+
+        // Copying _sfxSource.volume above misses _stingVolume. That self-corrects on the next
+        // slider change, but this source can also be created lazily from PlaySting -- in which
+        // case the very first sting would play at the wrong level.
+        ApplyVolumes();
+    }
+
     private void WarmupSfxClips()
     {
         PrepareClipForImmediateAttack(_menuButtonClickClip);
         PrepareClipForImmediateAttack(_menuExitButtonClickClip);
+        PrepareClipForImmediateAttack(_correctGlyphClip);
+        PrepareClipForImmediateAttack(_wrongGlyphClip);
+        PrepareClipForImmediateAttack(_enemyDefeatedClip);
+        PrepareClipForImmediateAttack(_levelLockedClip);
+        PrepareClipForImmediateAttack(_characterUnlockedClip);
 
         if (_baseHitClips == null)
             return;
@@ -767,11 +1086,46 @@ public class AudioManager : Singleton<AudioManager>
                 break;
         }
 
-        if (!found || firstAudibleFrame <= 0)
+        // The tail is scanned from the end and is deliberately uncapped: a leading trim is bounded
+        // because over-trimming would eat the attack, but dead air after the last sample carries no
+        // information at all, and it is what holds the PlayOneShot voice open.
+        int lastAudibleFrame = totalSamples - 1;
+        if (_trimTrailingSilence)
+        {
+            bool foundTail = false;
+            for (int frame = totalSamples - 1; frame >= firstAudibleFrame; frame--)
+            {
+                int baseIndex = frame * channels;
+                for (int c = 0; c < channels; c++)
+                {
+                    if (Mathf.Abs(data[baseIndex + c]) > threshold)
+                    {
+                        lastAudibleFrame = frame;
+                        foundTail = true;
+                        break;
+                    }
+                }
+
+                if (foundTail)
+                    break;
+            }
+
+            if (foundTail)
+            {
+                int padFrames = Mathf.Max(
+                    0,
+                    Mathf.FloorToInt(Mathf.Max(0f, _trailingSilencePadSeconds) * source.frequency));
+                lastAudibleFrame = Mathf.Min(totalSamples - 1, lastAudibleFrame + padFrames);
+            }
+        }
+
+        int trimmedSamples = lastAudibleFrame - firstAudibleFrame + 1;
+        if (trimmedSamples <= 0)
             return source;
 
-        int trimmedSamples = totalSamples - firstAudibleFrame;
-        if (trimmedSamples <= 0)
+        // Nothing to do when neither end moved. Returning the source keeps the cache holding the
+        // original clip rather than an identical copy.
+        if (firstAudibleFrame <= 0 && trimmedSamples >= totalSamples)
             return source;
 
         float[] trimmedData = new float[trimmedSamples * channels];
