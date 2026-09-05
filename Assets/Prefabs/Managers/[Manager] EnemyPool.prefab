@@ -44,7 +44,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d06216064284b3c4490b72010f4b975b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyPool
-  _enemyPrefab: {fileID: 8037671833055544141, guid: 7d0626488d0ea194db35b08de3fba50b, type: 3}
+  _enemyPrefab: {fileID: 8037671833055544141, guid: 0c7f1c7fcc7504023bcabfe7367b6193, type: 3}
   _defaultCapacity: 10
   _maxSize: 20
   _registeredEnemyPrefabs:

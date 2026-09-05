@@ -42,8 +42,8 @@ MonoBehaviour:
   phaserFadeOutPulseAmplitude: 0.2
   dealsContactDamage: 1
   era: 0
-  overrideBadgeOffset: 0
-  glyphBadgeOffsetOverride: {x: 0, y: 0}
+  overrideBadgeOffset: 1
+  glyphBadgeOffsetOverride: {x: 0, y: 2.5}
   overrideBadgeScale: 0
   glyphBadgeScaleOverride: 1
   zigzagAmplitude: 0
