@@ -64,14 +64,6 @@ MonoBehaviour:
     prefab: {fileID: 8037671833055544141, guid: 8a33c5bb0ddc45b48f7c2ab0fd21be91, type: 3}
     defaultCapacity: 8
     maxSize: 16
-  - enemyID: sprinter
-    prefab: {fileID: 0}
-    defaultCapacity: 10
-    maxSize: 20
-  - enemyID: shielded
-    prefab: {fileID: 0}
-    defaultCapacity: 10
-    maxSize: 20
   - enemyID: heitai
     prefab: {fileID: 1922689356493373104, guid: fc471189357054627bfe740347b524f3, type: 3}
     defaultCapacity: 10
