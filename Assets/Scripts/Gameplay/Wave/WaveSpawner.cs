@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 // Placed in Gameplay scene. Assign spawn point Transforms in the Inspector.
@@ -29,6 +30,13 @@ public class WaveSpawner : MonoBehaviour
     [Tooltip("How many times a spawn re-rolls its X looking for one that clears the separation. " +
              "Bounded so a band narrower than the separation cannot stall the spawn.")]
     [SerializeField] private int _lateralSeparationAttempts = 8;
+
+    [Tooltip("Order a wave's enemies fastest-first instead of spawning them in the order they were " +
+             "rolled. A later spawn is then never faster than the one ahead of it, so the gap " +
+             "between them only grows and no enemy can catch and stack on another. Trade-off: every " +
+             "wave's speed profile becomes fast-to-slow, a consistent rhythm rather than a random " +
+             "one. Turn off to restore the rolled order.")]
+    [SerializeField] private bool _spawnFastestFirst = true;
 
     // X of the previous spawn, or null before the first one this session.
     private float? _lastSpawnX;
@@ -184,10 +192,11 @@ public class WaveSpawner : MonoBehaviour
             yield break;
 
         float interval = GetClampedSpawnInterval(wave);
+        List<EnemyDataSO> spawnOrder = BuildSpawnOrder(wave, enemyCount);
 
         for (int i = firstSpawnIndex; i < enemyCount; i++)
         {
-            EnemyDataSO data = SelectEnemyDataForSpawn(wave);
+            EnemyDataSO data = spawnOrder[i];
             BaybayinCharacterSO character = SelectCharacterForSpawn(wave, data);
 
             Enemy enemy = SpawnEnemy(data);
@@ -200,6 +209,30 @@ public class WaveSpawner : MonoBehaviour
             if (i < enemyCount - 1)
                 yield return new WaitForSeconds(interval);
         }
+    }
+
+    // Rolls the whole wave's types up front so they can be ordered before the first spawn.
+    //
+    // A wave rolls each type independently and its roster mixes moveSpeed (Level 6 spans 0.85-1.9),
+    // so a fast enemy rolled late catches the slow one ahead and the two stack into one unreadable
+    // silhouette. Spawning fastest-first removes that: a later spawn is never faster than the one
+    // ahead, so their gap only grows, and by the time the follower descends into view it has already
+    // separated.
+    //
+    // The sort is stable (LINQ OrderByDescending), so equal-speed enemies keep the order they were
+    // rolled in and waves do not collapse into a fixed sequence.
+    private List<EnemyDataSO> BuildSpawnOrder(WaveDefinition wave, int enemyCount)
+    {
+        List<EnemyDataSO> order = new(enemyCount);
+        for (int i = 0; i < enemyCount; i++)
+            order.Add(SelectEnemyDataForSpawn(wave));
+
+        if (!_spawnFastestFirst)
+            return order;
+
+        // Null data can only come from an unresolvable roll; sort it last so SpawnEnemy's existing
+        // error path is reached at the end of the wave rather than displacing a real enemy.
+        return order.OrderByDescending(d => d != null ? d.moveSpeed : float.NegativeInfinity).ToList();
     }
 
     private EnemyDataSO ResolveEnemyData(EnemyDataSO candidate)

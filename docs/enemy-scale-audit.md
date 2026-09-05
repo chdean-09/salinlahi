@@ -197,12 +197,12 @@ Run after every change above, against the live prefab/scene/data values:
   pre-existing and unrelated to scale. Note the PlayMode runner exits **2** when anything is
   inconclusive; the XML result is `Passed`. Parse the XML, not the exit code.
 
-## 7. Wave bunching — partially addressed
+## 7. Wave bunching — fixed
 
-The clumping that capped the scale at 0.68 is a spawn problem, not a scale problem: a wave draws
-its enemy type independently per spawn (`SelectEnemyDataForSpawn`), and Level 6's roster spans
-`moveSpeed` **0.85–1.9**, so a fast enemy spawned later catches a slow one ahead and the pair stacks.
-23 % of waves lost an enemy to this even at the colonial 0.48.
+The clumping that capped the scale at 0.68 is a spawn problem, not a scale problem: a wave rolls its
+enemy type independently per spawn (`SelectEnemyDataForSpawn`), and Level 6's roster spans
+`moveSpeed` **0.85–1.9**, so a fast enemy rolled late catches a slow one ahead and the pair stacks
+into one unreadable silhouette. 23 % of waves lost an enemy to this even at the colonial 0.48.
 
 Measured levers (Level 6's tightest wave, 6 enemies at 2.1 s, 600 trials each):
 
@@ -210,34 +210,50 @@ Measured levers (Level 6's tightest wave, 6 enemies at 2.1 s, 600 trials each):
 |---|---|---|---|
 | baseline | 0.75 | 56 % | 30.6 s |
 | raise interval to 3.0 s | 0.44 | 36 % | 35.1 s |
-| **minimum lateral spawn separation, 1.8 u** | **0.27** | **24 %** | **30.7 s** |
+| minimum lateral spawn separation, 1.8 u | 0.27 | 24 % | 30.7 s |
 | speed-ordered spawning (fastest first) | 0.00 | 0 % | 30.6 s |
+| **both** | **0.00** | **0 %** | **30.6 s** |
 
-**Applied: minimum lateral spawn separation (1.8 world units).** `WaveSpawner.PickSpawnX` re-rolls a
-spawn's X up to `_lateralSeparationAttempts` times to land clear of the previous spawn, falling back
-to the last roll so a band narrower than the separation can never stall a spawn. Both values are
-serialized for tuning. Vertical catch-up still happens — it just no longer hides anything, because
-the pair is separated horizontally. Costs nothing in wave duration and changes no difficulty input:
-same enemies, same counts, same intervals.
+Both are applied. Neither costs wave duration, and neither changes a difficulty input — same
+enemies, same counts, same intervals.
+
+**1. Speed-ordered spawning** (`BuildSpawnOrder`, toggle `_spawnFastestFirst`). The wave's types are
+rolled up front and sorted fastest-first, so a later spawn is never faster than the one ahead of it.
+Their gap can then only grow, and by the time the follower descends into view it has already
+separated. This is what drives occlusion to exactly zero — it removes catch-up rather than
+compensating for it.
+
+The sort is **stable**, so equal-speed enemies keep the order they were rolled in. That matters:
+Eras 02–03 run one or two speeds, where ordering is correctly a no-op rather than a reshuffle, and
+even on Level 6 ties preserve variety.
+
+*Trade-off, accepted deliberately:* every wave's speed profile is now monotonically fast→slow rather
+than random. That is a consistent rhythm across all 15 levels. `_spawnFastestFirst` turns it off
+without a code change if playtesting disagrees.
+
+**2. Minimum lateral spawn separation, 1.8 u** (`PickSpawnX`, toggles
+`_minLateralSpawnSeparation` / `_lateralSeparationAttempts`). A spawn re-rolls its X a bounded
+number of times to land clear of the previous spawn, falling back to the last roll so a band
+narrower than the separation can never stall a spawn. Ordering already removes catch-up, so this is
+now defence in depth — it still covers same-speed pairs and anything that reintroduces mixed
+ordering (a resumed wave, or the toggle being turned off).
 
 1.8 u is a tuned optimum, not a floor: **larger is worse**. Past roughly half the spawn band, spawns
 ping-pong between the two edges and every second pair lines up again (3.0 u measures 0.46 / 39 %).
 
 Effect across every corrupted-bearing wave (500 trials each):
 
-| wave | before | after |
-|---|---|---|
-| L1 w5 (10 @ 2.5 s) | 0.34 (32 %) | 0.04 (4 %) |
-| L2 w2 (6 @ 2.8 s) | 0.21 (21 %) | 0.18 (18 %) |
-| L3 w1 (5 @ 2.0 s) | 0.30 (26 %) | 0.10 (10 %) |
-| L6 w4 (6 @ 2.1 s) | 0.67 (52 %) | 0.29 (25 %) |
+| wave | original | + separation | + ordering (shipped) |
+|---|---|---|---|
+| L1 w5 (10 @ 2.5 s) | 0.34 (32 %) | 0.04 (4 %) | **0.00 (0 %)** |
+| L2 w2 (6 @ 2.8 s) | 0.21 (21 %) | 0.18 (18 %) | **0.00 (0 %)** |
+| L3 w1 (5 @ 2.0 s) | 0.30 (26 %) | 0.10 (10 %) | **0.00 (0 %)** |
+| L6 w4 (6 @ 2.1 s) | 0.67 (52 %) | 0.29 (25 %) | **0.00 (0 %)** |
 
-**Not applied: speed-ordered spawning.** Sorting a wave's pre-rolled types fastest-first drives
-occlusion to exactly zero at no duration cost — a later spawn is then never faster than the one
-ahead, so the gap only grows, and by the time the follower descends into view it has separated. It
-is the complete fix. It is not applied because it makes every wave's speed profile monotonically
-fast→slow, a visible and permanent rhythm change across all 15 levels. That is a game-feel decision
-for the team, and it would want playtesting. It composes with the separation already applied.
+With catch-up removed, the corridor could now carry enemies larger than 0.68 — the 0.80 that was
+rejected in §2 was rejected on occlusion, and that constraint is gone. Worth revisiting against
+playtesting rather than simulation, since the remaining limits (treeline clipping at the band edge,
+boss silhouette lead) are judgement calls.
 
 ## 8. Other follow-ups (not applied)
 
