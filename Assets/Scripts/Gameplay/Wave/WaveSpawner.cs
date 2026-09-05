@@ -18,6 +18,21 @@ public class WaveSpawner : MonoBehaviour
     [Tooltip("Used when a wave spawn chooses no valid enemy type.")]
     [SerializeField] private EnemyDataSO _fallbackEnemyData;
 
+    [Header("Spawn Spread")]
+    [Tooltip("Minimum world-X distance a spawn tries to keep from the previous one. A wave mixes " +
+             "moveSpeeds (Level 6 spans 0.85-1.9), so a fast enemy catches a slow one and the pair " +
+             "stacks; keeping them apart horizontally keeps both readable. 0 disables. Raising this " +
+             "past roughly half the spawn band is counter-productive: spawns ping-pong between the " +
+             "two edges and every second pair lines up again.")]
+    [SerializeField] private float _minLateralSpawnSeparation = 1.8f;
+
+    [Tooltip("How many times a spawn re-rolls its X looking for one that clears the separation. " +
+             "Bounded so a band narrower than the separation cannot stall the spawn.")]
+    [SerializeField] private int _lateralSeparationAttempts = 8;
+
+    // X of the previous spawn, or null before the first one this session.
+    private float? _lastSpawnX;
+
     public void SetFallbackEnemyDataIfMissing(EnemyDataSO fallbackData)
     {
         if (_fallbackEnemyData != null || fallbackData == null)
@@ -55,9 +70,30 @@ public class WaveSpawner : MonoBehaviour
         if (enemy == null)
             return null;
 
-        float randomX = UnityEngine.Random.Range(minX, maxX);
-        enemy.transform.position = new Vector3(randomX, spawnY, 0f);
+        float spawnX = PickSpawnX(minX, maxX);
+        _lastSpawnX = spawnX;
+        enemy.transform.position = new Vector3(spawnX, spawnY, 0f);
         return enemy;
+    }
+
+    // Random X across the band, re-rolled a bounded number of times to land clear of the previous
+    // spawn. Falls back to the last roll rather than looping, so a band narrower than the
+    // separation still spawns.
+    private float PickSpawnX(float minX, float maxX)
+    {
+        float x = UnityEngine.Random.Range(minX, maxX);
+        if (_minLateralSpawnSeparation <= 0f || !_lastSpawnX.HasValue)
+            return x;
+
+        for (int attempt = 0; attempt < _lateralSeparationAttempts; attempt++)
+        {
+            if (Mathf.Abs(x - _lastSpawnX.Value) >= _minLateralSpawnSeparation)
+                break;
+
+            x = UnityEngine.Random.Range(minX, maxX);
+        }
+
+        return x;
     }
 
     public Enemy SpawnEnemy(EnemyDataSO data, BaybayinCharacterSO character)
@@ -84,6 +120,9 @@ public class WaveSpawner : MonoBehaviour
             float centerX = (minX + maxX) * 0.5f;
             float bossY = _bossSpawnPoint != null ? _bossSpawnPoint.position.y : spawnY;
             enemy.transform.position = new Vector3(centerX, bossY, 0f);
+            // SpawnEnemy recorded the random X it rolled; the boss overrides it, so correct the
+            // separation anchor to where the boss actually is.
+            _lastSpawnX = centerX;
         }
 
         return enemy;
