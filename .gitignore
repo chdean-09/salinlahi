@@ -37,3 +37,17 @@ docs/reviews
 /Assets/Resources/PerformanceTestRunInfo.json.meta
 /Assets/Resources/PerformanceTestRunSettings.json
 /Assets/Resources/PerformanceTestRunSettings.json.meta
+
+# Unity's YAML merge tool writes these next to the repo root and does not clean
+# them up; 12 had accumulated across three merges. Contents are always already
+# in history — they are temp copies of the files being merged.
+.merge_file_*
+
+# Local agent config. Deliberately untracked since 0d965bca
+# ("fix: SALIN-68 untrack unrelated files"); listed so it stops resurfacing.
+/CLAUDE.md
+
+# Per-ticket output of 02-plan-salinlahi-ticket and the Jira readiness audit.
+# Local working artifacts — no implementation plan has ever been committed.
+/SALIN-*-implementation-plan.md
+/jira-readiness-audit.xlsx
