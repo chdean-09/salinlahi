@@ -315,7 +315,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 117f4d54439c640abaac6d80f841ee03, type: 2}
     - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
     enemyTypes:
-    - {fileID: 11400000, guid: b1192b8ea41bc418cb84defa4321b63f, type: 2}
+    - {fileID: 11400000, guid: 896d01723b3854769ba12aa04eff2181, type: 2}
     enemyCount: 4
     spawnInterval: 3
     waveStartDelay: 2
@@ -327,7 +327,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
     - {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
     enemyTypes:
-    - {fileID: 11400000, guid: b1192b8ea41bc418cb84defa4321b63f, type: 2}
+    - {fileID: 11400000, guid: 896d01723b3854769ba12aa04eff2181, type: 2}
     enemyCount: 5
     spawnInterval: 2.8
     waveStartDelay: 1.5
@@ -339,7 +339,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
     - {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
     enemyTypes:
-    - {fileID: 11400000, guid: b1192b8ea41bc418cb84defa4321b63f, type: 2}
+    - {fileID: 11400000, guid: 896d01723b3854769ba12aa04eff2181, type: 2}
     enemyCount: 6
     spawnInterval: 2.5
     waveStartDelay: 1.5
@@ -363,7 +363,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
     - {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
     enemyTypes:
-    - {fileID: 11400000, guid: b1192b8ea41bc418cb84defa4321b63f, type: 2}
+    - {fileID: 11400000, guid: 896d01723b3854769ba12aa04eff2181, type: 2}
     enemyCount: 7
     spawnInterval: 2.2
     waveStartDelay: 1
@@ -386,7 +386,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
   - {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
   allowedEnemyTypes:
-  - {fileID: 11400000, guid: b1192b8ea41bc418cb84defa4321b63f, type: 2}
+  - {fileID: 11400000, guid: 896d01723b3854769ba12aa04eff2181, type: 2}
   bossConfig: {fileID: 0}
   isAvailableInLite: 0
   focusModeEnabled: 1

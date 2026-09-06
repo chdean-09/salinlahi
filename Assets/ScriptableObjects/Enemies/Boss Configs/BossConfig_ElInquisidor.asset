@@ -30,7 +30,7 @@ MonoBehaviour:
     minionsPerSummonMax: 2
     delayBetweenMinions: 0.8
     summonEnemyTypes:
-    - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+    - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
     summonSpawnRange: {x: 3, y: 1.5}
     requiredCharacterCount: 3
     vulnerabilityTimer: 20
@@ -44,9 +44,9 @@ MonoBehaviour:
     minionsPerSummonMax: 2
     delayBetweenMinions: 1.2
     summonEnemyTypes:
-    - {fileID: 11400000, guid: 5441937cc8c04b60b92b0112af80aac3, type: 2}
-    - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
-    - {fileID: 11400000, guid: 92b7e894088646b8a8173cdbfda63679, type: 2}
+    - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
+    - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+    - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
     summonSpawnRange: {x: 3, y: 1.5}
     requiredCharacterCount: 3
     vulnerabilityTimer: 20
@@ -60,10 +60,10 @@ MonoBehaviour:
     minionsPerSummonMax: 3
     delayBetweenMinions: 1
     summonEnemyTypes:
-    - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
-    - {fileID: 11400000, guid: 5441937cc8c04b60b92b0112af80aac3, type: 2}
-    - {fileID: 11400000, guid: 92b7e894088646b8a8173cdbfda63679, type: 2}
-    - {fileID: 11400000, guid: 55369c8c5f914966a731075c4b14742a, type: 2}
+    - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+    - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
+    - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
+    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
     summonSpawnRange: {x: 3.5, y: 1}
     requiredCharacterCount: 4
     vulnerabilityTimer: 25
@@ -72,7 +72,7 @@ MonoBehaviour:
     paceHalfRange: 2
     teleportHalfRange: {x: 2.5, y: 2.5}
   fallbackEnemyTypes:
-  - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+  - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
   summonHorizontalBounds: {x: -2, y: 2}
   introDuration: 1.5
   outroDuration: 0

@@ -191,8 +191,8 @@ MonoBehaviour:
     characters:
     - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
     enemyTypes:
-    - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
-    - {fileID: 11400000, guid: 5441937cc8c04b60b92b0112af80aac3, type: 2}
+    - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
+    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
     enemyCount: 6
     spawnInterval: 4
     waveStartDelay: 1.5
@@ -204,9 +204,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
   - {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
   allowedEnemyTypes:
-  - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
-  - {fileID: 11400000, guid: 5441937cc8c04b60b92b0112af80aac3, type: 2}
   - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
+  - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
+  - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
   bossConfig: {fileID: 0}
   isAvailableInLite: 1
   focusModeEnabled: 1
