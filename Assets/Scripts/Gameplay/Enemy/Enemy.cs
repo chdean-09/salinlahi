@@ -212,6 +212,14 @@ public class Enemy : MonoBehaviour
         _mover.Stop();
         _mover.SetSpeed(EffectiveSpeed);
 
+        // Signature abilities are data-driven so the prefab-less corruption roster can carry them
+        // on the shared shell. A pooled shell is reused across types, so each ability component is
+        // added on first need and then enabled or disabled per spawn to match the incoming data.
+        EnsureAbilityComponent<PensionadoMover>(_data.zigzagAmplitude > 0f);
+        EnsureAbilityComponent<KempeiScrambleController>(_data.stainsNearbyGlyphs);
+        EnsureAbilityComponent<GlyphCoverController>(_data.coversOwnGlyph);
+        EnsureAbilityComponent<MirrorDecoyController>(_data.spawnsMirrorDecoy);
+
         if (_renderer != null)
         {
             if (_data.walkFrames != null && _data.walkFrames.Length > 0)
@@ -250,8 +258,26 @@ public class Enemy : MonoBehaviour
     private bool ShouldRaiseEnemyDiscoveryEvent(EnemyDataSO data)
     {
         return !IsBoss
+            && !data.suppressDiscovery
             && EnemyDiscoveryProgress.NormalizeEnemyID(data) != null
             && !EnemyDiscoveryProgress.HasDiscovered(data);
+    }
+
+    /// <summary>
+    /// Adds a data-driven ability component on first need and enables or disables it to match the
+    /// current data, so a pooled shell reused for a different enemy type does not keep an ability.
+    /// </summary>
+    private void EnsureAbilityComponent<T>(bool wanted) where T : MonoBehaviour
+    {
+        T component = GetComponent<T>();
+        if (component == null)
+        {
+            if (!wanted)
+                return;
+            component = gameObject.AddComponent<T>();
+        }
+
+        component.enabled = wanted;
     }
 
     public void ResetForPool()

@@ -18,6 +18,8 @@ public class EnemyGlyphBadge : MonoBehaviour
     private Quaternion _baseLocalRotation;
     private Color _baseColor = Color.white;
     private bool _layoutApplied;
+    // Takip: while covered the badge keeps its sprite but stays hidden (GlyphCoverController).
+    private bool _covered;
     // Cached world-space layout values from EnemyDataSO/GlyphBadgeConfigSO.
     // Used by LateUpdate to recompute the inverse-parent-scale compensation each
     // frame so the badge stays world-stable even after the parent's localScale
@@ -114,7 +116,21 @@ public class EnemyGlyphBadge : MonoBehaviour
             return;
         }
         _renderer.sprite = sprite;
-        _renderer.enabled = true;
+        _renderer.enabled = !_covered;
+    }
+
+    public bool IsCovered => _covered;
+
+    /// <summary>
+    /// Hides or reveals the badge without touching its sprite or colour, so a covered enemy still
+    /// swaps, flashes and resolves its glyph normally underneath the cover.
+    /// </summary>
+    public void SetCovered(bool covered)
+    {
+        if (_covered == covered) return;
+        _covered = covered;
+        if (_renderer == null) return;
+        _renderer.enabled = !_covered && _renderer.sprite != null;
     }
 
     public void PlaySwap(BaybayinCharacterSO next)
@@ -152,7 +168,7 @@ public class EnemyGlyphBadge : MonoBehaviour
     {
         if (_renderer == null) return;
         Color c = _renderer.color; c.a = 1f; _renderer.color = c;
-        _renderer.enabled = _renderer.sprite != null;
+        _renderer.enabled = _renderer.sprite != null && !_covered;
     }
 
     public void Hide()
@@ -170,6 +186,7 @@ public class EnemyGlyphBadge : MonoBehaviour
         _finalDrawRoutine = null;
         _decoyRejectRoutine = null;
         _failFlashRoutine = null;
+        _covered = false;
         if (_renderer != null)
         {
             Color c = _baseColor; c.a = 1f; _renderer.color = c;

@@ -38,7 +38,9 @@ public class KempeiScrambleController : MonoBehaviour
 
     private void Update()
     {
-        if (_enemy == null || _enemy.Data == null)
+        // Gated by data so the shared corruption shell can carry this for Mantsa ("It stains
+        // correct symbols and changes them into incorrect forms") and stay inert for everyone else.
+        if (_enemy == null || _enemy.Data == null || !_enemy.Data.stainsNearbyGlyphs)
         {
             ClearAffectedEnemies();
             return;
