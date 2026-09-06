@@ -239,6 +239,7 @@ public static class ColonialRosterRetirementTool
             failed |= !RetireBoss(boss.Key, boss.Value, enemies, log);
 
         failed |= !RepointCorruptedShell(enemies, log);
+        failed |= !CleanPoolPrefab(log);
         failed |= !RepointScenes(enemies, log);
 
         AssetDatabase.SaveAssets();
@@ -332,6 +333,60 @@ public static class ColonialRosterRetirementTool
         PrefabUtility.SavePrefabAsset(shell);
         log.Add("[Enemy] Corrupted.prefab: _data -> EnemyData_AbongSimula");
         return ok;
+    }
+
+    /// <summary>
+    /// The EnemyPool manager prefab registers a pooled prefab per enemy id. Ten of its thirteen
+    /// entries were colonial and would become null references once those prefabs are deleted;
+    /// the corruption roster is prefab-less and resolves through the default pool instead.
+    /// </summary>
+    private static bool CleanPoolPrefab(List<string> log)
+    {
+        const string path = "Assets/Prefabs/Managers/[Manager] EnemyPool.prefab";
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+        if (prefab == null)
+        {
+            Debug.LogError($"COLONIAL-RETIRE: missing {path}.");
+            return false;
+        }
+
+        var pool = prefab.GetComponent<EnemyPool>();
+        if (pool == null)
+        {
+            Debug.LogError("COLONIAL-RETIRE: EnemyPool component missing from its own manager prefab.");
+            return false;
+        }
+
+        var so = new SerializedObject(pool);
+        SerializedProperty list = so.FindProperty("_registeredEnemyPrefabs");
+        var removed = new List<string>();
+
+        for (int i = list.arraySize - 1; i >= 0; i--)
+        {
+            SerializedProperty entry = list.GetArrayElementAtIndex(i);
+            string id = entry.FindPropertyRelative("enemyID").stringValue ?? string.Empty;
+            var prefabRef = entry.FindPropertyRelative("prefab").objectReferenceValue;
+            bool colonial = Colonial.Any(c => string.Equals(c, id, System.StringComparison.OrdinalIgnoreCase))
+                || (prefabRef != null && Colonial.Any(c => prefabRef.name.IndexOf(c, System.StringComparison.OrdinalIgnoreCase) >= 0));
+
+            if (!colonial)
+                continue;
+
+            removed.Add(id);
+            list.DeleteArrayElementAtIndex(i);
+        }
+
+        if (removed.Count == 0)
+        {
+            log.Add("[Manager] EnemyPool.prefab: already clean");
+            return true;
+        }
+
+        so.ApplyModifiedPropertiesWithoutUndo();
+        PrefabUtility.SavePrefabAsset(prefab);
+        removed.Reverse();
+        log.Add($"[Manager] EnemyPool.prefab: removed {removed.Count} registration(s) — {string.Join(", ", removed)}");
+        return true;
     }
 
     /// <summary>
