@@ -19,8 +19,11 @@ using UnityEngine;
 ///   32x32 frame at the project-wide PPU of 6.
 ///
 /// Deliberately NOT set here: moveSpeed and maxHealth are left at their SO defaults because the
-/// workbook specifies no stats, and each enemy's signature ability is unimplemented - none of the
-/// six maps onto an existing variant (sprinter, shielded, phaser, decoy, zigzagger, commander).
+/// workbook specifies no stats. Signature abilities are likewise not authored by this tool; they
+/// are data flags on each EnemyDataSO that Enemy.Initialize turns into components on the shared
+/// shell. Implemented so far: Labo (isPhaser), Salungat (isDecoy), Mantsa (stainsNearbyGlyphs),
+/// Takip (coversOwnGlyph) and Iligaw (spawnsMirrorDecoy + zigzag). The other twelve still walk
+/// down and die identically; their workbook Ability text below is the design for them.
 /// </summary>
 public static class CorruptionEnemyBootstrap
 {

@@ -70,3 +70,7 @@ MonoBehaviour:
   scrambleRadius: 3
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
+  coversOwnGlyph: 1
+  glyphCoverInitialRevealSeconds: 1.2
+  glyphCoverHiddenSeconds: 2.4
+  glyphCoverRevealSeconds: 0.8

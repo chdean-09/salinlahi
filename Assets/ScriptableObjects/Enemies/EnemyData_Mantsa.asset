@@ -70,3 +70,4 @@ MonoBehaviour:
   scrambleRadius: 3
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
+  stainsNearbyGlyphs: 1

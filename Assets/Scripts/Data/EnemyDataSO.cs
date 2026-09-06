@@ -161,6 +161,32 @@ public class EnemyDataSO : ScriptableObject
 
     [Tooltip("Variant-specific: used only by KempeiScrambleController. Maximum seconds between scramble glitch toggles.")]
     public float scrambleMaxGlitchInterval = 0.36f;
+
+    [Header("Corruption Signature Abilities")]
+    [Tooltip("Mantsa (and Kempei): while this enemy lives, nearby enemies' badges are stained into their scrambled, incorrect form. Uses the Kempei Censor radius and glitch intervals above. Enemy.Initialize attaches KempeiScrambleController on the shared shell when set.")]
+    public bool stainsNearbyGlyphs;
+
+    [Tooltip("Takip: this enemy's own glyph badge stays covered and is only revealed briefly. Enemy.Initialize attaches GlyphCoverController when set.")]
+    public bool coversOwnGlyph;
+
+    [Tooltip("Takip: seconds the badge stays visible right after spawning, before the first cover.")]
+    public float glyphCoverInitialRevealSeconds = 1.2f;
+
+    [Tooltip("Takip: seconds the badge stays covered per cycle.")]
+    public float glyphCoverHiddenSeconds = 2.4f;
+
+    [Tooltip("Takip: seconds the badge is revealed per cycle.")]
+    public float glyphCoverRevealSeconds = 0.8f;
+
+    [Tooltip("Iligaw: spawns one mirrored decoy copy beside itself carrying the same glyph. Drawing the copy while it is the closest match costs a heart (decoy penalty); the copy leaves with its source. Pair with the zigzag fields for 'changes directions'.")]
+    public bool spawnsMirrorDecoy;
+
+    [Tooltip("Iligaw: horizontal world offset of the mirrored copy from its source.")]
+    public float mirrorDecoyOffsetX = 1.4f;
+
+    [HideInInspector]
+    [Tooltip("Runtime-only: set on generated decoy copies so they never raise their own discovery event.")]
+    public bool suppressDiscovery;
 }
 
 public enum Era
