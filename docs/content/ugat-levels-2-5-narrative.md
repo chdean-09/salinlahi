@@ -247,25 +247,20 @@ still pass on.
 | `DialogueSO` assets for the 16 blocks above | **Generated** by `Assets/Editor/Campaign/UgatNarrativeContentTool.cs` |
 | `introDialogue` and `outroDialogue` on Levels 2–5 | **Wired** by the same tool, matching how Level 1 wires both ends. At Level 5 the outro *is* the Ugat ending. |
 | `rewardIds` = `memory.ugat.02`…`.05` | **Written** by the same tool — closes 4 validator errors |
-| Focus-word `meaning` and per-word dialogue | **Blocked.** Levels 2–5 have **zero focus-word slots**, so there is nothing to attach the explanations to. See below. |
-| Context images / narration audio | **Blocked on SALIN-206** (art and audio production) |
+| Per-word dialogue on `focusWords[n].media.dialogue` | **Wired** by the same tool (2026-09-06) onto the slots SALIN-204 authored on 2026-08-29. Each slot is matched by `latinSpelling` before attaching, so a reordered slot is reported rather than mis-wired. |
+| Restored-memory cutscenes `Cutscene_Ugat02_Memory`…`05` | **Generated** by the same tool from the "Restored memory" copy above — one text-only panel each, like `Cutscene_Ugat01_Memory` — and wired to `focusWords[*].media.cutscene` and `contextMedia.cutscene` |
+| `contextMedia.dialogue` | **Wired** to the level's intro dialogue, matching the Level 1 attachment map |
+| Context images / narration audio / memory panel art | **Blocked on SALIN-206** (art and audio production) |
 
-### Blocked on SALIN-204, which is marked Done but is not
+### Validator state after wiring
 
-Running `CampaignConfigValidator` against the shipped `CampaignConfig_RevisedV1.asset` reports
-**134 errors**, including **`FOCUS_SLOT_COUNT_INVALID` on 14 of the 15 levels** — every level except
-Level 1. Per Ugat level 2–5 the errors are:
+Running `CampaignConfigValidator` against `CampaignConfig_RevisedV1.asset` on 2026-09-06 reports
+**101 errors** campaign-wide (down from 113 before the wiring; the 134 quoted earlier predates
+SALIN-204's slot authoring). Ugat Levels 2–5 each carry exactly the three errors Level 1 carries:
 
-| Code | Owner |
-|---|---|
-| `FOCUS_SLOT_COUNT_INVALID` (focusWords) | SALIN-204 / SALIN-172 |
-| `REQUIREMENT_INVALID` × 3 (learning, practice, mastery) | SALIN-204 |
-| `CUMULATIVE_POOL_INVALID` | SALIN-204 |
-| `FINAL_RESTORATION_INVALID` | SALIN-204 |
-| `REQUIRED_MEDIA_MISSING`, `REQUIRED_REFERENCE_MISSING` (contextMedia) | SALIN-206 |
-| `REQUIRED_REFERENCE_MISSING` (rewardIds) | **SALIN-205 — closed by this work** |
+| Code | Path | Owner |
+|---|---|---|
+| `REQUIRED_MEDIA_MISSING` | `focusWords[0].media`, `focusWords[1].media`, `contextMedia` — context image and narration clip | SALIN-206 |
 
-The per-word explanations above are written and ready. They cannot be attached until the focus-word
-slots exist, because `FocusWordDefinition.media.dialogue` is the field they hang on. **Authoring those
-slots is not this ticket's scope** — the `meaning` field's own tooltip assigns it to SALIN-172, and the
-slot structure to SALIN-204.
+No `REQUIRED_REFERENCE_MISSING` remains on any Ugat level. The remaining campaign errors are all on
+Ugnayan and Pamana (SALIN-172 / SALIN-173).
