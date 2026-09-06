@@ -20,7 +20,7 @@ public class Enemy : MonoBehaviour
 
     [Header("Debug Enemy Labels")]
     [SerializeField] private bool _showDebugLabels = true;
-    [SerializeField] private Vector3 _labelBaseWorldOffset = new(0f, -1.4f, -0.1f);
+    [SerializeField] private Vector3 _labelBaseWorldOffset = new(0f, -1.9f, -0.1f);
     [SerializeField] private float _labelLineSpacingWorld = 0.45f;
     [SerializeField] private float _labelWorldScale = 0.22f;
     [SerializeField] private float _labelFontSize = 10f;

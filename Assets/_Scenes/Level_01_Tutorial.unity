@@ -1384,6 +1384,7 @@ MonoBehaviour:
   _retryButton: {fileID: 1198465020}
   _levelSelectButton: {fileID: 1405082573}
   _panel: {fileID: 206237625}
+  _hudRoot: {fileID: 0}
 --- !u!1 &231251533
 GameObject:
   m_ObjectHideFlags: 0
@@ -1409,7 +1410,7 @@ Transform:
   m_GameObject: {fileID: 231251533}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2.4, y: 13.669976, z: 0}
+  m_LocalPosition: {x: 1.83, y: 13.669976, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4487,7 +4488,7 @@ Transform:
   m_GameObject: {fileID: 706297085}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -2.4, y: 13.669976, z: 0}
+  m_LocalPosition: {x: -1.83, y: 13.669976, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -8227,6 +8228,7 @@ MonoBehaviour:
   _attemptsBeforeHelpOffer: 3
   _traceHintPrompt: {fileID: 522146455}
   _messageLabel: {fileID: 699344554}
+  _messageHoldSeconds: 3
 --- !u!114 &1512931229
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8328,6 +8330,9 @@ MonoBehaviour:
   - {fileID: 231251534}
   _bossSpawnPoint: {fileID: 1838633795}
   _fallbackEnemyData: {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
+  _minLateralSpawnSeparation: 1.5
+  _lateralSeparationAttempts: 8
+  _spawnFastestFirst: 1
 --- !u!4 &1543327748
 Transform:
   m_ObjectHideFlags: 0

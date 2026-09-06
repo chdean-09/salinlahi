@@ -14,11 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Salinlahi.Runtime::EnemyDataSO
   enemyID: elinquisidor
   displayName: El Inquisidor
+  discoverySubtitle: 
   description: 'A corrupted high-ranking friar who ordered the burning of Baybayin
     manuscripts during the Spanish era. He wants to erase the script and the memory
     of the people.
 
-    
+
 
     Power: Summons Spanish Era enemies.'
   moveSpeed: 0
@@ -49,7 +50,7 @@ MonoBehaviour:
   dealsContactDamage: 0
   era: 0
   overrideBadgeOffset: 1
-  glyphBadgeOffsetOverride: {x: 0, y: -3.5}
+  glyphBadgeOffsetOverride: {x: 0, y: -4.3}
   overrideBadgeScale: 1
   glyphBadgeScaleOverride: 3
   zigzagAmplitude: 0

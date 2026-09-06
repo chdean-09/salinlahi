@@ -137,7 +137,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0.45937, y: 0.00113, z: 0}
-  m_LocalScale: {x: 0.3, y: 0.3, z: 1}
+  m_LocalScale: {x: 0.48, y: 0.48, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 9204726945421852697}
@@ -277,7 +277,7 @@ MonoBehaviour:
   _shieldIntactColor: {r: 0, g: 0.75, b: 0.65, a: 1}
   _shieldBrokenColor: {r: 0.55, g: 0.55, b: 0.55, a: 1}
   _showDebugLabels: 1
-  _labelBaseWorldOffset: {x: 0, y: -1.4, z: -0.1}
+  _labelBaseWorldOffset: {x: 0, y: -1.9, z: -0.1}
   _labelLineSpacingWorld: 0.45
   _labelWorldScale: 0.22
   _labelFontSize: 10
