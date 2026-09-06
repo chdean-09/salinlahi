@@ -324,6 +324,7 @@ public static class CampaignConfigValidator
                 ValidateRequirements(campaign, level, path, issues);
                 ValidateCumulativePool(campaign, level, globalIndex, path, issues);
                 ValidateCombatRoster(campaign, level, globalIndex, path, issues);
+                ValidateWaveCharacters(level, path, issues);
                 ValidateFinalRestoration(campaign, level, path, issues);
                 ValidateRequiredReferences(level, path, issues);
                 ValidatePaInstructionOrder(level, path, issues);
@@ -872,6 +873,59 @@ public static class CampaignConfigValidator
         }
 
         return -1;
+    }
+
+    /// <summary>
+    /// SALIN-204: a wave with no characters falls back to each enemy type's assignedCharacter
+    /// (WaveSpawner.SelectCharacterForSpawn). Colonial enemy data ships without one, so such a
+    /// wave spawns enemies that carry no glyph and cannot be defeated. Level 4 waves 2 and 3
+    /// shipped that way and were unwinnable while the campaign validated clean. Boss levels
+    /// have no waves and are skipped; intermission waves spawn nothing.
+    /// </summary>
+    private static void ValidateWaveCharacters(
+        LevelConfigSO level,
+        string path,
+        List<ContentValidationIssue> issues)
+    {
+        if (level.waves == null)
+            return;
+
+        for (int waveIndex = 0; waveIndex < level.waves.Count; waveIndex++)
+        {
+            WaveDefinition wave = level.waves[waveIndex];
+            if (wave == null || wave.isIntermissionWave)
+                continue;
+
+            bool hasCharacter = false;
+            if (wave.characters != null)
+            {
+                for (int index = 0; index < wave.characters.Count && !hasCharacter; index++)
+                    hasCharacter = wave.characters[index] != null;
+            }
+
+            if (hasCharacter)
+                continue;
+
+            var glyphless = new List<string>();
+            if (wave.enemyTypes != null)
+            {
+                for (int index = 0; index < wave.enemyTypes.Count; index++)
+                {
+                    EnemyDataSO enemyData = wave.enemyTypes[index];
+                    if (enemyData != null && enemyData.assignedCharacter == null)
+                        glyphless.Add(enemyData.name);
+                }
+            }
+
+            if (glyphless.Count == 0)
+                continue;
+
+            AddError(issues, ContentValidationCode.WaveCharactersUnresolvable,
+                path + ".waves[" + waveIndex + "].characters",
+                "Wave has no characters and these enemy types have no default assignedCharacter, " +
+                "so they would spawn with no glyph and could not be defeated: " +
+                string.Join(", ", glyphless) + ".", level);
+        }
     }
 
     private static void AddError(
