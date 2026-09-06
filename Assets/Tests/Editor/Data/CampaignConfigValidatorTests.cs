@@ -2,11 +2,53 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using UnityEngine;
 
 namespace Salinlahi.Tests.Editor.Data
 {
     public class CampaignConfigValidatorTests
     {
+        [Test]
+        public void Validate_ReportsWaveWhoseEnemiesCannotResolveAGlyph()
+        {
+            using CampaignTestFixture fixture = CampaignTestFixture.CreateValid();
+            // Colonial enemy data ships with no assignedCharacter; the spawner then has nothing
+            // to hand the enemy when the wave lists no characters either.
+            EnemyDataSO glyphless = ScriptableObject.CreateInstance<EnemyDataSO>();
+            try
+            {
+                LevelConfigSO level = fixture.Campaign.eras[0].levels[0];
+                level.waves ??= new List<WaveDefinition>();
+                var wave = new WaveDefinition { enemyCount = 1, spawnInterval = 1f };
+                wave.enemyTypes.Add(glyphless);
+                level.waves.Add(wave);
+
+                IReadOnlyList<ContentValidationIssue> issues = CampaignConfigValidator.Validate(fixture.Campaign);
+                Assert.That(issues, Has.Some.Matches<ContentValidationIssue>(
+                    issue => issue.Code == ContentValidationCode.WaveCharactersUnresolvable),
+                    "WAVE_CHARACTERS_UNRESOLVABLE was not emitted. Actual: " + Describe(issues));
+
+                // Any authored character on the wave resolves it.
+                wave.characters.Add(fixture.Campaign.symbols[0]);
+                issues = CampaignConfigValidator.Validate(fixture.Campaign);
+                Assert.That(issues, Has.None.Matches<ContentValidationIssue>(
+                    issue => issue.Code == ContentValidationCode.WaveCharactersUnresolvable),
+                    Describe(issues));
+
+                // So does an enemy type that carries its own default glyph.
+                wave.characters.Clear();
+                glyphless.assignedCharacter = fixture.Campaign.symbols[0];
+                issues = CampaignConfigValidator.Validate(fixture.Campaign);
+                Assert.That(issues, Has.None.Matches<ContentValidationIssue>(
+                    issue => issue.Code == ContentValidationCode.WaveCharactersUnresolvable),
+                    Describe(issues));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(glyphless);
+            }
+        }
+
         [Test]
         public void ValidFixture_HasNoErrorIssues()
         {
