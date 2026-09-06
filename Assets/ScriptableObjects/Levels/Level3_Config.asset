@@ -31,8 +31,8 @@ MonoBehaviour:
     media:
       contextImage: {fileID: 0}
       narrationClip: {fileID: 0}
-      dialogue: {fileID: 0}
-      cutscene: {fileID: 0}
+      dialogue: {fileID: 11400000, guid: aa2aea68dde4548b39f77baf924ea094, type: 2}
+      cutscene: {fileID: 11400000, guid: c061afc60ceeb48c1a572dee2bda0d57, type: 2}
   - stableId: level.ugat.03.focus.02
     latinSpelling: TAMA
     displayLabel: TAMA
@@ -45,8 +45,8 @@ MonoBehaviour:
     media:
       contextImage: {fileID: 0}
       narrationClip: {fileID: 0}
-      dialogue: {fileID: 0}
-      cutscene: {fileID: 0}
+      dialogue: {fileID: 11400000, guid: bae67a9cc48b647cfb60972117c86fff, type: 2}
+      cutscene: {fileID: 11400000, guid: c061afc60ceeb48c1a572dee2bda0d57, type: 2}
   cumulativeSymbolPool:
   - symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
     spokenValueId: value.a
@@ -132,8 +132,8 @@ MonoBehaviour:
   contextMedia:
     contextImage: {fileID: 0}
     narrationClip: {fileID: 0}
-    dialogue: {fileID: 0}
-    cutscene: {fileID: 0}
+    dialogue: {fileID: 11400000, guid: f07748007a6514f3a980cb4a7d8dab2b, type: 2}
+    cutscene: {fileID: 11400000, guid: c061afc60ceeb48c1a572dee2bda0d57, type: 2}
   finalRestorationValue:
     symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
     spokenValueId: value.ma

@@ -11,14 +11,17 @@ using UnityEngine;
 /// must be edited together. It is idempotent -- an existing asset is rewritten in place rather than
 /// duplicated, so a copy revision is applied by editing the table below and re-running.
 ///
-/// Per-word dialogue assets are generated but deliberately left unattached. Levels 2-5 currently have
-/// zero focus-word slots (SALIN-204 is marked Done but authored none), and
-/// FocusWordDefinition.media.dialogue is the only field they could hang on. The copy is therefore
-/// ready as data and waits on that ticket rather than inventing slots this one does not own.
+/// Wiring follows the Level 1 attachment map in docs/content/level-01-narrative.md: per-word dialogue on
+/// focusWords[n].media.dialogue, the restored-memory cutscene on focusWords[*].media.cutscene and
+/// contextMedia.cutscene, and the intro dialogue on contextMedia.dialogue. The focus-word slots were
+/// authored by SALIN-204 (2026-08-29); each slot is matched by its latinSpelling before anything is
+/// attached, so a reordered slot is reported rather than silently mis-wired. Memory cutscenes are
+/// text-only until SALIN-206 delivers panel art, exactly like Cutscene_Ugat01_Memory.
 /// </remarks>
 public static class UgatNarrativeContentTool
 {
     private const string DialogueFolder = "Assets/ScriptableObjects/Dialogue";
+    private const string CutsceneFolder = "Assets/ScriptableObjects/Cutscenes";
     private const string Narrator = "Tagapagsalaysay";
     private const string Juan = "Juan";
 
@@ -28,14 +31,24 @@ public static class UgatNarrativeContentTool
         public (string Speaker, string Text)[] Lines;
     }
 
+    private sealed class Memory
+    {
+        public string AssetName;
+        public string CutsceneId;
+        public string[] Panels;
+    }
+
     private sealed class LevelContent
     {
         public string StableId;
         public string MemoryId;
+        public string Word1;
+        public string Word2;
         public Block Intro;
         public Block Slot1;
         public Block Slot2;
         public Block Outro;
+        public Memory RestoredMemory;
     }
 
     [MenuItem("Salinlahi/Campaign/Generate Ugat 2-5 Narrative (SALIN-205)")]
@@ -51,13 +64,16 @@ public static class UgatNarrativeContentTool
         }
 
         int written = 0;
+        int cutscenes = 0;
         int wired = 0;
+        int slotsWired = 0;
         foreach (LevelContent entry in content)
         {
             DialogueSO intro = WriteDialogue(entry.Intro, ref written);
-            WriteDialogue(entry.Slot1, ref written);
-            WriteDialogue(entry.Slot2, ref written);
+            DialogueSO slot1 = WriteDialogue(entry.Slot1, ref written);
+            DialogueSO slot2 = WriteDialogue(entry.Slot2, ref written);
             DialogueSO outro = WriteDialogue(entry.Outro, ref written);
+            CutsceneSO memory = WriteMemoryCutscene(entry.RestoredMemory, ref cutscenes);
 
             if (!levels.TryGetValue(entry.StableId, out LevelConfigSO level) || level == null)
             {
@@ -78,6 +94,17 @@ public static class UgatNarrativeContentTool
             rewards.InsertArrayElementAtIndex(0);
             rewards.GetArrayElementAtIndex(0).stringValue = entry.MemoryId;
 
+            // Per-word explanation and the restored memory hang on the focus-word slots SALIN-204
+            // authored. Match each slot by word so a reordering is reported, not mis-wired.
+            SerializedProperty focusWords = so.FindProperty("focusWords");
+            if (WireFocusWord(focusWords, 0, entry.Word1, slot1, memory, entry.StableId)) slotsWired++;
+            if (WireFocusWord(focusWords, 1, entry.Word2, slot2, memory, entry.StableId)) slotsWired++;
+
+            // Level 1 pattern: the context beat replays the intro and rewards the memory cutscene.
+            SerializedProperty contextMedia = so.FindProperty("contextMedia");
+            contextMedia.FindPropertyRelative("dialogue").objectReferenceValue = intro;
+            contextMedia.FindPropertyRelative("cutscene").objectReferenceValue = memory;
+
             so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(level);
             wired++;
@@ -85,7 +112,62 @@ public static class UgatNarrativeContentTool
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        UnityEngine.Debug.Log($"SALIN205TOOL: dialogueAssets={written} levelsWired={wired}");
+        UnityEngine.Debug.Log($"SALIN205TOOL: dialogueAssets={written} cutsceneAssets={cutscenes} levelsWired={wired} focusSlotsWired={slotsWired}");
+    }
+
+    private static bool WireFocusWord(
+        SerializedProperty focusWords, int index, string expectedWord, DialogueSO dialogue, CutsceneSO memory, string stableId)
+    {
+        if (focusWords == null || index >= focusWords.arraySize)
+        {
+            UnityEngine.Debug.LogError($"SALIN-205: {stableId} has no focusWords[{index}] for {expectedWord}; slot authoring is SALIN-204.");
+            return false;
+        }
+
+        SerializedProperty slot = focusWords.GetArrayElementAtIndex(index);
+        string actual = slot.FindPropertyRelative("latinSpelling").stringValue;
+        if (!string.Equals(actual, expectedWord, System.StringComparison.OrdinalIgnoreCase))
+        {
+            UnityEngine.Debug.LogError($"SALIN-205: {stableId} focusWords[{index}] is '{actual}', expected '{expectedWord}'; not wiring.");
+            return false;
+        }
+
+        SerializedProperty media = slot.FindPropertyRelative("media");
+        media.FindPropertyRelative("dialogue").objectReferenceValue = dialogue;
+        media.FindPropertyRelative("cutscene").objectReferenceValue = memory;
+        return true;
+    }
+
+    private static CutsceneSO WriteMemoryCutscene(Memory memory, ref int written)
+    {
+        string path = $"{CutsceneFolder}/{memory.AssetName}.asset";
+        CutsceneSO asset = AssetDatabase.LoadAssetAtPath<CutsceneSO>(path);
+        bool isNew = asset == null;
+        if (isNew)
+            asset = ScriptableObject.CreateInstance<CutsceneSO>();
+
+        var panels = new CutscenePanel[memory.Panels.Length];
+        for (int i = 0; i < memory.Panels.Length; i++)
+        {
+            panels[i] = new CutscenePanel
+            {
+                image = null,   // panel illustrations are SALIN-206, as on Cutscene_Ugat01_Memory
+                text = memory.Panels[i],
+                transitionIn = TransitionType.Fade,
+                transitionDuration = 0f,
+                typewriterSpeed = 0f,
+            };
+        }
+
+        asset.cutsceneId = memory.CutsceneId;
+        asset.panels = panels;
+        if (isNew)
+            AssetDatabase.CreateAsset(asset, path);
+        else
+            EditorUtility.SetDirty(asset);
+
+        written++;
+        return asset;
     }
 
     private static DialogueSO WriteDialogue(Block block, ref int written)
@@ -127,6 +209,17 @@ public static class UgatNarrativeContentTool
             {
                 StableId = "level.ugat.02",
                 MemoryId = "memory.ugat.02",
+                Word1 = "BATA",
+                Word2 = "MATA",
+                RestoredMemory = new Memory
+                {
+                    AssetName = "Cutscene_Ugat02_Memory",
+                    CutsceneId = "cutscene.ugat.02.memory",
+                    Panels = new[]
+                    {
+                        "Ang batang si Juan, naglalaro sa bakuran ng kanilang tahanan, habang minamasdan siya ni Ina mula sa bintana.",
+                    },
+                },
                 Intro = new Block
                 {
                     AssetName = "Dialogue_Ugat02_Intro",
@@ -169,6 +262,17 @@ public static class UgatNarrativeContentTool
             {
                 StableId = "level.ugat.03",
                 MemoryId = "memory.ugat.03",
+                Word1 = "BATA",
+                Word2 = "TAMA",
+                RestoredMemory = new Memory
+                {
+                    AssetName = "Cutscene_Ugat03_Memory",
+                    CutsceneId = "cutscene.ugat.03.memory",
+                    Panels = new[]
+                    {
+                        "Ang tinig ni Ama sa lilim ng punong mangga: \"Tama ang bata.\" Isang papuring dala ni Juan hanggang sa kanyang paglaki.",
+                    },
+                },
                 Intro = new Block
                 {
                     AssetName = "Dialogue_Ugat03_Intro",
@@ -211,6 +315,17 @@ public static class UgatNarrativeContentTool
             {
                 StableId = "level.ugat.04",
                 MemoryId = "memory.ugat.04",
+                Word1 = "INA",
+                Word2 = "AMA",
+                RestoredMemory = new Memory
+                {
+                    AssetName = "Cutscene_Ugat04_Memory",
+                    CutsceneId = "cutscene.ugat.04.memory",
+                    Panels = new[]
+                    {
+                        "Ang mukha nina Ina at Ama, malinaw na sa isip ni Juan — hindi na larawang hiniram, kundi alaalang tunay nang kanya.",
+                    },
+                },
                 Intro = new Block
                 {
                     AssetName = "Dialogue_Ugat04_Intro",
@@ -253,6 +368,17 @@ public static class UgatNarrativeContentTool
             {
                 StableId = "level.ugat.05",
                 MemoryId = "memory.ugat.05",
+                Word1 = "IBA",
+                Word2 = "MANA",
+                RestoredMemory = new Memory
+                {
+                    AssetName = "Cutscene_Ugat05_Memory",
+                    CutsceneId = "cutscene.ugat.05.memory",
+                    Panels = new[]
+                    {
+                        "Ang mana ni Juan — hindi lupa, hindi ginto, kundi ang kakayahang bumasa at sumulat ng Baybayin, ipinasa mula kina Ina at Ama.",
+                    },
+                },
                 Intro = new Block
                 {
                     AssetName = "Dialogue_Ugat05_Intro",

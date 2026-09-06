@@ -31,8 +31,8 @@ MonoBehaviour:
     media:
       contextImage: {fileID: 0}
       narrationClip: {fileID: 0}
-      dialogue: {fileID: 0}
-      cutscene: {fileID: 0}
+      dialogue: {fileID: 11400000, guid: fd06e09a6d05f4ff0b4717f0cad28a76, type: 2}
+      cutscene: {fileID: 11400000, guid: afd0be47131cc402faca01ba5012255c, type: 2}
   - stableId: level.ugat.02.focus.02
     latinSpelling: MATA
     displayLabel: MATA
@@ -45,8 +45,8 @@ MonoBehaviour:
     media:
       contextImage: {fileID: 0}
       narrationClip: {fileID: 0}
-      dialogue: {fileID: 0}
-      cutscene: {fileID: 0}
+      dialogue: {fileID: 11400000, guid: 8c38e41d2b08a4e97b5432bdcb990d51, type: 2}
+      cutscene: {fileID: 11400000, guid: afd0be47131cc402faca01ba5012255c, type: 2}
   cumulativeSymbolPool:
   - symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
     spokenValueId: value.a
@@ -132,8 +132,8 @@ MonoBehaviour:
   contextMedia:
     contextImage: {fileID: 0}
     narrationClip: {fileID: 0}
-    dialogue: {fileID: 0}
-    cutscene: {fileID: 0}
+    dialogue: {fileID: 11400000, guid: 31133c6cddb634deb8d121f896e4266c, type: 2}
+    cutscene: {fileID: 11400000, guid: afd0be47131cc402faca01ba5012255c, type: 2}
   finalRestorationValue:
     symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
     spokenValueId: value.ta
