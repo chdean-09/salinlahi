@@ -38,6 +38,14 @@ public static class ColonialRosterRetirementTool
         "Maestro", "Pensionado", "Heitai", "Kempei", "Kisha", "Shokan",
     };
 
+    /// <summary>
+    /// Labo and Daan-Lihis were prefab variants of Soldado, so retiring it orphaned them. Their
+    /// only additions over the shared shell were a PhaserEnemy and a PensionadoMover, both of
+    /// which Enemy.Initialize now attaches from the enemy data, so they join the other fifteen
+    /// corruption enemies on the shared shell and stop needing pool registrations of their own.
+    /// </summary>
+    private static readonly string[] MigratedToSharedShell = { "labo", "daan-lihis" };
+
     /// <summary>Per-level: the corruption enemies that replace its colonial ones, in wave order.</summary>
     private sealed class LevelPlan
     {
@@ -240,6 +248,8 @@ public static class ColonialRosterRetirementTool
 
         failed |= !RepointCorruptedShell(enemies, log);
         failed |= !CleanPoolPrefab(log);
+        failed |= !CleanAlmanac(log);
+        failed |= !RepointPlaceholderSprites(log);
         failed |= !RepointScenes(enemies, log);
 
         AssetDatabase.SaveAssets();
@@ -336,6 +346,122 @@ public static class ColonialRosterRetirementTool
     }
 
     /// <summary>
+    /// Two prefabs carry a colonial walk frame as their design-time placeholder sprite: the
+    /// corruption shell's own SpriteRenderer and the almanac cell's Image. Both are overwritten at
+    /// runtime (Enemy.Initialize from walkFrames, the almanac from the entry portrait), so they are
+    /// invisible in play but would dangle once the sheets are deleted.
+    /// </summary>
+    private static bool RepointPlaceholderSprites(List<string> log)
+    {
+        const string source = "Assets/Art/Characters/Enemies/Corruption/sprite_enemy_abongsimula_walk-Sheet.png";
+        Sprite placeholder = AssetDatabase.LoadAllAssetsAtPath(source).OfType<Sprite>().FirstOrDefault();
+        if (placeholder == null)
+        {
+            Debug.LogError($"COLONIAL-RETIRE: no sub-sprite found in {source}.");
+            return false;
+        }
+
+        (string Path, string Component)[] targets =
+        {
+            ("Assets/Prefabs/Enemies/[Enemy] Corrupted.prefab", "SpriteRenderer"),
+            ("Assets/Prefabs/UI/Almanac/AlmanacCell.prefab", "Image"),
+        };
+
+        foreach ((string path, string component) in targets)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (prefab == null)
+            {
+                Debug.LogError($"COLONIAL-RETIRE: missing {path}.");
+                return false;
+            }
+
+            bool changed = false;
+            foreach (SpriteRenderer sr in prefab.GetComponentsInChildren<SpriteRenderer>(true))
+            {
+                if (sr.sprite == null || !IsColonialAsset(sr.sprite)) continue;
+                var so = new SerializedObject(sr);
+                so.FindProperty("m_Sprite").objectReferenceValue = placeholder;
+                so.ApplyModifiedPropertiesWithoutUndo();
+                changed = true;
+            }
+
+            foreach (UnityEngine.UI.Image img in prefab.GetComponentsInChildren<UnityEngine.UI.Image>(true))
+            {
+                if (img.sprite == null || !IsColonialAsset(img.sprite)) continue;
+                var so = new SerializedObject(img);
+                so.FindProperty("m_Sprite").objectReferenceValue = placeholder;
+                so.ApplyModifiedPropertiesWithoutUndo();
+                changed = true;
+            }
+
+            if (!changed)
+                continue;
+
+            PrefabUtility.SavePrefabAsset(prefab);
+            log.Add($"{System.IO.Path.GetFileName(path)}: {component} placeholder sprite -> abongsimula walk frame");
+        }
+
+        return true;
+    }
+
+    /// <summary>True when the asset lives in one of the retired enemies' art folders.</summary>
+    private static bool IsColonialAsset(Object asset)
+    {
+        string path = AssetDatabase.GetAssetPath(asset);
+        return !string.IsNullOrEmpty(path)
+            && Colonial.Any(c => path.IndexOf("/Enemy/" + c + "/", System.StringComparison.OrdinalIgnoreCase) >= 0);
+    }
+
+    /// <summary>
+    /// The almanac lists every creature the player can discover. A retired enemy cannot be
+    /// discovered, so its entry would be a permanently unfillable slot.
+    /// </summary>
+    private static bool CleanAlmanac(List<string> log)
+    {
+        string[] guids = AssetDatabase.FindAssets("t:AlmanacEnemyRegistrySO");
+        if (guids.Length == 0)
+        {
+            Debug.LogError("COLONIAL-RETIRE: no AlmanacEnemyRegistrySO found.");
+            return false;
+        }
+
+        foreach (string guid in guids)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            var registry = AssetDatabase.LoadAssetAtPath<AlmanacEnemyRegistrySO>(path);
+            if (registry?.entries == null)
+                continue;
+
+            var so = new SerializedObject(registry);
+            SerializedProperty entries = so.FindProperty("entries");
+            int before = entries.arraySize;
+
+            for (int i = entries.arraySize - 1; i >= 0; i--)
+            {
+                var data = entries.GetArrayElementAtIndex(i)
+                    .FindPropertyRelative("enemyData").objectReferenceValue as EnemyDataSO;
+                if (data == null || !IsColonial(data))
+                    continue;
+
+                entries.DeleteArrayElementAtIndex(i);
+            }
+
+            if (entries.arraySize == before)
+            {
+                log.Add($"{System.IO.Path.GetFileName(path)}: already clean ({before} entries)");
+                continue;
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(registry);
+            log.Add($"{System.IO.Path.GetFileName(path)}: {before} -> {entries.arraySize} entries");
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// The EnemyPool manager prefab registers a pooled prefab per enemy id. Ten of its thirteen
     /// entries were colonial and would become null references once those prefabs are deleted;
     /// the corruption roster is prefab-less and resolves through the default pool instead.
@@ -368,8 +494,9 @@ public static class ColonialRosterRetirementTool
             var prefabRef = entry.FindPropertyRelative("prefab").objectReferenceValue;
             bool colonial = Colonial.Any(c => string.Equals(c, id, System.StringComparison.OrdinalIgnoreCase))
                 || (prefabRef != null && Colonial.Any(c => prefabRef.name.IndexOf(c, System.StringComparison.OrdinalIgnoreCase) >= 0));
+            bool migrated = MigratedToSharedShell.Any(m => string.Equals(m, id, System.StringComparison.OrdinalIgnoreCase));
 
-            if (!colonial)
+            if (!colonial && !migrated && prefabRef != null)
                 continue;
 
             removed.Add(id);
@@ -397,7 +524,13 @@ public static class ColonialRosterRetirementTool
     {
         bool ok = true;
         EnemyDataSO fallback = Resolve(enemies, "AbongSimula", ref ok);
-        string[] scenes = { "Assets/_Scenes/Gameplay.unity", "Assets/_Scenes/Level_01_Tutorial.unity" };
+        // Bootstrap carries the persistent manager instances, so it holds pool overrides too.
+        string[] scenes =
+        {
+            "Assets/_Scenes/Bootstrap.unity",
+            "Assets/_Scenes/Gameplay.unity",
+            "Assets/_Scenes/Level_01_Tutorial.unity",
+        };
 
         foreach (string path in scenes)
         {
@@ -418,25 +551,22 @@ public static class ColonialRosterRetirementTool
                 log.Add($"{System.IO.Path.GetFileName(path)}: WaveManager._fallbackEnemyData -> EnemyData_AbongSimula");
             }
 
-            foreach (EnemyPool pool in Object.FindObjectsByType<EnemyPool>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (WaveManager manager in Object.FindObjectsByType<WaveManager>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
-                var so = new SerializedObject(pool);
-                SerializedProperty registrations = so.FindProperty("_registeredEnemyPrefabs");
+                // The sandbox catalogue listed five colonial enemies by hand.
+                var so = new SerializedObject(manager);
+                SerializedProperty sandbox = so.FindProperty("_sandboxEnemyData");
+                if (sandbox == null || !sandbox.isArray)
+                    continue;
+
                 int removed = 0;
-
-                for (int i = registrations.arraySize - 1; i >= 0; i--)
+                for (int i = sandbox.arraySize - 1; i >= 0; i--)
                 {
-                    SerializedProperty entry = registrations.GetArrayElementAtIndex(i);
-                    var prefab = entry.FindPropertyRelative("prefab").objectReferenceValue as Enemy;
-                    string id = entry.FindPropertyRelative("enemyID").stringValue ?? string.Empty;
-                    bool colonialId = Colonial.Any(c => string.Equals(c, id, System.StringComparison.OrdinalIgnoreCase));
-                    bool colonialPrefab = prefab != null
-                        && Colonial.Any(c => prefab.name.IndexOf(c, System.StringComparison.OrdinalIgnoreCase) >= 0);
-
-                    if (!colonialId && !colonialPrefab)
+                    var entry = sandbox.GetArrayElementAtIndex(i).objectReferenceValue as EnemyDataSO;
+                    if (entry != null && !IsColonial(entry))
                         continue;
 
-                    registrations.DeleteArrayElementAtIndex(i);
+                    sandbox.DeleteArrayElementAtIndex(i);
                     removed++;
                 }
 
@@ -445,7 +575,72 @@ public static class ColonialRosterRetirementTool
 
                 so.ApplyModifiedPropertiesWithoutUndo();
                 dirty = true;
-                log.Add($"{System.IO.Path.GetFileName(path)}: removed {removed} colonial pool registration(s)");
+                log.Add($"{System.IO.Path.GetFileName(path)}: removed {removed} colonial sandbox entr(ies)");
+            }
+
+            foreach (WaveSpawner spawner in Object.FindObjectsByType<WaveSpawner>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                var so = new SerializedObject(spawner);
+                SerializedProperty prop = so.FindProperty("_fallbackEnemyData");
+                if (prop == null)
+                    continue;
+
+                var current = prop.objectReferenceValue as EnemyDataSO;
+                if (current == null || !IsColonial(current))
+                    continue;
+
+                prop.objectReferenceValue = fallback;
+                so.ApplyModifiedPropertiesWithoutUndo();
+                dirty = true;
+                log.Add($"{System.IO.Path.GetFileName(path)}: WaveSpawner._fallbackEnemyData -> EnemyData_AbongSimula");
+            }
+
+            foreach (EnemyPool pool in Object.FindObjectsByType<EnemyPool>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                // Deleting entries one by one leaves the prefab-instance override records behind,
+                // which is how six colonial prefab references survived the first pass. The list
+                // belongs to the manager prefab, so drop the scene override wholesale and let the
+                // scene inherit the cleaned array.
+                var so = new SerializedObject(pool);
+                SerializedProperty registrations = so.FindProperty("_registeredEnemyPrefabs");
+                if (registrations == null)
+                    continue;
+
+                if (!PrefabUtility.IsPartOfPrefabInstance(pool))
+                {
+                    int removed = 0;
+                    for (int i = registrations.arraySize - 1; i >= 0; i--)
+                    {
+                        SerializedProperty entry = registrations.GetArrayElementAtIndex(i);
+                        var prefab = entry.FindPropertyRelative("prefab").objectReferenceValue;
+                        string id = entry.FindPropertyRelative("enemyID").stringValue ?? string.Empty;
+                        bool retired = prefab == null
+                            || Colonial.Any(c => string.Equals(c, id, System.StringComparison.OrdinalIgnoreCase))
+                            || MigratedToSharedShell.Any(m => string.Equals(m, id, System.StringComparison.OrdinalIgnoreCase));
+
+                        if (!retired)
+                            continue;
+
+                        registrations.DeleteArrayElementAtIndex(i);
+                        removed++;
+                    }
+
+                    if (removed == 0)
+                        continue;
+
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                    dirty = true;
+                    log.Add($"{System.IO.Path.GetFileName(path)}: removed {removed} scene-local pool registration(s)");
+                    continue;
+                }
+
+                if (!PrefabUtility.GetPropertyModifications(pool)
+                        .Any(m => m != null && m.propertyPath.StartsWith("_registeredEnemyPrefabs")))
+                    continue;
+
+                PrefabUtility.RevertPropertyOverride(registrations, InteractionMode.AutomatedAction);
+                dirty = true;
+                log.Add($"{System.IO.Path.GetFileName(path)}: reverted _registeredEnemyPrefabs to the manager prefab");
             }
 
             if (dirty)

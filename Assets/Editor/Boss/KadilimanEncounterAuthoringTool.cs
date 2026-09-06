@@ -43,32 +43,32 @@ public static class KadilimanEncounterAuthoringTool
     private static readonly PhaseSpec[] Phases =
     {
         new PhaseSpec {
-            Era = "Spanish", Duration = 30f, DelaySummons = 6f, MinionsMin = 1, MinionsMax = 2,
+            Era = "Ugat", Duration = 30f, DelaySummons = 6f, MinionsMin = 1, MinionsMax = 2,
             DelayMinions = 0.8f, Required = 4, VulnTimer = 25f, MovementPattern = 1, MoveSpeed = 1.0f,
             PaceHalf = 2.5f, SpawnRange = new Vector2(3f, 1.5f), TeleportHalf = new Vector2(2f, 0f),
-            Summons = new[] { "Soldado", "Fraile" },
+            Summons = new[] { "NawalangMukha", "Iligaw" },
         },
         new PhaseSpec {
-            Era = "American", Duration = 30f, DelaySummons = 5f, MinionsMin = 2, MinionsMax = 3,
+            Era = "Ugnayan", Duration = 30f, DelaySummons = 5f, MinionsMin = 2, MinionsMax = 3,
             DelayMinions = 0.8f, Required = 4, VulnTimer = 24f, MovementPattern = 1, MoveSpeed = 1.3f,
             PaceHalf = 2.5f, SpawnRange = new Vector2(3f, 1.5f), TeleportHalf = new Vector2(2.5f, 0f),
-            Summons = new[] { "Soldier", "Maestro", "Pensionado" },
+            Summons = new[] { "Salungat", "Kadena", "Gapos" },
         },
         new PhaseSpec {
-            Era = "Japanese", Duration = 30f, DelaySummons = 4f, MinionsMin = 2, MinionsMax = 3,
+            Era = "Pamana", Duration = 30f, DelaySummons = 4f, MinionsMin = 2, MinionsMax = 3,
             DelayMinions = 0.7f, Required = 4, VulnTimer = 22f, MovementPattern = 2, MoveSpeed = 0f,
             PaceHalf = 2f, SpawnRange = new Vector2(3.5f, 1f), TeleportHalf = new Vector2(2.5f, 2.5f),
-            Summons = new[] { "Heitai", "Kisha", "Kempei" },
+            Summons = new[] { "Hati", "Labo", "Ngatngat" },
         },
         new PhaseSpec {
             Era = "All three eras", Duration = 35f, DelaySummons = 3.5f, MinionsMin = 3, MinionsMax = 4,
             DelayMinions = 0.6f, Required = 5, VulnTimer = 22f, MovementPattern = 2, MoveSpeed = 0f,
             PaceHalf = 2f, SpawnRange = new Vector2(3.5f, 1f), TeleportHalf = new Vector2(3f, 3f),
-            Summons = new[] { "Capitan", "General", "Shokan", "Soldado", "Heitai" },
+            Summons = new[] { "AbongSimula", "Mantsa", "Punit", "NawalangMukha", "Hati" },
         },
     };
 
-    private static readonly string[] Fallbacks = { "Soldado", "Soldier", "Heitai" };
+    private static readonly string[] Fallbacks = { "NawalangMukha", "Salungat", "Hati" };
 
     private const string Description =
         "Kadiliman is the Darkness itself, the embodiment of cultural forgetting. A formless " +

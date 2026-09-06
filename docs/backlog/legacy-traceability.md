@@ -29,6 +29,7 @@ at code paths or branches in this repository.
 | --- | --- | --- |
 | SALIN-1 Core Architecture & Infrastructure | reusable-evidence | Singleton, EventBus, SceneLoader, ObjectPool, GameManager remain the runtime backbone (`Assets/Scripts/Core/`) |
 | SALIN-2 Enemy System | reusable-evidence | Enemy lifecycle, variants, waves, boss reused by revised combat; presentation identities to be replaced under SALIN-184 (Paglimot) |
+| SALIN-2 colonial enemy roster | **retired 2026-09-06** | The twelve colonial enemies (Soldado, Soldier, Fraile, Guardia, Capitan, General, Maestro, Pensionado, Heitai, Kempei, Kisha, Shokan) and their prefabs, animation folders and almanac entries are deleted. Their waves, combat rosters and both Paglimot summon tables moved to the corruption roster; Labo and Daan-Lihis were prefab variants of Soldado and now use the shared shell with their abilities attached from data. Enemy lifecycle, pooling and the mover/aura/scramble scripts are unaffected and still in use. |
 | SALIN-3 Baybayin Recognition System | reusable-evidence | $P recognizer, stroke capture, template library power all revised tracing (`Assets/Scripts/Gameplay/Recognition/`, `Assets/Resources/Templates/`) |
 | SALIN-4 Player & Combat System | reusable-evidence | CombatResolver, hearts, combo/focus reused; active-clue gate added by SALIN-180 |
 | SALIN-5 Level Design & Progression | obsolete | Colonial-era 15-level design replaced by the revised era/content model (SALIN-166); level assets remain but are re-authored per era slices |
