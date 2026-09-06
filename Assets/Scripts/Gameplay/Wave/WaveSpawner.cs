@@ -24,8 +24,9 @@ public class WaveSpawner : MonoBehaviour
              "moveSpeeds (Level 6 spans 0.85-1.9), so a fast enemy catches a slow one and the pair " +
              "stacks; keeping them apart horizontally keeps both readable. 0 disables. Raising this " +
              "past roughly half the spawn band is counter-productive: spawns ping-pong between the " +
-             "two edges and every second pair lines up again.")]
-    [SerializeField] private float _minLateralSpawnSeparation = 1.8f;
+             "two edges and every second pair lines up again. Tuned to ~40% of the band width, so " +
+             "it moves with the band: 1.5 for the +/-1.83 band the 0.80 corrupted scale needs.")]
+    [SerializeField] private float _minLateralSpawnSeparation = 1.5f;
 
     [Tooltip("How many times a spawn re-rolls its X looking for one that clears the separation. " +
              "Bounded so a band narrower than the separation cannot stall the spawn.")]

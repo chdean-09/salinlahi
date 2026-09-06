@@ -44,7 +44,7 @@ MonoBehaviour:
   dealsContactDamage: 1
   era: 0
   overrideBadgeOffset: 1
-  glyphBadgeOffsetOverride: {x: 0, y: 2.5}
+  glyphBadgeOffsetOverride: {x: 0, y: 2.8}
   overrideBadgeScale: 0
   glyphBadgeScaleOverride: 1
   zigzagAmplitude: 0

@@ -84,35 +84,47 @@ exactly and gives per-creature variation for free.
 
 | | Scale | Spawn band | New world size | % screen h |
 |---|---|---|---|---|
-| All 17 corrupted creatures | 0.30 → **0.68** | ±2.4 → **±2.14** | 2.55–3.52 w × 2.79–3.63 h | 14–18 % |
+| All 17 corrupted creatures | 0.30 → **0.80** | ±2.4 → **±1.83** | 3.00–4.14 w × 3.28–4.27 h | 16–21 % |
 
-**How 0.68 was reached — and why not 0.80.** The team first chose 0.80 from a rendered
-0.56 / 0.68 / 0.80 comparison. That comparison used *hand-spaced* enemies and was therefore
-misleading. Re-tested against a simulated real wave — Level 6's tightest (6 enemies, 2.1 s interval),
-real per-enemy `moveSpeed`, real `Random.Range` x, 400 trials per config, counting an enemy lost when
-≥ 50 % of its sprite **area** is covered by enemies above it:
+**How 0.80 was reached — in three passes.** The team first chose 0.80 from a rendered
+0.56 / 0.68 / 0.80 comparison that used *hand-spaced* enemies and was therefore misleading.
+Re-tested against a simulated real wave — Level 6's tightest (6 enemies, 2.1 s interval), real
+per-enemy `moveSpeed`, real `Random.Range` x, counting an enemy lost when ≥ 50 % of its sprite
+**area** is covered — 0.80 left ~1 enemy in 5 more than half covered in 71 % of waves, so it was
+dialled back to 0.68.
 
-| scale | band | avg enemies hidden (of ~5.8) | % of waves affected |
-|---|---|---|---|
-| 0.48 | ±2.40 | 0.26 | 23 % |
-| 0.56 | ±2.45 | 0.39 | 32 % |
-| **0.68** | **±2.14** | **0.68** | **51 %** |
-| 0.74 | ±1.98 | 0.83 | 59 % |
-| 0.80 | ±1.83 | 1.07 | 69 % |
-| 0.80 | ±1.70 | 1.12 | 71 % |
+Fixing the spawn behaviour (§7) removed the cause of that occlusion rather than compensating for it,
+and 0.80 was re-tested and adopted. With fastest-first ordering and lateral separation in place:
 
-At 0.80 roughly one on-screen enemy in five was more than half covered — and each one is a glyph the
-player cannot read. 0.68 halves that while still being 2.3× the shipped size.
+| scale | max band | tallest | body ≥30 % covered | % waves | badge-on-badge | screen area |
+|---|---|---|---|---|---|---|
+| 0.68 | ±2.14 | 3.63 | 0.00 | 0 % | 0.00 | 24 % |
+| 0.74 | ±1.98 | 3.95 | 0.01 | 2 % | 0.00 | 29 % |
+| **0.80** | **±1.83** | **4.27** | **0.03** | **3 %** | **0.00** | **33 %** |
+| 0.88 | ±1.62 | 4.69 | 0.13 | 12 % | 0.00 | 40 % |
 
-**Two traps this exposed.**
+0.88 was rejected: body occlusion climbs to 12 % of waves, and its 4.69 tallest leaves the boss
+(5.06 visible) only an 8 % silhouette lead. At 0.80 the boss leads by 18 % on visible content
+(55 % on sprite bounds).
+
+**A metric correction worth recording.** An intermediate pass measured "badge covered by the enemy
+bodies above it" and reported 1.63 badges hidden per wave at 0.80 — which would have blocked it.
+That measurement was wrong: badges render at `RenderOrder.EnemyGlyphBadge` (200) and enemies at
+`EnemyDefault` (0), so **a badge is never occluded by any body**. Only badge-on-badge overlap can
+hide a glyph, and because the badge is a fixed 1.70 × 1.86 world sprite at a fixed offset shared by
+every creature at the same scale, badge separation equals enemy separation — making badge readability
+**independent of enemy scale**. It measures 0.00 at every scale tested. Check the sorting layers
+before trusting an occlusion metric.
+
+**Two traps this exposed.****Two traps this exposed.**
 
 1. **Narrowing the spawn band to fix treeline clipping made occlusion worse** (0.90 → 1.12 hidden).
    Lateral separation is what keeps vertically-overlapping enemies readable, so the band and the
-   scale pull in opposite directions. The band is now set so the widest creature (Bakod, 3.52 units
-   at 0.68) just touches the dirt edge at ±3.9 — **±2.14**. That is the maximum legal band at this
-   scale, i.e. the most lateral separation available.
-2. **No band rescues 0.80.** Widening for separation pushes creatures into the treeline; even the
-   widest legal band for 0.80 (±1.83) still leaves 69 % of waves with a lost enemy.
+   scale pull in opposite directions. The band is set so the widest creature (Bakod, 4.14 units at
+   0.80) just touches the dirt edge at ±3.9 — **±1.83**, the maximum legal band at this scale.
+2. **No band rescued 0.80 on its own.** Widening for separation pushes creatures into the treeline,
+   and even the widest legal band still left 69 % of waves with a lost enemy — until the spawn
+   behaviour itself was fixed. Scale and band tuning could not solve a spawn-ordering problem.
 
 **Root cause of the clumping is pre-existing, not scale.** Level 6 mixes `moveSpeed` from 0.85 to
 1.9 in a single wave at a 2.1 s interval, so fast enemies catch slow ones and pile up. Scale only
@@ -250,10 +262,10 @@ Effect across every corrupted-bearing wave (500 trials each):
 | L3 w1 (5 @ 2.0 s) | 0.30 (26 %) | 0.10 (10 %) | **0.00 (0 %)** |
 | L6 w4 (6 @ 2.1 s) | 0.67 (52 %) | 0.29 (25 %) | **0.00 (0 %)** |
 
-With catch-up removed, the corridor could now carry enemies larger than 0.68 — the 0.80 that was
-rejected in §2 was rejected on occlusion, and that constraint is gone. Worth revisiting against
-playtesting rather than simulation, since the remaining limits (treeline clipping at the band edge,
-boss silhouette lead) are judgement calls.
+With catch-up removed the occlusion objection to 0.80 disappeared, and §2 adopts it: body occlusion
+at 0.80 measures 3 % of waves, down from 71 %. The lateral separation default retuned 1.8 → **1.5**
+to follow the narrower ±1.83 band — it tracks roughly 40 % of band width, so it moves whenever the
+band does.
 
 ## 8. Other follow-ups (not applied)
 
