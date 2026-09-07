@@ -219,6 +219,12 @@ public class Enemy : MonoBehaviour
         EnsureAbilityComponent<KempeiScrambleController>(_data.stainsNearbyGlyphs);
         EnsureAbilityComponent<GlyphCoverController>(_data.coversOwnGlyph);
         EnsureAbilityComponent<MirrorDecoyController>(_data.spawnsMirrorDecoy);
+        EnsureAbilityComponent<PhaserEnemy>(_data.isPhaser);
+
+        // Resolved after the block above, because the component may have just been added, and
+        // cleared for a non-phaser so a reused shell does not consult a disabled phaser when
+        // answering IsPhaserVisible. PhaserEnemy.OnDisable restores full visibility either way.
+        _phaserEnemy = _data.isPhaser ? GetComponent<PhaserEnemy>() : null;
 
         if (_renderer != null)
         {

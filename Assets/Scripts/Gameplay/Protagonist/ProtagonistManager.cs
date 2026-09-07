@@ -9,7 +9,10 @@ namespace Salinlahi.Runtime.Gameplay
         [SerializeField] private GameObject _protagonistPrefab;
         [SerializeField] private float _walkInDuration = 1.5f;
 
-        private const float MinVisibleWorldHeight = 1.5f;
+        // Safety floor only: the protagonist must never shrink to nothing. It sits below the
+        // authored size (0.20 scale renders ~1.07 world units) so art direction, not this guard,
+        // decides how big Juan reads against the base wall.
+        private const float MinVisibleWorldHeight = 1.0f;
 
         public Transform ProtagonistTransform { get; private set; }
 

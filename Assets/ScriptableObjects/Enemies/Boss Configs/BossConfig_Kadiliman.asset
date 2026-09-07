@@ -32,8 +32,8 @@ MonoBehaviour:
     minionsPerSummonMax: 2
     delayBetweenMinions: 0.8
     summonEnemyTypes:
-    - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
-    - {fileID: 11400000, guid: 5441937cc8c04b60b92b0112af80aac3, type: 2}
+    - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+    - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
     summonSpawnRange: {x: 3, y: 1.5}
     requiredCharacterCount: 4
     vulnerabilityTimer: 25
@@ -47,9 +47,9 @@ MonoBehaviour:
     minionsPerSummonMax: 3
     delayBetweenMinions: 0.8
     summonEnemyTypes:
-    - {fileID: 11400000, guid: b2d5819d4d6b4d8d9d1e4ef125ad2e61, type: 2}
-    - {fileID: 11400000, guid: 162b7d5e2b26d7442998aac326c48a06, type: 2}
-    - {fileID: 11400000, guid: e555cb9a9c190494d8ad490e246cc40c, type: 2}
+    - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
+    - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
+    - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
     summonSpawnRange: {x: 3, y: 1.5}
     requiredCharacterCount: 4
     vulnerabilityTimer: 24
@@ -63,9 +63,9 @@ MonoBehaviour:
     minionsPerSummonMax: 3
     delayBetweenMinions: 0.7
     summonEnemyTypes:
-    - {fileID: 11400000, guid: b1192b8ea41bc418cb84defa4321b63f, type: 2}
-    - {fileID: 11400000, guid: ccb6fd07e3fd94990a6944ec2b341e31, type: 2}
-    - {fileID: 11400000, guid: 5cc8877bb53ca480da124ff2ffaa9de0, type: 2}
+    - {fileID: 11400000, guid: c5f91a4c7515047cabd59ea63b9bfef6, type: 2}
+    - {fileID: 11400000, guid: e89a049d218824eb18439081351d8c5e, type: 2}
+    - {fileID: 11400000, guid: d32d963289bb94a54ba971ec25be3bbf, type: 2}
     summonSpawnRange: {x: 3.5, y: 1}
     requiredCharacterCount: 4
     vulnerabilityTimer: 22
@@ -79,11 +79,11 @@ MonoBehaviour:
     minionsPerSummonMax: 4
     delayBetweenMinions: 0.6
     summonEnemyTypes:
-    - {fileID: 11400000, guid: 55369c8c5f914966a731075c4b14742a, type: 2}
-    - {fileID: 11400000, guid: 096df5d2077ab9d4c9ff3732f732f957, type: 2}
-    - {fileID: 11400000, guid: 076fdd70b6855485eb5a08635478121b, type: 2}
-    - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
-    - {fileID: 11400000, guid: b1192b8ea41bc418cb84defa4321b63f, type: 2}
+    - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
+    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
+    - {fileID: 11400000, guid: 3beab354ec73c4942a045607153e984b, type: 2}
+    - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+    - {fileID: 11400000, guid: c5f91a4c7515047cabd59ea63b9bfef6, type: 2}
     summonSpawnRange: {x: 3.5, y: 1}
     requiredCharacterCount: 5
     vulnerabilityTimer: 22
@@ -92,9 +92,9 @@ MonoBehaviour:
     paceHalfRange: 2
     teleportHalfRange: {x: 3, y: 3}
   fallbackEnemyTypes:
-  - {fileID: 11400000, guid: 442e301f42f0b934f8525b373bbcb9e7, type: 2}
-  - {fileID: 11400000, guid: b2d5819d4d6b4d8d9d1e4ef125ad2e61, type: 2}
-  - {fileID: 11400000, guid: b1192b8ea41bc418cb84defa4321b63f, type: 2}
+  - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+  - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
+  - {fileID: 11400000, guid: c5f91a4c7515047cabd59ea63b9bfef6, type: 2}
   summonHorizontalBounds: {x: -2, y: 2}
   introDuration: 2
   outroDuration: 2.5

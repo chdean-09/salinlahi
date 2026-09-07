@@ -31,8 +31,14 @@ The corrupted roster had no size control of its own at all.
 | Era 02 | 6–9 | L6 | L6, L7, L8, L9 |
 | Era 03 | 11–14 | — | L11–L14 |
 
-Both rosters ship in `CampaignConfig_RevisedV1`; colonial enemies still appear in 11 of 15 levels.
-The tutorial (`Level1TutorialStep_*`) uses corrupted only: Bakod, Hati, Uhaw.
+**Superseded 2026-09-06.** Only the corruption roster ships. The twelve colonial enemies were
+retired and deleted; every level, both Paglimot encounters and the shared shell now draw on the
+seventeen corruptions, and the per-tier colonial scales in section 2 are history. The corrupted
+scale itself also changed: the cast is now sized against the base wall (protagonist 0.20,
+corruption shell 0.43, El Inquisidor 0.33) rather than scaled up for readability.
+
+Originally: both rosters shipped in `CampaignConfig_RevisedV1` and colonial enemies appeared in
+11 of 15 levels. The tutorial (`Level1TutorialStep_*`) used corrupted only: Bakod, Hati, Uhaw.
 
 ---
 
