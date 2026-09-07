@@ -22,6 +22,19 @@ public sealed class BaseZoneScaler : MonoBehaviour
 
     private SpriteRenderer _sr;
     private bool _warnedNoPlayColumn;
+    private float _laneInsetPerSide;
+
+    /// <summary>
+    /// World units to leave uncovered at each side of the column. Set by
+    /// EnvironmentThemeSwapper when a baked stage background supplies its own margins:
+    /// the fence then spans the lane between them rather than the whole screen, which
+    /// was only ever needed to hide the flat background behind it.
+    /// </summary>
+    public void SetLaneInset(float worldUnitsPerSide)
+    {
+        _laneInsetPerSide = Mathf.Max(0f, worldUnitsPerSide);
+        Rescale();
+    }
 
     private void Awake()
     {
@@ -64,7 +77,8 @@ public sealed class BaseZoneScaler : MonoBehaviour
         float spriteWorldWidth = _sr.sprite.bounds.size.x;
         if (spriteWorldWidth <= 0f) return;
 
-        float desiredWidth = _playColumn.WorldHalfWidth * 2f + _overflowPerSide * 2f;
+        float span = Mathf.Max(0.1f, _playColumn.WorldHalfWidth * 2f - _laneInsetPerSide * 2f);
+        float desiredWidth = span + _overflowPerSide * 2f;
 
         if (_sr.drawMode == SpriteDrawMode.Simple)
         {
