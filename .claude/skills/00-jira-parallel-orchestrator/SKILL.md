@@ -20,6 +20,19 @@ Runtime brain: owns state, scheduling, worker allocation, dependency refresh, an
 
 Config: `.claude/team-map.json` (Jira↔GitHub↔git identity, worker limit 4, worktree root).
 
+## Model routing
+
+All planning and implementation subagents run Opus 5; only the reasoning effort varies, and effort is set by the agent definition used to dispatch (`.claude/agents/`):
+
+| Role | Dispatch as | Effort |
+|---|---|---|
+| Planner (task analysis, plan, picks the implementation effort) | `salinlahi-planner` | High |
+| Implementer, default | `salinlahi-worker-low` | Low |
+| Implementer, more complex work | `salinlahi-worker-medium` | Medium |
+| Implementer, difficult work or debugging that clearly needs deeper reasoning | `salinlahi-worker-high` | High |
+
+The planner decides the implementation effort per ticket from the ticket and repository evidence and records it in the plan's **Model Routing** section. Default is Low; the orchestrator dispatches at Medium or High only when the plan gives a reason. Plans written before this rule (no effort level) run at Low unless the planner's revalidation says otherwise.
+
 ## Ticket states
 
 `BLOCKED → READY → PLANNING → PLANNED → RUNNING → REVIEW → (FIX_REQUIRED→RUNNING) → READY_FOR_INTEGRATION → PR_OPEN → READY_FOR_MERGE → MERGED`, plus `FAILED`, `UNKNOWN`. Keep state as a simple in-conversation table; no external store.
@@ -28,15 +41,15 @@ Config: `.claude/team-map.json` (Jira↔GitHub↔git identity, worker limit 4, w
 
 1. **Discover** (skill) → READY/BLOCKED/GATES/UNBLOCKS for the scope.
 2. **Verify code availability** — a Jira-`Done` blocker counts only if its code is actually in base: `git log -E origin/dev --oneline --grep "SALIN-<n>([^0-9]|$)"` (the boundary matters: plain `SALIN-20` would false-match SALIN-201…206), or its PR shows merged. Jira Done without merged code keeps the dependent `BLOCKED`.
-3. **Plan** all READY tickets needing plans — parallel subagents, one ticket each; reuse an existing valid `<KEY>-implementation-plan.md` after revalidating it against current code, rather than replanning. Plans live in the **main checkout** root and are untracked — worktrees cannot see them, so always hand workers and reviewers the plan's absolute path.
+3. **Plan** all READY tickets needing plans — parallel `salinlahi-planner` subagents (Opus 5 High), one ticket each; each plan states the implementation effort; reuse an existing valid `<KEY>-implementation-plan.md` after revalidating it against current code, rather than replanning. Plans live in the **main checkout** root and are untracked — worktrees cannot see them, so always hand workers and reviewers the plan's absolute path.
 4. **Safety** (skill) → parallel groups, SOFT_CONFLICTs, integration-order hint.
 5. **Allocate workers** — max 4 concurrent (team-map `workerLimit`). Route each ticket to its Jira assignee's worker; per ticket create isolation using the plan's **Suggested Branch** (validate it first: `bash docs/jira/validate-git-conventions.sh branch "<branch>"`):
    ```bash
    git worktree add ../salinlahi-worktrees/SALIN-<n> -b <suggested-branch> origin/dev
    ```
    One worktree per ticket; workers never touch another worktree. **Scratch files must be namespaced per ticket** (e.g. `<scratchpad>/SALIN-<n>/…`) — concurrent workers sharing one scratchpad directory have silently corrupted each other's files (observed: one worker appended its source paths to another's `runtime.rsp`, breaking a compile run). Known repo quirk: fresh worktrees show ~11 phantom CRLF-modified files — workers ignore them and never `git add -A`. Unity `Library` import in worktrees is expensive: code+EditMode-testable work needs no Editor; defer Editor/PlayMode validation to the main checkout or a deliberate per-worktree Unity run.
-6. **Implement in parallel** (skill, one subagent per ticket, plan attached). Jira: transition ticket to In Progress (id `21`) when its worker starts.
-7. **Review** each finished ticket (skill, independent subagent). **Never run a Unity gate and a review concurrently on the same worktree** — batchmode mutates the working tree (regenerates `.meta`, deletes `InitTestScene<guid>.unity` and `PerformanceTestRun*.json`, reserializes assets), and a reviewer reading it mid-run sees phantom churn and misreads it as a live Editor session. Gate first, then review, and hand the reviewer the gate results so it does not re-report `NOT RUN`. `FIX_REQUIRED` → back to the same worker with findings, max 2 fix rounds, then mark `FAILED` and escalate. `BLOCKED` → orchestrator decision.
+6. **Implement in parallel** (skill, one subagent per ticket, plan attached, dispatched as the `salinlahi-worker-<effort>` named in the plan's Model Routing). Jira: transition ticket to In Progress (id `21`) when its worker starts.
+7. **Review** each finished ticket (skill, independent subagent). **Never run a Unity gate and a review concurrently on the same worktree** — batchmode mutates the working tree (regenerates `.meta`, deletes `InitTestScene<guid>.unity` and `PerformanceTestRun*.json`, reserializes assets), and a reviewer reading it mid-run sees phantom churn and misreads it as a live Editor session. Gate first, then review, and hand the reviewer the gate results so it does not re-report `NOT RUN`. `FIX_REQUIRED` → back to the same worker with findings, max 2 fix rounds, then mark `FAILED` and escalate. A second fix round on the same finding is a clear reason to redispatch one effort level higher. `BLOCKED` → orchestrator decision.
 8. **Integrate serially** (skill) in this order: dependency-unlock value → shared-foundation first → conflict risk → freshness. After each merge: `git fetch origin`; re-check SOFT_CONFLICT branches (`git merge-tree --write-tree origin/dev <branch>`); revalidate/re-review affected branches; transition merged tickets to Done (id `31`) — **except gate-flagged tickets** (discovery `GATES`, e.g. SALIN-188 acceptance evidence): leave those In Progress and comment "merged; awaiting gate evidence" instead; refresh the discovery picture for newly unblocked tickets.
 9. **Next wave** — return to step 1 until the scope has no executable work; then clean up merged worktrees (`git worktree remove`).
 
@@ -57,7 +70,7 @@ Workers and integration author commits as the ticket's Jira assignee per team-ma
 ## Status block (emit after every state change batch)
 
 ```
-READY: ...   PLANNING/PLANNED: ...   RUNNING: SALIN-x(worker/assignee) ...
+READY: ...   PLANNING/PLANNED: ...   RUNNING: SALIN-x(worker/assignee/effort) ...
 REVIEW: ...  INTEGRATION QUEUE: 1. ... 2. ...
 PR_OPEN/READY_FOR_MERGE: ...  MERGED: ...  BLOCKED: x ← y   FAILED: ...
 ```

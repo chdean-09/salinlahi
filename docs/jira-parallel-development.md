@@ -4,7 +4,7 @@ Runtime entry point for executing SALIN tickets in parallel with AI workers. Com
 
 ## Prerequisites
 
-Skills `01`, `03`, `05`, `06` and `00` live in `.claude/skills/` and ship with this repository. **`02-plan-salinlahi-ticket` and `04-implement-salinlahi-ticket` are user-level skills** in `~/.claude/skills/` and are *not* in the repo — without them the pipeline has holes at the planning and implementation stages. Copy them from a teammate who has them before running the workflow.
+Skills `01`, `03`, `05`, `06` and `00` live in `.claude/skills/` and ship with this repository. The thin agent definitions in `.claude/agents/` (`salinlahi-planner`, `salinlahi-worker-low|medium|high`) also ship with it; they exist only to pin Opus 5 and the reasoning effort for each dispatch, and they delegate to skills `02` and `04`. **`02-plan-salinlahi-ticket` and `04-implement-salinlahi-ticket` are user-level skills** in `~/.claude/skills/` and are *not* in the repo — without them the pipeline has holes at the planning and implementation stages. Copy them from a teammate who has them before running the workflow.
 
 Also required: `gh` authenticated, the Atlassian MCP connector authorized, and Unity `6000.3.9f1` installed for the integration gate.
 
@@ -21,10 +21,12 @@ where `<scope>` is a sprint (`SALIN Sprint 7`), a ticket list, or a JQL filter. 
 ```
 1. 01-jira-ticket-discovery    → READY / BLOCKED / GATES / UNBLOCKS
 2. verify code-in-dev          (Jira Done ≠ merged; git log origin/dev --grep)
-3. 02-plan-salinlahi-ticket    → <KEY>-implementation-plan.md per READY ticket (parallel)
+3. 02-plan-salinlahi-ticket    → <KEY>-implementation-plan.md per READY ticket (parallel,
+                                 Opus 5 High; each plan names the implementation effort)
 4. 03-parallel-ticket-safety   → SAFE / SOFT_CONFLICT / BLOCKED + integration order
 5. worker allocation           → 1 worktree per ticket under ../salinlahi-worktrees/
-6. 04-implement-salinlahi-ticket→ parallel, one worker per ticket (≤4)
+6. 04-implement-salinlahi-ticket→ parallel, one worker per ticket (≤4), at the plan's effort
+                                 (Opus 5 Low by default; Medium/High only when the plan says why)
 7. 05-implementation-review    → PASS / PASS_WITH_NOTES / FIX_REQUIRED / BLOCKED
 8. 06-ticket-integration       → serialized: validate → commit (assignee identity)
                                  → sync dev → revalidate → push → PR → Jira comment
