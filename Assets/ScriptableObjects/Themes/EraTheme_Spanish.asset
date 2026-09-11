@@ -21,6 +21,7 @@ MonoBehaviour:
   topFoliageSprite: {fileID: 0}
   bushSprite: {fileID: 0}
   torchSprite: {fileID: 0}
+  stageBackground: {fileID: 11400000, guid: 05b6646b94efe4e3ea604a54c5f082d8, type: 2}
   pillarMode: 0
   pillarColor: {r: 0, g: 0, b: 0, a: 1}
   pillarSprite: {fileID: 0}

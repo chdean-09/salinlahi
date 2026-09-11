@@ -38,6 +38,10 @@ public class EraThemeSO : ScriptableObject
     [Tooltip("Torch/lantern sprite")]
     public Sprite torchSprite;
 
+    [Header("Stage Background")]
+    [Tooltip("Tiles, scatter and margin strips baked into one texture at level load. When set, it replaces backgroundSprite in the Gameplay scene.")]
+    public StageBackgroundSO stageBackground;
+
     [Header("Pillar Fill")]
     [Tooltip("How to render the pillar area outside the play column on wider-than-target devices")]
     public PillarFillMode pillarMode = PillarFillMode.None;
