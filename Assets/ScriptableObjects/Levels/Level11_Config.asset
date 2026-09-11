@@ -305,7 +305,7 @@ MonoBehaviour:
       symbol: {fileID: 11400000, guid: 9aae464ed65b8416b9aa3ad6ee4ce2c4, type: 2}
       spokenValueId: value.la
     requiredSuccesses: 1
-  eraTheme: {fileID: 0}
+  eraTheme: {fileID: 11400000, guid: c58190bf930deed43b75ce44c3c548bd, type: 2}
   numberSprite: {fileID: 0}
   waves:
   - isIntermissionWave: 0

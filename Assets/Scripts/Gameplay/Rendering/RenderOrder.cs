@@ -5,9 +5,9 @@
 public static class RenderOrder
 {
     // World-space sprites (Default sorting layer)
-    public const int Background      = -2000;
-    // The baked stage background (tiles + scatter + margins). The legacy scene Background
-    // renderer sits at -20 and is disabled when a stage background is applied.
+    // The baked stage background (tiles + scatter + margins), and the legacy full-screen
+    // background renderer the scene already places at this order. One background layer,
+    // one constant: the previous Background = -2000 was referenced by nothing.
     public const int StageBackground = -20;
     // Behind every world sprite. Pillar fill on wider-than-target devices.
     public const int PillarFill      = -1000;

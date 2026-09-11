@@ -271,7 +271,7 @@ MonoBehaviour:
       symbol: {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
       spokenValueId: value.ya
     requiredSuccesses: 1
-  eraTheme: {fileID: 0}
+  eraTheme: {fileID: 11400000, guid: 80a50c4bceb3cc946a8586e47777bb12, type: 2}
   numberSprite: {fileID: 0}
   waves:
   - isIntermissionWave: 0
