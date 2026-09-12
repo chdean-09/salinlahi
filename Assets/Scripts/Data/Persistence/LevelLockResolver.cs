@@ -64,10 +64,9 @@ public sealed class LevelLockStatus
     /// predecessor is completed but has an unsatisfied objective.
     /// </summary>
     /// <remarks>
-    /// A machine-readable identifier, NOT player-facing copy. No wording exists for any of the
-    /// five objectives anywhere in this repository, so the sentence is still owed -- see the TODO
-    /// in <see cref="LevelLockNoticeCopy"/>. Callers must keep showing the prerequisite copy until
-    /// that wording lands; this field is what makes AC6 assertable meanwhile.
+    /// A machine-readable identifier, NOT player-facing copy. The wording lives in
+    /// <see cref="LevelLockNoticeCopy.MissingObjective"/>; this field is what selects it. Keep it
+    /// an identifier -- putting a sentence here would scatter copy across the persistence layer.
     /// </remarks>
     public string MissingObjectiveId { get; }
 

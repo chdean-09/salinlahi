@@ -129,6 +129,80 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.AreEqual(string.Empty, LevelLockNoticeCopy.Prerequisite(-1, true, "Ugat"));
         }
 
+        // ------------------------------------------------------------------
+        // SALIN-220 AC6 - the missing-objective copy
+        // ------------------------------------------------------------------
+
+        [TestCase(LevelObjectives.StoryViewed)]
+        [TestCase(LevelObjectives.SymbolsPracticed)]
+        [TestCase(LevelObjectives.WordsRestored)]
+        [TestCase(LevelObjectives.ContextPassed)]
+        [TestCase(LevelObjectives.FinalSyllableRestored)]
+        public void MissingObjectiveCopy_NamesTheOwingLevel_SALIN220(string objectiveId)
+        {
+            string message = LevelLockNoticeCopy.MissingObjective(objectiveId, 4);
+
+            Assert.IsNotEmpty(message, objectiveId);
+            StringAssert.Contains("Level 4", message);
+            StringAssert.StartsWith("Locked.", message);
+        }
+
+        /// <summary>
+        /// Every objective must read differently, or the copy tells the player nothing the
+        /// generic prerequisite wording did not already say. A switch that fell through to a
+        /// shared default would still pass the per-case test above.
+        /// </summary>
+        [Test]
+        public void MissingObjectiveCopy_IsDistinctPerObjective_SALIN220()
+        {
+            string[] ids =
+            {
+                LevelObjectives.StoryViewed,
+                LevelObjectives.SymbolsPracticed,
+                LevelObjectives.WordsRestored,
+                LevelObjectives.ContextPassed,
+                LevelObjectives.FinalSyllableRestored,
+            };
+
+            var seen = new System.Collections.Generic.HashSet<string>();
+            foreach (string id in ids)
+                Assert.IsTrue(seen.Add(LevelLockNoticeCopy.MissingObjective(id, 7)),
+                    $"{id} repeats another objective's sentence.");
+
+            Assert.AreEqual(ids.Length, seen.Count);
+        }
+
+        /// <summary>
+        /// A sixth objective added without copy must degrade to the prerequisite wording,
+        /// never to an empty panel or a raw identifier on screen.
+        /// </summary>
+        [Test]
+        public void MissingObjectiveCopy_UnknownIdentifier_FallsBackToPrerequisite_SALIN220()
+        {
+            string message = LevelLockNoticeCopy.MissingObjective("objective.notAuthoredYet", 3);
+
+            Assert.AreEqual(LevelLockNoticeCopy.Prerequisite(3, false, null), message);
+            StringAssert.DoesNotContain("objective.", message);
+        }
+
+        [Test]
+        public void MissingObjectiveCopy_BelowFirstLevel_IsEmptySoCallersStaySilent_SALIN220()
+        {
+            Assert.AreEqual(string.Empty, LevelLockNoticeCopy.MissingObjective(LevelObjectives.StoryViewed, 0));
+        }
+
+        [Test]
+        public void PresentMissingObjective_ShowsTheObjectiveSentence_SALIN220()
+        {
+            _panel.PresentMissingObjective(LevelObjectives.ContextPassed, 5);
+
+            Assert.IsTrue(_panel.IsShowing);
+            Assert.AreEqual(
+                LevelLockNoticeCopy.MissingObjective(LevelObjectives.ContextPassed, 5),
+                _panel.VisibleMessage);
+            StringAssert.Contains("challenge", _panel.VisibleMessage);
+        }
+
         private void SetPrivateField(string fieldName, object value) =>
             PrivateField(fieldName).SetValue(_panel, value);
 
