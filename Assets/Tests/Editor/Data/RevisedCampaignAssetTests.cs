@@ -10,10 +10,12 @@ namespace Salinlahi.Tests.Editor.Data
     /// <summary>
     /// SALIN-198: the revised campaign asset must exist, resolve Level 1
     /// (INA/AMA) cleanly, and be reproducible by an idempotent bootstrap.
-    /// Media references on Level 1 and the era story/memory references are
-    /// deferred to SALIN-199/200 (stacked above) and are the only issue codes
-    /// tolerated inside the Level-1 scope; everything else in that scope must
-    /// validate clean. Levels 2-15 content remains on SALIN-172/204/205.
+    /// SALIN-215: the Level-1 scope must now be free of validation *errors*.
+    /// The media deferred to SALIN-199/200 used to be an Error and needed a
+    /// per-code exclusion; it is now a content-completeness Warning, so the
+    /// test asserts the stronger property directly instead — no identity error
+    /// anywhere in the Level-1 scope, with no code-specific escape hatch.
+    /// Levels 2-15 content remains on SALIN-172/204/205.
     /// </summary>
     [TestFixture]
     public sealed class RevisedCampaignAssetTests
@@ -42,15 +44,6 @@ namespace Salinlahi.Tests.Editor.Data
             return levelsIndex < 0 || path.Contains(".levels[0]");
         }
 
-        private static bool IsDeferredMediaIssue(ContentValidationIssue issue)
-        {
-            // After SALIN-200, the only deferred Level-1 media are the context
-            // image and narration audio — SALIN-199's manifest scope. Dialogue,
-            // cutscene, and era story/memory references must all resolve.
-            return issue.Code == ContentValidationCode.RequiredMediaMissing
-                && (issue.Path.Contains(".media") || issue.Path.Contains(".contextMedia"));
-        }
-
         [Test]
         public void Bootstrap_ProducesACampaignAssetAtTheStablePath()
         {
@@ -63,19 +56,22 @@ namespace Salinlahi.Tests.Editor.Data
         }
 
         [Test]
-        public void LevelOneScope_ValidatesCleanExceptDeferredMedia()
+        public void LevelOneScope_ProducesNoValidationErrors()
         {
             CampaignConfigSO campaign = LoadCampaign();
             Assert.IsNotNull(campaign);
 
             IReadOnlyList<ContentValidationIssue> issues = CampaignConfigValidator.Validate(campaign);
             var violations = issues
-                .Where(issue => IsLevelOneScope(issue.Path) && !IsDeferredMediaIssue(issue))
+                .Where(issue => IsLevelOneScope(issue.Path)
+                    && issue.Severity == ContentValidationSeverity.Error)
                 .Select(issue => $"{issue.Code} @ {issue.Path}: {issue.Message}")
                 .ToList();
 
             Assert.IsEmpty(violations,
-                "Level-1-scoped validation must be clean apart from media deferred to SALIN-199/200:\n"
+                "Level-1-scoped validation must produce no errors. Unauthored content is a "
+                + "content-completeness Warning (SALIN-215); anything reported as an Error here "
+                + "is a genuine identity defect:\n"
                 + string.Join("\n", violations));
         }
 

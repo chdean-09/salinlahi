@@ -6,16 +6,29 @@ public static class CampaignConfigValidator
 {
     private const string CampaignPath = "campaign.revised-v1";
 
-    public static IReadOnlyList<ContentValidationIssue> Validate(CampaignConfigSO campaign)
+    /// <summary>
+    /// SALIN-215: issues are split into identity errors, which always block, and
+    /// content-completeness issues, whose severity follows <paramref name="profile"/>.
+    /// Under <see cref="ContentValidationProfile.Authoring"/> (the default, and what the runtime
+    /// boot path uses) content gaps are Warnings, so unfinished media, focus words, requirements,
+    /// pools, rosters, final values, challenge sequences and reward ids no longer refuse the
+    /// campaign. Under <see cref="ContentValidationProfile.Strict"/> they are Errors again, which
+    /// is how the release profile will gate at content-complete.
+    /// The profile is a parameter rather than static state on purpose: the validator is static and
+    /// the Editor re-enters it, so a mutable static profile would leak between calls.
+    /// </summary>
+    public static IReadOnlyList<ContentValidationIssue> Validate(
+        CampaignConfigSO campaign,
+        ContentValidationProfile profile = ContentValidationProfile.Authoring)
     {
-        var issues = new List<ContentValidationIssue>();
+        var issues = new IssueSink(profile);
         try
         {
             if (campaign == null)
             {
                 AddError(issues, ContentValidationCode.ManifestMissing, CampaignPath,
                     "Campaign root is missing.");
-                return issues.AsReadOnly();
+                return issues.ToReadOnly();
             }
 
             ValidateManifest(campaign, issues);
@@ -31,12 +44,47 @@ public static class CampaignConfigValidator
                 "Validation failed internally: " + exception, campaign);
         }
 
-        return issues.AsReadOnly();
+        return issues.ToReadOnly();
+    }
+
+    /// <summary>
+    /// Collects issues and carries the profile that decides the severity of content-completeness
+    /// issues, so the profile never has to be threaded as a separate parameter through every
+    /// validation helper.
+    /// </summary>
+    private sealed class IssueSink
+    {
+        private readonly List<ContentValidationIssue> issues = new List<ContentValidationIssue>();
+        private readonly ContentValidationSeverity contentSeverity;
+
+        public IssueSink(ContentValidationProfile profile)
+        {
+            contentSeverity = profile == ContentValidationProfile.Strict
+                ? ContentValidationSeverity.Error
+                : ContentValidationSeverity.Warning;
+        }
+
+        public ContentValidationSeverity ContentSeverity => contentSeverity;
+
+        public void Add(
+            ContentValidationSeverity severity,
+            string code,
+            string path,
+            string message,
+            UnityEngine.Object context)
+        {
+            issues.Add(new ContentValidationIssue(severity, code, path, message, context));
+        }
+
+        public IReadOnlyList<ContentValidationIssue> ToReadOnly()
+        {
+            return issues.AsReadOnly();
+        }
     }
 
     private static void ValidateManifest(
         CampaignConfigSO campaign,
-        List<ContentValidationIssue> issues)
+        IssueSink issues)
     {
         string path = CampaignPath + ".manifest";
         CampaignIdentityManifest manifest = campaign.manifest;
@@ -70,7 +118,7 @@ public static class CampaignConfigValidator
 
     private static void ValidateTuning(
         CampaignConfigSO campaign,
-        List<ContentValidationIssue> issues)
+        IssueSink issues)
     {
         if (campaign.tuning == null || campaign.tuning.defaultShrineHearts < 1)
         {
@@ -81,7 +129,7 @@ public static class CampaignConfigValidator
 
     private static void ValidateLearningTuning(
         CampaignConfigSO campaign,
-        List<ContentValidationIssue> issues)
+        IssueSink issues)
     {
         if (campaign.learningTuning == null)
         {
@@ -93,7 +141,7 @@ public static class CampaignConfigValidator
 
     private static void ValidateEraTopology(
         CampaignConfigSO campaign,
-        List<ContentValidationIssue> issues)
+        IssueSink issues)
     {
         if (campaign.eras == null || campaign.eras.Count != ContentIdentity.RevisedEraIds.Count)
         {
@@ -152,7 +200,7 @@ public static class CampaignConfigValidator
 
     private static void ValidateSymbolCatalog(
         CampaignConfigSO campaign,
-        List<ContentValidationIssue> issues)
+        IssueSink issues)
     {
         if (campaign.symbols == null || campaign.symbols.Count != ContentIdentity.RevisedSymbolIds.Count)
         {
@@ -236,7 +284,7 @@ public static class CampaignConfigValidator
     private static void ValidateSymbolValues(
         BaybayinCharacterSO symbol,
         string path,
-        List<ContentValidationIssue> issues)
+        IssueSink issues)
     {
         var seenValueIds = new HashSet<string>(StringComparer.Ordinal);
         for (int valueIndex = 0; valueIndex < symbol.spokenValues.Count; valueIndex++)
@@ -273,7 +321,7 @@ public static class CampaignConfigValidator
 
     private static void ValidateLevelTopology(
         CampaignConfigSO campaign,
-        List<ContentValidationIssue> issues)
+        IssueSink issues)
     {
         if (campaign.eras == null)
             return;
@@ -344,7 +392,7 @@ public static class CampaignConfigValidator
     private static void ValidateChallengeSequence(
         LevelConfigSO level,
         string path,
-        List<ContentValidationIssue> issues)
+        IssueSink issues)
     {
         if (!level.challengePrototypeEnabled)
             return;
@@ -353,7 +401,7 @@ public static class CampaignConfigValidator
         ChallengeSequenceSO sequence = level.challengeSequence;
         if (sequence == null)
         {
-            AddError(issues, ContentValidationCode.ChallengeSequenceMissing, challengePath,
+            AddContentIssue(issues, ContentValidationCode.ChallengeSequenceMissing, challengePath,
                 "An enabled challenge prototype requires an assigned challenge sequence.", level);
             return;
         }
@@ -365,7 +413,7 @@ public static class CampaignConfigValidator
             if (string.IsNullOrWhiteSpace(error))
                 continue;
 
-            AddError(issues, ContentValidationCode.ChallengeSequenceInvalid, challengePath,
+            AddContentIssue(issues, ContentValidationCode.ChallengeSequenceInvalid, challengePath,
                 "Challenge sequence is invalid: " + error, sequence);
         }
     }
@@ -373,7 +421,7 @@ public static class CampaignConfigValidator
     private static void ValidateClueChannels(
         LevelConfigSO level,
         string path,
-        List<ContentValidationIssue> issues)
+        IssueSink issues)
     {
         if (!level.activeClueCombatEnabled)
             return;
@@ -384,7 +432,7 @@ public static class CampaignConfigValidator
         if (ClueChannelResolver.HasReadableVisual(resolved))
             return;
 
-        AddError(issues, ContentValidationCode.ClueChannelsInvalid, path + ".clueChannels",
+        AddContentIssue(issues, ContentValidationCode.ClueChannelsInvalid, path + ".clueChannels",
             "A level with active-clue combat enabled must resolve to at least one readable "
             + "visual channel so the clue stays playable when audio is unavailable.", level);
     }
@@ -393,12 +441,12 @@ public static class CampaignConfigValidator
         CampaignConfigSO campaign,
         LevelConfigSO level,
         string path,
-        List<ContentValidationIssue> issues)
+        IssueSink issues)
     {
         if (level.focusWords == null ||
             level.focusWords.Count != ContentIdentity.RevisedFocusWordsPerLevel)
         {
-            AddError(issues, ContentValidationCode.FocusSlotCountInvalid, path + ".focusWords",
+            AddContentIssue(issues, ContentValidationCode.FocusSlotCountInvalid, path + ".focusWords",
                 "Each level must contain exactly two inline focus words.", level);
         }
 
@@ -412,14 +460,14 @@ public static class CampaignConfigValidator
             string focusPath = path + ".focusWords[" + focusIndex + "]";
             if (focus == null)
             {
-                AddError(issues, ContentValidationCode.FocusDecompositionInvalid, focusPath,
+                AddContentIssue(issues, ContentValidationCode.FocusDecompositionInvalid, focusPath,
                     "Focus word reference is missing.", level);
                 continue;
             }
 
             if (!seenFocusIds.Add(focus.stableId))
             {
-                AddError(issues, ContentValidationCode.DuplicateId, focusPath + ".stableId",
+                AddContentIssue(issues, ContentValidationCode.DuplicateId, focusPath + ".stableId",
                     "Focus stable ID is duplicated within its level.", level);
             }
 
@@ -427,20 +475,20 @@ public static class CampaignConfigValidator
             if (!ContentIdentity.IsCanonical(focus.stableId) ||
                 !string.Equals(focus.stableId, expectedId, StringComparison.Ordinal))
             {
-                AddError(issues, ContentValidationCode.FocusDecompositionInvalid, focusPath + ".stableId",
+                AddContentIssue(issues, ContentValidationCode.FocusDecompositionInvalid, focusPath + ".stableId",
                     "Focus stable ID must match its inline slot.", level);
             }
 
             if (string.IsNullOrWhiteSpace(focus.meaning))
             {
-                AddError(issues, ContentValidationCode.FocusMeaningMissing, focusPath + ".meaning",
+                AddContentIssue(issues, ContentValidationCode.FocusMeaningMissing, focusPath + ".meaning",
                     $"Focus word '{focus.stableId}' has no meaning.", level);
             }
 
             ValidateMedia(focus.media, focusPath + ".media", level, issues);
             if (focus.decomposition == null || focus.decomposition.Count == 0)
             {
-                AddError(issues, ContentValidationCode.FocusDecompositionEmpty, focusPath + ".decomposition",
+                AddContentIssue(issues, ContentValidationCode.FocusDecompositionEmpty, focusPath + ".decomposition",
                     "Focus word decomposition must contain at least one symbol value.", level);
                 continue;
             }
@@ -451,7 +499,7 @@ public static class CampaignConfigValidator
                 string referencePath = focusPath + ".decomposition[" + decompositionIndex + "]";
                 if (IsKudlit(reference?.spokenValueId))
                 {
-                    AddError(issues, ContentValidationCode.KudlitUnsupported, referencePath,
+                    AddContentIssue(issues, ContentValidationCode.KudlitUnsupported, referencePath,
                         "Modified kudlit forms are outside the frozen core.", level);
                     continue;
                 }
@@ -460,17 +508,17 @@ public static class CampaignConfigValidator
                     campaign.TryGetSymbol(reference.symbol.stableId, out BaybayinCharacterSO referencedSymbol) &&
                     !referencedSymbol.TryGetSpokenValue(reference.spokenValueId, out _))
                 {
-                    AddError(issues, ContentValidationCode.SpokenValueUnknown, referencePath,
+                    AddContentIssue(issues, ContentValidationCode.SpokenValueUnknown, referencePath,
                         "Focus decomposition references an unknown spoken value.", level);
                 }
                 else if (!TryResolveReference(campaign, reference, out _))
                 {
-                    AddError(issues, ContentValidationCode.FocusDecompositionInvalid, referencePath,
+                    AddContentIssue(issues, ContentValidationCode.FocusDecompositionInvalid, referencePath,
                         "Focus decomposition contains an unknown symbol value.", level);
                 }
                 else if (!IsSymbolIntroduced(campaign, level, reference.symbol))
                 {
-                    AddError(issues, ContentValidationCode.SymbolNotIntroduced, referencePath,
+                    AddContentIssue(issues, ContentValidationCode.SymbolNotIntroduced, referencePath,
                         "Focus decomposition references a symbol outside this level's cumulative pool.", level);
                 }
             }
@@ -481,7 +529,7 @@ public static class CampaignConfigValidator
         CampaignConfigSO campaign,
         LevelConfigSO level,
         string path,
-        List<ContentValidationIssue> issues)
+        IssueSink issues)
     {
         ValidateRequirementList(campaign, level, level.learningRequirements,
             path + ".learningRequirements", issues);
@@ -496,11 +544,11 @@ public static class CampaignConfigValidator
         LevelConfigSO level,
         List<ContentRequirement> requirements,
         string path,
-        List<ContentValidationIssue> issues)
+        IssueSink issues)
     {
         if (requirements == null || requirements.Count == 0)
         {
-            AddError(issues, ContentValidationCode.RequirementInvalid, path,
+            AddContentIssue(issues, ContentValidationCode.RequirementInvalid, path,
                 "Required content requirements are missing.");
             return;
         }
@@ -512,12 +560,12 @@ public static class CampaignConfigValidator
             if (requirement == null || requirement.requiredSuccesses < 1 ||
                 !TryResolveReference(campaign, requirement.symbolValue, out _))
             {
-                AddError(issues, ContentValidationCode.RequirementInvalid, requirementPath,
+                AddContentIssue(issues, ContentValidationCode.RequirementInvalid, requirementPath,
                     "Content requirement must have a positive count and known symbol value.");
             }
             else if (!IsSymbolIntroduced(campaign, level, requirement.symbolValue.symbol))
             {
-                AddError(issues, ContentValidationCode.SymbolNotIntroduced, requirementPath,
+                AddContentIssue(issues, ContentValidationCode.SymbolNotIntroduced, requirementPath,
                     "Content requirement references a symbol outside this level's cumulative pool.", level);
             }
         }
@@ -528,7 +576,7 @@ public static class CampaignConfigValidator
         LevelConfigSO level,
         int globalIndex,
         string path,
-        List<ContentValidationIssue> issues)
+        IssueSink issues)
     {
         HashSet<string> expected = ExpectedPoolSymbolIds(campaign, globalIndex);
 
@@ -548,7 +596,7 @@ public static class CampaignConfigValidator
             actual.Count != expected.Count ||
             !actual.SetEquals(expected))
         {
-            AddError(issues, ContentValidationCode.CumulativePoolInvalid, path + ".cumulativeSymbolPool",
+            AddContentIssue(issues, ContentValidationCode.CumulativePoolInvalid, path + ".cumulativeSymbolPool",
                 "Cumulative symbol pool does not match the symbols introduced through this level.", level);
         }
     }
@@ -586,7 +634,7 @@ public static class CampaignConfigValidator
         LevelConfigSO level,
         int globalIndex,
         string path,
-        List<ContentValidationIssue> issues)
+        IssueSink issues)
     {
         HashSet<string> expected = ExpectedPoolSymbolIds(campaign, globalIndex);
         var actual = new HashSet<string>(StringComparer.Ordinal);
@@ -613,7 +661,7 @@ public static class CampaignConfigValidator
               string.Join(", ", untaught) + "."
             : "Combat roster does not cover every symbol introduced through this level.";
 
-        AddError(issues, ContentValidationCode.CombatRosterInvalid, path + ".allowedCharacters",
+        AddContentIssue(issues, ContentValidationCode.CombatRosterInvalid, path + ".allowedCharacters",
             detail, level);
     }
 
@@ -639,12 +687,12 @@ public static class CampaignConfigValidator
         CampaignConfigSO campaign,
         LevelConfigSO level,
         string path,
-        List<ContentValidationIssue> issues)
+        IssueSink issues)
     {
         SymbolValueReference reference = level.finalRestorationValue;
         if (!TryResolveReference(campaign, reference, out _))
         {
-            AddError(issues, ContentValidationCode.FinalRestorationInvalid, path + ".finalRestorationValue",
+            AddContentIssue(issues, ContentValidationCode.FinalRestorationInvalid, path + ".finalRestorationValue",
                 "Final restoration must reference a known symbol value.", level);
             return;
         }
@@ -656,7 +704,7 @@ public static class CampaignConfigValidator
              !string.Equals(reference.spokenValueId, ContentIdentity.RevisedFinaleSpokenValueId,
                  StringComparison.Ordinal)))
         {
-            AddError(issues, ContentValidationCode.FinalRestorationInvalid, path + ".finalRestorationValue",
+            AddContentIssue(issues, ContentValidationCode.FinalRestorationInvalid, path + ".finalRestorationValue",
                 "The revised campaign finale must restore symbol.pa/value.pa.", level);
         }
     }
@@ -664,19 +712,19 @@ public static class CampaignConfigValidator
     private static void ValidateRequiredReferences(
         LevelConfigSO level,
         string path,
-        List<ContentValidationIssue> issues)
+        IssueSink issues)
     {
         ValidateMedia(level.contextMedia, path + ".contextMedia", level, issues);
         if (level.defenseRules == null || level.defenseRules.shrineHearts < 1)
         {
-            AddError(issues, ContentValidationCode.RequiredReferenceMissing, path + ".defenseRules",
+            AddContentIssue(issues, ContentValidationCode.RequiredReferenceMissing, path + ".defenseRules",
                 "Defense rules are required.", level);
         }
 
         if (level.rewardIds == null || level.rewardIds.Count == 0 ||
             level.rewardIds.Exists(string.IsNullOrWhiteSpace))
         {
-            AddError(issues, ContentValidationCode.RequiredReferenceMissing, path + ".rewardIds",
+            AddContentIssue(issues, ContentValidationCode.RequiredReferenceMissing, path + ".rewardIds",
                 "At least one reward reference is required.", level);
         }
     }
@@ -684,7 +732,7 @@ public static class CampaignConfigValidator
     private static void ValidatePaInstructionOrder(
         LevelConfigSO level,
         string path,
-        List<ContentValidationIssue> issues)
+        IssueSink issues)
     {
         if (!string.Equals(level.stableId, ContentIdentity.RevisedFinaleLevelId,
                 StringComparison.Ordinal))
@@ -697,7 +745,7 @@ public static class CampaignConfigValidator
                                   ContainsPaExposure(level.focusWords);
         if (!hasPaInstructionBeforeLearningExposure || !hasPaLaterExposure)
         {
-            AddError(issues, ContentValidationCode.PaInstructionOrderInvalid,
+            AddContentIssue(issues, ContentValidationCode.PaInstructionOrderInvalid,
                 path + ".learningRequirements", "PA instruction must precede PA practice or assessment content.", level);
         }
     }
@@ -789,37 +837,37 @@ public static class CampaignConfigValidator
         ContentMediaReferences media,
         string path,
         UnityEngine.Object context,
-        List<ContentValidationIssue> issues)
+        IssueSink issues)
     {
         if (media == null)
         {
-            AddError(issues, ContentValidationCode.RequiredMediaMissing, path,
+            AddContentIssue(issues, ContentValidationCode.RequiredMediaMissing, path,
                 "Required content media references are missing.", context);
             return;
         }
 
         if (media.contextImage == null || media.narrationClip == null)
         {
-            AddError(issues, ContentValidationCode.RequiredMediaMissing, path,
+            AddContentIssue(issues, ContentValidationCode.RequiredMediaMissing, path,
                 "Required context image and narration media are missing.", context);
         }
 
         if (media.dialogue == null || media.cutscene == null)
         {
-            AddError(issues, ContentValidationCode.RequiredReferenceMissing, path,
+            AddContentIssue(issues, ContentValidationCode.RequiredReferenceMissing, path,
                 "Required dialogue and cutscene references are missing.", context);
         }
     }
 
     private static void ValidateRequiredReference(
-        List<ContentValidationIssue> issues,
+        IssueSink issues,
         UnityEngine.Object reference,
         string path,
         UnityEngine.Object context)
     {
         if (reference == null)
         {
-            AddError(issues, ContentValidationCode.RequiredReferenceMissing, path,
+            AddContentIssue(issues, ContentValidationCode.RequiredReferenceMissing, path,
                 "Required content reference is missing.", context);
         }
     }
@@ -885,7 +933,7 @@ public static class CampaignConfigValidator
     private static void ValidateWaveCharacters(
         LevelConfigSO level,
         string path,
-        List<ContentValidationIssue> issues)
+        IssueSink issues)
     {
         if (level.waves == null)
             return;
@@ -920,7 +968,7 @@ public static class CampaignConfigValidator
             if (glyphless.Count == 0)
                 continue;
 
-            AddError(issues, ContentValidationCode.WaveCharactersUnresolvable,
+            AddContentIssue(issues, ContentValidationCode.WaveCharactersUnresolvable,
                 path + ".waves[" + waveIndex + "].characters",
                 "Wave has no characters and these enemy types have no default assignedCharacter, " +
                 "so they would spawn with no glyph and could not be defeated: " +
@@ -928,14 +976,34 @@ public static class CampaignConfigValidator
         }
     }
 
+    /// <summary>
+    /// SALIN-215: an identity issue — manifest, era/level/symbol ids and counts, ordering, the
+    /// DA/RA rule, and the validator's own internal failure. Always an Error, in every profile:
+    /// these mean the campaign is structurally wrong, not merely unfinished.
+    /// </summary>
     private static void AddError(
-        List<ContentValidationIssue> issues,
+        IssueSink issues,
         string code,
         string path,
         string message,
         UnityEngine.Object context = null)
     {
-        issues.Add(new ContentValidationIssue(
-            ContentValidationSeverity.Error, code, path, message, context));
+        issues.Add(ContentValidationSeverity.Error, code, path, message, context);
+    }
+
+    /// <summary>
+    /// SALIN-215: a content-completeness issue — media, focus words, requirements, pools, rosters,
+    /// final value, challenge sequence, reward ids. Warning while authoring, Error under the strict
+    /// release profile. Classified per call site, never by code: DUPLICATE_ID and
+    /// SPOKEN_VALUE_UNKNOWN are each emitted from both categories.
+    /// </summary>
+    private static void AddContentIssue(
+        IssueSink issues,
+        string code,
+        string path,
+        string message,
+        UnityEngine.Object context = null)
+    {
+        issues.Add(issues.ContentSeverity, code, path, message, context);
     }
 }

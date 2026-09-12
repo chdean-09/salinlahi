@@ -432,6 +432,132 @@ namespace Salinlahi.Tests.Editor.Data
             };
         }
 
+        // ---------------------------------------------------------------------------------
+        // SALIN-215: severity classification.
+        //
+        // Before this ticket nothing in the repository asserted the severity of any validator
+        // issue — every test filtered on issue.Code — so a mis-classified call site compiled
+        // cleanly and passed the whole suite. These tests are the only thing that catches one.
+        // ---------------------------------------------------------------------------------
+
+        [Test]
+        public void Validate_IdentityIssueIsAnErrorUnderTheAuthoringProfile()
+        {
+            using CampaignTestFixture fixture = CampaignTestFixture.CreateValid();
+            fixture.Campaign.eras.Clear();
+
+            IReadOnlyList<ContentValidationIssue> issues =
+                CampaignConfigValidator.Validate(fixture.Campaign);
+
+            ContentValidationIssue eraCount = issues.SingleOrDefault(
+                issue => issue.Code == ContentValidationCode.EraCountInvalid);
+            Assert.IsNotNull(eraCount,
+                "ERA_COUNT_INVALID was not emitted. Actual: " + Describe(issues));
+            Assert.AreEqual(ContentValidationSeverity.Error, eraCount.Severity,
+                "Era count is campaign identity: it must block in every profile, including the "
+                + "lenient authoring default.");
+        }
+
+        [Test]
+        public void Validate_MissingContextMediaIsAWarningUnderTheAuthoringProfile()
+        {
+            using CampaignTestFixture fixture = CampaignTestFixture.CreateValid();
+            fixture.Campaign.eras[0].levels[0].contextMedia.contextImage = null;
+
+            IReadOnlyList<ContentValidationIssue> issues =
+                CampaignConfigValidator.Validate(fixture.Campaign);
+
+            ContentValidationIssue media = issues.SingleOrDefault(
+                issue => issue.Code == ContentValidationCode.RequiredMediaMissing);
+            Assert.IsNotNull(media,
+                "REQUIRED_MEDIA_MISSING was not emitted. Actual: " + Describe(issues));
+            Assert.AreEqual(ContentValidationSeverity.Warning, media.Severity,
+                "Unauthored context media is content debt, not a broken campaign. It must not "
+                + "refuse the campaign in CampaignSaveService while content is still being made.");
+            Assert.IsEmpty(
+                issues.Where(issue => issue.Severity == ContentValidationSeverity.Error)
+                    .Select(issue => issue.Code + " @ " + issue.Path),
+                "Missing media alone must leave the campaign error-free.");
+        }
+
+        [Test]
+        public void Validate_MissingContextMediaIsAnErrorUnderTheStrictProfile()
+        {
+            using CampaignTestFixture fixture = CampaignTestFixture.CreateValid();
+            fixture.Campaign.eras[0].levels[0].contextMedia.contextImage = null;
+
+            IReadOnlyList<ContentValidationIssue> issues = CampaignConfigValidator.Validate(
+                fixture.Campaign, ContentValidationProfile.Strict);
+
+            ContentValidationIssue media = issues.SingleOrDefault(
+                issue => issue.Code == ContentValidationCode.RequiredMediaMissing);
+            Assert.IsNotNull(media,
+                "REQUIRED_MEDIA_MISSING was not emitted. Actual: " + Describe(issues));
+            Assert.AreEqual(ContentValidationSeverity.Error, media.Severity,
+                "The strict release profile must turn content-completeness issues back into "
+                + "errors. This is the only test that proves the switch is wired, not just declared.");
+        }
+
+        [Test]
+        public void Validate_DuplicateIdSeverityFollowsTheCallSiteNotTheCode()
+        {
+            // The highest-value test in this set. DUPLICATE_ID is emitted from both categories:
+            // a duplicated era/symbol/level stable ID is an identity defect, while a duplicated
+            // focus-word stable ID is authored-content debt. Any implementation that maps
+            // severity from the issue *code* — the obvious switch statement — compiles, passes
+            // every other test in the repository, and gets exactly this case wrong.
+            using CampaignTestFixture fixture = CampaignTestFixture.CreateValid();
+            fixture.Campaign.eras[1].stableId = fixture.Campaign.eras[0].stableId;
+            LevelConfigSO level = fixture.Campaign.eras[0].levels[0];
+            level.focusWords[1].stableId = level.focusWords[0].stableId;
+
+            IReadOnlyList<ContentValidationIssue> issues =
+                CampaignConfigValidator.Validate(fixture.Campaign);
+
+            ContentValidationIssue eraDuplicate = issues.SingleOrDefault(
+                issue => issue.Code == ContentValidationCode.DuplicateId
+                    && issue.Path.Contains(".eras[1].stableId"));
+            Assert.IsNotNull(eraDuplicate,
+                "Duplicated era stable ID was not reported. Actual: " + Describe(issues));
+            Assert.AreEqual(ContentValidationSeverity.Error, eraDuplicate.Severity,
+                "A duplicated era stable ID is an identity collision and must always block.");
+
+            ContentValidationIssue focusDuplicate = issues.SingleOrDefault(
+                issue => issue.Code == ContentValidationCode.DuplicateId
+                    && issue.Path.Contains(".focusWords[1].stableId"));
+            Assert.IsNotNull(focusDuplicate,
+                "Duplicated focus word stable ID was not reported. Actual: " + Describe(issues));
+            Assert.AreEqual(ContentValidationSeverity.Warning, focusDuplicate.Severity,
+                "A duplicated focus word stable ID is content debt and must be a warning while "
+                + "authoring, even though it shares the DUPLICATE_ID code with the era check.");
+        }
+
+        [Test]
+        public void Validate_StrictProfileChangesSeverityOnlyNeverWhichIssuesAreEmitted()
+        {
+            using CampaignTestFixture fixture = CampaignTestFixture.CreateValid();
+            fixture.Campaign.eras[1].stableId = fixture.Campaign.eras[0].stableId;
+            fixture.Campaign.eras[0].levels[0].contextMedia.contextImage = null;
+
+            IReadOnlyList<ContentValidationIssue> authoring =
+                CampaignConfigValidator.Validate(fixture.Campaign);
+            IReadOnlyList<ContentValidationIssue> strict = CampaignConfigValidator.Validate(
+                fixture.Campaign, ContentValidationProfile.Strict);
+
+            CollectionAssert.AreEqual(
+                authoring.Select(issue => issue.Code + " @ " + issue.Path).ToList(),
+                strict.Select(issue => issue.Code + " @ " + issue.Path).ToList(),
+                "The profile must change severity only. A difference here means the profile "
+                + "changed which checks run, which is out of scope for SALIN-215.");
+            Assert.IsTrue(authoring.Any(issue => issue.Severity == ContentValidationSeverity.Warning),
+                "The authoring profile must report content debt as warnings. Actual: "
+                + Describe(authoring));
+            Assert.IsEmpty(
+                strict.Where(issue => issue.Severity == ContentValidationSeverity.Warning)
+                    .Select(issue => issue.Code + " @ " + issue.Path),
+                "The strict profile must leave no warnings at all.");
+        }
+
         private static string Describe(IEnumerable<ContentValidationIssue> issues)
         {
             return string.Join("; ", issues.Select(issue => issue.Code + " @ " + issue.Path));

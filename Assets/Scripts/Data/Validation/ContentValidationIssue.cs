@@ -6,6 +6,25 @@ public enum ContentValidationSeverity
     Error,
 }
 
+/// <summary>
+/// SALIN-215: selects how strictly content-completeness issues are reported. Identity issues are
+/// Errors in every profile and are not affected by this.
+/// </summary>
+public enum ContentValidationProfile
+{
+    /// <summary>
+    /// Default. Content-completeness issues are Warnings, so unfinished content does not refuse
+    /// the campaign while it is still being authored.
+    /// </summary>
+    Authoring,
+
+    /// <summary>
+    /// Release profile. Content-completeness issues are Errors again, for gating at
+    /// content-complete. Nothing binds a build to this yet — see SALIN-215 Escalation 1.
+    /// </summary>
+    Strict,
+}
+
 public static class ContentValidationCode
 {
     public const string ManifestMissing = "MANIFEST_MISSING";
