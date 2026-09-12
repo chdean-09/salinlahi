@@ -42,6 +42,16 @@ public sealed class LevelFlowMachine
     /// <summary>True when <paramref name="phase"/> was completed during this run.</summary>
     public bool HasCompleted(LevelPhase phase) => _completedPhases.Contains(phase);
 
+    /// <summary>
+    /// SALIN-226. Which alternating Defense/ContextChallenge segment is running, 0-based.
+    /// Stays 0 for the whole run on an unsegmented level.
+    ///
+    /// This is also the segment boundary SALIN-235 (T20) / SALIN-236 (T21) consume as a
+    /// checkpoint: it is EXPOSED here and deliberately not persisted, not restored, and not
+    /// read by any defeat path. This ticket defines the boundary; those tickets act on it.
+    /// </summary>
+    public int CurrentSegmentIndex { get; private set; }
+
     public bool IsTerminal =>
         _phase == LevelPhase.Completed
         || _phase == LevelPhase.Defeated
@@ -71,6 +81,19 @@ public sealed class LevelFlowMachine
             return false;
 
         _completedPhases.Add(phase);
+
+        // SALIN-226: the one and only edge that can return to an earlier phase. It lives
+        // here, in the caller, rather than in NextPlannedAfter — which SALIN-223 left
+        // strictly forward-scanning and which a reviewer verified untouched precisely
+        // because this ticket depends on it. With SegmentCount == 1 this branch is dead and
+        // the machine is bit-identical to the unsegmented one.
+        if (phase == LevelPhase.ContextChallenge && CurrentSegmentIndex + 1 < _plan.SegmentCount)
+        {
+            CurrentSegmentIndex++;
+            Transition(LevelPhase.Defense);
+            return true;
+        }
+
         Transition(_plan.NextPlannedAfter(phase));
         return true;
     }

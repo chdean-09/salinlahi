@@ -64,6 +64,7 @@ public static class ContentValidationCode
     public const string ChallengeSequenceMissing = "CHALLENGE_SEQUENCE_MISSING";
     public const string ChallengeSequenceInvalid = "CHALLENGE_SEQUENCE_INVALID";
     public const string ClueChannelsInvalid = "CLUE_CHANNELS_INVALID";
+    public const string FlowSegmentsInvalid = "FLOW_SEGMENTS_INVALID";
     public const string ValidatorInternalError = "VALIDATOR_INTERNAL_ERROR";
 }
 

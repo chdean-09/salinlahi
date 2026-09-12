@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public enum ChallengePlayResult
@@ -25,6 +26,33 @@ public class ChallengeFlowController : MonoBehaviour
     private int _appliedHeartPenalties;
     private Level1TutorialStepSO _renderedGuideStep;
     private bool _guideVisible;
+    private int _levelHintsUsed;
+    private float _levelEmergencyHintScorePenalty;
+
+    /// <summary>
+    /// SALIN-226. Hints used across EVERY challenge session this level ran, not just the
+    /// last one. A segmented level plays one session per segment, so reading
+    /// <see cref="Session"/> alone would report only the final segment's hints into the
+    /// star/score calculation — wrong stars, with nothing failing. On an unsegmented level
+    /// this is exactly the single session's value.
+    /// </summary>
+    public int LevelHintsUsed => _levelHintsUsed;
+
+    /// <summary>
+    /// SALIN-226. Emergency-hint score penalty accumulated across every challenge session
+    /// this level ran. See <see cref="LevelHintsUsed"/>.
+    /// </summary>
+    public float LevelEmergencyHintScorePenalty => _levelEmergencyHintScorePenalty;
+
+    /// <summary>
+    /// SALIN-226. Zeroes the level-wide challenge metrics. Called once per level, as
+    /// segment 0's Defense leg opens, so the accumulators cover exactly one playthrough.
+    /// </summary>
+    public void BeginLevelChallengeMetrics()
+    {
+        _levelHintsUsed = 0;
+        _levelEmergencyHintScorePenalty = 0f;
+    }
 
     public IEnumerator Play(
         ChallengeSequenceSO sequence,
@@ -38,6 +66,103 @@ public class ChallengeFlowController : MonoBehaviour
     public IEnumerator Play(ChallengeSequenceSO sequence, int levelNumber)
     {
         return PlayCore(sequence, levelNumber, null, null);
+    }
+
+    /// <summary>
+    /// SALIN-226. Plays only the named units of <paramref name="sequence"/>, in the given
+    /// order — one alternating segment's restoration leg.
+    /// </summary>
+    /// <remarks>
+    /// Builds a runtime-only subset ScriptableObject and plays that, which leaves
+    /// ChallengeSession completely untouched: it still hard-starts at unit 0 of whatever
+    /// sequence it is handed. A strict subset of a valid sequence stays valid, because the
+    /// validator's cross-references (slots, candidates, occurrences) are all per-unit and
+    /// its only sequence-global sets are uniqueness sets, which a subset can only shrink.
+    ///
+    /// <paramref name="policy"/> is passed straight through to the session exactly as the
+    /// whole-sequence path does. Nothing here reads a raw serialized policy field; those are
+    /// stale by design and ChallengeSession.ResolveEffectivePolicy is the only correct
+    /// reader (SALIN-222).
+    /// </remarks>
+    public IEnumerator Play(
+        ChallengeSequenceSO sequence,
+        int levelNumber,
+        ChallengeTierPolicy policy,
+        IChallengeEvidenceSink evidence,
+        IReadOnlyList<string> unitIds)
+    {
+        return PlaySubsetCore(sequence, levelNumber, policy, evidence, unitIds);
+    }
+
+    private IEnumerator PlaySubsetCore(
+        ChallengeSequenceSO sequence,
+        int levelNumber,
+        ChallengeTierPolicy policy,
+        IChallengeEvidenceSink evidence,
+        IReadOnlyList<string> unitIds)
+    {
+        if (sequence == null || unitIds == null || unitIds.Count == 0)
+        {
+            yield return PlayCore(sequence, levelNumber, policy, evidence);
+            yield break;
+        }
+
+        ChallengeSequenceSO subset = BuildUnitSubset(sequence, unitIds);
+        if (subset == null)
+        {
+            DebugLogger.LogError(
+                "ChallengeFlowController: segment names challenge units that the sequence "
+                + "does not contain; refusing to play a partial subset.");
+            LastPlayResult = ChallengePlayResult.InvalidSequence;
+            yield break;
+        }
+
+        try
+        {
+            yield return PlayCore(subset, levelNumber, policy, evidence);
+        }
+        finally
+        {
+            Destroy(subset);
+        }
+    }
+
+    /// <summary>
+    /// SALIN-226. A runtime-only sequence carrying just <paramref name="unitIds"/>, in the
+    /// order named. Null when any id is absent from the source — a partial subset would play
+    /// less restoration than the level authored, silently.
+    /// </summary>
+    public static ChallengeSequenceSO BuildUnitSubset(
+        ChallengeSequenceSO sequence, IReadOnlyList<string> unitIds)
+    {
+        if (sequence == null || unitIds == null || unitIds.Count == 0)
+            return null;
+
+        var units = new List<ChallengeUnitDefinition>(unitIds.Count);
+        foreach (string unitId in unitIds)
+        {
+            ChallengeUnitDefinition match = null;
+            foreach (ChallengeUnitDefinition unit in sequence.units
+                ?? System.Array.Empty<ChallengeUnitDefinition>())
+            {
+                if (unit != null && string.Equals(unit.unitId, unitId, System.StringComparison.Ordinal))
+                {
+                    match = unit;
+                    break;
+                }
+            }
+
+            if (match == null)
+                return null;
+
+            units.Add(match);
+        }
+
+        ChallengeSequenceSO subset = ScriptableObject.CreateInstance<ChallengeSequenceSO>();
+        subset.sequenceId = sequence.sequenceId;
+        subset.displayName = sequence.displayName;
+        subset.units = units.ToArray();
+        return subset;
     }
 
     private IEnumerator PlayCore(
@@ -90,6 +215,14 @@ public class ChallengeFlowController : MonoBehaviour
             : Session.State == ChallengeSessionState.Exited
                 ? ChallengePlayResult.Exited
                 : ChallengePlayResult.Failed;
+
+        // SALIN-226. Fold this session's metrics into the level totals before the next
+        // segment replaces Session. A run that bailed above (missing or invalid sequence)
+        // never reaches here and contributes nothing, exactly as the old single-session
+        // read contributed nothing when Session was null.
+        _levelHintsUsed += Session.HintsUsed;
+        _levelEmergencyHintScorePenalty += Session.EmergencyHintScorePenalty;
+
         CleanupRuntime();
     }
 

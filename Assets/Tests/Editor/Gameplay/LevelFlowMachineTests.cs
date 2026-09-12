@@ -716,6 +716,255 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 "Defeat is not a completion of the phase it happened in.");
         }
 
+        // ---------------------------------------------------------------------
+        // SALIN-226 — alternating defense/restoration segments
+        // ---------------------------------------------------------------------
+
+        [Test]
+        public void Segments_UnsegmentedLevel_RunsOneSegmentAndTheNinePhaseTraversalIsUnchanged_SALIN226()
+        {
+            LevelPhasePlan plan = LevelPhasePlan.FromConfig(CreateFullConfig());
+            Assert.AreEqual(1, plan.SegmentCount);
+            Assert.IsFalse(plan.SegmentPlanInvalid);
+
+            LevelFlowMachine machine = new LevelFlowMachine(plan);
+            var visited = new List<LevelPhase>();
+            machine.PhaseChanged += (_, next) => visited.Add(next);
+
+            machine.Begin();
+            int guard = 0;
+            while (!machine.IsTerminal && guard++ < 32)
+            {
+                if (machine.Phase == LevelPhase.AtomicSave)
+                    machine.ReportSaveResult(accepted: true);
+                else
+                    machine.ReportPhaseComplete(machine.Phase);
+            }
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    LevelPhase.Story,
+                    LevelPhase.FocusWords,
+                    LevelPhase.SymbolLearning,
+                    LevelPhase.RequiredPractice,
+                    LevelPhase.Defense,
+                    LevelPhase.ContextChallenge,
+                    LevelPhase.MemoryReward,
+                    LevelPhase.AtomicSave,
+                    LevelPhase.Results,
+                    LevelPhase.Completed,
+                },
+                visited,
+                "With one segment the machine must be indistinguishable from the "
+                + "pre-SALIN-226 machine.");
+            Assert.AreEqual(0, machine.CurrentSegmentIndex);
+        }
+
+        [Test]
+        public void Segments_ContextChallengeCompleteWithSegmentsRemaining_ReturnsToDefense_SALIN226()
+        {
+            LevelFlowMachine machine = CreateSegmentedMachine(2);
+            AdvanceTo(machine, LevelPhase.ContextChallenge);
+            Assert.AreEqual(0, machine.CurrentSegmentIndex);
+
+            Assert.IsTrue(machine.ReportPhaseComplete(LevelPhase.ContextChallenge));
+
+            Assert.AreEqual(LevelPhase.Defense, machine.Phase,
+                "Segment 1 of 2 must loop back to Defense, not advance to MemoryReward.");
+            Assert.AreEqual(1, machine.CurrentSegmentIndex);
+        }
+
+        [Test]
+        public void Segments_LastContextChallengeComplete_AdvancesToMemoryReward_SALIN226()
+        {
+            LevelFlowMachine machine = CreateSegmentedMachine(2);
+            AdvanceTo(machine, LevelPhase.ContextChallenge);
+
+            machine.ReportPhaseComplete(LevelPhase.ContextChallenge);
+            Assert.AreEqual(LevelPhase.Defense, machine.Phase);
+            machine.ReportDefenseComplete();
+            Assert.AreEqual(LevelPhase.ContextChallenge, machine.Phase);
+
+            Assert.IsTrue(machine.ReportPhaseComplete(LevelPhase.ContextChallenge));
+
+            Assert.AreEqual(LevelPhase.MemoryReward, machine.Phase,
+                "The final segment must leave the loop through the ordinary forward rule.");
+            Assert.AreEqual(1, machine.CurrentSegmentIndex,
+                "The cursor must not run past the last segment.");
+        }
+
+        [Test]
+        public void Segments_ThreeSegments_AlternateExactlyThreeTimesThenAdvance_SALIN226()
+        {
+            LevelFlowMachine machine = CreateSegmentedMachine(3);
+            var visited = new List<LevelPhase>();
+            AdvanceTo(machine, LevelPhase.Defense);
+            machine.PhaseChanged += (_, next) => visited.Add(next);
+
+            for (int segment = 0; segment < 3; segment++)
+            {
+                Assert.AreEqual(LevelPhase.Defense, machine.Phase,
+                    $"Segment {segment} must open in Defense.");
+                machine.ReportDefenseComplete();
+                Assert.AreEqual(LevelPhase.ContextChallenge, machine.Phase);
+                machine.ReportPhaseComplete(LevelPhase.ContextChallenge);
+            }
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    LevelPhase.ContextChallenge,
+                    LevelPhase.Defense,
+                    LevelPhase.ContextChallenge,
+                    LevelPhase.Defense,
+                    LevelPhase.ContextChallenge,
+                    LevelPhase.MemoryReward,
+                },
+                visited,
+                "Three segments alternate Defense/ContextChallenge three times, then leave.");
+            Assert.AreEqual(2, machine.CurrentSegmentIndex);
+        }
+
+        [Test]
+        public void Segments_RejectedContextChallengeReport_DoesNotAdvanceTheSegmentCursor_SALIN226()
+        {
+            LevelFlowMachine machine = CreateSegmentedMachine(3);
+            AdvanceTo(machine, LevelPhase.Defense);
+
+            // Wrong phase for the current state: rejected, and rejected reports change nothing.
+            Assert.IsFalse(machine.ReportPhaseComplete(LevelPhase.ContextChallenge));
+            Assert.AreEqual(0, machine.CurrentSegmentIndex,
+                "A rejected report must not move the segment cursor.");
+            Assert.AreEqual(LevelPhase.Defense, machine.Phase);
+
+            machine.ReportDefenseComplete();
+            Assert.IsTrue(machine.ReportPhaseComplete(LevelPhase.ContextChallenge));
+            Assert.AreEqual(1, machine.CurrentSegmentIndex);
+
+            // A duplicate report for a phase already left is rejected too.
+            Assert.IsFalse(machine.ReportPhaseComplete(LevelPhase.ContextChallenge));
+            Assert.AreEqual(1, machine.CurrentSegmentIndex);
+        }
+
+        [Test]
+        public void Segments_AtomicSaveIsUnreachableUntilTheLastSegmentCompletes_SALIN226()
+        {
+            LevelFlowMachine machine = CreateSegmentedMachine(3);
+            AdvanceTo(machine, LevelPhase.Defense);
+
+            for (int segment = 0; segment < 2; segment++)
+            {
+                machine.ReportDefenseComplete();
+                machine.ReportPhaseComplete(LevelPhase.ContextChallenge);
+                Assert.AreNotEqual(LevelPhase.AtomicSave, machine.Phase,
+                    "AC-3: the terminal phases are not part of the loop and must stay "
+                    + "unreachable while segments remain.");
+                Assert.IsFalse(machine.HasCompleted(LevelPhase.AtomicSave));
+                Assert.IsFalse(machine.ReportSaveResult(accepted: true),
+                    "A save cannot be reported from inside the segment loop.");
+            }
+
+            machine.ReportDefenseComplete();
+            machine.ReportPhaseComplete(LevelPhase.ContextChallenge);
+            Assert.AreEqual(LevelPhase.MemoryReward, machine.Phase);
+            machine.ReportPhaseComplete(LevelPhase.MemoryReward);
+            Assert.AreEqual(LevelPhase.AtomicSave, machine.Phase,
+                "AtomicSave opens only after the last segment.");
+        }
+
+        [Test]
+        public void Segments_DefeatDuringASecondSegment_IsTerminalAndRecordsOnlyWhatFinished_SALIN226()
+        {
+            LevelFlowMachine machine = CreateSegmentedMachine(3);
+            AdvanceTo(machine, LevelPhase.Defense);
+            machine.ReportDefenseComplete();
+            machine.ReportPhaseComplete(LevelPhase.ContextChallenge);
+            Assert.AreEqual(1, machine.CurrentSegmentIndex);
+            Assert.AreEqual(LevelPhase.Defense, machine.Phase);
+
+            Assert.IsTrue(machine.ReportDefeat());
+
+            Assert.AreEqual(LevelPhase.Defeated, machine.Phase);
+            Assert.IsTrue(machine.IsTerminal);
+            Assert.IsTrue(machine.HasCompleted(LevelPhase.Story));
+            Assert.IsFalse(machine.HasCompleted(LevelPhase.MemoryReward));
+            Assert.IsFalse(machine.HasCompleted(LevelPhase.AtomicSave));
+            Assert.IsFalse(machine.ReportDefenseComplete(),
+                "Nothing is reportable after a defeat, segments or not.");
+        }
+
+        [Test]
+        public void Segments_WithChallengePrototypeEnabled_AreRejectedAndNeverLoop_SALIN226()
+        {
+            LevelConfigSO config = CreateSegmentedConfig(2);
+            config.challengePrototypeEnabled = true;
+
+            LevelPhasePlan plan = LevelPhasePlan.FromConfig(config);
+            Assert.AreEqual(1, plan.SegmentCount);
+            Assert.IsTrue(plan.SegmentPlanInvalid,
+                "The prototype carve-out leaves ContextChallenge unplanned, so segments "
+                + "must be reported invalid rather than silently collapsing.");
+            Assert.IsFalse(plan.Has(LevelPhase.ContextChallenge));
+
+            LevelFlowMachine machine = new LevelFlowMachine(plan);
+            AdvanceTo(machine, LevelPhase.Defense);
+            machine.ReportDefenseComplete();
+
+            Assert.AreEqual(LevelPhase.MemoryReward, machine.Phase,
+                "With ContextChallenge unplanned there is no restoration leg to loop through.");
+            Assert.AreEqual(0, machine.CurrentSegmentIndex);
+        }
+
+        [Test]
+        public void Segments_ConsumingMoreWavesThanTheLevelAuthors_AreRejected_SALIN226()
+        {
+            LevelConfigSO config = CreateSegmentedConfig(2);
+            config.waves.Clear();
+            config.waves.Add(new WaveDefinition());
+
+            LevelPhasePlan plan = LevelPhasePlan.FromConfig(config);
+
+            Assert.IsTrue(plan.SegmentPlanInvalid,
+                "Segments partition the wave list; overrunning it would silently drop "
+                + "authored waves.");
+            Assert.AreEqual(1, plan.SegmentCount);
+        }
+
+        private LevelFlowMachine CreateSegmentedMachine(int segmentCount)
+        {
+            LevelPhasePlan plan = LevelPhasePlan.FromConfig(CreateSegmentedConfig(segmentCount));
+            Assert.AreEqual(segmentCount, plan.SegmentCount, "Fixture: segments must be accepted.");
+            Assert.IsFalse(plan.SegmentPlanInvalid, "Fixture: the segment plan must be valid.");
+            return new LevelFlowMachine(plan);
+        }
+
+        /// <summary>
+        /// A level with <paramref name="segmentCount"/> segments of one wave each, every
+        /// segment playing one challenge unit. Synthetic on purpose: no shipped level config
+        /// is edited by SALIN-226, and Level 5 has no waves to group (SALIN-247 authors them).
+        /// </summary>
+        private LevelConfigSO CreateSegmentedConfig(int segmentCount)
+        {
+            LevelConfigSO config = CreateFullConfig();
+            ChallengeSequenceSO sequence = config.challengeSequence;
+
+            var units = new List<ChallengeUnitDefinition>();
+            for (int i = 0; i < segmentCount; i++)
+            {
+                units.Add(new ChallengeUnitDefinition { unitId = $"seg-unit-{i}" });
+                config.waves.Add(new WaveDefinition());
+                config.flowSegments.Add(new LevelFlowSegment
+                {
+                    waveCount = 1,
+                    challengeUnitIds = new[] { $"seg-unit-{i}" },
+                });
+            }
+
+            sequence.units = units.ToArray();
+            return config;
+        }
+
         private LevelFlowMachine CreateLegacyMachine()
         {
             return new LevelFlowMachine(LevelPhasePlan.FromConfig(CreateLegacyConfig()));

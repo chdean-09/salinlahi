@@ -400,6 +400,7 @@ public static class CampaignConfigValidator
                 ValidateRequiredReferences(level, path, issues);
                 ValidatePaInstructionOrder(level, path, issues);
                 ValidateChallengeSequence(level, path, issues);
+                ValidateFlowSegments(level, path, issues);
                 ValidateClueChannels(level, path, issues);
                 globalIndex++;
             }
@@ -438,6 +439,108 @@ public static class CampaignConfigValidator
 
             AddContentIssue(issues, ContentValidationCode.ChallengeSequenceInvalid, challengePath,
                 "Challenge sequence is invalid: " + error, sequence);
+        }
+    }
+
+    /// <summary>
+    /// SALIN-226. Checks an authored alternating-segment list against the level's own waves
+    /// and challenge sequence, at the profile's content severity (Warning while authoring,
+    /// Error under Strict) — never a hard Error in the Authoring profile.
+    /// </summary>
+    /// <remarks>
+    /// Emits nothing on today's campaign: flowSegments is empty on all fifteen levels, so
+    /// this must not move the validator's issue counts. It arms for SALIN-247 / SALIN-249 /
+    /// SALIN-252, which author the segment lists this ticket's engine consumes.
+    /// </remarks>
+    private static void ValidateFlowSegments(
+        LevelConfigSO level,
+        string path,
+        IssueSink issues)
+    {
+        if (level.flowSegments == null || level.flowSegments.Count == 0)
+            return;
+
+        string segmentsPath = path + ".flowSegments";
+
+        if (level.challengePrototypeEnabled)
+        {
+            AddContentIssue(issues, ContentValidationCode.FlowSegmentsInvalid, segmentsPath,
+                "A level cannot combine flow segments with challengePrototypeEnabled: the "
+                + "prototype carve-out leaves ContextChallenge unplanned, so the alternating "
+                + "loop would have no restoration leg to return through.", level);
+            return;
+        }
+
+        if (level.challengeSequence == null)
+        {
+            AddContentIssue(issues, ContentValidationCode.FlowSegmentsInvalid, segmentsPath,
+                "Flow segments name challenge units, so the level must assign a "
+                + "challengeSequence to resolve them against.", level);
+            return;
+        }
+
+        var knownUnitIds = new HashSet<string>(System.StringComparer.Ordinal);
+        foreach (ChallengeUnitDefinition unit in level.challengeSequence.units
+            ?? System.Array.Empty<ChallengeUnitDefinition>())
+        {
+            if (unit != null && !string.IsNullOrWhiteSpace(unit.unitId))
+                knownUnitIds.Add(unit.unitId);
+        }
+
+        int waveBudget = level.waves == null ? 0 : level.waves.Count;
+        int consumedWaves = 0;
+        bool anySegmentPlaysAUnit = false;
+
+        for (int index = 0; index < level.flowSegments.Count; index++)
+        {
+            LevelFlowSegment segment = level.flowSegments[index];
+            if (segment == null)
+            {
+                AddContentIssue(issues, ContentValidationCode.FlowSegmentsInvalid,
+                    segmentsPath + "[" + index + "]", "Flow segment is null.", level);
+                continue;
+            }
+
+            if (segment.waveCount < 0)
+            {
+                AddContentIssue(issues, ContentValidationCode.FlowSegmentsInvalid,
+                    segmentsPath + "[" + index + "].waveCount",
+                    "Flow segment wave count cannot be negative.", level);
+            }
+            else
+            {
+                consumedWaves += segment.waveCount;
+            }
+
+            foreach (string unitId in segment.challengeUnitIds
+                ?? System.Array.Empty<string>())
+            {
+                if (string.IsNullOrWhiteSpace(unitId) || !knownUnitIds.Contains(unitId))
+                {
+                    AddContentIssue(issues, ContentValidationCode.FlowSegmentsInvalid,
+                        segmentsPath + "[" + index + "].challengeUnitIds",
+                        "Flow segment references unknown challenge unit id '" + unitId + "'.",
+                        level);
+                    continue;
+                }
+
+                anySegmentPlaysAUnit = true;
+            }
+        }
+
+        if (consumedWaves > waveBudget)
+        {
+            AddContentIssue(issues, ContentValidationCode.FlowSegmentsInvalid, segmentsPath,
+                "Flow segments consume " + consumedWaves + " waves but the level authors only "
+                + waveBudget + ". Segments partition the wave list; they cannot overrun it.",
+                level);
+        }
+
+        if (!anySegmentPlaysAUnit)
+        {
+            AddContentIssue(issues, ContentValidationCode.FlowSegmentsInvalid, segmentsPath,
+                "No flow segment plays any challenge unit, so the level would complete with "
+                + "its context challenge never played.", level);
         }
     }
 
