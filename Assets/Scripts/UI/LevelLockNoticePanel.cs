@@ -8,13 +8,18 @@ using UnityEngine.UI;
 /// Every string the Level Select lock notice can show lives here, and nowhere
 /// else, so product/content can rewrite the wording without touching flow logic.
 ///
-/// WHY IT IS PLACEHOLDER: the authored <see cref="LevelConfigSO.levelName"/>
-/// values are developer-facing ("Level1", "Chapter2-Level1", "Gauntlet",
-/// "Kadiliman") and would read badly to a player, so the copy is built from the
-/// level number and the era's display name instead. The final wording, tone, and
-/// language (English vs Filipino) are a design call that has NOT been made.
+/// WHY IT IS BUILT RATHER THAN AUTHORED: the <see cref="LevelConfigSO.levelName"/>
+/// values are developer-facing ("Level1", "Chapter2-Level1", "Gauntlet") and would
+/// read badly to a player, so the copy is composed from the level number and the
+/// era display name instead.
 ///
-/// ACTION REQUIRED: product/content review before release.
+/// LANGUAGE: English. The project splits by role -- UI chrome is English (this class,
+/// CampaignSaveNoticePanel, LevelContentMissingPanel), narrative content is Filipino
+/// (the dialogue assets). That split was already in force; it is followed here rather
+/// than re-decided.
+///
+/// ACTION REQUIRED: product/content review of the wording before release. The language
+/// split above is settled; the sentences themselves are not sacred.
 /// ============================================================================
 /// </summary>
 public static class LevelLockNoticeCopy
@@ -22,28 +27,42 @@ public static class LevelLockNoticeCopy
     /// <summary>Dismiss-button label.</summary>
     public const string DismissLabel = "OK";
 
-    // ========================================================================
-    // TODO(SALIN-220) — CONTENT OWED. NO COPY WRITTEN HERE ON PURPOSE.
-    // ========================================================================
-    // SALIN-220 AC6 asks that the lock notice NAME the missing objective when the gate withholds
-    // an unlock. LevelLockStatus.MissingObjectiveId now carries which one it is, as a stable
-    // LevelObjectives identifier, and that half is asserted in EditMode.
-    //
-    // The player-facing sentence for each of the five objectives (storyViewed, symbolsPracticed,
-    // wordsRestored, contextPassed, finalSyllableRestored) DOES NOT EXIST anywhere in this
-    // repository. Searched and found absent: no occurrence of the identifiers under Assets/, and
-    // no tracked spec under docs/ defines them. The Completion Rules source is a binary workbook
-    // whose in-repo transcription gives only row LABELS ("Story viewed", "Symbols practiced",
-    // "Words restored", "Context challenge", "Last syllable") — which do not even match the flag
-    // names — not lock-notice sentences. Tone and language (English vs Filipino) are also
-    // unsettled for this panel, as the header above already records.
-    //
-    // So the notice still shows the SALIN-137 Prerequisite copy unchanged. Inventing wording here
-    // would ship unreviewed player-facing content under a persistence ticket.
-    //
-    // ACTION REQUIRED (ticket owner): supply one sentence per objective, then map
-    // MissingObjectiveId to it here and call it from LevelLockNoticePanel.
-    // ========================================================================
+    /// <summary>
+    /// SALIN-220 AC6. One sentence per completion objective, for the case where the
+    /// predecessor was finished but still owes something. Keyed by the
+    /// <see cref="LevelObjectives"/> identifier carried on
+    /// <see cref="LevelLockStatus.MissingObjectiveId"/>.
+    /// </summary>
+    /// <remarks>
+    /// English, matching <see cref="Prerequisite"/> and <see cref="DismissLabel"/>. The project
+    /// splits languages by role: UI chrome is English, narrative content is Filipino (see the
+    /// dialogue assets). That split was already in force here and is followed rather than
+    /// re-decided. An unrecognised identifier falls back to the plain prerequisite wording, so a
+    /// new objective added without copy degrades instead of showing a blank or an identifier.
+    /// </remarks>
+    /// <param name="objectiveId">A <see cref="LevelObjectives"/> constant.</param>
+    /// <param name="requiredLevelNumber">1-based number of the level that owes the objective.</param>
+    public static string MissingObjective(string objectiveId, int requiredLevelNumber)
+    {
+        if (requiredLevelNumber < 1)
+            return string.Empty;
+
+        switch (objectiveId)
+        {
+            case LevelObjectives.StoryViewed:
+                return $"Locked. Watch the story in Level {requiredLevelNumber} to open this one.";
+            case LevelObjectives.SymbolsPracticed:
+                return $"Locked. Practice every symbol in Level {requiredLevelNumber} to open this one.";
+            case LevelObjectives.WordsRestored:
+                return $"Locked. Restore every word in Level {requiredLevelNumber} to open this one.";
+            case LevelObjectives.ContextPassed:
+                return $"Locked. Finish the challenge in Level {requiredLevelNumber} to open this one.";
+            case LevelObjectives.FinalSyllableRestored:
+                return $"Locked. Restore the final syllable in Level {requiredLevelNumber} to open this one.";
+            default:
+                return Prerequisite(requiredLevelNumber, crossesEra: false, requiredEraName: null);
+        }
+    }
 
     /// <summary>
     /// Names the single immediately preceding requirement. SALIN-137 AC2 asks for one
@@ -126,6 +145,22 @@ public sealed class LevelLockNoticePanel : MonoBehaviour
     public void PresentPrerequisite(int requiredLevelNumber, bool crossesEra, string requiredEraName)
     {
         string message = LevelLockNoticeCopy.Prerequisite(requiredLevelNumber, crossesEra, requiredEraName);
+        Present(message);
+    }
+
+    /// <summary>
+    /// SALIN-220 AC6. Shows which objective the finished predecessor still owes, rather than
+    /// the generic "complete Level N" wording, which reads as a bug to a player who has
+    /// already completed it.
+    /// </summary>
+    /// <param name="objectiveId">
+    /// A <see cref="LevelObjectives"/> identifier from <see cref="LevelLockStatus.MissingObjectiveId"/>.
+    /// An unrecognised value degrades to the prerequisite copy rather than showing nothing.
+    /// </param>
+    /// <param name="requiredLevelNumber">1-based number of the level that owes the objective.</param>
+    public void PresentMissingObjective(string objectiveId, int requiredLevelNumber)
+    {
+        string message = LevelLockNoticeCopy.MissingObjective(objectiveId, requiredLevelNumber);
         Present(message);
     }
 

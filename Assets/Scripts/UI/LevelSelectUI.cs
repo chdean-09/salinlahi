@@ -265,7 +265,8 @@ public class LevelSelectUI : MonoBehaviour
         }
 
         LevelLockState state = ProgressManager.Instance.GetLevelLockState(
-            config.levelNumber, out int requiredLevelNumber, out bool crossesEra);
+            config.levelNumber, out int requiredLevelNumber, out bool crossesEra,
+            out string missingObjectiveId);
 
         // Nothing to explain when the level is actually reachable, or when the save is
         // blocked/unclassifiable — CampaignSaveNoticePanel already owns that story, and
@@ -273,6 +274,15 @@ public class LevelSelectUI : MonoBehaviour
         if (state != LevelLockState.Locked || requiredLevelNumber < 1)
         {
             panel.Hide();
+            return;
+        }
+
+        // SALIN-220 AC6: when the predecessor is finished but still owes an objective, naming
+        // the objective is the only honest message -- "complete Level N first" reads as a bug
+        // to a player who already completed it.
+        if (missingObjectiveId != null)
+        {
+            panel.PresentMissingObjective(missingObjectiveId, requiredLevelNumber);
             return;
         }
 
