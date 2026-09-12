@@ -231,9 +231,9 @@ public static class RevisedCampaignBootstrap
         level.practiceRequirements = Requirements(ContentRequirementKind.Practice, 2, ei, na, a, ma);
         level.masteryRequirements = Requirements(ContentRequirementKind.Mastery, 1, ei, na, a, ma);
 
-        // INA's closing syllable; provisional until the workbook matrix confirms
-        // the Level 1 final restoration value (SALIN-188 review input).
-        level.finalRestorationValue = Reference(na);
+        // AMA's closing syllable, confirmed by ruling Q3 (docs/audit/AUDIT.md:313,
+        // docs/design/spec-rulings-2026-09.md): the Level 1 final restoration value is MA.
+        level.finalRestorationValue = Reference(ma);
         level.rewardIds = new List<string> { "memory.ugat.01" };
 
         level.activeClueCombatEnabled = true;

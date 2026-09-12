@@ -111,8 +111,8 @@ MonoBehaviour:
     dialogue: {fileID: 11400000, guid: 7c51a663500102547bfa9ac106c463e3, type: 2}
     cutscene: {fileID: 11400000, guid: d3689aff49a70224d940bf273beed6bb, type: 2}
   finalRestorationValue:
-    symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
-    spokenValueId: value.na
+    symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+    spokenValueId: value.ma
   rewardIds:
   - memory.ugat.01
   masteryRequirements:
