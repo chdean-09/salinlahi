@@ -285,39 +285,6 @@ MonoBehaviour:
   soloTeachPostSuccess:
     fallbackText: Well drawn. There will be more.
     dialogue: {fileID: 0}
-  comboTeachStep: {fileID: 0}
-  comboEnemyCount: 3
-  comboTeachPreVideo:
-    fallbackText: Sometimes enemies arrive in numbers, all bearing the same mark.
-    dialogue: {fileID: 0}
-  comboTeachVideo:
-    videoClip: {fileID: 0}
-    gifTexture: {fileID: 0}
-    gifFrames: []
-    gifFramesPerSecond: 0
-    animationClip: {fileID: 0}
-    tapToProceedText: Tap anywhere to continue
-  comboTeachPostSuccess:
-    fallbackText: A true warrior strikes with rhythm.
-    dialogue: {fileID: 0}
-  focusPracticeStep: {fileID: 0}
-  focusPracticeKillCount: 2
-  focusPracticeIntro:
-    fallbackText: Keep your rhythm. Defeat two more enemies.
-    dialogue: {fileID: 0}
-  focusModeIntro:
-    fallbackText: Focus mode helps you control heavier combat after building momentum
-      through successful draws.
-    dialogue: {fileID: 0}
-  focusChainStep: {fileID: 0}
-  focusChainEnemyCount: 3
-  focusChainIntro:
-    fallbackText: Focus is active. Watch how the next group slows down, then draw
-      once to chain them.
-    dialogue: {fileID: 0}
-  focusChainPostSuccess:
-    fallbackText: Good. Focus gives you room to control heavier waves.
-    dialogue: {fileID: 0}
   heartLossDemoEnemyData: {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
   heartLossDemoCharacter: {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
   heartLossVideo:

@@ -263,26 +263,6 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
-        public void LevelOneRuntimeOnboardingController_DoesNotIncludeComboTeachBeat()
-        {
-            LevelConfigSO levelConfig = CreateLevelConfig();
-            levelConfig.levelNumber = LevelTutorialProgress.Level1TutorialLevelNumber;
-            levelConfig.tutorialSequence = CreateLegacyTutorialSequence();
-
-            LevelFlowController controller = CreateComponent<LevelFlowController>("LevelFlowController");
-            SetPrivateField(controller, "_levelConfig", levelConfig);
-
-            InvokePrivate(controller, "EnsureRuntimeReferences", null, null);
-
-            Level1OnboardingController onboardingController =
-                GetPrivateField<Level1OnboardingController>(controller, "_level1OnboardingController");
-
-            Assert.IsNotNull(onboardingController);
-            Assert.IsNull(onboardingController.GetComponent<ComboTeachBeat>(),
-                "Level 1 runtime onboarding must not include the multi-kill chain tutorial beat.");
-        }
-
-        [Test]
         public void LevelTwoTutorialDueWithAdvancedSequenceCreatesRuntimeOnboardingController()
         {
             LevelConfigSO levelConfig = CreateLevelConfig();
@@ -300,10 +280,16 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.IsNotNull(onboardingController,
                 "Level 2 flow should create the reusable onboarding controller for the advanced combat tutorial.");
             Assert.IsTrue(onboardingController.IsSequenceResolvable(levelConfig));
-            Assert.IsNotNull(onboardingController.GetComponent<ComboTeachBeat>(),
-                "Level 2 advanced onboarding must include the multi-kill chain tutorial beat.");
-            Assert.IsNotNull(onboardingController.GetComponent<FocusModeTeachBeat>(),
-                "Level 2 advanced onboarding must include the focus mode tutorial beat.");
+
+            // SALIN-225. Level 2 keeps its own arm in CreateRuntimeOnboardingController so it does
+            // NOT inherit Level 1's four teaching beats -- ReleaseBeat is the only one attached.
+            OnboardingBeat[] beats = onboardingController.GetComponents<OnboardingBeat>();
+            Assert.AreEqual(1, beats.Length,
+                "Level 2 onboarding must attach exactly one beat after the combo/focus removal.");
+            Assert.IsNotNull(onboardingController.GetComponent<ReleaseBeat>(),
+                "ReleaseBeat is the only beat Level 2 still runs.");
+            Assert.IsNull(onboardingController.GetComponent<SoloTeachBeat>(),
+                "Level 2 must not fall through to Level 1's basic teaching beats.");
         }
 
         [UnityTest]
@@ -458,12 +444,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
         private OnboardingSequenceSO CreateLevel2AdvancedSequence()
         {
             OnboardingSequenceSO sequence = ScriptableObject.CreateInstance<OnboardingSequenceSO>();
-            sequence.beatOrder = new[]
-            {
-                OnboardingBeatType.ComboTeach,
-                OnboardingBeatType.FocusModeTeach,
-                OnboardingBeatType.Release,
-            };
+            sequence.beatOrder = new[] { OnboardingBeatType.Release };
             _objectsToDestroy.Add(sequence);
             return sequence;
         }

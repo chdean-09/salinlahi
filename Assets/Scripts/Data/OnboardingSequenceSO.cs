@@ -4,13 +4,13 @@ using UnityEngine.Video;
 
 public enum OnboardingBeatType
 {
+    // SALIN-225 removed ComboTeach = 3 and FocusModeTeach = 6 with the mechanics they taught.
+    // The survivors keep their explicit values so serialized beatOrder blobs stay valid.
     ProtagonistIntro = 0,
     BaseIntro = 1,
     SoloTeach = 2,
-    ComboTeach = 3,
     HeartLossDemo = 4,
     Release = 5,
-    FocusModeTeach = 6,
 }
 
 [Serializable]
@@ -95,48 +95,6 @@ public sealed class OnboardingSequenceSO : ScriptableObject
     public OnboardingBeatCopy soloTeachPostSuccess = new OnboardingBeatCopy
     {
         fallbackText = "Well drawn. There will be more.",
-    };
-
-    [Header("Beat 4 — Combo Teach (3× BA)")]
-    public Level1TutorialStepSO comboTeachStep;
-    [Min(2)]
-    public int comboEnemyCount = 3;
-    public OnboardingBeatCopy comboTeachPreVideo = new OnboardingBeatCopy
-    {
-        fallbackText = "Sometimes enemies arrive in numbers, all bearing the same mark.",
-    };
-    public OnboardingVideoTemplate comboTeachVideo = new OnboardingVideoTemplate
-    {
-        tapToProceedText = "Tap anywhere to continue",
-    };
-    public OnboardingBeatCopy comboTeachPostSuccess = new OnboardingBeatCopy
-    {
-        fallbackText = "A true warrior strikes with rhythm.",
-    };
-
-    [Header("Level 2 — Focus Mode Teach")]
-    [Tooltip("Single-enemy practice step repeated before focus mode is introduced.")]
-    public Level1TutorialStepSO focusPracticeStep;
-    [Min(1)]
-    public int focusPracticeKillCount = 2;
-    public OnboardingBeatCopy focusPracticeIntro = new OnboardingBeatCopy
-    {
-        fallbackText = "Keep your rhythm. Defeat two more enemies.",
-    };
-    public OnboardingBeatCopy focusModeIntro = new OnboardingBeatCopy
-    {
-        fallbackText = "Focus mode helps you control heavier combat after building momentum through successful draws.",
-    };
-    public Level1TutorialStepSO focusChainStep;
-    [Min(3)]
-    public int focusChainEnemyCount = 3;
-    public OnboardingBeatCopy focusChainIntro = new OnboardingBeatCopy
-    {
-        fallbackText = "Focus is active. Watch how the next group slows down, then draw once to chain them.",
-    };
-    public OnboardingBeatCopy focusChainPostSuccess = new OnboardingBeatCopy
-    {
-        fallbackText = "Good. Focus gives you room to control heavier waves.",
     };
 
     [Header("Beat 5 — Heart-Loss Demo")]

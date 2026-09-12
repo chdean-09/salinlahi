@@ -98,9 +98,6 @@ namespace Salinlahi.Debug
                 if (verboseLogging) DebugLogger.Log($"Level {i} completed");
             }
 
-            bool endless = _progressManager.IsEndlessModeUnlocked();
-            if (verboseLogging) DebugLogger.Log($"Endless Mode unlocked: {endless} (expected: True)");
-
             int total = _progressManager.GetTotalStars();
             if (verboseLogging) DebugLogger.Log($"Total stars: {total} (expected: 15)");
 
@@ -180,7 +177,6 @@ namespace Salinlahi.Debug
                 DebugLogger.Log($"Level {i}: {status}");
             }
             DebugLogger.Log($"Total Stars: {_progressManager.GetTotalStars()}");
-            DebugLogger.Log($"Endless Mode: {(_progressManager.IsEndlessModeUnlocked() ? "UNLOCKED" : "LOCKED")}");
             DebugLogger.Log("=======================");
         }
     }

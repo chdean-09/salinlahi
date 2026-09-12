@@ -587,9 +587,9 @@ public class LevelFlowController : MonoBehaviour
         ComputeCompletionResults();
 
         // The flow, not the defense layer, owns "level complete": GameManager
-        // clears the pause snapshot and enters LevelComplete, the legacy
-        // ProgressManager path writes stars, ComboManager resets. Our own
-        // HandleLevelComplete ignores this raise because a machine is running.
+        // clears the pause snapshot and enters LevelComplete and the legacy
+        // ProgressManager path writes stars. Our own HandleLevelComplete
+        // ignores this raise because a machine is running.
         EventBus.RaiseLevelComplete();
 
         _completionCommitResult = CommitCompletion();
@@ -795,12 +795,13 @@ public class LevelFlowController : MonoBehaviour
         GameObject go = new("[Runtime] Level1OnboardingController");
         go.transform.SetParent(transform, false);
 
-        if (_levelConfig != null && _levelConfig.levelNumber == LevelTutorialProgress.Level2TutorialLevelNumber)
-        {
-            go.AddComponent<ComboTeachBeat>();
-            go.AddComponent<FocusModeTeachBeat>();
-        }
-        else
+        // SALIN-225 deleted ComboTeachBeat and FocusModeTeachBeat with the mechanics they taught,
+        // so Level 2 attaches no teaching beat and runs ReleaseBeat alone. The level-2 test stays
+        // rather than being dropped: without it Level 2 would inherit Level 1's four beats and
+        // re-teach the basics. SALIN-241 authors Level 2's replacement beats here.
+        bool isLevel2Onboarding = _levelConfig != null
+            && _levelConfig.levelNumber == LevelTutorialProgress.Level2TutorialLevelNumber;
+        if (!isLevel2Onboarding)
         {
             go.AddComponent<ProtagonistIntroBeat>();
             go.AddComponent<BaseIntroBeat>();

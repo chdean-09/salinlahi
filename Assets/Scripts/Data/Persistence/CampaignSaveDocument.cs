@@ -36,6 +36,10 @@ public sealed class CampaignProgressData
     public List<TutorialProgressRecord> tutorialProgress = new List<TutorialProgressRecord>();
     public List<SymbolMasteryRecord> symbolMastery = new List<SymbolMasteryRecord>();
     public List<WordMasteryRecord> wordMastery = new List<WordMasteryRecord>();
+    // SALIN-225 removed Endless Mode, but this field is deliberately KEPT. The integrity hash is
+    // recomputed from re-serialized JSON (CampaignSaveSerializer), so dropping the key changes the
+    // JSON of every save already on disk and fails them all as ChecksumMismatch. Removing it needs
+    // a schema bump plus a migration arm -- that is SALIN-227's scope. Nothing writes it any more.
     public bool endlessModeUnlocked;
 }
 

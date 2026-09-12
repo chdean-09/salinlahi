@@ -45,7 +45,6 @@ public class SettingsPanel : MonoBehaviour
         "SettingsButton",
         "PlayButton",
         "LevelSelectButton",
-        "EndlessModeButton",
         "TracingDojoButton"
     };
 

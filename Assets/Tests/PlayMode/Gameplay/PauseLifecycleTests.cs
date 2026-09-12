@@ -36,7 +36,6 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         {
             ClearSingletonInstance<GameManager>();
             ClearSingletonInstance<SceneLoader>();
-            ClearSingletonInstance<ComboManager>();
             _abortRaises = 0;
             _resumeRaises = 0;
             _pauseRaises = 0;
@@ -61,7 +60,6 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             _objectsToDestroy.Clear();
             ClearSingletonInstance<GameManager>();
             ClearSingletonInstance<SceneLoader>();
-            ClearSingletonInstance<ComboManager>();
             Time.timeScale = 1f;
         }
 
@@ -309,8 +307,6 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         {
             GameManager gameManager = CreateGameManager();
             gameManager.StartGame();
-            ComboManager combo = CreateComponent<ComboManager>("ComboManager");
-            SetPrivateField(combo, "_currentStreak", 7);
             StrokeCapture capture = CreateStrokeCapture();
             SetPrivateField(capture, "_pendingRecognitionSubmit", true);
             SetPrivateField(capture, "_multiStrokeTimerEndTime", 5d);
@@ -319,8 +315,6 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             gameManager.AbortCurrentLevelAttempt();
             yield return null;
 
-            Assert.AreEqual(0, combo.CurrentStreak,
-                "A combo earned in a discarded attempt must not carry into the next one.");
             Assert.IsFalse(GetPrivateField<bool>(capture, "_pendingRecognitionSubmit"),
                 "A queued recognition submit must not survive the abort.");
             Assert.AreEqual(-1d, GetPrivateField<double>(capture, "_multiStrokeTimerEndTime"));

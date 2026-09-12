@@ -342,7 +342,6 @@ public sealed class Level1OnboardingController : MonoBehaviour
         if (!hasBasicTeachSteps)
             applied |= ApplySceneGifFallback(sequence.soloTeachStep, ref sequence.soloTeachVideo);
 
-        applied |= ApplySceneGifFallback(sequence.comboTeachStep, ref sequence.comboTeachVideo);
         applied |= ApplyBasicTeachSceneGifFallbacks(sequence);
 
         if (!applied)
@@ -496,67 +495,24 @@ public sealed class Level1OnboardingController : MonoBehaviour
         return sequence;
     }
 
+    /// <summary>
+    /// SALIN-225. Level 2's authored order was ComboTeach, FocusModeTeach, Release. Both teaching
+    /// beats went with the mechanics they taught (ruling Q15), so the level-2 arm now forces the
+    /// single surviving beat rather than leaving the arm empty.
+    /// </summary>
+    /// <remarks>
+    /// Forcing <c>[Release]</c> is deliberate and is the end state SALIN-241 inherits: without it
+    /// Level 2 would fall through to Level 1's four-beat default and re-teach the basics. The
+    /// <c>onboardingSequence</c> reference on Level2_Config stays wired, so SALIN-241 authors into
+    /// an existing slot. Note the AOE multi-enemy draw that ComboTeachBeat actually taught still
+    /// exists in combat and is now untaught -- that replacement is SALIN-241's scope.
+    /// </remarks>
     internal static void NormalizeSequenceForLevel(OnboardingSequenceSO sequence, int levelNumber)
     {
         if (sequence == null || levelNumber != LevelTutorialProgress.Level2TutorialLevelNumber)
             return;
 
-        sequence.beatOrder = new[]
-        {
-            OnboardingBeatType.ComboTeach,
-            OnboardingBeatType.FocusModeTeach,
-            OnboardingBeatType.Release,
-        };
-
-        if (sequence.focusPracticeStep == null)
-            sequence.focusPracticeStep = sequence.soloTeachStep != null
-                ? sequence.soloTeachStep
-                : sequence.comboTeachStep;
-
-        sequence.focusPracticeKillCount = Mathf.Max(2, sequence.focusPracticeKillCount);
-
-        if (sequence.focusChainStep == null)
-            sequence.focusChainStep = sequence.comboTeachStep != null
-                ? sequence.comboTeachStep
-                : sequence.focusPracticeStep;
-
-        sequence.focusChainEnemyCount = Mathf.Max(3, sequence.focusChainEnemyCount);
-
-        if (string.IsNullOrWhiteSpace(sequence.focusPracticeIntro.fallbackText)
-            && sequence.focusPracticeIntro.dialogue == null)
-        {
-            sequence.focusPracticeIntro = new OnboardingBeatCopy
-            {
-                fallbackText = "Keep your rhythm. Defeat two more enemies.",
-            };
-        }
-
-        if (string.IsNullOrWhiteSpace(sequence.focusModeIntro.fallbackText)
-            && sequence.focusModeIntro.dialogue == null)
-        {
-            sequence.focusModeIntro = new OnboardingBeatCopy
-            {
-                fallbackText = "Focus mode helps you handle heavier combat after building momentum through successful draws.",
-            };
-        }
-
-        if (string.IsNullOrWhiteSpace(sequence.focusChainIntro.fallbackText)
-            && sequence.focusChainIntro.dialogue == null)
-        {
-            sequence.focusChainIntro = new OnboardingBeatCopy
-            {
-                fallbackText = "Focus is active. Watch how the next group slows down, then draw once to chain them.",
-            };
-        }
-
-        if (string.IsNullOrWhiteSpace(sequence.focusChainPostSuccess.fallbackText)
-            && sequence.focusChainPostSuccess.dialogue == null)
-        {
-            sequence.focusChainPostSuccess = new OnboardingBeatCopy
-            {
-                fallbackText = "Good. Focus gives you room to control heavier waves.",
-            };
-        }
+        sequence.beatOrder = new[] { OnboardingBeatType.Release };
     }
 
     private static Level1TutorialStepSO[] CopyLegacySteps(Level1TutorialSequenceSO sequence)
@@ -619,17 +575,11 @@ public sealed class Level1OnboardingController : MonoBehaviour
                 case OnboardingBeatType.SoloTeach:
                     EnsureBeatComponent<SoloTeachBeat>();
                     break;
-                case OnboardingBeatType.ComboTeach:
-                    EnsureBeatComponent<ComboTeachBeat>();
-                    break;
                 case OnboardingBeatType.HeartLossDemo:
                     EnsureBeatComponent<HeartLossDemoBeat>();
                     break;
                 case OnboardingBeatType.Release:
                     EnsureBeatComponent<ReleaseBeat>();
-                    break;
-                case OnboardingBeatType.FocusModeTeach:
-                    EnsureBeatComponent<FocusModeTeachBeat>();
                     break;
             }
         }

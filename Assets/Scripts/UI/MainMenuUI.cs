@@ -16,7 +16,6 @@ public class MainMenuUI : MonoBehaviour
     {
         "PlayButton",
         "LevelSelectButton",
-        "EndlessModeButton",
         "TracingDojoButton",
         "AlmanacButton",
         "SettingsButton"
@@ -29,8 +28,6 @@ public class MainMenuUI : MonoBehaviour
     private static readonly Color TextShadowColor = new(0.06f, 0.035f, 0.01f, 1f);
     private static readonly Vector2 TextShadowOffset = new(5f, -5f);
 
-    [SerializeField] private Button _endlessModeButton;
-
     [Header("Overlay Panels")]
     [SerializeField] private SettingsPanel _settingsPanel;
     [SerializeField] private CreditsPanel _creditsPanel;
@@ -39,14 +36,6 @@ public class MainMenuUI : MonoBehaviour
     private void Start()
     {
         ApplyMainMenuTextEffects();
-
-        if (_endlessModeButton != null)
-        {
-            bool isEndlessUnlocked = IsStoryComplete();
-            _endlessModeButton.interactable = isEndlessUnlocked;
-            ApplyButtonVisualState(_endlessModeButton, isEndlessUnlocked);
-        }
-
         EnsureSandboxEntryPoint();
         UpdatePlayButtonLabel();
         if (SaveManager.Instance != null && _campaignSaveNoticePanel != null)
@@ -156,18 +145,6 @@ public class MainMenuUI : MonoBehaviour
         LoadLevelSelect();
     }
 
-    public void OnEndlessModePressed()
-    {
-        if (!IsStoryComplete())
-        {
-            DebugLogger.LogWarning("MainMenuUI: Endless Mode is locked until story is complete.");
-            return;
-        }
-
-        AudioManager.Instance?.PlayMenuButtonClick();
-        LoadGameplay();
-    }
-
     public void OnTracingDojoPressed()
     {
         AudioManager.Instance?.PlayMenuButtonClick();
@@ -234,16 +211,14 @@ public class MainMenuUI : MonoBehaviour
 
     private Button CreateSandboxButton()
     {
-        Transform parent = _endlessModeButton != null
-            ? _endlessModeButton.transform.parent
-            : transform;
+        // SALIN-225 removed the Endless Mode button this used to hang off and clone.
+        // Both lookups collapse to the fallbacks they already carried.
+        Transform parent = transform;
 
         if (parent.Find("SandboxModeButton") is Transform existing && existing.GetComponent<Button>() != null)
             return existing.GetComponent<Button>();
 
-        Button template = _endlessModeButton != null
-            ? _endlessModeButton
-            : parent.Find("SettingsButton")?.GetComponent<Button>();
+        Button template = parent.Find("SettingsButton")?.GetComponent<Button>();
 
         if (template == null)
             return null;
@@ -393,13 +368,5 @@ public class MainMenuUI : MonoBehaviour
         shadow.effectColor = TextShadowColor;
         shadow.effectDistance = TextShadowOffset;
         shadow.useGraphicAlpha = true;
-    }
-
-    private bool IsStoryComplete()
-    {
-        if (ProgressManager.Instance == null)
-            return false;
-
-        return ProgressManager.Instance.IsEndlessModeUnlocked();
     }
 }

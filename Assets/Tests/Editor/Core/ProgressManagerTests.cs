@@ -208,28 +208,6 @@ namespace Salinlahi.Tests.Editor.Core
         }
 
         [Test]
-        public void IsEndlessModeUnlocked_FalseInitially()
-        {
-            Assert.IsFalse(_manager.IsEndlessModeUnlocked());
-        }
-
-        [Test]
-        public void UnlockEndlessMode_SetsKey()
-        {
-            _manager.UnlockEndlessMode();
-            Assert.IsTrue(_manager.IsEndlessModeUnlocked());
-        }
-
-        [Test]
-        public void MarkLevelComplete_Level5_UnlocksEndlessMode()
-        {
-            for (int i = 1; i <= 15; i++)
-                _manager.MarkLevelComplete(i, 3);
-
-            Assert.IsTrue(_manager.IsEndlessModeUnlocked());
-        }
-
-        [Test]
         public void IsLevelUnlocked_InvalidLevel_ReturnsFalse()
         {
             Assert.IsFalse(_manager.IsLevelUnlocked(0));
