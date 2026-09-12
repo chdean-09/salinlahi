@@ -233,7 +233,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
   - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
   - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
-  bossConfig: {fileID: 11400000, guid: 4b8095123334d644cafc8dbd8086b5e3, type: 2}
+  bossConfig: {fileID: 0}
   isAvailableInLite: 0
   multiKillChainEnabled: 1
   tutorialSequence: {fileID: 0}
@@ -248,7 +248,13 @@ MonoBehaviour:
     emergencyHintEnabled: 0
     emergencyHintsPerAttempt: 1
     emergencyHintScorePenalty: 0.1
-  flowSegments: []
+  flowSegments:
+  - waveCount: 2
+    challengeUnitIds:
+    - ugat05-complete-iba
+  - waveCount: 1
+    challengeUnitIds:
+    - ugat05-complete-mana
   introDialogue: {fileID: 11400000, guid: 2e50af9e1e44e4f5e9de1d0559db9b88, type: 2}
   outroDialogue: {fileID: 11400000, guid: 6b84133550dcb42aba16a6deddae87b0, type: 2}
   bgmClip: {fileID: 0}

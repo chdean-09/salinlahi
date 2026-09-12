@@ -26,6 +26,16 @@ namespace Salinlahi.Tests.Editor.Gameplay
         private static readonly int[] LevelsWithoutAChallengeSequence = { 6, 7, 8, 10, 13 };
         private static readonly int[] LevelsWithoutMemoryReward = { 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
 
+        // SALIN-283. Levels that legitimately author a flowSegments list, mapped to the number
+        // of segments they author. Every level ABSENT from this map is still held at a single
+        // unsegmented pass, so an accidental segment list anywhere else still fails the test.
+        // Level 5 is the only entry today; SALIN-280 (Level 10) and SALIN-273 (Level 15) add
+        // theirs when they author them.
+        private static readonly Dictionary<int, int> ExpectedSegmentCounts = new Dictionary<int, int>
+        {
+            { 5, 2 },
+        };
+
         [Test]
         public void EveryShippedLevel_PlansContextChallengeAndMemoryReward_SALIN223()
         {
@@ -70,16 +80,20 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         /// <summary>
-        /// SALIN-226. The pin that this ticket authors no content and changes no shipped
-        /// level's behaviour: <c>flowSegments</c> is empty on all fifteen levels, so every
-        /// one of them plans exactly one Defense/ContextChallenge pass and runs the flow it
-        /// ran before the alternating loop existed.
+        /// SALIN-226, narrowed by SALIN-283. Every shipped level still runs exactly one
+        /// Defense/ContextChallenge pass EXCEPT the levels that have deliberately authored a
+        /// segment list. A failure here that is NOT accompanied by authored segments means a
+        /// level lost or gained a segment list by accident.
         ///
-        /// When SALIN-247 / SALIN-249 / SALIN-252 author their segment lists, this
-        /// expectation must change with them — and a failure here that is NOT accompanied by
-        /// authored segments means a level lost or gained a segment list by accident.
-        /// SegmentPlanInvalid staying false is the stronger half: it would go true if a
-        /// level authored segments that its own waves or challenge sequence cannot honour.
+        /// D-010 authorises Levels 5, 10 and 15 to author segments, but only Level 5 actually
+        /// does so today, so the exemption set names ONLY 5. Levels 10 and 15 stay pinned at
+        /// one pass — exempting them pre-emptively would stop this test catching them gaining
+        /// a segment list by accident, which is the whole point of the guard. SALIN-280
+        /// (Level 10) and SALIN-273 (Level 15) each extend the set when they author theirs.
+        ///
+        /// SegmentPlanInvalid staying false is the stronger half and stays UNCONDITIONAL for
+        /// all fifteen levels: it goes true when a level authors segments that its own waves
+        /// or challenge sequence cannot honour.
         /// </summary>
         [Test]
         public void EveryShippedLevel_RunsASingleUnsegmentedFlowPass_SALIN226()
@@ -87,11 +101,24 @@ namespace Salinlahi.Tests.Editor.Gameplay
             foreach (LevelConfigSO level in LoadLevels())
             {
                 LevelPhasePlan plan = LevelPhasePlan.FromConfig(level);
+
+                Assert.IsFalse(plan.SegmentPlanInvalid,
+                    $"Level {level.levelNumber} reports an unusable segment plan.");
+
+                if (ExpectedSegmentCounts.TryGetValue(level.levelNumber, out int expectedSegments))
+                {
+                    Assert.AreEqual(expectedSegments, plan.SegmentCount,
+                        $"Level {level.levelNumber} authors an alternating flow and must plan "
+                        + "exactly its authored number of Defense/ContextChallenge passes.");
+                    Assert.AreEqual(expectedSegments, plan.Segments.Count,
+                        $"Level {level.levelNumber}'s authored segments were rejected, so the plan "
+                        + "collapsed back to a single unsegmented pass.");
+                    continue;
+                }
+
                 Assert.AreEqual(1, plan.SegmentCount,
                     $"Level {level.levelNumber} must still run one Defense/ContextChallenge "
                     + "pass: SALIN-226 ships the engine, not the content.");
-                Assert.IsFalse(plan.SegmentPlanInvalid,
-                    $"Level {level.levelNumber} reports an unusable segment plan.");
                 Assert.AreEqual(0, plan.Segments.Count,
                     $"Level {level.levelNumber} must author no flow segments yet.");
             }
