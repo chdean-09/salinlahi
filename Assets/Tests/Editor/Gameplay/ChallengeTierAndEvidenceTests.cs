@@ -27,6 +27,31 @@ public class ChallengeTierAndEvidenceTests
     // Tier presets
     // -------------------------------------------------------------------------
 
+    /// <summary>
+    /// SALIN-225 replacement coverage. ComboPowerResolverTests was the repo's ONLY caller of
+    /// <see cref="ChallengeTierPolicy.IsDefinedTier"/> and its only MinTier..MaxTier range walk.
+    /// That file is a combo test and was deleted whole, which would have silently removed
+    /// SALIN-222's authored-range coverage inside an unrelated removal. This restores it against
+    /// the surviving difficulty ladder rather than against the deleted combo mapping.
+    /// </summary>
+    [Test]
+    public void IsDefinedTier_IsTrueExactlyOverTheAuthoredRange()
+    {
+        for (int tier = ChallengeTierPolicy.MinTier; tier <= ChallengeTierPolicy.MaxTier; tier++)
+        {
+            Assert.IsTrue(ChallengeTierPolicy.IsDefinedTier(tier),
+                $"Tier {tier} is inside the authored range and must be reported as defined.");
+            Assert.AreEqual(tier, ChallengeTierPolicy.ForTier(tier).tier,
+                $"Every authored tier must resolve to its own preset, unclamped.");
+        }
+
+        foreach (int tier in new[] { int.MinValue, -1, 0, ChallengeTierPolicy.MaxTier + 1, 99, int.MaxValue })
+        {
+            Assert.IsFalse(ChallengeTierPolicy.IsDefinedTier(tier),
+                $"Tier {tier} is outside the authored range and must not be reported as defined.");
+        }
+    }
+
     [TestCase(1)]
     [TestCase(2)]
     public void ForTier_LowTiers_DisableHeartPenaltiesAndEmergencyHints(int tier)

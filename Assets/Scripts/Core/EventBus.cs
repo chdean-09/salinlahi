@@ -41,13 +41,6 @@ public static class EventBus
     public static event Action<IReadOnlyList<Enemy>> OnChainAttackHit;
     public static event Action<Enemy> OnChainAttackStep;
 
-    // -- Combo Events --
-    public static event Action<int> OnComboChanged; // int = current streak
-
-    // -- Focus Mode Events --
-    public static event Action OnFocusModeActivated;
-    public static event Action OnFocusModeDeactivated;
-
 // -- Pause Events --
     public static event Action OnGamePaused;
     public static event Action OnGameResumed;
@@ -91,7 +84,7 @@ public static class EventBus
     // -- Level Lifecycle Events --
     // SALIN-141. Raised once by GameManager.AbortCurrentLevelAttempt when the player
     // restarts or leaves a level. Every system holding per-attempt state (waves, boss,
-    // combo, stroke capture, progress caches) tears it down here, before the scene
+    // stroke capture, progress caches) tears it down here, before the scene
     // unloads, so nothing from the discarded attempt survives into the next one.
     public static event Action OnLevelAttemptAborted;
     // -- Learning Events --
@@ -125,9 +118,6 @@ public static class EventBus
     public static void RaiseAOETriggered(int defeatedCount) => OnAOETriggered?.Invoke(defeatedCount);
     public static void RaiseChainAttackHit(IReadOnlyList<Enemy> enemies) => OnChainAttackHit?.Invoke(enemies);
     public static void RaiseChainAttackStep(Enemy enemy) => OnChainAttackStep?.Invoke(enemy);
-    public static void RaiseComboChanged(int streak) => OnComboChanged?.Invoke(streak);
-    public static void RaiseFocusModeActivated() => OnFocusModeActivated?.Invoke();
-    public static void RaiseFocusModeDeactivated() => OnFocusModeDeactivated?.Invoke();
     public static void RaiseGamePaused() => OnGamePaused?.Invoke();
     public static void RaiseGameResumed() => OnGameResumed?.Invoke();
     public static void RaiseBossStarted(BossConfigSO config) => OnBossStarted?.Invoke(config);

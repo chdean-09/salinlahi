@@ -91,7 +91,8 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.That(ResetJourneyFlow.ConfirmBody, Does.Contain("restored words"));
             Assert.That(ResetJourneyFlow.ConfirmBody, Does.Contain("memories"));
             Assert.That(ResetJourneyFlow.ConfirmBody, Does.Contain("character unlocks"));
-            Assert.That(ResetJourneyFlow.ConfirmBody, Does.Contain("Endless Mode"));
+            Assert.That(ResetJourneyFlow.ConfirmBody, Does.Not.Contain("Endless Mode"),
+                "SALIN-225 removed Endless Mode, so the reset copy must not promise to clear it.");
             Assert.That(ResetJourneyFlow.ConfirmBody, Does.Contain("audio settings"));
             Assert.That(ResetJourneyFlow.ConfirmBody, Does.Contain("update history"));
         }

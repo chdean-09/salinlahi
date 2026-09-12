@@ -62,9 +62,6 @@ public class LevelConfigSO : ScriptableObject
     public bool isAvailableInLite = true;
 
     [Header("Advanced Combat")]
-    [Tooltip("If false, combo streaks may be tracked internally but cannot activate Focus Mode in this level.")]
-    public bool focusModeEnabled = true;
-
     [Tooltip("If false, matching multiple enemies resolves as a normal closest-target kill instead of a multi-kill chain.")]
     public bool multiKillChainEnabled = true;
 

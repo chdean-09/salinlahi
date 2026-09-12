@@ -15,7 +15,6 @@ namespace Salinlahi.Tests.Editor.Gameplay
         [SetUp]
         public void SetUp()
         {
-            ClearSingletonInstance<ComboManager>();
             ClearSingletonInstance<EnemyPool>();
             var trackerGo = new GameObject("ActiveEnemyTracker_Edge_Test");
             _tracker = trackerGo.AddComponent<ActiveEnemyTracker>();
@@ -29,7 +28,6 @@ namespace Salinlahi.Tests.Editor.Gameplay
         {
             ClearSingletonInstance<ActiveEnemyTracker>();
             ClearSingletonInstance<EnemyPool>();
-            ClearSingletonInstance<ComboManager>();
             RecognitionLogger.ClearLog();
 
             for (int i = _objectsToDestroy.Count - 1; i >= 0; i--)
@@ -129,30 +127,8 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
-        public void Combo_DecoyOnlyStroke_BreaksExistingStreak()
+        public void CombatResolver_MixedBurst_DefeatsNothing_AndPenalizesDecoys()
         {
-            ComboManager combo = CreateComboManager();
-            CreatePlayerBaseWithHeartSystem();
-
-            BaybayinCharacterSO warmup = CreateCharacter("KA", "ka");
-            CreateEnemy(warmup, isDecoy: false, yPosition: -0.5f);
-            int streakBeforeWarmup = combo.CurrentStreak;
-            InvokePrivate<object>(CreateResolver(), "HandleCharacterRecognized", warmup.characterID);
-            Assert.GreaterOrEqual(combo.CurrentStreak, streakBeforeWarmup);
-
-            BaybayinCharacterSO assigned = CreateCharacter("BA", "ba");
-            CreateEnemy(assigned, isDecoy: true, yPosition: -1f);
-            CombatResolver resolver = CreateResolver();
-
-            InvokePrivate<object>(resolver, "HandleCharacterRecognized", assigned.characterID);
-
-            Assert.AreEqual(0, combo.CurrentStreak);
-        }
-
-        [Test]
-        public void CombatResolver_MixedBurst_CombosOnlyNonDecoys_AndPenalizesDecoys()
-        {
-            ComboManager combo = CreateComboManager();
             HeartSystem heartSystem = CreatePlayerBaseWithHeartSystem();
             CombatResolver resolver = CreateResolver();
             BaybayinCharacterSO assigned = CreateCharacter("BA", "ba");
@@ -171,7 +147,6 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 InvokePrivate<object>(resolver, "HandleCharacterRecognized", assigned.characterID);
 
                 Assert.AreEqual(0, defeatedCount);
-                Assert.AreEqual(0, combo.CurrentStreak);
                 Assert.GreaterOrEqual(_tracker.ActiveCount, 0);
                 Assert.LessOrEqual(heartSystem.GetCurrentHearts(), heartSystem.GetMaxHearts());
                 RecognitionLogger.Flush();
@@ -191,12 +166,9 @@ namespace Salinlahi.Tests.Editor.Gameplay
         [Test]
         public void CombatResolver_DecoyOnlyBurst_AppliesPenaltyPerDecoy_WithoutDefeats()
         {
-            ComboManager combo = CreateComboManager();
             HeartSystem heartSystem = CreatePlayerBaseWithHeartSystem();
             CombatResolver resolver = CreateResolver();
             BaybayinCharacterSO assigned = CreateCharacter("BA", "ba");
-
-            Assert.AreEqual(0, combo.CurrentStreak);
 
             CreateEnemy(assigned, isDecoy: true, yPosition: -1f);
             CreateEnemy(assigned, isDecoy: true, yPosition: -2f);
@@ -212,7 +184,6 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 InvokePrivate<object>(resolver, "HandleCharacterRecognized", assigned.characterID);
 
                 Assert.AreEqual(0, defeatedCount);
-                Assert.AreEqual(0, combo.CurrentStreak);
                 Assert.GreaterOrEqual(_tracker.ActiveCount, 0);
                 Assert.LessOrEqual(heartSystem.GetCurrentHearts(), heartSystem.GetMaxHearts());
                 RecognitionLogger.Flush();
@@ -287,24 +258,6 @@ namespace Salinlahi.Tests.Editor.Gameplay
             var go = new GameObject("CombatResolver_Edge_Test");
             _objectsToDestroy.Add(go);
             return go.AddComponent<CombatResolver>();
-        }
-
-        private ComboManager CreateComboManager()
-        {
-            var go = new GameObject("ComboManager_Edge_Test");
-            go.SetActive(false);
-            _objectsToDestroy.Add(go);
-
-            var config = ScriptableObject.CreateInstance<GameConfigSO>();
-            config.focusModeThreshold = 99;
-            config.focusModeDuration = 2f;
-            config.focusModeSpeedMultiplier = 0.5f;
-            _objectsToDestroy.Add(config);
-
-            var combo = go.AddComponent<ComboManager>();
-            SetPrivateField(combo, "_config", config);
-            go.SetActive(true);
-            return combo;
         }
 
         private HeartSystem CreatePlayerBaseWithHeartSystem()

@@ -249,8 +249,9 @@ public sealed class CampaignOutcomeCoordinator
             if (LevelObjectiveGate.AllSatisfied(level))
                 FindLevel(document, levels[index + 1]).unlocked = true;
         }
-        else if (index == levels.Count - 1)
-            document.progress.endlessModeUnlocked = true;
+
+        // SALIN-225 removed the Endless Mode unlock that completing the last level used to set.
+        // The `endlessModeUnlocked` field stays on the document -- see CampaignSaveDocument.
 
         UnionSorted(document.progress.unlockedSymbolIds, outcome.unlockedSymbolIds);
         UnionSorted(document.progress.unlockedMemoryIds, outcome.unlockedMemoryIds);
@@ -340,8 +341,9 @@ public sealed class CampaignOutcomeCoordinator
             LevelObjectiveGate.AllSatisfied(level) &&
             !FindLevel(document, levels[index + 1]).unlocked)
             return false;
-        if (index == levels.Count - 1 && !document.progress.endlessModeUnlocked)
-            return false;
+        // SALIN-225: the matching endless-flag assertion went with the write in
+        // ApplyLevelProgression. Keeping it would wedge the outcome journal into
+        // published-outcome-verification-failed on the final level.
         return ContainsAll(document.progress.unlockedSymbolIds, outcome.unlockedSymbolIds) &&
             ContainsAll(document.progress.unlockedMemoryIds, outcome.unlockedMemoryIds) &&
             ContainsAll(document.progress.claimedRewardIds, outcome.claimedRewardIds);

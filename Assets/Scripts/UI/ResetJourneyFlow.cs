@@ -16,7 +16,7 @@ public static class ResetJourneyFlow
     public const string ConfirmTitle = "Reset your journey?";
     public const string ConfirmBody =
         "This will clear: level progress and stars, restored words and symbols, " +
-        "unlocked memories, character unlocks, and Endless Mode. " +
+        "unlocked memories and character unlocks. " +
         "This will keep: your audio settings and your journey's update history. " +
         "This cannot be undone.";
     public const string ConfirmButtonLabel = "Reset Journey";

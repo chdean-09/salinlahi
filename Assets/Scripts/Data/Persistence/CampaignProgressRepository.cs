@@ -14,7 +14,6 @@ public sealed class CampaignProgressRepository
 
     public string ActiveLevelId => _service.Current?.progress?.activeLevelId;
     public string CurrentJourneyGenerationId => _service.Current?.progress?.journeyGenerationId;
-    public bool IsEndlessModeUnlocked => _service.Current?.progress?.endlessModeUnlocked == true;
 
     public bool TrySetActiveLevel(string levelId)
     {
@@ -99,13 +98,6 @@ public sealed class CampaignProgressRepository
             record.lastCompletedBeatIndex = Math.Max(record.lastCompletedBeatIndex, lastCompletedBeatIndex);
             document.progress.tutorialProgress.Sort((a, b) => string.CompareOrdinal(a.levelId, b.levelId));
         });
-    }
-
-    public bool TryUnlockEndlessMode()
-    {
-        if (_service.Current.progress.endlessModeUnlocked) return true;
-        if (!FindLevel(LevelIds()[LevelIds().Count - 1]).completed) return false;
-        return _service.TryUpdate(document => document.progress.endlessModeUnlocked = true);
     }
 
     public bool TryResetJourney()

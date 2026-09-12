@@ -29,8 +29,6 @@ namespace Salinlahi.Tests.Editor.Onboarding
                 Assert.NotNull(host.GetComponent<ProtagonistIntroBeat>());
                 Assert.NotNull(host.GetComponent<BaseIntroBeat>());
                 Assert.NotNull(host.GetComponent<SoloTeachBeat>());
-                Assert.IsNull(host.GetComponent<ComboTeachBeat>(),
-                    "Level 1 onboarding must not attach the multi-kill chain tutorial beat.");
                 Assert.NotNull(host.GetComponent<HeartLossDemoBeat>());
                 Assert.NotNull(host.GetComponent<ReleaseBeat>());
                 Assert.AreEqual(5, host.GetComponents<OnboardingBeat>().Length);
@@ -42,7 +40,7 @@ namespace Salinlahi.Tests.Editor.Onboarding
         }
 
         [Test]
-        public void LegacyLevelOneSequence_ConvertsAllStepsToBasicTeachSteps_WithoutComboTeach()
+        public void LegacyLevelOneSequence_ConvertsAllStepsToBasicTeachSteps()
         {
             GameObject host = new("Level1OnboardingControllerHost");
             LevelConfigSO levelConfig = ScriptableObject.CreateInstance<LevelConfigSO>();
@@ -70,11 +68,9 @@ namespace Salinlahi.Tests.Editor.Onboarding
                 Assert.IsNotNull(sequence);
                 Assert.AreEqual(new[] { ba, ou, ha }, sequence.basicTeachSteps);
                 Assert.AreSame(ba, sequence.soloTeachStep);
-                Assert.IsNull(sequence.comboTeachStep);
                 Assert.AreSame(haCharacter, sequence.heartLossDemoCharacter);
                 Assert.AreSame(haEnemy, sequence.heartLossDemoEnemyData);
                 Assert.Contains(OnboardingBeatType.SoloTeach, sequence.beatOrder);
-                Assert.IsFalse(System.Array.Exists(sequence.beatOrder, beat => beat == OnboardingBeatType.ComboTeach));
             }
             finally
             {
@@ -195,18 +191,22 @@ namespace Salinlahi.Tests.Editor.Onboarding
             }
         }
 
+        /// <summary>
+        /// SALIN-225 guard. Replaces the old assertion that level 2 was forced to
+        /// [ComboTeach, FocusModeTeach, Release]. Proving the arm still FORCES an order matters:
+        /// if it silently stopped normalizing, level 2 would run whatever the asset carried.
+        /// </summary>
         [Test]
-        public void NormalizeSequenceForLevel_LevelTwoForcesAdvancedBeatOrder()
+        public void NormalizeSequenceForLevel_LevelTwoForcesReleaseOnlyBeatOrder()
         {
             OnboardingSequenceSO sequence = ScriptableObject.CreateInstance<OnboardingSequenceSO>();
-            Level1TutorialStepSO comboStep = ScriptableObject.CreateInstance<Level1TutorialStepSO>();
 
             try
             {
-                sequence.comboTeachStep = comboStep;
                 sequence.beatOrder = new[]
                 {
-                    OnboardingBeatType.ComboTeach,
+                    OnboardingBeatType.SoloTeach,
+                    OnboardingBeatType.HeartLossDemo,
                     OnboardingBeatType.Release,
                 };
 
@@ -215,24 +215,13 @@ namespace Salinlahi.Tests.Editor.Onboarding
                     LevelTutorialProgress.Level2TutorialLevelNumber);
 
                 Assert.AreEqual(
-                    new[]
-                    {
-                        OnboardingBeatType.ComboTeach,
-                        OnboardingBeatType.FocusModeTeach,
-                        OnboardingBeatType.Release,
-                    },
-                    sequence.beatOrder);
-                Assert.AreSame(comboStep, sequence.focusPracticeStep);
-                Assert.AreEqual(2, sequence.focusPracticeKillCount);
-                Assert.AreSame(comboStep, sequence.focusChainStep);
-                Assert.AreEqual(3, sequence.focusChainEnemyCount);
-                Assert.IsFalse(string.IsNullOrWhiteSpace(sequence.focusModeIntro.fallbackText));
-                Assert.IsFalse(string.IsNullOrWhiteSpace(sequence.focusChainIntro.fallbackText));
+                    new[] { OnboardingBeatType.Release },
+                    sequence.beatOrder,
+                    "Level 2 teaches nothing after SALIN-225: Release is the only beat that survives.");
             }
             finally
             {
                 Object.DestroyImmediate(sequence);
-                Object.DestroyImmediate(comboStep);
             }
         }
 

@@ -35,14 +35,6 @@ namespace Salinlahi.Tests.Editor.Onboarding
             AssertValidFrameTemplate(sequence.basicTeachVideos[2], "Level 1 HA");
         }
 
-        [Test]
-        public void LevelTwoAdvancedOnboardingSequence_UsesBAComboFrameHint()
-        {
-            OnboardingSequenceSO sequence = LoadSequence(Level2SequencePath);
-
-            AssertValidFrameTemplate(sequence.comboTeachVideo, "Level 2 BA combo");
-        }
-
         private static OnboardingSequenceSO LoadSequence(string path)
         {
             OnboardingSequenceSO sequence = AssetDatabase.LoadAssetAtPath<OnboardingSequenceSO>(path);

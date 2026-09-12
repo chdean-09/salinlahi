@@ -10,7 +10,6 @@ public class EnemyMover : MonoBehaviour
     private float _speed;
     private bool _active;
     private bool _externallyMoving;
-    private float _focusSpeedMultiplier = 1f;
     public bool IsMoving => _externallyMoving || (_active && GetFinalSpeed() > Mathf.Epsilon);
 
     // For movers that drive the transform externally (e.g. PhaseBasedMovement
@@ -40,18 +39,11 @@ public class EnemyMover : MonoBehaviour
         return cam != null ? cam.CorridorSpeedNormalizationScale : 1f;
     }
 
+    // SALIN-225 removed Focus Mode, which was this base class's only enable/disable work.
+    // The hooks stay because KishaMover and BossEnemy chain to them via base.OnEnable()
+    // and base.OnDisable(); deleting them would break those overrides.
     protected virtual void OnEnable()
     {
-        EventBus.OnFocusModeActivated += HandleFocusOn;
-        EventBus.OnFocusModeDeactivated += HandleFocusOff;
-
-        // If Focus Mode is already active when this enemy spawns,
-        // apply the slowdown immediately.
-        if (ComboManager.Instance != null
-            && ComboManager.Instance.IsFocusModeActive)
-        {
-            HandleFocusOn();
-        }
     }
 
     public void Stop() => _active = false;
@@ -102,20 +94,6 @@ public class EnemyMover : MonoBehaviour
 
     protected virtual void OnDisable()
     {
-        EventBus.OnFocusModeActivated -= HandleFocusOn;
-        EventBus.OnFocusModeDeactivated -= HandleFocusOff;
-        _focusSpeedMultiplier = 1f;
-    }
-
-    private void HandleFocusOn()
-    {
-        if (ComboManager.Instance != null)
-            _focusSpeedMultiplier = ComboManager.Instance.FocusSpeedMultiplier;
-    }
-
-    private void HandleFocusOff()
-    {
-        _focusSpeedMultiplier = 1f;
     }
 
     protected float GetFinalSpeed()
@@ -123,7 +101,7 @@ public class EnemyMover : MonoBehaviour
         if (IsSandboxMovementPaused())
             return 0f;
 
-        return _speed * _focusSpeedMultiplier * GetSandboxMovementSpeedScale();
+        return _speed * GetSandboxMovementSpeedScale();
     }
 
     private static bool IsSandboxMovementPaused()

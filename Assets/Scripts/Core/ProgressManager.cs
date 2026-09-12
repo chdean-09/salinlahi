@@ -14,6 +14,8 @@ using UnityEngine.SceneManagement;
 public class ProgressManager : Singleton<ProgressManager>
 {
     public const string SelectedLevelKey = "SelectedLevel";
+    // SALIN-225 removed Endless Mode. The key is KEPT so ClearAllProgress still deletes it from
+    // legacy saves that carry it, and so LegacyProgressKeyCatalog's historical v0 shape is intact.
     public const string EndlessModeKey = "salinlahi.progress.endless_unlocked";
     public const int Level1FtueTutorialLevelNumber = 1;
     public const string Level1FtueSeenKey = "salinlahi.tutorial.level1_ftue_seen";
@@ -544,11 +546,6 @@ public class ProgressManager : Singleton<ProgressManager>
             PlayerPrefs.SetInt(UnlockedKey(nextLevelID), 1);
             DebugLogger.Log($"ProgressManager: Unlocked Level {nextLevelID}");
         }
-        else if (levelID == TotalLevels)
-        {
-            // All levels completed - unlock endless mode
-            UnlockEndlessMode();
-        }
 
         // Save immediately to ensure persistence before any scene transition
         PlayerPrefs.Save();
@@ -619,36 +616,6 @@ public class ProgressManager : Singleton<ProgressManager>
             total += GetStars(i);
         }
         return total;
-    }
-
-    /// <summary>
-    /// Returns true if endless mode is unlocked.
-    /// Endless mode unlocks when all levels are completed.
-    /// </summary>
-    public bool IsEndlessModeUnlocked()
-    {
-        if (UsesRevisedProgress)
-            return SaveManager.Instance.Repository.IsEndlessModeUnlocked;
-        if (IsRevisedBlocked) return false;
-        return PlayerPrefs.GetInt(EndlessModeKey, 0) == 1;
-    }
-
-    /// <summary>
-    /// Unlocks endless mode.
-    /// </summary>
-    public void UnlockEndlessMode()
-    {
-        if (UsesRevisedProgress)
-        {
-            SaveManager.Instance.Repository.TryUnlockEndlessMode();
-            return;
-        }
-        if (IsRevisedBlocked) return;
-        if (!IsEndlessModeUnlocked())
-        {
-            PlayerPrefs.SetInt(EndlessModeKey, 1);
-            DebugLogger.Log("ProgressManager: Endless mode unlocked!");
-        }
     }
 
     /// <summary>

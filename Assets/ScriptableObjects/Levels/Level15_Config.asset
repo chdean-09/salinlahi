@@ -387,7 +387,6 @@ MonoBehaviour:
   allowedEnemyTypes: []
   bossConfig: {fileID: 11400000, guid: 0a29d2a7d971a498388b85daf1ab2ad8, type: 2}
   isAvailableInLite: 0
-  focusModeEnabled: 1
   multiKillChainEnabled: 1
   tutorialSequence: {fileID: 0}
   onboardingSequence: {fileID: 0}

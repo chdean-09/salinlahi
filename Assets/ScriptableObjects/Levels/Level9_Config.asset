@@ -382,7 +382,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
   bossConfig: {fileID: 0}
   isAvailableInLite: 0
-  focusModeEnabled: 1
   multiKillChainEnabled: 1
   tutorialSequence: {fileID: 0}
   onboardingSequence: {fileID: 0}
