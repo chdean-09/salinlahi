@@ -184,8 +184,6 @@ erDiagram
 
     DefenseRules {
         int shrineHearts
-        bool focusModeEnabled
-        bool multiKillChainEnabled
     }
 
     ContentMediaReferences {

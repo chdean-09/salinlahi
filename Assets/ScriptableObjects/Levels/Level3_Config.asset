@@ -127,8 +127,6 @@ MonoBehaviour:
   audioVisualFallback: 4
   defenseRules:
     shrineHearts: 3
-    focusModeEnabled: 1
-    multiKillChainEnabled: 1
   contextMedia:
     contextImage: {fileID: 0}
     narrationClip: {fileID: 0}
@@ -242,6 +240,7 @@ MonoBehaviour:
     emergencyHintEnabled: 0
     emergencyHintsPerAttempt: 1
     emergencyHintScorePenalty: 0.1
+  flowSegments: []
   introDialogue: {fileID: 11400000, guid: f07748007a6514f3a980cb4a7d8dab2b, type: 2}
   outroDialogue: {fileID: 11400000, guid: 6db8ebe772f104fe2a1ab550b52e6046, type: 2}
   bgmClip: {fileID: 0}

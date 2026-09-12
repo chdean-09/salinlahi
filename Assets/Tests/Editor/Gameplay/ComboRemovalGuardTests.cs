@@ -65,6 +65,38 @@ public class ComboRemovalGuardTests
             "focusModeEnabled is the field SALIN-225 actually removes.");
     }
 
+    /// <summary>
+    /// G1c — SALIN-282. DefenseRules carried a SECOND, nested copy of both flags, and the guard
+    /// above reasons only about the top-level LevelConfigSO pair, so the nested pair survived the
+    /// first removal unasserted either way. The focusModeEnabled copy was a plain SALIN-225 miss.
+    /// The multiKillChainEnabled copy was worse: it SHADOWED the live LevelConfigSO field and
+    /// disagreed with it on Level 1 -- nested read 1 while the live field read 0 -- so the
+    /// Inspector showed the AOE mass-clear enabled on the one level where it is off. Asserted
+    /// absent so neither can come back the way they survived the first cut.
+    /// </summary>
+    [Test]
+    public void DefenseRules_NoLongerCarriesTheShadowedFlagCopies()
+    {
+        Assert.That(typeof(DefenseRules).GetField("focusModeEnabled"), Is.Null,
+            "DefenseRules.focusModeEnabled is a Focus Mode remnant ruling Q15 cut. Nothing read "
+            + "it; finding it back means the nested copy was reinstated.");
+        Assert.That(typeof(DefenseRules).GetField("multiKillChainEnabled"), Is.Null,
+            "DefenseRules.multiKillChainEnabled shadowed the live LevelConfigSO field of the same "
+            + "name and disagreed with it on Level 1. Re-adding it restores a trap where toggling "
+            + "the Inspector value changes nothing.");
+
+        // Anti-overshoot guards. Both of these are LIVE, and the failure mode this test exists to
+        // prevent is someone "tidying" the whole DefenseRules block or the near-homograph field.
+        Assert.That(typeof(DefenseRules).GetField("shrineHearts"), Is.Not.Null,
+            "shrineHearts is LIVE -- CampaignConfigValidator reads it to require defense rules on "
+            + "every level. It must not go with the two dead flags.");
+        Assert.That(typeof(LevelConfigSO).GetField("multiKillChainEnabled"), Is.Not.Null,
+            "The TOP-LEVEL multiKillChainEnabled is the live field CombatResolver reads to gate "
+            + "the AOE mass-clear that SALIN-241 teaches at Level 2. Deleting this one instead of "
+            + "the nested copy compiles and passes validation while silently disabling a shipped "
+            + "mechanic.");
+    }
+
     /// <summary>G2 — the beat types are gone from the enum AND from Level 2's authored beat order.</summary>
     [Test]
     public void Level2Onboarding_NoLongerDefinesOrSchedulesTheTeachBeats()
