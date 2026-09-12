@@ -8,8 +8,16 @@ public static class ContentIdentity
     public const int RevisedFocusWordsPerLevel = 2;
     public const int RevisedSpokenValueCount = 18;
     public const string RevisedDaraSymbolId = "symbol.dara";
+    public const string RevisedRaSymbolId = "symbol.ra";
     public const string RevisedDaSpokenValueId = "value.da";
     public const string RevisedRaSpokenValueId = "value.ra";
+
+    // SALIN-217: PA is no longer the finale symbol (ruling Q1 moved that to YA), but
+    // ValidatePaInstructionOrder still has to mean PA. It reaches PA through IsPa, which used to
+    // read RevisedFinaleSymbolId back when the two happened to coincide. Naming PA explicitly keeps
+    // that rule pinned to PA instead of silently following the finale wherever it goes next.
+    public const string RevisedPaSymbolId = "symbol.pa";
+    public const string RevisedPaSpokenValueId = "value.pa";
 
     public const string ApprovedWorkbookSha256 =
         "33f7355fce8c0154650bf18589879e75a6da51538d1b798769242bebe47c8e83";
@@ -22,14 +30,20 @@ public static class ContentIdentity
         "symbol.a", "symbol.ei", "symbol.ba", "symbol.ma", "symbol.na",
         "symbol.ta", "symbol.ou", "symbol.ka", "symbol.ga", "symbol.sa",
         "symbol.wa", "symbol.ya", RevisedDaraSymbolId, "symbol.ha", "symbol.la",
-        "symbol.nga", "symbol.pa",
+        "symbol.nga", RevisedRaSymbolId, RevisedPaSymbolId,
     };
 
     public static readonly IReadOnlyList<string> RevisedLevelIds = CreateLevelIds();
     public static readonly string RevisedFinaleLevelId =
         RevisedLevelIds[RevisedLevelIds.Count - 1];
-    public static readonly string RevisedFinaleSymbolId =
-        RevisedSymbolIds[RevisedSymbolIds.Count - 1];
+    // SALIN-217, ruling Q1 (routed here by plan-review R9): YA closes the campaign, not PA.
+    //
+    // This was RevisedSymbolIds[Count - 1] — the finale was whatever happened to be last in the
+    // array. Do not restore that. Plan-review R8 exists only because of it: adding any symbol at
+    // the end silently moved the finale, so R8 had to forbid appending RA last. Naming the finale
+    // makes that whole class of accident impossible, which is why symbol.ra can now sit before
+    // symbol.pa (AC-13) while the finale stays YA.
+    public const string RevisedFinaleSymbolId = "symbol.ya";
     public static readonly string RevisedFinaleSpokenValueId =
         "value." + RevisedFinaleSymbolId.Substring("symbol.".Length);
 

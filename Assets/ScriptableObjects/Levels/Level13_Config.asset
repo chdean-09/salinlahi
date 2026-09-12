@@ -52,6 +52,8 @@ MonoBehaviour:
     spokenValueId: value.la
   - symbol: {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
     spokenValueId: value.nga
+  - symbol: {fileID: 11400000, guid: 17e3fad969764564bf71a5ba85567115, type: 2}
+    spokenValueId: value.ra
   learningRequirements: []
   practiceRequirements: []
   activeClueCombatEnabled: 0
@@ -181,6 +183,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
   - {fileID: 11400000, guid: 9aae464ed65b8416b9aa3ad6ee4ce2c4, type: 2}
   - {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
+  - {fileID: 11400000, guid: 17e3fad969764564bf71a5ba85567115, type: 2}
   allowedEnemyTypes:
   - {fileID: 11400000, guid: c5f91a4c7515047cabd59ea63b9bfef6, type: 2}
   - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}

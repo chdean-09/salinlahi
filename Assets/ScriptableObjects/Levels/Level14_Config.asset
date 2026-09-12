@@ -88,6 +88,8 @@ MonoBehaviour:
     spokenValueId: value.la
   - symbol: {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
     spokenValueId: value.nga
+  - symbol: {fileID: 11400000, guid: 17e3fad969764564bf71a5ba85567115, type: 2}
+    spokenValueId: value.ra
   learningRequirements:
   - kind: 1
     symbolValue:
@@ -493,6 +495,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
   - {fileID: 11400000, guid: 9aae464ed65b8416b9aa3ad6ee4ce2c4, type: 2}
   - {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
+  - {fileID: 11400000, guid: 17e3fad969764564bf71a5ba85567115, type: 2}
   allowedEnemyTypes:
   - {fileID: 11400000, guid: c5f91a4c7515047cabd59ea63b9bfef6, type: 2}
   - {fileID: 11400000, guid: e89a049d218824eb18439081351d8c5e, type: 2}

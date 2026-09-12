@@ -22,9 +22,11 @@ public static class RevisedCampaignBootstrap
         "Assets/ScriptableObjects/Challenges/Challenge_Ugat01_Context.asset";
     private const string LearningTuningPath = "Assets/ScriptableObjects/LearningTuning.asset";
 
-    // Visual symbol -> (character asset, introduction level). DA and RA are
-    // contextual values of the single symbol.dara identity (Char_DA); Char_RA
-    // stays a legacy asset outside the revised catalog. OU is introduced at
+    // Visual symbol -> (character asset, introduction level). SALIN-217 (ruling Q2,
+    // reaffirmed by OQ-6): DA and RA are two taught identities, so Char_RA is a full
+    // member of the revised catalog, introduced at level.pamana.03 per ruling R8, and
+    // symbol.dara carries value.da alone. symbol.dara keeps its name because renaming
+    // it is a save migration owned by SALIN-227. OU is introduced at
     // level.ugnayan.04 (OO/UNA), confirmed against the approved workbook matrix
     // under SALIN-204; it was previously level.ugat.04, which put OU in the Ugat
     // Levels 4-5 pools even though no Ugat focus word uses it.
@@ -46,6 +48,7 @@ public static class RevisedCampaignBootstrap
         ("symbol.ha", "Char_HA", "level.pamana.02"),
         ("symbol.la", "Char_LA", "level.pamana.01"),
         ("symbol.nga", "Char_NGA", "level.pamana.02"),
+        ("symbol.ra", "Char_RA", "level.pamana.03"),
         ("symbol.pa", "Char_PA", "level.pamana.05"),
     };
 
@@ -80,11 +83,13 @@ public static class RevisedCampaignBootstrap
 
             character.stableId = symbolId;
             character.firstIntroductionLevelId = introLevelId;
+            // SALIN-217: symbol.dara emits value.da only — value.ra now belongs to symbol.ra, which
+            // takes the generic branch. Left as it was, a bootstrap run would put value.ra back on
+            // Char_DA and drop the catalog to 17 again.
             character.spokenValues = symbolId == ContentIdentity.RevisedDaraSymbolId
                 ? new List<SpokenValueDefinition>
                 {
-                    SpokenValue("value.da", "da", character),
-                    SpokenValue("value.ra", "ra", character),
+                    SpokenValue(ContentIdentity.RevisedDaSpokenValueId, "da", character),
                 }
                 : new List<SpokenValueDefinition>
                 {

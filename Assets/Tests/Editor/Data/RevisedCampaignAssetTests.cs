@@ -132,13 +132,21 @@ namespace Salinlahi.Tests.Editor.Data
             CampaignConfigSO campaign = LoadCampaign();
             Assert.IsNotNull(campaign);
 
-            Assert.AreEqual(17, campaign.symbols.Count);
+            Assert.AreEqual(18, campaign.symbols.Count);
             Assert.AreEqual(18, campaign.symbols.Sum(symbol => symbol.spokenValues.Count),
-                "Exactly eighteen contextual spoken values across seventeen symbols.");
+                "Exactly eighteen contextual spoken values across eighteen symbols.");
 
+            // SALIN-217 (ruling Q2 / OQ-6): DA and RA are separate visual identities, one spoken
+            // value each, rather than two readings carried by symbol.dara.
             Assert.IsTrue(campaign.TryGetSymbol("symbol.dara", out BaybayinCharacterSO dara));
             Assert.IsTrue(dara.TryGetSpokenValue("value.da", out _));
-            Assert.IsTrue(dara.TryGetSpokenValue("value.ra", out _));
+            Assert.IsFalse(dara.TryGetSpokenValue("value.ra", out _),
+                "value.ra moved off symbol.dara onto its own symbol.ra identity.");
+
+            Assert.IsTrue(campaign.TryGetSymbol("symbol.ra", out BaybayinCharacterSO ra));
+            Assert.IsTrue(ra.TryGetSpokenValue("value.ra", out _));
+            Assert.AreEqual("level.pamana.03", ra.firstIntroductionLevelId,
+                "Ruling R8 introduces RA at Level 13.");
 
             foreach (string symbolId in new[] { "symbol.ei", "symbol.na", "symbol.a", "symbol.ma" })
             {
