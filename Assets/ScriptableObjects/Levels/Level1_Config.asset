@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 98c3e4f7bd9686740a8cd775acf3cbef, type: 3}
   m_Name: Level1_Config
   m_EditorClassIdentifier: Assembly-CSharp::LevelConfigSO
-  levelName: Level 1
+  levelName: Ang Unang Tinig
   levelNumber: 1
   chapterNumber: 1
   chapterName: Ugat

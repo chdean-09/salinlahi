@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 98c3e4f7bd9686740a8cd775acf3cbef, type: 3}
   m_Name: Level13_Config
   m_EditorClassIdentifier: Salinlahi.Runtime::LevelConfigSO
-  levelName: Kempei Patrol
+  levelName: Sanga ng Hinaharap
   levelNumber: 13
-  chapterNumber: 1
+  chapterNumber: 3
   chapterName: Pamana
   stableId: level.pamana.03
   eraLocalOrder: 3
