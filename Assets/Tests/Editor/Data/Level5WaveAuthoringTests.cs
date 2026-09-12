@@ -13,14 +13,17 @@ namespace Salinlahi.Tests.Editor.Data
     /// every enemy legal at Level 5 is maxHealth: 1 and every multi-hit enemy in
     /// the project is bound to a symbol first taught at Level 6 or later.
     ///
-    /// Two assertions here look backwards and are deliberate:
-    ///   * <see cref="Level5_StillDeclaresItsBossConfig"/> — D-026 holds bossConfig
-    ///     until SALIN-273 clears it. Clearing it early strands the level.
-    ///   * <see cref="Level5_DeclaresNoFlowSegmentsYet"/> — owner ruling R3 moved
-    ///     flowSegments to SALIN-273 so segments and the bossConfig clear land in
-    ///     one commit; authoring segments while bossConfig is set would make the
-    ///     level run its boss twice (WaveManager.cs:433-437).
-    /// When SALIN-273 lands, both assertions should be DELETED, not inverted.
+    /// SALIN-283 (split out of SALIN-273) activated the level: it cleared bossConfig
+    /// and authored flowSegments in one commit. The two scaffold assertions that held
+    /// the pre-activation state — <c>Level5_StillDeclaresItsBossConfig</c> and
+    /// <c>Level5_DeclaresNoFlowSegmentsYet</c> — were DELETED per this fixture's own
+    /// standing instruction, not inverted, and replaced by
+    /// <see cref="Level5_DeclaresNoBossConfig"/> and
+    /// <see cref="Level5_AuthorsItsAlternatingFlowSegments"/>.
+    ///
+    /// Both changes had to land in one commit: authoring segments while bossConfig was
+    /// still set would make the level run its boss twice, because the boss branch at
+    /// WaveManager.cs:433-437 returns before the segment's wave range is ever read.
     /// </summary>
     [TestFixture]
     public sealed class Level5WaveAuthoringTests
@@ -153,28 +156,61 @@ namespace Salinlahi.Tests.Editor.Data
         }
 
         [Test]
-        public void Level5_StillDeclaresItsBossConfig()
+        public void Level5_DeclaresNoBossConfig()
         {
             LevelConfigSO level = LoadLevelFive();
 
-            Assert.IsNotNull(level.bossConfig,
-                "D-026 LOCKED: clearing Level 5's bossConfig belongs to SALIN-273, held until these " +
-                "waves land. Delete this assertion when SALIN-273 lands; do not invert it.");
+            Assert.IsNull(level.bossConfig,
+                "D-002: Level 5 has no boss phase. A non-null bossConfig is not merely cosmetic here — " +
+                "the boss branch at WaveManager.cs:433-437 returns before the segment's wave range is " +
+                "read (that clamp is computed later, at WaveManager.cs:452-454), so the segment slice is " +
+                "discarded and the flow machine's backward edge (LevelFlowMachine.cs:90-95) re-enters " +
+                "Defense and runs the whole boss encounter a second time.");
         }
 
         [Test]
-        public void Level5_DeclaresNoFlowSegmentsYet()
+        public void Level5_AuthorsItsAlternatingFlowSegments()
         {
             LevelConfigSO level = LoadLevelFive();
 
-            Assert.IsEmpty(level.flowSegments,
-                "Owner ruling R3: flowSegments move to SALIN-273 so they land in the same commit as the " +
-                "bossConfig clear. Authoring them now would run the boss twice (WaveManager.cs:433-437). " +
-                "Delete this assertion when SALIN-273 lands; do not invert it.");
-
             Assert.IsFalse(level.challengePrototypeEnabled,
-                "challengePrototypeEnabled must stay false or SALIN-273's segment plan is rejected " +
+                "challengePrototypeEnabled must stay false or the segment plan is rejected " +
                 "outright (LevelPhasePlan.cs:200-204).");
+
+            Assert.AreEqual(2, level.flowSegments.Count,
+                "SALIN-283 authors a two-segment alternating flow: clear waves 1-2, restore IBA, " +
+                "clear wave 3, restore MANA.");
+
+            Assert.AreEqual(2, level.flowSegments[0].waveCount,
+                "Segment 0 runs waves 1-2. Unit ugat05-complete-iba's decoy set includes MA, which " +
+                "wave 2 introduces, so restoring after wave 1 would offer a decoy the player has " +
+                "never met.");
+            CollectionAssert.AreEqual(
+                new[] { "ugat05-complete-iba" }, level.flowSegments[0].challengeUnitIds,
+                "Segment 0 restores exactly the IBA line.");
+
+            Assert.AreEqual(1, level.flowSegments[1].waveCount,
+                "Segment 1 runs wave 3, which is where SALIN-247 first introduces NA.");
+            CollectionAssert.AreEqual(
+                new[] { "ugat05-complete-mana" }, level.flowSegments[1].challengeUnitIds,
+                "Segment 1 restores MANA last: its answer NA is the level's finalRestorationValue, " +
+                "which D-003/D-004 keep as a distinct ceremonial final syllable.");
+
+            // NOT OPTIONAL. This is the ONLY guard in the repository against under-consumption.
+            // The segment list partitions the flat waves list, and both rejection paths test
+            // ONLY for overrun: LevelPhasePlan.cs:247-251 and CampaignConfigValidator.cs:532-538
+            // each compare `consumedWaves > waveBudget`. Authoring 2 + 0 instead of 2 + 1 is
+            // therefore accepted in silence — wave 3 never runs, the validator's warning count
+            // stays at its 90 baseline, SegmentPlanInvalid stays false, and the process exits 0.
+            // Negative control NC-3 confirmed this assertion is the only thing that fires.
+            Assert.AreEqual(level.waves.Count, level.flowSegments.Sum(segment => segment.waveCount),
+                "The segments must consume EVERY authored wave. Under-consumption is rejected by " +
+                "neither LevelPhasePlan.PlanSegments nor CampaignConfigValidator.ValidateFlowSegments, " +
+                "so a short count silently drops the trailing waves with nothing else failing.");
+
+            Assert.IsFalse(LevelPhasePlan.FromConfig(level).SegmentPlanInvalid,
+                "The authored segment list must survive all six PlanSegments rejections " +
+                "(LevelPhasePlan.cs:191-263); an invalid list collapses Level 5 back to a single pass.");
         }
     }
 }
