@@ -9,7 +9,7 @@ public sealed class CampaignSaveDocument
     // re-serialized JSON (CampaignSaveSerializer.TryDeserialize), so a stored key the current class
     // no longer emits changes the hash input and the file fails as a superseded save. That is the
     // documented one-time development reset -- see CampaignSaveMigrator for why v4 has no data arm.
-    public const int CurrentSaveSchemaVersion = 4;
+    public const int CurrentSaveSchemaVersion = 5;
 
     public string fileFormat = "salinlahi-campaign-save";
     public string campaignId;

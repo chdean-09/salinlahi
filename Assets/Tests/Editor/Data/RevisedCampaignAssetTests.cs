@@ -140,11 +140,11 @@ namespace Salinlahi.Tests.Editor.Data
                 "Exactly twenty-two contextual spoken values across eighteen symbols.");
 
             // SALIN-217 (ruling Q2 / OQ-6): DA and RA are separate visual identities, one spoken
-            // value each, rather than two readings carried by symbol.dara.
-            Assert.IsTrue(campaign.TryGetSymbol("symbol.dara", out BaybayinCharacterSO dara));
+            // value each, rather than two readings carried by symbol.da.
+            Assert.IsTrue(campaign.TryGetSymbol("symbol.da", out BaybayinCharacterSO dara));
             Assert.IsTrue(dara.TryGetSpokenValue("value.da", out _));
             Assert.IsFalse(dara.TryGetSpokenValue("value.ra", out _),
-                "value.ra moved off symbol.dara onto its own symbol.ra identity.");
+                "value.ra moved off symbol.da onto its own symbol.ra identity.");
 
             Assert.IsTrue(campaign.TryGetSymbol("symbol.ra", out BaybayinCharacterSO ra));
             Assert.IsTrue(ra.TryGetSpokenValue("value.ra", out _));

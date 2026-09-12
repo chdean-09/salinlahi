@@ -85,11 +85,11 @@ namespace Salinlahi.Tests.Editor.Data
             AssertMutation("SPOKEN_VALUE_COUNT_INVALID", fixture => fixture.Campaign.symbols[0].spokenValues.Clear());
             AssertMutation("SPOKEN_VALUE_UNKNOWN", fixture =>
                 fixture.Campaign.eras[0].levels[0].focusWords[0].decomposition[0].spokenValueId = "value.unknown");
-            // SALIN-217: the old mutation removed symbol.dara's second value. It now has only one,
-            // so that would throw rather than fail. Putting value.ra back onto symbol.dara violates
+            // SALIN-217: the old mutation removed symbol.da's second value. It now has only one,
+            // so that would throw rather than fail. Putting value.ra back onto symbol.da violates
             // the new rule — DA and RA are separate identities.
             AssertMutation("DARA_VISUAL_IDENTITY_INVALID", fixture =>
-                FindSymbol(fixture, "symbol.dara").spokenValues.Add(new SpokenValueDefinition
+                FindSymbol(fixture, "symbol.da").spokenValues.Add(new SpokenValueDefinition
                 {
                     stableId = "value.ra",
                     displayValue = "RA",

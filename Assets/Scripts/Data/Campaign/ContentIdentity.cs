@@ -8,7 +8,7 @@ public static class ContentIdentity
     public const int RevisedLevelsPerEra = 5;
     public const int RevisedFocusWordsPerLevel = 2;
     public const int RevisedSpokenValueCount = 22;
-    public const string RevisedDaraSymbolId = "symbol.dara";
+    public const string RevisedDaSymbolId = "symbol.da";
     public const string RevisedRaSymbolId = "symbol.ra";
     public const string RevisedDaSpokenValueId = "value.da";
     public const string RevisedRaSpokenValueId = "value.ra";
@@ -30,7 +30,7 @@ public static class ContentIdentity
     {
         "symbol.a", "symbol.ei", "symbol.ba", "symbol.ma", "symbol.na",
         "symbol.ta", "symbol.ou", "symbol.ka", "symbol.ga", "symbol.sa",
-        "symbol.wa", "symbol.ya", RevisedDaraSymbolId, "symbol.ha", "symbol.la",
+        "symbol.wa", "symbol.ya", RevisedDaSymbolId, "symbol.ha", "symbol.la",
         "symbol.nga", RevisedRaSymbolId, RevisedPaSymbolId,
     };
 
@@ -56,12 +56,12 @@ public static class ContentIdentity
     /// is covered by the default rule in <see cref="IsApprovedSpokenValue"/>: "value." + its symbol
     /// suffix.
     ///
-    /// SALIN-217 (rulings Q2 / OQ-6, merge integration): symbol.dara used to be the second
-    /// multi-value case, carrying value.da and value.ra. It now carries value.da alone, so its
-    /// entry is narrowed rather than deleted — the default rule would compute "value.dara", which
-    /// no symbol emits. symbol.ra deliberately gets no entry: the default rule already yields
-    /// value.ra for it. Leaving value.ra listed here would let IsApprovedSpokenValue contradict
-    /// ValidateSymbolCatalog's dara rule, which no test would catch.
+    /// D-025: DA had an entry here for exactly one reason — its id read "symbol.da", so the
+    /// default rule computed "value.dara", which no symbol emits. Renaming the id to symbol.da
+    /// makes the default rule derive value.da unaided, so the entry is DELETED rather than
+    /// updated. Neither DA nor RA needs one now, and the hazard the old note described — a wrong
+    /// edit here letting IsApprovedSpokenValue contradict ValidateSymbolCatalog with no test
+    /// catching it — no longer has anywhere to live.
     /// The map lives here rather than in the validator so that changing which values a symbol may
     /// carry stays a data edit in one place.
     /// </summary>
@@ -70,7 +70,6 @@ public static class ContentIdentity
         {
             { "symbol.ei", new[] { "value.ei", "value.e", "value.i" } },
             { "symbol.ou", new[] { "value.ou", "value.o", "value.u" } },
-            { RevisedDaraSymbolId, new[] { RevisedDaSpokenValueId } },
         };
 
     /// <summary>

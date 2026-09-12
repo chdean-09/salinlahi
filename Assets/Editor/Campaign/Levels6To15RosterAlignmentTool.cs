@@ -208,15 +208,13 @@ public static class Levels6To15RosterAlignmentTool
 
     /// <summary>
     /// Pairs a symbol with its spoken value. Since SALIN-217 every symbol carries exactly one, RA
-    /// included, so symbol.dara resolves to value.da through the same path as everything else; the
-    /// explicit dara branch is kept only because its id still reads "dara" (renaming it is
-    /// SALIN-227's save migration).
+    /// included. D-025 renamed symbol.dara to symbol.da and deleted the explicit DA branch that
+    /// existed only because the id read "dara": spokenValues[0] is value.da, the same path every
+    /// other symbol takes.
     /// </summary>
     private static SymbolValueReference Reference(BaybayinCharacterSO symbol)
     {
-        string spokenValueId = symbol.stableId == ContentIdentity.RevisedDaraSymbolId
-            ? ContentIdentity.RevisedDaSpokenValueId
-            : symbol.spokenValues[0].stableId;
+        string spokenValueId = symbol.spokenValues[0].stableId;
 
         return new SymbolValueReference { symbol = symbol, spokenValueId = spokenValueId };
     }

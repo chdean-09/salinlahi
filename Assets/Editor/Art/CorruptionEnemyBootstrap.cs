@@ -93,11 +93,12 @@ public static class CorruptionEnemyBootstrap
         },
         new Corruption
         {
-            // DA and RA are contextual values of the single symbol.dara identity, and the workbook
+            // DA and RA were one identity in the 17-character model; D-025 separated them. The
+            // workbook still
             // makes that shared form this enemy's mechanic: "Da and Ra share one ancestral Baybayin
             // form. Daan-Lihis uses this connection to confuse Juan."
             Key = "daanlihis", EnemyId = "daan-lihis", DisplayName = "Daan-Lihis",
-            SymbolId = "symbol.dara",
+            SymbolId = "symbol.da",
             Appearance = "A long serpent with road markings across its body.",
             Ability = "It changes the direction of paths and sends Juan back to previous areas.",
         },

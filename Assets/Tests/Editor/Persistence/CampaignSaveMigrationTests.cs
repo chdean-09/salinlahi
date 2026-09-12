@@ -37,7 +37,7 @@ namespace Salinlahi.Tests.Editor.Persistence
                 v1, pair.Campaign, "journey.00000000000000000000000000000001");
 
             Assert.That(result.Success, Is.True);
-            Assert.That(result.Document.saveSchemaVersion, Is.EqualTo(4));
+            Assert.That(result.Document.saveSchemaVersion, Is.EqualTo(CampaignSaveDocument.CurrentSaveSchemaVersion));
             Assert.That(result.Document.progress.levelProgress[0].bestStars, Is.EqualTo(2));
             Assert.That(result.Document.progress.journeyGenerationId,
                 Is.EqualTo("journey.00000000000000000000000000000001"));
@@ -70,7 +70,7 @@ namespace Salinlahi.Tests.Editor.Persistence
                 source, pair.Campaign, source.progress.journeyGenerationId);
 
             Assert.That(result.Success, Is.True, result.ErrorMessage);
-            Assert.That(result.Document.saveSchemaVersion, Is.EqualTo(4));
+            Assert.That(result.Document.saveSchemaVersion, Is.EqualTo(CampaignSaveDocument.CurrentSaveSchemaVersion));
         }
 
         [Test]
@@ -84,7 +84,7 @@ namespace Salinlahi.Tests.Editor.Persistence
                 source, pair.Campaign, source.progress.journeyGenerationId);
 
             Assert.That(result.Success, Is.True, result.ErrorMessage);
-            Assert.That(result.Document.saveSchemaVersion, Is.EqualTo(4));
+            Assert.That(result.Document.saveSchemaVersion, Is.EqualTo(CampaignSaveDocument.CurrentSaveSchemaVersion));
             Assert.That(result.Document.progress.appliedOutcomeReceipts, Is.Empty);
         }
 
@@ -93,7 +93,7 @@ namespace Salinlahi.Tests.Editor.Persistence
         {
             using CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair();
             CampaignSaveDocument source = CampaignSaveSerializer.DeepClone(pair.Document);
-            source.saveSchemaVersion = 5;
+            source.saveSchemaVersion = CampaignSaveDocument.CurrentSaveSchemaVersion + 1;
 
             CampaignSaveMigrationResult result = CampaignSaveMigrator.TryUpgradeToCurrent(
                 source, pair.Campaign, source.progress.journeyGenerationId);
@@ -156,7 +156,7 @@ namespace Salinlahi.Tests.Editor.Persistence
             Assert.That(service.Current.recovery.reasonCode, Is.EqualTo("safe-reset"));
             Assert.That(service.Current.recovery.noticeAcknowledged, Is.False,
                 "The notice must still be pending so the player actually sees it.");
-            Assert.That(service.Current.saveSchemaVersion, Is.EqualTo(4));
+            Assert.That(service.Current.saveSchemaVersion, Is.EqualTo(CampaignSaveDocument.CurrentSaveSchemaVersion));
 
             LevelProgressRecord first = service.Current.progress.levelProgress[0];
             Assert.That(first.levelId, Is.EqualTo("level.ugat.01"));
@@ -195,10 +195,10 @@ namespace Salinlahi.Tests.Editor.Persistence
 
             Assert.That(result.Status, Is.EqualTo(CampaignSaveInitializationStatus.Migrated),
                 "A v2 save read from disk must reach the migrator.");
-            Assert.That(service.Current.saveSchemaVersion, Is.EqualTo(4));
+            Assert.That(service.Current.saveSchemaVersion, Is.EqualTo(CampaignSaveDocument.CurrentSaveSchemaVersion));
             Assert.That(CampaignSaveSerializer.TryDeserialize(
                     storage.ReadAllText(CampaignSaveFileRole.Primary)).Document.saveSchemaVersion,
-                Is.EqualTo(4), "The upgrade must be published back to the file, not just held in memory.");
+                Is.EqualTo(CampaignSaveDocument.CurrentSaveSchemaVersion), "The upgrade must be published back to the file, not just held in memory.");
         }
 
         /// <summary>
@@ -240,8 +240,11 @@ namespace Salinlahi.Tests.Editor.Persistence
             Assert.That(pair.Campaign.manifest.IsRevisedV1, Is.True,
                 "Precondition: the untouched manifest is revised v1.");
             Assert.That(pair.Campaign.manifest.saveSchemaVersion, Is.EqualTo(1),
-                "The manifest literal stays at 1 even though the document schema is now 4.");
-            Assert.That(CampaignSaveDocument.CurrentSaveSchemaVersion, Is.EqualTo(4));
+                "The manifest literal stays at 1 however far the document schema advances.");
+            Assert.That(CampaignSaveDocument.CurrentSaveSchemaVersion,
+                Is.Not.EqualTo(pair.Campaign.manifest.saveSchemaVersion),
+                "These are different fields. Pinning a literal here only breaks on every bump; "
+                + "what matters is that they are not the same number.");
 
             pair.Campaign.manifest.saveSchemaVersion = CampaignSaveDocument.CurrentSaveSchemaVersion;
 

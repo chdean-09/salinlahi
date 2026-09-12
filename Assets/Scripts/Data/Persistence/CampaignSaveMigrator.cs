@@ -90,6 +90,28 @@ public static class CampaignSaveMigrator
             candidate.saveSchemaVersion = 4;
         }
 
+        if (candidate.saveSchemaVersion == 4)
+        {
+            // D-025. A VERSION ADVANCE ONLY, for the same reason as the v3 step above.
+            //
+            // v5 renamed the symbol id "symbol.dara" to "symbol.da". Unlike the v4 field removal,
+            // this changes a VALUE, not the field set, so a stored v4 file still re-serializes to
+            // the same hash and is NOT rejected by TryDeserialize. It is caught one step later:
+            // CampaignSaveValidator line ~118 runs unlockedSymbolIds through ValidateUniqueKnownList
+            // against the campaign catalog, where "symbol.dara" is no longer known, and returns
+            // InvalidStructure.
+            //
+            // Bumping the version is what makes that rejection HONEST. InvalidStructure is not in
+            // IsBlocking, so an unbumped save would still safe-reset -- but it would be quarantined
+            // as "corrupt-primary", which is exactly the mislabelling SALIN-227 existed to fix. With
+            // the bump, Inspect sees 4 < 5, classifies SupersededSchema, and quarantines under
+            // "superseded-schema" with a safe-reset notice.
+            //
+            // As with v3: the step is NOT dead. The chain must terminate at CurrentSaveSchemaVersion
+            // or the Validate call below rejects every migration, v1 and v2 included.
+            candidate.saveSchemaVersion = 5;
+        }
+
         CampaignSaveValidationResult validation = CampaignSaveValidator.Validate(
             candidate, campaign, candidate.migration?.legacyArchiveSha256);
         return validation.IsValid

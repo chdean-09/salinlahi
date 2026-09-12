@@ -249,7 +249,7 @@ public static class CampaignConfigValidator
                     "Symbol introduction level must be one of the fixed revised level IDs.", symbol);
             }
 
-            if (string.Equals(symbol.stableId, ContentIdentity.RevisedDaraSymbolId,
+            if (string.Equals(symbol.stableId, ContentIdentity.RevisedDaSymbolId,
                     StringComparison.Ordinal))
             {
                 daraCount++;
@@ -283,16 +283,17 @@ public static class CampaignConfigValidator
         }
 
         // SALIN-217, rulings Q2 / OQ-6: DA and RA are two visual identities, not two readings of
-        // one. symbol.dara keeps its name (renaming it is a save migration owned by SALIN-227) but
-        // it now carries value.da only, and symbol.ra carries value.ra. Reusing the existing
-        // DARA_VISUAL_IDENTITY_INVALID code deliberately: the enum and its severity table are
-        // SALIN-215's file-level territory, so this rule changes meaning without touching them.
+        // one. D-025 renamed the id to symbol.da; it carries value.da only, and symbol.ra carries
+        // value.ra. The DARA_VISUAL_IDENTITY_INVALID code name is deliberately NOT renamed: the
+        // enum and its severity table are SALIN-215's file-level territory, and the code string
+        // appears in validator reports that are diffed against baselines. It is now a legacy name
+        // for a rule about symbol.da -- worth tidying in a ticket that owns that file, not here.
         if (daraCount != 1 || dara == null ||
             !dara.TryGetSpokenValue(ContentIdentity.RevisedDaSpokenValueId, out _) ||
             dara.TryGetSpokenValue(ContentIdentity.RevisedRaSpokenValueId, out _))
         {
             AddError(issues, ContentValidationCode.DaraVisualIdentityInvalid, CampaignPath + ".symbols",
-                "symbol.dara must carry value.da alone; RA is its own visual identity.",
+                "symbol.da must carry value.da alone; RA is its own visual identity.",
                 dara != null ? (UnityEngine.Object)dara : campaign);
         }
 
@@ -328,11 +329,11 @@ public static class CampaignConfigValidator
                     "Spoken value stable ID is duplicated on its visual symbol.", symbol);
             }
 
-            // SALIN-217: symbol.dara no longer gets to accept either value — it carries value.da
+            // SALIN-217: symbol.da no longer gets to accept either value — it carries value.da
             // alone, and symbol.ra carries value.ra.
             // SALIN-221 deleted the local GetPrimaryValueId helper this rule used to call and moved
             // the decision into ContentIdentity.IsApprovedSpokenValue, whose narrowed
-            // ApprovedSpokenValueIds map now encodes exactly the SALIN-217 rule: symbol.dara maps to
+            // ApprovedSpokenValueIds map now encodes exactly the SALIN-217 rule: symbol.da maps to
             // { value.da }, and symbol.ra has no entry so the default yields value.ra.
             if (!ContentIdentity.IsApprovedSpokenValue(symbol.stableId, value.stableId))
             {

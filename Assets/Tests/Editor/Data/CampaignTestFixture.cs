@@ -77,20 +77,20 @@ namespace Salinlahi.Tests.Editor.Data
                     new SpokenValueDefinition
                     {
                         stableId = primaryValueId,
-                        displayValue = stableId == "symbol.dara" ? "DA" : symbol.syllable.ToUpperInvariant(),
+                        displayValue = stableId == "symbol.da" ? "DA" : symbol.syllable.ToUpperInvariant(),
                     },
                 };
 
-                // SALIN-217: symbol.dara carries value.da alone now; value.ra lives on symbol.ra,
+                // SALIN-217: symbol.da carries value.da alone now; value.ra lives on symbol.ra,
                 // which the loop above builds like any other symbol.
-                if (stableId == "symbol.dara")
+                if (stableId == "symbol.da")
                     symbol.legacyAliases.Add("DA");
 
                 // SALIN-221: E/I and O/U carry their combined citation value plus the per-word-context
                 // values, so the synthetic catalog totals ContentIdentity.RevisedSpokenValueCount.
                 if (ContentIdentity.ApprovedSpokenValueIds.TryGetValue(
                         stableId, out IReadOnlyList<string> approvedValueIds) &&
-                    stableId != "symbol.dara")
+                    stableId != "symbol.da")
                 {
                     for (int valueIndex = 1; valueIndex < approvedValueIds.Count; valueIndex++)
                     {
@@ -283,7 +283,7 @@ namespace Salinlahi.Tests.Editor.Data
 
         private static string GetPrimaryValueId(string symbolId)
         {
-            return symbolId == "symbol.dara"
+            return symbolId == "symbol.da"
                 ? "value.da"
                 : "value." + symbolId.Substring("symbol.".Length);
         }
