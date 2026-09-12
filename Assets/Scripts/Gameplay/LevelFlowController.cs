@@ -880,13 +880,21 @@ public class LevelFlowController : MonoBehaviour
         GameObject go = new("[Runtime] Level1OnboardingController");
         go.transform.SetParent(transform, false);
 
-        // SALIN-225 deleted ComboTeachBeat and FocusModeTeachBeat with the mechanics they taught,
-        // so Level 2 attaches no teaching beat and runs ReleaseBeat alone. The level-2 test stays
-        // rather than being dropped: without it Level 2 would inherit Level 1's four beats and
-        // re-teach the basics. SALIN-241 authors Level 2's replacement beats here.
+        // SALIN-225 deleted ComboTeachBeat and FocusModeTeachBeat with the mechanics they taught.
+        // SALIN-241 replaced them with MassClearTeachBeat, which teaches the AOE mass-clear that
+        // Level 2 switches on, so the level-2 arm attaches that beat plus ReleaseBeat and still
+        // skips Level 1's four basics rather than re-teaching them.
+        //
+        // This split is cosmetic: Level1OnboardingController.Awake calls EnsureDefaultBeatComponents,
+        // which attaches every beat regardless of level. It is kept in step with that method so the
+        // two sites do not drift and read as disagreeing about what Level 2 runs.
         bool isLevel2Onboarding = _levelConfig != null
             && _levelConfig.levelNumber == LevelTutorialProgress.Level2TutorialLevelNumber;
-        if (!isLevel2Onboarding)
+        if (isLevel2Onboarding)
+        {
+            go.AddComponent<MassClearTeachBeat>();
+        }
+        else
         {
             go.AddComponent<ProtagonistIntroBeat>();
             go.AddComponent<BaseIntroBeat>();

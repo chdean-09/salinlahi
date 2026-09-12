@@ -496,23 +496,33 @@ public sealed class Level1OnboardingController : MonoBehaviour
     }
 
     /// <summary>
-    /// SALIN-225. Level 2's authored order was ComboTeach, FocusModeTeach, Release. Both teaching
-    /// beats went with the mechanics they taught (ruling Q15), so the level-2 arm now forces the
-    /// single surviving beat rather than leaving the arm empty.
+    /// SALIN-241. Level 2's AUTHORED beat order wins. The <c>[Release]</c> forcing that SALIN-225
+    /// left here survives only as the empty-order fallback.
     /// </summary>
     /// <remarks>
-    /// Forcing <c>[Release]</c> is deliberate and is the end state SALIN-241 inherits: without it
-    /// Level 2 would fall through to Level 1's four-beat default and re-teach the basics. The
-    /// <c>onboardingSequence</c> reference on Level2_Config stays wired, so SALIN-241 authors into
-    /// an existing slot. Note the AOE multi-enemy draw that ComboTeachBeat actually taught still
-    /// exists in combat and is now untaught -- that replacement is SALIN-241's scope.
+    /// History: Level 2's authored order was ComboTeach, FocusModeTeach, Release. Both teaching
+    /// beats went with the mechanics they taught (SALIN-225, ruling Q15), and the level-2 arm was
+    /// then made to overwrite the order unconditionally so the level could not fall through to the
+    /// SO's five-beat default and re-teach Level 1's basics.
+    ///
+    /// That unconditional overwrite is now wrong: it silently discarded whatever the asset carried,
+    /// so authoring a beat into Level2AdvancedOnboardingSequence.asset had no runtime effect at all
+    /// -- no compile error, no warning, no failing test, just a beat that never played. SALIN-241
+    /// authors the mass-clear teach beat into that asset, so the overwrite is narrowed to the case
+    /// it was actually protecting against: an EMPTY order. A non-empty authored order is preserved
+    /// verbatim, which keeps the anti-fallthrough guard while making the asset, not this method,
+    /// the source of truth for what Level 2 teaches.
+    ///
+    /// This mutates a clone, never the on-disk asset -- <c>EnsureMutableSequence</c> instantiates a
+    /// copy with <c>HideFlags.HideAndDontSave</c> before this runs.
     /// </remarks>
     internal static void NormalizeSequenceForLevel(OnboardingSequenceSO sequence, int levelNumber)
     {
         if (sequence == null || levelNumber != LevelTutorialProgress.Level2TutorialLevelNumber)
             return;
 
-        sequence.beatOrder = new[] { OnboardingBeatType.Release };
+        if (sequence.beatOrder == null || sequence.beatOrder.Length == 0)
+            sequence.beatOrder = new[] { OnboardingBeatType.Release };
     }
 
     private static Level1TutorialStepSO[] CopyLegacySteps(Level1TutorialSequenceSO sequence)
@@ -555,6 +565,9 @@ public sealed class Level1OnboardingController : MonoBehaviour
         EnsureBeatComponent<SoloTeachBeat>();
         EnsureBeatComponent<HeartLossDemoBeat>();
         EnsureBeatComponent<ReleaseBeat>();
+        // SALIN-241. Level 2's beat, attached alongside the rest. A beat only runs when the
+        // sequence's beatOrder schedules it, so attaching it everywhere costs nothing.
+        EnsureBeatComponent<MassClearTeachBeat>();
     }
 
     private void EnsureBeatComponentsForSequence(OnboardingSequenceSO sequence)
@@ -580,6 +593,9 @@ public sealed class Level1OnboardingController : MonoBehaviour
                     break;
                 case OnboardingBeatType.Release:
                     EnsureBeatComponent<ReleaseBeat>();
+                    break;
+                case OnboardingBeatType.MassClearTeach:
+                    EnsureBeatComponent<MassClearTeachBeat>();
                     break;
             }
         }

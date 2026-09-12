@@ -281,13 +281,17 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 "Level 2 flow should create the reusable onboarding controller for the advanced combat tutorial.");
             Assert.IsTrue(onboardingController.IsSequenceResolvable(levelConfig));
 
-            // SALIN-225. Level 2 keeps its own arm in CreateRuntimeOnboardingController so it does
-            // NOT inherit Level 1's four teaching beats -- ReleaseBeat is the only one attached.
+            // SALIN-225 kept Level 2 its own arm in CreateRuntimeOnboardingController so it does NOT
+            // inherit Level 1's four teaching beats. SALIN-241 gave that arm its replacement teach
+            // beat, so the count moved 1 -> 2. The guard that matters is unchanged and asserted
+            // below: Level 2 still must not fall through to Level 1's basics.
             OnboardingBeat[] beats = onboardingController.GetComponents<OnboardingBeat>();
-            Assert.AreEqual(1, beats.Length,
-                "Level 2 onboarding must attach exactly one beat after the combo/focus removal.");
+            Assert.AreEqual(2, beats.Length,
+                "Level 2 onboarding attaches exactly its own teach beat plus ReleaseBeat.");
+            Assert.IsNotNull(onboardingController.GetComponent<MassClearTeachBeat>(),
+                "Level 2 teaches the AOE mass-clear, the mechanic Level2_Config switches on.");
             Assert.IsNotNull(onboardingController.GetComponent<ReleaseBeat>(),
-                "ReleaseBeat is the only beat Level 2 still runs.");
+                "ReleaseBeat must stay: it is the sole caller of MarkTutorialSeen.");
             Assert.IsNull(onboardingController.GetComponent<SoloTeachBeat>(),
                 "Level 2 must not fall through to Level 1's basic teaching beats.");
         }
