@@ -45,7 +45,11 @@ public static class CampaignOutcomeValidator
                  outcome.claimedRewardIds.Count > 0 ||
                  // SALIN-140: level metrics are level-attempt results. A practice or review session
                  // carrying them would write a level score it never earned.
-                 (outcome.metrics != null && outcome.metrics.Count > 0))
+                 (outcome.metrics != null && outcome.metrics.Count > 0) ||
+                 // SALIN-220: objective flags are level-attempt results for the same reason. A
+                 // practice outcome carrying one would satisfy a level objective off the books
+                 // and could unlock the successor.
+                 LevelObjectiveGate.CarriesAnyFlag(outcome))
         {
             return Invalid("A non-level outcome may not change progression.");
         }
@@ -101,6 +105,21 @@ public static class CampaignOutcomeValidator
             if (outcome.metrics == null)
                 outcome.metrics = new List<LevelMetricRecord>();
             outcome.outcomeSchemaVersion = 3;
+        }
+
+        if (outcome.outcomeSchemaVersion == 3)
+        {
+            // v4 (SALIN-220) adds the five objective flags. A v3 journal recorded none, and by
+            // the rules in force when it was earned that completion was fully complete -- so the
+            // defined upgrade is all five true. Leaving them false would gate a replayed
+            // in-flight completion on objectives that did not exist when the player earned it.
+            //
+            // Only for a level attempt: the non-level guard above rejects any other session kind
+            // that carries a flag, so setting them on a practice journal would convert a
+            // recoverable outcome into a permanently rejected one.
+            if (outcome.sessionKind == LearningSessionKind.LevelAttempt)
+                LevelObjectiveGate.CopyTo(LevelObjectiveFlags.Satisfied(), outcome);
+            outcome.outcomeSchemaVersion = 4;
         }
     }
 

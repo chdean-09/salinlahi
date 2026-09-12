@@ -522,6 +522,12 @@ public class LevelFlowController : MonoBehaviour
             session?.EmergencyHintScorePenalty ?? 0f);
         LastRewardGrant = LevelRewardResolver.Resolve(_levelConfig);
         ProgressManager.Instance?.SetPendingLevelResults(LastResults);
+
+        // SALIN-220. Derived here, before CommitCompletion, from the phases this run actually
+        // finished. An objective the level never authored counts as satisfied -- the rule lives
+        // in LevelObjectiveFlagResolver, not here.
+        ProgressManager.Instance?.SetPendingObjectiveFlags(
+            LevelObjectiveFlagResolver.Resolve(_machine?.Plan, _machine?.CompletedPhases));
     }
 
     private string BuildResultsSummary()

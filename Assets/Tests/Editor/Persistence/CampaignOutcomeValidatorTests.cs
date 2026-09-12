@@ -83,6 +83,84 @@ namespace Salinlahi.Tests.Editor.Persistence
             Assert.That(result.FailureCode, Is.EqualTo(CampaignSaveFailureCode.InvalidStructure));
         }
 
+        // -------------------------------------------------------------------
+        // SALIN-220 — objective flags across the v3 to v4 outcome schema step
+        // -------------------------------------------------------------------
+
+        /// <summary>
+        /// SALIN-220 V7. A v3 journal recorded no objectives, and by the rules in force when it
+        /// was earned that completion was complete. Leaving the flags false would gate a replayed
+        /// in-flight completion on objectives that did not exist when the player earned it.
+        /// </summary>
+        [Test]
+        public void UpgradeToCurrent_FromVersion3LevelAttempt_SetsAllFiveObjectivesTrue_SALIN220()
+        {
+            using CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair();
+            CampaignProgressOutcome outcome = CampaignSaveTestFactory.CreateValidOutcome(pair.Document);
+            CampaignSaveTestFactory.ClearObjectiveFlags(outcome);
+            outcome.outcomeSchemaVersion = 3;
+
+            CampaignOutcomeValidator.UpgradeToCurrent(outcome);
+
+            Assert.That(outcome.outcomeSchemaVersion,
+                Is.EqualTo(CampaignProgressOutcome.CurrentOutcomeSchemaVersion));
+            Assert.That(outcome.storyViewed, Is.True);
+            Assert.That(outcome.symbolsPracticed, Is.True);
+            Assert.That(outcome.wordsRestored, Is.True);
+            Assert.That(outcome.contextPassed, Is.True);
+            Assert.That(outcome.finalSyllableRestored, Is.True);
+            Assert.That(
+                CampaignOutcomeValidator.Validate(outcome, pair.Campaign, pair.Document).IsValid,
+                Is.True);
+        }
+
+        /// <summary>
+        /// SALIN-220. The upgrade must not set flags on a practice journal: the non-level guard
+        /// rejects any flag there, so doing so would convert a recoverable pending outcome into a
+        /// permanently rejected one.
+        /// </summary>
+        [Test]
+        public void UpgradeToCurrent_FromVersion3PracticeOutcome_LeavesObjectivesFalseAndStillValidates_SALIN220()
+        {
+            using CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair();
+            CampaignProgressOutcome outcome = PracticeOutcome(pair);
+            outcome.outcomeSchemaVersion = 3;
+
+            CampaignOutcomeValidator.UpgradeToCurrent(outcome);
+
+            Assert.That(outcome.outcomeSchemaVersion,
+                Is.EqualTo(CampaignProgressOutcome.CurrentOutcomeSchemaVersion));
+            Assert.That(LevelObjectiveGate.CarriesAnyFlag(outcome), Is.False);
+            CampaignSaveValidationResult result =
+                CampaignOutcomeValidator.Validate(outcome, pair.Campaign, pair.Document);
+            Assert.That(result.IsValid, Is.True, result.ErrorMessage);
+        }
+
+        [TestCase(LevelObjectives.StoryViewed)]
+        [TestCase(LevelObjectives.SymbolsPracticed)]
+        [TestCase(LevelObjectives.WordsRestored)]
+        [TestCase(LevelObjectives.ContextPassed)]
+        [TestCase(LevelObjectives.FinalSyllableRestored)]
+        public void Validate_NonLevelOutcomeCarryingAnObjectiveFlag_IsRejected_SALIN220(string objectiveId)
+        {
+            using CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair();
+            CampaignProgressOutcome outcome = PracticeOutcome(pair);
+            switch (objectiveId)
+            {
+                case LevelObjectives.StoryViewed: outcome.storyViewed = true; break;
+                case LevelObjectives.SymbolsPracticed: outcome.symbolsPracticed = true; break;
+                case LevelObjectives.WordsRestored: outcome.wordsRestored = true; break;
+                case LevelObjectives.ContextPassed: outcome.contextPassed = true; break;
+                case LevelObjectives.FinalSyllableRestored: outcome.finalSyllableRestored = true; break;
+                default: Assert.Fail($"Unknown objective id {objectiveId}."); break;
+            }
+
+            CampaignSaveValidationResult result =
+                CampaignOutcomeValidator.Validate(outcome, pair.Campaign, pair.Document);
+
+            Assert.That(result.FailureCode, Is.EqualTo(CampaignSaveFailureCode.InvalidStructure));
+        }
+
         private static CampaignProgressOutcome PracticeOutcome(CampaignSaveTestPair pair)
         {
             CampaignProgressOutcome outcome = CampaignSaveTestFactory.CreateValidOutcome(pair.Document);
@@ -91,6 +169,7 @@ namespace Salinlahi.Tests.Editor.Persistence
             outcome.unlockedSymbolIds.Clear();
             outcome.unlockedMemoryIds.Clear();
             outcome.claimedRewardIds.Clear();
+            CampaignSaveTestFactory.ClearObjectiveFlags(outcome);
             outcome.evidence = new LearningEvidenceBatch
             {
                 levelId = pair.Document.progress.activeLevelId,

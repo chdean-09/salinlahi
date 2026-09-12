@@ -57,7 +57,24 @@ public sealed class LevelLockStatus
     /// <summary>Era id owning <see cref="RequiredLevelId"/>, or <c>null</c> when unknown.</summary>
     public string RequiredEraId { get; }
 
+    /// <summary>
+    /// SALIN-220 AC6. The <see cref="LevelObjectives"/> identifier of the objective the
+    /// predecessor still owes, or <c>null</c> when the lock is the ordinary "not played yet"
+    /// case. Populated only for <see cref="LevelLockState.Locked"/>, and only when the
+    /// predecessor is completed but has an unsatisfied objective.
+    /// </summary>
+    /// <remarks>
+    /// A machine-readable identifier, NOT player-facing copy. No wording exists for any of the
+    /// five objectives anywhere in this repository, so the sentence is still owed -- see the TODO
+    /// in <see cref="LevelLockNoticeCopy"/>. Callers must keep showing the prerequisite copy until
+    /// that wording lands; this field is what makes AC6 assertable meanwhile.
+    /// </remarks>
+    public string MissingObjectiveId { get; }
+
     public bool HasRequirement => RequiredLevelId != null;
+
+    /// <summary>True when the lock is explained by an unsatisfied objective rather than by an unplayed predecessor.</summary>
+    public bool HasMissingObjective => MissingObjectiveId != null;
 
     private LevelLockStatus(
         LevelLockState state,
@@ -65,7 +82,8 @@ public sealed class LevelLockStatus
         string requiredLevelId,
         int requiredLevelOrder,
         bool requirementCrossesEra,
-        string requiredEraId)
+        string requiredEraId,
+        string missingObjectiveId)
     {
         State = state;
         LevelId = levelId;
@@ -73,29 +91,46 @@ public sealed class LevelLockStatus
         RequiredLevelOrder = requiredLevelOrder;
         RequirementCrossesEra = requirementCrossesEra;
         RequiredEraId = requiredEraId;
+        MissingObjectiveId = missingObjectiveId;
     }
 
     public static LevelLockStatus Unlocked(string levelId) =>
-        new LevelLockStatus(LevelLockState.Unlocked, levelId, null, 0, false, null);
+        new LevelLockStatus(LevelLockState.Unlocked, levelId, null, 0, false, null, null);
 
     public static LevelLockStatus Completed(string levelId) =>
-        new LevelLockStatus(LevelLockState.Completed, levelId, null, 0, false, null);
+        new LevelLockStatus(LevelLockState.Completed, levelId, null, 0, false, null, null);
 
     /// <summary>Locked with an identifiable single prerequisite.</summary>
     public static LevelLockStatus LockedBehind(
         string levelId, string requiredLevelId, int requiredLevelOrder, bool crossesEra, string requiredEraId) =>
         new LevelLockStatus(
-            LevelLockState.Locked, levelId, requiredLevelId, requiredLevelOrder, crossesEra, requiredEraId);
+            LevelLockState.Locked, levelId, requiredLevelId, requiredLevelOrder, crossesEra, requiredEraId, null);
+
+    /// <summary>
+    /// SALIN-220. Locked behind a prerequisite the player has already completed, because that
+    /// prerequisite still owes one objective. The prerequisite fields stay populated so existing
+    /// callers keep working unchanged.
+    /// </summary>
+    public static LevelLockStatus LockedBehindObjective(
+        string levelId,
+        string requiredLevelId,
+        int requiredLevelOrder,
+        bool crossesEra,
+        string requiredEraId,
+        string missingObjectiveId) =>
+        new LevelLockStatus(
+            LevelLockState.Locked, levelId, requiredLevelId, requiredLevelOrder, crossesEra, requiredEraId,
+            missingObjectiveId);
 
     /// <summary>
     /// Locked but with nothing to explain — the first configured level reaching this
     /// state means the save is inconsistent, not that the player missed a step.
     /// </summary>
     public static LevelLockStatus LockedWithoutRequirement(string levelId) =>
-        new LevelLockStatus(LevelLockState.Locked, levelId, null, 0, false, null);
+        new LevelLockStatus(LevelLockState.Locked, levelId, null, 0, false, null, null);
 
     public static LevelLockStatus Unknown(string levelId) =>
-        new LevelLockStatus(LevelLockState.Unknown, levelId, null, 0, false, null);
+        new LevelLockStatus(LevelLockState.Unknown, levelId, null, 0, false, null, null);
 }
 
 /// <summary>
@@ -158,6 +193,19 @@ public static class LevelLockResolver
         string requiredEraId = ContentIdentity.GetEraIdForLevel(requiredLevelId);
         bool crossesEra = levelEraId != null && requiredEraId != null &&
             !string.Equals(levelEraId, requiredEraId, StringComparison.Ordinal);
+
+        // SALIN-220 AC6. A predecessor that is completed but still locks this level can only be
+        // doing so because the objective gate withheld the unlock, so name the objective instead
+        // of an already-finished level. Still no new rule here: the predicate is
+        // LevelObjectiveGate's, the same one ApplyLevelProgression writes with.
+        LevelProgressRecord required = FindRecord(document?.progress?.levelProgress, requiredLevelId);
+        if (required != null && required.completed)
+        {
+            string missingObjectiveId = LevelObjectiveGate.FirstUnsatisfied(required);
+            if (missingObjectiveId != null)
+                return LevelLockStatus.LockedBehindObjective(
+                    levelId, requiredLevelId, index, crossesEra, requiredEraId, missingObjectiveId);
+        }
 
         // RequiredLevelOrder is 1-based, so the predecessor at array index (index - 1)
         // has order `index`.

@@ -19,6 +19,33 @@ namespace Salinlahi.Tests.Editor.Persistence
             Assert.That(result.Document.outcome.outcomeId, Is.EqualTo(outcome.outcomeId));
         }
 
+        /// <summary>
+        /// SALIN-220. The flags are the journal's record of what a completion earned; if they do
+        /// not survive the round trip, a recovered outcome would re-apply as if the objectives
+        /// were never met and the gate would withhold an unlock the player already earned.
+        /// </summary>
+        [Test]
+        public void SerializeThenDeserialize_RoundTripsEveryObjectiveFlag_SALIN220()
+        {
+            using CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair();
+            CampaignProgressOutcome outcome = CampaignSaveTestFactory.CreateValidOutcome(pair.Document);
+            outcome.contextPassed = false;
+
+            CampaignOutcomeJournalParseResult result = CampaignOutcomeSerializer.TryDeserialize(
+                CampaignOutcomeSerializer.Serialize(
+                    new CampaignOutcomeJournalDocument { outcome = outcome }));
+
+            Assert.That(result.Success, Is.True);
+            CampaignProgressOutcome restored = result.Document.outcome;
+            Assert.That(restored.outcomeSchemaVersion, Is.EqualTo(4));
+            Assert.That(restored.storyViewed, Is.True);
+            Assert.That(restored.symbolsPracticed, Is.True);
+            Assert.That(restored.wordsRestored, Is.True);
+            Assert.That(restored.contextPassed, Is.False, "A false flag must round-trip as false.");
+            Assert.That(restored.finalSyllableRestored, Is.True);
+            Assert.That(LevelObjectiveGate.CarriesAnyFlag(restored), Is.True);
+        }
+
         [Test]
         public void TryDeserialize_WhenPayloadChanges_ReturnsChecksumMismatch()
         {

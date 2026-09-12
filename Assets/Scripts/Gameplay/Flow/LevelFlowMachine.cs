@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 /// <summary>
 /// Pure-C# LF-CONTRACT-v2 phase machine. The single choke point for level-flow
@@ -10,6 +11,7 @@ using System;
 public sealed class LevelFlowMachine
 {
     private readonly LevelPhasePlan _plan;
+    private readonly HashSet<LevelPhase> _completedPhases = new HashSet<LevelPhase>();
     private LevelPhase _phase = LevelPhase.NotStarted;
     private bool _paused;
 
@@ -19,6 +21,26 @@ public sealed class LevelFlowMachine
     }
 
     public LevelPhase Phase => _phase;
+
+    /// <summary>The plan this machine was built from. Read-only; the machine owns no plan rules.</summary>
+    public LevelPhasePlan Plan => _plan;
+
+    /// <summary>
+    /// SALIN-220. The phases this run actually completed, in no particular order. The machine
+    /// tracks only the CURRENT phase, so without this there is no record of what was finished by
+    /// the time the atomic save computes its objective flags.
+    /// </summary>
+    /// <remarks>
+    /// Recorded only on an ACCEPTED report, so a rejected or duplicate report adds nothing. A
+    /// phase the plan skipped is never recorded, which is exactly what
+    /// <see cref="LevelObjectiveFlagResolver"/> needs: skipped means unauthored, and unauthored
+    /// counts as satisfied there rather than here. Defeat and exit record nothing -- they are not
+    /// completions. No transition rule is changed by any of this.
+    /// </remarks>
+    public IReadOnlyCollection<LevelPhase> CompletedPhases => _completedPhases;
+
+    /// <summary>True when <paramref name="phase"/> was completed during this run.</summary>
+    public bool HasCompleted(LevelPhase phase) => _completedPhases.Contains(phase);
 
     public bool IsTerminal =>
         _phase == LevelPhase.Completed
@@ -48,6 +70,7 @@ public sealed class LevelFlowMachine
         if (phase == LevelPhase.AtomicSave)
             return false;
 
+        _completedPhases.Add(phase);
         Transition(_plan.NextPlannedAfter(phase));
         return true;
     }
@@ -61,6 +84,7 @@ public sealed class LevelFlowMachine
         if (_phase != LevelPhase.Defense)
             return false;
 
+        _completedPhases.Add(LevelPhase.Defense);
         Transition(_plan.NextPlannedAfter(LevelPhase.Defense));
         return true;
     }
@@ -75,7 +99,10 @@ public sealed class LevelFlowMachine
             return false;
 
         if (accepted)
+        {
+            _completedPhases.Add(LevelPhase.AtomicSave);
             Transition(_plan.NextPlannedAfter(LevelPhase.AtomicSave));
+        }
 
         return true;
     }

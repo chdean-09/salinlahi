@@ -162,6 +162,51 @@ namespace Salinlahi.Tests.Editor.Persistence
             Assert.That(entry.LevelId, Is.EqualTo(levelIds[0]));
         }
 
+        /// <summary>
+        /// SALIN-220, Risk 4 — DOCUMENTS A KNOWN GAP, DOES NOT ENDORSE IT.
+        /// </summary>
+        /// <remarks>
+        /// The "progress exists but the next level was never unlocked" fallback was unreachable
+        /// while unlock was unconditional. The objective gate makes it reachable: a level finished
+        /// with an objective outstanding leaves no unlocked-and-incomplete level, so Continue
+        /// falls back to the first incomplete one — which Level Select will refuse to open.
+        ///
+        /// The right behaviour (replay the completed level, or surface the missing objective
+        /// instead of a Continue target) is a product call beyond this ticket. This test pins the
+        /// CURRENT behaviour so SALIN-235/242 inherit a known state rather than a surprise. If it
+        /// starts failing because routing was deliberately changed, update it — do not treat the
+        /// assertion as a requirement.
+        /// </remarks>
+        [Test]
+        public void Resolve_WhenTheObjectiveGateWithheldTheOnlyUnlock_ContinueStillTargetsALockedLevel_SALIN220()
+        {
+            using CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair();
+            List<string> levelIds = CampaignSaveValidator.GetConfiguredLevelIds(pair.Campaign);
+
+            // Level 1 completed with an objective outstanding, so the gate withheld level 2.
+            LevelProgressRecord first = pair.Document.progress.levelProgress[0];
+            first.unlocked = true;
+            first.completed = true;
+            first.bestStars = 3;
+            first.storyViewed = true;
+            first.symbolsPracticed = true;
+            first.wordsRestored = true;
+            first.finalSyllableRestored = true;
+            first.contextPassed = false;
+            pair.Document.progress.levelProgress[1].unlocked = false;
+            pair.Document.progress.activeLevelId = levelIds[0];
+
+            JourneyEntryPoint entry = JourneyEntryResolver.Resolve(pair.Document, levelIds);
+
+            Assert.That(entry.Kind, Is.EqualTo(JourneyEntryKind.ContinueLevel));
+            Assert.That(entry.LevelId, Is.EqualTo(levelIds[1]),
+                "Known gap: Continue routes to a level the lock resolver reports as Locked.");
+            Assert.That(
+                LevelLockResolver.Resolve(pair.Document, levelIds, entry.LevelId).State,
+                Is.EqualTo(LevelLockState.Locked),
+                "The two resolvers disagree today. Escalated on SALIN-220 as Risk 4.");
+        }
+
         private static void CompleteLevels(CampaignSaveDocument document, int count)
         {
             List<LevelProgressRecord> records = document.progress.levelProgress;

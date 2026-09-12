@@ -17,6 +17,41 @@ namespace Salinlahi.Tests.Editor.Persistence
             Assert.That(pair.Document.progress.appliedOutcomeReceipts, Is.Empty);
         }
 
+        /// <summary>
+        /// SALIN-220 V6, the negative control behind the schema decision. Adding the five flags is
+        /// additive under JsonUtility and no structural check inspects them, so a document that
+        /// carries them still validates at saveSchemaVersion 3 and this ticket owes no save-schema
+        /// bump. That belongs to SALIN-227. Break the claim by adding an invariant over the flags
+        /// in CampaignSaveValidator and this test fails.
+        /// </summary>
+        [Test]
+        public void Validate_DocumentCarryingObjectiveFlagsAtSaveSchema3_IsStillValid_SALIN220()
+        {
+            using CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair();
+            LevelProgressRecord first = pair.Document.progress.levelProgress[0];
+            first.unlocked = true;
+            first.completed = true;
+            first.bestStars = 3;
+            first.storyViewed = true;
+            first.symbolsPracticed = true;
+            first.wordsRestored = true;
+            first.contextPassed = true;
+            first.finalSyllableRestored = true;
+
+            // The gated shape too: a completed level whose successor is deliberately still
+            // locked, which is exactly what the gate produces and must never be rejected.
+            LevelProgressRecord second = pair.Document.progress.levelProgress[1];
+            second.unlocked = false;
+            second.contextPassed = true;
+
+            CampaignSaveValidationResult result =
+                CampaignSaveValidator.Validate(pair.Document, pair.Campaign);
+
+            Assert.That(pair.Document.saveSchemaVersion, Is.EqualTo(3),
+                "SALIN-220 deliberately does not move the save schema.");
+            Assert.That(result.IsValid, Is.True, result.ErrorMessage);
+        }
+
         [Test]
         public void Validate_WhenOutcomeReceiptsContainDuplicateId_ReturnsInvalidStructure()
         {

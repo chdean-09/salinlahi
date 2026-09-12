@@ -22,6 +22,29 @@ public static class LevelLockNoticeCopy
     /// <summary>Dismiss-button label.</summary>
     public const string DismissLabel = "OK";
 
+    // ========================================================================
+    // TODO(SALIN-220) — CONTENT OWED. NO COPY WRITTEN HERE ON PURPOSE.
+    // ========================================================================
+    // SALIN-220 AC6 asks that the lock notice NAME the missing objective when the gate withholds
+    // an unlock. LevelLockStatus.MissingObjectiveId now carries which one it is, as a stable
+    // LevelObjectives identifier, and that half is asserted in EditMode.
+    //
+    // The player-facing sentence for each of the five objectives (storyViewed, symbolsPracticed,
+    // wordsRestored, contextPassed, finalSyllableRestored) DOES NOT EXIST anywhere in this
+    // repository. Searched and found absent: no occurrence of the identifiers under Assets/, and
+    // no tracked spec under docs/ defines them. The Completion Rules source is a binary workbook
+    // whose in-repo transcription gives only row LABELS ("Story viewed", "Symbols practiced",
+    // "Words restored", "Context challenge", "Last syllable") — which do not even match the flag
+    // names — not lock-notice sentences. Tone and language (English vs Filipino) are also
+    // unsettled for this panel, as the header above already records.
+    //
+    // So the notice still shows the SALIN-137 Prerequisite copy unchanged. Inventing wording here
+    // would ship unreviewed player-facing content under a persistence ticket.
+    //
+    // ACTION REQUIRED (ticket owner): supply one sentence per objective, then map
+    // MissingObjectiveId to it here and call it from LevelLockNoticePanel.
+    // ========================================================================
+
     /// <summary>
     /// Names the single immediately preceding requirement. SALIN-137 AC2 asks for one
     /// requirement only, so this never chains further back than one step.

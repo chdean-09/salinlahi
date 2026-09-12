@@ -88,6 +88,9 @@ namespace Salinlahi.Tests.Editor.Persistence
             outcome.stars = 0;
             outcome.unlockedMemoryIds.Clear();
             outcome.claimedRewardIds.Clear();
+            // SALIN-220: cleared so this fixture keeps proving that METRICS are what gets a
+            // non-level outcome rejected, rather than passing on the new objective-flag guard.
+            CampaignSaveTestFactory.ClearObjectiveFlags(outcome);
             outcome.metrics = new List<LevelMetricRecord>
             {
                 new LevelMetricRecord(LevelResultsCalculator.ScoreMetricId, 99f),
@@ -243,13 +246,16 @@ namespace Salinlahi.Tests.Editor.Persistence
         // ---------- AC3: migrated data is never mixed ----------
 
         [Test]
-        public void UpgradeToCurrent_V2Outcome_BecomesV3WithEmptyMetrics()
+        // SALIN-220 moved current from 3 to 4, so this asserts "reached current" rather than a
+        // literal. What it proves is unchanged: the v2 -> v3 step ran and produced empty metrics.
+        public void UpgradeToCurrent_V2Outcome_ReachesCurrentWithEmptyMetrics()
         {
             var outcome = new CampaignProgressOutcome { outcomeSchemaVersion = 2, metrics = null };
 
             CampaignOutcomeValidator.UpgradeToCurrent(outcome);
 
-            Assert.That(outcome.outcomeSchemaVersion, Is.EqualTo(3));
+            Assert.That(outcome.outcomeSchemaVersion,
+                Is.EqualTo(CampaignProgressOutcome.CurrentOutcomeSchemaVersion));
             Assert.That(outcome.metrics, Is.Not.Null.And.Empty,
                 "A v2 outcome recorded no metrics: absence of history, not partial migration.");
         }
@@ -257,7 +263,7 @@ namespace Salinlahi.Tests.Editor.Persistence
         // The previous single-step form returned early unless the version was exactly 1, then stamped
         // it straight to "current". With v3 that would skip the v1 -> v2 step entirely.
         [Test]
-        public void UpgradeToCurrent_V1Outcome_TraversesBothStepsToV3()
+        public void UpgradeToCurrent_V1Outcome_TraversesEveryStepToCurrent()
         {
             var outcome = new CampaignProgressOutcome
             {
@@ -268,10 +274,20 @@ namespace Salinlahi.Tests.Editor.Persistence
 
             CampaignOutcomeValidator.UpgradeToCurrent(outcome);
 
-            Assert.That(outcome.outcomeSchemaVersion, Is.EqualTo(3));
+            Assert.That(outcome.outcomeSchemaVersion,
+                Is.EqualTo(CampaignProgressOutcome.CurrentOutcomeSchemaVersion));
             Assert.That(outcome.evidence, Is.Not.Null, "The v1 -> v2 step must still run.");
             Assert.That(outcome.sessionKind, Is.EqualTo(LearningSessionKind.LevelAttempt));
             Assert.That(outcome.metrics, Is.Not.Null.And.Empty);
+            // SALIN-220: the v3 -> v4 step must have run too, or one version would be skipped.
+            Assert.That(LevelObjectiveGate.AllSatisfied(new LevelProgressRecord
+            {
+                storyViewed = outcome.storyViewed,
+                symbolsPracticed = outcome.symbolsPracticed,
+                wordsRestored = outcome.wordsRestored,
+                contextPassed = outcome.contextPassed,
+                finalSyllableRestored = outcome.finalSyllableRestored,
+            }), Is.True);
         }
 
         [Test]

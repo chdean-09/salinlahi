@@ -353,6 +353,15 @@ namespace Salinlahi.Tests.Editor.Persistence
                 contentSchemaVersion = service.Current.contentSchemaVersion,
                 levelId = levelId,
                 stars = 3,
+
+                // SALIN-220: the successor unlock is now gated on these. A level completed with
+                // every objective satisfied is what the authored rule sees in normal play, which
+                // is what AC1-AC3 are about.
+                storyViewed = true,
+                symbolsPracticed = true,
+                wordsRestored = true,
+                contextPassed = true,
+                finalSyllableRestored = true,
                 unlockedSymbolIds = new List<string>(),
                 unlockedMemoryIds = new List<string>(),
                 claimedRewardIds = new List<string>(),
@@ -362,6 +371,81 @@ namespace Salinlahi.Tests.Editor.Persistence
             Assert.That(coordinator.TryCommit(outcome).Status,
                 Is.EqualTo(CampaignOutcomeCommitStatus.Committed),
                 $"precondition: {levelId} must commit through the authored rule");
+        }
+
+        // ---------------------------------------------------------------
+        // SALIN-220 AC6 — a lock explained by an unsatisfied objective
+        // ---------------------------------------------------------------
+
+        /// <summary>
+        /// SALIN-220 AC6, the machine-readable half. When the predecessor is completed but the
+        /// gate withheld the unlock, the status names WHICH objective is missing — pointing at an
+        /// already-finished level would tell the player to do something they have done. The
+        /// player-facing sentence is still owed; see the TODO in LevelLockNoticeCopy.
+        /// </summary>
+        [Test]
+        public void Resolve_LockedBehindACompletedPredecessorMissingAnObjective_NamesThatObjective_SALIN220()
+        {
+            using CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair();
+            List<string> levelIds = CampaignSaveValidator.GetConfiguredLevelIds(pair.Campaign);
+            CompleteLevels(pair.Document, 1);
+            LevelProgressRecord first = pair.Document.progress.levelProgress[0];
+            SatisfyEveryObjective(first);
+            first.contextPassed = false;
+
+            // The gate would not have unlocked level 2 in this state.
+            pair.Document.progress.levelProgress[1].unlocked = false;
+            pair.Document.progress.activeLevelId = levelIds[0];
+
+            LevelLockStatus status = LevelLockResolver.Resolve(pair.Document, levelIds, levelIds[1]);
+
+            Assert.That(status.State, Is.EqualTo(LevelLockState.Locked));
+            Assert.That(status.HasMissingObjective, Is.True);
+            Assert.That(status.MissingObjectiveId, Is.EqualTo(LevelObjectives.ContextPassed));
+            Assert.That(status.RequiredLevelId, Is.EqualTo(levelIds[0]),
+                "The prerequisite fields stay populated so SALIN-137 callers are unchanged.");
+            Assert.That(status.RequiredLevelOrder, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Resolve_LockedBehindAnUnplayedPredecessor_ReportsNoMissingObjective_SALIN220()
+        {
+            using CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair();
+            List<string> levelIds = CampaignSaveValidator.GetConfiguredLevelIds(pair.Campaign);
+            CompleteLevels(pair.Document, 1);
+
+            // Level 3's predecessor (level 2) has not been played at all: the ordinary lock.
+            LevelLockStatus status = LevelLockResolver.Resolve(pair.Document, levelIds, levelIds[2]);
+
+            Assert.That(status.State, Is.EqualTo(LevelLockState.Locked));
+            Assert.That(status.HasMissingObjective, Is.False,
+                "An unplayed predecessor is not a missing-objective lock.");
+            Assert.That(status.MissingObjectiveId, Is.Null);
+            Assert.That(status.RequiredLevelId, Is.EqualTo(levelIds[1]));
+        }
+
+        [Test]
+        public void Resolve_PredecessorWithEveryObjectiveSatisfied_ReportsNoMissingObjective_SALIN220()
+        {
+            using CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair();
+            List<string> levelIds = CampaignSaveValidator.GetConfiguredLevelIds(pair.Campaign);
+            CompleteLevels(pair.Document, 1);
+            SatisfyEveryObjective(pair.Document.progress.levelProgress[0]);
+
+            LevelLockStatus status = LevelLockResolver.Resolve(pair.Document, levelIds, levelIds[1]);
+
+            Assert.That(status.State, Is.EqualTo(LevelLockState.Unlocked),
+                "CompleteLevels unlocks the successor, and no objective is outstanding.");
+            Assert.That(status.MissingObjectiveId, Is.Null);
+        }
+
+        private static void SatisfyEveryObjective(LevelProgressRecord record)
+        {
+            record.storyViewed = true;
+            record.symbolsPracticed = true;
+            record.wordsRestored = true;
+            record.contextPassed = true;
+            record.finalSyllableRestored = true;
         }
 
         private static void CompleteLevels(CampaignSaveDocument document, int count)
