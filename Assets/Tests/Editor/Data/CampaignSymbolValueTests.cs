@@ -12,7 +12,7 @@ namespace Salinlahi.Tests.Editor.Data
             BaybayinCharacterSO symbol = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
             try
             {
-                symbol.stableId = "symbol.dara";
+                symbol.stableId = "symbol.da";
                 symbol.legacyAliases = new List<string> { "DA", "RA" };
                 symbol.spokenValues = new List<SpokenValueDefinition>
                 {

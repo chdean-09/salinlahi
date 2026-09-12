@@ -11,7 +11,7 @@ namespace Salinlahi.Tests.Editor.Persistence
         {
             using CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair();
 
-            Assert.That(pair.Document.saveSchemaVersion, Is.EqualTo(4));
+            Assert.That(pair.Document.saveSchemaVersion, Is.EqualTo(CampaignSaveDocument.CurrentSaveSchemaVersion));
             Assert.That(pair.Document.progress.journeyGenerationId,
                 Does.Match("^journey\\.[0-9a-f]{32}$"));
             Assert.That(pair.Document.progress.appliedOutcomeReceipts, Is.Empty);
@@ -50,8 +50,9 @@ namespace Salinlahi.Tests.Editor.Persistence
             CampaignSaveValidationResult result =
                 CampaignSaveValidator.Validate(pair.Document, pair.Campaign);
 
-            Assert.That(pair.Document.saveSchemaVersion, Is.EqualTo(4),
-                "SALIN-220's flags did not move the save schema; SALIN-227's field removal did.");
+            Assert.That(pair.Document.saveSchemaVersion, Is.EqualTo(CampaignSaveDocument.CurrentSaveSchemaVersion),
+                "SALIN-220's flags did not move the save schema. SALIN-227's field removal did, "
+                + "and D-025's symbol.dara rename did again.");
             Assert.That(result.IsValid, Is.True, result.ErrorMessage);
         }
 

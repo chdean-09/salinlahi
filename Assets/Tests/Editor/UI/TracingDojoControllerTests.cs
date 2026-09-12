@@ -42,9 +42,9 @@ namespace Salinlahi.Tests.Editor.UI
         public void ResolveEvidence_UsesCanonicalStableIdNotLegacyCharacterId()
         {
             LearningEvidenceEntry entry = TracingDojoEvidence.Resolve(
-                "symbol.dara", "symbol.dara", true);
+                "symbol.da", "symbol.da", true);
 
-            Assert.That(entry.contentId, Is.EqualTo("symbol.dara"));
+            Assert.That(entry.contentId, Is.EqualTo("symbol.da"));
         }
 
         [Test]

@@ -65,16 +65,16 @@ namespace Salinlahi.Tests.Editor.Data
                 Assert.AreEqual("Era renamed for display", ugat.eraName);
                 Assert.IsTrue(campaign.TryGetLevel("level.ugat.01", out LevelConfigSO level));
                 Assert.AreEqual(99, level.levelNumber);
-                Assert.IsTrue(campaign.TryGetSymbol("symbol.dara", out BaybayinCharacterSO dara));
+                Assert.IsTrue(campaign.TryGetSymbol("symbol.da", out BaybayinCharacterSO dara));
                 Assert.AreEqual("DA / RA", dara.syllable);
                 Assert.IsTrue(campaign.TryGetSpokenValue(
-                    "symbol.dara", "value.ra", out SpokenValueDefinition ra));
+                    "symbol.da", "value.ra", out SpokenValueDefinition ra));
                 Assert.AreEqual("RA", ra.displayValue);
 
                 Assert.IsFalse(campaign.TryGetEra("era.unknown", out _));
                 Assert.IsFalse(campaign.TryGetLevel("level.unknown.01", out _));
                 Assert.IsFalse(campaign.TryGetSymbol("symbol.unknown", out _));
-                Assert.IsFalse(campaign.TryGetSpokenValue("symbol.dara", "value.unknown", out _));
+                Assert.IsFalse(campaign.TryGetSpokenValue("symbol.da", "value.unknown", out _));
             }
             finally
             {
@@ -93,7 +93,7 @@ namespace Salinlahi.Tests.Editor.Data
             {
                 duplicateEra.stableId = "era.ugat";
                 duplicateLevel.stableId = "level.ugat.01";
-                duplicateSymbol.stableId = "symbol.dara";
+                duplicateSymbol.stableId = "symbol.da";
                 duplicateSymbol.spokenValues = new List<SpokenValueDefinition>
                 {
                     new() { stableId = "value.ra" },
@@ -104,8 +104,8 @@ namespace Salinlahi.Tests.Editor.Data
 
                 Assert.IsFalse(campaign.TryGetEra("era.ugat", out _));
                 Assert.IsFalse(campaign.TryGetLevel("level.ugat.01", out _));
-                Assert.IsFalse(campaign.TryGetSymbol("symbol.dara", out _));
-                Assert.IsFalse(campaign.TryGetSpokenValue("symbol.dara", "value.ra", out _));
+                Assert.IsFalse(campaign.TryGetSymbol("symbol.da", out _));
+                Assert.IsFalse(campaign.TryGetSpokenValue("symbol.da", "value.ra", out _));
             }
             finally
             {
@@ -131,7 +131,7 @@ namespace Salinlahi.Tests.Editor.Data
             era.levels = new List<LevelConfigSO> { level };
             level.stableId = "level.ugat.01";
             level.levelNumber = 99;
-            symbol.stableId = "symbol.dara";
+            symbol.stableId = "symbol.da";
             symbol.syllable = "DA / RA";
             symbol.spokenValues = new List<SpokenValueDefinition>
             {

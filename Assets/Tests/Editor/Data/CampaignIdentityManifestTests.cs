@@ -25,7 +25,7 @@ namespace Salinlahi.Tests.Editor.Data
 
         [TestCase("campaign.revised-v1", true)]
         [TestCase("level.ugat.01", true)]
-        [TestCase("symbol.dara", true)]
+        [TestCase("symbol.da", true)]
         [TestCase("Level.Ugat.01", false)]
         [TestCase("level..01", false)]
         [TestCase(" level.ugat.01", false)]

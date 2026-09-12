@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: DA
   syllable: da
-  stableId: symbol.dara
+  stableId: symbol.da
   legacyAliases: []
   spokenValues:
   - stableId: value.da

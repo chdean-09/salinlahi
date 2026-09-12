@@ -20,12 +20,12 @@ namespace Salinlahi.Tests.Editor.Persistence
             CampaignSaveInitializationResult result = service.Initialize(pair.Campaign);
 
             Assert.That(result.Status, Is.EqualTo(CampaignSaveInitializationStatus.Migrated));
-            Assert.That(service.Current.saveSchemaVersion, Is.EqualTo(4));
+            Assert.That(service.Current.saveSchemaVersion, Is.EqualTo(CampaignSaveDocument.CurrentSaveSchemaVersion));
             Assert.That(service.Current.progress.journeyGenerationId, Does.StartWith("journey."));
             Assert.That(storage.Exists(CampaignSaveFileRole.Primary), Is.True);
             Assert.That(CampaignSaveSerializer.TryDeserialize(
                 storage.ReadAllText(CampaignSaveFileRole.Primary)).Document.saveSchemaVersion,
-                Is.EqualTo(4));
+                Is.EqualTo(CampaignSaveDocument.CurrentSaveSchemaVersion));
         }
 
         [Test]
