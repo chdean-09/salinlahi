@@ -58,6 +58,10 @@ Label every check with exactly one of:
 | `BLOCKED` | the environment prevented it |
 | `NOT APPLICABLE` | e.g. gameplay tests for a docs-only change |
 
+**Measure the baseline in your own worktree before you change anything, and predict every number before you read it.** State the count you expect from the tests you add or remove, then run. A number that merely looks healthy is not evidence, and this is the only way to tell a real regression from an environment artefact.
+
+**A seeded `Library` can be silently corrupt, and it fakes regressions.** Worktrees are often given a warm `Library` copied from a sibling to avoid a cold import. When that copy is bad, `MonoScript.GetClass()` returns null for every script, so `AssetDatabase.LoadAssetAtPath` returns null for every ScriptableObject — and the suite reports a large block of failures concentrated in asset-loading fixtures **on a tree you have not touched**. Read as a regression, it will send you to "fix" tests that were never broken, or to undo correct work. If your pre-change baseline does not match the one you were given, suspect the `Library` before your code: delete `Library/ArtifactDB`, `Library/SourceAssetDB` and `Library/ScriptMapper` and let Unity rebuild (minutes, not a full cold import — a forced reimport alone does not fix it). Report which baseline you measured and when.
+
 Never write `PASS` for a suite you did not actually run. CI (`git-conventions.yml`) lints naming only and is never evidence of compilation or tests. If the plan substituted a record-baseline-then-diff gate because a validator already fails on `dev`, report both the baseline and the diff so the reviewer does not read a pre-existing failure as your regression.
 
 ## Deviations and discoveries
