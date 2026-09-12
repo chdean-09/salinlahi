@@ -11,7 +11,7 @@ namespace Salinlahi.Tests.Editor.Persistence
         {
             using CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair();
 
-            Assert.That(pair.Document.saveSchemaVersion, Is.EqualTo(3));
+            Assert.That(pair.Document.saveSchemaVersion, Is.EqualTo(4));
             Assert.That(pair.Document.progress.journeyGenerationId,
                 Does.Match("^journey\\.[0-9a-f]{32}$"));
             Assert.That(pair.Document.progress.appliedOutcomeReceipts, Is.Empty);
@@ -20,12 +20,15 @@ namespace Salinlahi.Tests.Editor.Persistence
         /// <summary>
         /// SALIN-220 V6, the negative control behind the schema decision. Adding the five flags is
         /// additive under JsonUtility and no structural check inspects them, so a document that
-        /// carries them still validates at saveSchemaVersion 3 and this ticket owes no save-schema
-        /// bump. That belongs to SALIN-227. Break the claim by adding an invariant over the flags
-        /// in CampaignSaveValidator and this test fails.
+        /// carries them still validates without a save-schema bump of its own. Break the claim by
+        /// adding an invariant over the flags in CampaignSaveValidator and this test fails.
+        ///
+        /// SALIN-227 renamed this from ...AtSaveSchema3... and moved the pinned literal to 4. The
+        /// schema did move here, but for an unrelated reason -- dropping endlessModeUnlocked -- so
+        /// what this test guards is unchanged.
         /// </summary>
         [Test]
-        public void Validate_DocumentCarryingObjectiveFlagsAtSaveSchema3_IsStillValid_SALIN220()
+        public void Validate_DocumentCarryingObjectiveFlags_IsStillValid_SALIN220()
         {
             using CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair();
             LevelProgressRecord first = pair.Document.progress.levelProgress[0];
@@ -47,8 +50,8 @@ namespace Salinlahi.Tests.Editor.Persistence
             CampaignSaveValidationResult result =
                 CampaignSaveValidator.Validate(pair.Document, pair.Campaign);
 
-            Assert.That(pair.Document.saveSchemaVersion, Is.EqualTo(3),
-                "SALIN-220 deliberately does not move the save schema.");
+            Assert.That(pair.Document.saveSchemaVersion, Is.EqualTo(4),
+                "SALIN-220's flags did not move the save schema; SALIN-227's field removal did.");
             Assert.That(result.IsValid, Is.True, result.ErrorMessage);
         }
 

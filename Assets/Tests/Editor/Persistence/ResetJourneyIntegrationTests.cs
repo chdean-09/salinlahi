@@ -76,7 +76,6 @@ namespace Salinlahi.Tests.Editor.Persistence
                 Is.Not.EqualTo(generationBefore));
             Assert.That(_service.Current.progress.levelProgress[0].completed, Is.False);
             Assert.That(_service.Current.progress.levelProgress[0].bestStars, Is.EqualTo(0));
-            Assert.That(_service.Current.progress.endlessModeUnlocked, Is.False);
             Assert.That(_service.Current.progress.unlockedSymbolIds, Is.Empty);
             Assert.That(_service.Current.progress.unlockedMemoryIds, Is.Empty);
             Assert.That(_service.Current.progress.appliedOutcomeReceipts, Is.Empty);

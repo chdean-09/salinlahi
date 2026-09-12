@@ -21,6 +21,12 @@ public sealed class CampaignSaveInitializationResult
 
 public sealed class CampaignSaveService
 {
+    /// <summary>
+    /// SALIN-227. Quarantine and failure reason for a save written by an older schema. Kept apart
+    /// from the "corrupt-*" reasons so a superseded file is not misfiled as corruption.
+    /// </summary>
+    public const string SupersededReasonCode = "superseded-schema";
+
     private readonly ICampaignSaveStorage _storage;
     private readonly ILegacyProgressSource _legacySource;
     private readonly ITransactionMetadataProvider _metadata;
@@ -88,14 +94,14 @@ public sealed class CampaignSaveService
 
         if (decision.Kind == RecoveryDecisionKind.UsePrimary)
         {
-            return PublishSelectedCandidate(primary, primary.IsMigratableV1
+            return PublishSelectedCandidate(primary, primary.IsMigratable
                 ? CampaignSaveInitializationStatus.Migrated
                 : CampaignSaveInitializationStatus.Ready);
         }
 
         if (decision.Kind == RecoveryDecisionKind.PromoteTemporary)
         {
-            if (temporary.IsMigratableV1)
+            if (temporary.IsMigratable)
                 return PublishSelectedCandidate(temporary, CampaignSaveInitializationStatus.Migrated);
             CampaignSaveCommitResult promoted = _committer.TryPromoteValidatedTemporary(
                 temporary.Document, primary.Document);
@@ -107,7 +113,7 @@ public sealed class CampaignSaveService
 
         if (decision.Kind == RecoveryDecisionKind.RestoreBackup)
         {
-            if (backup.IsMigratableV1)
+            if (backup.IsMigratable)
                 return PublishSelectedCandidate(backup, CampaignSaveInitializationStatus.Migrated);
             CampaignSaveCommitResult restored = _committer.TryCommit(
                 backup.Document, null, new CampaignSaveCommitContext());
@@ -120,9 +126,9 @@ public sealed class CampaignSaveService
         bool hadCorruptEvidence = decision.Kind == RecoveryDecisionKind.CorruptRevisedData;
         if (hadCorruptEvidence)
         {
-            QuarantineIfPresent(CampaignSaveFileRole.Primary, "corrupt-primary");
-            QuarantineIfPresent(CampaignSaveFileRole.Temporary, "corrupt-temporary");
-            QuarantineIfPresent(CampaignSaveFileRole.Backup, "corrupt-backup");
+            QuarantineIfPresent(CampaignSaveFileRole.Primary, QuarantineReason(primary, "corrupt-primary"));
+            QuarantineIfPresent(CampaignSaveFileRole.Temporary, QuarantineReason(temporary, "corrupt-temporary"));
+            QuarantineIfPresent(CampaignSaveFileRole.Backup, QuarantineReason(backup, "corrupt-backup"));
         }
 
         _archiveResult = new LegacyArchiveService(_storage, _legacySource, () => _metadata.UtcNow)
@@ -195,9 +201,10 @@ public sealed class CampaignSaveService
             return CandidateInspection.Missing(role);
         try
         {
-            CampaignSaveParseResult parsed = CampaignSaveSerializer.TryDeserialize(_storage.ReadAllText(role));
+            string rawJson = _storage.ReadAllText(role);
+            CampaignSaveParseResult parsed = CampaignSaveSerializer.TryDeserialize(rawJson);
             if (!parsed.Success)
-                return new CandidateInspection { Role = role, Exists = true, FailureCode = parsed.FailureCode };
+                return ClassifyParseFailure(role, rawJson, parsed.FailureCode);
             string archiveChecksum = null;
             if (parsed.Document.migration != null && parsed.Document.migration.state == CampaignMigrationState.Completed)
             {
@@ -228,7 +235,13 @@ public sealed class CampaignSaveService
                     IntegritySha256 = archiveChecksum,
                 };
             }
-            if (parsed.Document.saveSchemaVersion == 1)
+            // SALIN-227 (Barrier B). This was `== 1`, which was the ONLY route to the migrator on
+            // the load path -- so the v2 -> v3 arm that has existed since SALIN-171 could never run
+            // against a file, no matter how the checksum behaved: a stored 2 fell straight through
+            // to Validate below and was rejected as InvalidStructure. A range test routes every
+            // in-range stored version instead of just the lowest one.
+            if (parsed.Document.saveSchemaVersion >= 1 &&
+                parsed.Document.saveSchemaVersion < CampaignSaveDocument.CurrentSaveSchemaVersion)
             {
                 CampaignSaveMigrationResult migration = CampaignSaveMigrator.TryUpgradeToCurrent(
                     parsed.Document, _campaign, "journey.00000000000000000000000000000001");
@@ -246,8 +259,8 @@ public sealed class CampaignSaveService
                     Exists = true,
                     Document = migration.Success ? parsed.Document : null,
                     FailureCode = migration.Success ? CampaignSaveFailureCode.None : migration.FailureCode,
-                    ReasonCode = migration.Success ? "v1-migratable" : migration.ErrorMessage,
-                    IsMigratableV1 = migration.Success,
+                    ReasonCode = migration.Success ? "schema-migratable" : migration.ErrorMessage,
+                    IsMigratable = migration.Success,
                 };
             }
             CampaignSaveValidationResult validation = CampaignSaveValidator.Validate(parsed.Document, _campaign, archiveChecksum);
@@ -270,6 +283,66 @@ public sealed class CampaignSaveService
                 ReasonCode = exception.Message,
             };
         }
+    }
+
+    /// <summary>
+    /// SALIN-227. Separates "this file is corrupt" from "this file was written by an older build".
+    /// </summary>
+    /// <remarks>
+    /// A save whose schema has been superseded fails the integrity check for a completely ordinary
+    /// reason: TryDeserialize re-derives the hash from JSON re-serialized with the CURRENT field
+    /// set, so a key the old build emitted and this one no longer does changes the hash input. The
+    /// bytes are intact; only the shape moved. Reporting that as ChecksumMismatch and filing it as
+    /// "corrupt-primary" told whoever read the quarantine later a plain untruth, which is the one
+    /// defect here worth fixing -- the safe-reset outcome itself is what the ticket asks for.
+    ///
+    /// The stored version is read back WITHOUT an integrity check, which is safe because the value
+    /// is advisory: it only chooses a reason code. It can never admit a save, and the returned
+    /// candidate still carries no Document, so the file stays rejected either way.
+    /// </remarks>
+    private static CandidateInspection ClassifyParseFailure(
+        CampaignSaveFileRole role, string rawJson, CampaignSaveFailureCode failureCode)
+    {
+        if (failureCode == CampaignSaveFailureCode.ChecksumMismatch &&
+            TryReadStoredSchemaVersion(rawJson, out int storedVersion) &&
+            storedVersion >= 1 && storedVersion < CampaignSaveDocument.CurrentSaveSchemaVersion)
+        {
+            return new CandidateInspection
+            {
+                Role = role,
+                Exists = true,
+                FailureCode = CampaignSaveFailureCode.SupersededSchema,
+                ReasonCode = SupersededReasonCode,
+            };
+        }
+
+        return new CandidateInspection { Role = role, Exists = true, FailureCode = failureCode };
+    }
+
+    private static bool TryReadStoredSchemaVersion(string rawJson, out int storedVersion)
+    {
+        storedVersion = 0;
+        if (string.IsNullOrWhiteSpace(rawJson))
+            return false;
+        try
+        {
+            CampaignSaveDocument stored = UnityEngine.JsonUtility.FromJson<CampaignSaveDocument>(rawJson);
+            if (stored == null)
+                return false;
+            storedVersion = stored.saveSchemaVersion;
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    private static string QuarantineReason(CandidateInspection candidate, string corruptReason)
+    {
+        return candidate != null && candidate.FailureCode == CampaignSaveFailureCode.SupersededSchema
+            ? SupersededReasonCode
+            : corruptReason;
     }
 
     private void QuarantineIfPresent(CampaignSaveFileRole role, string reason)
@@ -295,7 +368,7 @@ public sealed class CampaignSaveService
         CandidateInspection selected,
         CampaignSaveInitializationStatus status)
     {
-        if (!selected.IsMigratableV1)
+        if (!selected.IsMigratable)
         {
             Current = selected.Document;
             return new CampaignSaveInitializationResult { Status = status, Document = Current };

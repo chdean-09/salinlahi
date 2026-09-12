@@ -7,7 +7,7 @@ public sealed class CandidateInspection
     public CampaignSaveDocument Document { get; set; }
     public CampaignSaveFailureCode FailureCode { get; set; }
     public string ReasonCode { get; set; }
-    public bool IsMigratableV1 { get; set; }
+    public bool IsMigratable { get; set; }
 
     public static CandidateInspection Missing(CampaignSaveFileRole role) => new CandidateInspection
     {
@@ -84,7 +84,7 @@ public static class CampaignSaveRecoveryResolver
     private static bool IsValid(CandidateInspection candidate)
     {
         return candidate != null && candidate.Exists && candidate.FailureCode == CampaignSaveFailureCode.None &&
-            candidate.Document != null && (candidate.IsMigratableV1 ||
+            candidate.Document != null && (candidate.IsMigratable ||
                 candidate.Document.saveSchemaVersion == CampaignSaveDocument.CurrentSaveSchemaVersion);
     }
 
