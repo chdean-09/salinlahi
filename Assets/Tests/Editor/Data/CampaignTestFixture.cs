@@ -92,6 +92,23 @@ namespace Salinlahi.Tests.Editor.Data
                     });
                 }
 
+                // SALIN-221: E/I and O/U carry their combined citation value plus the per-word-context
+                // values, so the synthetic catalog totals ContentIdentity.RevisedSpokenValueCount.
+                if (ContentIdentity.ApprovedSpokenValueIds.TryGetValue(
+                        stableId, out IReadOnlyList<string> approvedValueIds) &&
+                    stableId != "symbol.dara")
+                {
+                    for (int valueIndex = 1; valueIndex < approvedValueIds.Count; valueIndex++)
+                    {
+                        string contextValueId = approvedValueIds[valueIndex];
+                        symbol.spokenValues.Add(new SpokenValueDefinition
+                        {
+                            stableId = contextValueId,
+                            displayValue = contextValueId.Substring("value.".Length).ToUpperInvariant(),
+                        });
+                    }
+                }
+
                 Campaign.symbols.Add(symbol);
                 symbolsById.Add(stableId, symbol);
             }

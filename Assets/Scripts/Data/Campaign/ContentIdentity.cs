@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
@@ -6,7 +7,7 @@ public static class ContentIdentity
     public const string RevisedCampaignId = "campaign.revised-v1";
     public const int RevisedLevelsPerEra = 5;
     public const int RevisedFocusWordsPerLevel = 2;
-    public const int RevisedSpokenValueCount = 18;
+    public const int RevisedSpokenValueCount = 22;
     public const string RevisedDaraSymbolId = "symbol.dara";
     public const string RevisedDaSpokenValueId = "value.da";
     public const string RevisedRaSpokenValueId = "value.ra";
@@ -32,6 +33,55 @@ public static class ContentIdentity
         RevisedSymbolIds[RevisedSymbolIds.Count - 1];
     public static readonly string RevisedFinaleSpokenValueId =
         "value." + RevisedFinaleSymbolId.Substring("symbol.".Length);
+
+    /// <summary>
+    /// SALIN-221 (ruling Q2): the spoken values approved for each visual symbol that carries more
+    /// than its own primary value. E/I and O/U keep their combined citation value as the primary
+    /// entry — it is what the learning card, the cumulative pools and every requirement resolve —
+    /// and add the per-word-context values a focus-word decomposition selects. DA/RA is the
+    /// pre-existing two-value case. Every other symbol is covered by the default rule in
+    /// <see cref="IsApprovedSpokenValue"/>: "value." + its symbol suffix.
+    /// The map lives here rather than in the validator so that changing which values a symbol may
+    /// carry stays a data edit in one place.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, IReadOnlyList<string>>
+        ApprovedSpokenValueIds = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+        {
+            { "symbol.ei", new[] { "value.ei", "value.e", "value.i" } },
+            { "symbol.ou", new[] { "value.ou", "value.o", "value.u" } },
+            {
+                RevisedDaraSymbolId,
+                new[] { RevisedDaSpokenValueId, RevisedRaSpokenValueId }
+            },
+        };
+
+    /// <summary>
+    /// Whether <paramref name="spokenValueId"/> is an approved value for
+    /// <paramref name="symbolId"/>. Symbols absent from <see cref="ApprovedSpokenValueIds"/> carry
+    /// exactly their primary value.
+    /// </summary>
+    public static bool IsApprovedSpokenValue(string symbolId, string spokenValueId)
+    {
+        if (string.IsNullOrEmpty(symbolId) || string.IsNullOrEmpty(spokenValueId) ||
+            !symbolId.StartsWith("symbol.", StringComparison.Ordinal))
+            return false;
+
+        if (ApprovedSpokenValueIds.TryGetValue(symbolId, out IReadOnlyList<string> approved))
+        {
+            for (int index = 0; index < approved.Count; index++)
+            {
+                if (string.Equals(approved[index], spokenValueId, StringComparison.Ordinal))
+                    return true;
+            }
+
+            return false;
+        }
+
+        return string.Equals(
+            "value." + symbolId.Substring("symbol.".Length),
+            spokenValueId,
+            StringComparison.Ordinal);
+    }
 
     private static readonly Regex CanonicalIdPattern = new Regex(
         "^[a-z0-9]+(?:[.-][a-z0-9]+)*$",

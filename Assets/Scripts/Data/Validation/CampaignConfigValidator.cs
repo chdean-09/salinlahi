@@ -268,7 +268,9 @@ public static class CampaignConfigValidator
         if (spokenValueCount != ContentIdentity.RevisedSpokenValueCount)
         {
             AddError(issues, ContentValidationCode.SpokenValueCountInvalid, CampaignPath + ".symbols",
-                "Revised campaign must contain exactly eighteen contextual spoken values.", campaign);
+                "Revised campaign must contain exactly " +
+                ContentIdentity.RevisedSpokenValueCount +
+                " contextual spoken values.", campaign);
         }
 
         if (daraCount != 1 || dara == null ||
@@ -304,14 +306,7 @@ public static class CampaignConfigValidator
                     "Spoken value stable ID is duplicated on its visual symbol.", symbol);
             }
 
-            bool knownValue = string.Equals(
-                    symbol.stableId, ContentIdentity.RevisedDaraSymbolId, StringComparison.Ordinal)
-                ? string.Equals(value.stableId, ContentIdentity.RevisedDaSpokenValueId,
-                      StringComparison.Ordinal) ||
-                  string.Equals(value.stableId, ContentIdentity.RevisedRaSpokenValueId,
-                      StringComparison.Ordinal)
-                : string.Equals(value.stableId, GetPrimaryValueId(symbol.stableId), StringComparison.Ordinal);
-            if (!knownValue)
+            if (!ContentIdentity.IsApprovedSpokenValue(symbol.stableId, value.stableId))
             {
                 AddError(issues, ContentValidationCode.SpokenValueUnknown, valuePath,
                     "Spoken value is not approved for its canonical visual symbol.", symbol);
@@ -882,17 +877,6 @@ public static class CampaignConfigValidator
     private static bool IsKudlit(string spokenValueId)
     {
         return spokenValueId != null && spokenValueId.IndexOf(".kudlit.", StringComparison.Ordinal) >= 0;
-    }
-
-    private static string GetPrimaryValueId(string symbolId)
-    {
-        if (string.IsNullOrEmpty(symbolId) ||
-            !symbolId.StartsWith("symbol.", StringComparison.Ordinal))
-            return "value.invalid";
-
-        return symbolId == ContentIdentity.RevisedDaraSymbolId
-            ? ContentIdentity.RevisedDaSpokenValueId
-            : "value." + symbolId.Substring("symbol.".Length);
     }
 
     private static bool ContainsOrdinal(IReadOnlyList<string> values, string value)
