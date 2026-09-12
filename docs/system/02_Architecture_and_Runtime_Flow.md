@@ -281,12 +281,25 @@ Story → FocusWords → SymbolLearning → RequiredPractice → Defense
                                     RequestExit()  → Exited     (from any non-terminal phase)
 ```
 
-**Phases are planned, not fixed.** `LevelPhasePlan.FromConfig()` inspects the `LevelConfigSO` once and
-marks `FocusWords`, `SymbolLearning`, `RequiredPractice`, `ContextChallenge` and `MemoryReward` as
-planned only when the corresponding content exists. An unplanned phase is skipped by the machine with
-no executor involvement. This is how a legacy config — one with no revised content authored — traverses
-the same machine unchanged as **`Story → Defense → AtomicSave → Results`**. `Story`, `Defense`,
-`AtomicSave` and `Results` are always planned.
+**Some phases are planned, not fixed.** `LevelPhasePlan.FromConfig()` inspects the `LevelConfigSO` once
+and marks `FocusWords`, `SymbolLearning` and `RequiredPractice` as planned only when the corresponding
+content exists. An unplanned phase is skipped by the machine with no executor involvement.
+
+**`ContextChallenge` and `MemoryReward` are always planned (SALIN-223).** They used to follow the same
+content-conditional rule, which meant a level with neither authored traversed
+`Story → Defense → AtomicSave → Results` and **completed on wave clear alone** — the two phases
+disappeared silently rather than failing. They are now planned on every level, including for a null
+config, and missing content is surfaced instead of skipped: `LevelPhasePlan` exposes
+`ContextChallengeContentMissing` (no `challengeSequence`) and `MemoryRewardContentMissing` (empty
+`rewardIds` **or** no `contextMedia.cutscene` — both keys are required, because the plan and the
+executor historically keyed this phase differently and a half-authored level must not read as
+complete). When either is true the executor shows a content-missing panel and **refuses to complete
+the phase**, holding until the machine goes terminal. The flow therefore never reaches `AtomicSave`,
+never raises `LevelComplete`, and the next level cannot unlock. `Story`, `Defense`, `AtomicSave` and
+`Results` remain always planned.
+
+The one case where `ContextChallenge` is legitimately unplanned is `challengePrototypeEnabled`, where
+the sequence runs as a pre-wave beat inside the `Defense` executor instead.
 
 **The guarantees the machine exists to enforce**, each of which rejects without a state change:
 

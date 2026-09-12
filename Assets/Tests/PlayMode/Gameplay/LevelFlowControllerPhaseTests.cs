@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -57,6 +58,23 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 runtimePanel = GameObject.Find("[Runtime] ActiveCluePanel");
             }
 
+            // SALIN-223: the content-missing panel builds its own GameObject and canvas at
+            // runtime, neither of which the fixture owns, so they outlive the test unless
+            // they are cleared here.
+            foreach (LevelContentMissingPanel panel in Object.FindObjectsByType<LevelContentMissingPanel>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (panel != null)
+                    Object.DestroyImmediate(panel.gameObject);
+            }
+
+            GameObject missingCanvas = GameObject.Find("[Runtime] ContentMissingCanvas");
+            while (missingCanvas != null)
+            {
+                Object.DestroyImmediate(missingCanvas);
+                missingCanvas = GameObject.Find("[Runtime] ContentMissingCanvas");
+            }
+
             ChallengeRuntimeState.Clear();
             TutorialRuntimeState.Clear();
             foreach (Level1TutorialGuideUI guide in Object.FindObjectsByType<Level1TutorialGuideUI>(
@@ -90,6 +108,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             yield return WaitFrames(10);
             EventBus.RaiseDefenseComplete();
             yield return WaitFrames(10);
+            yield return ClearContextChallenge(controller);
 
             Assert.AreEqual(1, controller.CommitCalls);
             Assert.IsTrue(victoryPanel.activeSelf, "Accepted save must open Results (victory).");
@@ -108,6 +127,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             yield return WaitFrames(10);
             EventBus.RaiseDefenseComplete();
             yield return WaitFrames(5);
+            yield return ClearContextChallenge(controller);
 
             Assert.AreEqual(1, controller.CommitCalls,
                 "Duplicate defense-completion events must be inert.");
@@ -142,6 +162,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             yield return WaitFrames(10);
             EventBus.RaiseDefenseComplete();
             yield return WaitFrames(10);
+            yield return ClearContextChallenge(controller);
 
             Assert.IsFalse(victoryPanel.activeSelf, "Results must be withheld without an accepted save.");
             Assert.IsTrue(failureOverlay.activeSelf);
@@ -161,6 +182,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             yield return WaitFrames(10);
             EventBus.RaiseDefenseComplete();
             yield return WaitFrames(10);
+            yield return ClearContextChallenge(controller);
             Assert.IsTrue(failureOverlay.activeSelf, "Setup: failure panel must be up before retry.");
 
             ClickRetryButton(failureOverlay);
@@ -228,6 +250,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             yield return WaitFrames(10);
             EventBus.RaiseDefenseComplete();
             yield return WaitFrames(10);
+            yield return ClearContextChallenge(controller);
             Assert.AreEqual(LevelPhase.AtomicSave, MachineOf(controller).Phase,
                 "Setup: the flow must be holding the atomic-save retry gate.");
 
@@ -261,6 +284,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             yield return WaitFrames(10);
             EventBus.RaiseDefenseComplete();
             yield return WaitFrames(10);
+            yield return ClearContextChallenge(controller);
             Assert.AreEqual(LevelPhase.Results, MachineOf(controller).Phase,
                 "Setup: the flow must be waiting on the outro inside Results.");
 
@@ -561,6 +585,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
 
             InvokePrivate(waveManager, "CompleteRun");
             yield return WaitFrames(10);
+            yield return ClearContextChallenge(controller);
 
             Assert.AreEqual(1, controller.CommitCalls,
                 "WaveManager completion must route through DefenseComplete into the atomic save.");
@@ -648,6 +673,97 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 "Exiting the challenge must never commit partial campaign progress.");
             Assert.IsFalse(victoryPanel.activeSelf);
             Assert.AreEqual(LevelPhase.Exited, MachineOf(controller).Phase);
+        }
+
+        // ---------------------------------------------------------------------
+        // SALIN-223: a planned phase with no authored content refuses to complete.
+        // These two are the runtime proof of AC-3 and AC-4 — the level does not
+        // finish, the save never commits, so the next level cannot unlock.
+        // ---------------------------------------------------------------------
+
+        [UnityTest]
+        public IEnumerator MissingChallengeSequence_ShowsContentMissingPanel_AndNeverCommits()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            LogAssert.Expect(LogType.Error, new Regex("ContextChallenge cannot run because"));
+            TestPhaseFlowController controller = BootstrapFlow(
+                config => config.challengeSequence = null,
+                out GameObject victoryPanel, out _, out _, dialogueController: null);
+
+            yield return WaitFrames(10);
+            EventBus.RaiseDefenseComplete();
+            yield return WaitFrames(20);
+
+            Assert.AreEqual(LevelPhase.ContextChallenge, MachineOf(controller).Phase,
+                "A level with no authored challenge must hold in phase 6, not fall through it. "
+                + "Falling through is how clearing the wave used to complete the level.");
+            Assert.IsFalse(MachineOf(controller).IsTerminal,
+                "The refusal must hold the flow, not quietly terminate it.");
+            Assert.AreEqual(0, controller.CommitCalls,
+                "AC-4: the atomic save must never run, so the next level cannot unlock.");
+            Assert.IsFalse(victoryPanel.activeSelf, "The level must not present as won.");
+
+            LevelContentMissingPanel panel =
+                Object.FindFirstObjectByType<LevelContentMissingPanel>(FindObjectsInactive.Include);
+            Assert.IsNotNull(panel, "AC-3: a content-missing panel must be shown.");
+            Assert.IsTrue(panel.IsPresented);
+            Assert.AreEqual(LevelPhase.ContextChallenge, panel.PresentedPhase);
+        }
+
+        [UnityTest]
+        public IEnumerator MissingRewardContent_ShowsContentMissingPanel_AndNeverCommits()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            LogAssert.Expect(LogType.Error, new Regex("MemoryReward cannot run because"));
+            TestPhaseFlowController controller = BootstrapFlow(
+                config =>
+                {
+                    // Half-authored on purpose: reward ids present, memory cutscene absent.
+                    // The plan requires BOTH keys, so this must still block. Keying the
+                    // phase on rewardIds alone would let this level through.
+                    config.contextMedia.cutscene = null;
+                },
+                out GameObject victoryPanel, out _, out _, dialogueController: null);
+
+            yield return WaitFrames(10);
+            EventBus.RaiseDefenseComplete();
+            yield return WaitFrames(10);
+            yield return ClearContextChallenge(controller);
+
+            Assert.AreEqual(LevelPhase.MemoryReward, MachineOf(controller).Phase,
+                "A level with no authored memory must hold in phase 7.");
+            Assert.AreEqual(0, controller.CommitCalls,
+                "AC-4: the atomic save must never run, so the next level cannot unlock.");
+            Assert.IsFalse(victoryPanel.activeSelf);
+
+            LevelContentMissingPanel panel =
+                Object.FindFirstObjectByType<LevelContentMissingPanel>(FindObjectsInactive.Include);
+            Assert.IsNotNull(panel, "AC-3: a content-missing panel must be shown.");
+            Assert.IsTrue(panel.IsPresented);
+            Assert.AreEqual(LevelPhase.MemoryReward, panel.PresentedPhase);
+        }
+
+        // Negative control for the two tests above. It proves the gate is a real
+        // content check rather than a blanket block: the SAME fixture, with content
+        // authored, must still reach Completed. Without this, "refuses correctly" and
+        // "refuses everything" look identical.
+        [UnityTest]
+        public IEnumerator AuthoredChallengeAndMemory_StillCompleteTheLevel()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapFlow(
+                _ => { }, out GameObject victoryPanel, out _, out _, dialogueController: null);
+
+            yield return WaitFrames(10);
+            EventBus.RaiseDefenseComplete();
+            yield return WaitFrames(10);
+            yield return ClearContextChallenge(controller);
+
+            Assert.AreEqual(LevelPhase.Completed, MachineOf(controller).Phase);
+            Assert.AreEqual(1, controller.CommitCalls);
+            Assert.IsTrue(victoryPanel.activeSelf);
+            Assert.IsNull(Object.FindFirstObjectByType<LevelContentMissingPanel>(FindObjectsInactive.Include),
+                "A fully authored level must never build a content-missing panel.");
         }
 
         // SALIN-135 AC3/AC4. TutorialRuntimeState is static, so it outlives the scene. A defeat
@@ -1050,6 +1166,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             yield return WaitFrames(10);
             EventBus.RaiseDefenseComplete();
             yield return WaitFrames(10);
+            yield return ClearContextChallenge(controller);
 
             Assert.AreEqual(1, controller.CommitCalls);
             Assert.IsTrue(victoryPanel.activeSelf);
@@ -1096,6 +1213,42 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             config.challengeSequence = sequence;
         }
 
+        /// <summary>
+        /// SALIN-223. Authors both memory-reward keys. The plan requires BOTH a non-empty
+        /// rewardIds and a contextMedia.cutscene, so authoring only one leaves the phase
+        /// blocking — which is deliberate, and is asserted by
+        /// <see cref="MissingRewardContent_ShowsContentMissingPanel_AndNeverCommits"/>.
+        /// The reward id avoids the "memory." prefix so it does not disturb fixtures that
+        /// assert on RewardGrant.UnlockedMemoryIds.
+        /// </summary>
+        private void ConfigureMemoryReward(LevelConfigSO config)
+        {
+            CutsceneSO memory = ScriptableObject.CreateInstance<CutsceneSO>();
+            _objectsToDestroy.Add(memory);
+            config.contextMedia.cutscene = memory;
+            if (config.rewardIds.Count == 0)
+                config.rewardIds.Add("reward.fixture.content");
+        }
+
+        /// <summary>
+        /// SALIN-223 fixture repair. Clears the context challenge the way a player would,
+        /// so a test whose subject is a later phase can reach it. Deliberately a real
+        /// submission through ChallengeFlowController rather than a machine poke: a test
+        /// that reported the phase complete directly would pass even if the executor had
+        /// stopped gating, and would not distinguish "refuses correctly" from
+        /// "stopped looking".
+        /// </summary>
+        private IEnumerator ClearContextChallenge(LevelFlowController controller)
+        {
+            Assert.AreEqual(LevelPhase.ContextChallenge, MachineOf(controller).Phase,
+                "Fixture: the flow must be holding the context challenge before it is cleared.");
+            ChallengeFlowController challenge =
+                GetPrivateField<ChallengeFlowController>(controller, "_challengeFlowController");
+            Assert.IsNotNull(challenge, "Fixture: phase 6 must have a ChallengeFlowController.");
+            challenge.SubmitPlacement("w-1");
+            yield return WaitFrames(10);
+        }
+
         // ---------------------------------------------------------------------
         // Bootstrap helpers
         // ---------------------------------------------------------------------
@@ -1125,6 +1278,16 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
 
             LevelConfigSO config = ScriptableObject.CreateInstance<LevelConfigSO>();
             _objectsToDestroy.Add(config);
+
+            // SALIN-223 fixture repair. ContextChallenge and MemoryReward are planned on
+            // every level now, so a config with no content authored refuses to complete —
+            // which is the whole point of the ticket. Every test whose subject is NOT the
+            // content gate therefore needs a level that actually has content, exactly as a
+            // real authored level would. Authored BEFORE configure() so a test that IS
+            // about the gate can hollow the config back out in its own lambda.
+            ConfigureContextChallenge(config);
+            ConfigureMemoryReward(config);
+
             configure(config);
 
             VictoryScreenUI victory = CreateComponent<VictoryScreenUI>("VictoryScreen");
