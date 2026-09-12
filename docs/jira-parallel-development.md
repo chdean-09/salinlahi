@@ -4,7 +4,9 @@ Runtime entry point for executing SALIN tickets in parallel with AI workers. Com
 
 ## Prerequisites
 
-Skills `01`, `03`, `05`, `06` and `00` live in `.claude/skills/` and ship with this repository. The thin agent definitions in `.claude/agents/` (`salinlahi-planner`, `salinlahi-worker-low|medium|high`) also ship with it; they exist only to pin Opus 5 and the reasoning effort for each dispatch, and they delegate to skills `02` and `04`. **`02-plan-salinlahi-ticket` and `04-implement-salinlahi-ticket` are user-level skills** in `~/.claude/skills/` and are *not* in the repo — without them the pipeline has holes at the planning and implementation stages. Copy them from a teammate who has them before running the workflow.
+All seven skills — `00` through `06` — live in `.claude/skills/` and ship with this repository; a fresh clone has the complete pipeline with nothing to copy in. The thin agent definitions in `.claude/agents/` (`salinlahi-planner`, `salinlahi-worker-low|medium|high`) also ship with it; they exist only to pin Opus 5 and the reasoning effort for each dispatch, and they delegate to skills `02` and `04`.
+
+> Until 2026-09-12, `02-plan-salinlahi-ticket` and `04-implement-salinlahi-ticket` were user-level skills in `~/.claude/skills/` and were not in the repo, so a fresh machine silently had holes at the planning and implementation stages. They now ship here. If you still have local copies under `~/.claude/skills/`, delete them so the repo version is the only one in play.
 
 Also required: `gh` authenticated, the Atlassian MCP connector authorized, and Unity `6000.3.9f1` installed for the integration gate.
 
