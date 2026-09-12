@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 52fa2974b9683594293f74821ca08eb7, type: 3}
   m_Name: EraTheme_Japanese
   m_EditorClassIdentifier: Salinlahi.Runtime::EraThemeSO
-  eraName: 
+  eraName: Ugnayan
   backgroundSprite: {fileID: 0}
   backgroundColor: {r: 0.9386792, g: 0.4826228, b: 0.4826228, a: 1}
   groundSprite: {fileID: 0}

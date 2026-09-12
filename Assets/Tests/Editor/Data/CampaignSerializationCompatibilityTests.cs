@@ -25,7 +25,7 @@ namespace Salinlahi.Tests.Editor.Data
                 "Assets/ScriptableObjects/Levels/Level1_Config.asset");
 
             Assert.IsNotNull(level);
-            Assert.AreEqual("Level 1", level.levelName);
+            Assert.AreEqual("Ang Unang Tinig", level.levelName);
             Assert.AreEqual(1, level.levelNumber);
             Assert.IsNotNull(level.waves);
             Assert.IsNotNull(level.allowedCharacters);

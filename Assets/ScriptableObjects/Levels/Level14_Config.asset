@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 98c3e4f7bd9686740a8cd775acf3cbef, type: 3}
   m_Name: Level14_Config
   m_EditorClassIdentifier: Salinlahi.Runtime::LevelConfigSO
-  levelName: Gauntlet
+  levelName: Halaga ng Alaala
   levelNumber: 14
-  chapterNumber: 1
+  chapterNumber: 3
   chapterName: Pamana
   stableId: level.pamana.04
   eraLocalOrder: 4

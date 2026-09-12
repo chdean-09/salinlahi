@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 52fa2974b9683594293f74821ca08eb7, type: 3}
   m_Name: EraTheme_Spanish
   m_EditorClassIdentifier: Salinlahi.Runtime::EraThemeSO
-  eraName: 
+  eraName: Ugat
   backgroundSprite: {fileID: -8410918290169310731, guid: c31990d003e308a42894ccd057dd6548, type: 3}
   backgroundColor: {r: 0.5943396, g: 0.3448291, b: 0.3448291, a: 1}
   groundSprite: {fileID: 0}

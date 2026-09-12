@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 98c3e4f7bd9686740a8cd775acf3cbef, type: 3}
   m_Name: Level2_Config
   m_EditorClassIdentifier: Assembly-CSharp::LevelConfigSO
-  levelName: Level 2
+  levelName: Mga Mata ng Bata
   levelNumber: 2
   chapterNumber: 1
   chapterName: Ugat
