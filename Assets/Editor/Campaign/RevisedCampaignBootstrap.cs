@@ -80,6 +80,7 @@ public static class RevisedCampaignBootstrap
 
             character.stableId = symbolId;
             character.firstIntroductionLevelId = introLevelId;
+            List<SpokenValueDefinition> authored = character.spokenValues;
             character.spokenValues = symbolId == ContentIdentity.RevisedDaraSymbolId
                 ? new List<SpokenValueDefinition>
                 {
@@ -95,11 +96,49 @@ public static class RevisedCampaignBootstrap
                             : character.syllable,
                         character),
                 };
+
+            AppendContextSpokenValues(character, symbolId, authored);
             EditorUtility.SetDirty(character);
             symbols.Add(character);
         }
 
         return symbols;
+    }
+
+    /// <summary>
+    /// SALIN-221 (ruling Q2): the shared E/I and O/U glyphs carry per-word-context values beyond
+    /// their combined primary one. The clip and label already authored for a context value are
+    /// preserved rather than regenerated: no recording exists for E, I or U, and reusing the
+    /// character-level clip would silently record O.wav against value.u. DA/RA is left to its own
+    /// branch above so this bootstrap keeps writing Char_DA byte-identically.
+    /// </summary>
+    private static void AppendContextSpokenValues(
+        BaybayinCharacterSO character,
+        string symbolId,
+        List<SpokenValueDefinition> authored)
+    {
+        if (symbolId == ContentIdentity.RevisedDaraSymbolId ||
+            !ContentIdentity.ApprovedSpokenValueIds.TryGetValue(
+                symbolId, out IReadOnlyList<string> approvedValueIds))
+        {
+            return;
+        }
+
+        for (int index = 1; index < approvedValueIds.Count; index++)
+        {
+            string valueId = approvedValueIds[index];
+            SpokenValueDefinition existing = authored?.Find(
+                value => value != null && value.stableId == valueId);
+
+            character.spokenValues.Add(new SpokenValueDefinition
+            {
+                stableId = valueId,
+                displayValue = string.IsNullOrEmpty(existing?.displayValue)
+                    ? valueId.Substring("value.".Length)
+                    : existing.displayValue,
+                pronunciationClip = existing?.pronunciationClip,
+            });
+        }
     }
 
     private static SpokenValueDefinition SpokenValue(
@@ -200,9 +239,12 @@ public static class RevisedCampaignBootstrap
                 latinSpelling = "INA",
                 displayLabel = "INA",
                 meaning = "mother",
+                // SALIN-221 (ruling Q2): a focus-word slot selects the value its word context needs.
+                // INA is romanised with "I", so the shared E/I glyph carries value.i here, while the
+                // pools and requirements below keep the combined citation value.
                 decomposition = new List<SymbolValueReference>
                 {
-                    Reference(ei), Reference(na),
+                    ContextReference(ei, "value.i"), Reference(na),
                 },
                 media = inaMedia,
             },
@@ -388,6 +430,20 @@ public static class RevisedCampaignBootstrap
         {
             symbol = character,
             spokenValueId = "value." + character.stableId.Substring("symbol.".Length),
+        };
+    }
+
+    /// <summary>
+    /// SALIN-221: a reference that pins an explicit word-context spoken value instead of the
+    /// symbol's primary one. Used by focus-word decompositions on the shared E/I and O/U glyphs.
+    /// </summary>
+    private static SymbolValueReference ContextReference(
+        BaybayinCharacterSO character, string spokenValueId)
+    {
+        return new SymbolValueReference
+        {
+            symbol = character,
+            spokenValueId = spokenValueId,
         };
     }
 

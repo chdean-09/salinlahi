@@ -87,14 +87,14 @@ public class FocusWordPreviewController : MonoBehaviour
         return builder.ToString();
     }
 
+    /// <summary>
+    /// SALIN-221: the preview reads the word-context spoken value (e.g. "i" for INA, "o" for OO),
+    /// not the symbol's combined syllable. <see cref="SpokenValueResolver.ResolveLabel"/> keeps the
+    /// same fallback chain this method used to inline — syllable, then the id suffix, then "?".
+    /// </summary>
     private static string SyllableLabel(SymbolValueReference reference)
     {
-        if (reference?.symbol != null && !string.IsNullOrEmpty(reference.symbol.syllable))
-            return reference.symbol.syllable;
-        if (!string.IsNullOrEmpty(reference?.spokenValueId)
-            && reference.spokenValueId.StartsWith("value.", System.StringComparison.Ordinal))
-            return reference.spokenValueId.Substring("value.".Length);
-        return "?";
+        return SpokenValueResolver.ResolveLabel(reference?.symbol, reference?.spokenValueId);
     }
 
     private void EnsurePanel()

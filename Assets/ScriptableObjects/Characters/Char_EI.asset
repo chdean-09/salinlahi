@@ -20,6 +20,12 @@ MonoBehaviour:
   - stableId: value.ei
     displayValue: e/i
     pronunciationClip: {fileID: 0}
+  - stableId: value.e
+    displayValue: e
+    pronunciationClip: {fileID: 0}
+  - stableId: value.i
+    displayValue: i
+    pronunciationClip: {fileID: 0}
   firstIntroductionLevelId: level.ugat.01
   description: 
   displaySprite: {fileID: -2869617533910908798, guid: 3b7c4fb0744a29e4a991dd555bae27f9, type: 3}
