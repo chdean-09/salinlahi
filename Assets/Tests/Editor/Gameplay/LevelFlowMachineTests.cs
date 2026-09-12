@@ -44,20 +44,26 @@ namespace Salinlahi.Tests.Editor.Gameplay
         // LevelPhasePlan
         // ---------------------------------------------------------------------
 
+        // SALIN-223 inverted these two. They previously asserted that a config with no
+        // revised content planned NEITHER ContextChallenge nor MemoryReward, which is the
+        // behaviour the ticket reverses: an unplanned phase is skipped with no executor
+        // involvement, so such a level completed on wave clear alone.
         [Test]
-        public void Plan_NullConfig_PlansOnlyTheLegacyPhases()
+        public void Plan_NullConfig_PlansLegacyPhasesAndTheAlwaysPlannedContentPhases()
         {
             LevelPhasePlan plan = LevelPhasePlan.FromConfig(null);
 
-            AssertPlanned(plan, LevelPhase.Story, LevelPhase.Defense, LevelPhase.AtomicSave, LevelPhase.Results);
+            AssertPlanned(plan, LevelPhase.Story, LevelPhase.Defense, LevelPhase.ContextChallenge,
+                LevelPhase.MemoryReward, LevelPhase.AtomicSave, LevelPhase.Results);
         }
 
         [Test]
-        public void Plan_LegacyConfigWithoutRevisedContent_PlansOnlyTheLegacyPhases()
+        public void Plan_LegacyConfigWithoutRevisedContent_StillPlansContextChallengeAndMemoryReward()
         {
             LevelPhasePlan plan = LevelPhasePlan.FromConfig(CreateLegacyConfig());
 
-            AssertPlanned(plan, LevelPhase.Story, LevelPhase.Defense, LevelPhase.AtomicSave, LevelPhase.Results);
+            AssertPlanned(plan, LevelPhase.Story, LevelPhase.Defense, LevelPhase.ContextChallenge,
+                LevelPhase.MemoryReward, LevelPhase.AtomicSave, LevelPhase.Results);
         }
 
         [Test]
@@ -93,7 +99,10 @@ namespace Salinlahi.Tests.Editor.Gameplay
             LevelConfigSO config = CreateLegacyConfig();
             config.challengeSequence = CreateChallengeSequence();
 
-            Assert.IsTrue(LevelPhasePlan.FromConfig(config).Has(LevelPhase.ContextChallenge));
+            LevelPhasePlan plan = LevelPhasePlan.FromConfig(config);
+            Assert.IsTrue(plan.Has(LevelPhase.ContextChallenge));
+            Assert.IsFalse(plan.ContextChallengeContentMissing,
+                "An authored challenge sequence is exactly what the content predicate looks for.");
         }
 
         [Test]
@@ -115,7 +124,64 @@ namespace Salinlahi.Tests.Editor.Gameplay
             LevelConfigSO config = CreateLegacyConfig();
             config.rewardIds.Add("reward.test");
 
+            LevelPhasePlan plan = LevelPhasePlan.FromConfig(config);
+            Assert.IsTrue(plan.Has(LevelPhase.MemoryReward));
+            Assert.IsTrue(plan.MemoryRewardContentMissing,
+                "SALIN-223 requires BOTH keys: reward ids without a memory cutscene is a "
+                + "half-authored level, and half-authored must not read as complete.");
+        }
+
+        // ---------------------------------------------------------------------
+        // SALIN-223: both content phases are planned on every level, and missing
+        // content is reported rather than silently skipped.
+        // ---------------------------------------------------------------------
+
+        [Test]
+        public void Plan_MissingChallengeSequence_StillPlansContextChallenge()
+        {
+            LevelConfigSO config = CreateLegacyConfig();
+            Assert.IsNull(config.challengeSequence, "Setup: the level must have no challenge authored.");
+
+            Assert.IsTrue(LevelPhasePlan.FromConfig(config).Has(LevelPhase.ContextChallenge),
+                "An unauthored challenge must still be planned, so the executor gets a "
+                + "chance to refuse. Skipping the phase is how the level used to complete "
+                + "on wave clear alone.");
+        }
+
+        [Test]
+        public void Plan_EmptyRewardIds_StillPlansMemoryReward()
+        {
+            LevelConfigSO config = CreateLegacyConfig();
+            Assert.IsEmpty(config.rewardIds, "Setup: the level must have no rewards authored.");
+
             Assert.IsTrue(LevelPhasePlan.FromConfig(config).Has(LevelPhase.MemoryReward));
+        }
+
+        [Test]
+        public void Plan_NullConfig_StillPlansContextChallengeAndMemoryReward()
+        {
+            LevelPhasePlan plan = LevelPhasePlan.FromConfig(null);
+
+            Assert.IsTrue(plan.Has(LevelPhase.ContextChallenge));
+            Assert.IsTrue(plan.Has(LevelPhase.MemoryReward));
+            Assert.IsTrue(plan.ContextChallengeContentMissing);
+            Assert.IsTrue(plan.MemoryRewardContentMissing);
+        }
+
+        [Test]
+        public void Plan_MissingChallengeSequence_ReportsContextChallengeContentMissing()
+        {
+            LevelPhasePlan plan = LevelPhasePlan.FromConfig(CreateLegacyConfig());
+
+            Assert.IsTrue(plan.ContextChallengeContentMissing);
+        }
+
+        [Test]
+        public void Plan_EmptyRewardIds_ReportsMemoryRewardContentMissing()
+        {
+            LevelPhasePlan plan = LevelPhasePlan.FromConfig(CreateLegacyConfig());
+
+            Assert.IsTrue(plan.MemoryRewardContentMissing);
         }
 
         [Test]
@@ -258,7 +324,9 @@ namespace Salinlahi.Tests.Editor.Gameplay
             AdvanceTo(machine, LevelPhase.Defense);
 
             Assert.IsTrue(machine.ReportDefenseComplete());
-            Assert.AreEqual(LevelPhase.AtomicSave, machine.Phase);
+            // SALIN-223: ContextChallenge is planned on every level, so Defense no longer
+            // hands straight to AtomicSave even on a config with no content authored.
+            Assert.AreEqual(LevelPhase.ContextChallenge, machine.Phase);
         }
 
         [Test]
@@ -280,7 +348,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
 
             Assert.IsFalse(machine.ReportDefenseComplete(),
                 "Defense systems report defense completion once; duplicates must be inert.");
-            Assert.AreEqual(LevelPhase.AtomicSave, machine.Phase);
+            Assert.AreEqual(LevelPhase.ContextChallenge, machine.Phase);
         }
 
         // ---------------------------------------------------------------------
@@ -492,6 +560,10 @@ namespace Salinlahi.Tests.Editor.Gameplay
             machine.Begin();
             machine.ReportPhaseComplete(LevelPhase.Story);
             machine.ReportDefenseComplete();
+            // SALIN-223: the two content phases sit between Defense and AtomicSave on
+            // every plan now, including this content-less one.
+            machine.ReportPhaseComplete(LevelPhase.ContextChallenge);
+            machine.ReportPhaseComplete(LevelPhase.MemoryReward);
             machine.ReportSaveResult(accepted: true);
             machine.ReportPhaseComplete(LevelPhase.Results);
 
@@ -500,7 +572,9 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 {
                     (LevelPhase.NotStarted, LevelPhase.Story),
                     (LevelPhase.Story, LevelPhase.Defense),
-                    (LevelPhase.Defense, LevelPhase.AtomicSave),
+                    (LevelPhase.Defense, LevelPhase.ContextChallenge),
+                    (LevelPhase.ContextChallenge, LevelPhase.MemoryReward),
+                    (LevelPhase.MemoryReward, LevelPhase.AtomicSave),
                     (LevelPhase.AtomicSave, LevelPhase.Results),
                     (LevelPhase.Results, LevelPhase.Completed),
                 },
@@ -598,10 +672,14 @@ namespace Salinlahi.Tests.Editor.Gameplay
 
             Assert.IsTrue(machine.HasCompleted(LevelPhase.Story));
             Assert.IsTrue(machine.HasCompleted(LevelPhase.Defense));
-            Assert.IsFalse(machine.HasCompleted(LevelPhase.ContextChallenge),
-                "A legacy config plans no ContextChallenge, so it can never be recorded complete.");
-            Assert.IsFalse(machine.HasCompleted(LevelPhase.RequiredPractice));
+            // SALIN-223: a legacy config DOES plan ContextChallenge, so this loop completes it.
+            // The test's subject is unchanged — a phase the plan skipped is never recorded — and
+            // FocusWords, SymbolLearning and RequiredPractice are still the skipped ones.
+            Assert.IsTrue(machine.HasCompleted(LevelPhase.ContextChallenge));
+            Assert.IsFalse(machine.HasCompleted(LevelPhase.RequiredPractice),
+                "A legacy config plans no RequiredPractice, so it can never be recorded complete.");
             Assert.IsFalse(machine.HasCompleted(LevelPhase.FocusWords));
+            Assert.IsFalse(machine.HasCompleted(LevelPhase.SymbolLearning));
         }
 
         [Test]

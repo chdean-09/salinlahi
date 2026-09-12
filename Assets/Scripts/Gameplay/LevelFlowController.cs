@@ -51,6 +51,14 @@ public class LevelFlowController : MonoBehaviour
     private bool _runtimeBootstrapped;
     private LevelFlowMachine _machine;
 
+    // SALIN-223: the plan the running machine was built from. The executors consult it
+    // for the content-missing predicates rather than re-deriving the content rule from
+    // raw config fields, so plan and runtime can never disagree about what is missing.
+    private LevelPhasePlan _phasePlan;
+
+    // Built on demand; never scene-wired. See ShowContentMissingPanel.
+    private LevelContentMissingPanel _contentMissingPanel;
+
     // The controller currently driving a live LF-CONTRACT-v2 machine, if any.
     // WaveManager/BossController consult this to decide whether their completion
     // raises OnDefenseComplete (machine flow) or the legacy OnLevelComplete
@@ -203,7 +211,8 @@ public class LevelFlowController : MonoBehaviour
 
         ConfigureActiveClueSystems();
 
-        _machine = new LevelFlowMachine(LevelPhasePlan.FromConfig(_levelConfig));
+        _phasePlan = LevelPhasePlan.FromConfig(_levelConfig);
+        _machine = new LevelFlowMachine(_phasePlan);
         _machine.PhaseChanged += HandleMachinePhaseChanged;
         s_activeFlow = this;
         _machine.Begin();
@@ -421,8 +430,29 @@ public class LevelFlowController : MonoBehaviour
 
     private IEnumerator ExecuteContextChallenge()
     {
-        if (_challengeFlowController == null || _levelConfig.challengeSequence == null)
-            yield break; // driver auto-completes the phase
+        // SALIN-223: phase 6 is planned on every level now, so this executor is the
+        // thing that has to notice missing content. Returning early would let the
+        // driver auto-complete the phase (RunLevelFlow), which is the defect: the
+        // level would finish on wave clear with no challenge ever played.
+        if (_levelConfig.challengeSequence == null)
+        {
+            yield return RefuseCompletionForMissingContent(
+                LevelPhase.ContextChallenge,
+                $"level {_levelConfig.levelNumber} has no authored challengeSequence");
+            yield break;
+        }
+
+        if (_challengeFlowController == null)
+        {
+            // Authored content with no surface to play it on is a wiring defect, and
+            // completing it silently is the exact defect class this ticket closes.
+            // EnsureRuntimeReferences builds one whenever challengeSequence != null,
+            // so this should be unreachable.
+            yield return RefuseCompletionForMissingContent(
+                LevelPhase.ContextChallenge,
+                "the level has an authored challengeSequence but no ChallengeFlowController");
+            yield break;
+        }
 
         yield return _challengeFlowController.Play(
             _levelConfig.challengeSequence,
@@ -446,23 +476,106 @@ public class LevelFlowController : MonoBehaviour
                 if (!_machine.IsTerminal && _machine.ReportDefeat())
                     ShowDefeatScreen();
                 break;
-            // MissingSequence / InvalidSequence: fall through and let the driver
-            // auto-complete the phase so a bad asset cannot deadlock the level.
+            // NotStarted is unreachable today: ChallengeFlowController.Play always reassigns
+            // LastPlayResult before it returns. Refusing is still strictly safer than falling
+            // through, because falling through means the driver auto-completes the phase — the
+            // exact behaviour this ticket exists to remove.
+            default:
+                // SALIN-223 inverts the old policy here. Falling through let the driver
+                // auto-complete the phase so "a bad asset cannot deadlock the level" —
+                // but the level then completed and unlocked the next one on the strength
+                // of a challenge that never ran. A bad asset must block, not pass.
+                yield return RefuseCompletionForMissingContent(
+                    LevelPhase.ContextChallenge,
+                    $"the challenge sequence could not be played ({_challengeFlowController.LastPlayResult})");
+                break;
         }
     }
 
     private IEnumerator ExecuteMemoryReward()
     {
-        // The restored-memory cutscene (SALIN-200 content). Graceful skip when the
-        // scene has no cutscene player or the level has no memory authored — the
-        // driver auto-completes the phase so nothing can deadlock.
-        CutsceneSO memory = _levelConfig.contextMedia?.cutscene;
-        if (memory == null || _cutscenePlayer == null)
+        // The restored-memory cutscene (SALIN-200 content). SALIN-223: phase 7 is planned
+        // on every level, so unauthored memory content blocks the level instead of
+        // letting the driver auto-complete it.
+        if (_phasePlan == null || _phasePlan.MemoryRewardContentMissing)
+        {
+            yield return RefuseCompletionForMissingContent(
+                LevelPhase.MemoryReward,
+                $"level {_levelConfig.levelNumber} has no authored memory reward "
+                + "(rewardIds and contextMedia.cutscene are both required)");
             yield break;
+        }
+
+        CutsceneSO memory = _levelConfig.contextMedia.cutscene;
+        if (_cutscenePlayer == null)
+        {
+            // Deliberately NOT symmetric with ExecuteContextChallenge's missing-surface
+            // branch. A missing ChallengeFlowController self-heals in
+            // EnsureRuntimeReferences, so its absence really is a defect; a CutscenePlayer
+            // may legitimately be absent in a bare host (PlayMode fixtures, sandbox),
+            // and blocking on scene wiring rather than on authored content would brick
+            // every such host. The content exists, so the phase is satisfied.
+            yield break;
+        }
 
         _waitingForCutscene = true;
         _cutscenePlayer.Play(memory);
         yield return new WaitUntil(() => !_waitingForCutscene || _machine.IsTerminal);
+    }
+
+    /// <summary>
+    /// SALIN-223. Presents the content-missing panel and then refuses to complete the
+    /// phase: the flow holds until something drives the machine terminal, so it never
+    /// reaches AtomicSave, never raises LevelComplete, and never unlocks the next level.
+    ///
+    /// The hold is what defeats the driver's auto-advance in <see cref="RunLevelFlow"/>.
+    /// When no panel could be presented there is nothing that could ever satisfy the
+    /// hold, so the flow exits through the machine instead — a WaitUntil nothing can
+    /// satisfy hangs a test runner rather than failing it.
+    /// </summary>
+    private IEnumerator RefuseCompletionForMissingContent(LevelPhase phase, string reason)
+    {
+        DebugLogger.LogError(
+            $"LevelFlowController: {phase} cannot run because {reason}. "
+            + "Refusing to complete the level; progress will not be saved (SALIN-223).");
+
+        if (!ShowContentMissingPanel(phase))
+        {
+            DebugLogger.LogError(
+                "LevelFlowController: no content-missing surface could be presented. "
+                + "Exiting the level rather than holding a wait nothing can satisfy.");
+            _machine.RequestExit();
+            yield break;
+        }
+
+        yield return new WaitUntil(() => _machine.IsTerminal);
+    }
+
+    /// <summary>
+    /// Resolves (and, when absent, builds) the content-missing panel. Returns whether it
+    /// actually presented. The panel is intentionally not a [SerializeField]: it is
+    /// unwired in every scene, and adding one would force a scene edit this ticket does
+    /// not make.
+    /// </summary>
+    private bool ShowContentMissingPanel(LevelPhase phase)
+    {
+        if (_contentMissingPanel == null)
+            _contentMissingPanel = FindFirstObjectByType<LevelContentMissingPanel>(FindObjectsInactive.Include);
+
+        if (_contentMissingPanel == null)
+        {
+            GameObject panelObject = new GameObject("[Runtime] LevelContentMissingPanel");
+            _contentMissingPanel = panelObject.AddComponent<LevelContentMissingPanel>();
+        }
+
+        return _contentMissingPanel.Present(
+            phase,
+            () =>
+            {
+                _machine?.RequestExit();
+                if (SceneLoader.Instance != null)
+                    SceneLoader.Instance.LoadMainMenu();
+            });
     }
 
     private IEnumerator ExecuteAtomicSave()

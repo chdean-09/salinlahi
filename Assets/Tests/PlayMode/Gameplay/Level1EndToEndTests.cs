@@ -454,6 +454,14 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             config.allowedCharacters = new List<BaybayinCharacterSO> { ei, na, a, ma };
             config.finalRestorationValue = Reference(na);
             config.rewardIds.Add("memory.e2e.ugat01");
+
+            // SALIN-223 fixture repair. MemoryReward is planned on every level now and
+            // requires BOTH keys, so this fixture needs the memory cutscene its subject
+            // (the real Level1_Config.asset) has always had authored alongside rewardIds.
+            // Without it the flow correctly refuses to complete and never unlocks Level 2.
+            var memoryCutscene = ScriptableObject.CreateInstance<CutsceneSO>();
+            _objectsToDestroy.Add(memoryCutscene);
+            config.contextMedia.cutscene = memoryCutscene;
             config.activeClueCombatEnabled = true;
             config.clueChannels = ClueChannels.Glyph | ClueChannels.LatinText;
             config.audioVisualFallback = ClueChannels.LatinText;
