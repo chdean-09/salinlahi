@@ -9,8 +9,16 @@ public static class ContentIdentity
     public const int RevisedFocusWordsPerLevel = 2;
     public const int RevisedSpokenValueCount = 22;
     public const string RevisedDaraSymbolId = "symbol.dara";
+    public const string RevisedRaSymbolId = "symbol.ra";
     public const string RevisedDaSpokenValueId = "value.da";
     public const string RevisedRaSpokenValueId = "value.ra";
+
+    // SALIN-217: PA is no longer the finale symbol (ruling Q1 moved that to YA), but
+    // ValidatePaInstructionOrder still has to mean PA. It reaches PA through IsPa, which used to
+    // read RevisedFinaleSymbolId back when the two happened to coincide. Naming PA explicitly keeps
+    // that rule pinned to PA instead of silently following the finale wherever it goes next.
+    public const string RevisedPaSymbolId = "symbol.pa";
+    public const string RevisedPaSpokenValueId = "value.pa";
 
     public const string ApprovedWorkbookSha256 =
         "33f7355fce8c0154650bf18589879e75a6da51538d1b798769242bebe47c8e83";
@@ -23,14 +31,20 @@ public static class ContentIdentity
         "symbol.a", "symbol.ei", "symbol.ba", "symbol.ma", "symbol.na",
         "symbol.ta", "symbol.ou", "symbol.ka", "symbol.ga", "symbol.sa",
         "symbol.wa", "symbol.ya", RevisedDaraSymbolId, "symbol.ha", "symbol.la",
-        "symbol.nga", "symbol.pa",
+        "symbol.nga", RevisedRaSymbolId, RevisedPaSymbolId,
     };
 
     public static readonly IReadOnlyList<string> RevisedLevelIds = CreateLevelIds();
     public static readonly string RevisedFinaleLevelId =
         RevisedLevelIds[RevisedLevelIds.Count - 1];
-    public static readonly string RevisedFinaleSymbolId =
-        RevisedSymbolIds[RevisedSymbolIds.Count - 1];
+    // SALIN-217, ruling Q1 (routed here by plan-review R9): YA closes the campaign, not PA.
+    //
+    // This was RevisedSymbolIds[Count - 1] — the finale was whatever happened to be last in the
+    // array. Do not restore that. Plan-review R8 exists only because of it: adding any symbol at
+    // the end silently moved the finale, so R8 had to forbid appending RA last. Naming the finale
+    // makes that whole class of accident impossible, which is why symbol.ra can now sit before
+    // symbol.pa (AC-13) while the finale stays YA.
+    public const string RevisedFinaleSymbolId = "symbol.ya";
     public static readonly string RevisedFinaleSpokenValueId =
         "value." + RevisedFinaleSymbolId.Substring("symbol.".Length);
 
@@ -38,9 +52,16 @@ public static class ContentIdentity
     /// SALIN-221 (ruling Q2): the spoken values approved for each visual symbol that carries more
     /// than its own primary value. E/I and O/U keep their combined citation value as the primary
     /// entry — it is what the learning card, the cumulative pools and every requirement resolve —
-    /// and add the per-word-context values a focus-word decomposition selects. DA/RA is the
-    /// pre-existing two-value case. Every other symbol is covered by the default rule in
-    /// <see cref="IsApprovedSpokenValue"/>: "value." + its symbol suffix.
+    /// and add the per-word-context values a focus-word decomposition selects. Every other symbol
+    /// is covered by the default rule in <see cref="IsApprovedSpokenValue"/>: "value." + its symbol
+    /// suffix.
+    ///
+    /// SALIN-217 (rulings Q2 / OQ-6, merge integration): symbol.dara used to be the second
+    /// multi-value case, carrying value.da and value.ra. It now carries value.da alone, so its
+    /// entry is narrowed rather than deleted — the default rule would compute "value.dara", which
+    /// no symbol emits. symbol.ra deliberately gets no entry: the default rule already yields
+    /// value.ra for it. Leaving value.ra listed here would let IsApprovedSpokenValue contradict
+    /// ValidateSymbolCatalog's dara rule, which no test would catch.
     /// The map lives here rather than in the validator so that changing which values a symbol may
     /// carry stays a data edit in one place.
     /// </summary>
@@ -49,10 +70,7 @@ public static class ContentIdentity
         {
             { "symbol.ei", new[] { "value.ei", "value.e", "value.i" } },
             { "symbol.ou", new[] { "value.ou", "value.o", "value.u" } },
-            {
-                RevisedDaraSymbolId,
-                new[] { RevisedDaSpokenValueId, RevisedRaSpokenValueId }
-            },
+            { RevisedDaraSymbolId, new[] { RevisedDaSpokenValueId } },
         };
 
     /// <summary>

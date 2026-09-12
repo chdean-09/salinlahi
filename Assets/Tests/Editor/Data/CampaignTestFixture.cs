@@ -81,16 +81,10 @@ namespace Salinlahi.Tests.Editor.Data
                     },
                 };
 
+                // SALIN-217: symbol.dara carries value.da alone now; value.ra lives on symbol.ra,
+                // which the loop above builds like any other symbol.
                 if (stableId == "symbol.dara")
-                {
                     symbol.legacyAliases.Add("DA");
-                    symbol.legacyAliases.Add("RA");
-                    symbol.spokenValues.Add(new SpokenValueDefinition
-                    {
-                        stableId = "value.ra",
-                        displayValue = "RA",
-                    });
-                }
 
                 // SALIN-221: E/I and O/U carry their combined citation value plus the per-word-context
                 // values, so the synthetic catalog totals ContentIdentity.RevisedSpokenValueCount.
@@ -200,10 +194,14 @@ namespace Salinlahi.Tests.Editor.Data
                             symbol = symbolsById["symbol.pa"],
                             spokenValueId = "value.pa",
                         });
+                        // SALIN-217, ruling Q1: YA closes the campaign, not PA. The PA instruction
+                        // and assessment entries above stay exactly as they were — AC-14 keeps
+                        // ValidatePaInstructionOrder, which is about PA's teaching order and is
+                        // independent of which symbol the finale restores.
                         level.finalRestorationValue = new SymbolValueReference
                         {
-                            symbol = symbolsById["symbol.pa"],
-                            spokenValueId = "value.pa",
+                            symbol = symbolsById[ContentIdentity.RevisedFinaleSymbolId],
+                            spokenValueId = ContentIdentity.RevisedFinaleSpokenValueId,
                         };
                     }
 

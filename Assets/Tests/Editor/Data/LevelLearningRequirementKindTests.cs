@@ -21,10 +21,11 @@ namespace Salinlahi.Tests.Editor.Data
     ///
     /// Deliberately derived, never enumerated: every assertion below is expressed against
     /// <c>campaign.symbols</c> and each symbol's own <c>firstIntroductionLevelId</c>. No symbol count
-    /// and no symbol list is hard-coded, so the suite holds as the campaign's roster changes — today's
-    /// 17 visual symbols and the 18 that SALIN-217 [T05] will author both satisfy it. (After SALIN-217
-    /// lands, this suite is the guard rail that fails if a newly added symbol is never instructed
-    /// anywhere.)
+    /// and no symbol list is hard-coded, so the suite holds as the campaign's roster changes — it
+    /// satisfied the 17-symbol model and satisfies the 18 that SALIN-217 [T05] authored without
+    /// edit. It is the guard rail that fails if a newly added symbol is never instructed anywhere;
+    /// symbol.ra is exempt only because its introduction level (Level 13) still has no authored
+    /// learning list, which is SALIN-250's gap.
     ///
     /// These tests read the authored assets in place. They neither run a bootstrap nor write anything.
     /// </summary>

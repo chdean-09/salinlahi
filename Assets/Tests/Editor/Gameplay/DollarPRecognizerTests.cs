@@ -140,13 +140,21 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 "A thin horizontal gesture should not match a square-aspect template even when stroke count agrees.");
         }
 
-        // The RA draws expect DA on purpose. RA folds into DA (SALIN-212) -- one glyph, two
-        // readings -- so an RA-shaped stroke is a correct DA. Before the fold these returned "RA",
-        // which matched no enemy, clue or boss requirement and scored a correct draw as a miss.
+        // SALIN-217 (ruling Q2 / OQ-6): the RA draws expect RA again. RA_template_01..05 no longer
+        // load under "DA", so an RA-shaped stroke resolves to the symbol.ra identity that now sits
+        // in the campaign catalog.
+        //
+        // DA_draw_01 is asserted alongside them deliberately. Removing the fold reverses SALIN-212
+        // on evidence measured in one direction only: commit 935f2392 recorded RA templates scoring
+        // 0.756-0.839 against DA with the RA key absent, but nobody measured whether DA draws leak
+        // into RA once 12 DA templates compete against 5 RA templates. This case is that
+        // measurement. If it starts returning "RA", the unfold has cost DA recognition and the fix
+        // is template curation in its own ticket, not a tweak here.
         [TestCase("KA_draw_01", "KA")]
-        [TestCase("RA_draw_01", "DA")]
-        [TestCase("RA_draw_02", "DA")]
-        [TestCase("RA_draw_03", "DA")]
+        [TestCase("DA_draw_01", "DA")]
+        [TestCase("RA_draw_01", "RA")]
+        [TestCase("RA_draw_02", "RA")]
+        [TestCase("RA_draw_03", "RA")]
         [TestCase("HA_draw_01", "HA")]
         public void Recognize_ResourceDrawRegression_ReturnsExpectedCharacter(string drawAssetName, string expectedCharacter)
         {

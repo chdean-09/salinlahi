@@ -25,7 +25,9 @@ namespace Salinlahi.Tests.Editor.Gameplay
         [TestCase("SA", "SA")]
         [TestCase("ZA", "SA")]
         [TestCase("DA", "DA")]
-        [TestCase("RA", "DA")]
+        // SALIN-217: DARA is retained as a legacy alias of DA, but RA is no longer one — it is its
+        // own identity and is asserted in CharactersWithoutAliases_CanonicalizeToThemselves.
+        [TestCase("DARA", "DA")]
         public void AliasSpellings_ResolveToTheCanonicalCharacter(string raw, string expected)
         {
             Assert.AreEqual(expected, BaybayinIdCanonicalizer.Canonicalize(raw));
@@ -37,6 +39,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
         [TestCase("MA")]
         [TestCase("NA")]
         [TestCase("NGA")]
+        [TestCase("RA")]
         [TestCase("TA")]
         [TestCase("YA")]
         public void CharactersWithoutAliases_CanonicalizeToThemselves(string id)
@@ -63,41 +66,53 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         /// <summary>
-        /// RA folds into DA, as classic Baybayin does. One glyph, two readings.
+        /// RA stands on its own. It is not a reading of DA.
         ///
-        /// This assertion was inverted on 2026-08-31 under a since-reverted reading of REQ-42 that
-        /// made the set 18. REQ-42 is now resolved at **17 taught identities** (SALIN-212): the
-        /// campaign catalog holds 17 and excludes Char_RA, and Char_DA carries both value.da and
-        /// value.ra. The revert to 17 corrected the docs and the boss config but missed this test,
-        /// which is why it is being changed here rather than in that revert.
+        /// This file has flip-flopped twice, so the current reason matters more than the history:
+        /// ruling Q2 (2026-09-11), reaffirmed by OQ-6 (2026-09-12), sets the taught set at **18
+        /// identities with DA and RA separate** (SALIN-217). Char_RA now holds stableId symbol.ra
+        /// and value.ra, sits in the campaign catalog, and enters the taught pool at Level 13.
         ///
-        /// Folding matters at runtime, not just on paper. Every consumer of a recognition result
+        /// The fold it replaces (SALIN-212) existed because every consumer of a recognition result
         /// compares raw ids — ActiveEnemyTracker.FindAllWithCharacter, the active-clue check in
-        /// CombatResolver, BossController.TryRouteDraw — and nothing in the game carries RA. An
-        /// unfolded "RA" therefore matched nothing and scored a correct draw as a miss.
+        /// CombatResolver, BossController.TryRouteDraw — and nothing in the game carried RA, so an
+        /// unfolded "RA" matched nothing and scored a correct draw as a miss. That premise is what
+        /// SALIN-217 removed; the fold is not safe to reinstate without putting RA back out of the
+        /// catalog first.
         ///
-        /// If this ever starts returning "RA" again, that bug is back.
+        /// If this starts returning "DA" again, the 17-symbol model has crept back in.
         /// </summary>
         [Test]
-        public void RA_FoldsIntoDA_BecauseTheyAreOneGlyph()
+        public void RA_CanonicalizesToItself_BecauseDaAndRaAreSeparateIdentities()
         {
-            Assert.AreEqual("DA", BaybayinIdCanonicalizer.Canonicalize("RA"));
-            Assert.AreEqual(BaybayinIdCanonicalizer.Canonicalize("DA"),
-                            BaybayinIdCanonicalizer.Canonicalize("RA"),
-                            "DA and RA are readings of one glyph and must canonicalize together.");
+            Assert.AreEqual("RA", BaybayinIdCanonicalizer.Canonicalize("RA"));
+            Assert.AreNotEqual(BaybayinIdCanonicalizer.Canonicalize("DA"),
+                               BaybayinIdCanonicalizer.Canonicalize("RA"),
+                               "DA and RA are separate taught identities under ruling Q2.");
         }
 
         /// <summary>
-        /// DA/RA is the only alias group whose members both have template files, so it is the only
-        /// one that merges template sets: RA_template_01..05 load under "DA" beside
-        /// DA_template_01..12. Guards the sprite-candidate path used when art is resolved by id.
+        /// "DARA" stays mapped to DA so ids written while the SALIN-212 fold was in force still
+        /// resolve rather than falling through Canonicalize's pass-through as an unknown id.
         /// </summary>
         [Test]
-        public void SpriteCandidates_ForRa_IncludeTheDaGlyphAndItsPairedName()
+        public void LegacyDaraAlias_StillResolvesToDa()
+        {
+            Assert.AreEqual("DA", BaybayinIdCanonicalizer.Canonicalize("DARA"));
+        }
+
+        /// <summary>
+        /// The shipped glyph art is still filed under the paired name DA-RA, so RA offers both its
+        /// own key and that paired name. Guards the sprite-candidate path used when art is resolved
+        /// by id — Char_RA has no almanac or badge sprite of its own yet (content-blocked under
+        /// SALIN-217), so this fallback is what renders RA today.
+        /// </summary>
+        [Test]
+        public void SpriteCandidates_ForRa_IncludeItsOwnKeyAndThePairedName()
         {
             System.Collections.Generic.List<string> candidates =
                 BaybayinIdCanonicalizer.GetSpriteResourceCandidates("RA");
-            CollectionAssert.Contains(candidates, "DA");
+            CollectionAssert.Contains(candidates, "RA");
             CollectionAssert.Contains(candidates, "DA-RA");
         }
     }

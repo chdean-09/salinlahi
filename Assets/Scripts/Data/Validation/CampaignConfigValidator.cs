@@ -205,7 +205,7 @@ public static class CampaignConfigValidator
         if (campaign.symbols == null || campaign.symbols.Count != ContentIdentity.RevisedSymbolIds.Count)
         {
             AddError(issues, ContentValidationCode.SymbolCountInvalid, CampaignPath + ".symbols",
-                "Revised campaign must contain exactly seventeen visual symbols.", campaign);
+                "Revised campaign must contain exactly eighteen visual symbols.", campaign);
         }
 
         if (campaign.symbols == null)
@@ -215,6 +215,8 @@ public static class CampaignConfigValidator
         int spokenValueCount = 0;
         int daraCount = 0;
         BaybayinCharacterSO dara = null;
+        int raCount = 0;
+        BaybayinCharacterSO ra = null;
         for (int symbolIndex = 0; symbolIndex < campaign.symbols.Count; symbolIndex++)
         {
             BaybayinCharacterSO symbol = campaign.symbols[symbolIndex];
@@ -254,6 +256,13 @@ public static class CampaignConfigValidator
                 dara = symbol;
             }
 
+            if (string.Equals(symbol.stableId, ContentIdentity.RevisedRaSymbolId,
+                    StringComparison.Ordinal))
+            {
+                raCount++;
+                ra = symbol;
+            }
+
             if (symbol.spokenValues == null)
             {
                 AddError(issues, ContentValidationCode.SpokenValueCountInvalid, path + ".spokenValues",
@@ -273,13 +282,26 @@ public static class CampaignConfigValidator
                 " contextual spoken values.", campaign);
         }
 
+        // SALIN-217, rulings Q2 / OQ-6: DA and RA are two visual identities, not two readings of
+        // one. symbol.dara keeps its name (renaming it is a save migration owned by SALIN-227) but
+        // it now carries value.da only, and symbol.ra carries value.ra. Reusing the existing
+        // DARA_VISUAL_IDENTITY_INVALID code deliberately: the enum and its severity table are
+        // SALIN-215's file-level territory, so this rule changes meaning without touching them.
         if (daraCount != 1 || dara == null ||
             !dara.TryGetSpokenValue(ContentIdentity.RevisedDaSpokenValueId, out _) ||
-            !dara.TryGetSpokenValue(ContentIdentity.RevisedRaSpokenValueId, out _))
+            dara.TryGetSpokenValue(ContentIdentity.RevisedRaSpokenValueId, out _))
         {
             AddError(issues, ContentValidationCode.DaraVisualIdentityInvalid, CampaignPath + ".symbols",
-                "DA and RA must be contextual values on one symbol.dara visual identity.",
+                "symbol.dara must carry value.da alone; RA is its own visual identity.",
                 dara != null ? (UnityEngine.Object)dara : campaign);
+        }
+
+        if (raCount != 1 || ra == null ||
+            !ra.TryGetSpokenValue(ContentIdentity.RevisedRaSpokenValueId, out _))
+        {
+            AddError(issues, ContentValidationCode.DaraVisualIdentityInvalid, CampaignPath + ".symbols",
+                "symbol.ra must exist exactly once and carry value.ra.",
+                ra != null ? (UnityEngine.Object)ra : campaign);
         }
     }
 
@@ -306,6 +328,12 @@ public static class CampaignConfigValidator
                     "Spoken value stable ID is duplicated on its visual symbol.", symbol);
             }
 
+            // SALIN-217: symbol.dara no longer gets to accept either value — it carries value.da
+            // alone, and symbol.ra carries value.ra.
+            // SALIN-221 deleted the local GetPrimaryValueId helper this rule used to call and moved
+            // the decision into ContentIdentity.IsApprovedSpokenValue, whose narrowed
+            // ApprovedSpokenValueIds map now encodes exactly the SALIN-217 rule: symbol.dara maps to
+            // { value.da }, and symbol.ra has no entry so the default yields value.ra.
             if (!ContentIdentity.IsApprovedSpokenValue(symbol.stableId, value.stableId))
             {
                 AddError(issues, ContentValidationCode.SpokenValueUnknown, valuePath,
@@ -700,7 +728,7 @@ public static class CampaignConfigValidator
                  StringComparison.Ordinal)))
         {
             AddContentIssue(issues, ContentValidationCode.FinalRestorationInvalid, path + ".finalRestorationValue",
-                "The revised campaign finale must restore symbol.pa/value.pa.", level);
+                "The revised campaign finale must restore symbol.ya/value.ya.", level);
         }
     }
 
@@ -802,12 +830,18 @@ public static class CampaignConfigValidator
         return false;
     }
 
+    /// <summary>
+    /// SALIN-217: this read RevisedFinaleSymbolId, which was correct only while PA happened to be
+    /// the finale. Ruling Q1 moved the finale to YA, and ValidatePaInstructionOrder must still mean
+    /// PA, so PA is now named directly. Without this the PA-ordering rule would have silently
+    /// become a YA-ordering rule with no test failing.
+    /// </summary>
     private static bool IsPa(SymbolValueReference reference)
     {
         return reference?.symbol != null &&
-               string.Equals(reference.symbol.stableId, ContentIdentity.RevisedFinaleSymbolId,
+               string.Equals(reference.symbol.stableId, ContentIdentity.RevisedPaSymbolId,
                    StringComparison.Ordinal) &&
-               string.Equals(reference.spokenValueId, ContentIdentity.RevisedFinaleSpokenValueId,
+               string.Equals(reference.spokenValueId, ContentIdentity.RevisedPaSpokenValueId,
                    StringComparison.Ordinal);
     }
 

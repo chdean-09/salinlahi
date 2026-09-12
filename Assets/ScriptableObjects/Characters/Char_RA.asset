@@ -14,15 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: RA
   syllable: ra
-  stableId: 
+  stableId: symbol.ra
   legacyAliases: []
-  spokenValues: []
-  firstIntroductionLevelId: 
+  spokenValues:
+  - stableId: value.ra
+    displayValue: ra
+    pronunciationClip: {fileID: 8300000, guid: 15bb1b815d17d21459f70bfdc306e281, type: 3}
+  firstIntroductionLevelId: level.pamana.03
   description: 
   displaySprite: {fileID: -4082948466674284124, guid: 6fe326552750eee4fb1e4ddedf481626, type: 3}
   almanacSprite: {fileID: 0}
   badgeSprite: {fileID: 0}
   scrambledBadgeSprite: {fileID: 0}
   glyphOutlineSprite: {fileID: 21300000, guid: b2602bad396e640408ec400313a9701a, type: 3}
-  pronunciationClip: {fileID: 0}
+  pronunciationClip: {fileID: 8300000, guid: 15bb1b815d17d21459f70bfdc306e281, type: 3}
   templateFileName: RA_template_01

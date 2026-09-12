@@ -132,13 +132,24 @@ namespace Salinlahi.Tests.Editor.Data
             CampaignConfigSO campaign = LoadCampaign();
             Assert.IsNotNull(campaign);
 
-            Assert.AreEqual(17, campaign.symbols.Count);
+            // SALIN-217 adds symbol.ra (17 -> 18 symbols); SALIN-221 adds value.e/value.i on
+            // symbol.ei and value.o/value.u on symbol.ou. Post-merge the values total
+            // ei 3 + ou 3 + dara 1 + ra 1 + 14 single-value symbols = 22.
+            Assert.AreEqual(18, campaign.symbols.Count);
             Assert.AreEqual(22, campaign.symbols.Sum(symbol => symbol.spokenValues.Count),
-                "Exactly twenty-two contextual spoken values across seventeen symbols.");
+                "Exactly twenty-two contextual spoken values across eighteen symbols.");
 
+            // SALIN-217 (ruling Q2 / OQ-6): DA and RA are separate visual identities, one spoken
+            // value each, rather than two readings carried by symbol.dara.
             Assert.IsTrue(campaign.TryGetSymbol("symbol.dara", out BaybayinCharacterSO dara));
             Assert.IsTrue(dara.TryGetSpokenValue("value.da", out _));
-            Assert.IsTrue(dara.TryGetSpokenValue("value.ra", out _));
+            Assert.IsFalse(dara.TryGetSpokenValue("value.ra", out _),
+                "value.ra moved off symbol.dara onto its own symbol.ra identity.");
+
+            Assert.IsTrue(campaign.TryGetSymbol("symbol.ra", out BaybayinCharacterSO ra));
+            Assert.IsTrue(ra.TryGetSpokenValue("value.ra", out _));
+            Assert.AreEqual("level.pamana.03", ra.firstIntroductionLevelId,
+                "Ruling R8 introduces RA at Level 13.");
 
             // SALIN-221: E/I and O/U keep their combined citation value as the primary entry and
             // add the per-word-context values the focus-word decompositions select.

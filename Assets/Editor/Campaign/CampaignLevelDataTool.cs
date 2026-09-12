@@ -195,20 +195,21 @@ public static class CampaignLevelDataTool
             AssetPath = "Assets/ScriptableObjects/Levels/Level15_Config.asset",
             StableId  = "level.pamana.05",
             Ticket    = "SALIN-158",
-            // PA, NOT the matrix's "Workbook last syllable" column, which reads YA for row 15.
-            // That column is the last syllable of the level's second focus word, and it matches
-            // finalRestorationValue for every other level -- but the finale is a deliberate special
-            // case in code: CampaignConfigValidator requires level.pamana.05 to restore
-            // symbol.pa / value.pa, with its own error message. Following the matrix here produced
-            // a FINAL_RESTORATION_INVALID that only the validator caught.
-            FinalSyllable = "PA",
+            // YA, which is both the matrix's "Workbook last syllable" column for row 15 and, since
+            // SALIN-217, what the code requires. This used to read PA against the matrix, because
+            // CampaignConfigValidator demanded that level.pamana.05 restore symbol.pa / value.pa.
+            // Ruling Q1 (routed here by plan-review R9) moved the finale to YA, so the special case
+            // is gone and the matrix and the validator finally agree. Left at PA, a re-run of this
+            // tool would quietly undo the Q1 change to Level15_Config.finalRestorationValue.
+            FinalSyllable = "YA",
             Focus = new[]
             {
                 // SALIN-158 states no decompositions. Both are derived and spell-checked:
                 // PA+MA+NA reads "pamana", MA+LA+YA reads "malaya".
                 //
-                // This level introduces PA, the seventeenth and last symbol, so its pool is the
-                // ENTIRE taught set -- the same 17 that BossConfig_Kadiliman requires as draws.
+                // This level introduces PA, the last symbol, so its pool is the ENTIRE taught set --
+                // 18 since SALIN-217 added RA. BossConfig_Kadiliman still requires 17 draws; that
+                // mismatch is escalated, unowned, and deliberately not changed here.
                 //
                 // AC1 requires PA instruction before PAMANA assesses it. The generated requirement
                 // lists satisfy the validator's PaInstructionOrderInvalid rule structurally: PA's
@@ -421,13 +422,13 @@ public static class CampaignLevelDataTool
     ///
     /// A token normally names a symbol's own characterID: "HA" resolves to Char_HA with its first
     /// spoken value. A token may instead name a CONTEXTUAL READING that some symbol carries as a
-    /// later spoken value -- "RA" resolves to Char_DA with value.ra, because RA is not a separate
-    /// taught symbol. DA and RA share one glyph with two readings, which is the whole point of the
-    /// 17-visual / 18-spoken model (SALIN-212).
+    /// later spoken value.
     ///
-    /// SALIN-155's HARAYA = HA + RA + YA is the only place in the campaign that needs this, but the
-    /// contextual case is resolved FROM THE CHARACTER DATA rather than from a hardcoded DA/RA alias,
-    /// so any contextual value added later works without touching this method.
+    /// SALIN-217 (ruling Q2 / OQ-6) emptied the contextual case of its only occupant: RA used to
+    /// resolve to Char_DA with value.ra, and now resolves to Char_RA by character id like anything
+    /// else, so SALIN-155's HARAYA = HA + RA + YA goes through the ordinary path. The contextual
+    /// branch is kept because it is resolved FROM THE CHARACTER DATA rather than from a hardcoded
+    /// DA/RA alias, so any contextual value added later still works without touching this method.
     ///
     /// A character id always wins over a contextual value, so a token naming a real symbol can never
     /// be captured by some other symbol's spoken value.

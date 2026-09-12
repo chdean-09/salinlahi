@@ -117,22 +117,51 @@ public static class Levels6To15RosterAlignmentTool
     }
 
     /// <summary>
-    /// Only Level 13 needs this — its cumulativeSymbolPool is an empty list; the other nine are
-    /// already correct and rewriting them would be diff noise with no behaviour change.
+    /// Rewrites the pool whenever its symbol set differs from <paramref name="expected"/>, mirroring
+    /// the comparison AlignRoster already uses. A pool that already matches is left alone, so the
+    /// tool stays idempotent.
+    ///
+    /// SALIN-217: this used to skip any pool with Count > 0, on the reasoning that only Level 13's
+    /// pool was empty and the other nine were already correct. That was true when SALIN-216 was
+    /// written and stopped being true the moment SALIN-216 itself authored Level 13's pool. The
+    /// guard then contradicted this tool's own idempotence contract and silently blocked every
+    /// future symbol change — adding RA leaves Levels 13, 14 and 15 one symbol short and reports
+    /// CUMULATIVE_POOL_INVALID, with the tool cheerfully logging "already authored". Comparing sets
+    /// rather than counting fixes that class of failure instead of stepping over this instance.
+    ///
+    /// Existing spokenValueIds are preserved for symbols already in the pool, so a deliberately
+    /// authored non-primary reading survives a rewrite rather than being re-derived.
     /// </summary>
     private static void AlignCumulativePool(
         LevelConfigSO level, string levelId, List<BaybayinCharacterSO> expected)
     {
-        if (level.cumulativeSymbolPool != null && level.cumulativeSymbolPool.Count > 0)
+        var before = level.cumulativeSymbolPool ?? new List<SymbolValueReference>();
+        var beforeSymbols = before.Where(r => r?.symbol != null).Select(r => r.symbol).ToList();
+
+        if (before.Count == expected.Count && !beforeSymbols.Except(expected).Any() &&
+            !expected.Except(beforeSymbols).Any())
         {
-            Debug.Log("[SALIN-216] " + levelId + " cumulativeSymbolPool already authored (" +
-                      level.cumulativeSymbolPool.Count + "), skipped.");
+            Debug.Log("[SALIN-216] " + levelId + " cumulativeSymbolPool already correct (" +
+                      before.Count + "), skipped.");
             return;
         }
 
-        level.cumulativeSymbolPool = expected.Select(Reference).ToList();
-        Debug.Log("[SALIN-216] " + levelId + " cumulativeSymbolPool 0 -> " +
-                  level.cumulativeSymbolPool.Count + " (was empty).");
+        var authoredValueIds = new Dictionary<BaybayinCharacterSO, string>();
+        foreach (SymbolValueReference reference in before)
+        {
+            if (reference?.symbol != null && !string.IsNullOrEmpty(reference.spokenValueId))
+                authoredValueIds[reference.symbol] = reference.spokenValueId;
+        }
+
+        level.cumulativeSymbolPool = expected
+            .Select(symbol => authoredValueIds.TryGetValue(symbol, out string authored)
+                ? new SymbolValueReference { symbol = symbol, spokenValueId = authored }
+                : Reference(symbol))
+            .ToList();
+
+        Debug.Log("[SALIN-216] " + levelId + " cumulativeSymbolPool " + before.Count + " -> " +
+                  level.cumulativeSymbolPool.Count + ": [" + Describe(beforeSymbols) + "] -> [" +
+                  Describe(expected) + "]");
     }
 
     /// <summary>
@@ -178,8 +207,10 @@ public static class Levels6To15RosterAlignmentTool
     }
 
     /// <summary>
-    /// Pairs a symbol with its spoken value. symbol.dara carries two (value.da / value.ra); it
-    /// takes value.da, matching the pools already authored on Levels 11, 12, 14 and 15.
+    /// Pairs a symbol with its spoken value. Since SALIN-217 every symbol carries exactly one, RA
+    /// included, so symbol.dara resolves to value.da through the same path as everything else; the
+    /// explicit dara branch is kept only because its id still reads "dara" (renaming it is
+    /// SALIN-227's save migration).
     /// </summary>
     private static SymbolValueReference Reference(BaybayinCharacterSO symbol)
     {
