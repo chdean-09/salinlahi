@@ -420,7 +420,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5f6b6b5d1d3748b3a2e9c0f1a4b7d8e9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SaveManager
-  _campaign: {fileID: 0}
+  _campaign: {fileID: 11400000, guid: 1519f90254469944eaed55834c56dd75, type: 2}
 --- !u!1 &1913551291
 GameObject:
   m_ObjectHideFlags: 0
