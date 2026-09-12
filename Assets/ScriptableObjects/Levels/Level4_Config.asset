@@ -243,7 +243,7 @@ MonoBehaviour:
   challengePrototypeEnabled: 0
   challengeSequence: {fileID: 11400000, guid: 5593f4db6fd9d4ebe82010a7376a348d, type: 2}
   challengePolicy:
-    tier: 0
+    tier: 4
     heartPenaltiesEnabled: 1
     errorsPerPenalty: 3
     checkpointResetOnPenalty: 1
