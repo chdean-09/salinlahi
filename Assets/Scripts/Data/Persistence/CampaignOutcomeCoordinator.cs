@@ -250,8 +250,8 @@ public sealed class CampaignOutcomeCoordinator
                 FindLevel(document, levels[index + 1]).unlocked = true;
         }
 
-        // SALIN-225 removed the Endless Mode unlock that completing the last level used to set.
-        // The `endlessModeUnlocked` field stays on the document -- see CampaignSaveDocument.
+        // SALIN-225 removed the Endless Mode unlock that completing the last level used to set, and
+        // SALIN-227 then removed the `endlessModeUnlocked` field itself at save schema v4.
 
         UnionSorted(document.progress.unlockedSymbolIds, outcome.unlockedSymbolIds);
         UnionSorted(document.progress.unlockedMemoryIds, outcome.unlockedMemoryIds);

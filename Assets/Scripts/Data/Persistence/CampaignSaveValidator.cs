@@ -112,9 +112,8 @@ public static class CampaignSaveValidator
         if (active == null || !active.unlocked)
             return CampaignSaveValidationResult.Invalid(
                 CampaignSaveFailureCode.InvalidStructure, "The active level is not known and unlocked.");
-        if (document.progress.endlessModeUnlocked && !FindLevel(document.progress.levelProgress, levelIds[levelIds.Count - 1]).completed)
-            return CampaignSaveValidationResult.Invalid(
-                CampaignSaveFailureCode.InvalidStructure, "Endless mode is unlocked before the final level.");
+        // SALIN-227 removed the endless-mode invariant that stood here. It read
+        // progress.endlessModeUnlocked, which no longer exists on the document at schema v4.
 
         if (!ValidateUniqueKnownList(document.progress.unlockedSymbolIds, GetKnownSymbolIds(campaign)) ||
             !ValidateUniqueKnownList(document.progress.discoveredEnemyIds, GetKnownEnemyIds(campaign)) ||

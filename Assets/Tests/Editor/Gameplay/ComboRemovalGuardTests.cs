@@ -86,15 +86,18 @@ public class ComboRemovalGuardTests
 #endif
     }
 
-    /// <summary>G2b — the endless unlock flag is kept on the save document but never written.</summary>
+    /// <summary>G2b — the endless unlock flag is gone from the save document, and nothing writes it.</summary>
     [Test]
-    public void EndlessModeUnlocked_IsRetainedOnTheSaveDocument_ButNothingWritesIt()
+    public void EndlessModeUnlocked_IsRemovedFromTheSaveDocument_AndNothingWritesIt()
     {
-        // Kept deliberately: CampaignSaveSerializer recomputes the integrity hash from re-serialized
-        // JSON, so dropping the key fails every existing save as ChecksumMismatch. The field removal
-        // plus schema bump is SALIN-227's scope. This pins the "keep" half of the decision.
-        Assert.That(typeof(CampaignProgressData).GetField("endlessModeUnlocked"), Is.Not.Null,
-            "Removing this field without a schema bump breaks every save already on disk.");
+        // SALIN-225 kept the field and this assertion pinned the "keep" half of that decision.
+        // SALIN-227 removed it at save schema v4, so the assertion is INVERTED rather than deleted:
+        // it now pins the "removed" half. Re-adding the field without moving CurrentSaveSchemaVersion
+        // would make old and new saves indistinguishable on disk, which is what this still guards.
+        Assert.That(typeof(CampaignProgressData).GetField("endlessModeUnlocked"), Is.Null,
+            "SALIN-227 removed this field at save schema v4; it must not come back unversioned.");
+        Assert.That(CampaignSaveDocument.CurrentSaveSchemaVersion, Is.GreaterThanOrEqualTo(4),
+            "The field removal is only safe because the schema version moved with it.");
 
         Assert.That(typeof(CampaignProgressRepository).GetMethod("TryUnlockEndlessMode"), Is.Null,
             "SALIN-225 removed the writer; completing the final level must set no endless flag.");

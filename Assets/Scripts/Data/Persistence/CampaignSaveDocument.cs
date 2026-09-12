@@ -4,7 +4,12 @@ using System.Collections.Generic;
 [Serializable]
 public sealed class CampaignSaveDocument
 {
-    public const int CurrentSaveSchemaVersion = 3;
+    // SALIN-227 moved this 3 -> 4 when `endlessModeUnlocked` was dropped from CampaignProgressData.
+    // A v4 build cannot read any file written by a v3 build: the integrity hash is recomputed from
+    // re-serialized JSON (CampaignSaveSerializer.TryDeserialize), so a stored key the current class
+    // no longer emits changes the hash input and the file fails as a superseded save. That is the
+    // documented one-time development reset -- see CampaignSaveMigrator for why v4 has no data arm.
+    public const int CurrentSaveSchemaVersion = 4;
 
     public string fileFormat = "salinlahi-campaign-save";
     public string campaignId;
@@ -36,11 +41,10 @@ public sealed class CampaignProgressData
     public List<TutorialProgressRecord> tutorialProgress = new List<TutorialProgressRecord>();
     public List<SymbolMasteryRecord> symbolMastery = new List<SymbolMasteryRecord>();
     public List<WordMasteryRecord> wordMastery = new List<WordMasteryRecord>();
-    // SALIN-225 removed Endless Mode, but this field is deliberately KEPT. The integrity hash is
-    // recomputed from re-serialized JSON (CampaignSaveSerializer), so dropping the key changes the
-    // JSON of every save already on disk and fails them all as ChecksumMismatch. Removing it needs
-    // a schema bump plus a migration arm -- that is SALIN-227's scope. Nothing writes it any more.
-    public bool endlessModeUnlocked;
+    // SALIN-227 removed `endlessModeUnlocked` here, at save schema v4. SALIN-225 had deliberately
+    // kept the field because dropping it changes the re-serialized JSON of every save on disk and
+    // fails them all. That is still true, and it is now the accepted outcome: a v3 save is reported
+    // as SupersededSchema and safe-reset rather than migrated. See CampaignSaveMigrator.
 }
 
 [Serializable]
@@ -103,10 +107,14 @@ public sealed class LevelProgressRecord
     /// produced, in <see cref="LevelObjectiveFlagResolver"/>.
     ///
     /// Additive under JsonUtility: a save written before SALIN-220 deserializes with all five
-    /// false, and no CampaignSaveValidator invariant inspects them. That is why no save-schema
-    /// bump rides here -- the save schema and the dev-save migration belong to SALIN-227. Old
-    /// saves are unaffected in practice because the gate only ever withholds a NEW unlock; it
-    /// never re-locks a level that is already unlocked.
+    /// false, and no CampaignSaveValidator invariant inspects them.
+    ///
+    /// SALIN-227 CORRECTION. This block used to end "Old saves are unaffected in practice". That
+    /// was wrong, and it was measured wrong, not argued wrong: the additive-field reasoning holds
+    /// for JsonUtility.FromJson but not for an integrity hash computed over ToJson output. ToJson
+    /// emits all five keys, so a save written before SALIN-220 does not re-serialize to its own
+    /// stored bytes and fails the checksum. Such saves were already being rejected and safe-reset
+    /// before SALIN-227 existed. Proven on disk, not inferred.
     /// </remarks>
     public bool storyViewed;
     public bool symbolsPracticed;
@@ -154,6 +162,15 @@ public enum CampaignSaveFailureCode
     InvalidStructure,
     InvalidCampaign,
     IoFailure,
+
+    /// <summary>
+    /// SALIN-227. The file was written by an OLDER save schema than this build's, so its stored
+    /// integrity hash cannot be re-derived under the current field set. Distinct from
+    /// ChecksumMismatch, which now means genuine corruption, and from UnsupportedSchema, which
+    /// means a NEWER build wrote it. Deliberately NOT in CampaignSaveRecoveryResolver.IsBlocking:
+    /// a superseded save must safe-reset with a notice, not refuse to boot.
+    /// </summary>
+    SupersededSchema,
 }
 
 public enum CampaignMigrationState

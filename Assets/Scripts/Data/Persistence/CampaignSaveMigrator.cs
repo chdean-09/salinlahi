@@ -66,6 +66,30 @@ public static class CampaignSaveMigrator
             candidate.saveSchemaVersion = 3;
         }
 
+        if (candidate.saveSchemaVersion == 3)
+        {
+            // SALIN-227. A VERSION ADVANCE ONLY -- deliberately no data transform, and there is no
+            // v3 -> v4 migration arm anywhere in this file. Read this before adding one.
+            //
+            // v4 dropped `endlessModeUnlocked` from CampaignProgressData. There is nothing to
+            // transform: JsonUtility.FromJson simply ignores the stored key. More importantly, an
+            // arm here could never run against a real v3 FILE. TryDeserialize re-derives the
+            // integrity hash from JSON re-serialized with the CURRENT field set, so a stored key
+            // this build no longer emits changes the hash input and the file is rejected before it
+            // ever reaches this method. Measured on disk, not inferred -- see
+            // CampaignSaveMigrationTests.PreBumpSaveOnDisk_*.
+            //
+            // That rejection is the accepted outcome, and it is what the ticket means by "document
+            // a one-time dev reset via safe-reset": CampaignSaveService.Inspect reports such a file
+            // as SupersededSchema, quarantines it under "superseded-schema", and boots a clean
+            // Level 1 with a safe-reset notice.
+            //
+            // The step itself is NOT dead. The chain must terminate at CurrentSaveSchemaVersion or
+            // the Validate call below rejects every migration, including the reachable v1 and v2
+            // routes. Removing it silently disables the whole migrator.
+            candidate.saveSchemaVersion = 4;
+        }
+
         CampaignSaveValidationResult validation = CampaignSaveValidator.Validate(
             candidate, campaign, candidate.migration?.legacyArchiveSha256);
         return validation.IsValid
