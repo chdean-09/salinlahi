@@ -149,8 +149,9 @@ public static class UgatLevels2To5Bootstrap
                 level.allowedCharacters.Add(symbol);
             }
 
-            // Level 1's convention: one requirement per pooled symbol, per phase.
-            level.learningRequirements = Requirements(campaign, plan.Pool, ContentRequirementKind.Instruction, 1);
+            // Level 1's convention: one requirement per pooled symbol, per phase. SALIN-224 partitions
+            // the learning list by kind — Instruction only for the symbols this level introduces.
+            level.learningRequirements = LearningRequirements(campaign, plan.Pool, plan.LevelId);
             level.practiceRequirements = Requirements(campaign, plan.Pool, ContentRequirementKind.Practice, 2);
             level.masteryRequirements = Requirements(campaign, plan.Pool, ContentRequirementKind.Mastery, 1);
 
@@ -164,6 +165,39 @@ public static class UgatLevels2To5Bootstrap
 
         AssetDatabase.SaveAssets();
         Debug.Log("[SALIN-204] Authored " + authored + " level(s).");
+    }
+
+    /// <summary>
+    /// SALIN-224 — the learning list keeps every pooled symbol, but only the ones this level first
+    /// introduces are Instruction; the rest are Practice review entries.
+    ///
+    /// Instruction is what SymbolLearningCardController presents as a card, so writing the whole
+    /// cumulative pool as Instruction re-taught every previously learned symbol at every level. The
+    /// review entries stay in the list so it is never empty, which CampaignConfigValidator rejects.
+    ///
+    /// Whether a symbol is new here is read from that symbol's own `firstIntroductionLevelId`, never
+    /// hand-listed, so it cannot drift from the character data.
+    /// </summary>
+    private static List<ContentRequirement> LearningRequirements(
+        CampaignConfigSO campaign, IEnumerable<string> symbolIds, string levelId)
+    {
+        var list = new List<ContentRequirement>();
+        foreach (string symbolId in symbolIds)
+        {
+            if (!campaign.TryGetSymbol(symbolId, out BaybayinCharacterSO symbol))
+                throw new InvalidOperationException("[SALIN-204] Unknown symbol: " + symbolId);
+
+            list.Add(new ContentRequirement
+            {
+                kind = symbol.firstIntroductionLevelId == levelId
+                    ? ContentRequirementKind.Instruction
+                    : ContentRequirementKind.Practice,
+                symbolValue = Reference(campaign, symbolId),
+                requiredSuccesses = 1,
+            });
+        }
+
+        return list;
     }
 
     private static List<ContentRequirement> Requirements(
