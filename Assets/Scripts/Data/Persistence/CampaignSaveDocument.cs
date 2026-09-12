@@ -85,6 +85,30 @@ public sealed class LevelProgressRecord
     /// </remarks>
     public float bestScore;
     public List<LevelMetricRecord> bestMetrics = new List<LevelMetricRecord>();
+
+    /// <summary>
+    /// SALIN-220. The five per-objective completion flags. The successor level unlocks only when
+    /// all five are true -- see <see cref="LevelObjectiveGate"/>, the one place that predicate
+    /// lives.
+    /// </summary>
+    /// <remarks>
+    /// SATISFIED-BY-DEFAULT IS DELIBERATE, DO NOT "FIX" IT. An objective the level does not
+    /// author counts as satisfied, so a level with no challenge sequence still writes
+    /// wordsRestored and contextPassed true. Five of the fifteen levels author none; a literal
+    /// all-five gate would hard-lock the campaign there. The rule is applied where the flags are
+    /// produced, in <see cref="LevelObjectiveFlagResolver"/>.
+    ///
+    /// Additive under JsonUtility: a save written before SALIN-220 deserializes with all five
+    /// false, and no CampaignSaveValidator invariant inspects them. That is why no save-schema
+    /// bump rides here -- the save schema and the dev-save migration belong to SALIN-227. Old
+    /// saves are unaffected in practice because the gate only ever withholds a NEW unlock; it
+    /// never re-locks a level that is already unlocked.
+    /// </remarks>
+    public bool storyViewed;
+    public bool symbolsPracticed;
+    public bool wordsRestored;
+    public bool contextPassed;
+    public bool finalSyllableRestored;
 }
 
 [Serializable]

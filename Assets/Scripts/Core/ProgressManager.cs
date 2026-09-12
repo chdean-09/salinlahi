@@ -40,6 +40,7 @@ public class ProgressManager : Singleton<ProgressManager>
     private CampaignProgressOutcome _cachedLevelOutcome;
     private LearningEvidenceRecorder _levelEvidence;
     private LevelResults _pendingLevelResults;
+    private LevelObjectiveFlags _pendingObjectiveFlags;
 
     /// <summary>
     /// SALIN-202: the level flow computes LevelResults before committing; the
@@ -49,6 +50,16 @@ public class ProgressManager : Singleton<ProgressManager>
     public void SetPendingLevelResults(LevelResults results)
     {
         _pendingLevelResults = results;
+    }
+
+    /// <summary>
+    /// SALIN-220: the level flow derives the five per-objective flags before committing, from the
+    /// phases the run actually finished. Cleared on scene change and on abort with the rest of the
+    /// attempt-scoped state.
+    /// </summary>
+    public void SetPendingObjectiveFlags(LevelObjectiveFlags flags)
+    {
+        _pendingObjectiveFlags = flags;
     }
 
     protected override void Awake()
@@ -263,6 +274,7 @@ public class ProgressManager : Singleton<ProgressManager>
         _cachedLevelOutcome = null;
         _levelEvidence = null;
         _pendingLevelResults = null;
+        _pendingObjectiveFlags = null;
         _cachedHeartSystem = null;
         _lastProcessedLevelId = -1;
 
@@ -351,6 +363,7 @@ public class ProgressManager : Singleton<ProgressManager>
         _cachedLevelOutcome = null;
         _levelEvidence = null;
         _pendingLevelResults = null;
+        _pendingObjectiveFlags = null;
 
         if (scene.name.Contains("Gameplay") || scene.name.Contains("Game"))
         {
@@ -739,7 +752,7 @@ public class ProgressManager : Singleton<ProgressManager>
         IReadOnlyList<string> unlockedMemoryIds,
         IReadOnlyList<string> claimedRewardIds)
     {
-        return new CampaignProgressOutcome
+        CampaignProgressOutcome outcome = new CampaignProgressOutcome
         {
             outcomeSchemaVersion = CampaignProgressOutcome.CurrentOutcomeSchemaVersion,
             outcomeId = "outcome." + Guid.NewGuid().ToString("N"),
@@ -760,6 +773,13 @@ public class ProgressManager : Singleton<ProgressManager>
                 sessionKind = LearningSessionKind.LevelAttempt,
             },
         };
+
+        // SALIN-220. A null pending set means this commit path never ran the level flow, so no
+        // objective detail was recorded. That is the same situation as a pre-SALIN-220 journal and
+        // gets the same answer: all five satisfied. Writing false there would withhold an unlock
+        // on the strength of information nobody ever collected.
+        LevelObjectiveGate.CopyTo(_pendingObjectiveFlags, outcome);
+        return outcome;
     }
 
     /// <summary>

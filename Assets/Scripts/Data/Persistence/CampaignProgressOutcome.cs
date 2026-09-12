@@ -26,7 +26,11 @@ public sealed class CampaignProgressOutcome
     // v3 (SALIN-140) adds `metrics`. Metrics were computed by LevelResultsCalculator, shown on the
     // Results screen and then discarded, so a completed level's score was unrecoverable the moment
     // that screen closed -- and SALIN-160/161/190 all read progress that was never written.
-    public const int CurrentOutcomeSchemaVersion = 3;
+    //
+    // v4 (SALIN-220) adds the five per-objective completion flags. An in-flight v3 journal
+    // replayed by this build must get a defined upgrade step or the completion is silently
+    // discarded -- see CampaignOutcomeValidator.UpgradeToCurrent.
+    public const int CurrentOutcomeSchemaVersion = 4;
     public const int MinimumOutcomeSchemaVersion = 1;
     public int outcomeSchemaVersion = CurrentOutcomeSchemaVersion;
     public LearningSessionKind sessionKind = LearningSessionKind.LevelAttempt;
@@ -47,6 +51,25 @@ public sealed class CampaignProgressOutcome
     public List<string> unlockedSymbolIds = new List<string>();
     public List<string> unlockedMemoryIds = new List<string>();
     public List<string> claimedRewardIds = new List<string>();
+
+    /// <summary>
+    /// SALIN-220. The five per-objective results this attempt earned, mirroring
+    /// <see cref="LevelProgressRecord"/>. They merge onto the committed record monotonically and
+    /// gate the successor's unlock -- see <see cref="LevelObjectiveGate"/>.
+    /// </summary>
+    /// <remarks>
+    /// Default false, fail-closed at the contract boundary: an outcome built by a caller that
+    /// knows nothing about objectives must not silently assert them. The "no detail recorded"
+    /// case is expressed explicitly instead, by <see cref="LevelObjectiveFlags.Satisfied"/>.
+    /// A non-level outcome may not carry any of these, the same way it may not carry stars or
+    /// metrics.
+    /// </remarks>
+    public bool storyViewed;
+    public bool symbolsPracticed;
+    public bool wordsRestored;
+    public bool contextPassed;
+    public bool finalSyllableRestored;
+
     public string completedAtUtc;
 }
 

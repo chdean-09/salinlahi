@@ -537,6 +537,107 @@ namespace Salinlahi.Tests.Editor.Gameplay
             }
         }
 
+        // ---------------------------------------------------------------------
+        // SALIN-220 — the completed-phase record
+        // ---------------------------------------------------------------------
+
+        [Test]
+        public void CompletedPhases_OnAFreshMachine_IsEmpty_SALIN220()
+        {
+            LevelFlowMachine machine = CreateFullMachine();
+
+            Assert.IsNotNull(machine.CompletedPhases);
+            Assert.AreEqual(0, machine.CompletedPhases.Count);
+            Assert.IsNotNull(machine.Plan);
+        }
+
+        [Test]
+        public void CompletedPhases_RecordEveryAcceptedReportOnAFullRun_SALIN220()
+        {
+            LevelFlowMachine machine = CreateFullMachine();
+            machine.Begin();
+
+            int guard = 0;
+            while (!machine.IsTerminal && guard++ < 16)
+            {
+                if (machine.Phase == LevelPhase.Defense)
+                    machine.ReportDefenseComplete();
+                else if (machine.Phase == LevelPhase.AtomicSave)
+                    machine.ReportSaveResult(accepted: true);
+                else
+                    machine.ReportPhaseComplete(machine.Phase);
+            }
+
+            Assert.AreEqual(LevelPhase.Completed, machine.Phase);
+            foreach (LevelPhase phase in PlayablePhases)
+                Assert.IsTrue(machine.HasCompleted(phase),
+                    $"A fully authored run must record {phase} as completed.");
+        }
+
+        /// <summary>
+        /// SALIN-220. Skipped phases must be absent, not recorded as complete. The distinction is
+        /// what lets LevelObjectiveFlagResolver treat "the level never authored this" separately
+        /// from "the player did this", instead of guessing from the machine alone.
+        /// </summary>
+        [Test]
+        public void CompletedPhases_NeverRecordAPhaseThePlanSkipped_SALIN220()
+        {
+            LevelFlowMachine machine = CreateLegacyMachine();
+            machine.Begin();
+
+            int guard = 0;
+            while (!machine.IsTerminal && guard++ < 16)
+            {
+                if (machine.Phase == LevelPhase.Defense)
+                    machine.ReportDefenseComplete();
+                else if (machine.Phase == LevelPhase.AtomicSave)
+                    machine.ReportSaveResult(accepted: true);
+                else
+                    machine.ReportPhaseComplete(machine.Phase);
+            }
+
+            Assert.IsTrue(machine.HasCompleted(LevelPhase.Story));
+            Assert.IsTrue(machine.HasCompleted(LevelPhase.Defense));
+            Assert.IsFalse(machine.HasCompleted(LevelPhase.ContextChallenge),
+                "A legacy config plans no ContextChallenge, so it can never be recorded complete.");
+            Assert.IsFalse(machine.HasCompleted(LevelPhase.RequiredPractice));
+            Assert.IsFalse(machine.HasCompleted(LevelPhase.FocusWords));
+        }
+
+        [Test]
+        public void CompletedPhases_IgnoreRejectedReportsAndARejectedSave_SALIN220()
+        {
+            LevelFlowMachine machine = CreateFullMachine();
+            machine.Begin();
+
+            // Wrong phase, and a defense report from outside Defense: both rejected.
+            Assert.IsFalse(machine.ReportPhaseComplete(LevelPhase.MemoryReward));
+            Assert.IsFalse(machine.ReportDefenseComplete());
+            Assert.AreEqual(0, machine.CompletedPhases.Count);
+
+            AdvanceTo(machine, LevelPhase.AtomicSave);
+            Assert.IsFalse(machine.HasCompleted(LevelPhase.AtomicSave));
+            machine.ReportSaveResult(accepted: false);
+            Assert.IsFalse(machine.HasCompleted(LevelPhase.AtomicSave),
+                "A rejected save holds the machine in AtomicSave; nothing completed.");
+
+            machine.ReportSaveResult(accepted: true);
+            Assert.IsTrue(machine.HasCompleted(LevelPhase.AtomicSave));
+        }
+
+        [Test]
+        public void CompletedPhases_AfterADefeat_HoldOnlyWhatWasFinishedBeforeIt_SALIN220()
+        {
+            LevelFlowMachine machine = CreateFullMachine();
+            AdvanceTo(machine, LevelPhase.Defense);
+
+            Assert.IsTrue(machine.ReportDefeat());
+
+            Assert.IsTrue(machine.HasCompleted(LevelPhase.Story));
+            Assert.IsFalse(machine.HasCompleted(LevelPhase.Defense),
+                "Defeat is not a completion of the phase it happened in.");
+        }
+
         private LevelFlowMachine CreateLegacyMachine()
         {
             return new LevelFlowMachine(LevelPhasePlan.FromConfig(CreateLegacyConfig()));

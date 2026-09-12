@@ -197,6 +197,173 @@ namespace Salinlahi.Tests.Editor.Persistence
                 "Pruning must never evict the receipt just written.");
         }
 
+        // -------------------------------------------------------------------
+        // SALIN-220 — per-objective flags and the unlock gate
+        // -------------------------------------------------------------------
+
+        [Test]
+        public void TryCommit_WhenEveryObjectiveIsSatisfied_UnlocksSuccessorAndPersistsAllFiveFlags_SALIN220()
+        {
+            using CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair();
+            CampaignSaveService service = CreateService(pair, out InMemoryCampaignSaveStorage storage);
+            CampaignOutcomeCoordinator coordinator = CreateCoordinator(pair, service, storage);
+
+            CampaignOutcomeCommitResult result = coordinator.TryCommit(
+                CampaignSaveTestFactory.CreateValidOutcome(service.Current));
+
+            LevelProgressRecord level = FindLevel(service.Current, "level.ugat.01");
+            Assert.That(result.Status, Is.EqualTo(CampaignOutcomeCommitStatus.Committed));
+            Assert.That(level.storyViewed, Is.True);
+            Assert.That(level.symbolsPracticed, Is.True);
+            Assert.That(level.wordsRestored, Is.True);
+            Assert.That(level.contextPassed, Is.True);
+            Assert.That(level.finalSyllableRestored, Is.True);
+            Assert.That(LevelObjectiveGate.AllSatisfied(level), Is.True);
+            Assert.That(FindLevel(service.Current, "level.ugat.02").unlocked, Is.True);
+        }
+
+        /// <summary>
+        /// SALIN-220 V4, the negative control. Removing either half of the gate must fail this:
+        /// drop the guard in ApplyLevelProgression and the successor unlocks anyway; drop the
+        /// matching guard in VerifyPublishedOutcome and the status becomes PendingRetry, which
+        /// wedges the journal and raises the blocking save panel on a finished level.
+        /// </summary>
+        [TestCase(LevelObjectives.StoryViewed)]
+        [TestCase(LevelObjectives.SymbolsPracticed)]
+        [TestCase(LevelObjectives.WordsRestored)]
+        [TestCase(LevelObjectives.ContextPassed)]
+        [TestCase(LevelObjectives.FinalSyllableRestored)]
+        public void TryCommit_WithOneObjectiveMissing_KeepsSuccessorLockedAndStillCommits_SALIN220(
+            string missingObjectiveId)
+        {
+            using CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair();
+            CampaignSaveService service = CreateService(pair, out InMemoryCampaignSaveStorage storage);
+            CampaignOutcomeCoordinator coordinator = CreateCoordinator(pair, service, storage);
+            CampaignProgressOutcome outcome = CampaignSaveTestFactory.CreateValidOutcome(service.Current);
+            ClearObjective(outcome, missingObjectiveId);
+
+            CampaignOutcomeCommitResult result = coordinator.TryCommit(outcome);
+
+            LevelProgressRecord level = FindLevel(service.Current, "level.ugat.01");
+            Assert.That(result.Status, Is.EqualTo(CampaignOutcomeCommitStatus.Committed),
+                "A gated completion is still a completion. PendingRetry here would wedge the " +
+                "journal and raise the save-failure panel on a level the player finished.");
+            Assert.That(FindLevel(service.Current, "level.ugat.02").unlocked, Is.False,
+                $"{missingObjectiveId} was not satisfied, so the successor must stay locked.");
+            Assert.That(level.completed, Is.True, "The level itself still completes (D1).");
+            Assert.That(level.unlocked, Is.True);
+            Assert.That(level.bestStars, Is.EqualTo(3));
+            Assert.That(LevelObjectiveGate.FirstUnsatisfied(level), Is.EqualTo(missingObjectiveId));
+            Assert.That(storage.Exists(CampaignSaveFileRole.PendingOutcome), Is.False,
+                "The journal must clear: the outcome was committed, not left pending.");
+        }
+
+        [Test]
+        public void TryCommit_ReplayCarryingFewerObjectives_NeverClearsAnAlreadyEarnedFlag_SALIN220()
+        {
+            using CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair();
+            CampaignSaveService service = CreateService(pair, out InMemoryCampaignSaveStorage storage);
+            CampaignOutcomeCoordinator coordinator = CreateCoordinator(pair, service, storage);
+            Assert.That(coordinator.TryCommit(
+                CampaignSaveTestFactory.CreateValidOutcome(service.Current)).IsAccepted, Is.True);
+
+            CampaignProgressOutcome weaker = CampaignSaveTestFactory.CreateValidOutcome(service.Current);
+            weaker.outcomeId = "outcome.00000000000000000000000000000002";
+            weaker.storyViewed = false;
+            weaker.contextPassed = false;
+
+            Assert.That(coordinator.TryCommit(weaker).Status,
+                Is.EqualTo(CampaignOutcomeCommitStatus.Committed));
+
+            LevelProgressRecord level = FindLevel(service.Current, "level.ugat.01");
+            Assert.That(LevelObjectiveGate.AllSatisfied(level), Is.True,
+                "Flags merge with OR, never assignment — a weaker replay must not un-earn an objective.");
+            Assert.That(FindLevel(service.Current, "level.ugat.02").unlocked, Is.True);
+        }
+
+        [Test]
+        public void TryCommit_WhenAReplaySatisfiesTheLastMissingObjective_UnlocksTheSuccessor_SALIN220()
+        {
+            using CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair();
+            CampaignSaveService service = CreateService(pair, out InMemoryCampaignSaveStorage storage);
+            CampaignOutcomeCoordinator coordinator = CreateCoordinator(pair, service, storage);
+            CampaignProgressOutcome first = CampaignSaveTestFactory.CreateValidOutcome(service.Current);
+            first.contextPassed = false;
+            Assert.That(coordinator.TryCommit(first).IsAccepted, Is.True);
+            Assert.That(FindLevel(service.Current, "level.ugat.02").unlocked, Is.False,
+                "precondition: the gate withheld the unlock");
+
+            CampaignProgressOutcome second = CampaignSaveTestFactory.CreateValidOutcome(service.Current);
+            second.outcomeId = "outcome.00000000000000000000000000000002";
+
+            Assert.That(coordinator.TryCommit(second).Status,
+                Is.EqualTo(CampaignOutcomeCommitStatus.Committed));
+            Assert.That(FindLevel(service.Current, "level.ugat.02").unlocked, Is.True);
+        }
+
+        /// <summary>
+        /// SALIN-220 V5. A save written before the flags existed carries all five false with its
+        /// successors already unlocked. The gate only ever withholds a NEW unlock, so nothing may
+        /// be re-locked and no migration is owed by this ticket.
+        /// </summary>
+        [Test]
+        public void TryCommit_OnAPreObjectiveSaveWithUnlockedSuccessors_NeverRelocksAnything_SALIN220()
+        {
+            using CampaignSaveTestPair pair = CampaignSaveTestPair.CreateValidPair();
+            CampaignSaveService service = CreateService(pair, out InMemoryCampaignSaveStorage storage);
+            CampaignOutcomeCoordinator coordinator = CreateCoordinator(pair, service, storage);
+
+            // Level 1 completed by an older build: no flags recorded, successor already open.
+            LevelProgressRecord first = FindLevel(service.Current, "level.ugat.01");
+            first.completed = true;
+            first.unlocked = true;
+            first.bestStars = 3;
+            FindLevel(service.Current, "level.ugat.02").unlocked = true;
+            service.Current.progress.activeLevelId = "level.ugat.02";
+            Assert.That(LevelObjectiveGate.AllSatisfied(first), Is.False,
+                "precondition: a pre-SALIN-220 record carries every flag false");
+
+            CampaignProgressOutcome outcome = CreateOutcomeFor(service, "level.ugat.02", 2);
+            outcome.wordsRestored = false;
+
+            CampaignOutcomeCommitResult result = coordinator.TryCommit(outcome);
+
+            Assert.That(result.Status, Is.EqualTo(CampaignOutcomeCommitStatus.Committed));
+            Assert.That(FindLevel(service.Current, "level.ugat.01").completed, Is.True);
+            Assert.That(FindLevel(service.Current, "level.ugat.01").unlocked, Is.True);
+            Assert.That(FindLevel(service.Current, "level.ugat.02").unlocked, Is.True,
+                "An unlock granted before the gate existed must survive it.");
+            Assert.That(FindLevel(service.Current, "level.ugat.02").completed, Is.True);
+            Assert.That(FindLevel(service.Current, "level.ugat.03").unlocked, Is.False,
+                "The new unlock is the only thing the gate withholds.");
+        }
+
+        private static CampaignProgressOutcome CreateOutcomeFor(
+            CampaignSaveService service, string levelId, int ordinal)
+        {
+            CampaignProgressOutcome outcome =
+                CampaignSaveTestFactory.CreateValidOutcome(service.Current);
+            outcome.outcomeId = "outcome." + ordinal.ToString("D32");
+            outcome.levelId = levelId;
+            outcome.evidence = new LearningEvidenceBatch { levelId = levelId };
+            outcome.unlockedMemoryIds.Clear();
+            outcome.claimedRewardIds.Clear();
+            return outcome;
+        }
+
+        private static void ClearObjective(CampaignProgressOutcome outcome, string objectiveId)
+        {
+            switch (objectiveId)
+            {
+                case LevelObjectives.StoryViewed: outcome.storyViewed = false; break;
+                case LevelObjectives.SymbolsPracticed: outcome.symbolsPracticed = false; break;
+                case LevelObjectives.WordsRestored: outcome.wordsRestored = false; break;
+                case LevelObjectives.ContextPassed: outcome.contextPassed = false; break;
+                case LevelObjectives.FinalSyllableRestored: outcome.finalSyllableRestored = false; break;
+                default: Assert.Fail($"Unknown objective id {objectiveId}."); break;
+            }
+        }
+
         private static CampaignProgressOutcome CreatePracticeOutcome(
             CampaignSaveService service, int index)
         {
@@ -205,6 +372,7 @@ namespace Salinlahi.Tests.Editor.Persistence
             outcome.outcomeId = "outcome.practice." + index.ToString("000");
             outcome.sessionKind = LearningSessionKind.FreePractice;
             outcome.stars = 0;
+            CampaignSaveTestFactory.ClearObjectiveFlags(outcome);
             outcome.unlockedSymbolIds.Clear();
             outcome.unlockedMemoryIds.Clear();
             outcome.claimedRewardIds.Clear();

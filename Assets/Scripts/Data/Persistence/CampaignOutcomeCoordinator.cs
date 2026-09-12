@@ -236,10 +236,19 @@ public sealed class CampaignOutcomeCoordinator
         level.unlocked = true;
         level.bestStars = Math.Max(level.bestStars, outcome.stars);
 
+        // SALIN-220. Merged before the gate is read, so a replay that satisfies a
+        // previously-missing objective completes the set and unlocks in that same commit.
+        LevelObjectiveGate.ApplyMonotonic(level, outcome);
+
         List<string> levels = CampaignSaveValidator.GetConfiguredLevelIds(_campaign);
         int index = levels.IndexOf(outcome.levelId);
         if (index >= 0 && index + 1 < levels.Count)
-            FindLevel(document, levels[index + 1]).unlocked = true;
+        {
+            // SALIN-220: the unlock is the only thing the objectives gate. `completed` and this
+            // level's own `unlocked` stay unconditional above -- see LevelObjectiveGate.
+            if (LevelObjectiveGate.AllSatisfied(level))
+                FindLevel(document, levels[index + 1]).unlocked = true;
+        }
         else if (index == levels.Count - 1)
             document.progress.endlessModeUnlocked = true;
 
@@ -313,9 +322,23 @@ public sealed class CampaignOutcomeCoordinator
             return false;
         if (!VerifyMetricsApplied(level, outcome))
             return false;
+
+        // SALIN-220. Half a transaction can silently not land (SALIN-140 found exactly that with
+        // metrics), so every flag the outcome carried true must be true on the committed record.
+        if (!LevelObjectiveGate.AllCarriedFlagsApplied(level, outcome))
+            return false;
+
         List<string> levels = CampaignSaveValidator.GetConfiguredLevelIds(_campaign);
         int index = levels.IndexOf(outcome.levelId);
-        if (index >= 0 && index + 1 < levels.Count && !FindLevel(document, levels[index + 1]).unlocked)
+
+        // SALIN-220. This assertion MUST carry the same gate as ApplyLevelProgression. Asserting
+        // the successor unconditionally would make every gated completion return PendingRetry:
+        // the journal would never clear and LevelFlowController would raise the blocking save
+        // panel on a level the player legitimately finished. It compiles either way; it only
+        // diverges when a flag is actually false.
+        if (index >= 0 && index + 1 < levels.Count &&
+            LevelObjectiveGate.AllSatisfied(level) &&
+            !FindLevel(document, levels[index + 1]).unlocked)
             return false;
         if (index == levels.Count - 1 && !document.progress.endlessModeUnlocked)
             return false;
