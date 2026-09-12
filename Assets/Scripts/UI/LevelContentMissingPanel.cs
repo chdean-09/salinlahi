@@ -90,18 +90,20 @@ public sealed class LevelContentMissingPanel : MonoBehaviour
         _mainMenuAction?.Invoke();
     }
 
-    // TODO(SALIN-223): PLACEHOLDER COPY — NOT PRODUCT-APPROVED.
-    // The ticket says only "shows a panel" and names no strings. UF-23, UF-33 and
-    // "Locked Content" appear nowhere under docs/system/ or docs/capstone/, and there is
-    // no copy deck in the repo. This is deliberately neutral English in the register of
-    // CampaignOutcomeSaveFailurePanel.Render; no Filipino-language or lore copy has been
-    // invented. Replace once a copy ruling exists.
+    // SALIN-223 copy. English, matching the UI-chrome half of the language split (narrative
+    // content is Filipino; see the dialogue assets). Register follows
+    // CampaignOutcomeSaveFailurePanel.Render.
+    //
+    // It deliberately does NOT blame the player and does NOT say progress was lost: nothing was
+    // lost, the level simply never reached its save step. Saying "not saved" without that
+    // reassurance reads as data loss.
     private void Render(LevelPhase phase)
     {
-        _titleText.text = "This level is not ready to play yet";
+        _titleText.text = "This level is not ready yet";
         _bodyText.text =
-            "Salinlahi is missing content this level needs, so the level cannot be completed "
-            + "and your progress has not been saved. Return to the Main Menu and try another level.";
+            "Salinlahi is still missing some of the content this level needs, so it cannot be "
+            + "finished yet. Nothing you have already unlocked has been affected. Return to the "
+            + "Main Menu and try another level.";
         DebugLogger.Log($"LevelContentMissingPanel: presented for {phase}.");
     }
 

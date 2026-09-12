@@ -71,6 +71,22 @@ public class LevelFlowController : MonoBehaviour
     /// <summary>Rewards resolved for the current completion (SALIN-202); null until AtomicSave runs.</summary>
     public RewardGrant LastRewardGrant { get; private set; }
 
+    /// <summary>
+    /// SALIN-226. The alternating Defense/ContextChallenge segment currently running,
+    /// 0-based; 0 for the whole run on an unsegmented level.
+    ///
+    /// This is the segment boundary SALIN-235 (T20) / SALIN-236 (T21) will use as their
+    /// checkpoint. It is EXPOSED here and deliberately not consumed: nothing in this ticket
+    /// persists it, restores from it, or reads it on a defeat path. Retry today is still a
+    /// full scene reload that builds a fresh machine, so the value resets with the run.
+    /// </summary>
+    public int CurrentSegmentIndex => _machine != null ? _machine.CurrentSegmentIndex : 0;
+
+    /// <summary>
+    /// SALIN-226. How many segments this level's plan runs; 1 when unsegmented.
+    /// </summary>
+    public int SegmentCount => _phasePlan != null ? _phasePlan.SegmentCount : 1;
+
     public static bool RoutesDefenseCompletion =>
         s_activeFlow != null
         && s_activeFlow._machine != null
@@ -380,6 +396,64 @@ public class LevelFlowController : MonoBehaviour
         // and their StartGame() remedy cannot clear the preview's flag.
         ReleaseDrawingSuppression();
 
+        // SALIN-226. A segmented level re-enters Defense once per segment. The pre-wave
+        // beats below are ONCE PER LEVEL: re-running them would replay the Level 1
+        // onboarding, the reveals and the prototype sequence in the middle of the level.
+        // The gate reads the machine's own segment index rather than a local bool so it
+        // cannot drift out of step with the transition that caused the re-entry.
+        if (_machine.CurrentSegmentIndex == 0)
+        {
+            yield return PlayOncePerLevelBeats();
+
+            if (_flowAborted || _machine.IsTerminal)
+                yield break;
+        }
+
+        if (_machine.IsTerminal)
+            yield break;
+
+        // AC-3: Start waves — no isBossLevel branching; WaveManager handles it internally
+        if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
+            GameManager.Instance.StartGame();
+
+        if (_waveManager == null)
+        {
+            DebugLogger.LogError("LevelFlowController: WaveManager reference missing.");
+        }
+        else if (_phasePlan != null
+            && _phasePlan.TryGetSegmentWaveRange(
+                _machine.CurrentSegmentIndex, out int startWave, out int endWaveExclusive))
+        {
+            // Segmented: run only this segment's slice of the flat wave list. Reaching the
+            // bound completes the run through the same OnDefenseComplete a full clear uses.
+            _waveManager.StartSegment(startWave, endWaveExclusive);
+        }
+        else
+        {
+            // Unsegmented levels take the identical path they take today.
+            _waveManager.StartLevel();
+        }
+
+        // Defense systems report defense completion only (OnDefenseComplete →
+        // ReportDefenseComplete). They can never mark the level complete.
+        yield return new WaitUntil(() => _machine.Phase != LevelPhase.Defense || _machine.IsTerminal);
+    }
+
+    /// <summary>
+    /// SALIN-226. The pre-wave beats that run ONCE PER LEVEL, not once per segment: the
+    /// reveals, the tutorial or prototype sequence, the boss tutorial and the BGM start.
+    /// A segmented level re-enters Defense for every segment, and replaying these would
+    /// repeat the onboarding in the middle of the level.
+    ///
+    /// Virtual so a test can observe how many times it ran; nothing else overrides it.
+    /// </summary>
+    protected virtual IEnumerator PlayOncePerLevelBeats()
+    {
+        // Level-wide challenge metrics cover exactly one playthrough, and a segmented
+        // level plays one challenge session per segment.
+        if (_challengeFlowController != null)
+            _challengeFlowController.BeginLevelChallengeMetrics();
+
         // Legacy pre-wave beats stay inside the Defense executor so unauthored
         // levels behave exactly as before the phase machine existed.
         if (_revealTiming == RevealTiming.BeforeTutorial)
@@ -410,22 +484,6 @@ public class LevelFlowController : MonoBehaviour
         // AC-2: Start BGM from level config
         if (_levelConfig.bgmClip != null && AudioManager.Instance != null)
             AudioManager.Instance.PlayBGM(_levelConfig.bgmClip);
-
-        if (_machine.IsTerminal)
-            yield break;
-
-        // AC-3: Start waves — no isBossLevel branching; WaveManager handles it internally
-        if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
-            GameManager.Instance.StartGame();
-
-        if (_waveManager != null)
-            _waveManager.StartLevel();
-        else
-            DebugLogger.LogError("LevelFlowController: WaveManager reference missing.");
-
-        // Defense systems report defense completion only (OnDefenseComplete →
-        // ReportDefenseComplete). They can never mark the level complete.
-        yield return new WaitUntil(() => _machine.Phase != LevelPhase.Defense || _machine.IsTerminal);
     }
 
     private IEnumerator ExecuteContextChallenge()
@@ -454,11 +512,30 @@ public class LevelFlowController : MonoBehaviour
             yield break;
         }
 
+        // SALIN-226. On a segmented level this phase plays only the current segment's
+        // restoration leg. The two refusals above are unchanged and still run first, so a
+        // level with no authored sequence refuses exactly as SALIN-223 made it refuse.
+        IReadOnlyList<string> segmentUnitIds = _phasePlan != null
+            ? _phasePlan.SegmentChallengeUnitIds(_machine.CurrentSegmentIndex)
+            : System.Array.Empty<string>();
+        bool isSegmented = _phasePlan != null && _phasePlan.SegmentCount > 1;
+
+        if (isSegmented && segmentUnitIds.Count == 0)
+        {
+            // This segment has no restoration leg — a trailing wave group, authored as
+            // such. Completing here is authored intent, NOT the silent auto-completion
+            // SALIN-223 removed: the level does have a challenge sequence, and the plan
+            // rejects a segment list in which no segment plays any unit at all.
+            _machine.ReportPhaseComplete(LevelPhase.ContextChallenge);
+            yield break;
+        }
+
         yield return _challengeFlowController.Play(
             _levelConfig.challengeSequence,
             _levelConfig.levelNumber,
             _levelConfig.challengePolicy,
-            new ProgressManagerEvidenceSink());
+            new ProgressManagerEvidenceSink(),
+            segmentUnitIds);
 
         switch (_challengeFlowController.LastPlayResult)
         {
@@ -623,16 +700,24 @@ public class LevelFlowController : MonoBehaviour
         int hearts = heartSystem != null ? heartSystem.GetCurrentHearts() : 1;
         int maxHearts = heartSystem != null ? heartSystem.GetMaxHearts() : 1;
 
-        ChallengeSession session = _challengeFlowController != null
-            ? _challengeFlowController.Session
-            : null;
+        // SALIN-226. Read the LEVEL-WIDE accumulators, not the last session. A segmented
+        // level plays one ChallengeSession per segment and each replaces the previous, so
+        // reading Session here would feed only the final segment's hints into the star and
+        // score calculation — a wrong result that throws nothing and fails no test. On an
+        // unsegmented level these are exactly the single session's values.
+        int hintsUsed = _challengeFlowController != null
+            ? _challengeFlowController.LevelHintsUsed
+            : 0;
+        float emergencyHintScorePenalty = _challengeFlowController != null
+            ? _challengeFlowController.LevelEmergencyHintScorePenalty
+            : 0f;
 
         LastResults = LevelResultsCalculator.Compute(
             evidence,
             hearts,
             maxHearts,
-            session?.HintsUsed ?? 0,
-            session?.EmergencyHintScorePenalty ?? 0f);
+            hintsUsed,
+            emergencyHintScorePenalty);
         LastRewardGrant = LevelRewardResolver.Resolve(_levelConfig);
         ProgressManager.Instance?.SetPendingLevelResults(LastResults);
 

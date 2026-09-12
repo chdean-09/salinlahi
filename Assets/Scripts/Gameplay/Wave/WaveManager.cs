@@ -156,6 +156,52 @@ public class WaveManager : MonoBehaviour
         StartLevel(selectedLevel);
     }
 
+    /// <summary>
+    /// SALIN-226. Runs one alternating segment's wave range, <c>[startWaveIndex,
+    /// endWaveIndexExclusive)</c>, and completes the run at that bound so the flow machine
+    /// advances out of Defense through the usual OnDefenseComplete.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately does NOT consult <see cref="TryRestorePausedRun"/>. That path exists for
+    /// resuming a level the player left, and it rewinds to the saved wave index; consulting
+    /// it here would send segment 2 back to a wave saved in a previous session. The
+    /// leave-and-return restore still owns the segment-0 entry through StartLevel.
+    ///
+    /// CurrentWaveIndex / CurrentWaveSpawnedCount keep their absolute meaning into the flat
+    /// wave list, so PauseMenuUI's snapshot keeps working untouched.
+    /// </remarks>
+    public void StartSegment(int startWaveIndex, int endWaveIndexExclusive)
+    {
+        if (_spawner != null)
+            _spawner.SetFallbackEnemyDataIfMissing(_fallbackEnemyData);
+
+        if (_levelConfig == null)
+        {
+            DebugLogger.LogError("WaveManager.StartSegment: No LevelConfigSO assigned.");
+            return;
+        }
+
+        SetCurrentAllowedCharacters(_levelConfig.allowedCharacters);
+
+        if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
+            GameManager.Instance.StartGame();
+
+        if (_running || _waveRoutine != null)
+        {
+            if (_waveRoutine != null)
+                StopCoroutine(_waveRoutine);
+
+            ReturnAllActiveEnemies();
+            ResetRunState();
+        }
+
+        _running = true;
+        _currentWaveIndex = Mathf.Max(0, startWaveIndex);
+        _currentWaveSpawnedCount = 0;
+        _waveRoutine = StartCoroutine(
+            RunAllWavesRoutine(startWaveIndex, 0, endWaveIndexExclusive));
+    }
+
     private void StartLevel(int selectedLevel)
     {
         SetCurrentAllowedCharacters(null);
@@ -370,7 +416,13 @@ public class WaveManager : MonoBehaviour
         yield return RunAllWavesRoutine(startWaveIndex, spawnOffset);
     }
 
-    private IEnumerator RunAllWavesRoutine(int startWaveIndex, int firstWaveSpawnOffset)
+    /// <param name="endWaveIndexExclusive">
+    /// SALIN-226. Upper bound of the half-open wave range to run. Negative (the default)
+    /// means "to the end of the list", which is what every pre-existing caller passes, so
+    /// the full-level and snapshot-restore paths are behaviourally unchanged.
+    /// </param>
+    private IEnumerator RunAllWavesRoutine(
+        int startWaveIndex, int firstWaveSpawnOffset, int endWaveIndexExclusive = -1)
     {
         if (!ValidateRunDependencies())
         {
@@ -395,7 +447,15 @@ public class WaveManager : MonoBehaviour
         }
 
         int firstWaveIndex = Mathf.Clamp(startWaveIndex, 0, _levelConfig.waves.Count);
-        for (int waveIndex = firstWaveIndex; waveIndex < _levelConfig.waves.Count; waveIndex++)
+
+        // SALIN-226. Reaching this bound ends the run exactly as list exhaustion does, so
+        // CompleteRun -> RaiseLevelCompleted raises the SAME OnDefenseComplete the flow
+        // machine already listens for. A segment deliberately adds no second signal.
+        int lastWaveIndexExclusive = endWaveIndexExclusive < 0
+            ? _levelConfig.waves.Count
+            : Mathf.Clamp(endWaveIndexExclusive, 0, _levelConfig.waves.Count);
+
+        for (int waveIndex = firstWaveIndex; waveIndex < lastWaveIndexExclusive; waveIndex++)
         {
             if (!CanContinueRun())
             {

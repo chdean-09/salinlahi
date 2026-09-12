@@ -69,6 +69,34 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 + "both rewardIds and contextMedia.cutscene — the plan requires both keys.");
         }
 
+        /// <summary>
+        /// SALIN-226. The pin that this ticket authors no content and changes no shipped
+        /// level's behaviour: <c>flowSegments</c> is empty on all fifteen levels, so every
+        /// one of them plans exactly one Defense/ContextChallenge pass and runs the flow it
+        /// ran before the alternating loop existed.
+        ///
+        /// When SALIN-247 / SALIN-249 / SALIN-252 author their segment lists, this
+        /// expectation must change with them — and a failure here that is NOT accompanied by
+        /// authored segments means a level lost or gained a segment list by accident.
+        /// SegmentPlanInvalid staying false is the stronger half: it would go true if a
+        /// level authored segments that its own waves or challenge sequence cannot honour.
+        /// </summary>
+        [Test]
+        public void EveryShippedLevel_RunsASingleUnsegmentedFlowPass_SALIN226()
+        {
+            foreach (LevelConfigSO level in LoadLevels())
+            {
+                LevelPhasePlan plan = LevelPhasePlan.FromConfig(level);
+                Assert.AreEqual(1, plan.SegmentCount,
+                    $"Level {level.levelNumber} must still run one Defense/ContextChallenge "
+                    + "pass: SALIN-226 ships the engine, not the content.");
+                Assert.IsFalse(plan.SegmentPlanInvalid,
+                    $"Level {level.levelNumber} reports an unusable segment plan.");
+                Assert.AreEqual(0, plan.Segments.Count,
+                    $"Level {level.levelNumber} must author no flow segments yet.");
+            }
+        }
+
         private static List<LevelConfigSO> LoadLevels()
         {
             List<LevelConfigSO> levels = AssetDatabase

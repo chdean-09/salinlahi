@@ -190,8 +190,24 @@ public class ProgressManager : Singleton<ProgressManager>
     public LevelLockState GetLevelLockState(
         int levelNumber, out int requiredLevelNumber, out bool requirementCrossesEra)
     {
+        return GetLevelLockState(
+            levelNumber, out requiredLevelNumber, out requirementCrossesEra, out _);
+    }
+
+    /// <summary>
+    /// SALIN-220 AC6 overload. Also reports which completion objective the prerequisite still
+    /// owes, or <c>null</c> for the ordinary "not played yet" lock. Only the revised progress
+    /// path can populate it; the legacy path keeps no objective record and always reports null.
+    /// </summary>
+    public LevelLockState GetLevelLockState(
+        int levelNumber,
+        out int requiredLevelNumber,
+        out bool requirementCrossesEra,
+        out string missingObjectiveId)
+    {
         requiredLevelNumber = 0;
         requirementCrossesEra = false;
+        missingObjectiveId = null;
 
         if (levelNumber < 1 || levelNumber > TotalLevels)
             return LevelLockState.Unknown;
@@ -209,6 +225,7 @@ public class ProgressManager : Singleton<ProgressManager>
                         : status.RequiredLevelOrder;
                 requirementCrossesEra = status.RequirementCrossesEra;
             }
+            missingObjectiveId = status.MissingObjectiveId;
             return status.State;
         }
 
