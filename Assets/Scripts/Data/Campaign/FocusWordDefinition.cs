@@ -21,8 +21,6 @@ public sealed class ContentRequirement
 public sealed class DefenseRules
 {
     [Min(1)] public int shrineHearts = 3;
-    public bool focusModeEnabled = true;
-    public bool multiKillChainEnabled = true;
 }
 
 [System.Serializable]

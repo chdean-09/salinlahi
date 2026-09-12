@@ -449,9 +449,11 @@ public static class CampaignConfigValidator
     /// Error under Strict) — never a hard Error in the Authoring profile.
     /// </summary>
     /// <remarks>
-    /// Emits nothing on today's campaign: flowSegments is empty on all fifteen levels, so
-    /// this must not move the validator's issue counts. It arms for SALIN-247 / SALIN-249 /
-    /// SALIN-252, which author the segment lists this ticket's engine consumes.
+    /// Armed on Level 5 today: SALIN-283 authored real segments there, and Level 5 clears both
+    /// early error branches below, so this check is already live on the current campaign. The
+    /// other fourteen levels serialize an empty flowSegments list (SALIN-281) and return at the
+    /// Count == 0 guard, so they arm nothing. It arms further for SALIN-273 and SALIN-280, which
+    /// author the remaining segment lists this engine consumes.
     /// </remarks>
     private static void ValidateFlowSegments(
         LevelConfigSO level,

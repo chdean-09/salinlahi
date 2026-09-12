@@ -199,8 +199,6 @@ MonoBehaviour:
   audioVisualFallback: 4
   defenseRules:
     shrineHearts: 3
-    focusModeEnabled: 1
-    multiKillChainEnabled: 1
   contextMedia:
     contextImage: {fileID: 0}
     narrationClip: {fileID: 0}
