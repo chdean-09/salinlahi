@@ -20,6 +20,12 @@ MonoBehaviour:
   - stableId: value.ou
     displayValue: o/u
     pronunciationClip: {fileID: 8300000, guid: 34ea5307ae3df8347b49edec05625ba0, type: 3}
+  - stableId: value.o
+    displayValue: o
+    pronunciationClip: {fileID: 8300000, guid: 34ea5307ae3df8347b49edec05625ba0, type: 3}
+  - stableId: value.u
+    displayValue: u
+    pronunciationClip: {fileID: 0}
   firstIntroductionLevelId: level.ugnayan.04
   description: "O is carved in wood, stone, and tools used by early communities.
     Juan learns it represents how Filipinos once wrote their own life.\n\r\n\u201CO

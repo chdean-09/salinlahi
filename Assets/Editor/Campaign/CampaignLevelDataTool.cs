@@ -15,13 +15,17 @@ using UnityEngine;
 /// numbers: SALIN-149 is Level 9, not Level 7.
 ///
 /// LEVEL 9 WAS BRIEFLY THOUGHT BLOCKED, AND IS NOT. SALIN-149 AC1 asks for the decompositions
-/// O + O and U + NA "using the basic O/U character defined by the plan". That phrase is the answer,
-/// not the problem: the plan defines ONE shared vowel symbol, `Char_OU`, and O versus U is a
-/// romanisation of the same glyph rather than two spoken values to invent.
+/// O + O and U + NA "using the basic O/U character defined by the plan". The plan defines ONE
+/// shared vowel symbol, `Char_OU`, so both decompositions stay on that single glyph.
 ///
-/// The precedent already shipped. Level 1 authors `INA` as `EI + NA` with `value.ei` -- the shared
-/// vowel character carrying its single shared spoken value for a word romanised with "I". `OO` and
-/// `UNA` follow that exactly, with `value.ou`.
+/// SUPERSEDED BY RULING Q2 (docs/audit/AUDIT.md:311, SALIN-221). A shared glyph is now read with
+/// the value its word context needs. `Char_EI` and `Char_OU` keep their combined value
+/// (`value.ei` / `value.ou`) as the FIRST, primary entry -- it is what cumulative pools,
+/// requirements and the learning card resolve, and what `SpokenValueId()` below returns -- and
+/// they additionally carry `value.e`/`value.i` and `value.o`/`value.u` for decompositions.
+/// So `OO` is `value.o + value.o`, `UNA` is `value.u + value.na`, and Level 1's `INA` is
+/// `value.i + value.na`, not `value.ei`/`value.ou` as this comment previously stated.
+/// No recording exists for E, I or U; those values carry labels only (SALIN-221 Risk 3).
 ///
 /// Everything below is DERIVED from existing authoritative data, not chosen:
 ///

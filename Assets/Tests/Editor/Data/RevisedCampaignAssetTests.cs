@@ -132,9 +132,12 @@ namespace Salinlahi.Tests.Editor.Data
             CampaignConfigSO campaign = LoadCampaign();
             Assert.IsNotNull(campaign);
 
+            // SALIN-217 adds symbol.ra (17 -> 18 symbols); SALIN-221 adds value.e/value.i on
+            // symbol.ei and value.o/value.u on symbol.ou. Post-merge the values total
+            // ei 3 + ou 3 + dara 1 + ra 1 + 14 single-value symbols = 22.
             Assert.AreEqual(18, campaign.symbols.Count);
-            Assert.AreEqual(18, campaign.symbols.Sum(symbol => symbol.spokenValues.Count),
-                "Exactly eighteen contextual spoken values across eighteen symbols.");
+            Assert.AreEqual(22, campaign.symbols.Sum(symbol => symbol.spokenValues.Count),
+                "Exactly twenty-two contextual spoken values across eighteen symbols.");
 
             // SALIN-217 (ruling Q2 / OQ-6): DA and RA are separate visual identities, one spoken
             // value each, rather than two readings carried by symbol.dara.
@@ -148,11 +151,75 @@ namespace Salinlahi.Tests.Editor.Data
             Assert.AreEqual("level.pamana.03", ra.firstIntroductionLevelId,
                 "Ruling R8 introduces RA at Level 13.");
 
+            // SALIN-221: E/I and O/U keep their combined citation value as the primary entry and
+            // add the per-word-context values the focus-word decompositions select.
+            Assert.IsTrue(campaign.TryGetSymbol("symbol.ei", out BaybayinCharacterSO ei));
+            Assert.AreEqual("value.ei", ei.spokenValues[0].stableId,
+                "The combined citation value stays primary for the shared E/I glyph.");
+            foreach (string valueId in new[] { "value.e", "value.i" })
+                Assert.IsTrue(ei.TryGetSpokenValue(valueId, out _), $"{valueId} must resolve on symbol.ei.");
+
+            Assert.IsTrue(campaign.TryGetSymbol("symbol.ou", out BaybayinCharacterSO ou));
+            Assert.AreEqual("value.ou", ou.spokenValues[0].stableId,
+                "The combined citation value stays primary for the shared O/U glyph.");
+            foreach (string valueId in new[] { "value.o", "value.u" })
+                Assert.IsTrue(ou.TryGetSpokenValue(valueId, out _), $"{valueId} must resolve on symbol.ou.");
+
             foreach (string symbolId in new[] { "symbol.ei", "symbol.na", "symbol.a", "symbol.ma" })
             {
                 Assert.IsTrue(campaign.TryGetSymbol(symbolId, out BaybayinCharacterSO symbol));
                 Assert.AreEqual("level.ugat.01", symbol.firstIntroductionLevelId,
                     $"{symbolId} is introduced by Level 1.");
+            }
+        }
+
+        /// <summary>
+        /// SALIN-221 AC1/AC2/AC6: a focus-word slot selects the spoken value its word context
+        /// needs, and the label the focus-word preview renders follows that value rather than the
+        /// shared glyph's combined syllable.
+        /// </summary>
+        [Test]
+        public void FocusWordDecompositions_SelectTheWordContextSpokenValue()
+        {
+            CampaignConfigSO campaign = LoadCampaign();
+            Assert.IsNotNull(campaign);
+
+            AssertDecompositionLabels(campaign, "level.ugnayan.04", "OO", "o", "o");
+            AssertDecompositionLabels(campaign, "level.ugnayan.04", "UNA", "u", "na");
+            AssertDecompositionLabels(campaign, "level.ugat.01", "INA", "i", "na");
+            AssertDecompositionLabels(campaign, "level.ugat.05", "IBA", "i", "ba");
+
+            // AC7 non-regression: DA keeps reading "da" once labels resolve through spoken values.
+            AssertDecompositionLabels(campaign, "level.pamana.01", "DALA", "da", "la");
+        }
+
+        private static void AssertDecompositionLabels(
+            CampaignConfigSO campaign,
+            string levelId,
+            string latinSpelling,
+            params string[] expectedLabels)
+        {
+            Assert.IsTrue(campaign.TryGetLevel(levelId, out LevelConfigSO level),
+                $"{levelId} must resolve.");
+
+            FocusWordDefinition focus = level.focusWords.FirstOrDefault(
+                word => word.latinSpelling == latinSpelling);
+            Assert.IsNotNull(focus, $"{levelId} must author the focus word {latinSpelling}.");
+
+            CollectionAssert.AreEqual(
+                expectedLabels,
+                focus.decomposition
+                    .Select(reference => SpokenValueResolver.ResolveLabel(
+                        reference.symbol, reference.spokenValueId))
+                    .ToArray(),
+                $"{latinSpelling} must read its word-context spoken values.");
+
+            foreach (SymbolValueReference reference in focus.decomposition)
+            {
+                Assert.IsTrue(
+                    campaign.TryGetSpokenValue(
+                        reference.symbol.stableId, reference.spokenValueId, out _),
+                    $"{reference.spokenValueId} must resolve on {reference.symbol.stableId}.");
             }
         }
 

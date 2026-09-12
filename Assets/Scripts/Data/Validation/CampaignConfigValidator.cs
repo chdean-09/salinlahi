@@ -277,7 +277,9 @@ public static class CampaignConfigValidator
         if (spokenValueCount != ContentIdentity.RevisedSpokenValueCount)
         {
             AddError(issues, ContentValidationCode.SpokenValueCountInvalid, CampaignPath + ".symbols",
-                "Revised campaign must contain exactly eighteen contextual spoken values.", campaign);
+                "Revised campaign must contain exactly " +
+                ContentIdentity.RevisedSpokenValueCount +
+                " contextual spoken values.", campaign);
         }
 
         // SALIN-217, rulings Q2 / OQ-6: DA and RA are two visual identities, not two readings of
@@ -326,12 +328,13 @@ public static class CampaignConfigValidator
                     "Spoken value stable ID is duplicated on its visual symbol.", symbol);
             }
 
-            // SALIN-217: symbol.dara no longer gets to accept either value — every symbol now
-            // carries exactly its own primary value. GetPrimaryValueId still maps symbol.dara to
-            // value.da, and symbol.ra to value.ra through its generic branch.
-            bool knownValue = string.Equals(
-                value.stableId, GetPrimaryValueId(symbol.stableId), StringComparison.Ordinal);
-            if (!knownValue)
+            // SALIN-217: symbol.dara no longer gets to accept either value — it carries value.da
+            // alone, and symbol.ra carries value.ra.
+            // SALIN-221 deleted the local GetPrimaryValueId helper this rule used to call and moved
+            // the decision into ContentIdentity.IsApprovedSpokenValue, whose narrowed
+            // ApprovedSpokenValueIds map now encodes exactly the SALIN-217 rule: symbol.dara maps to
+            // { value.da }, and symbol.ra has no entry so the default yields value.ra.
+            if (!ContentIdentity.IsApprovedSpokenValue(symbol.stableId, value.stableId))
             {
                 AddError(issues, ContentValidationCode.SpokenValueUnknown, valuePath,
                     "Spoken value is not approved for its canonical visual symbol.", symbol);
@@ -908,17 +911,6 @@ public static class CampaignConfigValidator
     private static bool IsKudlit(string spokenValueId)
     {
         return spokenValueId != null && spokenValueId.IndexOf(".kudlit.", StringComparison.Ordinal) >= 0;
-    }
-
-    private static string GetPrimaryValueId(string symbolId)
-    {
-        if (string.IsNullOrEmpty(symbolId) ||
-            !symbolId.StartsWith("symbol.", StringComparison.Ordinal))
-            return "value.invalid";
-
-        return symbolId == ContentIdentity.RevisedDaraSymbolId
-            ? ContentIdentity.RevisedDaSpokenValueId
-            : "value." + symbolId.Substring("symbol.".Length);
     }
 
     private static bool ContainsOrdinal(IReadOnlyList<string> values, string value)

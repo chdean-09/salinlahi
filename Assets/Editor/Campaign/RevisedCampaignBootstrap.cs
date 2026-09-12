@@ -86,6 +86,9 @@ public static class RevisedCampaignBootstrap
             // SALIN-217: symbol.dara emits value.da only — value.ra now belongs to symbol.ra, which
             // takes the generic branch. Left as it was, a bootstrap run would put value.ra back on
             // Char_DA and drop the catalog to 17 again.
+            // SALIN-221: the previously authored list is captured first so AppendContextSpokenValues
+            // can preserve the clip and label already recorded for each context value.
+            List<SpokenValueDefinition> authored = character.spokenValues;
             character.spokenValues = symbolId == ContentIdentity.RevisedDaraSymbolId
                 ? new List<SpokenValueDefinition>
                 {
@@ -100,11 +103,55 @@ public static class RevisedCampaignBootstrap
                             : character.syllable,
                         character),
                 };
+
+            AppendContextSpokenValues(character, symbolId, authored);
             EditorUtility.SetDirty(character);
             symbols.Add(character);
         }
 
         return symbols;
+    }
+
+    /// <summary>
+    /// SALIN-221 (ruling Q2): the shared E/I and O/U glyphs carry per-word-context values beyond
+    /// their combined primary one. The clip and label already authored for a context value are
+    /// preserved rather than regenerated: no recording exists for E, I or U, and reusing the
+    /// character-level clip would silently record O.wav against value.u.
+    ///
+    /// SALIN-217 (merge integration): the DA/RA early-return below is now redundant — symbol.dara's
+    /// ApprovedSpokenValueIds entry was narrowed to value.da alone, so the loop has nothing to
+    /// append for it either way. It is kept as a cheap, explicit guard. The original note here
+    /// claimed this bootstrap "keeps writing Char_DA byte-identically"; that is no longer true —
+    /// SALIN-217 drops value.ra from Char_DA and authors it on the new Char_RA instead, which takes
+    /// the generic single-value branch above.
+    /// </summary>
+    private static void AppendContextSpokenValues(
+        BaybayinCharacterSO character,
+        string symbolId,
+        List<SpokenValueDefinition> authored)
+    {
+        if (symbolId == ContentIdentity.RevisedDaraSymbolId ||
+            !ContentIdentity.ApprovedSpokenValueIds.TryGetValue(
+                symbolId, out IReadOnlyList<string> approvedValueIds))
+        {
+            return;
+        }
+
+        for (int index = 1; index < approvedValueIds.Count; index++)
+        {
+            string valueId = approvedValueIds[index];
+            SpokenValueDefinition existing = authored?.Find(
+                value => value != null && value.stableId == valueId);
+
+            character.spokenValues.Add(new SpokenValueDefinition
+            {
+                stableId = valueId,
+                displayValue = string.IsNullOrEmpty(existing?.displayValue)
+                    ? valueId.Substring("value.".Length)
+                    : existing.displayValue,
+                pronunciationClip = existing?.pronunciationClip,
+            });
+        }
     }
 
     private static SpokenValueDefinition SpokenValue(
@@ -205,9 +252,12 @@ public static class RevisedCampaignBootstrap
                 latinSpelling = "INA",
                 displayLabel = "INA",
                 meaning = "mother",
+                // SALIN-221 (ruling Q2): a focus-word slot selects the value its word context needs.
+                // INA is romanised with "I", so the shared E/I glyph carries value.i here, while the
+                // pools and requirements below keep the combined citation value.
                 decomposition = new List<SymbolValueReference>
                 {
-                    Reference(ei), Reference(na),
+                    ContextReference(ei, "value.i"), Reference(na),
                 },
                 media = inaMedia,
             },
@@ -393,6 +443,20 @@ public static class RevisedCampaignBootstrap
         {
             symbol = character,
             spokenValueId = "value." + character.stableId.Substring("symbol.".Length),
+        };
+    }
+
+    /// <summary>
+    /// SALIN-221: a reference that pins an explicit word-context spoken value instead of the
+    /// symbol's primary one. Used by focus-word decompositions on the shared E/I and O/U glyphs.
+    /// </summary>
+    private static SymbolValueReference ContextReference(
+        BaybayinCharacterSO character, string spokenValueId)
+    {
+        return new SymbolValueReference
+        {
+            symbol = character,
+            spokenValueId = spokenValueId,
         };
     }
 

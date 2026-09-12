@@ -790,9 +790,11 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             if (reference?.symbol == null)
                 continue;
 
+            // SALIN-221: unmasked slots read the word-context spoken value, so INA spells "i__"
+            // rather than "e/i__".
             builder.Append(reference.symbol.stableId == symbolStableId
                 ? "__"
-                : reference.symbol.syllable);
+                : SpokenValueResolver.ResolveLabel(reference.symbol, reference.spokenValueId));
         }
 
         return builder.Length > 0 ? builder.ToString() : word.latinSpelling;
