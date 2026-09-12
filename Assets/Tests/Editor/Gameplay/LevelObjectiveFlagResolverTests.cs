@@ -229,6 +229,106 @@ namespace Salinlahi.Tests.Editor.Gameplay
             };
         }
 
+        // ---------------------------------------------------------------------
+        // SALIN-226 × SALIN-220 interaction
+        // ---------------------------------------------------------------------
+
+        [Test]
+        public void Resolve_AfterAThreeSegmentRun_WritesTheSameFiveFlagsAsAnUnsegmentedRun_SALIN226()
+        {
+            LevelConfigSO segmented = CreateSegmentedConfig(3);
+            LevelPhasePlan segmentedPlan = LevelPhasePlan.FromConfig(segmented);
+            Assert.AreEqual(3, segmentedPlan.SegmentCount, "Fixture: the plan must be segmented.");
+
+            LevelFlowMachine machine = new LevelFlowMachine(segmentedPlan);
+            machine.Begin();
+            int guard = 0;
+            while (machine.Phase != LevelPhase.AtomicSave && !machine.IsTerminal && guard++ < 32)
+                machine.ReportPhaseComplete(machine.Phase);
+            Assert.AreEqual(LevelPhase.AtomicSave, machine.Phase,
+                "Fixture: the run must reach the save the resolver is called from.");
+
+            LevelObjectiveFlags segmentedFlags =
+                LevelObjectiveFlagResolver.Resolve(segmentedPlan, machine.CompletedPhases);
+
+            LevelPhasePlan unsegmentedPlan = LevelPhasePlan.FromConfig(CreateFullyAuthoredConfig());
+            LevelObjectiveFlags unsegmentedFlags = LevelObjectiveFlagResolver.Resolve(
+                unsegmentedPlan,
+                new[]
+                {
+                    LevelPhase.Story,
+                    LevelPhase.RequiredPractice,
+                    LevelPhase.ContextChallenge,
+                });
+
+            Assert.AreEqual(unsegmentedFlags.storyViewed, segmentedFlags.storyViewed);
+            Assert.AreEqual(unsegmentedFlags.symbolsPracticed, segmentedFlags.symbolsPracticed);
+            Assert.AreEqual(unsegmentedFlags.wordsRestored, segmentedFlags.wordsRestored);
+            Assert.AreEqual(unsegmentedFlags.contextPassed, segmentedFlags.contextPassed);
+            Assert.AreEqual(
+                unsegmentedFlags.finalSyllableRestored, segmentedFlags.finalSyllableRestored);
+            Assert.IsTrue(segmentedFlags.wordsRestored,
+                "A fully completed segmented run satisfies the challenge objective.");
+        }
+
+        /// <summary>
+        /// SALIN-226 × SALIN-220, pinned rather than reasoned about. CompletedPhases is a
+        /// HashSet, so ContextChallenge is recorded at the end of segment 1 while segments
+        /// 2..N are still pending — meaning the resolver WOULD report the challenge
+        /// objective satisfied mid-run if anything asked it to.
+        ///
+        /// That is harmless today for exactly one reason, asserted here: the resolver's sole
+        /// call site is ComputeCompletionResults, reached only from ExecuteAtomicSave, and
+        /// AtomicSave is unreachable until the last segment completes. If a future ticket
+        /// resolves these flags any earlier, this stops being harmless and becomes a live
+        /// defect that unlocks the next level on a half-finished run.
+        /// </summary>
+        [Test]
+        public void Resolve_MidRunAfterSegmentOne_WouldReportTheChallengeDone_ButAtomicSaveIsUnreachable_SALIN226()
+        {
+            LevelPhasePlan plan = LevelPhasePlan.FromConfig(CreateSegmentedConfig(3));
+            LevelFlowMachine machine = new LevelFlowMachine(plan);
+            machine.Begin();
+            int guard = 0;
+            while (machine.Phase != LevelPhase.ContextChallenge && !machine.IsTerminal && guard++ < 32)
+                machine.ReportPhaseComplete(machine.Phase);
+
+            machine.ReportPhaseComplete(LevelPhase.ContextChallenge);
+            Assert.AreEqual(1, machine.CurrentSegmentIndex, "Setup: segment 1 of 3 finished.");
+            Assert.AreEqual(LevelPhase.Defense, machine.Phase);
+
+            LevelObjectiveFlags midRun =
+                LevelObjectiveFlagResolver.Resolve(plan, machine.CompletedPhases);
+            Assert.IsTrue(midRun.wordsRestored,
+                "Documented consequence of the HashSet: the flag is already true mid-run.");
+            Assert.IsTrue(midRun.contextPassed);
+
+            // The reason it does not matter: nothing can commit from here.
+            Assert.AreNotEqual(LevelPhase.AtomicSave, machine.Phase);
+            Assert.IsFalse(machine.HasCompleted(LevelPhase.AtomicSave));
+            Assert.IsFalse(machine.ReportSaveResult(accepted: true),
+                "AtomicSave — the only path to the resolver — is unreachable mid-loop.");
+        }
+
+        private LevelConfigSO CreateSegmentedConfig(int segmentCount)
+        {
+            LevelConfigSO config = CreateFullyAuthoredConfig();
+            var units = new List<ChallengeUnitDefinition>();
+            for (int i = 0; i < segmentCount; i++)
+            {
+                units.Add(new ChallengeUnitDefinition { unitId = $"seg-unit-{i}" });
+                config.waves.Add(new WaveDefinition());
+                config.flowSegments.Add(new LevelFlowSegment
+                {
+                    waveCount = 1,
+                    challengeUnitIds = new[] { $"seg-unit-{i}" },
+                });
+            }
+
+            config.challengeSequence.units = units.ToArray();
+            return config;
+        }
+
         private LevelConfigSO CreateFullyAuthoredConfig()
         {
             LevelConfigSO config = ScriptableObject.CreateInstance<LevelConfigSO>();

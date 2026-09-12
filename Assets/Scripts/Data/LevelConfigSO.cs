@@ -80,6 +80,11 @@ public class LevelConfigSO : ScriptableObject
     [Tooltip("Difficulty tier overlay for the context challenge (SALIN-181). Tier 0 = legacy per-unit behavior.")]
     public ChallengeTierPolicy challengePolicy = new ChallengeTierPolicy();
 
+    [Tooltip("Optional alternating defense/restoration segments (SALIN-226). Empty = one Defense "
+        + "pass then one ContextChallenge pass, exactly as before. Each segment consumes the next "
+        + "waveCount waves from the waves list above and then plays the named challenge units.")]
+    public List<LevelFlowSegment> flowSegments = new();
+
     [Tooltip("Dialogue played before waves begin. Null = skip intro.")]
     public DialogueSO introDialogue;
 

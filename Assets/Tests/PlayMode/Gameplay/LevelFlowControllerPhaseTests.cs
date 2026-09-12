@@ -1185,6 +1185,244 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 summary.GetComponent<TMPro.TextMeshProUGUI>().text));
         }
 
+        // ---------------------------------------------------------------------
+        // SALIN-226: alternating defense and restoration segments.
+        //
+        // Runs on a SYNTHETIC three-wave / two-segment config, not on Level 5.
+        // Level 5 has an empty waves list and is still a boss encounter, so the
+        // literal AC-5/AC-6 demo belongs to SALIN-247, which authors those waves.
+        // These two prove AC-1, AC-2 and AC-3 on the engine this ticket ships.
+        // ---------------------------------------------------------------------
+
+        [UnityTest]
+        public IEnumerator Segments_AlternateDefenseAndRestoration_CommittingOnlyAfterTheLast_SALIN226()
+        {
+            // Defense is entered once per segment, and this fixture has no WaveManager.
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+
+            TestPhaseFlowController controller = BootstrapFlow(
+                ConfigureTwoSegments, out GameObject victoryPanel, out _, out _,
+                dialogueController: null);
+
+            Assert.AreEqual(2, controller.SegmentCount, "AC-1: the config expresses two segments.");
+
+            yield return WaitFrames(10);
+            EventBus.RaiseDefenseComplete();
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.ContextChallenge, MachineOf(controller).Phase);
+            Assert.AreEqual(0, controller.CurrentSegmentIndex);
+
+            ChallengeFlowController challenge =
+                GetPrivateField<ChallengeFlowController>(controller, "_challengeFlowController");
+            Assert.IsNotNull(challenge);
+            challenge.SubmitPlacement("w-1");
+            yield return WaitFrames(10);
+
+            // AC-2: the restoration hands control back to a defense leg.
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "AC-2: clearing segment 1's restoration must resume the next wave group, "
+                + "not advance to the memory reward.");
+            Assert.AreEqual(1, controller.CurrentSegmentIndex,
+                "AC-4: the segment boundary is observable for SALIN-235/236.");
+
+            // AC-3: the terminal phases are not part of the loop.
+            Assert.AreEqual(0, controller.CommitCalls,
+                "AC-3: no atomic save may run until the last segment completes.");
+            Assert.IsFalse(victoryPanel.activeSelf);
+
+            EventBus.RaiseDefenseComplete();
+            yield return WaitFrames(10);
+            Assert.AreEqual(LevelPhase.ContextChallenge, MachineOf(controller).Phase);
+
+            challenge.SubmitPlacement("w-3");
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.Completed, MachineOf(controller).Phase);
+            Assert.AreEqual(1, controller.CommitCalls,
+                "AC-3: exactly one atomic save, after the final segment.");
+            Assert.IsTrue(victoryPanel.activeSelf);
+        }
+
+        /// <summary>
+        /// SALIN-226 step 7 / negative control NC-5. A segmented level plays one
+        /// ChallengeSession per segment and each replaces the last, so reading
+        /// ChallengeFlowController.Session in ComputeCompletionResults would report only the
+        /// FINAL segment's hints into the star and score calculation. Nothing would throw,
+        /// no other test would fail, and the player would silently get the wrong result.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Segments_HintsAcrossEverySegment_ReachTheCompletionMetrics_SALIN226()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+
+            TestPhaseFlowController controller = BootstrapFlow(
+                ConfigureTwoSegments, out _, out _, out _, dialogueController: null);
+
+            yield return WaitFrames(10);
+            EventBus.RaiseDefenseComplete();
+            yield return WaitFrames(10);
+
+            ChallengeFlowController challenge =
+                GetPrivateField<ChallengeFlowController>(controller, "_challengeFlowController");
+            challenge.RequestHint();
+            challenge.SubmitPlacement("w-1");
+            yield return WaitFrames(10);
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "Setup: the run must be in its second segment.");
+
+            EventBus.RaiseDefenseComplete();
+            yield return WaitFrames(10);
+            challenge.RequestHint();
+            challenge.SubmitPlacement("w-3");
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.Completed, MachineOf(controller).Phase);
+            Assert.AreEqual(2, challenge.LevelHintsUsed,
+                "Both segments' hints must accumulate across the level.");
+            Assert.IsNotNull(controller.LastResults);
+            Assert.AreEqual(
+                2f,
+                controller.LastResults.Metrics[LevelResultsCalculator.HintsUsedMetricId],
+                0.001f,
+                "The completion metrics must see BOTH segments' hints. A value of 1 means "
+                + "ComputeCompletionResults read only the final segment's session.");
+        }
+
+        [UnityTest]
+        public IEnumerator Segments_OncePerLevelBeats_RunOnlyForTheFirstSegment_SALIN226()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+
+            TestPhaseFlowController controller = BootstrapFlow(
+                ConfigureTwoSegments, out _, out _, out _, dialogueController: null);
+
+            yield return WaitFrames(10);
+            Assert.AreEqual(1, controller.OncePerLevelBeatCalls,
+                "Setup: the first Defense leg plays the pre-wave beats.");
+
+            EventBus.RaiseDefenseComplete();
+            yield return WaitFrames(10);
+            ChallengeFlowController challenge =
+                GetPrivateField<ChallengeFlowController>(controller, "_challengeFlowController");
+            challenge.SubmitPlacement("w-1");
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "Setup: the run must have re-entered Defense for segment 2.");
+            Assert.AreEqual(1, controller.OncePerLevelBeatCalls,
+                "The reveals, tutorial, boss tutorial and BGM start are once per LEVEL. "
+                + "Re-running them on a segment re-entry replays the onboarding mid-level.");
+        }
+
+        /// <summary>
+        /// SALIN-226 negative control NC-6. A mid-level segment start must not consult the
+        /// leave-and-return snapshot: that path rewinds to the saved wave index, so segment
+        /// 2 would restart at a wave saved in a previous session.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator StartSegment_StartsAtItsOwnWave_IgnoringThePausedRunSnapshot_SALIN226()
+        {
+            // A deliberately minimal WaveManager: Awake cannot resolve a level config before
+            // the fixture assigns one, and the run then aborts on the absent spawner. Both
+            // are fixture noise; the subject is which wave the segment starts at.
+            LogAssert.ignoreFailingMessages = true;
+
+            GameManager gameManager = CreateComponent<GameManager>("GameManager");
+            SetSingletonInstance(gameManager);
+
+            LevelConfigSO config = ScriptableObject.CreateInstance<LevelConfigSO>();
+            _objectsToDestroy.Add(config);
+            config.levelNumber = 1;
+            for (int i = 0; i < 3; i++)
+                config.waves.Add(new WaveDefinition());
+
+            // A snapshot from an earlier, abandoned run of this level, parked at wave 0.
+            gameManager.CachePausedRunSnapshot(
+                levelId: 1, currentHearts: 3, currentWaveIndex: 0, currentWaveSpawnedCount: 0);
+
+            WaveManager waveManager = CreateComponent<WaveManager>("WaveManager");
+            // Without this, WaveManager.Start auto-runs StartLevel a frame later and resets
+            // the wave cursor, masking what the test is measuring.
+            SetPrivateField(waveManager, "_waitForExternalStart", true);
+            SetPrivateField(waveManager, "_levelConfig", config);
+
+            waveManager.StartSegment(2, 3);
+            yield return WaitFrames(5);
+
+            Assert.AreEqual(2, waveManager.CurrentWaveIndex,
+                "Segment 2 must start at its own wave. A value of 0 means StartSegment "
+                + "consulted the paused-run snapshot and rewound the level.");
+        }
+
+        /// <summary>
+        /// SALIN-226. Three waves grouped as two segments: waves 0-1 then the restoration
+        /// unit 'place-1', then wave 2 then 'place-2'. Both units carry their own tokens,
+        /// slots and occurrence ids because the challenge validator's uniqueness sets are
+        /// sequence-global.
+        /// </summary>
+        private void ConfigureTwoSegments(LevelConfigSO config)
+        {
+            ChallengeSequenceSO sequence = ScriptableObject.CreateInstance<ChallengeSequenceSO>();
+            _objectsToDestroy.Add(sequence);
+            sequence.sequenceId = "salin226-two-segments";
+            sequence.units = new[]
+            {
+                new ChallengeUnitDefinition
+                {
+                    unitId = "place-1",
+                    mode = ChallengeMode.WordPlacement,
+                    tokens = new[]
+                    {
+                        new ChallengeTokenDefinition { tokenId = "t1", displayText = "t1", occurrenceId = "w-1" },
+                        new ChallengeTokenDefinition { tokenId = "t2", displayText = "t2", occurrenceId = "w-2" },
+                    },
+                    slots = new[]
+                    {
+                        new ChallengeSlotDefinition { slotId = "s1", expectedOccurrenceId = "w-1" },
+                    },
+                    candidateOccurrenceIds = new[] { "w-1", "w-2" },
+                    maxErrors = 3,
+                    heartPenalty = 1,
+                },
+                new ChallengeUnitDefinition
+                {
+                    unitId = "place-2",
+                    mode = ChallengeMode.WordPlacement,
+                    tokens = new[]
+                    {
+                        new ChallengeTokenDefinition { tokenId = "t3", displayText = "t3", occurrenceId = "w-3" },
+                        new ChallengeTokenDefinition { tokenId = "t4", displayText = "t4", occurrenceId = "w-4" },
+                    },
+                    slots = new[]
+                    {
+                        new ChallengeSlotDefinition { slotId = "s2", expectedOccurrenceId = "w-3" },
+                    },
+                    candidateOccurrenceIds = new[] { "w-3", "w-4" },
+                    maxErrors = 3,
+                    heartPenalty = 1,
+                },
+            };
+            config.challengeSequence = sequence;
+
+            for (int i = 0; i < 3; i++)
+                config.waves.Add(new WaveDefinition());
+
+            config.flowSegments.Add(new LevelFlowSegment
+            {
+                waveCount = 2,
+                challengeUnitIds = new[] { "place-1" },
+            });
+            config.flowSegments.Add(new LevelFlowSegment
+            {
+                waveCount = 1,
+                challengeUnitIds = new[] { "place-2" },
+            });
+        }
+
         private void ConfigureContextChallenge(LevelConfigSO config)
         {
             ChallengeSequenceSO sequence = ScriptableObject.CreateInstance<ChallengeSequenceSO>();
@@ -1460,6 +1698,15 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             public CampaignOutcomeCommitResult NextResult = CampaignOutcomeCommitResult.Committed(null);
             public CampaignOutcomeCommitResult RetryResult = CampaignOutcomeCommitResult.Committed(null);
             public int CommitCalls { get; private set; }
+
+            /// <summary>SALIN-226 NC-4: how many times the once-per-level beats ran.</summary>
+            public int OncePerLevelBeatCalls { get; private set; }
+
+            protected override System.Collections.IEnumerator PlayOncePerLevelBeats()
+            {
+                OncePerLevelBeatCalls++;
+                yield return base.PlayOncePerLevelBeats();
+            }
 
             protected override CampaignOutcomeCommitResult CommitCompletion()
             {

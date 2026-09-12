@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 /// <summary>
 /// Immutable per-level phase plan computed once from a <see cref="LevelConfigSO"/>.
 /// A phase that is not planned is skipped by <see cref="LevelFlowMachine"/> without
@@ -36,6 +39,7 @@ public sealed class LevelPhasePlan
     private readonly bool _hasRequiredPractice;
     private readonly bool _hasContextChallenge;
     private readonly bool _hasMemoryReward;
+    private readonly LevelFlowSegment[] _segments;
 
     private LevelPhasePlan(
         bool hasFocusWords,
@@ -44,7 +48,9 @@ public sealed class LevelPhasePlan
         bool hasContextChallenge,
         bool hasMemoryReward,
         bool contextChallengeContentMissing,
-        bool memoryRewardContentMissing)
+        bool memoryRewardContentMissing,
+        LevelFlowSegment[] segments = null,
+        bool segmentPlanInvalid = false)
     {
         _hasFocusWords = hasFocusWords;
         _hasSymbolLearning = hasSymbolLearning;
@@ -53,6 +59,8 @@ public sealed class LevelPhasePlan
         _hasMemoryReward = hasMemoryReward;
         ContextChallengeContentMissing = contextChallengeContentMissing;
         MemoryRewardContentMissing = memoryRewardContentMissing;
+        _segments = segments ?? Array.Empty<LevelFlowSegment>();
+        SegmentPlanInvalid = segmentPlanInvalid;
     }
 
     /// <summary>
@@ -73,6 +81,63 @@ public sealed class LevelPhasePlan
     /// half-way. Requiring both is the only rule that cannot pass on a half-authored level.
     /// </summary>
     public bool MemoryRewardContentMissing { get; }
+
+    /// <summary>
+    /// SALIN-226. How many Defense/ContextChallenge passes this level runs. Always at least
+    /// 1: an unsegmented level is simply a one-segment level, which is why every existing
+    /// caller keeps its present behaviour with no branch.
+    /// </summary>
+    public int SegmentCount => _segments.Length == 0 ? 1 : _segments.Length;
+
+    /// <summary>
+    /// SALIN-226. The authored segments, or empty when the level is unsegmented. Empty and
+    /// <see cref="SegmentCount"/> == 1 are the same state deliberately: nothing downstream
+    /// should have to distinguish "no segments authored" from "one segment authored".
+    /// </summary>
+    public IReadOnlyList<LevelFlowSegment> Segments => _segments;
+
+    /// <summary>
+    /// SALIN-226, in the SALIN-223 reporting style. True when a level authored a segment
+    /// list that cannot be honoured — the segments collapse to one pass, but LOUDLY, so the
+    /// fault is reported rather than silently degrading into the unsegmented flow.
+    /// </summary>
+    public bool SegmentPlanInvalid { get; }
+
+    /// <summary>
+    /// SALIN-226. The half-open wave range <c>[startWaveIndex, endWaveIndexExclusive)</c>
+    /// this segment's Defense leg runs, by summing the preceding segments' wave counts.
+    /// False when the level is unsegmented or the index is out of range, in which case the
+    /// caller runs the whole wave list exactly as it does today.
+    /// </summary>
+    public bool TryGetSegmentWaveRange(
+        int segmentIndex, out int startWaveIndex, out int endWaveIndexExclusive)
+    {
+        startWaveIndex = 0;
+        endWaveIndexExclusive = 0;
+        if (_segments.Length == 0 || segmentIndex < 0 || segmentIndex >= _segments.Length)
+            return false;
+
+        int start = 0;
+        for (int i = 0; i < segmentIndex; i++)
+            start += Math.Max(0, _segments[i].waveCount);
+
+        startWaveIndex = start;
+        endWaveIndexExclusive = start + Math.Max(0, _segments[segmentIndex].waveCount);
+        return true;
+    }
+
+    /// <summary>
+    /// SALIN-226. The challenge unit ids this segment's ContextChallenge leg plays, or an
+    /// empty list when the level is unsegmented (play the whole sequence, as today) or the
+    /// segment has no restoration leg.
+    /// </summary>
+    public IReadOnlyList<string> SegmentChallengeUnitIds(int segmentIndex)
+    {
+        if (_segments.Length == 0 || segmentIndex < 0 || segmentIndex >= _segments.Length)
+            return Array.Empty<string>();
+
+        return _segments[segmentIndex].challengeUnitIds ?? Array.Empty<string>();
+    }
 
     public static LevelPhasePlan FromConfig(LevelConfigSO config)
     {
@@ -96,6 +161,11 @@ public sealed class LevelPhasePlan
         // ContextChallenge is legitimately unplanned, and it survives SALIN-223.
         bool contextChallenge = !config.challengePrototypeEnabled;
 
+        // SALIN-226. Segments decide how many times Defense/ContextChallenge run, NEVER
+        // whether they are planned. Nothing below this line reads a segment, so SALIN-223's
+        // content-missing rules are unchanged and cannot be re-loosened through this path.
+        LevelFlowSegment[] segments = PlanSegments(config, out bool segmentPlanInvalid);
+
         return new LevelPhasePlan(
             hasFocusWords: config.focusWords != null && config.focusWords.Count > 0,
             hasSymbolLearning: config.learningRequirements != null && config.learningRequirements.Count > 0,
@@ -107,7 +177,89 @@ public sealed class LevelPhasePlan
                 config.rewardIds == null
                 || config.rewardIds.Count == 0
                 || config.contextMedia == null
-                || config.contextMedia.cutscene == null);
+                || config.contextMedia.cutscene == null,
+            segments: segments,
+            segmentPlanInvalid: segmentPlanInvalid);
+    }
+
+    /// <summary>
+    /// SALIN-226. Accepts an authored segment list only when the level can actually honour
+    /// it. Every rejection returns an EMPTY segment array (so the level runs the single
+    /// unsegmented pass it runs today) together with <paramref name="segmentPlanInvalid"/>
+    /// true, so the fault is reported rather than silently degrading.
+    /// </summary>
+    private static LevelFlowSegment[] PlanSegments(LevelConfigSO config, out bool segmentPlanInvalid)
+    {
+        segmentPlanInvalid = false;
+        if (config.flowSegments == null || config.flowSegments.Count == 0)
+            return Array.Empty<LevelFlowSegment>();
+
+        // The challenge-prototype carve-out leaves ContextChallenge unplanned, so a segment
+        // loop would have no restoration leg to return through. Segments and the prototype
+        // are mutually exclusive by construction, not by authoring discipline.
+        if (config.challengePrototypeEnabled)
+        {
+            segmentPlanInvalid = true;
+            return Array.Empty<LevelFlowSegment>();
+        }
+
+        if (config.challengeSequence == null)
+        {
+            segmentPlanInvalid = true;
+            return Array.Empty<LevelFlowSegment>();
+        }
+
+        var knownUnitIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (ChallengeUnitDefinition unit in config.challengeSequence.units
+            ?? Array.Empty<ChallengeUnitDefinition>())
+        {
+            if (unit != null && !string.IsNullOrWhiteSpace(unit.unitId))
+                knownUnitIds.Add(unit.unitId);
+        }
+
+        int waveBudget = config.waves == null ? 0 : config.waves.Count;
+        int consumedWaves = 0;
+        bool anySegmentPlaysAUnit = false;
+
+        foreach (LevelFlowSegment segment in config.flowSegments)
+        {
+            if (segment == null || segment.waveCount < 0)
+            {
+                segmentPlanInvalid = true;
+                return Array.Empty<LevelFlowSegment>();
+            }
+
+            consumedWaves += segment.waveCount;
+
+            foreach (string unitId in segment.challengeUnitIds ?? Array.Empty<string>())
+            {
+                if (string.IsNullOrWhiteSpace(unitId) || !knownUnitIds.Contains(unitId))
+                {
+                    segmentPlanInvalid = true;
+                    return Array.Empty<LevelFlowSegment>();
+                }
+
+                anySegmentPlaysAUnit = true;
+            }
+        }
+
+        // Overrunning the wave list would silently drop authored waves.
+        if (consumedWaves > waveBudget)
+        {
+            segmentPlanInvalid = true;
+            return Array.Empty<LevelFlowSegment>();
+        }
+
+        // A trailing segment with no units is legitimate ("clear waves 1-2, restore line 1,
+        // then clear wave 3"). A list where NO segment names a unit is not: the level would
+        // complete with the challenge never played, which is exactly the SALIN-223 defect.
+        if (!anySegmentPlaysAUnit)
+        {
+            segmentPlanInvalid = true;
+            return Array.Empty<LevelFlowSegment>();
+        }
+
+        return new List<LevelFlowSegment>(config.flowSegments).ToArray();
     }
 
     public bool Has(LevelPhase phase)
