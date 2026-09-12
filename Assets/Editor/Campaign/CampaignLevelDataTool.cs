@@ -33,9 +33,14 @@ using UnityEngine;
 ///    campaign catalog order. Nothing is hand-listed, so a pool cannot drift from the character data.
 ///  * Spoken value ids are read from each symbol's own `spokenValues[0].stableId` -- never a
 ///    guessed "value." + id string.
-///  * The three requirement lists follow the shape every authored Ugat level uses, verified
-///    identical across Levels 2-5: one entry per pool symbol, Instruction x1, Practice x2,
-///    Mastery x1.
+///  * The three requirement lists carry one entry per pool symbol. Practice x2 and Mastery x1 apply
+///    to the whole pool uniformly, but `learningRequirements` is PARTITIONED (SALIN-224): a symbol is
+///    Instruction only at the level that first introduces it -- `firstIntroductionLevelId` equals this
+///    level's `stableId` -- and Practice at every later level. Instruction is what drives the symbol
+///    learning cards (SymbolLearningCardController.IsPresentable), so writing the whole cumulative
+///    pool as Instruction made the player re-watch every previously taught card at every level.
+///    Review symbols stay in the list as Practice rather than being dropped, so the list is never
+///    empty -- CampaignConfigValidator.ValidateRequirementList rejects an empty one.
 ///
 /// The `meaning` strings are English developer- and matrix-facing glosses rather than player-facing
 /// copy, and are the only authored values here. See the PR note.
@@ -310,10 +315,14 @@ public static class CampaignLevelDataTool
         log.AppendLine($"  finalRestorationValue: {final.characterID} ({SpokenValueId(final)})");
 
         WriteSymbolList(so.FindProperty("cumulativeSymbolPool"), pool);
-        WriteRequirements(so.FindProperty("learningRequirements"), pool, 0, 1);   // Instruction
+        // SALIN-224: only the symbols this level introduces are Instruction; the rest are review.
+        var introduced = pool.Where(s => s.firstIntroductionLevelId == spec.StableId).ToList();
+        WriteLearningRequirements(so.FindProperty("learningRequirements"), pool, spec.StableId);
         WriteRequirements(so.FindProperty("practiceRequirements"), pool, 1, 2);   // Practice
         WriteRequirements(so.FindProperty("masteryRequirements"), pool, 3, 1);    // Mastery
-        log.AppendLine($"  learning={pool.Count}x Instruction(1)  " +
+        log.AppendLine($"  learning={introduced.Count}x Instruction" +
+                       $"({string.Join(", ", introduced.Select(s => s.characterID))})" +
+                       $" + {pool.Count - introduced.Count}x Practice  " +
                        $"practice={pool.Count}x Practice(2)  mastery={pool.Count}x Mastery(1)");
 
         so.ApplyModifiedPropertiesWithoutUndo();
@@ -353,6 +362,37 @@ public static class CampaignLevelDataTool
             SerializedProperty s = list.GetArrayElementAtIndex(i);
             s.FindPropertyRelative("symbol").objectReferenceValue = pool[i];
             s.FindPropertyRelative("spokenValueId").stringValue = SpokenValueId(pool[i]);
+        }
+    }
+
+    /// <summary>
+    /// SALIN-224 -- writes `learningRequirements` for one level: the whole cumulative pool, in catalog
+    /// order, but partitioned by kind. A pool symbol is <c>Instruction</c> only when this level is the
+    /// one that first introduces it, and <c>Practice</c> otherwise.
+    ///
+    /// The membership and `requiredSuccesses` are deliberately identical to what a plain Instruction
+    /// write produced -- only `kind` differs -- so review symbols keep the list non-empty for
+    /// CampaignConfigValidator while SymbolLearningCardController shows a card for the new symbols
+    /// alone.
+    ///
+    /// The partition is derived per symbol from `firstIntroductionLevelId`, never from a hand-listed
+    /// set or a symbol count, so it stays correct as the campaign's symbol roster changes.
+    /// </summary>
+    private static void WriteLearningRequirements(SerializedProperty list,
+                                                  List<BaybayinCharacterSO> pool, string levelStableId)
+    {
+        list.arraySize = pool.Count;
+        for (int i = 0; i < pool.Count; i++)
+        {
+            bool introducedHere = pool[i].firstIntroductionLevelId == levelStableId;
+
+            SerializedProperty r = list.GetArrayElementAtIndex(i);
+            r.FindPropertyRelative("kind").enumValueIndex =
+                (int)(introducedHere ? ContentRequirementKind.Instruction : ContentRequirementKind.Practice);
+            r.FindPropertyRelative("requiredSuccesses").intValue = 1;
+            SerializedProperty sv = r.FindPropertyRelative("symbolValue");
+            sv.FindPropertyRelative("symbol").objectReferenceValue = pool[i];
+            sv.FindPropertyRelative("spokenValueId").stringValue = SpokenValueId(pool[i]);
         }
     }
 

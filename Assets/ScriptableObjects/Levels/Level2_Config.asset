@@ -61,12 +61,12 @@ MonoBehaviour:
   - symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
     spokenValueId: value.ta
   learningRequirements:
-  - kind: 0
+  - kind: 1
     symbolValue:
       symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
       spokenValueId: value.a
     requiredSuccesses: 1
-  - kind: 0
+  - kind: 1
     symbolValue:
       symbol: {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
       spokenValueId: value.ei
@@ -76,12 +76,12 @@ MonoBehaviour:
       symbol: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
       spokenValueId: value.ba
     requiredSuccesses: 1
-  - kind: 0
+  - kind: 1
     symbolValue:
       symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
       spokenValueId: value.ma
     requiredSuccesses: 1
-  - kind: 0
+  - kind: 1
     symbolValue:
       symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
       spokenValueId: value.na
