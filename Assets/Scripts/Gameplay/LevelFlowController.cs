@@ -476,8 +476,11 @@ public class LevelFlowController : MonoBehaviour
                 if (!_machine.IsTerminal && _machine.ReportDefeat())
                     ShowDefeatScreen();
                 break;
-            case ChallengePlayResult.MissingSequence:
-            case ChallengePlayResult.InvalidSequence:
+            // NotStarted is unreachable today: ChallengeFlowController.Play always reassigns
+            // LastPlayResult before it returns. Refusing is still strictly safer than falling
+            // through, because falling through means the driver auto-completes the phase — the
+            // exact behaviour this ticket exists to remove.
+            default:
                 // SALIN-223 inverts the old policy here. Falling through let the driver
                 // auto-complete the phase so "a bad asset cannot deadlock the level" —
                 // but the level then completed and unlocked the next one on the strength

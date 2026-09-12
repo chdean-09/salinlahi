@@ -8,12 +8,20 @@ using System.Collections.Generic;
 /// THE RULE (D2): an objective the level does not author counts as SATISFIED. A flag is true when
 /// the phase that produces it was not planned for this level, or was planned and completed.
 ///
-/// This is not leniency, it is the only safe rule today. Phases are conditional on authored
-/// content (<see cref="LevelPhasePlan.FromConfig"/>): five of the fifteen levels author no
-/// challenge sequence at all, and the challenge-prototype path plays its sequence inside Defense
-/// rather than as a planned ContextChallenge phase. A literal "all five must be true" gate would
-/// therefore make those levels permanently unable to unlock their successor -- a hard lock of the
-/// campaign that no Level 1 test fixture would ever reach.
+/// This is not leniency, it is the only safe rule today. Some phases are conditional on authored
+/// content (<see cref="LevelPhasePlan.FromConfig"/>) -- FocusWords, SymbolLearning and
+/// RequiredPractice -- so a literal "all five must be true" gate would make a level permanently
+/// unable to unlock its successor on an objective it never authored.
+///
+/// SALIN-223 UPDATE, and it narrows this rule's reach considerably: ContextChallenge and
+/// MemoryReward are now planned on EVERY level. A level that authors no challenge sequence no
+/// longer skips the phase -- the executor refuses to complete it and the flow never reaches
+/// AtomicSave, which is this resolver's only caller. So the "unauthored challenge" case that
+/// originally motivated this rule can no longer reach the resolver at all: on Levels 6, 7, 8, 10
+/// and 13 no unlock is withheld here because no unlock is attempted. On Levels 1-5 ContextChallenge
+/// is planned and completed, so its two flags are true on the merits. The rule still matters for
+/// the genuinely conditional phases above, and for the challenge-prototype carve-out, where the
+/// sequence plays inside Defense rather than as a planned ContextChallenge phase.
 ///
 /// CONSEQUENCE, STATED PLAINLY: every level that can be completed today writes all five flags
 /// true, so this gate withholds no unlock in normal play. SALIN-220 delivers the persisted

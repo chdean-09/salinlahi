@@ -672,10 +672,14 @@ namespace Salinlahi.Tests.Editor.Gameplay
 
             Assert.IsTrue(machine.HasCompleted(LevelPhase.Story));
             Assert.IsTrue(machine.HasCompleted(LevelPhase.Defense));
-            Assert.IsFalse(machine.HasCompleted(LevelPhase.ContextChallenge),
-                "A legacy config plans no ContextChallenge, so it can never be recorded complete.");
-            Assert.IsFalse(machine.HasCompleted(LevelPhase.RequiredPractice));
+            // SALIN-223: a legacy config DOES plan ContextChallenge, so this loop completes it.
+            // The test's subject is unchanged — a phase the plan skipped is never recorded — and
+            // FocusWords, SymbolLearning and RequiredPractice are still the skipped ones.
+            Assert.IsTrue(machine.HasCompleted(LevelPhase.ContextChallenge));
+            Assert.IsFalse(machine.HasCompleted(LevelPhase.RequiredPractice),
+                "A legacy config plans no RequiredPractice, so it can never be recorded complete.");
             Assert.IsFalse(machine.HasCompleted(LevelPhase.FocusWords));
+            Assert.IsFalse(machine.HasCompleted(LevelPhase.SymbolLearning));
         }
 
         [Test]

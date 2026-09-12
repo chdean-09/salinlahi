@@ -45,9 +45,14 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         /// <summary>
-        /// The mandated challenge-less fixture. Levels 6, 7, 8, 10 and 13 author no challenge
-        /// sequence, so ContextChallenge is never planned and never completed there. Both flags it
-        /// would produce must still come out true or those levels can never unlock a successor.
+        /// The mandated challenge-less fixture.
+        ///
+        /// SALIN-223 changed what this fixture has to encode. ContextChallenge is now planned on
+        /// every level, so a level with no authored challenge no longer skips the phase — it
+        /// refuses to complete it, and the flow never reaches AtomicSave, which is the only
+        /// caller of the resolver. The resolver is therefore unreachable on such a level in real
+        /// play, and this test now covers the rule itself rather than a reachable campaign state:
+        /// a planned-AND-completed ContextChallenge satisfies both flags it produces.
         /// </summary>
         [Test]
         public void Resolve_LevelThatAuthorsNoChallengeSequence_TreatsWordsAndContextAsSatisfied_SALIN220()
@@ -55,14 +60,16 @@ namespace Salinlahi.Tests.Editor.Gameplay
             LevelConfigSO config = CreateFullyAuthoredConfig();
             config.challengeSequence = null;
             LevelPhasePlan plan = LevelPhasePlan.FromConfig(config);
-            Assert.IsFalse(plan.Has(LevelPhase.ContextChallenge),
-                "precondition: a level with no challenge sequence plans no ContextChallenge phase");
+            Assert.IsTrue(plan.Has(LevelPhase.ContextChallenge),
+                "precondition (SALIN-223): ContextChallenge is planned whether or not content exists");
+            Assert.IsTrue(plan.ContextChallengeContentMissing,
+                "precondition: and the plan reports the missing content rather than hiding it");
 
             LevelObjectiveFlags flags = LevelObjectiveFlagResolver.Resolve(
-                plan, new[] { LevelPhase.Story, LevelPhase.RequiredPractice });
+                plan,
+                new[] { LevelPhase.Story, LevelPhase.RequiredPractice, LevelPhase.ContextChallenge });
 
-            Assert.IsTrue(flags.wordsRestored,
-                "Unauthored means satisfied. False here hard-locks levels 6, 7, 8, 10 and 13.");
+            Assert.IsTrue(flags.wordsRestored);
             Assert.IsTrue(flags.contextPassed);
             AssertAllSatisfied(flags);
         }
@@ -81,8 +88,13 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 "precondition: the sixth configured level authors no challenge sequence");
 
             LevelPhasePlan plan = LevelPhasePlan.FromConfig(sixth);
+            // SALIN-223: the sixth level plans ContextChallenge despite authoring none, so the
+            // completed set has to include it for the gate to open. In real play that level
+            // never reaches the resolver at all — the flow refuses to complete phase 6 and so
+            // never runs AtomicSave.
             LevelObjectiveFlags flags = LevelObjectiveFlagResolver.Resolve(
-                plan, new[] { LevelPhase.Story, LevelPhase.RequiredPractice });
+                plan,
+                new[] { LevelPhase.Story, LevelPhase.RequiredPractice, LevelPhase.ContextChallenge });
 
             AssertAllSatisfied(flags);
             Assert.IsTrue(LevelObjectiveGate.AllSatisfied(RecordFrom(flags)),
@@ -143,9 +155,12 @@ namespace Salinlahi.Tests.Editor.Gameplay
             LevelPhasePlan legacy = LevelPhasePlan.FromConfig(null);
             Assert.IsTrue(legacy.Has(LevelPhase.Story), "precondition: Story is always planned");
             Assert.IsFalse(legacy.Has(LevelPhase.RequiredPractice));
-            Assert.IsFalse(legacy.Has(LevelPhase.ContextChallenge));
+            // SALIN-223: ContextChallenge is planned on a null config too, so it joins Story as
+            // an objective a legacy plan can leave false. That is why it is completed below.
+            Assert.IsTrue(legacy.Has(LevelPhase.ContextChallenge));
 
-            LevelObjectiveFlags flags = LevelObjectiveFlagResolver.Resolve(legacy, new LevelPhase[0]);
+            LevelObjectiveFlags flags = LevelObjectiveFlagResolver.Resolve(
+                legacy, new[] { LevelPhase.ContextChallenge });
 
             Assert.IsFalse(flags.storyViewed, "Story was planned and never completed.");
             Assert.IsTrue(flags.symbolsPracticed);
@@ -159,8 +174,11 @@ namespace Salinlahi.Tests.Editor.Gameplay
         {
             // What a level with no authored story actually produces: the Story phase is planned,
             // the executor finds nothing to play, and the driver auto-completes it.
+            // SALIN-223: ContextChallenge is planned on a null config as well, so it has to be
+            // completed here too for every objective to be satisfied.
             AssertAllSatisfied(LevelObjectiveFlagResolver.Resolve(
-                LevelPhasePlan.FromConfig(null), new[] { LevelPhase.Story }));
+                LevelPhasePlan.FromConfig(null),
+                new[] { LevelPhase.Story, LevelPhase.ContextChallenge }));
         }
 
         [TestCase(LevelObjectives.StoryViewed)]
