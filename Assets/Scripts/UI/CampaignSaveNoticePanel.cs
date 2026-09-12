@@ -31,7 +31,7 @@ public sealed class CampaignSaveNoticePanel : MonoBehaviour
         _titleText.text = TitleFor(notice);
         _bodyText.text = BodyFor(notice);
         if (_retryText != null)
-            _retryText.text = notice.kind == CampaignSaveNoticeKind.Blocking ? "Retry" : "Continue";
+            _retryText.text = CampaignSaveNoticeCopy.ConfirmLabel(notice.kind);
         _overlayRoot.SetActive(true);
         _confirmButton.interactable = true;
     }
@@ -63,23 +63,11 @@ public sealed class CampaignSaveNoticePanel : MonoBehaviour
             _confirmButton.interactable = true;
     }
 
-    private static string TitleFor(CampaignSaveNotice notice)
-    {
-        if (notice.kind == CampaignSaveNoticeKind.Migration) return "Your Journey Has Been Updated";
-        if (notice.kind == CampaignSaveNoticeKind.Recovery) return "Journey Save Recovered";
-        return "Journey Data Cannot Be Opened";
-    }
+    // SALIN-272: the strings themselves live in CampaignSaveNoticeCopy, behind a
+    // NOT PRODUCT-APPROVED banner, so content can be rewritten without touching flow.
+    private static string TitleFor(CampaignSaveNotice notice) =>
+        CampaignSaveNoticeCopy.Title(notice.kind);
 
-    private static string BodyFor(CampaignSaveNotice notice)
-    {
-        if (notice.kind == CampaignSaveNoticeKind.Migration)
-            return "Your previous journey progress was archived safely. Audio preferences were preserved. The revised journey begins at Ugat Level 1.";
-        if (notice.kind == CampaignSaveNoticeKind.Recovery)
-            return "No valid journey save could be recovered, so a clean journey was created. Failed local files were retained for diagnostics.";
-        if (notice.reasonCode == "UnsupportedSchema" || notice.reasonCode == "unsupported-schema")
-            return "This journey was created by a newer version of Salinlahi. Update the game to continue. Progress was not changed.";
-        if (notice.reasonCode == "BlockedIo" || notice.reasonCode == "io-failure")
-            return "Journey files could not be read. Check device storage and try again. Progress was not changed.";
-        return "The revised journey content is incomplete or incompatible. Progress was not changed.";
-    }
+    private static string BodyFor(CampaignSaveNotice notice) =>
+        CampaignSaveNoticeCopy.Body(notice.kind, notice.reasonCode);
 }
