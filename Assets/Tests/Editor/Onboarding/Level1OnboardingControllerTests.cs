@@ -31,7 +31,11 @@ namespace Salinlahi.Tests.Editor.Onboarding
                 Assert.NotNull(host.GetComponent<SoloTeachBeat>());
                 Assert.NotNull(host.GetComponent<HeartLossDemoBeat>());
                 Assert.NotNull(host.GetComponent<ReleaseBeat>());
-                Assert.AreEqual(5, host.GetComponents<OnboardingBeat>().Length);
+                // SALIN-241 added MassClearTeachBeat to the default attachment set, so the count
+                // moved 5 -> 6. A beat only runs when a sequence's beatOrder schedules it, so
+                // attaching Level 2's beat here does not change what Level 1 plays.
+                Assert.NotNull(host.GetComponent<MassClearTeachBeat>());
+                Assert.AreEqual(6, host.GetComponents<OnboardingBeat>().Length);
             }
             finally
             {
@@ -192,23 +196,18 @@ namespace Salinlahi.Tests.Editor.Onboarding
         }
 
         /// <summary>
-        /// SALIN-225 guard. Replaces the old assertion that level 2 was forced to
-        /// [ComboTeach, FocusModeTeach, Release]. Proving the arm still FORCES an order matters:
-        /// if it silently stopped normalizing, level 2 would run whatever the asset carried.
+        /// SALIN-241 guard, first half. The anti-fallthrough protection SALIN-225 added must
+        /// survive: an empty level-2 order still resolves to Release alone rather than falling
+        /// through to the SO's five-beat default and re-teaching Level 1's basics.
         /// </summary>
         [Test]
-        public void NormalizeSequenceForLevel_LevelTwoForcesReleaseOnlyBeatOrder()
+        public void NormalizeSequenceForLevel_WhenOrderIsEmpty_FallsBackToReleaseOnly()
         {
             OnboardingSequenceSO sequence = ScriptableObject.CreateInstance<OnboardingSequenceSO>();
 
             try
             {
-                sequence.beatOrder = new[]
-                {
-                    OnboardingBeatType.SoloTeach,
-                    OnboardingBeatType.HeartLossDemo,
-                    OnboardingBeatType.Release,
-                };
+                sequence.beatOrder = System.Array.Empty<OnboardingBeatType>();
 
                 Level1OnboardingController.NormalizeSequenceForLevel(
                     sequence,
@@ -217,7 +216,46 @@ namespace Salinlahi.Tests.Editor.Onboarding
                 Assert.AreEqual(
                     new[] { OnboardingBeatType.Release },
                     sequence.beatOrder,
-                    "Level 2 teaches nothing after SALIN-225: Release is the only beat that survives.");
+                    "An unauthored level-2 order must still end at Release rather than inheriting "
+                    + "Level 1's five-beat default.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(sequence);
+            }
+        }
+
+        /// <summary>
+        /// SALIN-241 guard, second half, and the load-bearing one. The level-2 arm used to
+        /// overwrite the authored order UNCONDITIONALLY, so a beat authored into
+        /// Level2AdvancedOnboardingSequence.asset was discarded at runtime with no compile error,
+        /// no warning and no failing test. This pins the fix: a non-empty authored order survives
+        /// normalization verbatim, which is what makes the asset the source of truth.
+        /// </summary>
+        [Test]
+        public void NormalizeSequenceForLevel_WhenOrderIsAuthored_PreservesIt()
+        {
+            OnboardingSequenceSO sequence = ScriptableObject.CreateInstance<OnboardingSequenceSO>();
+
+            try
+            {
+                OnboardingBeatType[] authored =
+                {
+                    OnboardingBeatType.MassClearTeach,
+                    OnboardingBeatType.Release,
+                };
+                sequence.beatOrder = authored;
+
+                Level1OnboardingController.NormalizeSequenceForLevel(
+                    sequence,
+                    LevelTutorialProgress.Level2TutorialLevelNumber);
+
+                Assert.AreEqual(
+                    authored,
+                    sequence.beatOrder,
+                    "Level 2's authored beat order must reach the run loop untouched. If this "
+                    + "fails, the normalizer is silently stripping the asset again and any beat "
+                    + "authored for Level 2 will never play.");
             }
             finally
             {

@@ -6,11 +6,14 @@ public enum OnboardingBeatType
 {
     // SALIN-225 removed ComboTeach = 3 and FocusModeTeach = 6 with the mechanics they taught.
     // The survivors keep their explicit values so serialized beatOrder blobs stay valid.
+    // SALIN-241 adds MassClearTeach = 7 rather than reusing the freed 3 or 6: a stale serialized
+    // beatOrder blob still carrying 3 or 6 would otherwise bind silently to the new beat.
     ProtagonistIntro = 0,
     BaseIntro = 1,
     SoloTeach = 2,
     HeartLossDemo = 4,
     Release = 5,
+    MassClearTeach = 7,
 }
 
 [Serializable]
@@ -115,6 +118,17 @@ public sealed class OnboardingSequenceSO : ScriptableObject
     public OnboardingBeatCopy release = new OnboardingBeatCopy
     {
         fallbackText = "You are ready, anak. Defend our home.",
+    };
+
+    [Header("Beat 7 — Mass-Clear Teach (Level 2)")]
+    [Tooltip("SALIN-241. Level 2 is the first level with multiKillChainEnabled on, so it is where the AOE mass-clear is introduced. Explanatory only — the beat never gates on a successful draw (D-004 forbids a pre-combat practice gate).")]
+    public OnboardingBeatCopy massClearTeach = new OnboardingBeatCopy
+    {
+        fallbackText = "Three or more enemies can share one mark. Draw it once to clear them all.",
+    };
+    public OnboardingVideoTemplate massClearTeachVideo = new OnboardingVideoTemplate
+    {
+        tapToProceedText = "Tap anywhere to continue",
     };
 
     [Header("Timing")]

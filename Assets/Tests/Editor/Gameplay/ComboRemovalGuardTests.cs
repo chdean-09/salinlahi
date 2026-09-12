@@ -81,8 +81,22 @@ public class ComboRemovalGuardTests
         Assert.That(sequence, Is.Not.Null,
             "Level 2's onboarding asset stays in the project so SALIN-241 authors into an "
             + "existing, wired slot rather than re-creating one.");
-        Assert.That(sequence.beatOrder, Is.EqualTo(new[] { OnboardingBeatType.Release }),
-            "Level 2 teaches nothing after SALIN-225: Release is the only beat left.");
+        // SALIN-241 authored Level 2's replacement, so this no longer pins [Release] exactly.
+        // The removal fence is what matters and it is kept: whatever Level 2 now schedules, it must
+        // be a real order that still ends in Release, and it must not be the cut teach beats coming
+        // back. Their absence from the enum is already asserted above, which is the stronger guard.
+        Assert.That(sequence.beatOrder, Is.Not.Null.And.Not.Empty,
+            "Level 2 must schedule at least one beat; an empty order is how the level silently "
+            + "stopped onboarding anything.");
+        Assert.That(sequence.beatOrder[sequence.beatOrder.Length - 1],
+            Is.EqualTo(OnboardingBeatType.Release),
+            "Release must stay last: it is the sole caller of MarkTutorialSeen, so dropping it "
+            + "would make Level 2's onboarding replay on every entry.");
+        foreach (OnboardingBeatType beat in sequence.beatOrder)
+        {
+            Assert.That(beat.ToString(), Is.Not.EqualTo("ComboTeach").And.Not.EqualTo("FocusModeTeach"),
+                "Level 2 must not re-schedule a beat SALIN-225 removed.");
+        }
 #endif
     }
 

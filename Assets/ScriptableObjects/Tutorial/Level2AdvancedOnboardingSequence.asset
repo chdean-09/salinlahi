@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Level2AdvancedOnboardingSequence
   m_EditorClassIdentifier: Assembly-CSharp::OnboardingSequenceSO
   beatOrder:
+  - 7
   - 5
   protagonistIntro:
     fallbackText:
@@ -49,7 +50,18 @@ MonoBehaviour:
     fallbackText:
     dialogue: {fileID: 0}
   release:
-    fallbackText: You are ready. Use chain attacks to protect the base.
+    fallbackText: You are ready. Defend the base.
     dialogue: {fileID: 0}
+  massClearTeach:
+    fallbackText: Three or more enemies can share one mark. Draw it once to clear
+      them all.
+    dialogue: {fileID: 0}
+  massClearTeachVideo:
+    videoClip: {fileID: 0}
+    gifTexture: {fileID: 0}
+    gifFrames: []
+    gifFramesPerSecond: 0
+    animationClip: {fileID: 0}
+    tapToProceedText: Tap anywhere to continue
   fallbackMessageSeconds: 1.75
   failuresBeforeAssist: 3
