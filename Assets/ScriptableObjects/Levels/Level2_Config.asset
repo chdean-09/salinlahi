@@ -222,6 +222,7 @@ MonoBehaviour:
     emergencyHintEnabled: 0
     emergencyHintsPerAttempt: 1
     emergencyHintScorePenalty: 0.1
+  flowSegments: []
   introDialogue: {fileID: 11400000, guid: 31133c6cddb634deb8d121f896e4266c, type: 2}
   outroDialogue: {fileID: 11400000, guid: 171ca6cdf664b4e75a5d146c9901cdaf, type: 2}
   bgmClip: {fileID: 0}
