@@ -20,19 +20,27 @@
 ///   ArchiveTitle             verbatim, spec BTN-ARCHIVE "Memory Archive"
 ///   ClaimLabel               verbatim, spec BTN-CLAIM "Claim Memory"
 ///   FlipLabel / BackLabel    verbatim, spec UF-29 "Flip Card"
-///   EarnInLevelFormat        verbatim from the acceptance criterion, "Earn in Level n"
+///   EarnInLevelFormat        was verbatim from SALIN-240's criterion ("Earn in Level n");
+///                            re-pointed by SALIN-258 onto the era-relative label, per the
+///                            versioned ruling in docs/design/spec-rulings-2026-09.md
 ///   CollectibleNumberFormat  the shipped n/max shape (LevelResultsCopy)
 ///   EmptyArchiveBody         the one genuinely drafted sentence; register copied from
 ///                            LevelContentMissingPanel.Render, which deliberately does not
 ///                            blame the player and does not imply anything was lost.
 ///
-/// EarnInLevelFormat IS A DECLARED BOUNDARY WITH SALIN-258. That ticket's ruling is "three
-/// eras of five levels; never show a global 1-15", and this criterion's literal wording is
-/// "Earn in Level n" with the global number. The two cannot both hold. SALIN-240 ships the
-/// criterion as written, and isolates it HERE plus one call site
-/// (MemoryArchiveController.BuildEntryRow) so SALIN-258 flips one constant and one argument
-/// rather than unpicking a screen. A reviewer seeing a global level number on this surface
-/// is looking at a deliberate, recorded choice, not an oversight.
+/// THE SALIN-258 BOUNDARY IS NOW CLOSED. SALIN-240 declared a conflict here: its acceptance
+/// criterion's literal wording was "Earn in Level n" with the GLOBAL number, while SALIN-258's
+/// ruling is "three eras of five levels; never show a global 1-15". SALIN-240 shipped the
+/// criterion as written and isolated it to this constant plus one call site
+/// (MemoryArchiveController.BuildEntryRow) so that SALIN-258 could flip one constant and one
+/// argument rather than unpicking a screen.
+///
+/// That isolation held exactly as designed. SALIN-258 resolved the conflict in favour of the
+/// ruling (docs/design/spec-rulings-2026-09.md, "How are levels numbered for the player?"):
+/// the format no longer carries the word "Level" or a number at all, and takes a pre-rendered
+/// era-relative label instead, so the row now reads "Locked · Earn in Ugnayan Level 2" where
+/// it used to read "Locked · Earn in Level 7". A reviewer seeing a global level number on this
+/// surface is now looking at a REGRESSION, not a recorded choice.
 ///
 /// NO ACCURACY READOUT — D-021 / owner ruling R1. No percentage, no streak, no score
 /// appears on the card or the archive, and no string here offers one. D-006: player-facing
@@ -68,10 +76,11 @@ public static class MemoryCardCopy
     public const string LockedLabel = "Locked";
 
     /// <summary>
-    /// The acceptance criterion's literal wording. {0} is the GLOBAL level number.
-    /// See the SALIN-258 boundary note on this class.
+    /// SALIN-258. {0} is the ERA-RELATIVE LABEL ("Ugnayan Level 2"), not a number — the word
+    /// "Level" moved into the label, which is why it is no longer in this format string.
+    /// See the boundary note on this class.
     /// </summary>
-    public const string EarnInLevelFormat = "Earn in Level {0}";
+    public const string EarnInLevelFormat = "Earn in {0}";
 
     /// <summary>{0} = this memory's position in its era, {1} = memories in the era.</summary>
     public const string CollectibleNumberFormat = "{0}/{1}";
@@ -94,8 +103,12 @@ public static class MemoryCardCopy
     /// <summary>Shown on the claim overlay above the Claim Memory control.</summary>
     public const string ClaimPromptBody = "You restored a memory.";
 
-    public static string EarnInLevel(int levelNumber) =>
-        string.Format(EarnInLevelFormat, levelNumber);
+    /// <param name="levelLabel">
+    /// SALIN-258: an era-relative label from <see cref="CampaignLevelLabel"/>, never a global
+    /// 1-15 number.
+    /// </param>
+    public static string EarnInLevel(string levelLabel) =>
+        string.Format(EarnInLevelFormat, levelLabel);
 
     public static string CollectibleNumber(int index, int total) =>
         string.Format(CollectibleNumberFormat, index, total);

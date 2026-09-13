@@ -73,10 +73,23 @@ namespace Salinlahi.Tests.PlayMode.UI
             LevelLockNoticePanel panel = CreateUnwiredPanel();
             yield return null;
 
-            panel.PresentPrerequisite(3, crossesEra: false, requiredEraName: null);
+            // SALIN-258. Ugnayan Level 2 == global level 7, so era-local and global differ here.
+            // Ugat would NOT work as a fixture: in Era 1 the two numbers are equal for all five
+            // levels, so an Ugat case passes identically against the old global-numbering code.
+            panel.PresentPrerequisite("Ugnayan Level 2", crossesEra: false, requiredEraName: "Ugnayan");
 
             Assert.IsTrue(panel.IsShowing);
-            Assert.AreEqual(LevelLockNoticeCopy.Prerequisite(3, false, null), panel.VisibleMessage);
+
+            // Asserted against the LITERAL rendered sentence, not against the copy builder.
+            // Comparing to LevelLockNoticeCopy.Prerequisite(...) only proves the panel called the
+            // builder; it would agree with the builder even if the builder emitted a global id.
+            // VisibleMessage is what is actually on the runtime-built surface.
+            Assert.AreEqual(
+                "Locked. Complete Ugnayan Level 2 first.",
+                panel.VisibleMessage,
+                "The era-relative label must survive onto the runtime-built surface.");
+            StringAssert.DoesNotContain("7", panel.VisibleMessage,
+                "A global 1-15 id must never reach the rendered notice.");
         }
 
         [UnityTest]
@@ -84,7 +97,7 @@ namespace Salinlahi.Tests.PlayMode.UI
         {
             LevelLockNoticePanel panel = CreateUnwiredPanel();
             yield return null;
-            panel.PresentPrerequisite(2, crossesEra: false, requiredEraName: null);
+            panel.PresentPrerequisite("Ugat Level 2", crossesEra: false, requiredEraName: "Ugat");
             Assert.IsTrue(panel.IsShowing, "precondition");
 
             panel.Hide();

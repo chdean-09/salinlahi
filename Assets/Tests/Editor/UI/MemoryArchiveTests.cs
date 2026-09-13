@@ -265,6 +265,51 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.IsTrue(entry.HasAuthoredContent);
         }
 
+        // ----- SALIN-258: the locked row names the level era-relatively -------------------
+
+        /// <summary>
+        /// The archive's one player-facing level number. Global level 7 is Ugnayan's second
+        /// level, so the row must read "Earn in Ugnayan Level 2" and must not contain "7".
+        ///
+        /// Asserted through MemoryArchiveController.LockedRowLabel — the SAME expression
+        /// BuildEntryRow renders — rather than recomposing the label in the test. A test that
+        /// rebuilt the string itself would keep passing even if the controller stopped using it.
+        ///
+        /// An Ugat fixture would be worthless here: in Era 1 the era-local and global numbers
+        /// are equal for all five levels, so it would pass against the old code too.
+        /// </summary>
+        [Test]
+        public void LockedRow_NamesTheLevelEraRelatively_SALIN258()
+        {
+            // Level 7 carries no rewardIds and no memory cutscene, so it renders locked — which
+            // is the D-015 state every Level 6-15 row is genuinely in.
+            CampaignConfigSO campaign = Campaign(Era("Ugnayan", 2, Level(7, 2, "Sama-Samang Lakas")));
+
+            MemoryArchiveEntry entry = MemoryArchiveModel.Build(campaign, null)[0];
+            string label = MemoryArchiveController.LockedRowLabel(entry);
+
+            Assert.IsFalse(entry.HasAuthoredContent, "precondition: this row renders locked");
+            StringAssert.Contains("Earn in Ugnayan Level 2", label);
+            StringAssert.DoesNotContain("7", label,
+                "Global level 7 must never appear; it is Ugnayan Level 2 to the player.");
+        }
+
+        /// <summary>
+        /// The degraded path: an entry whose era name is missing must still name something,
+        /// rather than rendering "Earn in " with a blank where the level used to be.
+        /// </summary>
+        [Test]
+        public void LockedRow_WithNoEraNameResolved_StillNamesTheLevel_SALIN258()
+        {
+            CampaignConfigSO campaign = Campaign(Era(null, 2, Level(7, 2, "Unresolved")));
+
+            MemoryArchiveEntry entry = MemoryArchiveModel.Build(campaign, null)[0];
+            string label = MemoryArchiveController.LockedRowLabel(entry);
+
+            StringAssert.Contains("Earn in Level 7", label,
+                "With no era name, the copy degrades to the plain form rather than going blank.");
+        }
+
         // ----- fixtures -----------------------------------------------------------------
 
         /// <summary>

@@ -47,7 +47,7 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.IsTrue(_panel.HasRequiredReferences);
             Assert.IsFalse(_panel.IsShowing, "The notice starts hidden.");
 
-            _panel.PresentPrerequisite(3, crossesEra: false, requiredEraName: null);
+            _panel.PresentPrerequisite("Ugat Level 3", crossesEra: false, requiredEraName: null);
 
             // If EnsureSurface built the fallback it would REPLACE these two references
             // with objects it created and parent a "[Runtime] LevelLockNotice" root to
@@ -57,42 +57,76 @@ namespace Salinlahi.Tests.Editor.UI
                 "Present must reuse the AUTHORED root, not swap in a runtime-built one.");
             Assert.AreSame(_body, GetPrivateField("_bodyText"),
                 "Present must reuse the AUTHORED body text.");
-            Assert.AreEqual(LevelLockNoticeCopy.Prerequisite(3, false, null), _body.text,
+            Assert.AreEqual(LevelLockNoticeCopy.Prerequisite("Ugat Level 3", false, null), _body.text,
                 "The message must land on the AUTHORED Text component, not a runtime one.");
             Assert.IsNull(GameObject.Find("[Runtime] LevelLockNotice"),
                 "No runtime fallback surface may exist when the references are authored.");
         }
 
+        /// <summary>
+        /// SALIN-258 rewrote this test's assertion. It previously read
+        /// <c>StringAssert.Contains("4", VisibleMessage)</c> against level 4 — a digit that is
+        /// Ugat-local AND global, so it passed identically before and after era-relative
+        /// numbering and proved nothing. It now runs on Ugnayan Level 2 (global 7), where the
+        /// two numbers differ, and asserts the global one is ABSENT.
+        /// </summary>
         [Test]
-        public void PresentPrerequisite_SameEra_ShowsTheImmediatelyPrecedingLevel()
+        public void PresentPrerequisite_SameEra_ShowsTheEraLocalNumberNotTheGlobalOne_SALIN258()
         {
-            _panel.PresentPrerequisite(4, crossesEra: false, requiredEraName: null);
+            _panel.PresentPrerequisite("Ugnayan Level 2", crossesEra: false, requiredEraName: "Ugnayan");
 
             Assert.IsTrue(_panel.IsShowing, "AC2: the explanation is visible on Level Select.");
-            StringAssert.Contains("4", _panel.VisibleMessage);
+            StringAssert.Contains("Ugnayan Level 2", _panel.VisibleMessage);
+            StringAssert.DoesNotContain("7", _panel.VisibleMessage,
+                "Global level 7 is Ugnayan Level 2; the global id must never be shown.");
             Assert.AreEqual(
-                LevelLockNoticeCopy.Prerequisite(4, false, null),
+                LevelLockNoticeCopy.Prerequisite("Ugnayan Level 2", false, "Ugnayan"),
                 _panel.VisibleMessage,
                 "All copy must come from the single LevelLockNoticeCopy source.");
         }
 
+        /// <summary>
+        /// SALIN-258 AC-2, the ticket's one verbatim-specified sentence. Previously asserted
+        /// <c>Contains("5")</c>, which is Ugat-local and global alike and therefore unfalsifiable;
+        /// it now pins the whole required sentence.
+        /// </summary>
         [Test]
-        public void PresentPrerequisite_EraCrossing_NamesTheEraThatMustBeFinished()
+        public void PresentPrerequisite_EraCrossing_ReadsFinishUgatLevel5_SALIN258()
         {
-            _panel.PresentPrerequisite(5, crossesEra: true, requiredEraName: "Ugat");
+            _panel.PresentPrerequisite("Ugat Level 5", crossesEra: true, requiredEraName: "Ugat");
 
             Assert.IsTrue(_panel.IsShowing);
-            StringAssert.Contains("Ugat", _panel.VisibleMessage);
-            StringAssert.Contains("5", _panel.VisibleMessage);
+            Assert.AreEqual(
+                "Locked. Finish Ugat Level 5 to open this era.",
+                _panel.VisibleMessage,
+                "AC-2, frozen I56 verbatim: the lock notice for Era 2 Level 1 says "
+                + "'Finish Ugat Level 5'.");
+        }
+
+        /// <summary>
+        /// The era-crossing case for a LATER era boundary, where the era-local number and the
+        /// global number diverge. Global 11 is Pamana Level 1, unlocked by finishing global 10 =
+        /// Ugnayan Level 5. Neither 10 nor 11 may appear.
+        /// </summary>
+        [Test]
+        public void PresentPrerequisite_EraCrossingIntoAThirdEra_NamesNoGlobalNumber_SALIN258()
+        {
+            _panel.PresentPrerequisite("Ugnayan Level 5", crossesEra: true, requiredEraName: "Ugnayan");
+
+            Assert.AreEqual("Locked. Finish Ugnayan Level 5 to open this era.", _panel.VisibleMessage);
+            StringAssert.DoesNotContain("10", _panel.VisibleMessage);
+            StringAssert.DoesNotContain("11", _panel.VisibleMessage);
         }
 
         [Test]
         public void PresentPrerequisite_EraCrossingWithoutAnEraName_FallsBackToTheLevelNumberForm()
         {
-            _panel.PresentPrerequisite(5, crossesEra: true, requiredEraName: null);
+            // The legacy progress path: no era resolved, so CampaignLevelLabel yields the plain
+            // "Level 5" form and the era-crossing sentence must not be used.
+            _panel.PresentPrerequisite("Level 5", crossesEra: true, requiredEraName: null);
 
             Assert.IsTrue(_panel.IsShowing);
-            Assert.AreEqual(LevelLockNoticeCopy.Prerequisite(5, false, null), _panel.VisibleMessage,
+            Assert.AreEqual(LevelLockNoticeCopy.Prerequisite("Level 5", false, null), _panel.VisibleMessage,
                 "A missing era name degrades to the plain form the legacy path always uses.");
         }
 
@@ -101,10 +135,13 @@ namespace Salinlahi.Tests.Editor.UI
         {
             // Start from a VISIBLE notice. Asserting "still hidden" from the hidden start
             // state would pass against a Present that does nothing at all.
-            _panel.PresentPrerequisite(4, crossesEra: false, requiredEraName: null);
+            _panel.PresentPrerequisite("Ugat Level 4", crossesEra: false, requiredEraName: "Ugat");
             Assert.IsTrue(_panel.IsShowing, "precondition: there is something on screen to clear");
 
-            _panel.PresentPrerequisite(0, crossesEra: false, requiredEraName: null);
+            // SALIN-258: the "nothing to explain" signal is now an EMPTY LABEL rather than a
+            // level number below 1. CampaignLevelLabel.Format produces exactly that for order < 1,
+            // so the guard survived the signature change.
+            _panel.PresentPrerequisite(string.Empty, crossesEra: false, requiredEraName: null);
 
             Assert.IsFalse(_panel.IsShowing,
                 "A reachable level, or a blocked save, must not blame a prerequisite — and "
@@ -114,7 +151,7 @@ namespace Salinlahi.Tests.Editor.UI
         [Test]
         public void Hide_AfterPresenting_ClearsTheNotice()
         {
-            _panel.PresentPrerequisite(2, crossesEra: false, requiredEraName: null);
+            _panel.PresentPrerequisite("Ugat Level 2", crossesEra: false, requiredEraName: "Ugat");
             Assert.IsTrue(_panel.IsShowing, "precondition");
 
             _panel.Hide();
@@ -122,11 +159,21 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.IsFalse(_panel.IsShowing);
         }
 
+        /// <summary>
+        /// SALIN-258: the "nothing to name" signal moved from an int below 1 to an empty label.
+        /// The third case ties the two together — it feeds the copy builder the ACTUAL output of
+        /// CampaignLevelLabel for an invalid order, so the guard cannot silently stop lining up
+        /// with what the production caller passes.
+        /// </summary>
         [Test]
-        public void Copy_BelowFirstLevel_IsEmptySoCallersStaySilent()
+        public void Copy_WithNoLevelToName_IsEmptySoCallersStaySilent()
         {
-            Assert.AreEqual(string.Empty, LevelLockNoticeCopy.Prerequisite(0, false, null));
-            Assert.AreEqual(string.Empty, LevelLockNoticeCopy.Prerequisite(-1, true, "Ugat"));
+            Assert.AreEqual(string.Empty, LevelLockNoticeCopy.Prerequisite(string.Empty, false, null));
+            Assert.AreEqual(string.Empty, LevelLockNoticeCopy.Prerequisite(null, true, "Ugat"));
+            Assert.AreEqual(
+                string.Empty,
+                LevelLockNoticeCopy.Prerequisite(CampaignLevelLabel.Format("Ugat", 0, 0), false, null),
+                "An unresolvable level must still take the notice off screen end to end.");
         }
 
         // ------------------------------------------------------------------
@@ -140,10 +187,14 @@ namespace Salinlahi.Tests.Editor.UI
         [TestCase(LevelObjectives.FinalSyllableRestored)]
         public void MissingObjectiveCopy_NamesTheOwingLevel_SALIN220(string objectiveId)
         {
-            string message = LevelLockNoticeCopy.MissingObjective(objectiveId, 4);
+            // SALIN-258: run on Ugnayan Level 2 (= global 7) rather than Ugat Level 4, so the
+            // assertion distinguishes era-local from global instead of passing on a digit that
+            // happens to be both.
+            string message = LevelLockNoticeCopy.MissingObjective(objectiveId, "Ugnayan Level 2");
 
             Assert.IsNotEmpty(message, objectiveId);
-            StringAssert.Contains("Level 4", message);
+            StringAssert.Contains("Ugnayan Level 2", message);
+            StringAssert.DoesNotContain("7", message);
             StringAssert.StartsWith("Locked.", message);
         }
 
@@ -166,7 +217,7 @@ namespace Salinlahi.Tests.Editor.UI
 
             var seen = new System.Collections.Generic.HashSet<string>();
             foreach (string id in ids)
-                Assert.IsTrue(seen.Add(LevelLockNoticeCopy.MissingObjective(id, 7)),
+                Assert.IsTrue(seen.Add(LevelLockNoticeCopy.MissingObjective(id, "Ugnayan Level 2")),
                     $"{id} repeats another objective's sentence.");
 
             Assert.AreEqual(ids.Length, seen.Count);
@@ -179,26 +230,28 @@ namespace Salinlahi.Tests.Editor.UI
         [Test]
         public void MissingObjectiveCopy_UnknownIdentifier_FallsBackToPrerequisite_SALIN220()
         {
-            string message = LevelLockNoticeCopy.MissingObjective("objective.notAuthoredYet", 3);
+            string message = LevelLockNoticeCopy.MissingObjective("objective.notAuthoredYet", "Ugat Level 3");
 
-            Assert.AreEqual(LevelLockNoticeCopy.Prerequisite(3, false, null), message);
+            Assert.AreEqual(LevelLockNoticeCopy.Prerequisite("Ugat Level 3", false, null), message);
             StringAssert.DoesNotContain("objective.", message);
         }
 
         [Test]
-        public void MissingObjectiveCopy_BelowFirstLevel_IsEmptySoCallersStaySilent_SALIN220()
+        public void MissingObjectiveCopy_WithNoLevelToName_IsEmptySoCallersStaySilent_SALIN220()
         {
-            Assert.AreEqual(string.Empty, LevelLockNoticeCopy.MissingObjective(LevelObjectives.StoryViewed, 0));
+            Assert.AreEqual(
+                string.Empty,
+                LevelLockNoticeCopy.MissingObjective(LevelObjectives.StoryViewed, string.Empty));
         }
 
         [Test]
         public void PresentMissingObjective_ShowsTheObjectiveSentence_SALIN220()
         {
-            _panel.PresentMissingObjective(LevelObjectives.ContextPassed, 5);
+            _panel.PresentMissingObjective(LevelObjectives.ContextPassed, "Ugat Level 5");
 
             Assert.IsTrue(_panel.IsShowing);
             Assert.AreEqual(
-                LevelLockNoticeCopy.MissingObjective(LevelObjectives.ContextPassed, 5),
+                LevelLockNoticeCopy.MissingObjective(LevelObjectives.ContextPassed, "Ugat Level 5"),
                 _panel.VisibleMessage);
             StringAssert.Contains("challenge", _panel.VisibleMessage);
         }

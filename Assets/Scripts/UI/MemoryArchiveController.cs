@@ -187,13 +187,27 @@ public sealed class MemoryArchiveController : MonoBehaviour
     }
 
     /// <summary>
+    /// SALIN-258. The text of a locked archive slot: "Locked · Earn in Ugnayan Level 2".
+    ///
+    /// This was the SALIN-258 boundary call site declared in MemoryCardCopy, and closing that
+    /// boundary is the whole of this ticket's change on this screen. It is a separate static
+    /// method rather than an expression inlined below SO THAT IT CAN BE TESTED: BuildEntryRow
+    /// needs a live MonoBehaviour and a canvas, but the STRING is the part that can regress,
+    /// and it is now reachable from Edit Mode without either.
+    ///
+    /// entry.LevelNumber is passed only as the legacy fallback for an entry with no resolved
+    /// era; whenever the era is known it is not rendered. See CampaignLevelLabel.
+    /// </summary>
+    public static string LockedRowLabel(MemoryArchiveEntry entry) =>
+        MemoryCardCopy.LockedLabel + "  ·  " + MemoryCardCopy.EarnInLevel(
+            CampaignLevelLabel.Format(entry.EraName, entry.EraLocalOrder, entry.LevelNumber));
+
+    /// <summary>
     /// One archive slot.
     ///
-    /// The locked label is the SALIN-258 boundary call site named in MemoryCardCopy: it
-    /// passes the GLOBAL level number because the acceptance criterion's literal wording is
-    /// "Earn in Level n". SALIN-258's ruling is "never show a global 1-15"; when that ticket
-    /// lands it changes MemoryCardCopy.EarnInLevelFormat and the argument on the next line,
-    /// and nothing else on this screen.
+    /// The row's GameObject name keeps the global entry.LevelNumber deliberately: it is row
+    /// identity for debugging and is never shown to the player. Only the LABEL is player-facing,
+    /// and that is era-relative (SALIN-258).
     /// </summary>
     private void BuildEntryRow(MemoryArchiveEntry entry, int eraTotal)
     {
@@ -203,7 +217,7 @@ public sealed class MemoryArchiveController : MonoBehaviour
         {
             CreateRowLabel(
                 "LockedRow_" + entry.LevelNumber,
-                MemoryCardCopy.LockedLabel + "  ·  " + MemoryCardCopy.EarnInLevel(entry.LevelNumber),
+                LockedRowLabel(entry),
                 28f,
                 new Color32(122, 110, 92, 255));
             return;

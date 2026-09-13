@@ -13,6 +13,14 @@ using UnityEngine.UI;
 /// read badly to a player, so the copy is composed from the level number and the
 /// era display name instead.
 ///
+/// SALIN-258: the level is now named by an ERA-RELATIVE LABEL ("Ugat Level 5"), never by a
+/// global 1-15 id (docs/design/spec-rulings-2026-09.md, "How are levels numbered for the
+/// player?"). Both builders below take that label as an already-rendered string rather than
+/// an int, because composing it needs the era, which only the caller can resolve -- see
+/// CampaignLevelLabel and LevelSelectUI.FindEraForLevel. An EMPTY label means "there is
+/// nothing to name", which is what preserves the old "requiredLevelNumber &lt; 1 stays
+/// silent" behaviour: the guard moved from the number to the label, it did not disappear.
+///
 /// LANGUAGE: English. The project splits by role -- UI chrome is English (this class,
 /// CampaignSaveNoticePanel, LevelContentMissingPanel), narrative content is Filipino
 /// (the dialogue assets). That split was already in force; it is followed here rather
@@ -41,26 +49,29 @@ public static class LevelLockNoticeCopy
     /// new objective added without copy degrades instead of showing a blank or an identifier.
     /// </remarks>
     /// <param name="objectiveId">A <see cref="LevelObjectives"/> constant.</param>
-    /// <param name="requiredLevelNumber">1-based number of the level that owes the objective.</param>
-    public static string MissingObjective(string objectiveId, int requiredLevelNumber)
+    /// <param name="requiredLevelLabel">
+    /// SALIN-258. The era-relative label of the level that owes the objective ("Ugat Level 4"),
+    /// from <see cref="CampaignLevelLabel"/>. Empty when there is nothing to name.
+    /// </param>
+    public static string MissingObjective(string objectiveId, string requiredLevelLabel)
     {
-        if (requiredLevelNumber < 1)
+        if (string.IsNullOrEmpty(requiredLevelLabel))
             return string.Empty;
 
         switch (objectiveId)
         {
             case LevelObjectives.StoryViewed:
-                return $"Locked. Watch the story in Level {requiredLevelNumber} to open this one.";
+                return $"Locked. Watch the story in {requiredLevelLabel} to open this one.";
             case LevelObjectives.SymbolsPracticed:
-                return $"Locked. Practice every symbol in Level {requiredLevelNumber} to open this one.";
+                return $"Locked. Practice every symbol in {requiredLevelLabel} to open this one.";
             case LevelObjectives.WordsRestored:
-                return $"Locked. Restore every word in Level {requiredLevelNumber} to open this one.";
+                return $"Locked. Restore every word in {requiredLevelLabel} to open this one.";
             case LevelObjectives.ContextPassed:
-                return $"Locked. Finish the challenge in Level {requiredLevelNumber} to open this one.";
+                return $"Locked. Finish the challenge in {requiredLevelLabel} to open this one.";
             case LevelObjectives.FinalSyllableRestored:
-                return $"Locked. Restore the final syllable in Level {requiredLevelNumber} to open this one.";
+                return $"Locked. Restore the final syllable in {requiredLevelLabel} to open this one.";
             default:
-                return Prerequisite(requiredLevelNumber, crossesEra: false, requiredEraName: null);
+                return Prerequisite(requiredLevelLabel, crossesEra: false, requiredEraName: null);
         }
     }
 
@@ -68,21 +79,32 @@ public static class LevelLockNoticeCopy
     /// Names the single immediately preceding requirement. SALIN-137 AC2 asks for one
     /// requirement only, so this never chains further back than one step.
     /// </summary>
-    /// <param name="requiredLevelNumber">1-based number of the level that must be completed.</param>
+    /// <param name="requiredLevelLabel">
+    /// SALIN-258. The era-relative label of the level that must be completed ("Ugat Level 5"),
+    /// from <see cref="CampaignLevelLabel"/>. Empty when there is nothing to name, which is
+    /// the reachable / first-level / blocked-save case.
+    /// </param>
     /// <param name="crossesEra">True when the requirement finishes the previous era.</param>
     /// <param name="requiredEraName">
     /// Display name of the era owning the requirement. May be null or empty — the copy
-    /// degrades to the plain level-number form, which the legacy progress path always uses.
+    /// degrades to the plain form, which the legacy progress path always uses. It is still a
+    /// separate parameter from the label even though the label usually contains it: it is the
+    /// signal that the era was RESOLVED, and the era-crossing sentence is only honest when it
+    /// was. A label alone cannot carry that distinction.
     /// </param>
-    public static string Prerequisite(int requiredLevelNumber, bool crossesEra, string requiredEraName)
+    public static string Prerequisite(string requiredLevelLabel, bool crossesEra, string requiredEraName)
     {
-        if (requiredLevelNumber < 1)
+        if (string.IsNullOrEmpty(requiredLevelLabel))
             return string.Empty;
 
+        // SALIN-258 / AC-2, frozen I56 verbatim: "Finish Ugat Level 5". The previous wording
+        // was "Finish {era} by completing Level {n}"; the era-relative label folds the era and
+        // the level into the one sanctioned form, so repeating the era would read "Finish Ugat
+        // by completing Ugat Level 5".
         if (crossesEra && !string.IsNullOrEmpty(requiredEraName))
-            return $"Locked. Finish {requiredEraName} by completing Level {requiredLevelNumber} to open this era.";
+            return $"Locked. Finish {requiredLevelLabel} to open this era.";
 
-        return $"Locked. Complete Level {requiredLevelNumber} first.";
+        return $"Locked. Complete {requiredLevelLabel} first.";
     }
 }
 
@@ -139,12 +161,16 @@ public sealed class LevelLockNoticePanel : MonoBehaviour
 
     /// <summary>
     /// Shows the single prerequisite that would unlock the pressed level. Hides instead
-    /// when there is nothing to explain (<paramref name="requiredLevelNumber"/> below 1),
+    /// when there is nothing to explain (an empty <paramref name="requiredLevelLabel"/>),
     /// which covers the reachable, first-level, and unknown/blocked-save cases.
     /// </summary>
-    public void PresentPrerequisite(int requiredLevelNumber, bool crossesEra, string requiredEraName)
+    /// <param name="requiredLevelLabel">
+    /// SALIN-258: the era-relative label from <see cref="CampaignLevelLabel"/>, not a global
+    /// 1-15 id.
+    /// </param>
+    public void PresentPrerequisite(string requiredLevelLabel, bool crossesEra, string requiredEraName)
     {
-        string message = LevelLockNoticeCopy.Prerequisite(requiredLevelNumber, crossesEra, requiredEraName);
+        string message = LevelLockNoticeCopy.Prerequisite(requiredLevelLabel, crossesEra, requiredEraName);
         Present(message);
     }
 
@@ -157,10 +183,13 @@ public sealed class LevelLockNoticePanel : MonoBehaviour
     /// A <see cref="LevelObjectives"/> identifier from <see cref="LevelLockStatus.MissingObjectiveId"/>.
     /// An unrecognised value degrades to the prerequisite copy rather than showing nothing.
     /// </param>
-    /// <param name="requiredLevelNumber">1-based number of the level that owes the objective.</param>
-    public void PresentMissingObjective(string objectiveId, int requiredLevelNumber)
+    /// <param name="requiredLevelLabel">
+    /// SALIN-258: the era-relative label of the level that owes the objective, from
+    /// <see cref="CampaignLevelLabel"/>.
+    /// </param>
+    public void PresentMissingObjective(string objectiveId, string requiredLevelLabel)
     {
-        string message = LevelLockNoticeCopy.MissingObjective(objectiveId, requiredLevelNumber);
+        string message = LevelLockNoticeCopy.MissingObjective(objectiveId, requiredLevelLabel);
         Present(message);
     }
 
