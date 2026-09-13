@@ -73,6 +73,24 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             }
 
             ChallengeRuntimeState.Clear();
+
+            // SALIN-232: the Wave Cleared screen builds its own GameObject and canvas at
+            // runtime, neither of which the fixture owns, so they outlive the test unless
+            // they are cleared here.
+            foreach (WaveClearedScreenUI screen in Object.FindObjectsByType<WaveClearedScreenUI>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (screen != null)
+                    Object.DestroyImmediate(screen.gameObject);
+            }
+
+            GameObject waveClearedCanvas = GameObject.Find("[Runtime] WaveClearedCanvas");
+            while (waveClearedCanvas != null)
+            {
+                Object.DestroyImmediate(waveClearedCanvas);
+                waveClearedCanvas = GameObject.Find("[Runtime] WaveClearedCanvas");
+            }
+
             foreach (Level1TutorialGuideUI guide in Object.FindObjectsByType<Level1TutorialGuideUI>(
                 FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
@@ -178,8 +196,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                     success: true, answerWasVisible: false);
             }
 
-            EventBus.RaiseDefenseComplete();
-            yield return WaitFrames(10);
+            yield return CompleteDefense();
 
             // 5. Context challenge: one misplacement on INA — a tier-1 supportive
             //    retry that costs no heart — then restore INA and AMA.
@@ -337,8 +354,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                     success: true, answerWasVisible: false);
             }
 
-            EventBus.RaiseDefenseComplete();
-            yield return WaitFrames(10);
+            yield return CompleteDefense();
 
             Assert.AreEqual(LevelPhase.ContextChallenge, MachineOf(won).Phase);
             ChallengeFlowController challenge =
@@ -568,6 +584,29 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         {
             for (int i = 0; i < frames; i++)
                 yield return null;
+        }
+
+        /// <summary>
+        /// SALIN-232. Clearing the waves now presents the Wave Cleared screen and holds the
+        /// flow in Defense until its continue button is tapped (AC-5, AC-7). Both fixtures
+        /// here are the AC-6 path — Level 1, full clear — so this is not a repair but the
+        /// end-to-end evidence for AC-6 and AC-7: the assertion inside TapWaveCleared fails
+        /// if the screen never appears, and the ContextChallenge assertion after it fails if
+        /// the tap never released the hold.
+        /// </summary>
+        private static IEnumerator CompleteDefense()
+        {
+            EventBus.RaiseDefenseComplete();
+            yield return WaitFrames(10);
+
+            WaveClearedScreenUI screen =
+                Object.FindFirstObjectByType<WaveClearedScreenUI>(FindObjectsInactive.Include);
+            Assert.IsNotNull(screen,
+                "AC-6: clearing Level 1's last wave must present the Wave Cleared screen.");
+            Assert.IsTrue(screen.IsPresented,
+                "AC-7: the screen must be holding the flow before the tap.");
+            screen.Continue();
+            yield return WaitFrames(10);
         }
 
         private GameObject CreatePanel(string name)

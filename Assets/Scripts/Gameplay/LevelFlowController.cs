@@ -63,6 +63,17 @@ public class LevelFlowController : MonoBehaviour
     // built on demand, so no scene edit is forced. See ShowMemoryClaimPanel.
     private MemoryClaimPanel _memoryClaimPanel;
 
+    // SALIN-232. Built on demand; never scene-wired. See ShowWaveClearedScreen.
+    private WaveClearedScreenUI _waveClearedScreen;
+
+    // SALIN-232. True while the Wave Cleared screen is holding a defense completion that
+    // has NOT yet been reported to the machine. Re-entrancy guard: OnDefenseComplete can
+    // be raised more than once for one clear, and a second raise while the screen is up
+    // must be inert rather than re-present it or register a second continue callback.
+    // Cleared by the continue tap and by terminal cleanup, so a segmented level
+    // (SALIN-226) can engage the gate again for its next segment.
+    private bool _waveClearedGateHeld;
+
     // The controller currently driving a live LF-CONTRACT-v2 machine, if any.
     // WaveManager/BossController consult this to decide whether their completion
     // raises OnDefenseComplete (machine flow) or the legacy OnLevelComplete
@@ -802,6 +813,15 @@ public class LevelFlowController : MonoBehaviour
         {
             _waitingForDialogue = false;
             _waitingForCutscene = false;
+            // SALIN-232: this is that landing for the Wave Cleared screen. A defeat or an
+            // abort (HandleLevelAttemptAborted -> RequestExit) can arrive while the banner
+            // is up, and the modal overlay claims sortingOrder 300 — it would sit over the
+            // defeat and exit screens with a continue button whose deferred report the
+            // terminal machine will refuse. Hiding here also releases the gate flag, so a
+            // retried attempt starts with the gate open.
+            _waveClearedGateHeld = false;
+            if (_waveClearedScreen != null)
+                _waveClearedScreen.Hide();
             // A defeat or exit must never leave drawing suppressed for the
             // terminal screens (GameManager also clears it on its own terminal
             // states; this covers Exited).
@@ -1141,9 +1161,98 @@ public class LevelFlowController : MonoBehaviour
             ShowSaveFailurePanel(_completionCommitResult);
     }
 
+    /// <summary>
+    /// SALIN-232 (AC-5, AC-7). The Wave Cleared gate.
+    ///
+    /// WHY THE GATE IS HERE AND NOT IN ExecuteDefense. ExecuteDefense ends on
+    /// <c>WaitUntil(_machine.Phase != LevelPhase.Defense || _machine.IsTerminal)</c>, which
+    /// only releases AFTER this method has already reported completion and the machine has
+    /// already left Defense. Presenting the screen after that wait compiles, throws nothing
+    /// and passes every existing test while showing the banner one phase too late — AC-7
+    /// violated invisibly. The hold therefore lives at the report site: the report is
+    /// DEFERRED into the continue callback, the machine stays in Defense, and the
+    /// ExecuteDefense wait keeps holding on its own terms. No new LevelPhase, no change to
+    /// LevelFlowMachine.
+    /// </summary>
     private void HandleDefenseComplete()
     {
-        _machine?.ReportDefenseComplete();
+        // A second raise while the screen is up is inert: it must not re-present the
+        // screen, and it must not register a second continue callback.
+        if (_waveClearedGateHeld)
+            return;
+
+        // Anything that is not a live Defense-phase completion takes the pre-SALIN-232
+        // path unchanged. A terminal machine rejects the report on its own (that is what
+        // makes a late raise after a defeat or an abort inert), and routing it through the
+        // screen instead would put a celebration banner over the defeat screen.
+        if (_machine == null || _machine.IsTerminal || _machine.Phase != LevelPhase.Defense)
+        {
+            _machine?.ReportDefenseComplete();
+            return;
+        }
+
+        // BOSS PATH — a design decision, recorded rather than buried. BossController also
+        // raises OnDefenseComplete (BossController.cs:322-323), so a boss level would show
+        // a "Wave Cleared" banner after a boss phase, which is visibly wrong copy. Levels
+        // 10 and 15 keep their bossConfig under D-026 until SALIN-247 authors waves, so the
+        // path is live even though Level 15 is outside the D-015 demo scope. Skipped here
+        // rather than shipping wrong wording; if product wants a boss-phase acknowledgement
+        // that is a separate ticket with its own copy.
+        if (_levelConfig != null && _levelConfig.bossConfig != null)
+        {
+            _machine.ReportDefenseComplete();
+            return;
+        }
+
+        _waveClearedGateHeld = true;
+        if (!ShowWaveClearedScreen())
+        {
+            // The screen could not be built (an EditMode host, or a stripped scene).
+            // Proceed immediately — NEVER hold. A missing celebration surface must not
+            // strand a level the player has legitimately cleared. This is the opposite
+            // remedy from LevelContentMissingPanel, whose false means "leave the level".
+            _waveClearedGateHeld = false;
+            _machine.ReportDefenseComplete();
+        }
+    }
+
+    /// <summary>
+    /// SALIN-232. Finds or builds the Wave Cleared screen and presents it, mirroring
+    /// <see cref="ShowContentMissingPanel"/>. Returns false when no surface could be
+    /// presented; the caller must then advance immediately rather than waiting.
+    /// The screen is intentionally not a [SerializeField]: it is unwired in every scene,
+    /// and adding one would force a scene edit this ticket does not make.
+    /// </summary>
+    private bool ShowWaveClearedScreen()
+    {
+        if (_waveClearedScreen == null)
+            _waveClearedScreen = FindFirstObjectByType<WaveClearedScreenUI>(FindObjectsInactive.Include);
+
+        if (_waveClearedScreen == null)
+        {
+            GameObject screenObject = new GameObject("[Runtime] WaveClearedScreen");
+            _waveClearedScreen = screenObject.AddComponent<WaveClearedScreenUI>();
+        }
+
+        // Read hearts live, mid-level, exactly as ComputeCompletionResults does at the end
+        // of the run — the same source and the same fallbacks, so the two readouts cannot
+        // disagree about where the number comes from.
+        HeartSystem heartSystem = FindFirstObjectByType<HeartSystem>();
+        int hearts = heartSystem != null ? heartSystem.GetCurrentHearts() : 1;
+        int maxHearts = heartSystem != null ? heartSystem.GetMaxHearts() : 1;
+
+        return _waveClearedScreen.Present(
+            hearts,
+            maxHearts,
+            () =>
+            {
+                if (!_waveClearedGateHeld)
+                    return;
+
+                _waveClearedGateHeld = false;
+                _waveClearedScreen.Hide();
+                _machine?.ReportDefenseComplete();
+            });
     }
 
     private void HandleGamePaused()

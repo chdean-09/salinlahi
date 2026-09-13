@@ -75,6 +75,22 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 missingCanvas = GameObject.Find("[Runtime] ContentMissingCanvas");
             }
 
+            // SALIN-232: same reason — the Wave Cleared screen builds its own GameObject
+            // and canvas at runtime, neither of which the fixture owns.
+            foreach (WaveClearedScreenUI screen in Object.FindObjectsByType<WaveClearedScreenUI>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (screen != null)
+                    Object.DestroyImmediate(screen.gameObject);
+            }
+
+            GameObject waveClearedCanvas = GameObject.Find("[Runtime] WaveClearedCanvas");
+            while (waveClearedCanvas != null)
+            {
+                Object.DestroyImmediate(waveClearedCanvas);
+                waveClearedCanvas = GameObject.Find("[Runtime] WaveClearedCanvas");
+            }
+
             ChallengeRuntimeState.Clear();
             TutorialRuntimeState.Clear();
             foreach (Level1TutorialGuideUI guide in Object.FindObjectsByType<Level1TutorialGuideUI>(
@@ -106,8 +122,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 out GameObject victoryPanel, out _);
 
             yield return WaitFrames(10);
-            EventBus.RaiseDefenseComplete();
-            yield return WaitFrames(10);
+            yield return CompleteDefense();
             yield return ClearContextChallenge(controller);
 
             Assert.AreEqual(1, controller.CommitCalls);
@@ -122,11 +137,18 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             TestPhaseFlowController controller = BootstrapLegacyFlow(out _, out _);
 
             yield return WaitFrames(10);
+            // SALIN-232: all three raises land while the Wave Cleared screen is up (the
+            // first puts it there). The gate's re-entrancy guard must make the second and
+            // third inert — not re-present the screen, and not register a second continue
+            // callback that would report defense completion twice.
             EventBus.RaiseDefenseComplete();
             EventBus.RaiseDefenseComplete();
             yield return WaitFrames(10);
             EventBus.RaiseDefenseComplete();
             yield return WaitFrames(5);
+            Assert.AreEqual(1, WaveClearedScreenCount(),
+                "Duplicate raises must not stack a second Wave Cleared screen.");
+            yield return TapWaveCleared();
             yield return ClearContextChallenge(controller);
 
             Assert.AreEqual(1, controller.CommitCalls,
@@ -160,8 +182,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 null, CampaignSaveFailureCode.InvalidStructure, "blocked");
 
             yield return WaitFrames(10);
-            EventBus.RaiseDefenseComplete();
-            yield return WaitFrames(10);
+            yield return CompleteDefense();
             yield return ClearContextChallenge(controller);
 
             Assert.IsFalse(victoryPanel.activeSelf, "Results must be withheld without an accepted save.");
@@ -180,8 +201,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             controller.RetryResult = CampaignOutcomeCommitResult.Committed(null);
 
             yield return WaitFrames(10);
-            EventBus.RaiseDefenseComplete();
-            yield return WaitFrames(10);
+            yield return CompleteDefense();
             yield return ClearContextChallenge(controller);
             Assert.IsTrue(failureOverlay.activeSelf, "Setup: failure panel must be up before retry.");
 
@@ -248,8 +268,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             controller.RetryResult = CampaignOutcomeCommitResult.Committed(null);
 
             yield return WaitFrames(10);
-            EventBus.RaiseDefenseComplete();
-            yield return WaitFrames(10);
+            yield return CompleteDefense();
             yield return ClearContextChallenge(controller);
             Assert.AreEqual(LevelPhase.AtomicSave, MachineOf(controller).Phase,
                 "Setup: the flow must be holding the atomic-save retry gate.");
@@ -282,8 +301,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 out GameObject defeatPanel, dialogue);
 
             yield return WaitFrames(10);
-            EventBus.RaiseDefenseComplete();
-            yield return WaitFrames(10);
+            yield return CompleteDefense();
             yield return ClearContextChallenge(controller);
             Assert.AreEqual(LevelPhase.Results, MachineOf(controller).Phase,
                 "Setup: the flow must be waiting on the outro inside Results.");
@@ -585,6 +603,10 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
 
             InvokePrivate(waveManager, "CompleteRun");
             yield return WaitFrames(10);
+            // SALIN-232: WaveManager's completion raises the same OnDefenseComplete, so it
+            // reaches the same gate. Tapping here keeps the subject of this test the ROUTE
+            // rather than the gate.
+            yield return TapWaveCleared();
             yield return ClearContextChallenge(controller);
 
             Assert.AreEqual(1, controller.CommitCalls,
@@ -631,8 +653,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 dialogueController: null);
 
             yield return WaitFrames(10);
-            EventBus.RaiseDefenseComplete();
-            yield return WaitFrames(10);
+            yield return CompleteDefense();
 
             Assert.AreEqual(LevelPhase.ContextChallenge, MachineOf(controller).Phase,
                 "The context challenge must run as phase 6, after Defense.");
@@ -659,8 +680,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 dialogueController: null);
 
             yield return WaitFrames(10);
-            EventBus.RaiseDefenseComplete();
-            yield return WaitFrames(10);
+            yield return CompleteDefense();
             Assert.AreEqual(LevelPhase.ContextChallenge, MachineOf(controller).Phase,
                 "Setup: the challenge phase must be open.");
 
@@ -691,8 +711,8 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 out GameObject victoryPanel, out _, out _, dialogueController: null);
 
             yield return WaitFrames(10);
-            EventBus.RaiseDefenseComplete();
-            yield return WaitFrames(20);
+            yield return CompleteDefense();
+            yield return WaitFrames(10);
 
             Assert.AreEqual(LevelPhase.ContextChallenge, MachineOf(controller).Phase,
                 "A level with no authored challenge must hold in phase 6, not fall through it. "
@@ -726,8 +746,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 out GameObject victoryPanel, out _, out _, dialogueController: null);
 
             yield return WaitFrames(10);
-            EventBus.RaiseDefenseComplete();
-            yield return WaitFrames(10);
+            yield return CompleteDefense();
             yield return ClearContextChallenge(controller);
 
             Assert.AreEqual(LevelPhase.MemoryReward, MachineOf(controller).Phase,
@@ -755,8 +774,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 _ => { }, out GameObject victoryPanel, out _, out _, dialogueController: null);
 
             yield return WaitFrames(10);
-            EventBus.RaiseDefenseComplete();
-            yield return WaitFrames(10);
+            yield return CompleteDefense();
             yield return ClearContextChallenge(controller);
 
             Assert.AreEqual(LevelPhase.Completed, MachineOf(controller).Phase);
@@ -810,8 +828,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 ConfigureContextChallenge, out _, out _, out _, dialogueController: null);
 
             yield return WaitFrames(10);
-            EventBus.RaiseDefenseComplete();
-            yield return WaitFrames(10);
+            yield return CompleteDefense();
             Assert.AreEqual(LevelPhase.ContextChallenge, MachineOf(controller).Phase,
                 "Setup: the challenge phase must be open.");
 
@@ -1164,8 +1181,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 out GameObject victoryPanel, out _, out _, dialogueController: null);
 
             yield return WaitFrames(10);
-            EventBus.RaiseDefenseComplete();
-            yield return WaitFrames(10);
+            yield return CompleteDefense();
             yield return ClearContextChallenge(controller);
 
             Assert.AreEqual(1, controller.CommitCalls);
@@ -1208,8 +1224,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Assert.AreEqual(2, controller.SegmentCount, "AC-1: the config expresses two segments.");
 
             yield return WaitFrames(10);
-            EventBus.RaiseDefenseComplete();
-            yield return WaitFrames(10);
+            yield return CompleteDefense();
 
             Assert.AreEqual(LevelPhase.ContextChallenge, MachineOf(controller).Phase);
             Assert.AreEqual(0, controller.CurrentSegmentIndex);
@@ -1232,8 +1247,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 "AC-3: no atomic save may run until the last segment completes.");
             Assert.IsFalse(victoryPanel.activeSelf);
 
-            EventBus.RaiseDefenseComplete();
-            yield return WaitFrames(10);
+            yield return CompleteDefense();
             Assert.AreEqual(LevelPhase.ContextChallenge, MachineOf(controller).Phase);
 
             challenge.SubmitPlacement("w-3");
@@ -1262,8 +1276,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 ConfigureTwoSegments, out _, out _, out _, dialogueController: null);
 
             yield return WaitFrames(10);
-            EventBus.RaiseDefenseComplete();
-            yield return WaitFrames(10);
+            yield return CompleteDefense();
 
             ChallengeFlowController challenge =
                 GetPrivateField<ChallengeFlowController>(controller, "_challengeFlowController");
@@ -1273,8 +1286,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
                 "Setup: the run must be in its second segment.");
 
-            EventBus.RaiseDefenseComplete();
-            yield return WaitFrames(10);
+            yield return CompleteDefense();
             challenge.RequestHint();
             challenge.SubmitPlacement("w-3");
             yield return WaitFrames(10);
@@ -1304,8 +1316,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Assert.AreEqual(1, controller.OncePerLevelBeatCalls,
                 "Setup: the first Defense leg plays the pre-wave beats.");
 
-            EventBus.RaiseDefenseComplete();
-            yield return WaitFrames(10);
+            yield return CompleteDefense();
             ChallengeFlowController challenge =
                 GetPrivateField<ChallengeFlowController>(controller, "_challengeFlowController");
             challenge.SubmitPlacement("w-1");
@@ -1607,6 +1618,48 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         {
             for (int i = 0; i < frames; i++)
                 yield return null;
+        }
+
+        // ---------------------------------------------------------------------
+        // SALIN-232. Defense completion no longer advances the flow on its own: it puts up
+        // the Wave Cleared screen and holds in Defense until the continue button is tapped
+        // (AC-5, AC-7). Every fixture whose SUBJECT is a later phase therefore has to clear
+        // that screen the way a player would, exactly as ClearContextChallenge already
+        // clears phase 6.
+        //
+        // Deliberately NOT a test-only opt-out on the gate. A flag that let these fixtures
+        // bypass the hold is the SALIN-272 failure class: a fully green suite over a screen
+        // the game never actually shows. The tests move; the production gate does not weaken.
+        // ---------------------------------------------------------------------
+
+        private static IEnumerator CompleteDefense()
+        {
+            EventBus.RaiseDefenseComplete();
+            yield return WaitFrames(10);
+            yield return TapWaveCleared();
+        }
+
+        /// <summary>
+        /// Taps the presented Wave Cleared screen through its own continue seam. Asserts the
+        /// screen is actually up first: if the gate ever stops holding, these fixtures must
+        /// fail here rather than sail past a screen that never appeared.
+        /// </summary>
+        private static IEnumerator TapWaveCleared()
+        {
+            WaveClearedScreenUI screen =
+                Object.FindFirstObjectByType<WaveClearedScreenUI>(FindObjectsInactive.Include);
+            Assert.IsNotNull(screen,
+                "SALIN-232: defense completion must present the Wave Cleared screen.");
+            Assert.IsTrue(screen.IsPresented,
+                "SALIN-232: the Wave Cleared screen must be holding the flow at this point.");
+            screen.Continue();
+            yield return WaitFrames(10);
+        }
+
+        private static int WaveClearedScreenCount()
+        {
+            return Object.FindObjectsByType<WaveClearedScreenUI>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None).Length;
         }
 
         private GameObject CreatePanel(string name)
