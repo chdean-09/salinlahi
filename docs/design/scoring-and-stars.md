@@ -50,6 +50,35 @@ playtest data (SALIN-189).
 reward ids. Replay cannot duplicate rewards: the outcome coordinator unions these
 into the save under an applied-receipt guard (SALIN-174).
 
+## What the Results screen displays
+
+> SALIN-234. This section describes the **readout**, not the formulas above. The two are
+> deliberately different, and the difference is a ruling rather than an oversight.
+
+| Shown to the player | Source |
+| --- | --- |
+| `Stars n/3` and the star icons | the **attempt's** `LevelResults.Stars` |
+| `Score n` | `metric.score`, rounded |
+| `Hearts n/max` | the hearts count and maximum read at completion, **not** recovered from `metric.hearts-ratio` |
+| `Hints n` | `metric.hints-used`, rounded |
+| `Restored: …` | the level's focus-word display labels (D-003: auto-fill, no board) |
+| `New symbols: n` | `RewardGrant.UnlockedSymbolIds.Count` |
+
+Every one of those strings lives in `Assets/Scripts/UI/LevelResultsCopy.cs` and is marked
+`NOT PRODUCT-APPROVED`.
+
+**No accuracy figure is displayed.** Owner ruling R1 (2026-09-13) reads D-021 as cutting the
+displayed accuracy/streak statistic, so the former `Tracing N%   Context N%` line is gone.
+`metric.tracing-accuracy` and `metric.context-accuracy` remain fully load-bearing in the
+formulas above — 0.5 and 0.3 of `metric.score`, with both star thresholds gating on them. A
+displayed statistic and a scoring input are different things; removing the readout must never
+change which levels award which stars. `LevelResultsScoringWeightPinTests` pins those numbers.
+
+**Displayed stars are the attempt's; saved stars are the best.** The screen reports what the
+player just earned, while the commit keeps `Math.Max(bestStars, outcome.stars)`
+(`CampaignOutcomeCoordinator.cs:237`), so a weaker replay neither lowers a saved rating nor
+claims the earlier run's stars.
+
 ## Ordering guarantee
 
 Results is only reachable through an accepted atomic save (`LevelFlowMachine`,
