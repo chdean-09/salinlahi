@@ -30,7 +30,11 @@ public class ProgressManager : Singleton<ProgressManager>
 
     private const string KeyPrefix = "salinlahi.progress.";
     private const int MaxStars = 3;
-    private const int TotalLevels = 15;
+    // SALIN-256: public so the main-menu progress line reads this one number as its
+    // denominator instead of hard-coding a second 15 that could silently drift from it.
+    // Widened rather than wrapped in a new property on purpose — this adds no declaration to
+    // any field block, so it cannot collide with a converging ticket's edit to this file.
+    public const int TotalLevels = 15;
     // Track which level we've processed to handle restarts properly
     private int _lastProcessedLevelId = -1;
 
