@@ -85,3 +85,43 @@ Results is only reachable through an accepted atomic save (`LevelFlowMachine`,
 SALIN-178); the flow computes `LevelResults` + `RewardGrant` first, passes the
 stars and reward lists into the committed outcome, and the Results screen then
 presents the same objects — outcome data always commits before Results is shown.
+
+## Where the memory card gets each field (SALIN-240)
+
+`unlockedMemoryIds` has been written to the save since SALIN-202 and, until SALIN-240,
+nothing ever read it back — the reward a completed level granted was unreachable. The read
+side is now `CampaignProgressRepository.IsMemoryUnlocked` / `.UnlockedMemoryIds`, and
+`MemoryArchiveModel` derives the whole archive from it.
+
+**The card owns no content of its own.** There is deliberately no `MemoryCardSO`: every field
+already exists in an authored asset, and copying them into a ScriptableObject would fork the
+source of truth for narrative text. The card derives instead:
+
+| Card field | Derived from |
+|---|---|
+| Collectible number | `LevelConfigSO.eraLocalOrder` over the era's level count |
+| Title | `LevelConfigSO.levelName` — authored Filipino, e.g. `Ang Unang Tinig` |
+| Target words + meanings | `focusWords[*].displayLabel` and `focusWords[*].meaning` |
+| Baybayin forms | `focusWords[*].decomposition[*].symbol.glyphOutlineSprite` |
+| Lore | `contextMedia.cutscene.panels[*].text`, joined, verbatim |
+| Era grouping | `EraConfigSO.eraName` / `.order` |
+
+Symbols are reached as object references, never by stable id, so the D-025
+`symbol.dara` → `symbol.da` rename does not touch this path.
+
+**The archive enumerates levels, not memory ids.** Levels 6–15 carry `rewardIds: []`, so
+keying slots on memory ids would render an archive with five entries and silently drop the
+other ten. One slot per level is the only shape that can show "Earn in Level n" for every
+level while D-015 holds, and `MemoryArchiveEntry.HasAuthoredContent == false` on Levels 6–15
+is the specified silhouette state, not a defect.
+
+**Memory card illustration is CONTENT-BLOCKED** (blocked on SALIN-206; Ugnayan/Pamana art is
+SALIN-248/SALIN-251). Every cutscene panel is `image: {fileID: 0}`. The card ships text plus
+the authored Baybayin glyph outlines; no placeholder sprite is stubbed and no filename is
+invented. "Hear Words" is likewise not built — every Level 1 focus word has
+`narrationClip: {fileID: 0}`.
+
+**No accuracy figure appears on the card or the archive** (D-021 / ruling R1), and
+`MemoryCardRuntimeControlTests` pins that — nothing else in the project would catch a
+percentage reappearing on this surface, because the campaign validator reads content assets
+and is blind to every line SALIN-240 adds.

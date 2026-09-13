@@ -47,6 +47,13 @@ public sealed class CampaignProgressRepository
     public bool IsEnemyDiscovered(string enemyId) => _service.Current.progress.discoveredEnemyIds.Contains(enemyId);
     public bool IsBossDiscovered(string bossId) => _service.Current.progress.discoveredBossIds.Contains(bossId);
 
+    // SALIN-240: the read side of unlockedMemoryIds. TryUnlockMemory below has written that
+    // list since SALIN-202 and nothing has ever read it back, so the memory a completed level
+    // grants has been unreachable. These two mirror the reads above exactly; no existing
+    // signature changes and the save schema is untouched.
+    public bool IsMemoryUnlocked(string memoryId) => _service.Current.progress.unlockedMemoryIds.Contains(memoryId);
+    public IReadOnlyList<string> UnlockedMemoryIds => _service.Current.progress.unlockedMemoryIds;
+
     public int GetBestStars(string levelId) => FindLevel(levelId)?.bestStars ?? 0;
 
     public bool TryUnlockLevel(string levelId)

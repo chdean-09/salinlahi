@@ -12,12 +12,21 @@ public class MainMenuUI : MonoBehaviour
     private const string SceneLevelSelect = "LevelSelect";
     private const string SceneTracingDojo = "TracingDojo";
     private const string SceneAlmanac = "Almanac";
+
+    // SALIN-240. The archive button is cloned from SettingsButton at runtime rather than
+    // authored into MainMenu.unity. Both names are consts so the scene-wiring guard asserts
+    // against the same strings the clone actually uses.
+    public const string MemoryArchiveButtonName = "MemoryArchiveButton";
+    public const string ArchiveButtonTemplateName = "SettingsButton";
     private static readonly string[] MainMenuButtonNames =
     {
         "PlayButton",
         "LevelSelectButton",
         "TracingDojoButton",
         "AlmanacButton",
+        // The const, not a literal: if the two drifted, the archive button would silently
+        // stop receiving the shadow treatment its siblings get.
+        MemoryArchiveButtonName,
         "SettingsButton"
     };
 
@@ -33,8 +42,13 @@ public class MainMenuUI : MonoBehaviour
     [SerializeField] private CreditsPanel _creditsPanel;
     [SerializeField] private CampaignSaveNoticePanel _campaignSaveNoticePanel;
 
+    // SALIN-240. Not a [SerializeField]: the archive builds itself and is created on first
+    // press, so nothing has to be authored into MainMenu.unity.
+    private MemoryArchiveController _memoryArchive;
+
     private void Start()
     {
+        EnsureMemoryArchiveEntryPoint();
         ApplyMainMenuTextEffects();
         EnsureSandboxEntryPoint();
         UpdatePlayButtonLabel();
@@ -156,6 +170,88 @@ public class MainMenuUI : MonoBehaviour
         AudioManager.Instance?.PlayMenuButtonClick();
         DebugLogger.Log("MainMenuUI: Almanac pressed");
         LoadAlmanac();
+    }
+
+    /// <summary>
+    /// SALIN-240 (spec BTN-ARCHIVE). Opens the Memory Archive.
+    ///
+    /// Deliberately NOT routed through SceneLoader: there is no archive scene and none is
+    /// being added. The archive is a self-building overlay, so it opens over the menu the
+    /// player is already looking at.
+    /// </summary>
+    public void OnMemoryArchivePressed()
+    {
+        AudioManager.Instance?.PlayMenuButtonClick();
+        DebugLogger.Log("MainMenuUI: Memory Archive pressed");
+
+        if (_memoryArchive == null)
+        {
+            GameObject archiveObject = new GameObject("[Runtime] MemoryArchiveController");
+            _memoryArchive = archiveObject.AddComponent<MemoryArchiveController>();
+        }
+
+        if (!_memoryArchive.Present(null))
+            DebugLogger.LogWarning("MainMenuUI: the Memory Archive could not build a surface.");
+    }
+
+    /// <summary>
+    /// SALIN-240. Creates the archive button by cloning SettingsButton, exactly as
+    /// <see cref="CreateSandboxButton"/> already does. Zero edits to MainMenu.unity: a
+    /// serialized button would mean hand-authoring the scene under a merge=unityyamlmerge
+    /// attribute whose driver is not configured here.
+    ///
+    /// The Find below is this ticket's ONE genuine scene dependency, and it fails silently —
+    /// if SettingsButton is renamed, reparented away from this transform or loses its Button,
+    /// the clone is never created, the archive becomes unreachable, and nothing in the test
+    /// suite notices. MemoryArchiveSceneWiringTests exists solely to make that failure loud.
+    /// </summary>
+    private void EnsureMemoryArchiveEntryPoint()
+    {
+        Transform parent = transform;
+
+        if (parent.Find(MemoryArchiveButtonName) is Transform existing
+            && existing.GetComponent<Button>() != null)
+        {
+            return;
+        }
+
+        Button template = parent.Find(ArchiveButtonTemplateName)?.GetComponent<Button>();
+        if (template == null)
+        {
+            DebugLogger.LogWarning(
+                $"MainMenuUI: '{ArchiveButtonTemplateName}' was not found under the main menu, so "
+                + "the Memory Archive button could not be created and the archive is unreachable.");
+            return;
+        }
+
+        GameObject buttonObject = Instantiate(template.gameObject, parent, false);
+        buttonObject.name = MemoryArchiveButtonName;
+        Button button = buttonObject.GetComponent<Button>();
+        if (button == null)
+            return;
+
+        RectTransform rect = buttonObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 0f);
+        rect.anchorMax = new Vector2(0.5f, 0f);
+        rect.pivot = new Vector2(0.5f, 0f);
+        // Clear of SandboxModeButton, which sits at y = 16 in editor/sandbox builds.
+        rect.anchoredPosition = new Vector2(0f, 124f);
+
+        // Fully qualified on purpose: `using TMPro;` at the top of this file sits inside a
+        // #if UNITY_EDITOR || SALINLAHI_SANDBOX block, so the short name does not resolve in a
+        // plain player build, and adding a second using directive would raise CS0105.
+        TMPro.TextMeshProUGUI tmpLabel = buttonObject.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
+        if (tmpLabel != null)
+            tmpLabel.text = MemoryCardCopy.ArchiveTitle;
+
+        Text legacyLabel = buttonObject.GetComponentInChildren<Text>(true);
+        if (legacyLabel != null)
+            legacyLabel.text = MemoryCardCopy.ArchiveTitle;
+
+        button.onClick.RemoveAllListeners();
+        button.onClick.AddListener(OnMemoryArchivePressed);
+        button.interactable = true;
+        buttonObject.SetActive(true);
     }
 
     public void OnSettingsPressed()
