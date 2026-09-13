@@ -41,6 +41,12 @@ public class Enemy : MonoBehaviour
     private TextMeshPro _baybayinLabel;
     private TextMeshPro _enemyTypeLabel;
     private readonly Dictionary<object, BaybayinCharacterSO> _labelOverrides = new();
+    /// <summary>
+    /// Source-keyed resolution blocks, ref-counted the same way <see cref="_labelOverrides"/>
+    /// ref-counts badge visual overrides: one entry per holding ability, so two abilities blocking
+    /// the same enemy compose and releasing one does not release the other.
+    /// </summary>
+    private readonly HashSet<object> _resolutionBlocks = new();
     private int _walkFrameIndex;
     private float _walkFrameTimer;
 
@@ -60,6 +66,23 @@ public class Enemy : MonoBehaviour
     public bool IsDecoy => _data != null && _data.isDecoy;
     public bool IsDying => _isDying;
     public bool IsPhaserVisible => _phaserEnemy == null || _phaserEnemy.IsVisible;
+
+    /// <summary>
+    /// True while at least one ability holds a resolution block on this enemy. A blocked enemy is
+    /// refused by <c>CombatResolver.IsEligibleCombatTarget</c> and by
+    /// <c>ActiveClueDirector.IsEligibleClue</c>, so it can be neither marked nor damaged.
+    /// <para>
+    /// Deliberately <b>neutral</b>: it names the effect ("may this enemy be resolved right now?"),
+    /// never the ability that caused it. Bakod (SALIN-286) is the first source; Kadena's chained
+    /// invulnerability is meant to become the second by calling
+    /// <see cref="AddResolutionBlock"/> only, without touching resolver code.
+    /// </para>
+    /// </summary>
+    public bool IsResolutionBlocked => _resolutionBlocks.Count > 0;
+
+    /// <summary>How many distinct sources currently hold this enemy blocked. Test/diagnostic seam.</summary>
+    public int ResolutionBlockCount => _resolutionBlocks.Count;
+
     /// <summary>
     /// Monotonic per-spawn number. Stable while this enemy is alive and reassigned when a
     /// pooled enemy re-enters play. It is the deterministic tiebreaker for active clues.
@@ -197,6 +220,7 @@ public class Enemy : MonoBehaviour
         _data = data;
         _currentHealth = _data.maxHealth;
         _labelOverrides.Clear();
+        ClearResolutionBlocks();
 
         if (_data.useHurtFeedback && _hurtFeedback == null)
         {
@@ -219,6 +243,8 @@ public class Enemy : MonoBehaviour
         EnsureAbilityComponent<KempeiScrambleController>(_data.stainsNearbyGlyphs);
         EnsureAbilityComponent<GlyphCoverController>(_data.coversOwnGlyph);
         EnsureAbilityComponent<MirrorDecoyController>(_data.spawnsMirrorDecoy);
+        EnsureAbilityComponent<BakodShieldController>(_data.blocksEnemiesBehind);
+        EnsureAbilityComponent<AshFirstSlotController>(_data.ashesFirstSlot);
         EnsureAbilityComponent<PhaserEnemy>(_data.isPhaser);
 
         // Resolved after the block above, because the component may have just been added, and
@@ -293,6 +319,7 @@ public class Enemy : MonoBehaviour
             _runtimeCharacter = null;
             _speedBuffs.Clear();
             _labelOverrides.Clear();
+            ClearResolutionBlocks();
             _hurtFeedback?.ResetState();
             _isDying = false;
 
@@ -571,6 +598,50 @@ public class Enemy : MonoBehaviour
             RefreshDebugLabels();
             _glyphBadge?.Refresh();
         }
+    }
+
+    /// <summary>
+    /// Holds this enemy unresolvable on behalf of <paramref name="source"/>. Idempotent per source,
+    /// so an ability may re-assert its own block every tick without stacking. The enemy stays
+    /// blocked until every source has released it.
+    /// </summary>
+    public void AddResolutionBlock(object source)
+    {
+        if (source == null)
+            return;
+
+        if (_resolutionBlocks.Add(source) && _resolutionBlocks.Count == 1)
+            RefreshResolutionBlockTell();
+    }
+
+    /// <summary>
+    /// Releases <paramref name="source"/>'s hold. Safe to call for a source that never held one.
+    /// </summary>
+    public void RemoveResolutionBlock(object source)
+    {
+        if (source == null)
+            return;
+
+        if (_resolutionBlocks.Remove(source) && _resolutionBlocks.Count == 0)
+            RefreshResolutionBlockTell();
+    }
+
+    /// <summary>
+    /// Drops every hold at once. Used on the spawn and pool boundaries so a shell that was blocked
+    /// when it left play never comes back still blocked — the permanently-unresolvable-enemy defect.
+    /// </summary>
+    private void ClearResolutionBlocks()
+    {
+        if (_resolutionBlocks.Count == 0)
+            return;
+
+        _resolutionBlocks.Clear();
+        RefreshResolutionBlockTell();
+    }
+
+    private void RefreshResolutionBlockTell()
+    {
+        _glyphBadge?.SetResolutionBlocked(IsResolutionBlocked);
     }
 
     public void ReturnToPool()

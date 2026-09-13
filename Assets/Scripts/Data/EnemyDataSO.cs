@@ -184,6 +184,12 @@ public class EnemyDataSO : ScriptableObject
     [Tooltip("Iligaw: horizontal world offset of the mirrored copy from its source.")]
     public float mirrorDecoyOffsetX = 1.4f;
 
+    [Tooltip("Bakod: while this enemy lives, every non-boss enemy behind it (higher Y, further from the base) is held under a resolution block — drawing that enemy's symbol has no effect until Bakod falls. A targeting constraint only: no lanes, no movement geometry. Enemy.Initialize attaches BakodShieldController when set.")]
+    public bool blocksEnemiesBehind;
+
+    [Tooltip("Abo ng Simula: while this enemy lives, the active clue's incomplete-word text ashes over the word's FIRST slot as well as the target one, so the first symbol cannot be read. Display only — acceptance is unaffected and a correct draw still resolves. Enemy.Initialize attaches AshFirstSlotController when set.")]
+    public bool ashesFirstSlot;
+
     [HideInInspector]
     [Tooltip("Runtime-only: set on generated decoy copies so they never raise their own discovery event.")]
     public bool suppressDiscovery;

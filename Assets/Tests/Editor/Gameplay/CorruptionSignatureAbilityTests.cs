@@ -41,6 +41,8 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.IsTrue(cover.enabled);
             Assert.IsNull(enemy.GetComponent<KempeiScrambleController>(), "no flag, no scramble component");
             Assert.IsNull(enemy.GetComponent<MirrorDecoyController>());
+            Assert.IsNull(enemy.GetComponent<BakodShieldController>(), "no flag, no Bakod shield component");
+            Assert.IsNull(enemy.GetComponent<AshFirstSlotController>(), "no flag, no Abo ash component");
 
             // The same pooled shell reused for another type must not keep Takip's ability.
             EnemyDataSO mantsa = CreateData("mantsa");
@@ -59,10 +61,28 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.IsFalse(enemy.GetComponent<KempeiScrambleController>().enabled);
             Assert.IsFalse(enemy.GetComponent<GlyphCoverController>().enabled);
 
+            // SALIN-286 and SALIN-284 join the same data-flag pattern.
+            EnemyDataSO bakod = CreateData("bakod");
+            bakod.blocksEnemiesBehind = true;
+            Assert.IsTrue(enemy.Initialize(bakod));
+            Assert.IsTrue(enemy.GetComponent<BakodShieldController>().enabled,
+                "blocksEnemiesBehind should attach and enable BakodShieldController");
+            Assert.IsFalse(enemy.GetComponent<MirrorDecoyController>().enabled);
+
+            EnemyDataSO abo = CreateData("abo");
+            abo.ashesFirstSlot = true;
+            Assert.IsTrue(enemy.Initialize(abo));
+            Assert.IsTrue(enemy.GetComponent<AshFirstSlotController>().enabled,
+                "ashesFirstSlot should attach and enable AshFirstSlotController");
+            Assert.IsFalse(enemy.GetComponent<BakodShieldController>().enabled,
+                "a shell reused for Abo must not keep Bakod's shield");
+
             EnemyDataSO plain = CreateData("plain");
             Assert.IsTrue(enemy.Initialize(plain));
             Assert.IsFalse(enemy.GetComponent<MirrorDecoyController>().enabled);
             Assert.IsFalse(enemy.GetComponent<PensionadoMover>().enabled);
+            Assert.IsFalse(enemy.GetComponent<BakodShieldController>().enabled);
+            Assert.IsFalse(enemy.GetComponent<AshFirstSlotController>().enabled);
         }
 
         [Test]

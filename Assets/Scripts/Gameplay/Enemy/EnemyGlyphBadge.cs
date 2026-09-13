@@ -20,6 +20,8 @@ public class EnemyGlyphBadge : MonoBehaviour
     private bool _layoutApplied;
     // Takip: while covered the badge keeps its sprite but stays hidden (GlyphCoverController).
     private bool _covered;
+    // SALIN-286: while blocked the badge stays visible but dimmed. See SetResolutionBlocked.
+    private bool _resolutionBlocked;
     // Cached world-space layout values from EnemyDataSO/GlyphBadgeConfigSO.
     // Used by LateUpdate to recompute the inverse-parent-scale compensation each
     // frame so the badge stays world-stable even after the parent's localScale
@@ -133,6 +135,52 @@ public class EnemyGlyphBadge : MonoBehaviour
         _renderer.enabled = !_covered && _renderer.sprite != null;
     }
 
+    /// <summary>
+    /// ========================================================================
+    /// SALIN-286 — PLACEHOLDER BLOCKED-STATE VISUAL. NOT ART-APPROVED.
+    /// ========================================================================
+    /// A blocked enemy must carry a visible tell, or it reads as a bug: the player draws its
+    /// symbol and nothing happens, with no explanation. No blocked-state art is authored —
+    /// <see cref="GlyphBadgeConfigSO"/> has no such field and Assets/Art/UI/GlyphBadges/ holds no
+    /// blocked badge — so this derives the minimum honest tell from means that already exist:
+    /// the badge stays fully visible and is dimmed toward transparent-grey.
+    /// <para>
+    /// Deliberately NOT <see cref="SetCovered"/>: hiding the badge would make a blocked enemy read
+    /// as a Takip cover, which is a different ability with a different remedy.
+    /// </para>
+    /// <para>
+    /// Only the colour channel is touched, never <c>enabled</c> or alpha, so this composes with
+    /// cover, <see cref="Show"/>/<see cref="Hide"/> and the swap/flash routines rather than
+    /// fighting them. Replace the tint with authored art when it lands; the call sites do not
+    /// change.
+    /// </para>
+    /// </summary>
+    public void SetResolutionBlocked(bool blocked)
+    {
+        if (_resolutionBlocked == blocked) return;
+        _resolutionBlocked = blocked;
+        ApplyResolutionBlockTint();
+    }
+
+    public bool IsResolutionBlocked => _resolutionBlocked;
+
+    /// <summary>Placeholder dim applied to a blocked badge. Replace with authored art.</summary>
+    private static readonly Color BlockedTint = new Color(0.45f, 0.45f, 0.5f, 1f);
+
+    private void ApplyResolutionBlockTint()
+    {
+        if (_renderer == null) return;
+        // Preserve whatever alpha the swap/fade routines currently own; the tell is hue-only.
+        float alpha = _renderer.color.a;
+        Color tinted = _resolutionBlocked
+            ? new Color(_baseColor.r * BlockedTint.r,
+                        _baseColor.g * BlockedTint.g,
+                        _baseColor.b * BlockedTint.b,
+                        alpha)
+            : new Color(_baseColor.r, _baseColor.g, _baseColor.b, alpha);
+        _renderer.color = tinted;
+    }
+
     public void PlaySwap(BaybayinCharacterSO next)
     {
         if (!isActiveAndEnabled || _config == null) return;
@@ -187,6 +235,8 @@ public class EnemyGlyphBadge : MonoBehaviour
         _decoyRejectRoutine = null;
         _failFlashRoutine = null;
         _covered = false;
+        // Pool safety: a badge that left play dimmed must not come back dimmed.
+        _resolutionBlocked = false;
         if (_renderer != null)
         {
             Color c = _baseColor; c.a = 1f; _renderer.color = c;
