@@ -280,20 +280,38 @@ public class LevelSelectUI : MonoBehaviour
         // SALIN-220 AC6: when the predecessor is finished but still owes an objective, naming
         // the objective is the only honest message -- "complete Level N first" reads as a bug
         // to a player who already completed it.
+        // SALIN-258: ProgressManager hands back a GLOBAL 1-15 id, which is identity and must
+        // stay global -- it gates saves and unlocks. The conversion to the player-facing
+        // era-relative label happens HERE, at the UI boundary, and nowhere deeper.
+        FindEraForLevel(requiredLevelNumber, out string requiredEraName, out int requiredEraLocalOrder);
+        string requiredLevelLabel = CampaignLevelLabel.Format(
+            requiredEraName, requiredEraLocalOrder, requiredLevelNumber);
+
         if (missingObjectiveId != null)
         {
-            panel.PresentMissingObjective(missingObjectiveId, requiredLevelNumber);
+            panel.PresentMissingObjective(missingObjectiveId, requiredLevelLabel);
             return;
         }
 
-        panel.PresentPrerequisite(requiredLevelNumber, crossesEra, FindEraNameForLevel(requiredLevelNumber));
+        panel.PresentPrerequisite(requiredLevelLabel, crossesEra, requiredEraName);
     }
 
     /// <summary>
-    /// Display name of the era owning the given level number, or <c>null</c>. Used only
-    /// for era-crossing copy; a null name degrades to the plain level-number wording.
+    /// SALIN-258. Resolves the era identity of a global level number: the era's display name
+    /// AND the level's authored order within that era. Both are needed to render "Ugat Level 5";
+    /// the previous version returned only the name, because only the era-crossing sentence
+    /// needed it.
+    ///
+    /// The era name comes from <see cref="EraConfigSO.eraName"/> and the order from the authored
+    /// <see cref="LevelConfigSO.eraLocalOrder"/> -- NOT from LevelConfigSO.chapterName, which
+    /// looks like the era axis but has no production readers, and NOT recomputed as
+    /// ((n - 1) % 5 + 1), which would bypass the levelNumber/eraLocalOrder invariant that
+    /// CampaignConfigValidator enforces and would break the moment an era is not five levels.
+    ///
+    /// Yields a null name and order 0 when the level is not in the campaign -- the legacy
+    /// progress path. Callers degrade to the plain level-number wording there.
     /// </summary>
-    private string FindEraNameForLevel(int levelNumber)
+    private void FindEraForLevel(int levelNumber, out string eraName, out int eraLocalOrder)
     {
         List<EraConfigSO> eras = ResolveEras();
         for (int i = 0; i < eras.Count; i++)
@@ -301,10 +319,18 @@ public class LevelSelectUI : MonoBehaviour
             List<LevelConfigSO> levels = eras[i].levels;
             if (levels == null) continue;
             for (int j = 0; j < levels.Count; j++)
-                if (levels[j] != null && levels[j].levelNumber == levelNumber)
-                    return eras[i].eraName;
+            {
+                if (levels[j] == null || levels[j].levelNumber != levelNumber)
+                    continue;
+
+                eraName = eras[i].eraName;
+                eraLocalOrder = levels[j].eraLocalOrder;
+                return;
+            }
         }
-        return null;
+
+        eraName = null;
+        eraLocalOrder = 0;
     }
 
     /// <summary>
