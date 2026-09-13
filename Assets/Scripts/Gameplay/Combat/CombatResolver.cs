@@ -322,6 +322,15 @@ public class CombatResolver : MonoBehaviour
         if (enemy.Data.isPhaser && !enemy.IsPhaserVisible)
             return false;
 
+        // SALIN-286: an ability is holding this enemy unresolvable (Bakod shields everything behind
+        // it). Tested here in the method, not at any one call site, because this method has five of
+        // them: the single-target path (:297), the AOE count and burst (:139, :160), and :375/:453.
+        // A filter placed at the single-target call site alone would leak through the AOE and chain
+        // paths with no failure anywhere. Neutral by design — Enemy.IsResolutionBlocked names the
+        // effect, not the ability — so a second block source needs no change here.
+        if (enemy.IsResolutionBlocked)
+            return false;
+
         // Bosses are excluded from AOE counts/bursts, but may still use the
         // single-target resolution path for boss-specific combat tuning.
         return true;

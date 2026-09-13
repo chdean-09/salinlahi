@@ -211,6 +211,12 @@ public sealed class ActiveClueDirector : MonoBehaviour
             return false;
         if (enemy.Data.isPhaser && !enemy.IsPhaserVisible)
             return false;
+        // SALIN-286: keeps the mirror above honest. Without it a Bakod-shielded enemy could be
+        // marked as the active clue and then refused by CombatResolver — the player would be
+        // handed a target that cannot be resolved, with no way to move on. AUDIT.md:466 names both
+        // this hook and CombatResolver.IsEligibleCombatTarget for the ability.
+        if (enemy.IsResolutionBlocked)
+            return false;
         return true;
     }
 

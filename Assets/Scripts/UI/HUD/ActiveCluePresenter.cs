@@ -747,8 +747,11 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         bool masked = (_resolvedChannels & ClueChannels.IncompleteWord) != ClueChannels.None
                       && (_resolvedChannels & ClueChannels.LatinText) == ClueChannels.None;
 
+        // SALIN-284: Abo ng Simula ashes the word's first slot on top of the target mask. Read
+        // here and passed down rather than consulted inside BuildMaskedSpelling, so that method
+        // stays a pure function of its arguments and can be tested without a live enemy.
         _clueText.text = masked
-            ? BuildMaskedSpelling(word, clue.Character.stableId)
+            ? BuildMaskedSpelling(word, clue.Character.stableId, AshFirstSlotController.IsAnyActive())
             : word.latinSpelling;
     }
 
@@ -775,25 +778,48 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     }
 
     /// <summary>
+    /// The run that stands in for a slot the player may not read. Slot 0 under Abo ng Simula
+    /// deliberately reuses the target slot's own mask rather than introducing a second, invented
+    /// ash glyph: AUDIT.md:464 specifies the ability as "the clue's incomplete-word text masks the
+    /// <b>first</b> syllable as well as the target one", which is exactly this.
+    /// </summary>
+    private const string UnreadableSlotMask = "__";
+
+    /// <summary>
     /// Replaces the target symbol's syllable with an underscore run so the player must retrieve
     /// it rather than read it.
+    /// <para>
+    /// SALIN-284: when <paramref name="ashFirstSlot"/> is set, the word's first slot is masked too
+    /// — Abo ng Simula covers the opening symbol with ash. Presentation only; nothing downstream of
+    /// this string decides whether a draw is accepted.
+    /// </para>
     /// </summary>
-    private static string BuildMaskedSpelling(FocusWordDefinition word, string symbolStableId)
+    private static string BuildMaskedSpelling(
+        FocusWordDefinition word,
+        string symbolStableId,
+        bool ashFirstSlot)
     {
         if (word?.decomposition == null)
             return word?.latinSpelling;
 
         var builder = new System.Text.StringBuilder();
+        // Counts slots actually emitted, not raw list indices: a decomposition may carry a null
+        // symbol, and the ash belongs on the first slot the player can see.
+        int emittedSlots = 0;
         for (int i = 0; i < word.decomposition.Count; i++)
         {
             SymbolValueReference reference = word.decomposition[i];
             if (reference?.symbol == null)
                 continue;
 
+            bool isTargetSlot = reference.symbol.stableId == symbolStableId;
+            bool isAshedSlot = ashFirstSlot && emittedSlots == 0;
+            emittedSlots++;
+
             // SALIN-221: unmasked slots read the word-context spoken value, so INA spells "i__"
             // rather than "e/i__".
-            builder.Append(reference.symbol.stableId == symbolStableId
-                ? "__"
+            builder.Append(isTargetSlot || isAshedSlot
+                ? UnreadableSlotMask
                 : SpokenValueResolver.ResolveLabel(reference.symbol, reference.spokenValueId));
         }
 
