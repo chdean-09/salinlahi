@@ -59,6 +59,10 @@ public class LevelFlowController : MonoBehaviour
     // Built on demand; never scene-wired. See ShowContentMissingPanel.
     private LevelContentMissingPanel _contentMissingPanel;
 
+    // SALIN-240. Same shape and same reason as _contentMissingPanel: unwired in every scene,
+    // built on demand, so no scene edit is forced. See ShowMemoryClaimPanel.
+    private MemoryClaimPanel _memoryClaimPanel;
+
     // SALIN-232. Built on demand; never scene-wired. See ShowWaveClearedScreen.
     private WaveClearedScreenUI _waveClearedScreen;
 
@@ -1396,6 +1400,67 @@ public class LevelFlowController : MonoBehaviour
 
         // Null on the legacy path; VictoryScreenUI falls back to ProgressManager.GetStars there.
         _victoryScreen.PresentResults(LastResults);
+
+        ShowMemoryClaimPanel();
+    }
+
+    /// <summary>
+    /// SALIN-240. Offers the Claim Memory control over the Results screen when this
+    /// completion granted a memory. Before this, unlockedMemoryIds was written to the save
+    /// and never read back, so the reward was unreachable.
+    ///
+    /// It is a separate overlay rather than a button on the Results panel because
+    /// VictoryScreenUI.cs belongs to SALIN-258 this sprint; see MemoryClaimPanel's summary.
+    ///
+    /// Nothing waits on the result. A false from Present means there is nothing to show —
+    /// no memory granted, or the level's memory content is not authored (Levels 6-15 under
+    /// D-015, which carry rewardIds: []) — and the Results screen simply stands alone, which
+    /// is exactly the behaviour that shipped before this ticket.
+    /// </summary>
+    private void ShowMemoryClaimPanel()
+    {
+        if (LastRewardGrant == null
+            || LastRewardGrant.UnlockedMemoryIds == null
+            || LastRewardGrant.UnlockedMemoryIds.Count == 0)
+        {
+            return;
+        }
+
+        CampaignConfigSO campaign = SaveManager.Instance != null ? SaveManager.Instance.Campaign : null;
+        EraConfigSO era = FindEraForLevel(campaign, _levelConfig);
+        MemoryArchiveEntry entry =
+            MemoryArchiveModel.BuildEntry(era, _levelConfig, LastRewardGrant.UnlockedMemoryIds);
+        if (entry == null || !entry.HasAuthoredContent)
+            return;
+
+        if (_memoryClaimPanel == null)
+            _memoryClaimPanel = FindFirstObjectByType<MemoryClaimPanel>(FindObjectsInactive.Include);
+
+        if (_memoryClaimPanel == null)
+        {
+            GameObject panelObject = new GameObject("[Runtime] MemoryClaimPanel");
+            _memoryClaimPanel = panelObject.AddComponent<MemoryClaimPanel>();
+        }
+
+        int eraTotal = era != null && era.levels != null ? era.levels.Count : entry.EraLocalOrder;
+        _memoryClaimPanel.Present(entry, eraTotal, null);
+    }
+
+    private static EraConfigSO FindEraForLevel(CampaignConfigSO campaign, LevelConfigSO level)
+    {
+        if (campaign == null || campaign.eras == null || level == null)
+            return null;
+
+        foreach (EraConfigSO era in campaign.eras)
+        {
+            if (era == null || era.levels == null)
+                continue;
+            foreach (LevelConfigSO candidate in era.levels)
+                if (candidate == level)
+                    return era;
+        }
+
+        return null;
     }
 
     private void ShowSaveFailurePanel(CampaignOutcomeCommitResult result)
