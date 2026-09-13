@@ -153,6 +153,45 @@ public static class MemoryArchiveModel
     }
 
     /// <summary>
+    /// SALIN-253. Builds every archive slot for ONE era, in that era's local order.
+    ///
+    /// WHY THIS LIVES HERE. Both existing consumers hand-roll their own era scoping —
+    /// MemoryArchiveController.RenderRows re-groups the whole-campaign list by era name, and
+    /// LevelFlowController.ShowMemoryClaimPanel reaches for era.levels.Count directly. The era
+    /// completion screen needs the same slice a third time, and a third hand-rolled copy is how
+    /// the three drift apart. This is the era filter that did not exist; it reuses
+    /// <see cref="BuildEntry"/> and the same stable sort <see cref="Build"/> uses, so an entry
+    /// built here and the same entry built by Build are identical by construction.
+    ///
+    /// A null or empty <paramref name="unlockedMemoryIds"/> is the fresh-save case and is
+    /// valid: every slot comes back locked. A null era returns an empty list rather than
+    /// throwing — the caller is on the results path, where an exception would take the Results
+    /// screen down with it.
+    /// </summary>
+    public static IReadOnlyList<MemoryArchiveEntry> BuildForEra(
+        EraConfigSO era,
+        IReadOnlyCollection<string> unlockedMemoryIds)
+    {
+        var entries = new List<MemoryArchiveEntry>();
+        if (era == null || era.levels == null)
+            return entries;
+
+        var levels = new List<LevelConfigSO>();
+        for (int i = 0; i < era.levels.Count; i++)
+            if (era.levels[i] != null)
+                levels.Add(era.levels[i]);
+
+        // Stable sort on the authored eraLocalOrder. List.Sort is unstable, so ties would
+        // reorder arbitrarily between runs and make the era screen non-deterministic.
+        levels = StableSortByEraLocalOrder(levels);
+
+        foreach (LevelConfigSO level in levels)
+            entries.Add(BuildEntry(era, level, unlockedMemoryIds));
+
+        return entries;
+    }
+
+    /// <summary>
     /// Builds the slot for one level. Exposed so the claim flow can build a single card
     /// without walking the whole campaign.
     /// </summary>

@@ -63,6 +63,9 @@ public class LevelFlowController : MonoBehaviour
     // built on demand, so no scene edit is forced. See ShowMemoryClaimPanel.
     private MemoryClaimPanel _memoryClaimPanel;
 
+    // SALIN-253. Same shape and same reason again. See ShowEraCompletionScreen.
+    private EraCompletionScreenUI _eraCompletionScreen;
+
     // SALIN-232. Built on demand; never scene-wired. See ShowWaveClearedScreen.
     private WaveClearedScreenUI _waveClearedScreen;
 
@@ -1398,10 +1401,95 @@ public class LevelFlowController : MonoBehaviour
         if (LastResults != null)
             _victoryScreen.ShowResultsSummary(BuildResultsSummary());
 
+        // SALIN-253 (AC-5). The era boundary is resolved HERE, where the campaign and the
+        // level config are both in hand, and pushed into the Results screen — which reads
+        // ProgressManager only and cannot work it out for itself. On an era's final level this
+        // suppresses "Next Level", so the player is handed to the era completion flow instead
+        // of being advanced straight into the next era's Level 1.
+        CampaignConfigSO campaign = SaveManager.Instance != null ? SaveManager.Instance.Campaign : null;
+        EraConfigSO completedEra = FindEraForLevel(campaign, _levelConfig);
+        bool isEraFinalLevel = EraBoundary.IsEraFinalLevel(completedEra, _levelConfig);
+
         // Null on the legacy path; VictoryScreenUI falls back to ProgressManager.GetStars there.
-        _victoryScreen.PresentResults(LastResults);
+        _victoryScreen.PresentResults(LastResults, isEraFinalLevel);
 
         ShowMemoryClaimPanel();
+        ShowEraCompletionScreen(campaign, completedEra, isEraFinalLevel);
+    }
+
+    /// <summary>
+    /// SALIN-253 (AC-1, AC-3, AC-4). Stacks the era completion screen on the Results screen
+    /// when the player has just finished the last level of an era.
+    ///
+    /// It is an overlay rather than a new LevelPhase for the reasons recorded on
+    /// <see cref="EraCompletionScreenUI"/>, and it sits directly beside
+    /// <see cref="ShowMemoryClaimPanel"/> because that is the shipped precedent for stacking a
+    /// surface on Results.
+    ///
+    /// NOTHING AWAITS IT — the same contract as ShowMemoryClaimPanel. A false from Present
+    /// means there is nothing to show and the Results screen simply stands alone, which is
+    /// exactly the behaviour that shipped before this ticket.
+    ///
+    /// THE NEXT ERA IS ALREADY UNLOCKED before this screen ever appears:
+    /// CampaignOutcomeCoordinator.cs:244-252 advances a flat 15-entry list by index + 1 and so
+    /// crosses the era boundary implicitly. This routes to that unlock; it must never
+    /// re-implement it.
+    /// </summary>
+    private void ShowEraCompletionScreen(
+        CampaignConfigSO campaign, EraConfigSO completedEra, bool isEraFinalLevel)
+    {
+        if (!isEraFinalLevel || completedEra == null)
+            return;
+
+        // The same read MemoryArchiveController.Present performs. A null repository is the
+        // uninitialised-save case and is valid: every tile comes back locked rather than
+        // throwing on a player's screen.
+        IReadOnlyCollection<string> unlockedMemoryIds =
+            SaveManager.Instance != null && SaveManager.Instance.Repository != null
+                ? SaveManager.Instance.Repository.UnlockedMemoryIds
+                : null;
+
+        IReadOnlyList<MemoryArchiveEntry> entries =
+            MemoryArchiveModel.BuildForEra(completedEra, unlockedMemoryIds);
+
+        EraConfigSO nextEra = EraBoundary.NextEra(campaign, completedEra);
+        int nextEraIndex = EraBoundary.IndexOfEra(campaign, nextEra);
+
+        if (_eraCompletionScreen == null)
+            _eraCompletionScreen = FindFirstObjectByType<EraCompletionScreenUI>(FindObjectsInactive.Include);
+
+        if (_eraCompletionScreen == null)
+        {
+            GameObject screenObject = new GameObject("[Runtime] EraCompletionScreen");
+            _eraCompletionScreen = screenObject.AddComponent<EraCompletionScreenUI>();
+        }
+
+        _eraCompletionScreen.Present(
+            completedEra,
+            entries,
+            nextEra != null,
+            () => EnterNextEra(nextEraIndex),
+            null);
+    }
+
+    /// <summary>
+    /// SALIN-253 (AC-4, BTN-NEXT-ERA). Leaves the target era behind for Level Select, then
+    /// loads it — the shape of VictoryScreenUI.OnLevelSelectPressed, including the click sound.
+    ///
+    /// The index is left in a consumed-once static rather than a PlayerPref: a pref would have
+    /// to be registered in ProgressManager.ClearAllProgress or survive a journey reset, and
+    /// would persist across a crash into an era the player never asked for. See
+    /// EraCompletionScreenUI.PendingEraIndex.
+    /// </summary>
+    private static void EnterNextEra(int nextEraIndex)
+    {
+        AudioManager.Instance?.PlayMenuButtonClick();
+        EraCompletionScreenUI.PendingEraIndex = nextEraIndex;
+
+        if (SceneLoader.Instance != null)
+            SceneLoader.Instance.LoadLevelSelect();
+        else
+            DebugLogger.LogError("LevelFlowController: SceneLoader not available.");
     }
 
     /// <summary>

@@ -272,6 +272,77 @@ namespace Salinlahi.Tests.Editor.UI
         }
 
         // ------------------------------------------------------------------
+        // SALIN-253 AC-5 — era-aware Next Level suppression.
+        // (This is SALIN-258's deferred AC-3, recorded at docs/audit/BACKLOG.md:719.)
+        //
+        // ⚠️ WHY THESE LEVELS AND NOT LEVEL 15.
+        // The rule this replaced was `currentLevel >= 15`. That rule and a correct era-aware
+        // rule AGREE ON EVERY LEVEL IN THE CAMPAIGN EXCEPT GLOBAL 5 AND GLOBAL 10 — the ends
+        // of Ugat and Ugnayan. A Next-Level test written at level 15, which is the natural
+        // first instinct, therefore passes whether or not AC-5 works and proves nothing.
+        //
+        // The pair below is global 5 (era-final: the button must be HIDDEN, where the old rule
+        // SHOWED it) and global 4 (mid-era: still SHOWN). The second is the control — without
+        // it, a change that simply hid the button always would satisfy the first.
+        // ------------------------------------------------------------------
+
+        [Test]
+        public void NextLevelButton_IsHiddenAfterUgatLevel5()
+        {
+            ProgressManager progress = CreateProgressManager();
+            progress.TrySetSelectedLevelNumber(5);
+            VictoryScreenUI screen = CreateScreen();
+            Button nextLevel = AttachNextLevelButton(screen);
+
+            screen.PresentResults(Results(stars: 3), isEraFinalLevel: true);
+
+            Assert.IsFalse(
+                nextLevel.gameObject.activeSelf,
+                "Ugat Level 5 is the end of an era. The old `currentLevel >= 15` rule left " +
+                "Next Level showing here and advanced the player straight into Ugnayan " +
+                "Level 1, skipping the era completion flow entirely.");
+        }
+
+        [Test]
+        public void NextLevelButton_IsShownAfterUgatLevel4()
+        {
+            ProgressManager progress = CreateProgressManager();
+            progress.TrySetSelectedLevelNumber(4);
+            VictoryScreenUI screen = CreateScreen();
+            Button nextLevel = AttachNextLevelButton(screen);
+
+            screen.PresentResults(Results(stars: 3), isEraFinalLevel: false);
+
+            Assert.IsTrue(
+                nextLevel.gameObject.activeSelf,
+                "Level 4 is mid-era and must still offer Next Level. Without this control, a " +
+                "change that hid the button unconditionally would satisfy the test above.");
+        }
+
+        /// <summary>
+        /// REGRESSION GUARD, NOT AC-5 COVERAGE. The campaign's final level hides Next Level
+        /// under the old rule and the new one alike, so this case cannot discriminate between
+        /// them. It exists only to prove the global fallback was not deleted along the way.
+        /// </summary>
+        [Test]
+        public void NextLevelButton_IsStillHiddenAtTheFinalLevel_RegressionGuard()
+        {
+            ProgressManager progress = CreateProgressManager();
+            progress.TrySetSelectedLevelNumber(15);
+            VictoryScreenUI screen = CreateScreen();
+            Button nextLevel = AttachNextLevelButton(screen);
+
+            // No flag pushed — the legacy path. The global check must still hold on its own.
+            screen.PresentResults(Results(stars: 3));
+
+            Assert.IsFalse(
+                nextLevel.gameObject.activeSelf,
+                "The legacy progress path pushes no era flag, so `currentLevel >= 15` must " +
+                "survive as the fallback. The degraded path must never GAIN a Next Level " +
+                "button it did not have before.");
+        }
+
+        // ------------------------------------------------------------------
         // OWNER RULING R1 (2026-09-13) + D-006.
         // ------------------------------------------------------------------
 
@@ -316,6 +387,25 @@ namespace Salinlahi.Tests.Editor.UI
             VictoryScreenUI screen = _screenObject.AddComponent<VictoryScreenUI>();
             SetPrivateField(screen, "_panel", panel);
             return screen;
+        }
+
+        /// <summary>
+        /// SALIN-253. Gives the screen a real _nextLevelButton to toggle.
+        ///
+        /// Gameplay.unity and Level_01_Tutorial.unity both author this field — it is covered by
+        /// VictoryScreenSceneWiringTests:53 — but this fixture builds a bare screen, so without
+        /// this the visibility branch would run against a null and every assertion about the
+        /// button would silently pass on an object that never existed.
+        /// </summary>
+        private static Button AttachNextLevelButton(VictoryScreenUI screen)
+        {
+            GameObject buttonObject = new GameObject(
+                "NextLevelButton_Test", typeof(RectTransform), typeof(Image), typeof(Button));
+            buttonObject.transform.SetParent(Panel(screen).transform, false);
+
+            var button = buttonObject.GetComponent<Button>();
+            SetPrivateField(screen, "_nextLevelButton", button);
+            return button;
         }
 
         private ProgressManager CreateProgressManager()
