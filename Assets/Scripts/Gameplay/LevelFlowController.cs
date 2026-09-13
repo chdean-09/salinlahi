@@ -71,6 +71,13 @@ public class LevelFlowController : MonoBehaviour
     /// <summary>Rewards resolved for the current completion (SALIN-202); null until AtomicSave runs.</summary>
     public RewardGrant LastRewardGrant { get; private set; }
 
+    // SALIN-234 (AC-4): hearts as a COUNT for the Results readout. metric.hearts-ratio carries
+    // heartsRemaining / maxHearts, and recovering "2 of 3" from 0.666... by rounding the float
+    // back is the kind of edit that fails silently. ComputeCompletionResults already reads both
+    // values, so they are simply kept rather than reconstructed.
+    private int _lastHeartsRemaining;
+    private int _lastMaxHearts;
+
     /// <summary>
     /// SALIN-226. The alternating Defense/ContextChallenge segment currently running,
     /// 0-based; 0 for the whole run on an unsegmented level.
@@ -684,8 +691,8 @@ public class LevelFlowController : MonoBehaviour
     private IEnumerator ExecuteResults()
     {
         yield return PlayOutroSequence();
-        if (_victoryScreen != null && LastResults != null)
-            _victoryScreen.ShowResultsSummary(BuildResultsSummary());
+        // SALIN-234: the summary push moved INTO ShowVictoryScreen, the one place all three
+        // paths to the victory screen share. See the note there.
         ShowVictoryScreen();
         _machine.ReportPhaseComplete(LevelPhase.Results);
     }
@@ -699,6 +706,8 @@ public class LevelFlowController : MonoBehaviour
         HeartSystem heartSystem = FindFirstObjectByType<HeartSystem>();
         int hearts = heartSystem != null ? heartSystem.GetCurrentHearts() : 1;
         int maxHearts = heartSystem != null ? heartSystem.GetMaxHearts() : 1;
+        _lastHeartsRemaining = hearts;
+        _lastMaxHearts = maxHearts;
 
         // SALIN-226. Read the LEVEL-WIDE accumulators, not the last session. A segmented
         // level plays one ChallengeSession per segment and each replaces the previous, so
@@ -728,32 +737,54 @@ public class LevelFlowController : MonoBehaviour
             LevelObjectiveFlagResolver.Resolve(_machine?.Plan, _machine?.CompletedPhases));
     }
 
+    /// <summary>
+    /// SALIN-234. Composes the Results readout. Every player-facing string lives in
+    /// <see cref="LevelResultsCopy"/> — this method holds none — following the
+    /// CampaignSaveNoticeCopy (SALIN-272) and LevelLockNoticeCopy (SALIN-137) precedent.
+    ///
+    /// NO ACCURACY LINE, by owner ruling R1 (2026-09-13): D-021 cut the DISPLAYED
+    /// accuracy/streak statistic. The shipped "Tracing N%   Context N%" line is gone, which
+    /// also removes the only player-facing "Tracing" prose in the project and settles D-006
+    /// here by deletion rather than rewording. The SCORING is deliberately untouched — tracing
+    /// accuracy is still 0.5 and context accuracy 0.3 of metric.score and both still gate the
+    /// star thresholds (LevelResultsCalculator.cs:43-50), pinned by
+    /// LevelResultsScoringWeightPinTests so no level's star rating moves because of a UI ticket.
+    /// </summary>
     private string BuildResultsSummary()
     {
         var builder = new System.Text.StringBuilder();
-        builder.Append("Stars ").Append(LastResults.Stars).Append("/3");
+        builder.Append(LevelResultsCopy.Stars(LastResults.Stars));
         if (LastResults.Metrics.TryGetValue(LevelResultsCalculator.ScoreMetricId, out float score))
-            builder.Append("   Score ").Append(Mathf.RoundToInt(score));
-        if (LastResults.Metrics.TryGetValue(LevelResultsCalculator.TracingAccuracyMetricId, out float tracing)
-            && LastResults.Metrics.TryGetValue(LevelResultsCalculator.ContextAccuracyMetricId, out float context))
         {
-            builder.Append('\n')
-                .Append("Tracing ").Append(Mathf.RoundToInt(tracing * 100f)).Append('%')
-                .Append("   Context ").Append(Mathf.RoundToInt(context * 100f)).Append('%');
+            builder.Append(LevelResultsCopy.InlineSeparator)
+                .Append(LevelResultsCopy.Score(Mathf.RoundToInt(score)));
         }
 
-        if (_levelConfig.focusWords != null && _levelConfig.focusWords.Count > 0)
+        // AC-4 / AC-5. Both values are already computed; neither was ever rendered.
+        builder.Append(LevelResultsCopy.LineSeparator)
+            .Append(LevelResultsCopy.Hearts(_lastHeartsRemaining, _lastMaxHearts));
+        if (LastResults.Metrics.TryGetValue(LevelResultsCalculator.HintsUsedMetricId, out float hints))
         {
-            builder.Append('\n').Append("Restored: ");
+            builder.Append(LevelResultsCopy.InlineSeparator)
+                .Append(LevelResultsCopy.Hints(Mathf.RoundToInt(hints)));
+        }
+
+        // D-003: these are the level's focus words auto-filled during combat, not a
+        // restoration board. The null _levelConfig guard matters now that this runs on the
+        // legacy and save-retry paths too.
+        if (_levelConfig != null && _levelConfig.focusWords != null && _levelConfig.focusWords.Count > 0)
+        {
+            var restored = new List<string>(_levelConfig.focusWords.Count);
             for (int i = 0; i < _levelConfig.focusWords.Count; i++)
-            {
-                if (i > 0) builder.Append(", ");
-                builder.Append(_levelConfig.focusWords[i].displayLabel);
-            }
+                restored.Add(_levelConfig.focusWords[i].displayLabel);
+            builder.Append(LevelResultsCopy.LineSeparator).Append(LevelResultsCopy.Restored(restored));
         }
 
         if (LastRewardGrant != null && LastRewardGrant.UnlockedSymbolIds.Count > 0)
-            builder.Append('\n').Append("New symbols: ").Append(LastRewardGrant.UnlockedSymbolIds.Count);
+        {
+            builder.Append(LevelResultsCopy.LineSeparator)
+                .Append(LevelResultsCopy.NewSymbols(LastRewardGrant.UnlockedSymbolIds.Count));
+        }
 
         return builder.ToString();
     }
@@ -1235,10 +1266,27 @@ public class LevelFlowController : MonoBehaviour
         return null;
     }
 
+    /// <summary>
+    /// SALIN-234. The single entry point to the Results screen for all three callers — the
+    /// machine path (ExecuteResults), FinishLegacyCompletion and OnSaveRetryAccepted.
+    ///
+    /// The summary push used to sit beside the machine-path call only, so the other two showed
+    /// a bare panel: a player who hit a save failure and retried successfully got no stars, no
+    /// score and no restored content. LastResults is assigned in ComputeCompletionResults,
+    /// which runs at the top of ExecuteAtomicSave — before any of the three callers can fire —
+    /// so the guard is satisfied on the retry path and correctly skipped on a machine-less
+    /// legacy run, where no LevelResults is ever computed.
+    /// </summary>
     private void ShowVictoryScreen()
     {
-        if (_victoryScreen != null)
-            _victoryScreen.Show();
+        if (_victoryScreen == null)
+            return;
+
+        if (LastResults != null)
+            _victoryScreen.ShowResultsSummary(BuildResultsSummary());
+
+        // Null on the legacy path; VictoryScreenUI falls back to ProgressManager.GetStars there.
+        _victoryScreen.PresentResults(LastResults);
     }
 
     private void ShowSaveFailurePanel(CampaignOutcomeCommitResult result)
