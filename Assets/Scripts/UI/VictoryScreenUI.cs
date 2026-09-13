@@ -29,6 +29,18 @@ public class VictoryScreenUI : MonoBehaviour
     /// </summary>
     private LevelResults _attemptResults;
 
+    /// <summary>
+    /// SALIN-253 (AC-5). True when the completion just shown was an era's FINAL level, which
+    /// suppresses "Next Level" so the era completion flow can take over.
+    ///
+    /// PUSHED IN BY THE FLOW, NEVER RECOMPUTED HERE. This class has no LevelConfigSO and no
+    /// EraConfigSO — it reads ProgressManager only — so the era boundary is resolved by
+    /// LevelFlowController (which holds both) and handed over with the results. Reaching for
+    /// the campaign from here would duplicate EraBoundary's rule on a screen that cannot see
+    /// the data it needs.
+    /// </summary>
+    private bool _isEraFinalLevel;
+
     private bool _replayListenerBound;
 
     private void Awake()
@@ -67,9 +79,24 @@ public class VictoryScreenUI : MonoBehaviour
     /// The save deliberately still keeps the BEST (CampaignOutcomeCoordinator.cs:237,
     /// Math.Max) — AC-12. Displayed stars and saved stars are different things.
     /// </summary>
-    public void PresentResults(LevelResults results)
+    public void PresentResults(LevelResults results) => PresentResults(results, false);
+
+    /// <summary>
+    /// SALIN-253 (AC-5). As <see cref="PresentResults(LevelResults)"/>, plus the era-boundary
+    /// flag that suppresses "Next Level" at the end of an era.
+    ///
+    /// The one-argument overload is kept and delegates with <c>false</c>, so the legacy
+    /// completion path and the save-retry caller are unchanged — this is an additive
+    /// signature, not a contract change.
+    /// </summary>
+    /// <param name="isEraFinalLevel">
+    /// EraBoundary.IsEraFinalLevel for the level just completed, resolved by
+    /// LevelFlowController.ShowVictoryScreen.
+    /// </param>
+    public void PresentResults(LevelResults results, bool isEraFinalLevel)
     {
         _attemptResults = results;
+        _isEraFinalLevel = isEraFinalLevel;
         Show();
     }
 
@@ -102,7 +129,21 @@ public class VictoryScreenUI : MonoBehaviour
             }
         }
 
-        bool isLastLevel = currentLevel >= 15;
+        // SALIN-253 (AC-5), closing SALIN-258's deferred AC-3.
+        //
+        // This read `currentLevel >= 15` alone, which is wrong at exactly two levels in the
+        // whole campaign: global 5 and global 10, the ends of Ugat and Ugnayan. There it
+        // offered "Next Level" straight into the next era's Level 1, skipping the era moment
+        // entirely and stranding the era completion flow.
+        //
+        // ⚠️ A TEST WRITTEN AT LEVEL 15 CANNOT SEE THIS. The old rule and the era-aware one
+        // agree on every level except 5 and 10, so a level-15 case passes under both and
+        // proves nothing. VictoryScreenResultsTests uses globals 5 and 4 deliberately.
+        //
+        // The global check is KEPT as an OR rather than replaced: the legacy progress path
+        // pushes no flag, and this way the degraded path can only ever hide the button, never
+        // gain one it did not have before.
+        bool isLastLevel = _isEraFinalLevel || currentLevel >= 15;
         if (_nextLevelButton != null)
             _nextLevelButton.gameObject.SetActive(!isLastLevel);
 

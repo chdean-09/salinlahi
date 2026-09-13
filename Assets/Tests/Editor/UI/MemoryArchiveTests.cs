@@ -310,6 +310,43 @@ namespace Salinlahi.Tests.Editor.UI
                 "With no era name, the copy degrades to the plain form rather than going blank.");
         }
 
+        // ----- SALIN-253: the per-era slice -----------------------------------------------
+
+        /// <summary>
+        /// BuildForEra must return that era's entries and ONLY that era's, in local order.
+        ///
+        /// The fixture deliberately puts a second era in the campaign and authors the target
+        /// era's levels out of order, so an implementation that returned the whole campaign, or
+        /// that returned the list unsorted, fails here rather than on a real save months later.
+        /// </summary>
+        [Test]
+        public void BuildForEra_ReturnsExactlyTheErasEntriesInLocalOrder()
+        {
+            EraConfigSO ugat = Era("Ugat", 1,
+                Level(3, 3, "Third"),
+                Level(1, 1, "First"),
+                Level(2, 2, "Second"));
+            Era("Ugnayan", 2, Level(6, 1, "Not This One"));
+
+            IReadOnlyList<MemoryArchiveEntry> entries = MemoryArchiveModel.BuildForEra(ugat, null);
+
+            Assert.AreEqual(3, entries.Count, "Only Ugat's own levels belong on Ugat's screen.");
+            Assert.AreEqual(
+                new[] { "First", "Second", "Third" },
+                new[] { entries[0].Title, entries[1].Title, entries[2].Title },
+                "Entries must come back in authored eraLocalOrder, not in list order.");
+        }
+
+        [Test]
+        public void BuildForEra_NullEra_ReturnsEmpty()
+        {
+            Assert.AreEqual(
+                0,
+                MemoryArchiveModel.BuildForEra(null, null).Count,
+                "A null era returns an empty list rather than throwing: the caller is on the "
+                + "results path, where an exception would take the Results screen down with it.");
+        }
+
         // ----- fixtures -----------------------------------------------------------------
 
         /// <summary>
