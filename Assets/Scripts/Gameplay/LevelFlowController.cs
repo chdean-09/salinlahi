@@ -555,6 +555,12 @@ public class LevelFlowController : MonoBehaviour
             yield break;
         }
 
+        // SALIN-231. The hint modal explains the focus word this unit evidences, and the
+        // meaning lives here on the level config, not on the challenge sequence. Handed
+        // over immediately before every Play so no sequence is ever played against another
+        // level's words.
+        _challengeFlowController.SetLevelFocusWords(_levelConfig.focusWords);
+
         yield return _challengeFlowController.Play(
             _levelConfig.challengeSequence,
             _levelConfig.levelNumber,
@@ -785,6 +791,20 @@ public class LevelFlowController : MonoBehaviour
         {
             builder.Append(LevelResultsCopy.InlineSeparator)
                 .Append(LevelResultsCopy.Hints(Mathf.RoundToInt(hints)));
+        }
+
+        // SALIN-231 AC-3. The penalty itself needed no building: it has been accrued by
+        // ChallengeSession, accumulated level-wide by ChallengeFlowController, and carried
+        // as metric.emergency-hint-penalty since SALIN-181/226/202. It was simply never
+        // rendered. The metric is a 0-1 fraction of the score; the screen shows points.
+        // Guarded on > 0 so tiers 1-4 — where ForTier leaves the budget disabled and the
+        // metric is always 0 — gain no dead "Hint cost -0" readout.
+        if (LastResults.Metrics.TryGetValue(
+                LevelResultsCalculator.EmergencyHintPenaltyMetricId, out float hintPenalty)
+            && hintPenalty > 0f)
+        {
+            builder.Append(LevelResultsCopy.InlineSeparator)
+                .Append(LevelResultsCopy.HintPenalty(Mathf.RoundToInt(hintPenalty * 100f)));
         }
 
         // D-003: these are the level's focus words auto-filled during combat, not a
@@ -1069,6 +1089,10 @@ public class LevelFlowController : MonoBehaviour
             yield return PlayLevelTutorialIfNeeded();
             yield break;
         }
+
+        // SALIN-231. See ExecuteContextChallenge: the legacy path sets the words too, so
+        // there is no Play call that could inherit a previous level's list.
+        _challengeFlowController.SetLevelFocusWords(_levelConfig.focusWords);
 
         yield return _challengeFlowController.Play(_levelConfig.challengeSequence, _levelConfig.levelNumber);
         if (_challengeFlowController.LastPlayResult == ChallengePlayResult.InvalidSequence)

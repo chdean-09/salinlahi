@@ -263,6 +263,55 @@ public class ChallengeFlowController : MonoBehaviour
     public void Retry() => Session?.Retry();
     public void Exit() => Session?.Exit();
 
+    // -------------------------------------------------------------------------
+    // SALIN-231. Focus-word handoff, so the hint modal can explain the word.
+    //
+    // The ONE hint type the authored data can actually serve is the text meaning:
+    // FocusWordDefinition.meaning is authored on every level (Level 5 -> IBA
+    // "different", MANA "inheritance"). The other three types in the ticket title
+    // are DATA-BLOCKED and are deliberately not built — targetCharacter is
+    // {fileID: 0} on all 45 tokens across all 10 authored challenge sequences, so
+    // "replayed audio" and "first symbol" have no BaybayinCharacterSO to read, and
+    // media.contextImage is null on every focus word, so "image meaning" has no image.
+    //
+    // The meaning lives on LevelConfigSO, which this controller never sees: Play
+    // receives (sequence, levelNumber, policy, evidence). Rather than widen three
+    // Play overloads into six-parameter signatures, LevelFlowController hands the
+    // list over immediately before each Play call. Both of its call sites do so, so
+    // no path plays a sequence against another level's words.
+    // -------------------------------------------------------------------------
+
+    private IReadOnlyList<FocusWordDefinition> _focusWords;
+
+    /// <summary>Supplies the level's focus words for hint resolution. Call before Play.</summary>
+    public void SetLevelFocusWords(IReadOnlyList<FocusWordDefinition> focusWords)
+    {
+        _focusWords = focusWords;
+    }
+
+    /// <summary>
+    /// The focus word a unit evidences, joined on
+    /// ChallengeUnitDefinition.evidenceContentId -> LevelConfigSO.focusWords[*].stableId
+    /// (e.g. "level.ugat.05.focus.01"). Null when the unit evidences nothing, when no
+    /// words were supplied, or when the id does not join — all of which leave the modal
+    /// with nothing to sell, so it disables confirm rather than charging for nothing.
+    /// </summary>
+    public FocusWordDefinition ResolveFocusWord(ChallengeUnitDefinition unit)
+    {
+        if (unit == null || string.IsNullOrEmpty(unit.evidenceContentId) || _focusWords == null)
+            return null;
+
+        foreach (FocusWordDefinition focus in _focusWords)
+        {
+            if (focus != null
+                && string.Equals(focus.stableId, unit.evidenceContentId, System.StringComparison.Ordinal))
+            {
+                return focus;
+            }
+        }
+        return null;
+    }
+
     private void EnsureRuntimeReferences()
     {
         _heartSystem ??= FindFirstObjectByType<HeartSystem>();

@@ -94,6 +94,70 @@ public sealed class ChallengeSession
             ? _emergencyHintsUsed * _policy.emergencyHintScorePenalty
             : 0f;
 
+    // -------------------------------------------------------------------------
+    // SALIN-231. Read-only hint-economy queries.
+    //
+    // The hint modal has to answer "is a hint available, how many are left, what
+    // does one cost" BEFORE the player confirms, and answering must not spend the
+    // hint. Every member below is a pure query: none mutates, none notifies.
+    //
+    // ⚠️ ALL OF THESE RESOLVE THROUGH _policy, which ResolveEffectivePolicy has
+    // already snapped to ChallengeTierPolicy.ForTier(tier) for any authored tier
+    // 1-5. Reading emergencyHintEnabled off a LevelConfigSO instead would report
+    // the STALE serialized flag — Level5_Config.asset carries `tier: 5` beside
+    // `emergencyHintEnabled: 0`, and ForTier(5) makes it true. See SALIN-222's
+    // note on this ticket; it has already misled one reader.
+    // -------------------------------------------------------------------------
+
+    /// <summary>Sentinel for <see cref="EmergencyHintsRemaining"/> when no budget is enforced.</summary>
+    public const int UnlimitedHints = int.MaxValue;
+
+    /// <summary>
+    /// True when the effective policy meters hints at all — tier 5 only today
+    /// (<see cref="ChallengeTierPolicy.ForTier"/>). Tiers 1-4 give unlimited free hints,
+    /// so both the budget and the penalty are inert there.
+    /// </summary>
+    public bool HintBudgetIsLimited => _policy != null && _policy.emergencyHintEnabled;
+
+    /// <summary>
+    /// Hints left this level attempt, or <see cref="UnlimitedHints"/> when unmetered.
+    /// The sentinel rather than a nullable keeps the caller's arithmetic total.
+    /// </summary>
+    public int EmergencyHintsRemaining => HintBudgetIsLimited
+        ? Math.Max(0, Math.Max(0, _policy.emergencyHintsPerAttempt) - _emergencyHintsUsed)
+        : UnlimitedHints;
+
+    /// <summary>
+    /// Fraction of metric.score one hint costs (0.10 at tier 5), or 0 when unmetered.
+    /// ⚠️ This is SCORE, not stars: LevelResultsCalculator derives stars from hearts and
+    /// the accuracies alone and applies the penalty to score only, so copy built on this
+    /// must not say "stars".
+    /// </summary>
+    public float EmergencyHintCostFraction => HintBudgetIsLimited ? _policy.emergencyHintScorePenalty : 0f;
+
+    /// <summary>The budget existed and is spent — the state that drives "No Hints Left".</summary>
+    public bool IsHintExhausted => HintBudgetIsLimited && EmergencyHintsRemaining <= 0;
+
+    /// <summary>
+    /// Exactly the conjunction <see cref="RequestHint"/> enforces, factored out so the
+    /// modal's disclosure and the guard cannot drift apart. RequestHint calls this, so
+    /// an edit to one is an edit to both — a query that disagreed with the guard would
+    /// show the player a wrong cost or a wrong budget with nothing failing.
+    /// </summary>
+    public bool CanRequestHint
+    {
+        get
+        {
+            if (!CanSubmit() || !CurrentUnit.allowHint)
+                return false;
+            if (IsHintExhausted)
+                return false;
+            return CurrentUnit.mode == ChallengeMode.GuidedTracing
+                ? CurrentUnit.tokens != null && _currentSlotIndex < CurrentUnit.tokens.Length
+                : CurrentUnit.slots != null && _currentSlotIndex < CurrentUnit.slots.Length;
+        }
+    }
+
     private bool HeartPenaltiesEnabled => _policy == null || _policy.heartPenaltiesEnabled;
 
     // A set tier overrides per-unit error limits; tier 0 / null preserves legacy unit data.
@@ -218,18 +282,11 @@ public sealed class ChallengeSession
 
     public void RequestHint()
     {
-        if (!CanSubmit() || !CurrentUnit.allowHint)
-            return;
-        // Tier 5: the emergency hint budget is per level attempt and survives
-        // checkpoint resets; requests beyond it are rejected outright.
-        if (_policy != null && _policy.emergencyHintEnabled
-            && _emergencyHintsUsed >= Math.Max(0, _policy.emergencyHintsPerAttempt))
-            return;
-        if (CurrentUnit.mode == ChallengeMode.GuidedTracing
-            && (CurrentUnit.tokens == null || _currentSlotIndex >= CurrentUnit.tokens.Length))
-            return;
-        if (CurrentUnit.mode != ChallengeMode.GuidedTracing
-            && (CurrentUnit.slots == null || _currentSlotIndex >= CurrentUnit.slots.Length))
+        // SALIN-231: the guard now lives in CanRequestHint so the modal's pre-confirm
+        // disclosure and this gate are one expression. Tier 5's emergency budget is per
+        // level attempt and survives checkpoint resets; requests beyond it are rejected
+        // outright, exactly as before.
+        if (!CanRequestHint)
             return;
         _hintsUsed++;
         if (_policy != null && _policy.emergencyHintEnabled)
