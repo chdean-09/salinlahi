@@ -57,6 +57,21 @@ public class LevelSelectUI : MonoBehaviour
         if (_backButton != null)
             _backButton.onClick.AddListener(OnBackPressed);
 
+        // SALIN-253 (AC-4). "Enter Next Era" is pressed in the Gameplay scene, so it cannot
+        // call ShowEra directly — this screen does not exist yet at that moment. It leaves the
+        // era index behind instead, and this is where the request is collected.
+        //
+        // Consumed exactly once (ConsumePendingEraIndex resets it), so a request can never be
+        // honoured twice: a value left set would pin Level Select to Ugnayan for the rest of
+        // the session, and nothing in the project would report it.
+        //
+        // An out-of-range or NoPendingEra value is deliberately ignored rather than clamped.
+        // Clamping a stale index would silently drop the player on the LAST era; ignoring it
+        // leaves the screen opening exactly where it does today.
+        int pendingEraIndex = EraCompletionScreenUI.ConsumePendingEraIndex();
+        if (pendingEraIndex >= 0 && pendingEraIndex < ResolveEras().Count)
+            _currentEraIndex = pendingEraIndex;
+
         ShowEra(_currentEraIndex);
 
         DebugLogger.Log("LevelSelectUI: Initialized");
