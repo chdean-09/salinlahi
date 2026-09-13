@@ -244,6 +244,7 @@ public class Enemy : MonoBehaviour
         EnsureAbilityComponent<GlyphCoverController>(_data.coversOwnGlyph);
         EnsureAbilityComponent<MirrorDecoyController>(_data.spawnsMirrorDecoy);
         EnsureAbilityComponent<BakodShieldController>(_data.blocksEnemiesBehind);
+        EnsureAbilityComponent<KadenaChainController>(_data.chainsNearestEnemy);
         EnsureAbilityComponent<AshFirstSlotController>(_data.ashesFirstSlot);
         EnsureAbilityComponent<PhaserEnemy>(_data.isPhaser);
 

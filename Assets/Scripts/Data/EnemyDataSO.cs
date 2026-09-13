@@ -190,6 +190,9 @@ public class EnemyDataSO : ScriptableObject
     [Tooltip("Abo ng Simula: while this enemy lives, the active clue's incomplete-word text ashes over the word's FIRST slot as well as the target one, so the first symbol cannot be read. Display only — acceptance is unaffected and a correct draw still resolves. Enemy.Initialize attaches AshFirstSlotController when set.")]
     public bool ashesFirstSlot;
 
+    [Tooltip("Kadena: on spawn this enemy chains the nearest other enemy and holds it under a resolution block — it can be neither marked nor damaged — until Kadena is defeated. One target, acquired once, never re-chained. Enemy.Initialize attaches KadenaChainController when set.")]
+    public bool chainsNearestEnemy;
+
     [HideInInspector]
     [Tooltip("Runtime-only: set on generated decoy copies so they never raise their own discovery event.")]
     public bool suppressDiscovery;
