@@ -64,6 +64,22 @@ public static class LevelResultsCopy
     /// </summary>
     public const string HintsLabel = "Hints ";
 
+    /// <summary>
+    /// Label before the hint score penalty. NEW in SALIN-231 (AC-3).
+    ///
+    /// ⚠️ THE UNIT IS SCORE, NOT STARS. docs/audit/BACKLOG.md:293 calls this a "star cost";
+    /// that is wrong about the engine. LevelResultsCalculator.cs:46-50 derives stars from the
+    /// hearts ratio and the two accuracies alone, and the penalty enters metric.score only
+    /// (:43-44). Copy saying "costs a star" would lie to the player. The calculator is PINNED
+    /// by LevelResultsScoringWeightPinTests, so making the backlog's phrasing true by editing
+    /// the engine is a STOP AND ASK, not an edit — the wording was matched to the engine
+    /// instead, and BACKLOG.md:293 is flagged for a docs correction.
+    ///
+    /// "cost" rather than "penalty" matches the modal's pre-use disclosure
+    /// (HintModalCopy.CostLine), so the player sees one noun on both screens.
+    /// </summary>
+    public const string HintPenaltyLabel = "Hint cost ";
+
     /// <summary>Label before the restored focus words. Unchanged from LevelFlowController.cs:747.</summary>
     public const string RestoredLabel = "Restored: ";
 
@@ -106,6 +122,12 @@ public static class LevelResultsCopy
 
     /// <summary>"Hints 1".</summary>
     public static string Hints(int hintsUsed) => HintsLabel + hintsUsed;
+
+    /// <summary>
+    /// "Hint cost -10". Takes points of the 0-100 score, already converted from
+    /// metric.emergency-hint-penalty's 0-1 fraction by the caller.
+    /// </summary>
+    public static string HintPenalty(int scorePoints) => HintPenaltyLabel + "-" + scorePoints;
 
     /// <summary>"New symbols: 2".</summary>
     public static string NewSymbols(int count) => NewSymbolsLabel + count;

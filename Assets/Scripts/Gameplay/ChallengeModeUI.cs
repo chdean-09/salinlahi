@@ -15,6 +15,9 @@ public class ChallengeModeUI : MonoBehaviour
     private readonly Dictionary<string, Button> _choiceButtons = new Dictionary<string, Button>();
     private readonly List<Button> _actionButtons = new List<Button>();
     private string _choiceCacheKey;
+    private Button _hintButton;
+    private TextMeshProUGUI _hintButtonLabel;
+    private HintModal _hintModal;
 
     public void Bind(ChallengeFlowController controller)
     {
@@ -99,7 +102,12 @@ public class ChallengeModeUI : MonoBehaviour
         actionsLayout.childForceExpandWidth = false;
         actionsLayout.childForceExpandHeight = true;
 
-        CreateActionButton("Hint", () => _controller?.RequestHint());
+        // SALIN-231. The Hint button no longer spends the hint: it opens a modal that
+        // discloses the cost first and offers confirm/cancel. Its label also carries the
+        // exhausted state ("No Hints Left"), replacing the silent no-op that used to be
+        // the only feedback once the tier-5 budget was gone.
+        _hintButton = CreateActionButton(HintModalCopy.AvailableButtonLabel, OpenHintModal);
+        _hintButtonLabel = _hintButton.GetComponentInChildren<TextMeshProUGUI>();
         CreateActionButton("Retry", () => _controller?.Retry());
         CreateActionButton("Exit", () => _controller?.Exit());
     }
@@ -205,7 +213,7 @@ public class ChallengeModeUI : MonoBehaviour
         return unit.timerSeconds > 0f ? $"Time {session.RemainingTime:0.0}" : "No timer";
     }
 
-    private static string BuildStatusText(ChallengeSession session)
+    private string BuildStatusText(ChallengeSession session)
     {
         string progress = $"Clues: {session.CluePolicy}    Slots: {session.CurrentSlotIndex}/{session.RequiredSlotCount}";
         string hint = BuildHintText(session);
@@ -231,17 +239,31 @@ public class ChallengeModeUI : MonoBehaviour
         return string.IsNullOrEmpty(hint) ? status : $"{status}\n{hint}";
     }
 
-    private static string BuildHintText(ChallengeSession session)
+    /// <summary>
+    /// SALIN-231 AC-5. The in-encounter record of a hint the player PAID for.
+    ///
+    /// ⚠️ WHAT CHANGED AND WHY IT MATTERS. This used to return "Hint: {token.displayText}"
+    /// — the whole correct answer for the slot, free. Gating that behind a modal would have
+    /// been cosmetic: the answer was still handed over, and Global "Hints"
+    /// (docs/audit/AUDIT.md:169) forbids a hint that finishes a required word. It now shows
+    /// the focus word's MEANING, which explains the word without placing anything, so the
+    /// player still has to assemble it.
+    ///
+    /// The line persists after the modal closes rather than living only inside the card:
+    /// a hint is information, not decaying scaffolding (D-014), so its visual form stays.
+    /// </summary>
+    private string BuildHintText(ChallengeSession session)
     {
         if (string.IsNullOrEmpty(session.HintOccurrenceId) || session.CurrentUnitDefinition == null)
             return string.Empty;
 
-        foreach (ChallengeTokenDefinition token in session.CurrentUnitDefinition.tokens ?? new ChallengeTokenDefinition[0])
-        {
-            if (token != null && token.occurrenceId == session.HintOccurrenceId)
-                return $"Hint: {token.displayText}";
-        }
-        return $"Hint: choose slot {session.CurrentSlotIndex + 1}";
+        FocusWordDefinition focus = _controller == null
+            ? null
+            : _controller.ResolveFocusWord(session.CurrentUnitDefinition);
+
+        return focus != null && !string.IsNullOrEmpty(focus.meaning)
+            ? HintModalCopy.HintStatusLine(focus.displayLabel, focus.meaning)
+            : HintModalCopy.NoHintAvailableBody;
     }
 
     private static ChallengeTokenDefinition FindToken(ChallengeUnitDefinition unit, string occurrenceId)
@@ -274,13 +296,38 @@ public class ChallengeModeUI : MonoBehaviour
         return text;
     }
 
-    private void CreateActionButton(string label, UnityEngine.Events.UnityAction action)
+    private Button CreateActionButton(string label, UnityEngine.Events.UnityAction action)
     {
         Button button = CreateButton(label, _actionsRoot, action);
         LayoutElement layout = button.gameObject.AddComponent<LayoutElement>();
         layout.preferredWidth = 150f;
         layout.preferredHeight = 56f;
         _actionButtons.Add(button);
+        return button;
+    }
+
+    /// <summary>
+    /// SALIN-231. Opens the cost-disclosure modal (AC-1). Reads the session; spends
+    /// nothing — only HintModal.Confirm reaches RequestHint. The Hint control stays
+    /// interactable when the budget is spent so the exhausted card can explain itself
+    /// (AC-4) instead of the button silently doing nothing.
+    /// </summary>
+    private void OpenHintModal()
+    {
+        ChallengeSession session = _controller == null ? null : _controller.Session;
+        if (session == null)
+            return;
+
+        if (_hintModal == null)
+            _hintModal = HintModal.CreateRuntime(transform.parent == null ? transform : transform.parent);
+
+        FocusWordDefinition focus = _controller.ResolveFocusWord(session.CurrentUnitDefinition);
+        _hintModal.Open(
+            session,
+            focus == null ? string.Empty : focus.displayLabel,
+            focus == null ? string.Empty : focus.meaning,
+            () => _controller?.RequestHint(),
+            () => _controller?.Retry());
     }
 
     private void SetActionInteractivity(ChallengeSession session)
@@ -291,6 +338,10 @@ public class ChallengeModeUI : MonoBehaviour
             if (button != null)
                 button.interactable = active;
         }
+
+        // SALIN-231 AC-4. BTN-HINT's exhausted copy, verbatim.
+        if (_hintButtonLabel != null)
+            _hintButtonLabel.text = HintModal.HintControlLabel(session);
     }
 
     private Button CreateChoiceButton(string label, UnityEngine.Events.UnityAction action)
