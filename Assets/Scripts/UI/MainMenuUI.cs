@@ -18,6 +18,14 @@ public class MainMenuUI : MonoBehaviour
     // against the same strings the clone actually uses.
     public const string MemoryArchiveButtonName = "MemoryArchiveButton";
     public const string ArchiveButtonTemplateName = "SettingsButton";
+
+    // SALIN-256. The Exit button is cloned from the same SettingsButton template, for the same
+    // reason: MainMenu.unity is not edited by this ticket either.
+    public const string ExitButtonName = "ExitButton";
+
+    // SALIN-256. The progress readout is a runtime-built label, not an authored scene object.
+    public const string ProgressLineName = "ProgressLine";
+
     private static readonly string[] MainMenuButtonNames =
     {
         "PlayButton",
@@ -27,6 +35,8 @@ public class MainMenuUI : MonoBehaviour
         // The const, not a literal: if the two drifted, the archive button would silently
         // stop receiving the shadow treatment its siblings get.
         MemoryArchiveButtonName,
+        // Same reasoning for Exit (SALIN-256).
+        ExitButtonName,
         "SettingsButton"
     };
 
@@ -46,12 +56,18 @@ public class MainMenuUI : MonoBehaviour
     // press, so nothing has to be authored into MainMenu.unity.
     private MemoryArchiveController _memoryArchive;
 
+    // SALIN-256. Not a [SerializeField] for the same reason as _memoryArchive: the panel
+    // builds itself and is created on first press, so nothing is authored into MainMenu.unity.
+    private ExitConfirmationPanel _exitConfirmation;
+
     private void Start()
     {
         EnsureMemoryArchiveEntryPoint();
+        EnsureExitEntryPoint();
         ApplyMainMenuTextEffects();
         EnsureSandboxEntryPoint();
         UpdatePlayButtonLabel();
+        EnsureProgressLine();
         if (SaveManager.Instance != null && _campaignSaveNoticePanel != null)
             _campaignSaveNoticePanel.Present(SaveManager.Instance.PendingNotice);
     }
@@ -252,6 +268,155 @@ public class MainMenuUI : MonoBehaviour
         button.onClick.AddListener(OnMemoryArchivePressed);
         button.interactable = true;
         buttonObject.SetActive(true);
+    }
+
+    /// <summary>
+    /// SALIN-256 (spec BTN-EXIT). Confirms before leaving; the quit itself lives in
+    /// ExitConfirmationPanel, which is the only place in the project that calls
+    /// Application.Quit.
+    ///
+    /// NOTE FOR REVIEW: Application.Quit is a NO-OP IN THE EDITOR, so no automated test here
+    /// or anywhere else can prove this button actually exits the app. The confirm path is
+    /// covered through ExitConfirmationPanel.QuitAction; the quit needs a manual Android check.
+    /// </summary>
+    public void OnExitPressed()
+    {
+        AudioManager.Instance?.PlayMenuExitButtonClick();
+        DebugLogger.Log("MainMenuUI: Exit pressed");
+
+        if (_exitConfirmation == null)
+        {
+            GameObject panelObject = new GameObject("[Runtime] ExitConfirmationPanel");
+            _exitConfirmation = panelObject.AddComponent<ExitConfirmationPanel>();
+        }
+
+        if (!_exitConfirmation.Present())
+            DebugLogger.LogWarning("MainMenuUI: the Exit confirmation could not build a surface.");
+    }
+
+    /// <summary>
+    /// SALIN-256. Creates the Exit button by cloning SettingsButton, exactly as
+    /// <see cref="EnsureMemoryArchiveEntryPoint"/> already does.
+    ///
+    /// The Find below FAILS SILENTLY in the same way its sibling does — if SettingsButton is
+    /// renamed or reparented away from this transform, no Exit button is ever created and
+    /// nothing throws. That precondition is already guarded by
+    /// MemoryArchiveSceneWiringTests.SettingsButtonTemplate_StillExistsUnderTheMainMenuUIAndCarriesAButton,
+    /// which asserts the identical template contract this clone depends on; a second scene
+    /// fixture re-asserting it would add no coverage. The construction risk that IS new here
+    /// — that the clone is built, named and wired — is covered by MainMenuEntryPointsTests.
+    /// </summary>
+    private void EnsureExitEntryPoint()
+    {
+        Transform parent = transform;
+
+        if (parent.Find(ExitButtonName) is Transform existing
+            && existing.GetComponent<Button>() != null)
+        {
+            return;
+        }
+
+        Button template = parent.Find(ArchiveButtonTemplateName)?.GetComponent<Button>();
+        if (template == null)
+        {
+            DebugLogger.LogWarning(
+                $"MainMenuUI: '{ArchiveButtonTemplateName}' was not found under the main menu, so "
+                + "the Exit button could not be created and the player cannot quit from the menu.");
+            return;
+        }
+
+        GameObject buttonObject = Instantiate(template.gameObject, parent, false);
+        buttonObject.name = ExitButtonName;
+        Button button = buttonObject.GetComponent<Button>();
+        if (button == null)
+            return;
+
+        RectTransform rect = buttonObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 0f);
+        rect.anchorMax = new Vector2(0.5f, 0f);
+        rect.pivot = new Vector2(0.5f, 0f);
+        // Continues the bottom-anchored runtime stack: SandboxModeButton sits at y = 16 and
+        // MemoryArchiveButton at y = 124, so Exit clears both.
+        rect.anchoredPosition = new Vector2(0f, 232f);
+
+        // Fully qualified on purpose — see the note in EnsureMemoryArchiveEntryPoint.
+        TMPro.TextMeshProUGUI tmpLabel = buttonObject.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
+        if (tmpLabel != null)
+            tmpLabel.text = MainMenuProgressCopy.ExitConfirmButtonLabel;
+
+        Text legacyLabel = buttonObject.GetComponentInChildren<Text>(true);
+        if (legacyLabel != null)
+            legacyLabel.text = MainMenuProgressCopy.ExitConfirmButtonLabel;
+
+        button.onClick.RemoveAllListeners();
+        button.onClick.AddListener(OnExitPressed);
+        button.interactable = true;
+        buttonObject.SetActive(true);
+    }
+
+    /// <summary>
+    /// SALIN-256 (spec UF-03/UF-06). Builds the "Ugat Level 3  ·  13%" readout.
+    ///
+    /// Built at runtime rather than authored, for the same MainMenu.unity reason as the two
+    /// cloned buttons. Refreshed in Start() only: the menu has no other mutation point, and
+    /// progress cannot change while the player is looking at this screen.
+    ///
+    /// Renders nothing when the line would be untruthful — no ProgressManager, or a level the
+    /// campaign cannot name. MainMenuProgressLine.Format owns that decision.
+    /// </summary>
+    private void EnsureProgressLine()
+    {
+        if (ProgressManager.Instance == null)
+            return;
+
+        ProgressManager progress = ProgressManager.Instance;
+        progress.GetJourneyEntryPoint(out int currentLevelNumber);
+
+        int completed = 0;
+        for (int levelNumber = 1; levelNumber <= ProgressManager.TotalLevels; levelNumber++)
+        {
+            if (progress.IsLevelCompleted(levelNumber))
+                completed++;
+        }
+
+        string line = MainMenuProgressLine.Format(
+            SaveManager.Instance?.Campaign,
+            currentLevelNumber,
+            completed,
+            ProgressManager.TotalLevels);
+
+        if (string.IsNullOrEmpty(line))
+            return;
+
+        // Fully qualified on purpose — see the note in EnsureMemoryArchiveEntryPoint.
+        TMPro.TextMeshProUGUI label = FindOrCreateProgressLabel();
+        if (label != null)
+            label.text = line;
+    }
+
+    private TMPro.TextMeshProUGUI FindOrCreateProgressLabel()
+    {
+        if (transform.Find(ProgressLineName) is Transform existing)
+            return existing.GetComponent<TMPro.TextMeshProUGUI>();
+
+        GameObject labelObject = new GameObject(
+            ProgressLineName, typeof(RectTransform), typeof(TMPro.TextMeshProUGUI));
+        labelObject.transform.SetParent(transform, false);
+
+        RectTransform rect = labelObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 0f);
+        rect.anchorMax = new Vector2(0.5f, 0f);
+        rect.pivot = new Vector2(0.5f, 0f);
+        // Directly above the Exit button at y = 232, continuing the same bottom-anchored stack.
+        rect.anchoredPosition = new Vector2(0f, 320f);
+        rect.sizeDelta = new Vector2(720f, 56f);
+
+        TMPro.TextMeshProUGUI label = labelObject.GetComponent<TMPro.TextMeshProUGUI>();
+        label.fontSize = 32f;
+        label.alignment = TMPro.TextAlignmentOptions.Center;
+        label.color = ActiveTextColor;
+        label.raycastTarget = false;
+        return label;
     }
 
     public void OnSettingsPressed()
