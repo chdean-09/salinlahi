@@ -20,8 +20,8 @@ MonoBehaviour:
   templatePoints: []
   guideSprite: {fileID: 21300000, guid: 2386098f7e87c428a8f441b9bbd4f5be, type: 3}
   tolerancePixels: 15
-  promptText: Draw A. Follow the guide.
-  successText: Great job. Drawing protects the base.
+  promptText: Draw A to defeat Abo and lift his ash.
+  successText: Great job. The ash is gone. The clue is readable again.
   idleHint: Draw the glowing symbol.
   strongHint: Follow the shape from top to bottom.
   assistText: Watch this once.
