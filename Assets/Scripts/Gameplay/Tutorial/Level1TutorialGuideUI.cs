@@ -33,6 +33,23 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
     [Tooltip("Parent for assist animation instances.")]
     [SerializeField] private Transform _assistAnimationParent;
 
+    /// <summary>
+    /// True between a show call and the matching <see cref="Hide"/>.
+    ///
+    /// <para>
+    /// <b>This is what makes the panel able to appear at all.</b> In Gameplay.unity <c>_root</c> is
+    /// this component's OWN GameObject and it is authored INACTIVE, which is deliberate — the guide
+    /// text is positioned in the scene and must not be on screen until a beat asks for it. But a
+    /// component on an inactive GameObject has never run <see cref="Awake"/>: Unity runs it
+    /// synchronously, re-entrantly, from inside the first <c>SetActive(true)</c>. So
+    /// <c>ShowMessage</c>'s <c>SetActive(true)</c> ran Awake, and Awake's own defensive
+    /// <c>SetActive(false)</c> immediately undid the show. The prompt string landed on the text
+    /// (which is a child of the same inactive root) and not one frame of it ever reached the
+    /// screen. Awake now defers to a show already in flight.
+    /// </para>
+    /// </summary>
+    private bool _showRequested;
+
     private System.Action _skipRequested;
     private Coroutine _pulseCoroutine;
     private Coroutine _animatePathCoroutine;
@@ -48,7 +65,9 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
 
         // Authored guide text is useful to position in the scene, but must not be
         // visible until a tutorial beat explicitly calls ShowPrompt or ShowMessage.
-        if (_root != null)
+        // _showRequested guards the case where this Awake is running re-entrantly from
+        // inside that very call — see the field's remarks.
+        if (_root != null && !_showRequested)
             _root.SetActive(false);
 
         if (_skipButton != null)
@@ -250,8 +269,7 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
     public void ShowPrompt(Level1TutorialStepSO step, bool canSkip)
     {
         EnsureGuideVisuals();
-        if (_root != null)
-            _root.SetActive(true);
+        ShowRoot();
 
         ApplyConfiguredLayout();
         transform.SetAsLastSibling();
@@ -320,8 +338,7 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
 
     public void ShowMessage(string message, bool canSkip)
     {
-        if (_root != null)
-            _root.SetActive(true);
+        ShowRoot();
 
         ApplyConfiguredLayout();
         transform.SetAsLastSibling();
@@ -348,8 +365,26 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
             _feedbackText.text = message ?? string.Empty;
     }
 
+    /// <summary>
+    /// Brings the panel up and keeps it up. <see cref="_showRequested"/> is set BEFORE the
+    /// <c>SetActive</c>, because that call is what runs <see cref="Awake"/> on a root authored
+    /// inactive, and Awake reads the flag. The second check covers the same re-entrancy for any
+    /// other <c>Awake</c>/<c>OnEnable</c> on the root that hides itself on wake.
+    /// </summary>
+    private void ShowRoot()
+    {
+        _showRequested = true;
+        if (_root == null)
+            return;
+
+        _root.SetActive(true);
+        if (!_root.activeSelf)
+            _root.SetActive(true);
+    }
+
     public void Hide()
     {
+        _showRequested = false;
         if (_root != null)
             _root.SetActive(false);
 

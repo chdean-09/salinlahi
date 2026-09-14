@@ -111,8 +111,18 @@ namespace Salinlahi.Tests.Editor.Data
             Assert.AreEqual(4, level.cumulativeSymbolPool.Count,
                 "Level 1 introduces exactly EI, NA, A, MA.");
             Assert.IsTrue(level.activeClueCombatEnabled);
-            Assert.AreEqual(ClueChannels.Glyph | ClueChannels.LatinText, level.clueChannels,
-                "Level 1 must declare a readable visual channel while badge art is missing.");
+            // Retargeted 2026-09-15 with the Iligaw lesson. The old pin was Glyph|LatinText, which
+            // is exactly the pair ActiveCluePresenter.SetClueText refuses to mask: it masks only
+            // when IncompleteWord is SET and LatinText is CLEAR, so Level 1 rendered "INA" whole
+            // and had no blank to restore. The assertion is not weakened — it still pins an exact
+            // value, and it still requires a readable visual channel (Glyph, backed by the badge
+            // art that has since shipped for EI/NA/A/MA; the check immediately below is unchanged).
+            Assert.AreEqual(
+                ClueChannels.Glyph | ClueChannels.SpokenAudio | ClueChannels.IncompleteWord,
+                level.clueChannels,
+                "Level 1's clue must mask the needed slot: IncompleteWord set, LatinText clear, "
+                + "with Glyph carrying the badge and SpokenAudio carrying the syllable the blank "
+                + "removes.");
             Assert.IsTrue(
                 ClueChannelResolver.HasReadableVisual(
                     ClueChannelResolver.Resolve(level.clueChannels, level.audioVisualFallback)),

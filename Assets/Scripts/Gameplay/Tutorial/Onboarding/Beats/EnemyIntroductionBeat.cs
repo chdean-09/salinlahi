@@ -89,6 +89,12 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
              + "anything. See PlayAbilityBeat.")]
     [SerializeField, Min(0f)] private float _abilityBeatArmTimeoutSeconds = 15f;
 
+    [Header("Lesson — Beat 8 (Draw)")]
+    [Tooltip("Seconds (wall-clock) the step's successText is held after a correct draw, before the "
+             + "guide closes. Time is already back to normal by beat 8, so this is a live-combat "
+             + "pause: long enough to read one short line, no longer.")]
+    [SerializeField, Min(0f)] private float _drawSuccessHoldSeconds = 1.5f;
+
     /// <summary>
     /// The single live runner. One scene holds at most one, because the beat takes over global state
     /// — <c>Time.timeScale</c> and a full-screen dim — that two runners could not share.
@@ -511,6 +517,14 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         if (lesson.drawStep != null)
             yield return PlayDrawStep(enemy, lesson.drawStep);
 
+        // Beats 9 and 10 — Restoration. The draw killed the enemy and the enemy's syllable went
+        // into the blank; that link is the one thing the eight beats never say out loud. Played
+        // after beat 8 rather than inside it so the player watches the clue change first and is
+        // then told what they just watched. OnboardingDialogueRunner no-ops on blank copy, so a
+        // lesson that leaves this unauthored ends exactly as it did before.
+        yield return OnboardingDialogueRunner.Play(
+            ResolveDialogueController(), lesson.restorationLine);
+
         _card.ShowBanner(data.abilityLine);
         yield return WaitWhileEnemyLives(enemy, data);
         _card.HideBanner();
@@ -539,42 +553,89 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// trigger conditions unmet, a missing controller, a level with no clue) must not hang the
     /// lesson, so the beat gives up and proceeds exactly as the fixed hold used to.
     /// </para>
+    ///
+    /// <para>
+    /// <b>The question is asked through <see cref="IIntroducibleAbility"/>, not of a named type.</b>
+    /// This used to reach for <see cref="AshFirstSlotController"/> by concrete type, which meant any
+    /// lesson authored on a different enemy — Iligaw's copy is a <see cref="MirrorDecoyController"/>
+    /// — silently took the early return and became the fixed hold this wait exists to replace.
+    /// </para>
     /// </summary>
     private IEnumerator PlayAbilityBeat(Enemy enemy, EnemyLessonSO lesson)
     {
-        AshFirstSlotController ash = enemy != null
-            ? enemy.GetComponent<AshFirstSlotController>()
-            : null;
-
-        // No observable ability on this spawn: fall back to the authored hold, which is what the
-        // beat did before the wait existed. A lesson on a type with no ash still gets its pause.
-        if (ash == null || !ash.isActiveAndEnabled)
+        // A lesson that does not arm the ability has nothing to wait for. The standing suppression
+        // rule keeps the ability inert for this whole spawn, so HasFiredThisSpawn can never become
+        // true and the wait would spend the entire timeout — fifteen seconds of a dimmed, halted
+        // field with no card up — before continuing anyway.
+        if (!lesson.armAbilityOnIntroduction)
         {
             yield return WaitRealtime(lesson.abilityBeatSeconds);
             yield break;
         }
 
+        IIntroducibleAbility ability = ResolveIntroducibleAbility(enemy);
+
+        // No observable ability on this spawn: fall back to the authored hold, which is what the
+        // beat did before the wait existed. Worth saying out loud, because the lesson asked for the
+        // ability to be armed and there is nothing here that could fire.
+        if (ability == null || ability.IsSuppressedForIntroductionSpawn)
+        {
+            DebugLogger.LogWarning(
+                $"EnemyIntroductionBeat: beat 2 found no armed IIntroducibleAbility on "
+                + $"'{DescribeEnemy(enemy)}', whose lesson sets armAbilityOnIntroduction. The beat "
+                + "falls back to a fixed hold, so the lesson may name the enemy before the player "
+                + "has seen it do anything. Check that its signature ability component implements "
+                + "IIntroducibleAbility and is enabled on this spawn.");
+            yield return WaitRealtime(lesson.abilityBeatSeconds);
+            yield break;
+        }
+
         float waited = 0f;
-        while (!ash.IsArmedThisSpawn && waited < _abilityBeatArmTimeoutSeconds)
+        while (!ability.HasFiredThisSpawn && waited < _abilityBeatArmTimeoutSeconds)
         {
             waited += Time.unscaledDeltaTime;
             yield return null;
         }
 
-        if (!ash.IsArmedThisSpawn)
+        if (!ability.HasFiredThisSpawn)
         {
             DebugLogger.LogWarning(
                 "EnemyIntroductionBeat: beat 2 timed out after "
                 + $"{_abilityBeatArmTimeoutSeconds:0.#}s waiting for "
-                + $"'{(enemy != null && enemy.Data != null ? enemy.Data.displayName : "?")}' to use "
-                + "its ability, so the lesson names the enemy before the player has seen it do "
-                + "anything. Check AshFirstSlotController's arming trigger for this spawn.");
+                + $"'{DescribeEnemy(enemy)}' to use its ability, so the lesson names the enemy "
+                + "before the player has seen it do anything. Check "
+                + $"{ability.GetType().Name}'s firing trigger for this spawn.");
         }
 
         // The hold is measured from the ability firing, not from the start of the beat: its job is
         // to let the player read the change, and there is nothing to read before it happens.
         yield return WaitRealtime(lesson.abilityBeatSeconds);
     }
+
+    /// <summary>
+    /// This spawn's signature ability, if it has one that is live. Enabled-ness is checked through
+    /// <see cref="Behaviour"/> rather than being put on the interface, so implementing it costs a
+    /// component nothing beyond the two facts beat 2 actually reads.
+    /// </summary>
+    private static IIntroducibleAbility ResolveIntroducibleAbility(Enemy enemy)
+    {
+        if (enemy == null)
+            return null;
+
+        IIntroducibleAbility[] candidates = enemy.GetComponents<IIntroducibleAbility>();
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            if (candidates[i] is Behaviour behaviour && !behaviour.isActiveAndEnabled)
+                continue;
+
+            return candidates[i];
+        }
+
+        return null;
+    }
+
+    private static string DescribeEnemy(Enemy enemy) =>
+        enemy != null && enemy.Data != null ? enemy.Data.displayName : "?";
 
     /// <summary>
     /// Beat 8. Reuses the surviving Level1TutorialStepSO guide machinery against a live enemy.
@@ -615,6 +676,23 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         try
         {
             yield return TutorialDrawWait.WaitForCorrectDraw(expectedID);
+
+            // The draw landed — TutorialDrawWait only ever returns on the correct character. The
+            // wrong-draw handler comes off FIRST, or a stray recognition resolved during the hold
+            // would overwrite the success copy with a correction the player did not earn.
+            if (feedback != null)
+            {
+                EventBus.OnRecognitionResolved -= feedback;
+                feedback = null;
+            }
+
+            // The authored success copy was previously never shown at all: the prompt simply
+            // vanished, with nothing to tell the player the draw was the one being asked for.
+            if (guide != null && !string.IsNullOrWhiteSpace(step.successText))
+            {
+                guide.ShowFeedback(step.successText);
+                yield return WaitRealtime(_drawSuccessHoldSeconds);
+            }
         }
         finally
         {

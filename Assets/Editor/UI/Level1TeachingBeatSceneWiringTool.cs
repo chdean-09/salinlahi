@@ -82,14 +82,16 @@ public static class Level1TeachingBeatSceneWiringTool
     private const string FirstDrawGuideRootName = "FirstDrawGuide";
     private const string FirstDrawGuideImageName = "GuideImage";
 
-    // Iligaw, Nawalang Mukha and Mantsa only. Level1TutorialStep_A is deliberately excluded — Abo's
-    // glyph is taught by the gated beat-8 draw in the lesson, and a second guide for it would
-    // double up.
+    // NA, MA and A. Level1TutorialStep_EI is deliberately excluded — the lesson moved from Abo ng
+    // Simula to Iligaw, and Iligaw is the E/I carrier, so E/I is now taught by the gated beat-8
+    // draw and a second guide for it would double up. Abo's A goes the other way for the same
+    // reason: he gets only the standard four-step card now, so his glyph has no gated draw and
+    // needs the non-blocking guide like NA and MA.
     private static readonly string[] FirstDrawGuideStepPaths =
     {
-        "Assets/ScriptableObjects/Tutorial/Level1TutorialStep_EI.asset",
         "Assets/ScriptableObjects/Tutorial/Level1TutorialStep_NA.asset",
         "Assets/ScriptableObjects/Tutorial/Level1TutorialStep_MA.asset",
+        "Assets/ScriptableObjects/Tutorial/Level1TutorialStep_A.asset",
     };
 
     // ---- layout, all in HUDCanvas reference units (1080x1920, centre origin) ----

@@ -11,7 +11,7 @@ using UnityEngine;
 /// component on the shared corruption shell and toggles it per spawn.
 /// </summary>
 [RequireComponent(typeof(Enemy))]
-public sealed class MirrorDecoyController : MonoBehaviour
+public sealed class MirrorDecoyController : MonoBehaviour, IIntroducibleAbility
 {
     // The copy now carries a different glyph from its source, so a player who has not memorised
     // the real symbol needs a tell that does not depend on reading the glyph at all. The decoy data
@@ -36,7 +36,23 @@ public sealed class MirrorDecoyController : MonoBehaviour
     /// </summary>
     private bool _suppressedForIntroductionSpawn;
 
+    /// <summary>
+    /// Latched the moment a copy is actually placed on the field. Deliberately NOT
+    /// <c>_decoy != null</c>: the copy can leave on its own — it reaches the base and is ignored —
+    /// and <see cref="Update"/> then drops the reference, which would make an ability that has
+    /// visibly fired start reporting that it has not. Per spawn, cleared in <see cref="OnEnable"/>,
+    /// mirroring <c>AshFirstSlotController._armedThisSpawn</c>.
+    /// </summary>
+    private bool _decoySpawnedThisSpawn;
+
     public Enemy Decoy => _decoy;
+
+    /// <summary>
+    /// <see cref="IIntroducibleAbility.HasFiredThisSpawn"/>. Iligaw's ability is visible the
+    /// instant the copy stands beside its source — one enemy has become two — so that placement is
+    /// what the lesson's beat 2 waits on.
+    /// </summary>
+    public bool HasFiredThisSpawn => _decoySpawnedThisSpawn;
 
     /// <summary>True while this spawn is suppressed as its type's introduction spawn. Test/diagnostic seam, mirroring <see cref="AshFirstSlotController.IsSuppressedForIntroductionSpawn"/>.</summary>
     public bool IsSuppressedForIntroductionSpawn => _suppressedForIntroductionSpawn;
@@ -85,6 +101,7 @@ public sealed class MirrorDecoyController : MonoBehaviour
         _spawnAttempted = false;
         _decoy = null;
         _decoyRenderer = null;
+        _decoySpawnedThisSpawn = false;
         // A pooled shell must not inherit the previous occupant's suppression.
         _suppressedForIntroductionSpawn = false;
     }
@@ -171,6 +188,7 @@ public sealed class MirrorDecoyController : MonoBehaviour
             decoyBadge.color = Shadowed(decoyBadge.color);
 
         _decoy = decoy;
+        _decoySpawnedThisSpawn = true;
     }
 
     /// <summary>Translucent, cooled-down version of a colour, so the copy reads as a shadow.</summary>

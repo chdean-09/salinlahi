@@ -100,7 +100,7 @@ MonoBehaviour:
     requiredSuccesses: 2
   activeClueCombatEnabled: 1
   activeClueRestorationEnabled: 1
-  clueChannels: 5
+  clueChannels: 19
   audioVisualFallback: 4
   spawnAssignmentPolicy:
     minSpawnsBeforeNeeded: 4
@@ -249,7 +249,7 @@ MonoBehaviour:
   tutorialSequence: {fileID: 11400000, guid: 7369c0885d3f4f508ae62d77174c703a, type: 2}
   onboardingSequence: {fileID: 11400000, guid: 79f06c1e965e43b0891a696cf9cb3de6, type: 2}
   enemyLessons:
-  - {fileID: 11400000, guid: 2f7cc25a007e406a8728f8188fa152c2, type: 2}
+  - {fileID: 11400000, guid: 68b4a7887ad1452bba380413a871facd, type: 2}
   challengePrototypeEnabled: 0
   challengeSequence: {fileID: 11400000, guid: a4e56a21abe8f19459aa7c5fc613a0bf, type: 2}
   challengePolicy:

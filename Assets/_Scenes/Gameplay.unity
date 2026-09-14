@@ -9056,9 +9056,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Salinlahi.Runtime::FirstDrawGuidePresenter
   _guideImage: {fileID: 722242124}
   _steps:
-  - {fileID: 11400000, guid: 7a8d4f1c9e2b4a6d8f0c1e3b5a7d9f2c, type: 2}
   - {fileID: 11400000, guid: 8b9e5f2d0c1a4b6e8f3d7c9a1e5b2f4d, type: 2}
   - {fileID: 11400000, guid: ad1f7b3e5c9a4d2f8b6e0c1a3f5d7e9b, type: 2}
+  - {fileID: 11400000, guid: 9c0e6a3d1b5f4e7a8c2d9f0b6a1e3c5d, type: 2}
   _timeoutSeconds: 8
   _guideAlpha: 0.35
 --- !u!1 &944220756
@@ -11421,6 +11421,8 @@ MonoBehaviour:
   _abilityStepSeconds: 3
   _releaseRampSeconds: 0.4
   _spawnSettleSeconds: 0.1
+  _abilityBeatArmTimeoutSeconds: 15
+  _drawSuccessHoldSeconds: 1.5
 --- !u!1 &1198465018
 GameObject:
   m_ObjectHideFlags: 0

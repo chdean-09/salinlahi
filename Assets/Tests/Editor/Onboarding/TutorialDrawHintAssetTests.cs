@@ -20,11 +20,14 @@ namespace Salinlahi.Tests.Editor.Onboarding
             // explicit instruction: "the heart should stay at 3 healthy hearts after tutorial".
             // The beat never actually spent a heart — it drove the shake/flash through a
             // simulator, deliberately avoiding HeartSystem.LoseHeart — but it still READ as a
-            // heart emptying, which is what the instruction was reacting to. Level 1 now teaches
-            // base damage reactively on the first real breach instead (level-01 design plan, §5).
+            // heart emptying, which is what the instruction was reacting to.
             //
-            // So this assertion is updated rather than the data reverted. If a later change puts
-            // a heart-loss teach back into Level 1, put HeartLossDemo back here with it.
+            // It was put BACK on 2026-09-15, at the same owner's request, as part of the Iligaw
+            // retarget. The reasoning above is why that is safe: DemoHeartSimulator still never
+            // calls HeartSystem.LoseHeart, so the hearts really do stay at three afterwards, and
+            // the earlier removal was about what the beat looked like rather than what it did.
+            // This is the "if a later change puts a heart-loss teach back into Level 1, put
+            // HeartLossDemo back here with it" case the previous note left open.
             //
             // SoloTeach was dropped from Level 1's beatOrder, and basicTeachSteps was cleared, on
             // 2026-09-15 (task 7 of the level1-enemy-introduction-lesson plan): the four-step
@@ -39,6 +42,7 @@ namespace Salinlahi.Tests.Editor.Onboarding
                 {
                     OnboardingBeatType.ProtagonistIntro,
                     OnboardingBeatType.BaseIntro,
+                    OnboardingBeatType.HeartLossDemo,
                     OnboardingBeatType.Release,
                 },
                 sequence.beatOrder);

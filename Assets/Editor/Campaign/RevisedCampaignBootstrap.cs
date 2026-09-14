@@ -287,9 +287,15 @@ public static class RevisedCampaignBootstrap
         level.rewardIds = new List<string> { "memory.ugat.01" };
 
         level.activeClueCombatEnabled = true;
-        // Glyph badge art for EI/NA/A/MA is tracked by the SALIN-199 manifest, so
-        // the Latin text channel is declared alongside it to keep the clue visible.
-        level.clueChannels = ClueChannels.Glyph | ClueChannels.LatinText;
+        // IncompleteWord, NOT LatinText. ActiveCluePresenter.SetClueText masks the needed slot only
+        // when IncompleteWord is set AND LatinText is clear, so the two together rendered "INA" in
+        // full and Level 1 never had a blank at all — which is the thing the word-restoration
+        // teaching points at. Glyph stays on because the badge is then the only readable cue for
+        // the masked slot (EI/NA/A/MA all carry badge art), and SpokenAudio is added because the
+        // blank removes the written form of exactly the syllable being asked for; every Level 1
+        // symbol carries a pronunciation clip. Level 5 already ships SpokenAudio|IncompleteWord.
+        level.clueChannels =
+            ClueChannels.Glyph | ClueChannels.SpokenAudio | ClueChannels.IncompleteWord;
         level.audioVisualFallback = ClueChannels.LatinText;
         level.challengePolicy = ChallengeTierPolicy.ForTier(1);
         level.challengeSequence = EnsureLevelOneChallengeSequence();

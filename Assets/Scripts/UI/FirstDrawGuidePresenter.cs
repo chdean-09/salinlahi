@@ -10,7 +10,8 @@ using UnityEngine.UI;
 /// <para>
 /// <b>It never blocks.</b> No EnterDialoguePause, no TutorialRuntimeState.SetDrawingInputLocked,
 /// no Time.timeScale, and the image disables its own raycasts — the player keeps drawing straight
-/// through it. Abo's lesson is the only thing on Level 1 permitted to gate.
+/// through it. Iligaw's lesson is the only thing on Level 1 permitted to gate, which is also why
+/// E/I — Iligaw's own syllable — is not in this presenter's step list: its beat-8 draw teaches it.
 /// </para>
 ///
 /// <para>

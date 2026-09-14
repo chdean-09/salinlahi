@@ -15,7 +15,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
     ///
     /// <para>
     /// Every scene actor is built by hand rather than loaded from the shipped Level1_Config /
-    /// AboLesson assets, matching the precedent in <c>AbongSimulaAshTests</c> and
+    /// IligawLesson assets, matching the precedent in <c>AbongSimulaAshTests</c> and
     /// <c>Level1EndToEndTests</c>: the point under test is <c>EnemyIntroductionBeat</c> /
     /// <c>Enemy.Initialize</c> / <c>IntroductionDecision</c>'s own logic, not the specific authored
     /// content, so a synthetic level with the same *shape* (one lesson enemy, requiredRestoredSlots
@@ -423,6 +423,212 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         // ------------------------------------------------------------------------------------
+        // 4c. Beat 2 waits on ANY signature ability, not just the ash
+        // ------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// The same ordering guarantee as the test above, for a lesson whose enemy has a
+        /// <see cref="MirrorDecoyController"/> rather than an <see cref="AshFirstSlotController"/>
+        /// — which is what Level 1 now ships (Iligaw, not Abo ng Simula).
+        ///
+        /// <para>
+        /// This is the regression guard for a defect that would have shipped invisibly.
+        /// <c>PlayAbilityBeat</c> used to look up <c>AshFirstSlotController</c> by CONCRETE TYPE and
+        /// fall through to a blind fixed hold when it found none. For an Iligaw lesson that early
+        /// return is taken every time, so beat 2 would not have waited for the copy to appear at
+        /// all — reintroducing the exact bug the wait was added to remove, while every existing
+        /// ash-based test kept passing. The seam is <c>IIntroducibleAbility</c>.
+        /// </para>
+        ///
+        /// <para>
+        /// No <c>EnemyPool</c> exists in this fixture, so the copy genuinely cannot be placed and
+        /// <c>HasFiredThisSpawn</c> stays false on its own — the un-fired half needs no faking. The
+        /// latch is then set directly to stand in for the copy landing on the field.
+        /// </para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Beat2_WaitsForAMirrorDecoyLesson_NotOnlyAnAshOne()
+        {
+            yield return null;
+
+            BaybayinCharacterSO eiChar = MakeCharacter("EI", "symbol.test.beat2c.ei");
+            BaybayinCharacterSO naChar = MakeCharacter("NA", "symbol.test.beat2c.na");
+
+            EnemyDataSO iligawData = CreateEnemyData(
+                "test_iligaw_beat2", "Iligaw", eiChar, spawnsMirrorDecoy: true);
+            EnemyLessonSO iligawLesson = CreateIligawShapedLesson(iligawData);
+            // Short post-fire hold, so anything still on screen after it is the WAIT, not the hold.
+            iligawLesson.abilityBeatSeconds = 0.05f;
+
+            FocusWordDefinition word = CreateWord(
+                "level.test.beat2c.ina", "ina", "INA", eiChar, naChar);
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO> { iligawData }, new[] { iligawLesson },
+                new List<FocusWordDefinition> { word });
+            _gameManager.SetLevel(config);
+
+            SetPrivateField(_presenter, "_level", config);
+            _presenter.RestorationState.Configure(config.focusWords);
+
+            Enemy iligaw = CreateEnemyShell("Iligaw_Beat2");
+            Assert.IsTrue(iligaw.Initialize(iligawData));
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndArm, iligaw.IntroductionOutcome,
+                "setup: requiredRestoredSlots = 0 means this spawn is the lesson, ability armed.");
+
+            MirrorDecoyController decoy = iligaw.GetComponent<MirrorDecoyController>();
+            Assert.IsNotNull(decoy, "setup: spawnsMirrorDecoy should attach MirrorDecoyController.");
+            Assert.IsInstanceOf<IIntroducibleAbility>(decoy,
+                "MirrorDecoyController must implement the seam beat 2 asks through, or the beat "
+                + "silently degrades to a fixed hold for every Iligaw lesson.");
+            Assert.IsFalse(((IIntroducibleAbility)decoy).HasFiredThisSpawn,
+                "setup: no copy has been placed yet.");
+
+            // Enemy.Initialize already started the beat (it calls BeginIntroduction itself once
+            // the spawn is an introduction spawn), so there is nothing further to kick off here.
+
+            // Ten times the authored hold, in WALL-CLOCK seconds: batchmode runs frames far faster
+            // than real time, so a frame count would let a fixed-duration beat 2 pass unchanged.
+            yield return new WaitForSecondsRealtime(0.5f);
+
+            Assert.IsFalse(((IIntroducibleAbility)decoy).HasFiredThisSpawn,
+                "setup: the copy must still be unplaced for this assertion to mean anything.");
+            Assert.AreEqual(0f, _cardGroup.alpha,
+                "Beat 2 must hold the name card down until the mirror copy has actually appeared. "
+                + "A card on screen here means the lesson named Iligaw before the player saw one "
+                + "enemy become two — which is the whole reason the lesson moved to Iligaw.");
+
+            // The copy lands.
+            SetPrivateField(decoy, "_decoySpawnedThisSpawn", true);
+            Assert.IsTrue(((IIntroducibleAbility)decoy).HasFiredThisSpawn);
+
+            bool cardAppeared = false;
+            float deadline = Time.realtimeSinceStartup + 5f;
+            while (!cardAppeared && Time.realtimeSinceStartup < deadline)
+            {
+                yield return null;
+                cardAppeared = _cardGroup.alpha > 0.99f;
+            }
+
+            Assert.IsTrue(cardAppeared,
+                "Once the copy is on the field, beat 2 must release and beats 5-6 must name the "
+                + "enemy. A beat that never releases would hang the lesson behind the ability.");
+        }
+
+        // ------------------------------------------------------------------------------------
+        // 4d. A lesson that does NOT arm the ability must not wait for it
+        // ------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// The parked guard. When a lesson leaves <c>armAbilityOnIntroduction</c> false the standing
+        /// suppression rule keeps the ability inert for the whole introduction spawn, so
+        /// <c>HasFiredThisSpawn</c> can never become true. Waiting on it would spend the entire
+        /// <c>_abilityBeatArmTimeoutSeconds</c> (15 s by default) with the field halted, the screen
+        /// dimmed and no card up, and then continue anyway.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Beat2_SkipsTheWaitEntirely_WhenTheLessonDoesNotArmTheAbility()
+        {
+            yield return null;
+
+            BaybayinCharacterSO aboChar = MakeCharacter("A", "symbol.test.beat2d.a");
+            BaybayinCharacterSO naChar = MakeCharacter("NA", "symbol.test.beat2d.na");
+
+            EnemyDataSO aboData = CreateEnemyData(
+                "test_abo_beat2d", "Abo ng Simula", aboChar, ashesFirstSlot: true);
+            EnemyLessonSO lesson = CreateAboShapedLesson(aboData);
+            lesson.requiredRestoredSlots = 0;
+            lesson.armAbilityOnIntroduction = false;
+            lesson.abilityBeatSeconds = 0.05f;
+
+            FocusWordDefinition word = CreateWord(
+                "level.test.beat2d.ina", "ina", "INA", aboChar, naChar);
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO> { aboData }, new[] { lesson },
+                new List<FocusWordDefinition> { word });
+            _gameManager.SetLevel(config);
+
+            SetPrivateField(_presenter, "_level", config);
+            _presenter.RestorationState.Configure(config.focusWords);
+
+            Enemy abo = CreateEnemyShell("Abo_Beat2d");
+            Assert.IsTrue(abo.Initialize(aboData));
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndSuppress, abo.IntroductionOutcome,
+                "setup: a lesson that does not arm leaves the standing suppression rule in force.");
+
+            AshFirstSlotController ash = abo.GetComponent<AshFirstSlotController>();
+            Assert.IsNotNull(ash);
+            Assert.IsTrue(ash.IsSuppressedForIntroductionSpawn,
+                "setup: the ash is inert for this spawn, so it can never report as fired.");
+
+            // Well inside the 15 s arm timeout and well outside the 0.05 s authored hold: a beat
+            // that waited on an ability that can never fire would still be dark here.
+            bool cardAppeared = false;
+            float deadline = Time.realtimeSinceStartup + 3f;
+            while (!cardAppeared && Time.realtimeSinceStartup < deadline)
+            {
+                yield return null;
+                cardAppeared = _cardGroup.alpha > 0.99f;
+            }
+
+            Assert.IsTrue(cardAppeared,
+                "Beat 2 must take the fixed hold when the lesson suppresses the ability. Waiting "
+                + "burns the full arm timeout behind a dimmed, halted screen and then proceeds "
+                + "regardless, which is fifteen seconds of nothing for the player.");
+        }
+
+        // ------------------------------------------------------------------------------------
+        // 4e. Beat 8's prompt actually reaches the screen
+        // ------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// Defect 1 from the 2026-09-15 visual check: across two clean runs the guide's root was
+        /// INACTIVE for every sampled frame, so beat 8 asked for a draw with no instruction on
+        /// screen — and in one run the enemy walked past and cost a heart. The prompt STRING was
+        /// set correctly the whole time, which is why 1223 green string-asserting tests missed it.
+        ///
+        /// <para>
+        /// The cause is re-entrancy, and this test reproduces it exactly: in Gameplay.unity the
+        /// guide's <c>_root</c> is its own GameObject, authored inactive. A component on an inactive
+        /// GameObject has never run <c>Awake</c>, so the first <c>SetActive(true)</c> runs it
+        /// synchronously from inside <c>ShowMessage</c> — and <c>Awake</c>'s defensive
+        /// <c>SetActive(false)</c> then undid the show. Asserting the STRING passes either way;
+        /// only <c>activeSelf</c> tells them apart.
+        /// </para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Beat8Prompt_BecomesVisible_OnARootAuthoredInactive()
+        {
+            GameObject root = CreateTracked("Level1TutorialGuideUI_Beat8");
+            root.SetActive(false);
+
+            // Awake has not run and must not run until the first show — exactly the scene's state.
+            Level1TutorialGuideUI guide = root.AddComponent<Level1TutorialGuideUI>();
+            GameObject promptGO = new GameObject("DrawPromptText");
+            promptGO.transform.SetParent(root.transform, false);
+            TMPro.TextMeshProUGUI prompt = promptGO.AddComponent<TMPro.TextMeshProUGUI>();
+
+            SetPrivateField(guide, "_root", root);
+            SetPrivateField(guide, "_promptText", prompt);
+
+            Assert.IsFalse(root.activeSelf, "setup: the root is authored inactive, as in the scene.");
+
+            guide.ShowMessage("Draw EI", canSkip: false);
+            yield return null;
+
+            Assert.AreEqual("Draw EI", prompt.text,
+                "setup: the prompt string was never the broken part.");
+            Assert.IsTrue(root.activeSelf,
+                "Beat 8's prompt must actually reach the screen. An inactive root means the player "
+                + "is asked to draw with no instruction visible, which is what shipped.");
+
+            guide.Hide();
+            yield return null;
+
+            Assert.IsFalse(root.activeSelf,
+                "The guide must close after the draw rather than staying up over live combat.");
+        }
+
+        // ------------------------------------------------------------------------------------
         // 5. Teardown on abort
         // ------------------------------------------------------------------------------------
 
@@ -542,7 +748,30 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             return data;
         }
 
-        /// <summary>Same shape as the shipped AboLesson.asset: see task-10-brief.md.</summary>
+        /// <summary>
+        /// Same shape as the shipped IligawLesson.asset — Level 1's actual lesson since the
+        /// 2026-09-15 retarget. The differences from the Abo shape are the two that matter:
+        /// requiredRestoredSlots is 0 (a mirror copy reads cold, with no restored slot needed) and
+        /// the ability beat 2 waits on is a MirrorDecoyController.
+        /// </summary>
+        private EnemyLessonSO CreateIligawShapedLesson(EnemyDataSO enemy)
+        {
+            var lesson = ScriptableObject.CreateInstance<EnemyLessonSO>();
+            lesson.enemy = enemy;
+            lesson.requiredRestoredSlots = 0;
+            lesson.armAbilityOnIntroduction = true;
+            lesson.abilityBeatSeconds = 2.5f;
+            lesson.revealGlyphLate = true;
+            lesson.drawStep = null; // beat 8 skipped; not exercised by this fixture
+            _objectsToDestroy.Add(lesson);
+            return lesson;
+        }
+
+        /// <summary>
+        /// The pre-retarget shape, kept because several tests here are about the beat machinery
+        /// rather than about which enemy carries it, and an ash-bearing lesson is the other half of
+        /// the evidence that beat 2's wait is not hardcoded to one ability. See task-10-brief.md.
+        /// </summary>
         private EnemyLessonSO CreateAboShapedLesson(EnemyDataSO enemy)
         {
             var lesson = ScriptableObject.CreateInstance<EnemyLessonSO>();

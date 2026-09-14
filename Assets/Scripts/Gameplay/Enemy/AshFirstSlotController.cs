@@ -55,7 +55,7 @@ using UnityEngine.SceneManagement;
 /// component on the shared corruption shell and toggles it per spawn.
 /// </summary>
 [RequireComponent(typeof(Enemy))]
-public sealed class AshFirstSlotController : MonoBehaviour
+public sealed class AshFirstSlotController : MonoBehaviour, IIntroducibleAbility
 {
     /// <summary>
     /// Live armed Abo controllers. A set rather than a counter because a pooled shell that is
@@ -110,6 +110,12 @@ public sealed class AshFirstSlotController : MonoBehaviour
 
     /// <summary>True once this spawn's ash has armed. A recycled shell comes back false.</summary>
     public bool IsArmedThisSpawn => _armedThisSpawn;
+
+    /// <summary>
+    /// <see cref="IIntroducibleAbility.HasFiredThisSpawn"/>. The ash IS the arming: the gust plays
+    /// and the clue masks off the same flag, so "armed" and "fired" are the same instant here.
+    /// </summary>
+    public bool HasFiredThisSpawn => _armedThisSpawn;
 
     /// <summary>True while this spawn is the type's introduction spawn and must stay inert.</summary>
     public bool IsSuppressedForIntroductionSpawn => _suppressedForIntroductionSpawn;
