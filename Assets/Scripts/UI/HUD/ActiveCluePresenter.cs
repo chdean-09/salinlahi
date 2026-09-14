@@ -29,6 +29,10 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     // switchable rather than deleted.
     [SerializeField] private bool _showActiveClueMark;
 
+    [Tooltip("Enemies within this many world units of the active clue hide their glyph, so two "
+             + "scrolls never overlap. Everything further away keeps its glyph.")]
+    [SerializeField, Min(0f)] private float _badgeCrowdRadius = 2.5f;
+
     /// <summary>Whether the ring marking the active enemy is drawn. Off by default.</summary>
     public bool ShowActiveClueMark
     {
@@ -409,15 +413,34 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     }
 
     /// <summary>One enemy's badge state under the current clue: the mark shows, everyone hides.</summary>
-    private static void ApplyBadgePolicy(Enemy enemy, Enemy clue, bool showGlyph)
+    private void ApplyBadgePolicy(Enemy enemy, Enemy clue, bool showGlyph)
     {
         if (enemy == null || enemy.GlyphBadge == null)
             return;
 
-        if (showGlyph && enemy == clue)
-            enemy.GlyphBadge.Show();
-        else
+        if (!showGlyph)
+        {
             enemy.GlyphBadge.Hide();
+            return;
+        }
+
+        if (enemy == clue)
+        {
+            enemy.GlyphBadge.Show();
+            return;
+        }
+
+        // Previously every enemy but the clue was hidden, so the field showed exactly one scroll and
+        // the player could not read what was coming. The reason to hide any of them is overlap: a
+        // scroll sitting right on top of the clue's makes both unreadable. So hide only the crowd
+        // within _badgeCrowdRadius of the clue and let everything further up the field keep its glyph.
+        bool crowdsTheClue = clue != null
+            && Vector2.Distance(enemy.transform.position, clue.transform.position) <= _badgeCrowdRadius;
+
+        if (crowdsTheClue)
+            enemy.GlyphBadge.Hide();
+        else
+            enemy.GlyphBadge.Show();
     }
 
     /// <summary>
