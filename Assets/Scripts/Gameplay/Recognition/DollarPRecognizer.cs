@@ -55,6 +55,11 @@ public class DollarPRecognizer
     private const float ASPECT_RATIO_PENALTY_STRENGTH = 0.4f;
     private const float ASPECT_RATIO_MIN_PENALTY = 0.6f;
 
+    // Minimum aspect-ratio penalty the shape leader must score before a clear shape margin is
+    // trusted untaxed. 0.95 corresponds to roughly a 1.3x proportion mismatch, so ordinary
+    // handwriting variation still passes and only a genuinely wrong-shaped box is sent to Stage 3.
+    private const float ASPECT_RATIO_CLEAR_WIN_MIN = 0.95f;
+
     private readonly int _n; // resample point count
     private Dictionary<string, List<List<Vector2>>> _templates;
     private Dictionary<string, List<int>> _templateStrokeCounts;
@@ -233,10 +238,22 @@ public class DollarPRecognizer
             ? shortlist[1]
             : new CandidateMatch { CharacterID = "NONE", Score = float.MinValue, VariantIndex = -1 };
 
-        // Stage 2: if shape alone gives the leader a clear margin, trust it untaxed.
-        // This is the core Option-A property: unambiguous characters never pay a penalty.
+        int userStrokeCount = CountNonEmptyStrokes(strokes);
+        float userAspectRatio = ComputeAspectRatio(strokes);
+
+        // Stage 2: if shape alone gives the leader a clear margin, trust it untaxed - but only when
+        // the leader's proportions agree too. HA is a near-flat tilde, and $P normalises every
+        // candidate into the same box, so a compact NA or MA can match the stretched HA cloud by a
+        // wide margin. recognition_log.csv recorded nine consecutive draws returning HA at
+        // 0.89-0.97 with gaps of 0.19-0.34 - all far past CLEAR_WIN_GAP, so the aspect-ratio
+        // penalty that exists to catch exactly this never ran. A leader whose bounding box is the
+        // wrong shape has not earned an untaxed win; send it through Stage 3 to be re-ranked.
         float shapeGap = shortlist.Count > 1 ? leader.Score - runnerUp.Score : leader.Score;
-        if (shortlist.Count == 1 || shapeGap >= CLEAR_WIN_GAP)
+        bool leaderProportionsAgree = AspectRatioPenalty(
+            userAspectRatio,
+            LookupTemplateAspectRatio(leader.CharacterID, leader.VariantIndex, userAspectRatio))
+            >= ASPECT_RATIO_CLEAR_WIN_MIN;
+        if (shortlist.Count == 1 || (shapeGap >= CLEAR_WIN_GAP && leaderProportionsAgree))
         {
             return new RecognitionResult(
                 leader.CharacterID, leader.Score, leader.VariantIndex,
@@ -244,8 +261,6 @@ public class DollarPRecognizer
         }
 
         // Stage 3: close call — re-rank the top K by composite score (shape × stroke-count × aspect-ratio).
-        int userStrokeCount = CountNonEmptyStrokes(strokes);
-        float userAspectRatio = ComputeAspectRatio(strokes);
         int k = Mathf.Min(DISAMBIGUATION_TOP_K, shortlist.Count);
 
         CandidateMatch disambiguatedBest = new CandidateMatch
