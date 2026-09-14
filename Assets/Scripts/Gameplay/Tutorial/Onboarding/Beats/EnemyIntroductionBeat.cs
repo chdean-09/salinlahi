@@ -285,6 +285,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     {
         _isPlaying = true;
         EnemyDataSO data = enemy.Data;
+        EnemyLessonSO lesson = ResolveLesson(data);
 
         try
         {
@@ -299,54 +300,193 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             if (!IsStillPresentable(enemy, data))
                 yield break;
 
-            _card.PrepareCard(ResolveWalkSprite(data), data.displayName, data.discoverySubtitle);
-
-            // Step 1 — Halt. The enemy stops where it stands, the vignette closes around it, and
-            // time slows. The vignette is raised before the ramp rather than during it because its
-            // own fade runs on scaled time: started under the slow, a quarter-second dim would take
-            // most of the card to arrive.
-            HaltEnemy(enemy);
-            RaiseVignette(enemy);
-            yield return RampTimeScale(Time.timeScale, _introductionTimeScale, _haltRampSeconds);
-            yield return RampCard(0f, 1f, _haltRampSeconds);
-
-            // Step 2 — Name. Walk sprite, display name, subtitle. Held long enough to be read, and
-            // no longer: the field is still moving underneath.
-            yield return WaitRealtime(_nameStepSeconds);
-
-            // Step 3 — Ability. One line, stating what the enemy does. The player derives the
-            // counter; see EnemyDataSO.abilityLine for why the copy may never state it.
-            _card.ShowAbilityLine(data.abilityLine);
-            yield return WaitRealtime(_abilityStepSeconds);
-
-            // Step 4 — Release. Card out, vignette lifts, time ramps back, the enemy walks again.
-            yield return RampCard(1f, 0f, _releaseRampSeconds);
-            _card.HideCardImmediate();
-            LiftVignette();
-            yield return RampTimeScale(Time.timeScale, _restoreTimeScale, _releaseRampSeconds);
-            ReleaseTimeScale();
-            ReleaseEnemy(enemy);
-
-            // The banner is the card's residue: one line that stays while the introduced enemy is on
-            // the field and goes with it, so the reminder is attached to the thing it describes
-            // rather than to a stretch of time.
-            _card.ShowBanner(data.abilityLine);
-            yield return WaitWhileEnemyLives(enemy, data);
-            _card.HideBanner();
+            yield return lesson != null
+                ? PlayLesson(enemy, data, lesson)
+                : PlayCard(enemy, data);
         }
         finally
         {
             // Every exit path — normal, aborted mid-card, or the coroutine stopped by a disable —
             // must hand back the enemy's movement and the two globals. Half the field frozen at 0.15
-            // is not a recoverable state for a player.
+            // is not a recoverable state for a player. The glyph badge is restored here too, on every
+            // exit path, so an abort mid-lesson never leaves an enemy permanently unmarked.
             ReleaseTimeScale();
             LiftVignette();
             ReleaseEnemy(enemy);
+            if (enemy != null) enemy.GlyphBadge?.Show();
             _isPlaying = false;
             _claimedEnemy = null;
             _routine = null;
         }
     }
+
+    /// <summary>
+    /// The four-step card: Halt, Name, Ability, Release. Unchanged from before the eight-beat
+    /// lesson existed; a level with no authored <see cref="EnemyLessonSO"/> for this type still
+    /// gets exactly this.
+    /// </summary>
+    private IEnumerator PlayCard(Enemy enemy, EnemyDataSO data)
+    {
+        _card.PrepareCard(ResolveWalkSprite(data), data.displayName, data.discoverySubtitle);
+
+        // Step 1 — Halt. The enemy stops where it stands, the vignette closes around it, and
+        // time slows. The vignette is raised before the ramp rather than during it because its
+        // own fade runs on scaled time: started under the slow, a quarter-second dim would take
+        // most of the card to arrive.
+        HaltEnemy(enemy);
+        RaiseVignette(enemy);
+        yield return RampTimeScale(Time.timeScale, _introductionTimeScale, _haltRampSeconds);
+        yield return RampCard(0f, 1f, _haltRampSeconds);
+
+        // Step 2 — Name. Walk sprite, display name, subtitle. Held long enough to be read, and
+        // no longer: the field is still moving underneath.
+        yield return WaitRealtime(_nameStepSeconds);
+
+        // Step 3 — Ability. One line, stating what the enemy does. The player derives the
+        // counter; see EnemyDataSO.abilityLine for why the copy may never state it.
+        _card.ShowAbilityLine(data.abilityLine);
+        yield return WaitRealtime(_abilityStepSeconds);
+
+        // Step 4 — Release. Card out, vignette lifts, time ramps back, the enemy walks again.
+        yield return RampCard(1f, 0f, _releaseRampSeconds);
+        _card.HideCardImmediate();
+        LiftVignette();
+        yield return RampTimeScale(Time.timeScale, _restoreTimeScale, _releaseRampSeconds);
+        ReleaseTimeScale();
+        ReleaseEnemy(enemy);
+
+        // The banner is the card's residue: one line that stays while the introduced enemy is on
+        // the field and goes with it, so the reminder is attached to the thing it describes
+        // rather than to a stretch of time.
+        _card.ShowBanner(data.abilityLine);
+        yield return WaitWhileEnemyLives(enemy, data);
+        _card.HideBanner();
+    }
+
+    /// <summary>
+    /// The eight-beat lesson. Beats 1, 5 and 6 are the card's own steps; 2, 3, 4, 7 and 8 are the
+    /// lesson's. Every wait is realtime, like the card's, because the beat holds Time.timeScale
+    /// down and a scaled wait would stretch a two-second beat past thirteen.
+    /// </summary>
+    private IEnumerator PlayLesson(Enemy enemy, EnemyDataSO data, EnemyLessonSO lesson)
+    {
+        _card.PrepareCard(ResolveWalkSprite(data), data.displayName, data.discoverySubtitle);
+
+        // Beat 7 is a reveal, so the badge goes dark before the player ever sees it.
+        if (lesson.revealGlyphLate)
+            enemy.GlyphBadge?.Hide();
+
+        // Beat 1 — Appear. Halt and vignette, with NO card yet: the player must watch the
+        // ability land on an enemy they cannot yet read anything about.
+        HaltEnemy(enemy);
+        RaiseVignette(enemy);
+        yield return RampTimeScale(Time.timeScale, _introductionTimeScale, _haltRampSeconds);
+
+        // Beat 2 — Ability. Already armed by IntroduceAndArm; this is the hold that lets the
+        // player watch the clue crumble.
+        yield return WaitRealtime(lesson.abilityBeatSeconds);
+
+        // Beats 3 and 4 — React, then the rule. Once per campaign.
+        if (!EnemyIntroductionProgress.HasSeenAbilityRule())
+        {
+            DialogueController dialogue = ResolveDialogueController();
+            yield return OnboardingDialogueRunner.Play(dialogue, lesson.reactLine);
+            yield return OnboardingDialogueRunner.Play(dialogue, lesson.ruleLine);
+            EnemyIntroductionProgress.MarkAbilityRuleSeen();
+        }
+
+        // Beats 5 and 6 — Name, then ability line. The card's own steps, in its own order.
+        yield return RampCard(0f, 1f, _haltRampSeconds);
+        yield return WaitRealtime(_nameStepSeconds);
+        _card.ShowAbilityLine(data.abilityLine);
+        yield return WaitRealtime(_abilityStepSeconds);
+        yield return RampCard(1f, 0f, _releaseRampSeconds);
+        _card.HideCardImmediate();
+
+        // Beat 7 — Glyph. The badge comes up while the enemy is still spotlit and time is still
+        // slow, so the reveal is the only thing moving on screen.
+        enemy.GlyphBadge?.Show();
+        yield return WaitRealtime(_nameStepSeconds);
+
+        // Beat 8 — Draw. Time and movement come back first: the draw is real combat against a
+        // real enemy, not a frozen exercise.
+        LiftVignette();
+        yield return RampTimeScale(Time.timeScale, _restoreTimeScale, _releaseRampSeconds);
+        ReleaseTimeScale();
+        ReleaseEnemy(enemy);
+
+        if (lesson.drawStep != null)
+            yield return PlayDrawStep(enemy, lesson.drawStep);
+
+        _card.ShowBanner(data.abilityLine);
+        yield return WaitWhileEnemyLives(enemy, data);
+        _card.HideBanner();
+    }
+
+    /// <summary>
+    /// Beat 8. Reuses the surviving Level1TutorialStepSO guide machinery against a live enemy.
+    /// Input is never locked — the beat's standing promise — so a player who has already started a
+    /// stroke can finish it.
+    /// </summary>
+    private IEnumerator PlayDrawStep(Enemy enemy, Level1TutorialStepSO step)
+    {
+        Level1TutorialGuideUI guide = FindFirstObjectByType<Level1TutorialGuideUI>(
+            FindObjectsInactive.Include);
+
+        if (guide != null)
+            guide.ShowMessage(step.promptText, canSkip: false);
+
+        string expectedID = step.targetCharacter != null ? step.targetCharacter.characterID : null;
+        if (string.IsNullOrEmpty(expectedID))
+        {
+            if (guide != null) guide.Hide();
+            yield break;
+        }
+
+        System.Action<RecognitionResult, bool, float> feedback = null;
+        if (guide != null)
+        {
+            feedback = (result, passed, _) =>
+            {
+                if (passed && string.Equals(result.characterID, expectedID,
+                        System.StringComparison.OrdinalIgnoreCase))
+                    return;
+
+                guide.ShowFeedback(passed
+                    ? step.wrongCharacterFeedback
+                    : step.recognitionFailedFeedback);
+            };
+            EventBus.OnRecognitionResolved += feedback;
+        }
+
+        try
+        {
+            yield return TutorialDrawWait.WaitForCorrectDraw(expectedID);
+        }
+        finally
+        {
+            if (feedback != null)
+                EventBus.OnRecognitionResolved -= feedback;
+            if (guide != null)
+                guide.Hide();
+        }
+    }
+
+    /// <summary>
+    /// The scene's dialogue controller. Resolved on demand rather than serialized because this
+    /// beat is created by the wiring tool before the HUD it will need exists.
+    /// OnboardingDialogueRunner.Play already no-ops on a null controller and on blank copy, which
+    /// is what lets beats 3 and 4 ship before their Filipino copy is authored.
+    /// </summary>
+    private DialogueController ResolveDialogueController()
+    {
+        if (_dialogue == null)
+            _dialogue = FindFirstObjectByType<DialogueController>(FindObjectsInactive.Include);
+
+        return _dialogue;
+    }
+
+    private DialogueController _dialogue;
 
     /// <summary>
     /// Holds the beat open for exactly as long as the introduced enemy is on the field. Checked by

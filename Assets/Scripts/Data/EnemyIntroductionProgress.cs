@@ -43,6 +43,21 @@ public static class EnemyIntroductionProgress
     /// </summary>
     public const string IntroducedEnemyIDsKey = "salinlahi.tutorial.enemy_introductions_shown";
 
+    public const string AbilityRuleSeenKey = "salinlahi.tutorial.ability_rule_seen";
+
+    /// <summary>
+    /// Whether beats 3 and 4 — the reaction and the rule that every enemy has an ability — have
+    /// played. Once per campaign: the rule is general, so a second level teaching it again would
+    /// read as the game forgetting the player.
+    /// </summary>
+    public static bool HasSeenAbilityRule() => PlayerPrefs.GetInt(AbilityRuleSeenKey, 0) == 1;
+
+    public static void MarkAbilityRuleSeen()
+    {
+        PlayerPrefs.SetInt(AbilityRuleSeenKey, 1);
+        PlayerPrefs.Save();
+    }
+
     /// <summary>
     /// Types introduced during this run, whether or not the write to disk was permitted. Static
     /// rather than instance state because the beat runner is per-scene and the record is not: a
@@ -100,6 +115,7 @@ public static class EnemyIntroductionProgress
     {
         IntroducedThisSession.Clear();
         PlayerPrefs.DeleteKey(IntroducedEnemyIDsKey);
+        PlayerPrefs.DeleteKey(AbilityRuleSeenKey);
         PlayerPrefs.Save();
     }
 

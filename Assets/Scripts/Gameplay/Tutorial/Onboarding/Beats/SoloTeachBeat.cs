@@ -113,7 +113,7 @@ public sealed class SoloTeachBeat : OnboardingBeat
 
         try
         {
-            yield return WaitForCorrectDraw(step.targetCharacter.characterID);
+            yield return TutorialDrawWait.WaitForCorrectDraw(step.targetCharacter.characterID);
         }
         finally
         {
@@ -216,18 +216,5 @@ public sealed class SoloTeachBeat : OnboardingBeat
 
         if (enemyTransform != null) enemyTransform.position = targetPos;
         if (mover != null) mover.SetExternallyMoving(false);
-    }
-
-    internal static IEnumerator WaitForCorrectDraw(string expectedCharacterID)
-    {
-        bool resolved = false;
-        System.Action<RecognitionResult, bool, float> handler = (result, passed, _) =>
-        {
-            if (passed && string.Equals(result.characterID, expectedCharacterID, System.StringComparison.OrdinalIgnoreCase))
-                resolved = true;
-        };
-        EventBus.OnRecognitionResolved += handler;
-        try { yield return new WaitUntil(() => resolved); }
-        finally { EventBus.OnRecognitionResolved -= handler; }
     }
 }

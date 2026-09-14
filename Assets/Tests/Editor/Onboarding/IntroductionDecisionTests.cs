@@ -56,4 +56,18 @@ public class IntroductionDecisionTests
             IntroductionOutcome.IntroduceAndArm,
             IntroductionDecision.Resolve(true, lessonArmsAbility: true, aLessonIsPending: true));
     }
+
+    [Test]
+    public void AbilityRuleLatch_IsOnceUntilCleared()
+    {
+        EnemyIntroductionProgress.ResetForTests();
+        Assert.IsFalse(EnemyIntroductionProgress.HasSeenAbilityRule());
+
+        EnemyIntroductionProgress.MarkAbilityRuleSeen();
+        Assert.IsTrue(EnemyIntroductionProgress.HasSeenAbilityRule());
+
+        EnemyIntroductionProgress.ClearAllIntroduced();
+        Assert.IsFalse(EnemyIntroductionProgress.HasSeenAbilityRule(),
+            "New Journey must re-teach the rule.");
+    }
 }
