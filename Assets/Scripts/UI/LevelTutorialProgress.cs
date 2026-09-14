@@ -18,8 +18,13 @@ public static class LevelTutorialProgress
 
     public static bool ShouldShowForLevelNumber(int levelNumber)
     {
+        // Level 1 runs its onboarding on every play, not just the first. It is the level that
+        // teaches the core draw-to-defend loop, and players returning to it were dropped straight
+        // into a wave with no reminder. Replays are not forced to sit through it: the onboarding
+        // exposes a skip, and HasSeenLevel1Tutorial still reports whether it has been completed
+        // before, so the skip can be offered to returning players only.
         if (levelNumber == Level1TutorialLevelNumber)
-            return !HasSeenLevel1Tutorial();
+            return true;
 
         if (levelNumber == Level2TutorialLevelNumber)
             return !HasSeenLevel2Tutorial();

@@ -37,11 +37,25 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
-        public void ShouldShowForLevelNumber_WhenSeen_ReturnsFalse()
+        public void ShouldShowForLevelNumber_WhenLevelOneSeen_StillReturnsTrue()
         {
+            // Level 1 replays the onboarding every time - it teaches the core draw-to-defend loop,
+            // and returning players were dropped straight into a wave with no reminder. Replays are
+            // skippable rather than suppressed. This test previously asserted the opposite; it is
+            // updated deliberately, not relaxed, because the rule itself changed.
             LevelTutorialProgress.MarkLevel1TutorialSeen();
 
-            Assert.IsFalse(LevelTutorialProgress.ShouldShowForLevelNumber(1));
+            Assert.IsTrue(LevelTutorialProgress.ShouldShowForLevelNumber(1));
+        }
+
+        [Test]
+        public void HasSeenLevel1Tutorial_StillTracksCompletion_SoReplaysCanOfferSkip()
+        {
+            Assert.IsFalse(LevelTutorialProgress.HasSeenLevel1Tutorial());
+
+            LevelTutorialProgress.MarkLevel1TutorialSeen();
+
+            Assert.IsTrue(LevelTutorialProgress.HasSeenLevel1Tutorial());
         }
 
         [Test]
