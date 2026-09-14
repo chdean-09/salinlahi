@@ -252,6 +252,7 @@ MonoBehaviour:
   multiKillChainEnabled: 0
   tutorialSequence: {fileID: 0}
   onboardingSequence: {fileID: 0}
+  enemyLessons: []
   challengePrototypeEnabled: 0
   challengeSequence: {fileID: 11400000, guid: b2a94c2b8375c4c3a92899ebf1d45c5e, type: 2}
   challengePolicy:

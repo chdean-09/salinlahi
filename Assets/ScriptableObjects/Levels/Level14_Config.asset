@@ -525,6 +525,7 @@ MonoBehaviour:
   multiKillChainEnabled: 1
   tutorialSequence: {fileID: 0}
   onboardingSequence: {fileID: 0}
+  enemyLessons: []
   challengePrototypeEnabled: 0
   challengeSequence: {fileID: 11400000, guid: 40c7d6c3365a345f996426f0990a8b37, type: 2}
   challengePolicy:

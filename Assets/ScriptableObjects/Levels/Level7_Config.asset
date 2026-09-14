@@ -335,6 +335,7 @@ MonoBehaviour:
   multiKillChainEnabled: 1
   tutorialSequence: {fileID: 0}
   onboardingSequence: {fileID: 0}
+  enemyLessons: []
   challengePrototypeEnabled: 0
   challengeSequence: {fileID: 0}
   challengePolicy:
