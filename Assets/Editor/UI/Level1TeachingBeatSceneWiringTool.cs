@@ -8,13 +8,13 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 /// <summary>
-/// Scene authoring for Level 1's teaching-beat components. All of them compile and are covered by
-/// tests, and none of them runs, because nothing places them: <see cref="EnemyIntroductionBeat"/>,
+/// Scene authoring for Level 1's teaching-beat components. All of them compile, are covered by
+/// tests, and are present in <c>Assets/_Scenes/Gameplay.unity</c>: <see cref="EnemyIntroductionBeat"/>,
 /// <see cref="EnemyIntroductionCardView"/>, <see cref="AshGustController"/>,
-/// <see cref="DrawFeedbackPresenter"/> and <see cref="InstantWinPresenter"/> are all absent from
-/// the gameplay scene, so the introduction cards never fire, the ash arms with nothing to attribute
-/// it to, the five drawing-feedback states render as nothing, and the instant-win beat falls back
-/// to a runtime-built presenter carrying none of the authored tuning.
+/// <see cref="DrawFeedbackPresenter"/> and <see cref="InstantWinPresenter"/> are all wired there.
+/// This tool is idempotent re-wiring: every step looks for what it needs before it builds anything,
+/// so running it against an already-wired scene finds nothing to do and writes nothing. It exists
+/// so the wiring can be restored or re-checked without a hand edit to the .unity file.
 ///
 /// <para>
 /// <b>Why Gameplay.unity and not Level_01_Tutorial.unity.</b> <c>SceneLoader</c> has exactly one

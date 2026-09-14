@@ -12,8 +12,6 @@ using UnityEngine;
 /// </summary>
 public sealed class Level1OnboardingController : MonoBehaviour
 {
-    private const string BaCharacterId = "BA";
-
     [Header("Scene References")]
     [SerializeField] private DialogueController _dialogueController;
     [SerializeField] private TutorialSpotlightOverlay _spotlight;
@@ -29,21 +27,6 @@ public sealed class Level1OnboardingController : MonoBehaviour
     [Header("Sequence Data")]
     [SerializeField] private OnboardingSequenceSO _fallbackSequence;
 
-    [Header("BA GIF Scene Override")]
-    [SerializeField] private Texture2D _baGifTexture;
-    [SerializeField] private Sprite[] _baGifFrames;
-    [SerializeField] private float _baGifFramesPerSecond = 8f;
-
-    [Header("HA GIF Scene Override")]
-    [SerializeField] private Texture2D _haGifTexture;
-    [SerializeField] private Sprite[] _haGifFrames;
-    [SerializeField] private float _haGifFramesPerSecond = 8f;
-
-    [Header("OU/O GIF Scene Override")]
-    [SerializeField] private Texture2D _ouGifTexture;
-    [SerializeField] private Sprite[] _ouGifFrames;
-    [SerializeField] private float _ouGifFramesPerSecond = 8f;
-
     private readonly List<OnboardingBeat> _beats = new();
     private bool _firstManualSuccess;
     private bool _skipRequested;
@@ -51,8 +34,6 @@ public sealed class Level1OnboardingController : MonoBehaviour
     private bool _onboardingHudHidden;
     private Level1TutorialSequenceSO _runtimeLegacySource;
     private OnboardingSequenceSO _runtimeLegacySequence;
-    private OnboardingSequenceSO _runtimeSceneOverrideSource;
-    private OnboardingSequenceSO _runtimeSceneOverrideSequence;
     private OnboardingSequenceSO _runtimeNormalizedSource;
     private OnboardingSequenceSO _runtimeNormalizedSequence;
 
@@ -89,10 +70,8 @@ public sealed class Level1OnboardingController : MonoBehaviour
         ReleaseTutorialRuntimeState();
 
         DestroyRuntimeSequence(_runtimeLegacySequence);
-        DestroyRuntimeSequence(_runtimeSceneOverrideSequence);
         DestroyRuntimeSequence(_runtimeNormalizedSequence);
         _runtimeLegacySequence = null;
-        _runtimeSceneOverrideSequence = null;
         _runtimeNormalizedSequence = null;
     }
 
@@ -275,45 +254,25 @@ public sealed class Level1OnboardingController : MonoBehaviour
     private OnboardingSequenceSO ResolveSequence(LevelConfigSO levelConfig)
     {
         if (levelConfig != null && levelConfig.onboardingSequence != null)
-            return ResolveSceneOverrideSequence(levelConfig.onboardingSequence);
+            return levelConfig.onboardingSequence;
         if (_fallbackSequence != null)
-            return ResolveSceneOverrideSequence(_fallbackSequence);
+            return _fallbackSequence;
         if (levelConfig != null && levelConfig.tutorialSequence != null)
             return ResolveLegacyTutorialSequence(levelConfig.tutorialSequence);
         return null;
     }
 
-    private OnboardingSequenceSO ResolveSceneOverrideSequence(OnboardingSequenceSO source)
-    {
-        if (source == null)
-            return null;
-
-        if (!HasSceneGifFallbacks())
-            return source;
-
-        if (_runtimeSceneOverrideSequence != null && _runtimeSceneOverrideSource == source)
-            return _runtimeSceneOverrideSequence;
-
-        DestroyRuntimeSequence(_runtimeSceneOverrideSequence);
-        _runtimeSceneOverrideSource = source;
-        _runtimeSceneOverrideSequence = Instantiate(source);
-        _runtimeSceneOverrideSequence.name = $"{source.name}_RuntimeSceneOverrides";
-        _runtimeSceneOverrideSequence.hideFlags = HideFlags.HideAndDontSave;
-        ApplySceneGifFallbacks(_runtimeSceneOverrideSequence);
-        return _runtimeSceneOverrideSequence;
-    }
-
     /// <summary>
     /// Returns a controller-owned, mutable copy of <paramref name="source"/> so per-level
     /// normalization never writes back to the shared <see cref="OnboardingSequenceSO"/> asset.
-    /// Sequences already produced as runtime instances (scene-override / legacy) are returned as-is.
+    /// Sequences already produced as runtime instances (legacy conversion) are returned as-is.
     /// </summary>
     private OnboardingSequenceSO EnsureMutableSequence(OnboardingSequenceSO source)
     {
         if (source == null)
             return null;
 
-        if (source == _runtimeSceneOverrideSequence || source == _runtimeLegacySequence)
+        if (source == _runtimeLegacySequence)
             return source;
 
         if (_runtimeNormalizedSequence != null && _runtimeNormalizedSource == source)
@@ -345,111 +304,7 @@ public sealed class Level1OnboardingController : MonoBehaviour
 
         _runtimeLegacySource = legacySequence;
         _runtimeLegacySequence = CreateRuntimeSequenceFromLegacy(legacySequence);
-        ApplySceneGifFallbacks(_runtimeLegacySequence);
         return _runtimeLegacySequence;
-    }
-
-    private void ApplySceneGifFallbacks(OnboardingSequenceSO sequence)
-    {
-        if (sequence == null || !HasSceneGifFallbacks())
-            return;
-
-        bool applied = false;
-        bool hasBasicTeachSteps = sequence.basicTeachSteps != null && sequence.basicTeachSteps.Length > 0;
-        if (!hasBasicTeachSteps)
-            applied |= ApplySceneGifFallback(sequence.soloTeachStep, ref sequence.soloTeachVideo);
-
-        applied |= ApplyBasicTeachSceneGifFallbacks(sequence);
-
-        if (!applied)
-            DebugLogger.LogWarning("Level1OnboardingController: GIF scene overrides were assigned, but no matching teach step was found. Override skipped.");
-    }
-
-    private bool HasSceneGifFallbacks()
-        => _baGifTexture != null
-            || (_baGifFrames != null && _baGifFrames.Length > 0)
-            || _haGifTexture != null
-            || (_haGifFrames != null && _haGifFrames.Length > 0)
-            || _ouGifTexture != null
-            || (_ouGifFrames != null && _ouGifFrames.Length > 0);
-
-    private bool ApplyBasicTeachSceneGifFallbacks(OnboardingSequenceSO sequence)
-    {
-        if (sequence.basicTeachSteps == null || sequence.basicTeachSteps.Length == 0)
-            return false;
-
-        if (sequence.basicTeachVideos == null || sequence.basicTeachVideos.Length != sequence.basicTeachSteps.Length)
-            sequence.basicTeachVideos = new OnboardingVideoTemplate[sequence.basicTeachSteps.Length];
-
-        bool applied = false;
-        for (int i = 0; i < sequence.basicTeachSteps.Length; i++)
-        {
-            OnboardingVideoTemplate template = sequence.basicTeachVideos[i];
-            if (ApplySceneGifFallback(sequence.basicTeachSteps[i], ref template))
-            {
-                sequence.basicTeachVideos[i] = template;
-                applied = true;
-            }
-        }
-
-        return applied;
-    }
-
-    private bool ApplySceneGifFallback(Level1TutorialStepSO step, ref OnboardingVideoTemplate template)
-    {
-        if (step == null)
-            return false;
-
-        if (IsStepForCharacter(step, BaCharacterId) && HasGifFallback(_baGifTexture, _baGifFrames))
-        {
-            template = WithSceneGifFallback(template, _baGifTexture, _baGifFrames, _baGifFramesPerSecond);
-            return true;
-        }
-
-        if (IsStepForCharacter(step, "HA") && HasGifFallback(_haGifTexture, _haGifFrames))
-        {
-            template = WithSceneGifFallback(template, _haGifTexture, _haGifFrames, _haGifFramesPerSecond);
-            return true;
-        }
-
-        if ((IsStepForCharacter(step, "OU") || IsStepForCharacter(step, "O"))
-            && HasGifFallback(_ouGifTexture, _ouGifFrames))
-        {
-            template = WithSceneGifFallback(template, _ouGifTexture, _ouGifFrames, _ouGifFramesPerSecond);
-            return true;
-        }
-
-        return false;
-    }
-
-    private static bool HasGifFallback(Texture2D texture, Sprite[] frames)
-        => texture != null || (frames != null && frames.Length > 0);
-
-    private static OnboardingVideoTemplate WithSceneGifFallback(
-        OnboardingVideoTemplate template,
-        Texture2D gifTexture,
-        Sprite[] gifFrames,
-        float framesPerSecond)
-    {
-        template.videoClip = null;
-        template.gifTexture = gifTexture;
-        template.gifFrames = gifFrames;
-        template.gifFramesPerSecond = Mathf.Max(1f, framesPerSecond);
-        if (string.IsNullOrWhiteSpace(template.tapToProceedText))
-            template.tapToProceedText = "Tap anywhere to continue";
-        return template;
-    }
-
-    private static bool IsStepForCharacter(Level1TutorialStepSO step, string characterId)
-    {
-        if (step == null || string.IsNullOrWhiteSpace(characterId))
-            return false;
-
-        if (step.targetCharacter != null
-            && string.Equals(step.targetCharacter.characterID, characterId, System.StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        return string.Equals(step.promptId, characterId, System.StringComparison.OrdinalIgnoreCase);
     }
 
     private static void DestroyRuntimeSequence(OnboardingSequenceSO sequence)
@@ -475,10 +330,6 @@ public sealed class Level1OnboardingController : MonoBehaviour
         {
             fallbackText = CombineLines(legacySequence.baseIntroText, legacySequence.baseDefenseText),
         };
-        sequence.soloTeachPreVideo = new OnboardingBeatCopy
-        {
-            fallbackText = legacySequence.drawPurposeText,
-        };
         sequence.heartLossDialogue = new OnboardingBeatCopy
         {
             fallbackText = legacySequence.baseDamageText,
@@ -488,9 +339,12 @@ public sealed class Level1OnboardingController : MonoBehaviour
             fallbackText = legacySequence.finalReleaseText,
         };
 
-        sequence.basicTeachSteps = CopyLegacySteps(legacySequence);
-        sequence.soloTeachStep = GetLegacyStep(legacySequence, 0);
-        Level1TutorialStepSO demoStep = GetLegacyStep(legacySequence, 2) ?? sequence.soloTeachStep;
+        // The eight-beat lesson removed SoloTeach: drawing/glyph teaching moved into
+        // EnemyIntroductionBeat, one enemy at a time, triggered by a spawn. This legacy
+        // converter no longer has a teach beat to populate, so it only still derives the
+        // heart-loss demo enemy/character from the old step list (index 2, the demo step in
+        // the legacy four-step layout, falling back to index 0 if that step is missing).
+        Level1TutorialStepSO demoStep = GetLegacyStep(legacySequence, 2) ?? GetLegacyStep(legacySequence, 0);
         if (demoStep != null)
         {
             sequence.heartLossDemoEnemyData = demoStep.enemyData;
@@ -502,8 +356,6 @@ public sealed class Level1OnboardingController : MonoBehaviour
             OnboardingBeatType.ProtagonistIntro,
             OnboardingBeatType.BaseIntro,
         };
-        if (sequence.soloTeachStep != null)
-            order.Add(OnboardingBeatType.SoloTeach);
         if (sequence.heartLossDemoEnemyData != null)
             order.Add(OnboardingBeatType.HeartLossDemo);
         order.Add(OnboardingBeatType.Release);
@@ -514,8 +366,7 @@ public sealed class Level1OnboardingController : MonoBehaviour
 
     /// <summary>
     /// Level-specific normalization keeps the runtime copy aligned with the campaign content.
-    /// Level 1 uses its four focus symbols for interactive teaching and must not replay media
-    /// from an older sequence asset. The serialized asset is never mutated.
+    /// The serialized asset is never mutated.
     ///
     /// SALIN-241. Level 2's AUTHORED beat order wins. The <c>[Release]</c> forcing that SALIN-225
     /// left here survives only as the empty-order fallback.
@@ -542,30 +393,11 @@ public sealed class Level1OnboardingController : MonoBehaviour
         if (sequence == null)
             return;
 
-        if (levelNumber == LevelTutorialProgress.Level1TutorialLevelNumber)
-        {
-            if (sequence.basicTeachSteps != null && sequence.basicTeachSteps.Length > 0)
-                sequence.basicTeachVideos = new OnboardingVideoTemplate[sequence.basicTeachSteps.Length];
-
-            sequence.soloTeachVideo = default;
-        }
-
         if (levelNumber != LevelTutorialProgress.Level2TutorialLevelNumber)
             return;
 
         if (sequence.beatOrder == null || sequence.beatOrder.Length == 0)
             sequence.beatOrder = new[] { OnboardingBeatType.Release };
-    }
-
-    private static Level1TutorialStepSO[] CopyLegacySteps(Level1TutorialSequenceSO sequence)
-    {
-        if (sequence.steps == null || sequence.steps.Length == 0)
-            return System.Array.Empty<Level1TutorialStepSO>();
-
-        Level1TutorialStepSO[] copy = new Level1TutorialStepSO[sequence.steps.Length];
-        for (int i = 0; i < sequence.steps.Length; i++)
-            copy[i] = sequence.steps[i];
-        return copy;
     }
 
     private static Level1TutorialStepSO GetLegacyStep(Level1TutorialSequenceSO sequence, int index)
@@ -594,7 +426,6 @@ public sealed class Level1OnboardingController : MonoBehaviour
     {
         EnsureBeatComponent<ProtagonistIntroBeat>();
         EnsureBeatComponent<BaseIntroBeat>();
-        EnsureBeatComponent<SoloTeachBeat>();
         EnsureBeatComponent<HeartLossDemoBeat>();
         EnsureBeatComponent<ReleaseBeat>();
         // SALIN-241. Level 2's beat, attached alongside the rest. A beat only runs when the
@@ -616,9 +447,6 @@ public sealed class Level1OnboardingController : MonoBehaviour
                     break;
                 case OnboardingBeatType.BaseIntro:
                     EnsureBeatComponent<BaseIntroBeat>();
-                    break;
-                case OnboardingBeatType.SoloTeach:
-                    EnsureBeatComponent<SoloTeachBeat>();
                     break;
                 case OnboardingBeatType.HeartLossDemo:
                     EnsureBeatComponent<HeartLossDemoBeat>();

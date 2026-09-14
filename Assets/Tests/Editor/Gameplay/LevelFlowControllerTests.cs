@@ -299,7 +299,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 "Level 2 teaches the AOE mass-clear, the mechanic Level2_Config switches on.");
             Assert.IsNotNull(onboardingController.GetComponent<ReleaseBeat>(),
                 "ReleaseBeat must stay: it is the sole caller of MarkTutorialSeen.");
-            Assert.IsNull(onboardingController.GetComponent<SoloTeachBeat>(),
+            Assert.IsNull(onboardingController.GetComponent<HeartLossDemoBeat>(),
                 "Level 2 must not fall through to Level 1's basic teaching beats.");
         }
 

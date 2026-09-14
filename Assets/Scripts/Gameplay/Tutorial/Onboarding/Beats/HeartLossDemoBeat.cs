@@ -64,7 +64,7 @@ public sealed class HeartLossDemoBeat : OnboardingBeat
 
         float targetY = ctx.PlayerBase != null ? ctx.PlayerBase.transform.position.y + _baseProximityY : 0f;
         Vector3 basePos = new(demoEnemy.transform.position.x, targetY, demoEnemy.transform.position.z);
-        yield return SoloTeachBeat.WalkEnemyTo(controller, basePos, _descendDuration);
+        yield return Level1TutorialEnemyController.WalkEnemyTo(controller, basePos, _descendDuration);
 
         controller.FreezeThreat();
         RevealHeartHudForDemo();

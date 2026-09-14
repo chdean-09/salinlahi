@@ -27,10 +27,13 @@ namespace Salinlahi.Tests.Editor.Onboarding
             // a heart-loss teach back into Level 1, put HeartLossDemo back here with it.
             //
             // SoloTeach was dropped from Level 1's beatOrder, and basicTeachSteps was cleared, on
-            // 2026-09-15 (task 8 of the level1-enemy-introduction-lesson plan): the four-step
+            // 2026-09-15 (task 7 of the level1-enemy-introduction-lesson plan): the four-step
             // "teach loop" is superseded by the eight-beat per-enemy lesson authored on
-            // LevelConfigSO.enemyLessons (see EnemyLessonSO / AboLesson.asset). soloTeachStep
-            // itself is untouched by that change and still points at the EI step.
+            // LevelConfigSO.enemyLessons (see EnemyLessonSO / AboLesson.asset). Task 7 went further
+            // than dropping SoloTeach from beatOrder: soloTeachStep, basicTeachSteps and
+            // basicTeachVideos were removed from OnboardingSequenceSO entirely, so there is no
+            // longer a field on the sequence asset for this test to assert against. The EI step
+            // asset itself (and its guideSprite) is unaffected and still checked here.
             Assert.AreEqual(
                 new[]
                 {
@@ -39,10 +42,7 @@ namespace Salinlahi.Tests.Editor.Onboarding
                     OnboardingBeatType.Release,
                 },
                 sequence.beatOrder);
-            Assert.AreSame(ei, sequence.soloTeachStep);
-            Assert.IsEmpty(sequence.basicTeachSteps);
             Assert.IsNotNull(ei.guideSprite);
-            Assert.IsEmpty(sequence.basicTeachVideos);
         }
 
         private static OnboardingSequenceSO LoadSequence(string path)

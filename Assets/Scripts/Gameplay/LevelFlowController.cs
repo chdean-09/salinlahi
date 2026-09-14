@@ -1352,7 +1352,6 @@ public class LevelFlowController : MonoBehaviour
         {
             go.AddComponent<ProtagonistIntroBeat>();
             go.AddComponent<BaseIntroBeat>();
-            go.AddComponent<SoloTeachBeat>();
             go.AddComponent<HeartLossDemoBeat>();
         }
 

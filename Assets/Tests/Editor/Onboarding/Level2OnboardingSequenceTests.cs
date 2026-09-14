@@ -82,8 +82,6 @@ namespace Salinlahi.Tests.Editor.Onboarding
 
             AssertCopyIsClean(sequence.protagonistIntro.fallbackText, nameof(sequence.protagonistIntro));
             AssertCopyIsClean(sequence.baseIntro.fallbackText, nameof(sequence.baseIntro));
-            AssertCopyIsClean(sequence.soloTeachPreVideo.fallbackText, nameof(sequence.soloTeachPreVideo));
-            AssertCopyIsClean(sequence.soloTeachPostSuccess.fallbackText, nameof(sequence.soloTeachPostSuccess));
             AssertCopyIsClean(sequence.heartLossDialogue.fallbackText, nameof(sequence.heartLossDialogue));
             AssertCopyIsClean(sequence.release.fallbackText, nameof(sequence.release));
             AssertCopyIsClean(sequence.massClearTeach.fallbackText, nameof(sequence.massClearTeach));
