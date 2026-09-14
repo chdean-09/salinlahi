@@ -19,7 +19,13 @@ public class Enemy : MonoBehaviour
     [SerializeField] private Color _shieldBrokenColor = new(0.55f, 0.55f, 0.55f, 1f);
 
     [Header("Debug Enemy Labels")]
-    [SerializeField] private bool _showDebugLabels = true;
+    // OFF by default. ShouldShowDebugLabels already keeps these out of a release player, but that
+    // fence says nothing about a normal play session in the Editor, which is where the game is
+    // actually looked at: with this defaulted on — and authored 1 on the shared corruption shell —
+    // raw internal ids ("Type: abo-ng-simula", "Draw: a (A)") rendered over every enemy in every
+    // playtest and every screenshot. It stays a serialized per-prefab opt-in so anyone debugging
+    // spawn identity can still switch it on for the prefab they care about.
+    [SerializeField] private bool _showDebugLabels;
     [SerializeField] private Vector3 _labelBaseWorldOffset = new(0f, -1.9f, -0.1f);
     [SerializeField] private float _labelLineSpacingWorld = 0.45f;
     [SerializeField] private float _labelWorldScale = 0.22f;

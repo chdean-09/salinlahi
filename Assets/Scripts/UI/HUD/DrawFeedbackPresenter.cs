@@ -152,6 +152,28 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
     /// <summary>Correct-form replays played after a refused drawing.</summary>
     public int RefusedReplayCount { get; private set; }
 
+    // The live presenter, so the ghost-stroke overlay's visibility can be asked about without a
+    // scene lookup per frame. Instance-scoped rather than a bare static flag: cleared in OnDisable,
+    // so a presenter torn down mid-replay cannot leave the answer stuck at true forever.
+    private static DrawFeedbackPresenter s_instance;
+
+    private bool _ghostStrokeVisible;
+
+    /// <summary>
+    /// True while the correct-form ghost stroke is actually drawn on screen (not during its lead-in
+    /// delay).
+    ///
+    /// <para>
+    /// Exists for <c>FirstDrawGuidePresenter</c>, which paints its trace guide into the same screen
+    /// rect. A sloppy draw can start a correction replay while a first-draw guide is still up, and
+    /// two translucent glyph outlines stacked over each other read as one malformed glyph. The guide
+    /// is the one that yields — it is ambient and re-showable, while this replay is a direct answer
+    /// to something the player just did and gets one chance to be seen.
+    /// </para>
+    /// </summary>
+    public static bool IsGhostStrokeReplayActive =>
+        s_instance != null && s_instance._ghostStrokeVisible;
+
     // Set when a drawing was accepted below the global default, cleared when the correction it owes
     // has been scheduled. Latched rather than acted on immediately because the correction belongs to
     // the kill, and the kill is not known until the text relation arrives.
@@ -172,10 +194,12 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
         HideOverlay(_flightGlyph);
         HideOverlay(_missGlyph);
         HideOverlay(_ghostStrokeOverlay);
+        _ghostStrokeVisible = false;
     }
 
     private void OnEnable()
     {
+        s_instance = this;
         DrawFeedbackSignals.OnAccuracyResolved += HandleAccuracyResolved;
         DrawFeedbackSignals.OnTextRelationResolved += HandleTextRelationResolved;
         EventBus.OnDrawingStarted += HandleDrawingStarted;
@@ -183,6 +207,13 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
 
     private void OnDisable()
     {
+        if (s_instance == this)
+            s_instance = null;
+
+        // Coroutines die with the component without running their tails, so the overlay's
+        // visibility has to be retracted by hand or anything waiting on it waits forever.
+        _ghostStrokeVisible = false;
+
         DrawFeedbackSignals.OnAccuracyResolved -= HandleAccuracyResolved;
         DrawFeedbackSignals.OnTextRelationResolved -= HandleTextRelationResolved;
         EventBus.OnDrawingStarted -= HandleDrawingStarted;
@@ -520,7 +551,12 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
             return;
 
         if (_replayRoutine != null)
+        {
+            // StopCoroutine does not run the routine's tail, so the flag it owns is cleared here.
             StopCoroutine(_replayRoutine);
+            _ghostStrokeVisible = false;
+        }
+
         _replayRoutine = StartCoroutine(ReplayForm(sprite, worldPoint, delaySeconds));
     }
 
@@ -541,6 +577,9 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
 
         _ghostStrokeOverlay.sprite = sprite;
         _ghostStrokeOverlay.enabled = true;
+        // Raised only now, not before the delay above: until the overlay is on screen there is
+        // nothing for anyone to make room for.
+        _ghostStrokeVisible = true;
         TryPlaceOverWorldPoint(_ghostStrokeOverlay.rectTransform, worldPoint);
 
         bool wipes = _ghostStrokeOverlay.type == Image.Type.Filled;
@@ -561,6 +600,7 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
         }
 
         HideOverlay(_ghostStrokeOverlay);
+        _ghostStrokeVisible = false;
         _replayRoutine = null;
     }
 

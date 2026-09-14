@@ -30,10 +30,20 @@ using UnityEngine.SceneManagement;
 /// <c>IntroductionOutcome.IntroduceAndSuppress</c> — the default for every type, and what
 /// <see cref="SetSuppressedForIntroductionSpawn"/> switches on — the ability is inert for that
 /// spawn: the card states it, the clue stays readable, and a later spawn arms it. Under
-/// <c>IntroductionOutcome.IntroduceAndArm</c>, which Level 1's <c>AboLesson</c> authors for Abo, the
-/// inversion applies: the ash is NOT suppressed and is expected to arm <i>during</i> the
-/// introduction, because beat 2 of the eight-beat lesson exists to show the ability landing before
-/// the enemy is named. <c>DeferAndSuppress</c> suppresses like the first case.
+/// <c>IntroductionOutcome.IntroduceAndArm</c> the inversion applies: the ash is NOT suppressed and
+/// is expected to arm <i>during</i> the introduction, because beat 2 of the eight-beat lesson exists
+/// to show the ability landing before the enemy is named. <c>DeferAndSuppress</c> suppresses like
+/// the first case.
+///
+/// <b>No shipped level currently authors that inversion for Abo.</b> Level 1's lesson moved to
+/// Iligaw (<c>IligawLesson</c>, waiting on <see cref="MirrorDecoyController"/>): a mirror copy reads
+/// cold, where the ash needs a restored slot to degrade before it can be seen at all. Abo still
+/// spawns on Level 1 and the ash still behaves exactly as described here — he simply gets the
+/// standard four-step card rather than the eight-beat lesson, so in practice this component takes
+/// the <c>IntroduceAndSuppress</c> branch. The arm branch is live machinery, not dead code: it is
+/// what any future ash-carrying lesson would use, and <c>Level1LessonTests</c> still exercises it
+/// through an Abo-shaped lesson on purpose, as the evidence that beat 2's wait is not hardcoded to
+/// one ability.
 /// </para>
 ///
 /// <para>
@@ -84,10 +94,12 @@ public sealed class AshFirstSlotController : MonoBehaviour, IIntroducibleAbility
     [Tooltip("Seconds this spawn must have been on screen before the ash may arm. Keeps the gust "
              + "from firing simultaneously with the Abo's own entrance, where the player would "
              + "read the two as one event. 1.5 s per the Level 1 design. NOTE: accrued on SCALED "
-             + "time (see Tick), so under the introduction beat's 0.15 time scale this is about "
-             + "ten wall-clock seconds. EnemyIntroductionBeat.PlayAbilityBeat waits on the armed "
-             + "flag rather than on a duration precisely because of that; raising this raises how "
-             + "long beat 2 holds, and must stay under _abilityBeatArmTimeoutSeconds there.")]
+             + "time (see Tick), so under an introduction beat's 0.15 time scale this is about ten "
+             + "wall-clock seconds. EnemyIntroductionBeat.PlayAbilityBeat waits on the armed flag "
+             + "rather than on a duration precisely because of that. This only paces a lesson's "
+             + "beat 2 if a lesson is ever authored on an ash-carrying enemy — Level 1's is on "
+             + "Iligaw's mirror copy, which has no delay of its own — and if one is, raising this "
+             + "raises how long beat 2 holds and must stay under _abilityBeatArmTimeoutSeconds.")]
     [SerializeField, Min(0f)] private float _armDelaySeconds = 1.5f;
 
     [Tooltip("How many target-text slots must already be filled before the ash may arm. At least "
@@ -119,6 +131,15 @@ public sealed class AshFirstSlotController : MonoBehaviour, IIntroducibleAbility
 
     /// <summary>True while this spawn is the type's introduction spawn and must stay inert.</summary>
     public bool IsSuppressedForIntroductionSpawn => _suppressedForIntroductionSpawn;
+
+    /// <summary>
+    /// <see cref="IIntroducibleAbility.CanFireThisSpawn"/>. Always true: the ash spawns nothing and
+    /// borrows nothing — it masks a slot that is already on screen, entirely from inside this
+    /// component. Everything that decides whether it fires (the arm delay, the needed slot's
+    /// position, the clue's state) is re-evaluated every <see cref="Tick"/> and can turn true on a
+    /// later frame, so all of it belongs to the wait rather than to this precondition.
+    /// </summary>
+    public bool CanFireThisSpawn => true;
 
     /// <summary>Seconds since this spawn's ability was enabled, driven by <see cref="Tick"/>.</summary>
     public float TimeOnScreenSeconds => _timeOnScreenSeconds;
@@ -271,8 +292,8 @@ public sealed class AshFirstSlotController : MonoBehaviour, IIntroducibleAbility
             // 1.5 seconds of gameplay the rest of the pacing system is measured in.
             //
             // The cost of that choice is paid in EnemyIntroductionBeat.PlayAbilityBeat: every wait
-            // in the lesson is REALTIME while this one is scaled, so at the Level 1 introduction
-            // time scale of 0.15 the 1.5 s below takes roughly ten wall-clock seconds to accrue.
+            // in the lesson is REALTIME while this one is scaled, so at an introduction time scale
+            // of 0.15 (Level 1's) the 1.5 s below takes roughly ten wall-clock seconds to accrue.
             // That beat therefore waits on IsArmedThisSpawn instead of on a fixed hold. Do not
             // switch this to unscaled time to "fix" that — it would decouple the ash from the
             // pacing clock the rest of the spawn system shares.

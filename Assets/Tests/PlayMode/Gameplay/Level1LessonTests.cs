@@ -48,6 +48,11 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         public void SetUp()
         {
             ReleaseSingleton<GameManager>();
+            // Beat 2 now asks IIntroducibleAbility.CanFireThisSpawn before it waits, and a mirror
+            // copy's only source is EnemyPool — so whether one exists decides which branch the beat
+            // takes. Start every test from "no pool", explicitly, rather than inheriting whatever an
+            // earlier fixture left in the scene.
+            ReleaseSingleton<EnemyPool>();
             TutorialRuntimeState.Clear();
             EnemyIntroductionProgress.ResetForTests();
             AshFirstSlotController.ResetRegistryForTests();
@@ -104,6 +109,10 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             _objectsToDestroy.Clear();
 
             ClearSingletonInstance<GameManager>();
+            // The stand-in pool below is deliberately never woken, so Singleton.OnDestroy never runs
+            // for it and destroying its GameObject does not clear the static. Clear it by hand, or
+            // the next fixture in this PlayMode run inherits a dangling EnemyPool.Instance.
+            ClearSingletonInstance<EnemyPool>();
             TutorialRuntimeState.Clear();
             EnemyIntroductionProgress.ResetForTests();
             AshFirstSlotController.ResetRegistryForTests();
@@ -441,8 +450,13 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         /// </para>
         ///
         /// <para>
-        /// No <c>EnemyPool</c> exists in this fixture, so the copy genuinely cannot be placed and
-        /// <c>HasFiredThisSpawn</c> stays false on its own — the un-fired half needs no faking. The
+        /// The pool has to be present for this test to mean anything. Beat 2 asks
+        /// <c>CanFireThisSpawn</c> BEFORE it waits, and a mirror copy's only source is
+        /// <c>EnemyPool</c> — so with no pool the beat takes its fast fallback and never reaches the
+        /// wait at all, which is correct behaviour but a different test (see
+        /// <see cref="Beat2_FallsBackImmediately_WhenTheMirrorCopyHasNoPoolToComeFrom"/>). With the
+        /// dependency in place, the copy is held off by <c>_spawnAttempted</c> — Update has already
+        /// had its one look and placed nothing — which is exactly the state the wait exists for. The
         /// latch is then set directly to stand in for the copy landing on the field.
         /// </para>
         /// </summary>
@@ -450,6 +464,8 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         public IEnumerator Beat2_WaitsForAMirrorDecoyLesson_NotOnlyAnAshOne()
         {
             yield return null;
+
+            GiveTheDecoyAPoolToDrawFrom();
 
             BaybayinCharacterSO eiChar = MakeCharacter("EI", "symbol.test.beat2c.ei");
             BaybayinCharacterSO naChar = MakeCharacter("NA", "symbol.test.beat2c.na");
@@ -482,6 +498,14 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 + "silently degrades to a fixed hold for every Iligaw lesson.");
             Assert.IsFalse(((IIntroducibleAbility)decoy).HasFiredThisSpawn,
                 "setup: no copy has been placed yet.");
+            Assert.IsTrue(((IIntroducibleAbility)decoy).CanFireThisSpawn,
+                "setup: the pool must be reachable, or beat 2 takes its fast fallback and this "
+                + "test proves nothing about the wait.");
+
+            // Hold the copy off without removing the dependency: _spawnAttempted is the state
+            // MirrorDecoyController.Update leaves behind when it has looked once and placed nothing.
+            // Set before the first yield, so it lands ahead of that Update.
+            SetPrivateField(decoy, "_spawnAttempted", true);
 
             // Enemy.Initialize already started the beat (it calls BeginIntroduction itself once
             // the spawn is an introduction spawn), so there is nothing further to kick off here.
@@ -512,6 +536,84 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Assert.IsTrue(cardAppeared,
                 "Once the copy is on the field, beat 2 must release and beats 5-6 must name the "
                 + "enemy. A beat that never releases would hang the lesson behind the ability.");
+        }
+
+        /// <summary>
+        /// The other half of the test above: the same Iligaw lesson with the copy's dependency
+        /// MISSING must fail fast rather than slowly.
+        ///
+        /// <para>
+        /// A mirror copy comes from <c>EnemyPool</c> and nowhere else. On a level with no pool the
+        /// copy can never be placed, <c>HasFiredThisSpawn</c> can never turn true, and a beat that
+        /// simply waited would spend the whole <c>_abilityBeatArmTimeoutSeconds</c> — fifteen
+        /// seconds of a halted field under a dimmed screen with no card up — before continuing
+        /// anyway. Unlike an ability whose own trigger has not come round yet, a missing dependency
+        /// cannot arrive mid-beat, so there is nothing to wait for: <c>CanFireThisSpawn</c> is asked
+        /// once, up front, and the beat drops to its authored hold and warns.
+        /// </para>
+        ///
+        /// <para>
+        /// This is the ash's failure mode made worse by the retarget, so it is pinned here rather
+        /// than left to a reviewer's reading. The three-second deadline is far inside the fifteen:
+        /// a beat that regressed to waiting would still be dark when it expires.
+        /// </para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Beat2_FallsBackImmediately_WhenTheMirrorCopyHasNoPoolToComeFrom()
+        {
+            yield return null;
+
+            // Deliberately NO GiveTheDecoyAPoolToDrawFrom() — SetUp already released the singleton,
+            // so the dependency is genuinely absent rather than mocked away.
+            Assert.IsNull(EnemyPool.Instance,
+                "setup: this test is about a level with no pool, so there must not be one.");
+
+            BaybayinCharacterSO eiChar = MakeCharacter("EI", "symbol.test.beat2f.ei");
+            BaybayinCharacterSO naChar = MakeCharacter("NA", "symbol.test.beat2f.na");
+
+            EnemyDataSO iligawData = CreateEnemyData(
+                "test_iligaw_beat2f", "Iligaw", eiChar, spawnsMirrorDecoy: true);
+            EnemyLessonSO iligawLesson = CreateIligawShapedLesson(iligawData);
+            iligawLesson.abilityBeatSeconds = 0.05f;
+
+            FocusWordDefinition word = CreateWord(
+                "level.test.beat2f.ina", "ina", "INA", eiChar, naChar);
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO> { iligawData }, new[] { iligawLesson },
+                new List<FocusWordDefinition> { word });
+            _gameManager.SetLevel(config);
+
+            SetPrivateField(_presenter, "_level", config);
+            _presenter.RestorationState.Configure(config.focusWords);
+
+            Enemy iligaw = CreateEnemyShell("Iligaw_Beat2f");
+            Assert.IsTrue(iligaw.Initialize(iligawData));
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndArm, iligaw.IntroductionOutcome,
+                "setup: the lesson still arms the ability; only its dependency is missing.");
+
+            MirrorDecoyController decoy = iligaw.GetComponent<MirrorDecoyController>();
+            Assert.IsNotNull(decoy);
+            Assert.IsFalse(((IIntroducibleAbility)decoy).CanFireThisSpawn,
+                "setup: with no EnemyPool the copy has nowhere to come from, which is the whole "
+                + "premise of this test.");
+
+            // The beat also warns on this path, but that is NOT asserted here. DebugLogger.LogWarning
+            // carries [Conditional("ENABLE_SALINLAHI_LOG")], and ProjectSettings defines that symbol
+            // for Standalone only — so whether the call exists at all depends on the active build
+            // target, and a LogAssert.Expect would fail this test on Android or iOS while the beat
+            // behaved perfectly. The timing below is the part that holds on every target.
+            bool cardAppeared = false;
+            float deadline = Time.realtimeSinceStartup + 3f;
+            while (!cardAppeared && Time.realtimeSinceStartup < deadline)
+            {
+                yield return null;
+                cardAppeared = _cardGroup.alpha > 0.99f;
+            }
+
+            Assert.IsTrue(cardAppeared,
+                "Beat 2 must drop to its fixed hold at once when the ability's dependency is "
+                + "missing. Waiting spends the full fifteen-second arm timeout behind a dimmed, "
+                + "halted screen for a copy that can never appear, and then continues anyway.");
         }
 
         // ------------------------------------------------------------------------------------
@@ -839,6 +941,28 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             var go = new GameObject(name);
             _objectsToDestroy.Add(go);
             return go;
+        }
+
+        /// <summary>
+        /// Satisfies <c>MirrorDecoyController.CanFireThisSpawn</c>, which asks only whether an
+        /// <c>EnemyPool</c> exists at all.
+        ///
+        /// <para>
+        /// Built on a GameObject that is never activated, so <c>EnemyPool.Awake</c> never runs — a
+        /// woken pool with no prefab assigned logs an error, which NUnit would fail the test on, and
+        /// none of these tests wants a pool that can actually hand out enemies. The singleton field
+        /// is set directly instead, which is exactly the fact under test: the dependency is
+        /// reachable. <c>TearDown</c> clears it.
+        /// </para>
+        /// </summary>
+        private EnemyPool GiveTheDecoyAPoolToDrawFrom()
+        {
+            GameObject go = CreateTracked("EnemyPool_Level1LessonTests");
+            go.SetActive(false);
+            EnemyPool pool = go.AddComponent<EnemyPool>();
+            SetSingletonInstance(pool);
+            Assert.IsNotNull(EnemyPool.Instance, "setup: the decoy's dependency must be reachable.");
+            return pool;
         }
 
         private static bool IsBadgeVisible(SpriteRenderer badgeRenderer) =>

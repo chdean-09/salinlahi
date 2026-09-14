@@ -58,6 +58,21 @@ public sealed class MirrorDecoyController : MonoBehaviour, IIntroducibleAbility
     public bool IsSuppressedForIntroductionSpawn => _suppressedForIntroductionSpawn;
 
     /// <summary>
+    /// <see cref="IIntroducibleAbility.CanFireThisSpawn"/>. Unlike the ash — which is a change this
+    /// component makes to things already on screen — the copy is a second Enemy, and the only place
+    /// one comes from is <see cref="EnemyPool"/>. With no pool there is nothing to place and
+    /// <see cref="HasFiredThisSpawn"/> can never become true, so a lesson's beat 2 would sit out its
+    /// whole arm timeout behind a dimmed, halted field waiting for a copy that cannot exist.
+    ///
+    /// <para>
+    /// Deliberately only the pool. <c>Update</c>'s other conditions — the source still settling, no
+    /// character assigned yet, the pool declining to hand one out — are all states a later frame can
+    /// leave, so they are the wait's business, not this one's.
+    /// </para>
+    /// </summary>
+    public bool CanFireThisSpawn => EnemyPool.Instance != null;
+
+    /// <summary>
     /// Makes this ability inert for one spawn — the spawn on which the enemy's introduction card
     /// plays — and arms it again on every later spawn of the type.
     ///

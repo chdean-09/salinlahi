@@ -481,8 +481,8 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         yield return RampTimeScale(Time.timeScale, _introductionTimeScale, _haltRampSeconds);
 
         // Beat 2 — Ability. The ability is armed by IntroduceAndArm; this waits for it to actually
-        // FIRE and then holds so the player can watch the clue crumble. See PlayAbilityBeat for why
-        // a fixed hold is not enough.
+        // FIRE and then holds so the player can watch what it did — on Level 1, one Iligaw becoming
+        // two. See PlayAbilityBeat for why a fixed hold is not enough.
         yield return PlayAbilityBeat(enemy, lesson);
 
         // Beats 3 and 4 — React, then the rule. Once per campaign.
@@ -535,23 +535,27 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// <see cref="EnemyLessonSO.abilityBeatSeconds"/> so the change it made is watchable.
     ///
     /// <para>
-    /// <b>COUPLING — the other end of this is <c>AshFirstSlotController._armDelaySeconds</c>
-    /// (1.5s).</b> That delay accrues on SCALED <c>Time.deltaTime</c> in
-    /// <c>AshFirstSlotController.Tick</c>, deliberately, so "on screen long enough" means the same
-    /// seconds the spawn schedule is paced in. Every wait in this beat is REALTIME, and beat 1 has
-    /// just pulled <c>Time.timeScale</c> down to <see cref="_introductionTimeScale"/> (0.15 on
-    /// Level 1). A fixed realtime hold therefore buys almost no scaled time: spawn settle, halt ramp
-    /// and a 2.5s hold together spend roughly 0.8 scaled seconds against the 1.5 the ash needs, so
-    /// the gust would land four to six realtime seconds later — during beats 5-6, with the card
-    /// already on screen. That inverts the premise the whole eight-beat design rests on, which is
-    /// that the ability fires UNPROMPTED, before the enemy is named or explained.
+    /// <b>Why a fixed hold cannot do this job, and why the two shipped abilities need it for
+    /// opposite reasons.</b> Every wait in this beat is REALTIME, and beat 1 has just pulled
+    /// <c>Time.timeScale</c> down to <see cref="_introductionTimeScale"/> (0.15 on Level 1).
+    /// <c>AshFirstSlotController._armDelaySeconds</c> (1.5s) accrues on SCALED
+    /// <c>Time.deltaTime</c> in <c>AshFirstSlotController.Tick</c>, deliberately, so a fixed
+    /// realtime hold buys it almost no scaled time and the gust lands four to six realtime seconds
+    /// LATE — during beats 5-6, with the card already up. <see cref="MirrorDecoyController"/>, which
+    /// is what Level 1's shipped lesson actually waits on, has the opposite shape: it has no delay
+    /// at all and places the copy on its first <c>Update</c>, so a fixed hold long enough for the
+    /// ash would leave the split sitting on a frozen screen for seconds after the player has already
+    /// read it. Waiting on the FACT and then holding
+    /// <see cref="EnemyLessonSO.abilityBeatSeconds"/> from that moment is the one rule that paces
+    /// both: the hold always measures time the player has actually had to look at the change.
     /// </para>
     ///
     /// <para>
-    /// Waiting on the fact rather than on a duration is robust to either number being retuned. The
-    /// realtime timeout is the safety valve: an ability that cannot arm on this spawn (its own
-    /// trigger conditions unmet, a missing controller, a level with no clue) must not hang the
-    /// lesson, so the beat gives up and proceeds exactly as the fixed hold used to.
+    /// Waiting on the fact rather than on a duration is also robust to either number being retuned.
+    /// The realtime timeout is the safety valve: an ability whose own trigger conditions go unmet on
+    /// this spawn must not hang the lesson, so the beat gives up and proceeds exactly as the fixed
+    /// hold used to. A dependency that is missing outright is caught earlier and never reaches the
+    /// wait — see <see cref="IIntroducibleAbility.CanFireThisSpawn"/>.
     /// </para>
     ///
     /// <para>
@@ -575,17 +579,25 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
 
         IIntroducibleAbility ability = ResolveIntroducibleAbility(enemy);
 
-        // No observable ability on this spawn: fall back to the authored hold, which is what the
-        // beat did before the wait existed. Worth saying out loud, because the lesson asked for the
-        // ability to be armed and there is nothing here that could fire.
-        if (ability == null || ability.IsSuppressedForIntroductionSpawn)
+        // No ability that COULD fire on this spawn: fall back to the authored hold immediately,
+        // which is what the beat did before the wait existed.
+        //
+        // CanFireThisSpawn is checked here, up front, rather than being left to the wait below.
+        // A missing structural dependency — Iligaw's copy comes from EnemyPool, and a level with no
+        // pool has nowhere to get one — does not arrive part-way through a beat, so waiting on it
+        // would spend the entire _abilityBeatArmTimeoutSeconds behind a dimmed, halted field with no
+        // card up and then continue anyway. Asking before the loop turns that into a fast failure.
+        // Worth saying out loud in every case, because the lesson asked for the ability to be armed
+        // and there is nothing here that can fire.
+        if (ability == null || ability.IsSuppressedForIntroductionSpawn || !ability.CanFireThisSpawn)
         {
             DebugLogger.LogWarning(
                 $"EnemyIntroductionBeat: beat 2 found no armed IIntroducibleAbility on "
                 + $"'{DescribeEnemy(enemy)}', whose lesson sets armAbilityOnIntroduction. The beat "
                 + "falls back to a fixed hold, so the lesson may name the enemy before the player "
                 + "has seen it do anything. Check that its signature ability component implements "
-                + "IIntroducibleAbility and is enabled on this spawn.");
+                + "IIntroducibleAbility, is enabled on this spawn, and has everything it needs to "
+                + "fire (a mirror decoy needs an EnemyPool to take its copy from).");
             yield return WaitRealtime(lesson.abilityBeatSeconds);
             yield break;
         }

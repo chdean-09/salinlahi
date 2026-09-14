@@ -127,6 +127,23 @@ public sealed class FirstDrawGuidePresenter : MonoBehaviour
             while (!drawn && elapsed < _timeoutSeconds)
             {
                 elapsed += Time.unscaledDeltaTime;
+
+                // Yield the rect to a correction replay, then take it back.
+                //
+                // DrawFeedbackPresenter's ghost stroke paints the ideal form of the glyph the
+                // player just got wrong, in the same place and at nearly the same alpha as this
+                // guide. Stacked, the two translucent outlines read as one malformed glyph — which
+                // is the worst possible thing to show someone who has just drawn one. The guide is
+                // the one that gives way: it is ambient and can simply come back, while the replay
+                // is a direct answer to something the player did a moment ago and gets one chance
+                // to be seen.
+                //
+                // The clock keeps running underneath, deliberately. Hiding is not pausing: a guide
+                // whose eight seconds elapsed behind a replay has had its moment and should close
+                // on time rather than reappear stale. If time is left, the next frame shows it
+                // again.
+                _guideImage.enabled = !DrawFeedbackPresenter.IsGhostStrokeReplayActive;
+
                 yield return null;
             }
         }

@@ -20,10 +20,10 @@
 /// </para>
 ///
 /// <para>
-/// <b>Both members are per SPAWN, never per shell.</b> Enemies are pooled: a recycled shell must
+/// <b>Every member is per SPAWN, never per shell.</b> Enemies are pooled: a recycled shell must
 /// come back reporting false from <see cref="HasFiredThisSpawn"/>, or the next lesson would see a
 /// previous occupant's ability as already fired and skip its wait entirely. Implementations clear
-/// both in <c>OnEnable</c>.
+/// their per-spawn state in <c>OnEnable</c>.
 /// </para>
 /// </summary>
 public interface IIntroducibleAbility
@@ -41,4 +41,24 @@ public interface IIntroducibleAbility
     /// waiting on the ability must not wait at all.
     /// </summary>
     bool IsSuppressedForIntroductionSpawn { get; }
+
+    /// <summary>
+    /// True when every collaborator this ability needs in order to fire is actually present.
+    ///
+    /// <para>
+    /// Asked ONCE, BEFORE the wait begins, and it answers a different question from
+    /// <see cref="HasFiredThisSpawn"/>: not "has it fired yet" but "could it ever". A missing
+    /// dependency does not arrive part-way through a beat, so waiting on one spends the caller's
+    /// entire arm timeout — fifteen seconds of a dimmed, halted field with no card up — and then
+    /// continues anyway. Answering false lets the caller fall back to its fixed hold immediately
+    /// and warn, which turns a slow, silent failure into a fast, diagnosable one.
+    /// </para>
+    ///
+    /// <para>
+    /// Only structural prerequisites belong here. An ability's own firing conditions — a delay not
+    /// yet elapsed, a trigger not yet met — are re-evaluated every frame and are exactly what the
+    /// wait is for, so they must NOT make this false.
+    /// </para>
+    /// </summary>
+    bool CanFireThisSpawn { get; }
 }
