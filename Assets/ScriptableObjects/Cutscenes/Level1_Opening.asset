@@ -12,44 +12,28 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 70f95914c0af94d7bbb1e9ce7cf6e6a8, type: 3}
   m_Name: Level1_Opening
   m_EditorClassIdentifier: Salinlahi.Runtime::CutsceneSO
-  cutsceneId: 
+  cutsceneId: cutscene.ugat.01.opening
   panels:
-  - image: {fileID: -8046377105674812886, guid: 7b21987c51a4b4657bd294f7a6f50c65, type: 3}
-    text: "It was an ordinary night.\nThe streets were quiet.\nOnly the sound of
-      Juan\u2019s footsteps echoed through the old city.\nBut something beneath the
-      stones was waiting."
+  - image: {fileID: 21300000, guid: f80286a6fc7643e8bbae8dd715fe5a4d, type: 3}
+    text: "Juan comes home to a house that is still alive.\nThe fire is warm, the
+      pot is steaming, a mat sits half-woven with the needle beside it.\nBut no one
+      is there, and he cannot remember the faces of the people who should be."
     transitionIn: 0
     transitionDuration: 0
     typewriterSpeed: 0
-  - image: {fileID: 4400984820199472484, guid: f43f76612847743438af6831c098a048, type: 3}
-    text: "A strange golden light pulsed from the ground.\nFaint. Alive. Ancient.\nSomething
-      was buried beneath the street.\nAnd somehow\u2026 it was calling to him."
+  - image: {fileID: 21300000, guid: c76c9bc84db94e168cc7ebed0afc85e9, type: 3}
+    text: "On the far mat the Living Scroll lies open and glowing, and every name
+      his family had is written on it.\nThe characters are lifting off the page one
+      by one and going grey.\nSomething is erasing them, and when a name is gone,
+      so is the person."
     transitionIn: 0
     transitionDuration: 0
     typewriterSpeed: 0
-  - image: {fileID: 4049355002215072942, guid: a4834c0f76142455ebd0554b3e000567, type: 3}
-    text: "Beneath the dust lay an ancient scroll.\nUntouched by time.\nWarm to the
-      touch.\nThe moment Juan lifted it\u2026\nthe light awakened."
-    transitionIn: 0
-    transitionDuration: 0
-    typewriterSpeed: 0
-  - image: {fileID: -7210448134734164589, guid: 93717dc45de8f4b0fae04a78258c1537, type: 3}
-    text: "Symbols of light rose into the air \u2014\nletters Juan had never seen
-      before.\nYet deep inside\u2026\n They felt familiar.\nLike a forgotten memory
-      returning home."
-    transitionIn: 0
-    transitionDuration: 0
-    typewriterSpeed: 0
-  - image: {fileID: -22084241626377286, guid: 6d3c194e59e1e4d348002ef9e6834324, type: 3}
-    text: "Then the voices came.\n\u201CThe language of your ancestors is fading.\u201D\n\u201CThree
-      eras tried to erase it.\u201D\n\u201CAnd now\u2026 only one remains to bring
-      it back.\u201D\nThe chamber fell silent.\nThe scroll glowed brighter."
-    transitionIn: 0
-    transitionDuration: 0
-    typewriterSpeed: 0
-  - image: {fileID: -7714356923733013676, guid: 35d4a26b12c7645a39ad6ecf04b3ace1, type: 3}
-    text: "One final message burned across the parchment.\n\u201CYou are Salinlahi
-      \u2014 the inheritor. The script is not dead. Reclaim it.\u201D"
+  - image: {fileID: 21300000, guid: 04601a95f2434a6da999866ab9a6d4be, type: 3}
+    text: "Juan reaches for the Scroll and it answers him \u2014 he is the Salinlahi,
+      the one who inherits what the generations before him left behind.\nOne faint
+      letter waits on the page for a hand to trace it.\nHe is the last person who
+      can still draw them back."
     transitionIn: 0
     transitionDuration: 0
     typewriterSpeed: 0
