@@ -220,6 +220,12 @@ public class WaveSpawner : MonoBehaviour
 
         for (int i = firstSpawnIndex; i < enemyCount; i++)
         {
+            // The enemy lesson owns the screen for the length of its beats and hands time and
+            // movement back part-way through, on purpose, so the draw it asks for is real combat.
+            // The schedule must not keep arriving underneath that. Held HERE, before the assignment
+            // is consumed, so the paused wave resumes on the symbol it was going to spawn anyway.
+            yield return WaitWhileIntroductionLessonHoldsSchedule();
+
             EnemyDataSO data = spawnOrder[i];
             BaybayinCharacterSO character;
             SpawnAssignment assignment = SpawnAssignment.None;
@@ -256,6 +262,31 @@ public class WaveSpawner : MonoBehaviour
             if (i < enemyCount - 1)
                 yield return new WaitForSeconds(interval);
         }
+    }
+
+    /// <summary>
+    /// Holds the wave's spawn schedule while an enemy-introduction lesson is on screen.
+    ///
+    /// <para>
+    /// <b>Why this exists.</b> Level 1's lesson ends by asking a first-time player to draw a glyph
+    /// they have never drawn, at normal speed, with the field live — measured at seventeen seconds
+    /// from prompt to defeat, five runs out of five. The player was not losing to the enemy the
+    /// lesson had halted in front of them; they were losing to the ones the spawn clock kept
+    /// delivering while they read. Pausing the clock removes the escalation without removing the
+    /// stakes: everything already on the field keeps walking and can still reach the shrine, and
+    /// player input is never touched, which is the beat's own standing promise.
+    /// </para>
+    ///
+    /// <para>
+    /// Unscaled, so the hold behaves the same whether the lesson has time slowed or handed back.
+    /// The wait is bounded by the beat, which clears its flag on every exit path including an abort
+    /// — there is no path here that can outlive it.
+    /// </para>
+    /// </summary>
+    private static IEnumerator WaitWhileIntroductionLessonHoldsSchedule()
+    {
+        while (EnemyIntroductionBeat.IsHoldingSpawnSchedule)
+            yield return null;
     }
 
     /// <summary>

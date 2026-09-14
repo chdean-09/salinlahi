@@ -1070,10 +1070,21 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         _wordRestoredText.text = message;
         _wordRestoredText.gameObject.SetActive(true);
 
-        // A disabled presenter cannot run a coroutine. Leaving the label up is the harmless
-        // outcome: OnDisable tears the runtime label down anyway.
+        // One panel, one voice. The cue label and the standing "DRAW THE GLOWING SYMBOL TO DEFEND"
+        // instruction occupy overlapping bands of the same clue panel, so on a successful draw
+        // "Restored: INA" printed straight through "DEFEND" and neither could be read. The
+        // instruction is the one that has nothing to say at that moment — the player has just done
+        // the thing it asks for — so it stands down for the length of the cue and comes back with
+        // it. See HideWordRestoredCueAfterDelay.
+        SetClueInstructionVisible(false);
+
+        // A disabled presenter cannot run a coroutine, so nothing would ever bring the instruction
+        // back. Restore it now and leave the cue up: OnDisable tears the runtime label down anyway.
         if (!isActiveAndEnabled)
+        {
+            SetClueInstructionVisible(true);
             return;
+        }
 
         if (_wordRestoredRoutine != null)
             StopCoroutine(_wordRestoredRoutine);
@@ -1098,8 +1109,51 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         if (_wordRestoredText != null)
             _wordRestoredText.gameObject.SetActive(false);
 
+        SetClueInstructionVisible(true);
         _wordRestoredRoutine = null;
     }
+
+    /// <summary>
+    /// Shows or hides the clue panel's standing instruction line, wherever it came from: the
+    /// authored HUD calls it <c>DrawGlowingSymbolInstruction</c> and
+    /// <see cref="EnsureRuntimePanel"/>'s no-wiring fallback calls it
+    /// <c>[Runtime] ActiveClueInstruction</c>. Matched on the shared "Instruction" in the name
+    /// rather than on a serialized reference, so this works on a HUD authored before the cue
+    /// existed and needs nobody to rewire a scene. A panel with no such child is simply left alone.
+    /// </summary>
+    private void SetClueInstructionVisible(bool visible)
+    {
+        TextMeshProUGUI instruction = ResolveClueInstruction();
+        if (instruction != null && instruction.gameObject.activeSelf != visible)
+            instruction.gameObject.SetActive(visible);
+    }
+
+    private TextMeshProUGUI ResolveClueInstruction()
+    {
+        if (_clueInstructionText != null)
+            return _clueInstructionText;
+
+        if (_cluePanelRoot == null)
+            return null;
+
+        TextMeshProUGUI[] candidates =
+            _cluePanelRoot.GetComponentsInChildren<TextMeshProUGUI>(includeInactive: true);
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            if (candidates[i] == null || candidates[i] == _clueText)
+                continue;
+
+            if (candidates[i].name.IndexOf("Instruction", System.StringComparison.OrdinalIgnoreCase) < 0)
+                continue;
+
+            _clueInstructionText = candidates[i];
+            return _clueInstructionText;
+        }
+
+        return null;
+    }
+
+    private TextMeshProUGUI _clueInstructionText;
 
     /// <summary>
     /// Built independently of EnsureRuntimePanel so the cue also reaches an authored HUD that

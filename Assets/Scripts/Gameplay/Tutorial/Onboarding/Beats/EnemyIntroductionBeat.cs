@@ -80,6 +80,20 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     [Tooltip("Seconds (wall-clock) waited after the enemy is positioned before the halt begins, so the card never lands on a shell still parked at its off-screen pool position.")]
     [SerializeField] private float _spawnSettleSeconds = 0.1f;
 
+    [Header("Step 0 — Walk into frame")]
+    [Tooltip("Seconds (wall-clock) the beat will let the introduced enemy keep walking until it is "
+             + "fully inside the camera's view before halting it. The spawner releases enemies ABOVE "
+             + "the visible play area, so halting on the settle frame alone freezes the subject "
+             + "off-screen and the whole lesson plays against an empty field. Safety valve only: on "
+             + "timeout the beat halts where the enemy stands and warns, rather than hanging.")]
+    [SerializeField, Min(0f)] private float _onScreenWaitTimeoutSeconds = 6f;
+
+    [Tooltip("World units of clearance required between the introduced enemy's own bounds (body AND "
+             + "glyph badge, counted even while the badge is hidden for a late reveal) and the edge "
+             + "of the camera's view before the halt begins. Buys the vignette and the beat-7 badge "
+             + "reveal room to render without clipping the screen edge.")]
+    [SerializeField, Min(0f)] private float _onScreenMarginWorld = 0.35f;
+
     [Header("Lesson — Beat 2 (Ability)")]
     [Tooltip("Safety valve only. Seconds (wall-clock) beat 2 will wait for the introduced enemy's "
              + "ability to actually fire before giving up and continuing. Generous on purpose: "
@@ -104,12 +118,43 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     private Enemy _claimedEnemy;
     private Coroutine _routine;
     private bool _isPlaying;
+    private bool _routineActive;
     private bool _timeScaleTaken;
     private float _restoreTimeScale = 1f;
     private TutorialSpotlightOverlay _runtimeVignette;
 
-    /// <summary>True while a card is on screen. Diagnostic and test seam.</summary>
+    /// <summary>
+    /// True while a card or lesson is on screen. Diagnostic and test seam.
+    ///
+    /// <para>
+    /// <b>This is NOT the coroutine's lifetime, and the difference is a bug that shipped.</b> The
+    /// run ends with a banner that deliberately outlives the lesson — it stays for as long as the
+    /// introduced enemy is on the field, which can be another twenty seconds of ordinary combat.
+    /// While that wait was inside the flag, the game still believed it was mid-lesson long after
+    /// the last beat had visibly finished, and everything gated on this flag (the harness's own
+    /// input restriction among them) stayed gated. The flag now falls the moment the last beat
+    /// ends; <see cref="_routineActive"/> is what keeps a second introduction from starting
+    /// underneath the banner.
+    /// </para>
+    /// </summary>
     public static bool IsPlaying => s_instance != null && s_instance._isPlaying;
+
+    /// <summary>
+    /// True while a lesson or card owns the screen and the wave schedule must not advance.
+    ///
+    /// <para>
+    /// <b>Why the schedule is held rather than the player made safe.</b> Beats 8 and 9 hand time
+    /// and movement back on purpose — the draw the lesson asks for is real combat against a real
+    /// enemy, and the beat's standing promise is that player INPUT is live throughout. Making the
+    /// player invulnerable would break that promise from the other side: the one draw the lesson
+    /// teaches would be the one draw that could not matter. What actually killed five runs out of
+    /// five was not the enemy on screen but the ones still ARRIVING behind it, on a spawn clock
+    /// that kept running through a seventeen-second reading-and-drawing exercise. Holding the
+    /// clock stops the field growing while the player is being taught, and changes nothing about
+    /// what the enemies already on it can do.
+    /// </para>
+    /// </summary>
+    public static bool IsHoldingSpawnSchedule => s_instance != null && s_instance._isPlaying;
 
     /// <summary>
     /// Resolves what this spawn does about its type's introduction.
@@ -257,6 +302,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         {
             claimedEnemy.GlyphBadge?.Show();
             ReleaseEnemy(claimedEnemy);
+            HoldIntroducibleAbility(claimedEnemy, held: false);
         }
 
         if (s_instance == this)
@@ -265,7 +311,10 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
 
     private bool TryClaim(Enemy enemy, EnemyDataSO data, EnemyLessonSO lesson)
     {
-        if (_isPlaying)
+        // _routineActive, not _isPlaying: the run keeps a banner up after its last beat, and a
+        // second introduction claimed under that banner would share Time.timeScale and the dim with
+        // a coroutine that is still going to restore both on its way out.
+        if (_routineActive)
             return false;
 
         // A claim that was accepted but never begun — the enemy was returned to the pool between
@@ -347,14 +396,35 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
 
     private void Begin(Enemy enemy)
     {
-        if (_claimedEnemy != enemy || _isPlaying)
+        if (_claimedEnemy != enemy || _routineActive)
             return;
+
+        // Applied HERE, synchronously, and not from inside the coroutine. Begin is called from
+        // Enemy.Initialize, which runs inside EnemyPool.Get — before the spawner has positioned
+        // this enemy and therefore before its components have had a single Update. A hold set after
+        // the coroutine's first yield is already too late: MirrorDecoyController places its copy on
+        // that very first Update, which is why the "one becomes two" moment used to happen one frame
+        // after the spawn, off-camera, ten seconds before the beat that exists to show it.
+        HoldIntroducibleAbility(enemy, held: true);
 
         _routine = StartCoroutine(PlayIntroduction(enemy));
     }
 
+    /// <summary>
+    /// Asks this spawn's signature ability to wait, or to stop waiting. Opt-in through
+    /// <see cref="IIntroductionHoldable"/> rather than through <see cref="IIntroducibleAbility"/>
+    /// itself: an ability with nothing to hold back — one whose effect is a change to things already
+    /// on screen rather than a new body arriving — simply does not implement it and is unaffected.
+    /// </summary>
+    private static void HoldIntroducibleAbility(Enemy enemy, bool held)
+    {
+        if (ResolveIntroducibleAbility(enemy) is IIntroductionHoldable holdable)
+            holdable.SetIntroductionHold(held);
+    }
+
     private IEnumerator PlayIntroduction(Enemy enemy)
     {
+        _routineActive = true;
         _isPlaying = true;
         EnemyDataSO data = enemy.Data;
         EnemyLessonSO lesson = ResolveLesson(data);
@@ -372,12 +442,32 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             if (!IsStillPresentable(enemy, data))
                 yield break;
 
+            // Step 0 — let it walk in. Settling only proves the spawner has finished POSITIONING the
+            // enemy; on a first spawn that position is above the top of the frame. See the field
+            // remarks on _onScreenWaitTimeoutSeconds.
+            //
+            // The condition is asked BEFORE the enumerator is built, not inside it: an enemy that is
+            // already framed must cost this beat nothing at all, not even the frame a nested
+            // coroutine spends completing. Beat 1's halt, vignette and time-scale drop are expected
+            // to be in place the instant Initialize returns.
+            if (NeedsToWalkIntoView(enemy))
+            {
+                yield return WaitUntilEnemyIsOnScreen(enemy, data);
+
+                if (!IsStillPresentable(enemy, data))
+                    yield break;
+            }
+
             yield return lesson != null
                 ? PlayLesson(enemy, data, lesson)
                 : PlayCard(enemy, data);
         }
         finally
         {
+            // Released on every exit path, including an abort before beat 2 ever ran: an ability
+            // left holding would be inert for the rest of this spawn's life with nothing coming to
+            // free it.
+            HoldIntroducibleAbility(enemy, held: false);
             // Every exit path — normal, aborted mid-card, or the coroutine stopped by a disable —
             // must hand back the enemy's movement and the two globals. Half the field frozen at 0.15
             // is not a recoverable state for a player. The glyph badge is restored here too, on every
@@ -387,10 +477,140 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             ReleaseEnemy(enemy);
             if (enemy != null) enemy.GlyphBadge?.Show();
             _isPlaying = false;
+            _routineActive = false;
             RaiseRosterGateIfComplete();
             _claimedEnemy = null;
             _routine = null;
         }
+    }
+
+    /// <summary>
+    /// Holds until the introduced enemy is fully inside the camera's view, or until the timeout.
+    ///
+    /// <para>
+    /// <b>The defect this closes.</b> The wave spawner releases enemies ABOVE the visible play area
+    /// and lets them walk in. <c>_spawnSettleSeconds</c> waits for the spawner to finish positioning
+    /// the enemy, which is a different fact: on Level 1 that position measured y = 11.40 against a
+    /// camera that can see to y = 10.03. The beat then halted the enemy exactly there and played all
+    /// eight of its beats against an empty field — the vignette dimmed nothing, the mirror copy
+    /// appeared and was never seen, the glyph badge reveal was a twenty-pixel sliver clipped by the
+    /// screen edge, and the card named an enemy the player had never laid eyes on.
+    /// </para>
+    ///
+    /// <para>
+    /// Walking in and then stopping is the read the lesson wants, so the beat waits rather than
+    /// teleporting the enemy somewhere visible. The wait is on the camera's actual world rect, never
+    /// a hardcoded y, so a level that moves or resizes its camera needs no change here. It is
+    /// vertical only: enemies walk down a lane whose x is already inside the frame, and a horizontal
+    /// condition could never be met by walking.
+    /// </para>
+    /// </summary>
+    private bool NeedsToWalkIntoView(Enemy enemy)
+    {
+        if (_onScreenWaitTimeoutSeconds <= 0f)
+            return false;
+
+        Camera camera = _worldCamera != null ? _worldCamera : Camera.main;
+        if (camera == null)
+            return false;
+
+        return !IsVerticallyInsideView(camera, ResolveEnemyWorldBounds(enemy), _onScreenMarginWorld);
+    }
+
+    private IEnumerator WaitUntilEnemyIsOnScreen(Enemy enemy, EnemyDataSO data)
+    {
+        Camera camera = _worldCamera != null ? _worldCamera : Camera.main;
+        if (camera == null || _onScreenWaitTimeoutSeconds <= 0f)
+            yield break;
+
+        float waited = 0f;
+        while (waited < _onScreenWaitTimeoutSeconds)
+        {
+            if (!IsStillPresentable(enemy, data))
+                yield break;
+
+            if (IsVerticallyInsideView(camera, ResolveEnemyWorldBounds(enemy), _onScreenMarginWorld))
+                yield break;
+
+            waited += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        DebugLogger.LogWarning(
+            $"EnemyIntroductionBeat: '{DescribeEnemy(enemy)}' was still outside the camera's view "
+            + $"after {_onScreenWaitTimeoutSeconds:0.#}s, so the beat halts it where it stands and "
+            + "the lesson may play against an empty field. Check the wave spawn height against the "
+            + "camera's orthographic size, and that the enemy is actually walking.");
+    }
+
+    /// <summary>
+    /// Whether <paramref name="worldBounds"/> sits entirely between the camera's top and bottom
+    /// edges with <paramref name="marginWorld"/> to spare. Static and public so the framing rule the
+    /// lesson depends on is testable without a play session — which is precisely what 1221 green
+    /// tests failed to catch.
+    /// </summary>
+    public static bool IsVerticallyInsideView(Camera camera, Bounds worldBounds, float marginWorld)
+    {
+        // No camera is not a reason to stall a lesson forever; the caller has nothing to frame
+        // against and the beat proceeds exactly as it did before this step existed.
+        if (camera == null || !TryGetCameraWorldRect(camera, out Rect view))
+            return true;
+
+        return worldBounds.max.y + marginWorld <= view.yMax
+            && worldBounds.min.y - marginWorld >= view.yMin;
+    }
+
+    /// <summary>
+    /// The world rectangle an orthographic camera can see. Answers false for a perspective camera
+    /// rather than guessing at a projection plane — every caller here treats that as "do not block".
+    /// </summary>
+    public static bool TryGetCameraWorldRect(Camera camera, out Rect worldRect)
+    {
+        worldRect = default;
+        if (camera == null || !camera.orthographic)
+            return false;
+
+        float halfHeight = camera.orthographicSize;
+        float halfWidth = halfHeight * camera.aspect;
+        Vector3 center = camera.transform.position;
+        worldRect = Rect.MinMaxRect(
+            center.x - halfWidth, center.y - halfHeight,
+            center.x + halfWidth, center.y + halfHeight);
+        return true;
+    }
+
+    /// <summary>
+    /// The enemy's own on-screen extent: the union of every sprite it carries, <b>including
+    /// inactive ones</b>. The glyph badge is deliberately hidden through beats 1-6 of a late-reveal
+    /// lesson, and measuring only what is currently drawn would let the beat halt at a height where
+    /// the badge has no room — which is exactly how beat 7's reveal became a sliver clipped by the
+    /// top of the screen. Bounds are valid on a disabled renderer, so counting it costs nothing.
+    /// </summary>
+    private static Bounds ResolveEnemyWorldBounds(Enemy enemy)
+    {
+        if (enemy == null)
+            return new Bounds(Vector3.zero, Vector3.one);
+
+        SpriteRenderer[] sprites = enemy.GetComponentsInChildren<SpriteRenderer>(includeInactive: true);
+        Bounds? union = null;
+        for (int i = 0; i < sprites.Length; i++)
+        {
+            if (sprites[i] == null)
+                continue;
+
+            if (union.HasValue)
+            {
+                Bounds b = union.Value;
+                b.Encapsulate(sprites[i].bounds);
+                union = b;
+            }
+            else
+            {
+                union = sprites[i].bounds;
+            }
+        }
+
+        return union ?? new Bounds(enemy.transform.position, Vector3.one);
     }
 
     /// <summary>
@@ -455,7 +675,9 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
 
         // The banner is the card's residue: one line that stays while the introduced enemy is on
         // the field and goes with it, so the reminder is attached to the thing it describes
-        // rather than to a stretch of time.
+        // rather than to a stretch of time. The card is finished, so the beat stops claiming the
+        // screen before this wait — see IsPlaying.
+        _isPlaying = false;
         _card.ShowBanner(data.abilityLine);
         yield return WaitWhileEnemyLives(enemy, data);
         _card.HideBanner();
@@ -525,6 +747,11 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         yield return OnboardingDialogueRunner.Play(
             ResolveDialogueController(), lesson.restorationLine);
 
+        // Beat 9 was the last one. Everything below is the banner's own lifetime, which is tied to
+        // the enemy and not to the lesson, so the lesson stops claiming the screen here. Leaving the
+        // flag up through the banner is what pinned an ability line on screen for seventeen seconds
+        // after the player had visibly finished the lesson.
+        _isPlaying = false;
         _card.ShowBanner(data.abilityLine);
         yield return WaitWhileEnemyLives(enemy, data);
         _card.HideBanner();
@@ -567,6 +794,12 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// </summary>
     private IEnumerator PlayAbilityBeat(Enemy enemy, EnemyLessonSO lesson)
     {
+        // Beat 2 starts by letting the ability go. Held since the claim, so that whatever it does
+        // happens NOW — on a halted, dimmed, on-screen field with the player watching — rather than
+        // on the spawn frame, off-camera, before beat 1 had even faded in. An ability that does not
+        // implement the hold is unaffected and simply fires whenever it always did.
+        HoldIntroducibleAbility(enemy, held: false);
+
         // A lesson that does not arm the ability has nothing to wait for. The standing suppression
         // rule keeps the ability inert for this whole spawn, so HasFiredThisSpawn can never become
         // true and the wait would spend the entire timeout — fifteen seconds of a dimmed, halted
@@ -820,14 +1053,28 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     }
 
     /// <summary>
-    /// The scene's dim if one was wired, otherwise one created on first use and kept. Created lazily
-    /// rather than on wake so a level that never introduces a new type pays nothing, and cached so
-    /// four introductions in one level do not stack four full-screen canvases.
+    /// The scene's dim if one was wired, otherwise one ADOPTED from the scene, and only failing
+    /// both, one created on first use and kept. Created lazily rather than on wake so a level that
+    /// never introduces a new type pays nothing, and cached so four introductions in one level do
+    /// not stack four full-screen canvases.
+    ///
+    /// <para>
+    /// <b>Why adoption, and not just creation.</b> This beat is wired by a tool that does not always
+    /// have the HUD's overlay to hand, so <c>_vignette</c> is routinely null on a scene that
+    /// nonetheless already contains a perfectly good <see cref="TutorialSpotlightOverlay"/> — the
+    /// onboarding beats use one for the base intro and the heart-loss demo. Creating a second gave
+    /// Level 1 two live full-screen dims with different panel layouts fighting over the same screen,
+    /// each convinced it owned it. One overlay per scene is the invariant; this is where it is kept.
+    /// </para>
     /// </summary>
     private TutorialSpotlightOverlay ResolveVignette()
     {
         if (_vignette != null)
             return _vignette;
+
+        if (_runtimeVignette == null)
+            _runtimeVignette = FindFirstObjectByType<TutorialSpotlightOverlay>(
+                FindObjectsInactive.Include);
 
         if (_runtimeVignette == null)
             _runtimeVignette = TutorialSpotlightOverlay.CreateRuntime();
@@ -903,6 +1150,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         }
 
         _isPlaying = false;
+        _routineActive = false;
         _claimedEnemy = null;
     }
 

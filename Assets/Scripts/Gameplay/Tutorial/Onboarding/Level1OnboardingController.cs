@@ -69,6 +69,12 @@ public sealed class Level1OnboardingController : MonoBehaviour
         // OnDestroy rather than OnDisable: the controller may be toggled inside one attempt.
         ReleaseTutorialRuntimeState();
 
+        // Unconditional, and separate from the ownership-gated clear above. The heart-loss demo's
+        // window is closed by its own finally, which a destroyed host never runs — and a window
+        // left open would disable real base damage for the whole of the next attempt. The one
+        // direction this flag must never fail in is "stuck on".
+        TutorialRuntimeState.SetHeartLossDemoActive(false);
+
         DestroyRuntimeSequence(_runtimeLegacySequence);
         DestroyRuntimeSequence(_runtimeNormalizedSequence);
         _runtimeLegacySequence = null;

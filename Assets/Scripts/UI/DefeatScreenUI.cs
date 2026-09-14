@@ -69,6 +69,13 @@ public class DefeatScreenUI : MonoBehaviour
             _explanationText.text =
                 "An enemy reached the shrine and your last heart was lost. "
                 + "Draw the glowing symbol before enemies reach the bottom.";
+
+            // uGUI paints in sibling order, and the buttons are instantiated after the panel is
+            // first built — ReviewLessonButton is cloned at Show time and inserts itself into the
+            // stack. The line explaining the defeat is the one thing on this screen that has to be
+            // readable, so it is put on top every time it is shown rather than depending on who was
+            // created last.
+            _explanationText.transform.SetAsLastSibling();
         }
 
         DebugLogger.Log($"DefeatScreenUI: Showing defeat. Hearts: {hearts}/{maxHearts}");
@@ -124,8 +131,12 @@ public class DefeatScreenUI : MonoBehaviour
             GameObject explanationObject = new GameObject("DefeatExplanation", typeof(RectTransform));
             explanationObject.transform.SetParent(_panel.transform, false);
             RectTransform rect = explanationObject.GetComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0.12f, 0.43f);
-            rect.anchorMax = new Vector2(0.88f, 0.62f);
+            // 0.43-0.62 of the panel is the button stack: Retry sits at the panel's centre and the
+            // other two hang below it, so the explanation was laid straight over three opaque
+            // buttons and could not be read at all. This band is the gap between the DEFEAT banner
+            // above and the topmost button below.
+            rect.anchorMin = new Vector2(0.12f, 0.570f);
+            rect.anchorMax = new Vector2(0.88f, 0.680f);
             rect.offsetMin = rect.offsetMax = Vector2.zero;
             _explanationText = explanationObject.AddComponent<TextMeshProUGUI>();
             _explanationText.fontSize = 26f;

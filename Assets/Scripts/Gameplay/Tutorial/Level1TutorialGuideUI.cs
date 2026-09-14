@@ -280,6 +280,9 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         if (_feedbackText != null)
             _feedbackText.text = string.Empty;
 
+        // A fresh prompt or message replaces the guide's last word, so it stops owning it.
+        IsShowingFeedback = false;
+
         if (_skipButton != null)
             _skipButton.gameObject.SetActive(canSkip);
 
@@ -349,12 +352,35 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         if (_feedbackText != null)
             _feedbackText.text = string.Empty;
 
+        // A fresh prompt or message replaces the guide's last word, so it stops owning it.
+        IsShowingFeedback = false;
+
         if (_skipButton != null)
             _skipButton.gameObject.SetActive(canSkip);
 
         if (_guideSpriteImage != null)
             _guideSpriteImage.gameObject.SetActive(false);
     }
+
+    /// <summary>
+    /// True while this guide is displaying its own feedback line, and therefore owns the last word
+    /// on the player's draw.
+    ///
+    /// <para>
+    /// <b>Why anything needs to know.</b> A successful draw during the enemy lesson put four
+    /// strings on screen at once and two of them said the same thing twice: the guide's authored
+    /// <c>successText</c> ("Great job. Drawing protects the base.") and the HUD's generic
+    /// <c>DrawingFeedbackVocabulary.Accepted</c> ("Nice — that's the one."), which lands in a band
+    /// the clue panel already occupies. A tutorial step that has authored its own wording is the
+    /// more specific voice, so while it is speaking the generic one stays quiet. See
+    /// <c>DrawingFeedback.SetMessage</c> — which still RECORDS every message it was handed, so
+    /// nothing about what the player was told stops being assertable.
+    /// </para>
+    /// </summary>
+    public static bool IsShowingFeedback { get; private set; }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetOwnershipOnDomainReload() => IsShowingFeedback = false;
 
     public void ShowFeedback(string message)
     {
@@ -363,6 +389,8 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
 
         if (_feedbackText != null)
             _feedbackText.text = message ?? string.Empty;
+
+        IsShowingFeedback = !string.IsNullOrWhiteSpace(message);
     }
 
     /// <summary>
@@ -385,6 +413,7 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
     public void Hide()
     {
         _showRequested = false;
+        IsShowingFeedback = false;
         if (_root != null)
             _root.SetActive(false);
 

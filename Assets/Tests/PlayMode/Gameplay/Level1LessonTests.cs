@@ -812,6 +812,79 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
 
         // ------------------------------------------------------------------------------------
         // Scene helpers
+        /// <summary>
+        /// The lesson must not begin against an empty field.
+        ///
+        /// <para>
+        /// <b>The defect.</b> The wave spawner releases enemies ABOVE the visible play area and
+        /// lets them walk in. The beat halted its subject on the settle frame, which on a first
+        /// spawn is that off-screen release height — measured live at y = 11.40 against a camera
+        /// seeing to y = 10.03. All eight beats then played against nothing: the vignette dimmed an
+        /// empty lane, the mirror copy appeared and was never seen, the glyph reveal was clipped by
+        /// the screen edge, and the card named an enemy the player had never seen. Every existing
+        /// test in this fixture passed throughout, because none of them had a camera.
+        /// </para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LessonWaitsForTheEnemyToWalkIntoTheCameraView_BeforeHaltingIt()
+        {
+            yield return null;
+
+            // Level 1's measured camera: orthographic, size 10.025, at the origin.
+            GameObject cameraGO = CreateTracked("LessonFramingCamera");
+            cameraGO.transform.position = new Vector3(0f, 0f, -10f);
+            Camera camera = cameraGO.AddComponent<Camera>();
+            camera.orthographic = true;
+            camera.orthographicSize = 10.025f;
+            SetPrivateField(_beat, "_worldCamera", camera);
+
+            BaybayinCharacterSO iChar = MakeCharacter("I", "symbol.test.framing.i");
+            EnemyDataSO iligawData = CreateEnemyData(
+                "test_iligaw_framing", "Iligaw", iChar, spawnsMirrorDecoy: false);
+            EnemyLessonSO lesson = CreateIligawShapedLesson(iligawData);
+            lesson.abilityBeatSeconds = 30f;
+
+            FocusWordDefinition word = CreateWord("level.test.framing.ina", "ina", "INA", iChar, iChar);
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO> { iligawData }, new[] { lesson },
+                new List<FocusWordDefinition> { word });
+            _gameManager.SetLevel(config);
+            SetPrivateField(_presenter, "_level", config);
+            _presenter.RestorationState.Configure(config.focusWords);
+
+            Enemy iligaw = CreateEnemyShell("Iligaw_Framing");
+
+            // The spawner's release height, above the top of the frame.
+            iligaw.transform.position = new Vector3(0f, 11.40f, 0f);
+            Assert.IsTrue(iligaw.Initialize(iligawData));
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndArm, iligaw.IntroductionOutcome,
+                "setup: this must be a real lesson spawn.");
+
+            yield return null;
+            yield return null;
+
+            Assert.AreEqual(1f, Time.timeScale,
+                "The beat must not drop the time scale while its subject is above the frame.");
+            Assert.IsFalse(_vignette.IsVisible,
+                "The beat must not dim the field around an enemy nobody can see.");
+
+            // It walks in.
+            iligaw.transform.position = new Vector3(0f, 5f, 0f);
+            yield return null;
+            yield return null;
+
+            Assert.AreNotEqual(1f, Time.timeScale,
+                "Once the enemy is inside the camera's view the beat halts it and time slows.");
+            Assert.IsTrue(_vignette.IsVisible,
+                "…and the vignette comes up around something the player can actually see.");
+
+            EnemyMover mover = iligaw.GetComponent<EnemyMover>();
+            Assert.IsFalse(mover.IsMoving, "Beat 1 halts the enemy where the player can see it.");
+
+            _beat.enabled = false;
+            yield return null;
+        }
+
         // ------------------------------------------------------------------------------------
 
         private Enemy CreateEnemyShell(string name)

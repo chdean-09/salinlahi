@@ -41,6 +41,24 @@ public sealed class HeartLossDemoBeat : OnboardingBeat
             yield break;
         }
 
+        // Opened BEFORE the stand-in is spawned and closed in the finally below, so that every
+        // frame this beat owns is one in which a real heart cannot be lost. Belt and braces on top
+        // of the specific leak fixed in DespawnSilently: this beat puts a pooled enemy on top of
+        // the shrine on purpose, and the next person to change how it leaves the field should not
+        // be able to reintroduce a real base hit without the guard shouting about it.
+        TutorialRuntimeState.SetHeartLossDemoActive(true);
+        try
+        {
+            yield return PlayGuarded(ctx, data);
+        }
+        finally
+        {
+            TutorialRuntimeState.SetHeartLossDemoActive(false);
+        }
+    }
+
+    private IEnumerator PlayGuarded(OnboardingContext ctx, EnemyDataSO data)
+    {
         Enemy demoEnemy = SpawnDemoEnemy(ctx, data);
         if (demoEnemy == null) yield break;
 
@@ -81,7 +99,9 @@ public sealed class HeartLossDemoBeat : OnboardingBeat
             yield return new WaitForSecondsRealtime(0.6f);
         }
 
-        controller.Defeat();
+        // NOT Defeat(). Level 1's demo enemy splits on defeat, and the two pieces landed on the
+        // shrine and took two real hearts. See Level1TutorialEnemyController.DespawnSilently.
+        controller.DespawnSilently();
 
         // Brief slow-motion so the player registers what just happened to the heart.
         yield return PostHitSlowMo();

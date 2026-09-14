@@ -11,7 +11,7 @@ using UnityEngine;
 /// component on the shared corruption shell and toggles it per spawn.
 /// </summary>
 [RequireComponent(typeof(Enemy))]
-public sealed class MirrorDecoyController : MonoBehaviour, IIntroducibleAbility
+public sealed class MirrorDecoyController : MonoBehaviour, IIntroducibleAbility, IIntroductionHoldable
 {
     // The copy now carries a different glyph from its source, so a player who has not memorised
     // the real symbol needs a tell that does not depend on reading the glyph at all. The decoy data
@@ -35,6 +35,12 @@ public sealed class MirrorDecoyController : MonoBehaviour, IIntroducibleAbility
     /// spawned at all. See <see cref="SetSuppressedForIntroductionSpawn"/>.
     /// </summary>
     private bool _suppressedForIntroductionSpawn;
+
+    /// <summary>
+    /// True while the introduction beat has asked this spawn to wait before placing its copy. See
+    /// <see cref="IIntroductionHoldable"/> for why only this ability needs it.
+    /// </summary>
+    private bool _introductionHold;
 
     /// <summary>
     /// Latched the moment a copy is actually placed on the field. Deliberately NOT
@@ -106,6 +112,17 @@ public sealed class MirrorDecoyController : MonoBehaviour, IIntroducibleAbility
             ReleaseDecoy();
     }
 
+    /// <summary>
+    /// <see cref="IIntroductionHoldable.SetIntroductionHold"/>. Unlike suppression this changes
+    /// nothing about whether the copy appears, only when: releasing the hold lets the very next
+    /// <c>Update</c> place it, which is how beat 2 gets the split to happen while the player is
+    /// looking at a halted, dimmed, on-screen enemy instead of one frame after the spawn.
+    /// </summary>
+    public void SetIntroductionHold(bool held)
+    {
+        _introductionHold = held;
+    }
+
     private void Awake()
     {
         _enemy = GetComponent<Enemy>();
@@ -119,6 +136,9 @@ public sealed class MirrorDecoyController : MonoBehaviour, IIntroducibleAbility
         _decoySpawnedThisSpawn = false;
         // A pooled shell must not inherit the previous occupant's suppression.
         _suppressedForIntroductionSpawn = false;
+        // Nor its hold: a shell that came back still held would never place a copy again, and
+        // nothing would ever come to free it.
+        _introductionHold = false;
     }
 
     private void OnDisable()
@@ -160,6 +180,11 @@ public sealed class MirrorDecoyController : MonoBehaviour, IIntroducibleAbility
         // _spawnAttempted is set means an un-suppression later in this same life would still get its
         // copy, which keeps the flag's meaning exactly "not right now" rather than "not ever".
         if (_suppressedForIntroductionSpawn)
+            return;
+
+        // "Not yet", not "not ever". Returning before _spawnAttempted is set means the copy is
+        // still owed and lands on the first Update after the beat lifts the hold.
+        if (_introductionHold)
             return;
 
         // First Update runs after WaveSpawner has positioned the source and assigned its character;
