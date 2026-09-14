@@ -19,13 +19,13 @@ MonoBehaviour:
   spokenValues:
   - stableId: value.ei
     displayValue: e/i
-    pronunciationClip: {fileID: 8300000, guid: ea0bad6db17d47d2aedebe73d3118404, type: 3}
+    pronunciationClip: {fileID: 8300000, guid: 3da6791accb64028bedbee9665c2d0b9, type: 3}
   - stableId: value.e
     displayValue: e
-    pronunciationClip: {fileID: 0}
+    pronunciationClip: {fileID: 8300000, guid: 3da6791accb64028bedbee9665c2d0b9, type: 3}
   - stableId: value.i
     displayValue: i
-    pronunciationClip: {fileID: 0}
+    pronunciationClip: {fileID: 8300000, guid: 3da6791accb64028bedbee9665c2d0b9, type: 3}
   firstIntroductionLevelId: level.ugat.01
   description: 
   displaySprite: {fileID: -2869617533910908798, guid: 3b7c4fb0744a29e4a991dd555bae27f9, type: 3}
@@ -33,5 +33,5 @@ MonoBehaviour:
   badgeSprite: {fileID: 0}
   scrambledBadgeSprite: {fileID: 0}
   glyphOutlineSprite: {fileID: 21300000, guid: 4ba2ec8d9436746ddbcc50fcc4aa0978, type: 3}
-  pronunciationClip: {fileID: 8300000, guid: ea0bad6db17d47d2aedebe73d3118404, type: 3}
+  pronunciationClip: {fileID: 8300000, guid: 3da6791accb64028bedbee9665c2d0b9, type: 3}
   templateFileName: EI_template_01
