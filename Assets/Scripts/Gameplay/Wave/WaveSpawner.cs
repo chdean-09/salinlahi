@@ -204,6 +204,7 @@ public class WaveSpawner : MonoBehaviour
             if (enemy != null)
             {
                 enemy.AssignCharacter(character);
+                ApplyLevelSpeedMultiplier(enemy);
                 onEnemySpawned?.Invoke();
             }
 
@@ -267,6 +268,21 @@ public class WaveSpawner : MonoBehaviour
         return ResolveEnemyData(selected);
     }
 
+    /// <summary>
+    /// Scales a freshly spawned enemy's walk speed by the current level's multiplier, so an early
+    /// level can give the player more reaction time without slowing the same enemy on the later
+    /// levels it also appears in. Routed through the existing speed-buff channel, keyed on the level
+    /// config, so it composes with ability buffs instead of overwriting them.
+    /// </summary>
+    private void ApplyLevelSpeedMultiplier(Enemy enemy)
+    {
+        LevelConfigSO level = GameManager.Instance != null ? GameManager.Instance.CurrentLevel : null;
+        if (level == null || enemy == null) return;
+        if (Mathf.Approximately(level.enemySpeedMultiplier, 1f)) return;
+
+        enemy.ApplySpeedBuff(level, level.enemySpeedMultiplier);
+    }
+
     private BaybayinCharacterSO SelectCharacterForSpawn(WaveDefinition wave, EnemyDataSO selectedEnemyData)
     {
         if (wave.characters != null && wave.characters.Count > 0)
@@ -280,6 +296,19 @@ public class WaveSpawner : MonoBehaviour
 
             if (validCharacters.Count > 0)
             {
+                // Each corrupted enemy embodies one symbol (Iligaw is E/I, Mantsa is MA, Abo ng
+                // Simula is A, Nawalang Mukha is NA - see CorruptionEnemyBootstrap). Picking purely
+                // at random handed Mantsa an E/I or an A, so the enemy on screen contradicted the
+                // glyph above it. Prefer the spawned enemy's own character whenever this wave
+                // teaches it; the wave list still decides which symbols may appear at all.
+                BaybayinCharacterSO owned = selectedEnemyData != null
+                    ? selectedEnemyData.assignedCharacter
+                    : null;
+
+                if (owned != null && validCharacters.Contains(owned))
+                    return owned;
+
+                // No owned symbol, or this wave does not teach it: fall back to the authored list.
                 int index = UnityEngine.Random.Range(0, validCharacters.Count);
                 return validCharacters[index];
             }

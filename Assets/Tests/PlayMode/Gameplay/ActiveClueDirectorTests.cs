@@ -639,6 +639,11 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             ActiveCluePresenter presenter = go.AddComponent<ActiveCluePresenter>();
             _objectsToDestroy.Add(go);
 
+            // The ring is off by default now - it read as noise around the enemy art, and the
+            // scroll badge marks the target on levels that reveal the glyph. This level does not
+            // reveal it, which is exactly the case the ring still exists for, so opt in explicitly.
+            presenter.ShowActiveClueMark = true;
+
             presenter.ApplyLevel(level);
             yield return null;
 

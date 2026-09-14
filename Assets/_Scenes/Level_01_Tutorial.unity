@@ -10075,7 +10075,7 @@ PrefabInstance:
     - target: {fileID: 895453592749120289, guid: c3d4e5f6789012345678901234567890, type: 3}
       propertyPath: _slashVfxPrefab
       value: 
-      objectReference: {fileID: 100000, guid: ab3a286c8709a4541b7034271b0c14f3, type: 3}
+      objectReference: {fileID: 11400001, guid: ab3a286c8709a4541b7034271b0c14f3, type: 3}
     - target: {fileID: 4598528726536472017, guid: c3d4e5f6789012345678901234567890, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0

@@ -21,7 +21,24 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     [Tooltip("Optional authored marker for the active enemy. A procedural ring is built when empty.")]
     [SerializeField] private GameObject _activeClueMarkPrefab;
     [SerializeField] private Vector2 _activeClueMarkOffset = Vector2.zero;
-    [SerializeField] private float _activeClueMarkScale = 1.6f;
+    [SerializeField] private float _activeClueMarkScale = 1.9f;
+
+    // Off by default: the gold ring read as noise around the enemy art rather than as a marker.
+    // The scroll badge above the enemy carries the "this is your target" job on levels that reveal
+    // the glyph. Levels that do NOT reveal it have no other active-enemy marker, so the ring stays
+    // switchable rather than deleted.
+    [SerializeField] private bool _showActiveClueMark;
+
+    [Tooltip("Enemies within this many world units of the active clue hide their glyph, so two "
+             + "scrolls never overlap. Everything further away keeps its glyph.")]
+    [SerializeField, Min(0f)] private float _badgeCrowdRadius = 2.5f;
+
+    /// <summary>Whether the ring marking the active enemy is drawn. Off by default.</summary>
+    public bool ShowActiveClueMark
+    {
+        get => _showActiveClueMark;
+        set => _showActiveClueMark = value;
+    }
 
     [Header("Word Restoration Cue")]
     [Tooltip("Optional authored label for the at-accept word-restoration cue. "
@@ -396,15 +413,34 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     }
 
     /// <summary>One enemy's badge state under the current clue: the mark shows, everyone hides.</summary>
-    private static void ApplyBadgePolicy(Enemy enemy, Enemy clue, bool showGlyph)
+    private void ApplyBadgePolicy(Enemy enemy, Enemy clue, bool showGlyph)
     {
         if (enemy == null || enemy.GlyphBadge == null)
             return;
 
-        if (showGlyph && enemy == clue)
-            enemy.GlyphBadge.Show();
-        else
+        if (!showGlyph)
+        {
             enemy.GlyphBadge.Hide();
+            return;
+        }
+
+        if (enemy == clue)
+        {
+            enemy.GlyphBadge.Show();
+            return;
+        }
+
+        // Previously every enemy but the clue was hidden, so the field showed exactly one scroll and
+        // the player could not read what was coming. The reason to hide any of them is overlap: a
+        // scroll sitting right on top of the clue's makes both unreadable. So hide only the crowd
+        // within _badgeCrowdRadius of the clue and let everything further up the field keep its glyph.
+        bool crowdsTheClue = clue != null
+            && Vector2.Distance(enemy.transform.position, clue.transform.position) <= _badgeCrowdRadius;
+
+        if (crowdsTheClue)
+            enemy.GlyphBadge.Hide();
+        else
+            enemy.GlyphBadge.Show();
     }
 
     /// <summary>
@@ -447,6 +483,13 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     /// </summary>
     private void UpdateActiveClueMark(Enemy clue)
     {
+        if (!_showActiveClueMark)
+        {
+            if (_activeClueMark != null)
+                _activeClueMark.SetActive(false);
+            return;
+        }
+
         if (clue == null)
         {
             if (_activeClueMark != null)
@@ -485,7 +528,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         _activeClueMark = new GameObject("[Runtime] ActiveClueMark", typeof(SpriteRenderer));
         SpriteRenderer markRenderer = _activeClueMark.GetComponent<SpriteRenderer>();
         markRenderer.sprite = _runtimeMarkSprite;
-        markRenderer.color = new Color(1f, 0.84f, 0.29f, 0.85f);
+        markRenderer.color = new Color(1f, 0.84f, 0.29f, 1f);
         markRenderer.sortingOrder = RenderOrder.ActiveClueMark;
         _activeClueMark.transform.localScale =
             new Vector3(_activeClueMarkScale, _activeClueMarkScale, 1f);
@@ -495,9 +538,9 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     /// <summary>A one world unit hollow ring, so the mark frames the enemy without hiding it.</summary>
     private static Sprite CreateRingSprite()
     {
-        const int size = 64;
+        const int size = 128;
         const float outerRadius = 0.5f;
-        const float innerRadius = 0.38f;
+        const float innerRadius = 0.41f;
 
         var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
         {

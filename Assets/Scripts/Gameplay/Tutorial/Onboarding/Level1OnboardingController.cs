@@ -162,6 +162,16 @@ public sealed class Level1OnboardingController : MonoBehaviour
 
         int startIndex = OnboardingPersistence.GetResumeStartIndex(levelConfig.levelNumber);
         OnboardingBeatType[] order = sequence.beatOrder;
+
+        // Beats before startIndex never Play, so any world state they would have established is
+        // missing for the whole level. ProtagonistIntroBeat is the case that bites: LevelFlowController
+        // spawns the protagonist 5 units below the screen whenever protagonistWalksIn is set (Level 1
+        // only), and that beat is what walks him up. Resuming past it left Level 1 with no visible
+        // protagonist. OnResumeFromHere is the "restore my state without replaying me" hook, and every
+        // beat except ProtagonistIntroBeat inherits it as a no-op, so replaying it here is cheap.
+        for (int i = 0; i < startIndex && i < order.Length; i++)
+            FindBeat(order[i])?.OnResumeFromHere(ctx);
+
         for (int i = startIndex; i < order.Length; i++)
         {
             OnboardingBeat beat = FindBeat(order[i]);

@@ -34,6 +34,11 @@ public class LevelConfigSO : ScriptableObject
     [Tooltip("Visual channel added automatically when clueChannels is audio-only.")]
     public ClueChannels audioVisualFallback = ClueChannels.LatinText;
 
+    [Tooltip("Scales every enemy's walk speed on this level. 1 leaves the authored speed alone. "
+             + "Lower it to give an early level more reaction time without slowing the same enemy "
+             + "on the later levels it also appears in.")]
+    [Min(0.1f)] public float enemySpeedMultiplier = 1f;
+
     public DefenseRules defenseRules = new();
     public ContentMediaReferences contextMedia = new();
     public SymbolValueReference finalRestorationValue = new();

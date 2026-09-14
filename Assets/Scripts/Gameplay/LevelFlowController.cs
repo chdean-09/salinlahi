@@ -359,7 +359,17 @@ public class LevelFlowController : MonoBehaviour
             if (protagonistManager != null)
             {
                 Vector3 protagonistPos = protagonistManager.CalculateProtagonistPosition();
-                protagonistManager.EnsureProtagonist(protagonistPos, spawnBelowScreen: _levelConfig.protagonistWalksIn);
+
+                // spawnBelowScreen parks him 5 units under the camera and leaves him there;
+                // ProtagonistIntroBeat is the only thing that walks him up. That beat lives in the
+                // onboarding sequence, which IsTutorialLevelWithSequence stops running once the
+                // tutorial has been seen. Level 1 is the only level with protagonistWalksIn set, so
+                // replaying it used to spawn him off-screen with nothing left to walk him in and no
+                // protagonist visible for the whole level. Only duck below the screen when the beat
+                // that recovers him will actually run.
+                bool onboardingWillWalkHimIn = _levelConfig.protagonistWalksIn
+                    && IsTutorialLevelWithSequence(_levelConfig);
+                protagonistManager.EnsureProtagonist(protagonistPos, spawnBelowScreen: onboardingWillWalkHimIn);
             }
             else
             {
