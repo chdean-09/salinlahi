@@ -14,7 +14,7 @@ Three systems currently claim the job of telling a player what an enemy is.
 |---|---|---|
 | `SoloTeachBeat` + `basicTeachSteps` | pre-combat, `Level1OnboardingController` | Live. Runs four frozen teach steps back-to-back. |
 | `EnemyIntroductionBeat` | mid-combat, from `Enemy.Initialize` | Live and wired in `Gameplay.unity`. |
-| `EnemyDiscoveryOnboardingController` | — | Dead. Unwired since a bad merge; see `docs/handoff-enemy-discovery-overlay.md`. |
+| `EnemyDiscoveryOnboardingController` | mid-combat, from `EventBus.OnEnemyDiscovered` | **Live.** (Corrected 2026-09-15 — see §2.1.) |
 
 The first two conflict structurally rather than cosmetically. `SoloTeachBeat` sets
 `TutorialRuntimeState.SetCombatOverrideActive(true)`, and
@@ -34,7 +34,8 @@ Two further defects follow from the same cause:
 ## 2. Ruling
 
 **`EnemyIntroductionBeat` is the single introduction system.** `SoloTeachBeat`'s teach loop is
-deleted. `EnemyDiscoveryOnboardingController` and `EnemyDiscoveryOverlay.prefab` are deleted.
+deleted. `EnemyDiscoveryOnboardingController` keeps its data write and loses its presentation —
+see §2.1.
 
 There is exactly one place a player learns what an enemy is, and its trigger is that enemy's first
 spawn.
@@ -43,6 +44,43 @@ spawn.
 default and gains an optional, level-scoped **lesson profile** that extends it to eight beats.
 Level 1 authors exactly one profile, on Abo ng Simula. Levels 2 through 15 author none and are
 behaviourally unchanged.
+
+### 2.1 Correction (2026-09-15): the discovery overlay is live, and is the real conflict
+
+The first draft of this section called `EnemyDiscoveryOnboardingController` dead code and slated it
+for deletion, on the authority of `docs/handoff-enemy-discovery-overlay.md`. **That was wrong.** The
+handoff describes a state that has since been reversed: the `EnemyDiscoveryOverlay` prefab is
+instantiated in both `Gameplay.unity` and `Level_01_Tutorial.unity`, and `EnemyDiscoveryOverlaySceneTests`
+asserts that it is present and configured.
+
+It is also the conflict this document exists to resolve. On a new type's first spawn,
+`Enemy.Initialize` fires **both** systems, with nothing gating either against the other:
+
+```
+Enemy.Initialize:336   EventBus.RaiseEnemyDiscovered(...)   -> overlay calls EnterDialoguePause,
+                                                                dims, and shows a spotlight panel
+Enemy.Initialize:346   EnemyIntroductionBeat.BeginIntroduction(...) -> card halts the field and
+                                                                drops Time.timeScale
+```
+
+`EnemyIntroductionBeat`'s standing contract is that player input stays live and that it never calls
+`EnterDialoguePause`. The overlay calls exactly that. The two fight over one spawn.
+
+**Ruling: do not delete the overlay — split its two jobs.**
+
+`EnemyDiscoveryOnboardingController.cs:176` is the *sole* writer of
+`EnemyDiscoveryProgress.TryMarkDiscovered`, which `AlmanacEnemyDiscovery.HasDiscovered` reads to
+populate the Almanac. Deleting the controller would silently empty the Almanac for good.
+
+So the data write always runs, and only the presentation — the pause, the dim, the panel — is
+suppressed when the introduction beat owns the spawn. Ownership is read from the enemy's own
+`Enemy.IntroductionOutcome` (`IntroduceAndSuppress` or `IntroduceAndArm`), **not** from
+`EnemyIntroductionBeat.IsPlaying`: the discovery event is raised at line 336, before
+`BeginIntroduction` at line 346, so `IsPlaying` is still false there and such a guard would silently
+never fire.
+
+This mirrors `CharacterUnlockRevealController`, which already splits the same way — its interstitial
+is switched off at the call site while `RegisterUnlocksWithoutReveal` keeps the unlock data.
 
 ## 3. The eight beats
 
@@ -173,7 +211,8 @@ than buried as a Level 1 special case inside the beat.
   new beat").
 - `OnboardingSequenceSO.soloTeachStep`, `basicTeachSteps`, `basicTeachVideos`,
   `soloTeachPreVideo`, `soloTeachVideo`, `soloTeachPostSuccess`.
-- `SoloTeachBeat.cs`, `EnemyDiscoveryOnboardingController.cs`, `EnemyDiscoveryOverlay.prefab`.
+- `SoloTeachBeat.cs`. (`EnemyDiscoveryOnboardingController.cs` and `EnemyDiscoveryOverlay.prefab`
+  are **retained** — see §2.1.)
 
 ### 5.3 Kept
 
