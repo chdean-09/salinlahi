@@ -59,4 +59,39 @@ public static class LevelRoster
 
         return true;
     }
+
+    /// <summary>
+    /// Opens the roster gate when this level's whole introducible roster has already been
+    /// introduced. Returns true when the condition held, whether or not the token was already open
+    /// (the registry's Open is idempotent).
+    ///
+    /// <para>
+    /// <b>This must be evaluated at LEVEL START as well as after each introduction.</b> The two
+    /// facts it joins live on different clocks: <c>EnemyIntroductionProgress</c> is cross-session,
+    /// campaign-wide PlayerPrefs, while <c>SpawnGateRegistry</c> is reset per level attempt by
+    /// <c>SpawnAssignmentCoordinator.ApplyLevel</c>. On a second run of Level 1 — a retry after a
+    /// loss, or a replay — every type is already introduced, so no introduction ever plays, so a
+    /// gate raised only from the end of an introduction never opens and the level's final slot is
+    /// withheld forever: an unwinnable level. The same hole swallows a claim that is accepted but
+    /// never begun (see <c>EnemyIntroductionBeat.TryClaim</c>'s stale-claim reset), which records
+    /// the type as introduced with no playback to re-evaluate the gate.
+    /// </para>
+    ///
+    /// <para>
+    /// Shared by both call sites rather than duplicated so the level-start and post-introduction
+    /// evaluations can never drift into disagreeing about what "roster met" means.
+    /// </para>
+    /// </summary>
+    public static bool TryOpenRosterGate(
+        LevelConfigSO config, Func<EnemyDataSO, bool> hasBeenIntroduced, Action<string> openGate)
+    {
+        if (config == null || openGate == null)
+            return false;
+
+        if (!AllIntroduced(BuildIntroducibleRoster(config), hasBeenIntroduced))
+            return false;
+
+        openGate(SpawnGateRegistry.Level1RosterMet);
+        return true;
+    }
 }

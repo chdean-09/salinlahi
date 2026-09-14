@@ -163,11 +163,10 @@ namespace Salinlahi.Tests.Editor.UI
 
         /// <summary>
         /// Pins the data/presentation split added for the EnemyIntroductionBeat coexistence fix:
-        /// when a spawn is one EnemyIntroductionBeat has claimed as an introduction
-        /// (Enemy.IsIntroductionSpawn), this overlay must still record the discovery — it is the
-        /// sole writer of EnemyDiscoveryProgress, which the Almanac reads — but must not pause the
-        /// game or show its panel, because the beat's card is already telling the player about this
-        /// enemy.
+        /// when a spawn is one EnemyIntroductionBeat has claimed as an introduction, this overlay
+        /// must still record the discovery — it is the sole writer of EnemyDiscoveryProgress, which
+        /// the Almanac reads — but must not pause the game or show its panel, because the beat's
+        /// card is already telling the player about this enemy.
         /// </summary>
         [UnityTest]
         public IEnumerator EnemyDiscovered_WhenBeatOwnsIntroduction_WritesDataButSuppressesOverlay()
@@ -176,6 +175,7 @@ namespace Salinlahi.Tests.Editor.UI
             EnemyDataSO data = CreateEnemyData("soldado");
             Enemy enemy = CreateEnemy(data);
             enemy.transform.position = new Vector3(0f, 1f, 0f);
+            SetPrivateField(enemy, "_introductionOutcome", IntroductionOutcome.IntroduceAndSuppress);
             SetPrivateField(enemy, "_isIntroductionSpawn", true);
 
             Assert.IsFalse(EnemyDiscoveryProgress.HasDiscovered(data));
@@ -188,6 +188,59 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.AreEqual(0f, group.alpha,
                 "The overlay must not pause the game or show its panel for a spawn "
                 + "EnemyIntroductionBeat has already claimed as an introduction.");
+            Object.DestroyImmediate(controller.gameObject);
+        }
+
+        /// <summary>
+        /// The deferral case, and the reason the guard reads IntroductionOutcome rather than
+        /// Enemy.IsIntroductionSpawn: IsIntroductionSpawn is false for DeferAndSuppress, so guarding
+        /// on it let a deferred type take the full pause-and-spotlight overlay here AND its own
+        /// introduction card later — the player meets the same enemy twice, and the overlay's
+        /// EnterDialoguePause lands ahead of the lesson the deferral exists to let through.
+        /// The data write is still unconditional.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EnemyDiscovered_WhenDeferredForPendingLesson_WritesDataButSuppressesOverlay()
+        {
+            EnemyDiscoveryOnboardingController controller = CreateController(out CanvasGroup group, out _, out _, out _);
+            EnemyDataSO data = CreateEnemyData("iligaw");
+            Enemy enemy = CreateEnemy(data);
+            enemy.transform.position = new Vector3(0f, 1f, 0f);
+            SetPrivateField(enemy, "_introductionOutcome", IntroductionOutcome.DeferAndSuppress);
+
+            Assert.IsFalse(enemy.IsIntroductionSpawn,
+                "setup: a deferred spawn is deliberately not an introduction spawn.");
+            Assert.IsFalse(EnemyDiscoveryProgress.HasDiscovered(data));
+            EventBus.RaiseEnemyDiscovered(data, enemy);
+            yield return WaitFrames(6);
+
+            Assert.IsTrue(EnemyDiscoveryProgress.HasDiscovered(data),
+                "Suppressing the presentation must never skip the Almanac write.");
+            Assert.AreEqual(0f, group.alpha,
+                "A type held back so the level's lesson lands first must stay silent here too.");
+            Object.DestroyImmediate(controller.gameObject);
+        }
+
+        /// <summary>
+        /// Negative control for the two above: with no beat interest at all (IntroductionOutcome
+        /// None) the overlay is still the thing that introduces the enemy, and must present.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EnemyDiscovered_WithNoIntroductionOutcome_StillPresentsTheOverlay()
+        {
+            EnemyDiscoveryOnboardingController controller = CreateController(out CanvasGroup group, out _, out _, out _);
+            EnemyDataSO data = CreateEnemyData("soldado");
+            Enemy enemy = CreateEnemy(data);
+            enemy.transform.position = new Vector3(0f, 1f, 0f);
+
+            Assert.AreEqual(IntroductionOutcome.None, enemy.IntroductionOutcome,
+                "setup: no beat has taken an interest in this spawn.");
+            EventBus.RaiseEnemyDiscovered(data, enemy);
+            yield return WaitFrames(6);
+
+            Assert.AreEqual(1f, group.alpha,
+                "With no introduction beat owning the spawn the overlay is the only introduction "
+                + "there is, so suppressing it here would leave the enemy unexplained.");
             Object.DestroyImmediate(controller.gameObject);
         }
 

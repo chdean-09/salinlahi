@@ -40,6 +40,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         private GameManager _gameManager;
         private EnemyIntroductionBeat _beat;
         private EnemyIntroductionCardView _cardView;
+        private CanvasGroup _cardGroup;
         private TutorialSpotlightOverlay _vignette;
         private ActiveCluePresenter _presenter;
 
@@ -66,6 +67,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             cardGroupGO.transform.SetParent(cardRoot.transform, false);
             CanvasGroup cardGroup = cardGroupGO.AddComponent<CanvasGroup>();
             SetPrivateField(_cardView, "_cardGroup", cardGroup);
+            _cardGroup = cardGroup;
 
             // The beat. Wired with our own TutorialSpotlightOverlay (rather than letting it create
             // one at runtime) so tests can read TutorialSpotlightOverlay.IsVisible directly.
@@ -335,6 +337,89 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 + "the ash and the target mask coincide and ash-on/ash-off must render identically. "
                 + "This equality is exactly why requiredRestoredSlots exists: arming here would be "
                 + "an invisible event.");
+        }
+
+        // ------------------------------------------------------------------------------------
+        // 4b. Beat 2 actually shows the ability, before beats 5-6 name it
+        // ------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// The premise the whole eight-beat design rests on: the ability fires UNPROMPTED, before
+        /// the enemy is named or explained. Beat 2 used to be a fixed realtime hold of
+        /// <c>abilityBeatSeconds</c>, which could not deliver that — <c>AshFirstSlotController</c>
+        /// accrues its 1.5 s arm delay on SCALED time while the beat holds <c>Time.timeScale</c> at
+        /// 0.15, so spawn settle + halt ramp + a 2.5 s hold bought roughly 0.8 scaled seconds and
+        /// the gust landed four to six wall-clock seconds later — during beats 5-6, with the name
+        /// card already on screen.
+        ///
+        /// <para>
+        /// The old assertion ("the ability is not suppressed") could not catch that: an armed-but-
+        /// not-yet-fired ability reads exactly the same. This asserts the ORDERING instead — the
+        /// card stays down until the ash has actually armed, and comes up once it has.
+        /// </para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Beat2_KeepsTheNameCardDownUntilTheAbilityHasActuallyFired()
+        {
+            yield return null;
+
+            BaybayinCharacterSO aboChar = MakeCharacter("A", "symbol.test.beat2.a");
+            BaybayinCharacterSO naChar = MakeCharacter("NA", "symbol.test.beat2.na");
+
+            EnemyDataSO aboData = CreateEnemyData(
+                "test_abo_beat2", "Abo ng Simula", aboChar, ashesFirstSlot: true);
+            EnemyLessonSO aboLesson = CreateAboShapedLesson(aboData);
+            // Short post-arm hold: this test is about what gates beat 2, not how long it lingers
+            // once the ability has landed.
+            aboLesson.abilityBeatSeconds = 0.05f;
+
+            FocusWordDefinition word = CreateWord("level.test.beat2.ina", "ina", "INA", aboChar, naChar);
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO> { aboData }, new[] { aboLesson },
+                new List<FocusWordDefinition> { word });
+            _gameManager.SetLevel(config);
+
+            SetPrivateField(_presenter, "_level", config);
+            _presenter.RestorationState.Configure(config.focusWords);
+            _presenter.RestorationState.Apply(aboChar.stableId);
+
+            Enemy abo = CreateEnemyShell("Abo_Beat2");
+            Assert.IsTrue(abo.Initialize(aboData));
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndArm, abo.IntroductionOutcome,
+                "setup: this must be a real lesson spawn, with the ability armed.");
+
+            AshFirstSlotController ash = abo.GetComponent<AshFirstSlotController>();
+            Assert.IsNotNull(ash, "setup: ashesFirstSlot should attach AshFirstSlotController.");
+            Assert.IsFalse(ash.IsArmedThisSpawn,
+                "setup: the ash has not fired yet — armed-for-this-spawn is not the same as fired.");
+
+            // Ten times the authored hold, in WALL-CLOCK seconds rather than frames — batchmode
+            // runs frames far faster than real time, so a frame count would let a fixed-duration
+            // beat 2 pass this unchanged. While the ability has not fired, nothing may name the
+            // enemy however long the beat has been waiting.
+            yield return new WaitForSecondsRealtime(0.5f);
+
+            Assert.IsFalse(ash.IsArmedThisSpawn,
+                "setup: the ash must still be unfired for this assertion to mean anything.");
+            Assert.AreEqual(0f, _cardGroup.alpha,
+                "Beat 2 must hold the name card down until the ability has actually fired. A card "
+                + "on screen here means the player is being told what the enemy is called before "
+                + "they have seen it do anything, which is the failure the lesson exists to avoid.");
+
+            // The ability fires.
+            ash.ArmAsh();
+
+            bool cardAppeared = false;
+            float deadline = Time.realtimeSinceStartup + 5f;
+            while (!cardAppeared && Time.realtimeSinceStartup < deadline)
+            {
+                yield return null;
+                cardAppeared = _cardGroup.alpha > 0.99f;
+            }
+
+            Assert.IsTrue(cardAppeared,
+                "Once the ability has fired, beat 2 must release and beats 5-6 must name the enemy. "
+                + "A beat that never releases would hang the lesson behind the ability.");
         }
 
         // ------------------------------------------------------------------------------------

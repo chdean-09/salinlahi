@@ -80,6 +80,15 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     [Tooltip("Seconds (wall-clock) waited after the enemy is positioned before the halt begins, so the card never lands on a shell still parked at its off-screen pool position.")]
     [SerializeField] private float _spawnSettleSeconds = 0.1f;
 
+    [Header("Lesson — Beat 2 (Ability)")]
+    [Tooltip("Safety valve only. Seconds (wall-clock) beat 2 will wait for the introduced enemy's "
+             + "ability to actually fire before giving up and continuing. Generous on purpose: "
+             + "AshFirstSlotController's 1.5 s arm delay accrues on SCALED time under this beat's "
+             + "0.15 time scale, so the ash legitimately needs around ten wall-clock seconds. "
+             + "Shortening this re-introduces the bug where the enemy is named before it has done "
+             + "anything. See PlayAbilityBeat.")]
+    [SerializeField, Min(0f)] private float _abilityBeatArmTimeoutSeconds = 15f;
+
     /// <summary>
     /// The single live runner. One scene holds at most one, because the beat takes over global state
     /// — <c>Time.timeScale</c> and a full-screen dim — that two runners could not share.
@@ -120,10 +129,6 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
 
         return s_instance.ResolveFor(enemy, data);
     }
-
-    /// <summary>True while this level authored a lesson that has not yet played.</summary>
-    public static bool HasPendingLesson =>
-        s_instance != null && s_instance.ResolvePendingLesson() != null;
 
     private IntroductionOutcome ResolveFor(Enemy enemy, EnemyDataSO data)
     {
@@ -386,21 +391,25 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// Opens Level 1's slot-3 gate once every introducible type in the wave roster has been
     /// introduced. Called after each introduction rather than counted, so a level whose roster
     /// changes mid-development cannot leave a stale count holding the final slot shut.
+    ///
+    /// <para>
+    /// This is only half of the gate. Introductions are campaign-wide and the gate registry resets
+    /// per level attempt, so a replay introduces nothing and never reaches here — the other half is
+    /// <c>SpawnAssignmentCoordinator.ApplyLevel</c>, which evaluates the same condition at level
+    /// start. Both are needed; see <see cref="LevelRoster.TryOpenRosterGate"/>.
+    /// </para>
     /// </summary>
     private static void RaiseRosterGateIfComplete()
     {
-        LevelConfigSO config = GameManager.CurrentLevelConfig;
-        if (config == null)
-            return;
-
-        if (!LevelRoster.AllIntroduced(
-                LevelRoster.BuildIntroducibleRoster(config),
-                EnemyIntroductionProgress.HasBeenIntroduced))
-            return;
-
         SpawnAssignmentCoordinator coordinator = FindFirstObjectByType<SpawnAssignmentCoordinator>(
             FindObjectsInactive.Include);
-        coordinator?.OpenGate(SpawnGateRegistry.Level1RosterMet);
+        if (coordinator == null)
+            return;
+
+        LevelRoster.TryOpenRosterGate(
+            GameManager.CurrentLevelConfig,
+            EnemyIntroductionProgress.HasBeenIntroduced,
+            coordinator.OpenGate);
     }
 
     /// <summary>
@@ -465,9 +474,10 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         RaiseVignette(enemy);
         yield return RampTimeScale(Time.timeScale, _introductionTimeScale, _haltRampSeconds);
 
-        // Beat 2 — Ability. Already armed by IntroduceAndArm; this is the hold that lets the
-        // player watch the clue crumble.
-        yield return WaitRealtime(lesson.abilityBeatSeconds);
+        // Beat 2 — Ability. The ability is armed by IntroduceAndArm; this waits for it to actually
+        // FIRE and then holds so the player can watch the clue crumble. See PlayAbilityBeat for why
+        // a fixed hold is not enough.
+        yield return PlayAbilityBeat(enemy, lesson);
 
         // Beats 3 and 4 — React, then the rule. Once per campaign.
         if (!EnemyIntroductionProgress.HasSeenAbilityRule())
@@ -504,6 +514,66 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         _card.ShowBanner(data.abilityLine);
         yield return WaitWhileEnemyLives(enemy, data);
         _card.HideBanner();
+    }
+
+    /// <summary>
+    /// Beat 2. Waits for the introduced enemy's ability to actually fire, then holds
+    /// <see cref="EnemyLessonSO.abilityBeatSeconds"/> so the change it made is watchable.
+    ///
+    /// <para>
+    /// <b>COUPLING — the other end of this is <c>AshFirstSlotController._armDelaySeconds</c>
+    /// (1.5s).</b> That delay accrues on SCALED <c>Time.deltaTime</c> in
+    /// <c>AshFirstSlotController.Tick</c>, deliberately, so "on screen long enough" means the same
+    /// seconds the spawn schedule is paced in. Every wait in this beat is REALTIME, and beat 1 has
+    /// just pulled <c>Time.timeScale</c> down to <see cref="_introductionTimeScale"/> (0.15 on
+    /// Level 1). A fixed realtime hold therefore buys almost no scaled time: spawn settle, halt ramp
+    /// and a 2.5s hold together spend roughly 0.8 scaled seconds against the 1.5 the ash needs, so
+    /// the gust would land four to six realtime seconds later — during beats 5-6, with the card
+    /// already on screen. That inverts the premise the whole eight-beat design rests on, which is
+    /// that the ability fires UNPROMPTED, before the enemy is named or explained.
+    /// </para>
+    ///
+    /// <para>
+    /// Waiting on the fact rather than on a duration is robust to either number being retuned. The
+    /// realtime timeout is the safety valve: an ability that cannot arm on this spawn (its own
+    /// trigger conditions unmet, a missing controller, a level with no clue) must not hang the
+    /// lesson, so the beat gives up and proceeds exactly as the fixed hold used to.
+    /// </para>
+    /// </summary>
+    private IEnumerator PlayAbilityBeat(Enemy enemy, EnemyLessonSO lesson)
+    {
+        AshFirstSlotController ash = enemy != null
+            ? enemy.GetComponent<AshFirstSlotController>()
+            : null;
+
+        // No observable ability on this spawn: fall back to the authored hold, which is what the
+        // beat did before the wait existed. A lesson on a type with no ash still gets its pause.
+        if (ash == null || !ash.isActiveAndEnabled)
+        {
+            yield return WaitRealtime(lesson.abilityBeatSeconds);
+            yield break;
+        }
+
+        float waited = 0f;
+        while (!ash.IsArmedThisSpawn && waited < _abilityBeatArmTimeoutSeconds)
+        {
+            waited += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        if (!ash.IsArmedThisSpawn)
+        {
+            DebugLogger.LogWarning(
+                "EnemyIntroductionBeat: beat 2 timed out after "
+                + $"{_abilityBeatArmTimeoutSeconds:0.#}s waiting for "
+                + $"'{(enemy != null && enemy.Data != null ? enemy.Data.displayName : "?")}' to use "
+                + "its ability, so the lesson names the enemy before the player has seen it do "
+                + "anything. Check AshFirstSlotController's arming trigger for this spawn.");
+        }
+
+        // The hold is measured from the ability firing, not from the start of the beat: its job is
+        // to let the player read the change, and there is nothing to read before it happens.
+        yield return WaitRealtime(lesson.abilityBeatSeconds);
     }
 
     /// <summary>

@@ -16,8 +16,9 @@ using UnityEngine.UI;
 /// game via <c>GameManager.EnterDialoguePause</c> while the card's standing promise is that input
 /// stays live and no dialogue pause happens. The card system won (see
 /// docs/design/2026-09-14-level1-enemy-introduction-lesson-design.md); its presentation now
-/// suppresses this overlay's presentation on any spawn the beat has claimed as an introduction. See
-/// <see cref="HandleEnemyDiscovered"/> for the guard. This class is not deleted, because its DATA
+/// suppresses this overlay's presentation on any spawn the beat has taken an interest in — one it
+/// claimed as an introduction, and equally one it deferred so a pending lesson could land first.
+/// See <see cref="HandleEnemyDiscovered"/> for the guard. This class is not deleted, because its DATA
 /// write is still the only path that populates the Almanac — same split as
 /// <see cref="CharacterUnlockRevealController.RegisterUnlocksWithoutReveal"/>.
 /// </para>
@@ -146,16 +147,27 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
             return;
 
         // Data/presentation split — see the class doc for why this guard exists at all.
-        // enemy.IsIntroductionSpawn is true only for IntroduceAndSuppress / IntroduceAndArm: the
-        // beat has actually claimed this spawn as an introduction, so its card is the one telling
-        // the player about this enemy and this overlay's presentation must stay silent. A declined
-        // claim (None) or one deferred behind a pending lesson (DeferAndSuppress) leaves the beat
-        // silent for this spawn, so the overlay still presents as before.
+        //
+        // The guard is any outcome other than None, NOT enemy.IsIntroductionSpawn. An earlier
+        // version used IsIntroductionSpawn, which is true only for IntroduceAndSuppress /
+        // IntroduceAndArm, and let DeferAndSuppress through on the reasoning that a deferred spawn
+        // has no card and so has nothing to collide with. That was wrong, in both directions:
+        //
+        //  - A deferred type is being held back DELIBERATELY so the level's lesson lands first. It
+        //    will get its own introduction card on a later spawn, so presenting here means the
+        //    player meets the same enemy twice, overlay then card.
+        //  - The overlay calls GameManager.EnterDialoguePause. Doing that while a lesson is pending
+        //    contradicts the rule the deferral exists to enforce — the lesson is the first thing
+        //    that interrupts the player, and nothing may pause the field ahead of it.
+        //
+        // The DATA write stays unconditional. This controller is the sole writer of
+        // EnemyDiscoveryProgress, which populates the Almanac; skipping it would empty the Almanac
+        // permanently. Only the presentation is suppressed.
         //
         // Read from the enemy rather than any EnemyIntroductionBeat static: the outcome is resolved
         // in Enemy.Initialize before EventBus.OnEnemyDiscovered is raised (this handler) and before
         // BeginIntroduction is called, so it is never a timing race.
-        if (enemy.IsIntroductionSpawn)
+        if (enemy.IntroductionOutcome != IntroductionOutcome.None)
         {
             EnemyDiscoveryProgress.TryMarkDiscovered(data, out _);
             return;

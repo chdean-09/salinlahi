@@ -323,15 +323,20 @@ public sealed class SpawnAssignmentDirector
 
         _openingDirectiveConsumed = true;
 
-        // Counts against the floor like any other spawn, which is what makes Level 1's floor of 1
-        // on slot 0 put the needed E/I carrier on spawn 2 rather than spawn 3.
+        // Counts against the floor like any other spawn. Level 1 now authors a floor of 0 on slot
+        // 0, so the directive itself is the needed E/I carrier and lands on spawn 1; the increment
+        // still matters for any level whose floor is non-zero.
         _spawnsSinceArmed++;
 
         // Role is reported honestly. If the authored symbol happens to be one a fillable slot
         // wants, this spawn really does advance the level and the caller's clue marking has to know
-        // that; Level 1 authors a later-needed symbol (A, while E/I is the cursor) and gets the
-        // deliberate filler its opening beat is written around. The floor is untouched either way -
-        // it governs every spawn after this one.
+        // that. Level 1 is exactly that case since the enemy-introduction lesson inverted its
+        // opening: openingSpawnSpokenValueId is value.ei, which IS the cursor, so spawn 1 is a
+        // Needed E/I carrier whose kill restores slot 0 and gives Abo's ash something to take. The
+        // other branch below - a directive naming a symbol no eligible slot wants, which becomes
+        // deliberate filler - is what Level 1 used to do when it authored value.a, and is still
+        // reachable for any level that authors a later-needed symbol. The floor is untouched
+        // either way; it governs every spawn after this one.
         int eligibleSlot = FindEligibleSlotForSymbol(symbolId);
         if (eligibleSlot >= 0)
         {

@@ -20,10 +20,20 @@ using UnityEngine.SceneManagement;
 /// <b>Per-spawn arming (Level 1 design §1 and §3 rule 2).</b> The ash used to be on whenever any
 /// Abo with the flag was alive, which put it on the first enemy the player ever meets: the HUD
 /// changed before the player had ever read it unobscured, so there was no baseline against which
-/// the change could register as an enemy doing something. Arming is therefore per spawn. A type's
-/// introduction spawn is explicitly suppressed — the card states the ability and the clue stays
-/// readable — and a later spawn arms it, announced by a gust
-/// (<see cref="AshGustController"/>) so the HUD change is attributable to the Abo that caused it.
+/// the change could register as an enemy doing something. Arming is therefore per spawn, and every
+/// arming is announced by a gust (<see cref="AshGustController"/>) so the HUD change is
+/// attributable to the Abo that caused it.
+/// </para>
+///
+/// <para>
+/// <b>What an introduction spawn does depends on the outcome, and the two are opposite.</b> Under
+/// <c>IntroductionOutcome.IntroduceAndSuppress</c> — the default for every type, and what
+/// <see cref="SetSuppressedForIntroductionSpawn"/> switches on — the ability is inert for that
+/// spawn: the card states it, the clue stays readable, and a later spawn arms it. Under
+/// <c>IntroductionOutcome.IntroduceAndArm</c>, which Level 1's <c>AboLesson</c> authors for Abo, the
+/// inversion applies: the ash is NOT suppressed and is expected to arm <i>during</i> the
+/// introduction, because beat 2 of the eight-beat lesson exists to show the ability landing before
+/// the enemy is named. <c>DeferAndSuppress</c> suppresses like the first case.
 /// </para>
 ///
 /// <para>
@@ -73,7 +83,11 @@ public sealed class AshFirstSlotController : MonoBehaviour
     [Header("Arming Trigger")]
     [Tooltip("Seconds this spawn must have been on screen before the ash may arm. Keeps the gust "
              + "from firing simultaneously with the Abo's own entrance, where the player would "
-             + "read the two as one event. 1.5 s per the Level 1 design.")]
+             + "read the two as one event. 1.5 s per the Level 1 design. NOTE: accrued on SCALED "
+             + "time (see Tick), so under the introduction beat's 0.15 time scale this is about "
+             + "ten wall-clock seconds. EnemyIntroductionBeat.PlayAbilityBeat waits on the armed "
+             + "flag rather than on a duration precisely because of that; raising this raises how "
+             + "long beat 2 holds, and must stay under _abilityBeatArmTimeoutSeconds there.")]
     [SerializeField, Min(0f)] private float _armDelaySeconds = 1.5f;
 
     [Tooltip("How many target-text slots must already be filled before the ash may arm. At least "
@@ -249,6 +263,13 @@ public sealed class AshFirstSlotController : MonoBehaviour
             // Scaled time on purpose: the introduction cards drop the level's time scale and the
             // spawn schedule's own clock is scaled too, so "1.5 seconds on screen" means the same
             // 1.5 seconds of gameplay the rest of the pacing system is measured in.
+            //
+            // The cost of that choice is paid in EnemyIntroductionBeat.PlayAbilityBeat: every wait
+            // in the lesson is REALTIME while this one is scaled, so at the Level 1 introduction
+            // time scale of 0.15 the 1.5 s below takes roughly ten wall-clock seconds to accrue.
+            // That beat therefore waits on IsArmedThisSpawn instead of on a fixed hold. Do not
+            // switch this to unscaled time to "fix" that — it would decouple the ash from the
+            // pacing clock the rest of the spawn system shares.
             _timeOnScreenSeconds += Mathf.Max(0f, deltaTime);
         }
         else if (_armedThisSpawn)
