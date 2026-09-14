@@ -28,6 +28,11 @@ public class EnemyGlyphBadge : MonoBehaviour
     // changes (e.g. boss collapse / stand-up squash-stretch).
     private Vector2 _desiredWorldOffset;
     private float _desiredWorldScale = 1f;
+    // True while the badge is showing a glyph outline because no scroll badge art exists for this
+    // symbol. The outlines are 256 px square against roughly 125 px badge art at the same PPU, so
+    // an outline shown at the authored badge scale renders about twice the intended size.
+    private bool _usingOutlineFallback;
+    private const float OutlineFallbackScale = 125f / 256f;
 
     public GlyphBadgeConfigSO Config => _config;
     public bool IsSwapping => _swapRoutine != null;
@@ -86,7 +91,10 @@ public class EnemyGlyphBadge : MonoBehaviour
 
         _baseLocalPosition = new Vector3(_desiredWorldOffset.x * invX, _desiredWorldOffset.y * invY, 0f);
 
-        _baseLocalScale = new Vector3(_desiredWorldScale * invX, _desiredWorldScale * invY, 1f);
+        float scale = _usingOutlineFallback
+            ? _desiredWorldScale * OutlineFallbackScale
+            : _desiredWorldScale;
+        _baseLocalScale = new Vector3(scale * invX, scale * invY, 1f);
 
         if (forceApplyTransform || (!IsSwapping && !IsPlayingFinalDraw && !IsPlayingDecoyReject))
         {
@@ -120,6 +128,9 @@ public class EnemyGlyphBadge : MonoBehaviour
         }
         _renderer.sprite = sprite;
         _renderer.enabled = !_covered;
+
+        // Whether the fallback is in use depends on which sprite just resolved, so redo the layout.
+        RecomputeBaseFromParentScale();
     }
 
     public bool IsCovered => _covered;
@@ -262,7 +273,14 @@ public class EnemyGlyphBadge : MonoBehaviour
         // glyph at all and the player had nothing to read. Abo ng Simula is the visible case, since
         // it carries symbol.a. Fall back to the authored glyph outline until the missing scroll art
         // lands; every symbol has one. Delete this fallback once all eighteen badges exist.
-        return character.badgeSprite != null ? character.badgeSprite : character.glyphOutlineSprite;
+        if (character.badgeSprite != null)
+        {
+            _usingOutlineFallback = false;
+            return character.badgeSprite;
+        }
+
+        _usingOutlineFallback = character.glyphOutlineSprite != null;
+        return character.glyphOutlineSprite;
     }
 
     private IEnumerator SwapRoutine(BaybayinCharacterSO next)
