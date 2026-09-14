@@ -204,6 +204,7 @@ public class WaveSpawner : MonoBehaviour
             if (enemy != null)
             {
                 enemy.AssignCharacter(character);
+                ApplyLevelSpeedMultiplier(enemy);
                 onEnemySpawned?.Invoke();
             }
 
@@ -267,6 +268,21 @@ public class WaveSpawner : MonoBehaviour
         return ResolveEnemyData(selected);
     }
 
+    /// <summary>
+    /// Scales a freshly spawned enemy's walk speed by the current level's multiplier, so an early
+    /// level can give the player more reaction time without slowing the same enemy on the later
+    /// levels it also appears in. Routed through the existing speed-buff channel, keyed on the level
+    /// config, so it composes with ability buffs instead of overwriting them.
+    /// </summary>
+    private void ApplyLevelSpeedMultiplier(Enemy enemy)
+    {
+        LevelConfigSO level = GameManager.Instance != null ? GameManager.Instance.CurrentLevel : null;
+        if (level == null || enemy == null) return;
+        if (Mathf.Approximately(level.enemySpeedMultiplier, 1f)) return;
+
+        enemy.ApplySpeedBuff(level, level.enemySpeedMultiplier);
+    }
+
     private BaybayinCharacterSO SelectCharacterForSpawn(WaveDefinition wave, EnemyDataSO selectedEnemyData)
     {
         if (wave.characters != null && wave.characters.Count > 0)
@@ -288,6 +304,7 @@ public class WaveSpawner : MonoBehaviour
                 BaybayinCharacterSO owned = selectedEnemyData != null
                     ? selectedEnemyData.assignedCharacter
                     : null;
+
                 if (owned != null && validCharacters.Contains(owned))
                     return owned;
 

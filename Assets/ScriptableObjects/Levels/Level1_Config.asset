@@ -102,6 +102,7 @@ MonoBehaviour:
   activeClueRestorationEnabled: 1
   clueChannels: 5
   audioVisualFallback: 4
+  enemySpeedMultiplier: 0.6
   defenseRules:
     shrineHearts: 3
   contextMedia:
@@ -150,7 +151,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
     - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
     enemyCount: 2
-    spawnInterval: 5
+    spawnInterval: 6
     waveStartDelay: 3
   - isIntermissionWave: 0
     characters:
@@ -163,8 +164,36 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
     - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
     - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
+    enemyCount: 4
+    spawnInterval: 5
+    waveStartDelay: 2
+  - isIntermissionWave: 0
+    characters:
+    - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+    - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+    - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+    - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+    enemyTypes:
+    - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
+    - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+    - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
+    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
     enemyCount: 5
-    spawnInterval: 3.5
+    spawnInterval: 4.5
+    waveStartDelay: 2
+  - isIntermissionWave: 0
+    characters:
+    - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+    - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+    - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+    - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+    enemyTypes:
+    - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
+    - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+    - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
+    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
+    enemyCount: 6
+    spawnInterval: 4
     waveStartDelay: 2
   - isIntermissionWave: 0
     characters:
@@ -178,35 +207,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
     - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
     enemyCount: 7
-    spawnInterval: 3
-    waveStartDelay: 2
-  - isIntermissionWave: 0
-    characters:
-    - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
-    - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
-    - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
-    - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
-    enemyTypes:
-    - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
-    - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
-    - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
-    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
-    enemyCount: 8
-    spawnInterval: 2.8
-    waveStartDelay: 2
-  - isIntermissionWave: 0
-    characters:
-    - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
-    - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
-    - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
-    - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
-    enemyTypes:
-    - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
-    - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
-    - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
-    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
-    enemyCount: 10
-    spawnInterval: 2.5
+    spawnInterval: 3.5
     waveStartDelay: 2
   allowedCharacters:
   - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}

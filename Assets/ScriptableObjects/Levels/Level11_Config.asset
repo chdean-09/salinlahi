@@ -222,6 +222,7 @@ MonoBehaviour:
   activeClueRestorationEnabled: 0
   clueChannels: 1
   audioVisualFallback: 4
+  enemySpeedMultiplier: 1
   defenseRules:
     shrineHearts: 3
   contextMedia:
