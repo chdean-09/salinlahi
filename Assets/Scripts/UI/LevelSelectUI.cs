@@ -8,6 +8,9 @@ using UnityEngine.UI;
 /// banner sprite, and the level scrolls when the player navigates eras.
 /// Prev/Next arrow buttons remain visible at era edges; their interactable
 /// flag is toggled and Unity's Button ColorBlock disabled-color tints them grey.
+///
+/// Era navigation is currently switched off at compile time — see
+/// <see cref="EraNavigationEnabled"/>.
 /// </summary>
 public class LevelSelectUI : MonoBehaviour
 {
@@ -27,6 +30,29 @@ public class LevelSelectUI : MonoBehaviour
     [Header("Navigation")]
     [SerializeField] private Button _prevEraButton;
     [SerializeField] private Button _nextEraButton;
+
+    /// <summary>
+    /// Master switch for the Prev/Next era arrows. Eras 2-3 are configured in
+    /// CampaignConfig_RevisedV1 but their content is not authored (levels 6-15 have no
+    /// numberSprite, and ResolveEras() deliberately falls back to the campaign list, so
+    /// the Next arrow would otherwise go live on Era 1).
+    ///
+    /// Deliberately a private compile-time const, NOT a [SerializeField] and NOT an
+    /// #if UNITY_EDITOR guard:
+    ///   - a serialized field could be re-checked in the Inspector or overridden by a
+    ///     scene/prefab value, so the lock would not be guaranteed;
+    ///   - an #if guard would disable it in the Editor but leave it live in a player
+    ///     build, which is the opposite of what is wanted.
+    /// As a const there is no runtime, Inspector, or save-data path that can turn era
+    /// navigation back on. Re-enabling it requires editing this line and recompiling,
+    /// which is the intended contract until Eras 2-3 are playable.
+    ///
+    /// When flipping it back to true, also restore the per-edge conditions that
+    /// <see cref="UpdateNavigationButtons"/> replaced with a flat assignment:
+    ///     _prevEraButton.interactable = _currentEraIndex &gt; 0;
+    ///     _nextEraButton.interactable = _currentEraIndex &lt; ResolveEras().Count - 1;
+    /// </summary>
+    private const bool EraNavigationEnabled = false;
 
     [Header("Back")]
     [SerializeField] private Button _backButton;
@@ -56,6 +82,11 @@ public class LevelSelectUI : MonoBehaviour
 
         if (_backButton != null)
             _backButton.onClick.AddListener(OnBackPressed);
+
+        // ShowEra early-returns on an empty era list, which would leave the arrows on
+        // whatever interactable value the scene serialized, so force the state here too.
+        // Listeners stay attached: a non-interactable Button never raises onClick.
+        UpdateNavigationButtons();
 
         // SALIN-253 (AC-4). "Enter Next Era" is pressed in the Gameplay scene, so it cannot
         // call ShowEra directly — this screen does not exist yet at that moment. It leaves the
@@ -189,13 +220,15 @@ public class LevelSelectUI : MonoBehaviour
 
     private void UpdateNavigationButtons()
     {
-        int eraCount = ResolveEras().Count;
-
+        // Both arrows, not just Next: the screen can be entered at a non-zero era via
+        // EraCompletionScreenUI.PendingEraIndex, where a live Prev arrow would be a
+        // one-way door back into Era 1. Assigned straight off the const so no runtime
+        // branch can re-enable either arrow.
         if (_prevEraButton != null)
-            _prevEraButton.interactable = _currentEraIndex > 0;
+            _prevEraButton.interactable = EraNavigationEnabled;
 
         if (_nextEraButton != null)
-            _nextEraButton.interactable = _currentEraIndex < eraCount - 1;
+            _nextEraButton.interactable = EraNavigationEnabled;
     }
 
     /// <summary>
