@@ -175,19 +175,19 @@ public class SymbolLearningCardController : MonoBehaviour
         BaybayinCharacterSO symbol = card.symbolValue.symbol;
         string spokenValueId = card.symbolValue.spokenValueId;
 
-        // Authored card art is the label source. Text appears only as an accessible
-        // fallback when art is missing, so a card never prints the same syllable twice.
+        // Match the glyph art the player sees above enemies. Badge art has no romanised
+        // label, so the value label remains visible as an overlay on the badge.
         CurrentLabel = SpokenValueResolver.ResolveLabel(symbol, spokenValueId);
-        bool hasAuthoredCardArt = symbol.displaySprite != null;
+        Sprite glyphSprite = symbol.badgeSprite != null ? symbol.badgeSprite : symbol.displaySprite;
         if (_labelText != null)
         {
             _labelText.text = CurrentLabel;
-            _labelText.gameObject.SetActive(!hasAuthoredCardArt);
+            _labelText.gameObject.SetActive(true);
         }
         if (_glyphImage != null)
         {
-            _glyphImage.sprite = symbol.displaySprite;
-            _glyphImage.gameObject.SetActive(hasAuthoredCardArt);
+            _glyphImage.sprite = glyphSprite;
+            _glyphImage.gameObject.SetActive(glyphSprite != null);
         }
         if (_progressText != null)
             _progressText.text = BuildProgressText(index, _cards.Count);
@@ -292,11 +292,11 @@ public class SymbolLearningCardController : MonoBehaviour
         GameObject labelObject = new GameObject("[Runtime] SymbolLearningLabel", typeof(RectTransform));
         labelObject.transform.SetParent(_panelRoot.transform, false);
         RectTransform labelRect = labelObject.GetComponent<RectTransform>();
-        labelRect.anchorMin = new Vector2(0f, 0.5f);
-        labelRect.anchorMax = new Vector2(1f, 0.5f);
-        labelRect.pivot = new Vector2(0.5f, 0.5f);
-        labelRect.anchoredPosition = new Vector2(0f, -40f);
-        labelRect.sizeDelta = new Vector2(-48f, 80f);
+        labelRect.anchorMin = new Vector2(0.5f, 1f);
+        labelRect.anchorMax = new Vector2(0.5f, 1f);
+        labelRect.pivot = new Vector2(0.5f, 1f);
+        labelRect.anchoredPosition = new Vector2(0f, -86f);
+        labelRect.sizeDelta = new Vector2(190f, 64f);
         _labelText = labelObject.AddComponent<TextMeshProUGUI>();
         _labelText.fontSize = 48f;
         _labelText.alignment = TextAlignmentOptions.Center;
@@ -356,12 +356,12 @@ public class SymbolLearningCardController : MonoBehaviour
             "[Runtime] SymbolLearningProgress", typeof(RectTransform));
         progressObject.transform.SetParent(_panelRoot.transform, false);
         RectTransform rect = progressObject.GetComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0.08f, 0.88f);
-        rect.anchorMax = new Vector2(0.92f, 0.98f);
+        rect.anchorMin = new Vector2(0.08f, 0.85f);
+        rect.anchorMax = new Vector2(0.92f, 0.995f);
         rect.offsetMin = rect.offsetMax = Vector2.zero;
 
         _progressText = progressObject.AddComponent<TextMeshProUGUI>();
-        _progressText.fontSize = 24f;
+        _progressText.fontSize = 50f;
         _progressText.color = new Color(0.82f, 0.86f, 0.94f, 1f);
         _progressText.alignment = TextAlignmentOptions.Center;
         _progressText.raycastTarget = false;

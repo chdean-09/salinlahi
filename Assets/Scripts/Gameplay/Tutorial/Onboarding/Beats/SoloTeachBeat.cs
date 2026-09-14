@@ -180,7 +180,6 @@ public sealed class SoloTeachBeat : OnboardingBeat
         enemy.AssignCharacter(step.targetCharacter);
 
         Level1TutorialEnemyController controller = new(enemy);
-        controller.MarkAsTutorialTarget("TUTORIAL");
         controller.FreezeThreat();
         return controller;
     }
