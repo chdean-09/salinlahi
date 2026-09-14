@@ -99,7 +99,7 @@ MonoBehaviour:
       spokenValueId: value.ma
     requiredSuccesses: 2
   activeClueCombatEnabled: 1
-  activeClueRestorationEnabled: 0
+  activeClueRestorationEnabled: 1
   clueChannels: 5
   audioVisualFallback: 4
   defenseRules:
