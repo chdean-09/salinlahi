@@ -1,5 +1,4 @@
 using UnityEngine;
-using TMPro;
 
 public sealed class Level1TutorialEnemyController
 {
@@ -18,34 +17,6 @@ public sealed class Level1TutorialEnemyController
     }
 
     public Enemy Enemy => _enemy;
-
-    public void MarkAsTutorialTarget(string label)
-    {
-        if (_enemy == null)
-            return;
-
-        Transform existing = _enemy.transform.Find("TutorialTargetMarker");
-        TextMeshPro text = existing != null
-            ? existing.GetComponent<TextMeshPro>()
-            : null;
-
-        if (text == null)
-        {
-            GameObject marker = new("TutorialTargetMarker");
-            marker.transform.SetParent(_enemy.transform, false);
-            marker.transform.localPosition = new Vector3(0f, 1.25f, -0.1f);
-            text = marker.AddComponent<TextMeshPro>();
-            text.alignment = TextAlignmentOptions.Center;
-            text.fontSize = 6f;
-            text.color = Color.yellow;
-            text.outlineWidth = 0.2f;
-            text.outlineColor = Color.black;
-            text.sortingOrder = RenderOrder.EnemyDebugLabel + 1;
-        }
-
-        text.text = label;
-        text.gameObject.SetActive(true);
-    }
 
     public void DisableContactDamage()
     {

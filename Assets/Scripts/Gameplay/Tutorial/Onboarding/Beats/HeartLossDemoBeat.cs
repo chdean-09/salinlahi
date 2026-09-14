@@ -49,7 +49,6 @@ public sealed class HeartLossDemoBeat : OnboardingBeat
         if (demoCharacter != null)
             demoEnemy.AssignCharacter(demoCharacter);
 
-        controller.MarkAsTutorialTarget(demoCharacter != null ? demoCharacter.characterID : "DEMO");
         controller.DisableContactDamage();
 
         if (ctx.Spotlight != null && ctx.PlayerBase != null)

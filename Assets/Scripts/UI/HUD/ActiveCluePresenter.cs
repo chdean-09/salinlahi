@@ -253,7 +253,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         TextMeshProUGUI instruction = instructionObject.AddComponent<TextMeshProUGUI>();
         CopyFont(textTemplate, instruction);
         instruction.text = "DRAW THE GLOWING SYMBOL TO DEFEND";
-        instruction.fontSize = 24f;
+        instruction.fontSize = 40f;
         instruction.alignment = TextAlignmentOptions.Center;
         instruction.color = new Color(1f, 0.84f, 0.29f, 1f);
         instruction.raycastTarget = false;

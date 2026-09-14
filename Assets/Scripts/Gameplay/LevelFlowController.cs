@@ -1197,6 +1197,11 @@ public class LevelFlowController : MonoBehaviour
             // retried attempt. Clearing is idempotent and, once IsActive is false, a beat
             // still unwinding can no longer re-latch either flag.
             TutorialRuntimeState.Clear();
+            // The tutorial guide uses its own overlay canvas, so it is not necessarily covered
+            // by the gameplay HUD root hidden by DefeatScreenUI. Close it explicitly to keep its
+            // current prompt and feedback (for example, "Draw MA" and "Nice — that's the one.")
+            // from remaining above the terminal screen.
+            FindFirstObjectByType<Level1TutorialGuideUI>(FindObjectsInactive.Include)?.Hide();
         }
     }
 

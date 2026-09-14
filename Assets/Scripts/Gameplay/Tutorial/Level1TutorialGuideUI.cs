@@ -17,6 +17,10 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
     [SerializeField] private TMP_Text _feedbackText;
     [SerializeField] private Button _skipButton;
 
+    [Header("Layout")]
+    [Tooltip("Keeps runtime-created guide UI responsive. Leave off for an authored hierarchy so its RectTransforms and font sizes remain Inspector-editable.")]
+    [SerializeField] private bool _useRuntimeResponsiveLayout;
+
     [Header("Guide Visuals")]
     [Tooltip("LineRenderer or similar to draw the guide path.")]
     [SerializeField] private LineRenderer _guidePathRenderer;
@@ -39,8 +43,13 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
     {
         TutorialFontProvider.ApplyTo(_promptText);
         TutorialFontProvider.ApplyTo(_feedbackText);
-        ApplyResponsiveTextLayout(_promptText, _feedbackText);
+        ApplyConfiguredLayout();
         EnsureGuideVisuals();
+
+        // Authored guide text is useful to position in the scene, but must not be
+        // visible until a tutorial beat explicitly calls ShowPrompt or ShowMessage.
+        if (_root != null)
+            _root.SetActive(false);
 
         if (_skipButton != null)
         {
@@ -76,7 +85,8 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         guide._root = root;
         guide._promptText = CreateText(root.transform, "PromptText", new Vector2(0.5f, 0.88f), 42, TextAlignmentOptions.Center);
         guide._feedbackText = CreateText(root.transform, "FeedbackText", new Vector2(0.5f, 0.76f), 28, TextAlignmentOptions.Center);
-        ApplyResponsiveTextLayout(guide._promptText, guide._feedbackText);
+        guide._useRuntimeResponsiveLayout = true;
+        guide.ApplyConfiguredLayout();
         guide._skipButton = CreateSkipButton(root.transform);
         guide.EnsureGuideVisuals();
         root.SetActive(false);
@@ -115,6 +125,12 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
     {
         ConfigureTextBand(promptText, PromptMinY, PromptMaxY, 38f, 56f);
         ConfigureTextBand(feedbackText, FeedbackMinY, FeedbackMaxY, 32f, 46f);
+    }
+
+    private void ApplyConfiguredLayout()
+    {
+        if (_useRuntimeResponsiveLayout)
+            ApplyResponsiveTextLayout(_promptText, _feedbackText);
     }
 
     private static void ConfigureTextBand(TMP_Text text, float minY, float maxY, float minFontSize, float maxFontSize)
@@ -167,7 +183,7 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
     public void Initialize(System.Action skipRequested)
     {
         EnsureRuntimeCanvas();
-        ApplyResponsiveTextLayout(_promptText, _feedbackText);
+        ApplyConfiguredLayout();
         _skipRequested = skipRequested;
         if (_skipButton != null)
             _skipButton.onClick.AddListener(HandleSkipClicked);
@@ -237,7 +253,7 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         if (_root != null)
             _root.SetActive(true);
 
-        ApplyResponsiveTextLayout(_promptText, _feedbackText);
+        ApplyConfiguredLayout();
         transform.SetAsLastSibling();
 
         if (_promptText != null)
@@ -307,7 +323,7 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         if (_root != null)
             _root.SetActive(true);
 
-        ApplyResponsiveTextLayout(_promptText, _feedbackText);
+        ApplyConfiguredLayout();
         transform.SetAsLastSibling();
 
         if (_promptText != null)
@@ -325,7 +341,7 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
 
     public void ShowFeedback(string message)
     {
-        ApplyResponsiveTextLayout(_promptText, _feedbackText);
+        ApplyConfiguredLayout();
         transform.SetAsLastSibling();
 
         if (_feedbackText != null)
