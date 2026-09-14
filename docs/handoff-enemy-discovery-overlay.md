@@ -1,16 +1,3 @@
-> **Closed 2026-09-15 — do not action this handoff as written.** The overlay this document
-> describes is present and wired in both `Assets/_Scenes/Gameplay.unity` and
-> `Assets/_Scenes/Level_01_Tutorial.unity` — it was not deleted, and an earlier note here claiming
-> it had been deleted was itself wrong (see `.superpowers/sdd/2026-09-14-level1-enemy-introduction-
-> lesson-plan/task-7-report.md`). What actually changed: `EnemyDiscoveryOnboardingController`'s
-> PRESENTATION (the pause, spotlight and panel below) is now superseded by
-> `EnemyIntroductionBeat`'s mid-combat card for any spawn the beat claims as an introduction, and is
-> suppressed on those spawns so the two stop firing on top of each other. The controller is
-> RETAINED — not restored, not deleted — because it remains the sole writer of
-> `EnemyDiscoveryProgress`, which the Almanac reads; that DATA write always still runs. See
-> `docs/design/2026-09-14-level1-enemy-introduction-lesson-design.md` and the guard/doc comment on
-> `EnemyDiscoveryOnboardingController.HandleEnemyDiscovered`.
-
 # Handoff: Enemy Discovery Spotlight Overlay Not Showing
 
 **Audience:** Intern / new contributor picking up this task.
