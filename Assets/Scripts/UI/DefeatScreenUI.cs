@@ -65,11 +65,7 @@ public class DefeatScreenUI : MonoBehaviour
         if (_heartCountText != null)
             _heartCountText.text = $"{hearts}/{maxHearts}";
         if (_explanationText != null)
-        {
-            _explanationText.text =
-                "An enemy reached the shrine and your last heart was lost. "
-                + "Draw the glowing symbol before enemies reach the bottom.";
-        }
+            _explanationText.gameObject.SetActive(false);
 
         DebugLogger.Log($"DefeatScreenUI: Showing defeat. Hearts: {hearts}/{maxHearts}");
     }

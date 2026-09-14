@@ -14,22 +14,31 @@ MonoBehaviour:
   m_EditorClassIdentifier: Salinlahi.Runtime::CutsceneSO
   cutsceneId: cutscene.ugat.01.opening
   panels:
-  - image: {fileID: 21300000, guid: f80286a6fc7643e8bbae8dd715fe5a4d, type: 3}
-    text: "Juan comes home to a house that is still alive.\nThe fire is warm, the
-      pot is steaming, a mat sits half-woven with the needle beside it.\nBut no one
-      is there, and he cannot remember the faces of the people who should be."
+  - image: {fileID: 5389463314004490309, guid: f7f34e4d49a300b44b66bbbea13dd418, type: 3}
+    text: 'Juan comes home to a house that is still alive.
+
+      The fire is warm,
+      the pot is steaming, a mat sits half-woven with the needle beside it.
+
+      But
+      no one is there, and he cannot remember the faces of the people who should
+      be.'
     transitionIn: 0
     transitionDuration: 0
     typewriterSpeed: 0
-  - image: {fileID: 21300000, guid: c76c9bc84db94e168cc7ebed0afc85e9, type: 3}
-    text: "On the far mat the Living Scroll lies open and glowing, and every name
-      his family had is written on it.\nThe characters are lifting off the page one
-      by one and going grey.\nSomething is erasing them, and when a name is gone,
-      so is the person."
+  - image: {fileID: -2546248128727442234, guid: 6809814cd52f1b044a0489144d8ec148, type: 3}
+    text: 'On the far mat the Living Scroll lies open and glowing, and every name
+      his family had is written on it.
+
+      The characters are lifting off the
+      page one by one and going grey.
+
+      Something is erasing them, and when
+      a name is gone, so is the person.'
     transitionIn: 0
     transitionDuration: 0
     typewriterSpeed: 0
-  - image: {fileID: 21300000, guid: 04601a95f2434a6da999866ab9a6d4be, type: 3}
+  - image: {fileID: -1878241172454444111, guid: 4db070788bebd06448efb41d80fcd204, type: 3}
     text: "Juan reaches for the Scroll and it answers him \u2014 he is the Salinlahi,
       the one who inherits what the generations before him left behind.\nOne faint
       letter waits on the page for a hand to trace it.\nHe is the last person who
