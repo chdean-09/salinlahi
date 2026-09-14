@@ -225,6 +225,14 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     {
         // The beat holds two pieces of global state. A scene unload or a level abort mid-card would
         // otherwise leave the game running at 0.15 with the screen dimmed and no way back.
+        //
+        // Captured before StopPlayback() clears it: PlayIntroduction's own finally block is what
+        // normally restores the enemy's glyph badge and hands its movement back, but Unity does not
+        // run a stopped coroutine's pending finally -- StopPlayback's StopCoroutine below removes it
+        // from the scheduler without unwinding it. An abort here has to redo both explicitly, or the
+        // enemy is left frozen mid-field with its badge permanently hidden.
+        Enemy claimedEnemy = _claimedEnemy;
+
         StopPlayback();
         ReleaseTimeScale();
         LiftVignette();
@@ -232,6 +240,12 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         {
             _card.HideCardImmediate();
             _card.HideBanner();
+        }
+
+        if (claimedEnemy != null)
+        {
+            claimedEnemy.GlyphBadge?.Show();
+            ReleaseEnemy(claimedEnemy);
         }
 
         if (s_instance == this)

@@ -1,0 +1,600 @@
+using System.Collections;
+using System.Collections.Generic;
+using System.Reflection;
+using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.TestTools;
+
+namespace Salinlahi.Tests.PlayMode.Gameplay
+{
+    /// <summary>
+    /// Task 10 (2026-09-14-level1-enemy-introduction-lesson-plan). PlayMode-only coverage for the
+    /// eight-beat enemy introduction lesson: everything under test here depends on Awake, OnEnable
+    /// or a coroutine, none of which EditMode runs, so this fixture is the only automated evidence
+    /// the lesson's ordering, inversion and teardown behaviour will ever get.
+    ///
+    /// <para>
+    /// Every scene actor is built by hand rather than loaded from the shipped Level1_Config /
+    /// AboLesson assets, matching the precedent in <c>AbongSimulaAshTests</c> and
+    /// <c>Level1EndToEndTests</c>: the point under test is <c>EnemyIntroductionBeat</c> /
+    /// <c>Enemy.Initialize</c> / <c>IntroductionDecision</c>'s own logic, not the specific authored
+    /// content, so a synthetic level with the same *shape* (one lesson enemy, requiredRestoredSlots
+    /// = 1, armAbilityOnIntroduction = true, revealGlyphLate = true) keeps the fixture independent of
+    /// asset edits.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Isolation.</b> <see cref="EnemyIntroductionProgress"/> and <see cref="AshFirstSlotController"/>
+    /// both carry static, cross-scene state (the one-shot introduction record and the "ash shown this
+    /// level" latch/registry respectively) that has previously leaked between PlayMode fixtures in
+    /// this project. Both are reset in <c>[SetUp]</c> and <c>[TearDown]</c>, <c>Time.timeScale</c> is
+    /// restored unconditionally in <c>[TearDown]</c> even on failure, and every scene object is
+    /// destroyed so no fixture depends on run order.
+    /// </para>
+    /// </summary>
+    [TestFixture]
+    public sealed class Level1LessonTests
+    {
+        private readonly List<Object> _objectsToDestroy = new();
+
+        private GameManager _gameManager;
+        private EnemyIntroductionBeat _beat;
+        private EnemyIntroductionCardView _cardView;
+        private TutorialSpotlightOverlay _vignette;
+        private ActiveCluePresenter _presenter;
+
+        [SetUp]
+        public void SetUp()
+        {
+            ReleaseSingleton<GameManager>();
+            TutorialRuntimeState.Clear();
+            EnemyIntroductionProgress.ResetForTests();
+            AshFirstSlotController.ResetRegistryForTests();
+            ActiveCluePresenter.SetActiveForTests(null);
+            Time.timeScale = 1f;
+
+            _gameManager = CreateComponent<GameManager>("GameManager_Level1LessonTests");
+            SetSingletonInstance(_gameManager);
+            _gameManager.StartGame();
+
+            // The card. A separate child GameObject holds the CanvasGroup so hiding the card
+            // (HideCardImmediate deactivates the group's own GameObject) never disables the view
+            // component that owns it.
+            GameObject cardRoot = CreateTracked("IntroCard");
+            _cardView = cardRoot.AddComponent<EnemyIntroductionCardView>();
+            GameObject cardGroupGO = new GameObject("CardGroup");
+            cardGroupGO.transform.SetParent(cardRoot.transform, false);
+            CanvasGroup cardGroup = cardGroupGO.AddComponent<CanvasGroup>();
+            SetPrivateField(_cardView, "_cardGroup", cardGroup);
+
+            // The beat. Wired with our own TutorialSpotlightOverlay (rather than letting it create
+            // one at runtime) so tests can read TutorialSpotlightOverlay.IsVisible directly.
+            GameObject beatGO = CreateTracked("EnemyIntroductionBeat");
+            _beat = beatGO.AddComponent<EnemyIntroductionBeat>();
+            SetPrivateField(_beat, "_card", _cardView);
+
+            _vignette = TutorialSpotlightOverlay.CreateRuntime();
+            _objectsToDestroy.Add(_vignette.gameObject);
+            SetPrivateField(_beat, "_vignette", _vignette);
+
+            // Deterministic timings: no test here should depend on real wall-clock ramps. Only the
+            // ability-hold step (authored per lesson/test) is left long enough to catch the beat
+            // mid-play before it advances on its own.
+            SetPrivateField(_beat, "_spawnSettleSeconds", 0f);
+            SetPrivateField(_beat, "_haltRampSeconds", 0f);
+            SetPrivateField(_beat, "_releaseRampSeconds", 0f);
+
+            // The clue presenter. EnemyIntroductionBeat.RestoredSlotCount() finds this by type, so
+            // one live instance is always present; each test points its _level field and configures
+            // RestorationState against its own synthetic focus words.
+            GameObject presenterGO = CreateTracked("ActiveCluePresenter_Level1LessonTests");
+            _presenter = presenterGO.AddComponent<ActiveCluePresenter>();
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            for (int i = _objectsToDestroy.Count - 1; i >= 0; i--)
+            {
+                if (_objectsToDestroy[i] != null)
+                    Object.DestroyImmediate(_objectsToDestroy[i]);
+            }
+            _objectsToDestroy.Clear();
+
+            ClearSingletonInstance<GameManager>();
+            TutorialRuntimeState.Clear();
+            EnemyIntroductionProgress.ResetForTests();
+            AshFirstSlotController.ResetRegistryForTests();
+            ActiveCluePresenter.SetActiveForTests(null);
+
+            // Unconditional, even on failure: a fixture that leaves the game slowed cascades into
+            // every test after it.
+            Time.timeScale = 1f;
+        }
+
+        // ------------------------------------------------------------------------------------
+        // 1. Deferral suppresses (+ required negative control)
+        // ------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// An enemy type with no lesson of its own, spawned while the level's one authored lesson
+        /// (here: a stand-in for Abo) is still pending, must defer: no card, and its own signature
+        /// ability suppressed too. The negative control is required, not decorative — Salinlahi has
+        /// shipped a suppression check that matched nothing before (see
+        /// a-filter-that-matches-nothing-looks-like-a-pass): without a case that proves the ability
+        /// CAN read armed, "suppressed" could be passing against a matcher that always reports
+        /// suppressed regardless of state.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator DeferralWhileLessonPending_SuppressesOtherType_ArmsWithNothingPending()
+        {
+            yield return null;
+
+            BaybayinCharacterSO iligawChar = MakeCharacter("EI", "symbol.test.defer.ei");
+            BaybayinCharacterSO aboChar = MakeCharacter("A", "symbol.test.defer.a");
+
+            EnemyDataSO iligawData = CreateEnemyData(
+                "test_iligaw_defer", "Iligaw", iligawChar, spawnsMirrorDecoy: true);
+            EnemyDataSO aboData = CreateEnemyData(
+                "test_abo_defer", "Abo ng Simula", aboChar, ashesFirstSlot: true);
+            EnemyLessonSO aboLesson = CreateAboShapedLesson(aboData);
+
+            LevelConfigSO pendingConfig = CreateLevelConfig(
+                new List<EnemyDataSO> { iligawData, aboData },
+                new[] { aboLesson },
+                new List<FocusWordDefinition>());
+            _gameManager.SetLevel(pendingConfig);
+
+            // --- Main case: Abo's lesson has not played yet, so Iligaw must defer. ---
+            Enemy iligaw = CreateEnemyShell("Iligaw_Deferred");
+            Assert.IsTrue(iligaw.Initialize(iligawData));
+
+            Assert.AreEqual(IntroductionOutcome.DeferAndSuppress, iligaw.IntroductionOutcome,
+                "A type with no lesson of its own, spawned while the level's lesson is still "
+                + "pending, must defer rather than play its own card.");
+
+            MirrorDecoyController decoy = iligaw.GetComponent<MirrorDecoyController>();
+            Assert.IsNotNull(decoy, "spawnsMirrorDecoy should attach MirrorDecoyController.");
+            Assert.IsTrue(decoy.IsSuppressedForIntroductionSpawn,
+                "Deferral must suppress the deferred type's own signature ability, not just "
+                + "withhold its card.");
+
+            // --- Negative control: seed Iligaw as already met, with nothing else pending. ---
+            // Seeded directly through the progress store (not by letting a first spawn's card
+            // actually play) so this half of the test is isolated from the beat/coroutine machinery
+            // exercised elsewhere in this fixture.
+            Assert.IsTrue(EnemyIntroductionProgress.TryClaimIntroduction(iligawData),
+                "setup: seed Iligaw as already introduced for the control");
+
+            LevelConfigSO clearConfig = CreateLevelConfig(
+                new List<EnemyDataSO> { iligawData },
+                System.Array.Empty<EnemyLessonSO>(),
+                new List<FocusWordDefinition>());
+            _gameManager.SetLevel(clearConfig);
+
+            Enemy iligawControl = CreateEnemyShell("Iligaw_Control");
+            Assert.IsTrue(iligawControl.Initialize(iligawData));
+
+            Assert.AreEqual(IntroductionOutcome.None, iligawControl.IntroductionOutcome,
+                "Negative control precondition: with nothing pending, and this type already met, "
+                + "this must be an ordinary spawn.");
+
+            MirrorDecoyController controlDecoy = iligawControl.GetComponent<MirrorDecoyController>();
+            Assert.IsFalse(controlDecoy.IsSuppressedForIntroductionSpawn,
+                "Negative control: with no lesson pending the ability must be ARMED. Without this "
+                + "case the suppression assertion above could be passing against a check that "
+                + "never actually fires.");
+        }
+
+        // ------------------------------------------------------------------------------------
+        // 2. The inversion
+        // ------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// Abo's own introduction spawn is the one deliberate exception to "an introduction spawn
+        /// suppresses its ability": the lesson arms it instead, because beat 2 is the ability firing
+        /// in front of the player. <see cref="IntroductionDecision"/> encodes both rules; this pins
+        /// the arm branch through the real Enemy.Initialize path, not just the pure decision table.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator AboIntroduction_ReportsIntroduceAndArm_AbilityNotSuppressed()
+        {
+            yield return null;
+
+            BaybayinCharacterSO aboChar = MakeCharacter("A", "symbol.test.inv.a");
+            BaybayinCharacterSO naChar = MakeCharacter("NA", "symbol.test.inv.na");
+
+            EnemyDataSO aboData = CreateEnemyData(
+                "test_abo_inversion", "Abo ng Simula", aboChar, ashesFirstSlot: true);
+            EnemyLessonSO aboLesson = CreateAboShapedLesson(aboData);
+
+            FocusWordDefinition word = CreateWord("level.test.inv.ina", "ina", "INA", aboChar, naChar);
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO> { aboData }, new[] { aboLesson },
+                new List<FocusWordDefinition> { word });
+            _gameManager.SetLevel(config);
+
+            SetPrivateField(_presenter, "_level", config);
+            _presenter.RestorationState.Configure(config.focusWords);
+            // Satisfies the lesson's precondition (requiredRestoredSlots = 1): the first slot (A) is
+            // already restored, exactly as Abo's real design requires.
+            _presenter.RestorationState.Apply(aboChar.stableId);
+
+            Enemy abo = CreateEnemyShell("Abo_Inversion");
+            Assert.IsTrue(abo.Initialize(aboData));
+
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndArm, abo.IntroductionOutcome,
+                "Abo's lesson arms the ability on the introduction spawn instead of suppressing "
+                + "it — the inversion IntroductionDecision documents.");
+            Assert.IsTrue(abo.IsIntroductionSpawn);
+
+            AshFirstSlotController ash = abo.GetComponent<AshFirstSlotController>();
+            Assert.IsNotNull(ash, "ashesFirstSlot should attach AshFirstSlotController.");
+            Assert.IsFalse(ash.IsSuppressedForIntroductionSpawn,
+                "An ordinary introduction suppresses its ability; Abo's lesson explicitly does "
+                + "not, because beat 2 IS the ability firing.");
+        }
+
+        // ------------------------------------------------------------------------------------
+        // 3. The precondition does not burn the one-shot
+        // ------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// An Abo who arrives before any slot is restored must be declined without spending his
+        /// one-shot introduction. If the claim were spent here, Abo would never be introduced for
+        /// the rest of the campaign — a silent, permanent, and very hard to notice bug, since nothing
+        /// crashes and nothing logs.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator AboPrecondition_DeclinesWithZeroRestoredSlots_WithoutBurningTheOneShot()
+        {
+            yield return null;
+
+            BaybayinCharacterSO aboChar = MakeCharacter("A", "symbol.test.pre.a");
+            BaybayinCharacterSO naChar = MakeCharacter("NA", "symbol.test.pre.na");
+
+            EnemyDataSO aboData = CreateEnemyData(
+                "test_abo_precondition", "Abo ng Simula", aboChar, ashesFirstSlot: true);
+            EnemyLessonSO aboLesson = CreateAboShapedLesson(aboData); // requiredRestoredSlots = 1
+
+            FocusWordDefinition word = CreateWord("level.test.pre.ina", "ina", "INA", aboChar, naChar);
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO> { aboData }, new[] { aboLesson },
+                new List<FocusWordDefinition> { word });
+            _gameManager.SetLevel(config);
+
+            SetPrivateField(_presenter, "_level", config);
+            _presenter.RestorationState.Configure(config.focusWords);
+            // Deliberately restore nothing.
+
+            Assert.AreEqual(0, _presenter.RestoredSlotCount, "precondition: nothing restored yet.");
+            Assert.IsFalse(EnemyIntroductionProgress.HasBeenIntroduced(aboData),
+                "precondition: Abo has never been introduced.");
+
+            Enemy abo = CreateEnemyShell("Abo_Precondition");
+            Assert.IsTrue(abo.Initialize(aboData));
+
+            Assert.AreEqual(IntroductionOutcome.DeferAndSuppress, abo.IntroductionOutcome,
+                "An Abo who arrives before the clue can lose anything must be declined — no card, "
+                + "ability suppressed until the precondition is met.");
+            Assert.IsFalse(abo.IsIntroductionSpawn);
+
+            Assert.IsFalse(EnemyIntroductionProgress.HasBeenIntroduced(aboData),
+                "The decline must NOT spend Abo's one-shot introduction, or Abo would never be "
+                + "introduced for the rest of the campaign.");
+        }
+
+        // ------------------------------------------------------------------------------------
+        // 4. Beat 2 is visible (+ required negative control)
+        // ------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// The exact reason <c>requiredRestoredSlots</c> exists: with one slot restored, ashing the
+        /// word's first slot changes what the masked spelling renders; with nothing restored, the
+        /// target slot is already unreadable and the ash is a no-op. The negative control IS the
+        /// design rationale in <see cref="EnemyLessonSO.requiredRestoredSlots"/>'s own doc comment —
+        /// asserting only the "differs" half would pass an ash that always renders differently
+        /// regardless of restoration state, which is not what beat 2 needs to be true.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Beat2MaskedSpelling_DiffersWithOneSlotRestored_EqualWithNothingRestored()
+        {
+            yield return null;
+
+            BaybayinCharacterSO i = MakeCharacter("EI", "symbol.test.beat2.i");
+            BaybayinCharacterSO na = MakeCharacter("NA", "symbol.test.beat2.na");
+            FocusWordDefinition ina = CreateWord("level.test.beat2.ina", "ina", "INA", i, na);
+
+            // One slot restored (I): the needed slot is now NA, INA's second symbol — the shape
+            // Abo's requiredRestoredSlots = 1 exists to guarantee.
+            var restoredOne = new ActiveClueRestorationState();
+            restoredOne.Configure(new List<FocusWordDefinition> { ina });
+            restoredOne.Apply(i.stableId);
+
+            string ashedOn = InvokeBuildMaskedSpelling(ina, na.stableId, ashFirstSlot: true, restoredOne);
+            string ashedOff = InvokeBuildMaskedSpelling(ina, na.stableId, ashFirstSlot: false, restoredOne);
+
+            Assert.AreNotEqual(ashedOn, ashedOff,
+                "With one slot restored, beat 2 must be visible: ashing the first slot must "
+                + "change what the masked spelling renders.");
+
+            // Negative control: nothing restored at all. With no progress made, the needed slot IS
+            // the word's own first symbol (I) -- not NA, which is only "needed" after I is restored
+            // above. Using the same needed-slot symbol here is the point: it is exactly the
+            // coincidence AshFirstSlotController.WantsToArm refuses to arm on ("the needed slot
+            // being its word's first symbol makes the ash a no-op"), which is why
+            // requiredRestoredSlots exists at all.
+            var restoredNone = new ActiveClueRestorationState();
+            restoredNone.Configure(new List<FocusWordDefinition> { ina });
+
+            string noneAshedOn = InvokeBuildMaskedSpelling(ina, i.stableId, ashFirstSlot: true, restoredNone);
+            string noneAshedOff = InvokeBuildMaskedSpelling(ina, i.stableId, ashFirstSlot: false, restoredNone);
+
+            Assert.AreEqual(noneAshedOn, noneAshedOff,
+                "With nothing restored, the needed slot (I) is already the word's first symbol, so "
+                + "the ash and the target mask coincide and ash-on/ash-off must render identically. "
+                + "This equality is exactly why requiredRestoredSlots exists: arming here would be "
+                + "an invisible event.");
+        }
+
+        // ------------------------------------------------------------------------------------
+        // 5. Teardown on abort
+        // ------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// Aborting a lesson mid-play (the beat's OnDisable, triggered here by disabling the
+        /// component) must hand back every piece of state the lesson borrowed: real time, the
+        /// vignette, the enemy's glyph badge, and its movement. A lesson that aborts holding the
+        /// badge hidden leaves an enemy permanently unmarked for the rest of its life on the field.
+        /// <para>
+        /// Note: <c>EnemyIntroductionBeat.PlayIntroduction</c> restores the badge and the enemy's
+        /// movement inside its coroutine's <c>finally</c> block. Unity does not run a coroutine's
+        /// pending <c>finally</c> when the coroutine is stopped via <c>StopCoroutine</c> (which is
+        /// what disabling the beat does) — only a normal completion or an exception unwinds it. This
+        /// test exercises exactly that path, which is presumably why <c>OnDisable</c> explicitly
+        /// re-does the timescale and vignette restoration rather than trusting the <c>finally</c> to
+        /// run.
+        /// </para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator AbortMidLesson_RestoresTimeScaleVignetteBadgeAndMovement()
+        {
+            yield return null;
+
+            BaybayinCharacterSO aboChar = MakeCharacter("A", "symbol.test.abort.a");
+            BaybayinCharacterSO naChar = MakeCharacter("NA", "symbol.test.abort.na");
+            aboChar.badgeSprite = GlyphBadgePlayModeTestHelpers.CreateSprite(Color.red);
+
+            EnemyDataSO aboData = CreateEnemyData(
+                "test_abo_abort", "Abo ng Simula", aboChar, ashesFirstSlot: true);
+            EnemyLessonSO aboLesson = CreateAboShapedLesson(aboData);
+            // Long enough that the abort below is guaranteed to land mid-beat-2, not race its
+            // natural advance to beat 3.
+            aboLesson.abilityBeatSeconds = 30f;
+
+            FocusWordDefinition word = CreateWord("level.test.abort.ina", "ina", "INA", aboChar, naChar);
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO> { aboData }, new[] { aboLesson },
+                new List<FocusWordDefinition> { word });
+            _gameManager.SetLevel(config);
+
+            SetPrivateField(_presenter, "_level", config);
+            _presenter.RestorationState.Configure(config.focusWords);
+            _presenter.RestorationState.Apply(aboChar.stableId);
+
+            Enemy abo = CreateEnemyShell("Abo_Abort");
+            (EnemyGlyphBadge badge, SpriteRenderer badgeRenderer) = GlyphBadgePlayModeTestHelpers
+                .AddGlyphBadgeChild(abo.gameObject, GlyphBadgePlayModeTestHelpers.CreateBadgeConfig());
+
+            Assert.IsTrue(abo.Initialize(aboData));
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndArm, abo.IntroductionOutcome,
+                "setup: this must be a real lesson spawn to exercise the lesson's teardown path.");
+
+            EnemyMover mover = abo.GetComponent<EnemyMover>();
+
+            // Mid-lesson precondition: the beat's coroutine runs synchronously (no yields consumed)
+            // from Initialize through beat 1's halt/vignette/timescale drop and beat 2's hidden
+            // badge, stopping only at the wall-clock ability-hold wait — so this state is already
+            // true the instant Initialize() returns, with no frame needed.
+            Assert.AreNotEqual(1f, Time.timeScale, "setup: mid-lesson time scale must be dropped.");
+            Assert.IsTrue(_vignette.IsVisible, "setup: mid-lesson the vignette must be up.");
+            Assert.IsFalse(mover.IsMoving, "setup: mid-lesson the enemy must be halted.");
+            Assert.IsTrue(IsBadgeHidden(badgeRenderer),
+                "setup: revealGlyphLate must hide the badge through beats 1-6.");
+
+            // Abort: disable the beat mid-play, the way a level abort or scene teardown would.
+            _beat.enabled = false;
+            yield return null;
+
+            Assert.AreEqual(1f, Time.timeScale,
+                "Aborting mid-lesson must restore real time.");
+            Assert.IsFalse(_vignette.IsVisible,
+                "Aborting mid-lesson must lift the vignette.");
+            Assert.IsTrue(IsBadgeVisible(badgeRenderer),
+                "Aborting mid-lesson must not leave the enemy's glyph badge permanently hidden — "
+                + "an enemy left unmarked for the rest of its life on the field.");
+            Assert.IsTrue(mover.IsMoving,
+                "Aborting mid-lesson must hand the enemy's movement back.");
+        }
+
+        // ------------------------------------------------------------------------------------
+        // Scene helpers
+        // ------------------------------------------------------------------------------------
+
+        private Enemy CreateEnemyShell(string name)
+        {
+            GameObject go = new GameObject(name);
+            go.SetActive(false);
+            go.AddComponent<SpriteRenderer>();
+            go.AddComponent<BoxCollider2D>();
+            go.AddComponent<EnemyMover>();
+            Enemy enemy = go.AddComponent<Enemy>();
+            GlyphBadgePlayModeTestHelpers.DisableDebugLabels(enemy);
+            go.SetActive(true);
+            _objectsToDestroy.Add(go);
+            return enemy;
+        }
+
+        private EnemyDataSO CreateEnemyData(
+            string enemyID,
+            string displayName,
+            BaybayinCharacterSO character,
+            bool ashesFirstSlot = false,
+            bool spawnsMirrorDecoy = false)
+        {
+            var data = ScriptableObject.CreateInstance<EnemyDataSO>();
+            data.enemyID = enemyID;
+            data.displayName = displayName;
+            data.discoverySubtitle = "test subtitle";
+            data.abilityLine = "test ability line";
+            data.assignedCharacter = character;
+            data.maxHealth = 10;
+            data.moveSpeed = 1f;
+            data.useHurtFeedback = false;
+            data.ashesFirstSlot = ashesFirstSlot;
+            data.spawnsMirrorDecoy = spawnsMirrorDecoy;
+            _objectsToDestroy.Add(data);
+            return data;
+        }
+
+        /// <summary>Same shape as the shipped AboLesson.asset: see task-10-brief.md.</summary>
+        private EnemyLessonSO CreateAboShapedLesson(EnemyDataSO enemy)
+        {
+            var lesson = ScriptableObject.CreateInstance<EnemyLessonSO>();
+            lesson.enemy = enemy;
+            lesson.requiredRestoredSlots = 1;
+            lesson.armAbilityOnIntroduction = true;
+            lesson.abilityBeatSeconds = 2.5f;
+            lesson.revealGlyphLate = true;
+            lesson.drawStep = null; // beat 8 skipped; not exercised by this fixture
+            _objectsToDestroy.Add(lesson);
+            return lesson;
+        }
+
+        private LevelConfigSO CreateLevelConfig(
+            List<EnemyDataSO> waveRoster,
+            EnemyLessonSO[] enemyLessons,
+            List<FocusWordDefinition> focusWords)
+        {
+            var config = ScriptableObject.CreateInstance<LevelConfigSO>();
+            config.levelNumber = 1;
+            config.stableId = "level.test.lesson";
+            config.enemyLessons = enemyLessons ?? System.Array.Empty<EnemyLessonSO>();
+            config.focusWords = focusWords ?? new List<FocusWordDefinition>();
+
+            var wave = new WaveDefinition { enemyTypes = new List<EnemyDataSO>(waveRoster) };
+            config.waves = new List<WaveDefinition> { wave };
+
+            _objectsToDestroy.Add(config);
+            return config;
+        }
+
+        private static FocusWordDefinition CreateWord(
+            string stableId,
+            string latinSpelling,
+            string displayLabel,
+            BaybayinCharacterSO first,
+            BaybayinCharacterSO second)
+        {
+            return new FocusWordDefinition
+            {
+                stableId = stableId,
+                latinSpelling = latinSpelling,
+                displayLabel = displayLabel,
+                meaning = "test-word",
+                decomposition = new List<SymbolValueReference>
+                {
+                    new SymbolValueReference { symbol = first },
+                    new SymbolValueReference { symbol = second },
+                },
+            };
+        }
+
+        private BaybayinCharacterSO MakeCharacter(string characterID, string stableId)
+        {
+            var character = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            character.characterID = characterID;
+            character.syllable = characterID.ToLowerInvariant();
+            character.stableId = stableId;
+            _objectsToDestroy.Add(character);
+            return character;
+        }
+
+        private GameObject CreateTracked(string name)
+        {
+            var go = new GameObject(name);
+            _objectsToDestroy.Add(go);
+            return go;
+        }
+
+        private static bool IsBadgeVisible(SpriteRenderer badgeRenderer) =>
+            badgeRenderer != null && badgeRenderer.enabled && badgeRenderer.color.a > 0.5f;
+
+        private static bool IsBadgeHidden(SpriteRenderer badgeRenderer) =>
+            badgeRenderer != null && badgeRenderer.color.a < 0.5f;
+
+        // ------------------------------------------------------------------------------------
+        // Reflection helpers
+        // ------------------------------------------------------------------------------------
+
+        private static string InvokeBuildMaskedSpelling(
+            FocusWordDefinition word,
+            string symbolStableId,
+            bool ashFirstSlot,
+            ActiveClueRestorationState restorationState)
+        {
+            MethodInfo method = typeof(ActiveCluePresenter).GetMethod(
+                "BuildMaskedSpellingWithRestoration",
+                BindingFlags.Static | BindingFlags.NonPublic);
+            Assert.IsNotNull(method, "Missing ActiveCluePresenter.BuildMaskedSpellingWithRestoration.");
+            return (string)method.Invoke(
+                null, new object[] { word, symbolStableId, ashFirstSlot, restorationState });
+        }
+
+        private static void SetPrivateField(object target, string fieldName, object value) =>
+            GlyphBadgePlayModeTestHelpers.SetPrivateField(target, fieldName, value);
+
+        private static void SetSingletonInstance<T>(T instance) where T : MonoBehaviour
+        {
+            PropertyInfo property = typeof(Singleton<T>).GetProperty(
+                "Instance", BindingFlags.Static | BindingFlags.Public);
+            MethodInfo setter = property?.GetSetMethod(nonPublic: true);
+            Assert.IsNotNull(setter);
+            setter.Invoke(null, new object[] { instance });
+        }
+
+        private static void ClearSingletonInstance<T>() where T : MonoBehaviour
+        {
+            PropertyInfo property = typeof(Singleton<T>).GetProperty(
+                "Instance", BindingFlags.Static | BindingFlags.Public);
+            MethodInfo setter = property?.GetSetMethod(nonPublic: true);
+            Assert.IsNotNull(setter);
+            setter.Invoke(null, new object[] { null });
+        }
+
+        /// <summary>
+        /// Destroys every <typeparamref name="T"/> an earlier fixture left in the scene and clears
+        /// the static field, so this fixture's own manager takes Singleton&lt;T&gt;.Awake's "I am
+        /// the instance" branch instead of the duplicate-destroy branch.
+        /// </summary>
+        private static void ReleaseSingleton<T>() where T : MonoBehaviour
+        {
+            foreach (T existing in Object.FindObjectsByType<T>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (existing != null)
+                    Object.DestroyImmediate(existing);
+            }
+
+            ClearSingletonInstance<T>();
+        }
+
+        private T CreateComponent<T>(string name) where T : Component
+        {
+            GameObject go = new GameObject(name);
+            T component = go.AddComponent<T>();
+            _objectsToDestroy.Add(go);
+            return component;
+        }
+    }
+}

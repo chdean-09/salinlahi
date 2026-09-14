@@ -38,6 +38,9 @@ public sealed class MirrorDecoyController : MonoBehaviour
 
     public Enemy Decoy => _decoy;
 
+    /// <summary>True while this spawn is suppressed as its type's introduction spawn. Test/diagnostic seam, mirroring <see cref="AshFirstSlotController.IsSuppressedForIntroductionSpawn"/>.</summary>
+    public bool IsSuppressedForIntroductionSpawn => _suppressedForIntroductionSpawn;
+
     /// <summary>
     /// Makes this ability inert for one spawn — the spawn on which the enemy's introduction card
     /// plays — and arms it again on every later spawn of the type.
