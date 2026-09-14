@@ -245,14 +245,21 @@ public sealed class Level1OnboardingController : MonoBehaviour
             FindObjectsInactive.Include,
             FindObjectsSortMode.None);
 
+        DialogueController inactiveFallback = null;
+
         for (int i = 0; i < controllers.Length; i++)
         {
             DialogueController controller = controllers[i];
-            if (controller != null && controller.gameObject.activeInHierarchy)
+            if (controller == null)
+                continue;
+
+            if (controller.gameObject.activeInHierarchy)
                 return controller;
+
+            inactiveFallback ??= controller;
         }
 
-        return null;
+        return inactiveFallback;
     }
 
     private OnboardingSequenceSO ResolveSequence(LevelConfigSO levelConfig)
@@ -496,6 +503,10 @@ public sealed class Level1OnboardingController : MonoBehaviour
     }
 
     /// <summary>
+    /// Level-specific normalization keeps the runtime copy aligned with the campaign content.
+    /// Level 1 uses its four focus symbols for interactive teaching and must not replay media
+    /// from an older sequence asset. The serialized asset is never mutated.
+    ///
     /// SALIN-241. Level 2's AUTHORED beat order wins. The <c>[Release]</c> forcing that SALIN-225
     /// left here survives only as the empty-order fallback.
     /// </summary>
@@ -518,7 +529,18 @@ public sealed class Level1OnboardingController : MonoBehaviour
     /// </remarks>
     internal static void NormalizeSequenceForLevel(OnboardingSequenceSO sequence, int levelNumber)
     {
-        if (sequence == null || levelNumber != LevelTutorialProgress.Level2TutorialLevelNumber)
+        if (sequence == null)
+            return;
+
+        if (levelNumber == LevelTutorialProgress.Level1TutorialLevelNumber)
+        {
+            if (sequence.basicTeachSteps != null && sequence.basicTeachSteps.Length > 0)
+                sequence.basicTeachVideos = new OnboardingVideoTemplate[sequence.basicTeachSteps.Length];
+
+            sequence.soloTeachVideo = default;
+        }
+
+        if (levelNumber != LevelTutorialProgress.Level2TutorialLevelNumber)
             return;
 
         if (sequence.beatOrder == null || sequence.beatOrder.Length == 0)

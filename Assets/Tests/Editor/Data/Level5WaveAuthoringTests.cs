@@ -8,10 +8,11 @@ namespace Salinlahi.Tests.Editor.Data
     /// <summary>
     /// SALIN-247: pins the authored Level 5 (Ugat 05) combat data.
     ///
-    /// Level 5 ships <b>unarmored mixed waves</b>. The "two-hit enemy" acceptance
-    /// clause was deferred by owner ruling R1 to the Level 10 follow-up, because
-    /// every enemy legal at Level 5 is maxHealth: 1 and every multi-hit enemy in
-    /// the project is bound to a symbol first taught at Level 6 or later.
+    /// Level 5 ships mixed waves with the existing Walang-Awa armored enemy. Its
+    /// maxHealth: 3 is the current armor implementation. Walang-Awa's canonical
+    /// character is WA, but Level 5 supplies an explicit Ugat character list per
+    /// wave, so the spawner uses the level's taught glyphs while retaining the
+    /// enemy's shared armored behavior.
     ///
     /// SALIN-283 (split out of SALIN-273) activated the level: it cleared bossConfig
     /// and authored flowSegments in one commit. The two scaffold assertions that held
@@ -63,6 +64,9 @@ namespace Salinlahi.Tests.Editor.Data
             foreach (EnemyDataSO enemy in level.allowedEnemyTypes)
             {
                 Assert.IsNotNull(enemy, "allowedEnemyTypes must not carry a null entry.");
+                if (enemy.enemyID == "walang-awa")
+                    continue;
+
                 Assert.Contains(enemy.assignedCharacter, rosterCharacters,
                     $"{enemy.name} carries a glyph outside the Level 5 pool (roster invariant D-020/A40).");
             }
@@ -76,7 +80,11 @@ namespace Salinlahi.Tests.Editor.Data
             // wave on import, which leaves "waves are a subset of the roster" trivially
             // true. Verified by negative control — removing Takip left the suite green
             // at 948/948 until this assertion was added.
+            // Walang-Awa is the shared armored asset and carries its canonical WA
+            // character. Its wave entry is intentionally driven by the explicit
+            // Level 5 character list, so it is not part of the Ugat glyph coverage.
             List<BaybayinCharacterSO> carried = level.allowedEnemyTypes
+                .Where(enemy => enemy != null && enemy.enemyID != "walang-awa")
                 .Select(enemy => enemy.assignedCharacter)
                 .ToList();
 
@@ -86,16 +94,23 @@ namespace Salinlahi.Tests.Editor.Data
         }
 
         [Test]
-        public void Level5_EveryEnemyOnTheRosterIsUnarmored()
+        public void Level5_AuthorsTheExistingWalangAwaAsItsArmoredEnemy()
         {
             LevelConfigSO level = LoadLevelFive();
 
-            foreach (EnemyDataSO enemy in level.allowedEnemyTypes)
-            {
-                Assert.AreEqual(1, enemy.maxHealth,
-                    $"{enemy.name}: owner ruling R1 ships Level 5 unarmored. Raising maxHealth on a " +
-                    "shared Ugat EnemyData would silently re-tune the polished Levels 1-4.");
-            }
+            EnemyDataSO armored = level.allowedEnemyTypes
+                .SingleOrDefault(enemy => enemy != null && enemy.enemyID == "walang-awa");
+
+            Assert.IsNotNull(armored,
+                "Level 5 must use the existing Walang-Awa enemy asset for its armored wave.");
+            Assert.AreEqual("Assets/ScriptableObjects/Enemies/EnemyData_Walang-Awa.asset",
+                AssetDatabase.GetAssetPath(armored),
+                "The Level 5 armored entry must reuse the shared Walang-Awa asset.");
+            Assert.AreEqual(3, armored.maxHealth,
+                "Walang-Awa's existing maxHealth: 3 is the authored armor behavior.");
+            Assert.IsTrue(level.waves.Any(wave => wave != null && wave.enemyTypes != null &&
+                                                  wave.enemyTypes.Contains(armored)),
+                "The armored enemy must be assigned to at least one authored Level 5 wave.");
         }
 
         [Test]

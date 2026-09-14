@@ -33,8 +33,8 @@ namespace Salinlahi.Tests.Editor.Data
         private static readonly string[] KnownUnregistered =
         {
             "abo-ng-simula", "bakod", "daan-lihis", "gapos", "hati", "iligaw", "kadena",
-            "labo", "mantsa", "nawalang-mukha", "ngatngat", "punit", "salungat", "takip",
-            "uhaw", "walang-awa", "yapos-ng-dilim",
+            "labo", "mantsa", "nawalang-mukha", "ngatngat", "punit", "ragasa", "salungat",
+            "takip", "uhaw", "walang-awa", "yapos-ng-dilim",
         };
 
         private static string Normalise(string id) => (id ?? string.Empty).Trim().ToLowerInvariant();

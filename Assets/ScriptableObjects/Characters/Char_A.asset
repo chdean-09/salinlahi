@@ -19,7 +19,7 @@ MonoBehaviour:
   spokenValues:
   - stableId: value.a
     displayValue: a
-    pronunciationClip: {fileID: 0}
+    pronunciationClip: {fileID: 8300000, guid: d52ff3a9c6e746b8950e44939cff0b87, type: 3}
   firstIntroductionLevelId: level.ugat.01
   description: 
   displaySprite: {fileID: -8680797543115379092, guid: 086eb41909e2e2942abbbc0f1a3a1d06, type: 3}
@@ -27,5 +27,5 @@ MonoBehaviour:
   badgeSprite: {fileID: 0}
   scrambledBadgeSprite: {fileID: 0}
   glyphOutlineSprite: {fileID: 21300000, guid: 2386098f7e87c428a8f441b9bbd4f5be, type: 3}
-  pronunciationClip: {fileID: 0}
+  pronunciationClip: {fileID: 8300000, guid: d52ff3a9c6e746b8950e44939cff0b87, type: 3}
   templateFileName: A_template_01

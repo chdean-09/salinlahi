@@ -150,7 +150,7 @@ public class FocusWordPreviewController : MonoBehaviour
         GameObject buttonLabel = new GameObject("[Runtime] ContinueLabel", typeof(RectTransform));
         buttonLabel.transform.SetParent(buttonObject.transform, false);
         TextMeshProUGUI label = buttonLabel.AddComponent<TextMeshProUGUI>();
-        label.text = "Magpatuloy";
+        label.text = "Continue";
         label.fontSize = 26f;
         label.alignment = TextAlignmentOptions.Center;
         label.raycastTarget = false;

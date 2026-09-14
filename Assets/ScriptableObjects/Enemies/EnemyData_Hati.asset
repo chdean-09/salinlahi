@@ -70,3 +70,7 @@ MonoBehaviour:
   scrambleRadius: 3
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
+  splitsOnDefeat: 1
+  splitSpawnData: {fileID: 11400000, guid: 1320e9b202c8b71ac93b6983e2d0b414, type: 2}
+  splitCount: 2
+  splitOffsetX: 0.9

@@ -19,7 +19,7 @@ MonoBehaviour:
   spokenValues:
   - stableId: value.ba
     displayValue: ba
-    pronunciationClip: {fileID: 8300000, guid: e60c6d3fb4f3cea4b8f529136adb5826, type: 3}
+    pronunciationClip: {fileID: 8300000, guid: eca1c454b58e435e993af6fdafa4a75f, type: 3}
   firstIntroductionLevelId: level.ugat.02
   description: "BA starts with BA in early Filipino villages before Spanish rule.
     Juan sees children learning Baybayin from their elders.\n\r\n\u201CBA begins
@@ -29,5 +29,5 @@ MonoBehaviour:
   badgeSprite: {fileID: -7019089095972263220, guid: ceb87f9375157e64690dafe395aab3b8, type: 3}
   scrambledBadgeSprite: {fileID: 0}
   glyphOutlineSprite: {fileID: 21300000, guid: 8eb67d3718dc64abea32575c7ba3f742, type: 3}
-  pronunciationClip: {fileID: 8300000, guid: e60c6d3fb4f3cea4b8f529136adb5826, type: 3}
+  pronunciationClip: {fileID: 8300000, guid: eca1c454b58e435e993af6fdafa4a75f, type: 3}
   templateFileName: BA_template_01

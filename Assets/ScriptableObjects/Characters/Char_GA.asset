@@ -19,7 +19,7 @@ MonoBehaviour:
   spokenValues:
   - stableId: value.ga
     displayValue: ga
-    pronunciationClip: {fileID: 0}
+    pronunciationClip: {fileID: 8300000, guid: 6459865caa834704ac8fc838bc57ac4a, type: 3}
   firstIntroductionLevelId: level.ugnayan.01
   description: 
   displaySprite: {fileID: 4035763599135563830, guid: 90454863e23df514eb040ab91266f844, type: 3}
@@ -27,5 +27,5 @@ MonoBehaviour:
   badgeSprite: {fileID: 0}
   scrambledBadgeSprite: {fileID: 0}
   glyphOutlineSprite: {fileID: 21300000, guid: bb107c244e8f143f8a19a3d7c8f76ba1, type: 3}
-  pronunciationClip: {fileID: 0}
+  pronunciationClip: {fileID: 8300000, guid: 6459865caa834704ac8fc838bc57ac4a, type: 3}
   templateFileName: GA_template_01

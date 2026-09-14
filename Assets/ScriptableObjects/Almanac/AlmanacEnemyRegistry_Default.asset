@@ -51,3 +51,5 @@ MonoBehaviour:
     bossConfig: {fileID: 0}
   - enemyData: {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
     bossConfig: {fileID: 0}
+  - enemyData: {fileID: 11400000, guid: 579d65d7846bc3a4ce1f0197ec37751a, type: 2}
+    bossConfig: {fileID: 0}

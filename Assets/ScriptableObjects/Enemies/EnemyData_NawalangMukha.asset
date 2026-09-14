@@ -64,6 +64,7 @@ MonoBehaviour:
   postHurtCharacter: {fileID: 0}
   hurtFrames: []
   hurtAnimationFps: 12
+  removesNames: 1
   chargeMultiplier: 2.5
   chargeTriggerYNormalized: 0.5
   pauseDuration: 0.35

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
+using Salinlahi.Debug.Sandbox;
 using UnityEngine;
 using UnityEngine.TestTools;
 
@@ -46,6 +47,8 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             ReleaseSingleton<GameManager>();
             ReleaseSingleton<ProgressManager>();
 
+            SandboxMode.Deactivate();
+            LevelFlowController.SetSkipReadyScreenForTests(true);
             LevelTutorialProgress.ResetLevel1TutorialForTests();
         }
 
@@ -54,6 +57,8 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         {
             ClearSingletonInstance<GameManager>();
             ClearSingletonInstance<ProgressManager>();
+            SandboxMode.Deactivate();
+            LevelFlowController.SetSkipReadyScreenForTests(false);
             LevelTutorialProgress.ResetLevel1TutorialForTests();
             Time.timeScale = 1f;
 

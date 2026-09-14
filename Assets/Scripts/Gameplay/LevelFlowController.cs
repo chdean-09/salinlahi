@@ -47,6 +47,7 @@ public class LevelFlowController : MonoBehaviour
     private bool _waitingForDialogue;
     private bool _waitingForCutscene;
     private bool _flowAborted;
+    private bool _skipLessonForCombatRetry;
     private bool _drawingSuppressedByFlow;
     private bool _runtimeBootstrapped;
     private LevelFlowMachine _machine;
@@ -121,6 +122,7 @@ public class LevelFlowController : MonoBehaviour
     private ActiveCluePresenter _activeCluePresenter;
     private FocusWordPreviewController _focusWordPreview;
     private SymbolLearningCardController _symbolLearningCards;
+    private LevelReadyScreenController _levelReadyScreen;
 
     public static bool TryStartRuntimeTutorialFlow(
         LevelConfigSO levelConfig,
@@ -222,6 +224,12 @@ public class LevelFlowController : MonoBehaviour
     // its teardown; compiled out of player builds. Mirrors the
     // SandboxMode._availabilityOverride test-seam precedent.
     private static bool s_forceGameplaySceneForTests;
+    private static bool s_skipReadyScreenForTests;
+
+    public static void SetSkipReadyScreenForTests(bool skip)
+    {
+        s_skipReadyScreenForTests = skip;
+    }
 #endif
 
     private static bool IsGameplayScene()
@@ -251,6 +259,8 @@ public class LevelFlowController : MonoBehaviour
         }
 
         ConfigureActiveClueSystems();
+
+        _skipLessonForCombatRetry = LevelRetryIntent.ConsumeCombatOnly();
 
         _phasePlan = LevelPhasePlan.FromConfig(_levelConfig);
         _machine = new LevelFlowMachine(_phasePlan);
@@ -320,6 +330,28 @@ public class LevelFlowController : MonoBehaviour
 
     private IEnumerator ExecuteStory()
     {
+        bool shouldPresentReady = !IsSandboxRun() && !_skipLessonForCombatRetry;
+#if UNITY_INCLUDE_TESTS
+        shouldPresentReady &= !s_skipReadyScreenForTests;
+#endif
+        if (shouldPresentReady)
+        {
+            if (_levelReadyScreen == null)
+            {
+                GameObject readyObject = new GameObject("[Runtime] LevelReadyScreenController");
+                readyObject.transform.SetParent(transform, false);
+                _levelReadyScreen = readyObject.AddComponent<LevelReadyScreenController>();
+            }
+
+            yield return _levelReadyScreen.Present(
+                _levelConfig,
+                () => _machine == null || _machine.IsTerminal || _flowAborted,
+                ExitToLevelSelectFromReady);
+
+            if (_machine == null || _machine.IsTerminal || _flowAborted)
+                yield break;
+        }
+
         // Spawn protagonist if level has one configured
         if (_levelConfig.hasProtagonist)
         {
@@ -334,6 +366,9 @@ public class LevelFlowController : MonoBehaviour
                 DebugLogger.LogError("[LevelFlowController] ProtagonistManager.Instance is NULL! Is the ProtagonistManager prefab in the scene?");
             }
         }
+
+        if (_skipLessonForCombatRetry)
+            yield break;
 
         // AC-0: Play "before level" cutscene if mapped
         CutsceneSO beforeCutscene = ResolveCutscene(CutsceneTriggerType.BeforeLevel);
@@ -362,6 +397,9 @@ public class LevelFlowController : MonoBehaviour
 
     private IEnumerator ExecuteFocusWords()
     {
+        if (_skipLessonForCombatRetry)
+            yield break;
+
         if (_levelConfig.focusWords == null || _levelConfig.focusWords.Count == 0)
             yield break;
 
@@ -385,6 +423,9 @@ public class LevelFlowController : MonoBehaviour
 
     private IEnumerator ExecuteSymbolLearning()
     {
+        if (_skipLessonForCombatRetry)
+            yield break;
+
         // SALIN-157: one learning card per Instruction-kind requirement. A level
         // with none presentable skips without touching drawing suppression and
         // the driver auto-completes the phase.
@@ -409,6 +450,16 @@ public class LevelFlowController : MonoBehaviour
         }
 
         yield return _symbolLearningCards.Present(_levelConfig);
+    }
+
+    private void ExitToLevelSelectFromReady()
+    {
+        _flowAborted = true;
+        ReleaseDrawingSuppression();
+        if (SceneLoader.Instance != null)
+            SceneLoader.Instance.LoadLevelSelect();
+        else
+            DebugLogger.LogError("LevelFlowController: SceneLoader not available for Ready Back.");
     }
 
     private IEnumerator ExecuteDefense()
@@ -513,6 +564,16 @@ public class LevelFlowController : MonoBehaviour
 
     private IEnumerator ExecuteContextChallenge()
     {
+        // D-003. Levels that opt into the shared combat-restoration path fill their focus-word
+        // slots as clues are accepted during Defense. They do not open the retired, separate
+        // post-wave challenge board; Level 1 remains on that authored path until its final-
+        // syllable gate is migrated in a later slice.
+        if (UsesCombatRestorationPath())
+        {
+            yield return ExecuteCombatRestoration();
+            yield break;
+        }
+
         // SALIN-223: phase 6 is planned on every level now, so this executor is the
         // thing that has to notice missing content. Returning early would let the
         // driver auto-complete the phase (RunLevelFlow), which is the defect: the
@@ -598,6 +659,276 @@ public class LevelFlowController : MonoBehaviour
                     $"the challenge sequence could not be played ({_challengeFlowController.LastPlayResult})");
                 break;
         }
+    }
+
+    private bool UsesCombatRestorationPath()
+    {
+        return _levelConfig != null
+            && _levelConfig.activeClueCombatEnabled
+            && _levelConfig.activeClueRestorationEnabled;
+    }
+
+    private IEnumerator ExecuteCombatRestoration()
+    {
+        if (_activeCluePresenter == null || !_activeCluePresenter.HasRestorationWords)
+        {
+            yield return RefuseCompletionForMissingContent(
+                LevelPhase.ContextChallenge,
+                $"level {_levelConfig.levelNumber} has no focus words for combat restoration");
+            yield break;
+        }
+
+        if (!TryResolveCombatRestorationTargets(
+                out List<ActiveClueRestorationTarget> requiredTargets,
+                out bool segmentHasNoRestoration,
+                out string mappingFailure))
+        {
+            yield return RefuseCompletionForMissingContent(
+                LevelPhase.ContextChallenge,
+                mappingFailure);
+            yield break;
+        }
+
+        // A segment with no named restoration unit is authored as a wave-only segment. It is
+        // valid to advance without asking for a second board, just as the legacy segmented path
+        // does for an empty challengeUnitIds list.
+        if (segmentHasNoRestoration)
+        {
+            _machine.ReportPhaseComplete(LevelPhase.ContextChallenge);
+            yield break;
+        }
+
+        if (!_activeCluePresenter.AreRestorationTargetsComplete(requiredTargets))
+        {
+            string required = DescribeRestorationTargets(requiredTargets);
+            yield return RefuseCompletionForMissingContent(
+                LevelPhase.ContextChallenge,
+                $"combat ended before restoring focus word slots ({required})");
+            yield break;
+        }
+
+        _machine.ReportPhaseComplete(LevelPhase.ContextChallenge);
+    }
+
+    private bool TryResolveCombatRestorationTargets(
+        out List<ActiveClueRestorationTarget> requiredTargets,
+        out bool segmentHasNoRestoration,
+        out string mappingFailure)
+    {
+        requiredTargets = new List<ActiveClueRestorationTarget>();
+        segmentHasNoRestoration = false;
+        mappingFailure = null;
+
+        bool isSegmented = _phasePlan != null && _phasePlan.SegmentCount > 1;
+        if (_levelConfig.challengeSequence == null || _levelConfig.challengeSequence.units == null)
+        {
+            mappingFailure = $"level {_levelConfig.levelNumber} has combat restoration but no "
+                + "challenge sequence to map its targets";
+            return false;
+        }
+
+        IReadOnlyList<string> unitIds = isSegmented
+            ? _phasePlan.SegmentChallengeUnitIds(_machine.CurrentSegmentIndex)
+            : null;
+        if (isSegmented && (unitIds == null || unitIds.Count == 0))
+        {
+            segmentHasNoRestoration = true;
+            return true;
+        }
+
+        if (isSegmented)
+        {
+            for (int idIndex = 0; idIndex < unitIds.Count; idIndex++)
+            {
+                bool found = false;
+                for (int unitIndex = 0; unitIndex < _levelConfig.challengeSequence.units.Length; unitIndex++)
+                {
+                    ChallengeUnitDefinition unit = _levelConfig.challengeSequence.units[unitIndex];
+                    if (unit != null && unit.unitId == unitIds[idIndex])
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found)
+                {
+                    mappingFailure = $"level {_levelConfig.levelNumber} segment {_machine.CurrentSegmentIndex} "
+                        + $"references unknown challenge unit '{unitIds[idIndex]}'";
+                    return false;
+                }
+            }
+        }
+
+        var seen = new HashSet<string>();
+        for (int unitIndex = 0; unitIndex < _levelConfig.challengeSequence.units.Length; unitIndex++)
+        {
+            ChallengeUnitDefinition unit = _levelConfig.challengeSequence.units[unitIndex];
+            if (isSegmented)
+            {
+                bool isInSegment = false;
+                for (int idIndex = 0; idIndex < unitIds.Count; idIndex++)
+                {
+                    if (unit != null && unit.unitId == unitIds[idIndex])
+                    {
+                        isInSegment = true;
+                        break;
+                    }
+                }
+
+                if (!isInSegment)
+                    continue;
+            }
+
+            if (!TryBuildRestorationTarget(
+                    unit,
+                    out ActiveClueRestorationTarget target,
+                    out string unitFailure))
+            {
+                mappingFailure = isSegmented
+                    ? $"level {_levelConfig.levelNumber} segment {_machine.CurrentSegmentIndex} {unitFailure}"
+                    : $"level {_levelConfig.levelNumber} {unitFailure}";
+                return false;
+            }
+
+            string targetKey = target.WordStableId + "|" + (target.SymbolStableId ?? "*");
+            if (!seen.Add(targetKey))
+                continue;
+
+            requiredTargets.Add(target);
+        }
+
+        if (requiredTargets.Count == 0)
+        {
+            mappingFailure = isSegmented
+                ? $"level {_levelConfig.levelNumber} segment {_machine.CurrentSegmentIndex} has no mapped focus words"
+                : $"level {_levelConfig.levelNumber} has no mapped focus words";
+            return false;
+        }
+
+        return true;
+    }
+
+    private bool TryBuildRestorationTarget(
+        ChallengeUnitDefinition unit,
+        out ActiveClueRestorationTarget target,
+        out string failure)
+    {
+        target = null;
+        failure = null;
+
+        if (unit == null || string.IsNullOrEmpty(unit.unitId))
+        {
+            failure = "contains a null or unnamed challenge unit";
+            return false;
+        }
+
+        if (string.IsNullOrEmpty(unit.evidenceContentId))
+        {
+            failure = $"challenge unit '{unit.unitId}' has no focus-word evidence id";
+            return false;
+        }
+
+        FocusWordDefinition focusWord = FindFocusWord(unit.evidenceContentId);
+        if (focusWord == null)
+        {
+            failure = $"challenge unit '{unit.unitId}' references unknown focus word '{unit.evidenceContentId}'";
+            return false;
+        }
+
+        string tokenText = ResolveFocusTokenText(unit);
+        string symbolStableId = ResolveRestorationSymbolStableId(focusWord, tokenText);
+        target = new ActiveClueRestorationTarget(focusWord.stableId, symbolStableId);
+        return true;
+    }
+
+    private FocusWordDefinition FindFocusWord(string stableId)
+    {
+        if (string.IsNullOrEmpty(stableId) || _levelConfig.focusWords == null)
+            return null;
+
+        for (int i = 0; i < _levelConfig.focusWords.Count; i++)
+        {
+            FocusWordDefinition word = _levelConfig.focusWords[i];
+            if (word != null && string.Equals(word.stableId, stableId, System.StringComparison.Ordinal))
+                return word;
+        }
+
+        return null;
+    }
+
+    private static string ResolveFocusTokenText(ChallengeUnitDefinition unit)
+    {
+        if (unit?.tokens == null)
+            return null;
+
+        for (int i = 0; i < unit.tokens.Length; i++)
+        {
+            ChallengeTokenDefinition token = unit.tokens[i];
+            if (token != null
+                && token.role == ChallengeTokenRole.Focus
+                && !string.IsNullOrEmpty(token.displayText))
+            {
+                return token.displayText;
+            }
+        }
+
+        for (int i = 0; i < unit.tokens.Length; i++)
+        {
+            ChallengeTokenDefinition token = unit.tokens[i];
+            if (token != null && !string.IsNullOrEmpty(token.displayText))
+                return token.displayText;
+        }
+
+        return null;
+    }
+
+    private static string ResolveRestorationSymbolStableId(
+        FocusWordDefinition word,
+        string tokenText)
+    {
+        if (word?.decomposition == null || string.IsNullOrEmpty(tokenText))
+            return null;
+
+        for (int i = 0; i < word.decomposition.Count; i++)
+        {
+            SymbolValueReference reference = word.decomposition[i];
+            BaybayinCharacterSO symbol = reference?.symbol;
+            if (symbol == null)
+                continue;
+
+            string spokenLabel = SpokenValueResolver.ResolveLabel(symbol, reference.spokenValueId);
+            if (string.Equals(symbol.characterID, tokenText, System.StringComparison.OrdinalIgnoreCase)
+                || string.Equals(spokenLabel, tokenText, System.StringComparison.OrdinalIgnoreCase))
+            {
+                return symbol.stableId;
+            }
+        }
+
+        // A sentence/word token such as TAMA or AMA represents the whole focus word rather
+        // than one slot. The null symbol id intentionally makes the gate require every slot.
+        return null;
+    }
+
+    private static string DescribeRestorationTargets(
+        IReadOnlyList<ActiveClueRestorationTarget> targets)
+    {
+        if (targets == null || targets.Count == 0)
+            return "none";
+
+        var labels = new List<string>(targets.Count);
+        for (int i = 0; i < targets.Count; i++)
+        {
+            ActiveClueRestorationTarget target = targets[i];
+            if (target == null)
+                continue;
+
+            labels.Add(string.IsNullOrEmpty(target.SymbolStableId)
+                ? target.WordStableId
+                : target.WordStableId + "/" + target.SymbolStableId);
+        }
+
+        return string.Join(", ", labels);
     }
 
     private IEnumerator ExecuteMemoryReward()
@@ -836,6 +1167,7 @@ public class LevelFlowController : MonoBehaviour
         {
             _waitingForDialogue = false;
             _waitingForCutscene = false;
+            _levelReadyScreen?.Hide();
             // SALIN-232: this is that landing for the Wave Cleared screen. A defeat or an
             // abort (HandleLevelAttemptAborted -> RequestExit) can arrive while the banner
             // is up, and the modal overlay claims sortingOrder 300 — it would sit over the
@@ -997,14 +1329,21 @@ public class LevelFlowController : MonoBehaviour
             FindObjectsInactive.Include,
             FindObjectsSortMode.None);
 
+        DialogueController inactiveFallback = null;
+
         for (int i = 0; i < controllers.Length; i++)
         {
             DialogueController controller = controllers[i];
-            if (controller != null && controller.gameObject.activeInHierarchy)
+            if (controller == null)
+                continue;
+
+            if (controller.gameObject.activeInHierarchy)
                 return controller;
+
+            inactiveFallback ??= controller;
         }
 
-        return null;
+        return inactiveFallback;
     }
 
     private static ProtagonistManager EnsureProtagonistManager()

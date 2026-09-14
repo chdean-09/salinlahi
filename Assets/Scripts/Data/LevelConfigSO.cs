@@ -24,6 +24,10 @@ public class LevelConfigSO : ScriptableObject
     [Tooltip("Arms active-clue combat for this level. Default false so existing levels keep legacy combat.")]
     public bool activeClueCombatEnabled;
 
+    [Tooltip("Restores focus-word syllables as active clues are accepted during combat. "
+        + "The restoration phase uses this shared path instead of a post-wave board.")]
+    public bool activeClueRestorationEnabled;
+
     [Tooltip("Presentation channels used to cue the active clue.")]
     public ClueChannels clueChannels = ClueChannels.Glyph;
 

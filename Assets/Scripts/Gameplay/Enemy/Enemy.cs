@@ -38,6 +38,8 @@ public class Enemy : MonoBehaviour
     private int _currentHealth;
     private BaybayinCharacterSO _runtimeCharacter;
     private Color _baseRendererColor = Color.white;
+    // The shell's authored transform scale, captured once so EnemyDataSO.spriteScale can be applied per spawn.
+    private Vector3 _shellBaseLocalScale = Vector3.one;
     private TextMeshPro _baybayinLabel;
     private TextMeshPro _enemyTypeLabel;
     private readonly Dictionary<object, BaybayinCharacterSO> _labelOverrides = new();
@@ -140,6 +142,8 @@ public class Enemy : MonoBehaviour
         if (_renderer != null)
             _baseRendererColor = _renderer.color;
 
+        _shellBaseLocalScale = transform.localScale;
+
         EnsureDebugLabels();
         RefreshDebugLabels();
     }
@@ -154,6 +158,7 @@ public class Enemy : MonoBehaviour
 
         RefreshDebugLabels();
         UpdateLabelLayout();
+        NameLossEffectRegistry.Changed += HandleNameLossEffectChanged;
     }
 
     public void AssignCharacter(BaybayinCharacterSO character)
@@ -245,13 +250,21 @@ public class Enemy : MonoBehaviour
         EnsureAbilityComponent<MirrorDecoyController>(_data.spawnsMirrorDecoy);
         EnsureAbilityComponent<BakodShieldController>(_data.blocksEnemiesBehind);
         EnsureAbilityComponent<KadenaChainController>(_data.chainsNearestEnemy);
+        EnsureAbilityComponent<HatiSplitController>(_data.splitsOnDefeat);
         EnsureAbilityComponent<AshFirstSlotController>(_data.ashesFirstSlot);
+        EnsureAbilityComponent<NawalangMukhaNameLossController>(_data.removesNames);
         EnsureAbilityComponent<PhaserEnemy>(_data.isPhaser);
 
         // Resolved after the block above, because the component may have just been added, and
         // cleared for a non-phaser so a reused shell does not consult a disabled phaser when
         // answering IsPhaserVisible. PhaserEnemy.OnDisable restores full visibility either way.
         _phaserEnemy = _data.isPhaser ? GetComponent<PhaserEnemy>() : null;
+
+        // A pooled shell keeps whatever scale its last occupant used, so always restate it from
+        // the authored shell scale. A no-op for every enemy authored at spriteScale 1.
+        Vector3 wantedScale = _shellBaseLocalScale * Mathf.Max(0.05f, _data.spriteScale);
+        if (transform.localScale != wantedScale)
+            transform.localScale = wantedScale;
 
         if (_renderer != null)
         {
@@ -445,6 +458,15 @@ public class Enemy : MonoBehaviour
         if (_isDying) return;
 
         BaybayinCharacterSO capturedCharacter = Character;
+
+        // Hati splits the moment it falls, before its death visuals, so the pieces are on the
+        // field while the source is still visibly breaking apart.
+        if (_data != null && _data.splitsOnDefeat)
+        {
+            HatiSplitController split = GetComponent<HatiSplitController>();
+            if (split != null && split.enabled)
+                split.SpawnOnDefeat();
+        }
         bool hasDeathAnimation = _data != null
             && _data.deathFrames != null
             && _data.deathFrames.Length > 0;
@@ -660,7 +682,13 @@ public class Enemy : MonoBehaviour
 
     protected virtual void OnDisable()
     {
+        NameLossEffectRegistry.Changed -= HandleNameLossEffectChanged;
         _mover?.Stop();
+    }
+
+    private void HandleNameLossEffectChanged()
+    {
+        RefreshDebugLabels();
     }
 
     private void Update()
@@ -794,7 +822,7 @@ public class Enemy : MonoBehaviour
             // Bosses don't have a single assigned character — required draws
             // are surfaced by BossDrawCounterUI. Suppressing the per-enemy
             // label avoids the misleading "Draw: (none)" readout.
-            bool showBaybayin = !IsBoss;
+            bool showBaybayin = !IsBoss && !NameLossEffectRegistry.IsActive;
             _baybayinLabel.gameObject.SetActive(showBaybayin);
             if (showBaybayin)
                 _baybayinLabel.text = BuildBaybayinLabelText();
@@ -802,8 +830,10 @@ public class Enemy : MonoBehaviour
 
         if (_enemyTypeLabel != null)
         {
-            _enemyTypeLabel.gameObject.SetActive(true);
-            _enemyTypeLabel.text = $"Type: {BuildEnemyTypeText()}";
+            bool showEnemyType = !NameLossEffectRegistry.IsActive;
+            _enemyTypeLabel.gameObject.SetActive(showEnemyType);
+            if (showEnemyType)
+                _enemyTypeLabel.text = $"Type: {BuildEnemyTypeText()}";
         }
 
         UpdateLabelLayout();
