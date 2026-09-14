@@ -15,9 +15,6 @@ namespace Salinlahi.Tests.Editor.Onboarding
         {
             OnboardingSequenceSO sequence = LoadSequence(Level1SequencePath);
             Level1TutorialStepSO ei = LoadStep("Assets/ScriptableObjects/Tutorial/Level1TutorialStep_EI.asset");
-            Level1TutorialStepSO na = LoadStep("Assets/ScriptableObjects/Tutorial/Level1TutorialStep_NA.asset");
-            Level1TutorialStepSO a = LoadStep("Assets/ScriptableObjects/Tutorial/Level1TutorialStep_A.asset");
-            Level1TutorialStepSO ma = LoadStep("Assets/ScriptableObjects/Tutorial/Level1TutorialStep_MA.asset");
 
             // HeartLossDemo was removed from Level 1's beatOrder on 2026-09-14 at the owner's
             // explicit instruction: "the heart should stay at 3 healthy hearts after tutorial".
@@ -28,21 +25,23 @@ namespace Salinlahi.Tests.Editor.Onboarding
             //
             // So this assertion is updated rather than the data reverted. If a later change puts
             // a heart-loss teach back into Level 1, put HeartLossDemo back here with it.
+            //
+            // SoloTeach was dropped from Level 1's beatOrder, and basicTeachSteps was cleared, on
+            // 2026-09-15 (task 8 of the level1-enemy-introduction-lesson plan): the four-step
+            // "teach loop" is superseded by the eight-beat per-enemy lesson authored on
+            // LevelConfigSO.enemyLessons (see EnemyLessonSO / AboLesson.asset). soloTeachStep
+            // itself is untouched by that change and still points at the EI step.
             Assert.AreEqual(
                 new[]
                 {
                     OnboardingBeatType.ProtagonistIntro,
                     OnboardingBeatType.BaseIntro,
-                    OnboardingBeatType.SoloTeach,
                     OnboardingBeatType.Release,
                 },
                 sequence.beatOrder);
             Assert.AreSame(ei, sequence.soloTeachStep);
-            Assert.AreEqual(new[] { ei, na, a, ma }, sequence.basicTeachSteps);
+            Assert.IsEmpty(sequence.basicTeachSteps);
             Assert.IsNotNull(ei.guideSprite);
-            Assert.IsNotNull(na.guideSprite);
-            Assert.IsNotNull(a.guideSprite);
-            Assert.IsNotNull(ma.guideSprite);
             Assert.IsEmpty(sequence.basicTeachVideos);
         }
 

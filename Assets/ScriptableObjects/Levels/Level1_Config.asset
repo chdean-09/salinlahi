@@ -113,15 +113,15 @@ MonoBehaviour:
     choiceMomentSlotIndex: 1
     choicePairWindow: 1.5
     maxConcurrentEnemies: 8
-    openingSpawnSpokenValueId: value.a
+    openingSpawnSpokenValueId: value.ei
     allowFinalWaveOverflow: 1
     assignmentSeed: 0
     slotGates:
     - slotIndex: 3
-      gateToken: abo_ash_shown
+      gateToken: level1_roster_met
     slotFloors:
     - slotIndex: 0
-      minSpawnsBeforeNeeded: 1
+      minSpawnsBeforeNeeded: 0
   enemySpeedMultiplier: 0.6
   overrideDrawingAccuracyThreshold: 1
   drawingAccuracyThresholdOverride: 0.45
@@ -248,7 +248,8 @@ MonoBehaviour:
   multiKillChainEnabled: 0
   tutorialSequence: {fileID: 11400000, guid: 7369c0885d3f4f508ae62d77174c703a, type: 2}
   onboardingSequence: {fileID: 11400000, guid: 79f06c1e965e43b0891a696cf9cb3de6, type: 2}
-  enemyLessons: []
+  enemyLessons:
+  - {fileID: 11400000, guid: 2f7cc25a007e406a8728f8188fa152c2, type: 2}
   challengePrototypeEnabled: 0
   challengeSequence: {fileID: 11400000, guid: a4e56a21abe8f19459aa7c5fc613a0bf, type: 2}
   challengePolicy:
