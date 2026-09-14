@@ -225,7 +225,8 @@ exact failure beat 4 is meant to prevent.
 So deferral is a third state, not a decline. A type deferred by a pending lesson spawns with its
 ability **suppressed**, and its introduction and ability both arm on its next spawn after the
 lesson completes. `Enemy.Initialize` therefore asks for a tri-state — *introduce and arm*,
-*introduce and suppress*, *defer and suppress* — rather than the current boolean.
+*introduce and suppress*, *defer and suppress* — rather than the current boolean. The level config
+is read through `GameManager.CurrentLevelConfig`.
 
 This is the single most likely thing to be broken by a well-meaning edit, because the existing
 comment in `Enemy.Initialize` argues the opposite for the ordinary case, and it is correct for the
@@ -254,7 +255,7 @@ later level never does.
 | File | Change |
 |---|---|
 | `EnemyIntroductionBeat.cs` | Lesson-profile branch in `TryClaim`/`PlayIntroduction`. Precondition check declines **without** spending the type's one-shot. Defers other types' claims while a level's lesson is still pending. |
-| `Enemy.cs` | `ApplyIntroductionSpawnSuppression(_isIntroductionSpawn && !lessonArmsAbility)`. New `SetGlyphBadgeVisible(bool)` seam for beat 7. |
+| `Enemy.cs` | Suppression keyed off the tri-state outcome (§7.1), not a boolean. **No new badge API** — `Enemy.GlyphBadge` is already public and `EnemyGlyphBadge` already exposes `Show()` / `Hide()`, so beat 7 needs nothing added here. |
 | `Level1OnboardingController.cs` | Drop the `SoloTeach` case and its GIF-override resolution. |
 | `SpawnAssignmentPolicy.cs` | No new fields. `openingSpawnSpokenValueId` and `slotFloors` already express the opening. |
 | `SpawnGateRegistry.cs` | Add `Level1RosterMet`. |
