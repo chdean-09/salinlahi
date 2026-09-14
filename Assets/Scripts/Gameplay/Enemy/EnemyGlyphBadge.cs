@@ -254,7 +254,15 @@ public class EnemyGlyphBadge : MonoBehaviour
         bool useScrambled = _enemy != null
                             && _enemy.HasVisualCharacterOverride
                             && character.scrambledBadgeSprite != null;
-        return useScrambled ? character.scrambledBadgeSprite : character.badgeSprite;
+        if (useScrambled) return character.scrambledBadgeSprite;
+
+        // Scroll badge art exists for seven of the eighteen symbols (Art/UI/GlyphBadges holds BA,
+        // DA, HA, KA, O, SA and WA, from SALIN-97/98). The rest have a null badgeSprite, and a null
+        // sprite makes SetCharacter disable the renderer - so those enemies walked down carrying no
+        // glyph at all and the player had nothing to read. Abo ng Simula is the visible case, since
+        // it carries symbol.a. Fall back to the authored glyph outline until the missing scroll art
+        // lands; every symbol has one. Delete this fallback once all eighteen badges exist.
+        return character.badgeSprite != null ? character.badgeSprite : character.glyphOutlineSprite;
     }
 
     private IEnumerator SwapRoutine(BaybayinCharacterSO next)
