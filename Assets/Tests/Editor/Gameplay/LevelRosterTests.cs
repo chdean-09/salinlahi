@@ -78,4 +78,25 @@ public class LevelRosterTests
         Assert.IsFalse(LevelRoster.AllIntroduced(new List<EnemyDataSO>(), _ => true));
         Assert.IsFalse(LevelRoster.AllIntroduced(null, _ => true));
     }
+
+    [Test]
+    public void RosterGate_StaysClosedWhileAnyTypeIsUnintroduced()
+    {
+        EnemyDataSO abo = Enemy("abo");
+        EnemyDataSO iligaw = Enemy("iligaw");
+        var registry = new SpawnGateRegistry();
+        var seen = new HashSet<EnemyDataSO> { abo };
+        var roster = new List<EnemyDataSO> { abo, iligaw };
+
+        if (LevelRoster.AllIntroduced(roster, seen.Contains))
+            registry.Open(SpawnGateRegistry.Level1RosterMet);
+
+        Assert.IsFalse(registry.IsOpen(SpawnGateRegistry.Level1RosterMet));
+
+        seen.Add(iligaw);
+        if (LevelRoster.AllIntroduced(roster, seen.Contains))
+            registry.Open(SpawnGateRegistry.Level1RosterMet);
+
+        Assert.IsTrue(registry.IsOpen(SpawnGateRegistry.Level1RosterMet));
+    }
 }

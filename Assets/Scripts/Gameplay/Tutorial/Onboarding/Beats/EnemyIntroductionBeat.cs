@@ -362,9 +362,31 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             ReleaseEnemy(enemy);
             if (enemy != null) enemy.GlyphBadge?.Show();
             _isPlaying = false;
+            RaiseRosterGateIfComplete();
             _claimedEnemy = null;
             _routine = null;
         }
+    }
+
+    /// <summary>
+    /// Opens Level 1's slot-3 gate once every introducible type in the wave roster has been
+    /// introduced. Called after each introduction rather than counted, so a level whose roster
+    /// changes mid-development cannot leave a stale count holding the final slot shut.
+    /// </summary>
+    private static void RaiseRosterGateIfComplete()
+    {
+        LevelConfigSO config = GameManager.CurrentLevelConfig;
+        if (config == null)
+            return;
+
+        if (!LevelRoster.AllIntroduced(
+                LevelRoster.BuildIntroducibleRoster(config),
+                EnemyIntroductionProgress.HasBeenIntroduced))
+            return;
+
+        SpawnAssignmentCoordinator coordinator = FindFirstObjectByType<SpawnAssignmentCoordinator>(
+            FindObjectsInactive.Include);
+        coordinator?.OpenGate(SpawnGateRegistry.Level1RosterMet);
     }
 
     /// <summary>
