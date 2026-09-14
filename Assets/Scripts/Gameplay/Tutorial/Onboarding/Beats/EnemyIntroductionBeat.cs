@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -103,6 +104,14 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// the outcome also decides suppression. Returning <see cref="IntroductionOutcome.None"/> or
     /// <see cref="IntroductionOutcome.DeferAndSuppress"/> does not spend the type's one-shot.
     /// </para>
+    ///
+    /// <para>
+    /// <see cref="IntroductionOutcome.None"/> leaves the ability armed, which is the safe failure:
+    /// the player meets an ability with no card, rather than meeting an enemy whose ability is
+    /// silently switched off forever. <see cref="IntroductionOutcome.DeferAndSuppress"/> is the
+    /// deliberate exception — the decline exists so a pending lesson lands first, so it suppresses
+    /// instead of arming. See <c>IntroductionDecision</c> for both rules together.
+    /// </para>
     /// </summary>
     public static IntroductionOutcome ResolveIntroduction(Enemy enemy, EnemyDataSO data)
     {
@@ -140,16 +149,54 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         if (config?.enemyLessons == null)
             return null;
 
+        List<EnemyDataSO> roster = LevelRoster.BuildIntroducibleRoster(config);
+
         for (int i = 0; i < config.enemyLessons.Length; i++)
         {
             EnemyLessonSO lesson = config.enemyLessons[i];
             if (lesson?.enemy == null)
                 continue;
+
+            // A lesson for an enemy the level's wave table never spawns must not defer forever:
+            // ResolvePendingLesson only stops returning a lesson once its enemy has been
+            // introduced, and an enemy that never spawns is never introduced — which would wedge
+            // every other type on the level into permanent suppression.
+            if (!RosterContains(roster, lesson.enemy))
+                continue;
+
             if (!EnemyIntroductionProgress.HasBeenIntroduced(lesson.enemy))
                 return lesson;
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Whether the roster contains this enemy type. Matches the same identity rule as
+    /// <see cref="EnemyLessonLookup.Find"/> — reference or case-insensitive <c>enemyID</c> — so a
+    /// pooled or domain-reloaded instance still matches its roster entry.
+    /// </summary>
+    private static bool RosterContains(List<EnemyDataSO> roster, EnemyDataSO enemy)
+    {
+        if (roster == null || enemy == null)
+            return false;
+
+        for (int i = 0; i < roster.Count; i++)
+        {
+            EnemyDataSO candidate = roster[i];
+            if (candidate == null)
+                continue;
+
+            if (candidate == enemy)
+                return true;
+
+            if (!string.IsNullOrEmpty(candidate.enemyID)
+                && string.Equals(candidate.enemyID, enemy.enemyID,
+                    System.StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
     }
 
     /// <summary>

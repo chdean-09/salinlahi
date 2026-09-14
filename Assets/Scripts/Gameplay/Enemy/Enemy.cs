@@ -265,9 +265,12 @@ public class Enemy : MonoBehaviour
         _mover.SetSpeed(EffectiveSpeed);
 
         // Asked before the ability components are configured, because the outcome is also the
-        // signal for suppression. Three outcomes, not two: see IntroductionDecision — a claim
-        // declined because a lesson is pending suppresses, while an ordinarily declined claim
-        // still arms.
+        // signal for suppression. Three outcomes, not two: see IntroductionDecision — an
+        // ordinarily declined claim still arms, because that is the safe failure: the player
+        // meets an ability with no card, rather than meeting an enemy whose ability is silently
+        // switched off forever. A claim declined because a lesson is still pending is the
+        // exception and suppresses instead — that decline is deliberate, not a beat that
+        // couldn't be bothered.
         _introductionOutcome = EnemyIntroductionBeat.ResolveIntroduction(this, _data);
         _isIntroductionSpawn = _introductionOutcome == IntroductionOutcome.IntroduceAndSuppress
             || _introductionOutcome == IntroductionOutcome.IntroduceAndArm;
