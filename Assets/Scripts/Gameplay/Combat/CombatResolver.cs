@@ -54,6 +54,13 @@ public class CombatResolver : MonoBehaviour
     /// <summary>Cached so a correct hit does not trigger a scene-wide type scan.</summary>
     private ActiveCluePresenter _cachedPresenter;
 
+    // Reused per draw so multi-target resolution allocates nothing on the recognition path.
+    // Valid only for the duration of one ResolveActiveClueDraw call; never hand them out.
+    private readonly List<Enemy> _clueEnemyBuffer = new List<Enemy>();
+    private readonly List<ClueCandidate> _clueCandidateBuffer = new List<ClueCandidate>();
+    private readonly List<int> _clueTargetIndices = new List<int>();
+    private readonly List<Enemy> _clueTargetBuffer = new List<Enemy>();
+
     private void Awake()
     {
         if (_instance != null && _instance != this)
@@ -226,17 +233,29 @@ public class CombatResolver : MonoBehaviour
     }
 
     /// <summary>
-    /// Strict active-clue resolution: only the marked enemy is drawable. A non-match is a miss
-    /// with corrective feedback and no language progress; the AOE path is bypassed entirely.
+    /// Active-clue resolution. A correct draw resolves against ANY eligible on-screen enemy
+    /// carrying the drawn glyph, not only the marked clue — the mark is a suggestion of what to
+    /// draw next, no longer the sole legal target. A glyph no on-screen enemy carries is still a
+    /// miss with corrective feedback and no language progress.
     /// </summary>
+    /// <remarks>
+    /// Targetability widened; lethality did not. How many carriers die still comes from the
+    /// level author's <c>multiKillChainEnabled</c> and this resolver's AOE threshold, so Level 1
+    /// (chain off) keeps one draw to one kill.
+    ///
+    /// Eligibility comes from <see cref="ActiveClueDirector.IsClueTargetable"/>, which excludes
+    /// decoys. That is deliberate: Iligaw's copy carries a false glyph, and admitting it to the
+    /// target set would let a correct draw land a decoy penalty on the player. Drawing a decoy's
+    /// false glyph remains a plain miss on this path, exactly as before.
+    /// </remarks>
     private void ResolveActiveClueDraw(ActiveClueDirector director, string characterID)
     {
         // Echo suppression lives in HandleCharacterRecognized (SALIN-135) so the legacy
         // AOE/closest-match paths get the same single-fire guarantee this path already had.
         Enemy clue = director.CurrentClue;
-        bool matchesClue = clue != null
-                           && clue.Character != null
-                           && clue.Character.characterID == characterID;
+
+        CollectClueTargets(characterID);
+        bool matchesClue = _clueTargetBuffer.Count > 0;
 
         if (!matchesClue)
         {
@@ -255,18 +274,39 @@ public class CombatResolver : MonoBehaviour
                     answerWasVisible: false);
             }
 
-            DebugLogger.Log($"CombatResolver: {characterID} is not the active clue -- miss");
+            DebugLogger.Log($"CombatResolver: no on-screen enemy carries {characterID} -- miss");
             return;
         }
 
-        // Consume before the pronunciation-lead coroutine: recognition can fire twice inside
-        // that window, and objective credit is guarded by the director.
-        bool creditsObjective = director.TryConsumeClue(clue);
+        // Objective credit follows the GLYPH, not the enemy instance. Once any carrier is a legal
+        // target, the closest carrier of the clue's glyph is often not the marked enemy itself;
+        // keying credit to instance identity would silently drop progress for a draw that was
+        // correct. Consumed before the pronunciation-lead coroutine because recognition can fire
+        // twice inside that window and once-ness is the director's guard.
+        bool matchesClueGlyph = clue != null
+                                && clue.Character != null
+                                && clue.Character.characterID == characterID;
+        bool creditsObjective = matchesClueGlyph && director.TryConsumeClue(clue);
 
-        if (clue.Character != null)
-            EventBus.RaisePronunciationRequested(clue.Character);
+        Enemy primary = _clueTargetBuffer[0];
+        if (primary != null && primary.Character != null)
+            EventBus.RaisePronunciationRequested(primary.Character);
 
-        StartCoroutine(ResolveMatchedEnemyAfterPronunciationLead(clue, characterID));
+        if (_clueTargetBuffer.Count == 1)
+        {
+            StartCoroutine(ResolveMatchedEnemyAfterPronunciationLead(primary, characterID));
+        }
+        else
+        {
+            // Snapshot: TakeDamage -> Defeat -> Unregister mutates the tracker mid-flight, and
+            // the buffer is reused by the next draw.
+            var chainTargets = new List<Enemy>(_clueTargetBuffer);
+            for (int i = 0; i < chainTargets.Count; i++)
+                EventBus.RaiseEnemyTargeted(chainTargets[i]);
+
+            StartCoroutine(ApplyAoeDefeatAfterPronunciationLead(chainTargets));
+            EventBus.RaiseAOETriggered(chainTargets.Count);
+        }
 
         if (creditsObjective && ProgressManager.Instance != null
             && !string.IsNullOrEmpty(clue.Character.stableId))
@@ -281,7 +321,45 @@ public class CombatResolver : MonoBehaviour
         }
 
         DebugLogger.Log(
-            $"CombatResolver: Active clue hit {characterID} (credits objective: {creditsObjective})");
+            $"CombatResolver: Active-clue hit {characterID} on {_clueTargetBuffer.Count} target(s) "
+            + $"(credits objective: {creditsObjective})");
+    }
+
+    /// <summary>
+    /// Fills <see cref="_clueTargetBuffer"/> with every enemy this draw resolves against, closest
+    /// to the base first. Empty means no eligible on-screen enemy carries the glyph — a miss.
+    /// </summary>
+    private void CollectClueTargets(string characterID)
+    {
+        _clueTargetBuffer.Clear();
+        _clueCandidateBuffer.Clear();
+        _clueTargetIndices.Clear();
+
+        ActiveEnemyTracker tracker = ActiveEnemyTracker.Instance;
+        if (tracker == null)
+            return;
+
+        tracker.FillActiveEnemiesSnapshot(_clueEnemyBuffer);
+
+        for (int i = 0; i < _clueEnemyBuffer.Count; i++)
+        {
+            Enemy enemy = _clueEnemyBuffer[i];
+            _clueCandidateBuffer.Add(new ClueCandidate(
+                enemy != null && enemy.Character != null ? enemy.Character.characterID : null,
+                enemy != null ? enemy.transform.position.y : float.MaxValue,
+                enemy != null ? enemy.SpawnSequence : long.MaxValue,
+                ActiveClueDirector.IsClueTargetable(enemy)));
+        }
+
+        DrawTargetResolver.SelectTargets(
+            _clueCandidateBuffer,
+            characterID,
+            IsMultiKillChainEnabledForCurrentLevel(),
+            _aoeThreshold,
+            _clueTargetIndices);
+
+        for (int i = 0; i < _clueTargetIndices.Count; i++)
+            _clueTargetBuffer.Add(_clueEnemyBuffer[_clueTargetIndices[i]]);
     }
 
     private static Enemy FindClosestEligibleMatch(List<Enemy> matches)

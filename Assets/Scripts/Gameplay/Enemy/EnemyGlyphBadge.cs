@@ -34,6 +34,21 @@ public class EnemyGlyphBadge : MonoBehaviour
     private bool _usingOutlineFallback;
     private const float OutlineFallbackScale = 125f / 256f;
 
+    // True while the badge is showing a FALSE face: a visual character override (Mantsa's stain)
+    // rather than the enemy's own symbol. Before this, a stained badge was pixel-identical to a
+    // genuine one, so the player could not tell a real NA from Nawalang Mukha's borrowed face.
+    // The tell is a dim + cool tint rather than a different sprite because
+    // BaybayinCharacterSO.scrambledBadgeSprite is null on all eighteen characters (verified
+    // 2026-09-14); wire that art in here when it lands and this treatment can retire.
+    private bool _showingFalseGlyph;
+    // Alpha the swap/fade/final-draw coroutines own. The false-glyph dim multiplies it instead of
+    // overwriting it, so the two never fight. See GlyphStainCycle.ResolveBadgeAlpha.
+    private float _routineAlpha = 1f;
+    // Hue a flash routine (final draw / decoy reject / fail) has temporarily seized. Kept separate
+    // from the composed colour so a flash still survives the release fade's SetAlpha calls, the way
+    // it did when every routine wrote _renderer.color directly.
+    private Color? _flashTint;
+
     public GlyphBadgeConfigSO Config => _config;
     public bool IsSwapping => _swapRoutine != null;
     public bool IsPlayingFinalDraw => _finalDrawRoutine != null;
@@ -129,6 +144,12 @@ public class EnemyGlyphBadge : MonoBehaviour
         _renderer.sprite = sprite;
         _renderer.enabled = !_covered;
 
+        _showingFalseGlyph = _enemy != null
+                             && _enemy.HasVisualCharacterOverride
+                             && GlyphStainCycle.IsFalseGlyph(ch != null ? ch.characterID : null,
+                                                             _enemy.Character != null ? _enemy.Character.characterID : null);
+        ApplyBadgeColor();
+
         // Whether the fallback is in use depends on which sprite just resolved, so redo the layout.
         RecomputeBaseFromParentScale();
     }
@@ -179,18 +200,33 @@ public class EnemyGlyphBadge : MonoBehaviour
     /// <summary>Placeholder dim applied to a blocked badge. Replace with authored art.</summary>
     private static readonly Color BlockedTint = new Color(0.45f, 0.45f, 0.5f, 1f);
 
-    private void ApplyResolutionBlockTint()
+    private void ApplyResolutionBlockTint() => ApplyBadgeColor();
+
+    /// <summary>
+    /// Single owner of the badge's colour. Composes, in order: the authored base colour, the
+    /// blocked-state hue multiply, the false-glyph hue multiply, and finally the alpha the
+    /// animation routines own scaled by the false-glyph dim. Every tell multiplies rather than
+    /// assigns, so blocked + stained + mid-swap all read at once instead of clobbering each other.
+    /// </summary>
+    private void ApplyBadgeColor()
     {
         if (_renderer == null) return;
-        // Preserve whatever alpha the swap/fade routines currently own; the tell is hue-only.
-        float alpha = _renderer.color.a;
-        Color tinted = _resolutionBlocked
-            ? new Color(_baseColor.r * BlockedTint.r,
-                        _baseColor.g * BlockedTint.g,
-                        _baseColor.b * BlockedTint.b,
-                        alpha)
-            : new Color(_baseColor.r, _baseColor.g, _baseColor.b, alpha);
-        _renderer.color = tinted;
+
+        Color tint = _flashTint ?? _baseColor;
+        if (_resolutionBlocked && !_flashTint.HasValue)
+            tint = new Color(tint.r * BlockedTint.r, tint.g * BlockedTint.g, tint.b * BlockedTint.b, tint.a);
+
+        float falseAlpha = _config != null ? _config.falseGlyphAlpha : GlyphStainCycle.DefaultFalseGlyphAlpha;
+        // The dim always applies while a false face is up; the hue yields to an in-flight flash so
+        // a final-draw / reject flash still reads as itself.
+        if (_showingFalseGlyph && !_flashTint.HasValue)
+        {
+            Color falseTint = _config != null ? _config.falseGlyphTint : Color.white;
+            tint = new Color(tint.r * falseTint.r, tint.g * falseTint.g, tint.b * falseTint.b, tint.a);
+        }
+
+        tint.a = GlyphStainCycle.ResolveBadgeAlpha(_routineAlpha, _showingFalseGlyph, falseAlpha);
+        _renderer.color = tint;
     }
 
     public void PlaySwap(BaybayinCharacterSO next)
@@ -227,7 +263,8 @@ public class EnemyGlyphBadge : MonoBehaviour
     public void Show()
     {
         if (_renderer == null) return;
-        Color c = _renderer.color; c.a = 1f; _renderer.color = c;
+        _routineAlpha = 1f;
+        ApplyBadgeColor();
         _renderer.enabled = _renderer.sprite != null && !_covered;
     }
 
@@ -236,7 +273,8 @@ public class EnemyGlyphBadge : MonoBehaviour
         if (_swapRoutine != null) { StopCoroutine(_swapRoutine); _swapRoutine = null; }
         if (_finalDrawRoutine != null) { StopCoroutine(_finalDrawRoutine); _finalDrawRoutine = null; }
         if (_renderer == null) return;
-        Color c = _renderer.color; c.a = 0f; _renderer.color = c;
+        _routineAlpha = 0f;
+        ApplyBadgeColor();
     }
 
     public void ResetForPool()
@@ -249,6 +287,10 @@ public class EnemyGlyphBadge : MonoBehaviour
         _covered = false;
         // Pool safety: a badge that left play dimmed must not come back dimmed.
         _resolutionBlocked = false;
+        // Pool safety: a badge that left play wearing a false face must not come back wearing one.
+        _showingFalseGlyph = false;
+        _routineAlpha = 1f;
+        _flashTint = null;
         if (_renderer != null)
         {
             Color c = _baseColor; c.a = 1f; _renderer.color = c;
@@ -324,7 +366,7 @@ public class EnemyGlyphBadge : MonoBehaviour
             t += Time.deltaTime;
             float u = _config.finalDrawChargeDuration > 0f ? Mathf.Clamp01(t / _config.finalDrawChargeDuration) : 1f;
             transform.localScale = Vector3.Lerp(startScale, peakScale, u);
-            if (_renderer != null) _renderer.color = Color.Lerp(originalColor, _config.finalDrawFlashColor, u);
+            SetFlashTint(Color.Lerp(originalColor, _config.finalDrawFlashColor, u));
             yield return null;
         }
         Vector3 startPos = _baseLocalPosition;
@@ -343,20 +385,20 @@ public class EnemyGlyphBadge : MonoBehaviour
             yield return null;
         }
         if (_renderer != null) _renderer.enabled = false;
+        SetFlashTint(null);
         _finalDrawRoutine = null;
     }
 
     private IEnumerator DecoyRejectRoutine()
     {
-        Color originalColor = _renderer != null ? _renderer.color : Color.white;
         float t = 0f;
+        SetFlashTint(_config.decoyRejectFlashColor);
         while (t < _config.decoyRejectFlashDuration)
         {
             t += Time.deltaTime;
-            if (_renderer != null) _renderer.color = _config.decoyRejectFlashColor;
             yield return null;
         }
-        if (_renderer != null) _renderer.color = originalColor;
+        SetFlashTint(null);
         Vector3 basePos = _baseLocalPosition;
         t = 0f;
         while (t < _config.decoyRejectShakeDuration)
@@ -373,17 +415,23 @@ public class EnemyGlyphBadge : MonoBehaviour
 
     private IEnumerator FailFlashRoutine()
     {
-        Color originalColor = _renderer != null ? _renderer.color : Color.white;
-        if (_renderer != null) _renderer.color = _config.failFlashColor;
+        SetFlashTint(_config.failFlashColor);
         yield return new WaitForSeconds(_config.failFlashDuration);
-        if (_renderer != null) _renderer.color = originalColor;
+        SetFlashTint(null);
         _failFlashRoutine = null;
+    }
+
+    /// <summary>Seizes (or releases, with null) the badge hue for a flash routine.</summary>
+    private void SetFlashTint(Color? tint)
+    {
+        _flashTint = tint;
+        ApplyBadgeColor();
     }
 
     private void SetAlpha(float a)
     {
-        if (_renderer == null) return;
-        Color c = _renderer.color; c.a = a; _renderer.color = c;
+        _routineAlpha = a;
+        ApplyBadgeColor();
     }
 
     private static float InverseOrOne(float v) => Mathf.Approximately(v, 0f) ? 1f : 1f / v;

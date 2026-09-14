@@ -230,7 +230,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
   bossConfig: {fileID: 0}
   isAvailableInLite: 0
-  multiKillChainEnabled: 1
+  multiKillChainEnabled: 0
   tutorialSequence: {fileID: 0}
   onboardingSequence: {fileID: 0}
   challengePrototypeEnabled: 0

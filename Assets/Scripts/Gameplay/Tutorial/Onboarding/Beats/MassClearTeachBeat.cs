@@ -26,6 +26,15 @@ public sealed class MassClearTeachBeat : OnboardingBeat
     {
         if (ctx == null || ctx.Sequence == null) yield break;
 
+        // Teach the mechanic only where it is actually switched on. The flag is authored per level
+        // and was turned off across Levels 1-5, which would otherwise leave this beat explaining a
+        // draw the player then cannot perform - worse than never mentioning it. Reading the live
+        // config rather than the level number means re-enabling the flag brings the lesson back on
+        // its own, with no second edit here.
+        LevelConfigSO level = GameManager.Instance != null ? GameManager.Instance.CurrentLevel : null;
+        if (level != null && !level.multiKillChainEnabled)
+            yield break;
+
         // Optional media. TutorialIntroPlayer.Play yields straight back when every media slot on the
         // template is empty, which is how the Level 2 asset ships, so this costs nothing today.
         if (ctx.IntroPlayer != null)

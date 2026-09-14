@@ -42,6 +42,29 @@ public class WaveSpawner : MonoBehaviour
     // X of the previous spawn, or null before the first one this session.
     private float? _lastSpawnX;
 
+    // Schedules which symbol each spawn carries on active-clue levels. Null, or inactive, means
+    // this level keeps the legacy random assignment below.
+    private SpawnAssignmentCoordinator _assignmentCoordinator;
+    private bool _searchedForAssignmentCoordinator;
+
+    private SpawnAssignmentCoordinator AssignmentCoordinator
+    {
+        get
+        {
+            if (_assignmentCoordinator == null && !_searchedForAssignmentCoordinator)
+            {
+                _searchedForAssignmentCoordinator = true;
+                _assignmentCoordinator =
+                    FindFirstObjectByType<SpawnAssignmentCoordinator>(FindObjectsInactive.Include);
+            }
+
+            return _assignmentCoordinator;
+        }
+    }
+
+    private bool UsesScheduledAssignment =>
+        AssignmentCoordinator != null && AssignmentCoordinator.IsActive;
+
     public void SetFallbackEnemyDataIfMissing(EnemyDataSO fallbackData)
     {
         if (_fallbackEnemyData != null || fallbackData == null)
@@ -198,7 +221,24 @@ public class WaveSpawner : MonoBehaviour
         for (int i = firstSpawnIndex; i < enemyCount; i++)
         {
             EnemyDataSO data = spawnOrder[i];
-            BaybayinCharacterSO character = SelectCharacterForSpawn(wave, data);
+            BaybayinCharacterSO character;
+            SpawnAssignment assignment = SpawnAssignment.None;
+
+            if (UsesScheduledAssignment)
+            {
+                // The schedule picks the symbol, and on a level whose enemies each embody one
+                // symbol that also picks the enemy: choosing MA spawns Mantsa, so the badge never
+                // contradicts the body beneath it. Falls back to the rolled type when no enemy in
+                // this wave owns the chosen symbol.
+                assignment = AssignmentCoordinator.AssignNext(wave);
+                data = AssignmentCoordinator.ResolveEnemyData(assignment.SymbolStableId, wave) ?? data;
+                character = AssignmentCoordinator.ResolveCharacter(assignment.SymbolStableId, wave)
+                    ?? SelectCharacterForSpawn(wave, data);
+            }
+            else
+            {
+                character = SelectCharacterForSpawn(wave, data);
+            }
 
             Enemy enemy = SpawnEnemy(data);
             if (enemy != null)
@@ -208,9 +248,56 @@ public class WaveSpawner : MonoBehaviour
                 onEnemySpawned?.Invoke();
             }
 
+            // The guaranteed choice moment: a second enemy carrying a different target symbol, so
+            // the player must read both rather than draw whatever is closest.
+            if (assignment.StartsChoicePair)
+                yield return SpawnChoicePairDecoy(wave, assignment, onEnemySpawned);
+
             if (i < enemyCount - 1)
                 yield return new WaitForSeconds(interval);
         }
+    }
+
+    /// <summary>
+    /// Spawns the non-advancing half of a choice pair shortly after its partner.
+    ///
+    /// The caller must also stand the active clue down for this window: ActiveClueSelector always
+    /// marks the closest eligible enemy, so a clue mark landing on the advancing member answers the
+    /// question for the player and makes the choice cosmetic.
+    /// </summary>
+    private IEnumerator SpawnChoicePairDecoy(
+        WaveDefinition wave, SpawnAssignment assignment, Action onEnemySpawned)
+    {
+        SpawnAssignmentCoordinator coordinator = AssignmentCoordinator;
+        if (coordinator == null)
+            yield break;
+
+        BaybayinCharacterSO decoyCharacter =
+            coordinator.ResolveCharacter(assignment.PairedDecoySymbolStableId, wave);
+
+        if (decoyCharacter == null)
+        {
+            DebugLogger.LogWarning(
+                "WaveSpawner: choice pair requested decoy symbol "
+                + $"'{assignment.PairedDecoySymbolStableId}' but no character asset carries it.");
+            yield break;
+        }
+
+        float delay = coordinator.ChoicePairWindow;
+        if (delay > 0f)
+            yield return new WaitForSeconds(delay);
+
+        EnemyDataSO decoyData =
+            coordinator.ResolveEnemyData(assignment.PairedDecoySymbolStableId, wave)
+            ?? SelectEnemyDataForSpawn(wave);
+
+        Enemy decoy = SpawnEnemy(decoyData);
+        if (decoy == null)
+            yield break;
+
+        decoy.AssignCharacter(decoyCharacter);
+        ApplyLevelSpeedMultiplier(decoy);
+        onEnemySpawned?.Invoke();
     }
 
     // Rolls the whole wave's types up front so they can be ordered before the first spawn.
@@ -230,6 +317,14 @@ public class WaveSpawner : MonoBehaviour
             order.Add(SelectEnemyDataForSpawn(wave));
 
         if (!_spawnFastestFirst)
+            return order;
+
+        // On a scheduled level the symbol chooses the enemy, so sorting the rolled types by speed
+        // would reorder the content schedule the director just built. The schedule wins; the
+        // anti-stacking job falls to _minLateralSpawnSeparation alone. Level 1's roster spans
+        // moveSpeed 1.15-1.60, a far narrower spread than the 0.85-1.90 case this sort was added
+        // for, so the pair most at risk of stacking is not present here.
+        if (UsesScheduledAssignment)
             return order;
 
         // Null data can only come from an unresolvable roll; sort it last so SpawnEnemy's existing

@@ -156,11 +156,20 @@ public class EnemyDataSO : ScriptableObject
     [Tooltip("Variant-specific: used only by KempeiScrambleController. World-space radius around Kempei that receives visual-only label scrambling.")]
     public float scrambleRadius = 3f;
 
-    [Tooltip("Variant-specific: used only by KempeiScrambleController. Minimum seconds between scramble glitch toggles.")]
-    public float scrambleMinGlitchInterval = 0.18f;
+    [Tooltip("Variant-specific: used only by KempeiScrambleController. Minimum seconds a stained badge holds one WRONG face while churning. Floored at GlyphStainCycle.MinimumFalseGlyphInterval so the churn reads as a blur rather than a hard strobe.")]
+    public float scrambleMinGlitchInterval = GlyphStainCycle.DefaultFalseMinInterval;
 
-    [Tooltip("Variant-specific: used only by KempeiScrambleController. Maximum seconds between scramble glitch toggles.")]
-    public float scrambleMaxGlitchInterval = 0.36f;
+    [Tooltip("Variant-specific: used only by KempeiScrambleController. Maximum seconds a stained badge holds one WRONG face while churning.")]
+    public float scrambleMaxGlitchInterval = GlyphStainCycle.DefaultFalseMaxInterval;
+
+    [Tooltip("Variant-specific: used only by KempeiScrambleController. Minimum seconds the badge rests on its TRUE face between churns. This is the window the player reads and acts in, so it is floored at GlyphStainCycle.MinimumReadableInterval.")]
+    public float scrambleTrueGlyphMinDwell = GlyphStainCycle.DefaultTrueMinInterval;
+
+    [Tooltip("Variant-specific: used only by KempeiScrambleController. Maximum seconds the badge rests on its TRUE face between churns.")]
+    public float scrambleTrueGlyphMaxDwell = GlyphStainCycle.DefaultTrueMaxInterval;
+
+    [Tooltip("Variant-specific: used only by KempeiScrambleController. How many wrong faces scroll past before the true face returns. 1 would be a slow alternation rather than a scroll.")]
+    public int scrambleFalseBurstCount = GlyphStainCycle.DefaultFalseBurstCount;
 
     [Header("Corruption Signature Abilities")]
     [Tooltip("Mantsa (and Kempei): while this enemy lives, nearby enemies' badges are stained into their scrambled, incorrect form. Uses the Kempei Censor radius and glitch intervals above. Enemy.Initialize attaches KempeiScrambleController on the shared shell when set.")]

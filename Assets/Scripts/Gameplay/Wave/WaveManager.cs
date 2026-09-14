@@ -36,6 +36,11 @@ public class WaveManager : MonoBehaviour
     [SerializeField] private CharacterRegistrySO _sandboxCharacterRegistry;
 #endif
 
+    // Restoration overflow: how many enemies per batch, and how many batches before giving up and
+    // letting the existing refuse-completion path report the real problem.
+    private const int OverflowBatchSize = 3;
+    private const int MaxOverflowBatches = 12;
+
     private int _currentWaveIndex;
     private int _currentWaveSpawnedCount;
     private bool _running;
@@ -519,7 +524,101 @@ public class WaveManager : MonoBehaviour
             yield break;
         }
 
+        // The words, not the wave list, decide when the defense is over.
+        yield return RunRestorationOverflow(lastWaveIndexExclusive);
+
+        if (!CanContinueRun())
+        {
+            AbortRun();
+            yield break;
+        }
+
         CompleteRun();
+    }
+
+    /// <summary>
+    /// Keeps the defense running past the authored wave budget until the level's focus words are
+    /// finished.
+    ///
+    /// The authored enemyCount is a pacing target, not a supply guarantee: a player who misses one
+    /// needed carrier exhausts it with a slot still empty. Before this, that run hit
+    /// LevelFlowController.RefuseCompletionForMissingContent ("combat ended before restoring focus
+    /// word slots") and dead-ended - the wave budget ran out, not the player's skill.
+    ///
+    /// Reuses the final wave's roster and cadence through the ordinary SpawnWave path, so spawn
+    /// spread, the level speed multiplier and the assignment schedule all still apply. The
+    /// schedule's starvation timers are what actually terminate this loop: they force the needed
+    /// symbol once the player has been without it long enough.
+    /// </summary>
+    private IEnumerator RunRestorationOverflow(int lastWaveIndexExclusive)
+    {
+        SpawnAssignmentCoordinator coordinator = FindFirstObjectByType<SpawnAssignmentCoordinator>(
+            FindObjectsInactive.Include);
+
+        if (coordinator == null || !coordinator.WantsOverflow)
+            yield break;
+
+        WaveDefinition template = FindOverflowTemplate(lastWaveIndexExclusive);
+        if (template == null)
+        {
+            DebugLogger.LogWarning(
+                "WaveManager: restoration overflow needed but no wave is available to draw a "
+                + "roster from. The level will refuse completion instead.");
+            yield break;
+        }
+
+        // Bounded so a broken gate or an unrestorable target cannot spin forever. Reaching the
+        // bound leaves the existing refuse-completion path to report the real problem.
+        for (int batch = 0; batch < MaxOverflowBatches; batch++)
+        {
+            if (!CanContinueRun() || !coordinator.WantsOverflow)
+                yield break;
+
+            if (!ValidateRunDependencies())
+                yield break;
+
+            WaveDefinition overflowWave = BuildOverflowWave(template);
+            yield return StartCoroutine(_spawner.SpawnWave(overflowWave, HandleEnemySpawned));
+
+            if (!CanContinueRun() || !coordinator.WantsOverflow)
+                yield break;
+
+            yield return WaitForActiveEnemiesCleared();
+        }
+
+        DebugLogger.LogWarning(
+            $"WaveManager: restoration overflow ran {MaxOverflowBatches} batches without finishing "
+            + "the focus words. Check that every gated slot has something calling OpenGate.");
+    }
+
+    /// <summary>Last non-intermission wave, whose roster and cadence the overflow reuses.</summary>
+    private WaveDefinition FindOverflowTemplate(int lastWaveIndexExclusive)
+    {
+        if (_levelConfig?.waves == null)
+            return null;
+
+        int last = Mathf.Min(lastWaveIndexExclusive, _levelConfig.waves.Count) - 1;
+        for (int i = last; i >= 0; i--)
+        {
+            WaveDefinition wave = _levelConfig.waves[i];
+            if (wave != null && !wave.isIntermissionWave && wave.enemyCount > 0)
+                return wave;
+        }
+
+        return null;
+    }
+
+    private static WaveDefinition BuildOverflowWave(WaveDefinition template)
+    {
+        return new WaveDefinition
+        {
+            isIntermissionWave = false,
+            characters = template.characters,
+            enemyTypes = template.enemyTypes,
+            enemyCount = OverflowBatchSize,
+            spawnInterval = template.spawnInterval,
+            waveStartDelay = 0f,
+        };
     }
 
     private void HandleEnemySpawned()
