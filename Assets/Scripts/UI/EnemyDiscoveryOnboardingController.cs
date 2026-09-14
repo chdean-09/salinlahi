@@ -204,7 +204,7 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
             return;
 
         EnemyDiscoveryCopy copy = EnemyDiscoveryCopyProvider.Resolve(data);
-        _bodyText.text = BuildFormattedCopy(copy);
+        _bodyText.text = BuildFormattedCopy(copy, NameLossEffectRegistry.IsActive);
         ResizePanelToContent();
         StartTypewriter();
     }
@@ -555,9 +555,10 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
         return labelGo.AddComponent<TextMeshProUGUI>();
     }
 
-    private static string BuildFormattedCopy(EnemyDiscoveryCopy copy)
+    private static string BuildFormattedCopy(EnemyDiscoveryCopy copy, bool hideTitle = false)
     {
-        return $"<size=56><b>{copy.Title}</b></size>\n<size=42>{copy.Description}</size>\n<size=42>Power: {copy.Power}</size>";
+        string title = hideTitle ? string.Empty : copy.Title;
+        return $"<size=56><b>{title}</b></size>\n<size=42>{copy.Description}</size>\n<size=42>Power: {copy.Power}</size>";
     }
 
     private static int CountVisibleCharacters(string text)

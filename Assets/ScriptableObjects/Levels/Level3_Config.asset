@@ -122,8 +122,9 @@ MonoBehaviour:
       symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
       spokenValueId: value.ta
     requiredSuccesses: 2
-  activeClueCombatEnabled: 0
-  clueChannels: 1
+  activeClueCombatEnabled: 1
+  activeClueRestorationEnabled: 1
+  clueChannels: 2
   audioVisualFallback: 4
   defenseRules:
     shrineHearts: 3
@@ -172,7 +173,8 @@ MonoBehaviour:
   numberSprite: {fileID: 5259798743354067478, guid: 179e1a012098c6146ba6dfb48e676833, type: 3}
   waves:
   - isIntermissionWave: 0
-    characters: []
+    characters:
+    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
     enemyTypes:
     - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
     - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
@@ -185,7 +187,7 @@ MonoBehaviour:
     waveStartDelay: 1.5
   - isIntermissionWave: 0
     characters:
-    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+    - {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
     enemyTypes:
     - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
     - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
@@ -194,7 +196,7 @@ MonoBehaviour:
     waveStartDelay: 1.5
   - isIntermissionWave: 0
     characters:
-    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+    - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
     enemyTypes:
     - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
     - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
@@ -203,7 +205,7 @@ MonoBehaviour:
     waveStartDelay: 1.5
   - isIntermissionWave: 0
     characters:
-    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+    - {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
     enemyTypes:
     - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
     - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}

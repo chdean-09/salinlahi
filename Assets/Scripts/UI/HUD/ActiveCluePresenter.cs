@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -29,6 +30,11 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     [Tooltip("How long the restored word stays on screen, in unscaled seconds.")]
     [SerializeField, Min(0f)] private float _wordRestoredDurationSeconds = 1.4f;
 
+    [Header("Combat Restoration Progress")]
+    [Tooltip("Optional authored label for the focus-word slots restored during combat. "
+             + "A runtime label is built when empty on levels using the shared restoration path.")]
+    [SerializeField] private TextMeshProUGUI _restorationProgressText;
+
     /// <summary>
     /// Suppresses a clue announcement that lands on top of one CombatResolver just made.
     /// AudioManager uses PlayOneShot, so pronunciation clips overlap rather than interrupt.
@@ -47,9 +53,12 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private GameObject _activeClueMark;
     private Sprite _runtimeMarkSprite;
     private GameObject _runtimeWordRestoredObject;
+    private GameObject _runtimeRestorationProgressObject;
     private Coroutine _wordRestoredRoutine;
     private int _wordRestoredCueCount;
     private string _lastWordRestoredMessage;
+    private readonly ActiveClueRestorationState _restorationState =
+        new ActiveClueRestorationState();
 
     /// <summary>Reused by HandleActiveClueChanged so badge sweeps do not allocate per clue.</summary>
     private readonly System.Collections.Generic.List<Enemy> _badgeSweepBuffer =
@@ -88,6 +97,20 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     /// <summary>The text of the most recent word-restoration cue, or null before the first.</summary>
     public string LastWordRestoredMessage => _lastWordRestoredMessage;
 
+    /// <summary>The shared combat restoration state for this level attempt.</summary>
+    public ActiveClueRestorationState RestorationState => _restorationState;
+
+    /// <summary>True when the level has authored at least one focus word to restore.</summary>
+    public bool HasRestorationWords => _restorationState.FocusWordCount > 0;
+
+    /// <summary>Checks whether the requested focus words have all filled their slots.</summary>
+    public bool AreRestorationWordsComplete(IReadOnlyList<string> stableIds)
+        => _restorationState.AreWordsComplete(stableIds);
+
+    /// <summary>Checks the exact word or syllable targets required by the current flow segment.</summary>
+    public bool AreRestorationTargetsComplete(IReadOnlyList<ActiveClueRestorationTarget> targets)
+        => _restorationState.AreTargetsComplete(targets);
+
     private void OnEnable()
     {
         SubscribeToDirector();
@@ -124,12 +147,15 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         if (_replayAudioButtonComponent != null)
             _replayAudioButtonComponent.onClick.RemoveListener(ReplayAudio);
         _replayAudioButtonComponent = null;
+
+        DestroyRuntimeRestorationProgressLabel();
     }
 
     /// <summary>Resolves this level's channels, including the visual audio fallback.</summary>
     public void ApplyLevel(LevelConfigSO level)
     {
         _level = level;
+        _restorationState.Configure(level?.focusWords);
         _resolvedChannels = level == null
             ? ClueChannels.Glyph
             : ClueChannelResolver.Resolve(level.clueChannels, level.audioVisualFallback);
@@ -141,10 +167,13 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
         if (Application.isPlaying && level != null && level.activeClueCombatEnabled)
             EnsureRuntimePanel();
+        if (Application.isPlaying && level != null && level.activeClueRestorationEnabled)
+            EnsureRestorationProgressLabel();
         BindReplayAudioButton();
 
         if (_subscribedDirector != null)
             HandleActiveClueChanged(null, _subscribedDirector.CurrentClue);
+        UpdateRestorationProgress();
     }
 
     private void SubscribeToDirector()
@@ -174,26 +203,26 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             return;
 
         Canvas canvas = ResolveHudCanvas();
-        if (canvas == null)
+        Transform hudContainer = ResolveHudContainer(canvas);
+        if (hudContainer == null)
             return;
 
         TextMeshProUGUI textTemplate = FindFirstObjectByType<TextMeshProUGUI>();
 
         // No builtin-sprite lookup: UISprite.psd lives in unity_builtin_extra, which
-        // Resources.GetBuiltinResource cannot serve, so the call only asserts (and fails
-        // any headless test that arms a level). Null renders flat tinted quads. Acceptable
-        // because this whole panel is the no-Inspector-wiring fallback -- an authored HUD
-        // supplies its own art and never reaches here. Do not ship a level relying on this.
+        // Resources.GetBuiltinResource cannot serve. A null sprite renders a flat tinted
+        // quad, which is intentional here: this no-Inspector-wiring fallback remains readable
+        // on mobile layouts without requiring an authored UI skin.
         Sprite defaultUiSprite = null;
 
         GameObject panel = new GameObject("[Runtime] ActiveCluePanel", typeof(RectTransform), typeof(Image));
-        panel.transform.SetParent(canvas.transform, false);
+        panel.transform.SetParent(hudContainer, false);
         RectTransform panelRect = panel.GetComponent<RectTransform>();
         panelRect.anchorMin = new Vector2(0.5f, 1f);
         panelRect.anchorMax = new Vector2(0.5f, 1f);
         panelRect.pivot = new Vector2(0.5f, 1f);
-        panelRect.anchoredPosition = new Vector2(0f, -120f);
-        panelRect.sizeDelta = new Vector2(460f, 140f);
+        panelRect.anchoredPosition = new Vector2(0f, -155f);
+        panelRect.sizeDelta = new Vector2(760f, 180f);
 
         Image panelImage = panel.GetComponent<Image>();
         panelImage.sprite = defaultUiSprite;
@@ -201,16 +230,29 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         panelImage.raycastTarget = false;
         panel.SetActive(false);
 
+        GameObject instructionObject =
+            new GameObject("[Runtime] ActiveClueInstruction", typeof(RectTransform));
+        instructionObject.transform.SetParent(panel.transform, false);
+        TextMeshProUGUI instruction = instructionObject.AddComponent<TextMeshProUGUI>();
+        CopyFont(textTemplate, instruction);
+        instruction.text = "DRAW THE GLOWING SYMBOL TO DEFEND";
+        instruction.fontSize = 24f;
+        instruction.alignment = TextAlignmentOptions.Center;
+        instruction.color = new Color(1f, 0.84f, 0.29f, 1f);
+        instruction.raycastTarget = false;
+        SetStretch(instructionObject.GetComponent<RectTransform>(), new Vector2(118f, 18f),
+            new Vector2(-118f, -18f));
+
         GameObject textObject = new GameObject("[Runtime] ActiveClueText", typeof(RectTransform));
         textObject.transform.SetParent(panel.transform, false);
         TextMeshProUGUI clueText = textObject.AddComponent<TextMeshProUGUI>();
         CopyFont(textTemplate, clueText);
-        clueText.fontSize = 28f;
+        clueText.fontSize = 38f;
         clueText.alignment = TextAlignmentOptions.Center;
         clueText.color = Color.white;
         clueText.raycastTarget = false;
-        SetStretch(textObject.GetComponent<RectTransform>(), new Vector2(110f, 10f),
-            new Vector2(-100f, -10f));
+        SetStretch(textObject.GetComponent<RectTransform>(), new Vector2(118f, 18f),
+            new Vector2(-118f, -62f));
 
         GameObject imageObject = new GameObject("[Runtime] ActiveClueImage", typeof(RectTransform), typeof(Image));
         imageObject.transform.SetParent(panel.transform, false);
@@ -276,6 +318,24 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         rect.offsetMax = offsetMax;
     }
 
+    /// <summary>
+    /// Keeps the runtime clue inside the safe gameplay HUD instead of placing it directly on
+    /// the canvas. Authored scenes use HUDLayer; the canvas fallback preserves bootstrapped
+    /// levels and tests that do not include the full HUD hierarchy.
+    /// </summary>
+    private static Transform ResolveHudContainer(Canvas canvas)
+    {
+        GameObject hudLayer = GameObject.Find("HUDLayer");
+        if (hudLayer != null)
+            return hudLayer.transform;
+
+        GameObject hudRoot = GameObject.Find("HUDRoot");
+        if (hudRoot != null)
+            return hudRoot.transform;
+
+        return canvas != null ? canvas.transform : null;
+    }
+
     private void BindReplayAudioButton()
     {
         Button nextButton = _replayAudioButton != null
@@ -332,6 +392,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
         UpdateActiveClueMark(current);
         UpdateCluePanel(current);
+        UpdateRestorationProgress();
     }
 
     /// <summary>One enemy's badge state under the current clue: the mark shows, everyone hides.</summary>
@@ -565,16 +626,37 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         if (!IsClueCombatArmed || clue == null || clue.Character == null)
             return;
 
+        // The at-accept cue predates the shared restoration gate and remains useful on
+        // Level 1, which still owns its authored post-wave challenge. Do not let that legacy
+        // presentation path mutate the new slot state or unmask its combat clue text.
+        if (_level == null || !_level.activeClueRestorationEnabled)
+        {
+            FocusWordDefinition legacyWord = FindFocusWordContaining(clue.Character.stableId);
+            string legacyMessage = BuildRestoredWordLabel(
+                legacyWord == null
+                    ? null
+                    : new[] { legacyWord });
+            if (!string.IsNullOrEmpty(legacyMessage))
+                ShowWordRestoredCue(legacyMessage);
+            return;
+        }
+
         // Legacy content and any symbol outside this level's focus words have nothing to
-        // restore; staying silent beats announcing an empty word.
-        FocusWordDefinition word = FindFocusWordContaining(clue.Character.stableId);
-        if (word == null)
+        // restore; staying silent beats announcing an empty word. The state marks every
+        // matching slot, so a symbol shared by both focus words fills both target texts.
+        IReadOnlyList<FocusWordDefinition> changedWords =
+            _restorationState.Apply(clue.Character.stableId);
+        if (changedWords.Count == 0)
             return;
 
-        string restored = BuildRestoredWordLabel(word);
+        string restored = BuildRestoredWordLabel(changedWords);
         if (string.IsNullOrEmpty(restored))
             return;
 
+        // The clue stays latched through the pronunciation lead. Refreshing the panel here
+        // makes the accepted syllable appear in the target text before the enemy leaves.
+        UpdateCluePanel(_currentClue);
+        UpdateRestorationProgress();
         ShowWordRestoredCue(restored);
     }
 
@@ -582,16 +664,28 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     /// Prefers the authored display label, falling back to the Latin spelling that the masked
     /// IncompleteWord channel was hiding.
     /// </summary>
-    private static string BuildRestoredWordLabel(FocusWordDefinition word)
+    private static string BuildRestoredWordLabel(IReadOnlyList<FocusWordDefinition> words)
     {
-        if (word == null)
+        if (words == null || words.Count == 0)
             return null;
 
-        string spelling = !string.IsNullOrEmpty(word.displayLabel)
-            ? word.displayLabel
-            : word.latinSpelling;
+        var labels = new List<string>(words.Count);
+        for (int i = 0; i < words.Count; i++)
+        {
+            FocusWordDefinition word = words[i];
+            if (word == null)
+                continue;
 
-        return string.IsNullOrEmpty(spelling) ? null : WordRestoredPrefix + spelling;
+            string spelling = !string.IsNullOrEmpty(word.displayLabel)
+                ? word.displayLabel
+                : word.latinSpelling;
+            if (!string.IsNullOrEmpty(spelling))
+                labels.Add(spelling);
+        }
+
+        return labels.Count == 0
+            ? null
+            : WordRestoredPrefix + string.Join(", ", labels);
     }
 
     private void ShowWordRestoredCue(string message)
@@ -717,6 +811,131 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     }
 
     /// <summary>
+    /// Builds the persistent target-text readout used by the shared combat-restoration path.
+    /// Unlike the timed "Restored:" cue, this stays visible for the whole defense so a player
+    /// can see each syllable fill instead of waiting for a post-wave board.
+    /// </summary>
+    private void EnsureRestorationProgressLabel()
+    {
+        if (_restorationProgressText != null)
+            return;
+
+        Canvas canvas = ResolveHudCanvas();
+        Transform hudContainer = ResolveHudContainer(canvas);
+        if (hudContainer == null)
+            return;
+
+        TextMeshProUGUI textTemplate = _clueText != null
+            ? _clueText
+            : FindFirstObjectByType<TextMeshProUGUI>();
+
+        _runtimeRestorationProgressObject =
+            new GameObject("[Runtime] ActiveClueRestorationProgress", typeof(RectTransform));
+        _runtimeRestorationProgressObject.transform.SetParent(hudContainer, false);
+
+        TextMeshProUGUI label = _runtimeRestorationProgressObject.AddComponent<TextMeshProUGUI>();
+        CopyFont(textTemplate, label);
+        label.fontSize = 22f;
+        label.alignment = TextAlignmentOptions.Center;
+        label.color = Color.white;
+        label.raycastTarget = false;
+
+        RectTransform rect = _runtimeRestorationProgressObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 1f);
+        rect.anchorMax = new Vector2(0.5f, 1f);
+        rect.pivot = new Vector2(0.5f, 1f);
+        rect.anchoredPosition = new Vector2(0f, -345f);
+        rect.sizeDelta = new Vector2(760f, 105f);
+
+        _runtimeRestorationProgressObject.SetActive(false);
+        _restorationProgressText = label;
+    }
+
+    private void UpdateRestorationProgress()
+    {
+        bool shouldShow = IsClueCombatArmed
+            && _level != null
+            && _level.activeClueRestorationEnabled
+            && HasRestorationWords;
+
+        if (!shouldShow)
+        {
+            if (_restorationProgressText != null)
+                _restorationProgressText.gameObject.SetActive(false);
+            return;
+        }
+
+        EnsureRestorationProgressLabel();
+        if (_restorationProgressText == null)
+            return;
+
+        _restorationProgressText.text = BuildRestorationProgressText();
+        _restorationProgressText.gameObject.SetActive(true);
+    }
+
+    private string BuildRestorationProgressText()
+    {
+        var builder = new System.Text.StringBuilder();
+        IReadOnlyList<FocusWordDefinition> words = _restorationState.FocusWords;
+        for (int wordIndex = 0; wordIndex < words.Count; wordIndex++)
+        {
+            FocusWordDefinition word = words[wordIndex];
+            if (word == null)
+                continue;
+
+            if (builder.Length > 0)
+                builder.Append('\n');
+
+            string label = !string.IsNullOrEmpty(word.displayLabel)
+                ? word.displayLabel
+                : word.latinSpelling;
+            builder.Append(label).Append(": ");
+
+            bool wroteSlot = false;
+            for (int slotIndex = 0;
+                 word.decomposition != null && slotIndex < word.decomposition.Count;
+                 slotIndex++)
+            {
+                SymbolValueReference reference = word.decomposition[slotIndex];
+                if (reference?.symbol == null)
+                    continue;
+
+                if (wroteSlot)
+                    builder.Append(" · ");
+
+                builder.Append(_restorationState.IsSlotRestored(word, slotIndex)
+                    ? SpokenValueResolver.ResolveLabel(reference.symbol, reference.spokenValueId)
+                    : UnreadableSlotMask);
+                wroteSlot = true;
+            }
+
+            if (_restorationState.IsWordComplete(word.stableId))
+                builder.Append("  ✓");
+        }
+
+        return builder.ToString();
+    }
+
+    private void DestroyRuntimeRestorationProgressLabel()
+    {
+        if (_runtimeRestorationProgressObject == null)
+        {
+            if (_restorationProgressText != null)
+                _restorationProgressText.gameObject.SetActive(false);
+            return;
+        }
+
+        if (_restorationProgressText != null
+            && _restorationProgressText.gameObject == _runtimeRestorationProgressObject)
+        {
+            _restorationProgressText = null;
+        }
+
+        DestroyOwnedObject(_runtimeRestorationProgressObject);
+        _runtimeRestorationProgressObject = null;
+    }
+
+    /// <summary>
     /// Word-specific image first, level-wide context image second. The level-wide image is a
     /// deliberately weaker cue -- it sets the scene rather than naming the word -- so it is
     /// only ever a fallback. Keeping it means a level authored with ContextImage but no
@@ -751,7 +970,11 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         // here and passed down rather than consulted inside BuildMaskedSpelling, so that method
         // stays a pure function of its arguments and can be tested without a live enemy.
         _clueText.text = masked
-            ? BuildMaskedSpelling(word, clue.Character.stableId, AshFirstSlotController.IsAnyActive())
+            ? BuildMaskedSpellingWithRestoration(
+                word,
+                clue.Character.stableId,
+                AshFirstSlotController.IsAnyActive(),
+                _restorationState)
             : word.latinSpelling;
     }
 
@@ -799,6 +1022,15 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         string symbolStableId,
         bool ashFirstSlot)
     {
+        return BuildMaskedSpellingWithRestoration(word, symbolStableId, ashFirstSlot, null);
+    }
+
+    private static string BuildMaskedSpellingWithRestoration(
+        FocusWordDefinition word,
+        string symbolStableId,
+        bool ashFirstSlot,
+        ActiveClueRestorationState restorationState)
+    {
         if (word?.decomposition == null)
             return word?.latinSpelling;
 
@@ -814,15 +1046,267 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
             bool isTargetSlot = reference.symbol.stableId == symbolStableId;
             bool isAshedSlot = ashFirstSlot && emittedSlots == 0;
+            bool isRestoredSlot = restorationState != null
+                && restorationState.IsSlotRestored(word, i);
             emittedSlots++;
 
             // SALIN-221: unmasked slots read the word-context spoken value, so INA spells "i__"
             // rather than "e/i__".
-            builder.Append(isTargetSlot || isAshedSlot
+            builder.Append((isTargetSlot && !isRestoredSlot) || isAshedSlot
                 ? UnreadableSlotMask
                 : SpokenValueResolver.ResolveLabel(reference.symbol, reference.spokenValueId));
         }
 
         return builder.Length > 0 ? builder.ToString() : word.latinSpelling;
+    }
+}
+
+/// <summary>One authored focus-word target for the shared combat-restoration gate.</summary>
+public sealed class ActiveClueRestorationTarget
+{
+    public ActiveClueRestorationTarget(string wordStableId, string symbolStableId = null)
+    {
+        WordStableId = wordStableId;
+        SymbolStableId = symbolStableId;
+    }
+
+    public string WordStableId { get; }
+    public string SymbolStableId { get; }
+}
+
+/// <summary>
+/// Tracks the focus-word syllables restored by accepted active clues.
+///
+/// The combat system only reports a canonical symbol stable id, so a restored slot is
+/// deliberately keyed by that id rather than by a challenge-board occurrence. This keeps
+/// the state shared by every active-clue level and makes it independent of the retired
+/// post-wave restoration board.
+/// </summary>
+public sealed class ActiveClueRestorationState
+{
+    private sealed class WordState
+    {
+        public readonly FocusWordDefinition Word;
+        public readonly bool[] RestoredSlots;
+
+        public WordState(FocusWordDefinition word)
+        {
+            Word = word;
+            RestoredSlots = word?.decomposition == null
+                ? new bool[0]
+                : new bool[word.decomposition.Count];
+        }
+
+        public bool IsComplete
+        {
+            get
+            {
+                if (Word == null || Word.decomposition == null || Word.decomposition.Count == 0)
+                    return false;
+
+                bool hasSlot = false;
+                for (int i = 0; i < Word.decomposition.Count; i++)
+                {
+                    SymbolValueReference reference = Word.decomposition[i];
+                    if (reference?.symbol == null)
+                        continue;
+
+                    hasSlot = true;
+                    if (!RestoredSlots[i])
+                        return false;
+                }
+
+                return hasSlot;
+            }
+        }
+    }
+
+    private readonly List<WordState> _words = new List<WordState>();
+    private readonly List<FocusWordDefinition> _changedWords =
+        new List<FocusWordDefinition>();
+
+    /// <summary>All focus words in authored order.</summary>
+    public IReadOnlyList<FocusWordDefinition> FocusWords
+    {
+        get
+        {
+            var words = new List<FocusWordDefinition>(_words.Count);
+            for (int i = 0; i < _words.Count; i++)
+                words.Add(_words[i].Word);
+            return words;
+        }
+    }
+
+    public int FocusWordCount => _words.Count;
+
+    /// <summary>True only when at least one word exists and every authored slot is restored.</summary>
+    public bool IsComplete
+    {
+        get
+        {
+            if (_words.Count == 0)
+                return false;
+
+            for (int i = 0; i < _words.Count; i++)
+            {
+                if (!_words[i].IsComplete)
+                    return false;
+            }
+
+            return true;
+        }
+    }
+
+    /// <summary>Starts a fresh restoration run for the supplied level's focus words.</summary>
+    public void Configure(IReadOnlyList<FocusWordDefinition> focusWords)
+    {
+        _words.Clear();
+        _changedWords.Clear();
+
+        if (focusWords == null)
+            return;
+
+        for (int i = 0; i < focusWords.Count; i++)
+        {
+            FocusWordDefinition word = focusWords[i];
+            if (word != null)
+                _words.Add(new WordState(word));
+        }
+    }
+
+    /// <summary>
+    /// Restores every matching slot in the focus words and returns only words changed by this
+    /// call. The returned list is reused on the next call and is intended for immediate use.
+    /// </summary>
+    public IReadOnlyList<FocusWordDefinition> Apply(string symbolStableId)
+    {
+        _changedWords.Clear();
+        if (string.IsNullOrEmpty(symbolStableId))
+            return _changedWords;
+
+        for (int wordIndex = 0; wordIndex < _words.Count; wordIndex++)
+        {
+            WordState state = _words[wordIndex];
+            bool changed = false;
+            if (state.Word.decomposition == null)
+                continue;
+
+            for (int slotIndex = 0; slotIndex < state.Word.decomposition.Count; slotIndex++)
+            {
+                SymbolValueReference reference = state.Word.decomposition[slotIndex];
+                if (reference?.symbol == null
+                    || reference.symbol.stableId != symbolStableId
+                    || state.RestoredSlots[slotIndex])
+                {
+                    continue;
+                }
+
+                state.RestoredSlots[slotIndex] = true;
+                changed = true;
+            }
+
+            if (changed)
+                _changedWords.Add(state.Word);
+        }
+
+        return _changedWords;
+    }
+
+    public bool IsWordComplete(string stableId)
+    {
+        WordState state = FindWord(stableId);
+        return state != null && state.IsComplete;
+    }
+
+    /// <summary>
+    /// Checks a segment's required word ids. An unknown id is incomplete rather than silently
+    /// satisfied, so a bad segment mapping cannot unlock the next phase.
+    /// </summary>
+    public bool AreWordsComplete(IReadOnlyList<string> stableIds)
+    {
+        if (stableIds == null || stableIds.Count == 0)
+            return false;
+
+        for (int i = 0; i < stableIds.Count; i++)
+        {
+            if (!IsWordComplete(stableIds[i]))
+                return false;
+        }
+
+        return true;
+    }
+
+    public bool AreTargetsComplete(IReadOnlyList<ActiveClueRestorationTarget> targets)
+    {
+        if (targets == null || targets.Count == 0)
+            return false;
+
+        for (int i = 0; i < targets.Count; i++)
+        {
+            ActiveClueRestorationTarget target = targets[i];
+            if (target == null || !IsTargetComplete(target.WordStableId, target.SymbolStableId))
+                return false;
+        }
+
+        return true;
+    }
+
+    public bool IsTargetComplete(string wordStableId, string symbolStableId)
+    {
+        if (string.IsNullOrEmpty(symbolStableId))
+            return IsWordComplete(wordStableId);
+
+        WordState state = FindWord(wordStableId);
+        if (state == null || state.Word.decomposition == null)
+            return false;
+
+        for (int i = 0; i < state.Word.decomposition.Count; i++)
+        {
+            SymbolValueReference reference = state.Word.decomposition[i];
+            if (reference?.symbol != null
+                && reference.symbol.stableId == symbolStableId)
+            {
+                return state.RestoredSlots[i];
+            }
+        }
+
+        return false;
+    }
+
+    public bool IsSlotRestored(FocusWordDefinition word, int slotIndex)
+    {
+        WordState state = FindWord(word);
+        return state != null
+            && slotIndex >= 0
+            && slotIndex < state.RestoredSlots.Length
+            && state.RestoredSlots[slotIndex];
+    }
+
+    private WordState FindWord(string stableId)
+    {
+        if (string.IsNullOrEmpty(stableId))
+            return null;
+
+        for (int i = 0; i < _words.Count; i++)
+        {
+            if (_words[i].Word != null && _words[i].Word.stableId == stableId)
+                return _words[i];
+        }
+
+        return null;
+    }
+
+    private WordState FindWord(FocusWordDefinition word)
+    {
+        if (word == null)
+            return null;
+
+        for (int i = 0; i < _words.Count; i++)
+        {
+            if (ReferenceEquals(_words[i].Word, word))
+                return _words[i];
+        }
+
+        return null;
     }
 }

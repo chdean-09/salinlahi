@@ -11,12 +11,13 @@ namespace Salinlahi.Tests.Editor.Onboarding
         private const string Level2SequencePath = "Assets/ScriptableObjects/Tutorial/Level2AdvancedOnboardingSequence.asset";
 
         [Test]
-        public void LevelOneOnboardingSequence_UsesBAOUHAFrameHints()
+        public void LevelOneOnboardingSequence_UsesUgatSymbolsAndGuideSprites()
         {
             OnboardingSequenceSO sequence = LoadSequence(Level1SequencePath);
-            Level1TutorialStepSO ba = LoadStep("Assets/ScriptableObjects/Tutorial/Level1TutorialStep_BA.asset");
-            Level1TutorialStepSO ou = LoadStep("Assets/ScriptableObjects/Tutorial/Level1TutorialStep_OU.asset");
-            Level1TutorialStepSO ha = LoadStep("Assets/ScriptableObjects/Tutorial/Level1TutorialStep_HA.asset");
+            Level1TutorialStepSO ei = LoadStep("Assets/ScriptableObjects/Tutorial/Level1TutorialStep_EI.asset");
+            Level1TutorialStepSO na = LoadStep("Assets/ScriptableObjects/Tutorial/Level1TutorialStep_NA.asset");
+            Level1TutorialStepSO a = LoadStep("Assets/ScriptableObjects/Tutorial/Level1TutorialStep_A.asset");
+            Level1TutorialStepSO ma = LoadStep("Assets/ScriptableObjects/Tutorial/Level1TutorialStep_MA.asset");
 
             Assert.AreEqual(
                 new[]
@@ -28,11 +29,13 @@ namespace Salinlahi.Tests.Editor.Onboarding
                     OnboardingBeatType.Release,
                 },
                 sequence.beatOrder);
-            Assert.AreSame(ba, sequence.soloTeachStep);
-            Assert.AreEqual(new[] { ba, ou, ha }, sequence.basicTeachSteps);
-            AssertValidFrameTemplate(sequence.basicTeachVideos[0], "Level 1 BA");
-            AssertValidFrameTemplate(sequence.basicTeachVideos[1], "Level 1 O");
-            AssertValidFrameTemplate(sequence.basicTeachVideos[2], "Level 1 HA");
+            Assert.AreSame(ei, sequence.soloTeachStep);
+            Assert.AreEqual(new[] { ei, na, a, ma }, sequence.basicTeachSteps);
+            Assert.IsNotNull(ei.guideSprite);
+            Assert.IsNotNull(na.guideSprite);
+            Assert.IsNotNull(a.guideSprite);
+            Assert.IsNotNull(ma.guideSprite);
+            Assert.IsEmpty(sequence.basicTeachVideos);
         }
 
         private static OnboardingSequenceSO LoadSequence(string path)

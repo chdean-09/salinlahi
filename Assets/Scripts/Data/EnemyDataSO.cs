@@ -190,8 +190,26 @@ public class EnemyDataSO : ScriptableObject
     [Tooltip("Abo ng Simula: while this enemy lives, the active clue's incomplete-word text ashes over the word's FIRST slot as well as the target one, so the first symbol cannot be read. Display only — acceptance is unaffected and a correct draw still resolves. Enemy.Initialize attaches AshFirstSlotController when set.")]
     public bool ashesFirstSlot;
 
+    [Tooltip("Nawalang Mukha: while this enemy lives, hide character and speaker names from labels and dialogue boxes. Dialogue text and essential combat objectives remain readable. Enemy.Initialize attaches NawalangMukhaNameLossController when set.")]
+    public bool removesNames;
+
     [Tooltip("Kadena: on spawn this enemy chains the nearest other enemy and holds it under a resolution block — it can be neither marked nor damaged — until Kadena is defeated. One target, acquired once, never re-chained. Enemy.Initialize attaches KadenaChainController when set.")]
     public bool chainsNearestEnemy;
+
+    [Tooltip("Hati: when this enemy is defeated it splits into splitCount pieces of splitSpawnData around its position, each carrying this enemy's glyph. The pieces are real enemies that never split again. Enemy.Initialize attaches HatiSplitController when set; Enemy.Defeat invokes it.")]
+    public bool splitsOnDefeat;
+
+    [Tooltip("Hati: the enemy data each piece spawns with (the minion). Must not itself split.")]
+    public EnemyDataSO splitSpawnData;
+
+    [Tooltip("Hati: how many pieces spawn on defeat.")]
+    public int splitCount = 2;
+
+    [Tooltip("Hati: horizontal world distance from the source to the outermost pieces.")]
+    public float splitOffsetX = 0.9f;
+
+    [Tooltip("Multiplier on the shared shell's authored transform scale, applied on spawn. 1 keeps the shell's scale; Hati's pieces use a smaller value so they read as the 'smaller enemies' in Hati's description.")]
+    public float spriteScale = 1f;
 
     [HideInInspector]
     [Tooltip("Runtime-only: set on generated decoy copies so they never raise their own discovery event.")]

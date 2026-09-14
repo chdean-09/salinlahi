@@ -122,8 +122,9 @@ MonoBehaviour:
       symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
       spokenValueId: value.ta
     requiredSuccesses: 2
-  activeClueCombatEnabled: 0
-  clueChannels: 1
+  activeClueCombatEnabled: 1
+  activeClueRestorationEnabled: 1
+  clueChannels: 5
   audioVisualFallback: 4
   defenseRules:
     shrineHearts: 3
@@ -172,14 +173,16 @@ MonoBehaviour:
   numberSprite: {fileID: 187839122118532240, guid: 04da23af290d613448e27c47ec8f91c0, type: 3}
   waves:
   - isIntermissionWave: 0
-    characters: []
+    characters:
+    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
     enemyTypes:
     - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
     enemyCount: 6
     spawnInterval: 3.2
     waveStartDelay: 1.5
   - isIntermissionWave: 0
-    characters: []
+    characters:
+    - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
     enemyTypes:
     - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
     enemyCount: 6
@@ -187,7 +190,7 @@ MonoBehaviour:
     waveStartDelay: 1.5
   - isIntermissionWave: 0
     characters:
-    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+    - {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
     enemyTypes:
     - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
     - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}

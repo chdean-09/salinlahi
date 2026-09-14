@@ -13,9 +13,10 @@ MonoBehaviour:
   m_Name: Level1TutorialSequence
   m_EditorClassIdentifier: Assembly-CSharp::Level1TutorialSequenceSO
   steps:
-  - {fileID: 11400000, guid: 570d304cd3744bb8984f246b1e280c64, type: 2}
-  - {fileID: 11400000, guid: c1fa5b94252c48bfb7044e94cb5d09c5, type: 2}
-  - {fileID: 11400000, guid: ef95595956164dc4b7ba103c155ceaed, type: 2}
+  - {fileID: 11400000, guid: 7a8d4f1c9e2b4a6d8f0c1e3b5a7d9f2c, type: 2}
+  - {fileID: 11400000, guid: 8b9e5f2d0c1a4b6e8f3d7c9a1e5b2f4d, type: 2}
+  - {fileID: 11400000, guid: 9c0e6a3d1b5f4e7a8c2d9f0b6a1e3c5d, type: 2}
+  - {fileID: 11400000, guid: ad1f7b3e5c9a4d2f8b6e0c1a3f5d7e9b, type: 2}
   baseIntroText: This is the base.
   baseDefenseText: Keep enemies away from it.
   drawPurposeText: Draw its syllable to defeat it.

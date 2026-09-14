@@ -81,7 +81,7 @@ public sealed class OnboardingSequenceSO : ScriptableObject
     [Tooltip("Padding in world units around the base bounds when computing the spotlight rect.")]
     public float baseSpotlightPadding = 0.5f;
 
-    [Header("Beat 3 — Solo Teach (HA)")]
+    [Header("Beat 3 — Symbol Teach (EI/NA/A/MA)")]
     public Level1TutorialStepSO soloTeachStep;
     [Tooltip("Optional ordered list of basic single-enemy teach steps. When assigned, SoloTeach runs each step in order.")]
     public Level1TutorialStepSO[] basicTeachSteps;

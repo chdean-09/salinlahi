@@ -4451,7 +4451,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Salinlahi.Runtime::LevelFlowController
   _waveManager: {fileID: 920286447}
-  _dialogueController: {fileID: 0}
+  _dialogueController: {fileID: 1169153849}
   _level1OnboardingController: {fileID: 203729381}
   _challengeFlowController: {fileID: 0}
   _revealController: {fileID: 877914415}

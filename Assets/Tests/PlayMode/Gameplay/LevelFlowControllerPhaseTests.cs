@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using NUnit.Framework;
+using Salinlahi.Debug.Sandbox;
 using UnityEngine;
 using UnityEngine.TestTools;
 
@@ -26,6 +27,8 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         [SetUp]
         public void SetUp()
         {
+            SandboxMode.Deactivate();
+            LevelFlowController.SetSkipReadyScreenForTests(true);
             LevelTutorialProgress.ResetLevel1TutorialForTests();
         }
 
@@ -33,6 +36,8 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         public void TearDown()
         {
             LogAssert.ignoreFailingMessages = false;
+            SandboxMode.Deactivate();
+            LevelFlowController.SetSkipReadyScreenForTests(false);
             if (_spokenPronunciationProbe != null)
             {
                 EventBus.OnSpokenPronunciationRequested -= _spokenPronunciationProbe;

@@ -19,7 +19,7 @@ MonoBehaviour:
   spokenValues:
   - stableId: value.wa
     displayValue: wa
-    pronunciationClip: {fileID: 8300000, guid: 8efac7f30c80fd04487330e616088ec9, type: 3}
+    pronunciationClip: {fileID: 8300000, guid: ed18e5f4249d4ec594c0f7520bf879da, type: 3}
   firstIntroductionLevelId: level.ugnayan.01
   description: "WA is found inside church walls where Baybayin was painted over.
     Juan uncovers traces of writing that survived in silence.\n\r\n\u201CWA is what
@@ -29,5 +29,5 @@ MonoBehaviour:
   badgeSprite: {fileID: 1820221823815775938, guid: ca1f080825aef994095f093a562c0b28, type: 3}
   scrambledBadgeSprite: {fileID: 0}
   glyphOutlineSprite: {fileID: 21300000, guid: c9e586b055d4c4612939c67de212eb06, type: 3}
-  pronunciationClip: {fileID: 8300000, guid: 8efac7f30c80fd04487330e616088ec9, type: 3}
+  pronunciationClip: {fileID: 8300000, guid: ed18e5f4249d4ec594c0f7520bf879da, type: 3}
   templateFileName: WA_template_01

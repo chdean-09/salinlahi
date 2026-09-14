@@ -19,7 +19,7 @@ MonoBehaviour:
   spokenValues:
   - stableId: value.ra
     displayValue: ra
-    pronunciationClip: {fileID: 8300000, guid: 15bb1b815d17d21459f70bfdc306e281, type: 3}
+    pronunciationClip: {fileID: 8300000, guid: e99b63cf0dc9406392c96c29ba7417dd, type: 3}
   firstIntroductionLevelId: level.pamana.03
   description: 
   displaySprite: {fileID: -4082948466674284124, guid: 6fe326552750eee4fb1e4ddedf481626, type: 3}
@@ -27,5 +27,5 @@ MonoBehaviour:
   badgeSprite: {fileID: 0}
   scrambledBadgeSprite: {fileID: 0}
   glyphOutlineSprite: {fileID: 21300000, guid: b2602bad396e640408ec400313a9701a, type: 3}
-  pronunciationClip: {fileID: 8300000, guid: 15bb1b815d17d21459f70bfdc306e281, type: 3}
+  pronunciationClip: {fileID: 8300000, guid: e99b63cf0dc9406392c96c29ba7417dd, type: 3}
   templateFileName: RA_template_01

@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
+using Salinlahi.Debug.Sandbox;
 using Salinlahi.Runtime.Gameplay;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -17,6 +18,9 @@ namespace Salinlahi.Tests.Editor.Gameplay
         [SetUp]
         public void SetUp()
         {
+            SandboxMode.Deactivate();
+            LevelRetryIntent.Clear();
+            LevelFlowController.SetSkipReadyScreenForTests(true);
             LevelTutorialProgress.ResetLevel1TutorialForTests();
         }
 
@@ -34,6 +38,9 @@ namespace Salinlahi.Tests.Editor.Gameplay
             _enabledComponents.Clear();
 
             SetForceGameplayScene(false);
+            SandboxMode.Deactivate();
+            LevelRetryIntent.Clear();
+            LevelFlowController.SetSkipReadyScreenForTests(false);
             ClearSingletonInstance<GameManager>();
             LevelTutorialProgress.ResetLevel1TutorialForTests();
 
@@ -315,7 +322,6 @@ namespace Salinlahi.Tests.Editor.Gameplay
             LevelFlowController controller = CreateComponent<LevelFlowController>("LevelFlowController");
             SetPrivateField(controller, "_levelConfig", levelConfig);
             SetPrivateField(controller, "_waveManager", waveManager);
-
             Assert.IsNull(ProtagonistManager.Instance, "Test setup expects no pre-existing ProtagonistManager.");
             // Expectations are order-sensitive: the protagonist spawn (Story
             // phase) errors before the wave hand-off (Defense phase) does.

@@ -196,6 +196,7 @@ public class DialogueController : MonoBehaviour
     private void OnEnable()
     {
         ConfigureResponsiveLayout(hasPortrait: _portraitImage != null && _portraitImage.gameObject.activeSelf);
+        NameLossEffectRegistry.Changed += HandleNameLossEffectChanged;
 
         if (_tapCatcher != null)
             _tapCatcher.onClick.AddListener(OnTapCatcherPressed);
@@ -203,6 +204,7 @@ public class DialogueController : MonoBehaviour
 
     private void OnDisable()
     {
+        NameLossEffectRegistry.Changed -= HandleNameLossEffectChanged;
         if (_tapCatcher != null)
             _tapCatcher.onClick.RemoveListener(OnTapCatcherPressed);
     }
@@ -262,7 +264,7 @@ public class DialogueController : MonoBehaviour
     private void ShowLine(DialogueLine line)
     {
         if (_speakerText != null)
-            _speakerText.text = line.speakerName ?? "";
+            _speakerText.text = NameLossEffectRegistry.IsActive ? string.Empty : line.speakerName ?? "";
 
         bool hasPortrait = false;
         if (_portraitImage != null)
@@ -285,6 +287,17 @@ public class DialogueController : MonoBehaviour
             StopCoroutine(_typewriterRoutine);
 
         _typewriterRoutine = StartCoroutine(TypewriterRoutine(line.text ?? ""));
+    }
+
+    private void HandleNameLossEffectChanged()
+    {
+        if (_speakerText == null || _currentDialogue == null
+            || _currentDialogue.lines == null
+            || _lineIndex < 0 || _lineIndex >= _currentDialogue.lines.Length)
+            return;
+
+        DialogueLine line = _currentDialogue.lines[_lineIndex];
+        _speakerText.text = NameLossEffectRegistry.IsActive ? string.Empty : line.speakerName ?? "";
     }
 
     private void ConfigureResponsiveLayout(bool hasPortrait)

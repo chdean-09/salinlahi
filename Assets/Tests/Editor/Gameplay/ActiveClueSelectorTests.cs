@@ -273,6 +273,56 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Object.DestroyImmediate(level);
         }
 
+        [Test]
+        public void RestorationState_FillsMatchingSlotsAcrossFocusWords_Once()
+        {
+            BaybayinCharacterSO ba = CreateSymbol("BA", "symbol.ba");
+            BaybayinCharacterSO ta = CreateSymbol("TA", "symbol.ta");
+            FocusWordDefinition bata = new FocusWordDefinition
+            {
+                stableId = "focus.bata",
+                decomposition = new List<SymbolValueReference>
+                {
+                    new SymbolValueReference { symbol = ba },
+                    new SymbolValueReference { symbol = ta },
+                },
+            };
+            FocusWordDefinition tama = new FocusWordDefinition
+            {
+                stableId = "focus.tama",
+                decomposition = new List<SymbolValueReference>
+                {
+                    new SymbolValueReference { symbol = ta },
+                    new SymbolValueReference { symbol = ba },
+                },
+            };
+
+            var state = new ActiveClueRestorationState();
+            state.Configure(new[] { bata, tama });
+
+            Assert.That(state.Apply("symbol.ba").Count, Is.EqualTo(2),
+                "A shared syllable fills each authored target text that uses it.");
+            Assert.That(state.Apply("symbol.ba").Count, Is.EqualTo(0),
+                "Repeating an already restored clue must not award the slots twice.");
+            Assert.That(state.Apply("symbol.ta").Count, Is.EqualTo(2));
+            Assert.IsTrue(state.AreWordsComplete(new[] { "focus.bata", "focus.tama" }));
+            Assert.IsFalse(state.AreWordsComplete(new[] { "focus.unknown" }),
+                "An unknown segment word must never count as restored.");
+
+            Assert.IsTrue(state.AreTargetsComplete(new[]
+            {
+                new ActiveClueRestorationTarget("focus.bata", "symbol.ba"),
+                new ActiveClueRestorationTarget("focus.tama"),
+            }), "A symbol target and a whole-word target must use the same shared state.");
+            Assert.IsFalse(state.AreTargetsComplete(new[]
+            {
+                new ActiveClueRestorationTarget("focus.unknown", "symbol.ba"),
+            }), "An unknown target must never count as restored.");
+
+            Object.DestroyImmediate(ba);
+            Object.DestroyImmediate(ta);
+        }
+
         private static ContentRequirement Requirement(BaybayinCharacterSO symbol)
         {
             return new ContentRequirement

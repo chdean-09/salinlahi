@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
+using Salinlahi.Debug.Sandbox;
 using UnityEngine;
 using UnityEngine.TestTools;
 
@@ -29,10 +30,19 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
 
         private readonly List<Object> _objectsToDestroy = new();
 
+        [SetUp]
+        public void SetUp()
+        {
+            SandboxMode.Deactivate();
+            LevelFlowController.SetSkipReadyScreenForTests(true);
+        }
+
         [TearDown]
         public void TearDown()
         {
             LogAssert.ignoreFailingMessages = false;
+            SandboxMode.Deactivate();
+            LevelFlowController.SetSkipReadyScreenForTests(false);
             ClearSingletonInstance<GameManager>();
             Time.timeScale = 1f;
 

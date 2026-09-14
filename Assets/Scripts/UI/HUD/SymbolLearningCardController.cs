@@ -20,6 +20,7 @@ public class SymbolLearningCardController : MonoBehaviour
     [SerializeField] private GameObject _panelRoot;
     [SerializeField] private Image _glyphImage;
     [SerializeField] private TextMeshProUGUI _labelText;
+    [SerializeField] private TextMeshProUGUI _progressText;
     [SerializeField] private GameObject _replayAudioButton;
     [SerializeField] private Button _continueButton;
 
@@ -91,6 +92,7 @@ public class SymbolLearningCardController : MonoBehaviour
             yield break;
 
         EnsurePanel();
+        EnsureProgressText();
         BindButtons();
         if (_panelRoot != null)
             _panelRoot.SetActive(true);
@@ -173,16 +175,22 @@ public class SymbolLearningCardController : MonoBehaviour
         BaybayinCharacterSO symbol = card.symbolValue.symbol;
         string spokenValueId = card.symbolValue.spokenValueId;
 
-        // AC3: glyph and label always render, whatever the audio state — zeroed
-        // volume sliders or a missing clip leave every essential element visual.
+        // Authored card art is the label source. Text appears only as an accessible
+        // fallback when art is missing, so a card never prints the same syllable twice.
         CurrentLabel = SpokenValueResolver.ResolveLabel(symbol, spokenValueId);
+        bool hasAuthoredCardArt = symbol.displaySprite != null;
         if (_labelText != null)
+        {
             _labelText.text = CurrentLabel;
+            _labelText.gameObject.SetActive(!hasAuthoredCardArt);
+        }
         if (_glyphImage != null)
         {
             _glyphImage.sprite = symbol.displaySprite;
-            _glyphImage.gameObject.SetActive(_glyphImage.sprite != null);
+            _glyphImage.gameObject.SetActive(hasAuthoredCardArt);
         }
+        if (_progressText != null)
+            _progressText.text = BuildProgressText(index, _cards.Count);
 
         // The replay control only offers what can actually play (mirrors
         // ActiveCluePresenter's _replayAudioButton gating).
@@ -199,6 +207,13 @@ public class SymbolLearningCardController : MonoBehaviour
         {
             EventBus.RaiseSpokenPronunciationRequested(symbol, spokenValueId);
         }
+    }
+
+    public static string BuildProgressText(int zeroBasedIndex, int total)
+    {
+        int safeTotal = Mathf.Max(1, total);
+        int position = Mathf.Clamp(zeroBasedIndex + 1, 1, safeTotal);
+        return $"Symbol {position} of {safeTotal}";
     }
 
     private void HandlePronunciationRequested(BaybayinCharacterSO character)
@@ -268,7 +283,7 @@ public class SymbolLearningCardController : MonoBehaviour
         glyphRect.anchorMin = new Vector2(0.5f, 1f);
         glyphRect.anchorMax = new Vector2(0.5f, 1f);
         glyphRect.pivot = new Vector2(0.5f, 1f);
-        glyphRect.anchoredPosition = new Vector2(0f, -32f);
+        glyphRect.anchoredPosition = new Vector2(0f, -72f);
         glyphRect.sizeDelta = new Vector2(220f, 220f);
         _glyphImage = glyphObject.GetComponent<Image>();
         _glyphImage.preserveAspect = true;
@@ -304,7 +319,7 @@ public class SymbolLearningCardController : MonoBehaviour
         GameObject replayLabelObject = new GameObject("[Runtime] SymbolLearningReplayLabel", typeof(RectTransform));
         replayLabelObject.transform.SetParent(replayObject.transform, false);
         TextMeshProUGUI replayLabel = replayLabelObject.AddComponent<TextMeshProUGUI>();
-        replayLabel.text = "Pakinggan";
+        replayLabel.text = "Listen";
         replayLabel.fontSize = 22f;
         replayLabel.alignment = TextAlignmentOptions.Center;
         replayLabel.raycastTarget = false;
@@ -324,11 +339,32 @@ public class SymbolLearningCardController : MonoBehaviour
         GameObject continueLabelObject = new GameObject("[Runtime] SymbolLearningContinueLabel", typeof(RectTransform));
         continueLabelObject.transform.SetParent(continueObject.transform, false);
         TextMeshProUGUI continueLabel = continueLabelObject.AddComponent<TextMeshProUGUI>();
-        continueLabel.text = "Magpatuloy";
+        continueLabel.text = "Continue";
         continueLabel.fontSize = 26f;
         continueLabel.alignment = TextAlignmentOptions.Center;
         continueLabel.raycastTarget = false;
 
         _panelRoot.SetActive(false);
+    }
+
+    private void EnsureProgressText()
+    {
+        if (_progressText != null || _panelRoot == null)
+            return;
+
+        GameObject progressObject = new GameObject(
+            "[Runtime] SymbolLearningProgress", typeof(RectTransform));
+        progressObject.transform.SetParent(_panelRoot.transform, false);
+        RectTransform rect = progressObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.08f, 0.88f);
+        rect.anchorMax = new Vector2(0.92f, 0.98f);
+        rect.offsetMin = rect.offsetMax = Vector2.zero;
+
+        _progressText = progressObject.AddComponent<TextMeshProUGUI>();
+        _progressText.fontSize = 24f;
+        _progressText.color = new Color(0.82f, 0.86f, 0.94f, 1f);
+        _progressText.alignment = TextAlignmentOptions.Center;
+        _progressText.raycastTarget = false;
+        TutorialFontProvider.ApplyTo(_progressText);
     }
 }

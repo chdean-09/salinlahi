@@ -219,6 +219,7 @@ MonoBehaviour:
       spokenValueId: value.la
     requiredSuccesses: 2
   activeClueCombatEnabled: 0
+  activeClueRestorationEnabled: 0
   clueChannels: 1
   audioVisualFallback: 4
   defenseRules:
