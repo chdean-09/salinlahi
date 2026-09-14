@@ -58,6 +58,7 @@ public class Enemy : MonoBehaviour
     private static long _spawnSequenceCounter;
     private long _spawnSequence;
     private bool _isIntroductionSpawn;
+    private IntroductionOutcome _introductionOutcome;
 
     public BaybayinCharacterSO Character => _runtimeCharacter != null ? _runtimeCharacter : _data?.assignedCharacter;
     public BaybayinCharacterSO VisualCharacter => ResolveVisualCharacter();
@@ -109,6 +110,9 @@ public class Enemy : MonoBehaviour
     /// <para>Reset per spawn: a pooled shell never inherits it.</para>
     /// </summary>
     public bool IsIntroductionSpawn => _isIntroductionSpawn;
+
+    /// <summary>This spawn's introduction outcome. Read by tests and by the introduction beat.</summary>
+    public IntroductionOutcome IntroductionOutcome => _introductionOutcome;
     // placeholder for now. will be replaced in salin 68
     public virtual bool IsBoss => false;
     public event Action<Enemy, int, int> HealthChanged;
@@ -260,11 +264,13 @@ public class Enemy : MonoBehaviour
         _mover.Stop();
         _mover.SetSpeed(EffectiveSpeed);
 
-        // Asked before the ability components are configured, because a claim is also the signal to
-        // suppress the ability this spawn is about to attach. The beat declines quietly whenever it
-        // cannot honour the claim, and a declined claim leaves the ability armed — the safe failure
-        // is an ability with no card, never a card's worth of silence with the ability switched off.
-        _isIntroductionSpawn = EnemyIntroductionBeat.TryClaimIntroductionSpawn(this, _data);
+        // Asked before the ability components are configured, because the outcome is also the
+        // signal for suppression. Three outcomes, not two: see IntroductionDecision — a claim
+        // declined because a lesson is pending suppresses, while an ordinarily declined claim
+        // still arms.
+        _introductionOutcome = EnemyIntroductionBeat.ResolveIntroduction(this, _data);
+        _isIntroductionSpawn = _introductionOutcome == IntroductionOutcome.IntroduceAndSuppress
+            || _introductionOutcome == IntroductionOutcome.IntroduceAndArm;
 
         // Signature abilities are data-driven so the prefab-less corruption roster can carry them
         // on the shared shell. A pooled shell is reused across types, so each ability component is
@@ -284,7 +290,8 @@ public class Enemy : MonoBehaviour
         // OnEnable, but a pooled shell reused for the same enemy type stays enabled through the
         // reuse — EnsureAbilityComponent only toggles `enabled` — so OnEnable never fires and the
         // previous occupant's suppression would carry into a spawn that is meant to be armed.
-        ApplyIntroductionSpawnSuppression(_isIntroductionSpawn);
+        ApplyIntroductionSpawnSuppression(
+            IntroductionDecision.SuppressesAbility(_introductionOutcome));
 
         // Resolved after the block above, because the component may have just been added, and
         // cleared for a non-phaser so a reused shell does not consult a disabled phaser when
@@ -413,6 +420,7 @@ public class Enemy : MonoBehaviour
             // Per spawn, never per shell: the next occupant of this shell decides for itself whether
             // it is an introduction spawn, and a stale true would suppress its ability for nothing.
             _isIntroductionSpawn = false;
+            _introductionOutcome = IntroductionOutcome.None;
 
             if (_deathRoutine != null)
             {

@@ -96,30 +96,60 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     public static bool IsPlaying => s_instance != null && s_instance._isPlaying;
 
     /// <summary>
-    /// Asks whether this spawn is its type's introduction spawn, and claims it if so.
+    /// Resolves what this spawn does about its type's introduction.
     ///
     /// <para>
-    /// Called from <c>Enemy.Initialize</c> <b>before</b> the ability components are configured,
-    /// because a true return is also the signal to suppress the ability this spawn just attached.
-    /// The claim is consumed here rather than when the card finishes, so two enemies of a new type
-    /// initialized in the same frame cannot both believe they are the introduction.
-    /// </para>
-    ///
-    /// <para>
-    /// Returns false — quietly, and without spending the type's one-shot — whenever the beat cannot
-    /// honour the claim: no runner in the scene, no wired card, an introduction already on screen,
-    /// a tutorial sequence driving combat, or a spawn that is not a real first meeting (a decoy
-    /// copy, a type whose discovery is suppressed, a boss, an unnamed type). Declining leaves the
-    /// ability armed, which is the safe failure: the player meets an ability with no card, rather
-    /// than meeting an enemy whose ability is silently switched off forever.
+    /// Called from <c>Enemy.Initialize</c> BEFORE the ability components are configured, because
+    /// the outcome also decides suppression. Returning <see cref="IntroductionOutcome.None"/> or
+    /// <see cref="IntroductionOutcome.DeferAndSuppress"/> does not spend the type's one-shot.
     /// </para>
     /// </summary>
-    public static bool TryClaimIntroductionSpawn(Enemy enemy, EnemyDataSO data)
+    public static IntroductionOutcome ResolveIntroduction(Enemy enemy, EnemyDataSO data)
     {
         if (s_instance == null || enemy == null || data == null)
-            return false;
+            return IntroductionOutcome.None;
 
-        return s_instance.TryClaim(enemy, data);
+        return s_instance.ResolveFor(enemy, data);
+    }
+
+    /// <summary>True while this level authored a lesson that has not yet played.</summary>
+    public static bool HasPendingLesson =>
+        s_instance != null && s_instance.ResolvePendingLesson() != null;
+
+    private IntroductionOutcome ResolveFor(Enemy enemy, EnemyDataSO data)
+    {
+        EnemyLessonSO lesson = ResolveLesson(data);
+        bool claimed = TryClaim(enemy, data, lesson);
+        return IntroductionDecision.Resolve(
+            claimAccepted: claimed,
+            lessonArmsAbility: claimed && lesson != null && lesson.armAbilityOnIntroduction,
+            aLessonIsPending: !claimed && ResolvePendingLesson() != null);
+    }
+
+    /// <summary>The level's authored lesson for this type, or null.</summary>
+    private EnemyLessonSO ResolveLesson(EnemyDataSO data) =>
+        EnemyLessonLookup.Find(GameManager.CurrentLevelConfig, data);
+
+    /// <summary>
+    /// The level's authored lesson if it has not played yet, else null. A lesson whose enemy has
+    /// already been introduced is not pending, which is what lets deferral end.
+    /// </summary>
+    private EnemyLessonSO ResolvePendingLesson()
+    {
+        LevelConfigSO config = GameManager.CurrentLevelConfig;
+        if (config?.enemyLessons == null)
+            return null;
+
+        for (int i = 0; i < config.enemyLessons.Length; i++)
+        {
+            EnemyLessonSO lesson = config.enemyLessons[i];
+            if (lesson?.enemy == null)
+                continue;
+            if (!EnemyIntroductionProgress.HasBeenIntroduced(lesson.enemy))
+                return lesson;
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -161,7 +191,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             s_instance = null;
     }
 
-    private bool TryClaim(Enemy enemy, EnemyDataSO data)
+    private bool TryClaim(Enemy enemy, EnemyDataSO data, EnemyLessonSO lesson)
     {
         if (_isPlaying)
             return false;
@@ -176,7 +206,13 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         if (_card == null || !_card.CanPresent)
             return false;
 
-        if (!IsIntroducibleSpawn(enemy, data))
+        if (!IsIntroducibleSpawn(enemy, data, lesson))
+            return false;
+
+        // The lesson's precondition. Declining here deliberately does NOT spend the type's
+        // one-shot, so an Abo who arrives before the clue can lose anything simply introduces
+        // himself on a later spawn instead of burning his introduction on a no-op ash.
+        if (lesson != null && RestoredSlotCount() < lesson.requiredRestoredSlots)
             return false;
 
         if (!EnemyIntroductionProgress.TryClaimIntroduction(data))
@@ -184,6 +220,17 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
 
         _claimedEnemy = enemy;
         return true;
+    }
+
+    /// <summary>
+    /// Focus-word slots restored so far. Read from the presenter rather than tracked here, so the
+    /// number the precondition reads is the same number the clue renders. See spec section 4.2.
+    /// </summary>
+    private static int RestoredSlotCount()
+    {
+        ActiveCluePresenter presenter = FindFirstObjectByType<ActiveCluePresenter>(
+            FindObjectsInactive.Include);
+        return presenter != null ? presenter.RestoredSlotCount : 0;
     }
 
     /// <summary>
@@ -202,7 +249,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// underneath a beat that is already mid-lesson would fight it for the same global state.
     /// </para>
     /// </summary>
-    private static bool IsIntroducibleSpawn(Enemy enemy, EnemyDataSO data)
+    private static bool IsIntroducibleSpawn(Enemy enemy, EnemyDataSO data, EnemyLessonSO lesson)
     {
         if (enemy.IsBoss || data.isDecoy || data.suppressDiscovery)
             return false;
@@ -213,6 +260,12 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             return false;
 
         if (TutorialRuntimeState.IsCombatOverrideActive || TutorialRuntimeState.IsDrawingInputLocked)
+            return false;
+
+        // Deferral. While this level's lesson is still pending, every other type waits: the rule
+        // that enemies have abilities is taught once, by the lesson, and a card that lands first
+        // would spend that first-meeting moment on an enemy the lesson did not choose.
+        if (lesson == null && s_instance != null && s_instance.ResolvePendingLesson() != null)
             return false;
 
         // The beat's promise is that input stays live through it. Before the run has started
