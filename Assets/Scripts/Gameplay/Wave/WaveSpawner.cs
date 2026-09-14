@@ -280,6 +280,18 @@ public class WaveSpawner : MonoBehaviour
 
             if (validCharacters.Count > 0)
             {
+                // Each corrupted enemy embodies one symbol (Iligaw is E/I, Mantsa is MA, Abo ng
+                // Simula is A, Nawalang Mukha is NA - see CorruptionEnemyBootstrap). Picking purely
+                // at random handed Mantsa an E/I or an A, so the enemy on screen contradicted the
+                // glyph above it. Prefer the spawned enemy's own character whenever this wave
+                // teaches it; the wave list still decides which symbols may appear at all.
+                BaybayinCharacterSO owned = selectedEnemyData != null
+                    ? selectedEnemyData.assignedCharacter
+                    : null;
+                if (owned != null && validCharacters.Contains(owned))
+                    return owned;
+
+                // No owned symbol, or this wave does not teach it: fall back to the authored list.
                 int index = UnityEngine.Random.Range(0, validCharacters.Count);
                 return validCharacters[index];
             }
