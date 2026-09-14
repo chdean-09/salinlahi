@@ -11,7 +11,8 @@ using UnityEngine.UI;
 /// Scene authoring for Level 1's teaching-beat components. All of them compile, are covered by
 /// tests, and are present in <c>Assets/_Scenes/Gameplay.unity</c>: <see cref="EnemyIntroductionBeat"/>,
 /// <see cref="EnemyIntroductionCardView"/>, <see cref="AshGustController"/>,
-/// <see cref="DrawFeedbackPresenter"/> and <see cref="InstantWinPresenter"/> are all wired there.
+/// <see cref="DrawFeedbackPresenter"/>, <see cref="InstantWinPresenter"/> and
+/// <see cref="FirstDrawGuidePresenter"/> are all wired there.
 /// This tool is idempotent re-wiring: every step looks for what it needs before it builds anything,
 /// so running it against an already-wired scene finds nothing to do and writes nothing. It exists
 /// so the wiring can be restored or re-checked without a hand edit to the .unity file.
@@ -77,6 +78,19 @@ public static class Level1TeachingBeatSceneWiringTool
     private const string AshGustRootName = "[VFX] AshGust";
     private const string ClueArrivalAnchorName = "ClueArrivalAnchor";
     private const string InstantWinRootName = "[Manager] InstantWinPresenter";
+
+    private const string FirstDrawGuideRootName = "FirstDrawGuide";
+    private const string FirstDrawGuideImageName = "GuideImage";
+
+    // Iligaw, Nawalang Mukha and Mantsa only. Level1TutorialStep_A is deliberately excluded — Abo's
+    // glyph is taught by the gated beat-8 draw in the lesson, and a second guide for it would
+    // double up.
+    private static readonly string[] FirstDrawGuideStepPaths =
+    {
+        "Assets/ScriptableObjects/Tutorial/Level1TutorialStep_EI.asset",
+        "Assets/ScriptableObjects/Tutorial/Level1TutorialStep_NA.asset",
+        "Assets/ScriptableObjects/Tutorial/Level1TutorialStep_MA.asset",
+    };
 
     // ---- layout, all in HUDCanvas reference units (1080x1920, centre origin) ----
     //
@@ -191,6 +205,7 @@ public static class Level1TeachingBeatSceneWiringTool
         WireDrawFeedback(uiParent, hudCanvas, worldCamera, font, clue, report);
         WireAshGust(ashVfx, hudCanvas, worldCamera, clue, report);
         WireInstantWin(report);
+        WireFirstDrawGuide(uiParent, report);
         ReportRailBand(hudCanvas, clue, report);
 
         EditorSceneManager.MarkSceneDirty(scene);
@@ -796,6 +811,48 @@ public static class Level1TeachingBeatSceneWiringTool
             + "whole point is that the remaining enemies are never struck.");
     }
 
+    // ---------------------------------------------------------------- first-draw trace guide
+
+    /// <summary>
+    /// Places the non-blocking first-draw trace guide for Iligaw, Nawalang Mukha and Mantsa. Their
+    /// glyphs get only the standard introduction card (unlike Abo, whose gated beat-8 draw is a
+    /// full lesson), so without this each of those three would be drawn completely cold the first
+    /// time it is needed.
+    ///
+    /// <para>
+    /// Shares the draw site rect (<see cref="DrawSitePosition"/> / <see cref="DrawSiteSize"/>) with
+    /// <see cref="DrawFeedbackPresenter"/>'s ghost-stroke overlay, since the guide has to sit where
+    /// the player is actually drawing, not somewhere else on the HUD.
+    /// </para>
+    /// </summary>
+    private static void WireFirstDrawGuide(Transform uiParent, Report report)
+    {
+        GameObject root = AdoptOrCreate<FirstDrawGuidePresenter>(uiParent, FirstDrawGuideRootName, report, out bool adopted);
+        if (!adopted)
+            Stretch(Ensure<RectTransform>(root));
+
+        var presenter = Ensure<FirstDrawGuidePresenter>(root, report, $"{root.name}.FirstDrawGuidePresenter");
+
+        Image guideImage = EnsureOverlayImage(root.transform, FirstDrawGuideImageName, DrawSitePosition, DrawSiteSize, report);
+
+        var steps = new List<Level1TutorialStepSO>();
+        foreach (string path in FirstDrawGuideStepPaths)
+        {
+            var step = AssetDatabase.LoadAssetAtPath<Level1TutorialStepSO>(path);
+            if (step == null)
+            {
+                report.Warnings.Add($"FirstDrawGuide: '{path}' not found — that glyph's trace guide will never show.");
+                continue;
+            }
+            steps.Add(step);
+        }
+
+        var so = new SerializedObject(presenter);
+        WireReference(so, "_guideImage", guideImage, "FirstDrawGuide._guideImage", report);
+        WireObjectArray(so, "_steps", steps, "FirstDrawGuide._steps", report);
+        so.ApplyModifiedPropertiesWithoutUndo();
+    }
+
     // ---------------------------------------------------------------- rail collision check
 
     /// <summary>
@@ -1183,6 +1240,33 @@ public static class Level1TeachingBeatSceneWiringTool
 
         report.Wired.Add($"{label}: {property.vector2Value} -> {value}");
         property.vector2Value = value;
+    }
+
+    /// <summary>Replaces a serialized Object array field only if its contents differ, element for element.</summary>
+    private static void WireObjectArray(SerializedObject so, string path, List<Level1TutorialStepSO> values, string label, Report report)
+    {
+        SerializedProperty property = so.FindProperty(path);
+        if (property == null)
+        {
+            report.Warnings.Add($"{label}: no serialized field named '{path}' — nothing set.");
+            return;
+        }
+
+        bool matches = property.arraySize == values.Count;
+        for (int i = 0; matches && i < values.Count; i++)
+            matches = ReferenceEquals(property.GetArrayElementAtIndex(i).objectReferenceValue, values[i]);
+
+        if (matches)
+        {
+            report.AlreadyCorrect.Add($"{label} already [{string.Join(", ", values.ConvertAll(Describe))}]");
+            return;
+        }
+
+        property.arraySize = values.Count;
+        for (int i = 0; i < values.Count; i++)
+            property.GetArrayElementAtIndex(i).objectReferenceValue = values[i];
+
+        report.Wired.Add($"{label} -> [{string.Join(", ", values.ConvertAll(Describe))}]");
     }
 
     private static string Describe(Object value)
