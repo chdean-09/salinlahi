@@ -29,6 +29,21 @@ public sealed class SpawnGateRegistry
     /// </summary>
     public const string AboAshShown = "abo_ash_shown";
 
+    /// <summary>
+    /// Level 1's slot-3 gate, replacing <see cref="AboAshShown"/>. It opens when every introducible
+    /// type in the level's wave roster has been introduced.
+    ///
+    /// <para>
+    /// The swap is forced by the eight-beat lesson: Abo's ash now arms during his introduction
+    /// rather than on a later spawn, so <see cref="AboAshShown"/> opens near the start of the level
+    /// and no longer withholds anything. The constraint the gate actually encodes — the level must
+    /// not be completable before the player has met what is in it — is unchanged, so the token is
+    /// retargeted rather than removed. <see cref="AboAshShown"/> stays: it is still the ash's own
+    /// once-latch, read by AshFirstSlotController.HasAshBeenShown.
+    /// </para>
+    /// </summary>
+    public const string Level1RosterMet = "level1_roster_met";
+
     private readonly HashSet<string> _open = new HashSet<string>();
 
     public IReadOnlyCollection<string> OpenTokens => _open;
