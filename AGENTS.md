@@ -66,7 +66,7 @@ If Serena is absent or unhealthy, continue with focused `rg` searches and target
 
 Observed: no Unity MCP package or repository MCP configuration was found, and no Unity MCP tools were available in the inspected session. Do not describe it as installed.
 
-When a Unity MCP connection is verified, use it for scene hierarchies, prefab contents, GameObjects/components, serialized Inspector values, ScriptableObject references, Editor compilation state, Console messages, Play Mode, Test Runner state, and build/editor context. If it is unavailable, inspect the same state in the matching Unity Editor and report any uninspectable state as `BLOCKED` or `NOT VERIFIED`.
+When a Unity MCP connection is verified, use it for scene hierarchies, prefab contents, GameObjects/components, serialized Inspector values, ScriptableObject references, Editor compilation state, Console messages, Play Mode, Test Runner state, and build/editor context. Image and sprite creation, import, assignment, replacement, and repair are strong triggers for Unity MCP because the Editor can preserve the asset GUID and select the correct sprite sub-asset `fileID`. If Unity MCP is unavailable, inspect and wire the same state in the matching Unity Editor; report any uninspectable state as `BLOCKED` or `NOT VERIFIED`.
 
 ### Optional Codex skills
 
@@ -100,6 +100,18 @@ Do not initialize or use CodeGraph in this repository. It is not part of the Sal
 - Before renaming a serialized field, inspect existing assets and evaluate `UnityEngine.Serialization.FormerlySerializedAs`. Existing compatibility examples include `Assets/Scripts/Data/BossPhase.cs` and `Assets/Scripts/Data/LevelConfigSO.cs`.
 - Do not change GUIDs, file IDs, execution order, tags/layers, input bindings, or build-scene membership as incidental cleanup.
 
+### Image and Sprite Reference Integrity
+
+Missing image GUIDs are a known failure mode: a scene, prefab, or asset can retain a syntactically valid object reference whose GUID resolves to no imported asset, causing Unity UI to render an empty sprite or plain white panel.
+
+- Treat image work as incomplete until every new or changed serialized image/sprite reference resolves in Unity to the intended asset and, for sprite sheets or other sub-assets, the intended `fileID`.
+- Never invent a GUID or infer one from an asset filename. For an existing asset, its checked-in `.meta` file is the GUID source of truth. Use Unity's `AssetDatabase`, Inspector, or a verified Unity MCP to assign the reference so Unity writes the correct `{fileID, guid, type}` tuple.
+- When creating or generating a new image, import it through Unity first, retain the `.meta` file Unity creates, and commit the image and `.meta` together. Wire the reference only after import completes. Do not hand-author a replacement GUID for an existing asset.
+- Prefer Unity MCP or the Unity Editor for image import, moves, and serialized assignments. Direct `.unity`, `.prefab`, or `.asset` YAML editing is a fallback only: locate the intended asset's exact `.meta` GUID, establish the correct sub-asset `fileID` from Unity or a verified equivalent reference, make the smallest edit, then reopen and validate the owner in Unity.
+- Before handoff, inspect every changed non-null object reference associated with `Sprite`, `Texture`, `Image`, cutscene artwork, or similar visual content. Confirm the GUID resolves to exactly one available asset and the Inspector shows the intended object rather than `Missing` or `None`.
+- Exercise the affected scene, prefab, or cutscene in Unity and visually confirm the image appears. Compilation alone does not validate serialized asset resolution.
+- When an unresolved reference is found, report the serialized owner path, property, missing GUID, and intended replacement. Repair it when that is within scope; otherwise mark verification `BLOCKED`. Preserve an intentional null only when the product behavior or existing asset configuration establishes that null is expected.
+
 ## Change Scope
 
 - Make the smallest coherent change that satisfies the request.
@@ -115,7 +127,7 @@ Do not initialize or use CodeGraph in this repository. It is not part of the Sal
 2. Check the current Git state and preserve pre-existing changes.
 3. Inspect the relevant source directories, `.asmdef` files, nearby tests, and data/asset consumers.
 4. For C# relationships, use Serena when its tools are visible, this project is active, and a project query succeeds; otherwise use focused symbol/text searches and targeted file reads.
-5. When scene, prefab, Inspector, ScriptableObject, Animator, Console, or Editor state matters, use a verified Unity MCP or inspect it directly in Unity. Do not infer serialized state from C# alone.
+5. When scene, prefab, Inspector, ScriptableObject, Animator, Console, or Editor state matters, use a verified Unity MCP or inspect it directly in Unity. For image/sprite changes, validate the imported asset, GUID, sub-asset `fileID`, Inspector assignment, and rendered result. Do not infer serialized state from C# alone.
 6. Implement the smallest coherent change in the correct assembly.
 7. Let Unity compile, inspect the Console, and run the narrowest relevant Edit Mode or Play Mode tests.
 8. Perform any relevant manual regression from `docs/system/09_Test_Strategy_and_Acceptance_Criteria.md`.
