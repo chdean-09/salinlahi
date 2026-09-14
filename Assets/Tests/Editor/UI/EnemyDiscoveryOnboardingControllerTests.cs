@@ -161,6 +161,36 @@ namespace Salinlahi.Tests.Editor.UI
             Object.DestroyImmediate(controller.gameObject);
         }
 
+        /// <summary>
+        /// Pins the data/presentation split added for the EnemyIntroductionBeat coexistence fix:
+        /// when a spawn is one EnemyIntroductionBeat has claimed as an introduction
+        /// (Enemy.IsIntroductionSpawn), this overlay must still record the discovery — it is the
+        /// sole writer of EnemyDiscoveryProgress, which the Almanac reads — but must not pause the
+        /// game or show its panel, because the beat's card is already telling the player about this
+        /// enemy.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EnemyDiscovered_WhenBeatOwnsIntroduction_WritesDataButSuppressesOverlay()
+        {
+            EnemyDiscoveryOnboardingController controller = CreateController(out CanvasGroup group, out _, out _, out _);
+            EnemyDataSO data = CreateEnemyData("soldado");
+            Enemy enemy = CreateEnemy(data);
+            enemy.transform.position = new Vector3(0f, 1f, 0f);
+            SetPrivateField(enemy, "_isIntroductionSpawn", true);
+
+            Assert.IsFalse(EnemyDiscoveryProgress.HasDiscovered(data));
+            EventBus.RaiseEnemyDiscovered(data, enemy);
+            yield return WaitFrames(6);
+
+            Assert.IsTrue(EnemyDiscoveryProgress.HasDiscovered(data),
+                "The discovery must still be recorded so the Almanac stays accurate even when the "
+                + "beat owns the presentation.");
+            Assert.AreEqual(0f, group.alpha,
+                "The overlay must not pause the game or show its panel for a spawn "
+                + "EnemyIntroductionBeat has already claimed as an introduction.");
+            Object.DestroyImmediate(controller.gameObject);
+        }
+
         [Test]
         public void ResolveRevealViewportY_UsesConfiguredThresholdWhenItIsInsideSafeArea()
         {

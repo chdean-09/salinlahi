@@ -4,6 +4,24 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// Shows a pause-and-spotlight overlay the first time each enemy type is seen, and is the sole
+/// writer of <see cref="EnemyDiscoveryProgress"/>, which <c>AlmanacEnemyDiscovery</c> reads to
+/// populate the Almanac.
+///
+/// <para>
+/// <b>Superseded by, and coexisting with, EnemyIntroductionBeat.</b> This overlay and
+/// <c>EnemyIntroductionBeat</c>'s mid-combat card both answered "tell the player about this new
+/// enemy", and both used to fire on the same spawn with no cross-gating — this overlay pausing the
+/// game via <c>GameManager.EnterDialoguePause</c> while the card's standing promise is that input
+/// stays live and no dialogue pause happens. The card system won (see
+/// docs/design/2026-09-14-level1-enemy-introduction-lesson-design.md); its presentation now
+/// suppresses this overlay's presentation on any spawn the beat has claimed as an introduction. See
+/// <see cref="HandleEnemyDiscovered"/> for the guard. This class is not deleted, because its DATA
+/// write is still the only path that populates the Almanac — same split as
+/// <see cref="CharacterUnlockRevealController.RegisterUnlocksWithoutReveal"/>.
+/// </para>
+/// </summary>
 public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
 {
     private const float DefaultRevealViewportYFromBottom = 0.72f;
@@ -126,6 +144,22 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
     {
         if (data == null || enemy == null)
             return;
+
+        // Data/presentation split — see the class doc for why this guard exists at all.
+        // enemy.IsIntroductionSpawn is true only for IntroduceAndSuppress / IntroduceAndArm: the
+        // beat has actually claimed this spawn as an introduction, so its card is the one telling
+        // the player about this enemy and this overlay's presentation must stay silent. A declined
+        // claim (None) or one deferred behind a pending lesson (DeferAndSuppress) leaves the beat
+        // silent for this spawn, so the overlay still presents as before.
+        //
+        // Read from the enemy rather than any EnemyIntroductionBeat static: the outcome is resolved
+        // in Enemy.Initialize before EventBus.OnEnemyDiscovered is raised (this handler) and before
+        // BeginIntroduction is called, so it is never a timing race.
+        if (enemy.IsIntroductionSpawn)
+        {
+            EnemyDiscoveryProgress.TryMarkDiscovered(data, out _);
+            return;
+        }
 
         if (TutorialRuntimeState.IsActive)
             return;
