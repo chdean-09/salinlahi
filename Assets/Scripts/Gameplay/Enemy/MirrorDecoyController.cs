@@ -30,7 +30,47 @@ public sealed class MirrorDecoyController : MonoBehaviour
     // Lane offset the copy holds relative to its source, so the pair stays side by side.
     private float _decoyOffsetX;
 
+    /// <summary>
+    /// True while this spawn is the one that introduced its type, in which case no copy may be
+    /// spawned at all. See <see cref="SetSuppressedForIntroductionSpawn"/>.
+    /// </summary>
+    private bool _suppressedForIntroductionSpawn;
+
     public Enemy Decoy => _decoy;
+
+    /// <summary>
+    /// Makes this ability inert for one spawn — the spawn on which the enemy's introduction card
+    /// plays — and arms it again on every later spawn of the type.
+    ///
+    /// <para>
+    /// <b>Why the copy must not appear on the spawn that introduces it.</b> Iligaw's introduction is
+    /// also, in Level 1, the player's first successful drawing, and a decoy standing beside its
+    /// source means a wrong guess costs a heart on the one attempt the player has no basis for
+    /// making. Two bodies arriving at the same moment as the card that explains them also destroys
+    /// the card's own framing: the player cannot tell which of the pair the portrait is naming. The
+    /// card teaches the enemy; the next Iligaw teaches the deception.
+    /// </para>
+    ///
+    /// <para>
+    /// Suppression releases any copy already on the field, so toggling it mid-life cannot leave an
+    /// orphan shadow walking with no source driving its position.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Pooling.</b> Suppression is per spawn, never per shell. <c>Enemy.Initialize</c> restates it
+    /// on every spawn and <see cref="OnEnable"/> clears it, so a recycled shell always comes back
+    /// unsuppressed.
+    /// </para>
+    /// </summary>
+    public void SetSuppressedForIntroductionSpawn(bool suppressed)
+    {
+        if (_suppressedForIntroductionSpawn == suppressed)
+            return;
+
+        _suppressedForIntroductionSpawn = suppressed;
+        if (suppressed)
+            ReleaseDecoy();
+    }
 
     private void Awake()
     {
@@ -42,6 +82,8 @@ public sealed class MirrorDecoyController : MonoBehaviour
         _spawnAttempted = false;
         _decoy = null;
         _decoyRenderer = null;
+        // A pooled shell must not inherit the previous occupant's suppression.
+        _suppressedForIntroductionSpawn = false;
     }
 
     private void OnDisable()
@@ -79,6 +121,12 @@ public sealed class MirrorDecoyController : MonoBehaviour
         if (data == null || !data.spawnsMirrorDecoy)
             return;
 
+        // The introduction spawn shows the enemy, never the deception. Returning before
+        // _spawnAttempted is set means an un-suppression later in this same life would still get its
+        // copy, which keeps the flag's meaning exactly "not right now" rather than "not ever".
+        if (_suppressedForIntroductionSpawn)
+            return;
+
         // First Update runs after WaveSpawner has positioned the source and assigned its character;
         // OnEnable fires before either, at the off-screen pool position.
         _spawnAttempted = true;
@@ -93,7 +141,7 @@ public sealed class MirrorDecoyController : MonoBehaviour
         if (decoy == null)
             return;
 
-        decoy.AssignCharacter(PickDecoyCharacter(_enemy.Character));
+        decoy.AssignCharacter(PickDecoyCharacter(_enemy.Character, data));
 
         // Mirror toward the emptier side of the lane so the pair reads as a reflection.
         float side = transform.position.x >= 0f ? -1f : 1f;
@@ -127,15 +175,47 @@ public sealed class MirrorDecoyController : MonoBehaviour
         new Color(c.r * DecoyShadowTint.r, c.g * DecoyShadowTint.g, c.b * DecoyShadowTint.b, DecoyAlpha);
 
     /// <summary>
-    /// The glyph the mirrored copy carries: a symbol from the current level's pool that is NOT the
-    /// source's own. Iligaw means "to lead astray" - the real one keeps its own symbol above it, and
-    /// the fake beside it shows a different one, so the player has to read the pair rather than
-    /// answer the silhouette. Drawing the copy's glyph is still the decoy penalty it always was.
-    /// Falls back to mirroring the source when the level teaches nothing else, which restores the
-    /// previous same-glyph behaviour rather than spawning a blank copy.
+    /// The glyph the mirrored copy carries: a symbol that is NOT the source's own. Iligaw means "to
+    /// lead astray" - the real one keeps its own symbol above it, and the fake beside it shows a
+    /// different one, so the player has to read the pair rather than answer the silhouette. Drawing
+    /// the copy's glyph is still the decoy penalty it always was.
+    ///
+    /// <para>
+    /// <b>The authored confusion pair comes first.</b> Picking at random from the level pool teaches
+    /// only that a fake exists: a copy carrying NA beside a source carrying E/I is separable at a
+    /// glance, so the player learns to count bodies rather than to read glyphs. The lesson this
+    /// ability is staged for is "look closely", and it exists only when the two glyphs are genuinely
+    /// hard to tell apart - Level 1's pair being A ᜀ and E/I ᜁ, one dot apart. The authored table on
+    /// the enemy's own data supplies that partner deterministically instead of leaving it to the
+    /// draw; see <see cref="GlyphConfusionPairsSO"/>.
+    /// </para>
+    ///
+    /// <para>
+    /// The partner is used <b>whether or not it is in the level pool</b>. A confusable glyph the
+    /// level does not otherwise teach is still the most instructive possible false copy, and the copy
+    /// is never an answerable target for a slot - only a penalty - so it cannot make the level
+    /// unwinnable or imply a symbol the player is expected to know.
+    /// </para>
+    ///
+    /// <para>
+    /// Falls back to the previous behaviour - a random other symbol from the level's pool - when no
+    /// table is authored or the source glyph has no partner in it, and finally to mirroring the
+    /// source when the level teaches nothing else, rather than spawning a blank copy.
+    /// </para>
     /// </summary>
-    private static BaybayinCharacterSO PickDecoyCharacter(BaybayinCharacterSO sourceCharacter)
+    private static BaybayinCharacterSO PickDecoyCharacter(
+        BaybayinCharacterSO sourceCharacter,
+        EnemyDataSO sourceData)
     {
+        GlyphConfusionPairsSO pairs = sourceData != null ? sourceData.mirrorDecoyConfusionPairs : null;
+        if (pairs != null
+            && pairs.TryGetPartner(sourceCharacter, out BaybayinCharacterSO partner)
+            && partner != null
+            && partner != sourceCharacter)
+        {
+            return partner;
+        }
+
         LevelConfigSO level = GameManager.Instance != null ? GameManager.Instance.CurrentLevel : null;
         if (level == null || level.cumulativeSymbolPool == null)
             return sourceCharacter;

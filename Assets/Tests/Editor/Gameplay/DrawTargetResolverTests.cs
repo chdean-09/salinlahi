@@ -68,9 +68,10 @@ namespace Salinlahi.Tests.Editor.Gameplay
         [Test]
         public void SelectTargets_OnlyIneligibleCarrierMatches_ResolvesToNothing()
         {
-            // Decoys, bosses, dying, phased-out and resolution-blocked enemies all arrive here
-            // as IsEligible=false. A decoy carrying the drawn glyph must never be pulled in as a
-            // multi-target victim: that would turn a correct draw into a heart loss.
+            // Bosses, dying, phased-out and resolution-blocked enemies all arrive here as
+            // IsEligible=false and are unreachable by any draw. Iligaw's false copy is NOT one of
+            // them — it arrives eligible and is struck like any other carrier; see
+            // ActiveClueDecoyTargetingTests for that rule and for where its credit is withheld.
             var candidates = new List<ClueCandidate>
             {
                 Candidate("ba", 1f, 1, eligible: false),
@@ -162,8 +163,9 @@ namespace Salinlahi.Tests.Editor.Gameplay
         [Test]
         public void SelectTargets_ChainCountsOnlyEligibleCarriers()
         {
-            // Three carriers on screen but one is a decoy, so the real count is 2 and the
-            // chain must not arm. Mirrors CombatResolver's realMatchCount rule.
+            // Three carriers on screen but one is unreachable (shielded, phased out or dying), so
+            // the real count is 2 and the chain must not arm. Mirrors CombatResolver's
+            // realMatchCount rule.
             var candidates = new List<ClueCandidate>
             {
                 Candidate("ba", 7f, 1),

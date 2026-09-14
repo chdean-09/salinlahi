@@ -8,6 +8,26 @@ public class RecognitionManager : Singleton<RecognitionManager>
 
     private DollarPRecognizer _recognizer;
 
+    /// <summary>
+    /// The campaign-wide accuracy floor, before any level override. Also the value a forgiven
+    /// drawing is measured against for the silent correction.
+    /// </summary>
+    public float GlobalThreshold => _config != null ? _config.minimumConfidence : 0f;
+
+    /// <summary>
+    /// The accuracy floor in force right now: the current level's override when it authored one,
+    /// otherwise <see cref="GlobalThreshold"/> unchanged.
+    /// </summary>
+    /// <remarks>
+    /// Read per recognition rather than cached at level load. The level config is reachable only
+    /// through GameManager, which is populated after this singleton's Awake on a fresh scene load, so
+    /// anything cached here would be the previous level's value — or none — for the first draw of
+    /// every level. A property read is two null checks on a path that already runs a full point-cloud
+    /// match, so there is nothing to win by caching it.
+    /// </remarks>
+    public float ActiveThreshold =>
+        LevelConfigSO.ResolveDrawingAccuracyThreshold(GameManager.CurrentLevelConfig, GlobalThreshold);
+
     protected override void Awake()
     {
         base.Awake();
@@ -42,21 +62,23 @@ public class RecognitionManager : Singleton<RecognitionManager>
 
     public void PreviewRecognize(List<List<Vector2>> strokes)
     {
+        float threshold = ActiveThreshold;
+
         if (StrokeValidation.IsRecognitionDegenerate(strokes))
         {
             EventBus.RaiseRecognitionResolved(
                 new RecognitionResult("NONE", 0f, -1, "NONE", float.MinValue),
                 false,
-                _config.minimumConfidence);
+                threshold);
             return;
         }
 
         RecognitionResult result = _recognizer.Recognize(strokes);
-        bool passedThreshold = result.score >= _config.minimumConfidence;
+        bool passedThreshold = result.score >= threshold;
         EventBus.RaiseRecognitionResolved(
             result,
             passedThreshold,
-            _config.minimumConfidence);
+            threshold);
     }
 
     public void Recognize(List<Vector2> points)
@@ -68,10 +90,17 @@ public class RecognitionManager : Singleton<RecognitionManager>
     {
         if (StrokeValidation.IsRecognitionDegenerate(strokes))
         {
+            // Deliberately raises no accuracy report. A degenerate stroke was never scored against a
+            // threshold, so it is not the "sloppy drawing" the two-tier response is about -- treating
+            // a stray tap as a rejected attempt would replay the correct form at a player who has not
+            // attempted anything yet. DrawingFeedback's existing OnDrawingFailed cue still covers it.
             DebugLogger.Log("RecognitionManager: Degenerate stroke input -- ignoring.");
             EventBus.RaiseDrawingFailed();
             return;
         }
+
+        float globalThreshold = GlobalThreshold;
+        float levelThreshold = ActiveThreshold;
 
         RecognitionResult result = _recognizer.Recognize(strokes);
         DebugLogger.Log(
@@ -80,23 +109,61 @@ public class RecognitionManager : Singleton<RecognitionManager>
             + $"Second: {result.secondBestID} "
             + $"({result.secondBestScore:F3}) "
             + $"Gap: {result.scoreGap:F3} "
-            + $"Threshold: {_config.minimumConfidence:F2}");
+            + $"Threshold: {levelThreshold:F2} "
+            + $"(global {globalThreshold:F2})");
         LogCandidateShape(strokes);
 
         RecognitionLogger.LogAttempt(
             result,
             TestSessionController.IntendedCharacterID);
 
-        bool passedThreshold = result.score >= _config.minimumConfidence;
+        bool passedThreshold = result.score >= levelThreshold;
+        DrawAccuracyVerdict verdict = ClassifyAccuracy(result.score, levelThreshold, globalThreshold);
+
+        // Raised before the recognition event on purpose. The presenter has to know a forgiven
+        // drawing is forgiven BEFORE the kill it belongs to resolves, because the silent correction
+        // is owed to that specific kill and there is no later signal that ties the two together.
+        DrawFeedbackSignals.RaiseAccuracyResolved(new DrawAccuracyReport
+        {
+            Verdict = verdict,
+            CharacterId = result.characterID,
+            Score = result.score,
+            LevelThreshold = levelThreshold,
+            GlobalThreshold = globalThreshold,
+        });
+
         EventBus.RaiseRecognitionResolved(
             result,
             passedThreshold,
-            _config.minimumConfidence);
+            levelThreshold);
 
         if (passedThreshold)
             EventBus.RaiseCharacterRecognized(result.characterID);
         else
             EventBus.RaiseDrawingFailed();
+    }
+
+    /// <summary>
+    /// Sorts a score into the two-tier response: refused, forgiven-with-a-silent-correction, or
+    /// clean.
+    /// </summary>
+    /// <remarks>
+    /// The middle tier only exists when a level has lowered its floor below the global default. A
+    /// level with no override collapses the two thresholds onto each other, so every accepted drawing
+    /// comes out <see cref="DrawAccuracyVerdict.Accepted"/> and no correction is ever owed — which is
+    /// exactly the behaviour those levels have today.
+    ///
+    /// Static and threshold-parameterised rather than reading the config itself, so the tier boundary
+    /// is assertable without a scene or a GameManager.
+    /// </remarks>
+    public static DrawAccuracyVerdict ClassifyAccuracy(float score, float levelThreshold, float globalThreshold)
+    {
+        if (score < levelThreshold)
+            return DrawAccuracyVerdict.Rejected;
+
+        return score < globalThreshold
+            ? DrawAccuracyVerdict.AcceptedWithSilentCorrection
+            : DrawAccuracyVerdict.Accepted;
     }
 
     // Shape of the submitted candidate: stroke/point counts and bounding box.

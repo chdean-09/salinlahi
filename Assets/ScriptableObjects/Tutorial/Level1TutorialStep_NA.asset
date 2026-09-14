@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Level1TutorialStepSO
   promptId: NA
   targetCharacter: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
-  enemyData: {fileID: 11400000, guid: c5f91a4c7515047cabd59ea63b9bfef6, type: 2}
+  enemyData: {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
   stopPosition: {x: -0.010000229, y: 2.9275002, z: 0}
   promptFreezeDelaySeconds: 2.3
   templatePoints: []

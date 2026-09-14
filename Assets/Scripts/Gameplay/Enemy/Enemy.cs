@@ -57,6 +57,7 @@ public class Enemy : MonoBehaviour
     private Coroutine _deathRoutine;
     private static long _spawnSequenceCounter;
     private long _spawnSequence;
+    private bool _isIntroductionSpawn;
 
     public BaybayinCharacterSO Character => _runtimeCharacter != null ? _runtimeCharacter : _data?.assignedCharacter;
     public BaybayinCharacterSO VisualCharacter => ResolveVisualCharacter();
@@ -90,6 +91,24 @@ public class Enemy : MonoBehaviour
     /// pooled enemy re-enters play. It is the deterministic tiebreaker for active clues.
     /// </summary>
     public long SpawnSequence => _spawnSequence;
+
+    /// <summary>
+    /// True when this spawn is the one that introduced its enemy type to the player — the type's
+    /// first ever spawn campaign-wide, the spawn <see cref="EnemyIntroductionBeat"/> halts the field
+    /// for and plays a card over.
+    ///
+    /// <para>
+    /// Its consequence is that <b>this spawn's signature ability is inert</b>. The card states what
+    /// the enemy does and a later spawn proves it, so the player has a clean board to notice the
+    /// effect against; every Era 1 ability takes something away, and one that was already running
+    /// the first time the player looked reads as a fault rather than as an enemy. The suppression is
+    /// applied in <see cref="Initialize"/>, at the same place the ability components are configured,
+    /// so the two decisions cannot drift apart.
+    /// </para>
+    ///
+    /// <para>Reset per spawn: a pooled shell never inherits it.</para>
+    /// </summary>
+    public bool IsIntroductionSpawn => _isIntroductionSpawn;
     // placeholder for now. will be replaced in salin 68
     public virtual bool IsBoss => false;
     public event Action<Enemy, int, int> HealthChanged;
@@ -241,6 +260,12 @@ public class Enemy : MonoBehaviour
         _mover.Stop();
         _mover.SetSpeed(EffectiveSpeed);
 
+        // Asked before the ability components are configured, because a claim is also the signal to
+        // suppress the ability this spawn is about to attach. The beat declines quietly whenever it
+        // cannot honour the claim, and a declined claim leaves the ability armed — the safe failure
+        // is an ability with no card, never a card's worth of silence with the ability switched off.
+        _isIntroductionSpawn = EnemyIntroductionBeat.TryClaimIntroductionSpawn(this, _data);
+
         // Signature abilities are data-driven so the prefab-less corruption roster can carry them
         // on the shared shell. A pooled shell is reused across types, so each ability component is
         // added on first need and then enabled or disabled per spawn to match the incoming data.
@@ -254,6 +279,12 @@ public class Enemy : MonoBehaviour
         EnsureAbilityComponent<AshFirstSlotController>(_data.ashesFirstSlot);
         EnsureAbilityComponent<NawalangMukhaNameLossController>(_data.removesNames);
         EnsureAbilityComponent<PhaserEnemy>(_data.isPhaser);
+
+        // Restated on EVERY spawn, not only introduction ones. The abilities clear their own flag in
+        // OnEnable, but a pooled shell reused for the same enemy type stays enabled through the
+        // reuse — EnsureAbilityComponent only toggles `enabled` — so OnEnable never fires and the
+        // previous occupant's suppression would carry into a spawn that is meant to be armed.
+        ApplyIntroductionSpawnSuppression(_isIntroductionSpawn);
 
         // Resolved after the block above, because the component may have just been added, and
         // cleared for a non-phaser so a reused shell does not consult a disabled phaser when
@@ -298,7 +329,50 @@ public class Enemy : MonoBehaviour
         // badge visibility is not overwritten by this spawn's own refresh.
         EventBus.RaiseEnemySpawned(this);
 
+        // Started last, and separately from the claim above, because the card frames the enemy where
+        // it stands: the spawner sets this enemy's field position and carried glyph only after
+        // Initialize returns, so the beat waits a beat of its own before halting anything.
+        if (_isIntroductionSpawn)
+            EnemyIntroductionBeat.BeginIntroduction(this);
+
         return true;
+    }
+
+    /// <summary>
+    /// Applies or lifts the introduction-spawn suppression on every signature ability this enemy
+    /// could be carrying.
+    ///
+    /// <para>
+    /// Applied uniformly to all four Era 1 abilities rather than per-ability, and that is the point:
+    /// one rule is reasonable about, and any exception ("name loss is gentle enough to fire
+    /// immediately") becomes a per-enemy special case somebody has to rediscover later. Each ability
+    /// only needs to know how to be a no-op; deciding <i>when</i> lives here.
+    /// </para>
+    ///
+    /// <para>
+    /// Only the component that is actually enabled for this spawn is addressed. The shared corruption
+    /// shell keeps every ability component attached and merely disabled for types that lack the
+    /// ability, so calling into a disabled one would be asking an ability nobody has to stop doing
+    /// something it was never doing.
+    /// </para>
+    /// </summary>
+    private void ApplyIntroductionSpawnSuppression(bool suppressed)
+    {
+        AshFirstSlotController ash = GetComponent<AshFirstSlotController>();
+        if (ash != null && ash.enabled)
+            ash.SetSuppressedForIntroductionSpawn(suppressed);
+
+        NawalangMukhaNameLossController nameLoss = GetComponent<NawalangMukhaNameLossController>();
+        if (nameLoss != null && nameLoss.enabled)
+            nameLoss.SetSuppressedForIntroductionSpawn(suppressed);
+
+        KempeiScrambleController stain = GetComponent<KempeiScrambleController>();
+        if (stain != null && stain.enabled)
+            stain.SetSuppressedForIntroductionSpawn(suppressed);
+
+        MirrorDecoyController decoy = GetComponent<MirrorDecoyController>();
+        if (decoy != null && decoy.enabled)
+            decoy.SetSuppressedForIntroductionSpawn(suppressed);
     }
 
     private bool ShouldRaiseEnemyDiscoveryEvent(EnemyDataSO data)
@@ -336,6 +410,9 @@ public class Enemy : MonoBehaviour
             ClearResolutionBlocks();
             _hurtFeedback?.ResetState();
             _isDying = false;
+            // Per spawn, never per shell: the next occupant of this shell decides for itself whether
+            // it is an introduction spawn, and a stale true would suppress its ability for nothing.
+            _isIntroductionSpawn = false;
 
             if (_deathRoutine != null)
             {

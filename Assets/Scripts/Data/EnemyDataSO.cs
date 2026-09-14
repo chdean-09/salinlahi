@@ -16,6 +16,30 @@ public class EnemyDataSO : ScriptableObject
     [Tooltip("Almanac detail copy. The discovery overlay splits this on \"Power:\" into lore and power text. Optional — the detail view omits empty text.")]
     public string description;
 
+    /// <summary>
+    /// One authored sentence shown as <b>step 3 of the enemy introduction card</b>
+    /// (<see cref="EnemyIntroductionBeat"/>), on this type's first ever spawn campaign-wide.
+    ///
+    /// <para>
+    /// <b>It must state what the enemy DOES, never how to counter it.</b> That is not a style
+    /// preference — the whole introduction beat is built so the player derives the counter from
+    /// watching the ability, which is why the ability is suppressed on the introduction spawn and
+    /// arms on a later one. A line that gives away the counter ("kill it to get your clue back",
+    /// "ignore the labels", "look for the one with the dot") spends the discovery the staging was
+    /// built to produce, and the beat then costs wall-clock for nothing.
+    /// </para>
+    ///
+    /// <para>
+    /// Phrase it in the enemy's own terms, present tense, one clause: "It covers the first symbol
+    /// of a word with ash." Blank is legal and skips step 3 rather than showing an empty line, so a
+    /// type with no ability needs no filler copy. Lifts directly from <see cref="description"/> in
+    /// most cases — the descriptions are already written as behaviour statements.
+    /// </para>
+    /// </summary>
+    [TextArea]
+    [Tooltip("Introduction card, step 3: one sentence stating what this enemy DOES, never how to counter it. Shown on the type's first ever spawn. Blank skips the ability step.")]
+    public string abilityLine;
+
     [Header("Stats")]
     [Tooltip("World units per second the enemy moves toward the base")]
     public float moveSpeed = 1.5f;
@@ -192,6 +216,28 @@ public class EnemyDataSO : ScriptableObject
 
     [Tooltip("Iligaw: horizontal world offset of the mirrored copy from its source.")]
     public float mirrorDecoyOffsetX = 1.4f;
+
+    /// <summary>
+    /// Authored table of visually confusable glyph pairs consulted by
+    /// <see cref="MirrorDecoyController"/> when choosing the false copy's glyph.
+    ///
+    /// <para>
+    /// Without it the copy carries a <b>random</b> other symbol from the level pool, which teaches
+    /// "there is a fake somewhere" — a lesson about the existence of decoys. The intended lesson is
+    /// "look closely", and that only lands when the copy carries the one glyph that is genuinely
+    /// hard to tell from its source (Level 1: A ᜀ and E/I ᜁ, one dot apart). A copy carrying NA
+    /// beside a source carrying E/I is separable at a glance and wastes the beat.
+    /// </para>
+    ///
+    /// <para>
+    /// Authored here rather than on the level config because the confusability is a property of the
+    /// glyph shapes, not of the level, and because the ability is data-driven off this same asset —
+    /// one place to look for everything Iligaw does. Leave it null to keep the previous
+    /// random-other behaviour.
+    /// </para>
+    /// </summary>
+    [Tooltip("Iligaw: glyph confusion-pair table. The false copy carries its source glyph's authored partner (Level 1: A ↔ E/I). Null, or a glyph with no partner, falls back to a random other pool symbol.")]
+    public GlyphConfusionPairsSO mirrorDecoyConfusionPairs;
 
     [Tooltip("Bakod: while this enemy lives, every non-boss enemy behind it (higher Y, further from the base) is held under a resolution block — drawing that enemy's symbol has no effect until Bakod falls. A targeting constraint only: no lanes, no movement geometry. Enemy.Initialize attaches BakodShieldController when set.")]
     public bool blocksEnemiesBehind;

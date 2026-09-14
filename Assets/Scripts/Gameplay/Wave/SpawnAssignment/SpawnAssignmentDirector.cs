@@ -40,6 +40,11 @@ public sealed class SpawnAssignmentDirector
     private bool _choiceConsumed;
     private bool _choiceArmed;
 
+    // Whether the policy's opening directive has been spent. Held here rather than on the policy
+    // because the policy is a serialized asset: consuming a one-shot must not be a write to disk,
+    // and a retry must find the directive armed again.
+    private bool _openingDirectiveConsumed;
+
     // Scratch buffers reused every call so a per-spawn assignment allocates nothing.
     private readonly List<int> _window = new List<int>();
     private readonly List<int> _eligible = new List<int>();
@@ -74,6 +79,35 @@ public sealed class SpawnAssignmentDirector
     public bool IsChoiceMomentPending =>
         _policy.choiceMomentSlotIndex >= 0 && !_choiceConsumed;
 
+    /// <summary>True while the policy's opening directive is authored and still unspent.</summary>
+    public bool IsOpeningDirectivePending =>
+        !_openingDirectiveConsumed && !string.IsNullOrEmpty(_policy.openingSpawnSpokenValueId);
+
+    /// <summary>
+    /// Re-arms every one-shot and every pacing counter for a fresh attempt at the same level: the
+    /// floor, both starvation flags, the choice directive and the opening directive.
+    ///
+    /// The production retry path rebuilds the director in SpawnAssignmentCoordinator.ApplyLevel,
+    /// which has the same effect; this is the in-place equivalent for a retry that keeps the slot
+    /// list it already built. Either way a replayed level opens on its authored first enemy again,
+    /// which is only true because the spent flags live on the director and not on the serialized
+    /// policy.
+    /// </summary>
+    public void Reset()
+    {
+        _sequence = 0;
+        _lastFillerSequence.Clear();
+        _lastNeededSequence.Clear();
+        _armedWindowKey = null;
+        _armedAt = 0f;
+        _spawnsSinceArmed = 0;
+        _softForced = false;
+        _hardForced = false;
+        _choiceConsumed = false;
+        _choiceArmed = false;
+        _openingDirectiveConsumed = false;
+    }
+
     /// <summary>
     /// Picks the symbol for one spawn. Pure with respect to everything except this director's own
     /// pacing state, so the same request twice can legitimately differ.
@@ -105,6 +139,12 @@ public sealed class SpawnAssignmentDirector
             };
         }
 
+        // The opening directive sits ahead of both ceilings and the floor because it names the
+        // first enemy of the level, which is a narrative beat rather than a pacing decision. It
+        // still consumes one spawn against the floor below, exactly as any other spawn does.
+        if (TryOpeningDirective(request, out SpawnAssignment opening))
+            return opening;
+
         float elapsed = request.Now - _armedAt;
 
         // Ceiling. The hard timer is sticky: once the player has demonstrated they cannot read the
@@ -122,7 +162,7 @@ public sealed class SpawnAssignmentDirector
         }
 
         // Floor. A spawn count, not a timer: what is rationed is opportunities, not seconds.
-        if (_spawnsSinceArmed < _policy.minSpawnsBeforeNeeded)
+        if (_spawnsSinceArmed < CurrentFloor())
         {
             _spawnsSinceArmed++;
             return Filler(request);
@@ -174,6 +214,16 @@ public sealed class SpawnAssignmentDirector
         _softForced = false;
         _hardForced = false;
     }
+
+    /// <summary>
+    /// The floor in force for this spawn: the one authored for the slot the director would offer
+    /// next, falling back to the level-wide scalar when that slot has no override. Reading it
+    /// per-slot rather than per-level is what lets Level 1 lower only its opening slot, and taking
+    /// it from the slot that is about to be offered keeps the override meaning what it says once
+    /// activeSlotWindow makes several slots fillable at once.
+    /// </summary>
+    private int CurrentFloor() =>
+        _policy.MinSpawnsBeforeNeededForSlot(PickNeededSlot());
 
     private string BuildWindowKey()
     {
@@ -247,6 +297,135 @@ public sealed class SpawnAssignmentDirector
 
     private int LastNeededSequence(string symbolId) =>
         _lastNeededSequence.TryGetValue(symbolId, out int sequence) ? sequence : -1;
+
+    // ------------------------------------------------------------------ opening directive
+
+    /// <summary>
+    /// Spends the policy's opening directive if it is armed and can be honoured on this spawn.
+    ///
+    /// One-shot by design: the level's first enemy is a scripted introduction, and a second enemy
+    /// of the same type arriving under the same guarantee would flatten the schedule into a fixed
+    /// order. When it cannot be honoured yet - the named symbol is behind a closed gate, or outside
+    /// this wave's authored character list - it carries forward rather than being dropped, matching
+    /// the choice directive, so a wave whose roster excludes the opening enemy delays the beat
+    /// instead of cancelling it.
+    /// </summary>
+    private bool TryOpeningDirective(SpawnAssignmentRequest request, out SpawnAssignment assignment)
+    {
+        assignment = SpawnAssignment.None;
+
+        if (!IsOpeningDirectivePending)
+            return false;
+
+        string symbolId = ResolveOpeningDirectiveSymbol(request);
+        if (symbolId == null)
+            return false;
+
+        _openingDirectiveConsumed = true;
+
+        // Counts against the floor like any other spawn, which is what makes Level 1's floor of 1
+        // on slot 0 put the needed E/I carrier on spawn 2 rather than spawn 3.
+        _spawnsSinceArmed++;
+
+        // Role is reported honestly. If the authored symbol happens to be one a fillable slot
+        // wants, this spawn really does advance the level and the caller's clue marking has to know
+        // that; Level 1 authors a later-needed symbol (A, while E/I is the cursor) and gets the
+        // deliberate filler its opening beat is written around. The floor is untouched either way -
+        // it governs every spawn after this one.
+        int eligibleSlot = FindEligibleSlotForSymbol(symbolId);
+        if (eligibleSlot >= 0)
+        {
+            _lastNeededSequence[symbolId] = _sequence;
+            assignment = new SpawnAssignment
+            {
+                SymbolStableId = symbolId,
+                Role = SpawnAssignmentRole.Needed,
+                SlotIndex = eligibleSlot,
+                IsOpeningDirective = true,
+            };
+
+            return true;
+        }
+
+        // Deliberately not recorded in the filler recency map: the directive is an override, not a
+        // filler draw, so every schedule decision after it is identical to a run without one.
+        assignment = new SpawnAssignment
+        {
+            SymbolStableId = symbolId,
+            Role = SpawnAssignmentRole.Filler,
+            SlotIndex = -1,
+            IsOpeningDirective = true,
+        };
+
+        return true;
+    }
+
+    /// <summary>
+    /// The target symbol the directive names, or null when no slot carries it or it cannot legally
+    /// spawn yet.
+    ///
+    /// Matching goes through <see cref="ContentIdentity.IsApprovedSpokenValue"/> rather than a
+    /// "value." to "symbol." string swap, because the two are not interchangeable: E/I, O/U and
+    /// DA/RA each emit several spoken values from one visual symbol, so "value.e" names symbol.ei
+    /// and a naive swap would look for a symbol.e that does not exist.
+    /// </summary>
+    private string ResolveOpeningDirectiveSymbol(SpawnAssignmentRequest request)
+    {
+        for (int i = 0; i < _slots.Count; i++)
+        {
+            string symbolId = _slots[i].SymbolStableId;
+            if (!ContentIdentity.IsApprovedSpokenValue(symbolId, _policy.openingSpawnSpokenValueId))
+                continue;
+
+            // A gated symbol must never reach the board as needed OR as filler. Forcing one here
+            // would punch a hole straight through the gate the level's structure depends on, so the
+            // directive waits instead.
+            if (IsSymbolGated(request, symbolId))
+                continue;
+
+            // The wave's authored character list still decides what may appear at all.
+            if (request.WaveSymbolWhitelist != null
+                && request.WaveSymbolWhitelist.Count > 0
+                && !Contains(request.WaveSymbolWhitelist, symbolId))
+            {
+                continue;
+            }
+
+            return symbolId;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Whether any unrestored slot carrying this symbol is still behind a closed gate. Asked across
+    /// every slot rather than one, so a symbol that appears twice in the target cannot be let
+    /// through by its ungated occurrence while its gated one is still withheld.
+    /// </summary>
+    private bool IsSymbolGated(SpawnAssignmentRequest request, string symbolId)
+    {
+        for (int i = 0; i < _slots.Count; i++)
+        {
+            if (IsRestored(request, i) || _slots[i].SymbolStableId != symbolId)
+                continue;
+
+            if (!IsGateOpen(request, _slots[i].GateToken))
+                return true;
+        }
+
+        return false;
+    }
+
+    private int FindEligibleSlotForSymbol(string symbolId)
+    {
+        for (int i = 0; i < _eligible.Count; i++)
+        {
+            if (_slots[_eligible[i]].SymbolStableId == symbolId)
+                return _eligible[i];
+        }
+
+        return -1;
+    }
 
     // ------------------------------------------------------------------ choice moment
 

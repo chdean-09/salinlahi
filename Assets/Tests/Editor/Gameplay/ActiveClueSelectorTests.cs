@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -185,6 +186,262 @@ namespace Salinlahi.Tests.Editor.Gameplay
             candidates[0] = Candidate("symbol.ba", 2f, 1, eligible: false);
 
             Assert.That(ActiveClueSelector.SelectIndex(candidates), Is.EqualTo(1));
+        }
+    }
+
+    /// <summary>
+    /// Covers the one place where "may a draw strike it" and "may it be the objective" give
+    /// different answers: Iligaw's false copy.
+    ///
+    /// A copy shows a glyph on a body on screen, so drawing that glyph must strike the copy rather
+    /// than report that nothing carries it — and it must still restore no part of the text. Both
+    /// halves are asserted here, because either one alone is a defect: targetable with credit would
+    /// let a lie fill a slot, and untargetable would tell the player the board is empty of a symbol
+    /// they can read on it.
+    /// </summary>
+    public sealed class ActiveClueDecoyTargetingTests
+    {
+        private const string DrawnId = "A";
+        private const string OtherId = "EI";
+
+        private readonly List<Object> _objectsToDestroy = new List<Object>();
+        private ActiveEnemyTracker _tracker;
+        private ActiveClueDirector _director;
+
+        [SetUp]
+        public void SetUp()
+        {
+            ClearActiveClueDirectorInstance();
+            ClearSingletonInstance<ActiveEnemyTracker>();
+
+            var trackerGo = new GameObject("ActiveEnemyTracker_DecoyTargeting_Test");
+            _tracker = trackerGo.AddComponent<ActiveEnemyTracker>();
+            _objectsToDestroy.Add(trackerGo);
+            SetSingletonInstance(_tracker);
+
+            var directorGo = new GameObject("ActiveClueDirector_DecoyTargeting_Test");
+            _director = directorGo.AddComponent<ActiveClueDirector>();
+            _objectsToDestroy.Add(directorGo);
+            InvokePrivate(_director, "Awake");
+            _director.SetObjectiveSource(new AlwaysActiveObjectiveSource());
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            ClearActiveClueDirectorInstance();
+            ClearSingletonInstance<ActiveEnemyTracker>();
+
+            for (int i = _objectsToDestroy.Count - 1; i >= 0; i--)
+            {
+                if (_objectsToDestroy[i] != null)
+                    Object.DestroyImmediate(_objectsToDestroy[i]);
+            }
+
+            _objectsToDestroy.Clear();
+        }
+
+        [Test]
+        public void IsClueTargetable_FalseCopy_IsALegalDrawTarget()
+        {
+            BaybayinCharacterSO drawn = CreateSymbol(DrawnId, "symbol.a");
+            Enemy copy = CreateEnemy(drawn, isDecoy: true, y: -1f);
+
+            Assert.IsTrue(ActiveClueDirector.IsClueTargetable(copy),
+                "A copy's glyph is visible on a body on screen, so drawing it must not be a miss.");
+        }
+
+        [Test]
+        public void CurrentClue_NeverLandsOnAFalseCopy_EvenWhenItIsClosest()
+        {
+            BaybayinCharacterSO drawn = CreateSymbol(DrawnId, "symbol.a");
+            Enemy copy = CreateEnemy(drawn, isDecoy: true, y: -3f);
+            Enemy real = CreateEnemy(drawn, isDecoy: false, y: -1f);
+
+            _director.Reevaluate();
+
+            Assert.AreSame(real, _director.CurrentClue,
+                "The mark is the authored objective. A copy carries a false glyph, so pointing the "
+                + "player at one would ask them to draw a symbol that restores nothing.");
+            Assert.AreNotSame(copy, _director.CurrentClue);
+        }
+
+        [Test]
+        public void TryConsumeClue_WhenTheDrawStruckACloserFalseCopy_WithholdsTheCredit()
+        {
+            BaybayinCharacterSO drawn = CreateSymbol(DrawnId, "symbol.a");
+            Enemy copy = CreateEnemy(drawn, isDecoy: true, y: -2f);
+            Enemy real = CreateEnemy(drawn, isDecoy: false, y: -1f);
+
+            _director.Reevaluate();
+            Assert.AreSame(real, _director.CurrentClue, "Setup: the real carrier must hold the mark.");
+
+            Enemy shattered = null;
+            int resolvedCount = 0;
+            _director.OnFalseCopyShattered += Shattered;
+            _director.OnActiveClueResolved += Resolved;
+
+            try
+            {
+                Assert.IsFalse(_director.TryConsumeClue(real),
+                    "The copy was the closest carrier, so the copy is what fell. The word gains "
+                    + "nothing from a body that was never part of it.");
+                Assert.AreSame(copy, shattered,
+                    "The refusal must name the copy, so feedback can say the copy fell rather than "
+                    + "leaving silence the player can only read as a miss.");
+                Assert.AreEqual(0, resolvedCount,
+                    "The word-restoration cue must not fire for a shattered copy.");
+
+                // The slot is still owed: the real carrier is still walking, and the next draw of
+                // the same glyph must be able to claim the credit this one could not.
+                copy.ReturnToPool();
+                Assert.IsTrue(_director.TryConsumeClue(real),
+                    "With the copy gone the real carrier wins the draw and the slot fills.");
+                Assert.AreEqual(1, resolvedCount);
+            }
+            finally
+            {
+                _director.OnFalseCopyShattered -= Shattered;
+                _director.OnActiveClueResolved -= Resolved;
+            }
+
+            void Shattered(Enemy enemy) => shattered = enemy;
+            void Resolved(Enemy enemy) => resolvedCount++;
+        }
+
+        [Test]
+        public void TryConsumeClue_WhenTheRealCarrierIsClosest_StillCredits()
+        {
+            BaybayinCharacterSO drawn = CreateSymbol(DrawnId, "symbol.a");
+            CreateEnemy(drawn, isDecoy: true, y: -1f);
+            Enemy real = CreateEnemy(drawn, isDecoy: false, y: -3f);
+
+            _director.Reevaluate();
+
+            Assert.AreSame(real, _director.CurrentClue);
+            Assert.IsTrue(_director.TryConsumeClue(real),
+                "A copy standing further from the base must not cost the player a slot they earned.");
+        }
+
+        [Test]
+        public void TryConsumeClue_WhenTheCopyCarriesAnotherGlyph_StillCredits()
+        {
+            BaybayinCharacterSO drawn = CreateSymbol(DrawnId, "symbol.a");
+            BaybayinCharacterSO other = CreateSymbol(OtherId, "symbol.ei");
+            CreateEnemy(other, isDecoy: true, y: -3f);
+            Enemy real = CreateEnemy(drawn, isDecoy: false, y: -1f);
+
+            _director.Reevaluate();
+
+            Assert.AreSame(real, _director.CurrentClue);
+            Assert.IsTrue(_director.TryConsumeClue(real),
+                "Only a copy of the glyph that was actually drawn can withhold its credit.");
+        }
+
+        [Test]
+        public void TryConsumeClue_TiedDistances_ResolveByTheSameSpawnSequenceRule()
+        {
+            // The copy is pinned beside its source, so a copy and a real carrier genuinely can sit
+            // at the same distance. This is the tie the deception beat cannot survive as a coin
+            // flip, and it must break exactly the way every other draw target breaks: lowest spawn
+            // sequence. The copy is created first, so it holds the lower sequence and wins.
+            BaybayinCharacterSO drawn = CreateSymbol(DrawnId, "symbol.a");
+            Enemy copy = CreateEnemy(drawn, isDecoy: true, y: -2f);
+            Enemy real = CreateEnemy(drawn, isDecoy: false, y: -2f);
+
+            Assert.Less(copy.SpawnSequence, real.SpawnSequence, "Setup: the copy spawned first.");
+
+            _director.Reevaluate();
+            Assert.AreSame(real, _director.CurrentClue, "Setup: the real carrier must hold the mark.");
+
+            Assert.IsFalse(_director.TryConsumeClue(real),
+                "One rule in one place: the tie breaks on spawn sequence for a copy exactly as it "
+                + "does for any other body, with no branch that reads 'if decoy'.");
+        }
+
+        private sealed class AlwaysActiveObjectiveSource : IClueObjectiveSource
+        {
+            public bool IsClueCombatActive => true;
+
+            public IReadOnlyCollection<string> CurrentObjectiveContentIds => System.Array.Empty<string>();
+        }
+
+        private BaybayinCharacterSO CreateSymbol(string characterId, string stableId)
+        {
+            BaybayinCharacterSO symbol = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            symbol.characterID = characterId;
+            symbol.stableId = stableId;
+            _objectsToDestroy.Add(symbol);
+            return symbol;
+        }
+
+        private Enemy CreateEnemy(BaybayinCharacterSO assignedCharacter, bool isDecoy, float y)
+        {
+            var data = ScriptableObject.CreateInstance<EnemyDataSO>();
+            data.enemyID = isDecoy ? "iligaw_anino" : "iligaw";
+            data.assignedCharacter = assignedCharacter;
+            data.isDecoy = isDecoy;
+            data.dealsContactDamage = !isDecoy;
+            data.maxHealth = 1;
+            data.moveSpeed = 1f;
+            _objectsToDestroy.Add(data);
+
+            var go = new GameObject(isDecoy ? "FalseCopy_Test" : "RealCarrier_Test");
+            go.SetActive(false);
+            go.transform.position = new Vector3(0f, y, 0f);
+            go.AddComponent<SpriteRenderer>();
+            go.AddComponent<BoxCollider2D>();
+            go.AddComponent<EnemyMover>();
+            var enemy = go.AddComponent<Enemy>();
+            SetPrivateField(enemy, "_showDebugLabels", false);
+            go.SetActive(true);
+            _objectsToDestroy.Add(go);
+
+            InvokePrivate(enemy, "Awake");
+            Assert.IsTrue(enemy.Initialize(data));
+            return enemy;
+        }
+
+        private static void SetPrivateField(object target, string fieldName, object value)
+        {
+            FieldInfo field = target.GetType().GetField(
+                fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(field, $"Missing field '{fieldName}' on {target.GetType().Name}.");
+            field.SetValue(target, value);
+        }
+
+        private static void InvokePrivate(object target, string methodName, params object[] args)
+        {
+            MethodInfo method = target.GetType().GetMethod(
+                methodName, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(method, $"Missing method '{methodName}' on {target.GetType().Name}.");
+            method.Invoke(target, args);
+        }
+
+        private static void SetSingletonInstance<T>(T instance) where T : MonoBehaviour
+        {
+            typeof(Singleton<T>).GetProperty("Instance")?
+                .GetSetMethod(true)?
+                .Invoke(null, new object[] { instance });
+        }
+
+        private static void ClearSingletonInstance<T>() where T : MonoBehaviour
+        {
+            FieldInfo instanceField = typeof(Singleton<T>).GetField(
+                "<Instance>k__BackingField", BindingFlags.Static | BindingFlags.NonPublic);
+            instanceField?.SetValue(null, null);
+        }
+
+        /// <summary>
+        /// ActiveClueDirector is not a <c>Singleton&lt;T&gt;</c> — it owns its own Instance and
+        /// clears it in OnDestroy, which EditMode does not run. Left set, its Awake guard would
+        /// destroy the next fixture's director on sight.
+        /// </summary>
+        private static void ClearActiveClueDirectorInstance()
+        {
+            typeof(ActiveClueDirector).GetProperty("Instance")?
+                .GetSetMethod(true)?
+                .Invoke(null, new object[] { null });
         }
     }
 

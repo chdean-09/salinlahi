@@ -653,6 +653,7 @@ public class ProgressManager : Singleton<ProgressManager>
                 CharacterUnlockProgress.ClearAllUnlocked();
                 EnemyDiscoveryProgress.ClearAllDiscovered();
                 BossDiscoveryProgress.ClearAllDiscovered();
+                EnemyIntroductionProgress.ClearAllIntroduced();
                 PlayerPrefs.Save();
             }
             _lastProcessedLevelId = -1;
@@ -678,6 +679,7 @@ public class ProgressManager : Singleton<ProgressManager>
         CharacterUnlockProgress.ClearAllUnlocked();
         EnemyDiscoveryProgress.ClearAllDiscovered();
         BossDiscoveryProgress.ClearAllDiscovered();
+        EnemyIntroductionProgress.ClearAllIntroduced();
 
         // Reset tracking
         _lastProcessedLevelId = -1;

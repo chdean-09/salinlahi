@@ -48,9 +48,125 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     [SerializeField, Min(0f)] private float _wordRestoredDurationSeconds = 1.4f;
 
     [Header("Combat Restoration Progress")]
-    [Tooltip("Optional authored label for the focus-word slots restored during combat. "
-             + "A runtime label is built when empty on levels using the shared restoration path.")]
+    [Tooltip("Optional authored label that used to print the restoration readout as text. It is "
+             + "now only a font template for the runtime rail, and its own GameObject is switched "
+             + "off: the printed readout named each focus word in Latin, which is exactly the "
+             + "reading crutch Abo ng Simula's ash exists to take away.")]
     [SerializeField] private TextMeshProUGUI _restorationProgressText;
+
+    [Header("Restoration Slot Rail")]
+    [Tooltip("Where the rail sits under the HUD container, anchored to the top centre.\n\n"
+             + "Sits ABOVE the clue panel rather than at the old readout's spot. The rail is "
+             + "roughly 98px tall, and at the readout's -345 it occupied the 345-443 band, which "
+             + "overlapped both ActiveCluePanel (230-410) and FeedbackMessage (320-410) by about "
+             + "65px. It is also the element that should read first: the target text is what the "
+             + "player is filling, so it belongs across the top, with the clue panel beneath it.\n\n"
+             + "MEASURED, NOT VERIFIED BY EYE. Confirm on a notched device — the rail parents to "
+             + "HUDLayer, which SafeAreaHandler insets at runtime, so its real top edge moves down "
+             + "by the device inset while FullScreenOverlay siblings do not.")]
+    [SerializeField] private Vector2 _railAnchoredPosition = new Vector2(0f, -120f);
+
+    [Tooltip("Size of one target-text slot in canvas units. Slots are square by authoring "
+             + "convention but the two axes are separate so a wide glyph can be given room.")]
+    [SerializeField] private Vector2 _slotSize = new Vector2(62f, 62f);
+
+    [Tooltip("Gap between two slots inside the same focus word, in canvas units. Small: slots of "
+             + "one word have to read as one text rather than as separate collectables.")]
+    [SerializeField, Min(0f)] private float _slotSpacing = 9f;
+
+    [Tooltip("Gap between two focus words' slot groups, in canvas units. Must be clearly wider "
+             + "than the slot spacing — the grouping is what tells the player INA AMA is two "
+             + "words and not one run of four symbols.")]
+    [SerializeField, Min(0f)] private float _wordGap = 46f;
+
+    [Tooltip("How far the Baybayin glyph is inset inside its slot, in canvas units, so the frame "
+             + "stays visible around a filled slot.")]
+    [SerializeField, Min(0f)] private float _slotGlyphInset = 6f;
+
+    [Tooltip("Frame colour of a slot that is still waiting for its symbol.")]
+    [SerializeField] private Color _emptySlotColor = new Color(1f, 1f, 1f, 0.22f);
+
+    [Tooltip("Frame colour of a slot whose symbol has been restored.")]
+    [SerializeField] private Color _filledSlotColor = new Color(1f, 0.84f, 0.29f, 0.85f);
+
+    [Tooltip("Tint applied to the restored slot's glyph. The glyph art is white, so this is the "
+             + "colour the player actually reads the symbol in.")]
+    [SerializeField] private Color _filledGlyphColor = Color.white;
+
+    [Tooltip("Thickness of a slot frame's border as a fraction of the slot, used to generate the "
+             + "hollow frame sprite. The frame is generated rather than authored because there is "
+             + "no slot art in the project and an empty slot must not read as a filled block.")]
+    [SerializeField, Range(0.02f, 0.4f)] private float _slotFrameBorderFraction = 0.09f;
+
+    [Header("Rail Latin Labels")]
+    // Default OFF, and §2 B1 asks for bare slots: the player's first model of the level has to be
+    // "fill these", which a Latin word sitting beside the slots answers for them. It is also the
+    // whole of Abo ng Simula's ability — the ash masks the clue panel's Latin spelling, and a rail
+    // printing "INA" next to the masked clue hands that reading back for free, which made the
+    // level's signature ability cosmetic. A word that is already COMPLETE is exempt below: there is
+    // nothing left to leak once every slot of it is filled, and §2 B10 wants the finished text
+    // readable as one word.
+    [Tooltip("Prints each focus word's Latin spelling beside its slots while the word is still "
+             + "incomplete. OFF by default — bare slots. Turning it on is refused on any level "
+             + "whose roster can mask the clue, because there it would give back the exact "
+             + "reading the mask removed.")]
+    [SerializeField] private bool _showLatinWordLabels;
+
+    [Tooltip("Font size of a focus word's Latin label on the rail.")]
+    [SerializeField, Min(1f)] private float _latinWordLabelFontSize = 24f;
+
+    [Tooltip("Colour of a focus word's Latin label on the rail.")]
+    [SerializeField] private Color _latinWordLabelColor = new Color(1f, 0.84f, 0.29f, 1f);
+
+    [Tooltip("Height reserved above the slots for the Latin labels, in canvas units. The row is "
+             + "reserved even while every label is hidden: a word completing mid-level would "
+             + "otherwise grow the rail and move every slot, and DrawFeedbackPresenter flies a "
+             + "badge to a slot rect that must not travel while the badge is in the air.")]
+    [SerializeField, Min(0f)] private float _latinWordLabelRowHeight = 30f;
+
+    [Tooltip("Gap between the Latin label row and the slots below it, in canvas units.")]
+    [SerializeField, Min(0f)] private float _latinWordLabelGap = 6f;
+
+    [Header("Rail Completion Flash")]
+    [Tooltip("How many times the whole rail flashes when the target text completes. Zero shows "
+             + "the finished rail without a flash.")]
+    [SerializeField, Min(0)] private int _railFlashCount = 3;
+
+    [Tooltip("Seconds of one half cycle of the completion flash, in unscaled time. The instant-win "
+             + "beat dips the time scale, so a scaled flash would crawl.")]
+    [SerializeField, Min(0f)] private float _railFlashHalfCycleSeconds = 0.12f;
+
+    [Tooltip("Alpha the rail dips to at the bottom of a completion flash. Above zero so the "
+             + "finished text never fully disappears at the moment it is being celebrated.")]
+    [SerializeField, Range(0f, 1f)] private float _railFlashDipAlpha = 0.3f;
+
+    [Header("Ash Crumble")]
+    [Tooltip("Seconds the clue stays fully readable after an Abo's ash arms, covering the gust's "
+             + "travel. The clue must be readable right up to the frame the ash lands, or the "
+             + "gust stops being the reason the letters went away. Lead plus duration below "
+             + "should equal AshGustController's gust duration (0.6 s).")]
+    [SerializeField, Min(0f)] private float _clueCrumbleLeadSeconds = 0.35f;
+
+    [Tooltip("Seconds the readable characters take to crumble into their mask. Zero renders the "
+             + "masked string immediately, which is also what a non-playing context does.")]
+    [SerializeField, Min(0f)] private float _clueCrumbleDurationSeconds = 0.25f;
+
+    [Tooltip("Fraction of the crumble spent fading the doomed characters out before the mask "
+             + "fades in. Below one the two overlap, so the slot is never blank.")]
+    [SerializeField, Range(0.1f, 1f)] private float _clueCrumbleHandoff = 0.6f;
+
+    [Tooltip("Fraction of the crumble that each character lags behind the one to its left, so "
+             + "the run comes apart left to right instead of dissolving as one block.")]
+    [SerializeField, Range(0f, 0.9f)] private float _clueCrumbleCharacterStagger = 0.2f;
+
+    [Tooltip("How far a crumbling character sinks as it fades, in em of the clue's font size. "
+             + "Ash falls; the offset is what makes the fade read as crumbling rather than as a "
+             + "dimmed label.")]
+    [SerializeField] private float _clueCrumbleDropEm = 0.5f;
+
+    [Tooltip("How far each mask character rises into place as it fades in, in em. Small: the "
+             + "mask is settling ash, not an arriving object.")]
+    [SerializeField] private float _clueCrumbleMaskRiseEm = 0.22f;
 
     /// <summary>
     /// Suppresses a clue announcement that lands on top of one CombatResolver just made.
@@ -70,10 +186,66 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private GameObject _activeClueMark;
     private Sprite _runtimeMarkSprite;
     private GameObject _runtimeWordRestoredObject;
-    private GameObject _runtimeRestorationProgressObject;
     private Coroutine _wordRestoredRoutine;
+    private Coroutine _clueCrumbleRoutine;
     private int _wordRestoredCueCount;
     private string _lastWordRestoredMessage;
+
+    /// <summary>
+    /// One built slot on the target-text rail. Holds the authored slot it stands for, so the rail
+    /// can be repainted from restoration state without rebuilding, and both of its graphics, so a
+    /// repaint touches no component lookups.
+    /// </summary>
+    private sealed class RailSlot
+    {
+        public FocusWordDefinition Word;
+        public int DecompositionIndex;
+        public RectTransform Anchor;
+        public Image Frame;
+        public Image Glyph;
+    }
+
+    /// <summary>One focus word's group on the rail, kept so its Latin label can be repainted.</summary>
+    private sealed class RailWord
+    {
+        public FocusWordDefinition Word;
+        public TextMeshProUGUI LatinLabel;
+    }
+
+    private readonly List<RailSlot> _railSlots = new List<RailSlot>();
+    private readonly List<RailWord> _railWords = new List<RailWord>();
+
+    /// <summary>
+    /// The rail's slot rects in flattened reading order, handed out through
+    /// <see cref="RestorationSlotAnchors"/>. Held as its own list rather than projected on demand
+    /// so a caller polling it every frame allocates nothing.
+    /// </summary>
+    private readonly List<RectTransform> _railSlotAnchors = new List<RectTransform>();
+
+    private GameObject _railRoot;
+    private CanvasGroup _railCanvasGroup;
+    private Sprite _runtimeSlotFrameSprite;
+    private Coroutine _railFlashRoutine;
+
+    /// <summary>
+    /// Cached answer to "can this level's roster mask the clue", which decides whether the Latin
+    /// labels may be switched on at all. Computed once per level: the roster cannot change during
+    /// a run, and the check walks every wave.
+    /// </summary>
+    private bool? _levelMasksTheClue;
+
+    /// <summary>
+    /// Last observed ash state, so the onset can be spotted. Without this the ash would only
+    /// appear on the next clue change: the ability arms while an Abo walks, which raises no clue
+    /// event, and the panel would keep showing the readable spelling until something else moved.
+    /// </summary>
+    private bool _ashWasActive;
+
+    /// <summary>
+    /// Set only for the refresh raised by the ash onset, so the crumble animates exactly there
+    /// and every other path through SetClueText stays an immediate assignment.
+    /// </summary>
+    private bool _animateClueCrumble;
     private readonly ActiveClueRestorationState _restorationState =
         new ActiveClueRestorationState();
 
@@ -117,6 +289,65 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     /// <summary>The shared combat restoration state for this level attempt.</summary>
     public ActiveClueRestorationState RestorationState => _restorationState;
 
+    /// <summary>
+    /// The enabled presenter, for ability code that must read target-text progress without owning
+    /// a reference to the HUD. A plain static handle rather than a singleton base class: an
+    /// ability lives on a pooled enemy shell and has to cope with there being no presenter at all
+    /// on a level that never arms clue combat.
+    /// </summary>
+    public static ActiveCluePresenter Active { get; private set; }
+
+    /// <summary>Test seam: stand in for the OnEnable that EditMode never runs.</summary>
+    public static void SetActiveForTests(ActiveCluePresenter presenter) => Active = presenter;
+
+    /// <summary>How many target-text slots the player has already restored.</summary>
+    public int RestoredSlotCount => _restorationState.RestoredSlotCount;
+
+    /// <summary>
+    /// The 1-based position, inside its own focus word, of the slot the target text needs next —
+    /// or zero when every slot is filled or the level has no focus words.
+    ///
+    /// <para>
+    /// "Needed next" is the leftmost unrestored slot over the focus words in authored order, which
+    /// is the same flattening <see cref="SpawnAssignmentCoordinator"/> builds its slot list from
+    /// and, at Level 1's <c>activeSlotWindow</c> of one, the same slot its director calls the
+    /// cursor. Exposed as a position within the word rather than as a global index because that is
+    /// the fact abilities care about: Abo ng Simula's ash masks a word's first slot, so it only
+    /// changes anything while the needed slot is <b>not</b> its word's first.
+    /// </para>
+    /// </summary>
+    public int NeededSlotPositionInWord
+    {
+        get
+        {
+            if (_level?.focusWords == null)
+                return 0;
+
+            for (int wordIndex = 0; wordIndex < _level.focusWords.Count; wordIndex++)
+            {
+                FocusWordDefinition word = _level.focusWords[wordIndex];
+                if (word?.decomposition == null)
+                    continue;
+
+                // Counts emitted slots, not raw list indices: a decomposition may carry a null
+                // symbol, and the spawn schedule skips those too.
+                int position = 0;
+                for (int slotIndex = 0; slotIndex < word.decomposition.Count; slotIndex++)
+                {
+                    SymbolValueReference reference = word.decomposition[slotIndex];
+                    if (reference?.symbol == null || string.IsNullOrEmpty(reference.symbol.stableId))
+                        continue;
+
+                    position++;
+                    if (!_restorationState.IsSlotRestored(word, slotIndex))
+                        return position;
+                }
+            }
+
+            return 0;
+        }
+    }
+
     /// <summary>True when the level has authored at least one focus word to restore.</summary>
     public bool HasRestorationWords => _restorationState.FocusWordCount > 0;
 
@@ -128,8 +359,83 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     public bool AreRestorationTargetsComplete(IReadOnlyList<ActiveClueRestorationTarget> targets)
         => _restorationState.AreTargetsComplete(targets);
 
+    /// <summary>
+    /// The rail's slot rects in flattened reading order — focus word 0's emitted syllables left to
+    /// right, then focus word 1's — which is the same flattening
+    /// <see cref="SpawnAssignmentCoordinator"/> and the draw-feedback report number their slots by.
+    /// Empty until the rail is built, which only happens in play mode on a level that arms the
+    /// shared restoration path.
+    ///
+    /// <para>
+    /// The list is live: the rail is rebuilt on a level change, so a caller holding the returned
+    /// reference keeps seeing the current slots, but an index captured across a rebuild is not
+    /// guaranteed to name the same rect. Read it, fly to it, drop it.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<RectTransform> RestorationSlotAnchors => _railSlotAnchors;
+
+    /// <summary>
+    /// One rail slot's rect by flattened slot index, or null when the index is outside the target
+    /// text or the rail does not exist. Null rather than an exception because the callers are HUD
+    /// presenters reacting to a combat report: a slot index they cannot resolve means "do not fly
+    /// the badge", never "fail the draw".
+    /// </summary>
+    public RectTransform GetRestorationSlotAnchor(int flattenedSlotIndex)
+    {
+        if (flattenedSlotIndex < 0 || flattenedSlotIndex >= _railSlotAnchors.Count)
+            return null;
+
+        return _railSlotAnchors[flattenedSlotIndex];
+    }
+
+    /// <summary>
+    /// Shows the whole rail as one finished text and flashes it — §2 B10 step 1, the beat that
+    /// turns four separately filled slots into the word the player just restored. Every slot is
+    /// painted restored and every focus word's Latin label is revealed, so the join reads whole
+    /// even on the frame the last fill arrives, and the completed word is readable because a
+    /// complete word has no remaining answer to leak.
+    ///
+    /// <para>
+    /// Returns false when there is no rail to celebrate — a level that never armed the restoration
+    /// path, or a non-playing context. Callers use that to fall back to their own presentation
+    /// rather than to hold on an empty screen.
+    /// </para>
+    /// </summary>
+    public bool CelebrateRestorationComplete()
+    {
+        if (_railRoot == null)
+            return false;
+
+        RepaintRail(forceRestored: true);
+        _railRoot.SetActive(true);
+
+        if (_railFlashRoutine != null)
+        {
+            StopCoroutine(_railFlashRoutine);
+            _railFlashRoutine = null;
+        }
+
+        // A disabled presenter cannot run the flash. Showing the finished rail is the useful half
+        // of this call, so it still counts as celebrated rather than reporting failure.
+        if (!isActiveAndEnabled || _railCanvasGroup == null)
+            return true;
+
+        _railFlashRoutine = StartCoroutine(FlashRail());
+        return true;
+    }
+
+    /// <summary>
+    /// Unscaled seconds <see cref="CelebrateRestorationComplete"/> spends flashing, so a caller
+    /// sequencing a win beat can hold for exactly as long as the rail is still moving instead of
+    /// guessing at a duration that would drift the moment the flash is retuned.
+    /// </summary>
+    public float RestorationCelebrationDurationSeconds =>
+        Mathf.Max(0, _railFlashCount) * Mathf.Max(0f, _railFlashHalfCycleSeconds) * 2f;
+
     private void OnEnable()
     {
+        Active = this;
+        _ashWasActive = AshFirstSlotController.IsAnyActive();
         SubscribeToDirector();
         BindReplayAudioButton();
         EventBus.OnPronunciationRequested += HandlePronunciationRequested;
@@ -149,6 +455,13 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
     private void OnDisable()
     {
+        // Only clear the handle if it still points at us, so a scene bringing up a replacement
+        // presenter is not left with a null one when the old presenter tears down after it.
+        if (Active == this)
+            Active = null;
+
+        _clueCrumbleRoutine = null;
+        _railFlashRoutine = null;
         EventBus.OnPronunciationRequested -= HandlePronunciationRequested;
         EventBus.OnEnemySpawned -= HandleEnemySpawned;
         DestroyActiveClueMark();
@@ -165,7 +478,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             _replayAudioButtonComponent.onClick.RemoveListener(ReplayAudio);
         _replayAudioButtonComponent = null;
 
-        DestroyRuntimeRestorationProgressLabel();
+        DestroyRestorationRail();
     }
 
     /// <summary>Resolves this level's channels, including the visual audio fallback.</summary>
@@ -173,6 +486,13 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     {
         _level = level;
         _restorationState.Configure(level?.focusWords);
+
+        // A new level means a new roster and a new target text, so both cached answers about the
+        // old one are dropped: the mask verdict is recomputed on demand and the rail is rebuilt
+        // from the incoming focus words rather than repainted over the previous level's slots.
+        _levelMasksTheClue = null;
+        DestroyRestorationRail();
+
         _resolvedChannels = level == null
             ? ClueChannels.Glyph
             : ClueChannelResolver.Resolve(level.clueChannels, level.audioVisualFallback);
@@ -184,8 +504,11 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
         if (Application.isPlaying && level != null && level.activeClueCombatEnabled)
             EnsureRuntimePanel();
+        // Built here rather than on the first fill: §2 B1 requires the target text to be standing
+        // on screen as empty slots before the first enemy walks on, because the player's opening
+        // mental model has to be "fill this", not "kill those".
         if (Application.isPlaying && level != null && level.activeClueRestorationEnabled)
-            EnsureRestorationProgressLabel();
+            EnsureRestorationRail();
         BindReplayAudioButton();
 
         if (_subscribedDirector != null)
@@ -463,6 +786,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     /// </summary>
     private void LateUpdate()
     {
+        WatchAshOnset();
+
         if (_activeClueMark == null)
             return;
 
@@ -854,13 +1179,24 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     }
 
     /// <summary>
-    /// Builds the persistent target-text readout used by the shared combat-restoration path.
-    /// Unlike the timed "Restored:" cue, this stays visible for the whole defense so a player
-    /// can see each syllable fill instead of waiting for a post-wave board.
+    /// Builds the persistent target-text rail used by the shared combat-restoration path: one
+    /// visual slot per flattened target slot, grouped per focus word, so INA AMA stands on screen
+    /// as [ ][ ] [ ][ ] before anything has been drawn.
+    ///
+    /// <para>
+    /// Built from the level's focus words rather than from authored children. Every level plays in
+    /// the one Gameplay scene, so hand-authored slots would have to be a fixed count that happened
+    /// to match whichever level was loaded; generating them means the rail is correct for a
+    /// two-slot level and a nine-slot one with no scene work at all.
+    /// </para>
     /// </summary>
-    private void EnsureRestorationProgressLabel()
+    private void EnsureRestorationRail()
     {
-        if (_restorationProgressText != null)
+        if (_railRoot != null)
+            return;
+
+        IReadOnlyList<FocusWordDefinition> words = _restorationState.FocusWords;
+        if (words.Count == 0)
             return;
 
         Canvas canvas = ResolveHudCanvas();
@@ -868,30 +1204,210 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         if (hudContainer == null)
             return;
 
-        TextMeshProUGUI textTemplate = _clueText != null
-            ? _clueText
-            : FindFirstObjectByType<TextMeshProUGUI>();
+        // The old printed readout is the font template and nothing else. Switching its own object
+        // off is deliberate: an authored HUD may still carry it, and left alive it would keep
+        // showing whatever string it last held beside a rail that has replaced it.
+        TextMeshProUGUI fontTemplate = _restorationProgressText != null
+            ? _restorationProgressText
+            : _clueText;
+        if (fontTemplate == null)
+            fontTemplate = FindFirstObjectByType<TextMeshProUGUI>();
+        if (_restorationProgressText != null)
+            _restorationProgressText.gameObject.SetActive(false);
 
-        _runtimeRestorationProgressObject =
-            new GameObject("[Runtime] ActiveClueRestorationProgress", typeof(RectTransform));
-        _runtimeRestorationProgressObject.transform.SetParent(hudContainer, false);
+        _runtimeSlotFrameSprite = CreateSlotFrameSprite(_slotFrameBorderFraction);
 
-        TextMeshProUGUI label = _runtimeRestorationProgressObject.AddComponent<TextMeshProUGUI>();
-        CopyFont(textTemplate, label);
-        label.fontSize = 22f;
+        _railRoot = new GameObject(
+            "[Runtime] ActiveClueRestorationRail", typeof(RectTransform), typeof(CanvasGroup));
+        _railRoot.transform.SetParent(hudContainer, false);
+        _railCanvasGroup = _railRoot.GetComponent<CanvasGroup>();
+        _railCanvasGroup.blocksRaycasts = false;
+        _railCanvasGroup.interactable = false;
+
+        RectTransform railRect = _railRoot.GetComponent<RectTransform>();
+        railRect.anchorMin = new Vector2(0.5f, 1f);
+        railRect.anchorMax = new Vector2(0.5f, 1f);
+        railRect.pivot = new Vector2(0.5f, 1f);
+        railRect.anchoredPosition = _railAnchoredPosition;
+
+        // The label row is reserved whether or not any label is ever shown, so the slots sit at a
+        // fixed height for the whole level.
+        float labelRow = _latinWordLabelRowHeight + _latinWordLabelGap;
+        float slotRowTop = -labelRow;
+
+        float totalWidth = 0f;
+        for (int wordIndex = 0; wordIndex < words.Count; wordIndex++)
+        {
+            int slotCount = CountEmittedSlots(words[wordIndex]);
+            if (slotCount == 0)
+                continue;
+
+            if (totalWidth > 0f)
+                totalWidth += _wordGap;
+            totalWidth += WordWidth(slotCount);
+        }
+
+        railRect.sizeDelta = new Vector2(totalWidth, labelRow + _slotSize.y);
+
+        float x = 0f;
+        for (int wordIndex = 0; wordIndex < words.Count; wordIndex++)
+        {
+            FocusWordDefinition word = words[wordIndex];
+            int slotCount = CountEmittedSlots(word);
+            if (slotCount == 0)
+                continue;
+
+            if (x > 0f)
+                x += _wordGap;
+
+            float wordWidth = WordWidth(slotCount);
+            _railWords.Add(new RailWord
+            {
+                Word = word,
+                LatinLabel = BuildWordLatinLabel(
+                    railRect, fontTemplate, wordIndex, x, wordWidth),
+            });
+
+            // Mirrors TargetTextSlotMap.Build's flattening exactly — every reference with a symbol,
+            // in authored order — because the draw-feedback report's SlotIndex is produced by that
+            // type, and this list has to be index-aligned with it or a badge flies to the wrong
+            // slot. A reference with no symbol is skipped by both and occupies no slot here.
+            int emitted = 0;
+            for (int slotIndex = 0;
+                 word.decomposition != null && slotIndex < word.decomposition.Count;
+                 slotIndex++)
+            {
+                SymbolValueReference reference = word.decomposition[slotIndex];
+                if (reference?.symbol == null)
+                    continue;
+
+                float slotX = x + (emitted * (_slotSize.x + _slotSpacing));
+                RailSlot built = BuildSlot(
+                    railRect, word, reference, slotIndex, _railSlots.Count, slotX, slotRowTop);
+                _railSlots.Add(built);
+                _railSlotAnchors.Add(built.Anchor);
+                emitted++;
+            }
+
+            x += wordWidth;
+        }
+
+        _railRoot.SetActive(false);
+        RepaintRail(forceRestored: false);
+    }
+
+    private float WordWidth(int slotCount) =>
+        (slotCount * _slotSize.x) + ((slotCount - 1) * _slotSpacing);
+
+    /// <summary>Slots this word contributes to the rail, under TargetTextSlotMap's skip rule.</summary>
+    private static int CountEmittedSlots(FocusWordDefinition word)
+    {
+        if (word?.decomposition == null)
+            return 0;
+
+        int count = 0;
+        for (int i = 0; i < word.decomposition.Count; i++)
+        {
+            if (word.decomposition[i]?.symbol != null)
+                count++;
+        }
+
+        return count;
+    }
+
+    private TextMeshProUGUI BuildWordLatinLabel(
+        RectTransform railRect,
+        TextMeshProUGUI fontTemplate,
+        int wordIndex,
+        float x,
+        float wordWidth)
+    {
+        var labelObject = new GameObject(
+            $"[Runtime] RestorationWordLabel_{wordIndex}", typeof(RectTransform));
+        labelObject.transform.SetParent(railRect, false);
+
+        TextMeshProUGUI label = labelObject.AddComponent<TextMeshProUGUI>();
+        CopyFont(fontTemplate, label);
+        label.fontSize = _latinWordLabelFontSize;
         label.alignment = TextAlignmentOptions.Center;
-        label.color = Color.white;
+        label.color = _latinWordLabelColor;
         label.raycastTarget = false;
+        label.text = string.Empty;
 
-        RectTransform rect = _runtimeRestorationProgressObject.GetComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0.5f, 1f);
-        rect.anchorMax = new Vector2(0.5f, 1f);
-        rect.pivot = new Vector2(0.5f, 1f);
-        rect.anchoredPosition = new Vector2(0f, -345f);
-        rect.sizeDelta = new Vector2(760f, 105f);
+        RectTransform rect = labelObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0f, 1f);
+        rect.anchorMax = new Vector2(0f, 1f);
+        rect.pivot = new Vector2(0f, 1f);
+        rect.anchoredPosition = new Vector2(x, 0f);
+        rect.sizeDelta = new Vector2(wordWidth, _latinWordLabelRowHeight);
 
-        _runtimeRestorationProgressObject.SetActive(false);
-        _restorationProgressText = label;
+        return label;
+    }
+
+    private RailSlot BuildSlot(
+        RectTransform railRect,
+        FocusWordDefinition word,
+        SymbolValueReference reference,
+        int decompositionIndex,
+        int flattenedIndex,
+        float x,
+        float y)
+    {
+        var slotObject = new GameObject(
+            $"[Runtime] RestorationSlot_{flattenedIndex}", typeof(RectTransform), typeof(Image));
+        slotObject.transform.SetParent(railRect, false);
+
+        Image frame = slotObject.GetComponent<Image>();
+        frame.sprite = _runtimeSlotFrameSprite;
+        // Sliced so the generated frame's border stays one thickness at any authored slot size; a
+        // Simple fill would scale the border with the slot and thicken it on a larger rail.
+        frame.type = Image.Type.Sliced;
+        frame.raycastTarget = false;
+
+        RectTransform rect = slotObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0f, 1f);
+        rect.anchorMax = new Vector2(0f, 1f);
+        rect.pivot = new Vector2(0f, 1f);
+        rect.anchoredPosition = new Vector2(x, y);
+        rect.sizeDelta = _slotSize;
+
+        var glyphObject = new GameObject(
+            $"[Runtime] RestorationSlotGlyph_{flattenedIndex}", typeof(RectTransform), typeof(Image));
+        glyphObject.transform.SetParent(slotObject.transform, false);
+
+        Image glyph = glyphObject.GetComponent<Image>();
+        glyph.sprite = ResolveSlotGlyph(reference.symbol);
+        glyph.color = _filledGlyphColor;
+        glyph.preserveAspect = true;
+        glyph.raycastTarget = false;
+        SetStretch(
+            glyphObject.GetComponent<RectTransform>(),
+            new Vector2(_slotGlyphInset, _slotGlyphInset),
+            new Vector2(-_slotGlyphInset, -_slotGlyphInset));
+        glyphObject.SetActive(false);
+
+        return new RailSlot
+        {
+            Word = word,
+            DecompositionIndex = decompositionIndex,
+            Anchor = rect,
+            Frame = frame,
+            Glyph = glyph,
+        };
+    }
+
+    /// <summary>
+    /// The art a filled slot shows. The bare outline first and the framed badge second — never
+    /// <c>displaySprite</c>, which is a learning card carrying the romanised syllable printed on
+    /// it. A rail built out of learning cards would print the Latin reading in picture form and
+    /// defeat the ash exactly as the old text readout did.
+    /// </summary>
+    private static Sprite ResolveSlotGlyph(BaybayinCharacterSO symbol)
+    {
+        if (symbol == null)
+            return null;
+
+        return symbol.glyphOutlineSprite != null ? symbol.glyphOutlineSprite : symbol.badgeSprite;
     }
 
     private void UpdateRestorationProgress()
@@ -903,79 +1419,231 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
         if (!shouldShow)
         {
+            if (_railRoot != null)
+                _railRoot.SetActive(false);
+
+            // Also covers an authored readout on a level that never builds a rail: whatever string
+            // it was left holding is not this level's progress, and it named its words in Latin.
             if (_restorationProgressText != null)
                 _restorationProgressText.gameObject.SetActive(false);
             return;
         }
 
-        EnsureRestorationProgressLabel();
-        if (_restorationProgressText == null)
+        EnsureRestorationRail();
+        if (_railRoot == null)
             return;
 
-        _restorationProgressText.text = BuildRestorationProgressText();
-        _restorationProgressText.gameObject.SetActive(true);
+        RepaintRail(forceRestored: false);
+        _railRoot.SetActive(true);
     }
 
-    private string BuildRestorationProgressText()
+    /// <summary>
+    /// Paints every slot from restoration state: a restored slot shows its Baybayin glyph in the
+    /// filled frame colour, an unrestored one stays a bare empty frame. The frame carries the state
+    /// as well as the glyph, so a symbol with no glyph art still reads as filled rather than as
+    /// silently unfinished.
+    /// </summary>
+    /// <param name="forceRestored">
+    /// Paints every slot restored regardless of state, for the completion beat. It changes nothing
+    /// about restoration state itself — the win was already decided on that state — so a caller
+    /// cannot use this to fake progress the player has not made.
+    /// </param>
+    private void RepaintRail(bool forceRestored)
     {
-        var builder = new System.Text.StringBuilder();
-        IReadOnlyList<FocusWordDefinition> words = _restorationState.FocusWords;
-        for (int wordIndex = 0; wordIndex < words.Count; wordIndex++)
+        for (int i = 0; i < _railSlots.Count; i++)
         {
-            FocusWordDefinition word = words[wordIndex];
-            if (word == null)
-                continue;
+            RailSlot slot = _railSlots[i];
+            bool restored = forceRestored
+                || _restorationState.IsSlotRestored(slot.Word, slot.DecompositionIndex);
 
-            if (builder.Length > 0)
-                builder.Append('\n');
+            slot.Frame.color = restored ? _filledSlotColor : _emptySlotColor;
 
-            string label = !string.IsNullOrEmpty(word.displayLabel)
-                ? word.displayLabel
-                : word.latinSpelling;
-            builder.Append(label).Append(": ");
+            // A symbol with no glyph art leaves the child off rather than showing it: an Image with
+            // no sprite draws a solid quad, which would fill the slot with a block instead of a
+            // glyph. The frame colour still reports the slot as restored.
+            bool showGlyph = restored && slot.Glyph.sprite != null;
+            if (slot.Glyph.gameObject.activeSelf != showGlyph)
+                slot.Glyph.gameObject.SetActive(showGlyph);
+        }
 
-            bool wroteSlot = false;
-            for (int slotIndex = 0;
-                 word.decomposition != null && slotIndex < word.decomposition.Count;
-                 slotIndex++)
+        for (int i = 0; i < _railWords.Count; i++)
+        {
+            RailWord word = _railWords[i];
+            bool show = ShouldShowLatinLabel(word.Word, forceRestored);
+            word.LatinLabel.text = show ? ResolveWordLatinLabel(word.Word) : string.Empty;
+        }
+
+        // Left alone while the completion flash owns the alpha, so a repaint landing mid-beat
+        // cannot snap the rail back to full opacity halfway through a dip.
+        if (_railCanvasGroup != null && _railFlashRoutine == null)
+            _railCanvasGroup.alpha = 1f;
+    }
+
+    /// <summary>
+    /// Whether this word's Latin spelling may appear beside its slots.
+    ///
+    /// <para>
+    /// A complete word is always readable: every slot of it is filled, so the spelling answers
+    /// nothing the player has not already drawn, and §2 B10 wants the finished text whole. An
+    /// incomplete word needs the serialized opt-in, and even then is refused on a level whose
+    /// roster can mask the clue — see the field's comment. The alternative, letting the flag
+    /// silently win everywhere, is how the leak happened in the first place: the presenter has no
+    /// way to know an author flipped it for a later level and forgot Level 1 shares this HUD.
+    /// </para>
+    /// </summary>
+    private bool ShouldShowLatinLabel(FocusWordDefinition word, bool forceRestored)
+    {
+        if (word == null)
+            return false;
+
+        if (forceRestored || _restorationState.IsWordComplete(word.stableId))
+            return true;
+
+        return _showLatinWordLabels && !LevelMasksTheClue();
+    }
+
+    private static string ResolveWordLatinLabel(FocusWordDefinition word)
+    {
+        if (word == null)
+            return string.Empty;
+
+        return !string.IsNullOrEmpty(word.displayLabel) ? word.displayLabel : word.latinSpelling;
+    }
+
+    /// <summary>
+    /// True when any enemy this level can spawn masks the clue's readable spelling — today that is
+    /// Abo ng Simula's <c>ashesFirstSlot</c>. Both the level roster and every wave's own list are
+    /// walked: a wave may name an enemy type the master roster has since been trimmed of, and a
+    /// single missed carrier is enough to hand the masked reading back.
+    /// </summary>
+    private bool LevelMasksTheClue()
+    {
+        if (_levelMasksTheClue.HasValue)
+            return _levelMasksTheClue.Value;
+
+        bool masks = false;
+        if (_level != null)
+        {
+            masks = RosterMasksTheClue(_level.allowedEnemyTypes);
+
+            for (int i = 0; !masks && _level.waves != null && i < _level.waves.Count; i++)
+                masks = RosterMasksTheClue(_level.waves[i]?.enemyTypes);
+        }
+
+        _levelMasksTheClue = masks;
+        return masks;
+    }
+
+    private static bool RosterMasksTheClue(IReadOnlyList<EnemyDataSO> roster)
+    {
+        if (roster == null)
+            return false;
+
+        for (int i = 0; i < roster.Count; i++)
+        {
+            if (roster[i] != null && roster[i].ashesFirstSlot)
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Flashes the whole rail as one object. Deliberately the rail's group alpha rather than a
+    /// per-slot animation: the beat's content is that four slots have become one restored text, so
+    /// they have to move as one thing.
+    /// </summary>
+    private IEnumerator FlashRail()
+    {
+        for (int i = 0; i < _railFlashCount; i++)
+        {
+            _railCanvasGroup.alpha = _railFlashDipAlpha;
+            yield return WaitUnscaled(_railFlashHalfCycleSeconds);
+            _railCanvasGroup.alpha = 1f;
+            yield return WaitUnscaled(_railFlashHalfCycleSeconds);
+        }
+
+        _railCanvasGroup.alpha = 1f;
+        _railFlashRoutine = null;
+    }
+
+    /// <summary>
+    /// Unscaled wait, like the crumble and the word cue: the instant-win beat holds the game at a
+    /// dipped time scale, and a scaled flash would stretch past the beat that asked for it.
+    /// </summary>
+    private static IEnumerator WaitUnscaled(float seconds)
+    {
+        float elapsed = 0f;
+        while (elapsed < seconds)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+    }
+
+    /// <summary>
+    /// A hollow square: an empty slot has to read as a waiting outline, and a null
+    /// sprite renders a filled quad, which reads as an already-occupied block. Generated rather
+    /// than authored because the project has no slot art, and generated in code rather than taken
+    /// from builtin resources so it also renders in a player build — the same reasoning as
+    /// <see cref="CreateRingSprite"/>.
+    /// </summary>
+    private static Sprite CreateSlotFrameSprite(float borderFraction)
+    {
+        const int size = 64;
+        int border = Mathf.Max(1, Mathf.RoundToInt(size * borderFraction));
+
+        var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+        {
+            filterMode = FilterMode.Bilinear,
+            wrapMode = TextureWrapMode.Clamp
+        };
+
+        var pixels = new Color32[size * size];
+        var opaque = new Color32(255, 255, 255, 255);
+        var clear = new Color32(255, 255, 255, 0);
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
             {
-                SymbolValueReference reference = word.decomposition[slotIndex];
-                if (reference?.symbol == null)
-                    continue;
-
-                if (wroteSlot)
-                    builder.Append(" · ");
-
-                builder.Append(_restorationState.IsSlotRestored(word, slotIndex)
-                    ? SpokenValueResolver.ResolveLabel(reference.symbol, reference.spokenValueId)
-                    : UnreadableSlotMask);
-                wroteSlot = true;
+                bool onBorder = x < border || y < border
+                    || x >= size - border || y >= size - border;
+                pixels[(y * size) + x] = onBorder ? opaque : clear;
             }
-
-            if (_restorationState.IsWordComplete(word.stableId))
-                builder.Append("  ✓");
         }
 
-        return builder.ToString();
+        texture.SetPixels32(pixels);
+        texture.Apply();
+
+        // Sliced with a border matching the drawn frame, so a non-square slot size stretches the
+        // frame's edges instead of its corners.
+        return Sprite.Create(
+            texture,
+            new Rect(0f, 0f, size, size),
+            new Vector2(0.5f, 0.5f),
+            size,
+            0,
+            SpriteMeshType.FullRect,
+            new Vector4(border, border, border, border));
     }
 
-    private void DestroyRuntimeRestorationProgressLabel()
+    private void DestroyRestorationRail()
     {
-        if (_runtimeRestorationProgressObject == null)
-        {
-            if (_restorationProgressText != null)
-                _restorationProgressText.gameObject.SetActive(false);
-            return;
-        }
+        _railFlashRoutine = null;
+        _railSlots.Clear();
+        _railWords.Clear();
+        _railSlotAnchors.Clear();
 
-        if (_restorationProgressText != null
-            && _restorationProgressText.gameObject == _runtimeRestorationProgressObject)
-        {
-            _restorationProgressText = null;
-        }
+        Texture2D frameTexture =
+            _runtimeSlotFrameSprite != null ? _runtimeSlotFrameSprite.texture : null;
 
-        DestroyOwnedObject(_runtimeRestorationProgressObject);
-        _runtimeRestorationProgressObject = null;
+        DestroyOwnedObject(_railRoot);
+        DestroyOwnedObject(_runtimeSlotFrameSprite);
+        DestroyOwnedObject(frameTexture);
+
+        _railRoot = null;
+        _railCanvasGroup = null;
+        _runtimeSlotFrameSprite = null;
     }
 
     /// <summary>
@@ -1012,13 +1680,207 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         // SALIN-284: Abo ng Simula ashes the word's first slot on top of the target mask. Read
         // here and passed down rather than consulted inside BuildMaskedSpelling, so that method
         // stays a pure function of its arguments and can be tested without a live enemy.
-        _clueText.text = masked
+        bool ashActive = AshFirstSlotController.IsAnyActive();
+        string finalText = masked
             ? BuildMaskedSpellingWithRestoration(
-                word,
-                clue.Character.stableId,
-                AshFirstSlotController.IsAnyActive(),
-                _restorationState)
+                word, clue.Character.stableId, ashActive, _restorationState)
             : word.latinSpelling;
+
+        // A crumble in flight is always abandoned rather than blended: whatever raised this call
+        // is newer information than the animation is carrying.
+        StopClueCrumble();
+
+        if (masked && ashActive && _animateClueCrumble && CanAnimateClueCrumble)
+        {
+            string readableText = BuildMaskedSpellingWithRestoration(
+                word, clue.Character.stableId, false, _restorationState);
+
+            // Equal strings mean the ash bit nothing — the needed slot already was the word's
+            // first. Nothing to crumble, and animating would show motion with no consequence.
+            if (readableText != finalText)
+            {
+                _clueCrumbleRoutine = StartCoroutine(CrumbleClueText(readableText, finalText));
+                return;
+            }
+        }
+
+        _clueText.text = finalText;
+    }
+
+    /// <summary>
+    /// True only where a coroutine can actually run and has time to run in. EditMode and a
+    /// disabled presenter fall through to the immediate assignment, which is also what keeps the
+    /// masked string byte-identical for the tests that read it back synchronously.
+    /// </summary>
+    private bool CanAnimateClueCrumble =>
+        Application.isPlaying && isActiveAndEnabled && _clueCrumbleDurationSeconds > 0f;
+
+    private void StopClueCrumble()
+    {
+        if (_clueCrumbleRoutine == null)
+            return;
+
+        StopCoroutine(_clueCrumbleRoutine);
+        _clueCrumbleRoutine = null;
+    }
+
+    /// <summary>
+    /// Spots the frame an Abo's ash arms or lifts and refreshes the panel, because neither event
+    /// raises a clue change of its own.
+    ///
+    /// <para>
+    /// Only the readable-to-masked direction animates. The lift is the player's reward for
+    /// working out the counter and wants to read as instant relief, not as another six-tenths of
+    /// a second of motion before they can read their clue again.
+    /// </para>
+    /// </summary>
+    private void WatchAshOnset()
+    {
+        if (!IsClueCombatArmed || _clueText == null)
+            return;
+
+        bool ashActive = AshFirstSlotController.IsAnyActive();
+        if (ashActive == _ashWasActive)
+            return;
+
+        _ashWasActive = ashActive;
+        _animateClueCrumble = ashActive;
+        UpdateCluePanel(_currentClue);
+        _animateClueCrumble = false;
+    }
+
+    /// <summary>
+    /// Animates the readable spelling into its masked form: the doomed characters sink and fade,
+    /// the mask fades in behind them, and the final frame assigns the masked string exactly as
+    /// <see cref="BuildMaskedSpellingWithRestoration"/> produced it — a transition only, so
+    /// nothing downstream of the rendered string ever sees an intermediate value.
+    ///
+    /// <para>
+    /// Unscaled time, like the word-restoration cue: the introduction cards run the level at a
+    /// fraction of normal time scale, and a crumble stretched across four seconds would read as a
+    /// rendering fault rather than as ash.
+    /// </para>
+    /// </summary>
+    private IEnumerator CrumbleClueText(string readableText, string maskedText)
+    {
+        // The clue is readable right up to the frame the gust lands.
+        _clueText.text = readableText;
+
+        float lead = Mathf.Max(0f, _clueCrumbleLeadSeconds);
+        float elapsed = 0f;
+        while (elapsed < lead)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        // The two strings share a head and a tail; only the slot the ash covers differs. Deriving
+        // the changed run rather than assuming it starts at index zero keeps this correct for a
+        // word whose first slot is itself already restored or masked.
+        int prefixLength = CommonPrefixLength(readableText, maskedText);
+        int suffixLength = CommonSuffixLength(readableText, maskedText, prefixLength);
+
+        float duration = Mathf.Max(0.01f, _clueCrumbleDurationSeconds);
+        elapsed = 0f;
+        while (elapsed < duration)
+        {
+            float progress = Mathf.Clamp01(elapsed / duration);
+
+            if (progress < _clueCrumbleHandoff)
+            {
+                float local = Mathf.Clamp01(progress / Mathf.Max(0.01f, _clueCrumbleHandoff));
+                _clueText.text = BuildCrumbleFrame(
+                    readableText, prefixLength, suffixLength, local, fadingOut: true);
+            }
+            else
+            {
+                float local = Mathf.Clamp01(
+                    (progress - _clueCrumbleHandoff)
+                    / Mathf.Max(0.01f, 1f - _clueCrumbleHandoff));
+                _clueText.text = BuildCrumbleFrame(
+                    maskedText, prefixLength, suffixLength, local, fadingOut: false);
+            }
+
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        _clueText.text = maskedText;
+        _clueCrumbleRoutine = null;
+    }
+
+    /// <summary>
+    /// One frame of the crumble: the unchanged head and tail are written plain, and every
+    /// character of the changed run carries its own alpha and vertical offset so the run comes
+    /// apart character by character rather than as a block.
+    /// </summary>
+    private string BuildCrumbleFrame(
+        string text,
+        int prefixLength,
+        int suffixLength,
+        float progress,
+        bool fadingOut)
+    {
+        int changedStart = prefixLength;
+        int changedEnd = text.Length - suffixLength;
+        var builder = new System.Text.StringBuilder(text.Length * 6);
+
+        builder.Append(text, 0, changedStart);
+
+        int changedCount = Mathf.Max(1, changedEnd - changedStart);
+        for (int i = changedStart; i < changedEnd; i++)
+        {
+            // Each character starts its own motion a little after the one to its left, so the
+            // stagger is a fraction of the whole rather than a per-character duration to retune.
+            float delay = _clueCrumbleCharacterStagger * ((i - changedStart) / (float)changedCount);
+            float local = Mathf.Clamp01((progress - delay) / Mathf.Max(0.01f, 1f - delay));
+
+            float alpha = fadingOut ? 1f - local : local;
+            float offsetEm = fadingOut
+                ? -_clueCrumbleDropEm * local
+                : _clueCrumbleMaskRiseEm * (1f - local);
+
+            builder.Append("<alpha=#")
+                .Append(Mathf.RoundToInt(Mathf.Clamp01(alpha) * 255f).ToString("X2"))
+                .Append("><voffset=")
+                .Append(offsetEm.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture))
+                .Append("em>")
+                .Append(text[i])
+                .Append("</voffset>");
+        }
+
+        // Restore full opacity before the tail: alpha tags persist to the end of the string.
+        builder.Append("<alpha=#FF>");
+        builder.Append(text, changedEnd, suffixLength);
+        return builder.ToString();
+    }
+
+    private static int CommonPrefixLength(string first, string second)
+    {
+        int limit = Mathf.Min(first.Length, second.Length);
+        int index = 0;
+        while (index < limit && first[index] == second[index])
+            index++;
+
+        return index;
+    }
+
+    /// <summary>
+    /// Matching tail length, never allowed to overlap the shared head — otherwise two strings that
+    /// differ only in a repeated character could claim the same characters twice and the frame
+    /// would be built from a negative-length run.
+    /// </summary>
+    private static int CommonSuffixLength(string first, string second, int prefixLength)
+    {
+        int limit = Mathf.Min(first.Length, second.Length) - prefixLength;
+        int index = 0;
+        while (index < limit
+               && first[first.Length - 1 - index] == second[second.Length - 1 - index])
+        {
+            index++;
+        }
+
+        return index;
     }
 
     private FocusWordDefinition FindFocusWordContaining(string symbolStableId)
@@ -1181,6 +2043,35 @@ public sealed class ActiveClueRestorationState
     }
 
     public int FocusWordCount => _words.Count;
+
+    /// <summary>
+    /// How many authored slots are restored, across every focus word. Counted rather than stored
+    /// so it cannot drift from the slot flags themselves, and exposed because abilities gate on
+    /// "the player has used the clue at least once" — Abo ng Simula's ash must not arm before the
+    /// player has ever read the clue and acted on it.
+    /// </summary>
+    public int RestoredSlotCount
+    {
+        get
+        {
+            int restored = 0;
+            for (int wordIndex = 0; wordIndex < _words.Count; wordIndex++)
+            {
+                WordState state = _words[wordIndex];
+                if (state.Word?.decomposition == null)
+                    continue;
+
+                for (int slotIndex = 0; slotIndex < state.Word.decomposition.Count; slotIndex++)
+                {
+                    SymbolValueReference reference = state.Word.decomposition[slotIndex];
+                    if (reference?.symbol != null && state.RestoredSlots[slotIndex])
+                        restored++;
+                }
+            }
+
+            return restored;
+        }
+    }
 
     /// <summary>True only when at least one word exists and every authored slot is restored.</summary>
     public bool IsComplete

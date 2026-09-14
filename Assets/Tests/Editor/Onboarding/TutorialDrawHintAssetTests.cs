@@ -19,13 +19,21 @@ namespace Salinlahi.Tests.Editor.Onboarding
             Level1TutorialStepSO a = LoadStep("Assets/ScriptableObjects/Tutorial/Level1TutorialStep_A.asset");
             Level1TutorialStepSO ma = LoadStep("Assets/ScriptableObjects/Tutorial/Level1TutorialStep_MA.asset");
 
+            // HeartLossDemo was removed from Level 1's beatOrder on 2026-09-14 at the owner's
+            // explicit instruction: "the heart should stay at 3 healthy hearts after tutorial".
+            // The beat never actually spent a heart — it drove the shake/flash through a
+            // simulator, deliberately avoiding HeartSystem.LoseHeart — but it still READ as a
+            // heart emptying, which is what the instruction was reacting to. Level 1 now teaches
+            // base damage reactively on the first real breach instead (level-01 design plan, §5).
+            //
+            // So this assertion is updated rather than the data reverted. If a later change puts
+            // a heart-loss teach back into Level 1, put HeartLossDemo back here with it.
             Assert.AreEqual(
                 new[]
                 {
                     OnboardingBeatType.ProtagonistIntro,
                     OnboardingBeatType.BaseIntro,
                     OnboardingBeatType.SoloTeach,
-                    OnboardingBeatType.HeartLossDemo,
                     OnboardingBeatType.Release,
                 },
                 sequence.beatOrder);

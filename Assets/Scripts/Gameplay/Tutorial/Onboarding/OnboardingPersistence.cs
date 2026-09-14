@@ -50,10 +50,24 @@ public static class OnboardingPersistence
         return GetResumeStartIndex(LevelTutorialProgress.Level1TutorialLevelNumber);
     }
 
+    /// <summary>
+    /// The beat index the onboarding loop should start from.
+    ///
+    /// Delegates to <see cref="LevelTutorialProgress.ResolveTutorialStartBeatIndex"/> because a
+    /// FORCED REPLAY must start at zero, and the stored index cannot express that on its own.
+    /// The controller writes the index of every beat it finishes — including Release — so a
+    /// completed tutorial leaves the index pointing one past the last beat. A level whose gate is
+    /// held open by <c>alwaysShowTutorial</c> would then be admitted and immediately run ZERO
+    /// beats, which on screen is indistinguishable from the tutorial being broken. On the revised
+    /// save path it is worse: <see cref="Clear"/> returns early there and the index rides a
+    /// monotonic ratchet, so nothing can ever bring it back down.
+    ///
+    /// An interrupted FIRST run still resumes where it stopped — only a replay is reset.
+    /// </summary>
     public static int GetResumeStartIndex(int levelNumber)
     {
-        int last = GetLastCompletedBeatIndex(levelNumber);
-        return last < 0 ? 0 : last + 1;
+        return LevelTutorialProgress.ResolveTutorialStartBeatIndex(
+            levelNumber, GetLastCompletedBeatIndex(levelNumber));
     }
 
     /// <summary>Clears stored progress. Called when the full tutorial completes or on global reset.</summary>

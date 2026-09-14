@@ -10,8 +10,27 @@ public class SpawnSlotGate
     /// <summary>Zero-based index into the flattened slot list (all focus words in order).</summary>
     public int slotIndex;
 
-    /// <summary>Token the beat system opens, e.g. SpawnGateRegistry.IligawBeatResolved.</summary>
+    /// <summary>Token the beat system opens, e.g. SpawnGateRegistry.AboAshShown.</summary>
     public string gateToken;
+}
+
+/// <summary>
+/// Overrides the anti-rush floor for one flattened target slot.
+///
+/// Exists because the floor is a pacing knob everywhere except the tutorial's very first
+/// interaction, where it is the difference between a first drawing that restores a slot and one
+/// that restores nothing. Level 1 lowers slot 0 to 1 so the needed E/I carrier arrives on spawn 2
+/// instead of spawn 5; slots 1-3 keep the level's scalar floor, so the anti-rush purpose is intact
+/// for the rest of the level.
+/// </summary>
+[Serializable]
+public class SpawnSlotFloor
+{
+    /// <summary>Zero-based index into the flattened slot list (all focus words in order).</summary>
+    public int slotIndex;
+
+    /// <summary>Spawns that must pass before this slot's needed symbol may be drawn.</summary>
+    public int minSpawnsBeforeNeeded;
 }
 
 /// <summary>
@@ -37,6 +56,10 @@ public class SpawnAssignmentPolicy
     ///
     /// Level 1 uses 4, derived in the design doc from a 130s target:
     /// minSpawnsBeforeNeeded = (X - overhead) / (slots * meanInterval) - 1/neededWeight.
+    ///
+    /// This is the level-wide default. <see cref="slotFloors"/> overrides it for named slots;
+    /// always read the floor through <see cref="MinSpawnsBeforeNeededForSlot"/> rather than this
+    /// field directly.
     /// </summary>
     public int minSpawnsBeforeNeeded = 4;
 
@@ -97,6 +120,30 @@ public class SpawnAssignmentPolicy
     public int maxConcurrentEnemies = 8;
 
     /// <summary>
+    /// Forces the level's very first assignment to carry the symbol that emits this spoken value.
+    /// Empty means no directive.
+    ///
+    /// It exists because "the first enemy type the player ever meets" is a narrative decision the
+    /// schedule cannot express: while slot 0 is the cursor, every ungated later-needed symbol is
+    /// legal filler, so Level 1's opening enemy could be any of them. Naming the symbol names the
+    /// enemy, because each Level 1 enemy is pinned to exactly one symbol by
+    /// EnemyDataSO.assignedCharacter - Level 1 authors "value.a" and gets Abo ng Simula, whose
+    /// introduction card and inert first ash the opening beat is written around.
+    ///
+    /// A spoken value id rather than a symbol id, because this class stays free of UnityEngine
+    /// types and cannot hold a BaybayinCharacterSO reference; the id is resolved against
+    /// ContentIdentity.IsApprovedSpokenValue, the same authority the focus-word decompositions and
+    /// the validator use, so "value.e" correctly names symbol.ei rather than a symbol.e that does
+    /// not exist.
+    ///
+    /// One-shot: spent on the first spawn that can honour it. It consumes one spawn against the
+    /// floor exactly as any other spawn does, but neither resets nor re-arms it, does not touch
+    /// <see cref="neededWeight"/>, and does not enter the filler rotation - so every schedule
+    /// decision after the opening enemy is the one a run without a directive would have made.
+    /// </summary>
+    public string openingSpawnSpokenValueId = "";
+
+    /// <summary>
     /// Lets the final wave keep emitting past its authored enemyCount until the last slot is
     /// restored. Required, not optional: an ordinary run that misses one needed carrier exhausts
     /// the 24-enemy Level 1 budget and would otherwise deadlock.
@@ -112,9 +159,15 @@ public class SpawnAssignmentPolicy
 
     /// <summary>
     /// Slots withheld until a beat resolves. Level 1 gates slot 3 (the MA of AMA) on
-    /// <see cref="SpawnGateRegistry.IligawBeatResolved"/>.
+    /// <see cref="SpawnGateRegistry.AboAshShown"/>.
     /// </summary>
     public List<SpawnSlotGate> slotGates = new List<SpawnSlotGate>();
+
+    /// <summary>
+    /// Slots whose anti-rush floor differs from <see cref="minSpawnsBeforeNeeded"/>. Level 1 lowers
+    /// slot 0 (the E/I of INA) to 1 so the tutorial's first drawing actually restores something.
+    /// </summary>
+    public List<SpawnSlotFloor> slotFloors = new List<SpawnSlotFloor>();
 
     /// <summary>Gate token for a flattened slot index, or null when the slot is ungated.</summary>
     public string GateTokenForSlot(int slotIndex)
@@ -132,6 +185,27 @@ public class SpawnAssignmentPolicy
         return null;
     }
 
+    /// <summary>
+    /// Anti-rush floor for a flattened slot index: the slot's own override when one is authored,
+    /// otherwise the level-wide <see cref="minSpawnsBeforeNeeded"/>. Falling back rather than
+    /// requiring an entry per slot is what keeps a per-slot exception cheap to author and keeps the
+    /// four other levels, which want a uniform floor, on an empty list.
+    /// </summary>
+    public int MinSpawnsBeforeNeededForSlot(int slotIndex)
+    {
+        if (slotFloors == null)
+            return minSpawnsBeforeNeeded;
+
+        for (int i = 0; i < slotFloors.Count; i++)
+        {
+            SpawnSlotFloor floor = slotFloors[i];
+            if (floor != null && floor.slotIndex == slotIndex)
+                return floor.minSpawnsBeforeNeeded;
+        }
+
+        return minSpawnsBeforeNeeded;
+    }
+
     /// <summary>Clamps hand-edited Inspector values into ranges the director can honour.</summary>
     public void Sanitize()
     {
@@ -146,5 +220,23 @@ public class SpawnAssignmentPolicy
         if (activeSlotWindow < 1) activeSlotWindow = 1;
         if (choicePairWindow < 0f) choicePairWindow = 0f;
         if (maxConcurrentEnemies < 1) maxConcurrentEnemies = 1;
+
+        // A negative per-slot floor would read as "no floor at all" and hand the player an
+        // instant-win opportunity on the slot someone was only trying to loosen.
+        if (slotFloors != null)
+        {
+            for (int i = 0; i < slotFloors.Count; i++)
+            {
+                SpawnSlotFloor floor = slotFloors[i];
+                if (floor == null)
+                    continue;
+
+                if (floor.slotIndex < 0) floor.slotIndex = 0;
+                if (floor.minSpawnsBeforeNeeded < 0) floor.minSpawnsBeforeNeeded = 0;
+            }
+        }
+
+        if (openingSpawnSpokenValueId == null) openingSpawnSpokenValueId = "";
+        openingSpawnSpokenValueId = openingSpawnSpokenValueId.Trim();
     }
 }

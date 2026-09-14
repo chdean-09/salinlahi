@@ -18,7 +18,7 @@ public sealed class SpawnSlot
 
     /// <summary>
     /// Beat that must resolve before this slot is fillable, or null/empty when ungated.
-    /// Level 1's final slot carries "iligaw_beat_resolved".
+    /// Level 1's final slot carries "abo_ash_shown".
     /// </summary>
     public readonly string GateToken;
 
@@ -111,6 +111,13 @@ public struct SpawnAssignment
 
     /// <summary>True when this spawn was forced by either starvation timer rather than drawn.</summary>
     public bool WasForced;
+
+    /// <summary>
+    /// True on the one spawn that satisfied the policy's opening directive. Exposed because the
+    /// beat that plays around it - Level 1's Abo introduction card - has to know this is the
+    /// authored opening enemy rather than an ordinary filler that happens to carry the same symbol.
+    /// </summary>
+    public bool IsOpeningDirective;
 
     public static SpawnAssignment None => new SpawnAssignment
     {

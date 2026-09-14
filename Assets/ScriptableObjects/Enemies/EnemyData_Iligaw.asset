@@ -18,6 +18,7 @@ MonoBehaviour:
   description: A thin mirror-like creature with two faces. One face says E, while
     the other says I. It changes directions and creates false copies of the correct
     symbol.
+  abilityLine: It makes a false copy of the character it carries.
   moveSpeed: 1.5
   maxHealth: 1
   walkFrames:
@@ -71,5 +72,24 @@ MonoBehaviour:
   scrambleRadius: 3
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
+  scrambleTrueGlyphMinDwell: 2.6
+  scrambleTrueGlyphMaxDwell: 3.6
+  scrambleFalseBurstCount: 4
+  stainsNearbyGlyphs: 0
+  coversOwnGlyph: 0
+  glyphCoverInitialRevealSeconds: 1.2
+  glyphCoverHiddenSeconds: 2.4
+  glyphCoverRevealSeconds: 0.8
   spawnsMirrorDecoy: 1
   mirrorDecoyOffsetX: 1.4
+  mirrorDecoyConfusionPairs: {fileID: 11400000, guid: 8e7477a0b5b784268b447c6b405618d0, type: 2}
+  blocksEnemiesBehind: 0
+  ashesFirstSlot: 0
+  removesNames: 0
+  chainsNearestEnemy: 0
+  splitsOnDefeat: 0
+  splitSpawnData: {fileID: 0}
+  splitCount: 2
+  splitOffsetX: 0.9
+  spriteScale: 1
+  suppressDiscovery: 0

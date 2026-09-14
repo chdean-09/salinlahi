@@ -39,8 +39,14 @@ public class LevelFlowController : MonoBehaviour
     private enum RevealTiming { BeforeTutorial, AfterTutorial }
 
     [Header("Character Unlock Reveal")]
+    [Tooltip("OFF by default: the 'New Character Unlocked!' scroll interstitial does not play. " +
+             "This controls the PRESENTATION only — newly allowed characters are still unlocked " +
+             "and still appear in the Almanac either way. Tick it to restore the level-start reveal.")]
+    [SerializeField] private bool _playCharacterUnlockReveal;
+
     [Tooltip("Whether the 'New Character Unlocked!' reveal plays before or after the tutorial. " +
-             "Global; non-tutorial levels play it at level start regardless.")]
+             "Global; non-tutorial levels play it at level start regardless. Only has an effect " +
+             "while Play Character Unlock Reveal is on.")]
     [SerializeField] private RevealTiming _revealTiming = RevealTiming.AfterTutorial;
 
     private bool _levelEnded;
@@ -77,6 +83,12 @@ public class LevelFlowController : MonoBehaviour
     // Cleared by the continue tap and by terminal cleanup, so a segmented level
     // (SALIN-226) can engage the gate again for its next segment.
     private bool _waveClearedGateHeld;
+
+    // True once the target text has been restored in full, i.e. the run was won by finishing
+    // the text rather than by clearing the waves. Latched from the EventBus restoration-complete
+    // signal and read only by HandleDefenseComplete, to keep the Wave Cleared screen out of the
+    // way of the instant-win beat — see that method.
+    private bool _instantWinEarned;
 
     // The controller currently driving a live LF-CONTRACT-v2 machine, if any.
     // WaveManager/BossController consult this to decide whether their completion
@@ -173,6 +185,7 @@ public class LevelFlowController : MonoBehaviour
     {
         EventBus.OnLevelComplete += HandleLevelComplete;
         EventBus.OnDefenseComplete += HandleDefenseComplete;
+        EventBus.OnFocusWordRestorationComplete += HandleFocusWordRestorationComplete;
         EventBus.OnGameOver += HandleGameOver;
         EventBus.OnBossDefeated += HandleBossDefeated;
         EventBus.OnDialogueComplete += HandleDialogueComplete;
@@ -186,6 +199,7 @@ public class LevelFlowController : MonoBehaviour
     {
         EventBus.OnLevelComplete -= HandleLevelComplete;
         EventBus.OnDefenseComplete -= HandleDefenseComplete;
+        EventBus.OnFocusWordRestorationComplete -= HandleFocusWordRestorationComplete;
         EventBus.OnGameOver -= HandleGameOver;
         EventBus.OnBossDefeated -= HandleBossDefeated;
         EventBus.OnDialogueComplete -= HandleDialogueComplete;
@@ -1504,7 +1518,7 @@ public class LevelFlowController : MonoBehaviour
     {
         if (IsSandboxRun())
             yield break;
-        if (_levelConfig == null || _revealController == null)
+        if (_levelConfig == null)
             yield break;
 
         List<BaybayinCharacterSO> queue = CharacterUnlockRevealController.BuildRevealQueue(
@@ -1512,6 +1526,31 @@ public class LevelFlowController : MonoBehaviour
 
         if (queue.Count == 0)
             yield break;
+
+        // The scroll interstitial is authored off (_playCharacterUnlockReveal defaults to false),
+        // and the same branch covers a scene where no reveal controller is wired at all. Either
+        // way the reveal is not going to play — but suppressing the PRESENTATION must not suppress
+        // the unlock DATA. CharacterUnlockRevealController.Play is the only production site that
+        // writes CharacterUnlockProgress, so returning from here empty-handed would leave the
+        // Almanac permanently locked even though the player has earned the characters.
+        //
+        // Marking them now also keeps the queue drained. BuildRevealQueue filters on HasUnlocked,
+        // so if the reveal is ever authored back on it shows only the characters introduced from
+        // that point forward, instead of every character earned while it was off arriving at once
+        // in one stack of scrolls.
+        //
+        // Nothing downstream is left waiting. PlayRevealsIfAny is yielded inline from
+        // PlayOncePerLevelBeats, so an immediate yield break simply advances to the next beat
+        // (tutorial/prototype, then the boss tutorial, then BGM) — there is no completion callback
+        // to fire, because the old completion signal was the scroll's own OnHidden, consumed
+        // entirely inside Play. The drawing-input suppression likewise belongs to Play's
+        // try/finally; Play is never entered on this branch, so GameManager's suppression flag is
+        // never raised here and cannot be left stuck on.
+        if (!_playCharacterUnlockReveal || _revealController == null)
+        {
+            CharacterUnlockRevealController.RegisterUnlocksWithoutReveal(queue);
+            yield break;
+        }
 
         yield return _revealController.Play(queue);
     }
@@ -1587,6 +1626,19 @@ public class LevelFlowController : MonoBehaviour
             return;
         }
 
+        // INSTANT-WIN PATH. The run was won by finishing the target text, not by clearing the
+        // waves, and WaveManager has already played the beat that says so: the board froze with
+        // enemies alive, the banner read "the wave no longer matters", and those enemies then
+        // dissolved. Holding a "Wave Cleared" screen on top of that would contradict, in the
+        // player's next breath, the one rule the beat exists to teach — and the rule is the
+        // reason the beat is staged at all (level-01 design plan §2 B10). Reported straight
+        // through instead, which is the pre-SALIN-232 behaviour for this raise.
+        if (_instantWinEarned)
+        {
+            _machine.ReportDefenseComplete();
+            return;
+        }
+
         // BOSS PATH — a design decision, recorded rather than buried. BossController also
         // raises OnDefenseComplete (BossController.cs:322-323), so a boss level would show
         // a "Wave Cleared" banner after a boss phase, which is visibly wrong copy. Levels
@@ -1610,6 +1662,20 @@ public class LevelFlowController : MonoBehaviour
             _waveClearedGateHeld = false;
             _machine.ReportDefenseComplete();
         }
+    }
+
+    /// <summary>
+    /// The target text was restored in full, so the run is won on the win condition itself.
+    ///
+    /// Latch only. This deliberately does NOT drive the machine: WaveManager owns ending the
+    /// defense, and it does so through the ordinary CompleteRun -> OnDefenseComplete, so the
+    /// flow, the atomic save and the victory screen stay on one path whether the run ended on
+    /// a restored text or on a cleared wave list. Reporting completion from here as well would
+    /// race that raise and report the phase complete twice.
+    /// </summary>
+    private void HandleFocusWordRestorationComplete()
+    {
+        _instantWinEarned = true;
     }
 
     /// <summary>
@@ -1679,6 +1745,11 @@ public class LevelFlowController : MonoBehaviour
         // scenes, EditMode fixtures) so a late OnLevelComplete cannot commit there.
         _levelEnded = true;
         _flowAborted = true;
+
+        // An abandoned attempt's instant win must not carry into the next one. Retry is a
+        // full scene reload today, so this is belt-and-braces for a host that reuses the
+        // controller — the same reason _levelEnded is latched twice above.
+        _instantWinEarned = false;
     }
 
     protected virtual CampaignOutcomeCommitResult CommitCompletion()

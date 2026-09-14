@@ -23,6 +23,12 @@ namespace Salinlahi.Tests.Editor.Gameplay
     /// tracks "slot N is filled", and the auto-fill that would add it is drafted and unapproved.
     /// What is asserted here is the half that is real: obscuring the requirement display does not
     /// change whether a correct draw resolves.</para>
+    ///
+    /// <para><b>Per-spawn arming (Level 1 design §1).</b> The ash is no longer on for every living
+    /// Abo: a spawn is inert until it arms, and a type's introduction spawn never arms at all. The
+    /// display tests below therefore arm explicitly through <see cref="TickAsh"/> — the ability's
+    /// <i>contract</i> assertions are unchanged, only the state they need set up first. The
+    /// arming rules themselves are asserted separately, further down.</para>
     /// </summary>
     [TestFixture]
     public class AbongSimulaAshTests
@@ -36,6 +42,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
         public void SetUp()
         {
             AshFirstSlotController.ResetRegistryForTests();
+            ActiveCluePresenter.SetActiveForTests(null);
 
             var trackerGo = new GameObject("ActiveEnemyTracker_Abo_Test");
             _tracker = trackerGo.AddComponent<ActiveEnemyTracker>();
@@ -47,6 +54,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
         public void TearDown()
         {
             AshFirstSlotController.ResetRegistryForTests();
+            ActiveCluePresenter.SetActiveForTests(null);
             ClearSingletonInstance<ActiveEnemyTracker>();
             ClearSingletonInstance<GameManager>();
 
@@ -185,6 +193,196 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 "the null slot is skipped, so BA is the first readable slot and takes the ash");
         }
 
+        // ------------------------------------------------------- per-spawn arming
+
+        [Test]
+        public void UnarmedSpawn_LeavesTheClueReadable()
+        {
+            // The negative control for arming, and the introduction spawn's actual behaviour:
+            // Abo is the first enemy the player ever meets, and its card states the ability while
+            // the clue panel stays readable. An ash that was on here would have nothing to
+            // contrast with and would read as a rendering fault.
+            BaybayinCharacterSO ba = CreateCharacter("BA", "ba", "symbol.ba");
+            BaybayinCharacterSO ha = CreateCharacter("HA", "ha", "symbol.ha");
+            BaybayinCharacterSO ya = CreateCharacter("YA", "ya", "symbol.ya");
+
+            ActiveCluePresenter presenter = CreatePresenter(ba, ha, ya, out TMP_Text clueText);
+            Enemy clue = CreateEnemy(ya, y: -1f);
+
+            Enemy abo = CreateAbo(y: -3f);
+            var ash = abo.GetComponent<AshFirstSlotController>();
+            ash.Tick(0.016f);
+
+            Assert.IsFalse(ash.IsArmedThisSpawn, "a spawn starts unarmed");
+            Assert.IsFalse(AshFirstSlotController.IsAnyActive(),
+                "an unarmed Abo must not mask anything");
+
+            InvokePrivateVoid(presenter, "SetClueText", clue);
+            Assert.AreEqual("baha" + AshMask, clueText.text,
+                "the clue stays readable until a spawn's ash arms");
+        }
+
+        [Test]
+        public void IntroductionSpawn_StaysInert_EvenWhenArmed()
+        {
+            Enemy abo = CreateAbo(y: -3f);
+            var ash = abo.GetComponent<AshFirstSlotController>();
+
+            ash.SetSuppressedForIntroductionSpawn(true);
+            ash.ArmAsh();
+            ash.Tick(0.016f);
+
+            Assert.IsTrue(ash.IsSuppressedForIntroductionSpawn);
+            Assert.IsFalse(AshFirstSlotController.IsAnyActive(),
+                "the introduction spawn is inert even if something arms it");
+
+            // Lifting the suppression on a spawn that already armed restores the effect, so the
+            // beat can hand the spawn back rather than having to re-arm it.
+            ash.SetSuppressedForIntroductionSpawn(false);
+            Assert.IsTrue(AshFirstSlotController.IsAnyActive(),
+                "clearing the suppression re-exposes an armed spawn");
+        }
+
+        [Test]
+        public void RecycledShell_ComesBackUnarmedAndUnsuppressed()
+        {
+            Enemy abo = CreateAbo(y: -3f);
+            var ash = abo.GetComponent<AshFirstSlotController>();
+            ash.ArmAsh();
+            ash.SetSuppressedForIntroductionSpawn(true);
+            ash.Tick(2f);
+
+            // The pool boundary. EditMode fires no enable callbacks -- the same reason this
+            // fixture calls Awake by hand -- so the boundary is driven explicitly here; in play
+            // Enemy.EnsureAbilityComponent toggling `enabled` fires both.
+            InvokePrivateVoid(ash, "OnDisable");
+            InvokePrivateVoid(ash, "OnEnable");
+
+            Assert.IsFalse(ash.IsArmedThisSpawn,
+                "a recycled shell must come back unarmed, or the next Abo out of it would ash "
+                + "the clue with no gust and no trigger");
+            Assert.IsFalse(ash.IsSuppressedForIntroductionSpawn,
+                "a recycled shell must come back unsuppressed");
+            Assert.AreEqual(0f, ash.TimeOnScreenSeconds,
+                "the arming delay is measured from this spawn, not from the shell's first use");
+            Assert.IsFalse(AshFirstSlotController.IsAnyActive());
+        }
+
+        // ------------------------------------------------------- the arming trigger
+
+        [Test]
+        public void Trigger_Arms_OnlyWhenTheNeededSlotIsItsWordsSecondSymbol()
+        {
+            // The load-bearing condition. The ash masks the word's FIRST slot as well as the
+            // target one, so at position 1 the two coincide and the ash changes nothing: arming
+            // there spends the level's one gust on a visibly inert event.
+            Enemy abo = CreateAbo(y: -3f);
+            var ash = abo.GetComponent<AshFirstSlotController>();
+            ash.Tick(2f);
+
+            Assert.IsFalse(ash.WantsToArm(filledSlots: 1, neededSlotPositionInWord: 1),
+                "the needed slot being its word's first symbol makes the ash a no-op");
+            Assert.IsFalse(ash.WantsToArm(filledSlots: 1, neededSlotPositionInWord: 0),
+                "a finished target text has no slot for the ash to bite");
+            Assert.IsTrue(ash.WantsToArm(filledSlots: 1, neededSlotPositionInWord: 2),
+                "the second symbol of a word is where the ash actually hides something");
+        }
+
+        [Test]
+        public void Trigger_WaitsForTheOnScreenDelayAndTheFirstFilledSlot()
+        {
+            Enemy abo = CreateAbo(y: -3f);
+            var ash = abo.GetComponent<AshFirstSlotController>();
+
+            ash.Tick(0.5f);
+            Assert.IsFalse(ash.WantsToArm(filledSlots: 1, neededSlotPositionInWord: 2),
+                "arming inside the entrance window would read as one event with the Abo's walk-on");
+
+            ash.Tick(2f);
+            Assert.IsFalse(ash.WantsToArm(filledSlots: 0, neededSlotPositionInWord: 2),
+                "the clue has to have been read and used before masking it means anything");
+            Assert.IsTrue(ash.WantsToArm(filledSlots: 1, neededSlotPositionInWord: 2));
+        }
+
+        [Test]
+        public void Trigger_DoesNotArm_OnAnIntroductionSpawnOrAfterTheAshHasBeenShown()
+        {
+            Enemy first = CreateAbo(y: -3f);
+            var introduction = first.GetComponent<AshFirstSlotController>();
+            introduction.SetSuppressedForIntroductionSpawn(true);
+            introduction.Tick(2f);
+
+            Assert.IsFalse(introduction.WantsToArm(filledSlots: 1, neededSlotPositionInWord: 2),
+                "the introduction spawn is always inert");
+
+            Enemy second = CreateAbo(y: -4f);
+            var later = second.GetComponent<AshFirstSlotController>();
+            later.Tick(2f);
+            Assert.IsTrue(later.WantsToArm(filledSlots: 1, neededSlotPositionInWord: 2),
+                "precondition: a later spawn is eligible");
+
+            InvokePrivateVoid(later, "FireAsh");
+            Assert.IsTrue(later.IsArmedThisSpawn, "firing arms the spawn that fired");
+            Assert.IsTrue(AshFirstSlotController.AshShownThisLevel);
+
+            Enemy third = CreateAbo(y: -5f);
+            var thirdAsh = third.GetComponent<AshFirstSlotController>();
+            thirdAsh.Tick(2f);
+            Assert.IsFalse(thirdAsh.WantsToArm(filledSlots: 1, neededSlotPositionInWord: 2),
+                "the ash is shown once per level, so no later Abo re-arms it");
+        }
+
+        [Test]
+        public void Tick_FiresTheTrigger_FromLiveTargetTextProgress()
+        {
+            // End to end through the two facts only the HUD knows, so the wiring between the
+            // presenter's slot state and the trigger is asserted and not just the predicate.
+            ActiveCluePresenter presenter = CreateLevel1ShapedPresenter();
+            ActiveCluePresenter.SetActiveForTests(presenter);
+
+            Enemy abo = CreateAbo(y: -3f);
+            var ash = abo.GetComponent<AshFirstSlotController>();
+
+            ash.Tick(2f);
+            Assert.IsFalse(ash.IsArmedThisSpawn,
+                "nothing is filled yet, so the trigger must hold");
+
+            // The player fills slot 1 (I of INA), leaving NA -- its word's second symbol -- needed.
+            presenter.RestorationState.Apply("symbol.i");
+            Assert.AreEqual(1, presenter.RestoredSlotCount);
+            Assert.AreEqual(2, presenter.NeededSlotPositionInWord);
+
+            ash.Tick(0.016f);
+            Assert.IsTrue(ash.IsArmedThisSpawn, "the trigger fires once every condition holds");
+            Assert.IsTrue(AshFirstSlotController.IsAnyActive(),
+                "a fired trigger leaves the ash masking the clue");
+        }
+
+        [Test]
+        public void NeededSlotPosition_SkipsRestoredSlotsAndCrossesIntoTheNextWord()
+        {
+            ActiveCluePresenter presenter = CreateLevel1ShapedPresenter();
+
+            Assert.AreEqual(1, presenter.NeededSlotPositionInWord,
+                "an untouched target text needs INA's first symbol");
+
+            presenter.RestorationState.Apply("symbol.i");
+            Assert.AreEqual(2, presenter.NeededSlotPositionInWord, "NA is INA's second symbol");
+
+            presenter.RestorationState.Apply("symbol.na");
+            Assert.AreEqual(1, presenter.NeededSlotPositionInWord,
+                "the cursor crosses into AMA, whose A is its first symbol -- where the ash is a "
+                + "no-op and must not arm");
+
+            presenter.RestorationState.Apply("symbol.a");
+            Assert.AreEqual(2, presenter.NeededSlotPositionInWord, "MA is AMA's second symbol");
+
+            presenter.RestorationState.Apply("symbol.ma");
+            Assert.AreEqual(0, presenter.NeededSlotPositionInWord,
+                "a finished target text needs nothing");
+            Assert.AreEqual(4, presenter.RestoredSlotCount);
+        }
+
         // ---------------------------------------------------------------- helpers
 
         private static string BuildMaskedSpelling(
@@ -241,6 +439,57 @@ namespace Salinlahi.Tests.Editor.Gameplay
             return presenter;
         }
 
+        /// <summary>
+        /// A presenter on Level 1's actual target text: <c>INA AMA</c> as two focus words of two
+        /// symbols each. The arming trigger reads positions <i>within a word</i>, so a shape with
+        /// two words is the only one that exercises the cursor crossing a word boundary — which is
+        /// exactly where the ash flips from meaningful to inert.
+        /// </summary>
+        private ActiveCluePresenter CreateLevel1ShapedPresenter()
+        {
+            BaybayinCharacterSO i = CreateCharacter("E/I", "i", "symbol.i");
+            BaybayinCharacterSO na = CreateCharacter("NA", "na", "symbol.na");
+            BaybayinCharacterSO a = CreateCharacter("A", "a", "symbol.a");
+            BaybayinCharacterSO ma = CreateCharacter("MA", "ma", "symbol.ma");
+
+            var level = ScriptableObject.CreateInstance<LevelConfigSO>();
+            level.activeClueCombatEnabled = true;
+            level.clueChannels = ClueChannels.IncompleteWord;
+            level.focusWords.Add(CreateWord("level.01.focus.ina", "ina", "INA", i, na));
+            level.focusWords.Add(CreateWord("level.01.focus.ama", "ama", "AMA", a, ma));
+            _objectsToDestroy.Add(level);
+
+            var go = new GameObject("ActiveCluePresenter_Level1Shape_Test");
+            ActiveCluePresenter presenter = go.AddComponent<ActiveCluePresenter>();
+            _objectsToDestroy.Add(go);
+
+            SetPrivateField(presenter, "_level", level);
+            SetPrivateField(presenter, "_resolvedChannels", ClueChannels.IncompleteWord);
+            presenter.RestorationState.Configure(level.focusWords);
+            return presenter;
+        }
+
+        private static FocusWordDefinition CreateWord(
+            string stableId,
+            string latinSpelling,
+            string displayLabel,
+            BaybayinCharacterSO first,
+            BaybayinCharacterSO second)
+        {
+            return new FocusWordDefinition
+            {
+                stableId = stableId,
+                latinSpelling = latinSpelling,
+                displayLabel = displayLabel,
+                meaning = "test-word",
+                decomposition = new List<SymbolValueReference>
+                {
+                    new SymbolValueReference { symbol = first },
+                    new SymbolValueReference { symbol = second },
+                },
+            };
+        }
+
         private BaybayinCharacterSO CreateCharacter(string id, string syllable, string stableId)
         {
             var character = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
@@ -281,11 +530,17 @@ namespace Salinlahi.Tests.Editor.Gameplay
         private Enemy CreateAbo(float y)
             => CreateEnemy(CreateCharacter("A", "a", "symbol.a"), y, ashesFirstSlot: true);
 
+        /// <summary>
+        /// Puts one Abo's ash in its armed, masking state. Arming is explicit because the ability
+        /// is per spawn: a spawn that has not armed is inert by design, so a display test that
+        /// skipped this would be asserting the introduction spawn's behaviour instead.
+        /// </summary>
         private static AshFirstSlotController TickAsh(Enemy abo)
         {
             var ash = abo.GetComponent<AshFirstSlotController>();
             Assert.IsNotNull(ash, "ashesFirstSlot should attach AshFirstSlotController");
             Assert.IsTrue(ash.enabled);
+            ash.ArmAsh();
             ash.Tick(0.016f);
             return ash;
         }

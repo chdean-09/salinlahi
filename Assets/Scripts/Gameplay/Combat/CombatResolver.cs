@@ -61,6 +61,10 @@ public class CombatResolver : MonoBehaviour
     private readonly List<int> _clueTargetIndices = new List<int>();
     private readonly List<Enemy> _clueTargetBuffer = new List<Enemy>();
 
+    // Flattened target-text slots, rebuilt per draw from the presenter's restoration state. Same
+    // lifetime rule as the buffers above: valid for one resolve call, never handed out.
+    private readonly List<TargetTextSlotMap.Slot> _slotBuffer = new List<TargetTextSlotMap.Slot>();
+
     private void Awake()
     {
         if (_instance != null && _instance != this)
@@ -196,6 +200,12 @@ public class CombatResolver : MonoBehaviour
         if (closestTarget == null)
         {
             EventBus.RaiseDrawingMissed();
+
+            // Same board-describing prompt the clue path gets. A miss is a statement about what is on
+            // screen either way, and giving the legacy path its own wording would be two strings to
+            // keep in step for no gain.
+            PublishTextRelation(DrawTextRelation.NoCarrier, characterID, -1, -1, null);
+
             DebugLogger.Log(
                 $"CombatResolver: No enemy carries "
                 + $"{characterID} -- miss");
@@ -243,10 +253,14 @@ public class CombatResolver : MonoBehaviour
     /// level author's <c>multiKillChainEnabled</c> and this resolver's AOE threshold, so Level 1
     /// (chain off) keeps one draw to one kill.
     ///
-    /// Eligibility comes from <see cref="ActiveClueDirector.IsClueTargetable"/>, which excludes
-    /// decoys. That is deliberate: Iligaw's copy carries a false glyph, and admitting it to the
-    /// target set would let a correct draw land a decoy penalty on the player. Drawing a decoy's
-    /// false glyph remains a plain miss on this path, exactly as before.
+    /// Eligibility comes from <see cref="ActiveClueDirector.IsClueTargetable"/>, which now ADMITS
+    /// Iligaw's false copies: a copy's glyph is legible on a body on screen, so refusing it made a
+    /// correct drawing resolve as a miss and the miss prompt then denied that anything out there
+    /// carried a symbol the player could read on a walking enemy. A copy therefore competes for the
+    /// kill on the same closest-to-base terms as any other carrier, and the consequences are split in
+    /// two: the director withholds the word's credit, and this method reclassifies the draw as
+    /// <see cref="DrawTextRelation.FalseCopyShattered"/> so the HUD says a copy fell rather than
+    /// congratulating a fill that never happened.
     /// </remarks>
     private void ResolveActiveClueDraw(ActiveClueDirector director, string characterID)
     {
@@ -260,6 +274,8 @@ public class CombatResolver : MonoBehaviour
         if (!matchesClue)
         {
             EventBus.RaiseDrawingMissed();
+            PublishTextRelation(DrawTextRelation.NoCarrier, characterID, -1, -1, null);
+
             if (clue != null && clue.GlyphBadge != null)
                 clue.GlyphBadge.PlayFailFlash();
 
@@ -278,6 +294,41 @@ public class CombatResolver : MonoBehaviour
             return;
         }
 
+        Enemy primaryTarget = _clueTargetBuffer[0];
+
+        // Classified BEFORE the clue is consumed, because consuming it restores a slot and moves the
+        // cursor. Reading the relation afterwards would report every successful fill as
+        // AlreadyFilled -- the draw would have filled the slot it is being compared against.
+        DrawTextRelation relation = ClassifyAgainstTargetText(
+            characterID, out int relationSlotIndex, out int cursorSlotIndex);
+
+        // ...and then overridden by the BODY, because the glyph alone cannot see the deception. A
+        // false copy wears a real symbol of the real word, so classifying the drawn id against the
+        // text reports a copy's death as a slot fill — a claim of progress the player did not make,
+        // rendered identically to one they did. The whole point of the beat is that the copy fell and
+        // the real one walked on, and a fill-shaped response teaches the opposite.
+        //
+        // The check reads _clueTargetBuffer[0] rather than asking the director, and the two cannot
+        // disagree: ActiveClueDirector.FindFalseCopyHoldingTheDraw resolves the same question with
+        // DrawTargetResolver.SelectSingleIndex over a snapshot taken in this same frame under the
+        // same IsClueTargetable predicate, which is by construction this buffer's head. So the
+        // relation the HUD words its prompt from and the credit the director withholds are decided
+        // about one body, not two.
+        //
+        // The head is also the only place a copy can be: DrawTargetResolver keeps decoys out of the
+        // chain tail, so a chained draw's extra victims are real carriers by construction and there
+        // is no second body to interrogate here.
+        //
+        // Unconditional on a copy kill, not limited to the cursor case. A copy took nothing away when
+        // the drawn syllable was needed later or already restored — but those prompts both explain a
+        // non-advance by ORDER or by DUPLICATION, and both presume the body that fell was real. Told
+        // that after shattering a copy, the player attributes the outcome to the wrong cause and
+        // learns nothing about the copy at all.
+        if (primaryTarget != null && primaryTarget.IsDecoy)
+            relation = DrawTextRelation.FalseCopyShattered;
+
+        PublishTextRelation(relation, characterID, relationSlotIndex, cursorSlotIndex, primaryTarget);
+
         // Objective credit follows the GLYPH, not the enemy instance. Once any carrier is a legal
         // target, the closest carrier of the clue's glyph is often not the marked enemy itself;
         // keying credit to instance identity would silently drop progress for a draw that was
@@ -288,13 +339,12 @@ public class CombatResolver : MonoBehaviour
                                 && clue.Character.characterID == characterID;
         bool creditsObjective = matchesClueGlyph && director.TryConsumeClue(clue);
 
-        Enemy primary = _clueTargetBuffer[0];
-        if (primary != null && primary.Character != null)
-            EventBus.RaisePronunciationRequested(primary.Character);
+        if (primaryTarget != null && primaryTarget.Character != null)
+            EventBus.RaisePronunciationRequested(primaryTarget.Character);
 
         if (_clueTargetBuffer.Count == 1)
         {
-            StartCoroutine(ResolveMatchedEnemyAfterPronunciationLead(primary, characterID));
+            StartCoroutine(ResolveMatchedEnemyAfterPronunciationLead(primaryTarget, characterID));
         }
         else
         {
@@ -322,7 +372,85 @@ public class CombatResolver : MonoBehaviour
 
         DebugLogger.Log(
             $"CombatResolver: Active-clue hit {characterID} on {_clueTargetBuffer.Count} target(s) "
-            + $"(credits objective: {creditsObjective})");
+            + $"(credits objective: {creditsObjective}, text relation: {relation})");
+    }
+
+    /// <summary>
+    /// Where the drawn syllable sits in the target text the player is restoring.
+    /// </summary>
+    /// <remarks>
+    /// Built from the HUD's restoration state rather than from the spawn director's slot list. The
+    /// director's list is private to its coordinator and exists only on levels that route spawns
+    /// through it, whereas restoration state exists wherever a target text does — so keying off it
+    /// means a level can gain these feedback states without also adopting the schedule.
+    /// </remarks>
+    private DrawTextRelation ClassifyAgainstTargetText(
+        string characterID, out int slotIndex, out int cursorIndex)
+    {
+        slotIndex = -1;
+        cursorIndex = -1;
+
+        ActiveCluePresenter presenter = ResolvePresenter();
+        ActiveClueRestorationState state = presenter != null ? presenter.RestorationState : null;
+        if (state == null)
+            return DrawTextRelation.Unknown;
+
+        TargetTextSlotMap.Build(state.FocusWords, state.IsSlotRestored, _slotBuffer);
+        if (_slotBuffer.Count == 0)
+            return DrawTextRelation.Unknown;
+
+        return TargetTextSlotMap.Classify(_slotBuffer, characterID, out slotIndex, out cursorIndex);
+    }
+
+    /// <summary>
+    /// Hands one draw's text relation to the feedback HUD, resolving the drawn glyph to content so
+    /// the presenter has something to render even on a miss, where no enemy carried it.
+    /// </summary>
+    private static void PublishTextRelation(
+        DrawTextRelation relation,
+        string characterID,
+        int slotIndex,
+        int cursorIndex,
+        Enemy resolvedTarget)
+    {
+        DrawFeedbackSignals.RaiseTextRelationResolved(new DrawFeedbackReport
+        {
+            Relation = relation,
+            DrawnCharacterId = characterID,
+            DrawnCharacter = ResolveDrawnCharacter(characterID, resolvedTarget),
+            SlotIndex = slotIndex,
+            CursorSlotIndex = cursorIndex,
+            ResolvedTarget = resolvedTarget,
+        });
+    }
+
+    /// <summary>
+    /// The drawn glyph as content. Prefers the killed enemy's own character, and falls back to the
+    /// level's authored roster for the miss case, where by definition no enemy carries it.
+    /// </summary>
+    private static BaybayinCharacterSO ResolveDrawnCharacter(string characterID, Enemy resolvedTarget)
+    {
+        if (resolvedTarget != null && resolvedTarget.Character != null)
+            return resolvedTarget.Character;
+
+        if (string.IsNullOrEmpty(characterID))
+            return null;
+
+        // The level roster rather than a global registry: the miss prompt names a glyph the player
+        // just drew on a level that authored it, and a roster lookup needs no new asset reference to
+        // wire and cannot resolve a character this level was never meant to show.
+        List<BaybayinCharacterSO> roster = GameManager.CurrentLevelConfig?.allowedCharacters;
+        if (roster == null)
+            return null;
+
+        for (int i = 0; i < roster.Count; i++)
+        {
+            BaybayinCharacterSO character = roster[i];
+            if (character != null && character.characterID == characterID)
+                return character;
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -344,11 +472,18 @@ public class CombatResolver : MonoBehaviour
         for (int i = 0; i < _clueEnemyBuffer.Count; i++)
         {
             Enemy enemy = _clueEnemyBuffer[i];
+
+            // The copy flag is carried alongside eligibility, not folded into it. A copy IS a legal
+            // target — it has to be, or its glyph reads as a miss — but it is not a legitimate member
+            // of a multi-kill set, and the resolver cannot make that distinction from a board it is
+            // only told is eligible. Left unpassed, a copy pads the chain threshold and then dies as
+            // one of the chain's victims, both of which dress a copy's death up as part of a reward.
             _clueCandidateBuffer.Add(new ClueCandidate(
                 enemy != null && enemy.Character != null ? enemy.Character.characterID : null,
                 enemy != null ? enemy.transform.position.y : float.MaxValue,
                 enemy != null ? enemy.SpawnSequence : long.MaxValue,
-                ActiveClueDirector.IsClueTargetable(enemy)));
+                ActiveClueDirector.IsClueTargetable(enemy),
+                enemy != null && enemy.IsDecoy));
         }
 
         DrawTargetResolver.SelectTargets(
@@ -362,28 +497,52 @@ public class CombatResolver : MonoBehaviour
             _clueTargetBuffer.Add(_clueEnemyBuffer[_clueTargetIndices[i]]);
     }
 
+    /// <summary>
+    /// The one carrier a non-chaining draw kills: the enemy closest to the base, ties broken by
+    /// spawn sequence.
+    /// </summary>
+    /// <remarks>
+    /// This used to be a bare running minimum on Y with no tiebreak, which is not the same thing as
+    /// deterministic. Two enemies spawned on the same row do not have bit-identical Y, but they are
+    /// within float noise of each other, and which one won depended on the order
+    /// ActiveEnemyTracker happened to hand the list over — so the pair moment where two bodies carry
+    /// the same glyph resolved differently between runs, and the deception beat where one of them is
+    /// a decoy became a coin flip the player cannot read.
+    ///
+    /// Rather than restate a tiebreak here, this now routes through <see cref="ActiveClueSelector"/>,
+    /// the same policy <see cref="DrawTargetResolver"/> gives the active-clue path. One rule, one
+    /// place: the two paths can no longer disagree about which enemy a draw kills, and the rule stays
+    /// covered by that type's EditMode tests instead of needing a scene to exercise.
+    ///
+    /// No glyph filter is applied here because there is nothing left to filter — every entry arrives
+    /// from <c>ActiveEnemyTracker.FindAllWithCharacter</c>, which already matched the drawn id
+    /// exactly. Eligibility is the only remaining question.
+    /// </remarks>
     private static Enemy FindClosestEligibleMatch(List<Enemy> matches)
     {
         if (matches == null || matches.Count == 0)
             return null;
 
-        Enemy closest = null;
-        float lowestY = float.MaxValue;
+        var candidates = new List<ClueCandidate>(matches.Count);
         for (int i = 0; i < matches.Count; i++)
         {
             Enemy candidate = matches[i];
-            if (!IsEligibleCombatTarget(candidate))
-                continue;
 
-            float y = candidate.transform.position.y;
-            if (y < lowestY)
-            {
-                lowestY = y;
-                closest = candidate;
-            }
+            // Populated even though this path selects a single target and never chains: the flag is
+            // part of describing the body, and a candidate that silently reports "not a copy" about
+            // an enemy whose copy-ness is known right here is a trap for whoever widens this path
+            // next. ActiveClueSelector does not read it — which carrier dies stays distance and spawn
+            // order, with no "if decoy" branch in the policy.
+            candidates.Add(new ClueCandidate(
+                candidate != null && candidate.Character != null ? candidate.Character.characterID : null,
+                candidate != null ? candidate.transform.position.y : float.MaxValue,
+                candidate != null ? candidate.SpawnSequence : long.MaxValue,
+                IsEligibleCombatTarget(candidate),
+                candidate != null && candidate.IsDecoy));
         }
 
-        return closest;
+        int index = ActiveClueSelector.SelectIndex(candidates);
+        return index >= 0 ? matches[index] : null;
     }
 
     private static bool IsEligibleCombatTarget(Enemy enemy)

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b739b8fcb7e84356a28d87ae5678db4, type: 3}
   m_Name: Level1OnboardingSequence
   m_EditorClassIdentifier: Assembly-CSharp::OnboardingSequenceSO
-  beatOrder: 0000000001000000020000000400000005000000
+  beatOrder: 00000000010000000200000005000000
   protagonistIntro:
     fallbackText: The ancestors have called me back.
     dialogue: {fileID: 0}

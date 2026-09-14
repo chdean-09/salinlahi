@@ -17,6 +17,7 @@ MonoBehaviour:
   discoverySubtitle: 
   description: A faceless figure carrying stolen nameplates. It removes names from
     characters and dialogue boxes.
+  abilityLine: It removes names from characters and dialogue boxes.
   moveSpeed: 1.45
   maxHealth: 1
   walkFrames:
@@ -64,10 +65,30 @@ MonoBehaviour:
   postHurtCharacter: {fileID: 0}
   hurtFrames: []
   hurtAnimationFps: 12
-  removesNames: 1
   chargeMultiplier: 2.5
   chargeTriggerYNormalized: 0.5
   pauseDuration: 0.35
   scrambleRadius: 3
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
+  scrambleTrueGlyphMinDwell: 2.6
+  scrambleTrueGlyphMaxDwell: 3.6
+  scrambleFalseBurstCount: 4
+  stainsNearbyGlyphs: 0
+  coversOwnGlyph: 0
+  glyphCoverInitialRevealSeconds: 1.2
+  glyphCoverHiddenSeconds: 2.4
+  glyphCoverRevealSeconds: 0.8
+  spawnsMirrorDecoy: 0
+  mirrorDecoyOffsetX: 1.4
+  mirrorDecoyConfusionPairs: {fileID: 0}
+  blocksEnemiesBehind: 0
+  ashesFirstSlot: 0
+  removesNames: 1
+  chainsNearestEnemy: 0
+  splitsOnDefeat: 0
+  splitSpawnData: {fileID: 0}
+  splitCount: 2
+  splitOffsetX: 0.9
+  spriteScale: 1
+  suppressDiscovery: 0

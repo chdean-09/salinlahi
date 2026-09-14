@@ -19,9 +19,56 @@ public class KempeiScrambleController : MonoBehaviour
     private readonly List<Enemy> _enemiesToClear = new();
     private Enemy _enemy;
 
+    /// <summary>
+    /// True while this spawn is the one that introduced its type, in which case the stain must do
+    /// nothing at all. See <see cref="SetSuppressedForIntroductionSpawn"/>.
+    /// </summary>
+    private bool _suppressedForIntroductionSpawn;
+
+    /// <summary>
+    /// Makes this ability inert for one spawn — the spawn on which the enemy's introduction card
+    /// plays — and arms it again on every later spawn of the type.
+    ///
+    /// <para>
+    /// <b>Why the stain must not fire on the spawn that introduces it.</b> Mantsa's stain churns a
+    /// neighbour's badge between its true face and wrong ones several times a second. A player who
+    /// has never been told that happens, watching it for the first time while the card explaining it
+    /// is still sliding in, reads a flickering glyph as a rendering fault — and, worse, may be
+    /// mid-stroke against the very badge that is churning. The card sets the expectation first; the
+    /// stain arms on a later Mantsa, against a board the player has already read cleanly.
+    /// </para>
+    ///
+    /// <para>
+    /// Suppression withdraws the effect as well as preventing it: any neighbour already carrying a
+    /// scrambled face is handed its real glyph back immediately, rather than waiting for the next
+    /// churn step that will now never come.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Pooling.</b> Suppression is per spawn, never per shell. <c>Enemy.Initialize</c> restates it
+    /// on every spawn and <see cref="OnEnable"/> clears it, so a recycled shell always comes back
+    /// unsuppressed.
+    /// </para>
+    /// </summary>
+    public void SetSuppressedForIntroductionSpawn(bool suppressed)
+    {
+        if (_suppressedForIntroductionSpawn == suppressed)
+            return;
+
+        _suppressedForIntroductionSpawn = suppressed;
+        if (suppressed)
+            ClearAffectedEnemies();
+    }
+
     private void Awake()
     {
         _enemy = GetComponent<Enemy>();
+    }
+
+    private void OnEnable()
+    {
+        // A pooled shell must not inherit the previous occupant's suppression.
+        _suppressedForIntroductionSpawn = false;
     }
 
     private void OnDisable()
@@ -36,7 +83,12 @@ public class KempeiScrambleController : MonoBehaviour
     {
         // Gated by data so the shared corruption shell can carry this for Mantsa ("It stains
         // correct symbols and changes them into incorrect forms") and stay inert for everyone else.
-        if (_enemy == null || _enemy.Data == null || !_enemy.Data.stainsNearbyGlyphs)
+        // The introduction-spawn suppression joins the same gate rather than getting its own early
+        // return, so both ways of being inert release held neighbours through one path.
+        if (_suppressedForIntroductionSpawn
+            || _enemy == null
+            || _enemy.Data == null
+            || !_enemy.Data.stainsNearbyGlyphs)
         {
             ClearAffectedEnemies();
             return;
