@@ -228,6 +228,75 @@ namespace Salinlahi.Tests.Editor.Gameplay
             return enemy;
         }
 
+        [Test]
+        public void SplitsOnDefeat_AttachesHatiSplitController_AndTogglesItOnReuse()
+        {
+            Enemy enemy = CreateShellEnemy(withBadge: false);
+
+            EnemyDataSO hati = CreateData("hati");
+            hati.splitsOnDefeat = true;
+            Assert.IsTrue(enemy.Initialize(hati));
+            HatiSplitController split = enemy.GetComponent<HatiSplitController>();
+            Assert.IsNotNull(split, "splitsOnDefeat should attach HatiSplitController");
+            Assert.IsTrue(split.enabled);
+
+            EnemyDataSO piece = CreateData("hati-minion");
+            Assert.IsTrue(enemy.Initialize(piece));
+            Assert.IsFalse(enemy.GetComponent<HatiSplitController>().enabled,
+                "a reused shell spawned as a piece must not split again");
+        }
+
+        [Test]
+        public void SplitSpawnData_ResolvesOnlyToNonRecursivePieceData()
+        {
+            EnemyDataSO hati = CreateData("hati");
+            EnemyDataSO piece = CreateData("hati-minion");
+
+            Assert.IsNull(HatiSplitController.ResolveSpawnData(null));
+            Assert.IsNull(HatiSplitController.ResolveSpawnData(hati), "no flag, no split");
+
+            hati.splitsOnDefeat = true;
+            Assert.IsNull(HatiSplitController.ResolveSpawnData(hati), "flag without piece data spawns nothing");
+
+            hati.splitSpawnData = hati;
+            Assert.IsNull(HatiSplitController.ResolveSpawnData(hati), "a source may not spawn copies of itself");
+
+            hati.splitSpawnData = piece;
+            piece.splitsOnDefeat = true;
+            Assert.IsNull(HatiSplitController.ResolveSpawnData(hati), "pieces that split would recurse forever");
+
+            piece.splitsOnDefeat = false;
+            Assert.AreSame(piece, HatiSplitController.ResolveSpawnData(hati));
+        }
+
+        [Test]
+        public void SplitOffset_FansPiecesOutHorizontallyAroundTheSource()
+        {
+            Assert.AreEqual(Vector3.zero, HatiSplitController.SplitOffset(0, 1, 0.9f));
+            Assert.AreEqual(new Vector3(-0.9f, 0f, 0f), HatiSplitController.SplitOffset(0, 2, 0.9f));
+            Assert.AreEqual(new Vector3(0.9f, 0f, 0f), HatiSplitController.SplitOffset(1, 2, 0.9f));
+            Assert.AreEqual(Vector3.zero, HatiSplitController.SplitOffset(1, 3, 0.9f), "the middle of three sits on the source");
+        }
+
+        [Test]
+        public void SpriteScale_ScalesTheShellPerSpawn_AndRestoresItOnReuse()
+        {
+            Enemy enemy = CreateShellEnemy(withBadge: false);
+            enemy.transform.localScale = new Vector3(0.5f, 0.5f, 1f);
+            // Awake captured the authored scale when the component was added; restate it as the
+            // shell's base the way a prefab instance would carry it.
+            SetPrivateField(enemy, "_shellBaseLocalScale", enemy.transform.localScale);
+
+            EnemyDataSO piece = CreateData("hati-minion");
+            piece.spriteScale = 0.6f;
+            Assert.IsTrue(enemy.Initialize(piece));
+            Assert.AreEqual(0.3f, enemy.transform.localScale.x, 1e-4f);
+            Assert.AreEqual(0.3f, enemy.transform.localScale.y, 1e-4f);
+
+            Assert.IsTrue(enemy.Initialize(CreateData("plain")));
+            Assert.AreEqual(0.5f, enemy.transform.localScale.x, 1e-4f, "a reused shell returns to the authored scale");
+        }
+
         private EnemyDataSO CreateData(string enemyID)
         {
             var data = ScriptableObject.CreateInstance<EnemyDataSO>();
