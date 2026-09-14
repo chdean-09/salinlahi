@@ -23,6 +23,19 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     [SerializeField] private Vector2 _activeClueMarkOffset = Vector2.zero;
     [SerializeField] private float _activeClueMarkScale = 1.9f;
 
+    // Off by default: the gold ring read as noise around the enemy art rather than as a marker.
+    // The scroll badge above the enemy carries the "this is your target" job on levels that reveal
+    // the glyph. Levels that do NOT reveal it have no other active-enemy marker, so the ring stays
+    // switchable rather than deleted.
+    [SerializeField] private bool _showActiveClueMark;
+
+    /// <summary>Whether the ring marking the active enemy is drawn. Off by default.</summary>
+    public bool ShowActiveClueMark
+    {
+        get => _showActiveClueMark;
+        set => _showActiveClueMark = value;
+    }
+
     [Header("Word Restoration Cue")]
     [Tooltip("Optional authored label for the at-accept word-restoration cue. "
              + "A runtime label is built when empty.")]
@@ -447,6 +460,13 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     /// </summary>
     private void UpdateActiveClueMark(Enemy clue)
     {
+        if (!_showActiveClueMark)
+        {
+            if (_activeClueMark != null)
+                _activeClueMark.SetActive(false);
+            return;
+        }
+
         if (clue == null)
         {
             if (_activeClueMark != null)
