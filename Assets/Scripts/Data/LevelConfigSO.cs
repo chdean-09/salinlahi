@@ -115,6 +115,10 @@ public class LevelConfigSO : ScriptableObject
     [Tooltip("Optional onboarding sequence played before waves. Level 1 uses basic onboarding; Level 2 uses advanced combat onboarding.")]
     public OnboardingSequenceSO onboardingSequence;
 
+    [Tooltip("Enemy introduction lessons authored for this level. Level 1 carries one (Abo ng "
+        + "Simula); every other level leaves this empty and uses the four-step introduction card.")]
+    public EnemyLessonSO[] enemyLessons = System.Array.Empty<EnemyLessonSO>();
+
     [Tooltip("Enables the generalized challenge sequence for this level. Legacy onboarding remains the fallback when disabled.")]
     public bool challengePrototypeEnabled;
 
