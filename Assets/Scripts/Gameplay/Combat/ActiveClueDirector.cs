@@ -190,6 +190,14 @@ public sealed class ActiveClueDirector : MonoBehaviour
     }
 
     /// <summary>
+    /// Public face of <see cref="IsEligibleClue"/>, for CombatResolver's multi-target draw
+    /// resolution. Exposed rather than restated so the set of enemies a draw may resolve against
+    /// can never drift from the set the mark may land on — in particular the decoy exclusion,
+    /// which keeps a correct draw from being diverted into Iligaw's false copy.
+    /// </summary>
+    public static bool IsClueTargetable(Enemy enemy) => IsEligibleClue(enemy);
+
+    /// <summary>
     /// Mirrors CombatResolver's combat eligibility and adds clue-only exclusions: decoys carry
     /// deliberately wrong glyphs, and bosses are routed through BossController instead.
     /// </summary>
