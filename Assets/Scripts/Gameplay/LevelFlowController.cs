@@ -120,6 +120,7 @@ public class LevelFlowController : MonoBehaviour
     private CampaignOutcomeCommitResult _completionCommitResult;
     private ActiveClueDirector _activeClueDirector;
     private ActiveCluePresenter _activeCluePresenter;
+    private SpawnAssignmentCoordinator _spawnAssignmentCoordinator;
     private FocusWordPreviewController _focusWordPreview;
     private SymbolLearningCardController _symbolLearningCards;
     private LevelReadyScreenController _levelReadyScreen;
@@ -1246,6 +1247,17 @@ public class LevelFlowController : MonoBehaviour
             _activeCluePresenter = presenterObject.AddComponent<ActiveCluePresenter>();
         }
 
+        _spawnAssignmentCoordinator ??=
+            FindFirstObjectByType<SpawnAssignmentCoordinator>(FindObjectsInactive.Include);
+
+        if (_spawnAssignmentCoordinator == null)
+        {
+            GameObject coordinatorObject = new GameObject("[Runtime] SpawnAssignmentCoordinator");
+            coordinatorObject.transform.SetParent(transform, false);
+            _spawnAssignmentCoordinator =
+                coordinatorObject.AddComponent<SpawnAssignmentCoordinator>();
+        }
+
         if (_levelConfig != null && _levelConfig.challengeSequence != null && _challengeFlowController == null)
         {
             _challengeFlowController = FindFirstObjectByType<ChallengeFlowController>(FindObjectsInactive.Include);
@@ -1286,6 +1298,9 @@ public class LevelFlowController : MonoBehaviour
         }
 
         _activeCluePresenter?.ApplyLevel(_levelConfig);
+
+        // Built after the presenter, because the schedule reads restoration state back from it.
+        _spawnAssignmentCoordinator?.ApplyLevel(_levelConfig, _activeCluePresenter);
     }
 
     private bool ShouldCreateRuntimeOnboardingController()

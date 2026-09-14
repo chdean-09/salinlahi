@@ -34,6 +34,12 @@ public class LevelConfigSO : ScriptableObject
     [Tooltip("Visual channel added automatically when clueChannels is audio-only.")]
     public ClueChannels audioVisualFallback = ClueChannels.LatinText;
 
+    [Tooltip("Schedules which syllable each spawning enemy carries, so the level's length and the "
+        + "order the player meets its content are authored rather than left to a uniform random "
+        + "draw. Applies only when activeClueCombatEnabled is true; other levels keep legacy "
+        + "assignment. See docs/design/spawn-assignment-system.md.")]
+    public SpawnAssignmentPolicy spawnAssignmentPolicy = new SpawnAssignmentPolicy();
+
     [Tooltip("Scales every enemy's walk speed on this level. 1 leaves the authored speed alone. "
              + "Lower it to give an early level more reaction time without slowing the same enemy "
              + "on the later levels it also appears in.")]
