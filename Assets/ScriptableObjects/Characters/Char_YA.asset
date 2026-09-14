@@ -24,7 +24,7 @@ MonoBehaviour:
   description: 
   displaySprite: {fileID: -8685243623993888310, guid: 7c42c3d432e88b2448b72d3da94d9a87, type: 3}
   almanacSprite: {fileID: 0}
-  badgeSprite: {fileID: 0}
+  badgeSprite: {fileID: 5130418336738511303, guid: 549db6cfa9024d029d3023611527a992, type: 3}
   scrambledBadgeSprite: {fileID: 0}
   glyphOutlineSprite: {fileID: 21300000, guid: aa1bf204c2ede4497bb6f485d346ae35, type: 3}
   pronunciationClip: {fileID: 8300000, guid: 56905813121b4a71b451fc88437b384f, type: 3}

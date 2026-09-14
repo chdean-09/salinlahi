@@ -86,12 +86,7 @@ public class EnemyGlyphBadge : MonoBehaviour
 
         _baseLocalPosition = new Vector3(_desiredWorldOffset.x * invX, _desiredWorldOffset.y * invY, 0f);
 
-        // _desiredWorldScale is authored against the badge art (roughly 125 px tall). The glyph
-        // outlines used as a fallback are 256 px square at the same PPU, so using one unchanged
-        // renders a glyph about twice the intended size. Normalise by the sprite's own height so a
-        // badge and an outline occupy the same footprint and the configured scale keeps its meaning.
-        float scale = _desiredWorldScale * SpriteScaleCompensation();
-        _baseLocalScale = new Vector3(scale * invX, scale * invY, 1f);
+        _baseLocalScale = new Vector3(_desiredWorldScale * invX, _desiredWorldScale * invY, 1f);
 
         if (forceApplyTransform || (!IsSwapping && !IsPlayingFinalDraw && !IsPlayingDecoyReject))
         {
@@ -125,10 +120,6 @@ public class EnemyGlyphBadge : MonoBehaviour
         }
         _renderer.sprite = sprite;
         _renderer.enabled = !_covered;
-
-        // The size compensation depends on which sprite is showing, so the layout has to be redone
-        // whenever it changes - otherwise a badge-to-outline swap keeps the previous sprite's scale.
-        RecomputeBaseFromParentScale();
     }
 
     public bool IsCovered => _covered;
@@ -257,34 +248,13 @@ public class EnemyGlyphBadge : MonoBehaviour
         transform.localRotation = _baseLocalRotation;
     }
 
-    /// <summary>
-    /// Factor that brings the current sprite to the footprint the badge art defines, so the
-    /// configured world scale means the same thing whether a badge or an outline is showing.
-    /// </summary>
-    private float SpriteScaleCompensation()
-    {
-        const float BadgeNominalPixelHeight = 125f;
-        if (_renderer == null || _renderer.sprite == null) return 1f;
-        float spriteHeight = _renderer.sprite.rect.height;
-        if (spriteHeight <= 1f) return 1f;
-        return BadgeNominalPixelHeight / spriteHeight;
-    }
-
     private Sprite ResolveSprite(BaybayinCharacterSO character)
     {
         if (character == null) return null;
         bool useScrambled = _enemy != null
                             && _enemy.HasVisualCharacterOverride
                             && character.scrambledBadgeSprite != null;
-        if (useScrambled) return character.scrambledBadgeSprite;
-
-        // Only seven of the eighteen symbols ever got badge art (Art/UI/GlyphBadges holds BA, DA,
-        // HA, KA, O, SA and WA). For the other eleven badgeSprite is null, and SetCharacter reads a
-        // null sprite as "disable the renderer" - so those enemies walked down carrying no glyph at
-        // all and the player had nothing to read. Abo ng Simula is the visible case: it carries
-        // symbol.a, which has no badge. Every symbol does have a glyph outline, so fall back to that
-        // rather than rendering nothing.
-        return character.badgeSprite != null ? character.badgeSprite : character.glyphOutlineSprite;
+        return useScrambled ? character.scrambledBadgeSprite : character.badgeSprite;
     }
 
     private IEnumerator SwapRoutine(BaybayinCharacterSO next)
