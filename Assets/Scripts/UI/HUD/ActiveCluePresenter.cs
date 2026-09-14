@@ -21,7 +21,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     [Tooltip("Optional authored marker for the active enemy. A procedural ring is built when empty.")]
     [SerializeField] private GameObject _activeClueMarkPrefab;
     [SerializeField] private Vector2 _activeClueMarkOffset = Vector2.zero;
-    [SerializeField] private float _activeClueMarkScale = 1.6f;
+    [SerializeField] private float _activeClueMarkScale = 1.9f;
 
     [Header("Word Restoration Cue")]
     [Tooltip("Optional authored label for the at-accept word-restoration cue. "
@@ -485,7 +485,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         _activeClueMark = new GameObject("[Runtime] ActiveClueMark", typeof(SpriteRenderer));
         SpriteRenderer markRenderer = _activeClueMark.GetComponent<SpriteRenderer>();
         markRenderer.sprite = _runtimeMarkSprite;
-        markRenderer.color = new Color(1f, 0.84f, 0.29f, 0.85f);
+        markRenderer.color = new Color(1f, 0.84f, 0.29f, 1f);
         markRenderer.sortingOrder = RenderOrder.ActiveClueMark;
         _activeClueMark.transform.localScale =
             new Vector3(_activeClueMarkScale, _activeClueMarkScale, 1f);
@@ -495,9 +495,9 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     /// <summary>A one world unit hollow ring, so the mark frames the enemy without hiding it.</summary>
     private static Sprite CreateRingSprite()
     {
-        const int size = 64;
+        const int size = 128;
         const float outerRadius = 0.5f;
-        const float innerRadius = 0.38f;
+        const float innerRadius = 0.41f;
 
         var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
         {
