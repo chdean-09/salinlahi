@@ -4,15 +4,11 @@ using UnityEngine;
 [RequireComponent(typeof(Enemy))]
 public class KempeiScrambleController : MonoBehaviour
 {
-    private const float FallbackMinGlitchInterval = 0.18f;
-    private const float FallbackMaxGlitchInterval = 0.36f;
-
     private sealed class ScrambleState
     {
         public BaybayinCharacterSO Character;
-        public bool IsScrambledVisible = true;
+        public GlyphStainCycle Cycle;
         public bool AppliedScrambledVisible;
-        public float NextToggleTime;
     }
 
     private readonly HashSet<Enemy> _affectedEnemies = new();
@@ -135,8 +131,14 @@ public class KempeiScrambleController : MonoBehaviour
         var state = new ScrambleState
         {
             Character = next,
-            IsScrambledVisible = true,
-            NextToggleTime = Time.time + Random.Range(GetMinGlitchInterval(), GetMaxGlitchInterval())
+            Cycle = new GlyphStainCycle(
+                Time.time,
+                GetMinGlitchInterval(),
+                GetMaxGlitchInterval(),
+                GetTrueMinDwell(),
+                GetTrueMaxDwell(),
+                GetFalseBurstCount(),
+                Random.value)
         };
         _activeScrambles[target] = state;
         return state;
@@ -144,15 +146,20 @@ public class KempeiScrambleController : MonoBehaviour
 
     private void ApplyScramblePulse(Enemy target, ScrambleState scramble, bool wasAffected)
     {
-        if (Time.time >= scramble.NextToggleTime)
-        {
-            scramble.IsScrambledVisible = !scramble.IsScrambledVisible;
-            scramble.NextToggleTime = Time.time + Random.Range(GetMinGlitchInterval(), GetMaxGlitchInterval());
-        }
+        bool changed = scramble.Cycle.Advance(Time.time, Random.value);
 
-        if (scramble.IsScrambledVisible)
+        if (scramble.Cycle.IsFalseGlyphVisible)
         {
-            if (!wasAffected || !scramble.AppliedScrambledVisible)
+            // Each churn step needs a DIFFERENT wrong face. Re-showing the same one reads as a
+            // flicker; scrolling through several is what sells the badge as searching for itself.
+            if (changed && scramble.Cycle.NeedsNewFalseGlyph)
+            {
+                BaybayinCharacterSO next = SelectWrongCharacter(target.Character);
+                if (next != null)
+                    scramble.Character = next;
+            }
+
+            if (changed || !wasAffected || !scramble.AppliedScrambledVisible)
             {
                 target.ApplyVisualCharacterOverride(this, scramble.Character);
                 scramble.AppliedScrambledVisible = true;
@@ -221,18 +228,46 @@ public class KempeiScrambleController : MonoBehaviour
         _activeScrambles.Clear();
     }
 
+    // The authored values are a request, not a guarantee. The churn band is floored at
+    // GlyphStainCycle.MinimumFalseGlyphInterval and the rest band at MinimumReadableInterval, so
+    // Mantsa's shipped 0.18/0.36 now reads as what it always was - the churn speed - while the
+    // true face gets a long window the authoring cannot shorten.
     private float GetMinGlitchInterval()
     {
         if (_enemy?.Data == null)
-            return FallbackMinGlitchInterval;
+            return GlyphStainCycle.DefaultFalseMinInterval;
 
         return Mathf.Max(0f, _enemy.Data.scrambleMinGlitchInterval);
+    }
+
+    private float GetTrueMinDwell()
+    {
+        if (_enemy?.Data == null)
+            return GlyphStainCycle.DefaultTrueMinInterval;
+
+        return Mathf.Max(0f, _enemy.Data.scrambleTrueGlyphMinDwell);
+    }
+
+    private float GetTrueMaxDwell()
+    {
+        if (_enemy?.Data == null)
+            return GlyphStainCycle.DefaultTrueMaxInterval;
+
+        return Mathf.Max(GetTrueMinDwell(), _enemy.Data.scrambleTrueGlyphMaxDwell);
+    }
+
+    private int GetFalseBurstCount()
+    {
+        if (_enemy?.Data == null)
+            return GlyphStainCycle.DefaultFalseBurstCount;
+
+        return Mathf.Max(1, _enemy.Data.scrambleFalseBurstCount);
     }
 
     private float GetMaxGlitchInterval()
     {
         if (_enemy?.Data == null)
-            return FallbackMaxGlitchInterval;
+            return GlyphStainCycle.DefaultFalseMaxInterval;
 
         float min = GetMinGlitchInterval();
         return Mathf.Max(min, _enemy.Data.scrambleMaxGlitchInterval);

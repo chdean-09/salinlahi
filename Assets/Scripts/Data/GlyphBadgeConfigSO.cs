@@ -42,6 +42,14 @@ public class GlyphBadgeConfigSO : ScriptableObject
     [Tooltip("Shake oscillations per second.")]
     public float decoyRejectShakeFrequency = 18f;
 
+    [Header("False Glyph (stained / overridden badge)")]
+    [Tooltip("Opacity multiplier applied while the badge shows a FALSE face (a visual character override) instead of the enemy's true symbol. Multiplies whatever alpha the swap/fade routines currently own, so the tell composes with them. 1 disables the dim.")]
+    [Range(0f, 1f)]
+    public float falseGlyphAlpha = 0.45f;
+
+    [Tooltip("Colour multiplied into a badge showing a false face. Keeps the tell legible where a dim alpha alone would sit over bright art. White disables the tint.")]
+    public Color falseGlyphTint = new Color(0.62f, 0.66f, 0.78f, 1f);
+
     [Header("Fail Feedback (Boss draw failed)")]
     public Color failFlashColor = new Color(1f, 0.3f, 0.3f, 1f);
     public float failFlashDuration = 0.15f;
@@ -58,5 +66,6 @@ public class GlyphBadgeConfigSO : ScriptableObject
         decoyRejectShakeDuration = Mathf.Max(0f, decoyRejectShakeDuration);
         decoyRejectShakeFrequency = Mathf.Max(0f, decoyRejectShakeFrequency);
         failFlashDuration = Mathf.Max(0f, failFlashDuration);
+        falseGlyphAlpha = Mathf.Clamp01(falseGlyphAlpha);
     }
 }
