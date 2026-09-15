@@ -123,26 +123,64 @@ namespace Salinlahi.Tests.Editor.UI
         }
 
         /// <summary>
-        /// The plate exists because of where the rail sits — over the wooden fence — and a plate
-        /// the fence shows through does not solve the contrast problem it was added for.
+        /// The backing plates are gone, and the field that coloured them with them.
+        ///
+        /// <para>
+        /// They only ever existed because the rail was drawn on the wooden fence, which it was only
+        /// drawn on because it is taller than the gap left for it. The rail now reserves a band of
+        /// its own below the play field, so there is no plank to plate against; a plate here would
+        /// be a dark rectangle inside an already dark band, which is what the request to remove them
+        /// was about.
+        /// </para>
         /// </summary>
         [Test]
-        public void SlotPlate_IsOpaque_SoTheFenceCannotShowThrough()
+        public void SlotPlate_IsGone_NowThatTheRailIsNoLongerDrawnOnTheFence()
         {
-            var host = new GameObject("ActiveCluePresenter_PlateTests");
+            FieldInfo field = typeof(ActiveCluePresenter).GetField(
+                "_slotPlateColor", BindingFlags.Instance | BindingFlags.NonPublic);
+
+            Assert.IsNull(field,
+                "ActiveCluePresenter._slotPlateColor is back. The plates were a workaround for the "
+                + "rail sitting on the fence; the reserved band removed the reason for them.");
+        }
+
+        /// <summary>
+        /// The glyph must fill its box generously, and the almanac art will not do that on its own:
+        /// it is drawn small inside a 320x320 transparent square, so the opaque ink spans only about
+        /// 44% of the PNG. Fitting the PNG to the box leaves the glyph reading at about 40% of its
+        /// frame, which is exactly the complaint. The sizing therefore has to divide the target fill
+        /// by that ink fraction.
+        /// </summary>
+        [Test]
+        public void GlyphSizing_ScalesAlmanacArtUp_SoItsInkFillsTheBoxNotItsMargin()
+        {
+            var host = new GameObject("ActiveCluePresenter_GlyphSizingTests");
             _created.Add(host);
             var presenter = host.AddComponent<ActiveCluePresenter>();
 
+            float fill = GetPrivateFloat(presenter, "_slotGlyphFill");
+            float ink = GetPrivateFloat(presenter, "_almanacGlyphInkFraction");
+
+            Assert.Greater(fill, 0.7f,
+                "A glyph that spans less than 70% of its box still reads as a small mark in a large "
+                + "frame, which is the state this replaced.");
+            Assert.Less(fill, 1f,
+                "…but it must leave a margin inside the gold frame rather than meeting it.");
+
+            Assert.That(ink, Is.EqualTo(0.44f).Within(0.05f),
+                "The almanac PNGs measured 42-44% ink across A, NA and MA. A value near 1 here means "
+                + "the scaling has been quietly turned off and the glyphs are small again.");
+
+            Assert.Greater(fill / ink, 1.5f,
+                "The glyph rect has to be scaled up well past the box for the INK to reach it.");
+        }
+
+        private static float GetPrivateFloat(ActiveCluePresenter presenter, string name)
+        {
             FieldInfo field = typeof(ActiveCluePresenter).GetField(
-                "_slotPlateColor", BindingFlags.Instance | BindingFlags.NonPublic);
-            Assert.IsNotNull(field, "Missing ActiveCluePresenter._slotPlateColor.");
-
-            var plate = (Color)field.GetValue(presenter);
-
-            Assert.GreaterOrEqual(plate.a, 0.99f,
-                "The backing plate must be opaque. A translucent plate lets the brown fence planks "
-                + "back into the glyph's ground, which is the pairing the plate was added to "
-                + "remove.");
+                name, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(field, $"Missing ActiveCluePresenter.{name}.");
+            return (float)field.GetValue(presenter);
         }
 
         private static Sprite ResolveSlotGlyph(BaybayinCharacterSO symbol)

@@ -1990,44 +1990,138 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         /// <summary>
-        /// The romanised label row sits on the fence just as the boxes do, and gold text on brown
-        /// planks was the worst pairing left on screen once the boxes had their plates — the
-        /// fence's plank seams cut straight through the letterforms. Only a screenshot caught it.
-        /// This pins the plate that fixed it: present, opaque, and BEHIND the labels, since a plate
-        /// drawn over them would hide the thing it was added to make readable.
+        /// The rail must not be drawn over the play field at the narrow shipped aspect.
+        ///
+        /// <para>
+        /// <b>The defect.</b> The rail was anchored into the gap between the fence's foot and the
+        /// bottom of the screen, and the gap is too small: at 900x1604 the rail stands about 159
+        /// screen pixels tall and the fence's bottom plank is only about 121 pixels up. It sat on
+        /// the planks, and two navy backing plates were added to keep the glyphs and the romanised
+        /// labels legible against brown wood — plates nobody asked for, papering over a layout
+        /// fault. This pins the fix: the rail's own measured height is RESERVED at the foot of the
+        /// screen and the play field is raised out of it.
+        /// </para>
+        ///
+        /// <para>
+        /// The invariant asserted is the strong one, and it needs no scene constants to state: every
+        /// world point the play column used to show — the fence's lowest plank and Juan's feet
+        /// included, wherever exactly they are — must project ABOVE the band once it is reserved.
+        /// Checked against the real rail's real screen height, so a rail that grows and a band that
+        /// does not cannot both pass.
+        /// </para>
+        ///
+        /// <para>
+        /// <b>The negative control matters here.</b> The same geometry is asserted to FAIL with no
+        /// band reserved, at the same aspect, so "clears the rail" cannot be passing against a rule
+        /// that everything clears.
+        /// </para>
         /// </summary>
         [UnityTest]
-        public IEnumerator RestorationRail_PutsAnOpaquePlateBehindTheRomanisedLabelRow()
+        public IEnumerator RestorationRail_ReservesItsOwnBand_ClearOfThePlayField_AtTheNarrowShippedAspect()
         {
             yield return null;
 
-            BuildRailFixture("labelplate");
+            // A real play column, in place before the rail is built, so the rail's own request for
+            // room goes through the production path rather than through the test's arithmetic.
+            GameObject columnGO = CreateTracked("BandPlayColumnCamera");
+            var columnCamera = columnGO.AddComponent<Camera>();
+            columnCamera.orthographic = true;
+            columnGO.transform.position = new Vector3(0f, 0f, -10f);
+            var playColumn = columnGO.AddComponent<AspectLockedCamera>();
+            yield return null;
+
+            float authoredCameraY = columnGO.transform.position.y;
+            Assert.AreEqual(0f, playColumn.BottomBandPixels,
+                "setup: nothing has asked for a band yet.");
+
+            BuildRailFixture("band");
 
             var railRoot = GetPrivateField<GameObject>(_presenter, "_railRoot");
-            Transform plate = railRoot.transform.Find("[Runtime] RestorationRailLabelPlate");
-            Assert.IsNotNull(plate, "The label row must have a backing plate.");
+            var railRect = (RectTransform)railRoot.transform;
+            var corners = new Vector3[4];
+            railRect.GetWorldCorners(corners);
 
-            var image = plate.GetComponent<Image>();
-            Assert.IsNotNull(image, "The label plate must actually draw something.");
-            Assert.GreaterOrEqual(image.color.a, 0.99f,
-                "A translucent plate lets the planks back through the letterforms, which is the "
-                + "whole problem it was added for.");
-
-            Assert.AreEqual(0, plate.GetSiblingIndex(),
-                "The plate must be the first child so every label, box and divider draws over it.");
-
-            int labelIndex = -1;
-            for (int i = 0; i < railRoot.transform.childCount; i++)
+            float railTopScreenY = float.NegativeInfinity;
+            float railBottomScreenY = float.PositiveInfinity;
+            for (int i = 0; i < corners.Length; i++)
             {
-                if (railRoot.transform.GetChild(i).name.Contains("RestorationSlotLabel"))
-                {
-                    labelIndex = i;
-                    break;
-                }
+                float y = RectTransformUtility.WorldToScreenPoint(null, corners[i]).y;
+                railTopScreenY = Mathf.Max(railTopScreenY, y);
+                railBottomScreenY = Mathf.Min(railBottomScreenY, y);
             }
 
-            Assert.Greater(labelIndex, plate.GetSiblingIndex(),
-                "Labels must draw after the plate, not under it.");
+            Assert.Greater(railTopScreenY, railBottomScreenY,
+                "setup: the rail must have a measurable screen height.");
+
+            Assert.GreaterOrEqual(playColumn.BottomBandPixels, railTopScreenY,
+                "The rail must reserve at least its own full height at the foot of the screen. "
+                + $"Measured: rail top {railTopScreenY:0.#}px, band "
+                + $"{playColumn.BottomBandPixels:0.#}px.");
+
+            // The lowest world y the play column showed BEFORE the band: the old bottom edge. This
+            // is where the fence's bottom plank and Juan's feet live — whatever their exact heights,
+            // they are inside this span, so lifting the whole span clear lifts them clear.
+            float playFieldFootBeforeBand = authoredCameraY - columnCamera.orthographicSize;
+
+            // Negative control: unbanded, that point sits ON the bottom edge of the screen, which is
+            // underneath the rail. That is the defect, asserted rather than assumed.
+            float footScreenYWithoutBand = columnCamera.WorldToScreenPoint(
+                new Vector3(0f, playFieldFootBeforeBand, 0f)).y
+                + (playColumn.BottomBandWorldHeight
+                   * (Screen.height / (2f * columnCamera.orthographicSize)) * -1f);
+            Assert.Less(footScreenYWithoutBand, railTopScreenY,
+                "negative control: with no band reserved the foot of the play field is BELOW the "
+                + "top of the rail — the rail is drawn over the play field. If this fails, the "
+                + "assertion below is passing for the wrong reason.");
+
+            float footScreenYWithBand = columnCamera.WorldToScreenPoint(
+                new Vector3(0f, playFieldFootBeforeBand, 0f)).y;
+            Assert.GreaterOrEqual(footScreenYWithBand, railTopScreenY - 0.5f,
+                "The foot of the play field must sit at or above the top of the rail. Measured: "
+                + $"rail top {railTopScreenY:0.#}px, play-field foot {footScreenYWithBand:0.#}px, "
+                + $"band {playColumn.BottomBandPixels:0.#}px.");
+
+            // And the same reservation, checked at the narrow shipped aspect this run is not
+            // running at: 900x1604, where the camera measures orthographic size 10.025 and one
+            // world unit is 80.0 screen pixels. The band must still be worth its own pixels there.
+            const float narrowOrthoSize = 10.025f;
+            const float narrowScreenHeight = 1604f;
+            float narrowBandWorld = AspectLockedCamera.BandWorldHeight(
+                playColumn.BottomBandPixels, narrowOrthoSize, narrowScreenHeight);
+            Assert.That(
+                narrowBandWorld * (narrowScreenHeight / (2f * narrowOrthoSize)),
+                Is.EqualTo(playColumn.BottomBandPixels).Within(0.01f),
+                "The band's world height must convert back to the pixels asked for at 900x1604.");
+            Assert.Greater(narrowBandWorld, 1.5f,
+                "At 900x1604 the rail stands about 159px tall and the fence's foot is about 121px "
+                + "up, so the band has to be worth well over a world unit or the rail is back on "
+                + $"the planks. Measured {narrowBandWorld:0.###} world units.");
+        }
+
+        /// <summary>
+        /// The plates are gone and must stay gone. They were a workaround for the rail being drawn
+        /// on the fence, and the band above removed the reason for them; reinstating one would put a
+        /// dark rectangle in the middle of an already dark band.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator RestorationRail_DrawsNoBackingPlates_BehindItsBoxesOrItsLabelRow()
+        {
+            yield return null;
+
+            RailFixture rail = BuildRailFixture("noplate");
+            _presenter.RestorationState.Apply(rail.First.stableId);
+            InvokePrivateVoid(_presenter, "RepaintRail", false);
+            yield return null;
+
+            var railRoot = GetPrivateField<GameObject>(_presenter, "_railRoot");
+            Assert.IsNull(railRoot.transform.Find("[Runtime] RestorationRailLabelPlate"),
+                "The continuous label-row strip must not come back.");
+
+            foreach (Transform child in railRoot.GetComponentsInChildren<Transform>(true))
+            {
+                Assert.IsFalse(child.name.Contains("RestorationSlotPlate"),
+                    $"A restored slot must carry no backing plate; found '{child.name}'.");
+            }
         }
 
         // ---- rail fixture helpers ----
@@ -2152,7 +2246,6 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         {
             object slot = GetRailSlot(index);
             var glyph = GetSlotField<Image>(slot, "Glyph");
-            var plate = GetSlotField<Image>(slot, "Plate");
             var frame = GetSlotField<Image>(slot, "Frame");
             var label = GetSlotField<TMPro.TextMeshProUGUI>(slot, "Label");
 
@@ -2162,8 +2255,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 $"glyphSprite={(glyph.sprite == null ? "none" : glyph.sprite.name)}",
                 $"glyphColor={glyph.color}",
                 $"glyphScale={glyph.transform.localScale}",
-                $"plateActive={(plate == null ? "none" : plate.gameObject.activeSelf.ToString())}",
-                $"plateColor={(plate == null ? "none" : plate.color.ToString())}",
+                $"glyphSize={((RectTransform)glyph.transform).sizeDelta}",
                 $"frameColor={frame.color}",
                 $"labelText={(label == null ? "none" : label.text)}",
                 $"labelColor={(label == null ? "none" : label.color.ToString())}",

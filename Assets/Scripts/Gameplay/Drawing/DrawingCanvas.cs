@@ -30,6 +30,39 @@ public class DrawingCanvas : MonoBehaviour
             _cameraRestWorldPosition = _cam.transform.position;
     }
 
+    private void OnEnable()
+    {
+        AspectLockedCamera playColumn = AspectLockedCamera.Instance;
+        if (playColumn != null)
+            playColumn.OnPlayAreaChanged += RebaseCameraRestPosition;
+        RebaseCameraRestPosition();
+    }
+
+    private void OnDisable()
+    {
+        AspectLockedCamera playColumn = AspectLockedCamera.Instance;
+        if (playColumn != null)
+            playColumn.OnPlayAreaChanged -= RebaseCameraRestPosition;
+    }
+
+    /// <summary>
+    /// Re-reads where the camera sits at rest.
+    ///
+    /// <para>
+    /// The shake compensation below subtracts the camera's offset from this position, so anything
+    /// that MOVES the camera on purpose — the reserved HUD band at the foot of the screen, which
+    /// lowers the camera so the restoration rail clears the fence — would otherwise be mistaken for
+    /// shake and silently undone, landing every stroke a band's height away from the finger.
+    /// </para>
+    /// </summary>
+    private void RebaseCameraRestPosition()
+    {
+        if (_cam == null)
+            _cam = Camera.main;
+        if (_cam != null)
+            _cameraRestWorldPosition = _cam.transform.position;
+    }
+
     public void BeginStroke()
     {
         GameObject go = new GameObject("Stroke");

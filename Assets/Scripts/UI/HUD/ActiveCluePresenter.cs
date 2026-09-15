@@ -63,16 +63,24 @@ public sealed class ActiveCluePresenter : MonoBehaviour
              + "walk in and where the clue panel and wave text already sit, and the target text "
              + "the player is filling reads better as the player's own row along the foot of the "
              + "field, under the base and under Juan.\n\n"
-             + "y=170 clears the bottom band the base art occupies. At the 1080x1920 reference and "
-             + "the gameplay camera's orthographic size of 10, one world unit is 96 canvas units "
-             + "and the camera spans world y -10..10, so the base at world y=-7.8 sits about 211 "
-             + "units up and Juan's walk ends at world y=-8.5, about 144 units up. The rail is "
-             + "about 98 units tall, so at y=170 it occupies 170-268 — above the base's foot, "
-             + "clear of Juan, and well inside the screen.\n\n"
+             + "y no longer has to dodge the fence. Every earlier value here was an attempt to "
+             + "thread the rail into the gap between the fence's foot and the bottom of the screen, "
+             + "and there was never enough room: the rail is about 190 units tall and the gap is "
+             + "about 145, so the rail sat ON the planks whatever y it was given. The rail now asks "
+             + "the play column to reserve a band for it and the play field is raised clear, so y is "
+             + "just the breathing room under the labels and wants to be SMALL — a large value here "
+             + "no longer lifts the rail off anything, it only makes the reserved band taller and "
+             + "eats the play field.\n\n"
              + "The safe area needs no arithmetic here: the rail parents to HUDLayer, a full-rect "
              + "child of HUDRoot, and HUDRoot carries SafeAreaHandler — so y=0 is the bottom of "
              + "the SAFE area and the home indicator's inset is already taken out underneath it.")]
-    [SerializeField] private Vector2 _railAnchoredPosition = new Vector2(0f, 96f);
+    [SerializeField] private Vector2 _railAnchoredPosition = new Vector2(0f, 24f);
+
+    [Tooltip("Clearance in canvas units left between the top of the rail and the foot of the play "
+             + "field, added to the band the rail asks the play column to reserve. Keeps the fence's "
+             + "bottom plank and Juan's feet from ending exactly on the rail's top edge, which reads "
+             + "as an overlap even when it is not one.")]
+    [SerializeField, Min(0f)] private float _railPlayFieldClearance = 28f;
 
     [Tooltip("Size of one target-text slot in canvas units. Slots are square by authoring "
              + "convention but the two axes are separate so a wide glyph can be given room.")]
@@ -87,9 +95,22 @@ public sealed class ActiveCluePresenter : MonoBehaviour
              + "words and not one run of four symbols.")]
     [SerializeField, Min(0f)] private float _wordGap = 80f;
 
-    [Tooltip("How far the Baybayin glyph is inset inside its slot, in canvas units, so the frame "
-             + "stays visible around a filled slot.")]
-    [SerializeField, Min(0f)] private float _slotGlyphInset = 10f;
+    [Tooltip("Share of the slot's box the glyph's INK should span, leaving the rest as an even "
+             + "margin inside the gold frame.\n\n"
+             + "Expressed as a share of the box rather than as an inset in canvas units because the "
+             + "rail grew and the glyphs did not follow: an inset is absolute, so the same 10 units "
+             + "that left a sensible margin on a small box leaves a huge one on a large box.")]
+    [SerializeField, Range(0.3f, 1f)] private float _slotGlyphFill = 0.84f;
+
+    [Tooltip("Share of an almanac PNG's square that actually carries ink.\n\n"
+             + "The almanac art is authored on a 320x320 canvas with the glyph drawn small and "
+             + "centred: the opaque pixels of A, NA and MA span 42-44% of the width. Fitting that "
+             + "sprite to the box therefore fills the box with mostly-transparent art and the glyph "
+             + "reads at about 40% of its frame, which is the complaint. The glyph rect is scaled up "
+             + "by fill/ink so it is the INK, not the PNG's empty margin, that meets the frame. "
+             + "Applies only to almanac art; the outline and badge fallbacks are drawn tight and are "
+             + "fitted to the box directly.")]
+    [SerializeField, Range(0.1f, 1f)] private float _almanacGlyphInkFraction = 0.44f;
 
     [Tooltip("Frame colour of a slot that is still waiting for its symbol.")]
     [SerializeField] private Color _emptySlotColor = new Color(1f, 1f, 1f, 0.22f);
@@ -108,20 +129,15 @@ public sealed class ActiveCluePresenter : MonoBehaviour
              + "(_filledSlotColor), which is where it was doing useful work.")]
     [SerializeField] private Color _filledGlyphColor = Color.white;
 
-    [Tooltip("Fill of the backing plate drawn inside a restored slot's frame, behind the glyph.\n\n"
-             + "The rail sits over the wooden fence at the bottom of the play area, and the "
-             + "almanac glyph's dark brown outline (0.28, 0.13, 0.09) against brown fence planks "
-             + "is the weakest pairing on screen — the previous visual pass flagged it. The plate "
-             + "takes the fence out of the equation so the glyph is read against a known ground "
-             + "rather than against whatever plank is behind it.\n\n"
-             + "The value is the clue panel's own ground (0.04, 0.06, 0.12), which is already in "
-             + "the palette, raised to full opacity so no fence shows through. Deep navy rather "
-             + "than a light parchment because the almanac art's FILL is near-white (0.91) and "
-             + "its outline is dark: on a light plate the fill washes out and only the outline "
-             + "reads, whereas on the navy the near-white body of the glyph carries the shape and "
-             + "the brown outline reads as its edge. It also keeps the gold frame legible, which "
-             + "a warm plate of similar hue would not.")]
-    [SerializeField] private Color _slotPlateColor = new Color(0.04f, 0.06f, 0.12f, 1f);
+    // The navy backing plates that used to be declared here — one inside every restored slot, one
+    // continuous strip behind the whole label row — are gone, and deliberately not replaced.
+    //
+    // They were both answers to the same accident: the rail was drawn ON TOP of the wooden fence,
+    // because it is taller than the gap between the fence's foot and the bottom of the screen. A
+    // near-white glyph and gold text on brown planks needed a plate to survive. The rail now has a
+    // reserved band of its own beneath the play field (AspectLockedCamera.SetBottomBandPixels), so
+    // it is read against the flat dark ground below the fence and there is nothing left to plate
+    // against. A plate here now would be a dark rectangle in the middle of a dark band.
 
     [Tooltip("Thickness of a slot frame's border as a fraction of the slot, used to generate the "
              + "hollow frame sprite. The frame is generated rather than authored because there is "
@@ -293,12 +309,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         public RectTransform Anchor;
         public Image Frame;
         public Image Glyph;
-
-        /// <summary>
-        /// The solid plate drawn inside the frame and behind the glyph on a restored slot, so the
-        /// glyph is read against a known ground instead of against the fence planks.
-        /// </summary>
-        public Image Plate;
 
         /// <summary>The romanised syllable printed under the box, and the label printing it.</summary>
         public TextMeshProUGUI Label;
@@ -1594,8 +1604,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
         railRect.sizeDelta = new Vector2(totalWidth, labelRow + _slotSize.y);
 
-        BuildLabelRowPlate(railRect, totalWidth, slotRowTop, labelRow);
-
         float x = 0f;
         bool anyWordPlaced = false;
         for (int wordIndex = 0; wordIndex < words.Count; wordIndex++)
@@ -1650,8 +1658,62 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             x += wordWidth;
         }
 
+        ReservePlayFieldBandForRail(railRect);
+
         _railRoot.SetActive(false);
         RepaintRail(forceRestored: false);
+    }
+
+    /// <summary>
+    /// Asks the play column to reserve the screen the rail occupies, so the play field — the fence,
+    /// the shrine and Juan, who stands below both — is raised clear of it.
+    ///
+    /// <para>
+    /// This is the fix for the rail being drawn ON the fence. The rail is about 190 canvas units
+    /// tall and the gap between the fence's foot and the bottom of the screen is about 145, so no
+    /// anchoring could have fitted it: the room has to be made, not found. Made by lowering the
+    /// camera, which moves nothing in the world — the shrine's hit line and the enemy path are
+    /// authored world positions and are untouched.
+    /// </para>
+    ///
+    /// <para>
+    /// Measured from the rail's own live corners rather than computed from the layout fields, so a
+    /// taller rail reserves a taller band on its own and the two can never drift apart. Screen
+    /// pixels, not canvas units, because the band is compared against the screen: the canvas
+    /// scaler's own factor and the safe-area inset the rail is parented inside are both already
+    /// baked into where those corners land.
+    /// </para>
+    /// </summary>
+    private void ReservePlayFieldBandForRail(RectTransform railRect)
+    {
+        AspectLockedCamera playColumn = AspectLockedCamera.Instance;
+        if (playColumn == null || railRect == null)
+            return;
+
+        Canvas canvas = railRect.GetComponentInParent<Canvas>();
+        if (canvas == null)
+            return;
+
+        Camera uiCamera = canvas.renderMode != RenderMode.ScreenSpaceOverlay
+            ? canvas.worldCamera
+            : null;
+
+        Vector3[] corners = new Vector3[4];
+        railRect.GetWorldCorners(corners);
+
+        float topScreenY = float.NegativeInfinity;
+        for (int i = 0; i < corners.Length; i++)
+        {
+            float screenY = RectTransformUtility.WorldToScreenPoint(uiCamera, corners[i]).y;
+            if (screenY > topScreenY)
+                topScreenY = screenY;
+        }
+
+        if (float.IsInfinity(topScreenY) || float.IsNaN(topScreenY))
+            return;
+
+        playColumn.SetBottomBandPixels(
+            topScreenY + (_railPlayFieldClearance * Mathf.Max(0.01f, canvas.scaleFactor)));
     }
 
     private float WordWidth(int slotCount) =>
@@ -1690,59 +1752,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     /// <see cref="RepaintRail"/>.
     /// </para>
     /// </summary>
-    /// <summary>
-    /// One continuous plate behind the whole romanised label row.
-    ///
-    /// <para>
-    /// The boxes got their own plates because the rail sits over the fence, but the label row sits
-    /// over it too, and gold text on brown planks turned out to be the worst pairing left on the
-    /// screen — worse than the glyphs ever were, because the fence's vertical plank seams cut
-    /// straight through the letterforms. A screenshot showed it immediately; no test could have.
-    /// </para>
-    ///
-    /// <para>
-    /// One strip rather than a plate per label, because the labels are different widths and four
-    /// separately-sized blobs under four evenly-spaced boxes read as debris. Unlike the slot plates
-    /// this one is always visible: an unearned slot still prints its mask here, and an illegible
-    /// mask is no better than an illegible syllable.
-    /// </para>
-    /// </summary>
-    private void BuildLabelRowPlate(
-        RectTransform railRect, float totalWidth, float slotRowTop, float labelRow)
-    {
-        if (totalWidth <= 0f || labelRow <= 0f)
-            return;
-
-        var plateObject = new GameObject(
-            "[Runtime] RestorationRailLabelPlate", typeof(RectTransform), typeof(Image));
-        plateObject.transform.SetParent(railRect, false);
-        // First child, so every box, divider and label draws over it.
-        plateObject.transform.SetAsFirstSibling();
-
-        Image plate = plateObject.GetComponent<Image>();
-        plate.color = _slotPlateColor;
-        plate.raycastTarget = false;
-
-        // A little wider than the slots so the row reads as one band rather than as a lid that
-        // stops exactly at the first and last box.
-        const float sidePadding = 12f;
-
-        // The label row's own height stops at the text box, but the mask glyph ("__") draws on the
-        // baseline and hangs a few pixels past it, so a plate cut to the row height exactly leaves
-        // the underscores of an UNEARNED slot straddling its bottom edge and back on the planks —
-        // the one state the plate most needs to cover, since a mask is harder to read than a word.
-        const float bottomBleed = 16f;
-
-        var rect = (RectTransform)plateObject.transform;
-        rect.anchorMin = new Vector2(0f, 1f);
-        rect.anchorMax = new Vector2(0f, 1f);
-        rect.pivot = new Vector2(0f, 1f);
-        rect.anchoredPosition = new Vector2(
-            -sidePadding, slotRowTop - _slotSize.y - _latinWordLabelGap);
-        rect.sizeDelta = new Vector2(
-            totalWidth + (sidePadding * 2f), _latinWordLabelRowHeight + bottomBleed);
-    }
-
     private TextMeshProUGUI BuildSlotLabel(
         RectTransform railRect,
         TextMeshProUGUI fontTemplate,
@@ -1862,38 +1871,17 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         rect.anchoredPosition = new Vector2(x, y);
         rect.sizeDelta = _slotSize;
 
-        // Built BEFORE the glyph so it is the earlier sibling and therefore draws behind it. It is
-        // inset by the frame's own border thickness so the plate stops where the gold starts and
-        // the frame still reads as a frame rather than as the edge of a filled tile.
-        var plateObject = new GameObject(
-            $"[Runtime] RestorationSlotPlate_{flattenedIndex}", typeof(RectTransform), typeof(Image));
-        plateObject.transform.SetParent(slotObject.transform, false);
-
-        Image plate = plateObject.GetComponent<Image>();
-        plate.color = _slotPlateColor;
-        plate.raycastTarget = false;
-        float plateInset = Mathf.Max(_slotSize.x, _slotSize.y) * _slotFrameBorderFraction;
-        SetStretch(
-            plateObject.GetComponent<RectTransform>(),
-            new Vector2(plateInset, plateInset),
-            new Vector2(-plateInset, -plateInset));
-        // Hidden until the slot is restored: an empty slot has to keep reading as a waiting
-        // outline, and a plate behind every box would turn the rail into a row of filled tiles.
-        plateObject.SetActive(false);
-
         var glyphObject = new GameObject(
             $"[Runtime] RestorationSlotGlyph_{flattenedIndex}", typeof(RectTransform), typeof(Image));
         glyphObject.transform.SetParent(slotObject.transform, false);
 
+        Sprite glyphSprite = ResolveSlotGlyph(reference.symbol);
         Image glyph = glyphObject.GetComponent<Image>();
-        glyph.sprite = ResolveSlotGlyph(reference.symbol);
+        glyph.sprite = glyphSprite;
         glyph.color = _filledGlyphColor;
         glyph.preserveAspect = true;
         glyph.raycastTarget = false;
-        SetStretch(
-            glyphObject.GetComponent<RectTransform>(),
-            new Vector2(_slotGlyphInset, _slotGlyphInset),
-            new Vector2(-_slotGlyphInset, -_slotGlyphInset));
+        ApplyGlyphSize(glyphObject.GetComponent<RectTransform>(), reference.symbol, glyphSprite);
         glyphObject.SetActive(false);
 
         return new RailSlot
@@ -1902,9 +1890,38 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             DecompositionIndex = decompositionIndex,
             Anchor = rect,
             Frame = frame,
-            Plate = plate,
             Glyph = glyph,
         };
+    }
+
+    /// <summary>
+    /// Sizes a slot's glyph so its INK, rather than its PNG, fills the box.
+    ///
+    /// <para>
+    /// The rect is centred on the slot and sized to <see cref="_slotGlyphFill"/> of it, then divided
+    /// by the art's ink fraction when the art is almanac art, which is drawn small inside a large
+    /// transparent square. Without that division the box is filled with the sprite's empty margin
+    /// and the glyph reads at about 40% of its frame — the complaint this answers. The overshoot is
+    /// transparent, so a rect that runs past the gold frame draws nothing there; what meets the
+    /// frame is the glyph itself, with an even margin left by <see cref="_slotGlyphFill"/>.
+    /// </para>
+    /// </summary>
+    private void ApplyGlyphSize(RectTransform glyphRect, BaybayinCharacterSO symbol, Sprite sprite)
+    {
+        if (glyphRect == null)
+            return;
+
+        bool isAlmanacArt = symbol != null && sprite != null && sprite == symbol.almanacSprite;
+        float inkFraction = isAlmanacArt ? Mathf.Max(0.01f, _almanacGlyphInkFraction) : 1f;
+        float scale = Mathf.Max(0.01f, _slotGlyphFill) / inkFraction;
+
+        // Centred, sized as a share of the slot, rather than stretched with an absolute inset: the
+        // inset was the reason the boxes could grow and the glyphs could not follow.
+        glyphRect.anchorMin = new Vector2(0.5f, 0.5f);
+        glyphRect.anchorMax = new Vector2(0.5f, 0.5f);
+        glyphRect.pivot = new Vector2(0.5f, 0.5f);
+        glyphRect.anchoredPosition = Vector2.zero;
+        glyphRect.sizeDelta = new Vector2(_slotSize.x * scale, _slotSize.y * scale);
     }
 
     /// <summary>
@@ -1981,16 +1998,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
                 || _restorationState.IsSlotRestored(slot.Word, slot.DecompositionIndex);
 
             slot.Frame.color = restored ? _filledSlotColor : _emptySlotColor;
-
-            // The plate follows "restored", not "has glyph art": a restored slot whose symbol has
-            // no art still wants the darker ground, because the gold frame reporting the slot as
-            // filled is itself easier to read against the plate than against the fence.
-            if (slot.Plate != null)
-            {
-                slot.Plate.color = _slotPlateColor;
-                if (slot.Plate.gameObject.activeSelf != restored)
-                    slot.Plate.gameObject.SetActive(restored);
-            }
 
             // A symbol with no glyph art leaves the child off rather than showing it: an Image with
             // no sprite draws a solid quad, which would fill the slot with a block instead of a
@@ -2419,9 +2426,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
                 slot.Glyph.gameObject.SetActive(showGlyph);
         }
 
-        if (slot.Plate != null && slot.Plate.gameObject.activeSelf != restored)
-            slot.Plate.gameObject.SetActive(restored);
-
         if (slot.Frame != null)
             slot.Frame.color = restored ? _filledSlotColor : _emptySlotColor;
 
@@ -2573,6 +2577,11 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         _railRoot = null;
         _railCanvasGroup = null;
         _runtimeSlotFrameSprite = null;
+
+        // Hand the band back with the rail. A level that tears its rail down and never builds
+        // another must frame exactly as a level that never had one.
+        if (AspectLockedCamera.Instance != null)
+            AspectLockedCamera.Instance.SetBottomBandPixels(0f);
     }
 
     /// <summary>

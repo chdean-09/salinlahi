@@ -943,14 +943,16 @@ MonoBehaviour:
   _wordRestoredText: {fileID: 0}
   _wordRestoredDurationSeconds: 1.4
   _restorationProgressText: {fileID: 1770966068}
-  _railAnchoredPosition: {x: 0, y: 96}
+  _railAnchoredPosition: {x: 0, y: 24}
+  _railPlayFieldClearance: 28
   _slotSize: {x: 124, y: 124}
   _slotSpacing: 16
   _wordGap: 80
-  _slotGlyphInset: 10
+  _slotGlyphFill: 0.84
+  _almanacGlyphInkFraction: 0.44
   _emptySlotColor: {r: 1, g: 1, b: 1, a: 0.22}
   _filledSlotColor: {r: 1, g: 0.84, b: 0.29, a: 0.85}
-  _filledGlyphColor: {r: 0.7019608, g: 0.5019608, b: 0.07450981, a: 1}
+  _filledGlyphColor: {r: 1, g: 1, b: 1, a: 1}
   _slotFrameBorderFraction: 0.09
   _latinWordLabelFontSize: 46
   _latinWordLabelColor: {r: 1, g: 0.84, b: 0.29, a: 1}
