@@ -22,6 +22,12 @@ public static class EventBus
     public static event Action OnDefenseComplete;
     public static event Action<int> OnWaveStarted; // int = wave index
     public static event Action<int> OnWaveCleared; // int = wave index
+    // The target text is whole: every slot of every focus word has been restored, which is
+    // the level's win condition. Raised ONCE per run by WaveManager, at the frame the last
+    // slot fills and before the instant-win beat plays — so a listener that wants to change
+    // what it presents during the beat is told in time. Surviving a wave is not a win
+    // condition, so this is deliberately NOT derivable from OnWaveCleared.
+    public static event Action OnFocusWordRestorationComplete;
 
     // -- Recognition Events --
     public static event Action<string> OnCharacterRecognized; // string = characterID
@@ -105,6 +111,7 @@ public static class EventBus
     public static void RaiseDefenseComplete() => OnDefenseComplete?.Invoke();
     public static void RaiseWaveStarted(int index) => OnWaveStarted?.Invoke(index);
     public static void RaiseWaveCleared(int index) => OnWaveCleared?.Invoke(index);
+    public static void RaiseFocusWordRestorationComplete() => OnFocusWordRestorationComplete?.Invoke();
     public static void RaiseCharacterRecognized(string id) => OnCharacterRecognized?.Invoke(id);
     public static void RaiseRecognitionResolved(RecognitionResult result, bool passedThreshold, float threshold)
         => OnRecognitionResolved?.Invoke(result, passedThreshold, threshold);

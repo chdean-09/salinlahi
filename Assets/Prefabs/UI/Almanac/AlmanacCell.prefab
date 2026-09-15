@@ -110,7 +110,9 @@ MonoBehaviour:
   _thumbnail: {fileID: 3549625138573966830}
   _glowFrame: {fileID: 2875136135451778218}
   _lockedFrame: {fileID: 1034714110970363624}
+  _questionMark: {fileID: 2821529374000967243}
   _bossBorder: {fileID: 1438238934992119471}
+  _silhouetteTint: {r: 0.1, g: 0.08, b: 0.07, a: 1}
 --- !u!1 &1034714110970363624
 GameObject:
   m_ObjectHideFlags: 0

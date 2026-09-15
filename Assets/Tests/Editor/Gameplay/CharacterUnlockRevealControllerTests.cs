@@ -67,6 +67,43 @@ namespace Salinlahi.Tests.Editor.Gameplay
             finally { Object.DestroyImmediate(ba); }
         }
 
+        // With the scroll interstitial switched off in LevelFlowController, this is the path that
+        // keeps the unlock DATA alive: the Almanac reads CharacterUnlockProgress, so the characters
+        // must still be marked, and marking them is also what stops a re-enabled reveal from
+        // replaying every character earned in the meantime.
+        [Test]
+        public void RegisterUnlocksWithoutReveal_MarksEachCharacterOnce()
+        {
+            CharacterUnlockProgress.ClearAllUnlocked();
+            BaybayinCharacterSO ba = MakeChar("BA");
+            BaybayinCharacterSO la = MakeChar("LA");
+            try
+            {
+                var queue = new List<BaybayinCharacterSO> { ba, null, la };
+
+                Assert.AreEqual(2, CharacterUnlockRevealController.RegisterUnlocksWithoutReveal(queue));
+                Assert.IsTrue(CharacterUnlockProgress.HasUnlocked(ba));
+                Assert.IsTrue(CharacterUnlockProgress.HasUnlocked(la));
+
+                // Already unlocked → nothing new to mark, and BuildRevealQueue now filters them out.
+                Assert.AreEqual(0, CharacterUnlockRevealController.RegisterUnlocksWithoutReveal(queue));
+                Assert.IsEmpty(CharacterUnlockRevealController.BuildRevealQueue(
+                    queue, CharacterUnlockProgress.HasUnlocked));
+            }
+            finally
+            {
+                CharacterUnlockProgress.ClearAllUnlocked();
+                Object.DestroyImmediate(ba);
+                Object.DestroyImmediate(la);
+            }
+        }
+
+        [Test]
+        public void RegisterUnlocksWithoutReveal_NullList_ReturnsZero()
+        {
+            Assert.AreEqual(0, CharacterUnlockRevealController.RegisterUnlocksWithoutReveal(null));
+        }
+
         [Test]
         public void BuildRevealQueue_NullArgs_ReturnsEmpty()
         {

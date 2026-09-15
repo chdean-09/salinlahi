@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b739b8fcb7e84356a28d87ae5678db4, type: 3}
   m_Name: Level1OnboardingSequence
   m_EditorClassIdentifier: Assembly-CSharp::OnboardingSequenceSO
-  beatOrder: 0000000001000000020000000400000005000000
+  beatOrder: 00000000010000000400000005000000
   protagonistIntro:
     fallbackText: The ancestors have called me back.
     dialogue: {fileID: 0}
@@ -24,11 +24,7 @@ MonoBehaviour:
     dialogue: {fileID: 0}
   baseSpotlightPadding: 0.5
   soloTeachStep: {fileID: 11400000, guid: 7a8d4f1c9e2b4a6d8f0c1e3b5a7d9f2c, type: 2}
-  basicTeachSteps:
-  - {fileID: 11400000, guid: 7a8d4f1c9e2b4a6d8f0c1e3b5a7d9f2c, type: 2}
-  - {fileID: 11400000, guid: 8b9e5f2d0c1a4b6e8f3d7c9a1e5b2f4d, type: 2}
-  - {fileID: 11400000, guid: 9c0e6a3d1b5f4e7a8c2d9f0b6a1e3c5d, type: 2}
-  - {fileID: 11400000, guid: ad1f7b3e5c9a4d2f8b6e0c1a3f5d7e9b, type: 2}
+  basicTeachSteps: []
   soloTeachPreVideo:
     fallbackText: Draw its syllable to defeat it.
     dialogue: {fileID: 0}

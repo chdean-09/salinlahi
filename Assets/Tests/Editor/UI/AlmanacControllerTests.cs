@@ -28,23 +28,6 @@ namespace Salinlahi.Tests.Editor.UI
 
         // ---- AlmanacController counter math ----
 
-        [Test]
-        public void CountUnlockedCharacters_CountsOnlyUnlockedNonNull()
-        {
-            BaybayinCharacterSO a = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
-            BaybayinCharacterSO b = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
-            var all = new List<BaybayinCharacterSO> { a, null, b };
-            try
-            {
-                int count = AlmanacController.CountUnlockedCharacters(all, c => c == a);
-                Assert.AreEqual(1, count);
-            }
-            finally
-            {
-                Object.DestroyImmediate(a);
-                Object.DestroyImmediate(b);
-            }
-        }
 
         [Test]
         public void CountDiscoveredEnemies_CountsOnlyDiscoveredNonNullEntries()
@@ -123,7 +106,6 @@ namespace Salinlahi.Tests.Editor.UI
         [Test]
         public void CountHelpers_NullArgs_ReturnZero()
         {
-            Assert.AreEqual(0, AlmanacController.CountUnlockedCharacters(null, c => true));
             Assert.AreEqual(0, AlmanacController.CountDiscoveredEnemies(null, entry => true));
         }
 

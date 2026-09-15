@@ -17,16 +17,45 @@ public struct ClueCandidate
 
     public bool IsEligible;
 
+    /// <summary>
+    /// Whether this body is one of Iligaw's false copies.
+    ///
+    /// <para>Separate from <see cref="IsEligible"/> because a copy is a legal thing to strike and an
+    /// illegitimate thing to count. <see cref="ActiveClueSelector"/> never reads it — which carrier a
+    /// draw kills is distance and spawn order, with no "if decoy" branch anywhere in the policy — but
+    /// <see cref="DrawTargetResolver"/> needs it to keep copies out of the multi-kill chain, where a
+    /// copy would otherwise pad the threshold that arms the chain and then be swept up as one of its
+    /// victims.</para>
+    /// </summary>
+    public bool IsDecoy;
+
+    /// <summary>
+    /// Candidate for a caller that has no view on whether the body is a copy, or for which the
+    /// question cannot arise. Retained as its own overload rather than as an optional parameter so
+    /// the callers that DO answer it cannot quietly stop: adding the flag to a call site is a visible
+    /// edit, and forgetting it is the fault this field exists to prevent.
+    /// </summary>
     public ClueCandidate(
         string characterId,
         float distanceToBase,
         long spawnSequence,
         bool isEligible)
+        : this(characterId, distanceToBase, spawnSequence, isEligible, isDecoy: false)
+    {
+    }
+
+    public ClueCandidate(
+        string characterId,
+        float distanceToBase,
+        long spawnSequence,
+        bool isEligible,
+        bool isDecoy)
     {
         CharacterId = characterId;
         DistanceToBase = distanceToBase;
         SpawnSequence = spawnSequence;
         IsEligible = isEligible;
+        IsDecoy = isDecoy;
     }
 }
 

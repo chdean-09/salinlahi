@@ -15,7 +15,7 @@ using UnityEngine;
 /// returns. It does not spawn enemies, does not require a successful draw, and has no failure or
 /// assist loop, because D-004 (LOCKED) removes the pre-combat practice gate — "draw it correctly to
 /// proceed" would reinstate that gate under another name. Shaped on <see cref="BaseIntroBeat"/>
-/// rather than <see cref="SoloTeachBeat"/> for exactly that reason. It holds no scene state, so it
+/// rather than the since-deleted SoloTeachBeat (which required a successful draw) for exactly that reason. It holds no scene state, so it
 /// needs no <c>OnResumeFromHere</c> override.
 /// </remarks>
 public sealed class MassClearTeachBeat : OnboardingBeat

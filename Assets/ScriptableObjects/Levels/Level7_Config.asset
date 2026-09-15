@@ -176,7 +176,26 @@ MonoBehaviour:
   activeClueRestorationEnabled: 0
   clueChannels: 1
   audioVisualFallback: 4
+  spawnAssignmentPolicy:
+    minSpawnsBeforeNeeded: 4
+    neededWeight: 0.5
+    starvationTimeout: 30
+    hardStarvationTimeout: 50
+    minFillerVariety: 2
+    offTargetFillerWeight: 0
+    activeSlotWindow: 1
+    choiceMomentSlotIndex: 1
+    choicePairWindow: 1.5
+    maxConcurrentEnemies: 8
+    openingSpawnSpokenValueId: 
+    allowFinalWaveOverflow: 1
+    assignmentSeed: 0
+    slotGates: []
+    slotFloors: []
   enemySpeedMultiplier: 1
+  overrideDrawingAccuracyThreshold: 0
+  drawingAccuracyThresholdOverride: 0.45
+  alwaysShowTutorial: 0
   defenseRules:
     shrineHearts: 3
   contextMedia:
@@ -316,6 +335,7 @@ MonoBehaviour:
   multiKillChainEnabled: 1
   tutorialSequence: {fileID: 0}
   onboardingSequence: {fileID: 0}
+  enemyLessons: []
   challengePrototypeEnabled: 0
   challengeSequence: {fileID: 0}
   challengePolicy:

@@ -20,6 +20,7 @@ public class DrawingCanvas : MonoBehaviour
     private readonly List<Vector3> _worldPointBuffer = new List<Vector3>(256);
     private Camera _cam;
     private Vector3 _cameraRestWorldPosition;
+    private AspectLockedCamera _subscribedColumn;
 
     private void Awake()
     {
@@ -27,6 +28,60 @@ public class DrawingCanvas : MonoBehaviour
         if (_cam == null)
             Debug.LogError("DrawingCanvas: No Camera tagged 'MainCamera' found. Strokes will be disabled.", this);
         else
+            _cameraRestWorldPosition = _cam.transform.position;
+    }
+
+    private void OnEnable()
+    {
+        SubscribeToPlayColumn();
+        RebaseCameraRestPosition();
+    }
+
+    // Again in Start: OnEnable can run before AspectLockedCamera has published its instance, and
+    // Start cannot.
+    private void Start()
+    {
+        SubscribeToPlayColumn();
+        RebaseCameraRestPosition();
+    }
+
+    private void SubscribeToPlayColumn()
+    {
+        AspectLockedCamera playColumn = AspectLockedCamera.Instance;
+        if (playColumn == null || playColumn == _subscribedColumn)
+            return;
+
+        if (_subscribedColumn != null)
+            _subscribedColumn.OnPlayAreaChanged -= RebaseCameraRestPosition;
+
+        playColumn.OnPlayAreaChanged += RebaseCameraRestPosition;
+        _subscribedColumn = playColumn;
+    }
+
+    private void OnDisable()
+    {
+        if (_subscribedColumn != null)
+        {
+            _subscribedColumn.OnPlayAreaChanged -= RebaseCameraRestPosition;
+            _subscribedColumn = null;
+        }
+    }
+
+    /// <summary>
+    /// Re-reads where the camera sits at rest.
+    ///
+    /// <para>
+    /// The shake compensation below subtracts the camera's offset from this position, so anything
+    /// that MOVES the camera on purpose — the reserved HUD band at the foot of the screen, which
+    /// lowers the camera so the restoration rail clears the fence — would otherwise be mistaken for
+    /// shake and silently undone, landing every stroke a band's height away from the finger.
+    /// </para>
+    /// </summary>
+    private void RebaseCameraRestPosition()
+    {
+        if (_cam == null)
+            _cam = Camera.main;
+        if (_cam != null)
             _cameraRestWorldPosition = _cam.transform.position;
     }
 

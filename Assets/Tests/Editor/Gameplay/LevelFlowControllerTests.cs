@@ -289,9 +289,15 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.IsTrue(onboardingController.IsSequenceResolvable(levelConfig));
 
             // SALIN-225 kept Level 2 its own arm in CreateRuntimeOnboardingController so it does NOT
-            // inherit Level 1's four teaching beats. SALIN-241 gave that arm its replacement teach
-            // beat, so the count moved 1 -> 2. The guard that matters is unchanged and asserted
-            // below: Level 2 still must not fall through to Level 1's basics.
+            // inherit Level 1's beats. SALIN-241 gave that arm its replacement teach beat, so the
+            // count moved 1 -> 2.
+            //
+            // The invariant asserted below is "Level 2 resolves to its own arm", stated positively
+            // (exactly MassClearTeachBeat + ReleaseBeat) and negatively (none of the three beats
+            // CreateRuntimeOnboardingController's else-branch attaches for Level 1). It used to
+            // name SoloTeachBeat, which the enemy-introduction lesson deleted; naming the whole
+            // Level 1 arm instead means the guard cannot be quietly retargeted at a type that was
+            // never in that branch, which is how it was left asserting nothing.
             OnboardingBeat[] beats = onboardingController.GetComponents<OnboardingBeat>();
             Assert.AreEqual(2, beats.Length,
                 "Level 2 onboarding attaches exactly its own teach beat plus ReleaseBeat.");
@@ -299,8 +305,12 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 "Level 2 teaches the AOE mass-clear, the mechanic Level2_Config switches on.");
             Assert.IsNotNull(onboardingController.GetComponent<ReleaseBeat>(),
                 "ReleaseBeat must stay: it is the sole caller of MarkTutorialSeen.");
-            Assert.IsNull(onboardingController.GetComponent<SoloTeachBeat>(),
-                "Level 2 must not fall through to Level 1's basic teaching beats.");
+            Assert.IsNull(onboardingController.GetComponent<ProtagonistIntroBeat>(),
+                "Level 2 must not fall through to Level 1's arm: ProtagonistIntroBeat is Level 1's.");
+            Assert.IsNull(onboardingController.GetComponent<BaseIntroBeat>(),
+                "Level 2 must not fall through to Level 1's arm: BaseIntroBeat is Level 1's.");
+            Assert.IsNull(onboardingController.GetComponent<HeartLossDemoBeat>(),
+                "Level 2 must not fall through to Level 1's arm: HeartLossDemoBeat is Level 1's.");
         }
 
         [UnityTest]

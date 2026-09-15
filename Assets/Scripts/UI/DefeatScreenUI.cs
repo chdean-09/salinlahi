@@ -65,6 +65,12 @@ public class DefeatScreenUI : MonoBehaviour
         if (_heartCountText != null)
             _heartCountText.text = $"{hearts}/{maxHearts}";
         if (_explanationText != null)
+            // dev turned this line off deliberately. It previously rendered behind the button
+            // stack, and this branch had fixed that by re-parenting it to the top on every Show —
+            // but a hidden element cannot have a layering bug, so that fix is moot and the removal
+            // wins. If the explanation is ever brought back, it needs SetAsLastSibling() here:
+            // ReviewLessonButton is cloned at Show time and inserts itself into the same stack, so
+            // paint order cannot be left to whoever was created last.
             _explanationText.gameObject.SetActive(false);
 
         DebugLogger.Log($"DefeatScreenUI: Showing defeat. Hearts: {hearts}/{maxHearts}");
@@ -120,8 +126,12 @@ public class DefeatScreenUI : MonoBehaviour
             GameObject explanationObject = new GameObject("DefeatExplanation", typeof(RectTransform));
             explanationObject.transform.SetParent(_panel.transform, false);
             RectTransform rect = explanationObject.GetComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0.12f, 0.43f);
-            rect.anchorMax = new Vector2(0.88f, 0.62f);
+            // 0.43-0.62 of the panel is the button stack: Retry sits at the panel's centre and the
+            // other two hang below it, so the explanation was laid straight over three opaque
+            // buttons and could not be read at all. This band is the gap between the DEFEAT banner
+            // above and the topmost button below.
+            rect.anchorMin = new Vector2(0.12f, 0.570f);
+            rect.anchorMax = new Vector2(0.88f, 0.680f);
             rect.offsetMin = rect.offsetMax = Vector2.zero;
             _explanationText = explanationObject.AddComponent<TextMeshProUGUI>();
             _explanationText.fontSize = 26f;

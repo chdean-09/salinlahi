@@ -18,6 +18,9 @@ namespace Salinlahi.Tests.Editor.Gameplay
         private const string Ma = "symbol.ma";
         private const string IligawGate = "iligaw_beat_resolved";
 
+        /// <summary>Abo ng Simula's spoken value. Level 1's opening directive names this.</summary>
+        private const string AValue = "value.a";
+
         /// <summary>Deterministic draw source: always takes the needed branch, always picks index 0.</summary>
         private sealed class AlwaysNeededRandom : ISpawnRandom
         {
@@ -175,6 +178,65 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.That(filled, Is.EqualTo(4), "The level must be completable.");
             Assert.That(spawns, Is.GreaterThanOrEqualTo(20),
                 "4 slots x (4 floor + 1) is the theoretical minimum; a 4-draw win must be impossible.");
+        }
+
+        /// <summary>
+        /// Level 1's tutorial delta: slot 0's floor drops to 1 so the player's first drawing can
+        /// actually restore something, instead of the first needed carrier arriving on spawn 5.
+        /// </summary>
+        [Test]
+        public void Floor_PerSlotOverrideLowersTheFloorForThatSlotOnly()
+        {
+            var policy = Level1Policy();
+            policy.slotFloors = new List<SpawnSlotFloor>
+            {
+                new SpawnSlotFloor { slotIndex = 0, minSpawnsBeforeNeeded = 1 },
+            };
+
+            var director = new SpawnAssignmentDirector(
+                Level1Slots(), policy, new AlwaysNeededRandom());
+
+            SpawnAssignment first = director.AssignNext(Request(NoneRestored()));
+            Assert.That(first.Role, Is.EqualTo(SpawnAssignmentRole.Filler),
+                "A floor of 1 still withholds the needed symbol from the opening spawn.");
+
+            SpawnAssignment second = director.AssignNext(Request(NoneRestored()));
+            Assert.That(second.Role, Is.EqualTo(SpawnAssignmentRole.Needed),
+                "With slot 0 overridden to 1, the needed carrier must arrive on spawn 2.");
+            Assert.That(second.SymbolStableId, Is.EqualTo(Ei));
+            Assert.That(second.SlotIndex, Is.EqualTo(0));
+        }
+
+        /// <summary>
+        /// The other half of the same delta, and the half that would fail silently: lowering slot 0
+        /// must not lower the anti-rush floor for the rest of the level.
+        /// </summary>
+        [Test]
+        public void Floor_ScalarStillAppliesToSlotsWithoutAnOverride()
+        {
+            var policy = Level1Policy();
+            policy.slotFloors = new List<SpawnSlotFloor>
+            {
+                new SpawnSlotFloor { slotIndex = 0, minSpawnsBeforeNeeded = 1 },
+            };
+
+            var director = new SpawnAssignmentDirector(
+                Level1Slots(), policy, new AlwaysNeededRandom());
+
+            // Slot 0 is restored, so slot 1 (NA) is the cursor and carries no override.
+            var restored = new[] { true, false, false, false };
+
+            for (int spawn = 0; spawn < 4; spawn++)
+            {
+                SpawnAssignment assignment = director.AssignNext(Request(restored));
+                Assert.That(assignment.Role, Is.EqualTo(SpawnAssignmentRole.Filler),
+                    "Spawn " + spawn + " must be filler: slot 1 keeps the scalar floor of 4.");
+                Assert.That(assignment.SymbolStableId, Is.Not.EqualTo(Na));
+            }
+
+            SpawnAssignment fifth = director.AssignNext(Request(restored));
+            Assert.That(fifth.Role, Is.EqualTo(SpawnAssignmentRole.Needed));
+            Assert.That(fifth.SymbolStableId, Is.EqualTo(Na));
         }
 
         // ---------------------------------------------------------------- 2. FILLER
@@ -469,6 +531,90 @@ namespace Salinlahi.Tests.Editor.Gameplay
             }
 
             Assert.That(pairs, Is.EqualTo(1));
+        }
+
+        // ---------------------------------------------------------------- 7. OPENING DIRECTIVE
+
+        /// <summary>
+        /// Level 1's opening beat requires the first enemy the player ever sees to be Abo ng
+        /// Simula. The negative control matters as much as the assertion: left to the schedule the
+        /// opening filler is NA, so a test that only checked "the first spawn carries A" could pass
+        /// on a directive that does nothing.
+        /// </summary>
+        [Test]
+        public void OpeningDirective_ForcesTheFirstSpawnToTheNamedSymbol()
+        {
+            var undirected = new SpawnAssignmentDirector(
+                Level1Slots(), Level1Policy(), new NeverNeededRandom());
+            Assert.That(undirected.AssignNext(Request(NoneRestored())).SymbolStableId,
+                Is.EqualTo(Na),
+                "Control: without a directive the schedule opens on NA, not A.");
+
+            var policy = Level1Policy();
+            policy.openingSpawnSpokenValueId = AValue;
+            var director = new SpawnAssignmentDirector(
+                Level1Slots(), policy, new NeverNeededRandom());
+
+            SpawnAssignment first = director.AssignNext(Request(NoneRestored()));
+
+            Assert.That(first.SymbolStableId, Is.EqualTo(A),
+                "value.a must resolve to symbol.a and open the level.");
+            Assert.That(first.IsOpeningDirective, Is.True);
+            Assert.That(first.Role, Is.EqualTo(SpawnAssignmentRole.Filler),
+                "A is later-needed while E/I is the cursor, so the opening enemy is filler.");
+            Assert.That(first.SlotIndex, Is.EqualTo(-1));
+        }
+
+        [Test]
+        public void OpeningDirective_IsConsumedByTheFirstSpawn()
+        {
+            var policy = Level1Policy();
+            policy.openingSpawnSpokenValueId = AValue;
+            var director = new SpawnAssignmentDirector(
+                Level1Slots(), policy, new NeverNeededRandom());
+
+            int directed = 0;
+            for (int spawn = 0; spawn < 30; spawn++)
+            {
+                if (director.AssignNext(Request(NoneRestored(), now: spawn * 0.1f)).IsOpeningDirective)
+                    directed++;
+            }
+
+            Assert.That(directed, Is.EqualTo(1),
+                "The directive names the opening enemy only; a second forced spawn would flatten "
+                + "the schedule into a fixed order.");
+            Assert.That(director.IsOpeningDirectivePending, Is.False);
+        }
+
+        /// <summary>
+        /// A retry must open on the authored first enemy again. This only holds because the spent
+        /// flag lives on the director: storing it on the policy would consume a serialized asset
+        /// field, and every later attempt at the level would start with the directive already gone.
+        /// </summary>
+        [Test]
+        public void OpeningDirective_ReArmsAfterAReset()
+        {
+            var policy = Level1Policy();
+            policy.openingSpawnSpokenValueId = AValue;
+            var director = new SpawnAssignmentDirector(
+                Level1Slots(), policy, new NeverNeededRandom());
+
+            Assert.That(director.AssignNext(Request(NoneRestored())).IsOpeningDirective, Is.True);
+            Assert.That(director.AssignNext(Request(NoneRestored(), now: 1f)).IsOpeningDirective,
+                Is.False);
+
+            director.Reset();
+
+            SpawnAssignment reopened = director.AssignNext(Request(NoneRestored()));
+            Assert.That(reopened.IsOpeningDirective, Is.True, "A reset must re-arm the directive.");
+            Assert.That(reopened.SymbolStableId, Is.EqualTo(A));
+
+            // The production retry path rebuilds the director from the same policy instance. If
+            // consuming the directive had written to the policy, this would come back unarmed.
+            var rebuilt = new SpawnAssignmentDirector(
+                Level1Slots(), policy, new NeverNeededRandom());
+            Assert.That(rebuilt.AssignNext(Request(NoneRestored())).IsOpeningDirective, Is.True,
+                "Rebuilding from the same policy must find the directive armed.");
         }
 
         // ---------------------------------------------------------------- 6. SCALING

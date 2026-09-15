@@ -310,7 +310,7 @@ MonoBehaviour:
   _useShieldBreakColorFeedback: 0
   _shieldIntactColor: {r: 0, g: 0.75, b: 0.65, a: 1}
   _shieldBrokenColor: {r: 0.55, g: 0.55, b: 0.55, a: 1}
-  _showDebugLabels: 1
+  _showDebugLabels: 0
   _labelBaseWorldOffset: {x: 0, y: -1.9, z: -0.1}
   _labelLineSpacingWorld: 0.45
   _labelWorldScale: 0.22

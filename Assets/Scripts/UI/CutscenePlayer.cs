@@ -60,6 +60,11 @@ public class CutscenePlayer : MonoBehaviour
         ConfigureExitTransitionImage();
         ConfigureContinuePrompt();
 
+        // Hidden in Awake as well as OnEnable. The legacy button is authored ACTIVE on the cutscene
+        // canvas in both gameplay scenes, so anything that reads or renders this hierarchy before
+        // OnEnable has run sees a live "Skip" sitting over an introduction that has not offered one.
+        HideLegacySkipButton();
+
         if (_canvasGroup != null)
         {
             _canvasGroup.alpha = 0f;

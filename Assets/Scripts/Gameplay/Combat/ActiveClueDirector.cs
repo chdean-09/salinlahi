@@ -6,14 +6,29 @@ using UnityEngine;
 /// Owns the single marked active clue: which enemy carries it, when it may move, and
 /// whether it has already been credited.
 ///
-/// The mark latches until its enemy becomes ineligible and freezes during a trace so a faster
+/// The mark latches until its enemy becomes ineligible and freezes during a drawing so a faster
 /// enemy cannot steal it mid-draw.
+///
+/// It also owns the distinction between the two questions the clue system gets asked about any one
+/// enemy — may a draw strike it (<see cref="IsClueTargetable"/>), and may it be the objective the
+/// HUD marks (IsEligibleClue) — which differ for exactly one kind of body: Iligaw's false copy.
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class ActiveClueDirector : MonoBehaviour
 {
     private readonly List<Enemy> _enemyBuffer = new List<Enemy>();
     private readonly List<ClueCandidate> _candidateBuffer = new List<ClueCandidate>();
+
+    // Separate buffers for the credit gate in TryConsumeClue. It runs from CombatResolver during
+    // recognition handling rather than from LateUpdate, so it can land between a Reevaluate fill
+    // and the read that follows it. Sharing the selection buffers would make that interleaving a
+    // silent mis-selection instead of a compile error; two more lists cost nothing.
+    private readonly List<Enemy> _drawEnemyBuffer = new List<Enemy>();
+    private readonly List<ClueCandidate> _drawCandidateBuffer = new List<ClueCandidate>();
+
+    // Cached so LateUpdate's per-frame Reevaluate does not allocate a delegate every frame.
+    private static readonly Func<Enemy, bool> ObjectiveEligibility = IsEligibleClue;
+    private static readonly Func<Enemy, bool> DrawEligibility = IsClueTargetable;
 
     /// <summary>
     /// Longest the mark may stay frozen after a stroke begins, refreshed on every stroke.
@@ -22,6 +37,22 @@ public sealed class ActiveClueDirector : MonoBehaviour
     /// otherwise release the freeze. Comfortably exceeds the multi-stroke window.
     /// </summary>
     public const float MaxFreezeSeconds = 3f;
+
+    /// <summary>
+    /// What <see cref="FalseCopiesAreDrawTargets"/> answers when no director instance exists — the
+    /// EditMode case, where <see cref="IsClueTargetable"/> is called as a plain predicate. Matches
+    /// the authored default so a test and a scene agree about the rule.
+    /// </summary>
+    private const bool FalseCopiesAreDrawTargetsDefault = true;
+
+    [Header("False copies")]
+    [SerializeField]
+    [Tooltip("When on, Iligaw's mirror copy is a legal draw target: drawing the glyph the copy "
+        + "visibly carries shatters that copy, leaves its source walking, and restores no part of "
+        + "the text. Turn this off only to restore the older behaviour where the copy's glyph "
+        + "resolved as a miss, which tells the player that nothing carries a glyph they can plainly "
+        + "read on a body on screen.")]
+    private bool _falseCopiesAreDrawTargets = true;
 
     private IClueObjectiveSource _objectiveSource;
     private Enemy _currentClue;
@@ -48,6 +79,34 @@ public sealed class ActiveClueDirector : MonoBehaviour
     /// static subscription can.
     /// </summary>
     public event Action<Enemy> OnActiveClueResolved;
+
+    /// <summary>
+    /// Fires when an accepted draw was refused objective credit because the carrier it actually
+    /// resolved against was a false copy. The argument is that copy.
+    ///
+    /// This is the counterpart of <see cref="OnActiveClueResolved"/> and the two are mutually
+    /// exclusive per draw: one says the word just got a symbol back, this one says the player
+    /// struck a body that was never part of the word. A feedback listener needs both, because the
+    /// only other thing it could infer from silence is a miss — and a shattered copy is the
+    /// opposite of a miss. The player read the glyph correctly; the glyph was a lie.
+    ///
+    /// <para><b>Coverage boundary, and it is deliberate.</b> This fires only where a copy's death
+    /// actually costs the player credit they would otherwise have had — that is, when the glyph
+    /// drawn was the marked clue's own. A copy struck on a glyph the mark does not carry took
+    /// nothing away, so there is no credit to withhold and nothing for this event to report. The
+    /// general case — every shattered copy wearing its own wording rather than a successful fill's
+    /// — belongs in the draw-feedback relation that CombatResolver publishes, because that is the
+    /// signal the feedback HUD words its prompts from. This event is the credit-side half of it.</para>
+    /// </summary>
+    public event Action<Enemy> OnFalseCopyShattered;
+
+    /// <summary>
+    /// Whether a false copy may be struck by a draw at all. Read statically because
+    /// <see cref="IsClueTargetable"/> is CombatResolver's static hook, and falls back to the
+    /// authored default when there is no instance to ask.
+    /// </summary>
+    private static bool FalseCopiesAreDrawTargets =>
+        Instance != null ? Instance._falseCopiesAreDrawTargets : FalseCopiesAreDrawTargetsDefault;
 
     private void Awake()
     {
@@ -150,17 +209,10 @@ public sealed class ActiveClueDirector : MonoBehaviour
 
         tracker.FillActiveEnemiesSnapshot(_enemyBuffer);
 
-        _candidateBuffer.Clear();
-        for (int i = 0; i < _enemyBuffer.Count; i++)
-        {
-            Enemy enemy = _enemyBuffer[i];
-            bool isEligible = IsEligibleClue(enemy);
-            _candidateBuffer.Add(new ClueCandidate(
-                enemy != null && enemy.Character != null ? enemy.Character.characterID : null,
-                enemy != null ? enemy.transform.position.y : float.MaxValue,
-                enemy != null ? enemy.SpawnSequence : long.MaxValue,
-                isEligible));
-        }
+        // ObjectiveEligibility, never DrawEligibility: the mark is the HUD's statement of what the
+        // player is supposed to answer next, and a false copy carries a glyph the level never asked
+        // for. Marking one would point the player at a body that restores nothing.
+        FillCandidates(_enemyBuffer, _candidateBuffer, ObjectiveEligibility);
 
         int index = ActiveClueSelector.SelectIndex(_candidateBuffer);
         SetClue(index >= 0 ? _enemyBuffer[index] : null);
@@ -169,11 +221,26 @@ public sealed class ActiveClueDirector : MonoBehaviour
     /// <summary>
     /// Claims the credit for this clue. The first call wins for the current clue instance;
     /// later calls are rejected during the pronunciation-lead window and do not reset it.
+    ///
+    /// Also refuses — and raises <see cref="OnFalseCopyShattered"/> instead — when the body this
+    /// draw actually struck was one of Iligaw's false copies. The caller knows only that the clue's
+    /// glyph was drawn; whether a real carrier of it fell is a separate fact, and this is where the
+    /// two are told apart.
     /// </summary>
     public bool TryConsumeClue(Enemy enemy)
     {
         if (enemy == null || enemy != _currentClue || _currentClueConsumed)
             return false;
+
+        Enemy falseCopy = FindFalseCopyHoldingTheDraw(enemy);
+        if (falseCopy != null)
+        {
+            // Deliberately leaves _currentClueConsumed false. The slot is still owed: the copy fell
+            // and the real carrier is still walking, so the very next draw of the same glyph must be
+            // able to claim the credit this one could not.
+            OnFalseCopyShattered?.Invoke(falseCopy);
+            return false;
+        }
 
         _currentClueConsumed = true;
 
@@ -190,18 +257,60 @@ public sealed class ActiveClueDirector : MonoBehaviour
     }
 
     /// <summary>
-    /// Public face of <see cref="IsEligibleClue"/>, for CombatResolver's multi-target draw
-    /// resolution. Exposed rather than restated so the set of enemies a draw may resolve against
-    /// can never drift from the set the mark may land on — in particular the decoy exclusion,
-    /// which keeps a correct draw from being diverted into Iligaw's false copy.
+    /// Whether a draw may resolve against this enemy — CombatResolver's targetability hook.
+    ///
+    /// <para><b>Targetable for a draw is not the same question as eligible to be the objective,
+    /// and a false copy is the one body where the two answers differ.</b> Everything else about
+    /// being on screen and resolvable is shared, which is why both questions are layered over the
+    /// same <see cref="IsResolvableOnScreen"/> core rather than restated — the two sets can drift
+    /// apart only where a comment here says they are meant to.</para>
+    ///
+    /// <para>A copy is targetable because its glyph is <i>visible on a body on screen</i>. Refusing
+    /// it made drawing that glyph resolve as a miss, and the miss copy states what is on the board
+    /// — so the game told the player nothing out there carried a symbol they could plainly read on
+    /// a walking enemy. That is not a hard lesson, it is a lie, and it makes the whole "falls for
+    /// it" branch of the deception beat unreachable: the copy is supposed to shatter while the real
+    /// one keeps walking, and the player is supposed to learn that from the board rather than from
+    /// a prompt.</para>
+    ///
+    /// <para>Targetability is all this grants. Which carrier dies is still
+    /// <see cref="ActiveClueSelector"/>'s single rule — closest to the base, ties broken by spawn
+    /// sequence — so a copy competes for the kill on exactly the terms every other body does, with
+    /// no branch anywhere that reads "if decoy". Whether the word advances is decided separately,
+    /// in <see cref="TryConsumeClue"/>.</para>
     /// </summary>
-    public static bool IsClueTargetable(Enemy enemy) => IsEligibleClue(enemy);
+    public static bool IsClueTargetable(Enemy enemy)
+    {
+        if (!IsResolvableOnScreen(enemy))
+            return false;
+
+        return !enemy.IsDecoy || FalseCopiesAreDrawTargets;
+    }
 
     /// <summary>
-    /// Mirrors CombatResolver's combat eligibility and adds clue-only exclusions: decoys carry
-    /// deliberately wrong glyphs, and bosses are routed through BossController instead.
+    /// Whether this enemy may carry the mark — the authored objective the HUD points the player at.
+    ///
+    /// False copies are excluded here and must stay excluded. A copy carries a deliberately wrong
+    /// glyph, so marking one would not merely be unhelpful, it would instruct the player to draw a
+    /// symbol that restores nothing and then show them the text failing to advance. The exclusion is
+    /// the reason this predicate exists apart from <see cref="IsClueTargetable"/>: struck by a draw,
+    /// yes; held up as the thing to draw, never.
     /// </summary>
     private static bool IsEligibleClue(Enemy enemy)
+    {
+        if (!IsResolvableOnScreen(enemy))
+            return false;
+
+        return !enemy.IsDecoy;
+    }
+
+    /// <summary>
+    /// The part both questions agree on: this enemy is really out there and a draw could resolve
+    /// against it at all. Mirrors CombatResolver's combat eligibility, plus the clue-system
+    /// requirement of a readable character and the boss exclusion — bosses route through
+    /// BossController instead.
+    /// </summary>
+    private static bool IsResolvableOnScreen(Enemy enemy)
     {
         if (enemy == null)
             return false;
@@ -215,8 +324,6 @@ public sealed class ActiveClueDirector : MonoBehaviour
             return false;
         if (enemy.IsBoss)
             return false;
-        if (enemy.IsDecoy)
-            return false;
         if (enemy.Data.isPhaser && !enemy.IsPhaserVisible)
             return false;
         // SALIN-286: keeps the mirror above honest. Without it a Bakod-shielded enemy could be
@@ -226,6 +333,71 @@ public sealed class ActiveClueDirector : MonoBehaviour
         if (enemy.IsResolutionBlocked)
             return false;
         return true;
+    }
+
+    /// <summary>
+    /// The false copy this draw actually struck, or null when the draw struck a real carrier.
+    ///
+    /// <para><b>Why the director has to work this out for itself.</b> CombatResolver hands this
+    /// method the <i>clue</i>, not the body it killed — credit follows the glyph, so the enemy that
+    /// died is often not the marked one. Once a copy can be that body, "the clue's glyph was drawn"
+    /// stops implying "a real carrier of it fell", and the gap between those two facts is exactly
+    /// where the deception beat lives. Credit is this director's guarantee to keep, so it resolves
+    /// the question rather than trusting the caller's conclusion.</para>
+    ///
+    /// <para>It asks <see cref="DrawTargetResolver"/> — the same rule CombatResolver used a moment
+    /// earlier in the same frame, over the same tracker snapshot, with nothing moving in between —
+    /// so the two cannot disagree about which body the draw took. Recomputing is what keeps this
+    /// from being a second targeting policy; restating "closest wins" here is what would.</para>
+    /// </summary>
+    private Enemy FindFalseCopyHoldingTheDraw(Enemy clue)
+    {
+        // Nothing to check when copies cannot be struck at all: the winning carrier is a real enemy
+        // by construction, and skipping the work keeps the old behaviour exactly as it was.
+        if (!FalseCopiesAreDrawTargets)
+            return null;
+
+        string drawnCharacterId = clue.Character != null ? clue.Character.characterID : null;
+        if (string.IsNullOrEmpty(drawnCharacterId))
+            return null;
+
+        ActiveEnemyTracker tracker = ActiveEnemyTracker.Instance;
+        if (tracker == null)
+            return null;
+
+        tracker.FillActiveEnemiesSnapshot(_drawEnemyBuffer);
+        FillCandidates(_drawEnemyBuffer, _drawCandidateBuffer, DrawEligibility);
+
+        int index = DrawTargetResolver.SelectSingleIndex(_drawCandidateBuffer, drawnCharacterId);
+        if (index < 0)
+            return null;
+
+        // A null winner, or a real one, both mean "do not withhold credit". Refusal has to be
+        // positively established: guessing wrong in this direction silently drops a slot the player
+        // earned, which is a far worse failure than crediting a draw that happened to be muddled.
+        Enemy winner = _drawEnemyBuffer[index];
+        return winner != null && winner.IsDecoy ? winner : null;
+    }
+
+    /// <summary>
+    /// Flattens a snapshot of enemies into selector candidates. The eligibility predicate is a
+    /// parameter because the two callers ask different questions of the same board — the mark asks
+    /// what may be the objective, a draw asks what may be struck — and everything else about
+    /// building a candidate is identical between them.
+    /// </summary>
+    private static void FillCandidates(
+        List<Enemy> enemies, List<ClueCandidate> candidates, Func<Enemy, bool> isEligible)
+    {
+        candidates.Clear();
+        for (int i = 0; i < enemies.Count; i++)
+        {
+            Enemy enemy = enemies[i];
+            candidates.Add(new ClueCandidate(
+                enemy != null && enemy.Character != null ? enemy.Character.characterID : null,
+                enemy != null ? enemy.transform.position.y : float.MaxValue,
+                enemy != null ? enemy.SpawnSequence : long.MaxValue,
+                isEligible(enemy)));
+        }
     }
 
     private void SetClue(Enemy next)

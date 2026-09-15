@@ -19,7 +19,13 @@ public class Enemy : MonoBehaviour
     [SerializeField] private Color _shieldBrokenColor = new(0.55f, 0.55f, 0.55f, 1f);
 
     [Header("Debug Enemy Labels")]
-    [SerializeField] private bool _showDebugLabels = true;
+    // OFF by default. ShouldShowDebugLabels already keeps these out of a release player, but that
+    // fence says nothing about a normal play session in the Editor, which is where the game is
+    // actually looked at: with this defaulted on — and authored 1 on the shared corruption shell —
+    // raw internal ids ("Type: abo-ng-simula", "Draw: a (A)") rendered over every enemy in every
+    // playtest and every screenshot. It stays a serialized per-prefab opt-in so anyone debugging
+    // spawn identity can still switch it on for the prefab they care about.
+    [SerializeField] private bool _showDebugLabels;
     [SerializeField] private Vector3 _labelBaseWorldOffset = new(0f, -1.9f, -0.1f);
     [SerializeField] private float _labelLineSpacingWorld = 0.45f;
     [SerializeField] private float _labelWorldScale = 0.22f;
@@ -57,6 +63,8 @@ public class Enemy : MonoBehaviour
     private Coroutine _deathRoutine;
     private static long _spawnSequenceCounter;
     private long _spawnSequence;
+    private bool _isIntroductionSpawn;
+    private IntroductionOutcome _introductionOutcome;
 
     public BaybayinCharacterSO Character => _runtimeCharacter != null ? _runtimeCharacter : _data?.assignedCharacter;
     public BaybayinCharacterSO VisualCharacter => ResolveVisualCharacter();
@@ -90,6 +98,27 @@ public class Enemy : MonoBehaviour
     /// pooled enemy re-enters play. It is the deterministic tiebreaker for active clues.
     /// </summary>
     public long SpawnSequence => _spawnSequence;
+
+    /// <summary>
+    /// True when this spawn is the one that introduced its enemy type to the player — the type's
+    /// first ever spawn campaign-wide, the spawn <see cref="EnemyIntroductionBeat"/> halts the field
+    /// for and plays a card over.
+    ///
+    /// <para>
+    /// Its consequence is that <b>this spawn's signature ability is inert</b>. The card states what
+    /// the enemy does and a later spawn proves it, so the player has a clean board to notice the
+    /// effect against; every Era 1 ability takes something away, and one that was already running
+    /// the first time the player looked reads as a fault rather than as an enemy. The suppression is
+    /// applied in <see cref="Initialize"/>, at the same place the ability components are configured,
+    /// so the two decisions cannot drift apart.
+    /// </para>
+    ///
+    /// <para>Reset per spawn: a pooled shell never inherits it.</para>
+    /// </summary>
+    public bool IsIntroductionSpawn => _isIntroductionSpawn;
+
+    /// <summary>This spawn's introduction outcome. Read by tests and by the introduction beat.</summary>
+    public IntroductionOutcome IntroductionOutcome => _introductionOutcome;
     // placeholder for now. will be replaced in salin 68
     public virtual bool IsBoss => false;
     public event Action<Enemy, int, int> HealthChanged;
@@ -241,6 +270,17 @@ public class Enemy : MonoBehaviour
         _mover.Stop();
         _mover.SetSpeed(EffectiveSpeed);
 
+        // Asked before the ability components are configured, because the outcome is also the
+        // signal for suppression. Three outcomes, not two: see IntroductionDecision — an
+        // ordinarily declined claim still arms, because that is the safe failure: the player
+        // meets an ability with no card, rather than meeting an enemy whose ability is silently
+        // switched off forever. A claim declined because a lesson is still pending is the
+        // exception and suppresses instead — that decline is deliberate, not a beat that
+        // couldn't be bothered.
+        _introductionOutcome = EnemyIntroductionBeat.ResolveIntroduction(this, _data);
+        _isIntroductionSpawn = _introductionOutcome == IntroductionOutcome.IntroduceAndSuppress
+            || _introductionOutcome == IntroductionOutcome.IntroduceAndArm;
+
         // Signature abilities are data-driven so the prefab-less corruption roster can carry them
         // on the shared shell. A pooled shell is reused across types, so each ability component is
         // added on first need and then enabled or disabled per spawn to match the incoming data.
@@ -254,6 +294,13 @@ public class Enemy : MonoBehaviour
         EnsureAbilityComponent<AshFirstSlotController>(_data.ashesFirstSlot);
         EnsureAbilityComponent<NawalangMukhaNameLossController>(_data.removesNames);
         EnsureAbilityComponent<PhaserEnemy>(_data.isPhaser);
+
+        // Restated on EVERY spawn, not only introduction ones. The abilities clear their own flag in
+        // OnEnable, but a pooled shell reused for the same enemy type stays enabled through the
+        // reuse — EnsureAbilityComponent only toggles `enabled` — so OnEnable never fires and the
+        // previous occupant's suppression would carry into a spawn that is meant to be armed.
+        ApplyIntroductionSpawnSuppression(
+            IntroductionDecision.SuppressesAbility(_introductionOutcome));
 
         // Resolved after the block above, because the component may have just been added, and
         // cleared for a non-phaser so a reused shell does not consult a disabled phaser when
@@ -298,7 +345,50 @@ public class Enemy : MonoBehaviour
         // badge visibility is not overwritten by this spawn's own refresh.
         EventBus.RaiseEnemySpawned(this);
 
+        // Started last, and separately from the claim above, because the card frames the enemy where
+        // it stands: the spawner sets this enemy's field position and carried glyph only after
+        // Initialize returns, so the beat waits a beat of its own before halting anything.
+        if (_isIntroductionSpawn)
+            EnemyIntroductionBeat.BeginIntroduction(this);
+
         return true;
+    }
+
+    /// <summary>
+    /// Applies or lifts the introduction-spawn suppression on every signature ability this enemy
+    /// could be carrying.
+    ///
+    /// <para>
+    /// Applied uniformly to all four Era 1 abilities rather than per-ability, and that is the point:
+    /// one rule is reasonable about, and any exception ("name loss is gentle enough to fire
+    /// immediately") becomes a per-enemy special case somebody has to rediscover later. Each ability
+    /// only needs to know how to be a no-op; deciding <i>when</i> lives here.
+    /// </para>
+    ///
+    /// <para>
+    /// Only the component that is actually enabled for this spawn is addressed. The shared corruption
+    /// shell keeps every ability component attached and merely disabled for types that lack the
+    /// ability, so calling into a disabled one would be asking an ability nobody has to stop doing
+    /// something it was never doing.
+    /// </para>
+    /// </summary>
+    private void ApplyIntroductionSpawnSuppression(bool suppressed)
+    {
+        AshFirstSlotController ash = GetComponent<AshFirstSlotController>();
+        if (ash != null && ash.enabled)
+            ash.SetSuppressedForIntroductionSpawn(suppressed);
+
+        NawalangMukhaNameLossController nameLoss = GetComponent<NawalangMukhaNameLossController>();
+        if (nameLoss != null && nameLoss.enabled)
+            nameLoss.SetSuppressedForIntroductionSpawn(suppressed);
+
+        KempeiScrambleController stain = GetComponent<KempeiScrambleController>();
+        if (stain != null && stain.enabled)
+            stain.SetSuppressedForIntroductionSpawn(suppressed);
+
+        MirrorDecoyController decoy = GetComponent<MirrorDecoyController>();
+        if (decoy != null && decoy.enabled)
+            decoy.SetSuppressedForIntroductionSpawn(suppressed);
     }
 
     private bool ShouldRaiseEnemyDiscoveryEvent(EnemyDataSO data)
@@ -336,6 +426,10 @@ public class Enemy : MonoBehaviour
             ClearResolutionBlocks();
             _hurtFeedback?.ResetState();
             _isDying = false;
+            // Per spawn, never per shell: the next occupant of this shell decides for itself whether
+            // it is an introduction spawn, and a stale true would suppress its ability for nothing.
+            _isIntroductionSpawn = false;
+            _introductionOutcome = IntroductionOutcome.None;
 
             if (_deathRoutine != null)
             {

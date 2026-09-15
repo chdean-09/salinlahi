@@ -33,6 +33,23 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
     [Tooltip("Parent for assist animation instances.")]
     [SerializeField] private Transform _assistAnimationParent;
 
+    /// <summary>
+    /// True between a show call and the matching <see cref="Hide"/>.
+    ///
+    /// <para>
+    /// <b>This is what makes the panel able to appear at all.</b> In Gameplay.unity <c>_root</c> is
+    /// this component's OWN GameObject and it is authored INACTIVE, which is deliberate — the guide
+    /// text is positioned in the scene and must not be on screen until a beat asks for it. But a
+    /// component on an inactive GameObject has never run <see cref="Awake"/>: Unity runs it
+    /// synchronously, re-entrantly, from inside the first <c>SetActive(true)</c>. So
+    /// <c>ShowMessage</c>'s <c>SetActive(true)</c> ran Awake, and Awake's own defensive
+    /// <c>SetActive(false)</c> immediately undid the show. The prompt string landed on the text
+    /// (which is a child of the same inactive root) and not one frame of it ever reached the
+    /// screen. Awake now defers to a show already in flight.
+    /// </para>
+    /// </summary>
+    private bool _showRequested;
+
     private System.Action _skipRequested;
     private Coroutine _pulseCoroutine;
     private Coroutine _animatePathCoroutine;
@@ -48,13 +65,21 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
 
         // Authored guide text is useful to position in the scene, but must not be
         // visible until a tutorial beat explicitly calls ShowPrompt or ShowMessage.
-        if (_root != null)
+        // _showRequested guards the case where this Awake is running re-entrantly from
+        // inside that very call — see the field's remarks.
+        if (_root != null && !_showRequested)
             _root.SetActive(false);
 
         if (_skipButton != null)
         {
             TMP_Text skipLabel = _skipButton.GetComponentInChildren<TMP_Text>(true);
             TutorialFontProvider.ApplyTo(skipLabel);
+
+            // Authored state is not trusted as the starting state: a scene that ships this button
+            // active would show "Skip" the instant the first beat raises the panel, before any beat
+            // has said whether it may be skipped. Every ShowPrompt/ShowMessage sets it explicitly
+            // from here on; this is only the value it holds before the first one.
+            _skipButton.gameObject.SetActive(false);
         }
     }
 
@@ -250,8 +275,14 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
     public void ShowPrompt(Level1TutorialStepSO step, bool canSkip)
     {
         EnsureGuideVisuals();
-        if (_root != null)
-            _root.SetActive(true);
+
+        // Decided BEFORE the panel comes up, never after. Set below ShowRoot this used to raise the
+        // surface carrying whatever skip state the previous beat left, then correct it — which is
+        // the "it loads and then a Skip pops in" glitch the player reported. A beat either offers
+        // the affordance from its first frame or never shows it at all.
+        SetSkipAffordanceVisible(canSkip);
+
+        ShowRoot();
 
         ApplyConfiguredLayout();
         transform.SetAsLastSibling();
@@ -262,8 +293,8 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         if (_feedbackText != null)
             _feedbackText.text = string.Empty;
 
-        if (_skipButton != null)
-            _skipButton.gameObject.SetActive(canSkip);
+        // A fresh prompt or message replaces the guide's last word, so it stops owning it.
+        IsShowingFeedback = false;
 
         ShowGuideSprite(step);
 
@@ -320,8 +351,11 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
 
     public void ShowMessage(string message, bool canSkip)
     {
-        if (_root != null)
-            _root.SetActive(true);
+        // Before ShowRoot, for the reason given in ShowPrompt: the skip affordance must never
+        // arrive a frame after the surface it belongs to.
+        SetSkipAffordanceVisible(canSkip);
+
+        ShowRoot();
 
         ApplyConfiguredLayout();
         transform.SetAsLastSibling();
@@ -332,11 +366,65 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         if (_feedbackText != null)
             _feedbackText.text = string.Empty;
 
-        if (_skipButton != null)
-            _skipButton.gameObject.SetActive(canSkip);
+        // A fresh prompt or message replaces the guide's last word, so it stops owning it.
+        IsShowingFeedback = false;
 
         if (_guideSpriteImage != null)
             _guideSpriteImage.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// True while this guide is displaying its own feedback line, and therefore owns the last word
+    /// on the player's draw.
+    ///
+    /// <para>
+    /// <b>Why anything needs to know.</b> A successful draw during the enemy lesson put four
+    /// strings on screen at once and two of them said the same thing twice: the guide's authored
+    /// <c>successText</c> ("Great job. Drawing protects the base.") and the HUD's generic
+    /// <c>DrawingFeedbackVocabulary.Accepted</c> ("Nice — that's the one."), which lands in a band
+    /// the clue panel already occupies. A tutorial step that has authored its own wording is the
+    /// more specific voice, so while it is speaking the generic one stays quiet. See
+    /// <c>DrawingFeedback.SetMessage</c> — which still RECORDS every message it was handed, so
+    /// nothing about what the player was told stops being assertable.
+    /// </para>
+    /// </summary>
+    public static bool IsShowingFeedback { get; private set; }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetOwnershipOnDomainReload() => IsShowingFeedback = false;
+
+    /// <summary>
+    /// Blanks the standing prompt without closing the panel, so a step that has been satisfied can
+    /// stop asking for it while its own success line is still being read.
+    ///
+    /// <para>
+    /// Deliberately not folded into <see cref="ShowFeedback"/>: feedback is also how a WRONG draw
+    /// is corrected, and the prompt is exactly what the player needs to still be looking at then.
+    /// </para>
+    /// </summary>
+    /// <summary>
+    /// The one place the skip affordance's visibility is decided.
+    ///
+    /// <para>
+    /// <b>No caller currently asks for it.</b> Every live call site — the enemy-introduction draw
+    /// step, the heart-loss demo, the challenge flow — passes <c>canSkip: false</c>, so the button
+    /// is authored inactive in both gameplay scenes and stays that way. It is kept rather than
+    /// deleted because <see cref="Level1OnboardingController.RequestSkip"/> and
+    /// <c>OnboardingContext.SkipRequested</c> are still wired to it; what is fixed here is the
+    /// TIMING, which is what the player actually saw. Anything that does start passing true must
+    /// pass it on the call that raises the surface, not on a later one.
+    /// </para>
+    /// </summary>
+    private void SetSkipAffordanceVisible(bool visible)
+    {
+        if (_skipButton != null)
+            _skipButton.gameObject.SetActive(visible);
+    }
+
+    public void ClearPrompt()
+    {
+        if (_promptText != null)
+            _promptText.text = string.Empty;
     }
 
     public void ShowFeedback(string message)
@@ -346,10 +434,36 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
 
         if (_feedbackText != null)
             _feedbackText.text = message ?? string.Empty;
+
+        IsShowingFeedback = !string.IsNullOrWhiteSpace(message);
+    }
+
+    /// <summary>
+    /// Brings the panel up and keeps it up. <see cref="_showRequested"/> is set BEFORE the
+    /// <c>SetActive</c>, because that call is what runs <see cref="Awake"/> on a root authored
+    /// inactive, and Awake reads the flag. The second check covers the same re-entrancy for any
+    /// other <c>Awake</c>/<c>OnEnable</c> on the root that hides itself on wake.
+    /// </summary>
+    private void ShowRoot()
+    {
+        _showRequested = true;
+        if (_root == null)
+            return;
+
+        _root.SetActive(true);
+        if (!_root.activeSelf)
+            _root.SetActive(true);
     }
 
     public void Hide()
     {
+        _showRequested = false;
+        IsShowingFeedback = false;
+
+        // Cleared with the panel, so the next beat cannot inherit the last one's skip state for the
+        // frame between ShowRoot and its own decision.
+        SetSkipAffordanceVisible(false);
+
         if (_root != null)
             _root.SetActive(false);
 

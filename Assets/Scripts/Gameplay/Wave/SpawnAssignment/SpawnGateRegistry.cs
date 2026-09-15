@@ -10,10 +10,39 @@ using System.Collections.Generic;
 public sealed class SpawnGateRegistry
 {
     /// <summary>
-    /// Level 1's gate: the final slot's symbol (MA) must not appear - as the needed symbol or as
-    /// filler - until Iligaw's mirror-decoy beat has resolved.
+    /// Iligaw's mirror-decoy beat. Kept because the token is a per-level authoring choice, not a
+    /// Level 1 constant: any level may still withhold a slot until the decoy lesson has landed.
+    /// Level 1 no longer uses it - see <see cref="AboAshShown"/>.
     /// </summary>
     public const string IligawBeatResolved = "iligaw_beat_resolved";
+
+    /// <summary>
+    /// Level 1's gate, and the reason its final slot exists as a gated slot at all: the player must
+    /// not be able to finish INA AMA before Abo ng Simula's ash has actually been shown taking the
+    /// clue away. Abo's ability is inert on its introduction spawn by design, so the ash arms on a
+    /// later spawn and opens this token as it fires; until then MA is withheld from the needed
+    /// symbol AND from filler, which makes the level structurally incapable of completing early.
+    ///
+    /// This replaces <see cref="IligawBeatResolved"/> as slot 4's gate rather than joining it: the
+    /// constraint names only Abo. Showing all four abilities before the win would need a composite
+    /// gate, which the current one-token-per-slot model does not express.
+    /// </summary>
+    public const string AboAshShown = "abo_ash_shown";
+
+    /// <summary>
+    /// Level 1's slot-3 gate, replacing <see cref="AboAshShown"/>. It opens when every introducible
+    /// type in the level's wave roster has been introduced.
+    ///
+    /// <para>
+    /// The swap is forced by the eight-beat lesson: Abo's ash now arms during his introduction
+    /// rather than on a later spawn, so <see cref="AboAshShown"/> opens near the start of the level
+    /// and no longer withholds anything. The constraint the gate actually encodes — the level must
+    /// not be completable before the player has met what is in it — is unchanged, so the token is
+    /// retargeted rather than removed. <see cref="AboAshShown"/> stays: it is still the ash's own
+    /// once-latch, read by AshFirstSlotController.HasAshBeenShown.
+    /// </para>
+    /// </summary>
+    public const string Level1RosterMet = "level1_roster_met";
 
     private readonly HashSet<string> _open = new HashSet<string>();
 

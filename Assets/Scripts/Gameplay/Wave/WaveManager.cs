@@ -36,6 +36,13 @@ public class WaveManager : MonoBehaviour
     [SerializeField] private CharacterRegistrySO _sandboxCharacterRegistry;
 #endif
 
+    [Header("Instant Win")]
+    [Tooltip("Optional. The instant-win beat played when the last slot of the target text "
+             + "fills. Left empty one is built at runtime with its own defaults, exactly as "
+             + "the Wave Cleared screen and the content-missing panel are, so no scene has to "
+             + "be re-authored to ship the beat.")]
+    [SerializeField] private InstantWinPresenter _instantWinPresenter;
+
     // Restoration overflow: how many enemies per batch, and how many batches before giving up and
     // letting the existing refuse-completion path report the real problem.
     private const int OverflowBatchSize = 3;
@@ -45,6 +52,17 @@ public class WaveManager : MonoBehaviour
     private int _currentWaveSpawnedCount;
     private bool _running;
     private Coroutine _waveRoutine;
+
+    // The instant-win short-circuit. Once per RUN, not once per segment: a segmented level
+    // re-enters Defense with the target text already whole, and re-firing the beat would
+    // replay the freeze and the banner on a level the player has already been told they won.
+    private bool _instantWinTaken;
+    private Coroutine _instantWinRoutine;
+
+    // Resolved lazily and cached: the presenter that owns focus-word restoration state. Read
+    // rather than subscribed to because the moment a slot fills lives inside
+    // ActiveCluePresenter.HandleActiveClueResolved, which raises no per-slot signal.
+    private ActiveCluePresenter _restorationSource;
 
     public int CurrentWaveIndex => _currentWaveIndex;
     public int CurrentWaveSpawnedCount => _currentWaveSpawnedCount;
@@ -211,6 +229,13 @@ public class WaveManager : MonoBehaviour
     {
         SetCurrentAllowedCharacters(null);
 
+        // A fresh attempt re-arms the instant win. Deliberately NOT done in StartSegment: the
+        // beat is once per run, and a segmented level re-entering Defense with the text already
+        // whole must not replay it. Re-resolving the restoration source with it keeps a
+        // reloaded scene from holding the previous attempt's presenter.
+        _instantWinTaken = false;
+        _restorationSource = null;
+
         if (_spawner != null)
             _spawner.SetFallbackEnemyDataIfMissing(_fallbackEnemyData);
 
@@ -303,6 +328,15 @@ public class WaveManager : MonoBehaviour
         if (_waveRoutine != null)
             StopCoroutine(_waveRoutine);
 
+        // A defeat or an abort underneath the instant-win beat has to take the beat down with
+        // it, or the dipped timeScale outlives the level and the defeat screen crawls.
+        if (_instantWinRoutine != null)
+        {
+            StopCoroutine(_instantWinRoutine);
+            _instantWinRoutine = null;
+        }
+        _instantWinPresenter?.Cancel();
+
         ReturnAllActiveEnemies();
         _waveRoutine = null;
     }
@@ -313,6 +347,145 @@ public class WaveManager : MonoBehaviour
     /// aborted attempt's enemies still checked out.
     /// </summary>
     private void HandleLevelAttemptAborted() => HandleGameOver();
+
+    /// <summary>
+    /// THE WIN RULE. Filling every slot in the target text wins the level, and it ends the
+    /// instant the last slot fills — with enemies still alive on screen. Surviving a wave is
+    /// not a win condition.
+    ///
+    /// WHY THIS IS A PER-FRAME READ AND NOT AN EVENT SUBSCRIPTION. The moment a slot fills is
+    /// ActiveCluePresenter.HandleActiveClueResolved, which mutates its ActiveClueRestorationState
+    /// and raises nothing per slot. Reading the state every frame reaches the same conclusion in
+    /// the same frame as an event would, and it needs no change to the presenter — which is what
+    /// keeps the win rule out of the HUD layer.
+    ///
+    /// WHY IT IS IN Update AND NOT IN THE WAVE COROUTINE. RunAllWavesRoutine is a sequential
+    /// chain of waits: a check inside it can only run when whatever it is waiting on releases,
+    /// so a slot that fills during a spawn interval, an inter-wave delay or a WaitUntil for the
+    /// board to clear would not be noticed until that wait ended — which is precisely the gap
+    /// this exists to close. Update sees it wherever in the run it happens.
+    /// </summary>
+    private void Update()
+    {
+        if (!_running || _instantWinTaken || _instantWinRoutine != null)
+            return;
+
+        if (!IsTargetTextRestored())
+            return;
+
+        BeginInstantWin();
+    }
+
+    /// <summary>
+    /// True once every authored slot of every focus word has been restored.
+    ///
+    /// Levels that do not opt into combat restoration never reach the state at all —
+    /// ActiveCluePresenter only applies a restored symbol when activeClueRestorationEnabled is
+    /// set — so the check is gated on the config rather than relying on an empty state reading
+    /// as incomplete. That keeps legacy levels, boss levels and the sandbox on exactly the
+    /// behaviour they have today.
+    /// </summary>
+    private bool IsTargetTextRestored()
+    {
+        if (_levelConfig == null || !_levelConfig.activeClueRestorationEnabled)
+            return false;
+
+        // Boss levels are excluded, for the same reason LevelFlowController.HandleDefenseComplete
+        // excludes them from the Wave Cleared gate: BossController, not this component, owns
+        // when a boss encounter ends, and completing the run out from under it would finish the
+        // level through a path that never reports the boss defeated.
+        if (_levelConfig.bossConfig != null)
+            return false;
+
+        if (_restorationSource == null)
+        {
+            _restorationSource = FindFirstObjectByType<ActiveCluePresenter>(
+                FindObjectsInactive.Include);
+            if (_restorationSource == null)
+                return false;
+        }
+
+        // IsComplete is false for a level with no focus words, so an unauthored level cannot
+        // win itself on an empty target text.
+        return _restorationSource.RestorationState.IsComplete;
+    }
+
+    /// <summary>
+    /// Ends the defense where it stands and hands the moment to the instant-win beat.
+    ///
+    /// StopAllCoroutines, not StopCoroutine(_waveRoutine): the per-wave spawn loop runs as
+    /// StartCoroutine(_spawner.SpawnWave(...)) and is therefore a SEPARATE coroutine owned by
+    /// this component, not a child of the wave routine. Stopping only the wave routine leaves
+    /// it spawning, so enemies would keep walking on during the frozen hold of a level that
+    /// is already over. Nothing else on this component runs a coroutine that must survive
+    /// this point — the run is finished either way.
+    /// </summary>
+    private void BeginInstantWin()
+    {
+        _instantWinTaken = true;
+        StopAllCoroutines();
+        _waveRoutine = null;
+
+        // The one signal the rest of the game gets for "the target text is whole". Raised
+        // before the beat plays, so a listener that wants to change what it presents during
+        // the beat is told in time.
+        EventBus.RaiseFocusWordRestorationComplete();
+
+        _instantWinRoutine = StartCoroutine(RunInstantWinRoutine());
+    }
+
+    private IEnumerator RunInstantWinRoutine()
+    {
+        InstantWinPresenter presenter = ResolveInstantWinPresenter();
+        if (presenter != null)
+        {
+            int levelNumber = _levelConfig != null ? _levelConfig.levelNumber : 1;
+            yield return presenter.Play(_restorationSource, levelNumber);
+        }
+        else
+        {
+            DebugLogger.LogWarning(
+                "WaveManager: no instant-win presenter could be resolved. Completing the run "
+                + "without the beat rather than stranding a level the player has won.");
+        }
+
+        _instantWinRoutine = null;
+
+        if (!CanContinueRun())
+        {
+            AbortRun();
+            yield break;
+        }
+
+        // The SAME completion path a full clear uses: CompleteRun -> RaiseLevelCompleted ->
+        // OnDefenseComplete. The flow machine, the atomic save and the victory screen are
+        // reached exactly as they are on a wave clear, and none of them need to know that
+        // this run ended early.
+        CompleteRun();
+    }
+
+    /// <summary>
+    /// Finds the scene-authored instant-win presenter, or builds one. Mirrors
+    /// LevelFlowController.ShowWaveClearedScreen / ShowContentMissingPanel: the surface is
+    /// unwired in every scene, and a [SerializeField] requirement would force an edit to
+    /// Assets/_Scenes/*.unity, the project's highest-collision serialized assets.
+    /// </summary>
+    private InstantWinPresenter ResolveInstantWinPresenter()
+    {
+        if (_instantWinPresenter == null)
+        {
+            _instantWinPresenter = FindFirstObjectByType<InstantWinPresenter>(
+                FindObjectsInactive.Include);
+        }
+
+        if (_instantWinPresenter == null)
+        {
+            GameObject presenterObject = new GameObject("[Runtime] InstantWinPresenter");
+            _instantWinPresenter = presenterObject.AddComponent<InstantWinPresenter>();
+        }
+
+        return _instantWinPresenter;
+    }
 
     private bool TryRestorePausedRun(int selectedLevel)
     {

@@ -5,12 +5,12 @@ using UnityEngine.Video;
 public enum OnboardingBeatType
 {
     // SALIN-225 removed ComboTeach = 3 and FocusModeTeach = 6 with the mechanics they taught.
-    // The survivors keep their explicit values so serialized beatOrder blobs stay valid.
-    // SALIN-241 adds MassClearTeach = 7 rather than reusing the freed 3 or 6: a stale serialized
-    // beatOrder blob still carrying 3 or 6 would otherwise bind silently to the new beat.
+    // The eight-beat lesson removes SoloTeach = 2: teaching moved into EnemyIntroductionBeat, one
+    // enemy at a time, triggered by a spawn. The survivors keep their explicit values so
+    // serialized beatOrder blobs stay valid, and 2, 3 and 6 stay burned — a stale blob carrying
+    // one of them must bind to nothing rather than silently to a new beat.
     ProtagonistIntro = 0,
     BaseIntro = 1,
-    SoloTeach = 2,
     HeartLossDemo = 4,
     Release = 5,
     MassClearTeach = 7,
@@ -55,12 +55,11 @@ public struct OnboardingVideoTemplate
 public sealed class OnboardingSequenceSO : ScriptableObject
 {
     [Header("Beat Order")]
-    [Tooltip("Beats run in this order. Default: ProtagonistIntro, BaseIntro, SoloTeach, HeartLossDemo, Release.")]
+    [Tooltip("Beats run in this order. Default: ProtagonistIntro, BaseIntro, HeartLossDemo, Release.")]
     public OnboardingBeatType[] beatOrder = new[]
     {
         OnboardingBeatType.ProtagonistIntro,
         OnboardingBeatType.BaseIntro,
-        OnboardingBeatType.SoloTeach,
         OnboardingBeatType.HeartLossDemo,
         OnboardingBeatType.Release,
     };
@@ -80,25 +79,6 @@ public sealed class OnboardingSequenceSO : ScriptableObject
     };
     [Tooltip("Padding in world units around the base bounds when computing the spotlight rect.")]
     public float baseSpotlightPadding = 0.5f;
-
-    [Header("Beat 3 — Symbol Teach (EI/NA/A/MA)")]
-    public Level1TutorialStepSO soloTeachStep;
-    [Tooltip("Optional ordered list of basic single-enemy teach steps. When assigned, SoloTeach runs each step in order.")]
-    public Level1TutorialStepSO[] basicTeachSteps;
-    public OnboardingBeatCopy soloTeachPreVideo = new OnboardingBeatCopy
-    {
-        fallbackText = "When an enemy approaches, draw its mark to defeat it.",
-    };
-    public OnboardingVideoTemplate soloTeachVideo = new OnboardingVideoTemplate
-    {
-        tapToProceedText = "Tap anywhere to continue",
-    };
-    [Tooltip("Optional per-step media for basicTeachSteps. Empty slots fall back to soloTeachVideo.")]
-    public OnboardingVideoTemplate[] basicTeachVideos;
-    public OnboardingBeatCopy soloTeachPostSuccess = new OnboardingBeatCopy
-    {
-        fallbackText = "Well drawn. There will be more.",
-    };
 
     [Header("Beat 5 — Heart-Loss Demo")]
     [Tooltip("Enemy data used by the demo enemy. Wraps in a tutorial-only path so no real heart is lost.")]

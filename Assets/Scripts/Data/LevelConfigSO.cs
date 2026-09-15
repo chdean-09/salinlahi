@@ -45,6 +45,34 @@ public class LevelConfigSO : ScriptableObject
              + "on the later levels it also appears in.")]
     [Min(0.1f)] public float enemySpeedMultiplier = 1f;
 
+    [Header("Drawing Accuracy Override")]
+    [Tooltip("If true, drawingAccuracyThresholdOverride replaces RecognitionConfigSO.minimumConfidence "
+             + "for this level only. Follows the same shape as EnemyDataSO's badge overrides: an "
+             + "explicit opt-in flag beside the value, so a level that never authors one keeps the "
+             + "global default byte-identically rather than depending on a sentinel value.")]
+    public bool overrideDrawingAccuracyThreshold;
+
+    [Tooltip("Minimum recognizer score (0-1) this level accepts. Consulted only when "
+             + "overrideDrawingAccuracyThreshold is true. Lower it to make an early teaching level "
+             + "forgiving without loosening recognition for the whole campaign. Level 1 uses 0.45 "
+             + "against the 0.60 global default.")]
+    [Range(0f, 1f)] public float drawingAccuracyThresholdOverride = 0.45f;
+
+    [Header("Tutorial")]
+    [Tooltip("Defeats the one-shot \"seen\" gate on this level's onboarding tutorial, so the "
+             + "sequence plays every time the level is entered rather than only the first time. "
+             + "Level 1 authors this true: it teaches the core draw-to-defend loop, and returning "
+             + "players were being dropped straight into a wave with no reminder.\n\n"
+             + "Defaults FALSE deliberately, even though Level 1 is the reason the field exists. "
+             + "Unity fills a newly added field from this initializer on every asset at once, so a "
+             + "true default would silently switch all fifteen levels — including Level 2's "
+             + "advanced tutorial, which nobody asked to replay. Opt-in keeps the change to the "
+             + "one level that was asked for and leaves the other fourteen exactly as authored.\n\n"
+             + "Completion is still recorded either way — the flag makes the gate ignore the seen "
+             + "record, it does not stop the record being written, so anything asking whether the "
+             + "player has ever finished this tutorial keeps its answer.")]
+    public bool alwaysShowTutorial;
+
     public DefenseRules defenseRules = new();
     public ContentMediaReferences contextMedia = new();
     public SymbolValueReference finalRestorationValue = new();
@@ -87,6 +115,10 @@ public class LevelConfigSO : ScriptableObject
     [Tooltip("Optional onboarding sequence played before waves. Level 1 uses basic onboarding; Level 2 uses advanced combat onboarding.")]
     public OnboardingSequenceSO onboardingSequence;
 
+    [Tooltip("Enemy introduction lessons authored for this level. Level 1 carries one (Abo ng "
+        + "Simula); every other level leaves this empty and uses the four-step introduction card.")]
+    public EnemyLessonSO[] enemyLessons = System.Array.Empty<EnemyLessonSO>();
+
     [Tooltip("Enables the generalized challenge sequence for this level. Legacy onboarding remains the fallback when disabled.")]
     public bool challengePrototypeEnabled;
 
@@ -115,6 +147,25 @@ public class LevelConfigSO : ScriptableObject
 
     [Tooltip("If true, protagonist walks in from below. If false, appears instantly at final position.")]
     public bool protagonistWalksIn = false;
+
+    /// <summary>
+    /// The recognizer score a drawing must reach on <paramref name="level"/>, given the campaign-wide
+    /// <paramref name="globalThreshold"/> from <c>RecognitionConfigSO.minimumConfidence</c>.
+    /// </summary>
+    /// <remarks>
+    /// Static and null-tolerant on purpose. The threshold is read on the recognition hot path, where
+    /// there may be no level at all (Tracing Dojo, boss sandbox, a test that never called
+    /// GameManager), and in every one of those cases the answer must be the global value unchanged.
+    /// Making that the fallback here rather than at the call site is what keeps "no override authored
+    /// behaves exactly as today" a property of the type instead of a habit of its callers.
+    /// </remarks>
+    public static float ResolveDrawingAccuracyThreshold(LevelConfigSO level, float globalThreshold)
+    {
+        if (level == null || !level.overrideDrawingAccuracyThreshold)
+            return globalThreshold;
+
+        return Mathf.Clamp01(level.drawingAccuracyThresholdOverride);
+    }
 
     public void ReconcileWavesToRoster()
     {

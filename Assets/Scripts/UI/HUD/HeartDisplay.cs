@@ -120,6 +120,11 @@ public class HeartDisplay : MonoBehaviour
         EnsureRuntimeBuffers();
         if (_heartIcons == null) return;
 
+        // Repaint from the model first, so the slot the demo empties is the rightmost slot that is
+        // genuinely filled. Skipping this is half of how the HUD came to draw RED / GREY / RED — a
+        // filled heart to the RIGHT of an empty one — while the model held a single heart.
+        RepaintFromModel();
+
         int targetIndex = ResolveTutorialDemoTargetIndex();
         if (targetIndex < 0) return;
 
@@ -147,6 +152,25 @@ public class HeartDisplay : MonoBehaviour
         _tutorialDemoEmptiedIndex = -1;
         if (_heartIcons == null || index < 0 || index >= _heartIcons.Length || _heartIcons[index] == null)
             return;
+
+        // The restore repaints the WHOLE row from the model rather than lighting one icon back up
+        // on its own. Unconditionally refilling the demo's slot is what let the HUD claim two
+        // hearts while HeartSystem held one: the demo emptied a slot, real damage landed in
+        // between, and the refill then painted a heart that no longer existed. Whatever else
+        // happened during the demo, the row that comes out of here is the model's.
+        RepaintFromModel();
+
+        if (index >= ResolveModelHeartCount())
+        {
+            // The model says this slot is genuinely empty now. No pulse, and no lie: the demo's
+            // promise was to restore what the demo took, not to invent a heart.
+            DebugLogger.LogWarning(
+                "HeartDisplay: the tutorial heart-loss demo asked to restore heart "
+                + $"{index}, but the model holds only {ResolveModelHeartCount()} hearts, so real "
+                + "damage landed during a window that is supposed to be damage-free. Showing the "
+                + "true count instead. See TutorialRuntimeState.IsHeartLossDemoActive.");
+            return;
+        }
 
         ApplyHeartVisual(_heartIcons[index], filled: true);
         PlayTutorialOverlayRestore(_heartIcons[index]);
@@ -206,6 +230,37 @@ public class HeartDisplay : MonoBehaviour
         }
 
         heart.color = filled ? Color.red : new Color(1f, 1f, 1f, 0.25f);
+    }
+
+    /// <summary>
+    /// The authoritative heart count: <see cref="HeartSystem"/> if the scene has one, else the last
+    /// count broadcast to this display. Never the icons themselves — the whole class of bug this
+    /// answers is the icons drifting away from the model.
+    /// </summary>
+    private int ResolveModelHeartCount()
+    {
+        HeartSystem heartSystem = FindFirstObjectByType<HeartSystem>();
+        return heartSystem != null ? heartSystem.GetCurrentHearts() : _lastHeartCount;
+    }
+
+    /// <summary>
+    /// Restates every icon from the model, left to right, with no loss animation. Filled slots are
+    /// always the leftmost ones, so an empty heart can never sit to the left of a full one.
+    /// </summary>
+    private void RepaintFromModel()
+    {
+        if (_heartIcons == null)
+            return;
+
+        int current = ResolveModelHeartCount();
+        _lastHeartCount = current;
+
+        for (int i = 0; i < _heartIcons.Length; i++)
+        {
+            if (_heartIcons[i] == null) continue;
+            CacheBaseScale(i);
+            ApplyHeartVisual(_heartIcons[i], filled: i < current);
+        }
     }
 
     private int ResolveTutorialDemoTargetIndex()

@@ -126,6 +126,17 @@ public class DrawingFeedback : MonoBehaviour
         if (_messageLabel == null)
             return;
 
+        // One voice per draw. A tutorial step with authored wording is the more specific of the
+        // two, and its line is already on screen; printing the generic one underneath put
+        // "Nice — that's the one." straight across the clue the player had just changed. LastMessage
+        // above is deliberately still recorded, so what the player was told stays assertable even on
+        // the draws where this label stays quiet.
+        if (Level1TutorialGuideUI.IsShowingFeedback)
+        {
+            _messageLabel.text = string.Empty;
+            return;
+        }
+
         _messageLabel.text = message;
 
         // Nothing used to take the text back down, so the label kept the last thing it was

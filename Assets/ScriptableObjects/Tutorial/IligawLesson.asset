@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f17508dc2c9074396adc1bb2db1c8101, type: 3}
+  m_Name: IligawLesson
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyLessonSO
+  enemy: {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
+  requiredRestoredSlots: 0
+  armAbilityOnIntroduction: 1
+  abilityBeatSeconds: 1.5
+  glyphRuleLine:
+    fallbackText: 'Bawat kaaway ay may dalang titik. Iyon ang kanilang kahinaan.'
+    dialogue: {fileID: 0}
+  reactLine:
+    fallbackText: 'Dalawa na siya?! Isa lang dapat!'
+    dialogue: {fileID: 0}
+  ruleLine:
+    fallbackText: 'Bawat kaaway ng Paglimot ay may sariling kakayahan. Kilalanin mo
+      ito, at hindi ka nito malilinlang.'
+    dialogue: {fileID: 0}
+  revealGlyphLate: 1
+  drawStep: {fileID: 11400000, guid: 7a8d4f1c9e2b4a6d8f0c1e3b5a7d9f2c, type: 2}
+  restorationLine:
+    fallbackText: 'Nabakas mo ang I. Isang titik, isang bahagi ng alaala — naibalik.
+      Ganito mababawi ang INA: titik sa titik, hanggang buo muli.'
+    dialogue: {fileID: 0}

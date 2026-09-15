@@ -144,6 +144,27 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
 
         SpawnAssignmentPolicy policy = level.spawnAssignmentPolicy ?? new SpawnAssignmentPolicy();
         _director = new SpawnAssignmentDirector(_slots, policy);
+
+        OpenRosterGateIfAlreadyMet(level);
+    }
+
+    /// <summary>
+    /// Re-evaluates the roster gate for this attempt, because <see cref="SpawnGateRegistry.Reset"/>
+    /// above just closed every token while enemy introductions are campaign-wide PlayerPrefs that
+    /// survive the retry.
+    ///
+    /// <para>
+    /// Without this a second run of a level whose types the player has already met never plays an
+    /// introduction, so the post-introduction evaluation in <c>EnemyIntroductionBeat</c> never
+    /// fires, so the gated final slot is withheld forever and the level cannot be completed. Both
+    /// evaluations are needed: this one covers the already-met start, that one covers the roster
+    /// being completed mid-level. <see cref="OpenGate"/> is idempotent, so they may both fire.
+    /// </para>
+    /// </summary>
+    private void OpenRosterGateIfAlreadyMet(LevelConfigSO level)
+    {
+        LevelRoster.TryOpenRosterGate(
+            level, EnemyIntroductionProgress.HasBeenIntroduced, OpenGate);
     }
 
     /// <summary>Flattens every focus word's decomposition into one ordered slot list.</summary>

@@ -60,12 +60,16 @@ namespace Salinlahi.Tests.Editor.Data
             ClueChannels resolved = ClueChannelResolver.Resolve(
                 level.clueChannels, level.audioVisualFallback);
             Assert.IsTrue(ClueChannelResolver.HasReadableVisual(resolved),
-                "Level 1 clues must resolve to a readable visual channel; EI/NA/A/MA "
-                + "pronunciation clips do not exist yet (manifest MISSING rows).");
+                "Level 1 clues must resolve to a readable visual channel. All four of EI/NA/A/MA "
+                + "now carry a real pronunciationClip, and Level 1 ships SpokenAudio, but audio is "
+                + "not a substitute: a muted device, a noisy room and a deaf player all need the "
+                + "clue to be legible on its own.");
 
             // A level-wide channel bit says nothing about art, so each symbol has to
             // carry a prompt a player can actually see: its badge sprite, or the HUD's
-            // Latin text. Pronunciation audio cannot rescue either (manifest MISSING rows).
+            // Latin text. Pronunciation audio cannot stand in for either, for the same
+            // reason — that is what this test is here to pin, and it is why the clips
+            // existing does not weaken the assertion below.
             bool glyphChannel = (resolved & ClueChannels.Glyph) != ClueChannels.None;
             bool latinTextChannel = (resolved & ClueChannels.LatinText) != ClueChannels.None;
 

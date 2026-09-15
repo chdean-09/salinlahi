@@ -9,6 +9,12 @@ using UnityEngine;
 /// (CharacterUnlockProgress + EventBus.RaiseCharacterUnlocked) before advancing. Drawing input is
 /// suppressed while any scroll is open. Lives in the Gameplay scene; LevelFlowController drives it
 /// via <see cref="Play"/>. The queue/filter logic is the pure, testable <see cref="BuildRevealQueue"/>.
+///
+/// The interstitial itself is switched OFF by default at the call site (LevelFlowController's
+/// "Play Character Unlock Reveal"). That switch governs the PRESENTATION only; the unlock DATA
+/// still has to be written, so the data half of <see cref="Play"/> is also available on its own as
+/// <see cref="RegisterUnlocksWithoutReveal"/>. Nothing here is deleted, so the reveal can be
+/// authored back on without restoring code.
 /// </summary>
 public class CharacterUnlockRevealController : MonoBehaviour
 {
@@ -32,6 +38,34 @@ public class CharacterUnlockRevealController : MonoBehaviour
             queue.Add(c);
         }
         return queue;
+    }
+
+    /// <summary>
+    /// Registers every character in <paramref name="toReveal"/> as unlocked without showing the
+    /// scroll, and returns how many were newly marked. This is the unlock DATA half of
+    /// <see cref="Play"/> standing on its own, for when the reveal presentation is switched off:
+    /// unlocked characters must still be unlocked and must still appear in the Almanac, which reads
+    /// CharacterUnlockProgress. <see cref="Play"/> is the only production writer of that progress,
+    /// so skipping the interstitial without calling this would leave the Almanac permanently empty.
+    ///
+    /// Deliberately does NOT raise EventBus.OnCharacterUnlocked. That event accompanies the reveal:
+    /// AudioManager plays the unlock reward sting on it, and with the scroll suppressed a whole
+    /// level's characters register inside one frame — a stack of reward stings with nothing on
+    /// screen to explain them. The event's only other listener rebuilds an Almanac grid that is
+    /// already open, which cannot happen while the Gameplay scene is running the pre-wave beats,
+    /// and that grid rebuilds from CharacterUnlockProgress.HasUnlocked when the player opens it.
+    /// </summary>
+    public static int RegisterUnlocksWithoutReveal(IReadOnlyList<BaybayinCharacterSO> toReveal)
+    {
+        if (toReveal == null) return 0;
+
+        int marked = 0;
+        foreach (BaybayinCharacterSO c in toReveal)
+        {
+            if (c == null) continue;
+            if (CharacterUnlockProgress.TryMarkUnlocked(c, out _)) marked++;
+        }
+        return marked;
     }
 
     /// <summary>

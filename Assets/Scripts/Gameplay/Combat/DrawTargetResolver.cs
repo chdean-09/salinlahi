@@ -14,16 +14,34 @@ using System.Collections.Generic;
 ///
 /// <para>Deliberately free of UnityEngine types, following <see cref="ActiveClueSelector"/>, so
 /// every targeting rule is an EditMode assertion rather than a scene rehearsal. Eligibility is
-/// decided by the caller and arrives as <see cref="ClueCandidate.IsEligible"/>; decoys, bosses,
-/// dying, phased-out and resolution-blocked enemies are already false by the time they get here.
-/// That is load-bearing for Iligaw: a decoy carries a deliberately false glyph, and pulling one
-/// into a multi-target set would turn a correct draw into a heart loss.</para>
+/// decided by the caller and arrives as <see cref="ClueCandidate.IsEligible"/>; bosses, dying,
+/// phased-out and resolution-blocked enemies are already false by the time they get here.</para>
+///
+/// <para><b>Iligaw's false copy is deliberately NOT among those exclusions.</b> A copy carries a
+/// glyph the player can plainly read on a body on screen, so drawing it resolves here like any
+/// other carrier and competes for the kill on the same closest-to-base terms. The single-target
+/// winner is chosen with no knowledge of whether it is a copy — the consequence of striking one is
+/// decided downstream, where <see cref="ActiveClueDirector.TryConsumeClue"/> withholds the word's
+/// credit so the copy falls and the text does not advance.</para>
+///
+/// <para><b>The multi-kill chain is the one place that does ask.</b> A copy earns the kill when it is
+/// the closest carrier, but it is not a legitimate member of a set: counted toward the chain
+/// threshold it lets a board of two real carriers plus a copy arm a chain authored to need three, and
+/// admitted to the chain tail it hands the player a copy's death as part of a reward burst. Both read
+/// as progress the copy cannot deliver. This mirrors the rule CombatResolver's legacy burst path has
+/// always applied to its own realMatchCount, which skips decoys for the same reason — a reward path
+/// is for sets of legitimate enemies. Levels 1-5 ship with the chain disabled, so nothing in the
+/// tutorial exercises this today; it is fixed here rather than left latent because the fault is
+/// invisible until a chain-enabled level meets an Iligaw, and by then it looks like a tuning
+/// problem.</para>
 /// </summary>
 public static class DrawTargetResolver
 {
     /// <summary>
-    /// Number of eligible on-screen enemies carrying the drawn glyph. This is the count the
-    /// chain threshold is measured against, mirroring CombatResolver's realMatchCount rule.
+    /// Number of eligible on-screen enemies carrying the drawn glyph that could legitimately belong
+    /// to a chain. This is the count the chain threshold is measured against, mirroring
+    /// CombatResolver's realMatchCount rule — false copies excluded, exactly as that rule excludes
+    /// them, so a copy cannot pad a board up to a threshold the real enemies do not meet.
     /// </summary>
     public static int CountMatches(IReadOnlyList<ClueCandidate> candidates, string drawnCharacterId)
     {
@@ -33,7 +51,7 @@ public static class DrawTargetResolver
         int count = 0;
         for (int i = 0; i < candidates.Count; i++)
         {
-            if (IsCarrier(candidates[i], drawnCharacterId))
+            if (IsChainVictim(candidates[i], drawnCharacterId))
                 count++;
         }
 
@@ -72,8 +90,9 @@ public static class DrawTargetResolver
     /// The level's <c>multiKillChainEnabled</c>. False keeps one draw to one kill.
     /// </param>
     /// <param name="chainThreshold">
-    /// Minimum eligible carriers before the chain arms. Below it the draw stays single-target,
-    /// so a level that chains at three does not silently start chaining at two.
+    /// Minimum chainable carriers before the chain arms — <see cref="CountMatches"/>, so false copies
+    /// do not count toward it. Below the threshold the draw stays single-target, so a level that
+    /// chains at three does not silently start chaining at two.
     /// </param>
     public static void SelectTargets(
         IReadOnlyList<ClueCandidate> candidates,
@@ -105,7 +124,7 @@ public static class DrawTargetResolver
         {
             if (i == head)
                 continue;
-            if (!IsCarrier(candidates[i], drawnCharacterId))
+            if (!IsChainVictim(candidates[i], drawnCharacterId))
                 continue;
 
             InsertByThreat(candidates, targets, i);
@@ -115,6 +134,14 @@ public static class DrawTargetResolver
     private static bool IsCarrier(ClueCandidate candidate, string drawnCharacterId)
         => candidate.IsEligible
            && string.Equals(candidate.CharacterId, drawnCharacterId, StringComparison.Ordinal);
+
+    /// <summary>
+    /// A carrier that may also be swept up by a chain. The head is chosen with <see cref="IsCarrier"/>
+    /// instead, so a copy can still be the one body a draw kills — it just cannot ride along in
+    /// someone else's chain, nor help arm one.
+    /// </summary>
+    private static bool IsChainVictim(ClueCandidate candidate, string drawnCharacterId)
+        => IsCarrier(candidate, drawnCharacterId) && !candidate.IsDecoy;
 
     /// <summary>
     /// Insertion sort over the tail (index 0 is the reserved head). Exact distance compare with a
