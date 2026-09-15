@@ -132,7 +132,7 @@ MonoBehaviour:
     starvationTimeout: 30
     hardStarvationTimeout: 50
     minFillerVariety: 2
-    offTargetFillerWeight: 0
+    offTargetFillerWeight: 0.3
     activeSlotWindow: 1
     choiceMomentSlotIndex: 1
     choicePairWindow: 1.5

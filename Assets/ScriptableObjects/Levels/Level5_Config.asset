@@ -47,34 +47,6 @@ MonoBehaviour:
       narrationClip: {fileID: 0}
       dialogue: {fileID: 11400000, guid: 403d7a4b841c5413cbda674671bb98f8, type: 2}
       cutscene: {fileID: 11400000, guid: c0c562742118d436ba2ce9067d321ac4, type: 2}
-  - stableId: level.ugat.05.focus.03
-    latinSpelling: AMA
-    displayLabel: AMA
-    meaning: father
-    decomposition:
-    - symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
-      spokenValueId: value.a
-    - symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
-      spokenValueId: value.ma
-    media:
-      contextImage: {fileID: 0}
-      narrationClip: {fileID: 0}
-      dialogue: {fileID: 0}
-      cutscene: {fileID: 0}
-  - stableId: level.ugat.05.focus.04
-    latinSpelling: TAMA
-    displayLabel: TAMA
-    meaning: correct
-    decomposition:
-    - symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
-      spokenValueId: value.ta
-    - symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
-      spokenValueId: value.ma
-    media:
-      contextImage: {fileID: 0}
-      narrationClip: {fileID: 0}
-      dialogue: {fileID: 0}
-      cutscene: {fileID: 0}
   cumulativeSymbolPool:
   - symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
     spokenValueId: value.a
@@ -155,13 +127,13 @@ MonoBehaviour:
   clueChannels: 18
   audioVisualFallback: 4
   spawnAssignmentPolicy:
-    minSpawnsBeforeNeeded: 1
+    minSpawnsBeforeNeeded: 3
     neededWeight: 0.5
     starvationTimeout: 30
     hardStarvationTimeout: 50
     minFillerVariety: 2
-    offTargetFillerWeight: 0
-    activeSlotWindow: 2
+    offTargetFillerWeight: 0.3
+    activeSlotWindow: 1
     choiceMomentSlotIndex: 1
     choicePairWindow: 1.5
     maxConcurrentEnemies: 8
@@ -182,8 +154,8 @@ MonoBehaviour:
     dialogue: {fileID: 11400000, guid: 2e50af9e1e44e4f5e9de1d0559db9b88, type: 2}
     cutscene: {fileID: 11400000, guid: c0c562742118d436ba2ce9067d321ac4, type: 2}
   finalRestorationValue:
-    symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
-    spokenValueId: value.ma
+    symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+    spokenValueId: value.na
   rewardIds:
   - memory.ugat.05
   masteryRequirements:

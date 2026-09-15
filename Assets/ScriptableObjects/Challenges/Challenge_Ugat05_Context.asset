@@ -103,7 +103,7 @@ MonoBehaviour:
     memoryRevealSeconds: 1
     maxErrors: 3
     heartPenalty: 1
-    evidenceContentId: level.ugat.05.focus.03
+    evidenceContentId: level.ugat.05.focus.02
   - unitId: ugat05-restore-line-03
     mode: 3
     cluePolicy: 2
@@ -142,4 +142,4 @@ MonoBehaviour:
     memoryRevealSeconds: 1
     maxErrors: 3
     heartPenalty: 1
-    evidenceContentId: level.ugat.05.focus.04
+    evidenceContentId: level.ugat.05.focus.02
