@@ -134,7 +134,7 @@ still pass on.
 
 ### Context copy
 
-> Isang salita lamang ang kulang sa pangungusap ni Ama. Ilagay mo ang tamang salita sa tamang puwang.
+> Dalawang salita ang kulang sa pangungusap ni Ama. Ilagay mo ang bawat salita sa tamang puwang.
 
 ### Restored memory — `memory.ugat.03`
 
@@ -179,7 +179,7 @@ still pass on.
 
 ### Context copy
 
-> Wala nang larawang gagabay sa iyo. Piliin mo ang salitang nararapat, mula lamang sa iyong alaala.
+> Wala nang larawang gagabay sa iyo. Piliin mo ang mga salitang nararapat, mula lamang sa iyong alaala.
 
 ### Restored memory — `memory.ugat.04`
 

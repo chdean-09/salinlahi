@@ -18,11 +18,17 @@ MonoBehaviour:
   - unitId: ugat04-restore-sentence
     mode: 2
     cluePolicy: 1
-    prompt: 'Wala nang larawang gagabay sa iyo. Piliin mo ang salitang nararapat,
+    prompt: 'Wala nang larawang gagabay sa iyo. Piliin mo ang mga salitang nararapat,
       mula lamang sa iyong alaala.
 
-      Ang INA at ______ ang unang guro sa tahanan.'
+      Ang ______ at ______ ang unang guro sa tahanan.'
     tokens:
+    - tokenId: ugat04-ina
+      displayText: INA
+      occurrenceId: ugat04-ina
+      role: 1
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
     - tokenId: ugat04-ama
       displayText: AMA
       occurrenceId: ugat04-ama
@@ -43,8 +49,11 @@ MonoBehaviour:
       evidenceContentId: 
     slots:
     - slotId: ugat04-slot-01
+      expectedOccurrenceId: ugat04-ina
+    - slotId: ugat04-slot-02
       expectedOccurrenceId: ugat04-ama
     candidateOccurrenceIds:
+    - ugat04-ina
     - ugat04-ama
     - ugat04-bata-decoy
     - ugat04-mata-decoy
