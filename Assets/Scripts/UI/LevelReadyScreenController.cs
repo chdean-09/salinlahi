@@ -1,13 +1,14 @@
-using System;
+﻿using System;
 using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Presents the short level-start contract before the story and defense flow begins.
-/// The panel is built at runtime so the shared Gameplay scenes do not need another
-/// serialized UI dependency.
+/// Presents the short level-start contract at the END of the story phase — after the
+/// before-level cutscene and intro dialogue, immediately before the focus words,
+/// symbol cards and defense. The panel is built at runtime so the shared Gameplay
+/// scenes do not need another serialized UI dependency.
 /// </summary>
 public sealed class LevelReadyScreenController : MonoBehaviour
 {
@@ -173,12 +174,18 @@ public sealed class LevelReadyScreenController : MonoBehaviour
         Image panelImage = _panelRoot.GetComponent<Image>();
         panelImage.color = new Color(0.025f, 0.035f, 0.08f, 0.98f);
         panelImage.raycastTarget = true;
+        bool onParchment = ScrollPanelArt.ApplyFull(panelImage);
 
-        _titleText = CreateText("Title", _panelRoot.transform, 54f,
-            new Vector2(0.08f, 0.58f), new Vector2(0.92f, 0.88f));
-        _objectiveText = CreateText("Objective", _panelRoot.transform, 34f,
-            new Vector2(0.10f, 0.38f), new Vector2(0.90f, 0.58f));
+        _titleText = CreateText("Title", _panelRoot.transform, 68f,
+            new Vector2(0.17f, 0.55f), new Vector2(0.83f, 0.88f));
+        _objectiveText = CreateText("Objective", _panelRoot.transform, 44f,
+            new Vector2(0.18f, 0.34f), new Vector2(0.82f, 0.57f));
         _objectiveText.alignment = TextAlignmentOptions.Center;
+        if (onParchment)
+        {
+            ScrollPanelArt.Inkify(_titleText);
+            ScrollPanelArt.Inkify(_objectiveText);
+        }
 
         GameObject buttonObject = new GameObject(
             "StartButton",
@@ -203,10 +210,12 @@ public sealed class LevelReadyScreenController : MonoBehaviour
         labelRect.offsetMin = labelRect.offsetMax = Vector2.zero;
         TextMeshProUGUI label = labelObject.AddComponent<TextMeshProUGUI>();
         label.text = "Start";
-        label.fontSize = 30f;
+        label.fontSize = 34f;
         label.alignment = TextAlignmentOptions.Center;
         label.raycastTarget = false;
         TutorialFontProvider.ApplyTo(label);
+        if (onParchment)
+            ScrollPanelArt.Inkify(label);
 
         GameObject backObject = new GameObject("BackButton", typeof(RectTransform), typeof(Image), typeof(Button));
         backObject.transform.SetParent(_panelRoot.transform, false);
@@ -227,7 +236,7 @@ public sealed class LevelReadyScreenController : MonoBehaviour
         backLabelRect.offsetMin = backLabelRect.offsetMax = Vector2.zero;
         TextMeshProUGUI backLabel = backLabelObject.AddComponent<TextMeshProUGUI>();
         backLabel.text = "Back";
-        backLabel.fontSize = 30f;
+        backLabel.fontSize = 34f;
         backLabel.alignment = TextAlignmentOptions.Center;
         backLabel.raycastTarget = false;
         TutorialFontProvider.ApplyTo(backLabel);

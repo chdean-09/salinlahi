@@ -134,7 +134,7 @@ TextureImporter:
         width: 952
         height: 1589
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 165, y: 155, z: 165, w: 155}
       customData: 
       outline: []
@@ -147,11 +147,33 @@ TextureImporter:
       indices: 
       edges: []
       weights: []
+    - serializedVersion: 2
+      name: PanelBackground_Top
+      rect:
+        serializedVersion: 2
+        x: 139
+        y: 1150
+        width: 952
+        height: 534
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 165, y: 60, z: 165, w: 155}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 346737d78dcaa614c83f2c192bb811a1
+      internalID: -74970879
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
     outline: []
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 6741c357a2d82ee438f7cd2cd6274425
     internalID: 0
     vertices: []
     indices: 
@@ -162,6 +184,7 @@ TextureImporter:
       entries: []
     nameFileIdTable:
       PanelBackground_0: 8800761846828810195
+      PanelBackground_Top: -74970879
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

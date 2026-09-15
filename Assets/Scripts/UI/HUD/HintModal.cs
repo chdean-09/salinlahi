@@ -244,6 +244,7 @@ public sealed class HintModal : MonoBehaviour
         _card.anchorMax = new Vector2(0.78f, 0.72f);
         _card.offsetMin = _card.offsetMax = Vector2.zero;
         cardObject.GetComponent<Image>().color = new Color(0.05f, 0.07f, 0.13f, 0.98f);
+        bool onParchment = ScrollPanelArt.ApplyFull(cardObject.GetComponent<Image>());
 
         _titleText = CreateLabel("Title", 32, new Vector2(0.06f, 0.72f), new Vector2(0.94f, 0.94f));
         _bodyText = CreateLabel("Body", 24, new Vector2(0.06f, 0.44f), new Vector2(0.94f, 0.70f));
@@ -265,6 +266,9 @@ public sealed class HintModal : MonoBehaviour
             HintModalCopy.ConfirmLabel, actions.transform, out _confirmLabel, HandleConfirmPressed);
         _cancelButton = CreateButton(
             HintModalCopy.CancelLabel, actions.transform, out _cancelLabel, Cancel);
+
+        if (onParchment)
+            ScrollPanelArt.InkifyRecursive(_card);
     }
 
     // One control serves confirm and retry: the exhausted card has nothing to confirm, so

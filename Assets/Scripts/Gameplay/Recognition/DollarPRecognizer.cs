@@ -64,12 +64,16 @@ public class DollarPRecognizer
     private Dictionary<string, List<List<Vector2>>> _templates;
     private Dictionary<string, List<int>> _templateStrokeCounts;
     private Dictionary<string, List<float>> _templateAspectRatios;
+    // Which ScaleToSquare branch each stored variant was normalised with. Recognize needs
+    // this to score a candidate against every template in that template's own space.
+    private Dictionary<string, List<bool>> _templateUniformScaling;
     public DollarPRecognizer(int resampleCount = 32)
     {
         _n = resampleCount;
         _templates = new Dictionary<string, List<List<Vector2>>>();
         _templateStrokeCounts = new Dictionary<string, List<int>>();
         _templateAspectRatios = new Dictionary<string, List<float>>();
+        _templateUniformScaling = new Dictionary<string, List<bool>>();
     }
 
     // Backward-compatible entry point for single-template-per-character callers.
@@ -103,22 +107,26 @@ public class DollarPRecognizer
         _templates.Clear();
         _templateStrokeCounts.Clear();
         _templateAspectRatios.Clear();
+        _templateUniformScaling.Clear();
 
         foreach (var kvp in raw)
         {
             var variants = new List<List<Vector2>>();
             var strokeCounts = new List<int>();
             var aspectRatios = new List<float>();
+            var uniformScaling = new List<bool>();
 
             foreach (List<List<Vector2>> variantStrokes in kvp.Value)
             {
                 if (variantStrokes == null || variantStrokes.Count == 0) continue;
-                List<Vector2> preprocessed = PreprocessStrokes(CloneStrokes(variantStrokes));
+                List<Vector2> preprocessed = PreprocessStrokes(
+                    CloneStrokes(variantStrokes), null, out bool usedUniform);
                 if (preprocessed.Count == 0) continue;
 
                 variants.Add(preprocessed);
                 strokeCounts.Add(CountNonEmptyStrokes(variantStrokes));
                 aspectRatios.Add(ComputeAspectRatio(variantStrokes));
+                uniformScaling.Add(usedUniform);
             }
 
             if (variants.Count > 0)
@@ -126,6 +134,7 @@ public class DollarPRecognizer
                 _templates[kvp.Key] = variants;
                 _templateStrokeCounts[kvp.Key] = strokeCounts;
                 _templateAspectRatios[kvp.Key] = aspectRatios;
+                _templateUniformScaling[kvp.Key] = uniformScaling;
             }
         }
     }
@@ -196,18 +205,27 @@ public class DollarPRecognizer
         if (_templates.Count == 0)
             return new RecognitionResult("NONE", 0f, -1, "NONE", float.MinValue);
 
-        List<Vector2> candidate = PreprocessStrokes(CloneStrokes(strokes));
-        if (candidate.Count == 0)
+        // The candidate is prepared BOTH ways rather than committing to one, so each template
+        // can be scored against the version normalised the way that template was. See
+        // ScaleToSquare for why the two branches exist and why picking one per candidate broke.
+        List<Vector2> candidatePerAxis = PreprocessStrokes(CloneStrokes(strokes), false, out _);
+        List<Vector2> candidateUniform = PreprocessStrokes(CloneStrokes(strokes), true, out _);
+        if (candidatePerAxis.Count == 0)
             return new RecognitionResult("NONE", 0f, -1, "NONE", float.MinValue);
 
         // Stage 1: pure shape scoring. For each character, keep its best-matching variant.
         var shortlist = new List<CandidateMatch>(_templates.Count);
         foreach (var kvp in _templates)
         {
+            _templateUniformScaling.TryGetValue(kvp.Key, out List<bool> variantScaling);
             float bestShape = float.MinValue;
             int bestVariant = -1;
             for (int i = 0; i < kvp.Value.Count; i++)
             {
+                bool templateUsedUniform = variantScaling != null
+                    && i < variantScaling.Count
+                    && variantScaling[i];
+                List<Vector2> candidate = templateUsedUniform ? candidateUniform : candidatePerAxis;
                 float d = GreedyCloudMatch(candidate, kvp.Value[i]);
                 float shape = 1f - d / (0.5f * Mathf.Sqrt(2f));
                 if (shape > bestShape)
@@ -332,12 +350,18 @@ public class DollarPRecognizer
     }
 
     // ── PREPROCESSING ────────────────────────────────────────────────
-    private List<Vector2> PreprocessStrokes(List<List<Vector2>> strokes)
+    // forceUniform: null lets the cloud classify itself by its own proportions - how a template
+    // decides its branch at load. Passing true/false instead normalises into a specific branch,
+    // which is how Recognize prepares the candidate for both.
+    private List<Vector2> PreprocessStrokes(
+        List<List<Vector2>> strokes, bool? forceUniform, out bool usedUniform)
     {
+        usedUniform = false;
         List<Vector2> pts = ResampleStrokes(strokes, _n);
         if (pts.Count == 0)
             return pts;
-        pts = ScaleToSquare(pts, 1f);
+        usedUniform = forceUniform ?? IsOneDimensional(pts);
+        pts = ScaleToSquare(pts, 1f, usedUniform);
         pts = TranslateToOrigin(pts);
         return pts;
     }
@@ -446,7 +470,30 @@ public class DollarPRecognizer
     // scaling regresses every RA draw to KA.
     private const float ONE_D_ASPECT_THRESHOLD = 4.5f;
 
-    private List<Vector2> ScaleToSquare(List<Vector2> pts, float size)
+    // Which branch a cloud falls in, judged by its own proportions.
+    private static bool IsOneDimensional(List<Vector2> pts)
+    {
+        float minX = float.MaxValue, minY = float.MaxValue;
+        float maxX = float.MinValue, maxY = float.MinValue;
+        foreach (var p in pts)
+        {
+            if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+            if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
+        }
+        float longer = Mathf.Max(maxX - minX, maxY - minY);
+        float shorter = Mathf.Max(Mathf.Min(maxX - minX, maxY - minY), 1e-6f);
+        return longer > 1e-6f && longer / shorter >= ONE_D_ASPECT_THRESHOLD;
+    }
+
+    // Which branch to use is the CALLER's decision, not this cloud's. Deciding it here from
+    // the candidate alone made the threshold a cliff the candidate could fall off: EI's
+    // templates sit at aspect 3.09-3.94, the highest of any 2D glyph and only 1.14x under the
+    // threshold, so an EI drawn ~20% wider than the reference was scaled uniformly while every
+    // EI template stayed per-axis. The two clouds were then in different spaces - EI's own
+    // score fell from 0.92 to 0.58 and HA, the only uniformly-scaled class, led instead.
+    // Recognize now scores each template against the candidate prepared in that template's
+    // branch, so crossing the threshold changes nothing and the comparison stays like-for-like.
+    private List<Vector2> ScaleToSquare(List<Vector2> pts, float size, bool uniform)
     {
         float minX = float.MaxValue, minY = float.MaxValue;
         float maxX = float.MinValue, maxY = float.MinValue;
@@ -458,10 +505,9 @@ public class DollarPRecognizer
         float width = maxX - minX;
         float height = maxY - minY;
         float longer = Mathf.Max(width, height);
-        float shorter = Mathf.Max(Mathf.Min(width, height), 1e-6f);
 
         float sx, sy;
-        if (longer > 1e-6f && longer / shorter >= ONE_D_ASPECT_THRESHOLD)
+        if (uniform && longer > 1e-6f)
         {
             sx = sy = size / longer;
         }

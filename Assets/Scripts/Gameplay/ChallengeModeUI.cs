@@ -71,6 +71,7 @@ public class ChallengeModeUI : MonoBehaviour
             panelImage = gameObject.AddComponent<Image>();
         panelImage.color = new Color(0.03f, 0.05f, 0.1f, 0.9f);
         panelImage.raycastTarget = false;
+        bool onParchment = ScrollPanelArt.ApplyTop(panelImage);
 
         _progressText = CreateLabel("Progress", 24, new Vector2(0.04f, 0.78f), new Vector2(0.96f, 0.98f));
         _promptText = CreateLabel("Prompt", 30, new Vector2(0.04f, 0.55f), new Vector2(0.96f, 0.78f));
@@ -110,6 +111,9 @@ public class ChallengeModeUI : MonoBehaviour
         _hintButtonLabel = _hintButton.GetComponentInChildren<TextMeshProUGUI>();
         CreateActionButton("Retry", () => _controller?.Retry());
         CreateActionButton("Exit", () => _controller?.Exit());
+
+        if (onParchment)
+            ScrollPanelArt.InkifyRecursive(transform);
     }
 
     private void RebuildChoices(ChallengeUnitDefinition unit, ChallengeSession session)

@@ -161,10 +161,14 @@ public sealed class LevelContentMissingPanel : MonoBehaviour
         Image cardImage = card.GetComponent<Image>();
         cardImage.color = new Color32(45, 32, 25, 255);
         cardImage.raycastTarget = true;
+        bool onParchment = ScrollPanelArt.ApplyFull(cardImage);
 
         _titleText = CreateText(card.transform, "TitleText", string.Empty, 45f, 120f, 48f);
         _bodyText = CreateText(card.transform, "BodyText", string.Empty, 185f, 260f, 32f);
         _mainMenuButton = CreateButton(card.transform, "MainMenuButton", "Main Menu", 25f);
+
+        if (onParchment)
+            ScrollPanelArt.InkifyRecursive(card.transform);
     }
 
     // Visual constants deliberately mirror CampaignOutcomeSaveFailurePanel so the two

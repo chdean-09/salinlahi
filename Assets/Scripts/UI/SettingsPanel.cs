@@ -51,6 +51,7 @@ public class SettingsPanel : MonoBehaviour
     private static Sprite s_runtimeWhiteSprite;
     private GameObject _modalBackdrop;
     private RectTransform _settingsCardRect;
+    private bool _onParchment;
     private readonly System.Collections.Generic.List<GameObject> _hiddenSiblingObjects = new();
     private readonly System.Collections.Generic.List<Graphic> _disabledSiblingRaycastGraphics = new();
     private Canvas _rootCanvas;
@@ -228,12 +229,12 @@ public class SettingsPanel : MonoBehaviour
         UpdateLabel(_sfxLabel, "SFX Volume", _sfxSlider);
     }
 
-    private static void UpdateLabel(TMP_Text label, string prefix, Slider slider)
+    private void UpdateLabel(TMP_Text label, string prefix, Slider slider)
     {
         if (label == null || slider == null)
             return;
 
-        label.color = LabelColor;
+        label.color = _onParchment ? ScrollPanelArt.InkColor : LabelColor;
         label.fontSize = Mathf.Max(label.fontSize, 26f);
         int percent = Mathf.RoundToInt(slider.value * 100f);
         label.text = $"{prefix}: {percent}%";
@@ -677,6 +678,7 @@ public class SettingsPanel : MonoBehaviour
             cardImage.raycastTarget = false;
         }
 
+        _onParchment = ScrollPanelArt.ApplyFull(_settingsCardRect.GetComponent<Image>());
         _settingsCardRect.SetSiblingIndex(1);
         _settingsCardRect.anchorMin = new Vector2(0.07f, 0.28f);
         _settingsCardRect.anchorMax = new Vector2(0.93f, 0.76f);
