@@ -218,8 +218,8 @@ MonoBehaviour:
       symbol: {fileID: 11400000, guid: 9aae464ed65b8416b9aa3ad6ee4ce2c4, type: 2}
       spokenValueId: value.la
     requiredSuccesses: 2
-  activeClueCombatEnabled: 1
-  activeClueRestorationEnabled: 1
+  activeClueCombatEnabled: 0
+  activeClueRestorationEnabled: 0
   clueChannels: 17
   audioVisualFallback: 4
   spawnAssignmentPolicy:

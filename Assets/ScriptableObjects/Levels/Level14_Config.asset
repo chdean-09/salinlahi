@@ -252,8 +252,8 @@ MonoBehaviour:
       symbol: {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
       spokenValueId: value.nga
     requiredSuccesses: 2
-  activeClueCombatEnabled: 1
-  activeClueRestorationEnabled: 1
+  activeClueCombatEnabled: 0
+  activeClueRestorationEnabled: 0
   clueChannels: 17
   audioVisualFallback: 4
   spawnAssignmentPolicy:

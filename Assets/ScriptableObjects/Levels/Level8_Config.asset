@@ -182,8 +182,8 @@ MonoBehaviour:
       symbol: {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
       spokenValueId: value.ya
     requiredSuccesses: 2
-  activeClueCombatEnabled: 1
-  activeClueRestorationEnabled: 1
+  activeClueCombatEnabled: 0
+  activeClueRestorationEnabled: 0
   clueChannels: 17
   audioVisualFallback: 4
   spawnAssignmentPolicy:
