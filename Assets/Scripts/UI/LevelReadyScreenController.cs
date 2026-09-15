@@ -1,13 +1,14 @@
-using System;
+﻿using System;
 using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Presents the short level-start contract before the story and defense flow begins.
-/// The panel is built at runtime so the shared Gameplay scenes do not need another
-/// serialized UI dependency.
+/// Presents the short level-start contract at the END of the story phase — after the
+/// before-level cutscene and intro dialogue, immediately before the focus words,
+/// symbol cards and defense. The panel is built at runtime so the shared Gameplay
+/// scenes do not need another serialized UI dependency.
 /// </summary>
 public sealed class LevelReadyScreenController : MonoBehaviour
 {

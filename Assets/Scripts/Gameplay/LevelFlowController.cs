@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using Salinlahi.Runtime.Gameplay;
 using UnityEngine;
@@ -329,31 +329,58 @@ public class LevelFlowController : MonoBehaviour
         yield break;
     }
 
+    /// <summary>
+    /// Opening cutscene, intro dialogue, Ready contract, then the protagonist spawn.
+    /// The Ready panel CLOSES this phase rather than opening it: its copy ("Learn the
+    /// symbols, then defend the shrine") describes the phases that follow, and the cutscene
+    /// and dialogue are what establish which level the player is in. Presenting it first
+    /// asked the player to accept a briefing for content the story had not introduced yet.
+    /// </summary>
     private IEnumerator ExecuteStory()
     {
-        bool shouldPresentReady = !IsSandboxRun() && !_skipLessonForCombatRetry;
-#if UNITY_INCLUDE_TESTS
-        shouldPresentReady &= !s_skipReadyScreenForTests;
-#endif
-        if (shouldPresentReady)
+        // A combat-only retry replays the fight alone: no cutscene, no dialogue, and no Ready
+        // contract the player already accepted this attempt. The protagonist spawn below is
+        // NOT part of that skip — he must stand at the base on a retry too.
+        if (!_skipLessonForCombatRetry)
         {
-            if (_levelReadyScreen == null)
+            // AC-0: Play "before level" cutscene if mapped
+            CutsceneSO beforeCutscene = ResolveCutscene(CutsceneTriggerType.BeforeLevel);
+            if (beforeCutscene != null && _cutscenePlayer != null)
             {
-                GameObject readyObject = new GameObject("[Runtime] LevelReadyScreenController");
-                readyObject.transform.SetParent(transform, false);
-                _levelReadyScreen = readyObject.AddComponent<LevelReadyScreenController>();
+                _waitingForCutscene = true;
+                bool playExitTransition = _levelConfig.levelNumber == 1;
+                _cutscenePlayer.Play(beforeCutscene, playExitTransition);
+                yield return new WaitUntil(() => !_waitingForCutscene || _machine.IsTerminal);
+
+                if (_machine.IsTerminal)
+                    yield break;
             }
 
-            yield return _levelReadyScreen.Present(
-                _levelConfig,
-                () => _machine == null || _machine.IsTerminal || _flowAborted,
-                ExitToLevelSelectFromReady);
+            // AC-1: Play intro dialogue before combat begins
+            if (_levelConfig.introDialogue != null && _dialogueController != null)
+            {
+                if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
+                    GameManager.Instance.StartGame();
 
+                _waitingForDialogue = true;
+                _dialogueController.Play(_levelConfig.introDialogue);
+                yield return new WaitUntil(() => !_waitingForDialogue || _machine.IsTerminal);
+
+                if (_machine.IsTerminal)
+                    yield break;
+            }
+
+            yield return PresentReadyScreen();
+
+            // Back on the Ready panel aborts the attempt. Nothing below may spawn into a
+            // scene that is already unloading.
             if (_machine == null || _machine.IsTerminal || _flowAborted)
                 yield break;
         }
 
-        // Spawn protagonist if level has one configured
+        // Spawned LAST, once the player has accepted the contract: the opening cutscene and
+        // dialogue are fullscreen, so anything placed on the board before them is furniture
+        // nobody sees, and Back would have built it for a level the player just left.
         if (_levelConfig.hasProtagonist)
         {
             ProtagonistManager protagonistManager = EnsureProtagonistManager();
@@ -377,33 +404,39 @@ public class LevelFlowController : MonoBehaviour
                 DebugLogger.LogError("[LevelFlowController] ProtagonistManager.Instance is NULL! Is the ProtagonistManager prefab in the scene?");
             }
         }
+    }
 
-        if (_skipLessonForCombatRetry)
+    /// <summary>
+    /// The level-start contract gate, shown once this level's story beats have played.
+    /// Drawing is suppressed for its duration: the intro dialogue leaves the game in
+    /// <see cref="GameState.Playing"/>, so without the flag a player could draw on the board
+    /// behind the modal — a hazard the panel did not have while it ran ahead of the story.
+    /// The Defense executor releases it exactly once as it opens, the same release that
+    /// already covers the FocusWords and SymbolLearning previews, and the Back path releases
+    /// it through <see cref="ExitToLevelSelectFromReady"/>.
+    /// </summary>
+    private IEnumerator PresentReadyScreen()
+    {
+        bool shouldPresentReady = !IsSandboxRun() && !_skipLessonForCombatRetry;
+#if UNITY_INCLUDE_TESTS
+        shouldPresentReady &= !s_skipReadyScreenForTests;
+#endif
+        if (!shouldPresentReady)
             yield break;
 
-        // AC-0: Play "before level" cutscene if mapped
-        CutsceneSO beforeCutscene = ResolveCutscene(CutsceneTriggerType.BeforeLevel);
-        if (beforeCutscene != null && _cutscenePlayer != null)
+        if (_levelReadyScreen == null)
         {
-            _waitingForCutscene = true;
-            bool playExitTransition = _levelConfig.levelNumber == 1;
-            _cutscenePlayer.Play(beforeCutscene, playExitTransition);
-            yield return new WaitUntil(() => !_waitingForCutscene || _machine.IsTerminal);
-
-            if (_machine.IsTerminal)
-                yield break;
+            GameObject readyObject = new GameObject("[Runtime] LevelReadyScreenController");
+            readyObject.transform.SetParent(transform, false);
+            _levelReadyScreen = readyObject.AddComponent<LevelReadyScreenController>();
         }
 
-        // AC-1: Play intro dialogue before combat begins
-        if (_levelConfig.introDialogue != null && _dialogueController != null)
-        {
-            if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
-                GameManager.Instance.StartGame();
+        SuppressDrawingForPreview();
 
-            _waitingForDialogue = true;
-            _dialogueController.Play(_levelConfig.introDialogue);
-            yield return new WaitUntil(() => !_waitingForDialogue || _machine.IsTerminal);
-        }
+        yield return _levelReadyScreen.Present(
+            _levelConfig,
+            () => _machine == null || _machine.IsTerminal || _flowAborted,
+            ExitToLevelSelectFromReady);
     }
 
     private IEnumerator ExecuteFocusWords()
