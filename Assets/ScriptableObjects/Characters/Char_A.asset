@@ -23,7 +23,7 @@ MonoBehaviour:
   firstIntroductionLevelId: level.ugat.01
   description: 
   displaySprite: {fileID: -8680797543115379092, guid: 086eb41909e2e2942abbbc0f1a3a1d06, type: 3}
-  almanacSprite: {fileID: 0}
+  almanacSprite: {fileID: 21300000, guid: 09a929e9cc07407c896f6db1df8e684b, type: 3}
   badgeSprite: {fileID: 21300000, guid: 78050c217bea4e939288bea6c7baa699, type: 3}
   scrambledBadgeSprite: {fileID: 0}
   glyphOutlineSprite: {fileID: 21300000, guid: 2386098f7e87c428a8f441b9bbd4f5be, type: 3}

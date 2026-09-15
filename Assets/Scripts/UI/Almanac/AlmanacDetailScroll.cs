@@ -16,6 +16,12 @@ public class AlmanacDetailScroll : MonoBehaviour
     [SerializeField] private Image _art;
     [SerializeField] private TextMeshProUGUI _title;
     [SerializeField] private TextMeshProUGUI _description;
+    [Tooltip("Baybayin glyph shown between the portrait and the name. Hidden when the subject " +
+             "carries no glyph — the unlock-reveal scroll, where the glyph IS the art, and bosses, " +
+             "which have no assigned character.")]
+    [SerializeField] private Image _glyph;
+    [Tooltip("Name of that glyph (\"GA\"), shown under it and above the enemy name. Hidden when blank.")]
+    [SerializeField] private TextMeshProUGUI _glyphLabel;
 
     [Header("Animation")]
     [SerializeField] private CanvasGroup _canvasGroup;
@@ -37,8 +43,25 @@ public class AlmanacDetailScroll : MonoBehaviour
         HideImmediate();
     }
 
-    public void Show(Sprite art, string title, string description)
+    /// <summary>
+    /// Shows a subject with no Baybayin glyph of its own — the level-start unlock reveal, where the
+    /// glyph is already the art.
+    /// </summary>
+    public void Show(Sprite art, string title, string description) => Show(art, title, description, null, null);
+
+    public void Show(Sprite art, string title, string description, Sprite glyph, string glyphLabel)
     {
+        if (_glyph != null)
+        {
+            _glyph.sprite = glyph;
+            _glyph.gameObject.SetActive(glyph != null);
+        }
+        if (_glyphLabel != null)
+        {
+            bool hasLabel = !string.IsNullOrWhiteSpace(glyphLabel);
+            _glyphLabel.text = hasLabel ? glyphLabel : string.Empty;
+            _glyphLabel.gameObject.SetActive(hasLabel);
+        }
         if (_art != null)
         {
             _art.sprite = art;

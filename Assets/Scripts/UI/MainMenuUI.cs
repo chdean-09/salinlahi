@@ -62,7 +62,6 @@ public class MainMenuUI : MonoBehaviour
 
     private void Start()
     {
-        EnsureMemoryArchiveEntryPoint();
         EnsureExitEntryPoint();
         ApplyMainMenuTextEffects();
         EnsureSandboxEntryPoint();
@@ -256,18 +255,18 @@ public class MainMenuUI : MonoBehaviour
         // Fully qualified on purpose: `using TMPro;` at the top of this file sits inside a
         // #if UNITY_EDITOR || SALINLAHI_SANDBOX block, so the short name does not resolve in a
         // plain player build, and adding a second using directive would raise CS0105.
-        TMPro.TextMeshProUGUI tmpLabel = buttonObject.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
+        TMPro.TextMeshProUGUI tmpLabel = button.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
         if (tmpLabel != null)
             tmpLabel.text = MemoryCardCopy.ArchiveTitle;
 
-        Text legacyLabel = buttonObject.GetComponentInChildren<Text>(true);
+        Text legacyLabel = button.GetComponentInChildren<Text>(true);
         if (legacyLabel != null)
             legacyLabel.text = MemoryCardCopy.ArchiveTitle;
 
         button.onClick.RemoveAllListeners();
         button.onClick.AddListener(OnMemoryArchivePressed);
         button.interactable = true;
-        buttonObject.SetActive(true);
+        button.gameObject.SetActive(true);
     }
 
     /// <summary>
@@ -310,48 +309,38 @@ public class MainMenuUI : MonoBehaviour
     {
         Transform parent = transform;
 
-        if (parent.Find(ExitButtonName) is Transform existing
-            && existing.GetComponent<Button>() != null)
-        {
-            return;
-        }
-
-        Button template = parent.Find(ArchiveButtonTemplateName)?.GetComponent<Button>();
-        if (template == null)
-        {
-            DebugLogger.LogWarning(
-                $"MainMenuUI: '{ArchiveButtonTemplateName}' was not found under the main menu, so "
-                + "the Exit button could not be created and the player cannot quit from the menu.");
-            return;
-        }
-
-        GameObject buttonObject = Instantiate(template.gameObject, parent, false);
-        buttonObject.name = ExitButtonName;
-        Button button = buttonObject.GetComponent<Button>();
+        Button button = parent.Find(ExitButtonName)?.GetComponent<Button>();
         if (button == null)
-            return;
+        {
+            Button template = parent.Find(ArchiveButtonTemplateName)?.GetComponent<Button>();
+            if (template == null)
+            {
+                DebugLogger.LogWarning(
+                    $"MainMenuUI: '{ArchiveButtonTemplateName}' was not found under the main menu, so "
+                    + "the Exit button could not be created and the player cannot quit from the menu.");
+                return;
+            }
 
-        RectTransform rect = buttonObject.GetComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0.5f, 0f);
-        rect.anchorMax = new Vector2(0.5f, 0f);
-        rect.pivot = new Vector2(0.5f, 0f);
-        // Continues the bottom-anchored runtime stack: SandboxModeButton sits at y = 16 and
-        // MemoryArchiveButton at y = 124, so Exit clears both.
-        rect.anchoredPosition = new Vector2(0f, 232f);
+            GameObject buttonObject = Instantiate(template.gameObject, parent, false);
+            buttonObject.name = ExitButtonName;
+            button = buttonObject.GetComponent<Button>();
+            if (button == null)
+                return;
+        }
 
         // Fully qualified on purpose — see the note in EnsureMemoryArchiveEntryPoint.
-        TMPro.TextMeshProUGUI tmpLabel = buttonObject.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
+        TMPro.TextMeshProUGUI tmpLabel = button.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
         if (tmpLabel != null)
             tmpLabel.text = MainMenuProgressCopy.ExitConfirmButtonLabel;
 
-        Text legacyLabel = buttonObject.GetComponentInChildren<Text>(true);
+        Text legacyLabel = button.GetComponentInChildren<Text>(true);
         if (legacyLabel != null)
             legacyLabel.text = MainMenuProgressCopy.ExitConfirmButtonLabel;
 
         button.onClick.RemoveAllListeners();
         button.onClick.AddListener(OnExitPressed);
         button.interactable = true;
-        buttonObject.SetActive(true);
+        button.gameObject.SetActive(true);
     }
 
     /// <summary>
@@ -407,8 +396,8 @@ public class MainMenuUI : MonoBehaviour
         rect.anchorMin = new Vector2(0.5f, 0f);
         rect.anchorMax = new Vector2(0.5f, 0f);
         rect.pivot = new Vector2(0.5f, 0f);
-        // Directly above the Exit button at y = 232, continuing the same bottom-anchored stack.
-        rect.anchoredPosition = new Vector2(0f, 320f);
+        // Directly above the Exit button at y = 124, continuing the same bottom-anchored stack.
+        rect.anchoredPosition = new Vector2(0f, 212f);
         rect.sizeDelta = new Vector2(720f, 56f);
 
         TMPro.TextMeshProUGUI label = labelObject.GetComponent<TMPro.TextMeshProUGUI>();

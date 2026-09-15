@@ -65,18 +65,13 @@ public class DefeatScreenUI : MonoBehaviour
         if (_heartCountText != null)
             _heartCountText.text = $"{hearts}/{maxHearts}";
         if (_explanationText != null)
-        {
-            _explanationText.text =
-                "An enemy reached the shrine and your last heart was lost. "
-                + "Draw the glowing symbol before enemies reach the bottom.";
-
-            // uGUI paints in sibling order, and the buttons are instantiated after the panel is
-            // first built — ReviewLessonButton is cloned at Show time and inserts itself into the
-            // stack. The line explaining the defeat is the one thing on this screen that has to be
-            // readable, so it is put on top every time it is shown rather than depending on who was
-            // created last.
-            _explanationText.transform.SetAsLastSibling();
-        }
+            // dev turned this line off deliberately. It previously rendered behind the button
+            // stack, and this branch had fixed that by re-parenting it to the top on every Show —
+            // but a hidden element cannot have a layering bug, so that fix is moot and the removal
+            // wins. If the explanation is ever brought back, it needs SetAsLastSibling() here:
+            // ReviewLessonButton is cloned at Show time and inserts itself into the same stack, so
+            // paint order cannot be left to whoever was created last.
+            _explanationText.gameObject.SetActive(false);
 
         DebugLogger.Log($"DefeatScreenUI: Showing defeat. Hearts: {hearts}/{maxHearts}");
     }
