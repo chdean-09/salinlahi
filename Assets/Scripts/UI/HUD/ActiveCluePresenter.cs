@@ -658,8 +658,14 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         // the authored HUD path would silently never present a clue.
         SubscribeToDirector();
 
-        if (Application.isPlaying && level != null && level.activeClueCombatEnabled)
-            EnsureRuntimePanel();
+        // No runtime clue panel is built any more. The fallback used to drop a dark plate across
+        // the top of the play field carrying a masked "----" readout and a Replay button, on every
+        // level that armed clue combat without an authored panel — which is every level. The
+        // restoration rail along the foot of the screen already shows the target text as slots,
+        // and the authored DrawGlowingSymbolInstruction already carries the standing instruction,
+        // so the plate was a second, unplaced copy of both, drawn in front of the lane the enemies
+        // walk down. An authored panel wired in the Inspector still works exactly as before.
+
         // Built here rather than on the first fill: §2 B1 requires the target text to be standing
         // on screen as empty slots before the first enemy walks on, because the player's opening
         // mental model has to be "fill this", not "kill those".
@@ -689,114 +695,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         _subscribedDirector.OnActiveClueResolved += HandleActiveClueResolved;
     }
 
-    /// <summary>
-    /// Gives runtime-bootstrapped levels a usable clue panel when no Inspector wiring exists.
-    /// Authored HUD references still win; this fallback is created only for an armed level.
-    /// </summary>
-    private void EnsureRuntimePanel()
-    {
-        if (_cluePanelRoot != null)
-            return;
-
-        Canvas canvas = ResolveHudCanvas();
-        Transform hudContainer = ResolveHudContainer(canvas);
-        if (hudContainer == null)
-            return;
-
-        TextMeshProUGUI textTemplate = FindFirstObjectByType<TextMeshProUGUI>();
-
-        // No builtin-sprite lookup: UISprite.psd lives in unity_builtin_extra, which
-        // Resources.GetBuiltinResource cannot serve. A null sprite renders a flat tinted
-        // quad, which is intentional here: this no-Inspector-wiring fallback remains readable
-        // on mobile layouts without requiring an authored UI skin.
-        Sprite defaultUiSprite = null;
-
-        GameObject panel = new GameObject("[Runtime] ActiveCluePanel", typeof(RectTransform), typeof(Image));
-        panel.transform.SetParent(hudContainer, false);
-        RectTransform panelRect = panel.GetComponent<RectTransform>();
-        panelRect.anchorMin = new Vector2(0.5f, 1f);
-        panelRect.anchorMax = new Vector2(0.5f, 1f);
-        panelRect.pivot = new Vector2(0.5f, 1f);
-        panelRect.anchoredPosition = new Vector2(0f, -155f);
-        panelRect.sizeDelta = new Vector2(760f, 180f);
-
-        Image panelImage = panel.GetComponent<Image>();
-        panelImage.sprite = defaultUiSprite;
-        panelImage.color = new Color(0.04f, 0.06f, 0.12f, 0.94f);
-        panelImage.raycastTarget = false;
-        panel.SetActive(false);
-
-        GameObject instructionObject =
-            new GameObject("[Runtime] ActiveClueInstruction", typeof(RectTransform));
-        instructionObject.transform.SetParent(panel.transform, false);
-        TextMeshProUGUI instruction = instructionObject.AddComponent<TextMeshProUGUI>();
-        CopyFont(textTemplate, instruction);
-        instruction.text = "DRAW THE GLOWING SYMBOL TO DEFEND";
-        instruction.fontSize = 40f;
-        instruction.alignment = TextAlignmentOptions.Center;
-        instruction.color = new Color(1f, 0.84f, 0.29f, 1f);
-        instruction.raycastTarget = false;
-        SetStretch(instructionObject.GetComponent<RectTransform>(), new Vector2(118f, 18f),
-            new Vector2(-118f, -18f));
-
-        GameObject textObject = new GameObject("[Runtime] ActiveClueText", typeof(RectTransform));
-        textObject.transform.SetParent(panel.transform, false);
-        TextMeshProUGUI clueText = textObject.AddComponent<TextMeshProUGUI>();
-        CopyFont(textTemplate, clueText);
-        clueText.fontSize = 38f;
-        clueText.alignment = TextAlignmentOptions.Center;
-        clueText.color = Color.white;
-        clueText.raycastTarget = false;
-        SetStretch(textObject.GetComponent<RectTransform>(), new Vector2(118f, 18f),
-            new Vector2(-118f, -62f));
-
-        GameObject imageObject = new GameObject("[Runtime] ActiveClueImage", typeof(RectTransform), typeof(Image));
-        imageObject.transform.SetParent(panel.transform, false);
-        Image clueImage = imageObject.GetComponent<Image>();
-        clueImage.sprite = defaultUiSprite;
-        clueImage.color = Color.white;
-        clueImage.preserveAspect = true;
-        clueImage.raycastTarget = false;
-        RectTransform imageRect = imageObject.GetComponent<RectTransform>();
-        imageRect.anchorMin = new Vector2(0f, 0.5f);
-        imageRect.anchorMax = new Vector2(0f, 0.5f);
-        imageRect.pivot = new Vector2(0f, 0.5f);
-        imageRect.anchoredPosition = new Vector2(12f, 0f);
-        imageRect.sizeDelta = new Vector2(88f, 88f);
-        imageObject.SetActive(false);
-
-        GameObject buttonObject = new GameObject(
-            "[Runtime] ActiveClueReplayButton", typeof(RectTransform), typeof(Image), typeof(Button));
-        buttonObject.transform.SetParent(panel.transform, false);
-        Image buttonImage = buttonObject.GetComponent<Image>();
-        buttonImage.sprite = defaultUiSprite;
-        buttonImage.color = new Color(0.18f, 0.45f, 0.76f, 1f);
-        Button button = buttonObject.GetComponent<Button>();
-        button.targetGraphic = buttonImage;
-        RectTransform buttonRect = buttonObject.GetComponent<RectTransform>();
-        buttonRect.anchorMin = new Vector2(1f, 0.5f);
-        buttonRect.anchorMax = new Vector2(1f, 0.5f);
-        buttonRect.pivot = new Vector2(1f, 0.5f);
-        buttonRect.anchoredPosition = new Vector2(-12f, 0f);
-        buttonRect.sizeDelta = new Vector2(82f, 44f);
-
-        GameObject labelObject = new GameObject("[Runtime] ActiveClueReplayLabel", typeof(RectTransform));
-        labelObject.transform.SetParent(buttonObject.transform, false);
-        TextMeshProUGUI label = labelObject.AddComponent<TextMeshProUGUI>();
-        CopyFont(textTemplate, label);
-        label.text = "Replay";
-        label.fontSize = 18f;
-        label.alignment = TextAlignmentOptions.Center;
-        label.color = Color.white;
-        label.raycastTarget = false;
-        SetStretch(labelObject.GetComponent<RectTransform>(), Vector2.zero, Vector2.zero);
-
-        _cluePanelRoot = panel;
-        _clueText = clueText;
-        _clueImage = clueImage;
-        _replayAudioButton = buttonObject;
-    }
-
     private static void CopyFont(TextMeshProUGUI source, TextMeshProUGUI target)
     {
         if (source == null || target == null || source.font == null)
@@ -804,14 +702,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
         target.font = source.font;
         target.fontSharedMaterial = source.fontSharedMaterial;
-    }
-
-    private static void SetStretch(RectTransform rect, Vector2 offsetMin, Vector2 offsetMax)
-    {
-        rect.anchorMin = Vector2.zero;
-        rect.anchorMax = Vector2.one;
-        rect.offsetMin = offsetMin;
-        rect.offsetMax = offsetMax;
     }
 
     /// <summary>
@@ -1407,12 +1297,10 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     }
 
     /// <summary>
-    /// Shows or hides the clue panel's standing instruction line, wherever it came from: the
-    /// authored HUD calls it <c>DrawGlowingSymbolInstruction</c> and
-    /// <see cref="EnsureRuntimePanel"/>'s no-wiring fallback calls it
-    /// <c>[Runtime] ActiveClueInstruction</c>. Matched on the shared "Instruction" in the name
-    /// rather than on a serialized reference, so this works on a HUD authored before the cue
-    /// existed and needs nobody to rewire a scene. A panel with no such child is simply left alone.
+    /// Shows or hides the standing instruction line — Gameplay authors it as
+    /// <c>DrawGlowingSymbolInstruction</c>. Matched on "Instruction" in the name rather than on a
+    /// serialized reference, so this works on a HUD authored before the cue existed and needs
+    /// nobody to rewire a scene. A HUD with no such label is simply left alone.
     /// </summary>
     private void SetClueInstructionVisible(bool visible)
     {
@@ -1426,6 +1314,13 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         if (_clueInstructionText != null)
             return _clueInstructionText;
 
+        // Authored first: on a HUD that stands its own instruction line — every HUD, now that no
+        // panel is built at runtime — that line is the one the player sees.
+        _clueInstructionText = ResolveAuthoredClueInstruction();
+        if (_clueInstructionText != null)
+            return _clueInstructionText;
+
+        // An Inspector-wired panel may still carry its own instruction child.
         if (_cluePanelRoot == null)
             return null;
 
@@ -1446,10 +1341,61 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         return null;
     }
 
+    /// <summary>
+    /// Finds the instruction line the SCENE authored — Gameplay's <c>DrawGlowingSymbolInstruction</c>
+    /// — looking under this presenter first, where the authored line sits as a sibling of the
+    /// restoration readout, and then across the HUD canvas for a HUD that parents it elsewhere.
+    /// Matched on "Instruction" in the name, the same loose match the panel scan uses, because no
+    /// serialized reference for this line exists on a HUD authored before the cue did.
+    /// <para>
+    /// Labels this presenter builds itself are skipped by their <c>[Runtime]</c> prefix, so this
+    /// only ever answers with something a human placed.
+    /// </para>
+    /// </summary>
+    private TextMeshProUGUI ResolveAuthoredClueInstruction()
+    {
+        TextMeshProUGUI found =
+            FindAuthoredInstruction(GetComponentsInChildren<TextMeshProUGUI>(includeInactive: true));
+        if (found != null)
+            return found;
+
+        Canvas canvas = ResolveHudCanvas();
+        return canvas == null
+            ? null
+            : FindAuthoredInstruction(
+                canvas.GetComponentsInChildren<TextMeshProUGUI>(includeInactive: true));
+    }
+
+    private TextMeshProUGUI FindAuthoredInstruction(TextMeshProUGUI[] candidates)
+    {
+        if (candidates == null)
+            return null;
+
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            TextMeshProUGUI candidate = candidates[i];
+            if (candidate == null
+                || candidate == _clueText
+                || candidate == _wordRestoredText
+                || candidate == _restorationProgressText)
+                continue;
+
+            if (candidate.name.StartsWith("[Runtime]", System.StringComparison.Ordinal))
+                continue;
+
+            if (candidate.name.IndexOf("Instruction", System.StringComparison.OrdinalIgnoreCase) < 0)
+                continue;
+
+            return candidate;
+        }
+
+        return null;
+    }
+
     private TextMeshProUGUI _clueInstructionText;
 
     /// <summary>
-    /// Built independently of EnsureRuntimePanel so the cue also reaches an authored HUD that
+    /// Built on demand so the cue also reaches an authored HUD that
     /// predates this ticket and therefore has no serialized reference to wire.
     /// </summary>
     private void EnsureWordRestoredLabel()
@@ -1487,7 +1433,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         _wordRestoredText = label;
     }
 
-    /// <summary>Same canvas search EnsureRuntimePanel uses, shared so the two agree.</summary>
+    /// <summary>The canvas every runtime-built HUD piece here hangs from, shared so they agree.</summary>
     private Canvas ResolveHudCanvas()
     {
         Canvas canvas = GetComponentInParent<Canvas>();
