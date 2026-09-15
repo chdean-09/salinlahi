@@ -214,7 +214,6 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
     - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
     - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
-    - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
     - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
     enemyCount: 7
     spawnInterval: 3
@@ -246,7 +245,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
   - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
   - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
-  - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
   bossConfig: {fileID: 0}
   isAvailableInLite: 0
   multiKillChainEnabled: 0
