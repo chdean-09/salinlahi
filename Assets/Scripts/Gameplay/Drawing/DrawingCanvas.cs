@@ -20,6 +20,7 @@ public class DrawingCanvas : MonoBehaviour
     private readonly List<Vector3> _worldPointBuffer = new List<Vector3>(256);
     private Camera _cam;
     private Vector3 _cameraRestWorldPosition;
+    private AspectLockedCamera _subscribedColumn;
 
     private void Awake()
     {
@@ -32,17 +33,38 @@ public class DrawingCanvas : MonoBehaviour
 
     private void OnEnable()
     {
-        AspectLockedCamera playColumn = AspectLockedCamera.Instance;
-        if (playColumn != null)
-            playColumn.OnPlayAreaChanged += RebaseCameraRestPosition;
+        SubscribeToPlayColumn();
         RebaseCameraRestPosition();
+    }
+
+    // Again in Start: OnEnable can run before AspectLockedCamera has published its instance, and
+    // Start cannot.
+    private void Start()
+    {
+        SubscribeToPlayColumn();
+        RebaseCameraRestPosition();
+    }
+
+    private void SubscribeToPlayColumn()
+    {
+        AspectLockedCamera playColumn = AspectLockedCamera.Instance;
+        if (playColumn == null || playColumn == _subscribedColumn)
+            return;
+
+        if (_subscribedColumn != null)
+            _subscribedColumn.OnPlayAreaChanged -= RebaseCameraRestPosition;
+
+        playColumn.OnPlayAreaChanged += RebaseCameraRestPosition;
+        _subscribedColumn = playColumn;
     }
 
     private void OnDisable()
     {
-        AspectLockedCamera playColumn = AspectLockedCamera.Instance;
-        if (playColumn != null)
-            playColumn.OnPlayAreaChanged -= RebaseCameraRestPosition;
+        if (_subscribedColumn != null)
+        {
+            _subscribedColumn.OnPlayAreaChanged -= RebaseCameraRestPosition;
+            _subscribedColumn = null;
+        }
     }
 
     /// <summary>

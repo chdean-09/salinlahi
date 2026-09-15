@@ -364,6 +364,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private readonly List<RectTransform> _railSlotAnchors = new List<RectTransform>();
 
     private GameObject _railRoot;
+    private System.Action _bandRefreshHandler;
+    private AspectLockedCamera _bandRefreshColumn;
     private CanvasGroup _railCanvasGroup;
     private Sprite _runtimeSlotFrameSprite;
     private Coroutine _railFlashRoutine;
@@ -1660,6 +1662,22 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
         ReservePlayFieldBandForRail(railRect);
 
+        // The band is measured in screen pixels, so it goes stale the moment the screen changes
+        // size — a rotation, or a Game view resized while playing. Re-measured from the rail's own
+        // corners each time the play area recomputes. This settles in one extra pass: the second
+        // request carries the same number and SetBottomBandPixels returns without recomputing.
+        _bandRefreshHandler ??= () =>
+        {
+            if (_railRoot != null && _railRoot.transform is RectTransform live)
+                ReservePlayFieldBandForRail(live);
+        };
+        if (AspectLockedCamera.Instance != null)
+        {
+            AspectLockedCamera.Instance.OnPlayAreaChanged -= _bandRefreshHandler;
+            AspectLockedCamera.Instance.OnPlayAreaChanged += _bandRefreshHandler;
+            _bandRefreshColumn = AspectLockedCamera.Instance;
+        }
+
         _railRoot.SetActive(false);
         RepaintRail(forceRestored: false);
     }
@@ -2580,6 +2598,10 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
         // Hand the band back with the rail. A level that tears its rail down and never builds
         // another must frame exactly as a level that never had one.
+        if (_bandRefreshColumn != null && _bandRefreshHandler != null)
+            _bandRefreshColumn.OnPlayAreaChanged -= _bandRefreshHandler;
+        _bandRefreshColumn = null;
+
         if (AspectLockedCamera.Instance != null)
             AspectLockedCamera.Instance.SetBottomBandPixels(0f);
     }

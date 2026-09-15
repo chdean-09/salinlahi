@@ -10,14 +10,49 @@ public sealed class CameraShakeController : MonoBehaviour
 
     private Coroutine _shakeRoutine;
     private Vector3 _restLocalPosition;
+    private AspectLockedCamera _subscribedColumn;
 
     private void Awake()
     {
         _restLocalPosition = transform.localPosition;
     }
 
+    private void OnEnable()
+    {
+        SubscribeToPlayColumn();
+        RebaseRestPosition();
+    }
+
+    // Again in Start, because this component usually lives on the camera itself and Awake order
+    // within one GameObject is not ours to choose: OnEnable can run before AspectLockedCamera has
+    // published its instance. Start cannot.
+    private void Start()
+    {
+        SubscribeToPlayColumn();
+        RebaseRestPosition();
+    }
+
+    private void SubscribeToPlayColumn()
+    {
+        AspectLockedCamera playColumn = AspectLockedCamera.Instance;
+        if (playColumn == null || playColumn == _subscribedColumn)
+            return;
+
+        if (_subscribedColumn != null)
+            _subscribedColumn.OnPlayAreaChanged -= RebaseRestPosition;
+
+        playColumn.OnPlayAreaChanged += RebaseRestPosition;
+        _subscribedColumn = playColumn;
+    }
+
     private void OnDisable()
     {
+        if (_subscribedColumn != null)
+        {
+            _subscribedColumn.OnPlayAreaChanged -= RebaseRestPosition;
+            _subscribedColumn = null;
+        }
+
         if (_shakeRoutine != null)
         {
             StopCoroutine(_shakeRoutine);
@@ -25,6 +60,26 @@ public sealed class CameraShakeController : MonoBehaviour
         }
 
         ResetTransform();
+    }
+
+    /// <summary>
+    /// Re-reads where the camera rests.
+    ///
+    /// <para>
+    /// Every shake begins by snapping the camera back to this position, so a rest position captured
+    /// in Awake outranks anything that moves the camera afterwards: the HUD band at the foot of the
+    /// screen lowers the camera so the restoration rail clears the fence, and the first shake of the
+    /// level — the first hit on the base — silently put the play field back on top of the rail and
+    /// left it there. Found in a play session, not in a test: nothing shakes the camera until
+    /// something is hit.
+    /// </para>
+    /// </summary>
+    private void RebaseRestPosition()
+    {
+        if (_shakeRoutine != null)
+            return;
+
+        _restLocalPosition = transform.localPosition;
     }
 
     public void Shake()
