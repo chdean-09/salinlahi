@@ -326,7 +326,7 @@ MonoBehaviour:
     requiredSuccesses: 1
   eraTheme: {fileID: 11400000, guid: c58190bf930deed43b75ce44c3c548bd, type: 2}
   numberSprite: {fileID: 0}
-  waves:
+  _authoredWaves:
   - isIntermissionWave: 0
     characters:
     - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}

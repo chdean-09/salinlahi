@@ -307,13 +307,10 @@ public static class RevisedCampaignBootstrap
         // movement/attack behavior is reused per SALIN-180; glyph badge art for
         // these symbols is tracked by the SALIN-199 manifest.
         level.allowedCharacters = new List<BaybayinCharacterSO> { ei, na, a, ma };
-        if (level.waves != null)
+        foreach (WaveDefinition wave in level.AuthoredWaves)
         {
-            foreach (WaveDefinition wave in level.waves)
-            {
-                if (wave != null && !wave.isIntermissionWave)
-                    wave.characters = new List<BaybayinCharacterSO> { ei, na, a, ma };
-            }
+            if (wave != null && !wave.isIntermissionWave)
+                wave.characters = new List<BaybayinCharacterSO> { ei, na, a, ma };
         }
 
         EditorUtility.SetDirty(level);

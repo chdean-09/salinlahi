@@ -188,7 +188,7 @@ public static class ColonialRosterRetirementTool
             var so = new SerializedObject(level);
             int wavesChanged = 0;
 
-            SerializedProperty waves = so.FindProperty("waves");
+            SerializedProperty waves = so.FindProperty("_authoredWaves");
             for (int w = 0; w < waves.arraySize; w++)
             {
                 SerializedProperty types = waves.GetArrayElementAtIndex(w).FindPropertyRelative("enemyTypes");
@@ -705,10 +705,7 @@ public static class ColonialRosterRetirementTool
             if (level.allowedEnemyTypes != null)
                 count += level.allowedEnemyTypes.Count(e => e != null && IsColonial(e));
 
-            if (level.waves == null)
-                continue;
-
-            foreach (WaveDefinition wave in level.waves)
+            foreach (WaveDefinition wave in level.AuthoredWaves)
             {
                 if (wave?.enemyTypes != null)
                     count += wave.enemyTypes.Count(e => e != null && IsColonial(e));

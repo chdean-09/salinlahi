@@ -116,9 +116,9 @@ public static class CorruptionRosterWiringTool
         {
             var config = AssetDatabase.LoadAssetAtPath<LevelConfigSO>(
                 $"{LevelFolder}/Level{levelNumber}_Config.asset");
-            if (config == null || config.waves == null || config.waves.Count == 0)
+            if (config == null || config.AuthoredWaves.Count == 0)
             {
-                Debug.Log($"[CorruptionRosterWiring] Level {levelNumber}: no waves (boss-only or missing) — skipped.");
+                Debug.Log($"[CorruptionRosterWiring] Level {levelNumber}: no authored waves (curve-driven, boss-only or missing) — skipped.");
                 continue;
             }
 
@@ -128,9 +128,9 @@ public static class CorruptionRosterWiringTool
             // written into a wave without being on the roster is silently
             // stripped back out the moment the asset is marked dirty.
             var neededOnRoster = new List<EnemyDataSO>();
-            for (int w = 0; w < config.waves.Count; w++)
+            for (int w = 0; w < config.AuthoredWaves.Count; w++)
             {
-                WaveDefinition scan = config.waves[w];
+                WaveDefinition scan = config.AuthoredWaves[w];
                 if (scan == null || scan.isIntermissionWave || !IsGenericFillerOnly(scan))
                     continue;
                 foreach (EnemyDataSO enemy in MapWave(scan, config, byCharacter, out _))
@@ -152,9 +152,9 @@ public static class CorruptionRosterWiringTool
                 }
             }
 
-            for (int w = 0; w < config.waves.Count; w++)
+            for (int w = 0; w < config.AuthoredWaves.Count; w++)
             {
-                WaveDefinition wave = config.waves[w];
+                WaveDefinition wave = config.AuthoredWaves[w];
                 if (wave == null || wave.isIntermissionWave)
                     continue;
 
