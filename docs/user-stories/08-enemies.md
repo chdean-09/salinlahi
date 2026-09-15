@@ -146,14 +146,14 @@ As a player, I want the RA enemy to be a distinct threat, so that RA is a real c
 ### ENM-29 — Be properly introduced to an enemy the first time it appears
 As a player, I want to be shown what an enemy is and what it does at its first spawn, so that I am never fighting a stranger and never see an ability without an explanation.
 - AC: An enemy's first spawn halts the field and presents the four-beat default introduction: Halt, Name, Ability, Release.
-- AC: `EnemyIntroductionBeat` is the single introduction system; the pre-combat teach loop and the enemy discovery overlay are deleted.
+- AC: `EnemyIntroductionBeat` is the single introduction *presentation*; the pre-combat teach loop is deleted. The enemy discovery overlay keeps its data write and presents nothing on an introduction spawn.
 - AC: Drawing input is suppressed while the card is open.
-- AC: Level 1's Abo lesson extends this to eight beats — Appear (ability armed), Ability (it fires), React, Generalize, Name, Explain, Glyph, Draw — and the clue lost in the Ability beat returns when the player completes the gated draw.
+- AC: Level 1's Iligaw lesson extends this to eight beats — Appear (ability armed), Ability (it fires), React, Generalize, Name, Explain, Glyph, Draw — and the clue lost in the Ability beat returns when the player completes the gated draw.
 - AC: Levels 2–15 author no lesson profile and keep the four-beat default.
 - AC: All four of Level 1's taught-glyph enemies are introduced on their first spawn.
 - System: Tutorial · `EnemyIntroductionBeat`, `EnemyIntroductionCardView`, `EnemyIntroductionProgress`, `EnemyLessonSO`
-- Status: Partial — the four-beat path is on `dev` (`80aa29ec`) and the playtest saw the card fire on first contact with Hati. Two gaps: `SoloTeachBeat` still calls `SetCombatOverrideActive(true)` and `IsIntroducibleSpawn` declines while that override holds, so Level 1's four taught-glyph enemies are never introduced; and the eight-beat lesson (`EnemyLessonSO`, `AboLesson.asset`, `LevelConfigSO.enemyLessons`) is **implemented only on the unmerged branch** `feature/level1-enemy-introduction-lesson` — `dev` has no `enemyLessons` field. Runtime verification of the lesson has not been recorded, and `EnemyDiscoveryOnboardingController` is still present on `dev`.
-- Refs: `SoloTeachBeat.cs:53`, `EnemyIntroductionBeat.cs:205-215`, branch `feature/level1-enemy-introduction-lesson` @ `247c9dcb` (`d5df114c`, `ae7ed0ba`, `d979be75`), `docs/design/2026-09-14-level1-enemy-introduction-lesson-design.md`, `progress/2026-09-14-level1-playtest.md`
+- Status: Existing — both gaps closed on `dev` since `80aa29ec`. The lesson branch merged (`da754394`); `LevelConfigSO.enemyLessons` is on `dev` and `Level1_Config` references `IligawLesson.asset`. `SoloTeachBeat` is deleted (`f2c7fe60`), and `5779ae84` closed the second suppressor — the beat refused claims for the whole residue-banner lifetime while the spawn schedule had already resumed, so the first type arriving in that window got no card at all. `EnemyDiscoveryOnboardingController` is still present and is now known to be live rather than dead (`eea01436`); `f41fc858` stopped it pausing and spotlighting on introduction spawns. Runtime verification of the eight beats has still not been recorded.
+- Refs: `EnemyIntroductionBeat.cs`, `Assets/ScriptableObjects/Tutorial/IligawLesson.asset`, `f2c7fe60`, `5779ae84`, `d66d4db4`, `d4f98b0a`, `f41fc858`, `eea01436`, `docs/design/2026-09-14-level1-enemy-introduction-lesson-design.md`, `progress/2026-09-14-level1-playtest.md`
 - Merged: absorbs ENM-30
 
 ### ENM-32 — Have enemies grouped by the era they belong to

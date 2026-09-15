@@ -57,7 +57,7 @@ As a player, I want the decomposition drawn in Baybayin, so that I am reading th
 - AC: Each syllable in the decomposition renders its Baybayin glyph badge art.
 - AC: Latin syllables are the documented fallback only while badge art is missing.
 - System: Learning · `FocusWordPreviewController`, `BaybayinCharacterSO.badgeSprite`
-- Status: Partial — the fallback is what ships; glyph badge art existed for 7 of 18 symbols at last audit.
+- Status: Partial — the art is no longer the gap: all eighteen `Char_*.asset` carry a non-null `badgeSprite` and `Assets/Art/UI/GlyphBadges` holds eighteen sprites (`e9b1a84d` wired the last eleven). What still ships the Latin fallback is the focus-word preview itself, which has not been changed to render the badges.
 - Refs: `FocusWordPreviewController.cs` header, SALIN-257 (To Do)
 
 ### LEARN-15 — Study the target words properly before combat

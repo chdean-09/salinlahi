@@ -11,8 +11,8 @@ As a player, I want no debug strings on screen, so that the shipped view looks f
 - AC: No `Draw: … (…)` or `Type: …` developer labels render during play.
 - AC: In-combat tutorial text is legible at phone size.
 - System: HUD · enemy debug labels (`RenderOrder.EnemyDebugLabel`), tutorial overlay
-- Status: Missing — the 2026-09-14 playtest recorded `Draw: na (NA)` and `Type: hati` rendering tiny in the play column (defect 7), the "DRAW THE GLOWING SYMBOL" tutorial text far too small to read (defect 6), and four UI layers stacking at wave start with no reading order (defect 9).
-- Refs: `progress/2026-09-14-level1-playtest.md` defects 6, 7, 9, `Assets/Scripts/Gameplay/Rendering/RenderOrder.cs`
+- Status: Partial — defect 7 is fixed: `d4f98b0a` defaulted `Enemy._showDebugLabels` off and removed the `1` authored on the shared corruption shell, so no prefab opts in and the ids no longer render. Defect 6 (tutorial text size) is unchanged — the 38–56 pt auto-size band predates the playtest. Defect 9 is partly addressed: `8debc76a` cut the miss message and two backing overlays and `f41fc858` stopped the discovery overlay pausing and spotlighting on introduction spawns, leaving the wave banner and the tutorial overlay still opening in the same frame.
+- Refs: `progress/2026-09-14-level1-playtest.md` defects 6, 7, 9, `Assets/Scripts/Gameplay/Enemy/Enemy.cs` (`_showDebugLabels`), `d4f98b0a`, `8debc76a`, `f41fc858`, `Assets/Scripts/Gameplay/Rendering/RenderOrder.cs`
 
 ## Audio
 

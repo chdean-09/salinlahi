@@ -55,7 +55,7 @@ As a player, I want the later Ugat levels to ask for two words, so that difficul
 - AC: `Challenge_Ugat03_Context` and `Challenge_Ugat04_Context` each present two blanks.
 - AC: The narrative copy matches two blanks, not one.
 - System: Challenge content · `Challenge_Ugat03/04_Context.asset`
-- Status: Unclear — ruled OQ-1 (two blanks stand, superseding the 2026-09-01 one-blank amendment), but the narrative doc line `docs/content/ugat-levels-2-5-narrative.md:137` still reads "Isang salita lamang ang kulang" and the assets were last verified unchanged.
+- Status: Existing — `b35e2119` re-authored both assets to two blanks (L3 `Ang mabuting ______ ay gumagawa ng ______.` → BATA, TAMA; L4 `Ang ______ at ______ ang unang guro sa tahanan.` → INA, AMA) and moved the context copy with them, so "Isang salita lamang ang kulang" is gone from both the assets and `docs/content/ugat-levels-2-5-narrative.md`. The L3 AMA decoy was dropped as newly grammatical with slot 1 reopened; MATA stays. Two follow-ups are open, not blockers: `evidenceContentId` still carries one id per unit, and the rewritten Filipino has not been through the SALIN-188 review.
 - Refs: ruling OQ-1, SALIN-144 / SALIN-146, `docs/audit/BACKLOG.md` T34
 
 ---

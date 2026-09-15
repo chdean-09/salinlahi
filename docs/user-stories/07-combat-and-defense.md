@@ -59,7 +59,7 @@ As a player, I want a visible protagonist who reacts when I draw, so that the fi
 - AC: A correct recognition triggers Juan's attack animation and a slash VFX toward the resolved target.
 - AC: The slash VFX is pooled, not instantiated per hit.
 - System: Protagonist · `ProtagonistManager`, `ProtagonistAttackController`, `ProtagonistSlashVfx`
-- Status: Partial — both controllers exist, but the 2026-09-14 playtest recorded **no protagonist visible anywhere in the play column** during dialogue, Wave 1 or Wave 2, and logged `[ProtagonistAttackController] _slashVfxPrefab not assigned on ProtagonistManager prefab`. The new Juan idle/attack art landed in `f35de96d` and was never seen on screen. Playtest defects 1 and 2, both High, likely one root cause. The handoff listed "restored slash feedback" as completed.
+- Status: Partial — both controllers exist. The VFX half is resolved: `_slashVfxPrefab` is assigned on `[Manager] ProtagonistManager.prefab` (`7395d66a`), so the warning the playtest logged cannot recur. The visibility half is unverified either way: the playtest recorded **no protagonist visible anywhere in the play column** during dialogue, Wave 1 or Wave 2, and `c3cf9612` later chose to lower the camera rather than crop the viewport specifically so Juan, who stands below the fence, is not cut off. Neither has been confirmed in play.
 - Refs: `ProtagonistManager.cs`, `ProtagonistAttackController.cs`, `LevelConfigSO.cs:142-145`, `progress/2026-09-14-level1-playtest.md` defects 1–2
 - Merged: absorbs CMB-20
 

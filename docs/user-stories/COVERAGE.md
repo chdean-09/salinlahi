@@ -4,7 +4,7 @@ Every row is a player-observable outcome that is **implemented and reachable** o
 
 **This is the manual regression checklist.** After a change, the rows touching that system are what should still be true. IDs are stable and unchanged; the task CSV cites them as `COVERAGE.md · <ID>`.
 
-Verified against local `dev` @ `80aa29ec`, 2026-09-15. Outstanding work lives in the numbered files listed in [`00-overview.md`](00-overview.md).
+Verified against local `dev` @ `80aa29ec`, 2026-09-15; re-verified against `feature/ugat-2-5-realignment` @ `9198e8f4` (= `dev` @ `6fc34851` + 4), 2026-09-15. The 40 commits between the two are summarised in [`PROGRESS-DELTA-2026-09-15.md`](PROGRESS-DELTA-2026-09-15.md). Outstanding work lives in the numbered files listed in [`00-overview.md`](00-overview.md).
 
 ## 01 — App entry and Main Menu
 
@@ -210,6 +210,9 @@ Verified against local `dev` @ `80aa29ec`, 2026-09-15. Outstanding work lives in
 | `REST-27` | Have my challenge answers recorded as learning | Learning · `ChallengeSession`, `LearningEvidenceRecorder` | `docs/design/scoring-and-stars.md`, `ChallengeSequenceSO.cs:54,66` |
 | `REST-28` | Have the challenge pause with the game | Challenges · `ChallengeSessionState` | `ChallengeSession.cs:1-20` |
 | `REST-29` | Have the game not ask me for content that was never written — currently active on Levels 6, 7, 8, 10 and 13, which have no challenge sequence. | Level flow · `LevelPhasePlan.ContextChallengeContentMissing` | `LevelPhasePlan.cs:168-180`, SALIN-223 |
+| `REST-30` | See the restoration rail below the play field instead of drawn on the shrine fence | HUD · `ActiveCluePresenter` (rail band), `AspectLockedCamera` (`SetBottomBandPixels`) | `Assets/Scripts/UI/HUD/ActiveCluePresenter.cs`, `Assets/Scripts/Gameplay/Camera/AspectLockedCamera.cs`, `c3cf9612`, `d2b10574` |
+| `REST-31` | Read every restoration slot by its romanised syllable, earned or not | HUD · `ActiveCluePresenter` (per-slot labels, plated label row) | `ActiveCluePresenter.cs`, `8debc76a`, `97f4bf7b` |
+| `REST-32` | See a defeated enemy's glyph fly into its box in the finished Almanac art | HUD · `ActiveCluePresenter` (slot flight, `almanacSprite`) | `ActiveCluePresenter.cs`, `862262c6` |
 
 ## 11 — Results, rewards and progression
 

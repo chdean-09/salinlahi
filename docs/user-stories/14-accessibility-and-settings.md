@@ -87,7 +87,7 @@ As a player, I want the first level to teach through play, so that I am not made
 - AC: Level 1 teaches drawing, the shrine, heart loss and the clue system through in-play beats rather than text screens.
 - AC: Every in-play guidance string is legible at 360×640.
 - System: Tutorial · `Level1OnboardingController`, onboarding beats
-- Status: Partial — beats exist for protagonist intro, base intro, heart-loss demo, mass clear, solo teach, release and enemy introduction, but the playtest found the in-combat guidance text unreadable at phone size and the symbol card's `Listen` control near-illegible (defects 5–6), and the solo-teach loop suppresses the enemy introductions it is meant to precede (ENM-29).
+- Status: Partial — beats exist for protagonist intro, base intro, heart-loss demo, mass clear, release and enemy introduction; the solo-teach loop that suppressed the enemy introductions is deleted (`f2c7fe60`) and ENM-29 is now Existing. What remains from the playtest is presentational: the in-combat guidance text unreadable at phone size and the symbol card's `Listen` control near-illegible (defects 5–6). `6fc34851` also recorded that no caller passes `canSkip: true`, so the guide's Skip affordance is unreachable today.
 - Refs: `Assets/Scripts/Gameplay/Tutorial/Onboarding/Beats/`, `progress/2026-09-14-level1-playtest.md` defects 5–6, `docs/capstone/GDD.md` §5.5
 
 ### ACC-20 — Read every player-facing string in approved copy
