@@ -931,9 +931,22 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     }
 
     /// <summary>
-    /// The eight-beat lesson. Beats 1, 5 and 6 are the card's own steps; 2, 3, 4, 7 and 8 are the
-    /// lesson's. Every wait is realtime, like the card's, because the beat holds Time.timeScale
-    /// down and a scaled wait would stretch a two-second beat past thirteen.
+    /// The nine-beat lesson: 1 Appear, 2 the glyph rule, 3 Ability, 4 React, 5 the ability rule,
+    /// 6 Name and ability line, 7 Glyph reveal, 8 Draw, 9 Restoration. Beats 1 and 6 are the
+    /// card's own steps; the rest are the lesson's.
+    ///
+    /// <para>
+    /// <b>The teaching order is universal-then-exception, and beat 2's position is the point.</b>
+    /// The player is told every enemy carries a mark BEFORE this one does anything, so the split
+    /// in beat 3 reads as "and this one also has a trick" rather than as the first thing they
+    /// learn. Moving beat 2 after the ability puts the exception first and the rule second, which
+    /// is the order the lesson was reordered away from.
+    /// </para>
+    ///
+    /// <para>
+    /// Every wait is realtime, like the card's, because the beat holds Time.timeScale down and a
+    /// scaled wait would stretch a two-second beat past thirteen.
+    /// </para>
     /// </summary>
     private IEnumerator PlayLesson(Enemy enemy, EnemyDataSO data, EnemyLessonSO lesson)
     {
@@ -949,18 +962,41 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         RaiseVignette(enemy);
         yield return RampTimeScale(Time.timeScale, _introductionTimeScale, _haltRampSeconds);
 
-        // Beat 2 — Ability. The ability is armed by IntroduceAndArm; this waits for it to actually
+        // The two universal rules — beat 2's "every enemy carries a mark" and beats 4-5's "each
+        // also has its own trick" — share one gate, and it is evaluated ONCE, here, before either
+        // can run. They are halves of the same once-per-campaign teaching moment and they are
+        // authored on the same asset; splitting the question in two would let a lesson aborted
+        // between beat 2 and beat 5 replay only half of it. The gate is read before
+        // MarkAbilityRuleSeen below writes it, so a single read is also the only honest one.
+        bool playsTheUniversalRules =
+            _lessonIsForcedReplay || !EnemyIntroductionProgress.HasSeenAbilityRule();
+
+        // Beat 2 — the glyph rule. The UNIVERSAL mechanic, taught before the exception: every
+        // enemy carries a mark, stated while the field is halted and BEFORE the ability fires.
+        //
+        // This enemy's own badge is deliberately still hidden (revealGlyphLate, above) and must
+        // stay hidden until beat 7 — rule first, instance later, so the reveal pays off a promise
+        // the player has already been given rather than arriving unannounced. The line is played
+        // to completion here, so it has landed and cleared before PlayAbilityBeat releases the
+        // ability hold; the player is never reading about marks while the split is happening.
+        if (playsTheUniversalRules)
+        {
+            yield return OnboardingDialogueRunner.Play(
+                ResolveDialogueController(), lesson.glyphRuleLine);
+        }
+
+        // Beat 3 — Ability. The ability is armed by IntroduceAndArm; this waits for it to actually
         // FIRE and then holds so the player can watch what it did — on Level 1, one Iligaw becoming
         // two. See PlayAbilityBeat for why a fixed hold is not enough.
         yield return PlayAbilityBeat(enemy, lesson);
 
-        // Beats 3 and 4 — React, then the rule. Once per campaign, EXCEPT on a forced replay of
-        // this lesson: they are two of its ten beats, and a lesson that replays with two of its
-        // beats silently missing is worse than one that repeats them. The player who triggered
-        // this replay asked for the level's tutorial again, not for a lesson with holes in it.
+        // Beats 4 and 5 — React, then the ability rule. Once per campaign, EXCEPT on a forced
+        // replay of this lesson: they are beats of it, and a lesson that replays with beats
+        // silently missing is worse than one that repeats them. The player who triggered this
+        // replay asked for the level's tutorial again, not for a lesson with holes in it.
         // On every other level the rule stays once-per-campaign, so a later level introducing a
         // new type still does not re-teach "enemies have abilities".
-        if (_lessonIsForcedReplay || !EnemyIntroductionProgress.HasSeenAbilityRule())
+        if (playsTheUniversalRules)
         {
             DialogueController dialogue = ResolveDialogueController();
             yield return OnboardingDialogueRunner.Play(dialogue, lesson.reactLine);

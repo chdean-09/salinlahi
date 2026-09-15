@@ -16,6 +16,9 @@ MonoBehaviour:
   requiredRestoredSlots: 0
   armAbilityOnIntroduction: 1
   abilityBeatSeconds: 1.5
+  glyphRuleLine:
+    fallbackText: 'Bawat kaaway ay may dalang titik. Iyon ang kanilang kahinaan.'
+    dialogue: {fileID: 0}
   reactLine:
     fallbackText: 'Dalawa na siya?! Isa lang dapat!'
     dialogue: {fileID: 0}

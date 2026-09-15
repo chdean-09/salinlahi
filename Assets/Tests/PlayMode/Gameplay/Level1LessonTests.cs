@@ -661,6 +661,203 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         // ------------------------------------------------------------------------------------
+        // 4c-2. Beat 2 — the glyph rule lands BEFORE the ability is ever let go
+        // ------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// The teaching order the lesson was reordered into: the UNIVERSAL rule (every enemy carries
+        /// a mark) is stated first, and only then does this enemy spring its own trick. Put the
+        /// other way round — the split first, the rule after — the player learns the exception
+        /// before the mechanic, which is the order this beat exists to replace.
+        ///
+        /// <para>
+        /// <b>The observable is the hold, not a timestamp.</b> <c>MirrorDecoyController</c> is held
+        /// from the claim until <c>PlayAbilityBeat</c>'s very first statement releases it, so
+        /// "_introductionHold is still true" is a direct statement that the beat has not yet reached
+        /// the ability at all. It cannot pass by coincidence of timing the way a frame count could,
+        /// and it holds however long the player takes to tap through the line.
+        /// </para>
+        ///
+        /// <para>
+        /// The badge assertions ride along deliberately. Beat 2 tells the player every enemy carries
+        /// a mark while THIS enemy's mark is still hidden for beat 7's reveal; a well-meaning edit
+        /// that "helpfully" showed the badge alongside the line it illustrates would spend the
+        /// reveal and go unnoticed by every other test here.
+        /// </para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Beat2GlyphRule_PlaysBeforeTheAbilityBeat_WithTheBadgeStillHidden()
+        {
+            yield return null;
+
+            GiveTheDecoyAPoolToDrawFrom();
+            (DialogueController dialogue, GameObject dialoguePanel) = GiveTheLessonADialogueSurface();
+
+            BaybayinCharacterSO eiChar = MakeCharacter("EI", "symbol.test.glyphrule.ei");
+            BaybayinCharacterSO naChar = MakeCharacter("NA", "symbol.test.glyphrule.na");
+            eiChar.badgeSprite = GlyphBadgePlayModeTestHelpers.CreateSprite(Color.red);
+
+            EnemyDataSO iligawData = CreateEnemyData(
+                "test_iligaw_glyphrule", "Iligaw", eiChar, spawnsMirrorDecoy: true);
+            EnemyLessonSO lesson = CreateIligawShapedLesson(iligawData);
+            lesson.glyphRuleLine = new OnboardingBeatCopy
+            {
+                fallbackText = "Bawat kaaway ay may dalang titik. Iyon ang kanilang kahinaan.",
+            };
+            // Short post-fire hold: this test is about what precedes the ability, not how long the
+            // beat lingers once it has landed.
+            lesson.abilityBeatSeconds = 0.05f;
+
+            FocusWordDefinition word = CreateWord(
+                "level.test.glyphrule.ina", "ina", "INA", eiChar, naChar);
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO> { iligawData }, new[] { lesson },
+                new List<FocusWordDefinition> { word });
+            _gameManager.SetLevel(config);
+
+            SetPrivateField(_presenter, "_level", config);
+            _presenter.RestorationState.Configure(config.focusWords);
+
+            Enemy iligaw = CreateEnemyShell("Iligaw_GlyphRule");
+            (_, SpriteRenderer badgeRenderer) = GlyphBadgePlayModeTestHelpers
+                .AddGlyphBadgeChild(iligaw.gameObject, GlyphBadgePlayModeTestHelpers.CreateBadgeConfig());
+
+            Assert.IsTrue(iligaw.Initialize(iligawData));
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndArm, iligaw.IntroductionOutcome,
+                "setup: requiredRestoredSlots = 0 means this spawn is the lesson, ability armed.");
+
+            MirrorDecoyController decoy = iligaw.GetComponent<MirrorDecoyController>();
+            Assert.IsNotNull(decoy, "setup: spawnsMirrorDecoy should attach MirrorDecoyController.");
+            Assert.IsTrue(((IIntroducibleAbility)decoy).CanFireThisSpawn,
+                "setup: the pool must be reachable, or beat 2's ordering proves nothing about a "
+                + "wait the beat would have skipped anyway.");
+            Assert.IsTrue(GetPrivateField<bool>(decoy, "_introductionHold"),
+                "setup: the claim holds the ability, and that hold is what this test watches.");
+
+            // The stand-in pool was never woken, so letting Update actually take a copy from it
+            // logs an error and fails the test. _spawnAttempted is the state Update leaves behind
+            // when it has looked once and placed nothing — same device as the test above — and it
+            // keeps the pool untouched without touching the hold this test reads.
+            SetPrivateField(decoy, "_spawnAttempted", true);
+
+            // Wall-clock, not frames: batchmode runs frames far faster than real time, so a frame
+            // count would let a beat that had already moved on slip through.
+            yield return new WaitForSecondsRealtime(0.4f);
+
+            Assert.IsTrue(dialoguePanel.activeSelf,
+                "Beat 2's glyph rule must be on screen before anything else happens. A blank "
+                + "screen here means the universal rule was skipped or ran too late to be beat 2.");
+            Assert.IsTrue(GetPrivateField<bool>(decoy, "_introductionHold"),
+                "The ability must still be HELD while the glyph rule is being read. A released "
+                + "hold here means the beat has reached beat 3 and the split fires under the rule "
+                + "that is supposed to precede it, which is the ordering this beat was rewritten "
+                + "to fix.");
+            Assert.IsFalse(((IIntroducibleAbility)decoy).HasFiredThisSpawn,
+                "Nothing may have fired yet: beat 2 is copy, beat 3 is the ability.");
+            Assert.AreEqual(0f, _cardGroup.alpha,
+                "The name card belongs to beat 6 and must not be up during beat 2.");
+            Assert.IsTrue(IsBadgeHidden(badgeRenderer),
+                "Beat 2 states the rule while THIS enemy's mark is still hidden — rule first, "
+                + "instance later. Revealing the badge here spends beat 7 four beats early.");
+
+            // The player taps through the line.
+            CompleteDialogue(dialogue);
+
+            bool abilityReleased = false;
+            float deadline = Time.realtimeSinceStartup + 5f;
+            while (!abilityReleased && Time.realtimeSinceStartup < deadline)
+            {
+                yield return null;
+                abilityReleased = !GetPrivateField<bool>(decoy, "_introductionHold");
+            }
+
+            Assert.IsTrue(abilityReleased,
+                "Beat 3 must follow beat 2: once the glyph rule has cleared, the ability is let go "
+                + "and the split happens. A hold that is never released hangs the lesson.");
+            Assert.IsTrue(IsBadgeHidden(badgeRenderer),
+                "The badge stays hidden into beat 3 as well — beat 7 is the only reveal.");
+        }
+
+        // ------------------------------------------------------------------------------------
+        // 4c-3. Blank glyph-rule copy no-ops, exactly like the other lines
+        // ------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// A lesson that leaves <c>glyphRuleLine</c> unauthored must play exactly as it did before
+        /// the beat existed. <c>OnboardingDialogueRunner</c> already no-ops on blank copy — that is
+        /// how <c>restorationLine</c> stays optional — and beat 2 sits in front of everything else
+        /// in the lesson, so a blank line that waited on a completion nobody will ever raise would
+        /// not degrade the lesson, it would wedge it shut before the ability ever fired.
+        ///
+        /// <para>
+        /// The DialogueController is present on purpose. With none in the scene the runner bails on
+        /// the null controller and a blocking blank line would be indistinguishable from a
+        /// well-behaved one, so the test would pass for the wrong reason.
+        /// </para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Beat2GlyphRule_BlankCopy_DoesNotBlockTheLesson()
+        {
+            yield return null;
+
+            GiveTheDecoyAPoolToDrawFrom();
+            (_, GameObject dialoguePanel) = GiveTheLessonADialogueSurface();
+
+            BaybayinCharacterSO eiChar = MakeCharacter("EI", "symbol.test.blankrule.ei");
+            BaybayinCharacterSO naChar = MakeCharacter("NA", "symbol.test.blankrule.na");
+
+            EnemyDataSO iligawData = CreateEnemyData(
+                "test_iligaw_blankrule", "Iligaw", eiChar, spawnsMirrorDecoy: true);
+            // CreateIligawShapedLesson leaves glyphRuleLine at its default: blank text, no
+            // DialogueSO. That IS the case under test; nothing here authors it.
+            EnemyLessonSO lesson = CreateIligawShapedLesson(iligawData);
+            lesson.abilityBeatSeconds = 0.05f;
+            Assert.IsTrue(string.IsNullOrWhiteSpace(lesson.glyphRuleLine.fallbackText)
+                && lesson.glyphRuleLine.dialogue == null,
+                "setup: this test means nothing unless the glyph rule is genuinely unauthored.");
+
+            FocusWordDefinition word = CreateWord(
+                "level.test.blankrule.ina", "ina", "INA", eiChar, naChar);
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO> { iligawData }, new[] { lesson },
+                new List<FocusWordDefinition> { word });
+            _gameManager.SetLevel(config);
+
+            SetPrivateField(_presenter, "_level", config);
+            _presenter.RestorationState.Configure(config.focusWords);
+
+            Enemy iligaw = CreateEnemyShell("Iligaw_BlankRule");
+            Assert.IsTrue(iligaw.Initialize(iligawData));
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndArm, iligaw.IntroductionOutcome,
+                "setup: requiredRestoredSlots = 0 means this spawn is the lesson, ability armed.");
+
+            MirrorDecoyController decoy = iligaw.GetComponent<MirrorDecoyController>();
+            Assert.IsNotNull(decoy, "setup: spawnsMirrorDecoy should attach MirrorDecoyController.");
+            // As above: keep Update away from a pool that was never woken. The hold is what this
+            // test watches, and _spawnAttempted does not touch it.
+            SetPrivateField(decoy, "_spawnAttempted", true);
+
+            // Nothing is ever tapped through here. If a blank line waits on a completion, this
+            // never finishes.
+            bool abilityReleased = false;
+            bool dialogueEverShown = false;
+            float deadline = Time.realtimeSinceStartup + 5f;
+            while (!abilityReleased && Time.realtimeSinceStartup < deadline)
+            {
+                yield return null;
+                dialogueEverShown |= dialoguePanel.activeSelf;
+                abilityReleased = !GetPrivateField<bool>(decoy, "_introductionHold");
+            }
+
+            Assert.IsTrue(abilityReleased,
+                "A blank glyphRuleLine must no-op, exactly like a blank restorationLine. A lesson "
+                + "that never reaches its ability beat is hung, not degraded.");
+            Assert.IsFalse(dialogueEverShown,
+                "Blank copy must put nothing on screen — an empty dialogue box counts as a beat "
+                + "the player has to dismiss.");
+        }
+
+        // ------------------------------------------------------------------------------------
         // 4d. A lesson that does NOT arm the ability must not wait for it
         // ------------------------------------------------------------------------------------
 
@@ -1515,6 +1712,54 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             SetSingletonInstance(pool);
             Assert.IsNotNull(EnemyPool.Instance, "setup: the decoy's dependency must be reachable.");
             return pool;
+        }
+
+        /// <summary>
+        /// A DialogueController the lesson's copy beats can actually play through, plus the overlay
+        /// panel whose active state is the only observable "a line is on screen" this fixture needs.
+        /// <c>OnboardingDialogueRunner</c> bails on a null controller, so without one every copy
+        /// beat silently no-ops and an ordering test proves nothing.
+        /// </summary>
+        private (DialogueController, GameObject) GiveTheLessonADialogueSurface()
+        {
+            DialogueController dialogue = CreateComponent<DialogueController>(
+                "DialogueController_Level1LessonTests");
+
+            // A parent Canvas, because Play() promotes the panel to its own overrideSorting canvas
+            // and a nested canvas with no parent canvas is a warning nobody needs to read.
+            Canvas rootCanvas = dialogue.gameObject.AddComponent<Canvas>();
+            rootCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+
+            GameObject panel = new GameObject("DialogueOverlay");
+            panel.transform.SetParent(dialogue.transform, false);
+            panel.AddComponent<RectTransform>();
+            panel.SetActive(false);
+            SetPrivateField(dialogue, "_overlayPanel", panel);
+
+            return (dialogue, panel);
+        }
+
+        /// <summary>
+        /// Stands in for the player tapping through the last line. <c>EndDialogue</c> is the same
+        /// path the tap-catcher takes — it hides the overlay, lifts the dialogue pause and raises
+        /// the completion the runner is waiting on — so completing this way leaves the controller
+        /// in the state the next beat's line expects, which raising the bus event alone would not.
+        /// </summary>
+        private static void CompleteDialogue(DialogueController dialogue)
+        {
+            MethodInfo endDialogue = typeof(DialogueController).GetMethod(
+                "EndDialogue", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(endDialogue,
+                "DialogueController.EndDialogue is the seam this fixture completes a line through.");
+            endDialogue.Invoke(dialogue, null);
+        }
+
+        private static T GetPrivateField<T>(object target, string fieldName)
+        {
+            FieldInfo field = target.GetType().GetField(
+                fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(field, $"expected a private field '{fieldName}' on {target.GetType().Name}.");
+            return (T)field.GetValue(target);
         }
 
         private static bool IsBadgeVisible(SpriteRenderer badgeRenderer) =>

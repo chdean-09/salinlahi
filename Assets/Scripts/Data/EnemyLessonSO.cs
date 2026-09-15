@@ -26,7 +26,15 @@ public sealed class EnemyLessonSO : ScriptableObject
     [Min(0)]
     public int requiredRestoredSlots = 1;
 
-    [Header("Beat 2 — Ability")]
+    [Header("Beat 2 — the glyph rule, once per campaign")]
+    [Tooltip("Played BEFORE the ability fires, right after the halt and vignette. States the "
+        + "UNIVERSAL rule — every enemy carries a mark — while this enemy's own mark is still "
+        + "hidden by revealGlyphLate. Rule first, instance later: beat 7 is the payoff. Shares the "
+        + "once-per-campaign latch with reactLine/ruleLine, so a later level introducing a new "
+        + "type does not re-teach it. Blank copy no-ops, exactly like the other lines.")]
+    public OnboardingBeatCopy glyphRuleLine;
+
+    [Header("Beat 3 — Ability")]
     [Tooltip("Arms the ability on the introduction spawn instead of suppressing it. This INVERTS "
         + "the default rule and is correct only for an enemy whose lesson reveals the ability "
         + "before naming it.")]
@@ -36,11 +44,11 @@ public sealed class EnemyLessonSO : ScriptableObject
     [Min(0f)]
     public float abilityBeatSeconds = 2.5f;
 
-    [Header("Beats 3 and 4 — once per campaign")]
-    [Tooltip("Beat 3. The reaction to the ability the player just watched.")]
+    [Header("Beats 4 and 5 — once per campaign")]
+    [Tooltip("Beat 4. The reaction to the ability the player just watched.")]
     public OnboardingBeatCopy reactLine;
 
-    [Tooltip("Beat 4. The rule: every enemy has its own ability. Shown once per campaign.")]
+    [Tooltip("Beat 5. The rule: every enemy has its own ability. Shown once per campaign.")]
     public OnboardingBeatCopy ruleLine;
 
     [Header("Beats 7 and 8 — glyph")]
