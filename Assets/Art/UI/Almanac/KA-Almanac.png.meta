@@ -1,10 +1,7 @@
 fileFormatVersion: 2
 guid: f6ea59257f41b724092e2fc5172eb8ac
 TextureImporter:
-  internalIDToNameTable:
-  - first:
-      213: -3335155720216819904
-    second: KA-Almanac_0
+  internalIDToNameTable: []
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -46,7 +43,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 2
+  spriteMode: 1
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -124,52 +121,12 @@ TextureImporter:
     forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
-    sprites:
-    - serializedVersion: 2
-      name: KA-Almanac_0
-      rect:
-        serializedVersion: 2
-        x: 39
-        y: 49
-        width: 90
-        height: 59
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline:
-      - - {x: 42, y: -16.5}
-        - {x: 42, y: -5.5}
-        - {x: 34, y: 1.5}
-        - {x: 39, y: 8.5}
-        - {x: 42, y: 17.5}
-        - {x: 42, y: 21.5}
-        - {x: 37, y: 26.5}
-        - {x: -27, y: 23.5}
-        - {x: -37, y: 11.5}
-        - {x: -36, y: 9.5}
-        - {x: -27, y: 2.5}
-        - {x: -18, y: -2.5}
-        - {x: -12, y: -1.5}
-        - {x: -11, y: -9.5}
-        - {x: -28, y: -3.5}
-        - {x: -38, y: -13.5}
-        - {x: -36, y: -27.5}
-        - {x: 40, y: -27.5}
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: 0474dd9fa8527b1d0800000000000000
-      internalID: -3335155720216819904
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
+    sprites: []
     outline: []
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 93cbad5bb5d1241479e52c2eae3429da
+    spriteID: 5e97eb03825dee720800000000000000
     internalID: 0
     vertices: []
     indices: 
@@ -178,8 +135,7 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable:
-      KA-Almanac_0: -3335155720216819904
+    nameFileIdTable: {}
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
