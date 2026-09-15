@@ -10,12 +10,13 @@ public class CutscenePlayer : MonoBehaviour
     [SerializeField] private Image _panelImage;
     [SerializeField] private RectTransform _imageRectTransform;
     [SerializeField] private Image _bottomGradientOverlay;
-    [SerializeField] private Color _bottomGradientColor = new Color(0f, 0f, 0f, 0.55f);
+    [SerializeField] private Color _bottomGradientColor = new Color(0f, 0f, 0f, 0.7f);
     [SerializeField, Range(0.05f, 0.5f)] private float _bottomGradientHeightPercent = 0.30f;
     [SerializeField] private Image _exitTransitionImage;
     [SerializeField] private TMP_Text _bodyText;
     [SerializeField] private TMP_FontAsset _bodyFont;
-    [SerializeField] private float _bodyFontSize = 80f;
+    // Acts as the auto-size ceiling for the narration band, not a fixed size.
+    [SerializeField] private float _bodyFontSize = 100f;
     [SerializeField] private Button _tapCatcher;
     [SerializeField] private Button _skipButton;
     [SerializeField] private GameObject _skipButtonRoot;
@@ -85,10 +86,23 @@ public class CutscenePlayer : MonoBehaviour
             _bodyText.font = _bodyFont;
 
         if (_bodyText != null)
+        {
             _bodyText.fontSize = _bodyFontSize;
+            // Narration should read at dialogue-card scale: auto-size up to the
+            // serialized ceiling inside a taller band. One layout for the full
+            // string, so the reveal never reflows.
+            _bodyText.enableAutoSizing = true;
+            _bodyText.fontSizeMin = UITextScale.AutoSizeFloor;
+            _bodyText.fontSizeMax = _bodyFontSize;
+            // Match the continue-prompt's synthetic bold so the two texts read
+            // as one typeface instead of a thin/heavy mix.
+            _bodyText.fontStyle = FontStyles.Bold;
+            ConfigureBodyTextBand();
+        }
 
         if (_bodyText != null && _bodyText.fontMaterial != null)
-            ApplyCutsceneTextOutline(_bodyText, 0.35f, 0.15f);
+            ApplyCutsceneTextOutline(_bodyText, 0.45f, 0.15f);
+        TutorialFontProvider.ApplyLegibilityEffects(_bodyText);
 
         if (_bodyFont != null && _continuePromptText != null)
             _continuePromptText.font = _bodyFont;
@@ -128,7 +142,11 @@ public class CutscenePlayer : MonoBehaviour
         rect.offsetMin = Vector2.zero;
         rect.offsetMax = Vector2.zero;
 
-        _bottomGradientOverlay.color = _bottomGradientColor;
+        // Floor the scrim alpha: scenes serialize weaker values from before the
+        // readability pass, and 0.55 over bright art is not enough for body text.
+        _bottomGradientOverlay.color = new Color(
+            _bottomGradientColor.r, _bottomGradientColor.g, _bottomGradientColor.b,
+            Mathf.Max(_bottomGradientColor.a, 0.7f));
         _bottomGradientOverlay.raycastTarget = false;
 
         EdgeGradient gradient = _bottomGradientOverlay.GetComponent<EdgeGradient>();
@@ -151,6 +169,18 @@ public class CutscenePlayer : MonoBehaviour
         rect.offsetMax = Vector2.zero;
 
         return go.AddComponent<Image>();
+    }
+
+    // The serialized band (6%→26% of screen) is too short for large narration —
+    // a 200-character panel auto-sizes down to ~50 to fit. Stretching it across
+    // the 30% scrim lets the same text render near the ceiling instead.
+    private void ConfigureBodyTextBand()
+    {
+        RectTransform rect = (RectTransform)_bodyText.transform;
+        rect.anchorMin = new Vector2(0.08f, 0.04f);
+        rect.anchorMax = new Vector2(0.92f, 0.30f);
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
     }
 
     private void ConfigureExitTransitionImage()
@@ -475,26 +505,9 @@ public class CutscenePlayer : MonoBehaviour
             yield break;
         }
 
-        _bodyText.text = "";
-
-        if (string.IsNullOrEmpty(fullText))
-        {
-            _isTypewriting = false;
-            yield break;
-        }
-
-        float delay = 1f / Mathf.Max(charsPerSecond, 0.1f);
-
-        for (int i = 0; i < fullText.Length; i++)
-        {
-            if (_skipRequested)
-            {
-                _bodyText.text = fullText;
-                break;
-            }
-            _bodyText.text = fullText.Substring(0, i + 1);
-            yield return new WaitForSecondsRealtime(delay);
-        }
+        // Full text assigned up front so the reveal never reflows the layout.
+        _bodyText.text = fullText;
+        yield return UITextReveal.Play(_bodyText, charsPerSecond, () => _skipRequested);
 
         _isTypewriting = false;
     }
@@ -525,6 +538,7 @@ public class CutscenePlayer : MonoBehaviour
             && _panelIndex < _currentCutscene.panels.Length)
         {
             _bodyText.text = _currentCutscene.panels[_panelIndex].text ?? "";
+            UITextReveal.Complete(_bodyText);
         }
     }
 
@@ -746,34 +760,6 @@ public class CutscenePlayer : MonoBehaviour
 
     private static void ApplyContinuePromptGraphicEffects(TMP_Text text)
     {
-        if (text == null)
-            return;
-
-        Outline outline = GetExactGraphicEffect<Outline>(text);
-        if (outline == null)
-            outline = text.gameObject.AddComponent<Outline>();
-        outline.effectColor = new Color(0f, 0f, 0f, 0.82f);
-        outline.effectDistance = new Vector2(3f, -3f);
-
-        Shadow shadow = GetExactGraphicEffect<Shadow>(text);
-        if (shadow == null)
-            shadow = text.gameObject.AddComponent<Shadow>();
-        shadow.effectColor = new Color(0f, 0f, 0f, 0.55f);
-        shadow.effectDistance = new Vector2(0f, -6f);
-    }
-
-    private static T GetExactGraphicEffect<T>(TMP_Text text) where T : Shadow
-    {
-        if (text == null)
-            return null;
-
-        Shadow[] effects = text.GetComponents<Shadow>();
-        for (int i = 0; i < effects.Length; i++)
-        {
-            if (effects[i] != null && effects[i].GetType() == typeof(T))
-                return effects[i] as T;
-        }
-
-        return null;
+        TutorialFontProvider.ApplyLegibilityEffects(text);
     }
 }

@@ -39,7 +39,7 @@ public class SettingsPanel : MonoBehaviour
     private static readonly Color MainMenuTextShadowColor = new(0.06f, 0.035f, 0.01f, 1f);
     private static readonly Vector2 MainMenuTextShadowOffset = new(5f, -5f);
     private static readonly Vector2 CloseButtonMinSize = new(280f, 88f);
-    private const float CloseButtonMinFontSize = 34f;
+    private const float CloseButtonMinFontSize = UITextScale.Body;
     private static readonly string[] MainMenuButtonTemplateNames =
     {
         "SettingsButton",
@@ -235,7 +235,7 @@ public class SettingsPanel : MonoBehaviour
             return;
 
         label.color = _onParchment ? ScrollPanelArt.InkColor : LabelColor;
-        label.fontSize = Mathf.Max(label.fontSize, 26f);
+        label.fontSize = Mathf.Max(label.fontSize, UITextScale.Secondary);
         int percent = Mathf.RoundToInt(slider.value * 100f);
         label.text = $"{prefix}: {percent}%";
     }

@@ -134,7 +134,7 @@ public class DefeatScreenUI : MonoBehaviour
             rect.anchorMax = new Vector2(0.88f, 0.680f);
             rect.offsetMin = rect.offsetMax = Vector2.zero;
             _explanationText = explanationObject.AddComponent<TextMeshProUGUI>();
-            _explanationText.fontSize = 26f;
+            _explanationText.fontSize = UITextScale.Body;
             _explanationText.alignment = TextAlignmentOptions.Center;
             _explanationText.color = Color.white;
             _explanationText.textWrappingMode = TextWrappingModes.Normal;

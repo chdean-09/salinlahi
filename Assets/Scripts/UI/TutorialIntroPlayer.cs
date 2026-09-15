@@ -184,7 +184,7 @@ public sealed class TutorialIntroPlayer : MonoBehaviour
 
         TextMeshProUGUI label = labelObject.GetComponent<TextMeshProUGUI>();
         label.alignment = TextAlignmentOptions.Center;
-        label.fontSize = 34f;
+        label.fontSize = UITextScale.Body;
         label.color = Color.white;
         label.raycastTarget = false;
         TutorialFontProvider.ApplyTo(label);

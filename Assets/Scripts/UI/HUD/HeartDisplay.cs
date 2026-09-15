@@ -336,7 +336,7 @@ public class HeartDisplay : MonoBehaviour
 
         indicator = marker.GetComponent<TextMeshProUGUI>();
         indicator.text = "-1";
-        indicator.fontSize = 32f;
+        indicator.fontSize = UITextScale.Secondary;
         indicator.alignment = TextAlignmentOptions.Center;
         indicator.color = _tutorialDamageIndicatorColor;
         indicator.raycastTarget = false;

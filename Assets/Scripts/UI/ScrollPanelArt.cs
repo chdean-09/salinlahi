@@ -55,8 +55,11 @@ public static class ScrollPanelArt
     /// <summary>Switches a text component (TMP or legacy uGUI Text) to ink.</summary>
     public static void Inkify(Graphic text)
     {
-        if (text != null)
-            text.color = InkColor;
+        if (text == null)
+            return;
+
+        text.color = InkColor;
+        TutorialFontProvider.ClearLegibilityEffects(text);
     }
 
     /// <summary>

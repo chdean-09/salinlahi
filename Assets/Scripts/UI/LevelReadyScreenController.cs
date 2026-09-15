@@ -210,7 +210,7 @@ public sealed class LevelReadyScreenController : MonoBehaviour
         labelRect.offsetMin = labelRect.offsetMax = Vector2.zero;
         TextMeshProUGUI label = labelObject.AddComponent<TextMeshProUGUI>();
         label.text = "Start";
-        label.fontSize = 34f;
+        label.fontSize = UITextScale.Body;
         label.alignment = TextAlignmentOptions.Center;
         label.raycastTarget = false;
         TutorialFontProvider.ApplyTo(label);
@@ -236,7 +236,7 @@ public sealed class LevelReadyScreenController : MonoBehaviour
         backLabelRect.offsetMin = backLabelRect.offsetMax = Vector2.zero;
         TextMeshProUGUI backLabel = backLabelObject.AddComponent<TextMeshProUGUI>();
         backLabel.text = "Back";
-        backLabel.fontSize = 34f;
+        backLabel.fontSize = UITextScale.Body;
         backLabel.alignment = TextAlignmentOptions.Center;
         backLabel.raycastTarget = false;
         TutorialFontProvider.ApplyTo(backLabel);
@@ -267,7 +267,7 @@ public sealed class LevelReadyScreenController : MonoBehaviour
         text.overflowMode = TextOverflowModes.Overflow;
         text.raycastTarget = false;
         text.enableAutoSizing = true;
-        text.fontSizeMin = Mathf.Max(16f, fontSize * 0.55f);
+        text.fontSizeMin = Mathf.Max(UITextScale.AutoSizeFloor, fontSize * 0.55f);
         text.fontSizeMax = fontSize;
         TutorialFontProvider.ApplyTo(text);
         return text;

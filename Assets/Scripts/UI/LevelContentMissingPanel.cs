@@ -163,8 +163,8 @@ public sealed class LevelContentMissingPanel : MonoBehaviour
         cardImage.raycastTarget = true;
         bool onParchment = ScrollPanelArt.ApplyFull(cardImage);
 
-        _titleText = CreateText(card.transform, "TitleText", string.Empty, 45f, 120f, 48f);
-        _bodyText = CreateText(card.transform, "BodyText", string.Empty, 185f, 260f, 32f);
+        _titleText = CreateText(card.transform, "TitleText", string.Empty, 45f, 120f, UITextScale.Title);
+        _bodyText = CreateText(card.transform, "BodyText", string.Empty, 185f, 260f, UITextScale.Body);
         _mainMenuButton = CreateButton(card.transform, "MainMenuButton", "Main Menu", 25f);
 
         if (onParchment)
@@ -191,6 +191,7 @@ public sealed class LevelContentMissingPanel : MonoBehaviour
         label.raycastTarget = false;
         if (TMP_Settings.defaultFontAsset != null)
             label.font = TMP_Settings.defaultFontAsset;
+        TutorialFontProvider.ApplyLegibilityEffects(label);
 
         RectTransform rect = textObject.GetComponent<RectTransform>();
         rect.anchorMin = new Vector2(0f, 1f);
@@ -218,7 +219,7 @@ public sealed class LevelContentMissingPanel : MonoBehaviour
         Button button = buttonObject.GetComponent<Button>();
         button.targetGraphic = image;
 
-        TMP_Text label = CreateText(buttonObject.transform, "Label", labelText, 0f, 110f, 32f);
+        TMP_Text label = CreateText(buttonObject.transform, "Label", labelText, 0f, 110f, UITextScale.Body);
         RectTransform labelRect = ((Component)label).GetComponent<RectTransform>();
         labelRect.anchorMin = Vector2.zero;
         labelRect.anchorMax = Vector2.one;
