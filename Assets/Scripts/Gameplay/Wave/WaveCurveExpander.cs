@@ -13,6 +13,19 @@ using System.Collections.Generic;
 /// </summary>
 public static class WaveCurveExpander
 {
+    /// <summary>Asset entry point. A null curve expands to nothing, so a level with neither
+    /// authored waves nor a curve reads as "no waves" exactly as it does today.</summary>
+    public static List<WaveDefinition> Expand(
+        WaveCurveSO curve,
+        IReadOnlyList<BaybayinCharacterSO> characters,
+        IReadOnlyList<EnemyDataSO> enemyTypes)
+    {
+        if (curve == null)
+            return new List<WaveDefinition>();
+
+        return Expand(curve.ToShape(), characters, enemyTypes);
+    }
+
     public static List<WaveDefinition> Expand(
         WaveCurveShape shape,
         IReadOnlyList<BaybayinCharacterSO> characters,
