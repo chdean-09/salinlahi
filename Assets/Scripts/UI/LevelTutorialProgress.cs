@@ -82,6 +82,38 @@ public static class LevelTutorialProgress
     }
 
     /// <summary>
+    /// True when this level replays its tutorial on every play — the <c>alwaysShowTutorial</c>
+    /// question on its own, with none of the seen gate <see cref="ShouldShowForLevel"/> layers on
+    /// top of it.
+    ///
+    /// <para>
+    /// It exists because the level's tutorial is not all in one place. The pre-combat onboarding
+    /// sequence asks <see cref="ShouldShowForLevel"/>, but the enemy lesson embedded in the same
+    /// level's combat (<c>EnemyIntroductionBeat</c>) is gated by a different, campaign-wide
+    /// one-shot and cannot use that gate: its answer is per-level-number and it would report false
+    /// for any level with no authored onboarding sequence. What the lesson needs is only this half
+    /// of the rule. Exposing it here rather than letting the beat read <c>alwaysShowTutorial</c>
+    /// itself is deliberate — two places deriving the same rule independently is how Level 1 came
+    /// to replay its framing beats while silently dropping the lesson between them.
+    /// </para>
+    /// </summary>
+    public static bool AlwaysShowsTutorialForLevel(LevelConfigSO levelConfig)
+    {
+        // A level with no config cannot be asserted to replay anything. A replay is the LOOSER
+        // behaviour — see FallbackAlwaysShowTutorial — so an unresolvable level fails closed.
+        return levelConfig != null && levelConfig.alwaysShowTutorial;
+    }
+
+    /// <summary>
+    /// <see cref="AlwaysShowsTutorialForLevel"/> for a caller that holds only a level number.
+    /// Resolves the config from the active campaign and falls back to
+    /// <see cref="FallbackAlwaysShowTutorial"/> when it cannot be resolved, so the two overloads
+    /// agree; callers that already hold the config should prefer the other and save the lookup.
+    /// </summary>
+    public static bool AlwaysShowsTutorialForLevelNumber(int levelNumber) =>
+        AlwaysShowsTutorial(levelNumber);
+
+    /// <summary>
     /// True when this level's tutorial is about to play again even though the player has already
     /// completed it — that is, the replay exists only because <c>alwaysShowTutorial</c> defeated
     /// the seen gate. A forced replay must start at the first beat rather than resume, so the

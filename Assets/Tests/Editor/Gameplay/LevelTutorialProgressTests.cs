@@ -85,6 +85,52 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.IsFalse(LevelTutorialProgress.HasSeenLevel1Tutorial());
         }
 
+        /// <summary>
+        /// The half of the rule <c>EnemyIntroductionBeat</c> consumes so the enemy lesson and the
+        /// pre-combat onboarding cannot disagree about the same flag. Unlike
+        /// <c>ShouldShowForLevel</c> it answers the <c>alwaysShowTutorial</c> question alone, with
+        /// no seen gate and no level-number restriction on top.
+        /// </summary>
+        [Test]
+        public void AlwaysShowsTutorialForLevel_ReportsTheAuthoredFlag_AndFailsClosedOnNoConfig()
+        {
+            var replaying = ScriptableObject.CreateInstance<LevelConfigSO>();
+            replaying.levelNumber = 1;
+            replaying.alwaysShowTutorial = true;
+
+            var onceOnly = ScriptableObject.CreateInstance<LevelConfigSO>();
+            onceOnly.levelNumber = 1;
+            onceOnly.alwaysShowTutorial = false;
+
+            try
+            {
+                Assert.IsTrue(LevelTutorialProgress.AlwaysShowsTutorialForLevel(replaying));
+                Assert.IsFalse(LevelTutorialProgress.AlwaysShowsTutorialForLevel(onceOnly),
+                    "Negative control: the flag must actually be read, not assumed true for "
+                    + "Level 1.");
+                Assert.IsFalse(LevelTutorialProgress.AlwaysShowsTutorialForLevel(null),
+                    "A replay is the looser behaviour, so an unresolvable level fails closed.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(replaying);
+                Object.DestroyImmediate(onceOnly);
+            }
+        }
+
+        /// <summary>
+        /// The number overload carries the campaign lookup's fallback, so with no campaign wired it
+        /// must agree with <see cref="LevelTutorialProgress"/>'s own documented default: Level 1
+        /// replays, nothing else does.
+        /// </summary>
+        [Test]
+        public void AlwaysShowsTutorialForLevelNumber_FallsBackToLevelOneOnly()
+        {
+            Assert.IsTrue(LevelTutorialProgress.AlwaysShowsTutorialForLevelNumber(1));
+            Assert.IsFalse(LevelTutorialProgress.AlwaysShowsTutorialForLevelNumber(2));
+            Assert.IsFalse(LevelTutorialProgress.AlwaysShowsTutorialForLevelNumber(7));
+        }
+
         [Test]
         public void Level1FtueSeenKey_MatchesPersistedContract()
         {

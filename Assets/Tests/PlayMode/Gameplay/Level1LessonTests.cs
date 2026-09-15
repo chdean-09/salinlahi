@@ -1242,6 +1242,98 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         // ------------------------------------------------------------------------------------
+        // alwaysShowTutorial replays the lesson (+ required negative control)
+        // ------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// The reported defect: "when first time seeing the Iligaw, why is there no intro?" — asked
+        /// by a player whose save already listed <c>iligaw</c> under
+        /// <c>salinlahi.tutorial.enemy_introductions_shown</c>. Level 1 sets
+        /// <c>alwaysShowTutorial</c>, so its pre-combat onboarding replayed on every visit while the
+        /// lesson embedded in the same level's combat — gated only by the campaign-wide one-shot —
+        /// stayed spent forever. The player got all the framing and silence where the teaching was.
+        ///
+        /// <para>
+        /// <b>The negative control is the load-bearing half.</b> A replay rule with no control is
+        /// indistinguishable from "the lesson always plays", which is a worse bug than the one being
+        /// fixed: every level would re-teach its lesson to a player who has known the type for
+        /// hours. The control uses a DIFFERENT type from the main case on purpose — sharing one
+        /// would let the per-attempt budget, rather than the flag, be what declines it, and the
+        /// assertion would pass against a rule that never reads the flag at all.
+        /// </para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator AlwaysShowTutorialLevel_ReplaysTheLesson_ForAnAlreadyIntroducedType()
+        {
+            yield return null;
+
+            SetPrivateField(_beat, "_onScreenWaitTimeoutSeconds", 0f);
+
+            // --- Main case: alwaysShowTutorial = true, type already introduced. ---
+            BaybayinCharacterSO eiChar = MakeCharacter("EI", "symbol.test.replay.ei");
+            EnemyDataSO iligawData = CreateEnemyData(
+                "test_iligaw_replay", "Iligaw", eiChar, spawnsMirrorDecoy: true);
+            EnemyLessonSO iligawLesson = CreateIligawShapedLesson(iligawData);
+
+            LevelConfigSO replayConfig = CreateLevelConfig(
+                new List<EnemyDataSO> { iligawData },
+                new[] { iligawLesson },
+                new List<FocusWordDefinition>());
+            replayConfig.alwaysShowTutorial = true;
+            _gameManager.SetLevel(replayConfig);
+
+            // Exactly the save state the defect was reported from.
+            Assert.IsTrue(EnemyIntroductionProgress.TryClaimIntroduction(iligawData),
+                "setup: spend Iligaw's campaign-wide one-shot, as the reported save had");
+            Assert.IsTrue(EnemyIntroductionProgress.HasBeenIntroduced(iligawData),
+                "setup precondition: the type must read as already introduced");
+
+            Enemy replaySpawn = CreateEnemyShell("Iligaw_Replay");
+            Assert.IsTrue(replaySpawn.Initialize(iligawData));
+
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndArm, replaySpawn.IntroductionOutcome,
+                "On a level whose config sets alwaysShowTutorial, the authored lesson must play "
+                + "again even though the type's campaign-wide introduction is already spent — the "
+                + "lesson IS that level's tutorial, and the rest of it already replays.");
+
+            // Once per PLAY, not once per spawn: the second Iligaw of the same attempt is an
+            // ordinary enemy, or the level would re-run its lesson on every wave.
+            Enemy secondSpawn = CreateEnemyShell("Iligaw_SecondSpawnSameAttempt");
+            Assert.IsTrue(secondSpawn.Initialize(iligawData));
+
+            Assert.AreEqual(IntroductionOutcome.None, secondSpawn.IntroductionOutcome,
+                "The replay is once per level attempt. A second spawn in the same play must be an "
+                + "ordinary enemy, not a second lesson.");
+
+            // --- Negative control: alwaysShowTutorial = false, type already introduced. ---
+            BaybayinCharacterSO haChar = MakeCharacter("HA", "symbol.test.replay.ha");
+            EnemyDataSO hatiData = CreateEnemyData(
+                "test_hati_noreplay", "Hati", haChar, spawnsMirrorDecoy: true);
+            EnemyLessonSO hatiLesson = CreateIligawShapedLesson(hatiData);
+
+            LevelConfigSO onceOnlyConfig = CreateLevelConfig(
+                new List<EnemyDataSO> { hatiData },
+                new[] { hatiLesson },
+                new List<FocusWordDefinition>());
+            onceOnlyConfig.alwaysShowTutorial = false;
+            _gameManager.SetLevel(onceOnlyConfig);
+
+            Assert.IsTrue(EnemyIntroductionProgress.TryClaimIntroduction(hatiData),
+                "setup: spend the control type's one-shot too");
+
+            Enemy controlSpawn = CreateEnemyShell("Hati_NoReplay");
+            Assert.IsTrue(controlSpawn.Initialize(hatiData));
+
+            Assert.AreEqual(IntroductionOutcome.None, controlSpawn.IntroductionOutcome,
+                "Negative control: without alwaysShowTutorial the one-shot must still be final. "
+                + "Without this case the assertion above could be passing against a rule that "
+                + "replays every lesson on every level, which is the worse bug.");
+
+            _beat.enabled = false;
+            yield return null;
+        }
+
+        // ------------------------------------------------------------------------------------
 
         /// <summary>
         /// A screen-space-overlay canvas with one full-width band pinned to the top of the screen,

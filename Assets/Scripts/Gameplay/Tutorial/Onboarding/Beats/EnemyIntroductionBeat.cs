@@ -127,6 +127,27 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// </summary>
     private static EnemyIntroductionBeat s_instance;
 
+    /// <summary>
+    /// Normalized enemy IDs whose authored LESSON has already run during this level attempt.
+    ///
+    /// <para>
+    /// Instance state, not static, and that is the whole point: one runner is created per scene
+    /// load, so this set is empty every time the level is entered and the lesson gets exactly one
+    /// run per play. The campaign-wide record in <see cref="EnemyIntroductionProgress"/> is what
+    /// stops a lesson repeating within a run; it cannot also express "once per play", because it
+    /// deliberately survives a level reload.
+    /// </para>
+    /// </summary>
+    private readonly HashSet<string> _lessonsPlayedThisAttempt = new();
+
+    /// <summary>
+    /// True when the claim now in flight is a forced replay — the type was already introduced
+    /// campaign-wide and only the level's <c>alwaysShowTutorial</c> flag let it through. Read by
+    /// <see cref="PlayLesson"/> to decide whether beats 3 and 4 replay with the rest of the lesson.
+    /// Single field rather than a set because at most one run is ever in flight (<c>_routineActive</c>).
+    /// </summary>
+    private bool _lessonIsForcedReplay;
+
     private Enemy _claimedEnemy;
     private Coroutine _routine;
     private bool _isPlaying;
@@ -233,7 +254,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             if (!RosterContains(roster, lesson.enemy))
                 continue;
 
-            if (!EnemyIntroductionProgress.HasBeenIntroduced(lesson.enemy))
+            if (!HasLessonHadItsRun(lesson))
                 return lesson;
         }
 
@@ -349,11 +370,88 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         if (lesson != null && RestoredSlotCount() < lesson.requiredRestoredSlots)
             return false;
 
-        if (!EnemyIntroductionProgress.TryClaimIntroduction(data))
+        if (!ClaimIntroduction(data, lesson))
             return false;
 
         _claimedEnemy = enemy;
         return true;
+    }
+
+    /// <summary>
+    /// Spends this type's introduction, or — on a level that replays its tutorial — grants the
+    /// authored lesson a replay the campaign-wide one-shot would otherwise refuse.
+    ///
+    /// <para>
+    /// <b>The defect this closes.</b> <c>Level1_Config.alwaysShowTutorial</c> makes Level 1's
+    /// pre-combat onboarding (Juan's intro, the base intro, the heart-loss demo) play on every
+    /// single visit, and <see cref="LevelTutorialProgress"/> honours that. The eight-beat lesson
+    /// embedded in the same level's combat consulted only the campaign-wide introduction record, so
+    /// a player who had met Iligaw once — even in a previous save session — replayed all the
+    /// framing and then got silence where the actual lesson should be. The level's own replay flag
+    /// is the authority for both halves; it is read here through the same file that answers it for
+    /// the onboarding, not re-derived.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Scoped to lessons, deliberately.</b> A plain four-step card is campaign-wide discovery —
+    /// "you have never met this type" — and a type the player has known for hours must not be
+    /// re-introduced every time they revisit an early level. A LESSON is different: it is authored
+    /// on one specific level, it teaches that level's material, and it is that level's tutorial in
+    /// every sense the flag means. So <paramref name="lesson"/> being non-null is a precondition of
+    /// the replay, and a level without <c>alwaysShowTutorial</c> keeps spending its one-shot exactly
+    /// as before — the replay can never leak into "the lesson always plays everywhere".
+    /// </para>
+    /// </summary>
+    private bool ClaimIntroduction(EnemyDataSO data, EnemyLessonSO lesson)
+    {
+        string enemyID = EnemyDiscoveryProgress.NormalizeEnemyID(data);
+
+        // The ordinary path: a genuine first meeting, campaign-wide. Recorded here whether or not
+        // the level replays, so the record stays truthful — the flag defeats the gate, it does not
+        // rewrite history. Compare LevelTutorialProgress's Mark* methods, which keep writing for
+        // the same reason.
+        if (EnemyIntroductionProgress.TryClaimIntroduction(data))
+        {
+            _lessonIsForcedReplay = false;
+
+            // A first run counts against this attempt's lesson budget too, or a replay level's
+            // deferral rule below would never see the lesson as played and would wedge every other
+            // type on the level into permanent suppression.
+            if (lesson != null && enemyID != null)
+                _lessonsPlayedThisAttempt.Add(enemyID);
+
+            return true;
+        }
+
+        if (lesson == null || enemyID == null || !LevelReplaysItsTutorial())
+            return false;
+
+        if (!_lessonsPlayedThisAttempt.Add(enemyID))
+            return false;
+
+        _lessonIsForcedReplay = true;
+        return true;
+    }
+
+    /// <summary>
+    /// Whether the level being played replays its tutorial on every visit. Delegated to
+    /// <see cref="LevelTutorialProgress"/> so the lesson and the pre-combat onboarding can never
+    /// disagree about the same flag.
+    /// </summary>
+    private static bool LevelReplaysItsTutorial() =>
+        LevelTutorialProgress.AlwaysShowsTutorialForLevel(GameManager.CurrentLevelConfig);
+
+    /// <summary>
+    /// Whether this lesson has already had its run for the purposes of deferral. On a replay level
+    /// that is a per-attempt question; everywhere else it is the campaign-wide record, unchanged.
+    /// </summary>
+    private bool HasLessonHadItsRun(EnemyLessonSO lesson)
+    {
+        if (!LevelReplaysItsTutorial())
+            return EnemyIntroductionProgress.HasBeenIntroduced(lesson.enemy);
+
+        string enemyID = EnemyDiscoveryProgress.NormalizeEnemyID(lesson.enemy);
+        return enemyID != null && _lessonsPlayedThisAttempt.Contains(enemyID);
     }
 
     /// <summary>
@@ -501,6 +599,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             _isPlaying = false;
             _routineActive = false;
             RaiseRosterGateIfComplete();
+            _lessonIsForcedReplay = false;
             _claimedEnemy = null;
             _routine = null;
         }
@@ -855,8 +954,13 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         // two. See PlayAbilityBeat for why a fixed hold is not enough.
         yield return PlayAbilityBeat(enemy, lesson);
 
-        // Beats 3 and 4 — React, then the rule. Once per campaign.
-        if (!EnemyIntroductionProgress.HasSeenAbilityRule())
+        // Beats 3 and 4 — React, then the rule. Once per campaign, EXCEPT on a forced replay of
+        // this lesson: they are two of its ten beats, and a lesson that replays with two of its
+        // beats silently missing is worse than one that repeats them. The player who triggered
+        // this replay asked for the level's tutorial again, not for a lesson with holes in it.
+        // On every other level the rule stays once-per-campaign, so a later level introducing a
+        // new type still does not re-teach "enemies have abilities".
+        if (_lessonIsForcedReplay || !EnemyIntroductionProgress.HasSeenAbilityRule())
         {
             DialogueController dialogue = ResolveDialogueController();
             yield return OnboardingDialogueRunner.Play(dialogue, lesson.reactLine);
@@ -1354,6 +1458,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
 
         _isPlaying = false;
         _routineActive = false;
+        _lessonIsForcedReplay = false;
         _claimedEnemy = null;
     }
 
