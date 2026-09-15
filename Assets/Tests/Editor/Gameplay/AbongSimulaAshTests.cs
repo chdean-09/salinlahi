@@ -188,9 +188,23 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 },
             };
 
-            string ashed = BuildMaskedSpelling(word, "symbol.ha", ashFirstSlot: true);
+            // Restored deliberately, and this is the point of the retarget. Under the new rule an
+            // unrestored slot is masked anyway, so asserting "____" against an empty restoration
+            // state would pass whether the ash landed on BA, landed on the skipped null slot, or
+            // never landed at all — a filter that matches nothing looks like a pass. With BA
+            // earned and on screen, only an ash that actually falls on BA can take it away again.
+            var restoration = new ActiveClueRestorationState();
+            restoration.Configure(new List<FocusWordDefinition> { word });
+            restoration.Apply("symbol.ba");
+
+            string readable = BuildMaskedSpelling(word, "symbol.ha", ashFirstSlot: false, restoration);
+            Assert.AreEqual("ba" + AshMask, readable,
+                "precondition: BA is restored and readable, HA is still needed");
+
+            string ashed = BuildMaskedSpelling(word, "symbol.ha", ashFirstSlot: true, restoration);
             Assert.AreEqual(AshMask + AshMask, ashed,
                 "the null slot is skipped, so BA is the first readable slot and takes the ash");
+            Assert.AreNotEqual(readable, ashed, "an ash that bit nothing fails here");
         }
 
         // ------------------------------------------------------- per-spawn arming
@@ -388,13 +402,16 @@ namespace Salinlahi.Tests.Editor.Gameplay
         private static string BuildMaskedSpelling(
             FocusWordDefinition word,
             string symbolStableId,
-            bool ashFirstSlot)
+            bool ashFirstSlot,
+            ActiveClueRestorationState restorationState)
         {
             MethodInfo method = typeof(ActiveCluePresenter).GetMethod(
-                "BuildMaskedSpelling",
+                "BuildMaskedSpellingWithRestoration",
                 BindingFlags.Static | BindingFlags.NonPublic);
-            Assert.IsNotNull(method, "Missing ActiveCluePresenter.BuildMaskedSpelling.");
-            return (string)method.Invoke(null, new object[] { word, symbolStableId, ashFirstSlot });
+            Assert.IsNotNull(
+                method, "Missing ActiveCluePresenter.BuildMaskedSpellingWithRestoration.");
+            return (string)method.Invoke(
+                null, new object[] { word, symbolStableId, ashFirstSlot, restorationState });
         }
 
         /// <summary>
@@ -436,6 +453,19 @@ namespace Salinlahi.Tests.Editor.Gameplay
             SetPrivateField(presenter, "_clueText", clueText);
             SetPrivateField(presenter, "_level", level);
             SetPrivateField(presenter, "_resolvedChannels", ClueChannels.IncompleteWord);
+
+            // A slot is now readable only once the player has RESTORED it, so an untouched clue
+            // reads "______" and the ash would have nothing to cover. That is not a weaker
+            // fixture: it is the state the ash is actually seen in. AshFirstSlotController only
+            // arms once at least one slot is filled and the needed slot is its word's second or
+            // later symbol (Trigger_Arms_OnlyWhenTheNeededSlotIsItsWordsSecondSymbol), so by the
+            // time any ash lands the earlier slots have been earned and are on screen. Restoring
+            // the two leading slots reproduces that, and every expected string in this fixture is
+            // the same one it asserted before the rule changed — the target slot, YA, is left
+            // unrestored and masked exactly as it always was.
+            presenter.RestorationState.Configure(level.focusWords);
+            presenter.RestorationState.Apply(first.stableId);
+            presenter.RestorationState.Apply(middle.stableId);
             return presenter;
         }
 

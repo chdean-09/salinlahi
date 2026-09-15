@@ -30,6 +30,15 @@ public sealed class HeartLossDemoBeat : OnboardingBeat
     [TextArea(1, 3)]
     [SerializeField] private string _restoreMessage = "Don't worry, anak — I'll restore our strength for this lesson.";
 
+    /// <summary>
+    /// The stand-in currently on the field, held so an aborted demo can still undo what the demo
+    /// did to it. A coroutine's <c>finally</c> does NOT run when Unity stops the coroutine — a
+    /// disabled component drops the routine on the floor without unwinding it — so
+    /// <see cref="OnDisable"/> repeats the restore. Without that path an abort mid-walk leaves a
+    /// live enemy permanently unmarked and permanently unkillable.
+    /// </summary>
+    private Enemy _demoEnemy;
+
     public override IEnumerator Play(OnboardingContext ctx)
     {
         if (ctx == null || ctx.Sequence == null) yield break;
@@ -68,7 +77,91 @@ public sealed class HeartLossDemoBeat : OnboardingBeat
             demoEnemy.AssignCharacter(demoCharacter);
 
         controller.DisableContactDamage();
+        ClaimDemoEnemy(demoEnemy);
 
+        try
+        {
+            yield return PlayDemo(ctx, demoEnemy, controller);
+        }
+        finally
+        {
+            ReleaseDemoEnemy();
+        }
+    }
+
+    /// <summary>
+    /// Takes the stand-in out of combat for the length of the demo: no glyph badge, and no way to
+    /// resolve it.
+    ///
+    /// <para>
+    /// <b>The badge.</b> This enemy's job is to walk through and cost a heart. A glyph over its
+    /// head says "draw this to stop me", which is the exact reading the beat exists to disprove —
+    /// the player who tries and fails to stop it learns the wrong lesson, and the player who
+    /// doesn't try is left thinking they let a stoppable enemy through. It is hidden and restored
+    /// the same way <c>EnemyIntroductionBeat</c> handles its subject's late glyph reveal.
+    /// </para>
+    ///
+    /// <para>
+    /// Hidden AFTER the spawn, deliberately: <c>ActiveCluePresenter.HandleEnemySpawned</c> sweeps
+    /// the badge policy across an enemy the frame it appears, and on a clue-combat level with no
+    /// clue yet that sweep calls <c>Show()</c>. A hide placed before the spawn would be undone.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>The resolution block.</b> Nothing locks drawing input during this beat, so before it a
+    /// player who drew the demo enemy's character had it resolved like any other carrier —
+    /// <c>CombatResolver</c> matches on the assigned character alone. That killed the prop
+    /// mid-walk, and on Level 1, whose demo enemy is Hati, a real defeat at the shrine splits into
+    /// two live minions on top of the base. The block is refused by both
+    /// <c>CombatResolver.IsEligibleCombatTarget</c> and <c>ActiveClueDirector</c>, which also stops
+    /// the stand-in from ever being marked the active clue and swept back into view.
+    /// </para>
+    /// </summary>
+    private void ClaimDemoEnemy(Enemy demoEnemy)
+    {
+        if (demoEnemy == null)
+            return;
+
+        _demoEnemy = demoEnemy;
+        demoEnemy.AddResolutionBlock(this);
+        demoEnemy.GlyphBadge?.Hide();
+    }
+
+    /// <summary>
+    /// Undoes <see cref="ClaimDemoEnemy"/>. Idempotent, because it runs from both the beat's
+    /// <c>finally</c> and <see cref="OnDisable"/> and either may be the one that gets there.
+    ///
+    /// <para>
+    /// The badge is only shown again while the enemy is still on the field. On the normal path the
+    /// stand-in has already gone back to the pool by now, and <c>EnemyGlyphBadge.ResetForPool</c>
+    /// has restored the badge for its next user — re-showing it here would turn the renderer back
+    /// on for a parked shell.
+    /// </para>
+    /// </summary>
+    private void ReleaseDemoEnemy()
+    {
+        Enemy demoEnemy = _demoEnemy;
+        _demoEnemy = null;
+        if (demoEnemy == null)
+            return;
+
+        demoEnemy.RemoveResolutionBlock(this);
+        if (demoEnemy.gameObject.activeInHierarchy)
+            demoEnemy.GlyphBadge?.Show();
+    }
+
+    /// <summary>
+    /// A coroutine stopped by Unity never runs its <c>finally</c>, and disabling the component is
+    /// exactly that case. Without this an aborted demo leaves a live enemy with no glyph and a
+    /// standing resolution block: unmarked and unkillable for the rest of the level.
+    /// </summary>
+    private void OnDisable() => ReleaseDemoEnemy();
+
+    private IEnumerator PlayDemo(
+        OnboardingContext ctx,
+        Enemy demoEnemy,
+        Level1TutorialEnemyController controller)
+    {
         if (ctx.Spotlight != null && ctx.PlayerBase != null)
         {
             Bounds baseBounds = ResolveBaseBounds(ctx.PlayerBase);

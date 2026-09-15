@@ -242,6 +242,10 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         public RectTransform Anchor;
         public Image Frame;
         public Image Glyph;
+
+        /// <summary>The romanised syllable printed under the box, and the label printing it.</summary>
+        public TextMeshProUGUI Label;
+        public string LatinLabel;
     }
 
     private readonly List<RailSlot> _railSlots = new List<RailSlot>();
@@ -1525,8 +1529,9 @@ public sealed class ActiveCluePresenter : MonoBehaviour
                 float slotX = x + (emitted * (_slotSize.x + _slotSpacing));
                 RailSlot built = BuildSlot(
                     railRect, word, reference, slotIndex, _railSlots.Count, slotX, slotRowTop);
-                BuildSlotLabel(
-                    railRect, fontTemplate, reference.symbol, _railSlots.Count, slotX, slotRowTop);
+                built.Label = BuildSlotLabel(
+                    railRect, fontTemplate, _railSlots.Count, slotX, slotRowTop);
+                built.LatinLabel = ResolveSlotLatinLabel(reference.symbol);
                 _railSlots.Add(built);
                 _railSlotAnchors.Add(built.Anchor);
                 emitted++;
@@ -1570,13 +1575,14 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     ///
     /// <para>
     /// The text is the symbol's own <c>syllable</c> — the same romanisation the rest of the HUD
-    /// names a glyph by — uppercased, so the row reads as labels rather than as prose.
+    /// names a glyph by — uppercased, so the row reads as labels rather than as prose. It is
+    /// withheld behind the same mask as the box's glyph until that slot is restored; see
+    /// <see cref="RepaintRail"/>.
     /// </para>
     /// </summary>
-    private void BuildSlotLabel(
+    private TextMeshProUGUI BuildSlotLabel(
         RectTransform railRect,
         TextMeshProUGUI fontTemplate,
-        BaybayinCharacterSO symbol,
         int flattenedIndex,
         float slotX,
         float slotRowTop)
@@ -1593,7 +1599,10 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         label.raycastTarget = false;
         label.textWrappingMode = TextWrappingModes.NoWrap;
         label.overflowMode = TextOverflowModes.Overflow;
-        label.text = ResolveSlotLatinLabel(symbol);
+        // Starts masked and is repainted by RepaintRail. The syllable printed under a box is as
+        // much of the answer as the box's own glyph is — leaving "NA" readable under an empty box
+        // would hand back exactly the reading the clue panel now withholds.
+        label.text = UnreadableSlotMask;
 
         // Exactly the slot's own width, at the slot's own x, so "centred under its own box" is a
         // property of the rect rather than of a measured string.
@@ -1604,6 +1613,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         rect.anchoredPosition =
             new Vector2(slotX, slotRowTop - _slotSize.y - _latinWordLabelGap);
         rect.sizeDelta = new Vector2(_slotSize.x, _latinWordLabelRowHeight);
+        return label;
     }
 
     /// <summary>
@@ -1782,12 +1792,17 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             bool showGlyph = restored && slot.Glyph.sprite != null;
             if (slot.Glyph.gameObject.activeSelf != showGlyph)
                 slot.Glyph.gameObject.SetActive(showGlyph);
+
+            // The syllable under the box follows the same rule as the glyph inside it. The label
+            // row was originally treated as a fact about the target text rather than about the
+            // player's progress, so it printed "I NA" under two empty boxes and read the word out
+            // before either had been earned — the same leak the clue panel's mask closes.
+            if (slot.Label != null)
+                slot.Label.text = restored ? slot.LatinLabel : UnreadableSlotMask;
         }
 
-        // Slot labels and word dividers are set once at build and never repainted: a syllable's
-        // romanisation and the boundary between two words are both facts about the target text, not
-        // about how much of it the player has restored, so there is nothing here for a repaint to
-        // change. Kept as an explicit note rather than an empty loop.
+        // Word dividers are set once at build and never repainted: the boundary between two words
+        // is a fact about the target text, not about how much of it the player has restored.
 
         // Left alone while the completion flash owns the alpha, so a repaint landing mid-beat
         // cannot snap the rail back to full opacity halfway through a dip.
@@ -2244,8 +2259,10 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private const string UnreadableSlotMask = "__";
 
     /// <summary>
-    /// Replaces the target symbol's syllable with an underscore run so the player must retrieve
-    /// it rather than read it.
+    /// Replaces every syllable the player has not yet restored with an underscore run, so the word
+    /// is retrieved rather than read. <paramref name="symbolStableId"/> is kept on the signature
+    /// because callers and tests identify the clue by it, but the mask no longer turns on it: the
+    /// needed slot is unrestored by definition and is masked by the restoration rule.
     /// <para>
     /// SALIN-284: when <paramref name="ashFirstSlot"/> is set, the word's first slot is masked too
     /// — Abo ng Simula covers the opening symbol with ash. Presentation only; nothing downstream of
@@ -2279,15 +2296,26 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             if (reference?.symbol == null)
                 continue;
 
-            bool isTargetSlot = reference.symbol.stableId == symbolStableId;
             bool isAshedSlot = ashFirstSlot && emittedSlots == 0;
             bool isRestoredSlot = restorationState != null
                 && restorationState.IsSlotRestored(word, i);
             emittedSlots++;
 
-            // SALIN-221: unmasked slots read the word-context spoken value, so INA spells "i__"
-            // rather than "e/i__".
-            builder.Append((isTargetSlot && !isRestoredSlot) || isAshedSlot
+            // A slot is readable ONLY once the player has RESTORED it. Previously only the slot
+            // currently needed was masked, so INA opened as "__na": the player could read NA off
+            // the panel before ever drawing it, and the Iligaw lesson's "one character, one piece
+            // of the memory — restored" was being said over a word that was already most of the
+            // way on screen. INA now reads "____" at level start, "i__" once I is restored, and
+            // "ina" once NA's carrier falls.
+            //
+            // The ash is unchanged and still composes on top: Abo ng Simula masks the word's first
+            // slot whatever this rule says about it, including a slot already restored — which is
+            // now the only state in which the ash has anything to take away.
+            //
+            // isTargetSlot is no longer read here: "the slot you need" and "the slot you have not
+            // earned" only ever differed for slots the player had not earned either, so the needed
+            // slot is covered by the restoration rule itself.
+            builder.Append(!isRestoredSlot || isAshedSlot
                 ? UnreadableSlotMask
                 : SpokenValueResolver.ResolveLabel(reference.symbol, reference.spokenValueId));
         }

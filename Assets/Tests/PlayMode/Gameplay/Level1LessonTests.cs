@@ -329,12 +329,13 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 "With one slot restored, beat 2 must be visible: ashing the first slot must "
                 + "change what the masked spelling renders.");
 
-            // Negative control: nothing restored at all. With no progress made, the needed slot IS
-            // the word's own first symbol (I) -- not NA, which is only "needed" after I is restored
-            // above. Using the same needed-slot symbol here is the point: it is exactly the
-            // coincidence AshFirstSlotController.WantsToArm refuses to arm on ("the needed slot
-            // being its word's first symbol makes the ash a no-op"), which is why
-            // requiredRestoredSlots exists at all.
+            // Negative control: nothing restored at all. A slot is readable only once it has been
+            // RESTORED, so an untouched INA renders "____" whole and there is nothing left for the
+            // ash to cover -- ash-on and ash-off must be identical. This is a stronger version of
+            // the same control, not a weaker one: it used to rest on the needed slot coinciding
+            // with the word's first symbol, and now holds for every symbol in an untouched word.
+            // It is still exactly why requiredRestoredSlots exists -- arming before the player has
+            // earned a slot is an invisible event.
             var restoredNone = new ActiveClueRestorationState();
             restoredNone.Configure(new List<FocusWordDefinition> { ina });
 
@@ -346,6 +347,49 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 + "the ash and the target mask coincide and ash-on/ash-off must render identically. "
                 + "This equality is exactly why requiredRestoredSlots exists: arming here would be "
                 + "an invisible event.");
+        }
+
+        /// <summary>
+        /// The word is blank until each syllable is EARNED, one restoration at a time.
+        ///
+        /// <para>
+        /// Only the currently-needed slot used to be masked, so INA opened as "__na": NA could be
+        /// read off the panel before the player had ever drawn it, and the Iligaw lesson's beat-9
+        /// line — "one character, one piece of the memory — restored" — was said over a word that
+        /// was already most of the way on screen. The three assertions below are the three states
+        /// the player actually passes through.
+        /// </para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FocusWord_ReadsBlank_UntilEachSlotIsRestored()
+        {
+            yield return null;
+
+            BaybayinCharacterSO i = MakeCharacter("I", "symbol.test.earned.i");
+            BaybayinCharacterSO na = MakeCharacter("NA", "symbol.test.earned.na");
+            FocusWordDefinition ina = CreateWord("level.test.earned.ina", "ina", "INA", i, na);
+
+            var state = new ActiveClueRestorationState();
+            state.Configure(new List<FocusWordDefinition> { ina });
+
+            Assert.AreEqual(
+                "____",
+                InvokeBuildMaskedSpelling(ina, i.stableId, ashFirstSlot: false, state),
+                "At level start nothing has been restored, so no syllable may be readable. "
+                + "This is the assertion the old rule failed: it rendered \"__na\".");
+
+            state.Apply(i.stableId);
+            Assert.AreEqual(
+                "i__",
+                InvokeBuildMaskedSpelling(ina, na.stableId, ashFirstSlot: false, state),
+                "Drawing I restores I's slot and only I's slot; NA stays hidden until its "
+                + "carrier falls.");
+
+            state.Apply(na.stableId);
+            Assert.AreEqual(
+                "ina",
+                InvokeBuildMaskedSpelling(ina, null, ashFirstSlot: false, state),
+                "Both slots restored: the whole word is readable.");
         }
 
         // ------------------------------------------------------------------------------------
@@ -1388,8 +1432,74 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             badgeRenderer != null && badgeRenderer.color.a < 0.5f;
 
         // ------------------------------------------------------------------------------------
+        // Heart-loss demo: the stand-in carries no glyph
+        // ------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// The heart-loss demo enemy exists to walk through and cost a heart. A glyph badge over
+        /// its head says "draw this to stop me", which is the opposite of what the beat is
+        /// teaching, and — because nothing locks drawing input during the beat — it was not even a
+        /// lie: <c>CombatResolver</c> matches on the assigned character alone, so the player could
+        /// kill the prop mid-walk and, on Level 1, split Hati on top of the shrine.
+        ///
+        /// <para>
+        /// The restore is asserted through the COMPONENT-DISABLE path rather than through a clean
+        /// finish, because that is the path that actually breaks: a coroutine stopped by Unity
+        /// never runs its <c>finally</c>, so a beat that only unwound there would leave a live
+        /// enemy unmarked and unkillable for the rest of the level.
+        /// </para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator HeartLossDemoEnemy_CarriesNoGlyph_AndIsRestoredOnAnAbortedDemo()
+        {
+            yield return null;
+
+            BaybayinCharacterSO demoChar = MakeCharacter("MA", "symbol.test.heartdemo.ma");
+            EnemyDataSO demoData = CreateEnemyData("test_heartdemo", "Hati", demoChar);
+
+            Enemy demoEnemy = CreateEnemyShell("HeartLossDemo_Enemy");
+            (_, SpriteRenderer badgeRenderer) = GlyphBadgePlayModeTestHelpers
+                .AddGlyphBadgeChild(demoEnemy.gameObject, GlyphBadgePlayModeTestHelpers.CreateBadgeConfig());
+            Assert.IsTrue(demoEnemy.Initialize(demoData));
+            Assert.IsNotNull(demoEnemy.GlyphBadge, "setup: the demo enemy must have a badge to hide.");
+
+            GameObject host = CreateTracked("HeartLossDemoBeatHost");
+            var beat = host.AddComponent<HeartLossDemoBeat>();
+            yield return null;
+
+            InvokePrivateVoid(beat, "ClaimDemoEnemy", demoEnemy);
+
+            Assert.IsTrue(IsBadgeHidden(badgeRenderer),
+                "The heart-loss demo enemy must carry no glyph: a badge implies the player could "
+                + "have stopped it, and the beat's whole point is that they could not.");
+            Assert.IsTrue(demoEnemy.IsResolutionBlocked,
+                "The demo enemy must not be killable by drawing its glyph while the demo runs — "
+                + "a dead prop mid-walk is a demo that never reaches the base.");
+
+            // The abort: Unity disabling the component, which drops the beat's coroutine without
+            // unwinding it.
+            beat.enabled = false;
+            yield return null;
+
+            Assert.Greater(badgeRenderer.color.a, 0.5f,
+                "An aborted demo must hand the badge back — an enemy left permanently unmarked is "
+                + "the exact bug this project has already shipped once.");
+            Assert.IsFalse(demoEnemy.IsResolutionBlocked,
+                "An aborted demo must lift the resolution block, or the enemy is unkillable for "
+                + "the rest of the level.");
+        }
+
+        // ------------------------------------------------------------------------------------
         // Reflection helpers
         // ------------------------------------------------------------------------------------
+
+        private static void InvokePrivateVoid(object target, string methodName, params object[] args)
+        {
+            MethodInfo method = target.GetType().GetMethod(
+                methodName, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(method, $"Missing {target.GetType().Name}.{methodName}.");
+            method.Invoke(target, args);
+        }
 
         private static string InvokeBuildMaskedSpelling(
             FocusWordDefinition word,
