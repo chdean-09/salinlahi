@@ -12,9 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b739b8fcb7e84356a28d87ae5678db4, type: 3}
   m_Name: Level2AdvancedOnboardingSequence
   m_EditorClassIdentifier: Assembly-CSharp::OnboardingSequenceSO
-  beatOrder:
-  - 7
-  - 5
+  beatOrder: []
   protagonistIntro:
     fallbackText:
     dialogue: {fileID: 0}

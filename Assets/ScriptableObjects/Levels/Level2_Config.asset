@@ -127,12 +127,12 @@ MonoBehaviour:
   clueChannels: 5
   audioVisualFallback: 4
   spawnAssignmentPolicy:
-    minSpawnsBeforeNeeded: 4
+    minSpawnsBeforeNeeded: 2
     neededWeight: 0.5
     starvationTimeout: 30
     hardStarvationTimeout: 50
     minFillerVariety: 2
-    offTargetFillerWeight: 0
+    offTargetFillerWeight: 0.25
     activeSlotWindow: 1
     choiceMomentSlotIndex: 1
     choicePairWindow: 1.5
@@ -232,7 +232,7 @@ MonoBehaviour:
   isAvailableInLite: 1
   multiKillChainEnabled: 0
   tutorialSequence: {fileID: 0}
-  onboardingSequence: {fileID: 11400000, guid: 2589c33ff75c4f87b136e80c7a60e17c, type: 2}
+  onboardingSequence: {fileID: 0}
   enemyLessons: []
   challengePrototypeEnabled: 0
   challengeSequence: {fileID: 11400000, guid: 075735be0cfab4031bc150b6f0bc65cc, type: 2}
