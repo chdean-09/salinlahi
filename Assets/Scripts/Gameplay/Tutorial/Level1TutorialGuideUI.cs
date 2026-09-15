@@ -74,6 +74,12 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         {
             TMP_Text skipLabel = _skipButton.GetComponentInChildren<TMP_Text>(true);
             TutorialFontProvider.ApplyTo(skipLabel);
+
+            // Authored state is not trusted as the starting state: a scene that ships this button
+            // active would show "Skip" the instant the first beat raises the panel, before any beat
+            // has said whether it may be skipped. Every ShowPrompt/ShowMessage sets it explicitly
+            // from here on; this is only the value it holds before the first one.
+            _skipButton.gameObject.SetActive(false);
         }
     }
 
@@ -269,6 +275,13 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
     public void ShowPrompt(Level1TutorialStepSO step, bool canSkip)
     {
         EnsureGuideVisuals();
+
+        // Decided BEFORE the panel comes up, never after. Set below ShowRoot this used to raise the
+        // surface carrying whatever skip state the previous beat left, then correct it — which is
+        // the "it loads and then a Skip pops in" glitch the player reported. A beat either offers
+        // the affordance from its first frame or never shows it at all.
+        SetSkipAffordanceVisible(canSkip);
+
         ShowRoot();
 
         ApplyConfiguredLayout();
@@ -282,9 +295,6 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
 
         // A fresh prompt or message replaces the guide's last word, so it stops owning it.
         IsShowingFeedback = false;
-
-        if (_skipButton != null)
-            _skipButton.gameObject.SetActive(canSkip);
 
         ShowGuideSprite(step);
 
@@ -341,6 +351,10 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
 
     public void ShowMessage(string message, bool canSkip)
     {
+        // Before ShowRoot, for the reason given in ShowPrompt: the skip affordance must never
+        // arrive a frame after the surface it belongs to.
+        SetSkipAffordanceVisible(canSkip);
+
         ShowRoot();
 
         ApplyConfiguredLayout();
@@ -354,9 +368,6 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
 
         // A fresh prompt or message replaces the guide's last word, so it stops owning it.
         IsShowingFeedback = false;
-
-        if (_skipButton != null)
-            _skipButton.gameObject.SetActive(canSkip);
 
         if (_guideSpriteImage != null)
             _guideSpriteImage.gameObject.SetActive(false);
@@ -391,6 +402,25 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
     /// is corrected, and the prompt is exactly what the player needs to still be looking at then.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// The one place the skip affordance's visibility is decided.
+    ///
+    /// <para>
+    /// <b>No caller currently asks for it.</b> Every live call site — the enemy-introduction draw
+    /// step, the heart-loss demo, the challenge flow — passes <c>canSkip: false</c>, so the button
+    /// is authored inactive in both gameplay scenes and stays that way. It is kept rather than
+    /// deleted because <see cref="Level1OnboardingController.RequestSkip"/> and
+    /// <c>OnboardingContext.SkipRequested</c> are still wired to it; what is fixed here is the
+    /// TIMING, which is what the player actually saw. Anything that does start passing true must
+    /// pass it on the call that raises the surface, not on a later one.
+    /// </para>
+    /// </summary>
+    private void SetSkipAffordanceVisible(bool visible)
+    {
+        if (_skipButton != null)
+            _skipButton.gameObject.SetActive(visible);
+    }
+
     public void ClearPrompt()
     {
         if (_promptText != null)
@@ -429,6 +459,11 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
     {
         _showRequested = false;
         IsShowingFeedback = false;
+
+        // Cleared with the panel, so the next beat cannot inherit the last one's skip state for the
+        // frame between ShowRoot and its own decision.
+        SetSkipAffordanceVisible(false);
+
         if (_root != null)
             _root.SetActive(false);
 
