@@ -404,8 +404,13 @@ public class PauseMenuUI : MonoBehaviour
         bool onParchment = ScrollPanelArt.ApplyFull(cardImage);
 
         _confirmationPromptLabel = CreateOverlayText(card.transform, "PromptLabel", string.Empty);
-        _confirmationConfirmButton = CreateOverlayButton(card.transform, "ConfirmButton", "Confirm", 150f);
-        _confirmationCancelButton = CreateOverlayButton(card.transform, "CancelButton", "Cancel", 30f);
+        _confirmationConfirmButton = CreateOverlayButton(card.transform, "ConfirmButton", "Confirm");
+        _confirmationCancelButton = CreateOverlayButton(card.transform, "CancelButton", "Cancel");
+        ApplyParchmentConfirmationLayout(
+            cardRect,
+            _confirmationPromptLabel,
+            _confirmationConfirmButton,
+            _confirmationCancelButton);
         if (onParchment)
             ScrollPanelArt.InkifyRecursive(card.transform);
         _confirmationPanel = root;
@@ -435,16 +440,10 @@ public class PauseMenuUI : MonoBehaviour
         return label;
     }
 
-    private static Button CreateOverlayButton(Transform parent, string name, string labelText, float y)
+    private static Button CreateOverlayButton(Transform parent, string name, string labelText)
     {
         var buttonObject = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
         buttonObject.transform.SetParent(parent, worldPositionStays: false);
-        RectTransform rect = buttonObject.GetComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0.5f, 0f);
-        rect.anchorMax = new Vector2(0.5f, 0f);
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = new Vector2(0f, y);
-        rect.sizeDelta = new Vector2(520f, 100f);
 
         Image image = buttonObject.GetComponent<Image>();
         image.color = new Color32(209, 168, 82, 255);
@@ -462,6 +461,40 @@ public class PauseMenuUI : MonoBehaviour
         labelRect.offsetMin = Vector2.zero;
         labelRect.offsetMax = Vector2.zero;
         return button;
+    }
+
+    public static void ApplyParchmentConfirmationLayout(
+        RectTransform card,
+        TMP_Text prompt,
+        Button confirm,
+        Button cancel)
+    {
+        if (card == null)
+            return;
+
+        card.sizeDelta = new Vector2(760f, 680f);
+        if (prompt != null)
+        {
+            ScrollPanelArt.SetAnchors(
+                prompt.rectTransform,
+                Rect.MinMaxRect(0.16f, 0.48f, 0.84f, 0.76f));
+            prompt.enableAutoSizing = true;
+            prompt.fontSizeMin = 30f;
+            prompt.fontSizeMax = 40f;
+        }
+
+        SetButtonAnchors(confirm, Rect.MinMaxRect(0.20f, 0.31f, 0.80f, 0.43f));
+        SetButtonAnchors(cancel, Rect.MinMaxRect(0.20f, 0.17f, 0.80f, 0.29f));
+    }
+
+    private static void SetButtonAnchors(Button button, Rect area)
+    {
+        if (button == null)
+            return;
+
+        RectTransform rect = button.GetComponent<RectTransform>();
+        ScrollPanelArt.SetAnchors(rect, area);
+        rect.pivot = new Vector2(0.5f, 0.5f);
     }
 
     public static bool ShouldCachePausedRunSnapshot()

@@ -90,6 +90,59 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.GreaterOrEqual(body.fontSizeMin, 36f);
             Assert.Less(body.rectTransform.anchorMin.x, body.rectTransform.anchorMax.x);
             Assert.Greater(body.rectTransform.anchorMax.y, body.rectTransform.anchorMin.y);
+            Assert.LessOrEqual(body.rectTransform.anchorMax.y, speaker.rectTransform.anchorMin.y);
+            Assert.LessOrEqual(speaker.rectTransform.anchorMax.y, ScrollPanelArt.TopSafeArea.yMax);
+            AssertAnchorsInside(speaker.rectTransform, ScrollPanelArt.TopSafeArea);
+            AssertAnchorsInside(body.rectTransform, ScrollPanelArt.TopSafeArea);
+        }
+
+        [Test]
+        public void ScrollPanelArt_SafeAreas_StayInsideNormalizedPanelBounds()
+        {
+            Assert.Greater(ScrollPanelArt.FullSafeArea.xMin, 0f);
+            Assert.Greater(ScrollPanelArt.FullSafeArea.yMin, 0f);
+            Assert.Less(ScrollPanelArt.FullSafeArea.xMax, 1f);
+            Assert.Less(ScrollPanelArt.FullSafeArea.yMax, 1f);
+            Assert.Greater(ScrollPanelArt.TopSafeArea.xMin, 0f);
+            Assert.Greater(ScrollPanelArt.TopSafeArea.yMin, 0f);
+            Assert.Less(ScrollPanelArt.TopSafeArea.xMax, 1f);
+            Assert.Less(ScrollPanelArt.TopSafeArea.yMax, 1f);
+        }
+
+        [Test]
+        public void PauseMenu_ParchmentLayout_KeepsPromptAndButtonsInsidePaper()
+        {
+            using TestObjects objects = new();
+            RectTransform card = objects.CreateRect("PauseCard");
+            TMP_Text prompt = objects.CreateText("Prompt", card);
+            Button confirm = objects.CreateButton("Confirm", card);
+            Button cancel = objects.CreateButton("Cancel", card);
+
+            PauseMenuUI.ApplyParchmentConfirmationLayout(card, prompt, confirm, cancel);
+
+            Assert.AreEqual(new Vector2(760f, 680f), card.sizeDelta);
+            AssertAnchorsInside(prompt.rectTransform, ScrollPanelArt.FullSafeArea);
+            AssertAnchorsInside(confirm.GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
+            AssertAnchorsInside(cancel.GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
+            Assert.LessOrEqual(cancel.GetComponent<RectTransform>().anchorMax.y,
+                confirm.GetComponent<RectTransform>().anchorMin.y);
+        }
+
+        [Test]
+        public void FocusWordPreview_ParchmentLayout_KeepsCopyAndButtonInsidePaper()
+        {
+            using TestObjects objects = new();
+            RectTransform panel = objects.CreateRect("FocusWordPanel");
+            TMP_Text preview = objects.CreateText("Preview", panel);
+            Button continueButton = objects.CreateButton("Continue", panel);
+
+            FocusWordPreviewController.ApplyParchmentLayout(panel, preview, continueButton);
+
+            Assert.AreEqual(new Vector2(560f, 520f), panel.sizeDelta);
+            AssertAnchorsInside(preview.rectTransform, ScrollPanelArt.FullSafeArea);
+            AssertAnchorsInside(continueButton.GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
+            Assert.LessOrEqual(continueButton.GetComponent<RectTransform>().anchorMax.y,
+                preview.rectTransform.anchorMin.y);
         }
 
         [Test]
@@ -110,6 +163,14 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.Less(rect.anchoredPosition.y, 0f);
             Assert.IsTrue(prompt.enableAutoSizing);
             Assert.GreaterOrEqual(prompt.fontSizeMax, 54f);
+        }
+
+        private static void AssertAnchorsInside(RectTransform rect, Rect area)
+        {
+            Assert.GreaterOrEqual(rect.anchorMin.x, area.xMin);
+            Assert.GreaterOrEqual(rect.anchorMin.y, area.yMin);
+            Assert.LessOrEqual(rect.anchorMax.x, area.xMax);
+            Assert.LessOrEqual(rect.anchorMax.y, area.yMax);
         }
 
         private sealed class TestObjects : System.IDisposable
@@ -135,6 +196,13 @@ namespace Salinlahi.Tests.Editor.UI
                 GameObject go = new(name, typeof(RectTransform), typeof(Image));
                 go.transform.SetParent(parent != null ? parent : _root.transform, false);
                 return go.GetComponent<Image>();
+            }
+
+            public Button CreateButton(string name, RectTransform parent = null)
+            {
+                GameObject go = new(name, typeof(RectTransform), typeof(Image), typeof(Button));
+                go.transform.SetParent(parent != null ? parent : _root.transform, false);
+                return go.GetComponent<Button>();
             }
 
             public void Dispose()

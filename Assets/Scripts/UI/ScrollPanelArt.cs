@@ -15,6 +15,8 @@ public static class ScrollPanelArt
     private const string TopSpriteName = "PanelBackground_Top";
 
     public static readonly Color InkColor = new Color32(58, 38, 22, 255);
+    public static readonly Rect FullSafeArea = Rect.MinMaxRect(0.16f, 0.16f, 0.84f, 0.80f);
+    public static readonly Rect TopSafeArea = Rect.MinMaxRect(0.16f, 0.12f, 0.84f, 0.71f);
 
     private static Sprite[] _sprites;
     private static bool _loaded;
@@ -74,6 +76,17 @@ public static class ScrollPanelArt
                 Inkify(graphic);
             }
         }
+    }
+
+    public static void SetAnchors(RectTransform rect, Rect area)
+    {
+        if (rect == null)
+            return;
+
+        rect.anchorMin = area.min;
+        rect.anchorMax = area.max;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
     }
 
     private static bool Apply(Image image, Sprite sprite)

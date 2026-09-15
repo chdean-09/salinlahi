@@ -429,8 +429,9 @@ public class DialogueController : MonoBehaviour
         }
 
         float textMinX = hasPortrait ? DialogueTextWithPortraitMinX : DialogueSidePadding;
-        ConfigureDialogueText(speakerText, new Vector2(textMinX, 0.55f), new Vector2(0.84f, 0.70f), 34f, 52f);
-        ConfigureDialogueText(bodyText, new Vector2(textMinX, 0.14f), new Vector2(0.84f, 0.55f), 42f, 68f);
+        float textMaxX = ScrollPanelArt.TopSafeArea.xMax;
+        ConfigureDialogueText(speakerText, new Vector2(textMinX, 0.55f), new Vector2(textMaxX, 0.70f), 34f, 52f);
+        ConfigureDialogueText(bodyText, new Vector2(textMinX, 0.14f), new Vector2(textMaxX, 0.55f), 42f, 68f);
 
         if (portraitImage != null)
         {
