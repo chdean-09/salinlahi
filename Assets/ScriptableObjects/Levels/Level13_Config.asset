@@ -58,7 +58,7 @@ MonoBehaviour:
   practiceRequirements: []
   activeClueCombatEnabled: 0
   activeClueRestorationEnabled: 0
-  clueChannels: 1
+  clueChannels: 17
   audioVisualFallback: 4
   spawnAssignmentPolicy:
     minSpawnsBeforeNeeded: 4
@@ -78,7 +78,7 @@ MonoBehaviour:
     slotFloors: []
   enemySpeedMultiplier: 1
   overrideDrawingAccuracyThreshold: 0
-  drawingAccuracyThresholdOverride: 0.45
+  drawingAccuracyThresholdOverride: 0.6
   alwaysShowTutorial: 0
   defenseRules:
     shrineHearts: 3

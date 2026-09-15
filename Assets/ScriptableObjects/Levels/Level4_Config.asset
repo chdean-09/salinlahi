@@ -143,7 +143,7 @@ MonoBehaviour:
     slotGates: []
     slotFloors: []
   enemySpeedMultiplier: 1
-  overrideDrawingAccuracyThreshold: 0
+  overrideDrawingAccuracyThreshold: 1
   drawingAccuracyThresholdOverride: 0.45
   alwaysShowTutorial: 0
   defenseRules:
@@ -243,6 +243,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
   - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
   - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
+  - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
+  - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
   bossConfig: {fileID: 0}
   isAvailableInLite: 0
   multiKillChainEnabled: 0

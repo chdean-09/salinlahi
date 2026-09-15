@@ -182,9 +182,9 @@ MonoBehaviour:
       symbol: {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
       spokenValueId: value.ya
     requiredSuccesses: 2
-  activeClueCombatEnabled: 0
-  activeClueRestorationEnabled: 0
-  clueChannels: 1
+  activeClueCombatEnabled: 1
+  activeClueRestorationEnabled: 1
+  clueChannels: 17
   audioVisualFallback: 4
   spawnAssignmentPolicy:
     minSpawnsBeforeNeeded: 4
@@ -204,7 +204,7 @@ MonoBehaviour:
     slotFloors: []
   enemySpeedMultiplier: 1
   overrideDrawingAccuracyThreshold: 0
-  drawingAccuracyThresholdOverride: 0.45
+  drawingAccuracyThresholdOverride: 0.6
   alwaysShowTutorial: 0
   defenseRules:
     shrineHearts: 3
@@ -381,6 +381,8 @@ MonoBehaviour:
   allowedEnemyTypes:
   - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
   - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
+  - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
+  - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
   bossConfig: {fileID: 0}
   isAvailableInLite: 0
   multiKillChainEnabled: 1

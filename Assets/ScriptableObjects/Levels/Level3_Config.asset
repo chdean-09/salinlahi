@@ -124,7 +124,7 @@ MonoBehaviour:
     requiredSuccesses: 2
   activeClueCombatEnabled: 1
   activeClueRestorationEnabled: 1
-  clueChannels: 2
+  clueChannels: 19
   audioVisualFallback: 4
   spawnAssignmentPolicy:
     minSpawnsBeforeNeeded: 4
@@ -143,7 +143,7 @@ MonoBehaviour:
     slotGates: []
     slotFloors: []
   enemySpeedMultiplier: 1
-  overrideDrawingAccuracyThreshold: 0
+  overrideDrawingAccuracyThreshold: 1
   drawingAccuracyThresholdOverride: 0.45
   alwaysShowTutorial: 0
   defenseRules:
