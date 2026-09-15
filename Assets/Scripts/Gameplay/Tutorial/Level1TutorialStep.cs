@@ -33,7 +33,7 @@ public sealed class Level1TutorialStepSO : ScriptableObject
     public string successText;
 
     [TextArea(1, 2)]
-    public string idleHint = "Trace the glowing guide.";
+    public string idleHint = "Draw the glowing symbol.";
 
     [TextArea(1, 2)]
     public string strongHint = "Start at the dot, then follow the arrow.";

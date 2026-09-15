@@ -15,37 +15,39 @@ MonoBehaviour:
   sequenceId: challenge.ugat.05
   displayName: Ikalimang Alaala
   units:
-  - unitId: ugat05-complete-iba
-    mode: 1
-    cluePolicy: 1
-    prompt: Nagbago man ang panahon, may naiwan pa ring hindi kayang kunin ng Paglimot.
-      Buuin mo kung ano iyon.
+  - unitId: ugat05-restore-line-01
+    mode: 3
+    cluePolicy: 2
+    prompt: '______ na ang panahon, ngunit ang ______ ni Juan ay nasa kanya pa
+      rin.'
     tokens:
-    - tokenId: ugat05-ei
-      displayText: EI
-      occurrenceId: ugat05-ei
+    - tokenId: ugat05-iba
+      displayText: IBA
+      occurrenceId: ugat05-iba
       role: 1
       targetCharacter: {fileID: 0}
       evidenceContentId: 
-    - tokenId: ugat05-a-decoy-ugat05-complete-iba
-      displayText: A
-      occurrenceId: ugat05-a-decoy-ugat05-complete-iba
-      role: 0
+    - tokenId: ugat05-mana
+      displayText: MANA
+      occurrenceId: ugat05-mana
+      role: 1
       targetCharacter: {fileID: 0}
       evidenceContentId: 
-    - tokenId: ugat05-ma-decoy-ugat05-complete-iba
-      displayText: MA
-      occurrenceId: ugat05-ma-decoy-ugat05-complete-iba
+    - tokenId: ugat05-mata-decoy-line-01
+      displayText: MATA
+      occurrenceId: ugat05-mata-decoy-line-01
       role: 0
       targetCharacter: {fileID: 0}
       evidenceContentId: 
     slots:
-    - slotId: ugat05-complete-iba-slot
-      expectedOccurrenceId: ugat05-ei
+    - slotId: ugat05-line-01-slot-01
+      expectedOccurrenceId: ugat05-iba
+    - slotId: ugat05-line-01-slot-02
+      expectedOccurrenceId: ugat05-mana
     candidateOccurrenceIds:
-    - ugat05-ei
-    - ugat05-a-decoy-ugat05-complete-iba
-    - ugat05-ma-decoy-ugat05-complete-iba
+    - ugat05-iba
+    - ugat05-mana
+    - ugat05-mata-decoy-line-01
     guidedStep: {fileID: 0}
     timerSeconds: 0
     allowHint: 1
@@ -54,36 +56,85 @@ MonoBehaviour:
     maxErrors: 3
     heartPenalty: 1
     evidenceContentId: level.ugat.05.focus.01
-  - unitId: ugat05-complete-mana
-    mode: 1
-    cluePolicy: 1
-    prompt: Buuin mo kung ano iyon.
+  - unitId: ugat05-restore-line-02
+    mode: 3
+    cluePolicy: 2
+    prompt: 'Hindi lupa, hindi ginto, kundi ang kakayahang bumasa at sumulat,
+      ipinasa mula kina ______ at ______.'
     tokens:
-    - tokenId: ugat05-na
-      displayText: NA
-      occurrenceId: ugat05-na
+    - tokenId: ugat05-ina
+      displayText: INA
+      occurrenceId: ugat05-ina
       role: 1
       targetCharacter: {fileID: 0}
       evidenceContentId: 
-    - tokenId: ugat05-ma-decoy-ugat05-complete-mana
-      displayText: MA
-      occurrenceId: ugat05-ma-decoy-ugat05-complete-mana
+    - tokenId: ugat05-ama
+      displayText: AMA
+      occurrenceId: ugat05-ama
+      role: 1
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugat05-mata-decoy-line-02
+      displayText: MATA
+      occurrenceId: ugat05-mata-decoy-line-02
       role: 0
       targetCharacter: {fileID: 0}
       evidenceContentId: 
-    - tokenId: ugat05-ta-decoy-ugat05-complete-mana
-      displayText: TA
-      occurrenceId: ugat05-ta-decoy-ugat05-complete-mana
+    - tokenId: ugat05-tama-decoy-line-02
+      displayText: TAMA
+      occurrenceId: ugat05-tama-decoy-line-02
       role: 0
       targetCharacter: {fileID: 0}
       evidenceContentId: 
     slots:
-    - slotId: ugat05-complete-mana-slot
-      expectedOccurrenceId: ugat05-na
+    - slotId: ugat05-line-02-slot-01
+      expectedOccurrenceId: ugat05-ina
+    - slotId: ugat05-line-02-slot-02
+      expectedOccurrenceId: ugat05-ama
     candidateOccurrenceIds:
-    - ugat05-na
-    - ugat05-ma-decoy-ugat05-complete-mana
-    - ugat05-ta-decoy-ugat05-complete-mana
+    - ugat05-ina
+    - ugat05-ama
+    - ugat05-mata-decoy-line-02
+    - ugat05-tama-decoy-line-02
+    guidedStep: {fileID: 0}
+    timerSeconds: 0
+    allowHint: 1
+    checkpointOnSuccess: 1
+    memoryRevealSeconds: 1
+    maxErrors: 3
+    heartPenalty: 1
+    evidenceContentId: level.ugat.05.focus.02
+  - unitId: ugat05-restore-line-03
+    mode: 3
+    cluePolicy: 2
+    prompt: '______ ang kanyang naalala: ang ugat niya ay hindi kayang kunin ng
+      Paglimot.'
+    tokens:
+    - tokenId: ugat05-tama
+      displayText: TAMA
+      occurrenceId: ugat05-tama
+      role: 1
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugat05-mata-decoy-line-03
+      displayText: MATA
+      occurrenceId: ugat05-mata-decoy-line-03
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugat05-bata-decoy-line-03
+      displayText: BATA
+      occurrenceId: ugat05-bata-decoy-line-03
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    slots:
+    - slotId: ugat05-line-03-slot-01
+      expectedOccurrenceId: ugat05-tama
+    candidateOccurrenceIds:
+    - ugat05-tama
+    - ugat05-mata-decoy-line-03
+    - ugat05-bata-decoy-line-03
     guidedStep: {fileID: 0}
     timerSeconds: 0
     allowHint: 1

@@ -134,7 +134,7 @@ still pass on.
 
 ### Context copy
 
-> Isang salita lamang ang kulang sa pangungusap ni Ama. Ilagay mo ang tamang salita sa tamang puwang.
+> Dalawang salita ang kulang sa pangungusap ni Ama. Ilagay mo ang bawat salita sa tamang puwang.
 
 ### Restored memory — `memory.ugat.03`
 
@@ -179,7 +179,7 @@ still pass on.
 
 ### Context copy
 
-> Wala nang larawang gagabay sa iyo. Piliin mo ang salitang nararapat, mula lamang sa iyong alaala.
+> Wala nang larawang gagabay sa iyo. Piliin mo ang mga salitang nararapat, mula lamang sa iyong alaala.
 
 ### Restored memory — `memory.ugat.04`
 
@@ -225,6 +225,24 @@ still pass on.
 ### Context copy
 
 > Nagbago man ang panahon, may naiwan pa ring hindi kayang kunin ng Paglimot. Buuin mo kung ano iyon.
+
+### Era mastery paragraph — `challenge.ugat.05`
+
+Three checkpoint lines, one `ChallengeUnit` each (`ParagraphRestoration`, `cluePolicy: Minimal`, word
+tiles). Every blanked word is spellable from the six Era 1 characters only — A, E/I, BA, MA, NA, TA.
+IBA and MANA are the level's taught words; INA, AMA and TAMA are review blanks from Levels 2–4. Kept
+byte-identical to the `prompt` fields of `Assets/ScriptableObjects/Challenges/Challenge_Ugat05_Context.asset`.
+
+| Unit | Line |
+|---|---|
+| `ugat05-restore-line-01` | ______ na ang panahon, ngunit ang ______ ni Juan ay nasa kanya pa rin. |
+| `ugat05-restore-line-02` | Hindi lupa, hindi ginto, kundi ang kakayahang bumasa at sumulat, ipinasa mula kina ______ at ______. |
+| `ugat05-restore-line-03` | ______ ang kanyang naalala: ang ugat niya ay hindi kayang kunin ng Paglimot. |
+
+Answers in reading order: IBA, MANA · INA, AMA · TAMA. Line 1 is drawn from the Ugat ending
+("Iba na nga ang panahon. Ngunit ang mana ko ay nasa akin pa rin"), line 2 from the restored memory
+`memory.ugat.05`, line 3 from the intro's `Tama ka, Juan` and the context copy's
+"hindi kayang kunin ng Paglimot".
 
 ### Restored memory — `memory.ugat.05`
 

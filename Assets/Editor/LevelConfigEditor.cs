@@ -4,11 +4,12 @@ using UnityEngine;
 [CustomEditor(typeof(LevelConfigSO))]
 public class LevelConfigEditor : Editor
 {
+    private const string AuthoredWavesProperty = "_authoredWaves";
     private SerializedProperty _waves;
 
     private void OnEnable()
     {
-        _waves = serializedObject.FindProperty("waves");
+        _waves = serializedObject.FindProperty(AuthoredWavesProperty);
     }
 
     public override void OnInspectorGUI()
@@ -16,11 +17,15 @@ public class LevelConfigEditor : Editor
         serializedObject.Update();
         LevelConfigSO level = (LevelConfigSO)target;
 
-        // Default fields except the embedded waves list (drawn custom below).
-        DrawPropertiesExcluding(serializedObject, "m_Script", "waves");
+        // Default fields except the authored waves list (drawn custom below). waveCurve is a
+        // plain object field and draws with the defaults.
+        DrawPropertiesExcluding(serializedObject, "m_Script", AuthoredWavesProperty);
 
         EditorGUILayout.Space();
         EditorGUILayout.LabelField("Waves", EditorStyles.boldLabel);
+
+        if (level.UsesWaveCurve)
+            DrawResolvedPreview(level);
 
         for (int i = 0; i < _waves.arraySize; i++)
         {
@@ -39,6 +44,27 @@ public class LevelConfigEditor : Editor
         EditorGUILayout.EndHorizontal();
 
         serializedObject.ApplyModifiedProperties();
+    }
+
+    // Read-only view of what the curve generates. Reading level.waves here only fills the
+    // NonSerialized cache; it never marks the asset dirty.
+    private static void DrawResolvedPreview(LevelConfigSO level)
+    {
+        EditorGUILayout.HelpBox(
+            $"Generated from {level.waveCurve.name}. Add an authored wave below to override the "
+            + "curve for this level only.", MessageType.Info);
+
+        using (new EditorGUI.DisabledScope(true))
+        {
+            var resolved = level.waves;
+            for (int i = 0; i < resolved.Count; i++)
+            {
+                WaveDefinition w = resolved[i];
+                EditorGUILayout.LabelField($"Wave {i + 1}",
+                    $"{w.enemyCount} enemies, {w.spawnInterval:0.##}s apart, after {w.waveStartDelay:0.##}s, "
+                    + $"{w.characters.Count} glyphs, {w.enemyTypes.Count} enemy types");
+            }
+        }
     }
 
     private void DrawWave(LevelConfigSO level, SerializedProperty wave, int index)

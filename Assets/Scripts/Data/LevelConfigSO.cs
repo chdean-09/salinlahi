@@ -86,9 +86,74 @@ public class LevelConfigSO : ScriptableObject
     public Sprite numberSprite;
 
     [Header("Waves")]
+    [FormerlySerializedAs("waves")]
     [FormerlySerializedAs("embeddedWaves")]
-    [Tooltip("Waves played in order from index 0.")]
-    public List<WaveDefinition> waves = new();
+    [Tooltip("Hand-authored waves, played in order from index 0. Leave EMPTY to generate the "
+        + "waves from waveCurve against allowedCharacters and allowedEnemyTypes. Level 1 keeps "
+        + "an authored list and is the reference the Ugat curve is held to.")]
+    [SerializeField] private List<WaveDefinition> _authoredWaves = new();
+
+    [Tooltip("Shared chapter difficulty curve, used only while the authored list above is empty. "
+        + "Boss levels leave both empty and run their BossConfigSO instead.")]
+    public WaveCurveSO waveCurve;
+
+    [System.NonSerialized] private List<WaveDefinition> _resolvedWaves;
+    [System.NonSerialized] private WaveCurveSO _resolvedFrom;
+
+    /// <summary>
+    /// The waves this level plays, in order. Resolution: a non-empty authored list wins; else a
+    /// waveCurve is expanded against the roster and cached; else the (empty) authored list.
+    ///
+    /// Returns the live authored list whenever no curve applies so callers that Add or Clear
+    /// keep working. The expansion lives only in a NonSerialized cache — reading this on a
+    /// curve-driven level cannot dirty the asset, and nothing ever copies the cache back into
+    /// <see cref="_authoredWaves"/>. Roster changes at runtime must call
+    /// <see cref="InvalidateResolvedWaves"/>; OnValidate does so in the Editor.
+    /// </summary>
+    public List<WaveDefinition> waves
+    {
+        get
+        {
+            if (_authoredWaves == null)
+                _authoredWaves = new List<WaveDefinition>();
+
+            if (_authoredWaves.Count > 0 || waveCurve == null)
+                return _authoredWaves;
+
+            if (_resolvedWaves == null || _resolvedFrom != waveCurve)
+            {
+                _resolvedWaves = WaveCurveExpander.Expand(waveCurve, allowedCharacters, allowedEnemyTypes);
+                _resolvedFrom = waveCurve;
+            }
+
+            return _resolvedWaves;
+        }
+        set
+        {
+            _authoredWaves = value ?? new List<WaveDefinition>();
+            InvalidateResolvedWaves();
+        }
+    }
+
+    /// <summary>The hand-authored list only, for Editor tools that write waves back to disk.</summary>
+    public List<WaveDefinition> AuthoredWaves
+    {
+        get
+        {
+            if (_authoredWaves == null)
+                _authoredWaves = new List<WaveDefinition>();
+            return _authoredWaves;
+        }
+    }
+
+    /// <summary>True when <see cref="waves"/> is being generated from <see cref="waveCurve"/>.</summary>
+    public bool UsesWaveCurve => AuthoredWaves.Count == 0 && waveCurve != null;
+
+    public void InvalidateResolvedWaves()
+    {
+        _resolvedWaves = null;
+        _resolvedFrom = null;
+    }
 
     [Header("Characters")]
     [Tooltip("Master list of characters allowed in this level. WaveConfigs draw from this.")]
@@ -169,18 +234,19 @@ public class LevelConfigSO : ScriptableObject
 
     public void ReconcileWavesToRoster()
     {
-        if (waves == null)
-            return;
-
-        for (int i = 0; i < waves.Count; i++)
+        List<WaveDefinition> authored = AuthoredWaves;
+        for (int i = 0; i < authored.Count; i++)
         {
-            WaveDefinition wave = waves[i];
+            WaveDefinition wave = authored[i];
             if (wave == null)
                 continue;
 
             PruneToRoster(wave.characters, allowedCharacters);
             PruneToRoster(wave.enemyTypes, allowedEnemyTypes);
         }
+
+        // The roster or the curve may have changed under a cached expansion.
+        InvalidateResolvedWaves();
     }
 
     private static void PruneToRoster<T>(List<T> subset, List<T> roster) where T : Object

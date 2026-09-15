@@ -485,7 +485,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_text: A creature made of dark roots and ropes. It traps Juan's hands and slows
-    down symbol tracing.
+    down symbol drawing.
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: b3a97f8bae7014bd4b31bc84b88a29b9, type: 2}
   m_sharedMaterial: {fileID: 3582228115317829731, guid: b3a97f8bae7014bd4b31bc84b88a29b9, type: 2}

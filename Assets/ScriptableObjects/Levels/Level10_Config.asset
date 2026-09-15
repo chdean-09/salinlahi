@@ -196,7 +196,7 @@ MonoBehaviour:
     requiredSuccesses: 2
   activeClueCombatEnabled: 0
   activeClueRestorationEnabled: 0
-  clueChannels: 1
+  clueChannels: 17
   audioVisualFallback: 4
   spawnAssignmentPolicy:
     minSpawnsBeforeNeeded: 4
@@ -216,7 +216,7 @@ MonoBehaviour:
     slotFloors: []
   enemySpeedMultiplier: 1
   overrideDrawingAccuracyThreshold: 0
-  drawingAccuracyThresholdOverride: 0.45
+  drawingAccuracyThresholdOverride: 0.6
   alwaysShowTutorial: 0
   defenseRules:
     shrineHearts: 3
@@ -292,7 +292,7 @@ MonoBehaviour:
     requiredSuccesses: 1
   eraTheme: {fileID: 11400000, guid: 80a50c4bceb3cc946a8586e47777bb12, type: 2}
   numberSprite: {fileID: 0}
-  waves: []
+  _authoredWaves: []
   allowedCharacters:
   - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
   - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}

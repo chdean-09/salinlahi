@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Gapos
   discoverySubtitle: 
   description: A creature made of dark roots and ropes. It traps Juan's hands and
-    slows down symbol tracing.
+    slows down symbol drawing.
   moveSpeed: 1
   maxHealth: 2
   walkFrames:

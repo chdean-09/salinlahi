@@ -25,7 +25,7 @@ MonoBehaviour:
   tolerancePixels: 15
   promptText: Last one. Draw HA.
   successText: 
-  idleHint: Trace the glowing guide.
+  idleHint: Draw the glowing symbol.
   strongHint: Start at the dot, then follow the arrow.
   assistText: Watch this once.
   wrongCharacterFeedback: Draw the shown syllable.

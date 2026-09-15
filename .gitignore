@@ -51,3 +51,9 @@ docs/reviews
 # Local working artifacts — no implementation plan has ever been committed.
 /SALIN-*-implementation-plan.md
 /jira-readiness-audit.xlsx
+
+# Mono runtime crash dumps, written to the repo root when the Editor or a player
+# crashes. Two (439 KB of stack traces and register state) were committed in
+# dc9d6ad0. They describe one machine's crash at one moment and are not evidence
+# anyone else can use.
+/mono_crash.*.json

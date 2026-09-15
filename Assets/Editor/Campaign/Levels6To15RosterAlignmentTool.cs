@@ -166,17 +166,16 @@ public static class Levels6To15RosterAlignmentTool
 
     /// <summary>
     /// Does the OnValidate prune here, loudly, and fills in Level 6's empty wave lists so the
-    /// spawner never falls through to an enemy's default glyph.
+    /// spawner never falls through to an enemy's default glyph. Generated waves are not touched:
+    /// they carry the roster by construction.
     /// </summary>
     private static void ReconcileWaves(
         LevelConfigSO level, string levelId, List<BaybayinCharacterSO> expected)
     {
-        if (level.waves == null)
-            return;
-
-        for (int i = 0; i < level.waves.Count; i++)
+        List<WaveDefinition> authored = level.AuthoredWaves;
+        for (int i = 0; i < authored.Count; i++)
         {
-            WaveDefinition wave = level.waves[i];
+            WaveDefinition wave = authored[i];
             if (wave == null)
                 continue;
 

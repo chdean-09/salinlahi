@@ -127,7 +127,7 @@ MonoBehaviour:
   clueChannels: 16
   audioVisualFallback: 4
   spawnAssignmentPolicy:
-    minSpawnsBeforeNeeded: 4
+    minSpawnsBeforeNeeded: 6
     neededWeight: 0.5
     starvationTimeout: 30
     hardStarvationTimeout: 50
@@ -143,7 +143,7 @@ MonoBehaviour:
     slotGates: []
     slotFloors: []
   enemySpeedMultiplier: 1
-  overrideDrawingAccuracyThreshold: 0
+  overrideDrawingAccuracyThreshold: 1
   drawingAccuracyThresholdOverride: 0.45
   alwaysShowTutorial: 0
   defenseRules:
@@ -191,46 +191,8 @@ MonoBehaviour:
     requiredSuccesses: 1
   eraTheme: {fileID: 11400000, guid: 4a3f16684c91d284eafb13ac69eecbfc, type: 2}
   numberSprite: {fileID: -1094413104633657808, guid: 02eb897dfabd3f44798a967b677647e9, type: 3}
-  waves:
-  - isIntermissionWave: 0
-    characters:
-    - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
-    enemyTypes:
-    - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
-    - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
-    enemyCount: 5
-    spawnInterval: 3
-    waveStartDelay: 1.5
-  - isIntermissionWave: 0
-    characters:
-    - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
-    enemyTypes:
-    - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
-    - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
-    enemyCount: 7
-    spawnInterval: 3
-    waveStartDelay: 1.5
-  - isIntermissionWave: 0
-    characters:
-    - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
-    enemyTypes:
-    - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
-    - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
-    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
-    enemyCount: 8
-    spawnInterval: 4
-    waveStartDelay: 1.5
-  - isIntermissionWave: 0
-    characters:
-    - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
-    enemyTypes:
-    - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
-    - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
-    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
-    - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
-    enemyCount: 10
-    spawnInterval: 5
-    waveStartDelay: 1.5
+  _authoredWaves: []
+  waveCurve: {fileID: 11400000, guid: d976cc471270472581e14aadcafda1c5, type: 2}
   allowedCharacters:
   - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
   - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
@@ -243,6 +205,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
   - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
   - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
+  - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
+  - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
   bossConfig: {fileID: 0}
   isAvailableInLite: 0
   multiKillChainEnabled: 0

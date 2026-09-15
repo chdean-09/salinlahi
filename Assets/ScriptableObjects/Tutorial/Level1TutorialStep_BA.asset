@@ -26,7 +26,7 @@ MonoBehaviour:
   tolerancePixels: 15
   promptText: Draw BA. Start at the dot.
   successText: Great job. Drawing protects the base.
-  idleHint: Trace the glowing guide.
+  idleHint: Draw the glowing symbol.
   strongHint: Start at the dot, then follow the arrow.
   assistText: Watch this once.
   wrongCharacterFeedback: Draw the shown syllable.
