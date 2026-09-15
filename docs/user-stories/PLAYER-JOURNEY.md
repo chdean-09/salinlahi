@@ -296,7 +296,7 @@ As a player, I want an accidental tap ignored, so that brushing the screen does 
 ### US-044 — Have a reasonable attempt accepted
 As a player, I want a close-enough symbol to count, so that imperfect handwriting is not punished.
 - A drawing scoring at or above 0.60 against the target template is accepted (RecognitionConfig_Default.minimumConfidence).
-- Each era declares its own accept threshold, and the Ugat threshold is the most forgiving of the three.
+- Level 1 accepts 0.45 against the 0.60 campaign default, via `LevelConfigSO.overrideDrawingAccuracyThreshold`, so the teaching level is the most forgiving.
 
 ### US-045 — Know immediately when a drawing failed
 As a player, I want unmistakable feedback on a rejected stroke, so that I am never unsure what happened.
