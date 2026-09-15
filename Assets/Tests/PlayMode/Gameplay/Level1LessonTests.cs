@@ -4,6 +4,7 @@ using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine.UI;
 
 namespace Salinlahi.Tests.PlayMode.Gameplay
 {
@@ -1824,6 +1825,308 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Assert.IsFalse(demoEnemy.IsResolutionBlocked,
                 "An aborted demo must lift the resolution block, or the enemy is unkillable for "
                 + "the rest of the level.");
+        }
+
+        // ------------------------------------------------------------------------------------
+        // Restoration rail: the glyph's flight into its box
+        // ------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// The flight is presentation and nothing else, so the rail it leaves behind has to be the
+        /// rail an un-animated fill would have left. If it is not, a slot restored while the player
+        /// was looking somewhere else ends up in a different state from one they watched land.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator SlotGlyphFlight_LeavesTheSameEndState_AsAnImmediateFill()
+        {
+            yield return null;
+
+            RailFixture rail = BuildRailFixture("flightend");
+
+            // The immediate fill: apply the symbol and repaint, with no flight involved at all.
+            _presenter.RestorationState.Apply(rail.First.stableId);
+            InvokePrivateVoid(_presenter, "RepaintRail", false);
+            yield return null;
+
+            string immediate = DescribeSlot(0);
+
+            // Now the same box, filled again with the flight running. A repeat Apply is idempotent,
+            // so the state the rail is repainted from is identical; only the presentation differs.
+            _presenter.RestorationState.Apply(rail.First.stableId);
+            InvokePrivateVoid(_presenter, "RepaintRail", false);
+            InvokePrivateVoid(
+                _presenter,
+                "LaunchSlotGlyphFlights",
+                rail.First.stableId,
+                new Vector3(0f, 3f, 0f));
+
+            Assert.IsTrue(HasFlierInFlight(0),
+                "setup: the flight must actually have started, or this test proves nothing about "
+                + "what happens after one.");
+
+            // Unscaled, because the flight is unscaled — generously past the ~0.70s budget.
+            float waited = 0f;
+            while (waited < 1.5f && HasFlierInFlight(0))
+            {
+                waited += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            Assert.IsFalse(HasFlierInFlight(0),
+                "The flight must finish and clean up its flier on its own inside the budget.");
+
+            Assert.AreEqual(immediate, DescribeSlot(0),
+                "A box the player watched the glyph fly into must end up identical to a box that "
+                + "simply filled. Anything else means the animation owns part of the rest state.");
+        }
+
+        /// <summary>
+        /// The trap this project has already been bitten by: Unity does NOT run a coroutine's
+        /// <c>finally</c> when it stops the coroutine. The flight parks the resting glyph hidden
+        /// while its flier stands in, so a flight killed mid-air with no external repair would
+        /// leave a permanently blank box that the restoration state insists is filled.
+        ///
+        /// <para>
+        /// Killed with <c>StopAllCoroutines</c> rather than by disabling the presenter, and that is
+        /// the harder case on purpose. Disabling runs <c>OnDisable</c>, which repairs the slots by
+        /// hand and then tears the rail down, so afterwards there is no rail left to be wrong.
+        /// Stopping the coroutines leaves the presenter, the rail, the slot and the flier all alive
+        /// and structurally perfect — the only thing that has happened is that the glyph stopped
+        /// moving. Nothing about the scene graph reveals it, so only the flight's deadline can.
+        /// </para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator SlotGlyphFlight_AbortedMidAir_StillLeavesTheBoxFilled()
+        {
+            yield return null;
+
+            RailFixture rail = BuildRailFixture("flightabort");
+
+            _presenter.RestorationState.Apply(rail.First.stableId);
+            InvokePrivateVoid(_presenter, "RepaintRail", false);
+            InvokePrivateVoid(
+                _presenter,
+                "LaunchSlotGlyphFlights",
+                rail.First.stableId,
+                new Vector3(0f, 3f, 0f));
+
+            yield return null;
+
+            Assert.IsTrue(HasFlierInFlight(0),
+                "setup: the glyph must be in the air before the abort, or there is nothing to "
+                + "strand.");
+            Assert.IsFalse(GetSlotGlyph(0).gameObject.activeSelf,
+                "setup: the resting glyph must be the one standing aside for the flier — that is "
+                + "the state the abort has to repair.");
+
+            // The abort: the routine dropped where it stood, with no tail run.
+            _presenter.StopAllCoroutines();
+
+            float waited = 0f;
+            while (waited < 2.5f && HasFlierInFlight(0))
+            {
+                waited += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            Assert.IsFalse(HasFlierInFlight(0),
+                "An aborted flight must not leave its flier behind in the rail. Nothing was going "
+                + "to notice this one structurally — the deadline is what has to catch it.");
+
+            Image glyph = GetSlotGlyph(0);
+            Assert.IsTrue(glyph.gameObject.activeSelf,
+                "An aborted flight must hand the box its glyph back. A box the state calls "
+                + "restored and the player sees empty is the bug, not the animation.");
+            Assert.AreEqual(Vector3.one, glyph.transform.localScale,
+                "An aborted flight must leave the glyph at resting scale, not frozen mid-squash.");
+        }
+
+        /// <summary>
+        /// Two fills landing on the same box in quick succession must not put two gliding glyphs on
+        /// one slot, and must not let the first one's cleanup blank the box the second just filled.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator SlotGlyphFlight_SecondFillOnTheSameBox_RetiresTheFirstRatherThanRacingIt()
+        {
+            yield return null;
+
+            RailFixture rail = BuildRailFixture("flightqueue");
+
+            _presenter.RestorationState.Apply(rail.First.stableId);
+            InvokePrivateVoid(_presenter, "RepaintRail", false);
+            InvokePrivateVoid(
+                _presenter, "LaunchSlotGlyphFlights", rail.First.stableId, new Vector3(0f, 3f, 0f));
+            yield return null;
+
+            GameObject firstFlier = GetSlotFlier(0);
+            Assert.IsNotNull(firstFlier, "setup: the first flight must be in the air.");
+
+            InvokePrivateVoid(
+                _presenter, "LaunchSlotGlyphFlights", rail.First.stableId, new Vector3(4f, 3f, 0f));
+
+            GameObject secondFlier = GetSlotFlier(0);
+            Assert.IsNotNull(secondFlier, "The second fill must get a flight of its own.");
+            Assert.AreNotSame(firstFlier, secondFlier,
+                "The first flier must be retired the instant a second fill claims the same box — "
+                + "two gliding glyphs for one slot is the fight this guards against.");
+
+            // Checked a frame later, not immediately: in play mode Destroy defers to the end of the
+            // frame, so the retired flier is still parented here on the call that retired it.
+            yield return null;
+
+            Assert.AreEqual(1, CountFliersInRail(),
+                "Exactly one glyph may be in the air for one box once the retired one has gone.");
+
+            float waited = 0f;
+            while (waited < 1.5f && HasFlierInFlight(0))
+            {
+                waited += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            Assert.IsTrue(GetSlotGlyph(0).gameObject.activeSelf,
+                "After both flights have settled the box must be filled, not blanked by the "
+                + "retired one's cleanup.");
+        }
+
+        // ---- rail fixture helpers ----
+
+        private readonly struct RailFixture
+        {
+            public RailFixture(BaybayinCharacterSO first, BaybayinCharacterSO second)
+            {
+                First = first;
+                Second = second;
+            }
+
+            public BaybayinCharacterSO First { get; }
+            public BaybayinCharacterSO Second { get; }
+        }
+
+        /// <summary>
+        /// Stands up the minimum the rail needs to exist and be visible: a canvas to build into, a
+        /// main camera for the world-to-screen hop the flight's origin needs, a two-syllable focus
+        /// word, and the rail itself switched on.
+        /// </summary>
+        private RailFixture BuildRailFixture(string tag)
+        {
+            GameObject cameraGO = CreateTracked("RailFixtureCamera");
+            var camera = cameraGO.AddComponent<Camera>();
+            camera.orthographic = true;
+            camera.transform.position = new Vector3(0f, 0f, -10f);
+            cameraGO.tag = "MainCamera";
+
+            GameObject canvasGO = CreateTracked("HUDCanvas");
+            var canvas = canvasGO.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvasGO.AddComponent<UnityEngine.UI.CanvasScaler>();
+
+            BaybayinCharacterSO first = MakeCharacter("I", $"symbol.test.{tag}.i");
+            BaybayinCharacterSO second = MakeCharacter("NA", $"symbol.test.{tag}.na");
+            first.almanacSprite = MakeTestSprite($"{tag}-i");
+            second.almanacSprite = MakeTestSprite($"{tag}-na");
+
+            FocusWordDefinition ina = CreateWord(
+                $"word.test.{tag}.ina", "INA", "INA", first, second);
+
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO>(), System.Array.Empty<EnemyLessonSO>(),
+                new List<FocusWordDefinition> { ina });
+            config.activeClueRestorationEnabled = true;
+
+            SetPrivateField(_presenter, "_level", config);
+            _presenter.RestorationState.Configure(config.focusWords);
+
+            InvokePrivateVoid(_presenter, "EnsureRestorationRail");
+
+            var railRoot = GetPrivateField<GameObject>(_presenter, "_railRoot");
+            Assert.IsNotNull(railRoot, "setup: the restoration rail must have been built.");
+            railRoot.SetActive(true);
+
+            return new RailFixture(first, second);
+        }
+
+        private Sprite MakeTestSprite(string name)
+        {
+            var texture = new Texture2D(4, 4);
+            texture.name = name + "Texture";
+            _objectsToDestroy.Add(texture);
+
+            Sprite sprite = Sprite.Create(
+                texture, new Rect(0f, 0f, 4f, 4f), new Vector2(0.5f, 0.5f));
+            sprite.name = name;
+            _objectsToDestroy.Add(sprite);
+            return sprite;
+        }
+
+        private object GetRailSlot(int index)
+        {
+            FieldInfo field = typeof(ActiveCluePresenter).GetField(
+                "_railSlots", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(field, "Missing ActiveCluePresenter._railSlots.");
+
+            var slots = (System.Collections.IList)field.GetValue(_presenter);
+            Assert.Greater(slots.Count, index, $"setup: the rail must have a slot {index}.");
+            return slots[index];
+        }
+
+        private static T GetSlotField<T>(object slot, string fieldName) where T : class
+        {
+            FieldInfo field = slot.GetType().GetField(
+                fieldName, BindingFlags.Instance | BindingFlags.Public);
+            Assert.IsNotNull(field, $"Missing RailSlot.{fieldName}.");
+            return field.GetValue(slot) as T;
+        }
+
+        private Image GetSlotGlyph(int index) => GetSlotField<Image>(GetRailSlot(index), "Glyph");
+
+        private GameObject GetSlotFlier(int index) =>
+            GetSlotField<GameObject>(GetRailSlot(index), "Flier");
+
+        private bool HasFlierInFlight(int index) => GetSlotFlier(index) != null;
+
+        private int CountFliersInRail()
+        {
+            var railRoot = GetPrivateField<GameObject>(_presenter, "_railRoot");
+            if (railRoot == null)
+                return 0;
+
+            int count = 0;
+            foreach (Transform child in railRoot.transform)
+            {
+                if (child.name.Contains("GlyphFlier"))
+                    count++;
+            }
+
+            return count;
+        }
+
+        /// <summary>
+        /// Everything about a slot that the player can actually see, flattened to one string so the
+        /// animated and un-animated end states can be compared as a whole rather than field by
+        /// field — a comparison that only checks the fields someone remembered to check is how a
+        /// difference in the tenth one gets shipped.
+        /// </summary>
+        private string DescribeSlot(int index)
+        {
+            object slot = GetRailSlot(index);
+            var glyph = GetSlotField<Image>(slot, "Glyph");
+            var plate = GetSlotField<Image>(slot, "Plate");
+            var frame = GetSlotField<Image>(slot, "Frame");
+            var label = GetSlotField<TMPro.TextMeshProUGUI>(slot, "Label");
+
+            return string.Join(
+                "|",
+                $"glyphActive={glyph.gameObject.activeSelf}",
+                $"glyphSprite={(glyph.sprite == null ? "none" : glyph.sprite.name)}",
+                $"glyphColor={glyph.color}",
+                $"glyphScale={glyph.transform.localScale}",
+                $"plateActive={(plate == null ? "none" : plate.gameObject.activeSelf.ToString())}",
+                $"plateColor={(plate == null ? "none" : plate.color.ToString())}",
+                $"frameColor={frame.color}",
+                $"labelText={(label == null ? "none" : label.text)}",
+                $"labelColor={(label == null ? "none" : label.color.ToString())}",
+                $"slotScale={GetSlotField<RectTransform>(slot, "Anchor").localScale}");
         }
 
         // ------------------------------------------------------------------------------------

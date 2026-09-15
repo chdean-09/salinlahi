@@ -97,15 +97,31 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     [Tooltip("Frame colour of a slot whose symbol has been restored.")]
     [SerializeField] private Color _filledSlotColor = new Color(1f, 0.84f, 0.29f, 0.85f);
 
-    [Tooltip("Tint applied to the restored slot's glyph. The glyph art is white, so this is the "
-             + "colour the player actually reads the symbol in.\n\n"
-             + "Dark gold, on request. The value is the menu gold "
-             + "EnemyDiscoveryOnboardingController already uses (0.702, 0.502, 0.075) rather than a "
-             + "new one invented here, so the symbol inside the box matches the gold the rest of "
-             + "the game's chrome is keyed to. It is NOT the rail's own filled-frame gold "
-             + "(1, 0.84, 0.29): that is a bright highlight, and a glyph painted in it against a "
-             + "frame painted in it would lose its edge against the frame.")]
-    [SerializeField] private Color _filledGlyphColor = new Color(0.7019608f, 0.5019608f, 0.07450981f, 1f);
+    [Tooltip("Tint applied to the restored slot's glyph. WHITE, i.e. no tint, and that is the "
+             + "point.\n\n"
+             + "The slot used to show glyphOutlineSprite, which is a flat white silhouette that "
+             + "only looked like a glyph because this field tinted it dark gold. The slot now "
+             + "shows almanacSprite instead: the same bare glyph the almanac prints, already "
+             + "self-coloured as a near-white fill inside a dark brown outline. Multiplying gold "
+             + "over that would muddy the fill and flatten the outline that makes it legible, so "
+             + "an Image tint here must stay white. The gold stays on the slot FRAME "
+             + "(_filledSlotColor), which is where it was doing useful work.")]
+    [SerializeField] private Color _filledGlyphColor = Color.white;
+
+    [Tooltip("Fill of the backing plate drawn inside a restored slot's frame, behind the glyph.\n\n"
+             + "The rail sits over the wooden fence at the bottom of the play area, and the "
+             + "almanac glyph's dark brown outline (0.28, 0.13, 0.09) against brown fence planks "
+             + "is the weakest pairing on screen — the previous visual pass flagged it. The plate "
+             + "takes the fence out of the equation so the glyph is read against a known ground "
+             + "rather than against whatever plank is behind it.\n\n"
+             + "The value is the clue panel's own ground (0.04, 0.06, 0.12), which is already in "
+             + "the palette, raised to full opacity so no fence shows through. Deep navy rather "
+             + "than a light parchment because the almanac art's FILL is near-white (0.91) and "
+             + "its outline is dark: on a light plate the fill washes out and only the outline "
+             + "reads, whereas on the navy the near-white body of the glyph carries the shape and "
+             + "the brown outline reads as its edge. It also keeps the gold frame legible, which "
+             + "a warm plate of similar hue would not.")]
+    [SerializeField] private Color _slotPlateColor = new Color(0.04f, 0.06f, 0.12f, 1f);
 
     [Tooltip("Thickness of a slot frame's border as a fraction of the slot, used to generate the "
              + "hollow frame sprite. The frame is generated rather than authored because there is "
@@ -158,6 +174,41 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     [Tooltip("Seconds for the fill pop's full out-and-back. Short on purpose: a flourish here "
              + "competes with the restoration line being read.")]
     [SerializeField, Min(0f)] private float _slotFillPopSeconds = 0.42f;
+
+    [Header("Rail Slot Glyph Flight")]
+    // The claim this beat has to make is spatial: you took THAT syllable off THAT enemy and put it
+    // in THAT box. A fade-in says "a box changed"; a glyph that leaves the enemy, arcs down and
+    // lands in the box says where it came from. Everything below runs on UNSCALED time — beat 1 of
+    // the enemy introduction holds Time.timeScale at 0.15 and a kill can land mid-lesson, which
+    // would stretch a 0.7s flourish into most of five seconds.
+
+    [Tooltip("Whether a filled slot's glyph flies in from the defeated enemy. Off falls back to "
+             + "the immediate fill, which is the same end state.")]
+    [SerializeField] private bool _slotGlyphFlightEnabled = true;
+
+    [Tooltip("Seconds the glyph spends travelling from the enemy to its box, on an ease-out arc.")]
+    [SerializeField, Min(0.01f)] private float _slotGlyphFlightSeconds = 0.40f;
+
+    [Tooltip("Scale the glyph leaves the enemy at, relative to its resting size in the box. "
+             + "Larger at the source so it reads as coming toward the player's readout.")]
+    [SerializeField, Min(0.1f)] private float _slotGlyphFlightStartScale = 1.4f;
+
+    [Tooltip("Scale the glyph overshoots to on arrival before settling back to 1.")]
+    [SerializeField, Min(1f)] private float _slotGlyphArrivalScale = 1.25f;
+
+    [Tooltip("Seconds for the back-eased settle from the arrival overshoot down to resting size.")]
+    [SerializeField, Min(0.01f)] private float _slotGlyphSettleSeconds = 0.18f;
+
+    [Tooltip("Seconds for the small trailing bounce after the settle. The whole flight is meant "
+             + "to be over inside about 0.70s so it never outlives the line explaining it.")]
+    [SerializeField, Min(0f)] private float _slotGlyphBounceSeconds = 0.12f;
+
+    [Tooltip("Height of the trailing bounce as a fraction of resting size.")]
+    [SerializeField, Range(0f, 0.25f)] private float _slotGlyphBounceAmount = 0.03f;
+
+    [Tooltip("How far the travel arc bows upward, as a fraction of the straight-line distance. "
+             + "A straight slide reads as a UI tween; a bow reads as something thrown.")]
+    [SerializeField, Range(0f, 1f)] private float _slotGlyphArcHeightFraction = 0.28f;
 
     [Header("Rail Completion Flash")]
     [Tooltip("How many times the whole rail flashes when the target text completes. Zero shows "
@@ -243,10 +294,55 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         public Image Frame;
         public Image Glyph;
 
+        /// <summary>
+        /// The solid plate drawn inside the frame and behind the glyph on a restored slot, so the
+        /// glyph is read against a known ground instead of against the fence planks.
+        /// </summary>
+        public Image Plate;
+
         /// <summary>The romanised syllable printed under the box, and the label printing it.</summary>
         public TextMeshProUGUI Label;
         public string LatinLabel;
+
+        /// <summary>
+        /// The in-flight glyph currently heading for this box, if any. Held per slot rather than in
+        /// one global list so a second fill on the SAME box can retire the first rather than let
+        /// two fliers race each other into the same place. Fills on DIFFERENT boxes are genuinely
+        /// independent and run side by side.
+        /// </summary>
+        public GameObject Flier;
+        public Coroutine FlightRoutine;
+
+        /// <summary>
+        /// Unscaled time by which this flight must have finished on its own. Past it, the watchdog
+        /// finishes it regardless.
+        ///
+        /// <para>
+        /// This is what covers the kills the flier itself cannot see: <c>StopAllCoroutines</c>, or
+        /// anything else that drops the routine while the presenter, the rail and the flier all
+        /// stay perfectly alive. In that case there is nothing structurally wrong for the watchdog
+        /// to notice — only a glyph that stopped moving — so the deadline is the only signal left.
+        /// </para>
+        /// </summary>
+        public float FlightDeadline;
     }
+
+    /// <summary>
+    /// Every slot with a flight in progress. Walked by <see cref="ReconcileSlotFlights"/> once a
+    /// frame as a watchdog, and drained outright on teardown.
+    ///
+    /// <para>
+    /// This list, and not a <c>finally</c> in the flight coroutine, is what guarantees the rail
+    /// cannot be left half-animated. Unity does NOT run a coroutine's <c>finally</c> when it stops
+    /// the coroutine — <c>StopAllCoroutines</c>, disabling the component, destroying the object and
+    /// unloading the scene all kill the routine dead where it stands. A flight that parked the real
+    /// glyph hidden and relied on its own tail to unhide it would strand an invisible glyph in a
+    /// slot the state says is restored. So the rest state is instead re-established from outside
+    /// the coroutine, by <see cref="FinishSlotFlight"/>, which is idempotent and is called from the
+    /// watchdog, from <see cref="OnDisable"/> and from <see cref="DestroyRestorationRail"/>.
+    /// </para>
+    /// </summary>
+    private readonly List<RailSlot> _slotsInFlight = new List<RailSlot>();
 
     private readonly List<RailSlot> _railSlots = new List<RailSlot>();
 
@@ -506,6 +602,12 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
         _clueCrumbleRoutine = null;
         _railFlashRoutine = null;
+
+        // Before anything is torn down. Disabling the component is one of the ways Unity kills a
+        // coroutine without running its tail, so the slots are put back at rest here, by hand,
+        // while the rail still exists to be put back.
+        FinishAllSlotFlights();
+
         EventBus.OnPronunciationRequested -= HandlePronunciationRequested;
         EventBus.OnEnemySpawned -= HandleEnemySpawned;
         DestroyActiveClueMark();
@@ -829,6 +931,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private void LateUpdate()
     {
         WatchAshOnset();
+        ReconcileSlotFlights();
 
         if (_activeClueMark == null)
             return;
@@ -1071,6 +1174,11 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         // Fired between the repaint and the cue, so the box has already become a letter by the time
         // it pops and the pop lands on the same frame as the line that explains it.
         PopSlotsForSymbol(clue.Character.stableId);
+
+        // And AFTER the repaint for the same reason plus one more: the repaint is what leaves every
+        // slot in its finished state, so if the flight below never starts, never finishes, or is
+        // killed halfway, the rail is already correct. The flight only borrows the glyph.
+        LaunchSlotGlyphFlights(clue.Character.stableId, clue.transform.position);
 
         ShowWordRestoredCue(restored);
     }
@@ -1699,6 +1807,25 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         rect.anchoredPosition = new Vector2(x, y);
         rect.sizeDelta = _slotSize;
 
+        // Built BEFORE the glyph so it is the earlier sibling and therefore draws behind it. It is
+        // inset by the frame's own border thickness so the plate stops where the gold starts and
+        // the frame still reads as a frame rather than as the edge of a filled tile.
+        var plateObject = new GameObject(
+            $"[Runtime] RestorationSlotPlate_{flattenedIndex}", typeof(RectTransform), typeof(Image));
+        plateObject.transform.SetParent(slotObject.transform, false);
+
+        Image plate = plateObject.GetComponent<Image>();
+        plate.color = _slotPlateColor;
+        plate.raycastTarget = false;
+        float plateInset = Mathf.Max(_slotSize.x, _slotSize.y) * _slotFrameBorderFraction;
+        SetStretch(
+            plateObject.GetComponent<RectTransform>(),
+            new Vector2(plateInset, plateInset),
+            new Vector2(-plateInset, -plateInset));
+        // Hidden until the slot is restored: an empty slot has to keep reading as a waiting
+        // outline, and a plate behind every box would turn the rail into a row of filled tiles.
+        plateObject.SetActive(false);
+
         var glyphObject = new GameObject(
             $"[Runtime] RestorationSlotGlyph_{flattenedIndex}", typeof(RectTransform), typeof(Image));
         glyphObject.transform.SetParent(slotObject.transform, false);
@@ -1720,20 +1847,34 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             DecompositionIndex = decompositionIndex,
             Anchor = rect,
             Frame = frame,
+            Plate = plate,
             Glyph = glyph,
         };
     }
 
     /// <summary>
-    /// The art a filled slot shows. The bare outline first and the framed badge second — never
-    /// <c>displaySprite</c>, which is a learning card carrying the romanised syllable printed on
-    /// it. A rail built out of learning cards would print the Latin reading in picture form and
-    /// defeat the ash exactly as the old text readout did.
+    /// The art a filled slot shows: the almanac glyph first, the bare outline second, the framed
+    /// badge third — never <c>displaySprite</c>, which is a learning card carrying the romanised
+    /// syllable printed on it. A rail built out of learning cards would print the Latin reading in
+    /// picture form and defeat the ash exactly as the old text readout did.
+    ///
+    /// <para>
+    /// The almanac art leads because it is the only one of the three that is a finished glyph.
+    /// <c>glyphOutlineSprite</c> is a flat white silhouette; it read as a symbol at all only
+    /// because the slot tinted it dark gold, and the same character then looked like two different
+    /// things in the rail and in the almanac. <c>almanacSprite</c> is self-coloured — a near-white
+    /// fill inside a dark brown outline, no card or scroll behind it — so the box now shows the
+    /// player the same mark the almanac will show them later. The two fallbacks stay so a character
+    /// authored without almanac art still renders something rather than nothing.
+    /// </para>
     /// </summary>
     private static Sprite ResolveSlotGlyph(BaybayinCharacterSO symbol)
     {
         if (symbol == null)
             return null;
+
+        if (symbol.almanacSprite != null)
+            return symbol.almanacSprite;
 
         return symbol.glyphOutlineSprite != null ? symbol.glyphOutlineSprite : symbol.badgeSprite;
     }
@@ -1786,10 +1927,28 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
             slot.Frame.color = restored ? _filledSlotColor : _emptySlotColor;
 
+            // The plate follows "restored", not "has glyph art": a restored slot whose symbol has
+            // no art still wants the darker ground, because the gold frame reporting the slot as
+            // filled is itself easier to read against the plate than against the fence.
+            if (slot.Plate != null)
+            {
+                slot.Plate.color = _slotPlateColor;
+                if (slot.Plate.gameObject.activeSelf != restored)
+                    slot.Plate.gameObject.SetActive(restored);
+            }
+
             // A symbol with no glyph art leaves the child off rather than showing it: an Image with
             // no sprite draws a solid quad, which would fill the slot with a block instead of a
             // glyph. The frame colour still reports the slot as restored.
             bool showGlyph = restored && slot.Glyph.sprite != null;
+
+            // A slot with a glyph in the air is the one case where the resting glyph stays hidden
+            // while the state says restored: the flier is standing in for it. This is the ONLY
+            // place the two can disagree, and FinishSlotFlight closes the gap from outside the
+            // coroutine so a killed flight cannot leave it open.
+            if (showGlyph && slot.Flier != null)
+                showGlyph = false;
+
             if (slot.Glyph.gameObject.activeSelf != showGlyph)
                 slot.Glyph.gameObject.SetActive(showGlyph);
 
@@ -1798,7 +1957,15 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             // player's progress, so it printed "I NA" under two empty boxes and read the word out
             // before either had been earned — the same leak the clue panel's mask closes.
             if (slot.Label != null)
+            {
                 slot.Label.text = restored ? slot.LatinLabel : UnreadableSlotMask;
+
+                // Colour is restored here too, so a repaint landing after a killed flight puts the
+                // label back to full brightness even though the routine that was dimming it never
+                // got to finish. Only a live flight is allowed to leave it dim.
+                if (slot.Flier == null)
+                    slot.Label.color = _latinWordLabelColor;
+            }
         }
 
         // Word dividers are set once at build and never repainted: the boundary between two words
@@ -1894,6 +2061,362 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             slotRect.localScale = baseScale;
     }
 
+    // ---------------------------------------------------------------------------------------
+    // Slot glyph flight
+    //
+    // The rule the whole section is built around: the RESTING state is never owned by a coroutine.
+    // RepaintRail has already put every slot in its finished state before a single flier exists,
+    // and FinishSlotFlight — a plain method, callable at any time, safe to call twice — is the only
+    // thing that takes a slot out of the flying state. The coroutine merely calls it on the way out.
+    // Kill the coroutine at any instant and the watchdog, OnDisable or the teardown will call the
+    // same method with the same result, which is why the end state after an animation is byte for
+    // byte the end state of an immediate fill.
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Sends a glyph flying from the defeated enemy into every box that symbol just filled.
+    /// </summary>
+    /// <param name="symbolStableId">The symbol whose boxes just filled.</param>
+    /// <param name="sourceWorldPosition">Where the enemy died, in world space.</param>
+    private void LaunchSlotGlyphFlights(string symbolStableId, Vector3 sourceWorldPosition)
+    {
+        if (!_slotGlyphFlightEnabled || string.IsNullOrEmpty(symbolStableId) || !isActiveAndEnabled)
+            return;
+
+        if (_railRoot == null || !_railRoot.activeInHierarchy)
+            return;
+
+        if (_railRoot.transform is not RectTransform railRect)
+            return;
+
+        Canvas canvas = railRect.GetComponentInParent<Canvas>();
+        if (canvas == null)
+            return;
+
+        Camera uiCamera = canvas.renderMode == RenderMode.ScreenSpaceOverlay
+            ? null
+            : canvas.worldCamera;
+        Camera worldCamera = Camera.main != null ? Camera.main : uiCamera;
+        if (worldCamera == null)
+            return;
+
+        Vector3 sourceScreen = worldCamera.WorldToScreenPoint(sourceWorldPosition);
+
+        // Behind the camera. WorldToScreenPoint mirrors the point through the origin rather than
+        // failing, so an unchecked negative z would launch the glyph from the wrong side of the
+        // screen. Fall through to the immediate fill instead.
+        if (sourceScreen.z < 0f)
+            return;
+
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                railRect, sourceScreen, uiCamera, out Vector2 startLocal))
+        {
+            return;
+        }
+
+        for (int i = 0; i < _railSlots.Count; i++)
+        {
+            RailSlot slot = _railSlots[i];
+            if (slot?.Glyph == null || slot.Glyph.sprite == null)
+                continue;
+
+            if (!SlotCarriesSymbol(slot, symbolStableId))
+                continue;
+
+            if (!_restorationState.IsSlotRestored(slot.Word, slot.DecompositionIndex))
+                continue;
+
+            TryBeginSlotFlight(slot, railRect, uiCamera, startLocal);
+        }
+    }
+
+    private void TryBeginSlotFlight(
+        RailSlot slot, RectTransform railRect, Camera uiCamera, Vector2 startLocal)
+    {
+        // Two fills in quick succession on the SAME box: retire the one already in the air rather
+        // than let a second flier race it. FinishSlotFlight snaps the first one home, so the box is
+        // momentarily correct and then takes off again — never two gliding glyphs for one slot, and
+        // never a stranded one. Fills on different boxes never reach this branch and fly in
+        // parallel, which is what a symbol appearing in both focus words should look like.
+        if (slot.Flier != null || slot.FlightRoutine != null)
+            FinishSlotFlight(slot);
+
+        if (slot.Glyph == null)
+            return;
+
+        var glyphRect = slot.Glyph.transform as RectTransform;
+        if (glyphRect == null)
+            return;
+
+        Vector3 targetScreen = RectTransformUtility.WorldToScreenPoint(uiCamera, glyphRect.position);
+
+        // The box is off-screen — a rail pushed out of the safe area, or a canvas mid-resize. There
+        // is nowhere to fly to that the player can see, so take the immediate fill and leave the
+        // slot in its finished state.
+        if (targetScreen.x < 0f || targetScreen.y < 0f
+            || targetScreen.x > Screen.width || targetScreen.y > Screen.height)
+        {
+            return;
+        }
+
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                railRect, targetScreen, uiCamera, out Vector2 endLocal))
+        {
+            return;
+        }
+
+        Rect glyphBounds = glyphRect.rect;
+        if (glyphBounds.width <= 0f || glyphBounds.height <= 0f)
+            return;
+
+        var flierObject = new GameObject(
+            "[Runtime] RestorationSlotGlyphFlier", typeof(RectTransform), typeof(Image));
+        flierObject.transform.SetParent(railRect, false);
+        // Last sibling so the glyph in the air passes OVER the other boxes rather than sliding
+        // behind them.
+        flierObject.transform.SetAsLastSibling();
+
+        Image flier = flierObject.GetComponent<Image>();
+        flier.sprite = slot.Glyph.sprite;
+        flier.color = slot.Glyph.color;
+        flier.preserveAspect = true;
+        flier.raycastTarget = false;
+
+        var flierRect = (RectTransform)flierObject.transform;
+        flierRect.anchorMin = new Vector2(0.5f, 0.5f);
+        flierRect.anchorMax = new Vector2(0.5f, 0.5f);
+        flierRect.pivot = new Vector2(0.5f, 0.5f);
+        flierRect.sizeDelta = glyphBounds.size;
+        flierRect.anchoredPosition = startLocal;
+        flierRect.localScale = Vector3.one * _slotGlyphFlightStartScale;
+
+        slot.Flier = flierObject;
+        // Half a second of slack on top of the scripted length, so a frame hitch or a long editor
+        // stall never trips the watchdog on a flight that is merely slow.
+        slot.FlightDeadline = Time.unscaledTime
+            + _slotGlyphFlightSeconds + _slotGlyphSettleSeconds + _slotGlyphBounceSeconds + 0.5f;
+
+        if (!_slotsInFlight.Contains(slot))
+            _slotsInFlight.Add(slot);
+
+        // The resting glyph steps aside for the flier. RepaintRail knows about this and will not
+        // undo it while Flier is non-null; FinishSlotFlight puts it back.
+        slot.Glyph.gameObject.SetActive(false);
+
+        if (slot.Label != null)
+            slot.Label.color = DimmedLabelColor(_latinWordLabelColor);
+
+        slot.FlightRoutine = StartCoroutine(RunSlotFlight(slot, startLocal, endLocal));
+    }
+
+    /// <summary>
+    /// The label under a box waiting for its glyph to land. Not the mask — the text is already the
+    /// real syllable by now — just held back a beat so the brightening reads as the glyph arriving.
+    /// </summary>
+    private static Color DimmedLabelColor(Color rested) =>
+        new Color(rested.r * 0.45f, rested.g * 0.45f, rested.b * 0.45f, rested.a * 0.55f);
+
+    private IEnumerator RunSlotFlight(RailSlot slot, Vector2 startLocal, Vector2 endLocal)
+    {
+        var flierRect = slot.Flier != null ? slot.Flier.transform as RectTransform : null;
+        if (flierRect == null)
+        {
+            FinishSlotFlight(slot);
+            yield break;
+        }
+
+        // The control point of a quadratic bezier, lifted along +Y. A straight slide reads as a UI
+        // tween; a bow reads as something thrown from the enemy into the word.
+        Vector2 mid = (startLocal + endLocal) * 0.5f;
+        Vector2 control = mid + (Vector2.up * (Vector2.Distance(startLocal, endLocal)
+            * _slotGlyphArcHeightFraction));
+
+        Color restedLabel = _latinWordLabelColor;
+        Color dimLabel = DimmedLabelColor(restedLabel);
+
+        // --- Travel -------------------------------------------------------------------------
+        float elapsed = 0f;
+        while (elapsed < _slotGlyphFlightSeconds)
+        {
+            if (slot.Flier == null || flierRect == null || !isActiveAndEnabled)
+            {
+                FinishSlotFlight(slot);
+                yield break;
+            }
+
+            float t = Mathf.Clamp01(elapsed / _slotGlyphFlightSeconds);
+            float eased = 1f - Mathf.Pow(1f - t, 3f); // ease-out cubic
+
+            float inv = 1f - eased;
+            flierRect.anchoredPosition =
+                (inv * inv * startLocal) + (2f * inv * eased * control) + (eased * eased * endLocal);
+
+            float scale = Mathf.Lerp(
+                _slotGlyphFlightStartScale, _slotGlyphArrivalScale, eased);
+            flierRect.localScale = new Vector3(scale, scale, 1f);
+
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        if (slot.Flier == null || flierRect == null || !isActiveAndEnabled)
+        {
+            FinishSlotFlight(slot);
+            yield break;
+        }
+
+        flierRect.anchoredPosition = endLocal;
+
+        // --- Arrival: back-eased settle, squash, and the frame's impact pulse ----------------
+        elapsed = 0f;
+        while (elapsed < _slotGlyphSettleSeconds)
+        {
+            if (slot.Flier == null || flierRect == null || !isActiveAndEnabled)
+            {
+                FinishSlotFlight(slot);
+                yield break;
+            }
+
+            float u = Mathf.Clamp01(elapsed / _slotGlyphSettleSeconds);
+            float eased = 1f - Mathf.Pow(1f - u, 3f);
+            float scale = Mathf.Lerp(_slotGlyphArrivalScale, 1f, eased);
+
+            // A short squash across the first half of the settle: wider than tall on contact,
+            // recovering as it seats. Small — this is a glyph landing in a box, not a rubber ball.
+            float squash = Mathf.Sin(u * Mathf.PI) * 0.10f;
+            flierRect.localScale = new Vector3(scale * (1f + squash), scale * (1f - squash), 1f);
+
+            if (slot.Frame != null)
+            {
+                slot.Frame.color = Color.Lerp(
+                    _filledSlotColor, Color.white, Mathf.Sin(u * Mathf.PI) * 0.6f);
+            }
+
+            if (slot.Label != null)
+                slot.Label.color = Color.Lerp(dimLabel, restedLabel, eased);
+
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        // --- Trailing bounce ----------------------------------------------------------------
+        elapsed = 0f;
+        while (elapsed < _slotGlyphBounceSeconds && _slotGlyphBounceAmount > 0f)
+        {
+            if (slot.Flier == null || flierRect == null || !isActiveAndEnabled)
+            {
+                FinishSlotFlight(slot);
+                yield break;
+            }
+
+            float u = Mathf.Clamp01(elapsed / _slotGlyphBounceSeconds);
+            float bounce = 1f + (Mathf.Sin(u * Mathf.PI) * _slotGlyphBounceAmount);
+            flierRect.localScale = new Vector3(bounce, bounce, 1f);
+
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        FinishSlotFlight(slot);
+    }
+
+    /// <summary>
+    /// Puts one slot back into its resting, restored state and forgets the flight.
+    ///
+    /// <para>
+    /// Deliberately a plain method rather than the tail of the coroutine, and deliberately safe to
+    /// call on a slot that is not flying, twice in a row, or after the flier has already been
+    /// destroyed by something else. Unity will not run a stopped coroutine's <c>finally</c>, so this
+    /// is the only thing standing between an interrupted flight and a permanently blank box.
+    /// </para>
+    /// </summary>
+    private void FinishSlotFlight(RailSlot slot)
+    {
+        if (slot == null)
+            return;
+
+        if (slot.FlightRoutine != null)
+        {
+            // Safe on a routine that has already completed, and it is what makes "retire the flight
+            // already in the air" work when a second fill lands on the same box.
+            StopCoroutine(slot.FlightRoutine);
+            slot.FlightRoutine = null;
+        }
+
+        if (slot.Flier != null)
+        {
+            DestroyOwnedObject(slot.Flier);
+            slot.Flier = null;
+        }
+
+        _slotsInFlight.Remove(slot);
+
+        bool restored = _restorationState.IsSlotRestored(slot.Word, slot.DecompositionIndex);
+
+        if (slot.Glyph != null)
+        {
+            var glyphRect = slot.Glyph.transform as RectTransform;
+            if (glyphRect != null)
+                glyphRect.localScale = Vector3.one;
+
+            bool showGlyph = restored && slot.Glyph.sprite != null;
+            if (slot.Glyph.gameObject.activeSelf != showGlyph)
+                slot.Glyph.gameObject.SetActive(showGlyph);
+        }
+
+        if (slot.Plate != null && slot.Plate.gameObject.activeSelf != restored)
+            slot.Plate.gameObject.SetActive(restored);
+
+        if (slot.Frame != null)
+            slot.Frame.color = restored ? _filledSlotColor : _emptySlotColor;
+
+        if (slot.Label != null)
+            slot.Label.color = _latinWordLabelColor;
+    }
+
+    /// <summary>Drains every flight, leaving each slot at rest. Used on teardown and disable.</summary>
+    private void FinishAllSlotFlights()
+    {
+        // Walked backwards over a copy of the count because FinishSlotFlight removes from the list.
+        for (int i = _slotsInFlight.Count - 1; i >= 0; i--)
+        {
+            if (i < _slotsInFlight.Count)
+                FinishSlotFlight(_slotsInFlight[i]);
+        }
+
+        _slotsInFlight.Clear();
+    }
+
+    /// <summary>
+    /// Once-a-frame watchdog. Catches the cases the coroutine cannot catch itself: the flier being
+    /// destroyed out from under it, the rail being switched off mid-flight, or the slot list having
+    /// been rebuilt under a flight that is still notionally running.
+    /// </summary>
+    private void ReconcileSlotFlights()
+    {
+        if (_slotsInFlight.Count == 0)
+            return;
+
+        bool railUsable = _railRoot != null && _railRoot.activeInHierarchy;
+
+        for (int i = _slotsInFlight.Count - 1; i >= 0; i--)
+        {
+            if (i >= _slotsInFlight.Count)
+                continue;
+
+            RailSlot slot = _slotsInFlight[i];
+            if (slot == null)
+            {
+                _slotsInFlight.RemoveAt(i);
+                continue;
+            }
+
+            bool overdue = Time.unscaledTime > slot.FlightDeadline;
+            if (!railUsable || overdue || slot.Flier == null || !_railSlots.Contains(slot))
+                FinishSlotFlight(slot);
+        }
+    }
+
     /// <summary>
     /// Flashes the whole rail as one object. Deliberately the rail's group alpha rather than a
     /// per-slot animation: the beat's content is that four slots have become one restored text, so
@@ -1976,6 +2499,12 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private void DestroyRestorationRail()
     {
         _railFlashRoutine = null;
+
+        // Drained before the slot list is cleared, so each flight still has a slot to rest. Fliers
+        // are children of the rail root and would go with it anyway; this is about not leaving
+        // _slotsInFlight holding slots that no longer belong to a rail.
+        FinishAllSlotFlights();
+
         _railSlots.Clear();
         _railSlotAnchors.Clear();
 
