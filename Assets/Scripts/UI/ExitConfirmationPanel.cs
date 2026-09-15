@@ -251,7 +251,7 @@ public sealed class ExitConfirmationPanel : MonoBehaviour
         labelObject.transform.SetParent(buttonObject.transform, false);
         Stretch(labelObject.GetComponent<RectTransform>());
         TextMeshProUGUI labelText = labelObject.GetComponent<TextMeshProUGUI>();
-        labelText.fontSize = 32f;
+        labelText.fontSize = UITextScale.Body;
         labelText.alignment = TextAlignmentOptions.Center;
         labelText.color = Color.white;
         labelText.raycastTarget = false;

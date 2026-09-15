@@ -70,6 +70,10 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.IsTrue(prompt.enableAutoSizing);
             Assert.IsTrue(feedback.enableAutoSizing);
             Assert.GreaterOrEqual(feedback.fontSizeMax, 42f);
+            Assert.GreaterOrEqual(prompt.fontSizeMin, UITextScale.Body,
+                "Tutorial prompts must not auto-shrink below body text.");
+            Assert.GreaterOrEqual(feedback.fontSizeMin, UITextScale.Secondary,
+                "Tutorial feedback must not auto-shrink below secondary text.");
         }
 
         [Test]
@@ -180,6 +184,8 @@ namespace Salinlahi.Tests.Editor.UI
             AssertAnchorsInside(prompt.rectTransform, ScrollPanelArt.FullSafeArea);
             AssertAnchorsInside(confirm.GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
             AssertAnchorsInside(cancel.GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
+            Assert.GreaterOrEqual(prompt.fontSizeMin, UITextScale.AutoSizeFloor);
+            Assert.GreaterOrEqual(prompt.fontSizeMax, UITextScale.Body);
             Assert.LessOrEqual(cancel.GetComponent<RectTransform>().anchorMax.y,
                 confirm.GetComponent<RectTransform>().anchorMin.y);
         }
@@ -197,6 +203,8 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.AreEqual(new Vector2(560f, 520f), panel.sizeDelta);
             AssertAnchorsInside(preview.rectTransform, ScrollPanelArt.FullSafeArea);
             AssertAnchorsInside(continueButton.GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
+            Assert.GreaterOrEqual(preview.fontSizeMin, UITextScale.AutoSizeFloor);
+            Assert.GreaterOrEqual(preview.fontSizeMax, UITextScale.Body);
             Assert.LessOrEqual(continueButton.GetComponent<RectTransform>().anchorMax.y,
                 preview.rectTransform.anchorMin.y);
         }
@@ -219,6 +227,9 @@ namespace Salinlahi.Tests.Editor.UI
             AssertAnchorsInside(hearts.rectTransform, ScrollPanelArt.FullSafeArea);
             AssertAnchorsInside(
                 continueButton.GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
+            Assert.GreaterOrEqual(banner.fontSizeMin, UITextScale.Body);
+            Assert.GreaterOrEqual(hearts.fontSizeMin, UITextScale.Caption);
+            Assert.GreaterOrEqual(hearts.fontSizeMax, UITextScale.Body);
             Assert.LessOrEqual(hearts.rectTransform.anchorMax.y, banner.rectTransform.anchorMin.y);
             Assert.LessOrEqual(
                 continueButton.GetComponent<RectTransform>().anchorMax.y,
@@ -242,6 +253,8 @@ namespace Salinlahi.Tests.Editor.UI
             AssertAnchorsInside(body.rectTransform, ScrollPanelArt.FullSafeArea);
             AssertAnchorsInside(claim.GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
             AssertAnchorsInside(dismiss.GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
+            Assert.GreaterOrEqual(body.fontSizeMin, UITextScale.AutoSizeFloor);
+            Assert.GreaterOrEqual(body.fontSizeMax, UITextScale.Body);
             Assert.LessOrEqual(
                 claim.GetComponent<RectTransform>().anchorMax.y, body.rectTransform.anchorMin.y);
             Assert.LessOrEqual(
@@ -293,6 +306,13 @@ namespace Salinlahi.Tests.Editor.UI
             AssertAnchorsInside(lore.rectTransform, ScrollPanelArt.FullSafeArea);
             AssertAnchorsInside(flip.GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
             AssertAnchorsInside(close.GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
+
+            // The card faces auto-size inside their parchment bands; the bands must not
+            // permit shrinking into unreadable caption range.
+            Assert.GreaterOrEqual(number.fontSizeMin, UITextScale.AutoSizeFloor);
+            Assert.GreaterOrEqual(title.fontSizeMax, UITextScale.Title);
+            Assert.GreaterOrEqual(words.fontSizeMin, UITextScale.Caption);
+            Assert.GreaterOrEqual(lore.fontSizeMin, UITextScale.Caption);
 
             // Reading order down the paper, then the button row under everything.
             Assert.LessOrEqual(title.rectTransform.anchorMax.y, number.rectTransform.anchorMin.y);
@@ -361,6 +381,7 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.Less(rect.anchoredPosition.y, 0f);
             Assert.IsTrue(prompt.enableAutoSizing);
             Assert.GreaterOrEqual(prompt.fontSizeMax, 54f);
+            Assert.GreaterOrEqual(prompt.fontSizeMin, UITextScale.AutoSizeFloor);
         }
 
         /// <summary>

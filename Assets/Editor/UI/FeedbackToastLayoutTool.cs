@@ -54,8 +54,8 @@ public static class FeedbackToastLayoutTool
             rt.sizeDelta = new Vector2(-32f, 62f);          // 16px inset each side
 
             encouragement.enableAutoSizing = true;           // longest wording still fits
-            encouragement.fontSizeMin = 16f;
-            encouragement.fontSizeMax = 28f;
+            encouragement.fontSizeMin = UITextScale.AutoSizeFloor;
+            encouragement.fontSizeMax = UITextScale.Body;
             encouragement.textWrappingMode = TextWrappingModes.Normal;
             encouragement.alignment = TextAlignmentOptions.Bottom;
             encouragement.name = "EncouragementLabel";       // was ConfidenceLabel; binding is by fileID

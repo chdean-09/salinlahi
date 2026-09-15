@@ -95,7 +95,7 @@ public static class DrawingFeedbackHudWiringTool
             Anchor(messageRect, MessageTopOffset, MessageHeight, 0f);
             var label = Ensure<TextMeshProUGUI>(message);
             if (font != null) label.font = font;
-            label.fontSize = 40f;
+            label.fontSize = UITextScale.Body;
             label.color = Color.white;
             label.alignment = TextAlignmentOptions.Center;
             label.textWrappingMode = TextWrappingModes.Normal;

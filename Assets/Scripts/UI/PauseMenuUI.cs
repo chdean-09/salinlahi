@@ -430,6 +430,7 @@ public class PauseMenuUI : MonoBehaviour
         label.raycastTarget = false;
         if (TMP_Settings.defaultFontAsset != null)
             label.font = TMP_Settings.defaultFontAsset;
+        TutorialFontProvider.ApplyLegibilityEffects(label);
 
         RectTransform rect = textObject.GetComponent<RectTransform>();
         rect.anchorMin = new Vector2(0f, 1f);
@@ -452,7 +453,7 @@ public class PauseMenuUI : MonoBehaviour
         button.targetGraphic = image;
 
         TMP_Text label = CreateOverlayText(buttonObject.transform, "Label", labelText);
-        label.fontSize = 32f;
+        label.fontSize = UITextScale.Body;
         label.color = Color.black;
         RectTransform labelRect = ((Component)label).GetComponent<RectTransform>();
         labelRect.anchorMin = Vector2.zero;
@@ -479,8 +480,8 @@ public class PauseMenuUI : MonoBehaviour
                 prompt.rectTransform,
                 Rect.MinMaxRect(0.16f, 0.48f, 0.84f, 0.76f));
             prompt.enableAutoSizing = true;
-            prompt.fontSizeMin = 30f;
-            prompt.fontSizeMax = 40f;
+            prompt.fontSizeMin = UITextScale.Caption;
+            prompt.fontSizeMax = 44f;
         }
 
         SetButtonAnchors(confirm, Rect.MinMaxRect(0.20f, 0.31f, 0.80f, 0.43f));

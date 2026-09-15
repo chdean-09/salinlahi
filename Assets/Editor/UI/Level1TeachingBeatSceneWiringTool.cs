@@ -463,11 +463,11 @@ public static class Level1TeachingBeatSceneWiringTool
             TextAlignmentOptions.Left, Color.white, report);
         TextColumn(nameText.rectTransform, -30f, 70f);
 
-        TMP_Text subtitleText = EnsureLabel(card.transform, SubtitleTextName, font, 32f, FontStyles.Italic,
+        TMP_Text subtitleText = EnsureLabel(card.transform, SubtitleTextName, font, UITextScale.Body, FontStyles.Italic,
             TextAlignmentOptions.Left, new Color(0.86f, 0.83f, 0.74f, 1f), report);
         TextColumn(subtitleText.rectTransform, -102f, 48f);
 
-        TMP_Text abilityText = EnsureLabel(card.transform, AbilityTextName, font, 38f, FontStyles.Normal,
+        TMP_Text abilityText = EnsureLabel(card.transform, AbilityTextName, font, UITextScale.Body, FontStyles.Normal,
             TextAlignmentOptions.TopLeft, new Color(0.98f, 0.94f, 0.82f, 1f), report);
         RectTransform abilityRect = abilityText.rectTransform;
         abilityRect.anchorMin = new Vector2(0f, 0f);
@@ -494,7 +494,7 @@ public static class Level1TeachingBeatSceneWiringTool
         bannerGroup.blocksRaycasts = false;
         bannerGroup.interactable = false;
 
-        TMP_Text bannerText = EnsureLabel(banner.transform, BannerTextName, font, 34f, FontStyles.Normal,
+        TMP_Text bannerText = EnsureLabel(banner.transform, BannerTextName, font, UITextScale.Body, FontStyles.Normal,
             TextAlignmentOptions.Center, Color.white, report);
         Stretch(bannerText.rectTransform, 24f, 8f);
 

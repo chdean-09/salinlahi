@@ -1417,7 +1417,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
         var label = _runtimeWordRestoredObject.AddComponent<TextMeshProUGUI>();
         CopyFont(textTemplate, label);
-        label.fontSize = 32f;
+        label.fontSize = UITextScale.Body;
         label.alignment = TextAlignmentOptions.Center;
         label.color = new Color(1f, 0.84f, 0.29f, 1f);
         label.raycastTarget = false;
