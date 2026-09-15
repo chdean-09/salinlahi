@@ -175,10 +175,10 @@ public sealed class LevelReadyScreenController : MonoBehaviour
         panelImage.raycastTarget = true;
         bool onParchment = ScrollPanelArt.ApplyFull(panelImage);
 
-        _titleText = CreateText("Title", _panelRoot.transform, 54f,
-            new Vector2(0.08f, 0.58f), new Vector2(0.92f, 0.88f));
-        _objectiveText = CreateText("Objective", _panelRoot.transform, 34f,
-            new Vector2(0.10f, 0.38f), new Vector2(0.90f, 0.58f));
+        _titleText = CreateText("Title", _panelRoot.transform, 68f,
+            new Vector2(0.17f, 0.55f), new Vector2(0.83f, 0.88f));
+        _objectiveText = CreateText("Objective", _panelRoot.transform, 44f,
+            new Vector2(0.18f, 0.34f), new Vector2(0.82f, 0.57f));
         _objectiveText.alignment = TextAlignmentOptions.Center;
         if (onParchment)
         {
@@ -209,7 +209,7 @@ public sealed class LevelReadyScreenController : MonoBehaviour
         labelRect.offsetMin = labelRect.offsetMax = Vector2.zero;
         TextMeshProUGUI label = labelObject.AddComponent<TextMeshProUGUI>();
         label.text = "Start";
-        label.fontSize = 30f;
+        label.fontSize = 34f;
         label.alignment = TextAlignmentOptions.Center;
         label.raycastTarget = false;
         TutorialFontProvider.ApplyTo(label);
@@ -235,7 +235,7 @@ public sealed class LevelReadyScreenController : MonoBehaviour
         backLabelRect.offsetMin = backLabelRect.offsetMax = Vector2.zero;
         TextMeshProUGUI backLabel = backLabelObject.AddComponent<TextMeshProUGUI>();
         backLabel.text = "Back";
-        backLabel.fontSize = 30f;
+        backLabel.fontSize = 34f;
         backLabel.alignment = TextAlignmentOptions.Center;
         backLabel.raycastTarget = false;
         TutorialFontProvider.ApplyTo(backLabel);

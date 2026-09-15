@@ -6,7 +6,7 @@ using UnityEngine.UI;
 public class DialogueController : MonoBehaviour
 {
     private const float DialoguePanelHeight = 0.30f;
-    private const float DialogueSidePadding = 0.08f;
+    private const float DialogueSidePadding = 0.17f;
     private const float DialoguePortraitRight = 0.17f;
     private const float DialogueTextWithPortraitMinX = 0.20f;
 
@@ -429,8 +429,8 @@ public class DialogueController : MonoBehaviour
         }
 
         float textMinX = hasPortrait ? DialogueTextWithPortraitMinX : DialogueSidePadding;
-        ConfigureDialogueText(speakerText, new Vector2(textMinX, 0.68f), new Vector2(0.94f, 0.90f), 30f, 46f);
-        ConfigureDialogueText(bodyText, new Vector2(textMinX, 0.15f), new Vector2(0.94f, 0.70f), 36f, 62f);
+        ConfigureDialogueText(speakerText, new Vector2(textMinX, 0.68f), new Vector2(0.84f, 0.90f), 34f, 52f);
+        ConfigureDialogueText(bodyText, new Vector2(textMinX, 0.15f), new Vector2(0.84f, 0.70f), 42f, 68f);
 
         if (portraitImage != null)
         {
