@@ -197,6 +197,7 @@ public sealed class ResetJourneyConfirmationPanel : MonoBehaviour
         Image cardImage = card.GetComponent<Image>();
         cardImage.color = CardColor;
         cardImage.raycastTarget = false;
+        bool onParchment = ScrollPanelArt.ApplyFull(cardImage);
 
         if (_titleText == null)
             _titleText = BuildText("Title", cardRect,
@@ -214,6 +215,9 @@ public sealed class ResetJourneyConfirmationPanel : MonoBehaviour
             _confirmButton = BuildButton("ConfirmButton", cardRect,
                 new Vector2(0.52f, 0.06f), new Vector2(0.92f, 0.22f),
                 DestructiveButtonColor, out _confirmLabel);
+
+        if (onParchment)
+            ScrollPanelArt.InkifyRecursive(card.transform);
     }
 
     private static void Stretch(RectTransform rect)

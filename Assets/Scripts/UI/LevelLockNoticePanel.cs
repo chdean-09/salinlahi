@@ -288,6 +288,7 @@ public sealed class LevelLockNoticePanel : MonoBehaviour
         Image cardImage = card.GetComponent<Image>();
         cardImage.sprite = uiSprite;
         cardImage.color = new Color(0.09f, 0.07f, 0.05f, 0.97f);
+        bool onParchment = ScrollPanelArt.ApplyFull(cardImage);
 
         GameObject bodyObject = new GameObject("[Runtime] LevelLockNoticeBody", typeof(RectTransform));
         bodyObject.transform.SetParent(card.transform, false);
@@ -331,6 +332,8 @@ public sealed class LevelLockNoticePanel : MonoBehaviour
         _bodyText = body;
         _dismissButton = dismiss;
         _runtimeOverlayRoot = root;
+        if (onParchment)
+            ScrollPanelArt.InkifyRecursive(card.transform);
         root.SetActive(false);
 
         BindDismissButton();

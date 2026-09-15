@@ -123,6 +123,7 @@ public class FocusWordPreviewController : MonoBehaviour
         // quad is the approved unstyled fallback (see ActiveCluePresenter).
         Image background = _panelRoot.GetComponent<Image>();
         background.color = new Color(0.04f, 0.06f, 0.12f, 0.94f);
+        bool onParchment = ScrollPanelArt.ApplyFull(background);
 
         GameObject textObject = new GameObject("[Runtime] FocusWordPreviewText", typeof(RectTransform));
         textObject.transform.SetParent(_panelRoot.transform, false);
@@ -154,8 +155,47 @@ public class FocusWordPreviewController : MonoBehaviour
         label.fontSize = 26f;
         label.alignment = TextAlignmentOptions.Center;
         label.raycastTarget = false;
+        RectTransform labelRect = label.rectTransform;
+        labelRect.anchorMin = Vector2.zero;
+        labelRect.anchorMax = Vector2.one;
+        labelRect.offsetMin = Vector2.zero;
+        labelRect.offsetMax = Vector2.zero;
 
+        ApplyParchmentLayout(panelRect, _previewText, _continueButton);
         _continueButton.onClick.AddListener(Continue);
+        if (onParchment)
+        {
+            ScrollPanelArt.InkifyRecursive(_panelRoot.transform);
+            ScrollPanelArt.Inkify(label);
+        }
         _panelRoot.SetActive(false);
+    }
+
+    public static void ApplyParchmentLayout(
+        RectTransform panel,
+        TMP_Text preview,
+        Button continueButton)
+    {
+        if (panel == null)
+            return;
+
+        panel.sizeDelta = new Vector2(560f, 520f);
+        if (preview != null)
+        {
+            ScrollPanelArt.SetAnchors(
+                preview.rectTransform,
+                Rect.MinMaxRect(0.17f, 0.31f, 0.83f, 0.76f));
+            preview.enableAutoSizing = true;
+            preview.fontSizeMin = 26f;
+            preview.fontSizeMax = 34f;
+            preview.textWrappingMode = TextWrappingModes.Normal;
+        }
+
+        if (continueButton == null)
+            return;
+
+        ScrollPanelArt.SetAnchors(
+            continueButton.GetComponent<RectTransform>(),
+            Rect.MinMaxRect(0.26f, 0.17f, 0.74f, 0.28f));
     }
 }
