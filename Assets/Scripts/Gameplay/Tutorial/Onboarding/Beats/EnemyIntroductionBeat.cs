@@ -158,6 +158,25 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     private TutorialSpotlightOverlay _runtimeVignette;
 
     /// <summary>
+    /// The banner's own lifetime wait, which deliberately outlives the run that raised it.
+    ///
+    /// <para>
+    /// <b>Why it is not part of the run's coroutine any more, and the bug that forced the split.</b>
+    /// The banner stays for as long as the introduced enemy is on the field — ordinary combat, for
+    /// up to twenty seconds. While that wait lived inside <see cref="PlayIntroduction"/>,
+    /// <see cref="_routineActive"/> stayed true for all of it and <see cref="TryClaim"/> refused
+    /// every claim, but <see cref="IsHoldingSpawnSchedule"/> reads <see cref="_isPlaying"/>, which
+    /// falls the moment the last beat ends. The spawner therefore resumed while claims were still
+    /// being refused, and the first type to arrive in that gap got
+    /// <see cref="IntroductionOutcome.None"/>: no card, no explanation, and — because a refused
+    /// claim does not spend the one-shot — a card that turned up some arbitrary later spawn
+    /// instead. That is the "Abo is not introduced the first time he appears" report. The two
+    /// windows must be the same window; keeping the banner here is what makes them so.
+    /// </para>
+    /// </summary>
+    private Coroutine _bannerRoutine;
+
+    /// <summary>
     /// True while a card or lesson is on screen. Diagnostic and test seam.
     ///
     /// <para>
@@ -167,8 +186,9 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// While that wait was inside the flag, the game still believed it was mid-lesson long after
     /// the last beat had visibly finished, and everything gated on this flag (the harness's own
     /// input restriction among them) stayed gated. The flag now falls the moment the last beat
-    /// ends; <see cref="_routineActive"/> is what keeps a second introduction from starting
-    /// underneath the banner.
+    /// ends — and so does <see cref="_routineActive"/>, because the banner's wait runs in
+    /// <see cref="_bannerRoutine"/> rather than in the run. A second introduction raised under a
+    /// standing banner simply replaces it; see <see cref="ShowBannerForLifetime"/>.
     /// </para>
     /// </summary>
     public static bool IsPlaying => s_instance != null && s_instance._isPlaying;
@@ -345,9 +365,10 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
 
     private bool TryClaim(Enemy enemy, EnemyDataSO data, EnemyLessonSO lesson)
     {
-        // _routineActive, not _isPlaying: the run keeps a banner up after its last beat, and a
-        // second introduction claimed under that banner would share Time.timeScale and the dim with
-        // a coroutine that is still going to restore both on its way out.
+        // _routineActive, not _isPlaying: the two now fall together (the banner outlives the run on
+        // its own coroutine), and this is the flag that says a run still owns Time.timeScale and the
+        // dim. It must stay in step with IsHoldingSpawnSchedule — a window where claims are refused
+        // but spawns are not held is a spawn the player meets with no card at all.
         if (_routineActive)
             return false;
 
@@ -892,6 +913,10 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// </summary>
     private IEnumerator PlayCard(Enemy enemy, EnemyDataSO data)
     {
+        // The previous type's residue goes before this one's card arrives: two banners describing
+        // two different enemies is the one thing the banner's "attached to the thing it describes"
+        // rule cannot survive.
+        StopBanner();
         _card.PrepareCard(ResolveWalkSprite(data), data.displayName, data.discoverySubtitle);
 
         // Step 1 — Halt. The enemy stops where it stands, the vignette closes around it, and
@@ -923,11 +948,10 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         // The banner is the card's residue: one line that stays while the introduced enemy is on
         // the field and goes with it, so the reminder is attached to the thing it describes
         // rather than to a stretch of time. The card is finished, so the beat stops claiming the
-        // screen before this wait — see IsPlaying.
+        // screen here — see IsPlaying — and the banner's wait is handed to its own coroutine so the
+        // run can end and the next type's card is not refused behind it.
         _isPlaying = false;
-        _card.ShowBanner(data.abilityLine);
-        yield return WaitWhileEnemyLives(enemy, data);
-        _card.HideBanner();
+        ShowBannerForLifetime(enemy, data);
     }
 
     /// <summary>
@@ -950,6 +974,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// </summary>
     private IEnumerator PlayLesson(Enemy enemy, EnemyDataSO data, EnemyLessonSO lesson)
     {
+        StopBanner();
         _card.PrepareCard(ResolveWalkSprite(data), data.displayName, data.discoverySubtitle);
 
         // Beat 7 is a reveal, so the badge goes dark before the player ever sees it.
@@ -1058,9 +1083,45 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         // flag up through the banner is what pinned an ability line on screen for seventeen seconds
         // after the player had visibly finished the lesson.
         _isPlaying = false;
+        ShowBannerForLifetime(enemy, data);
+    }
+
+    /// <summary>
+    /// Raises the residue banner and lets it live for exactly as long as the introduced enemy does,
+    /// on a coroutine of its own so the run that raised it can finish.
+    ///
+    /// <para>
+    /// One banner at a time: a second introduction replaces the first's, because the banner names
+    /// the enemy it is attached to and two of them would contradict each other. Nothing here touches
+    /// <c>Time.timeScale</c>, the vignette or the card group — the run released all three before the
+    /// last beat ended — so this can safely outlive the run without fighting it for global state.
+    /// </para>
+    /// </summary>
+    private void ShowBannerForLifetime(Enemy enemy, EnemyDataSO data)
+    {
+        StopBanner();
+        _bannerRoutine = StartCoroutine(BannerLifetime(enemy, data));
+    }
+
+    private IEnumerator BannerLifetime(Enemy enemy, EnemyDataSO data)
+    {
         _card.ShowBanner(data.abilityLine);
         yield return WaitWhileEnemyLives(enemy, data);
         _card.HideBanner();
+        _bannerRoutine = null;
+    }
+
+    /// <summary>Takes a standing banner down. Safe to call with none up.</summary>
+    private void StopBanner()
+    {
+        if (_bannerRoutine != null)
+        {
+            StopCoroutine(_bannerRoutine);
+            _bannerRoutine = null;
+        }
+
+        if (_card != null)
+            _card.HideBanner();
     }
 
     /// <summary>
@@ -1491,6 +1552,11 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             StopCoroutine(_routine);
             _routine = null;
         }
+
+        // The banner outlives the run on its own coroutine now, so stopping the run no longer stops
+        // it. A scene unload that left it running would strand a line describing an enemy that no
+        // longer exists on a card the next level is about to reuse.
+        StopBanner();
 
         _isPlaying = false;
         _routineActive = false;

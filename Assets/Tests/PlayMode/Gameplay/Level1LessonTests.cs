@@ -1364,6 +1364,81 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         /// <summary>
+        /// A standing residue banner must not refuse the NEXT type's introduction.
+        ///
+        /// <para>
+        /// <b>The defect.</b> <c>IsHoldingSpawnSchedule</c> reads <c>_isPlaying</c>, which falls the
+        /// moment the last beat ends, but <c>TryClaim</c> refused every claim while
+        /// <c>_routineActive</c> was true — and that stayed true for the banner's whole lifetime,
+        /// which is however long the introduced enemy is on the field. The spawner therefore resumed
+        /// inside a window where claims were still being refused, and the first type to arrive in it
+        /// got <c>IntroductionOutcome.None</c>: no card, nothing said about it, and — because a
+        /// refused claim deliberately does not spend the one-shot — a card that turned up some
+        /// arbitrary later spawn instead. That is the reported "Abo's first time on screen does not
+        /// get introduced".
+        /// </para>
+        ///
+        /// <para>
+        /// The setup assertions are load-bearing: the card must have FINISHED (so the spawn hold is
+        /// down) while its subject is still ALIVE (so the banner is still up). Either one untrue and
+        /// the case below is not the case that shipped.
+        /// </para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator BannerStandingAfterACard_StillLetsTheNextTypeIntroduceItself()
+        {
+            yield return null;
+
+            SetPrivateField(_beat, "_nameStepSeconds", 0f);
+            SetPrivateField(_beat, "_abilityStepSeconds", 0f);
+            SetPrivateField(_beat, "_onScreenWaitTimeoutSeconds", 0f);
+
+            BaybayinCharacterSO iligawChar = MakeCharacter("EI", "symbol.test.banner.ei");
+            BaybayinCharacterSO aboChar = MakeCharacter("A", "symbol.test.banner.a");
+
+            EnemyDataSO iligawData = CreateEnemyData(
+                "test_iligaw_banner", "Iligaw", iligawChar);
+            EnemyDataSO aboData = CreateEnemyData(
+                "test_abo_banner", "Abo ng Simula", aboChar);
+
+            // No lesson at all: this is the plain four-step card path, whose banner is the long one
+            // (a lesson's subject is drawn dead at beat 8, so its banner barely outlives it).
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO> { iligawData, aboData },
+                System.Array.Empty<EnemyLessonSO>(),
+                new List<FocusWordDefinition>());
+            _gameManager.SetLevel(config);
+
+            Enemy iligaw = CreateEnemyShell("Iligaw_Banner");
+            iligaw.transform.position = Vector3.zero;
+            Assert.IsTrue(iligaw.Initialize(iligawData));
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndSuppress, iligaw.IntroductionOutcome,
+                "setup: the first type must actually get its card, or there is no banner to stand.");
+
+            for (int frame = 0; frame < 30; frame++)
+                yield return null;
+
+            Assert.IsFalse(EnemyIntroductionBeat.IsHoldingSpawnSchedule,
+                "setup: the card must have finished, so the spawner is free to deliver the next "
+                + "type. If the hold were still up, the claim below would be refused legitimately "
+                + "and this test would prove nothing.");
+            Assert.IsTrue(iligaw.gameObject.activeInHierarchy && !iligaw.IsDying,
+                "setup: the banner's subject must still be on the field, because the banner's "
+                + "lifetime is what used to keep the run — and the refusal — alive.");
+
+            Enemy abo = CreateEnemyShell("Abo_Banner");
+            Assert.IsTrue(abo.Initialize(aboData));
+
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndSuppress, abo.IntroductionOutcome,
+                "The second type's FIRST spawn must be its introduction. Getting None here is the "
+                + "shipped bug: the player meets it with no card, and its unspent one-shot fires on "
+                + "some later spawn instead.");
+
+            _beat.enabled = false;
+            yield return null;
+        }
+
+        /// <summary>
         /// The heart-loss demo's stand-in is a scripted prop, not a first meeting.
         ///
         /// <para>

@@ -318,6 +318,14 @@ public class WaveSpawner : MonoBehaviour
         if (delay > 0f)
             yield return new WaitForSeconds(delay);
 
+        // The pair's second half is a spawn like any other and must respect the same hold as the
+        // loop above. Without this it was the one enemy that could walk on DURING an introduction:
+        // the beat refuses to claim while a run is in flight, so the decoy's type arrived with no
+        // card and no explanation, and — a refused claim does not spend the one-shot — introduced
+        // itself on some arbitrary later spawn instead. Waited AFTER the pair window rather than
+        // before it, so the pair still reads as a pair once the schedule resumes.
+        yield return WaitWhileIntroductionLessonHoldsSchedule();
+
         EnemyDataSO decoyData =
             coordinator.ResolveEnemyData(assignment.PairedDecoySymbolStableId, wave)
             ?? SelectEnemyDataForSpawn(wave);
