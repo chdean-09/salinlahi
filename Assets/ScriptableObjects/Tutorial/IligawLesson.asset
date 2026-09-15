@@ -17,7 +17,7 @@ MonoBehaviour:
   armAbilityOnIntroduction: 1
   abilityBeatSeconds: 1.5
   reactLine:
-    fallbackText: 'Dalawa na siya?! Alin ang totoo?'
+    fallbackText: 'Dalawa na siya?! Isa lang dapat!'
     dialogue: {fileID: 0}
   ruleLine:
     fallbackText: 'Bawat kaaway ng Paglimot ay may sariling kakayahan. Kilalanin mo

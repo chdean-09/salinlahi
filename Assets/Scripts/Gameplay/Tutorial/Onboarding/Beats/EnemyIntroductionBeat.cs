@@ -86,13 +86,25 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
              + "the visible play area, so halting on the settle frame alone freezes the subject "
              + "off-screen and the whole lesson plays against an empty field. Safety valve only: on "
              + "timeout the beat halts where the enemy stands and warns, rather than hanging.")]
-    [SerializeField, Min(0f)] private float _onScreenWaitTimeoutSeconds = 6f;
+    [SerializeField, Min(0f)] private float _onScreenWaitTimeoutSeconds = 14f;
 
     [Tooltip("World units of clearance required between the introduced enemy's own bounds (body AND "
              + "glyph badge, counted even while the badge is hidden for a late reveal) and the edge "
              + "of the camera's view before the halt begins. Buys the vignette and the beat-7 badge "
              + "reveal room to render without clipping the screen edge.")]
     [SerializeField, Min(0f)] private float _onScreenMarginWorld = 0.35f;
+
+    [Tooltip("HUD rect whose bottom edge the introduced enemy must halt BELOW. Left null, the "
+             + "scene's ActiveCluePresenter clue panel is used, which is the rect that actually "
+             + "occludes the top of the playfield. Inside the camera is not the same as visible: "
+             + "the clue panel is drawn in FRONT of the lane, so an enemy halted against the "
+             + "camera's top edge is parked behind it.")]
+    [SerializeField] private RectTransform _hudOcclusionRect;
+
+    [Tooltip("World units of clearance left between the HUD's occluded band and the top of the "
+             + "introduced enemy's bounds. Small on purpose: the halt should read as 'just under "
+             + "the HUD', not as 'halfway down the field'.")]
+    [SerializeField, Min(0f)] private float _hudClearanceWorld = 0.25f;
 
     [Header("Lesson — Beat 2 (Ability)")]
     [Tooltip("Safety valve only. Seconds (wall-clock) beat 2 will wait for the introduced enemy's "
@@ -120,6 +132,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     private bool _isPlaying;
     private bool _routineActive;
     private bool _timeScaleTaken;
+    private bool _drawStepAbandoned;
     private float _restoreTimeScale = 1f;
     private TutorialSpotlightOverlay _runtimeVignette;
 
@@ -383,6 +396,15 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         if (TutorialRuntimeState.IsCombatOverrideActive || TutorialRuntimeState.IsDrawingInputLocked)
             return false;
 
+        // The heart-loss demo's stand-in is a scripted prop, not a first meeting. It is a REAL
+        // pooled enemy parked on the shrine to stage a base hit, and in one observed run it claimed
+        // Hati's introduction mid-demo: a full card, time slow and vignette landed inside the
+        // tutorial preamble, on an enemy the player is being shown losing, and Hati's one-shot was
+        // spent on it. Declining here rather than inside TryClaim's progress call is what keeps the
+        // one-shot unspent, so the type still introduces itself properly on its first real spawn.
+        if (TutorialRuntimeState.IsHeartLossDemoActive)
+            return false;
+
         // Deferral. While this level's lesson is still pending, every other type waits: the rule
         // that enemies have abilities is taught once, by the lesson, and a card that lands first
         // would spend that first-meeting moment on an enemy the lesson did not choose.
@@ -514,7 +536,26 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         if (camera == null)
             return false;
 
-        return !IsVerticallyInsideView(camera, ResolveEnemyWorldBounds(enemy), _onScreenMarginWorld);
+        return !IsFramedForLesson(camera, ResolveEnemyWorldBounds(enemy), _onScreenMarginWorld,
+            ResolveHudOcclusionRect(), _hudClearanceWorld);
+    }
+
+    /// <summary>
+    /// The rect the beat treats as the HUD's occluded band. Wired rect first, then the live clue
+    /// presenter's own panel, then any presenter in the scene — resolved on demand rather than
+    /// cached, because the beat is built by a wiring tool that runs before the HUD exists and a
+    /// level reload replaces the presenter underneath it.
+    /// </summary>
+    private RectTransform ResolveHudOcclusionRect()
+    {
+        if (_hudOcclusionRect != null)
+            return _hudOcclusionRect;
+
+        ActiveCluePresenter presenter = ActiveCluePresenter.Active;
+        if (presenter == null)
+            presenter = FindFirstObjectByType<ActiveCluePresenter>(FindObjectsInactive.Include);
+
+        return presenter != null ? presenter.CluePanelRect : null;
     }
 
     private IEnumerator WaitUntilEnemyIsOnScreen(Enemy enemy, EnemyDataSO data)
@@ -529,7 +570,8 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             if (!IsStillPresentable(enemy, data))
                 yield break;
 
-            if (IsVerticallyInsideView(camera, ResolveEnemyWorldBounds(enemy), _onScreenMarginWorld))
+            if (IsFramedForLesson(camera, ResolveEnemyWorldBounds(enemy), _onScreenMarginWorld,
+                    ResolveHudOcclusionRect(), _hudClearanceWorld))
                 yield break;
 
             waited += Time.unscaledDeltaTime;
@@ -537,10 +579,11 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         }
 
         DebugLogger.LogWarning(
-            $"EnemyIntroductionBeat: '{DescribeEnemy(enemy)}' was still outside the camera's view "
-            + $"after {_onScreenWaitTimeoutSeconds:0.#}s, so the beat halts it where it stands and "
-            + "the lesson may play against an empty field. Check the wave spawn height against the "
-            + "camera's orthographic size, and that the enemy is actually walking.");
+            $"EnemyIntroductionBeat: '{DescribeEnemy(enemy)}' was still behind the HUD or outside "
+            + $"the camera's view after {_onScreenWaitTimeoutSeconds:0.#}s, so the beat halts it "
+            + "where it stands and the lesson may play against an occluded or empty field. Check "
+            + "the wave spawn height against the camera's orthographic size, that the enemy is "
+            + "actually walking, and that the clue panel's rect is where you think it is.");
     }
 
     /// <summary>
@@ -558,6 +601,111 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
 
         return worldBounds.max.y + marginWorld <= view.yMax
             && worldBounds.min.y - marginWorld >= view.yMin;
+    }
+
+    /// <summary>
+    /// Whether the introduced enemy is framed for the lesson: inside the camera AND clear of the
+    /// band the HUD draws over the top of the playfield.
+    ///
+    /// <para>
+    /// <b>Why the camera rect alone was not enough, measured.</b> The previous fix halted the enemy
+    /// the instant its bounds cleared <c>cameraTop - margin</c>, which parks it in the top 11-14 %
+    /// of the screen — exactly the band <c>ActiveCluePanel</c> owns, and the clue panel is drawn in
+    /// FRONT of the lane. At 1284x2778 that left roughly the top half of Iligaw showing above the
+    /// panel; at the shipped 900x1604 portrait aspect it left a wedge of his head, and beat 2's
+    /// before/after split frames were the same picture. The enemy was on camera and still invisible.
+    /// </para>
+    ///
+    /// <para>
+    /// The ceiling is derived from the panel's live <see cref="RectTransform"/> rather than from a
+    /// hardcoded fraction of the screen, so it survives the safe-area inset (which pushes the HUD
+    /// down on a notched device), a canvas-scaler match-mode change, and any aspect: at both aspects
+    /// the check exercised the derived ceiling lands within a hundredth of a world unit of the same
+    /// y, because the scaler ties the HUD to the world's constant width.
+    /// </para>
+    ///
+    /// <para>
+    /// A null or unresolvable panel falls back to the camera-top rule, which is the behaviour this
+    /// extended — a lesson must never stall because the HUD could not be found.
+    /// </para>
+    /// </summary>
+    public static bool IsFramedForLesson(
+        Camera camera,
+        Bounds worldBounds,
+        float marginWorld,
+        RectTransform hudOcclusionRect,
+        float hudClearanceWorld)
+    {
+        if (camera == null || !TryGetCameraWorldRect(camera, out Rect view))
+            return true;
+
+        return worldBounds.max.y + marginWorld
+                <= ResolveHaltCeilingWorldY(camera, view, hudOcclusionRect, hudClearanceWorld)
+            && worldBounds.min.y - marginWorld >= view.yMin;
+    }
+
+    /// <summary>
+    /// The highest world y the introduced enemy's own bounds may reach and still be framed: the
+    /// camera's top edge, or the bottom of the HUD's occluded band less
+    /// <paramref name="hudClearanceWorld"/> when that is lower.
+    ///
+    /// <para>
+    /// Clamped to stay above the camera's bottom edge. A HUD rect that somehow covers the whole
+    /// screen would otherwise produce a ceiling below the floor, and the wait would spend its whole
+    /// timeout on a condition that can never be met.
+    /// </para>
+    /// </summary>
+    public static float ResolveHaltCeilingWorldY(
+        Camera camera, Rect view, RectTransform hudOcclusionRect, float hudClearanceWorld)
+    {
+        if (!TryGetHudBottomWorldY(camera, hudOcclusionRect, out float hudBottomWorldY))
+            return view.yMax;
+
+        float ceiling = hudBottomWorldY - Mathf.Max(0f, hudClearanceWorld);
+        return Mathf.Clamp(ceiling, view.yMin, view.yMax);
+    }
+
+    /// <summary>
+    /// The world y of the lowest edge of a HUD rect, projected through the gameplay camera.
+    ///
+    /// <para>
+    /// All four corners are measured rather than just the bottom two, so a rotated or flipped rect
+    /// still reports the band it actually covers. The rect's own canvas decides the screen-space
+    /// conversion: an overlay canvas converts with no camera, a screen-space-camera or world-space
+    /// one with its own. Returns false — meaning "no HUD constraint" — for a null rect, a rect with
+    /// no canvas-space extent, or a perspective gameplay camera.
+    /// </para>
+    /// </summary>
+    public static bool TryGetHudBottomWorldY(
+        Camera camera, RectTransform hudOcclusionRect, out float worldY)
+    {
+        worldY = 0f;
+        if (camera == null || !camera.orthographic || hudOcclusionRect == null)
+            return false;
+
+        Canvas canvas = hudOcclusionRect.GetComponentInParent<Canvas>();
+        Camera uiCamera = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay
+            ? canvas.worldCamera
+            : null;
+
+        Vector3[] corners = new Vector3[4];
+        hudOcclusionRect.GetWorldCorners(corners);
+
+        float minScreenY = float.PositiveInfinity;
+        for (int i = 0; i < corners.Length; i++)
+        {
+            float screenY = RectTransformUtility.WorldToScreenPoint(uiCamera, corners[i]).y;
+            if (screenY < minScreenY)
+                minScreenY = screenY;
+        }
+
+        if (float.IsInfinity(minScreenY) || float.IsNaN(minScreenY))
+            return false;
+
+        // Orthographic: only the screen y and the camera's pixel height feed the world y, so the
+        // x passed here is irrelevant and a forced Camera.aspect cannot skew the answer.
+        worldY = camera.ScreenToWorldPoint(new Vector3(0f, minScreenY, 0f)).y;
+        return true;
     }
 
     /// <summary>
@@ -729,15 +877,33 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         enemy.GlyphBadge?.Show();
         yield return WaitRealtime(_nameStepSeconds);
 
-        // Beat 8 — Draw. Time and movement come back first: the draw is real combat against a
-        // real enemy, not a frozen exercise.
+        // Beat 8 — Draw. Time comes back first: the draw is real combat against a real enemy, not
+        // a frozen exercise.
+        //
+        // The enemy's MOVEMENT deliberately does NOT come back with it. Released here, the lesson's
+        // own subject walks the length of the field while the player reads the prompt and finds the
+        // stroke — measured at y = -4.5, just above the fence, on a nineteen-second first read — so
+        // the one enemy the lesson promised to teach against was the one most likely to reach the
+        // shrine. Iligaw's mirror copy is slaved to this transform every Update, so holding the
+        // original holds the pair. Movement is handed back after beat 9, below.
         LiftVignette();
         yield return RampTimeScale(Time.timeScale, _restoreTimeScale, _releaseRampSeconds);
         ReleaseTimeScale();
-        ReleaseEnemy(enemy);
 
         if (lesson.drawStep != null)
+        {
             yield return PlayDrawStep(enemy, lesson.drawStep);
+
+            // Beat 8's subject left without being drawn — it reached the shrine, was cleared by
+            // something else, or its pooled shell was recycled. Beat 9 would announce a restoration
+            // that never happened, so the lesson ends here instead. The finally block below hands
+            // back the time scale, the vignette and the spawn hold; leaving that to a wait that can
+            // no longer be satisfied is what left one run sitting dead for 135 seconds.
+            if (_drawStepAbandoned)
+                yield break;
+        }
+
+        ReleaseEnemy(enemy);
 
         // Beats 9 and 10 — Restoration. The draw killed the enemy and the enemy's syllable went
         // into the blank; that link is the one thing the eight beats never say out loud. Played
@@ -889,6 +1055,8 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// </summary>
     private IEnumerator PlayDrawStep(Enemy enemy, Level1TutorialStepSO step)
     {
+        _drawStepAbandoned = false;
+
         Level1TutorialGuideUI guide = FindFirstObjectByType<Level1TutorialGuideUI>(
             FindObjectsInactive.Include);
 
@@ -901,6 +1069,18 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             if (guide != null) guide.Hide();
             yield break;
         }
+
+        // The identity beat 8 is waiting on, captured before the wait. SpawnSequence as well as
+        // liveness, matching WaitWhileEnemyLives: a pooled shell recycled into another type during
+        // the wait is a different enemy wearing the same reference.
+        long spawnSequence = enemy != null ? enemy.SpawnSequence : 0L;
+        EnemyDataSO subjectData = enemy != null ? enemy.Data : null;
+        bool SubjectIsGone() =>
+            enemy == null
+            || enemy.SpawnSequence != spawnSequence
+            || enemy.Data != subjectData
+            || !enemy.gameObject.activeInHierarchy
+            || enemy.IsDying;
 
         System.Action<RecognitionResult, bool, float> feedback = null;
         if (guide != null)
@@ -920,16 +1100,39 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
 
         try
         {
-            yield return TutorialDrawWait.WaitForCorrectDraw(expectedID);
+            bool drawn = false;
+            yield return TutorialDrawWait.WaitForCorrectDrawOrAbandon(
+                expectedID, SubjectIsGone, landed => drawn = landed);
 
-            // The draw landed — TutorialDrawWait only ever returns on the correct character. The
-            // wrong-draw handler comes off FIRST, or a stray recognition resolved during the hold
-            // would overwrite the success copy with a correction the player did not earn.
+            // The subject left without being drawn. Nothing here can be satisfied any more, so the
+            // beat says so and unwinds rather than holding the wave schedule open behind a prompt
+            // the player can no longer act on.
+            if (!drawn)
+            {
+                _drawStepAbandoned = true;
+                DebugLogger.LogWarning(
+                    $"EnemyIntroductionBeat: beat 8's subject '{DescribeEnemy(enemy)}' left the "
+                    + "field before the player drew its glyph, so the lesson ends without beat 9. "
+                    + "The spawn hold is released here; if this happens every run, check that the "
+                    + "beat is holding the introduced enemy still for the whole lesson.");
+                yield break;
+            }
+
+            // The draw landed. The wrong-draw handler comes off FIRST, or a stray recognition
+            // resolved during the hold would overwrite the success copy with a correction the
+            // player did not earn.
             if (feedback != null)
             {
                 EventBus.OnRecognitionResolved -= feedback;
                 feedback = null;
             }
+
+            // The instruction the player has just obeyed goes now, not when the guide closes.
+            // Left up, "Draw E/I. Follow the guide." sat under its own congratulation for the
+            // length of the success hold — about a second and a half of being told to do the thing
+            // they had already done.
+            if (guide != null)
+                guide.ClearPrompt();
 
             // The authored success copy was previously never shown at all: the prompt simply
             // vanished, with nothing to tell the player the draw was the one being asked for.

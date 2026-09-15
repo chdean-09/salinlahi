@@ -282,6 +282,7 @@ public class DialogueController : MonoBehaviour
         }
 
         ConfigureResponsiveLayout(hasPortrait);
+        GrowPanelToFitBody(line.text ?? "");
 
         if (_typewriterRoutine != null)
             StopCoroutine(_typewriterRoutine);
@@ -321,6 +322,64 @@ public class DialogueController : MonoBehaviour
         float topFraction = Mathf.Clamp(baseBottomFraction, DialoguePanelMinFraction, DialoguePanelHeight);
         Vector2 anchorMax = panel.anchorMax;
         anchorMax.y = topFraction;
+        panel.anchorMax = anchorMax;
+        panel.offsetMin = Vector2.zero;
+        panel.offsetMax = Vector2.zero;
+    }
+
+    /// <summary>
+    /// Grows the dialogue plate until the line it is backing actually fits inside it, up to the
+    /// authored <see cref="DialoguePanelHeight"/> ceiling.
+    ///
+    /// <para>
+    /// <b>The defect this closes, measured.</b> <see cref="ClampPanelToBaseBottom"/> shrinks the
+    /// plate so it never rides over the shrine — on the aspect checked, to 0.17 of the screen rather
+    /// than the authored 0.30. The body text band is a fixed fraction of whatever is left, the text
+    /// auto-sizes no smaller than its floor, and <c>TextOverflowModes.Overflow</c> then lets it
+    /// spill: beat 9's four-line restoration line started 30 px ABOVE the plate's top edge, so its
+    /// first line was white type on the open lane. Growing the plate to its content is the fix that
+    /// keeps both promises — the text is backed, and the shrine is still only covered as far as the
+    /// authored maximum ever allowed.
+    /// </para>
+    ///
+    /// <para>
+    /// Only ever grows, never shrinks, and never past <see cref="DialoguePanelHeight"/>: a short
+    /// line keeps the small plate the base clamp chose for it.
+    /// </para>
+    /// </summary>
+    private void GrowPanelToFitBody(string fullBodyText)
+    {
+        RectTransform panel = ResolvePanelRect();
+        if (panel == null || _bodyText == null)
+            return;
+
+        if (panel.parent is not RectTransform panelParent)
+            return;
+
+        float parentHeight = panelParent.rect.height;
+        float panelHeight = panel.rect.height;
+        float bandHeight = _bodyText.rectTransform.rect.height;
+        if (parentHeight <= 0f || panelHeight <= 0f || bandHeight <= 0f)
+            return;
+
+        // Measured from the laid-out mesh rather than from GetPreferredValues, which does not
+        // honour auto-sizing and would report the height at the unclamped font size.
+        string previous = _bodyText.text;
+        _bodyText.text = fullBodyText;
+        _bodyText.ForceMeshUpdate();
+        float neededHeight = _bodyText.textBounds.size.y;
+        _bodyText.text = previous;
+
+        if (neededHeight <= 0f || neededHeight <= bandHeight)
+            return;
+
+        float requiredPanelHeight = panelHeight * (neededHeight / bandHeight);
+        float requiredFraction = Mathf.Min(requiredPanelHeight / parentHeight, DialoguePanelHeight);
+        if (requiredFraction <= panel.anchorMax.y)
+            return;
+
+        Vector2 anchorMax = panel.anchorMax;
+        anchorMax.y = requiredFraction;
         panel.anchorMax = anchorMax;
         panel.offsetMin = Vector2.zero;
         panel.offsetMax = Vector2.zero;

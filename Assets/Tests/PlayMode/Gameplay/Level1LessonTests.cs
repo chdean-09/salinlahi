@@ -885,7 +885,350 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             yield return null;
         }
 
+        /// <summary>
+        /// The lesson must not begin against a subject the HUD is drawn on top of.
+        ///
+        /// <para>
+        /// <b>The defect, measured.</b> The previous fix halted the enemy the instant its bounds
+        /// cleared <c>cameraTop - margin</c>, so it always stopped in the top 11-14 % of the screen
+        /// — the band <c>ActiveCluePanel</c> owns, and the clue panel is drawn in FRONT of the lane.
+        /// Live reads: at 1284x2778 the enemy halted at y = 9.51 against a camera seeing to 12.17;
+        /// at the shipped 900x1604 portrait aspect it halted at y = 7.29 against a camera seeing to
+        /// 10.03. Both are inside the camera and both are behind the HUD — at 900x1604 only a wedge
+        /// of the enemy's head showed above the panel, and beat 2's before/after split frames were
+        /// the same picture.
+        /// </para>
+        ///
+        /// <para>
+        /// <b>The negative control matters here.</b> The old camera-only predicate is asserted to
+        /// answer TRUE at the very height this test rejects, so "not framed" cannot be passing
+        /// against a rule that rejects everything.
+        /// </para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LessonHaltsTheEnemyBelowTheCluePanel_AtTheNarrowShippedAspect()
+        {
+            yield return null;
+
+            // The 900x1604 run's measured camera: orthographic, size 10.025, at the origin. The
+            // aspect is forced to that run's, though it cannot change the answer — an orthographic
+            // camera's screen-y-to-world-y mapping reads only its pixel height and ortho size.
+            GameObject cameraGO = CreateTracked("LessonHudFramingCamera");
+            cameraGO.transform.position = new Vector3(0f, 0f, -10f);
+            Camera camera = cameraGO.AddComponent<Camera>();
+            camera.orthographic = true;
+            camera.orthographicSize = 10.025f;
+            camera.aspect = 900f / 1604f;
+            SetPrivateField(_beat, "_worldCamera", camera);
+
+            // The clue panel, as a band across the top of the screen. 0.7857 of the screen height is
+            // where ActiveCluePanel's authored bottom edge (+550 in 1080x1920 HUD units) lands at
+            // 900x1604 — the aspect the visual check found the defect at.
+            RectTransform cluePanel = CreateTopBandPanel("ActiveCluePanel_Test", 0.7857f);
+            SetPrivateField(_beat, "_hudOcclusionRect", cluePanel);
+            SetPrivateField(_beat, "_onScreenWaitTimeoutSeconds", 60f);
+            yield return null;
+
+            Assert.IsTrue(
+                EnemyIntroductionBeat.TryGetCameraWorldRect(camera, out Rect view),
+                "setup: the framing rule needs an orthographic camera rect.");
+            float ceiling = EnemyIntroductionBeat.ResolveHaltCeilingWorldY(
+                camera, view, cluePanel, 0.25f);
+            Assert.Less(ceiling, view.yMax,
+                "setup: the HUD band must actually lower the ceiling below the camera's top edge, "
+                + "or this test proves nothing about HUD awareness.");
+
+            BaybayinCharacterSO iChar = MakeCharacter("I", "symbol.test.hudframing.i");
+            EnemyDataSO iligawData = CreateEnemyData(
+                "test_iligaw_hudframing", "Iligaw", iChar, spawnsMirrorDecoy: false);
+            EnemyLessonSO lesson = CreateIligawShapedLesson(iligawData);
+            lesson.abilityBeatSeconds = 30f;
+
+            FocusWordDefinition word = CreateWord(
+                "level.test.hudframing.ina", "ina", "INA", iChar, iChar);
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO> { iligawData }, new[] { lesson },
+                new List<FocusWordDefinition> { word });
+            _gameManager.SetLevel(config);
+            SetPrivateField(_presenter, "_level", config);
+            _presenter.RestorationState.Configure(config.focusWords);
+
+            Enemy iligaw = CreateEnemyShell("Iligaw_HudFraming");
+            iligaw.transform.position = new Vector3(0f, 11.40f, 0f);
+            Assert.IsTrue(iligaw.Initialize(iligawData));
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndArm, iligaw.IntroductionOutcome,
+                "setup: this must be a real lesson spawn.");
+
+            yield return null;
+            yield return null;
+
+            // The old halt height at this aspect, live-measured. Inside the camera, behind the HUD.
+            iligaw.transform.position = new Vector3(0f, 7.29f, 0f);
+            yield return null;
+            yield return null;
+
+            Assert.IsTrue(
+                EnemyIntroductionBeat.IsVerticallyInsideView(
+                    camera, new Bounds(iligaw.transform.position, Vector3.zero), 0.35f),
+                "negative control: the old camera-only rule considered y = 7.29 framed. If this "
+                + "fails, the test below is passing for the wrong reason.");
+            Assert.AreEqual(1f, Time.timeScale,
+                "The beat must not drop the time scale while its subject is parked behind the "
+                + "clue panel — on camera is not the same as visible.");
+            Assert.IsFalse(_vignette.IsVisible,
+                "The beat must not spotlight a subject the clue panel is drawn over.");
+
+            // It keeps walking, down past the HUD's band.
+            iligaw.transform.position = new Vector3(0f, ceiling - 1f, 0f);
+            yield return null;
+            yield return null;
+
+            Assert.AreNotEqual(1f, Time.timeScale,
+                "Below the clue panel's occluded band the beat halts its subject and time slows.");
+            Assert.IsTrue(_vignette.IsVisible,
+                "…and the vignette finally closes around something the player can see.");
+            Assert.Less(iligaw.transform.position.y, ceiling,
+                "The halt position must be below the clue panel's occluded band.");
+
+            _beat.enabled = false;
+            yield return null;
+        }
+
+        /// <summary>
+        /// The HUD-derived ceiling must land in the same place at both aspects the visual check
+        /// exercised. The canvas scaler ties the HUD to the world's constant width, so the band the
+        /// clue panel occupies is a different FRACTION of each screen and the same world y — which
+        /// is the whole reason the rule is derived from the live rect rather than from a fraction.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TheHudCeilingLandsAtTheSameWorldHeight_AtBothCheckedAspects()
+        {
+            yield return null;
+
+            GameObject cameraGO = CreateTracked("LessonAspectCamera");
+            cameraGO.transform.position = new Vector3(0f, 0f, -10f);
+            Camera camera = cameraGO.AddComponent<Camera>();
+            camera.orthographic = true;
+
+            // 1284x2778: ortho size 12.170, clue panel bottom at 0.7354 of the screen height.
+            camera.orthographicSize = 12.170f;
+            camera.aspect = 1284f / 2778f;
+            RectTransform tallPanel = CreateTopBandPanel("CluePanel_1284x2778", 0.7354f);
+            yield return null;
+            Assert.IsTrue(EnemyIntroductionBeat.TryGetCameraWorldRect(camera, out Rect tallView));
+            float tallCeiling = EnemyIntroductionBeat.ResolveHaltCeilingWorldY(
+                camera, tallView, tallPanel, 0.25f);
+
+            // 900x1604: ortho size 10.025, clue panel bottom at 0.7857 of the screen height.
+            camera.orthographicSize = 10.025f;
+            camera.aspect = 900f / 1604f;
+            RectTransform narrowPanel = CreateTopBandPanel("CluePanel_900x1604", 0.7857f);
+            yield return null;
+            Assert.IsTrue(EnemyIntroductionBeat.TryGetCameraWorldRect(camera, out Rect narrowView));
+            float narrowCeiling = EnemyIntroductionBeat.ResolveHaltCeilingWorldY(
+                camera, narrowView, narrowPanel, 0.25f);
+
+            Assert.That(narrowCeiling, Is.EqualTo(tallCeiling).Within(0.1f),
+                "The HUD-derived halt ceiling must agree across aspects. Measured: "
+                + $"1284x2778 -> {tallCeiling:0.###}, 900x1604 -> {narrowCeiling:0.###}.");
+            Assert.Less(narrowCeiling, narrowView.yMax - 4f,
+                "The ceiling must sit well below the camera's top edge, in the playfield, not at "
+                + "the screen edge where the HUD is.");
+            Assert.Greater(narrowCeiling, 0f,
+                "…and in the UPPER part of the playfield, not halfway down it.");
+        }
+
+        /// <summary>
+        /// Beat 8 must not hold the wave schedule open behind a prompt that can no longer be
+        /// satisfied.
+        ///
+        /// <para>
+        /// <b>The defect.</b> In one observed run the introduced Iligaw walked into the shrine
+        /// instead of being drawn. The enemy count went to zero and the beat sat
+        /// <c>IsPlaying = True</c>, <c>IsHoldingSpawnSchedule = True</c> for 135 seconds and
+        /// counting: prompt on screen, no enemies, no spawns, nothing to do. The level was
+        /// unplayable until the player happened to draw the right glyph at nothing.
+        /// </para>
+        ///
+        /// <para>
+        /// The wait-forever half is asserted first, deliberately: if the beat had already finished
+        /// on its own the release below would prove nothing.
+        /// </para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Beat8_ReleasesTheSpawnHold_WhenItsSubjectLeavesWithoutBeingDrawn()
+        {
+            yield return null;
+
+            // Every authored hold to zero: this test is about what happens at beat 8, and the beats
+            // before it are already covered elsewhere in this fixture.
+            SetPrivateField(_beat, "_nameStepSeconds", 0f);
+            SetPrivateField(_beat, "_abilityStepSeconds", 0f);
+            SetPrivateField(_beat, "_drawSuccessHoldSeconds", 0f);
+            // No camera in this test, and none wanted: step 0's framing wait is covered above.
+            SetPrivateField(_beat, "_onScreenWaitTimeoutSeconds", 0f);
+
+            BaybayinCharacterSO iChar = MakeCharacter("I", "symbol.test.beat8.i");
+            EnemyDataSO iligawData = CreateEnemyData(
+                "test_iligaw_beat8", "Iligaw", iChar, spawnsMirrorDecoy: false);
+            EnemyLessonSO lesson = CreateIligawShapedLesson(iligawData);
+            lesson.abilityBeatSeconds = 0f;
+            lesson.drawStep = CreateDrawStep(iChar);
+
+            FocusWordDefinition word = CreateWord("level.test.beat8.ina", "ina", "INA", iChar, iChar);
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO> { iligawData }, new[] { lesson },
+                new List<FocusWordDefinition> { word });
+            _gameManager.SetLevel(config);
+            SetPrivateField(_presenter, "_level", config);
+            _presenter.RestorationState.Configure(config.focusWords);
+
+            Enemy iligaw = CreateEnemyShell("Iligaw_Beat8");
+            iligaw.transform.position = Vector3.zero;
+            Assert.IsTrue(iligaw.Initialize(iligawData));
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndArm, iligaw.IntroductionOutcome,
+                "setup: this must be a real lesson spawn.");
+
+            // Beat 2 warns when the lesson arms an ability the spawn does not carry; this fixture's
+            // shell deliberately carries none, so the warning is expected and is not the subject.
+            LogAssert.ignoreFailingMessages = true;
+
+            // Run the lesson down to beat 8's wait.
+            for (int frame = 0; frame < 60; frame++)
+                yield return null;
+
+            Assert.IsTrue(EnemyIntroductionBeat.IsHoldingSpawnSchedule,
+                "setup: the beat must still be parked at beat 8 waiting for the draw. If it has "
+                + "already finished, the release assertion below proves nothing.");
+
+            // The subject leaves without being drawn: it reached the shrine, or its pooled shell
+            // was recycled. Either way the identity beat 8 is waiting on is gone.
+            iligaw.gameObject.SetActive(false);
+
+            for (int frame = 0; frame < 10; frame++)
+                yield return null;
+
+            Assert.IsFalse(EnemyIntroductionBeat.IsHoldingSpawnSchedule,
+                "Beat 8 must notice its subject is gone and release the spawn hold. Left holding, "
+                + "the level sits dead: no enemies, no spawns, and nothing the player can do.");
+            Assert.IsFalse(EnemyIntroductionBeat.IsPlaying,
+                "…and the lesson must stop claiming the screen with it.");
+            Assert.AreEqual(1f, Time.timeScale,
+                "…and hand real time back.");
+
+            LogAssert.ignoreFailingMessages = false;
+            _beat.enabled = false;
+            yield return null;
+        }
+
+        /// <summary>
+        /// The heart-loss demo's stand-in is a scripted prop, not a first meeting.
+        ///
+        /// <para>
+        /// <b>The defect.</b> In one observed run the introduction machinery fired for Hati DURING
+        /// the heart-loss demo — a full card, time slow and vignette, at t = 80.5-87.7 inside the
+        /// tutorial preamble, on the enemy the player is being shown losing to. Worse than the
+        /// cosmetic problem, it SPENT Hati's campaign-wide one-shot, so the type could never
+        /// introduce itself properly again.
+        /// </para>
+        ///
+        /// <para>
+        /// The negative control is the second half: the same spawn, with the demo window closed,
+        /// must still be introducible. Without it "declined" could be passing against a rule that
+        /// declines everything.
+        /// </para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator HeartLossDemoSpawn_ClaimsNoIntroduction_AndSpendsNoOneShot()
+        {
+            yield return null;
+
+            SetPrivateField(_beat, "_onScreenWaitTimeoutSeconds", 0f);
+
+            BaybayinCharacterSO hChar = MakeCharacter("HA", "symbol.test.demo.ha");
+            EnemyDataSO hatiData = CreateEnemyData("test_hati_demo", "Hati", hChar);
+
+            FocusWordDefinition word = CreateWord("level.test.demo.ina", "ina", "INA", hChar, hChar);
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO> { hatiData },
+                System.Array.Empty<EnemyLessonSO>(),
+                new List<FocusWordDefinition> { word });
+            _gameManager.SetLevel(config);
+            SetPrivateField(_presenter, "_level", config);
+            _presenter.RestorationState.Configure(config.focusWords);
+
+            TutorialRuntimeState.SetHeartLossDemoActive(true);
+
+            Enemy demoStandIn = CreateEnemyShell("Hati_HeartLossDemoStandIn");
+            Assert.IsTrue(demoStandIn.Initialize(hatiData));
+
+            Assert.AreEqual(IntroductionOutcome.None, demoStandIn.IntroductionOutcome,
+                "The heart-loss demo's stand-in must never claim its type's introduction. None, "
+                + "not a suppressing outcome: the prop's ability stays exactly as armed as it "
+                + "would have been with no introduction machinery in the scene at all.");
+            Assert.IsFalse(EnemyIntroductionProgress.HasBeenIntroduced(hatiData),
+                "…and declining must not spend the type's one-shot, or Hati can never be "
+                + "introduced properly for the rest of the campaign.");
+
+            yield return null;
+            yield return null;
+
+            Assert.IsFalse(EnemyIntroductionBeat.IsPlaying,
+                "No card may play over the heart-loss demo.");
+            Assert.AreEqual(1f, Time.timeScale,
+                "…and the demo's own pacing must not be taken over by an introduction's time slow.");
+
+            // Negative control: the same type, the same spawn, outside the demo window.
+            TutorialRuntimeState.SetHeartLossDemoActive(false);
+
+            Enemy realSpawn = CreateEnemyShell("Hati_RealFirstSpawn");
+            Assert.IsTrue(realSpawn.Initialize(hatiData));
+
+            // IntroduceAndSuppress, not IntroduceAndArm: Hati has no authored lesson, and the
+            // standing rule is that a type's ability is inert on the spawn that introduces it.
+            // What matters here is that the type WAS introducible.
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndSuppress, realSpawn.IntroductionOutcome,
+                "With the demo window closed the type must still be introducible — the one-shot "
+                + "was never spent.");
+            Assert.IsTrue(EnemyIntroductionProgress.HasBeenIntroduced(hatiData),
+                "…and this is the spawn that spends it.");
+
+            _beat.enabled = false;
+            yield return null;
+        }
+
         // ------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// A screen-space-overlay canvas with one full-width band pinned to the top of the screen,
+        /// standing in for the HUD rect that occludes the top of the playfield.
+        /// </summary>
+        private RectTransform CreateTopBandPanel(string name, float bottomViewportY)
+        {
+            GameObject canvasGO = CreateTracked(name + "_Canvas");
+            Canvas canvas = canvasGO.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+
+            GameObject panelGO = new GameObject(name, typeof(RectTransform));
+            panelGO.transform.SetParent(canvasGO.transform, false);
+
+            RectTransform panel = panelGO.GetComponent<RectTransform>();
+            panel.anchorMin = new Vector2(0f, bottomViewportY);
+            panel.anchorMax = new Vector2(1f, 1f);
+            panel.offsetMin = Vector2.zero;
+            panel.offsetMax = Vector2.zero;
+            return panel;
+        }
+
+        private Level1TutorialStepSO CreateDrawStep(BaybayinCharacterSO target)
+        {
+            var step = ScriptableObject.CreateInstance<Level1TutorialStepSO>();
+            step.promptText = "Draw E/I. Follow the guide.";
+            step.successText = "Great job. Drawing protects the base.";
+            step.targetCharacter = target;
+            _objectsToDestroy.Add(step);
+            return step;
+        }
 
         private Enemy CreateEnemyShell(string name)
         {

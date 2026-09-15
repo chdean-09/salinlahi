@@ -382,6 +382,21 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetOwnershipOnDomainReload() => IsShowingFeedback = false;
 
+    /// <summary>
+    /// Blanks the standing prompt without closing the panel, so a step that has been satisfied can
+    /// stop asking for it while its own success line is still being read.
+    ///
+    /// <para>
+    /// Deliberately not folded into <see cref="ShowFeedback"/>: feedback is also how a WRONG draw
+    /// is corrected, and the prompt is exactly what the player needs to still be looking at then.
+    /// </para>
+    /// </summary>
+    public void ClearPrompt()
+    {
+        if (_promptText != null)
+            _promptText.text = string.Empty;
+    }
+
     public void ShowFeedback(string message)
     {
         ApplyConfiguredLayout();

@@ -290,6 +290,22 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     public ActiveClueRestorationState RestorationState => _restorationState;
 
     /// <summary>
+    /// The clue panel's own rect, or null on a HUD with no panel wired.
+    ///
+    /// <para>
+    /// Exposed for code that has to know which band of the screen the HUD covers — the enemy
+    /// introduction beat halts its subject BELOW this rect, because the panel is drawn in front of
+    /// the lane and an enemy parked behind it is on camera and still invisible.
+    /// </para>
+    /// </summary>
+    public RectTransform CluePanelRect =>
+        _cluePanelRoot != null ? _cluePanelRoot.transform as RectTransform : null;
+
+    /// <summary>The restoration rail's own rect, or null before the rail is built.</summary>
+    public RectTransform RestorationRailRect =>
+        _railRoot != null ? _railRoot.transform as RectTransform : null;
+
+    /// <summary>
     /// The enabled presenter, for ability code that must read target-text progress without owning
     /// a reference to the HUD. A plain static handle rather than a singleton base class: an
     /// ability lives on a pooled enemy shell and has to cope with there being no presenter at all
@@ -1070,6 +1086,12 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         _wordRestoredText.text = message;
         _wordRestoredText.gameObject.SetActive(true);
 
+        // Beat 9 exists to teach ONE thing — killing the enemy fills the word — and the cue
+        // announcing it was printed straight across the slot rail that shows it happening, with
+        // "INA" sitting inside an empty slot box. The announcement moves; the rail does not, because
+        // the rail is the thing being taught.
+        MoveWordRestoredCueClearOfRail();
+
         // One panel, one voice. The cue label and the standing "DRAW THE GLOWING SYMBOL TO DEFEND"
         // instruction occupy overlapping bands of the same clue panel, so on a successful draw
         // "Restored: INA" printed straight through "DEFEND" and neither could be read. The
@@ -1111,6 +1133,67 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
         SetClueInstructionVisible(true);
         _wordRestoredRoutine = null;
+    }
+
+    /// <summary>
+    /// Canvas units of clear air left between the restoration rail's bottom edge and the top of the
+    /// word-restoration cue.
+    /// </summary>
+    private const float WordRestoredCueRailGap = 34f;
+
+    /// <summary>
+    /// Slides the word-restoration cue down until its top edge clears the restoration rail's bottom
+    /// edge, and leaves it wherever it already was if it is already clear.
+    ///
+    /// <para>
+    /// <b>Measured from the two live rects, not from authored constants.</b> The rail hangs off the
+    /// HUD container, which <c>SafeAreaHandler</c> insets at runtime, while the cue hangs off the
+    /// canvas, which is not inset — so the gap the two authored anchored positions imply is not the
+    /// gap on screen, and on the device the check ran the two landed in the same band. Comparing
+    /// world corners and converting the correction back through the cue's own parent is the only
+    /// form of this that is right on both.
+    /// </para>
+    ///
+    /// <para>
+    /// Only ever moves the cue DOWN. A HUD that has already placed it below the rail keeps its
+    /// authored position.
+    /// </para>
+    /// </summary>
+    private void MoveWordRestoredCueClearOfRail()
+    {
+        if (_wordRestoredText == null || _railRoot == null)
+            return;
+
+        if (_wordRestoredText.rectTransform.parent is not RectTransform cueParent)
+            return;
+
+        if (_railRoot.transform is not RectTransform railRect)
+            return;
+
+        RectTransform cueRect = _wordRestoredText.rectTransform;
+
+        var railCorners = new Vector3[4];
+        railRect.GetWorldCorners(railCorners);
+        float railWorldBottom = Mathf.Min(
+            Mathf.Min(railCorners[0].y, railCorners[1].y),
+            Mathf.Min(railCorners[2].y, railCorners[3].y));
+
+        var cueCorners = new Vector3[4];
+        cueRect.GetWorldCorners(cueCorners);
+        float cueWorldTop = Mathf.Max(
+            Mathf.Max(cueCorners[0].y, cueCorners[1].y),
+            Mathf.Max(cueCorners[2].y, cueCorners[3].y));
+
+        float parentScale = Mathf.Abs(cueParent.lossyScale.y);
+        if (parentScale <= Mathf.Epsilon)
+            return;
+
+        float desiredWorldTop = railWorldBottom - (WordRestoredCueRailGap * parentScale);
+        if (cueWorldTop <= desiredWorldTop)
+            return;
+
+        float correctionLocal = (desiredWorldTop - cueWorldTop) / parentScale;
+        cueRect.anchoredPosition += new Vector2(0f, correctionLocal);
     }
 
     /// <summary>
