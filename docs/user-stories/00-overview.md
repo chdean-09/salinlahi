@@ -1,7 +1,10 @@
 # Salinlahi — Player User Stories (living backlog)
 
 **Created:** 2026-09-15 · **Repo state:** `dev` @ `f6edeba1` (working tree dirty — 45+ modified tracked files)
+**Re-verified:** 2026-09-15 against `feature/ugat-2-5-realignment` @ `9198e8f4` (= `dev` @ `6fc34851` + 4). The 40 commits since the register was cut are reconciled in [`PROGRESS-DELTA-2026-09-15.md`](PROGRESS-DELTA-2026-09-15.md).
 **Scope:** the whole player-facing experience, broken into atomic user stories with acceptance criteria and implementation status.
+
+> **Two registers, different jobs.** [`PLAYER-JOURNEY.md`](PLAYER-JOURNEY.md) is the **review list**: 154 stories in the order a player meets them, no status, and the source of `jira-import-tasks.csv` and `salinlahi-user-stories.xlsx`. This file and the numbered files below are the **engineering register**: the same experience broken finer and carrying implementation status, with implemented behaviour extracted to [`COVERAGE.md`](COVERAGE.md). Start from the journey; come here for detail.
 
 This is a **living backlog**. It is not a design document and it does not make design decisions. Every story is derived from one of:
 
