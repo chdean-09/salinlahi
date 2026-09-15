@@ -123,6 +123,7 @@ public class FocusWordPreviewController : MonoBehaviour
         // quad is the approved unstyled fallback (see ActiveCluePresenter).
         Image background = _panelRoot.GetComponent<Image>();
         background.color = new Color(0.04f, 0.06f, 0.12f, 0.94f);
+        bool onParchment = ScrollPanelArt.ApplyFull(background);
 
         GameObject textObject = new GameObject("[Runtime] FocusWordPreviewText", typeof(RectTransform));
         textObject.transform.SetParent(_panelRoot.transform, false);
@@ -156,6 +157,11 @@ public class FocusWordPreviewController : MonoBehaviour
         label.raycastTarget = false;
 
         _continueButton.onClick.AddListener(Continue);
+        if (onParchment)
+        {
+            ScrollPanelArt.InkifyRecursive(_panelRoot.transform);
+            ScrollPanelArt.Inkify(label);
+        }
         _panelRoot.SetActive(false);
     }
 }

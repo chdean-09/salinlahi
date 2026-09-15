@@ -34,6 +34,7 @@ public class SymbolLearningCardController : MonoBehaviour
     private readonly List<ContentRequirement> _cards = new();
     private bool _continueRequested;
     private bool _runtimePanelBuilt;
+    private bool _onParchment;
     private Button _replayAudioButtonComponent;
     private float _lastPronunciationTime = float.NegativeInfinity;
 
@@ -276,6 +277,7 @@ public class SymbolLearningCardController : MonoBehaviour
         // quad is the approved unstyled fallback (see FocusWordPreviewController).
         Image background = _panelRoot.GetComponent<Image>();
         background.color = new Color(0.04f, 0.06f, 0.12f, 0.94f);
+        _onParchment = ScrollPanelArt.ApplyFull(background);
 
         GameObject glyphObject = new GameObject("[Runtime] SymbolLearningGlyph", typeof(RectTransform), typeof(Image));
         glyphObject.transform.SetParent(_panelRoot.transform, false);
@@ -344,6 +346,12 @@ public class SymbolLearningCardController : MonoBehaviour
         continueLabel.alignment = TextAlignmentOptions.Center;
         continueLabel.raycastTarget = false;
 
+        if (_onParchment)
+        {
+            ScrollPanelArt.InkifyRecursive(_panelRoot.transform);
+            ScrollPanelArt.Inkify(continueLabel);
+        }
+
         _panelRoot.SetActive(false);
     }
 
@@ -366,5 +374,7 @@ public class SymbolLearningCardController : MonoBehaviour
         _progressText.alignment = TextAlignmentOptions.Center;
         _progressText.raycastTarget = false;
         TutorialFontProvider.ApplyTo(_progressText);
+        if (_onParchment)
+            ScrollPanelArt.Inkify(_progressText);
     }
 }

@@ -173,11 +173,18 @@ public sealed class WaveClearedScreenUI : MonoBehaviour
         Image cardImage = card.GetComponent<Image>();
         cardImage.color = new Color32(45, 32, 25, 255);
         cardImage.raycastTarget = true;
+        bool onParchment = ScrollPanelArt.ApplyFull(cardImage);
 
         _bannerText = CreateText(card.transform, "BannerText", string.Empty, 45f, 120f, 56f);
         _heartsText = CreateText(card.transform, "HeartsText", string.Empty, 185f, 90f, 36f);
         _continueButton = CreateButton(
             card.transform, "ContinueButton", WaveClearedCopy.ContinueLabel, 25f);
+
+        if (onParchment)
+        {
+            ScrollPanelArt.InkifyRecursive(card.transform);
+            ScrollPanelArt.Inkify(_continueButton.GetComponentInChildren<TMP_Text>(true));
+        }
     }
 
     // Visual constants deliberately mirror LevelContentMissingPanel so the runtime-built

@@ -245,6 +245,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         panelImage.sprite = defaultUiSprite;
         panelImage.color = new Color(0.04f, 0.06f, 0.12f, 0.94f);
         panelImage.raycastTarget = false;
+        bool onParchment = ScrollPanelArt.ApplyTop(panelImage);
         panel.SetActive(false);
 
         GameObject instructionObject =
@@ -311,6 +312,9 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         label.color = Color.white;
         label.raycastTarget = false;
         SetStretch(labelObject.GetComponent<RectTransform>(), Vector2.zero, Vector2.zero);
+
+        if (onParchment)
+            ScrollPanelArt.InkifyRecursive(panel.transform);
 
         _cluePanelRoot = panel;
         _clueText = clueText;

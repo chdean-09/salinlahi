@@ -401,10 +401,13 @@ public class PauseMenuUI : MonoBehaviour
         Image cardImage = card.GetComponent<Image>();
         cardImage.color = new Color32(45, 32, 25, 255);
         cardImage.raycastTarget = true;
+        bool onParchment = ScrollPanelArt.ApplyFull(cardImage);
 
         _confirmationPromptLabel = CreateOverlayText(card.transform, "PromptLabel", string.Empty);
         _confirmationConfirmButton = CreateOverlayButton(card.transform, "ConfirmButton", "Confirm", 150f);
         _confirmationCancelButton = CreateOverlayButton(card.transform, "CancelButton", "Cancel", 30f);
+        if (onParchment)
+            ScrollPanelArt.InkifyRecursive(card.transform);
         _confirmationPanel = root;
 
         root.SetActive(false);

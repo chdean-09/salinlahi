@@ -168,10 +168,14 @@ public sealed class MemoryClaimPanel : MonoBehaviour
         Image cardImage = card.GetComponent<Image>();
         cardImage.color = new Color32(45, 32, 25, 255);
         cardImage.raycastTarget = true;
+        bool onParchment = ScrollPanelArt.ApplyFull(cardImage);
 
         _bodyText = CreateText(card.transform, "BodyText", string.Empty, 60f, 120f, 36f);
         _claimButton = CreateButton(card.transform, "ClaimButton", MemoryCardCopy.ClaimLabel, -190f, 30f);
         _dismissButton = CreateButton(card.transform, "DismissButton", MemoryCardCopy.CloseLabel, 190f, 30f);
+
+        if (onParchment)
+            ScrollPanelArt.InkifyRecursive(card.transform);
     }
 
     private static TMP_Text CreateText(

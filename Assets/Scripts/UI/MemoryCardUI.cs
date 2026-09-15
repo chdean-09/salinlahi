@@ -306,6 +306,7 @@ public sealed class MemoryCardUI : MonoBehaviour
         Image cardImage = card.GetComponent<Image>();
         cardImage.color = new Color32(45, 32, 25, 255);
         cardImage.raycastTarget = true;
+        bool onParchment = ScrollPanelArt.ApplyFull(cardImage);
 
         _frontRoot = CreateFace(card.transform, "FrontFace");
         _backRoot = CreateFace(card.transform, "BackFace");
@@ -328,6 +329,9 @@ public sealed class MemoryCardUI : MonoBehaviour
 
         _flipButton = CreateButton(card.transform, "FlipButton", MemoryCardCopy.FlipLabel, -250f, 24f);
         _closeButton = CreateButton(card.transform, "CloseButton", MemoryCardCopy.CloseLabel, 250f, 24f);
+
+        if (onParchment)
+            ScrollPanelArt.InkifyRecursive(card.transform);
     }
 
     private static GameObject CreateFace(Transform parent, string name)

@@ -173,12 +173,18 @@ public sealed class LevelReadyScreenController : MonoBehaviour
         Image panelImage = _panelRoot.GetComponent<Image>();
         panelImage.color = new Color(0.025f, 0.035f, 0.08f, 0.98f);
         panelImage.raycastTarget = true;
+        bool onParchment = ScrollPanelArt.ApplyFull(panelImage);
 
         _titleText = CreateText("Title", _panelRoot.transform, 54f,
             new Vector2(0.08f, 0.58f), new Vector2(0.92f, 0.88f));
         _objectiveText = CreateText("Objective", _panelRoot.transform, 34f,
             new Vector2(0.10f, 0.38f), new Vector2(0.90f, 0.58f));
         _objectiveText.alignment = TextAlignmentOptions.Center;
+        if (onParchment)
+        {
+            ScrollPanelArt.Inkify(_titleText);
+            ScrollPanelArt.Inkify(_objectiveText);
+        }
 
         GameObject buttonObject = new GameObject(
             "StartButton",
@@ -207,6 +213,8 @@ public sealed class LevelReadyScreenController : MonoBehaviour
         label.alignment = TextAlignmentOptions.Center;
         label.raycastTarget = false;
         TutorialFontProvider.ApplyTo(label);
+        if (onParchment)
+            ScrollPanelArt.Inkify(label);
 
         GameObject backObject = new GameObject("BackButton", typeof(RectTransform), typeof(Image), typeof(Button));
         backObject.transform.SetParent(_panelRoot.transform, false);

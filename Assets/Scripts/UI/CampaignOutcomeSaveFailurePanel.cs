@@ -165,13 +165,18 @@ public sealed class CampaignOutcomeSaveFailurePanel : MonoBehaviour
         cardRect.pivot = new Vector2(0.5f, 0.5f);
         cardRect.anchoredPosition = Vector2.zero;
         cardRect.sizeDelta = new Vector2(820f, 680f);
-        card.GetComponent<Image>().color = new Color32(45, 32, 25, 255);
-        card.GetComponent<Image>().raycastTarget = true;
+        Image cardImage = card.GetComponent<Image>();
+        cardImage.color = new Color32(45, 32, 25, 255);
+        cardImage.raycastTarget = true;
+        bool onParchment = ScrollPanelArt.ApplyFull(cardImage);
 
         _titleText = CreateText(card.transform, "TitleText", "Your progress is waiting to be saved", 45f, 120f, 48f);
         _bodyText = CreateText(card.transform, "BodyText", string.Empty, 185f, 280f, 32f);
         _retryButton = CreateButton(card.transform, "RetryButton", "Retry", 145f);
         _mainMenuButton = CreateButton(card.transform, "MainMenuButton", "Main Menu", 25f);
+
+        if (onParchment)
+            ScrollPanelArt.InkifyRecursive(card.transform);
     }
 
     private static TMP_Text CreateText(

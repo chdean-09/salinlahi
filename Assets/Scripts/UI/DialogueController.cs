@@ -36,6 +36,7 @@ public class DialogueController : MonoBehaviour
     private int _lineIndex;
     private bool _isTypewriting;
     private Coroutine _typewriterRoutine;
+    private bool _onParchment;
 
     public static DialogueController CreateRuntime()
     {
@@ -303,8 +304,37 @@ public class DialogueController : MonoBehaviour
     private void ConfigureResponsiveLayout(bool hasPortrait)
     {
         RectTransform panel = ResolvePanelRect();
+        _onParchment = ApplyDialogueFrame(panel);
         ApplyResponsiveDialogueLayout(panel, _speakerText, _bodyText, _portraitImage, hasPortrait);
         ClampPanelToBaseBottom(panel);
+        if (_onParchment)
+        {
+            ScrollPanelArt.Inkify(_speakerText);
+            ScrollPanelArt.Inkify(_bodyText);
+        }
+    }
+
+    // The dialogue panel is a parchment scroll-top: rod along the top edge, parchment
+    // body below. Works for both the runtime overlay (Image on the root) and the
+    // serialized scene variant (Image on a child panel). The portrait is skipped.
+    private bool ApplyDialogueFrame(RectTransform panel)
+    {
+        if (panel == null)
+            return false;
+
+        Image background = panel.GetComponent<Image>();
+        if (background == null)
+        {
+            foreach (Image image in panel.GetComponentsInChildren<Image>(true))
+            {
+                if (_portraitImage != null && image == _portraitImage)
+                    continue;
+                background = image;
+                break;
+            }
+        }
+
+        return ScrollPanelArt.ApplyTop(background);
     }
 
     // Pins the panel top to the base's bottom edge so the dialogue box never overlaps the
