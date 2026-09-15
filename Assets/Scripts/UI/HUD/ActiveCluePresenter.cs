@@ -1594,6 +1594,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
         railRect.sizeDelta = new Vector2(totalWidth, labelRow + _slotSize.y);
 
+        BuildLabelRowPlate(railRect, totalWidth, slotRowTop, labelRow);
+
         float x = 0f;
         bool anyWordPlaced = false;
         for (int wordIndex = 0; wordIndex < words.Count; wordIndex++)
@@ -1688,6 +1690,59 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     /// <see cref="RepaintRail"/>.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// One continuous plate behind the whole romanised label row.
+    ///
+    /// <para>
+    /// The boxes got their own plates because the rail sits over the fence, but the label row sits
+    /// over it too, and gold text on brown planks turned out to be the worst pairing left on the
+    /// screen — worse than the glyphs ever were, because the fence's vertical plank seams cut
+    /// straight through the letterforms. A screenshot showed it immediately; no test could have.
+    /// </para>
+    ///
+    /// <para>
+    /// One strip rather than a plate per label, because the labels are different widths and four
+    /// separately-sized blobs under four evenly-spaced boxes read as debris. Unlike the slot plates
+    /// this one is always visible: an unearned slot still prints its mask here, and an illegible
+    /// mask is no better than an illegible syllable.
+    /// </para>
+    /// </summary>
+    private void BuildLabelRowPlate(
+        RectTransform railRect, float totalWidth, float slotRowTop, float labelRow)
+    {
+        if (totalWidth <= 0f || labelRow <= 0f)
+            return;
+
+        var plateObject = new GameObject(
+            "[Runtime] RestorationRailLabelPlate", typeof(RectTransform), typeof(Image));
+        plateObject.transform.SetParent(railRect, false);
+        // First child, so every box, divider and label draws over it.
+        plateObject.transform.SetAsFirstSibling();
+
+        Image plate = plateObject.GetComponent<Image>();
+        plate.color = _slotPlateColor;
+        plate.raycastTarget = false;
+
+        // A little wider than the slots so the row reads as one band rather than as a lid that
+        // stops exactly at the first and last box.
+        const float sidePadding = 12f;
+
+        // The label row's own height stops at the text box, but the mask glyph ("__") draws on the
+        // baseline and hangs a few pixels past it, so a plate cut to the row height exactly leaves
+        // the underscores of an UNEARNED slot straddling its bottom edge and back on the planks —
+        // the one state the plate most needs to cover, since a mask is harder to read than a word.
+        const float bottomBleed = 16f;
+
+        var rect = (RectTransform)plateObject.transform;
+        rect.anchorMin = new Vector2(0f, 1f);
+        rect.anchorMax = new Vector2(0f, 1f);
+        rect.pivot = new Vector2(0f, 1f);
+        rect.anchoredPosition = new Vector2(
+            -sidePadding, slotRowTop - _slotSize.y - _latinWordLabelGap);
+        rect.sizeDelta = new Vector2(
+            totalWidth + (sidePadding * 2f), _latinWordLabelRowHeight + bottomBleed);
+    }
+
     private TextMeshProUGUI BuildSlotLabel(
         RectTransform railRect,
         TextMeshProUGUI fontTemplate,

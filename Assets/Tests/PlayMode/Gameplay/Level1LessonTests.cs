@@ -1989,6 +1989,47 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 + "retired one's cleanup.");
         }
 
+        /// <summary>
+        /// The romanised label row sits on the fence just as the boxes do, and gold text on brown
+        /// planks was the worst pairing left on screen once the boxes had their plates — the
+        /// fence's plank seams cut straight through the letterforms. Only a screenshot caught it.
+        /// This pins the plate that fixed it: present, opaque, and BEHIND the labels, since a plate
+        /// drawn over them would hide the thing it was added to make readable.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator RestorationRail_PutsAnOpaquePlateBehindTheRomanisedLabelRow()
+        {
+            yield return null;
+
+            BuildRailFixture("labelplate");
+
+            var railRoot = GetPrivateField<GameObject>(_presenter, "_railRoot");
+            Transform plate = railRoot.transform.Find("[Runtime] RestorationRailLabelPlate");
+            Assert.IsNotNull(plate, "The label row must have a backing plate.");
+
+            var image = plate.GetComponent<Image>();
+            Assert.IsNotNull(image, "The label plate must actually draw something.");
+            Assert.GreaterOrEqual(image.color.a, 0.99f,
+                "A translucent plate lets the planks back through the letterforms, which is the "
+                + "whole problem it was added for.");
+
+            Assert.AreEqual(0, plate.GetSiblingIndex(),
+                "The plate must be the first child so every label, box and divider draws over it.");
+
+            int labelIndex = -1;
+            for (int i = 0; i < railRoot.transform.childCount; i++)
+            {
+                if (railRoot.transform.GetChild(i).name.Contains("RestorationSlotLabel"))
+                {
+                    labelIndex = i;
+                    break;
+                }
+            }
+
+            Assert.Greater(labelIndex, plate.GetSiblingIndex(),
+                "Labels must draw after the plate, not under it.");
+        }
+
         // ---- rail fixture helpers ----
 
         private readonly struct RailFixture
