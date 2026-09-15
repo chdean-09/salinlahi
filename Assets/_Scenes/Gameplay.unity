@@ -943,20 +943,21 @@ MonoBehaviour:
   _wordRestoredText: {fileID: 0}
   _wordRestoredDurationSeconds: 1.4
   _restorationProgressText: {fileID: 1770966068}
-  _railAnchoredPosition: {x: 0, y: -120}
-  _slotSize: {x: 62, y: 62}
-  _slotSpacing: 9
-  _wordGap: 46
-  _slotGlyphInset: 6
+  _railAnchoredPosition: {x: 0, y: 96}
+  _slotSize: {x: 124, y: 124}
+  _slotSpacing: 16
+  _wordGap: 80
+  _slotGlyphInset: 10
   _emptySlotColor: {r: 1, g: 1, b: 1, a: 0.22}
   _filledSlotColor: {r: 1, g: 0.84, b: 0.29, a: 0.85}
-  _filledGlyphColor: {r: 1, g: 1, b: 1, a: 1}
+  _filledGlyphColor: {r: 0.7019608, g: 0.5019608, b: 0.07450981, a: 1}
   _slotFrameBorderFraction: 0.09
-  _showLatinWordLabels: 0
-  _latinWordLabelFontSize: 24
+  _latinWordLabelFontSize: 46
   _latinWordLabelColor: {r: 1, g: 0.84, b: 0.29, a: 1}
-  _latinWordLabelRowHeight: 30
-  _latinWordLabelGap: 6
+  _latinWordLabelRowHeight: 56
+  _latinWordLabelGap: 10
+  _wordSeparatorFontSize: 64
+  _wordSeparatorColor: {r: 1, g: 0.84, b: 0.29, a: 0.55}
   _railFlashCount: 3
   _railFlashHalfCycleSeconds: 0.12
   _railFlashDipAlpha: 0.3
@@ -7318,81 +7319,6 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
---- !u!1 &722242122
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 722242123}
-  - component: {fileID: 722242125}
-  - component: {fileID: 722242124}
-  m_Layer: 0
-  m_Name: GuideImage
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &722242123
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 722242122}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 941840851}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -320}
-  m_SizeDelta: {x: 320, y: 320}
-  m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &722242124
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 722242122}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 0
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 0}
-  m_Type: 0
-  m_PreserveAspect: 1
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
---- !u!222 &722242125
-CanvasRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 722242122}
-  m_CullTransparentMesh: 1
 --- !u!1 &754265715
 GameObject:
   m_ObjectHideFlags: 0
@@ -9005,62 +8931,6 @@ MonoBehaviour:
   m_EffectColor: {r: 0, g: 0, b: 0, a: 0.5}
   m_EffectDistance: {x: 2, y: -3}
   m_UseGraphicAlpha: 1
---- !u!1 &941840850
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 941840851}
-  - component: {fileID: 941840852}
-  m_Layer: 0
-  m_Name: FirstDrawGuide
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &941840851
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 941840850}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 722242123}
-  m_Father: {fileID: 1441290015}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
-  m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &941840852
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 941840850}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b6085926adfa24bf5b657d57d744fd05, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Salinlahi.Runtime::FirstDrawGuidePresenter
-  _guideImage: {fileID: 722242124}
-  _steps:
-  - {fileID: 11400000, guid: 8b9e5f2d0c1a4b6e8f3d7c9a1e5b2f4d, type: 2}
-  - {fileID: 11400000, guid: ad1f7b3e5c9a4d2f8b6e0c1a3f5d7e9b, type: 2}
-  - {fileID: 11400000, guid: 9c0e6a3d1b5f4e7a8c2d9f0b6a1e3c5d, type: 2}
-  _timeoutSeconds: 8
-  _guideAlpha: 0.35
 --- !u!1 &944220756
 GameObject:
   m_ObjectHideFlags: 0
@@ -11421,6 +11291,10 @@ MonoBehaviour:
   _abilityStepSeconds: 3
   _releaseRampSeconds: 0.4
   _spawnSettleSeconds: 0.1
+  _onScreenWaitTimeoutSeconds: 14
+  _onScreenMarginWorld: 0.35
+  _hudOcclusionRect: {fileID: 0}
+  _hudClearanceWorld: 0.25
   _abilityBeatArmTimeoutSeconds: 15
   _drawSuccessHoldSeconds: 1.5
 --- !u!1 &1198465018
@@ -13150,7 +13024,6 @@ RectTransform:
   - {fileID: 602798923}
   - {fileID: 1187157831}
   - {fileID: 2089625997}
-  - {fileID: 941840851}
   m_Father: {fileID: 490898503}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}

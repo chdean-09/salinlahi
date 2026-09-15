@@ -1,13 +1,16 @@
 /// <summary>
 /// Player-facing wording for the drawing-feedback states that are not plain success or failure:
-/// a syllable needed later, a syllable already restored, a syllable no enemy is carrying, a syllable
-/// whose carrier turned out to be a false copy, and a drawing refused for accuracy.
+/// a syllable needed later, a syllable already restored, a syllable whose carrier turned out to be
+/// a false copy, and a drawing refused for accuracy.
 ///
 /// <para>Kept apart from <see cref="DrawingFeedbackVocabulary"/>, which words the accept/reject
-/// verdict. These five say something about the BOARD rather than about the stroke, and they must be
-/// readable next to each other to stay distinct — a later-needed syllable and a miss are the two
-/// states most easily collapsed into the same sentence, and collapsing them is exactly the failure
-/// the filler policy cannot survive.</para>
+/// verdict. These four say something about the BOARD rather than about the stroke, and they must be
+/// readable next to each other to stay distinct.</para>
+///
+/// <para><b>A miss gets no line.</b> <see cref="DrawTextRelation.NoCarrier"/> used to print "No
+/// enemy out there carries {syllable} right now."; that message was removed on request. The miss
+/// still answers — the presenter's miss response and its cue counter are untouched — it just
+/// answers without words.</para>
 /// </summary>
 public static class DrawFeedbackVocabulary
 {
@@ -29,9 +32,10 @@ public static class DrawFeedbackVocabulary
     /// Three constraints, and this line is wrong the moment any one of them slips.
     ///
     /// <b>It must not read as a miss.</b> The player recognised the glyph and a body on screen died
-    /// for it, so <see cref="ForMiss"/>'s claim — nothing out there is carrying that one — is simply
-    /// false here. A player who watches an enemy break apart while being told the board was empty
-    /// learns to distrust the prompt rather than the copy.
+    /// for it, so the miss claim — nothing out there is carrying that one — is simply false here. A
+    /// player who watches an enemy break apart while being told the board was empty learns to
+    /// distrust the prompt rather than the copy. That the miss no longer prints a line of its own
+    /// does not relax this: borrowing the miss's wording here would resurrect the same lie.
     ///
     /// <b>It must not read as <see cref="LaterNeeded"/>.</b> The drawn syllable IS the one the text
     /// is waiting on. Order was never the problem, so nothing here may mention order, turns, or
@@ -48,41 +52,13 @@ public static class DrawFeedbackVocabulary
     /// <summary>Wording for a drawing refused on accuracy. Names the shape, never the score.</summary>
     public const string SloppyRetry = "Draw it again — follow the shape.";
 
-    /// <summary>
-    /// Fallback miss wording for when the drawn glyph could not be resolved to content and so cannot
-    /// be named. Same claim as <see cref="ForMiss"/>, minus the glyph.
-    /// </summary>
-    public const string MissUnnamed = "Nothing out there is carrying that one right now.";
-
-    /// <summary>
-    /// Wording for a miss: a recognised syllable that no on-screen enemy carries.
-    /// </summary>
-    /// <remarks>
-    /// This string is a statement about the board and must stay one. It also serves the player who
-    /// draws a syllable the spawn schedule has gated out of the level so far — and that player must
-    /// not be able to infer the gate from what they are told. A rule-shaped phrasing leaks it
-    /// instantly: "not yet", "not available yet", "you haven't unlocked", "that comes later" all
-    /// describe a schedule the player is not supposed to know exists, and the last of those would
-    /// additionally be indistinguishable from <see cref="LaterNeeded"/>, which is a completely
-    /// different situation. Describing only what is on screen is true in both cases and leaks
-    /// nothing in either, so one string covers both.
-    ///
-    /// If this copy is ever revised, the constraint survives the revision: no "yet", no reference to
-    /// order, unlocking, or availability. Only what is or is not out there at this moment.
-    /// </remarks>
-    /// <param name="glyphLabel">
-    /// How to name the drawn syllable to the player — its romanised syllable where one is authored.
-    /// </param>
-    public static string ForMiss(string glyphLabel)
-    {
-        if (string.IsNullOrEmpty(glyphLabel))
-            return MissUnnamed;
-
-        return $"No enemy out there carries {glyphLabel} right now.";
-    }
-
     /// <summary>The prompt for one text relation, or empty when that relation says nothing.</summary>
-    public static string ForRelation(DrawTextRelation relation, string glyphLabel)
+    /// <remarks>
+    /// Takes the relation alone. It used to take the drawn syllable as well, purely so the miss line
+    /// could name it; with that line gone no surviving prompt mentions the glyph, and keeping the
+    /// parameter would leave a hook inviting one to start.
+    /// </remarks>
+    public static string ForRelation(DrawTextRelation relation)
     {
         switch (relation)
         {
@@ -92,13 +68,11 @@ public static class DrawFeedbackVocabulary
                 return AlreadyFilled;
             case DrawTextRelation.FalseCopyShattered:
                 return FalseCopyShattered;
-            case DrawTextRelation.NoCarrier:
-                return ForMiss(glyphLabel);
             default:
-                // FillsCursorSlot is its own reward and NotInTargetText has nothing to promise the
-                // player, so neither gets a line. Silence is a deliberate response here, not a gap:
-                // a prompt on every successful fill would turn the one state that needs no
-                // explanation into the noisiest one on screen.
+                // FillsCursorSlot is its own reward, NotInTargetText has nothing to promise the
+                // player, and NoCarrier's line was cut on request. Silence is a deliberate response
+                // here, not a gap: a prompt on every successful fill would turn the one state that
+                // needs no explanation into the noisiest one on screen.
                 return string.Empty;
         }
     }

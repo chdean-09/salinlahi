@@ -55,33 +55,41 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     [SerializeField] private TextMeshProUGUI _restorationProgressText;
 
     [Header("Restoration Slot Rail")]
-    [Tooltip("Where the rail sits under the HUD container, anchored to the top centre.\n\n"
-             + "Sits ABOVE the clue panel rather than at the old readout's spot. The rail is "
-             + "roughly 98px tall, and at the readout's -345 it occupied the 345-443 band, which "
-             + "overlapped both ActiveCluePanel (230-410) and FeedbackMessage (320-410) by about "
-             + "65px. It is also the element that should read first: the target text is what the "
-             + "player is filling, so it belongs across the top, with the clue panel beneath it.\n\n"
-             + "MEASURED, NOT VERIFIED BY EYE. Confirm on a notched device — the rail parents to "
-             + "HUDLayer, which SafeAreaHandler insets at runtime, so its real top edge moves down "
-             + "by the device inset while FullScreenOverlay siblings do not.")]
-    [SerializeField] private Vector2 _railAnchoredPosition = new Vector2(0f, -120f);
+    [Tooltip("Where the rail sits under the HUD container, anchored to the BOTTOM centre. y is "
+             + "measured UP from the bottom edge to the rail's own bottom edge, so a larger y "
+             + "lifts the rail further off the foot of the screen.\n\n"
+             + "The rail used to hang from the top centre at y=-120, above the clue panel. It was "
+             + "moved to the bottom band on request: the top of the screen is where the enemies "
+             + "walk in and where the clue panel and wave text already sit, and the target text "
+             + "the player is filling reads better as the player's own row along the foot of the "
+             + "field, under the base and under Juan.\n\n"
+             + "y=170 clears the bottom band the base art occupies. At the 1080x1920 reference and "
+             + "the gameplay camera's orthographic size of 10, one world unit is 96 canvas units "
+             + "and the camera spans world y -10..10, so the base at world y=-7.8 sits about 211 "
+             + "units up and Juan's walk ends at world y=-8.5, about 144 units up. The rail is "
+             + "about 98 units tall, so at y=170 it occupies 170-268 — above the base's foot, "
+             + "clear of Juan, and well inside the screen.\n\n"
+             + "The safe area needs no arithmetic here: the rail parents to HUDLayer, a full-rect "
+             + "child of HUDRoot, and HUDRoot carries SafeAreaHandler — so y=0 is the bottom of "
+             + "the SAFE area and the home indicator's inset is already taken out underneath it.")]
+    [SerializeField] private Vector2 _railAnchoredPosition = new Vector2(0f, 96f);
 
     [Tooltip("Size of one target-text slot in canvas units. Slots are square by authoring "
              + "convention but the two axes are separate so a wide glyph can be given room.")]
-    [SerializeField] private Vector2 _slotSize = new Vector2(62f, 62f);
+    [SerializeField] private Vector2 _slotSize = new Vector2(124f, 124f);
 
     [Tooltip("Gap between two slots inside the same focus word, in canvas units. Small: slots of "
              + "one word have to read as one text rather than as separate collectables.")]
-    [SerializeField, Min(0f)] private float _slotSpacing = 9f;
+    [SerializeField, Min(0f)] private float _slotSpacing = 16f;
 
     [Tooltip("Gap between two focus words' slot groups, in canvas units. Must be clearly wider "
              + "than the slot spacing — the grouping is what tells the player INA AMA is two "
              + "words and not one run of four symbols.")]
-    [SerializeField, Min(0f)] private float _wordGap = 46f;
+    [SerializeField, Min(0f)] private float _wordGap = 80f;
 
     [Tooltip("How far the Baybayin glyph is inset inside its slot, in canvas units, so the frame "
              + "stays visible around a filled slot.")]
-    [SerializeField, Min(0f)] private float _slotGlyphInset = 6f;
+    [SerializeField, Min(0f)] private float _slotGlyphInset = 10f;
 
     [Tooltip("Frame colour of a slot that is still waiting for its symbol.")]
     [SerializeField] private Color _emptySlotColor = new Color(1f, 1f, 1f, 0.22f);
@@ -90,8 +98,14 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     [SerializeField] private Color _filledSlotColor = new Color(1f, 0.84f, 0.29f, 0.85f);
 
     [Tooltip("Tint applied to the restored slot's glyph. The glyph art is white, so this is the "
-             + "colour the player actually reads the symbol in.")]
-    [SerializeField] private Color _filledGlyphColor = Color.white;
+             + "colour the player actually reads the symbol in.\n\n"
+             + "Dark gold, on request. The value is the menu gold "
+             + "EnemyDiscoveryOnboardingController already uses (0.702, 0.502, 0.075) rather than a "
+             + "new one invented here, so the symbol inside the box matches the gold the rest of "
+             + "the game's chrome is keyed to. It is NOT the rail's own filled-frame gold "
+             + "(1, 0.84, 0.29): that is a bright highlight, and a glyph painted in it against a "
+             + "frame painted in it would lose its edge against the frame.")]
+    [SerializeField] private Color _filledGlyphColor = new Color(0.7019608f, 0.5019608f, 0.07450981f, 1f);
 
     [Tooltip("Thickness of a slot frame's border as a fraction of the slot, used to generate the "
              + "hollow frame sprite. The frame is generated rather than authored because there is "
@@ -99,33 +113,51 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     [SerializeField, Range(0.02f, 0.4f)] private float _slotFrameBorderFraction = 0.09f;
 
     [Header("Rail Latin Labels")]
-    // Default OFF, and §2 B1 asks for bare slots: the player's first model of the level has to be
-    // "fill these", which a Latin word sitting beside the slots answers for them. It is also the
-    // whole of Abo ng Simula's ability — the ash masks the clue panel's Latin spelling, and a rail
-    // printing "INA" next to the masked clue hands that reading back for free, which made the
-    // level's signature ability cosmetic. A word that is already COMPLETE is exempt below: there is
-    // nothing left to leak once every slot of it is filled, and §2 B10 wants the finished text
-    // readable as one word.
-    [Tooltip("Prints each focus word's Latin spelling beside its slots while the word is still "
-             + "incomplete. OFF by default — bare slots. Turning it on is refused on any level "
-             + "whose roster can mask the clue, because there it would give back the exact "
-             + "reading the mask removed.")]
-    [SerializeField] private bool _showLatinWordLabels;
+    // These are now PER-SLOT labels printed UNDER each box, and they are always shown. That is a
+    // deliberate reversal, requested directly, of the policy that used to live here: one Latin label
+    // per WORD, beside the slots, default OFF, refused outright on any level whose roster can mask
+    // the clue — because a rail printing "INA" next to an ash-masked clue handed back the exact
+    // reading Abo ng Simula's ability had just taken away.
+    //
+    // The reversal is narrower than it looks but it is not free, and it is worth stating plainly:
+    // naming every syllable of the target text under its own box for the whole level does reduce
+    // what the ash can still hide to the ORDER of the syllables rather than their identity. It was
+    // asked for on the same pass that removed the first-draw trace guide from the field, which
+    // leaves these labels as the only standing cue for which box wants which symbol.
 
-    [Tooltip("Font size of a focus word's Latin label on the rail.")]
-    [SerializeField, Min(1f)] private float _latinWordLabelFontSize = 24f;
+    [Tooltip("Font size of a slot's romanised label on the rail.")]
+    [SerializeField, Min(1f)] private float _latinWordLabelFontSize = 46f;
 
-    [Tooltip("Colour of a focus word's Latin label on the rail.")]
+    [Tooltip("Colour of a slot's romanised label on the rail.")]
     [SerializeField] private Color _latinWordLabelColor = new Color(1f, 0.84f, 0.29f, 1f);
 
-    [Tooltip("Height reserved above the slots for the Latin labels, in canvas units. The row is "
-             + "reserved even while every label is hidden: a word completing mid-level would "
-             + "otherwise grow the rail and move every slot, and DrawFeedbackPresenter flies a "
-             + "badge to a slot rect that must not travel while the badge is in the air.")]
-    [SerializeField, Min(0f)] private float _latinWordLabelRowHeight = 30f;
+    [Tooltip("Height reserved BELOW the slots for the romanised labels, in canvas units. The row is "
+             + "reserved whether or not a label fills it, so the slots sit at a fixed height for "
+             + "the whole level: DrawFeedbackPresenter flies a badge to a slot rect that must not "
+             + "travel while the badge is in the air.")]
+    [SerializeField, Min(0f)] private float _latinWordLabelRowHeight = 56f;
 
-    [Tooltip("Gap between the Latin label row and the slots below it, in canvas units.")]
-    [SerializeField, Min(0f)] private float _latinWordLabelGap = 6f;
+    [Tooltip("Gap between the slots and the romanised label row beneath them, in canvas units.")]
+    [SerializeField, Min(0f)] private float _latinWordLabelGap = 10f;
+
+    [Tooltip("Font size of the divider drawn between two focus words' slot groups. Larger than the "
+             + "slot labels: it is a piece of punctuation between groups, not a reading.")]
+    [SerializeField, Min(1f)] private float _wordSeparatorFontSize = 64f;
+
+    [Tooltip("Colour of the divider between two focus words' slot groups. Dimmer than the labels "
+             + "on purpose — it separates the groups without competing with them for attention.")]
+    [SerializeField] private Color _wordSeparatorColor = new Color(1f, 0.84f, 0.29f, 0.55f);
+
+    [Header("Rail Slot Fill Pop")]
+    [Tooltip("Peak scale of the brief pop played on the ONE slot that just filled. This is the beat "
+             + "that teaches the lesson's whole point — the enemy fell and THAT box became a "
+             + "letter — so the box has to visibly do something at the moment it fills rather than "
+             + "just quietly change colour. 1 disables the pop.")]
+    [SerializeField, Min(1f)] private float _slotFillPopScale = 1.28f;
+
+    [Tooltip("Seconds for the fill pop's full out-and-back. Short on purpose: a flourish here "
+             + "competes with the restoration line being read.")]
+    [SerializeField, Min(0f)] private float _slotFillPopSeconds = 0.42f;
 
     [Header("Rail Completion Flash")]
     [Tooltip("How many times the whole rail flashes when the target text completes. Zero shows "
@@ -196,6 +228,13 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     /// can be repainted from restoration state without rebuilding, and both of its graphics, so a
     /// repaint touches no component lookups.
     /// </summary>
+    /// <summary>
+    /// The mark drawn between two focus words' slot groups. A colon rather than a slash or a bullet:
+    /// it is the divider the requested shape asks for, it is present in every font the HUD can fall
+    /// back to, and it carries no reading of its own that could be mistaken for a syllable.
+    /// </summary>
+    private const string WordSeparatorText = ":";
+
     private sealed class RailSlot
     {
         public FocusWordDefinition Word;
@@ -205,15 +244,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         public Image Glyph;
     }
 
-    /// <summary>One focus word's group on the rail, kept so its Latin label can be repainted.</summary>
-    private sealed class RailWord
-    {
-        public FocusWordDefinition Word;
-        public TextMeshProUGUI LatinLabel;
-    }
-
     private readonly List<RailSlot> _railSlots = new List<RailSlot>();
-    private readonly List<RailWord> _railWords = new List<RailWord>();
 
     /// <summary>
     /// The rail's slot rects in flattened reading order, handed out through
@@ -226,13 +257,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private CanvasGroup _railCanvasGroup;
     private Sprite _runtimeSlotFrameSprite;
     private Coroutine _railFlashRoutine;
-
-    /// <summary>
-    /// Cached answer to "can this level's roster mask the clue", which decides whether the Latin
-    /// labels may be switched on at all. Computed once per level: the roster cannot change during
-    /// a run, and the check walks every wave.
-    /// </summary>
-    private bool? _levelMasksTheClue;
 
     /// <summary>
     /// Last observed ash state, so the onset can be spotted. Without this the ash would only
@@ -503,10 +527,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         _level = level;
         _restorationState.Configure(level?.focusWords);
 
-        // A new level means a new roster and a new target text, so both cached answers about the
-        // old one are dropped: the mask verdict is recomputed on demand and the rail is rebuilt
-        // from the incoming focus words rather than repainted over the previous level's slots.
-        _levelMasksTheClue = null;
+        // A new level means a new target text, so the rail is rebuilt from the incoming focus
+        // words rather than repainted over the previous level's slots.
         DestroyRestorationRail();
 
         _resolvedChannels = level == null
@@ -1041,6 +1063,11 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         // makes the accepted syllable appear in the target text before the enemy leaves.
         UpdateCluePanel(_currentClue);
         UpdateRestorationProgress();
+
+        // Fired between the repaint and the cue, so the box has already become a letter by the time
+        // it pops and the pop lands on the same frame as the line that explains it.
+        PopSlotsForSymbol(clue.Character.stableId);
+
         ShowWordRestoredCue(restored);
     }
 
@@ -1142,8 +1169,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private const float WordRestoredCueRailGap = 34f;
 
     /// <summary>
-    /// Slides the word-restoration cue down until its top edge clears the restoration rail's bottom
-    /// edge, and leaves it wherever it already was if it is already clear.
+    /// Slides the word-restoration cue clear of the restoration rail, and leaves it wherever it
+    /// already was if it is already clear.
     ///
     /// <para>
     /// <b>Measured from the two live rects, not from authored constants.</b> The rail hangs off the
@@ -1155,8 +1182,14 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     /// </para>
     ///
     /// <para>
-    /// Only ever moves the cue DOWN. A HUD that has already placed it below the rail keeps its
-    /// authored position.
+    /// <b>The direction is chosen from where the rail actually is, and that is not cosmetic.</b>
+    /// This used to move the cue DOWN unconditionally, which was right while the rail hung from the
+    /// top of the HUD. The rail now sits in the bottom band, and "below the rail" there is off the
+    /// bottom of the screen — so an unconditional push down would silently throw the cue away, and
+    /// the cue is the line that names what the player just restored. The rail's own centre against
+    /// the canvas centre decides: a rail in the lower half pushes the cue UP above its top edge, a
+    /// rail in the upper half pushes it DOWN below its bottom edge as before. Either way the cue
+    /// ends up on the screen-centre side of the rail, which is the side with room on it.
     /// </para>
     /// </summary>
     private void MoveWordRestoredCueClearOfRail()
@@ -1177,9 +1210,15 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         float railWorldBottom = Mathf.Min(
             Mathf.Min(railCorners[0].y, railCorners[1].y),
             Mathf.Min(railCorners[2].y, railCorners[3].y));
+        float railWorldTop = Mathf.Max(
+            Mathf.Max(railCorners[0].y, railCorners[1].y),
+            Mathf.Max(railCorners[2].y, railCorners[3].y));
 
         var cueCorners = new Vector3[4];
         cueRect.GetWorldCorners(cueCorners);
+        float cueWorldBottom = Mathf.Min(
+            Mathf.Min(cueCorners[0].y, cueCorners[1].y),
+            Mathf.Min(cueCorners[2].y, cueCorners[3].y));
         float cueWorldTop = Mathf.Max(
             Mathf.Max(cueCorners[0].y, cueCorners[1].y),
             Mathf.Max(cueCorners[2].y, cueCorners[3].y));
@@ -1188,12 +1227,59 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         if (parentScale <= Mathf.Epsilon)
             return;
 
-        float desiredWorldTop = railWorldBottom - (WordRestoredCueRailGap * parentScale);
-        if (cueWorldTop <= desiredWorldTop)
-            return;
+        float gapWorld = WordRestoredCueRailGap * parentScale;
+        float correctionLocal;
 
-        float correctionLocal = (desiredWorldTop - cueWorldTop) / parentScale;
+        if (RailSitsInLowerHalf(railRect, railWorldBottom, railWorldTop))
+        {
+            // Rail along the bottom: the cue goes ABOVE it.
+            float desiredWorldBottom = railWorldTop + gapWorld;
+            if (cueWorldBottom >= desiredWorldBottom)
+                return;
+
+            correctionLocal = (desiredWorldBottom - cueWorldBottom) / parentScale;
+        }
+        else
+        {
+            // Rail along the top: the cue goes BELOW it, as it always did.
+            float desiredWorldTop = railWorldBottom - gapWorld;
+            if (cueWorldTop <= desiredWorldTop)
+                return;
+
+            correctionLocal = (desiredWorldTop - cueWorldTop) / parentScale;
+        }
+
         cueRect.anchoredPosition += new Vector2(0f, correctionLocal);
+    }
+
+    /// <summary>
+    /// Whether the rail is sitting in the bottom half of the canvas it is drawn on, which decides
+    /// which side of it has room for the word-restoration cue. Falls back to the rail's anchor when
+    /// no canvas rect can be read, so a presenter built without a canvas in a test still answers.
+    /// </summary>
+    private static bool RailSitsInLowerHalf(
+        RectTransform railRect, float railWorldBottom, float railWorldTop)
+    {
+        Canvas canvas = railRect.GetComponentInParent<Canvas>();
+        if (canvas != null && canvas.transform is RectTransform canvasRect)
+        {
+            var canvasCorners = new Vector3[4];
+            canvasRect.GetWorldCorners(canvasCorners);
+            float canvasBottom = Mathf.Min(
+                Mathf.Min(canvasCorners[0].y, canvasCorners[1].y),
+                Mathf.Min(canvasCorners[2].y, canvasCorners[3].y));
+            float canvasTop = Mathf.Max(
+                Mathf.Max(canvasCorners[0].y, canvasCorners[1].y),
+                Mathf.Max(canvasCorners[2].y, canvasCorners[3].y));
+
+            if (canvasTop > canvasBottom)
+            {
+                float railCentre = (railWorldBottom + railWorldTop) * 0.5f;
+                return railCentre < (canvasBottom + canvasTop) * 0.5f;
+            }
+        }
+
+        return railRect.anchorMin.y < 0.5f;
     }
 
     /// <summary>
@@ -1361,16 +1447,26 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         _railCanvasGroup.blocksRaycasts = false;
         _railCanvasGroup.interactable = false;
 
+        // Bottom-centre. The rail used to hang from the top of the HUD; it now sits in the band
+        // under the player's base and Juan, so the top of the screen is the enemies' and the bottom
+        // band is the player's own readout.
+        //
+        // The safe area is already handled by where this is parented, not by arithmetic here:
+        // ResolveHudContainer returns HUDLayer, which is a full-rect child of HUDRoot, and HUDRoot
+        // carries SafeAreaHandler. So y=0 for this rect is the bottom of the SAFE area, not the
+        // bottom of the glass, and the home indicator's inset has already been taken out before
+        // _railAnchoredPosition is applied on top of it.
         RectTransform railRect = _railRoot.GetComponent<RectTransform>();
-        railRect.anchorMin = new Vector2(0.5f, 1f);
-        railRect.anchorMax = new Vector2(0.5f, 1f);
-        railRect.pivot = new Vector2(0.5f, 1f);
+        railRect.anchorMin = new Vector2(0.5f, 0f);
+        railRect.anchorMax = new Vector2(0.5f, 0f);
+        railRect.pivot = new Vector2(0.5f, 0f);
         railRect.anchoredPosition = _railAnchoredPosition;
 
-        // The label row is reserved whether or not any label is ever shown, so the slots sit at a
-        // fixed height for the whole level.
+        // Slots occupy the TOP of the rail rect and their labels the row beneath, so the rail's own
+        // bottom edge is the bottom of the label row. Children are laid out from the rect's top-left
+        // as before; only the rect itself moved.
         float labelRow = _latinWordLabelRowHeight + _latinWordLabelGap;
-        float slotRowTop = -labelRow;
+        const float slotRowTop = 0f;
 
         float totalWidth = 0f;
         for (int wordIndex = 0; wordIndex < words.Count; wordIndex++)
@@ -1387,6 +1483,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         railRect.sizeDelta = new Vector2(totalWidth, labelRow + _slotSize.y);
 
         float x = 0f;
+        bool anyWordPlaced = false;
         for (int wordIndex = 0; wordIndex < words.Count; wordIndex++)
         {
             FocusWordDefinition word = words[wordIndex];
@@ -1394,21 +1491,28 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             if (slotCount == 0)
                 continue;
 
-            if (x > 0f)
-                x += _wordGap;
-
-            float wordWidth = WordWidth(slotCount);
-            _railWords.Add(new RailWord
+            // The divider goes in the gap that was already being opened between two word groups, so
+            // it costs no width and cannot push the rail wider than the collision check measured.
+            // Keyed off a word actually having been placed rather than off x > 0, because a first
+            // word placed at x = 0 is indistinguishable from no word at all by position alone.
+            if (anyWordPlaced)
             {
-                Word = word,
-                LatinLabel = BuildWordLatinLabel(
-                    railRect, fontTemplate, wordIndex, x, wordWidth),
-            });
+                BuildWordSeparator(railRect, fontTemplate, wordIndex, x, slotRowTop);
+                x += _wordGap;
+            }
+
+            anyWordPlaced = true;
+            float wordWidth = WordWidth(slotCount);
 
             // Mirrors TargetTextSlotMap.Build's flattening exactly — every reference with a symbol,
             // in authored order — because the draw-feedback report's SlotIndex is produced by that
             // type, and this list has to be index-aligned with it or a badge flies to the wrong
             // slot. A reference with no symbol is skipped by both and occupies no slot here.
+            //
+            // The per-slot label is built from this same walk, so a label belongs to exactly one box
+            // and the grouping falls out of the authored decomposition rather than out of a
+            // hardcoded 2+2. Level 1 is INA + AMA; a level whose words are 3+1 or 1+1+2 groups
+            // itself correctly here with no change.
             int emitted = 0;
             for (int slotIndex = 0;
                  word.decomposition != null && slotIndex < word.decomposition.Count;
@@ -1421,6 +1525,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
                 float slotX = x + (emitted * (_slotSize.x + _slotSpacing));
                 RailSlot built = BuildSlot(
                     railRect, word, reference, slotIndex, _railSlots.Count, slotX, slotRowTop);
+                BuildSlotLabel(
+                    railRect, fontTemplate, reference.symbol, _railSlots.Count, slotX, slotRowTop);
                 _railSlots.Add(built);
                 _railSlotAnchors.Add(built.Anchor);
                 emitted++;
@@ -1452,33 +1558,108 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         return count;
     }
 
-    private TextMeshProUGUI BuildWordLatinLabel(
+    /// <summary>
+    /// The romanised syllable printed directly beneath one slot's box, centred on it.
+    ///
+    /// <para>
+    /// One label per BOX rather than one per word: the player is being asked which symbol goes in
+    /// which box, and a word spelled out beside the group leaves them to divide it up themselves.
+    /// The label row sits below the slot row so the box and its reading are adjacent, and the rail
+    /// reads as [box][box] : [box][box] with the syllables underneath.
+    /// </para>
+    ///
+    /// <para>
+    /// The text is the symbol's own <c>syllable</c> — the same romanisation the rest of the HUD
+    /// names a glyph by — uppercased, so the row reads as labels rather than as prose.
+    /// </para>
+    /// </summary>
+    private void BuildSlotLabel(
         RectTransform railRect,
         TextMeshProUGUI fontTemplate,
-        int wordIndex,
-        float x,
-        float wordWidth)
+        BaybayinCharacterSO symbol,
+        int flattenedIndex,
+        float slotX,
+        float slotRowTop)
     {
         var labelObject = new GameObject(
-            $"[Runtime] RestorationWordLabel_{wordIndex}", typeof(RectTransform));
+            $"[Runtime] RestorationSlotLabel_{flattenedIndex}", typeof(RectTransform));
         labelObject.transform.SetParent(railRect, false);
 
         TextMeshProUGUI label = labelObject.AddComponent<TextMeshProUGUI>();
         CopyFont(fontTemplate, label);
         label.fontSize = _latinWordLabelFontSize;
-        label.alignment = TextAlignmentOptions.Center;
+        label.alignment = TextAlignmentOptions.Top;
         label.color = _latinWordLabelColor;
         label.raycastTarget = false;
-        label.text = string.Empty;
+        label.textWrappingMode = TextWrappingModes.NoWrap;
+        label.overflowMode = TextOverflowModes.Overflow;
+        label.text = ResolveSlotLatinLabel(symbol);
 
+        // Exactly the slot's own width, at the slot's own x, so "centred under its own box" is a
+        // property of the rect rather than of a measured string.
         RectTransform rect = labelObject.GetComponent<RectTransform>();
         rect.anchorMin = new Vector2(0f, 1f);
         rect.anchorMax = new Vector2(0f, 1f);
         rect.pivot = new Vector2(0f, 1f);
-        rect.anchoredPosition = new Vector2(x, 0f);
-        rect.sizeDelta = new Vector2(wordWidth, _latinWordLabelRowHeight);
+        rect.anchoredPosition =
+            new Vector2(slotX, slotRowTop - _slotSize.y - _latinWordLabelGap);
+        rect.sizeDelta = new Vector2(_slotSize.x, _latinWordLabelRowHeight);
+    }
 
-        return label;
+    /// <summary>
+    /// The divider drawn between two focus words' slot groups, vertically centred on the slot row.
+    ///
+    /// <para>
+    /// The gap alone already separated the groups; the mark makes the separation something the
+    /// player can point at rather than something they have to measure. It is drawn in the gap the
+    /// layout was opening anyway, so it adds no width.
+    /// </para>
+    /// </summary>
+    private void BuildWordSeparator(
+        RectTransform railRect,
+        TextMeshProUGUI fontTemplate,
+        int wordIndex,
+        float gapX,
+        float slotRowTop)
+    {
+        var separatorObject = new GameObject(
+            $"[Runtime] RestorationWordSeparator_{wordIndex}", typeof(RectTransform));
+        separatorObject.transform.SetParent(railRect, false);
+
+        TextMeshProUGUI separator = separatorObject.AddComponent<TextMeshProUGUI>();
+        CopyFont(fontTemplate, separator);
+        separator.fontSize = _wordSeparatorFontSize;
+        separator.alignment = TextAlignmentOptions.Center;
+        separator.color = _wordSeparatorColor;
+        separator.raycastTarget = false;
+        separator.textWrappingMode = TextWrappingModes.NoWrap;
+        separator.overflowMode = TextOverflowModes.Overflow;
+        separator.text = WordSeparatorText;
+
+        RectTransform rect = separatorObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0f, 1f);
+        rect.anchorMax = new Vector2(0f, 1f);
+        rect.pivot = new Vector2(0f, 1f);
+        rect.anchoredPosition = new Vector2(gapX, slotRowTop);
+        rect.sizeDelta = new Vector2(_wordGap, _slotSize.y);
+    }
+
+    /// <summary>
+    /// How one slot's symbol is named under its box: its authored romanised syllable, uppercased,
+    /// falling back to the combat id so a symbol with no romanisation still labels its box rather
+    /// than leaving a silent blank the player reads as a rendering fault.
+    /// </summary>
+    private static string ResolveSlotLatinLabel(BaybayinCharacterSO symbol)
+    {
+        if (symbol == null)
+            return string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(symbol.syllable))
+            return symbol.syllable.ToUpperInvariant();
+
+        return !string.IsNullOrWhiteSpace(symbol.characterID)
+            ? symbol.characterID.ToUpperInvariant()
+            : string.Empty;
     }
 
     private RailSlot BuildSlot(
@@ -1603,12 +1784,10 @@ public sealed class ActiveCluePresenter : MonoBehaviour
                 slot.Glyph.gameObject.SetActive(showGlyph);
         }
 
-        for (int i = 0; i < _railWords.Count; i++)
-        {
-            RailWord word = _railWords[i];
-            bool show = ShouldShowLatinLabel(word.Word, forceRestored);
-            word.LatinLabel.text = show ? ResolveWordLatinLabel(word.Word) : string.Empty;
-        }
+        // Slot labels and word dividers are set once at build and never repainted: a syllable's
+        // romanisation and the boundary between two words are both facts about the target text, not
+        // about how much of it the player has restored, so there is nothing here for a repaint to
+        // change. Kept as an explicit note rather than an empty loop.
 
         // Left alone while the completion flash owns the alpha, so a repaint landing mid-beat
         // cannot snap the rail back to full opacity halfway through a dip.
@@ -1617,72 +1796,87 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     }
 
     /// <summary>
-    /// Whether this word's Latin spelling may appear beside its slots.
+    /// Pops the slot (or slots) that the just-restored symbol fills.
     ///
     /// <para>
-    /// A complete word is always readable: every slot of it is filled, so the spelling answers
-    /// nothing the player has not already drawn, and §2 B10 wants the finished text whole. An
-    /// incomplete word needs the serialized opt-in, and even then is refused on a level whose
-    /// roster can mask the clue — see the field's comment. The alternative, letting the flag
-    /// silently win everywhere, is how the leak happened in the first place: the presenter has no
-    /// way to know an author flipped it for a later level and forgot Level 1 shares this HUD.
+    /// Scoped to the symbol rather than to the whole rail on purpose. The lesson's claim is that
+    /// beating THAT enemy filled THAT box; flashing every slot would say "something changed
+    /// somewhere", which is the reading the player already had and did not learn from. A symbol
+    /// that appears in both focus words legitimately pops twice, because it genuinely filled two
+    /// boxes.
+    /// </para>
+    ///
+    /// <para>
+    /// Runs on the slot's own scale and on unscaled time. Beat 1 pulls <c>Time.timeScale</c> down to
+    /// 0.15 for the lesson, and a pop on scaled time would stretch a 0.42s flourish into nearly
+    /// three seconds sitting on top of the line the player is trying to read.
     /// </para>
     /// </summary>
-    private bool ShouldShowLatinLabel(FocusWordDefinition word, bool forceRestored)
+    private void PopSlotsForSymbol(string symbolStableId)
     {
-        if (word == null)
-            return false;
-
-        if (forceRestored || _restorationState.IsWordComplete(word.stableId))
-            return true;
-
-        return _showLatinWordLabels && !LevelMasksTheClue();
-    }
-
-    private static string ResolveWordLatinLabel(FocusWordDefinition word)
-    {
-        if (word == null)
-            return string.Empty;
-
-        return !string.IsNullOrEmpty(word.displayLabel) ? word.displayLabel : word.latinSpelling;
-    }
-
-    /// <summary>
-    /// True when any enemy this level can spawn masks the clue's readable spelling — today that is
-    /// Abo ng Simula's <c>ashesFirstSlot</c>. Both the level roster and every wave's own list are
-    /// walked: a wave may name an enemy type the master roster has since been trimmed of, and a
-    /// single missed carrier is enough to hand the masked reading back.
-    /// </summary>
-    private bool LevelMasksTheClue()
-    {
-        if (_levelMasksTheClue.HasValue)
-            return _levelMasksTheClue.Value;
-
-        bool masks = false;
-        if (_level != null)
+        if (string.IsNullOrEmpty(symbolStableId) || _slotFillPopScale <= 1f
+            || _slotFillPopSeconds <= 0f || !isActiveAndEnabled)
         {
-            masks = RosterMasksTheClue(_level.allowedEnemyTypes);
-
-            for (int i = 0; !masks && _level.waves != null && i < _level.waves.Count; i++)
-                masks = RosterMasksTheClue(_level.waves[i]?.enemyTypes);
+            return;
         }
 
-        _levelMasksTheClue = masks;
-        return masks;
+        for (int i = 0; i < _railSlots.Count; i++)
+        {
+            RailSlot slot = _railSlots[i];
+            if (slot?.Anchor == null)
+                continue;
+
+            if (!SlotCarriesSymbol(slot, symbolStableId))
+                continue;
+
+            if (!_restorationState.IsSlotRestored(slot.Word, slot.DecompositionIndex))
+                continue;
+
+            StartCoroutine(PopSlot(slot.Anchor));
+        }
     }
 
-    private static bool RosterMasksTheClue(IReadOnlyList<EnemyDataSO> roster)
+    /// <summary>Whether this rail slot's authored reference is the given symbol.</summary>
+    private static bool SlotCarriesSymbol(RailSlot slot, string symbolStableId)
     {
-        if (roster == null)
+        if (slot?.Word?.decomposition == null)
             return false;
 
-        for (int i = 0; i < roster.Count; i++)
+        if (slot.DecompositionIndex < 0
+            || slot.DecompositionIndex >= slot.Word.decomposition.Count)
         {
-            if (roster[i] != null && roster[i].ashesFirstSlot)
-                return true;
+            return false;
         }
 
-        return false;
+        BaybayinCharacterSO symbol = slot.Word.decomposition[slot.DecompositionIndex]?.symbol;
+        return symbol != null && symbol.stableId == symbolStableId;
+    }
+
+    private IEnumerator PopSlot(RectTransform slotRect)
+    {
+        Vector3 baseScale = slotRect.localScale;
+        float half = _slotFillPopSeconds * 0.5f;
+        float elapsed = 0f;
+
+        while (elapsed < _slotFillPopSeconds)
+        {
+            if (slotRect == null)
+                yield break;
+
+            // Out for the first half, back for the second, so the box ends exactly where it began
+            // even if the routine is interrupted near the end by a rail teardown.
+            float t = elapsed < half
+                ? elapsed / half
+                : 1f - ((elapsed - half) / half);
+            float scale = Mathf.Lerp(1f, _slotFillPopScale, Mathf.SmoothStep(0f, 1f, t));
+            slotRect.localScale = baseScale * scale;
+
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        if (slotRect != null)
+            slotRect.localScale = baseScale;
     }
 
     /// <summary>
@@ -1768,7 +1962,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     {
         _railFlashRoutine = null;
         _railSlots.Clear();
-        _railWords.Clear();
         _railSlotAnchors.Clear();
 
         Texture2D frameTexture =

@@ -11,8 +11,9 @@ using UnityEngine.UI;
 /// Scene authoring for Level 1's teaching-beat components. All of them compile, are covered by
 /// tests, and are present in <c>Assets/_Scenes/Gameplay.unity</c>: <see cref="EnemyIntroductionBeat"/>,
 /// <see cref="EnemyIntroductionCardView"/>, <see cref="AshGustController"/>,
-/// <see cref="DrawFeedbackPresenter"/>, <see cref="InstantWinPresenter"/> and
-/// <see cref="FirstDrawGuidePresenter"/> are all wired there.
+/// <see cref="DrawFeedbackPresenter"/> and <see cref="InstantWinPresenter"/> are all wired there.
+/// One step removes rather than places: the first-draw field trace guide was cut, so this tool now
+/// deletes it from the scene instead of building it.
 /// This tool is idempotent re-wiring: every step looks for what it needs before it builds anything,
 /// so running it against an already-wired scene finds nothing to do and writes nothing. It exists
 /// so the wiring can be restored or re-checked without a hand edit to the .unity file.
@@ -82,17 +83,6 @@ public static class Level1TeachingBeatSceneWiringTool
     private const string FirstDrawGuideRootName = "FirstDrawGuide";
     private const string FirstDrawGuideImageName = "GuideImage";
 
-    // NA, MA and A. Level1TutorialStep_EI is deliberately excluded — the lesson moved from Abo ng
-    // Simula to Iligaw, and Iligaw is the E/I carrier, so E/I is now taught by the gated beat-8
-    // draw and a second guide for it would double up. Abo's A goes the other way for the same
-    // reason: he gets only the standard four-step card now, so his glyph has no gated draw and
-    // needs the non-blocking guide like NA and MA.
-    private static readonly string[] FirstDrawGuideStepPaths =
-    {
-        "Assets/ScriptableObjects/Tutorial/Level1TutorialStep_NA.asset",
-        "Assets/ScriptableObjects/Tutorial/Level1TutorialStep_MA.asset",
-        "Assets/ScriptableObjects/Tutorial/Level1TutorialStep_A.asset",
-    };
 
     // ---- layout, all in HUDCanvas reference units (1080x1920, centre origin) ----
     //
@@ -207,7 +197,7 @@ public static class Level1TeachingBeatSceneWiringTool
         WireDrawFeedback(uiParent, hudCanvas, worldCamera, font, clue, report);
         WireAshGust(ashVfx, hudCanvas, worldCamera, clue, report);
         WireInstantWin(report);
-        WireFirstDrawGuide(uiParent, report);
+        RemoveFirstDrawGuide(uiParent, report);
         ReportRailBand(hudCanvas, clue, report);
 
         EditorSceneManager.MarkSceneDirty(scene);
@@ -816,43 +806,38 @@ public static class Level1TeachingBeatSceneWiringTool
     // ---------------------------------------------------------------- first-draw trace guide
 
     /// <summary>
-    /// Places the non-blocking first-draw trace guide for Iligaw, Nawalang Mukha and Mantsa. Their
-    /// glyphs get only the standard introduction card (unlike Abo, whose gated beat-8 draw is a
-    /// full lesson), so without this each of those three would be drawn completely cold the first
-    /// time it is needed.
+    /// Removes the first-draw trace guide from the scene.
     ///
     /// <para>
-    /// Shares the draw site rect (<see cref="DrawSitePosition"/> / <see cref="DrawSiteSize"/>) with
-    /// <see cref="DrawFeedbackPresenter"/>'s ghost-stroke overlay, since the guide has to sit where
-    /// the player is actually drawing, not somewhere else on the HUD.
+    /// This step used to PLACE a non-blocking trace guide for Iligaw, Nawalang Mukha and Mantsa: a
+    /// translucent glyph painted over the draw site the first time each of those syllables was
+    /// needed. Removed on request — at the shipped draw-site rect it lay across the middle of the
+    /// playfield, over the enemy sprite and the enemy's own glyph badge, and read as part of the
+    /// field rather than as a hint. Its scripts are gone from the project, so the only thing left to
+    /// do is delete whatever a previous run of this tool left in the scene; a re-run on a scene that
+    /// never had one is a no-op.
+    /// </para>
+    ///
+    /// <para>
+    /// The cold-draw problem it was answering is now carried by the restoration rail's per-slot
+    /// romanised labels, which name every syllable of the target text under its own box for the
+    /// whole level rather than for one draw. Beat 8's gated draw prompt (<c>Level1TutorialGuideUI</c>)
+    /// is a different surface entirely and is untouched.
     /// </para>
     /// </summary>
-    private static void WireFirstDrawGuide(Transform uiParent, Report report)
+    private static void RemoveFirstDrawGuide(Transform uiParent, Report report)
     {
-        GameObject root = AdoptOrCreate<FirstDrawGuidePresenter>(uiParent, FirstDrawGuideRootName, report, out bool adopted);
-        if (!adopted)
-            Stretch(Ensure<RectTransform>(root));
-
-        var presenter = Ensure<FirstDrawGuidePresenter>(root, report, $"{root.name}.FirstDrawGuidePresenter");
-
-        Image guideImage = EnsureOverlayImage(root.transform, FirstDrawGuideImageName, DrawSitePosition, DrawSiteSize, report);
-
-        var steps = new List<Level1TutorialStepSO>();
-        foreach (string path in FirstDrawGuideStepPaths)
+        Transform existing = uiParent.Find(FirstDrawGuideRootName);
+        if (existing == null)
         {
-            var step = AssetDatabase.LoadAssetAtPath<Level1TutorialStepSO>(path);
-            if (step == null)
-            {
-                report.Warnings.Add($"FirstDrawGuide: '{path}' not found — that glyph's trace guide will never show.");
-                continue;
-            }
-            steps.Add(step);
+            report.Notes.Add("FirstDrawGuide: nothing to remove — the scene carries no trace guide.");
+            return;
         }
 
-        var so = new SerializedObject(presenter);
-        WireReference(so, "_guideImage", guideImage, "FirstDrawGuide._guideImage", report);
-        WireObjectArray(so, "_steps", steps, "FirstDrawGuide._steps", report);
-        so.ApplyModifiedPropertiesWithoutUndo();
+        Undo.DestroyObjectImmediate(existing.gameObject);
+        report.Notes.Add(
+            $"FirstDrawGuide: removed '{FirstDrawGuideRootName}' (and its "
+            + $"'{FirstDrawGuideImageName}') from the scene — the field trace guide was cut.");
     }
 
     // ---------------------------------------------------------------- rail collision check
@@ -869,18 +854,18 @@ public static class Level1TeachingBeatSceneWiringTool
     /// </para>
     ///
     /// <para>
-    /// Two frames are being compared and they are easy to confuse. The rail's authored
-    /// <c>-345</c> is anchored to the TOP of HUDLayer, while this tool's draw site sits at
-    /// <c>-320</c> from the CENTRE of the canvas — similar numbers, roughly 800 units apart on
-    /// screen. Everything below is therefore converted into the rail parent's own local space before
-    /// anything is compared.
+    /// Two frames are being compared and they are easy to confuse. The rail's authored y is anchored
+    /// to the BOTTOM of HUDLayer and measures UP to the rail's own bottom edge, while this tool's
+    /// draw site is measured from the CENTRE of the canvas. Everything below is therefore converted
+    /// into the rail parent's own local space before anything is compared.
     /// </para>
     ///
     /// <para>
     /// It also reports the one asymmetry no static measurement covers: the rail hangs off HUDLayer,
     /// which SafeAreaHandler insets on a notched device, while this tool's objects hang off
     /// FullScreenOverlay, which is not inset. The clearances printed here are therefore the
-    /// best case, and they shrink by the device's top inset.
+    /// best case, and now that the rail is bottom-anchored they shrink by the device's BOTTOM inset
+    /// (the home indicator) rather than by its top one.
     /// </para>
     /// </summary>
     private static void ReportRailBand(Canvas hudCanvas, ActiveCluePresenter clue, Report report)
@@ -900,7 +885,7 @@ public static class Level1TeachingBeatSceneWiringTool
         }
 
         var so = new SerializedObject(clue);
-        Vector2 railPosition = ReadVector2(so, "_railAnchoredPosition", new Vector2(0f, -345f));
+        Vector2 railPosition = ReadVector2(so, "_railAnchoredPosition", new Vector2(0f, 170f));
         Vector2 slotSize = ReadVector2(so, "_slotSize", new Vector2(62f, 62f));
         float slotSpacing = ReadFloat(so, "_slotSpacing", 9f);
         float wordGap = ReadFloat(so, "_wordGap", 46f);
@@ -914,15 +899,19 @@ public static class Level1TeachingBeatSceneWiringTool
         float railWidth = (wordCount * wordWidth) + ((wordCount - 1) * wordGap);
         float railHeight = labelRow + slotSize.y;
 
+        // Bottom-anchored with a bottom pivot, so the authored y IS the rail's bottom edge measured
+        // up from the parent's bottom. Mirrors EnsureRestorationRail's anchorMin/anchorMax/pivot of
+        // (0.5, 0); if that moves back to the top this has to move with it or the check silently
+        // measures a band the rail no longer occupies.
         Rect parentLocal = parentRect.rect;
-        float railTop = parentLocal.yMax + railPosition.y;
+        float railBottom = parentLocal.yMin + railPosition.y;
         float railCentreX = parentLocal.center.x + railPosition.x;
-        var rail = new Rect(railCentreX - (railWidth * 0.5f), railTop - railHeight, railWidth, railHeight);
+        var rail = new Rect(railCentreX - (railWidth * 0.5f), railBottom, railWidth, railHeight);
 
         report.Notes.Add(
             $"restoration rail (runtime, rebuilt from ActiveCluePresenter's serialized values) will occupy "
             + $"{rail} in {parentRect.name}'s local space — {railWidth}x{railHeight} at {railPosition} "
-            + "from the top. It is not visible in the Scene view.");
+            + "from the bottom. It is not visible in the Scene view.");
 
         bool anyHit = false;
         for (int i = 0; i < report.PlacedRects.Count; i++)
@@ -942,7 +931,7 @@ public static class Level1TeachingBeatSceneWiringTool
             float gap = local.yMax <= rail.yMin
                 ? rail.yMin - local.yMax
                 : (local.yMin >= rail.yMax ? local.yMin - rail.yMax : 0f);
-            report.Notes.Add($"    '{report.PlacedNames[i]}' clears the rail by {gap:0} units vertically (best case; less the device's top safe-area inset).");
+            report.Notes.Add($"    '{report.PlacedNames[i]}' clears the rail by {gap:0} units vertically (best case; less the device's bottom safe-area inset).");
         }
 
         if (!anyHit)
