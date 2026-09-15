@@ -84,9 +84,9 @@ namespace Salinlahi.Tests.Editor.UI
             DialogueController.ApplyResponsiveDialogueLayout(panel, speaker, body, portrait, hasPortrait: true);
 
             Assert.AreEqual(0f, panel.anchorMin.y, 0.001f);
-            Assert.AreEqual(0.5f, panel.anchorMax.y, 0.001f, "The story scroll fills half the screen.");
+            Assert.AreEqual(0.45f, panel.anchorMax.y, 0.001f, "The story scroll fills the bottom 45% of the screen.");
 
-            // Everything fits at half height, so the copy renders at a fixed readable size
+            // Everything fits at 45% height, so the copy renders at a fixed readable size
             // rather than being auto-shrunk to fit a cramped band.
             Assert.IsFalse(body.enableAutoSizing);
             Assert.IsFalse(speaker.enableAutoSizing);

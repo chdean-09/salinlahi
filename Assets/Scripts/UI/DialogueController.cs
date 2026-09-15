@@ -5,9 +5,9 @@ using UnityEngine.UI;
 
 public class DialogueController : MonoBehaviour
 {
-    // The story scroll fills half the screen. This is not only a look: the rod below is a
-    // fixed-pixel slice border, so a short panel is exactly what pushes the copy onto it.
-    private const float DialoguePanelHeight = 0.50f;
+    // The story scroll fills the bottom 45% of the screen. This is not only a look: the rod
+    // below is a fixed-pixel slice border, so a short panel is what pushes the copy onto it.
+    private const float DialoguePanelHeight = 0.45f;
 
     // Fixed sizes rather than auto-fit: at half height every authored line fits, and the
     // speaker name is the title, so it outranks the body.
