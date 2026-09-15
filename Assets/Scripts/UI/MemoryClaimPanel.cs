@@ -174,8 +174,31 @@ public sealed class MemoryClaimPanel : MonoBehaviour
         _claimButton = CreateButton(card.transform, "ClaimButton", MemoryCardCopy.ClaimLabel, -190f, 30f);
         _dismissButton = CreateButton(card.transform, "DismissButton", MemoryCardCopy.CloseLabel, 190f, 30f);
 
+        ApplyParchmentLayout(cardRect, _bodyText, _claimButton, _dismissButton);
+
         if (onParchment)
             ScrollPanelArt.InkifyRecursive(card.transform);
+    }
+
+    /// <summary>
+    /// Seats the message and both buttons inside the scroll's paper. The buttons stack
+    /// instead of sitting side by side: the safe area is about two thirds of the card's
+    /// width, which is not enough for two labelled buttons in a row without clipping.
+    /// </summary>
+    public static void ApplyParchmentLayout(
+        RectTransform card,
+        TMP_Text body,
+        Button claim,
+        Button dismiss)
+    {
+        if (card == null)
+            return;
+
+        card.sizeDelta = new Vector2(700f, 620f);
+
+        ScrollPanelArt.PlaceText(body, Rect.MinMaxRect(0.17f, 0.54f, 0.83f, 0.77f), 26f, 36f);
+        ScrollPanelArt.PlaceButton(claim, Rect.MinMaxRect(0.21f, 0.36f, 0.79f, 0.49f));
+        ScrollPanelArt.PlaceButton(dismiss, Rect.MinMaxRect(0.21f, 0.19f, 0.79f, 0.32f));
     }
 
     private static TMP_Text CreateText(

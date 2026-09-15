@@ -78,6 +78,40 @@ public static class ScrollPanelArt
         }
     }
 
+    /// <summary>
+    /// Seats a text band inside the parchment and lets it auto-size within that band.
+    /// Applying the scroll sprite alone is not enough: the runtime panels were laid out
+    /// against a flat rectangle, so their content has to be re-anchored into the paper or
+    /// it lands on the rods and past the edges.
+    /// </summary>
+    public static void PlaceText(TMP_Text text, Rect area, float fontSizeMin, float fontSizeMax)
+    {
+        if (text == null)
+            return;
+
+        SetAnchors(text.rectTransform, area);
+        text.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+        text.alignment = TextAlignmentOptions.Center;
+        text.enableAutoSizing = true;
+        text.fontSizeMin = fontSizeMin;
+        text.fontSizeMax = fontSizeMax;
+        text.textWrappingMode = TextWrappingModes.Normal;
+    }
+
+    /// <summary>Seats a button inside the parchment. Companion to <see cref="PlaceText"/>.</summary>
+    public static void PlaceButton(Button button, Rect area)
+    {
+        if (button == null)
+            return;
+
+        RectTransform rect = button.GetComponent<RectTransform>();
+        if (rect == null)
+            return;
+
+        SetAnchors(rect, area);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+    }
+
     public static void SetAnchors(RectTransform rect, Rect area)
     {
         if (rect == null)

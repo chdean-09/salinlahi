@@ -49,6 +49,9 @@ public sealed class MemoryCardUI : MonoBehaviour
     private Action _closeAction;
     private bool _listenersBound;
 
+    // The glyph outlines ship white so consumers tint them. Cream is unreadable on paper.
+    private bool _onParchment;
+
     public bool HasRequiredReferences =>
         _overlayRoot != null && _frontRoot != null && _backRoot != null
         && _numberText != null && _titleText != null && _wordsText != null
@@ -212,6 +215,7 @@ public sealed class MemoryCardUI : MonoBehaviour
         if (entry.Words == null)
             return;
 
+        var placed = new List<RectTransform>();
         int index = 0;
         foreach (MemoryArchiveWord word in entry.Words)
         {
@@ -227,20 +231,48 @@ public sealed class MemoryCardUI : MonoBehaviour
                     "Glyph" + index, typeof(RectTransform), typeof(Image));
                 glyphObject.transform.SetParent(_glyphRow, false);
                 RectTransform glyphRect = glyphObject.GetComponent<RectTransform>();
-                glyphRect.anchorMin = new Vector2(0f, 0.5f);
-                glyphRect.anchorMax = new Vector2(0f, 0.5f);
-                glyphRect.pivot = new Vector2(0f, 0.5f);
-                glyphRect.sizeDelta = new Vector2(GlyphSize, GlyphSize);
-                glyphRect.anchoredPosition = new Vector2(index * (GlyphSize + GlyphGap), 0f);
+                glyphRect.anchorMin = new Vector2(0.5f, 0.5f);
+                glyphRect.anchorMax = new Vector2(0.5f, 0.5f);
+                glyphRect.pivot = new Vector2(0.5f, 0.5f);
 
                 Image glyphImage = glyphObject.GetComponent<Image>();
                 glyphImage.sprite = symbol.glyphOutlineSprite;
                 glyphImage.preserveAspect = true;
                 glyphImage.raycastTarget = false;
-                // The outline sprite ships white so consumers tint it.
-                glyphImage.color = new Color32(240, 226, 198, 255);
+                // The outline sprite ships white so consumers tint it; cream on parchment
+                // is all but invisible, so ink it to match the rest of the card.
+                glyphImage.color = _onParchment
+                    ? (Color32)ScrollPanelArt.InkColor
+                    : new Color32(240, 226, 198, 255);
+
+                placed.Add(glyphRect);
                 index++;
             }
+        }
+
+        CenterGlyphRow(placed);
+    }
+
+    /// <summary>
+    /// Sizes the row to fit the paper and centres it. The glyphs used to run left to right
+    /// from the row's left edge at a fixed size, so a five-symbol level ran off the card.
+    /// </summary>
+    private void CenterGlyphRow(List<RectTransform> glyphs)
+    {
+        if (glyphs.Count == 0)
+            return;
+
+        RectTransform rowRect = _glyphRow as RectTransform;
+        float rowWidth = ResolveGlyphRowWidth(rowRect != null ? rowRect.rect.width : 0f);
+
+        float size = ResolveGlyphSize(glyphs.Count, rowWidth);
+        float stride = size + GlyphGap;
+        float offset = (glyphs.Count - 1) * 0.5f;
+
+        for (int i = 0; i < glyphs.Count; i++)
+        {
+            glyphs[i].sizeDelta = new Vector2(size, size);
+            glyphs[i].anchoredPosition = new Vector2((i - offset) * stride, 0f);
         }
     }
 
@@ -252,8 +284,16 @@ public sealed class MemoryCardUI : MonoBehaviour
             DestroyImmediate(child);
     }
 
-    private const float GlyphSize = 96f;
-    private const float GlyphGap = 16f;
+    /// <summary>Authored glyph size. <see cref="ResolveGlyphSize"/> only ever shrinks it.</summary>
+    public const float MaxGlyphSize = 96f;
+    public const float GlyphGap = 16f;
+
+    // The card's own geometry, shared by the layout and by the glyph-fit fallback so the
+    // two cannot drift apart.
+    private const float CardWidth = 820f;
+    private const float CardHeight = 700f;
+    private const float ContentMinX = 0.17f;
+    private const float ContentMaxX = 0.83f;
 
     /// <summary>
     /// Builds the whole surface. Every object is created with an explicit RectTransform in
@@ -330,8 +370,110 @@ public sealed class MemoryCardUI : MonoBehaviour
         _flipButton = CreateButton(card.transform, "FlipButton", MemoryCardCopy.FlipLabel, -250f, 24f);
         _closeButton = CreateButton(card.transform, "CloseButton", MemoryCardCopy.CloseLabel, 250f, 24f);
 
+        _onParchment = onParchment;
+        ApplyParchmentLayout(
+            cardRect,
+            _frontRoot.GetComponent<RectTransform>(),
+            _backRoot.GetComponent<RectTransform>(),
+            _numberText,
+            _titleText,
+            _wordsText,
+            glyphRowRect,
+            _loreText,
+            _flipButton,
+            _closeButton);
+
         if (onParchment)
             ScrollPanelArt.InkifyRecursive(card.transform);
+    }
+
+    /// <summary>
+    /// Seats the whole card inside the scroll's paper: the progress counter, the title, the
+    /// restored words, the glyph row, the lore on the back face, and the button row.
+    /// </summary>
+    public static void ApplyParchmentLayout(
+        RectTransform card,
+        RectTransform frontFace,
+        RectTransform backFace,
+        TMP_Text number,
+        TMP_Text title,
+        TMP_Text words,
+        RectTransform glyphRow,
+        TMP_Text lore,
+        Button flip,
+        Button close)
+    {
+        if (card == null)
+            return;
+
+        card.sizeDelta = new Vector2(CardWidth, CardHeight);
+
+        // The faces used to reserve 120px at the bottom for a button row that sat below the
+        // card. The buttons live inside the paper now, so the faces span the card and their
+        // children's normalized anchors read straight against it.
+        StretchFace(frontFace);
+        StretchFace(backFace);
+
+        ScrollPanelArt.PlaceText(number, Band(0.72f, 0.785f), 20f, 28f);
+        ScrollPanelArt.PlaceText(title, Band(0.615f, 0.71f), 30f, 44f);
+        ScrollPanelArt.PlaceText(words, Band(0.43f, 0.60f), 22f, 30f);
+        ScrollPanelArt.PlaceText(lore, Band(0.33f, 0.785f), 22f, 30f);
+
+        ScrollPanelArt.SetAnchors(glyphRow, Band(0.33f, 0.42f));
+        if (glyphRow != null)
+            glyphRow.pivot = new Vector2(0.5f, 0.5f);
+
+        ScrollPanelArt.PlaceButton(flip, Rect.MinMaxRect(0.18f, 0.185f, 0.485f, 0.30f));
+        ScrollPanelArt.PlaceButton(close, Rect.MinMaxRect(0.515f, 0.185f, 0.82f, 0.30f));
+    }
+
+    /// <summary>A full-width band of the card's paper between two normalized heights.</summary>
+    private static Rect Band(float minY, float maxY)
+    {
+        return Rect.MinMaxRect(ContentMinX, minY, ContentMaxX, maxY);
+    }
+
+    private static void StretchFace(RectTransform face)
+    {
+        if (face == null)
+            return;
+
+        face.anchorMin = Vector2.zero;
+        face.anchorMax = Vector2.one;
+        face.pivot = new Vector2(0.5f, 0.5f);
+        face.offsetMin = Vector2.zero;
+        face.offsetMax = Vector2.zero;
+    }
+
+    /// <summary>
+    /// The width to fit the glyph row into. <paramref name="measuredWidth"/> is the row's
+    /// laid-out width, which is zero until the canvas has run — and it has not:
+    /// <see cref="Present"/> builds the glyphs before it activates the overlay root, and
+    /// <see cref="Hide"/> leaves that root inactive between cards. Falling back to the
+    /// card's own paper width keeps a five-symbol level inside the scroll either way.
+    /// </summary>
+    public static float ResolveGlyphRowWidth(float measuredWidth)
+    {
+        return measuredWidth > 0f
+            ? measuredWidth
+            : CardWidth * (ContentMaxX - ContentMinX);
+    }
+
+    /// <summary>
+    /// The authored glyph size, shrunk just enough that <paramref name="count"/> glyphs and
+    /// the gaps between them fit <paramref name="rowWidth"/>. Level 5 restores five symbols,
+    /// which overflows the paper at the authored size.
+    /// </summary>
+    public static float ResolveGlyphSize(int count, float rowWidth)
+    {
+        if (count <= 0 || rowWidth <= 0f)
+            return MaxGlyphSize;
+
+        float available = rowWidth - (GlyphGap * (count - 1));
+        if (available <= 0f)
+            return 0f;
+
+        return Mathf.Min(MaxGlyphSize, available / count);
     }
 
     private static GameObject CreateFace(Transform parent, string name)

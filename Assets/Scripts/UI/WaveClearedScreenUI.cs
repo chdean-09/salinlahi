@@ -180,11 +180,34 @@ public sealed class WaveClearedScreenUI : MonoBehaviour
         _continueButton = CreateButton(
             card.transform, "ContinueButton", WaveClearedCopy.ContinueLabel, 25f);
 
+        ApplyParchmentLayout(cardRect, _bannerText, _heartsText, _continueButton);
+
         if (onParchment)
         {
             ScrollPanelArt.InkifyRecursive(card.transform);
             ScrollPanelArt.Inkify(_continueButton.GetComponentInChildren<TMP_Text>(true));
         }
+    }
+
+    /// <summary>
+    /// Seats the banner, the hearts line and the continue button inside the scroll's paper.
+    /// The card is also made taller than it was flat: the safe area is about two thirds of
+    /// the panel, so the old 820x460 box left no room between the rods.
+    /// </summary>
+    public static void ApplyParchmentLayout(
+        RectTransform card,
+        TMP_Text banner,
+        TMP_Text hearts,
+        Button continueButton)
+    {
+        if (card == null)
+            return;
+
+        card.sizeDelta = new Vector2(720f, 620f);
+
+        ScrollPanelArt.PlaceText(banner, Rect.MinMaxRect(0.17f, 0.60f, 0.83f, 0.77f), 38f, 52f);
+        ScrollPanelArt.PlaceText(hearts, Rect.MinMaxRect(0.17f, 0.44f, 0.83f, 0.56f), 26f, 34f);
+        ScrollPanelArt.PlaceButton(continueButton, Rect.MinMaxRect(0.22f, 0.20f, 0.78f, 0.33f));
     }
 
     // Visual constants deliberately mirror LevelContentMissingPanel so the runtime-built

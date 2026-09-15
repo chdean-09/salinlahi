@@ -5,16 +5,44 @@ using UnityEngine.UI;
 
 public class DialogueController : MonoBehaviour
 {
-    private const float DialoguePanelHeight = 0.30f;
+    // The story scroll fills half the screen. This is not only a look: the rod below is a
+    // fixed-pixel slice border, so a short panel is exactly what pushes the copy onto it.
+    private const float DialoguePanelHeight = 0.50f;
+
+    // Fixed sizes rather than auto-fit: at half height every authored line fits, and the
+    // speaker name is the title, so it outranks the body.
+    private const float SpeakerFontSize = 72f;
+    private const float BodyFontSize = 52f;
+
+    private const float SlideUpSeconds = 0.35f;
+    private const float SlideDownSeconds = 0.30f;
     private const float DialogueSidePadding = 0.17f;
     private const float DialoguePortraitRight = 0.17f;
     private const float DialogueTextWithPortraitMinX = 0.20f;
 
-    // The dialogue box stays pinned to the bottom of the screen and never rises past the
-    // base/shrine: its top edge tracks the base's bottom edge projected to the screen, so it
-    // adapts to every device aspect. Falls back to DialoguePanelHeight (and is clamped no
-    // smaller than this) in scenes with no PlayerBase, e.g. menus.
-    private const float DialoguePanelMinFraction = 0.10f;
+
+    // PanelBackground_Top is 9-sliced with a 155px top border -- the rod. A slice border is
+    // a fixed pixel height: it does NOT shrink with the panel, so the shorter the panel, the
+    // larger the share of it the rod swallows. That is what used to drop the speaker name on
+    // top of the rod once the panel was clamped down to sit under the shrine.
+    private const float ScrollRodPixels = 155f;
+    private const float ReferenceScreenHeight = 1920f;
+
+    /// <summary>The rod's share of the panel at the design height.</summary>
+    public static float ScrollRodFraction =>
+        ScrollRodPixels / (DialoguePanelHeight * ReferenceScreenHeight);
+
+    /// <summary>
+    /// The panel's vertical offset while it slides, from one full panel below the screen at
+    /// <paramref name="normalizedTime"/> 0 to flush with the bottom edge at 1.
+    /// </summary>
+    public static float SlideOffsetY(float normalizedTime, float panelHeight)
+    {
+        float t = Mathf.Clamp01(normalizedTime);
+        float inverse = 1f - t;
+        float eased = 1f - (inverse * inverse * inverse);
+        return -panelHeight * (1f - eased);
+    }
 
     [Header("UI References")]
     [SerializeField] private GameObject _overlayPanel;
@@ -36,6 +64,7 @@ public class DialogueController : MonoBehaviour
     private int _lineIndex;
     private bool _isTypewriting;
     private Coroutine _typewriterRoutine;
+    private Coroutine _slideRoutine;
     private bool _onParchment;
 
     public static DialogueController CreateRuntime()
@@ -66,12 +95,11 @@ public class DialogueController : MonoBehaviour
         controller._portraitImage = CreatePortrait(controller._overlayPanel.transform);
         controller._tapCatcher = CreateTapCatcher(controllerObject.transform);
         controller._tapCatcher.onClick.AddListener(controller.OnTapCatcherPressed);
-        ApplyResponsiveDialogueLayout(
-            controller._overlayPanel.transform as RectTransform,
-            controller._speakerText,
-            controller._bodyText,
-            controller._portraitImage,
-            hasPortrait: false);
+        // Not ApplyResponsiveDialogueLayout: that lays the copy out but leaves the panel on
+        // its flat placeholder colour. Awake and OnEnable already ran during AddComponent
+        // above, while _overlayPanel was still null, so this is the first chance to dress the
+        // panel as parchment -- and it has to happen before the panel is ever on screen.
+        controller.ConfigureResponsiveLayout(hasPortrait: false);
 
         controller._overlayPanel.SetActive(false);
         controller.SetTapCatcherActive(false);
@@ -234,14 +262,115 @@ public class DialogueController : MonoBehaviour
         {
             _overlayPanel.SetActive(true);
             EnsureOverlayOnTop();
+
+            // Dress the scroll before it is shown. The frame used to be applied by the first
+            // ShowLine, which now happens only after the panel has finished rising -- so the
+            // panel climbed into view as a dark rectangle and turned to parchment on arrival.
+            ConfigureResponsiveLayout(dialogue.lines[0].portrait != null);
         }
-        SetTapCatcherActive(true);
 
         GameManager.Instance.EnterDialoguePause();
 
         EventBus.RaiseDialogueStarted();
 
+        if (CanAnimate)
+        {
+            _slideRoutine = StartCoroutine(RiseThenShowFirstLine());
+            return;
+        }
+
+        SetTapCatcherActive(true);
         ShowLine(_currentDialogue.lines[0]);
+    }
+
+    /// <summary>
+    /// The scroll rises into view before any copy appears, then the first line types on.
+    /// Taps are swallowed until it has settled so a fast tapper cannot skip a line that is
+    /// not on screen yet.
+    /// </summary>
+    private IEnumerator RiseThenShowFirstLine()
+    {
+        ClearLine();
+        SetTapCatcherActive(false);
+
+        yield return Slide(0f, 1f, SlideUpSeconds);
+
+        _slideRoutine = null;
+        SetTapCatcherActive(true);
+
+        if (_currentDialogue != null)
+            ShowLine(_currentDialogue.lines[_lineIndex]);
+    }
+
+    /// <summary>
+    /// Drives the panel between parked-below-the-screen and seated, on UNSCALED time:
+    /// EnterDialoguePause sets Time.timeScale to 0, so a scaled tween would never advance.
+    /// </summary>
+    private IEnumerator Slide(float from, float to, float duration)
+    {
+        RectTransform panel = ResolvePanelRect();
+        if (panel == null || duration <= 0f)
+            yield break;
+
+        float height = ResolvePanelHeightPixels(panel);
+        float elapsed = 0f;
+
+        SetPanelOffset(panel, SlideOffsetY(from, height));
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            SetPanelOffset(panel, SlideOffsetY(Mathf.Lerp(from, to, t), height));
+            yield return null;
+        }
+
+        SetPanelOffset(panel, SlideOffsetY(to, height));
+    }
+
+    private static void SetPanelOffset(RectTransform panel, float offsetY)
+    {
+        if (panel == null)
+            return;
+
+        Vector2 position = panel.anchoredPosition;
+        position.y = offsetY;
+        panel.anchoredPosition = position;
+    }
+
+    /// <summary>
+    /// The panel's height in canvas units. The laid-out rect is preferred, but it reads zero
+    /// until the canvas has run, so the canvas and then the reference resolution stand in.
+    /// </summary>
+    private static float ResolvePanelHeightPixels(RectTransform panel)
+    {
+        if (panel != null && panel.rect.height > 0f)
+            return panel.rect.height;
+
+        Canvas canvas = panel != null ? panel.GetComponentInParent<Canvas>() : null;
+        if (canvas != null && canvas.transform is RectTransform canvasRect
+            && canvasRect.rect.height > 0f)
+        {
+            return canvasRect.rect.height * DialoguePanelHeight;
+        }
+
+        return ReferenceScreenHeight * DialoguePanelHeight;
+    }
+
+    /// <summary>
+    /// Edit-mode tests and any headless driver have no player loop to advance a coroutine,
+    /// and dialogue completion is what advances the level flow. Outside play mode the scroll
+    /// therefore skips the animation and opens and closes synchronously, exactly as before.
+    /// </summary>
+    private bool CanAnimate =>
+        Application.isPlaying && isActiveAndEnabled && gameObject.activeInHierarchy;
+
+    private void ClearLine()
+    {
+        if (_speakerText != null)
+            _speakerText.text = string.Empty;
+        if (_bodyText != null)
+            _bodyText.text = string.Empty;
     }
 
     // Promote the dialogue overlay's subtree to its own Canvas layered above the spotlight
@@ -306,7 +435,6 @@ public class DialogueController : MonoBehaviour
         RectTransform panel = ResolvePanelRect();
         _onParchment = ApplyDialogueFrame(panel);
         ApplyResponsiveDialogueLayout(panel, _speakerText, _bodyText, _portraitImage, hasPortrait);
-        ClampPanelToBaseBottom(panel);
         if (_onParchment)
         {
             ScrollPanelArt.Inkify(_speakerText);
@@ -337,66 +465,6 @@ public class DialogueController : MonoBehaviour
         return ScrollPanelArt.ApplyTop(background);
     }
 
-    // Pins the panel top to the base's bottom edge so the dialogue box never overlaps the
-    // base/shrine. Text bands are anchored as fractions of the panel, so they re-fit (and
-    // auto-size) automatically when the panel shrinks. No-op in scenes without a base.
-    private void ClampPanelToBaseBottom(RectTransform panel)
-    {
-        if (panel == null)
-            return;
-
-        if (!TryGetBaseBottomScreenFraction(out float baseBottomFraction))
-            return;
-
-        float topFraction = Mathf.Clamp(baseBottomFraction, DialoguePanelMinFraction, DialoguePanelHeight);
-        Vector2 anchorMax = panel.anchorMax;
-        anchorMax.y = topFraction;
-        panel.anchorMax = anchorMax;
-        panel.offsetMin = Vector2.zero;
-        panel.offsetMax = Vector2.zero;
-    }
-
-    private static bool TryGetBaseBottomScreenFraction(out float fraction)
-    {
-        fraction = 0f;
-
-        PlayerBase playerBase = FindFirstObjectByType<PlayerBase>();
-        Camera worldCamera = Camera.main;
-        if (playerBase == null || worldCamera == null)
-            return false;
-
-        if (!TryGetBaseBottomWorldY(playerBase, out float baseBottomWorldY))
-            return false;
-
-        Vector3 viewport = worldCamera.WorldToViewportPoint(
-            new Vector3(playerBase.transform.position.x, baseBottomWorldY, 0f));
-        if (viewport.z < 0f)
-            return false;
-
-        fraction = viewport.y;
-        return true;
-    }
-
-    private static bool TryGetBaseBottomWorldY(PlayerBase playerBase, out float bottomWorldY)
-    {
-        bottomWorldY = 0f;
-
-        Collider2D collider = playerBase.GetComponent<Collider2D>();
-        if (collider != null)
-        {
-            bottomWorldY = collider.bounds.min.y;
-            return true;
-        }
-
-        SpriteRenderer renderer = playerBase.GetComponentInChildren<SpriteRenderer>();
-        if (renderer != null && renderer.sprite != null)
-        {
-            bottomWorldY = renderer.bounds.min.y;
-            return true;
-        }
-
-        return false;
-    }
 
     private RectTransform ResolvePanelRect()
     {
@@ -430,8 +498,21 @@ public class DialogueController : MonoBehaviour
 
         float textMinX = hasPortrait ? DialogueTextWithPortraitMinX : DialogueSidePadding;
         float textMaxX = ScrollPanelArt.TopSafeArea.xMax;
-        ConfigureDialogueText(speakerText, new Vector2(textMinX, 0.55f), new Vector2(textMaxX, 0.70f), 34f, 52f);
-        ConfigureDialogueText(bodyText, new Vector2(textMinX, 0.14f), new Vector2(textMaxX, 0.55f), 42f, 68f);
+        ConfigureDialogueText(
+            speakerText,
+            new Vector2(textMinX, 0.60f),
+            new Vector2(textMaxX, 0.70f),
+            SpeakerFontSize,
+            TextAlignmentOptions.Center);
+
+        // Hung from just under the title and growing downward. Centering the body in a
+        // half-screen panel leaves it adrift mid-paper with a gap below the title.
+        ConfigureDialogueText(
+            bodyText,
+            new Vector2(textMinX, 0.16f),
+            new Vector2(textMaxX, 0.58f),
+            BodyFontSize,
+            TextAlignmentOptions.Top);
 
         if (portraitImage != null)
         {
@@ -450,8 +531,8 @@ public class DialogueController : MonoBehaviour
         TMP_Text text,
         Vector2 anchorMin,
         Vector2 anchorMax,
-        float minFontSize,
-        float maxFontSize)
+        float fontSize,
+        TextAlignmentOptions alignment)
     {
         if (text == null)
             return;
@@ -462,13 +543,11 @@ public class DialogueController : MonoBehaviour
         rect.offsetMin = Vector2.zero;
         rect.offsetMax = Vector2.zero;
 
-        text.alignment = TextAlignmentOptions.Center;
+        text.alignment = alignment;
         text.textWrappingMode = TextWrappingModes.Normal;
         text.overflowMode = TextOverflowModes.Overflow;
-        text.enableAutoSizing = true;
-        text.fontSizeMin = minFontSize;
-        text.fontSizeMax = maxFontSize;
-        text.fontSize = maxFontSize;
+        text.enableAutoSizing = false;
+        text.fontSize = fontSize;
         text.raycastTarget = false;
         TutorialFontProvider.ApplyTo(text);
     }
@@ -505,6 +584,9 @@ public class DialogueController : MonoBehaviour
     private void OnTapCatcherPressed()
     {
         if (_currentDialogue == null) return;
+
+        // The scroll is still moving; there is nothing on it to read or skip yet.
+        if (_slideRoutine != null) return;
 
         if (_isTypewriting)
         {
@@ -552,10 +634,29 @@ public class DialogueController : MonoBehaviour
         _isTypewriting = false;
         _currentDialogue = null;
         _lineIndex = 0;
+        SetTapCatcherActive(false);
 
+        // The scroll withdraws before the flow is told the beat is over: DialogueComplete
+        // advances the level, which would tear this panel down mid-animation otherwise.
+        if (CanAnimate)
+            _slideRoutine = StartCoroutine(SinkThenClose());
+        else
+            CloseImmediately();
+    }
+
+    private IEnumerator SinkThenClose()
+    {
+        ClearLine();
+        yield return Slide(1f, 0f, SlideDownSeconds);
+
+        _slideRoutine = null;
+        CloseImmediately();
+    }
+
+    private void CloseImmediately()
+    {
         if (_overlayPanel != null)
             _overlayPanel.SetActive(false);
-        SetTapCatcherActive(false);
 
         if (GameManager.Instance != null)
             GameManager.Instance.ExitDialoguePause();
