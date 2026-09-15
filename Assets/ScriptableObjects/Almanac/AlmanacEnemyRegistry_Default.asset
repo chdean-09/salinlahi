@@ -13,10 +13,6 @@ MonoBehaviour:
   m_Name: AlmanacEnemyRegistry_Default
   m_EditorClassIdentifier: Salinlahi.Runtime::AlmanacEnemyRegistrySO
   entries:
-  - enemyData: {fileID: 11400000, guid: c5bafe37b5c66a74b886d3e91ea67e63, type: 2}
-    bossConfig: {fileID: 11400000, guid: 56283b9b09d5ccb468691c7195fb6ab6, type: 2}
-  - enemyData: {fileID: 11400000, guid: 052b00742308dce4499cfb4cf6b8c33e, type: 2}
-    bossConfig: {fileID: 11400000, guid: 0a29d2a7d971a498388b85daf1ab2ad8, type: 2}
   - enemyData: {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
     bossConfig: {fileID: 0}
   - enemyData: {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}

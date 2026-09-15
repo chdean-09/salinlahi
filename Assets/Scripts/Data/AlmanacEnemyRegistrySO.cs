@@ -43,6 +43,27 @@ public class AlmanacEnemyEntry
         return enemyData != null ? enemyData.description : string.Empty;
     }
 
+    /// <summary>
+    /// The Baybayin glyph this enemy demands, shown beside its portrait in the detail scroll.
+    /// A boss carries no assignedCharacter, so it resolves to null and the glyph slot stays hidden.
+    /// </summary>
+    public Sprite ResolveGlyph()
+    {
+        BaybayinCharacterSO character = enemyData != null ? enemyData.assignedCharacter : null;
+        if (character == null) return null;
+        return character.almanacSprite != null ? character.almanacSprite : character.displaySprite;
+    }
+
+    /// <summary>
+    /// The name of the Baybayin symbol this enemy demands ("GA"), shown under its glyph in the
+    /// detail scroll. Empty when the enemy carries no assigned character.
+    /// </summary>
+    public string ResolveGlyphLabel()
+    {
+        BaybayinCharacterSO character = enemyData != null ? enemyData.assignedCharacter : null;
+        return character != null ? character.characterID : string.Empty;
+    }
+
     public Sprite ResolvePortrait()
     {
         if (IsBoss) return bossConfig.bossSprite;

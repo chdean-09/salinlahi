@@ -23,7 +23,7 @@ MonoBehaviour:
   firstIntroductionLevelId: level.pamana.03
   description: 
   displaySprite: {fileID: -4082948466674284124, guid: 6fe326552750eee4fb1e4ddedf481626, type: 3}
-  almanacSprite: {fileID: 0}
+  almanacSprite: {fileID: 21300000, guid: f628672ab6714cf794765ee23c95f506, type: 3}
   badgeSprite: {fileID: 21300000, guid: 3ce5924989434aa395b98c47daed28a3, type: 3}
   scrambledBadgeSprite: {fileID: 0}
   glyphOutlineSprite: {fileID: 21300000, guid: b2602bad396e640408ec400313a9701a, type: 3}

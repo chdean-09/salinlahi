@@ -25,7 +25,7 @@ MonoBehaviour:
     hears how memory survives even without written books.\n\r\n\u201CHA is carried
     by the voice that refuses to fade.\u201D"
   displaySprite: {fileID: -6831661676589965225, guid: 8d666fe3219e3bb4b9f4d251d9a3947f, type: 3}
-  almanacSprite: {fileID: 7134149823137965258, guid: b52f26ae63a201f4f9b0fb7dbeafaf4a, type: 3}
+  almanacSprite: {fileID: 21300000, guid: b52f26ae63a201f4f9b0fb7dbeafaf4a, type: 3}
   badgeSprite: {fileID: 1480245255709561063, guid: ebbaaeae6be7a804fa394d0d05ed68e3, type: 3}
   scrambledBadgeSprite: {fileID: 0}
   glyphOutlineSprite: {fileID: 21300000, guid: f065c08c36b4e494886bcf9152928a92, type: 3}
