@@ -139,6 +139,8 @@ MonoBehaviour:
     maxConcurrentEnemies: 8
     openingSpawnSpokenValueId: 
     allowFinalWaveOverflow: 1
+    gateFinalSlotToFinalWave: 1
+    maxOverflowBatches: 0
     assignmentSeed: 0
     slotGates: []
     slotFloors: []
@@ -192,7 +194,7 @@ MonoBehaviour:
   eraTheme: {fileID: 11400000, guid: 4a3f16684c91d284eafb13ac69eecbfc, type: 2}
   numberSprite: {fileID: -1094413104633657808, guid: 02eb897dfabd3f44798a967b677647e9, type: 3}
   _authoredWaves: []
-  waveCurve: {fileID: 11400000, guid: d976cc471270472581e14aadcafda1c5, type: 2}
+  waveCurve: {fileID: 11400000, guid: e171d9110e754285a9a609c1d0d697b5, type: 2}
   allowedCharacters:
   - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
   - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
