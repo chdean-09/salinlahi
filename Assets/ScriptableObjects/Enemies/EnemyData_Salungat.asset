@@ -17,6 +17,7 @@ MonoBehaviour:
   discoverySubtitle: 
   description: A two-headed creature whose heads constantly argue. It reverses commands
     and causes allies to attack the wrong target.
+  abilityLine: It carries a symbol that is not its own.
   moveSpeed: 1.5
   maxHealth: 1
   walkFrames:

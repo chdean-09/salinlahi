@@ -17,6 +17,7 @@ MonoBehaviour:
   discoverySubtitle: 
   description: A long serpent with road markings across its body. It changes the
     direction of paths and sends Juan back to previous areas.
+  abilityLine: It weaves from side to side instead of walking straight down.
   moveSpeed: 1.5
   maxHealth: 1
   walkFrames:

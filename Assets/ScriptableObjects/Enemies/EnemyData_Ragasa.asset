@@ -16,6 +16,7 @@ MonoBehaviour:
   displayName: Ragasa
   discoverySubtitle: 
   description: 
+  abilityLine: It sweeps down the field in wide arcs instead of a straight line.
   moveSpeed: 1.5
   maxHealth: 1
   walkFrames:

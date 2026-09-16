@@ -59,6 +59,11 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             EnemyDebutLookup.CampaignOverrideForTests = null;
             AshFirstSlotController.ResetRegistryForTests();
             ActiveCluePresenter.SetActiveForTests(null);
+            // The card's last step now holds for a player's tap, and a fixture has no player.
+            // Left on, every test that drives a card to completion would wait out the hold and
+            // then fail on a card still up. The gate itself is covered by ContinueHoldTests, which
+            // leaves this off and sends real input.
+            EnemyIntroductionBeat.SetSkipContinueHoldForTests(true);
             Time.timeScale = 1f;
 
             _gameManager = CreateComponent<GameManager>("GameManager_Level1LessonTests");
@@ -108,6 +113,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         [TearDown]
         public void TearDown()
         {
+            EnemyIntroductionBeat.SetSkipContinueHoldForTests(false);
             for (int i = _objectsToDestroy.Count - 1; i >= 0; i--)
             {
                 if (_objectsToDestroy[i] != null)
@@ -1473,6 +1479,88 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         /// the case below is not the case that shipped.
         /// </para>
         /// </summary>
+        /// <summary>
+        /// Playtest 2026-09-17. The card's last step holds for the player instead of a clock, and
+        /// the field is frozen outright while it waits.
+        ///
+        /// <para>
+        /// This is the ONE fixture that lets the hold actually run — every other test here skips it
+        /// in SetUp, because a fixture has no player. Without this the seam would be switched on
+        /// everywhere and the gate would be covered nowhere, which is how a green suite hides a
+        /// feature that never runs.
+        /// </para>
+        ///
+        /// <para>
+        /// <b>Not covered here:</b> the device bindings in ContinuePressedThisFrame. The PlayMode
+        /// assembly does not reference the Input System, so this raises the continue through a seam.
+        /// Whether a finger on a phone produces one is a play session, not this test.
+        /// </para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CardHold_FreezesTheField_AndWaitsForTheContinue()
+        {
+            yield return null;
+
+            EnemyIntroductionBeat.SetSkipContinueHoldForTests(false);
+
+            SetPrivateField(_beat, "_nameStepSeconds", 0f);
+            SetPrivateField(_beat, "_abilityStepSeconds", 0f);
+            SetPrivateField(_beat, "_glyphRevealStepSeconds", 0f);
+            SetPrivateField(_beat, "_onScreenWaitTimeoutSeconds", 0f);
+
+            BaybayinCharacterSO character = MakeCharacter("EI", "symbol.test.hold.ei");
+            EnemyDataSO data = CreateEnemyData("test_hold", "Iligaw", character);
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO> { data },
+                System.Array.Empty<EnemyLessonSO>(),
+                new List<FocusWordDefinition>());
+            _gameManager.SetLevel(config);
+
+            Enemy enemy = CreateEnemyShell("Iligaw_Hold");
+            enemy.transform.position = Vector3.zero;
+            Assert.IsTrue(enemy.Initialize(data));
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndSuppress, enemy.IntroductionOutcome,
+                "setup: this spawn must be the one that gets a card, or there is no hold to test.");
+
+            for (int frame = 0; frame < 120 && !EnemyIntroductionBeat.IsHoldingForContinue; frame++)
+                yield return null;
+
+            Assert.IsTrue(EnemyIntroductionBeat.IsHoldingForContinue,
+                "The card must stop and wait for the player. Reaching the end of its steps and "
+                + "releasing itself is the timing the playtest reported: the description is gone "
+                + "before it has been read.");
+            Assert.AreEqual(0f, Time.timeScale, 1e-4f,
+                "The field must be frozen while the card holds. Holding at the introduction's own "
+                + "0.15 leaves the wave creeping toward the shrine for as long as the player reads, "
+                + "and it is the freeze that makes taking input here legitimate at all.");
+
+            // Nothing but a continue may end it: a hold that times itself out is the old behaviour
+            // wearing a prompt.
+            for (int frame = 0; frame < 30; frame++)
+                yield return null;
+
+            Assert.IsTrue(EnemyIntroductionBeat.IsHoldingForContinue,
+                "The hold must not expire on its own while _continueHoldTimeoutSeconds is 0.");
+
+            EnemyIntroductionBeat.RequestContinueForTests();
+
+            for (int frame = 0; frame < 120 && EnemyIntroductionBeat.IsHoldingForContinue; frame++)
+                yield return null;
+
+            Assert.IsFalse(EnemyIntroductionBeat.IsHoldingForContinue,
+                "The continue must release the card.");
+
+            // The flag drops when the hold ends; step 4's release ramp runs AFTER it, so the time
+            // scale is still on its way back for a few frames. Waiting for the ramp rather than
+            // reading across it — the first version of this test failed here for that reason.
+            for (int frame = 0; frame < 180 && Mathf.Approximately(Time.timeScale, 0f); frame++)
+                yield return null;
+
+            Assert.AreNotEqual(0f, Time.timeScale,
+                "The field must be running again once the card has been dismissed, or the level is "
+                + "frozen for the rest of its life.");
+        }
+
         [UnityTest]
         public IEnumerator BannerStandingAfterACard_StillLetsTheNextTypeIntroduceItself()
         {
@@ -1480,6 +1568,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
 
             SetPrivateField(_beat, "_nameStepSeconds", 0f);
             SetPrivateField(_beat, "_abilityStepSeconds", 0f);
+            SetPrivateField(_beat, "_glyphRevealStepSeconds", 0f);
             SetPrivateField(_beat, "_onScreenWaitTimeoutSeconds", 0f);
 
             BaybayinCharacterSO iligawChar = MakeCharacter("EI", "symbol.test.banner.ei");

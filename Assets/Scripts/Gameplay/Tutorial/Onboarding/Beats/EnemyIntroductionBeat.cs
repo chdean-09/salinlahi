@@ -77,6 +77,15 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     [Tooltip("Seconds (wall-clock) the release takes: the card slides out, the vignette lifts and Time.timeScale ramps back to the value the beat found on entry.")]
     [SerializeField] private float _releaseRampSeconds = 0.4f;
 
+    [Tooltip("Seconds (wall-clock) the restored glyph badge is held before the card asks for a tap, "
+             + "so the symbol registers as part of the card rather than as the thing that ended it.")]
+    [SerializeField, Min(0f)] private float _glyphRevealStepSeconds = 1f;
+
+    [Tooltip("Seconds (wall-clock) the card will hold for a tap before releasing itself. A safety "
+             + "valve for an input device that never reports, NOT the intended path: left at 0 the "
+             + "card waits as long as it takes.")]
+    [SerializeField, Min(0f)] private float _continueHoldTimeoutSeconds = 0f;
+
     [Tooltip("Seconds (wall-clock) waited after the enemy is positioned before the halt begins, so the card never lands on a shell still parked at its off-screen pool position.")]
     [SerializeField] private float _spawnSettleSeconds = 0.1f;
 
@@ -355,6 +364,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         StopPlayback();
         ReleaseTimeScale();
         LiftVignette();
+        IsHoldingForContinue = false;
         if (_card != null)
         {
             _card.HideCardImmediate();
@@ -635,6 +645,26 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
 
         try
         {
+            // Playtest 2026-09-17. The badge goes blank the moment the claim is made, NOT when the
+            // halt begins. The introduced type is released above the play area and walks down
+            // through the HUD band before it can be framed, and a readable badge across that
+            // stretch lets the player draw its syllable and kill it before its card has ever run --
+            // the "enemy introduction takes too long, player has already killed it" report.
+            //
+            // What this does and does NOT do: it withholds the INFORMATION needed to target this
+            // enemy on purpose. CombatResolver matches on the character an enemy carries and has no
+            // exclusion for introduction spawns, so a draw aimed at some other enemy that happens
+            // to carry the same syllable still clears this one. Making the subject untargetable
+            // outright would be a bigger change -- a wave can be waiting on it -- and is not this.
+            //
+            // Safe because the finally below calls Show() on EVERY exit path, including an abort
+            // and a coroutine stopped by OnDisable, which redoes it explicitly. Without that an
+            // introduction that never reached its reveal would leave an unkillable enemy walking.
+            //
+            // Only introduction spawns reach here (Enemy gates on _isIntroductionSpawn), so a
+            // DeferAndSuppress spawn -- no card this time -- keeps its badge and stays killable.
+            enemy.GlyphBadge?.Hide();
+
             // The spawner positions the enemy and assigns its glyph after Initialize returns, so a
             // card built on this frame's transform would frame the pool's parking position.
             if (_spawnSettleSeconds > 0f)
@@ -1071,6 +1101,22 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         _card.ShowAbilityLine(data.abilityLine);
         yield return WaitRealtime(_abilityStepSeconds);
 
+        // Step 3b — Glyph. The badge comes back while the enemy is still spotlit, so the symbol the
+        // player will have to draw is read HERE, against a named and explained enemy, rather than
+        // discovered on a shape already walking away. Mirrors the lesson's beat 7.
+        enemy.GlyphBadge?.Show();
+        yield return WaitRealtime(_glyphRevealStepSeconds);
+
+        // Step 3c — Hold. The card has said everything it is going to say; it now waits for the
+        // player rather than for a clock. The field is frozen outright for the hold, which is what
+        // makes taking input here legitimate at all: the card view's standing rule is that the
+        // player can draw straight through it, and that rule exists because the beat used to leave
+        // the field live. Nothing to draw through while it is stopped.
+        //
+        // The poll lives here and not in the view so the card stays raycast-transparent, and so an
+        // injected TouchState reaches it -- uGUI buttons do not receive those.
+        yield return HoldForContinue();
+
         // Step 4 — Release. Card out, vignette lifts, time ramps back, the enemy walks again.
         yield return RampCard(1f, 0f, _releaseRampSeconds);
         _card.HideCardImmediate();
@@ -1111,9 +1157,14 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         StopBanner();
         _card.PrepareCard(ResolveWalkSprite(data), data.displayName, data.discoverySubtitle);
 
-        // Beat 7 is a reveal, so the badge goes dark before the player ever sees it.
+        // Beat 7 is a reveal, so the badge stays dark until then. PlayIntroduction now hides it
+        // for every introduction spawn, so a lesson that does NOT defer its reveal has to put the
+        // badge back here -- otherwise the walk-down blanking would silently become a lesson-long
+        // one and beats 1-6 would play against an unreadable enemy.
         if (lesson.revealGlyphLate)
             enemy.GlyphBadge?.Hide();
+        else
+            enemy.GlyphBadge?.Show();
 
         // Beat 1 — Appear. Halt and vignette, with NO card yet: the player must watch the
         // ability land on an enemy they cannot yet read anything about.
@@ -1645,6 +1696,108 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// than a hardcoded 1: a level that is already running slowed for its own reasons should be given
     /// back what it had.
     /// </summary>
+    /// <summary>
+    /// Test seam for the hold. A PlayMode fixture has no player, so a card driven to completion
+    /// would wait for a press that never arrives and then fail on a card that is still up — which
+    /// is exactly how BannerStandingAfterACard_StillLetsTheNextTypeIntroduceItself reported it.
+    /// Mirrors <c>LevelFlowController.SetSkipReadyScreenForTests</c>.
+    ///
+    /// <para>
+    /// Deliberately NOT set by every introduction fixture: ContinueHoldTests leaves it off and
+    /// drives real input, so the gate is covered rather than skipped everywhere it appears.
+    /// </para>
+    /// </summary>
+    private static bool s_skipContinueHoldForTests;
+
+    /// <summary>Sets the hold seam. Fixtures that set it must reset it in teardown.</summary>
+    public static void SetSkipContinueHoldForTests(bool skip) => s_skipContinueHoldForTests = skip;
+
+    /// <summary>
+    /// Stands in for the player's tap, so a fixture can let the hold actually happen and then end
+    /// it. Consumed once by the waiting card.
+    /// </summary>
+    /// <remarks>
+    /// This exists because the PlayMode test assembly does not reference the Input System — it sets
+    /// <c>overrideReferences</c> and lists its precompiled assemblies explicitly — so a fixture
+    /// cannot queue a real touch without reshaping the build config.
+    ///
+    /// <para>
+    /// <b>What that leaves uncovered:</b> the device bindings in
+    /// <see cref="ContinuePressedThisFrame"/>. A test using this proves the card holds, freezes the
+    /// field and releases on a continue — not that a finger on a phone produces one. That last step
+    /// is a play session.
+    /// </para>
+    /// </remarks>
+    public static void RequestContinueForTests() => s_continueRequestedByTest = true;
+
+    private static bool s_continueRequestedByTest;
+
+    /// <summary>True while a card is holding for the player's tap. Diagnostic and test seam.</summary>
+    public static bool IsHoldingForContinue { get; private set; }
+
+    /// <summary>
+    /// Freezes the field and holds the card until the player taps.
+    /// </summary>
+    /// <remarks>
+    /// Time is set to 0 rather than left at <c>_introductionTimeScale</c> because an indefinite
+    /// hold at 0.15 is still a field creeping toward the shrine while the player reads. The ramp in
+    /// step 4 restores from whatever it finds, so starting that ramp from 0 needs no special case.
+    ///
+    /// <para>
+    /// Input is polled through the Input System directly. The card view cannot take it: every
+    /// graphic there is forced raycast-transparent on wake so the player can draw through the card,
+    /// and a full-screen catcher would undo that for the one spawn that can never be retried.
+    /// </para>
+    /// </remarks>
+    private IEnumerator HoldForContinue()
+    {
+        if (s_skipContinueHoldForTests)
+            yield break;
+
+        Time.timeScale = 0f;
+        _card.ShowContinuePrompt();
+        IsHoldingForContinue = true;
+
+        s_continueRequestedByTest = false;
+        float waited = 0f;
+        while (!ContinuePressedThisFrame() && !s_continueRequestedByTest)
+        {
+            if (_continueHoldTimeoutSeconds > 0f && waited >= _continueHoldTimeoutSeconds)
+            {
+                DebugLogger.LogWarning(
+                    "EnemyIntroductionBeat: no tap arrived within "
+                    + $"{_continueHoldTimeoutSeconds:0.#}s, so the card releases itself.");
+                break;
+            }
+
+            waited += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        s_continueRequestedByTest = false;
+        IsHoldingForContinue = false;
+        _card.HideContinuePrompt();
+    }
+
+    /// <summary>
+    /// A press on any device the player could plausibly be holding. Deliberately not a uGUI button:
+    /// see <see cref="HoldForContinue"/>.
+    /// </summary>
+    private static bool ContinuePressedThisFrame()
+    {
+        UnityEngine.InputSystem.Touchscreen touch = UnityEngine.InputSystem.Touchscreen.current;
+        if (touch != null && touch.primaryTouch.press.wasPressedThisFrame)
+            return true;
+
+        UnityEngine.InputSystem.Mouse mouse = UnityEngine.InputSystem.Mouse.current;
+        if (mouse != null && mouse.leftButton.wasPressedThisFrame)
+            return true;
+
+        UnityEngine.InputSystem.Keyboard keyboard = UnityEngine.InputSystem.Keyboard.current;
+        return keyboard != null
+            && (keyboard.spaceKey.wasPressedThisFrame || keyboard.enterKey.wasPressedThisFrame);
+    }
+
     private IEnumerator RampTimeScale(float from, float to, float seconds)
     {
         if (!_timeScaleTaken)

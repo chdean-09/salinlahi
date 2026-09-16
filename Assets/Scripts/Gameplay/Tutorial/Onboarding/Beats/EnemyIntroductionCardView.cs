@@ -64,6 +64,14 @@ public sealed class EnemyIntroductionCardView : MonoBehaviour
     [Tooltip("The banner's single line of copy.")]
     [SerializeField] private TMP_Text _bannerText;
 
+    [Header("Continue Prompt")]
+    [Tooltip("Shown once the card's content has fully landed, while the beat holds for the player's "
+             + "tap. Optional: with no prompt the beat still holds, it just says so nowhere.")]
+    [SerializeField] private TMP_Text _continuePromptText;
+
+    [Tooltip("Copy for the hold prompt.")]
+    [SerializeField] private string _continuePromptMessage = "Tap to continue";
+
     /// <summary>
     /// True when this view has enough wiring to show a card at all. The beat checks this
     /// <b>before</b> claiming a type's one-shot introduction: a claim consumed against an unwired
@@ -82,6 +90,23 @@ public sealed class EnemyIntroductionCardView : MonoBehaviour
         DisableRaycastsOnEveryGraphic();
         HideCardImmediate();
         HideBanner();
+        HideContinuePrompt();
+    }
+
+    /// <summary>
+    /// Raises the "tap to continue" line. The card still takes NO input — see the class note; the
+    /// beat polls the Input System itself and this is only the label that says so. Keeping the
+    /// read here and the input there is what lets the card stay raycast-transparent.
+    /// </summary>
+    public void ShowContinuePrompt()
+    {
+        SetTextOrHide(_continuePromptText, _continuePromptMessage);
+    }
+
+    /// <summary>Drops the hold prompt. Safe to call when it was never raised.</summary>
+    public void HideContinuePrompt()
+    {
+        SetTextOrHide(_continuePromptText, null);
     }
 
     /// <summary>
@@ -107,6 +132,7 @@ public sealed class EnemyIntroductionCardView : MonoBehaviour
         SetTextOrHide(_nameText, displayName);
         SetTextOrHide(_subtitleText, subtitle);
         SetTextOrHide(_abilityText, null);
+        HideContinuePrompt();
 
         SetCardProgress(0f);
         if (_cardGroup != null)
@@ -148,6 +174,7 @@ public sealed class EnemyIntroductionCardView : MonoBehaviour
     /// <summary>Drops the card out of view at once, without touching the banner.</summary>
     public void HideCardImmediate()
     {
+        HideContinuePrompt();
         SetCardProgress(0f);
         if (_cardGroup != null)
             _cardGroup.gameObject.SetActive(false);

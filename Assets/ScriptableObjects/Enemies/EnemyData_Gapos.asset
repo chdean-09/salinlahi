@@ -17,6 +17,7 @@ MonoBehaviour:
   discoverySubtitle: 
   description: A creature made of dark roots and ropes. It traps Juan's hands and
     slows down symbol drawing.
+  abilityLine: It holds together after the first correct symbol.
   moveSpeed: 1
   maxHealth: 2
   walkFrames:

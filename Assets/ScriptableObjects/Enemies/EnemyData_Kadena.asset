@@ -17,6 +17,7 @@ MonoBehaviour:
   discoverySubtitle: 
   description: A warrior made of chains and broken locks. It binds villagers and
     prevents them from helping Juan.
+  abilityLine: It binds itself by chain to the enemy nearest to it.
   moveSpeed: 1.05
   maxHealth: 2
   walkFrames:
