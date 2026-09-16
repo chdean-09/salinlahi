@@ -123,6 +123,98 @@ namespace Salinlahi.Tests.Editor.Data
         }
 
         // -------------------------------------------------------------------
+        // The authored wave pattern
+        // -------------------------------------------------------------------
+
+        [Test]
+        public void LevelTwo_AuthorsItsFillersAndItsFinale()
+        {
+            IntroductionScheduleSO schedule = Campaign().introductionSchedule;
+            LevelConfigSO levelTwo = Level(2);
+
+            System.Collections.Generic.List<string> fillers =
+                schedule.ResolveFillerSymbolIds(levelTwo);
+            Assert.IsNotNull(fillers,
+                "Level 2 authors its padding. Null means it fell back to deriving it from the "
+                + "cumulative pool, which by Pamana is every syllable in the game.");
+            CollectionAssert.AreEquivalent(
+                new[] { "symbol.ei", "symbol.na" }, fillers,
+                "Level 2's padding is the syllables Level 1 taught.");
+
+            Assert.AreEqual("symbol.ba", schedule.ResolveFinaleSymbolId(levelTwo),
+                "Level 2 teaches BA and TA, so it should end on one of them. Its focus words are "
+                + "BATA and MATA, so its slots are BA, TA, MA, TA -- and the DERIVED finale picks "
+                + "MA, the last symbol occurring exactly once. Authoring BA is the whole reason "
+                + "this field exists.");
+        }
+
+        [Test]
+        public void AuthoredFinale_NamesASymbolTheLevelActuallyAsksFor()
+        {
+            IntroductionScheduleSO schedule = Campaign().introductionSchedule;
+
+            foreach (IntroductionScheduleSO.LevelIntroductions entry in schedule.levels)
+            {
+                if (entry?.level == null || entry.finaleSymbol == null)
+                    continue;
+
+                bool carried = false;
+                foreach (FocusWordDefinition word in entry.level.focusWords)
+                {
+                    if (word?.decomposition == null)
+                        continue;
+
+                    foreach (SymbolValueReference reference in word.decomposition)
+                    {
+                        if (reference?.symbol != null
+                            && reference.symbol.stableId == entry.finaleSymbol.stableId)
+                        {
+                            carried = true;
+                        }
+                    }
+                }
+
+                Assert.IsTrue(carried,
+                    $"{entry.level.stableId} names '{entry.finaleSymbol.characterID}' as its "
+                    + "finale, but no focus-word slot carries it. Gating a slot that does not "
+                    + "exist withholds nothing, so the level would silently fall back to the "
+                    + "derived finale and end on a different syllable than the one authored.");
+            }
+        }
+
+        [Test]
+        public void AuthoredFillers_AreNeverAlsoTheLevelsAnswer()
+        {
+            IntroductionScheduleSO schedule = Campaign().introductionSchedule;
+
+            foreach (IntroductionScheduleSO.LevelIntroductions entry in schedule.levels)
+            {
+                if (entry?.level == null || entry.fillerSymbols == null)
+                    continue;
+
+                foreach (BaybayinCharacterSO filler in entry.fillerSymbols)
+                {
+                    if (filler == null)
+                        continue;
+
+                    foreach (FocusWordDefinition word in entry.level.focusWords)
+                    {
+                        if (word?.decomposition == null)
+                            continue;
+
+                        foreach (SymbolValueReference reference in word.decomposition)
+                        {
+                            Assert.AreNotEqual(filler.stableId, reference?.symbol?.stableId,
+                                $"{entry.level.stableId} lists '{filler.characterID}' as padding, "
+                                + "but its own focus words ask for it. A filler that is also the "
+                                + "answer is not padding.");
+                        }
+                    }
+                }
+            }
+        }
+
+        // -------------------------------------------------------------------
         // The rule
         // -------------------------------------------------------------------
 

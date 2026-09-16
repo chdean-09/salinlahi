@@ -228,7 +228,15 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
         for (int index = 0; index < _slots.Count; index++)
             symbols.Add(_slots[index].SymbolStableId);
 
-        int gateIndex = DerivedFinaleGate.LastUniquelyOccurringIndex(symbols);
+        // An authored finale wins. The derived rule picks the last slot whose symbol occurs
+        // exactly once, which is a sensible default and not a decision anyone made: the level that
+        // wants a specific syllable held for last names it in the campaign's IntroductionSchedule.
+        // An authored symbol that this level has no slot for is ignored rather than obeyed, and
+        // reported at author time, because gating a slot that does not exist withholds nothing.
+        int gateIndex = ResolveAuthoredFinaleIndex(symbols);
+        if (gateIndex == DerivedFinaleGate.NoSlot)
+            gateIndex = DerivedFinaleGate.LastUniquelyOccurringIndex(symbols);
+
         if (gateIndex == DerivedFinaleGate.NoSlot)
             return;
 
@@ -239,6 +247,30 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
         _slots[gateIndex] = new SpawnSlot(
             target.SymbolStableId, target.WordStableId, target.SlotIndexInWord,
             SpawnGateRegistry.FinalWaveReached);
+    }
+
+    /// <summary>
+    /// The slot index carrying this level's authored finale symbol, or
+    /// <see cref="DerivedFinaleGate.NoSlot"/> when none is authored or it names a symbol no slot
+    /// carries. The LAST matching slot, to match the derived rule's tie-breaking.
+    /// </summary>
+    private int ResolveAuthoredFinaleIndex(List<string> symbols)
+    {
+        IntroductionScheduleSO schedule = IntroductionScheduleLookup.Resolve();
+        string authored = schedule != null ? schedule.ResolveFinaleSymbolId(_level) : null;
+        if (string.IsNullOrEmpty(authored))
+            return DerivedFinaleGate.NoSlot;
+
+        for (int index = symbols.Count - 1; index >= 0; index--)
+        {
+            if (string.Equals(symbols[index], authored, System.StringComparison.Ordinal))
+                return index;
+        }
+
+        DebugLogger.LogWarning(
+            $"SpawnAssignmentCoordinator: the schedule names '{authored}' as this level's finale, "
+            + "but no focus-word slot carries it, so the derived finale is used instead.");
+        return DerivedFinaleGate.NoSlot;
     }
 
     /// <summary>Marks a beat resolved, ungating any slot that was waiting on it.</summary>
@@ -362,6 +394,25 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
     private IReadOnlyList<string> BuildOffTargetSymbols()
     {
         _offTargetBuffer.Clear();
+
+        // Authored fillers win. Without them this derives "everything the player already knows
+        // that this level is not asking for", which is a reasonable default and grows with the
+        // cumulative pool — by Pamana it is every syllable in the game. A level that wants
+        // specific padding names it in the campaign's IntroductionSchedule.
+        IntroductionScheduleSO schedule = IntroductionScheduleLookup.Resolve();
+        List<string> authored = schedule != null ? schedule.ResolveFillerSymbolIds(_level) : null;
+        if (authored != null)
+        {
+            for (int i = 0; i < authored.Count; i++)
+            {
+                // A filler the level is also asking for is not padding, it is the answer.
+                if (!IsTargetSymbol(authored[i]) && !_offTargetBuffer.Contains(authored[i]))
+                    _offTargetBuffer.Add(authored[i]);
+            }
+
+            return _offTargetBuffer;
+        }
+
         if (_level?.cumulativeSymbolPool == null)
             return _offTargetBuffer;
 

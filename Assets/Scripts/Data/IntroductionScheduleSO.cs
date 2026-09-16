@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -31,6 +32,17 @@ public sealed class IntroductionScheduleSO : ScriptableObject
         [Tooltip("The corruption types this level introduces, in no particular order. A type left "
                  + "out of every entry is never introduced anywhere.")]
         public EnemyDataSO[] introduces = Array.Empty<EnemyDataSO>();
+
+        [Tooltip("Previously-taught syllables that spawn as padding alongside this level's own. "
+                 + "Level 2's are EI and NA. Left empty, the level falls back to deriving them "
+                 + "from cumulativeSymbolPool minus its target symbols, which is what every level "
+                 + "did before this asset existed.")]
+        public BaybayinCharacterSO[] fillerSymbols = Array.Empty<BaybayinCharacterSO>();
+
+        [Tooltip("The syllable held back for last: the level is won when its slot is restored. "
+                 + "Must be one of the level's own focus-word symbols. Left null, the finale is "
+                 + "derived as the last slot whose symbol occurs exactly once (DerivedFinaleGate).")]
+        public BaybayinCharacterSO finaleSymbol;
     }
 
     [Tooltip("One entry per level that introduces anything. A level with no entry introduces "
@@ -67,6 +79,56 @@ public sealed class IntroductionScheduleSO : ScriptableObject
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// The authored entry for a level, or null when it has none.
+    /// </summary>
+    public LevelIntroductions FindEntry(LevelConfigSO level)
+    {
+        if (level == null || levels == null)
+            return null;
+
+        for (int i = 0; i < levels.Length; i++)
+        {
+            LevelIntroductions entry = levels[i];
+            if (entry?.level != null
+                && string.Equals(entry.level.stableId, level.stableId, StringComparison.Ordinal))
+            {
+                return entry;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The authored filler syllables for a level as stableIds, or null when the level authors
+    /// none and the derived pool should be used instead. An empty authored array is a DECISION —
+    /// this level spawns no padding — and returns an empty list rather than null.
+    /// </summary>
+    public List<string> ResolveFillerSymbolIds(LevelConfigSO level)
+    {
+        LevelIntroductions entry = FindEntry(level);
+        if (entry?.fillerSymbols == null || entry.fillerSymbols.Length == 0)
+            return null;
+
+        var ids = new List<string>(entry.fillerSymbols.Length);
+        for (int i = 0; i < entry.fillerSymbols.Length; i++)
+        {
+            BaybayinCharacterSO symbol = entry.fillerSymbols[i];
+            if (symbol != null && !string.IsNullOrEmpty(symbol.stableId) && !ids.Contains(symbol.stableId))
+                ids.Add(symbol.stableId);
+        }
+
+        return ids;
+    }
+
+    /// <summary>The authored finale symbol's stableId for a level, or null when it derives one.</summary>
+    public string ResolveFinaleSymbolId(LevelConfigSO level)
+    {
+        BaybayinCharacterSO symbol = FindEntry(level)?.finaleSymbol;
+        return symbol != null && !string.IsNullOrEmpty(symbol.stableId) ? symbol.stableId : null;
     }
 
     /// <summary>
