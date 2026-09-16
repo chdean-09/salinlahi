@@ -498,8 +498,8 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
             TutorialFontProvider.ApplyTo(_bodyText);
             _bodyText.enableAutoSizing = false;
             _bodyText.fontSize = ReadableBodyFontSize;
-            _bodyText.fontSizeMin = 20f;
-            _bodyText.fontSizeMax = 28f;
+            _bodyText.fontSizeMin = UITextScale.AutoSizeFloor;
+            _bodyText.fontSizeMax = ReadableBodyFontSize;
             _bodyText.alignment = TextAlignmentOptions.TopLeft;
             _bodyText.textWrappingMode = TextWrappingModes.Normal;
             _bodyText.overflowMode = TextOverflowModes.Truncate;
@@ -607,53 +607,22 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
         return $"<size=56><b>{title}</b></size>\n<size=42>{copy.Description}</size>\n<size=42>Power: {copy.Power}</size>";
     }
 
-    private static int CountVisibleCharacters(string text)
-    {
-        if (string.IsNullOrEmpty(text))
-            return 0;
-
-        int visibleCharacters = 0;
-        bool insideRichTextTag = false;
-        for (int i = 0; i < text.Length; i++)
-        {
-            char character = text[i];
-            if (character == '<')
-            {
-                insideRichTextTag = true;
-                continue;
-            }
-
-            if (insideRichTextTag)
-            {
-                if (character == '>')
-                    insideRichTextTag = false;
-
-                continue;
-            }
-
-            visibleCharacters++;
-        }
-
-        return visibleCharacters;
-    }
-
     private void StartTypewriter()
     {
         StopTypewriter(revealAll: false);
         if (_bodyText == null)
             return;
 
-        int characterCount = CountVisibleCharacters(_bodyText.text);
+        int characterCount = UITextReveal.Begin(_bodyText);
         if (!_useTypewriter || _typewriterCharactersPerSecond <= 0f || characterCount <= 0)
         {
-            _bodyText.maxVisibleCharacters = int.MaxValue;
+            UITextReveal.Complete(_bodyText);
             return;
         }
 
         _typewriterCharacterCount = characterCount;
         _typewriterVisibleCharacters = 0f;
         _typewriterLastUpdateTime = Time.realtimeSinceStartup;
-        _bodyText.maxVisibleCharacters = 0;
         _isTypewriterRunning = true;
     }
 
@@ -672,12 +641,12 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
         int visibleCharacters = Mathf.Clamp(Mathf.FloorToInt(_typewriterVisibleCharacters), 0, _typewriterCharacterCount);
         if (visibleCharacters >= _typewriterCharacterCount)
         {
-            _bodyText.maxVisibleCharacters = int.MaxValue;
+            UITextReveal.Complete(_bodyText);
             _isTypewriterRunning = false;
             return;
         }
 
-        _bodyText.maxVisibleCharacters = visibleCharacters;
+        UITextReveal.SetProgress(_bodyText, visibleCharacters);
     }
 
     private void StopTypewriter(bool revealAll)
@@ -686,8 +655,8 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
         _typewriterCharacterCount = 0;
         _typewriterVisibleCharacters = 0f;
 
-        if (revealAll && _bodyText != null)
-            _bodyText.maxVisibleCharacters = int.MaxValue;
+        if (revealAll)
+            UITextReveal.Complete(_bodyText);
     }
 
     private void UpdateSpotlightCutout(RectTransform parentRect, Vector2 localCenter, Vector2 paddedFrameSize)

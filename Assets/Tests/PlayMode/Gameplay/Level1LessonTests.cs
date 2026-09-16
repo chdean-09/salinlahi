@@ -56,6 +56,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             ReleaseSingleton<EnemyPool>();
             TutorialRuntimeState.Clear();
             EnemyIntroductionProgress.ResetForTests();
+            EnemyDebutLookup.CampaignOverrideForTests = null;
             AshFirstSlotController.ResetRegistryForTests();
             ActiveCluePresenter.SetActiveForTests(null);
             Time.timeScale = 1f;
@@ -92,6 +93,11 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             SetPrivateField(_beat, "_haltRampSeconds", 0f);
             SetPrivateField(_beat, "_releaseRampSeconds", 0f);
 
+            // The halt line is off by default here so the camera-rule and HUD-rule framing tests
+            // below keep testing exactly one rule each. The line has its own test, which turns it
+            // on explicitly, and its arithmetic is covered in EnemyIntroductionFramingTests.
+            SetPrivateField(_beat, "_haltLineViewportFromTop", 0f);
+
             // The clue presenter. EnemyIntroductionBeat.RestoredSlotCount() finds this by type, so
             // one live instance is always present; each test points its _level field and configures
             // RestorationState against its own synthetic focus words.
@@ -116,6 +122,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             ClearSingletonInstance<EnemyPool>();
             TutorialRuntimeState.Clear();
             EnemyIntroductionProgress.ResetForTests();
+            EnemyDebutLookup.CampaignOverrideForTests = null;
             AshFirstSlotController.ResetRegistryForTests();
             ActiveCluePresenter.SetActiveForTests(null);
 
@@ -1128,6 +1135,88 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         /// <summary>
+        /// The halt line. Inside the camera and clear of the HUD is the floor, not the target: an
+        /// enemy halted the instant it clears the clue panel sits in the top band of the screen
+        /// with the card and vignette landing on a sprite the player has barely seen arrive. The
+        /// authored line — a fraction of the view measured down from the camera's top edge — is
+        /// what the beat now waits for, and it must actually reach the beat, not only the static
+        /// rule the EditMode tests exercise.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LessonWaitsForTheEnemyToCrossTheHaltLine_BeforeHaltingIt()
+        {
+            yield return null;
+
+            GameObject cameraGO = CreateTracked("HaltLineCamera");
+            cameraGO.transform.position = new Vector3(0f, 0f, -10f);
+            Camera camera = cameraGO.AddComponent<Camera>();
+            camera.orthographic = true;
+            camera.orthographicSize = 10.025f;
+            SetPrivateField(_beat, "_worldCamera", camera);
+            SetPrivateField(_beat, "_haltLineViewportFromTop", 0.3f);
+            SetPrivateField(_beat, "_onScreenWaitTimeoutSeconds", 60f);
+
+            Assert.IsTrue(EnemyIntroductionBeat.TryGetCameraWorldRect(camera, out Rect view));
+            float lineCeiling = EnemyIntroductionBeat.ResolveHaltCeilingWorldY(
+                camera, view, null, 0.25f, 0.3f);
+            Assert.AreEqual(view.yMax - 0.3f * view.height, lineCeiling, 0.01f,
+                "setup: with no HUD rect the ceiling must be the line itself.");
+
+            BaybayinCharacterSO iChar = MakeCharacter("I", "symbol.test.haltline.i");
+            EnemyDataSO iligawData = CreateEnemyData(
+                "test_iligaw_haltline", "Iligaw", iChar, spawnsMirrorDecoy: false);
+            EnemyLessonSO lesson = CreateIligawShapedLesson(iligawData);
+            lesson.abilityBeatSeconds = 30f;
+
+            FocusWordDefinition word = CreateWord("level.test.haltline.ina", "ina", "INA", iChar, iChar);
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO> { iligawData }, new[] { lesson },
+                new List<FocusWordDefinition> { word });
+            _gameManager.SetLevel(config);
+            SetPrivateField(_presenter, "_level", config);
+            _presenter.RestorationState.Configure(config.focusWords);
+
+            Enemy iligaw = CreateEnemyShell("Iligaw_HaltLine");
+            iligaw.transform.position = new Vector3(0f, 11.40f, 0f);
+            Assert.IsTrue(iligaw.Initialize(iligawData));
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndArm, iligaw.IntroductionOutcome,
+                "setup: this must be a real lesson spawn.");
+
+            yield return null;
+            yield return null;
+
+            // Inside the camera with room to spare, but still above the line.
+            iligaw.transform.position = new Vector3(0f, 5f, 0f);
+            yield return null;
+            yield return null;
+
+            Assert.IsTrue(
+                EnemyIntroductionBeat.IsVerticallyInsideView(
+                    camera, new Bounds(iligaw.transform.position, Vector3.zero), 0.35f),
+                "negative control: the camera-only rule considers y = 5 framed. If this fails, "
+                + "the assertions below pass for the wrong reason.");
+            Assert.AreEqual(1f, Time.timeScale,
+                "Above the halt line the beat must keep letting its subject walk.");
+            Assert.IsFalse(_vignette.IsVisible,
+                "The vignette must not close on an enemy that has not reached the line.");
+
+            // It keeps walking, down across the line.
+            iligaw.transform.position = new Vector3(0f, lineCeiling - 2f, 0f);
+            yield return null;
+            yield return null;
+
+            Assert.AreNotEqual(1f, Time.timeScale,
+                "Once its bounds have crossed below the halt line the beat halts it and time slows.");
+            Assert.IsTrue(_vignette.IsVisible,
+                "…and the vignette closes around it where the player is actually looking.");
+            Assert.Less(iligaw.transform.position.y, lineCeiling,
+                "The halt position must be below the authored line.");
+
+            _beat.enabled = false;
+            yield return null;
+        }
+
+        /// <summary>
         /// The lesson must not begin against a subject the HUD is drawn on top of.
         ///
         /// <para>
@@ -1604,6 +1693,108 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
 
             _beat.enabled = false;
             yield return null;
+        }
+
+        // ------------------------------------------------------------------------------------
+        // The debut rule: a level always introduces the types that debut on it
+
+        /// <summary>
+        /// A type that makes its first campaign appearance on this level is introduced on every
+        /// attempt of it, lesson or no lesson, even when the campaign-wide one-shot is spent:
+        /// once per attempt, not per spawn, and again on the next attempt.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator DebutLevel_ReplaysThePlainCard_ForAnAlreadyIntroducedType_OncePerAttempt()
+        {
+            yield return null;
+            SetPrivateField(_beat, "_onScreenWaitTimeoutSeconds", 0f);
+
+            BaybayinCharacterSO naChar = MakeCharacter("NA", "symbol.test.debut.na");
+            EnemyDataSO nawalangData = CreateEnemyData("test_nawalang_debut", "Nawalang Mukha", naChar);
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO> { nawalangData }, null, new List<FocusWordDefinition>());
+            config.alwaysShowTutorial = false;
+            _gameManager.SetLevel(config);
+            EnemyDebutLookup.CampaignOverrideForTests = CreateCampaign(config);
+
+            Assert.IsTrue(EnemyIntroductionProgress.TryClaimIntroduction(nawalangData),
+                "setup: the one-shot was spent on a previous attempt");
+
+            Enemy first = CreateEnemyShell("Nawalang_DebutReplay");
+            Assert.IsTrue(first.Initialize(nawalangData));
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndSuppress, first.IntroductionOutcome,
+                "The level Nawalang Mukha debuts on must introduce him again this attempt, "
+                + "one-shot or not: it is the level that teaches him.");
+
+            // Let the card run its course so the runner is free for the next claim.
+            yield return null;
+            _beat.enabled = false;
+            yield return null;
+            _beat.enabled = true;
+            yield return null;
+
+            Enemy second = CreateEnemyShell("Nawalang_SecondSpawnSameAttempt");
+            Assert.IsTrue(second.Initialize(nawalangData));
+            Assert.AreEqual(IntroductionOutcome.None, second.IntroductionOutcome,
+                "Once per attempt: the second spawn in the same play is an ordinary enemy.");
+
+            EnemyIntroductionBeat.BeginAttempt();
+            Enemy nextAttempt = CreateEnemyShell("Nawalang_NextAttempt");
+            Assert.IsTrue(nextAttempt.Initialize(nawalangData));
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndSuppress, nextAttempt.IntroductionOutcome,
+                "A new attempt of the debut level introduces him again.");
+
+            _beat.enabled = false;
+            yield return null;
+        }
+
+        /// <summary>
+        /// Negative control for the test above: a type that debuted on an EARLIER level keeps the
+        /// campaign-wide one-shot. Without this the rule could be "replay every card on every
+        /// level", which is the worse bug.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator NonDebutLevel_DoesNotReplayTheCard_ForAnAlreadyIntroducedType()
+        {
+            yield return null;
+            SetPrivateField(_beat, "_onScreenWaitTimeoutSeconds", 0f);
+
+            BaybayinCharacterSO naChar = MakeCharacter("NA", "symbol.test.nondebut.na");
+            EnemyDataSO nawalangData = CreateEnemyData("test_nawalang_nondebut", "Nawalang Mukha", naChar);
+            LevelConfigSO here = CreateLevelConfig(
+                new List<EnemyDataSO> { nawalangData }, null, new List<FocusWordDefinition>());
+            here.levelNumber = 2;
+            here.stableId = "level.test.nondebut.here";
+            LevelConfigSO earlier = CreateLevelConfig(
+                new List<EnemyDataSO> { nawalangData }, null, new List<FocusWordDefinition>());
+            earlier.levelNumber = 1;
+            earlier.stableId = "level.test.nondebut.earlier";
+            _gameManager.SetLevel(here);
+            EnemyDebutLookup.CampaignOverrideForTests = CreateCampaign(earlier, here);
+
+            Assert.IsTrue(EnemyIntroductionProgress.TryClaimIntroduction(nawalangData),
+                "setup: met on the earlier level");
+
+            Enemy spawn = CreateEnemyShell("Nawalang_NonDebut");
+            Assert.IsTrue(spawn.Initialize(nawalangData));
+            Assert.AreEqual(IntroductionOutcome.None, spawn.IntroductionOutcome,
+                "He debuted on Level 1; Level 2 must not re-explain him.");
+
+            _beat.enabled = false;
+            yield return null;
+        }
+
+        private CampaignConfigSO CreateCampaign(params LevelConfigSO[] levels)
+        {
+            var era = ScriptableObject.CreateInstance<EraConfigSO>();
+            era.order = 1;
+            era.levels = new List<LevelConfigSO>(levels);
+            _objectsToDestroy.Add(era);
+
+            var campaign = ScriptableObject.CreateInstance<CampaignConfigSO>();
+            campaign.eras = new List<EraConfigSO> { era };
+            _objectsToDestroy.Add(campaign);
+            return campaign;
         }
 
         // ------------------------------------------------------------------------------------

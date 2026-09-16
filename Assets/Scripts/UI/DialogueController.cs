@@ -5,9 +5,9 @@ using UnityEngine.UI;
 
 public class DialogueController : MonoBehaviour
 {
-    // The story scroll fills the bottom 45% of the screen. This is not only a look: the rod
+    // The story scroll fills the bottom 30% of the screen. This is not only a look: the rod
     // below is a fixed-pixel slice border, so a short panel is what pushes the copy onto it.
-    private const float DialoguePanelHeight = 0.45f;
+    private const float DialoguePanelHeight = 0.30f;
 
     // Fixed sizes rather than auto-fit: at half height every authored line fits, and the
     // speaker name is the title, so it outranks the body.
@@ -90,8 +90,8 @@ public class DialogueController : MonoBehaviour
 
         DialogueController controller = controllerObject.AddComponent<DialogueController>();
         controller._overlayPanel = CreateOverlay(controllerObject.transform);
-        controller._speakerText = CreateText(controller._overlayPanel.transform, "SpeakerText", new Vector2(0.08f, 0.68f), new Vector2(0.92f, 0.90f), 42f, TextAlignmentOptions.Center);
-        controller._bodyText = CreateText(controller._overlayPanel.transform, "BodyText", new Vector2(0.08f, 0.16f), new Vector2(0.92f, 0.70f), 60f, TextAlignmentOptions.Center);
+        controller._speakerText = CreateText(controller._overlayPanel.transform, "SpeakerText", new Vector2(0.08f, 0.68f), new Vector2(0.92f, 0.90f), SpeakerFontSize, TextAlignmentOptions.Center);
+        controller._bodyText = CreateText(controller._overlayPanel.transform, "BodyText", new Vector2(0.08f, 0.16f), new Vector2(0.92f, 0.70f), BodyFontSize, TextAlignmentOptions.Center);
         controller._portraitImage = CreatePortrait(controller._overlayPanel.transform);
         controller._tapCatcher = CreateTapCatcher(controllerObject.transform);
         controller._tapCatcher.onClick.AddListener(controller.OnTapCatcherPressed);
@@ -370,7 +370,10 @@ public class DialogueController : MonoBehaviour
         if (_speakerText != null)
             _speakerText.text = string.Empty;
         if (_bodyText != null)
+        {
             _bodyText.text = string.Empty;
+            UITextReveal.Complete(_bodyText);
+        }
     }
 
     // Promote the dialogue overlay's subtree to its own Canvas layered above the spotlight
@@ -514,6 +517,22 @@ public class DialogueController : MonoBehaviour
             BodyFontSize,
             TextAlignmentOptions.Top);
 
+        // At 30% panel height the fixed sizes overflow their bands (speaker ~58px
+        // band vs ~86px line, body ~4 lines vs 6 needed). Auto-fit so long lines
+        // shrink instead of clipping off the parchment.
+        if (speakerText != null)
+        {
+            speakerText.enableAutoSizing = true;
+            speakerText.fontSizeMin = UITextScale.Body;
+            speakerText.fontSizeMax = SpeakerFontSize;
+        }
+        if (bodyText != null)
+        {
+            bodyText.enableAutoSizing = true;
+            bodyText.fontSizeMin = UITextScale.AutoSizeFloor;
+            bodyText.fontSizeMax = BodyFontSize;
+        }
+
         if (portraitImage != null)
         {
             RectTransform portraitRect = portraitImage.rectTransform;
@@ -562,21 +581,9 @@ public class DialogueController : MonoBehaviour
             yield break;
         }
 
-        _bodyText.text = "";
-
-        if (fullText.Length == 0)
-        {
-            _isTypewriting = false;
-            yield break;
-        }
-
-        float delay = 1f / Mathf.Max(_charsPerSecond, 0.1f);
-
-        for (int i = 0; i < fullText.Length; i++)
-        {
-            _bodyText.text = fullText.Substring(0, i + 1);
-            yield return new WaitForSecondsRealtime(delay);
-        }
+        // Full text assigned up front so the reveal never reflows the layout.
+        _bodyText.text = fullText;
+        yield return UITextReveal.Play(_bodyText, _charsPerSecond);
 
         _isTypewriting = false;
     }
@@ -620,6 +627,7 @@ public class DialogueController : MonoBehaviour
             _lineIndex < _currentDialogue.lines.Length)
         {
             _bodyText.text = _currentDialogue.lines[_lineIndex].text ?? "";
+            UITextReveal.Complete(_bodyText);
         }
     }
 

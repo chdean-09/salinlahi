@@ -106,6 +106,15 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
              + "the HUD', not as 'halfway down the field'.")]
     [SerializeField, Min(0f)] private float _hudClearanceWorld = 0.25f;
 
+    [Tooltip("The halt line, as a fraction of the camera's visible height measured DOWN from its "
+             + "top edge (0 = top of the view, 0.5 = the middle). The introduced enemy keeps walking "
+             + "until the top of its bounds (plus the on-screen margin) has crossed below this "
+             + "line, so the card lands on a sprite the player has watched arrive rather than one "
+             + "still hugging the HUD. Combined with the HUD rule: whichever is LOWER wins. 0 "
+             + "disables it. Select this object in the Scene view to see the line drawn.")]
+    [Range(0f, 0.9f)]
+    [SerializeField] private float _haltLineViewportFromTop = 0.3f;
+
     [Header("Lesson — Beat 2 (Ability)")]
     [Tooltip("Safety valve only. Seconds (wall-clock) beat 2 will wait for the introduced enemy's "
              + "ability to actually fire before giving up and continuing. Generous on purpose: "
@@ -138,7 +147,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// deliberately survives a level reload.
     /// </para>
     /// </summary>
-    private readonly HashSet<string> _lessonsPlayedThisAttempt = new();
+    private readonly HashSet<string> _introducedThisAttempt = new();
 
     /// <summary>
     /// True when the claim now in flight is a forced replay — the type was already introduced
@@ -435,23 +444,77 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         {
             _lessonIsForcedReplay = false;
 
-            // A first run counts against this attempt's lesson budget too, or a replay level's
-            // deferral rule below would never see the lesson as played and would wedge every other
-            // type on the level into permanent suppression.
-            if (lesson != null && enemyID != null)
-                _lessonsPlayedThisAttempt.Add(enemyID);
+            // A first run counts against this attempt too, or the per-attempt rules below — the
+            // replay level's deferral, the roster gate — would never see the type as met and would
+            // wedge every other type on the level into permanent suppression.
+            if (enemyID != null)
+                _introducedThisAttempt.Add(enemyID);
 
             return true;
         }
 
-        if (lesson == null || enemyID == null || !LevelReplaysItsTutorial())
+        if (enemyID == null || !ReplaysOnThisLevel(data, lesson))
             return false;
 
-        if (!_lessonsPlayedThisAttempt.Add(enemyID))
+        if (!_introducedThisAttempt.Add(enemyID))
             return false;
 
-        _lessonIsForcedReplay = true;
+        _lessonIsForcedReplay = lesson != null;
         return true;
+    }
+
+    /// <summary>
+    /// Whether this type's introduction plays again on every attempt of the current level, even
+    /// though the campaign-wide one-shot is spent. Two authorities, either suffices:
+    /// <list type="bullet">
+    /// <item>The level replays its tutorial and this is its authored lesson (the original rule).</item>
+    /// <item>The type DEBUTS on this level (<see cref="EnemyDebutLookup"/>). The level that
+    /// teaches a type introduces it every time; a type met on an earlier level is never
+    /// re-introduced, which keeps later levels from re-explaining what the player knows.</item>
+    /// </list>
+    /// Per attempt, not per spawn: the second spawn of the same type in one attempt is an
+    /// ordinary enemy, held by <see cref="_introducedThisAttempt"/>.
+    /// </summary>
+    private static bool ReplaysOnThisLevel(EnemyDataSO data, EnemyLessonSO lesson)
+    {
+        if (lesson != null && LevelReplaysItsTutorial())
+            return true;
+
+        return EnemyDebutLookup.DebutsOnCurrentCampaignLevel(GameManager.CurrentLevelConfig, data);
+    }
+
+    /// <summary>
+    /// Starts a new level attempt: forgets which types were introduced during the previous one, so
+    /// the debut-level replay and the roster gate both start from zero. Called by the level flow
+    /// next to <c>SpawnAssignmentCoordinator.ApplyLevel</c>, which resets the gate registry on the
+    /// same clock — and BEFORE it, because ApplyLevel evaluates the gate against this record.
+    /// </summary>
+    public static void BeginAttempt()
+    {
+        if (s_instance != null)
+            s_instance._introducedThisAttempt.Clear();
+    }
+
+    /// <summary>
+    /// The roster gate's notion of "met", on the attempt's clock rather than the campaign's: a
+    /// type introduced during this attempt counts; a type that debuts on this level counts ONLY
+    /// if introduced this attempt, because its card replays every attempt and the gate must hold
+    /// until it has; any other type falls back to the campaign-wide record, exactly as before.
+    /// Shared by the level-start and post-introduction evaluations so they cannot disagree.
+    /// </summary>
+    public static bool CountsAsIntroducedThisAttempt(LevelConfigSO level, EnemyDataSO data)
+    {
+        if (data == null)
+            return false;
+
+        string enemyID = EnemyDiscoveryProgress.NormalizeEnemyID(data);
+        if (enemyID != null && s_instance != null && s_instance._introducedThisAttempt.Contains(enemyID))
+            return true;
+
+        if (EnemyDebutLookup.DebutsOnCurrentCampaignLevel(level, data))
+            return false;
+
+        return EnemyIntroductionProgress.HasBeenIntroduced(data);
     }
 
     /// <summary>
@@ -468,11 +531,11 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// </summary>
     private bool HasLessonHadItsRun(EnemyLessonSO lesson)
     {
-        if (!LevelReplaysItsTutorial())
+        if (!ReplaysOnThisLevel(lesson.enemy, lesson))
             return EnemyIntroductionProgress.HasBeenIntroduced(lesson.enemy);
 
         string enemyID = EnemyDiscoveryProgress.NormalizeEnemyID(lesson.enemy);
-        return enemyID != null && _lessonsPlayedThisAttempt.Contains(enemyID);
+        return enemyID != null && _introducedThisAttempt.Contains(enemyID);
     }
 
     /// <summary>
@@ -657,7 +720,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             return false;
 
         return !IsFramedForLesson(camera, ResolveEnemyWorldBounds(enemy), _onScreenMarginWorld,
-            ResolveHudOcclusionRect(), _hudClearanceWorld);
+            ResolveHudOcclusionRect(), _hudClearanceWorld, _haltLineViewportFromTop);
     }
 
     /// <summary>
@@ -691,7 +754,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
                 yield break;
 
             if (IsFramedForLesson(camera, ResolveEnemyWorldBounds(enemy), _onScreenMarginWorld,
-                    ResolveHudOcclusionRect(), _hudClearanceWorld))
+                    ResolveHudOcclusionRect(), _hudClearanceWorld, _haltLineViewportFromTop))
                 yield break;
 
             waited += Time.unscaledDeltaTime;
@@ -756,11 +819,30 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         RectTransform hudOcclusionRect,
         float hudClearanceWorld)
     {
+        return IsFramedForLesson(camera, worldBounds, marginWorld, hudOcclusionRect,
+            hudClearanceWorld, haltLineViewportFromTop: 0f);
+    }
+
+    /// <summary>
+    /// <see cref="IsFramedForLesson(Camera, Bounds, float, RectTransform, float)"/> with the halt
+    /// line applied as well: the enemy must also have dropped below
+    /// <paramref name="haltLineViewportFromTop"/> of the view. See
+    /// <see cref="ResolveHaltCeilingWorldY(Camera, Rect, RectTransform, float, float)"/>.
+    /// </summary>
+    public static bool IsFramedForLesson(
+        Camera camera,
+        Bounds worldBounds,
+        float marginWorld,
+        RectTransform hudOcclusionRect,
+        float hudClearanceWorld,
+        float haltLineViewportFromTop)
+    {
         if (camera == null || !TryGetCameraWorldRect(camera, out Rect view))
             return true;
 
         return worldBounds.max.y + marginWorld
-                <= ResolveHaltCeilingWorldY(camera, view, hudOcclusionRect, hudClearanceWorld)
+                <= ResolveHaltCeilingWorldY(camera, view, hudOcclusionRect, hudClearanceWorld,
+                    haltLineViewportFromTop)
             && worldBounds.min.y - marginWorld >= view.yMin;
     }
 
@@ -778,12 +860,63 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     public static float ResolveHaltCeilingWorldY(
         Camera camera, Rect view, RectTransform hudOcclusionRect, float hudClearanceWorld)
     {
-        if (!TryGetHudBottomWorldY(camera, hudOcclusionRect, out float hudBottomWorldY))
-            return view.yMax;
+        return ResolveHaltCeilingWorldY(camera, view, hudOcclusionRect, hudClearanceWorld,
+            haltLineViewportFromTop: 0f);
+    }
 
-        float ceiling = hudBottomWorldY - Mathf.Max(0f, hudClearanceWorld);
+    /// <summary>
+    /// The halt ceiling with the authored halt line folded in: the HUD-derived ceiling above, or
+    /// the line at <paramref name="haltLineViewportFromTop"/> of the view's height below the
+    /// camera's top edge — whichever is lower. The HUD rule only guarantees the enemy is not
+    /// behind the clue panel; the line is what puts it where the player is actually looking.
+    /// A fraction of the view rather than a world y, so a camera that moves or resizes needs no
+    /// retuning. Clamped so a line at the very bottom can never produce an unmeetable ceiling.
+    /// </summary>
+    public static float ResolveHaltCeilingWorldY(
+        Camera camera, Rect view, RectTransform hudOcclusionRect, float hudClearanceWorld,
+        float haltLineViewportFromTop)
+    {
+        float ceiling = view.yMax;
+        if (TryGetHudBottomWorldY(camera, hudOcclusionRect, out float hudBottomWorldY))
+            ceiling = hudBottomWorldY - Mathf.Max(0f, hudClearanceWorld);
+
+        if (haltLineViewportFromTop > 0f)
+        {
+            float line = view.yMax - Mathf.Clamp01(haltLineViewportFromTop) * view.height;
+            ceiling = Mathf.Min(ceiling, line);
+        }
+
         return Mathf.Clamp(ceiling, view.yMin, view.yMax);
     }
+
+#if UNITY_EDITOR
+    /// <summary>
+    /// Draws the halt line in the Scene view while this object is selected: the y the introduced
+    /// enemy's top must drop below (yellow), and the HUD-only ceiling it is lowering (grey), so
+    /// the value can be tuned against the actual lane rather than guessed.
+    /// </summary>
+    private void OnDrawGizmosSelected()
+    {
+        Camera camera = _worldCamera != null ? _worldCamera : Camera.main;
+        if (camera == null || !TryGetCameraWorldRect(camera, out Rect view))
+            return;
+
+        RectTransform hud = _hudOcclusionRect;
+        float hudCeiling = ResolveHaltCeilingWorldY(camera, view, hud, _hudClearanceWorld);
+        float ceiling = ResolveHaltCeilingWorldY(camera, view, hud, _hudClearanceWorld,
+            _haltLineViewportFromTop);
+
+        Gizmos.color = new Color(1f, 1f, 1f, 0.35f);
+        Gizmos.DrawLine(new Vector3(view.xMin, hudCeiling, 0f), new Vector3(view.xMax, hudCeiling, 0f));
+
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawLine(new Vector3(view.xMin, ceiling, 0f), new Vector3(view.xMax, ceiling, 0f));
+        // The margin band above the line: the enemy's top must clear this too.
+        float withMargin = ceiling - _onScreenMarginWorld;
+        Gizmos.color = new Color(1f, 0.92f, 0.016f, 0.4f);
+        Gizmos.DrawLine(new Vector3(view.xMin, withMargin, 0f), new Vector3(view.xMax, withMargin, 0f));
+    }
+#endif
 
     /// <summary>
     /// The world y of the lowest edge of a HUD rect, projected through the gameplay camera.
@@ -900,9 +1033,10 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         if (coordinator == null)
             return;
 
+        LevelConfigSO level = GameManager.CurrentLevelConfig;
         LevelRoster.TryOpenRosterGate(
-            GameManager.CurrentLevelConfig,
-            EnemyIntroductionProgress.HasBeenIntroduced,
+            level,
+            data => CountsAsIntroducedThisAttempt(level, data),
             coordinator.OpenGate);
     }
 

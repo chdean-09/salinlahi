@@ -294,12 +294,13 @@ public sealed class LevelLockNoticePanel : MonoBehaviour
         bodyObject.transform.SetParent(card.transform, false);
         Text body = bodyObject.AddComponent<Text>();
         body.font = font;
-        body.fontSize = 30;
+        body.fontSize = Mathf.RoundToInt(UITextScale.Body);
         body.alignment = TextAnchor.MiddleCenter;
         body.horizontalOverflow = HorizontalWrapMode.Wrap;
         body.verticalOverflow = VerticalWrapMode.Overflow;
         body.color = Color.white;
         body.raycastTarget = false;
+        TutorialFontProvider.ApplyLegibilityEffects(body);
         Stretch(bodyObject.GetComponent<RectTransform>(), new Vector2(36f, 96f), new Vector2(-36f, -36f));
 
         GameObject buttonObject = new GameObject(
@@ -321,10 +322,11 @@ public sealed class LevelLockNoticePanel : MonoBehaviour
         labelObject.transform.SetParent(buttonObject.transform, false);
         Text label = labelObject.AddComponent<Text>();
         label.font = font;
-        label.fontSize = 26;
+        label.fontSize = Mathf.RoundToInt(UITextScale.Secondary);
         label.alignment = TextAnchor.MiddleCenter;
         label.color = Color.white;
         label.raycastTarget = false;
+        TutorialFontProvider.ApplyLegibilityEffects(label);
         label.text = LevelLockNoticeCopy.DismissLabel;
         Stretch(labelObject.GetComponent<RectTransform>());
 

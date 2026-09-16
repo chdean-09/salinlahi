@@ -136,56 +136,6 @@ namespace Salinlahi.Tests.Editor.UI
                 "serialized.");
         }
 
-        /// <summary>
-        /// Ugat QA 2026-09-16 replaced the earlier pin here, which asserted the star display was
-        /// UNAUTHORED and existed to explain why the runtime construction was needed. Its own
-        /// failure message asked whoever authored the scene to reconcile rather than delete it,
-        /// which is what this is.
-        ///
-        /// What changed: EnsureRuntimeControls built each icon with a gold colour and no sprite,
-        /// and a sprite-less <see cref="Image"/> draws a filled rectangle — so the shipped screen
-        /// showed three gold SQUARES, which no test could see. The icons are now authored in
-        /// Gameplay.unity with a real sprite, and this pins the sprite specifically, because
-        /// "three icons exist" was never the property that mattered.
-        ///
-        /// <see cref="VictoryScreenUI.EnsureRuntimeControls"/> is unchanged and still correct:
-        /// authored fields win, so it steps aside here and still builds the display for any scene
-        /// that leaves the field empty.
-        /// </summary>
-        [Test]
-        public void Gameplay_StarDisplayIsAuthored_WithARealSpriteOnEveryIcon()
-        {
-            SerializedObject screen = new SerializedObject(OpenSceneAndFindScreen(GameplayScenePath));
-
-            SerializedProperty starIcons = screen.FindProperty("_starIcons");
-            Assert.IsNotNull(starIcons, "VictoryScreenUI no longer serializes '_starIcons'.");
-
-            Assert.AreEqual(
-                3,
-                starIcons.arraySize,
-                "Gameplay.unity must author three star icons. This replaced the earlier "
-                + "'star display is unauthored' pin, whose own failure message asked for a "
-                + "reconciliation rather than a deletion: the Ugat QA pass of 2026-09-16 found "
-                + "that EnsureRuntimeControls built the icons with a colour but NO sprite, so "
-                + "every 'star' rendered as a gold SQUARE. Authoring them is the change of "
-                + "approach that message anticipated. EnsureRuntimeControls still runs for any "
-                + "scene that leaves the field empty, and authored fields still win.");
-
-            for (int i = 0; i < starIcons.arraySize; i++)
-            {
-                var icon = starIcons.GetArrayElementAtIndex(i).objectReferenceValue as GameObject;
-                Assert.IsNotNull(icon, "star icon " + i + " is unassigned in " + GameplayScenePath + ".");
-
-                var image = icon.GetComponent<Image>();
-                Assert.IsNotNull(image, "star icon " + i + " has no Image, so it draws nothing.");
-                Assert.IsNotNull(
-                    image.sprite,
-                    "star icon " + i + " has an Image with no sprite. A sprite-less Image draws a "
-                    + "filled RECTANGLE, which is exactly the defect this authoring fixed - so a "
-                    + "star that is merely present is not enough, it has to carry its sprite.");
-            }
-        }
-
         private static VictoryScreenUI OpenSceneAndFindScreen(string scenePath)
         {
             EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);

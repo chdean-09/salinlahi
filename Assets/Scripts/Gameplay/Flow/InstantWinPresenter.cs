@@ -661,6 +661,7 @@ public sealed class InstantWinPresenter : MonoBehaviour
         label.textWrappingMode = TextWrappingModes.Normal;
         label.raycastTarget = false;
         label.color = Color.white;
+        TutorialFontProvider.ApplyTo(label);
         return label;
     }
 }

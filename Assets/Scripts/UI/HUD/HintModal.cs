@@ -246,9 +246,9 @@ public sealed class HintModal : MonoBehaviour
         cardObject.GetComponent<Image>().color = new Color(0.05f, 0.07f, 0.13f, 0.98f);
         bool onParchment = ScrollPanelArt.ApplyFull(cardObject.GetComponent<Image>());
 
-        _titleText = CreateLabel("Title", 32, new Vector2(0.06f, 0.72f), new Vector2(0.94f, 0.94f));
-        _bodyText = CreateLabel("Body", 24, new Vector2(0.06f, 0.44f), new Vector2(0.94f, 0.70f));
-        _costText = CreateLabel("Cost", 20, new Vector2(0.06f, 0.28f), new Vector2(0.94f, 0.42f));
+        _titleText = CreateLabel("Title", UITextScale.Title, new Vector2(0.06f, 0.72f), new Vector2(0.94f, 0.94f));
+        _bodyText = CreateLabel("Body", UITextScale.Body, new Vector2(0.06f, 0.44f), new Vector2(0.94f, 0.70f));
+        _costText = CreateLabel("Cost", UITextScale.Caption, new Vector2(0.06f, 0.28f), new Vector2(0.94f, 0.42f));
 
         var actions = new GameObject("Actions", typeof(RectTransform), typeof(HorizontalLayoutGroup));
         actions.transform.SetParent(_card, false);
@@ -294,7 +294,7 @@ public sealed class HintModal : MonoBehaviour
         text.color = Color.white;
         text.alignment = TextAlignmentOptions.Center;
         text.enableAutoSizing = true;
-        text.fontSizeMin = Mathf.Max(12f, size * 0.55f);
+        text.fontSizeMin = Mathf.Max(UITextScale.AutoSizeFloor, size * 0.55f);
         text.fontSizeMax = size;
         text.raycastTarget = false;
         TutorialFontProvider.ApplyTo(text);
@@ -325,7 +325,7 @@ public sealed class HintModal : MonoBehaviour
         textRect.offsetMin = textRect.offsetMax = Vector2.zero;
         labelText = textObject.GetComponent<TextMeshProUGUI>();
         labelText.text = label;
-        labelText.fontSize = 20f;
+        labelText.fontSize = UITextScale.Body;
         labelText.alignment = TextAlignmentOptions.Center;
         labelText.color = Color.white;
         labelText.raycastTarget = false;

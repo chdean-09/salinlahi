@@ -401,10 +401,11 @@ public class MainMenuUI : MonoBehaviour
         rect.sizeDelta = new Vector2(720f, 56f);
 
         TMPro.TextMeshProUGUI label = labelObject.GetComponent<TMPro.TextMeshProUGUI>();
-        label.fontSize = 32f;
+        label.fontSize = UITextScale.Body;
         label.alignment = TMPro.TextAlignmentOptions.Center;
         label.color = ActiveTextColor;
         label.raycastTarget = false;
+        TutorialFontProvider.ApplyLegibilityEffects(label);
         return label;
     }
 
