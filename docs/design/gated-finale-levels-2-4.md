@@ -121,33 +121,78 @@ to the four-wave expectation; Level 5 stays on `Curve_Ugat`.
 more room before the finale. This is a feel judgement and it is the product owner's call; it is one
 field to flip either way.
 
-## Section 4 — introductions (separate change, do not bundle)
+## Section 4 — introductions: the model already exists
 
-Requested: introductions replay every run, for both the symbol and the enemy. In Era 1 these
-coincide, because the roster is a bijection — one enemy per syllable.
+**Superseded 2026-09-17. The redesign this section used to specify should NOT be built.**
 
-**Scope note:** unlike Sections 1-3 this is *not* confined to Levels 2-4. Introduction state is
-campaign-wide, so changing its cadence changes every level including the tutorial. That widening is
-another reason to ship it on its own.
+The original ask was to stop introductions depending on a complicated campaign-wide mechanic and
+instead assign, per level, which characters that level introduces. That is already how it works.
 
-**Why this ships separately.** `EnemyIntroductionProgress.TryClaimIntroduction` is campaign-wide and
-permanent, and `SpawnGateRegistry.Level1RosterMet` is raised *as a consequence of an introduction
-having played*. `LevelRosterTests.ApplyLevel_OpensTheRosterGateWhenTheCampaignHasAlreadyMetEveryType`
-documents the bug that came from that coupling: on a retry no introduction plays, so a gate raised
-only after an introduction never opened and the level could not be completed. Introduction cadence
-and a completion gate are tangled.
+`LevelConfigSO.learningRequirements` is authored per level, and
+`SymbolLearningCardController.HasPresentableRequirement` (:137-156) presents every entry whose
+`kind` is `ContentRequirementKind.Instruction`. That list *is* "the characters this level
+introduces", and it is authored across the whole campaign today:
 
-**The durable order is therefore:**
+| Level | Introduces (Instruction) |
+|---|---|
+| `level.ugat.01` | EI, NA, A, MA |
+| `level.ugat.02` | BA, TA |
+| `level.ugnayan.01` | GA, WA |
+| `level.ugnayan.02` | KA, SA |
+| `level.ugnayan.03` | YA |
+| `level.ugnayan.04` | OU |
+| `level.pamana.01` | DA, LA |
+| `level.pamana.02` | HA, NGA |
+| `level.pamana.05` | PA |
 
-1. Decouple first — derive `Level1RosterMet` from roster state (has every type been met) rather than
-   from an introduction having fired.
-2. Then make cadence an explicit, single-source policy, at which point "every run" is a free choice
-   rather than a load-bearing one.
+Verified in play: Level 2 presented "Symbol 1 of 2 — ba" and "Symbol 2 of 2 — ta", matching its two
+`Instruction` entries exactly.
 
-**Known consequence to accept before doing it:** an introduction spawn is deliberately inert
-(`Enemy.ApplyIntroductionSpawnSuppression`). Replaying introductions every run means the *first*
-Bakod, Takip and Mantsa of **every run** has its ability suppressed. Since the same conversation
-asked whether abilities were firing, this makes that impression worse, not better.
+**It already replays every run.** `SymbolLearningCardController` performs no save lookup, no claim,
+and no persistence check of any kind — every "Progress" reference in it is the *"Symbol 1 of 2"*
+label. Replaying a level re-presents its introductions. The original ask is already satisfied.
+
+**Two corrections to what this document previously claimed:**
+
+- The campaign-wide, permanent `EnemyIntroductionProgress.TryClaimIntroduction` governs **enemy**
+  introductions only. It has nothing to do with symbol introductions.
+- This document claimed `SpawnGateRegistry.Level1RosterMet` is raised *because an introduction
+  fired*, and that cadence and completion were therefore tangled. That was **wrong**.
+  `LevelRoster.TryOpenRosterGate` already derives the gate from roster *state* — whether every
+  introducible type has been met — and its own comment says both call sites share that helper "so
+  the level-start and post-introduction evaluations can never drift". The coupling described here
+  was the historical bug, and it is already fixed.
+
+Building the redesign would have re-implemented a working system and migrated live data —
+`MirrorDecoyController` and `SpawnAssignmentCoordinator` both read `cumulativeSymbolPool` — for no
+behavioural gain.
+
+### The one real gap: two sources of truth
+
+`BaybayinCharacterSO.firstIntroductionLevelId` records the same fact from the other direction, and
+nothing enforces that the two agree. That is a silent-drift hazard: a bootstrap tool rewrites one
+and the other goes stale with no symptom.
+
+**It has already drifted.** A sweep of all 18 symbols found 17 agreeing and one not:
+
+> `Char_RA` declares `firstIntroductionLevelId: level.pamana.03`, but **no level anywhere carries an
+> `Instruction` requirement for RA**. Level 13 (`level.pamana.03`) has `learningRequirements: []`
+> and `focusWords: []` — it teaches nothing — while RA sits in the `cumulativeSymbolPool` of Levels
+> 13, 14 and 15. A player can meet RA as a spawnable symbol having never been introduced to it.
+
+This is consistent with the known Ugnayan/Pamana content gap rather than a regression, but it is a
+live defect and no test or validator sees it.
+
+**The work, therefore, is a validator rule — not a redesign:**
+
+- Every symbol in the registry is introduced by **exactly one** level, i.e. exactly one level carries
+  an `Instruction` requirement naming it.
+- A symbol's `firstIntroductionLevelId` names **that** level.
+- A symbol appearing in a level's `cumulativeSymbolPool` was introduced by that level or an earlier
+  one — the property that actually protects the player from an untaught glyph.
+
+Content severity (Warning in Authoring, Error in Strict), matching the other content rules, because
+the RA case is unauthored content rather than a code fault and must not fail an authoring run.
 
 ## Testing
 
