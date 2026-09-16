@@ -163,8 +163,10 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
     /// </summary>
     private void OpenRosterGateIfAlreadyMet(LevelConfigSO level)
     {
+        // On the attempt's clock, not the campaign's: a type that debuts on this level replays
+        // its card every attempt, so the gate must not open at level start on its account.
         LevelRoster.TryOpenRosterGate(
-            level, EnemyIntroductionProgress.HasBeenIntroduced, OpenGate);
+            level, data => EnemyIntroductionBeat.CountsAsIntroducedThisAttempt(level, data), OpenGate);
     }
 
     /// <summary>Flattens every focus word's decomposition into one ordered slot list.</summary>

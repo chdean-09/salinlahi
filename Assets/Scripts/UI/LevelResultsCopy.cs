@@ -105,9 +105,6 @@ public static class LevelResultsCopy
     /// <summary>"Stars 2/3" — the summary's first readout.</summary>
     public static string Stars(int stars) => StarsLabel + stars + StarsTotalSuffix;
 
-    /// <summary>"2/3" — the standalone star-count readout beside the star icons.</summary>
-    public static string StarCount(int stars) => stars + StarsTotalSuffix;
-
     /// <summary>"Score 61".</summary>
     public static string Score(int score) => ScoreLabel + score;
 

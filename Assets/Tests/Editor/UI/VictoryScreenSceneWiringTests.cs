@@ -136,32 +136,6 @@ namespace Salinlahi.Tests.Editor.UI
                 "serialized.");
         }
 
-        /// <summary>
-        /// Pins WHY the runtime construction exists. Gameplay.unity authors neither
-        /// <c>_starCountText</c> nor <c>_starIcons</c>, so if this ever starts failing the scene
-        /// has been edited to author them — at which point
-        /// <see cref="VictoryScreenUI.EnsureRuntimeControls"/> correctly steps aside and the
-        /// note in that method (and in the SALIN-234 PR) is stale and should be revisited.
-        /// </summary>
-        [Test]
-        public void Gameplay_StarDisplayIsUnauthored_WhichIsWhyItIsBuiltAtRuntime()
-        {
-            SerializedObject screen = new SerializedObject(OpenSceneAndFindScreen(GameplayScenePath));
-
-            SerializedProperty starIcons = screen.FindProperty("_starIcons");
-            Assert.IsNotNull(starIcons, "VictoryScreenUI no longer serializes '_starIcons'.");
-
-            bool authored = Reference(screen, "_starCountText", GameplayScenePath) != null
-                || starIcons.arraySize > 0;
-
-            Assert.IsFalse(
-                authored,
-                "Gameplay.unity now authors the star display. That is not a regression — it is " +
-                "a change of approach. Reconcile it with VictoryScreenUI.EnsureRuntimeControls " +
-                "and with the SALIN-234 PR's stated reason for touching no scene, rather than " +
-                "deleting this test.");
-        }
-
         private static VictoryScreenUI OpenSceneAndFindScreen(string scenePath)
         {
             EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);

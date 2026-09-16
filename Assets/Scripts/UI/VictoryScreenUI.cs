@@ -4,10 +4,6 @@ using UnityEngine.UI;
 
 public class VictoryScreenUI : MonoBehaviour
 {
-    [Header("Display")]
-    [SerializeField] private TextMeshProUGUI _starCountText;
-    [SerializeField] private GameObject[] _starIcons;
-
     [Header("Buttons")]
     [SerializeField] private Button _nextLevelButton;
     [SerializeField] private Button _levelSelectButton;
@@ -16,12 +12,8 @@ public class VictoryScreenUI : MonoBehaviour
     [Header("Panel")]
     [SerializeField] private GameObject _panel;
 
-    /// <summary>Names of the objects <see cref="EnsureRuntimeControls"/> builds. Read by tests.</summary>
-    public const string RuntimeStarCountName = "[Runtime] StarCount";
-    public const string RuntimeStarIconsName = "[Runtime] StarIcons";
+    /// <summary>Name of the object <see cref="EnsureRuntimeControls"/> builds. Read by tests.</summary>
     public const string RuntimeReplayButtonName = "[Runtime] ReplayButton";
-
-    private const int StarIconCount = 3;
 
     /// <summary>
     /// SALIN-234 (AC-10): this attempt's results, pushed by the flow before the screen opens.
@@ -117,18 +109,6 @@ public class VictoryScreenUI : MonoBehaviour
             ? _attemptResults.Stars
             : (ProgressManager.Instance != null ? ProgressManager.Instance.GetStars(currentLevel) : 0);
 
-        if (_starCountText != null)
-            _starCountText.text = LevelResultsCopy.StarCount(stars);
-
-        if (_starIcons != null)
-        {
-            for (int i = 0; i < _starIcons.Length; i++)
-            {
-                if (_starIcons[i] != null)
-                    _starIcons[i].SetActive(i < stars);
-            }
-        }
-
         // SALIN-253 (AC-5), closing SALIN-258's deferred AC-3.
         //
         // This read `currentLevel >= 15` alone, which is wrong at exactly two levels in the
@@ -191,78 +171,21 @@ public class VictoryScreenUI : MonoBehaviour
     /// SALIN-234. Builds the controls this screen needs and the scene does not author,
     /// under <c>_panel</c>, once.
     ///
-    /// WHY AT RUNTIME RATHER THAN IN THE SCENES. Gameplay.unity — the scene the game
-    /// actually plays, and the only one whose LevelFlowController._victoryScreen is wired
-    /// (Gameplay.unity:4459) — serializes `_starCountText: {fileID: 0}` and `_starIcons: []`
-    /// (Gameplay.unity:6347-6348), so every line of the star rendering above no-opped there
-    /// while 961 EditMode and 172 PlayMode tests stayed green. Level_01_Tutorial.unity is
-    /// wired the mirror image: its star fields ARE authored (:4787-4788) but its
-    /// LevelFlowController._victoryScreen is null (:5392), so that scene reaches this
-    /// component only through the FindFirstObjectByType fallback at
-    /// LevelFlowController.cs:807.
-    ///
-    /// Authoring the missing fields in the Inspector would edit
-    /// Assets/_Scenes/Gameplay.unity and Assets/_Scenes/Level_01_Tutorial.unity, the two
-    /// highest-collision serialized assets in the project, while .gitattributes:11 declares
-    /// merge=unityyamlmerge and the driver is NOT configured — every scene conflict here is
-    /// an unassisted hand-merge. This project has already chosen the other way twice:
-    /// ShowResultsSummary above, and LevelContentMissingPanel, whose class comment
+    /// WHY AT RUNTIME RATHER THAN IN THE SCENES. Authoring these fields in the Inspector
+    /// would edit Assets/_Scenes/Gameplay.unity and Assets/_Scenes/Level_01_Tutorial.unity,
+    /// the two highest-collision serialized assets in the project, while .gitattributes:11
+    /// declares merge=unityyamlmerge and the driver is NOT configured — every scene conflict
+    /// here is an unassisted hand-merge. This project has already chosen the other way
+    /// twice: ShowResultsSummary above, and LevelContentMissingPanel, whose class comment
     /// (LevelContentMissingPanel.cs:11-14) gives exactly this reasoning. Net effect: zero
     /// serialized-asset edits and zero scene-merge conflict surface.
     ///
-    /// Authored fields always win — a populated field is never replaced, so
-    /// Level_01_Tutorial.unity keeps rendering through its own objects.
+    /// Authored fields always win — a populated field is never replaced.
     /// </summary>
     private void EnsureRuntimeControls()
     {
         if (_panel == null)
             return;
-
-        if (_starCountText == null)
-        {
-            GameObject starCountObject = FindOrCreateChild(_panel.transform, RuntimeStarCountName);
-            RectTransform rect = starCountObject.GetComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0.5f, 1f);
-            rect.anchorMax = new Vector2(0.5f, 1f);
-            rect.pivot = new Vector2(0.5f, 1f);
-            rect.anchoredPosition = new Vector2(0f, -30f);
-            rect.sizeDelta = new Vector2(240f, 70f);
-            _starCountText = CreateOrGetLabel(starCountObject, 44f);
-        }
-
-        if (_starIcons == null || _starIcons.Length == 0)
-        {
-            GameObject container = FindOrCreateChild(_panel.transform, RuntimeStarIconsName);
-            RectTransform containerRect = container.GetComponent<RectTransform>();
-            containerRect.anchorMin = new Vector2(0.5f, 1f);
-            containerRect.anchorMax = new Vector2(0.5f, 1f);
-            containerRect.pivot = new Vector2(0.5f, 1f);
-            containerRect.anchoredPosition = new Vector2(0f, -110f);
-            containerRect.sizeDelta = new Vector2(330f, 96f);
-
-            var icons = new GameObject[StarIconCount];
-            for (int i = 0; i < StarIconCount; i++)
-            {
-                GameObject icon = FindOrCreateChild(container.transform, "Star" + (i + 1));
-                RectTransform iconRect = icon.GetComponent<RectTransform>();
-                iconRect.anchorMin = new Vector2(0.5f, 0.5f);
-                iconRect.anchorMax = new Vector2(0.5f, 0.5f);
-                iconRect.pivot = new Vector2(0.5f, 0.5f);
-                iconRect.anchoredPosition = new Vector2((i - 1) * 110f, 0f);
-                iconRect.sizeDelta = new Vector2(96f, 96f);
-
-                // Unity hands back a "missing component" stub rather than a plain null
-                // reference, so `??` does not fire and the next member access throws
-                // MissingComponentException. Only the overloaded == null comparison is safe.
-                Image iconImage = icon.GetComponent<Image>();
-                if (iconImage == null)
-                    iconImage = icon.AddComponent<Image>();
-                iconImage.color = new Color32(209, 168, 82, 255);
-                iconImage.raycastTarget = false;
-                icons[i] = icon;
-            }
-            _starIcons = icons;
-        }
 
         if (_replayButton == null)
         {

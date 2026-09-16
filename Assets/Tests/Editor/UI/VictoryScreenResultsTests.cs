@@ -11,18 +11,9 @@ namespace Salinlahi.Tests.Editor.UI
     /// <summary>
     /// SALIN-234 — the Level Results screen.
     ///
-    /// Two defects these tests exist to keep fixed, both of which were invisible to the
-    /// whole suite before this ticket:
-    ///
-    /// (1) <c>Show()</c> read <c>ProgressManager.GetStars</c>, which on the revised path
-    /// returns the ALL-TIME BEST (ProgressManager.cs:619-620 -> CampaignProgressRepository.cs:50),
-    /// so a replay that scored worse still showed the earlier run's stars.
-    ///
-    /// (2) Gameplay.unity — the scene the game actually plays — serializes
-    /// <c>_starCountText: {fileID: 0}</c> and <c>_starIcons: []</c> (Gameplay.unity:6347-6348),
-    /// so every line of the star rendering no-opped there while 961 EditMode and 172 PlayMode
-    /// tests stayed green. Nothing asserted those fields. The fix builds the missing controls
-    /// at runtime rather than editing the scenes; these tests are what make that observable.
+    /// The defect these tests exist to keep fixed: Gameplay.unity — the scene the game
+    /// actually plays — does not author a Replay Level control, so the fix builds it at
+    /// runtime rather than editing the scene; these tests are what make that observable.
     /// </summary>
     [TestFixture]
     public sealed class VictoryScreenResultsTests
@@ -48,62 +39,8 @@ namespace Salinlahi.Tests.Editor.UI
         }
 
         // ------------------------------------------------------------------
-        // AC-10 — the screen shows THIS attempt, the save keeps the best.
-        // ------------------------------------------------------------------
-
-        [Test]
-        public void PresentResults_ShowsTheAttemptStars_NotTheSavedBest()
-        {
-            ProgressManager progress = CreateProgressManager();
-            progress.MarkLevelComplete(1, 3);
-            progress.TrySetSelectedLevelNumber(1);
-            VictoryScreenUI screen = CreateScreen();
-
-            screen.PresentResults(Results(stars: 2));
-
-            Assert.AreEqual(
-                "2/3",
-                StarCountText(screen).text,
-                "The screen must read the stars this attempt earned. Reading " +
-                "ProgressManager.GetStars instead reports the all-time best (3 here), so a " +
-                "weaker replay congratulates the player on an earlier run.");
-        }
-
-        [Test]
-        public void Show_WithoutAttemptResults_KeepsTheLegacyProgressManagerRead()
-        {
-            ProgressManager progress = CreateProgressManager();
-            progress.MarkLevelComplete(1, 3);
-            progress.TrySetSelectedLevelNumber(1);
-            VictoryScreenUI screen = CreateScreen();
-
-            screen.Show();
-
-            Assert.AreEqual(
-                "3/3",
-                StarCountText(screen).text,
-                "The legacy path computes no LevelResults (ProgressManager.cs:489-490), so the " +
-                "GetStars read must stay as the fallback rather than being deleted.");
-        }
-
-        [Test]
-        public void PresentResults_LightsExactlyTheEarnedStarIcons()
-        {
-            CreateProgressManager();
-            VictoryScreenUI screen = CreateScreen();
-
-            screen.PresentResults(Results(stars: 2));
-
-            GameObject[] icons = StarIcons(screen);
-            Assert.AreEqual(3, icons.Length, "The screen shows three star slots.");
-            Assert.IsTrue(icons[0].activeSelf, "Star 1 must be lit at two stars.");
-            Assert.IsTrue(icons[1].activeSelf, "Star 2 must be lit at two stars.");
-            Assert.IsFalse(icons[2].activeSelf, "Star 3 must be dark at two stars.");
-        }
-
-        // ------------------------------------------------------------------
-        // The runtime-built controls (defect 2). See EnsureRuntimeControls for why
-        // these are built rather than authored into the two scenes.
+        // The runtime-built controls. See EnsureRuntimeControls for why these are built
+        // rather than authored into the two scenes.
         // ------------------------------------------------------------------
 
         /// <summary>
@@ -121,35 +58,16 @@ namespace Salinlahi.Tests.Editor.UI
             screen.PresentResults(Results(stars: 1));
 
             GameObject panel = Panel(screen);
-            foreach (string name in new[]
-                     {
-                         VictoryScreenUI.RuntimeStarCountName,
-                         VictoryScreenUI.RuntimeStarIconsName,
-                         VictoryScreenUI.RuntimeReplayButtonName,
-                     })
-            {
-                Transform control = panel.transform.Find(name);
-                Assert.IsNotNull(
-                    control,
-                    "'" + name + "' was not built under the victory panel. Gameplay.unity " +
-                    "authors none of these, so nothing else creates them and the control is " +
-                    "invisible at runtime with no error.");
-                Assert.IsNotNull(
-                    control.GetComponent<RectTransform>(),
-                    "'" + name + "' has a plain Transform, not a RectTransform, so uGUI cannot " +
-                    "lay it out or draw it.");
-            }
-
-            foreach (GameObject icon in StarIcons(screen))
-            {
-                Assert.IsNotNull(
-                    icon.GetComponent<RectTransform>(),
-                    "Star icon '" + icon.name + "' has no RectTransform.");
-                Assert.IsNotNull(
-                    icon.GetComponent<Graphic>(),
-                    "Star icon '" + icon.name + "' has no Graphic, so an 'active' star draws " +
-                    "nothing and the star display is silently empty.");
-            }
+            Transform control = panel.transform.Find(VictoryScreenUI.RuntimeReplayButtonName);
+            Assert.IsNotNull(
+                control,
+                "'" + VictoryScreenUI.RuntimeReplayButtonName + "' was not built under the " +
+                "victory panel. Gameplay.unity authors none of these, so nothing else creates " +
+                "them and the control is invisible at runtime with no error.");
+            Assert.IsNotNull(
+                control.GetComponent<RectTransform>(),
+                "'" + VictoryScreenUI.RuntimeReplayButtonName + "' has a plain Transform, not " +
+                "a RectTransform, so uGUI cannot lay it out or draw it.");
         }
 
         [Test]
@@ -174,32 +92,6 @@ namespace Salinlahi.Tests.Editor.UI
                 replayButtons,
                 "Show() runs on every completion, so the fallback construction must be " +
                 "idempotent. Duplicated buttons stack invisibly and multiply the click.");
-        }
-
-        [Test]
-        public void AuthoredDisplayFields_AreNeverReplacedByRuntimeControls()
-        {
-            CreateProgressManager();
-            VictoryScreenUI screen = CreateScreen();
-            GameObject panel = Panel(screen);
-
-            GameObject authoredText = new GameObject("AuthoredStarCount", typeof(RectTransform));
-            authoredText.transform.SetParent(panel.transform, false);
-            TextMeshProUGUI authoredLabel = authoredText.AddComponent<TextMeshProUGUI>();
-            SetPrivateField(screen, "_starCountText", authoredLabel);
-
-            screen.PresentResults(Results(stars: 2));
-
-            Assert.AreSame(
-                authoredLabel,
-                StarCountText(screen),
-                "Level_01_Tutorial.unity authors _starCountText and three _starIcons " +
-                "(Level_01_Tutorial.unity:4787-4788). A populated field must always win, or " +
-                "that scene silently stops rendering through its own objects.");
-            Assert.IsNull(
-                panel.transform.Find(VictoryScreenUI.RuntimeStarCountName),
-                "No runtime star-count object may be built when the scene authored one.");
-            Assert.AreEqual("2/3", authoredLabel.text);
         }
 
         // ------------------------------------------------------------------
@@ -420,12 +312,6 @@ namespace Salinlahi.Tests.Editor.UI
 
         private static GameObject Panel(VictoryScreenUI screen) =>
             GetPrivateField<GameObject>(screen, "_panel");
-
-        private static TextMeshProUGUI StarCountText(VictoryScreenUI screen) =>
-            GetPrivateField<TextMeshProUGUI>(screen, "_starCountText");
-
-        private static GameObject[] StarIcons(VictoryScreenUI screen) =>
-            GetPrivateField<GameObject[]>(screen, "_starIcons");
 
         private static void SetPrivateField(object target, string name, object value)
         {
