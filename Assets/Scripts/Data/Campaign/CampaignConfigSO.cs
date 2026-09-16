@@ -13,6 +13,11 @@ public sealed class CampaignConfigSO : ScriptableObject
     public List<BaybayinCharacterSO> symbols = new();
     public List<EraConfigSO> eras = new();
 
+    [Tooltip("The authored plan for which corruption types each level introduces. Assigned, it is "
+             + "the whole truth: a level introduces exactly the types named for it. Left empty, "
+             + "introductions fall back to the first-encounter rule.")]
+    public IntroductionScheduleSO introductionSchedule;
+
     public bool TryGetEra(string stableId, out EraConfigSO result)
     {
         result = null;

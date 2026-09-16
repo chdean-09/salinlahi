@@ -597,6 +597,24 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         if (TutorialRuntimeState.IsHeartLossDemoActive)
             return false;
 
+        // THE AUTHORED PLAN. An introduction belongs to the level that teaches the type, and
+        // which level that is, is authored in IntroductionScheduleSO rather than inferred. Before
+        // this the only gate was the campaign-wide one-shot, so a player who entered at Level 2 got
+        // Abo's, Iligaw's and Mantsa's cards there -- all unspent, all owed to Level 1 -- on top of
+        // the two Level 2 exists to teach.
+        //
+        // With a schedule assigned the list is the whole truth: an unlisted type gets no card here.
+        // With none assigned the rule is skipped entirely, which is what keeps every fixture and
+        // any level outside the campaign behaving exactly as before.
+        //
+        // A level authoring its own lesson for a type is teaching it deliberately and still may,
+        // so the plan is consulted only when there is no lesson.
+        if (lesson == null && !IntroductionScheduleLookup.AllowsIntroduction(
+                GameManager.CurrentLevelConfig, data))
+        {
+            return false;
+        }
+
         // Deferral. While this level's lesson is still pending, every other type waits: the rule
         // that enemies have abilities is taught once, by the lesson, and a card that lands first
         // would spend that first-meeting moment on an enemy the lesson did not choose.

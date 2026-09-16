@@ -50,3 +50,4 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 4ce5a10b7df974c4d8398edd339bdb73, type: 2}
   - {fileID: 11400000, guid: f34b61ff919b352448dec0972c145b7c, type: 2}
   - {fileID: 11400000, guid: fb396dc6692c77347a3ed5100e40dbac, type: 2}
+  introductionSchedule: {fileID: 11400000, guid: 2acce736c2eb4e779c8b6b8dcbd54cfe, type: 2}
