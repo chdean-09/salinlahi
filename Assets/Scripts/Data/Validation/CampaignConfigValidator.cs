@@ -520,6 +520,7 @@ public static class CampaignConfigValidator
                 ValidateRequiredReferences(level, path, issues);
                 ValidatePaInstructionOrder(level, path, issues);
                 ValidateChallengeSequence(level, path, issues);
+                ValidateChallengeModeProgression(level, localIndex, path, issues);
                 ValidateFlowSegments(level, path, issues);
                 ValidateClueChannels(level, path, issues);
                 globalIndex++;
@@ -559,6 +560,85 @@ public static class CampaignConfigValidator
 
             AddContentIssue(issues, ContentValidationCode.ChallengeSequenceInvalid, challengePath,
                 "Challenge sequence is invalid: " + error, sequence);
+        }
+    }
+
+    /// <summary>
+    /// Ruling D1 (docs/design/spec-rulings-2026-09.md). Each era runs the same five-step reveal
+    /// progression, and a level's challenge mode is fixed by its position in that era: the first
+    /// two levels restore words, the next two restore sentences, the fifth restores the era's
+    /// mastery paragraph. This turns that table into an author-time check instead of a document
+    /// someone has to remember.
+    /// </summary>
+    /// <remarks>
+    /// Only a WRONG mode is reported, never a missing sequence. A level with no challengeSequence
+    /// already fails loudly at runtime — LevelFlowController.ExecuteContextChallenge refuses to
+    /// complete the phase and shows the content-missing panel (SALIN-223) — so it is visible
+    /// without a validator. A wrong mode is the silent case: the level plays a challenge, the
+    /// player clears it, and it completes, having assessed the wrong thing.
+    ///
+    /// GuidedTracing is allowed at any position. It teaches a symbol rather than restoring text,
+    /// so it is orthogonal to the progression rather than a step in it.
+    ///
+    /// This is emitted at the profile's content severity — a Warning while authoring, an Error
+    /// under Strict — because it currently fires on real, unresolved content: Level 14 ships
+    /// TimedMemory where the era position wants SentenceRestoration, and Level 15 ships
+    /// WordPlacement where it wants ParagraphRestoration. Both were authored deliberately against
+    /// ticket acceptance criteria (SALIN-156 AC3, SALIN-158 AC2), so this reports the
+    /// disagreement rather than pretending either side has already won.
+    /// </remarks>
+    private static void ValidateChallengeModeProgression(
+        LevelConfigSO level,
+        int eraLocalIndex,
+        string path,
+        IssueSink issues)
+    {
+        ChallengeSequenceSO sequence = level.challengeSequence;
+        if (sequence == null || sequence.units == null || sequence.units.Length == 0)
+            return;
+
+        if (!TryGetExpectedModeForEraPosition(eraLocalIndex, out ChallengeMode expected))
+            return;
+
+        string challengePath = path + ".challengeSequence.units";
+        for (int index = 0; index < sequence.units.Length; index++)
+        {
+            ChallengeUnitDefinition unit = sequence.units[index];
+            if (unit == null || unit.mode == expected || unit.mode == ChallengeMode.GuidedTracing)
+                continue;
+
+            AddContentIssue(issues, ContentValidationCode.ChallengeModeEraProgressionInvalid,
+                challengePath + "[" + index + "].mode",
+                "Unit '" + unit.unitId + "' is " + unit.mode + ", but this level is step "
+                + (eraLocalIndex + 1) + " of its era, which restores " + expected
+                + ". A level that assesses the wrong thing still completes, so this cannot be "
+                + "caught by playing it.", sequence);
+        }
+    }
+
+    /// <summary>
+    /// The reveal progression by era-local position: words, words, sentence, sentence, paragraph.
+    /// False for any position outside the five-level era shape, which LevelCountInvalid already
+    /// reports on its own.
+    /// </summary>
+    private static bool TryGetExpectedModeForEraPosition(int eraLocalIndex, out ChallengeMode mode)
+    {
+        switch (eraLocalIndex)
+        {
+            case 0:
+            case 1:
+                mode = ChallengeMode.WordPlacement;
+                return true;
+            case 2:
+            case 3:
+                mode = ChallengeMode.SentenceRestoration;
+                return true;
+            case 4:
+                mode = ChallengeMode.ParagraphRestoration;
+                return true;
+            default:
+                mode = default;
+                return false;
         }
     }
 

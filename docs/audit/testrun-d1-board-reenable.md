@@ -78,3 +78,48 @@ scenes or singletons into the rest of the suite.
 `-runTests` dirtied `TutorialFont.asset` (-1590 lines) and back-filled
 `gateFinalSlotToFinalWave`, `maxOverflowBatches` and `waveCurve` defaults into 12
 `Level*_Config.asset` files. All restored. Only the five task-owned files remain modified.
+
+---
+
+# Step 5 — the progression as an author-time check
+
+`CampaignConfigValidator.ValidateChallengeModeProgression` reports a challenge unit whose mode
+contradicts its era position: steps 1-2 restore words, 3-4 sentences, 5 the era's mastery
+paragraph. Emitted at the profile's content severity — a Warning while authoring, an Error under
+Strict — because it fires on real unresolved content rather than on a hypothetical mistake.
+
+**Scoped to a wrong mode, never a missing sequence.** A level with no `challengeSequence` already
+fails loudly at runtime: `ExecuteContextChallenge` refuses the phase and shows the content-missing
+panel, which is what makes Levels 6, 7, 8, 10 and 13 uncompletable today. It announces itself the
+first time anyone plays it. A *wrong* mode is the silent case — the level plays, clears and
+completes, having assessed the wrong thing. Reporting missing sequences here would also flag every
+level of `CampaignTestFixture`, which authors none, so the check would have been born failing its
+own suite.
+
+The plan's original framing keyed the rule on `activeClueCombatEnabled`. That would have covered
+only Levels 1-5, which all already match — a rule that catches nothing and reads as a pass. Keying
+on era position covers all fifteen.
+
+## What it finds today
+
+Exactly two levels, which is pinned by
+`ChallengeModeEraProgressionTests.ShippedCampaign_DisagreesWithTheProgression_OnExactlyLevels14And15`:
+
+| Level | Ships | Era position wants |
+|---|---|---|
+| 14 | `TimedMemory` | `SentenceRestoration` |
+| 15 | `WordPlacement` | `ParagraphRestoration` |
+
+Both were authored deliberately against ticket acceptance criteria (SALIN-156 AC3, SALIN-158 AC2),
+so the test asserts the disagreement is *exactly these two* rather than asserting the campaign is
+clean. Resolving either one fails the test, and so does a third level drifting. The reconciliation
+backlog is now a named failing assertion instead of a line in a plan.
+
+## Verification
+
+| Mode | dev total | dev failed | head total | head failed | regressions | new failures |
+|---|---|---|---|---|---|---|
+| EditMode | 1304 | 11 | 1398 | 11 | **0** | **0** |
+| PlayMode | 211 | 4 | 217 | 4 | **0** | **0** |
+
+Diffed by name against the same fresh `origin/dev` baseline. Nothing vanished.
