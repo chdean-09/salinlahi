@@ -6,6 +6,16 @@ using UnityEngine;
 /// <summary>
 /// SALIN-158. Authors the Pamana Level 15 context challenge and wires it to Level15_Config.
 ///
+/// SUPERSEDED 2026-09-17 by ruling D1 and the reveal table: the mode is ParagraphRestoration.
+/// Level 15 is step 5 of the Pamana era, which restores that era's mastery paragraph. The table
+/// is the source of truth where it disagrees with a ticket, so AC2's word-forming wording no
+/// longer decides the mode.
+///
+/// The COPY below is still the AC2 copy: two single-slot units whose prompts instruct rather
+/// than present a gapped paragraph. The mode is now correct and the writing is not, which is
+/// the AC3 gap this file already records -- one piece of writing still unblocks SALIN-158 AC3,
+/// SALIN-147 AC2 and SALIN-152 AC2. The original reasoning is kept below as the record.
+///
 /// SCOPE: THIS COVERS AC2 ONLY. SALIN-158 is the largest level ticket in the backlog -- seven
 /// acceptance criteria spanning the final challenge, the Paglimot encounter, the ending sequence,
 /// the completed-journey state, save/restore across an app reopen, and a constraint on Endless Mode
@@ -101,7 +111,7 @@ public static class Pamana15ChallengeAuthoringTool
             SerializedProperty unit = units.GetArrayElementAtIndex(u);
 
             unit.FindPropertyRelative("unitId").stringValue = spec.UnitId;
-            unit.FindPropertyRelative("mode").enumValueIndex = 1;         // WordPlacement
+            unit.FindPropertyRelative("mode").enumValueIndex = 3;         // ParagraphRestoration -- D1
             unit.FindPropertyRelative("cluePolicy").enumValueIndex = 1;   // Reduced -- see class note
             unit.FindPropertyRelative("prompt").stringValue = spec.Prompt;
 
@@ -132,7 +142,7 @@ public static class Pamana15ChallengeAuthoringTool
             unit.FindPropertyRelative("evidenceContentId").stringValue = spec.EvidenceId;
 
             log.AppendLine($"  unit {u + 1}: {spec.FocusText} (+{spec.Decoys.Length} decoys)  " +
-                           "mode=WordPlacement cluePolicy=Reduced");
+                           "mode=ParagraphRestoration cluePolicy=Reduced");
         }
 
         so.ApplyModifiedPropertiesWithoutUndo();

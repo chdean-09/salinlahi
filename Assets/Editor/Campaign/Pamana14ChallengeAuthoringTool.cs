@@ -6,6 +6,13 @@ using UnityEngine;
 /// <summary>
 /// SALIN-156. Authors the Pamana Level 14 context challenge and wires it to Level14_Config.
 ///
+/// SUPERSEDED 2026-09-17 by ruling D1 and the reveal table: the mode is SentenceRestoration.
+/// Level 14 is step 4 of the Pamana era, and every era restores sentences at steps 3 and 4.
+/// The table is the source of truth where it disagrees with a ticket, so AC3's wording no
+/// longer decides this. timerSeconds and memoryRevealSeconds stay serialized but are now inert:
+/// only TimedMemory reads them. The original reasoning is kept below as the record of what was
+/// decided and why, not as a live instruction.
+///
 /// THIS IS THE FIRST TimedMemory UNIT IN THE GAME. Every other authored challenge is GuidedTracing,
 /// WordPlacement or SentenceRestoration. The mode is fully implemented -- it is not being introduced
 /// here, only used for the first time:
@@ -82,7 +89,7 @@ public static class Pamana14ChallengeAuthoringTool
         SerializedProperty unit = units.GetArrayElementAtIndex(0);
 
         unit.FindPropertyRelative("unitId").stringValue = "pamana14-timed-recall";
-        unit.FindPropertyRelative("mode").enumValueIndex = 4;         // TimedMemory
+        unit.FindPropertyRelative("mode").enumValueIndex = 2;         // SentenceRestoration -- D1
         unit.FindPropertyRelative("cluePolicy").enumValueIndex = 1;   // Reduced -- AC2, not a choice
         unit.FindPropertyRelative("prompt").stringValue = Prompt;
 
@@ -134,7 +141,7 @@ public static class Pamana14ChallengeAuthoringTool
         EditorUtility.SetDirty(sequence);
 
         log.AppendLine($"  {(created ? "created" : "updated")} {Path.GetFileName(AssetPath)}");
-        log.AppendLine($"  mode=TimedMemory cluePolicy=Reduced blanks=2 " +
+        log.AppendLine($"  mode=SentenceRestoration cluePolicy=Reduced blanks=2 " +
                        $"timer={TimerSeconds}s reveal={MemoryRevealSeconds}s");
 
         var level = AssetDatabase.LoadAssetAtPath<LevelConfigSO>(LevelPath);

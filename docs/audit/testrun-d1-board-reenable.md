@@ -100,20 +100,32 @@ The plan's original framing keyed the rule on `activeClueCombatEnabled`. That wo
 only Levels 1-5, which all already match — a rule that catches nothing and reads as a pass. Keying
 on era position covers all fifteen.
 
-## What it finds today
+## What it found, and what closed it
 
-Exactly two levels, which is pinned by
-`ChallengeModeEraProgressionTests.ShippedCampaign_DisagreesWithTheProgression_OnExactlyLevels14And15`:
+It flagged exactly two levels:
 
-| Level | Ships | Era position wants |
+| Level | Shipped | Era position wants |
 |---|---|---|
 | 14 | `TimedMemory` | `SentenceRestoration` |
 | 15 | `WordPlacement` | `ParagraphRestoration` |
 
-Both were authored deliberately against ticket acceptance criteria (SALIN-156 AC3, SALIN-158 AC2),
-so the test asserts the disagreement is *exactly these two* rather than asserting the campaign is
-clean. Resolving either one fails the test, and so does a third level drifting. The reconciliation
-backlog is now a named failing assertion instead of a line in a plan.
+Both had been authored against ticket acceptance criteria — SALIN-156 AC3 calls Level 14 "the
+timed memory sentence", SALIN-158 AC2 is word forming — so I first reverted them and left the
+check asserting the disagreement was exactly those two.
+
+That was the wrong call. The plan sets the precedence rule in its own second line: *where this
+plan and the table disagree, the table wins.* A ticket AC is not an exemption from it. Both levels
+are now on the table's modes, their authoring tools carry a SUPERSEDED note over the original
+reasoning, and the test asserts the campaign matches the progression outright
+(`ShippedCampaign_MatchesTheEraProgression`).
+
+Levels 6, 7, 8, 10 and 13 are not covered: they have no sequence at all, which this rule leaves to
+the runtime. They fall under the assertion automatically once step 3 authors them.
+
+**Level 15's copy is still not a paragraph.** Its two units are single-slot with instructional
+prompts ("Buuin mo ang pangalan..."), so the mode is now correct and the writing is not. That is
+SALIN-158 AC3, which the authoring tool already records as blocked on copy that unblocks three
+tickets at once.
 
 ## Verification
 
