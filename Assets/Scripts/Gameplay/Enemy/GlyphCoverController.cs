@@ -17,7 +17,56 @@ public sealed class GlyphCoverController : MonoBehaviour
     private bool _initialized;
     private float _phaseTimer;
 
+    /// <summary>
+    /// True while this spawn is the one that introduced its type, in which case the cover must do
+    /// nothing at all. See <see cref="SetSuppressedForIntroductionSpawn"/>.
+    /// </summary>
+    private bool _suppressedForIntroductionSpawn;
+
     public bool IsCovered => _covered;
+
+    /// <summary>True while this spawn is suppressed as its type's introduction spawn. Test/diagnostic seam, mirroring <see cref="AshFirstSlotController.IsSuppressedForIntroductionSpawn"/>.</summary>
+    public bool IsSuppressedForIntroductionSpawn => _suppressedForIntroductionSpawn;
+
+    /// <summary>
+    /// Makes this ability inert for one spawn — the spawn on which the enemy's introduction card
+    /// plays — and arms it again on every later spawn of the type.
+    ///
+    /// <para>
+    /// <b>Why the cover must not fire on the spawn that introduces it.</b> Takip's badge blinks out
+    /// on a cycle. A player who has never been told that happens, and whose only glimpse of the
+    /// badge is the one the card is framing, reads a glyph that vanishes as the badge failing to
+    /// render — and the card's own portrait is naming an enemy whose symbol the player cannot read.
+    /// The card states the hiding first; the next Takip performs it, against a badge the player has
+    /// already read cleanly.
+    /// </para>
+    ///
+    /// <para>
+    /// Suppression withdraws the effect as well as preventing it: a badge already covered is
+    /// uncovered immediately rather than waiting out a hidden window that will now never end, and
+    /// the cycle is de-initialised so lifting suppression restarts from the authored initial reveal
+    /// rather than resuming a phase timer the player never saw begin.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Pooling.</b> Suppression is per spawn, never per shell. <c>Enemy.Initialize</c> restates it
+    /// on every spawn and <see cref="OnEnable"/> clears it, so a recycled shell always comes back
+    /// unsuppressed — a stuck flag here would silently disable Takip's cover for the rest of the
+    /// run, on a shell that looks identical to a working one.
+    /// </para>
+    /// </summary>
+    public void SetSuppressedForIntroductionSpawn(bool suppressed)
+    {
+        if (_suppressedForIntroductionSpawn == suppressed)
+            return;
+
+        _suppressedForIntroductionSpawn = suppressed;
+        if (suppressed)
+        {
+            SetCovered(false);
+            _initialized = false;
+        }
+    }
 
     private void Awake()
     {
@@ -28,6 +77,8 @@ public sealed class GlyphCoverController : MonoBehaviour
     {
         _initialized = false;
         _covered = false;
+        // A pooled shell must not inherit the previous occupant's suppression.
+        _suppressedForIntroductionSpawn = false;
     }
 
     private void OnDisable()
@@ -51,7 +102,10 @@ public sealed class GlyphCoverController : MonoBehaviour
             _enemy = GetComponent<Enemy>();
 
         EnemyDataSO data = _enemy != null ? _enemy.Data : null;
-        if (data == null || !data.coversOwnGlyph || _enemy.IsDying)
+        // The introduction-spawn suppression joins the same gate as the data flag rather than
+        // getting its own early return, so both ways of being inert uncover the badge through one
+        // path and a suppressed Takip can never be left holding its glyph hidden.
+        if (_suppressedForIntroductionSpawn || data == null || !data.coversOwnGlyph || _enemy.IsDying)
         {
             if (_covered)
                 SetCovered(false);
