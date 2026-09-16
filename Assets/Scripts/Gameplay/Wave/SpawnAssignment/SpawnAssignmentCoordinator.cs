@@ -204,23 +204,38 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
     }
 
     /// <summary>
-    /// Withholds the final slot on <see cref="SpawnGateRegistry.FinalWaveReached"/> when the level
-    /// opts in. Derived rather than authored so content edits cannot move the gate off the finale;
-    /// skipped for a single-slot level, which would otherwise withhold its own win condition.
-    /// <see cref="SpawnSlot.GateToken"/> is readonly, so the tail entry is replaced, not mutated.
+    /// Withholds the level's finale slot on <see cref="SpawnGateRegistry.FinalWaveReached"/> when
+    /// the level opts in. Derived rather than authored so content edits cannot move the gate off
+    /// the finale; skipped for a single-slot level, which would otherwise withhold its own win
+    /// condition. <see cref="SpawnSlot.GateToken"/> is readonly, so the entry is replaced, not
+    /// mutated, and an authored gate on the chosen slot always wins.
+    ///
+    /// <para>
+    /// The chosen slot is the last one whose symbol occurs EXACTLY ONCE in the flattened list, not
+    /// simply the last slot - see <see cref="DerivedFinaleGate"/> for why gating a repeated symbol
+    /// withholds nothing. When no symbol is unique the level is left ungated here and reported at
+    /// author time by <c>CampaignConfigValidator.ValidateGatedFinale</c>.
+    /// </para>
     /// </summary>
     private void ApplyDerivedFinalSlotGate(SpawnAssignmentPolicy policy)
     {
         if (policy == null || !policy.gateFinalSlotToFinalWave || _slots.Count < 2)
             return;
 
-        int last = _slots.Count - 1;
-        SpawnSlot tail = _slots[last];
-        if (tail.IsGated)
+        var symbols = new List<string>(_slots.Count);
+        for (int index = 0; index < _slots.Count; index++)
+            symbols.Add(_slots[index].SymbolStableId);
+
+        int gateIndex = DerivedFinaleGate.LastUniquelyOccurringIndex(symbols);
+        if (gateIndex == DerivedFinaleGate.NoSlot)
             return;
 
-        _slots[last] = new SpawnSlot(
-            tail.SymbolStableId, tail.WordStableId, tail.SlotIndexInWord,
+        SpawnSlot target = _slots[gateIndex];
+        if (target.IsGated)
+            return;
+
+        _slots[gateIndex] = new SpawnSlot(
+            target.SymbolStableId, target.WordStableId, target.SlotIndexInWord,
             SpawnGateRegistry.FinalWaveReached);
     }
 

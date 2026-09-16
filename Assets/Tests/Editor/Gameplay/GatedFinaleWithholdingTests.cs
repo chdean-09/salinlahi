@@ -6,8 +6,10 @@ namespace Salinlahi.Tests.Editor.Gameplay
     /// <summary>
     /// Closes the last unverified gate of the gated-finale feature.
     ///
-    /// <see cref="GatedFinaleSlotTests"/> proves the coordinator derives the gate onto the last
-    /// slot. <see cref="FinalWaveIndexTests"/> proves <c>WaveManager.IsFinalWaveIndex</c> picks the
+    /// <see cref="GatedFinaleSlotTests"/> proves the coordinator derives the gate onto the right
+    /// slot - the last one whose symbol occurs exactly once, NOT simply the last slot, because
+    /// restoration is by symbol and a repeated symbol's gate withholds nothing.
+    /// <see cref="FinalWaveIndexTests"/> proves <c>WaveManager.IsFinalWaveIndex</c> picks the
     /// right wave. <see cref="GatedFinaleCampaignOptInTests"/> proves the shipped Levels 2-4 opt
     /// in. None of those prove the gate actually withholds anything: they all show the gate is
     /// attached and that it opens, but not that <see cref="SpawnAssignmentDirector"/> refuses to

@@ -1140,9 +1140,13 @@ public static class CampaignConfigValidator
     }
 
     /// <summary>
-    /// A level that withholds its final slot until the final wave needs at least two slots and at
-    /// least one wave. With one slot the gate withholds the sole win condition; with no waves the
-    /// token never opens. Either shape is an unwinnable level, so it fails at author time.
+    /// A level that withholds its final slot until the final wave needs at least two slots, at
+    /// least one wave, and at least one symbol that occurs exactly once across its flattened slots.
+    /// With one slot the gate withholds the sole win condition; with no waves the token never
+    /// opens; with no uniquely-occurring symbol there is nothing to withhold, because restoration
+    /// is by symbol (see <see cref="DerivedFinaleGate"/>) and another slot's carrier always fills
+    /// the gated one for free. The first two are unwinnable levels, the third a silent no-op that
+    /// reads as a shipped feature. All three fail at author time.
     /// </summary>
     private static void ValidateGatedFinale(
         LevelConfigSO level,
@@ -1153,7 +1157,7 @@ public static class CampaignConfigValidator
         if (policy == null || !policy.gateFinalSlotToFinalWave)
             return;
 
-        int slotCount = 0;
+        var symbolStableIds = new List<string>();
         if (level.focusWords != null)
         {
             for (int focusIndex = 0; focusIndex < level.focusWords.Count; focusIndex++)
@@ -1164,10 +1168,26 @@ public static class CampaignConfigValidator
 
                 for (int index = 0; index < focus.decomposition.Count; index++)
                 {
-                    if (focus.decomposition[index]?.symbol != null)
-                        slotCount++;
+                    BaybayinCharacterSO symbol = focus.decomposition[index]?.symbol;
+                    if (symbol != null)
+                        symbolStableIds.Add(symbol.stableId);
                 }
             }
+        }
+
+        int slotCount = symbolStableIds.Count;
+
+        if (slotCount >= 2 &&
+            DerivedFinaleGate.LastUniquelyOccurringIndex(symbolStableIds) == DerivedFinaleGate.NoSlot)
+        {
+            AddContentIssue(issues, ContentValidationCode.GatedFinaleUnwinnable,
+                path + ".spawnAssignmentPolicy.gateFinalSlotToFinalWave",
+                "This level withholds its final slot until the final wave but every symbol in its "
+                + "focus words occurs more than once. Restoration is by symbol, so whichever slot "
+                + "the gate lands on is filled for free by another slot's carrier: the gate "
+                + "withholds nothing and the level completes before its final wave exactly as if "
+                + "the option were off. Give the level a syllable that appears exactly once, or "
+                + "turn gateFinalSlotToFinalWave off.", level);
         }
 
         if (slotCount < 2)
