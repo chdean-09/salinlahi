@@ -1,0 +1,155 @@
+# Gated finale for Levels 2-4 — design
+
+- **Date:** 2026-09-16
+- **Status:** awaiting review
+- **Applies to:** Levels 2, 3, 4 (combat-restoration, no special structure)
+
+## Problem, restated
+
+The request began "Level 2 has only very few waves; let's borrow enemies from Level 1". Two parts
+of that premise do not hold, and the real problem is a third thing:
+
+- **Level 2 already has Level 1's enemies.** Its roster is Iligaw, Nawalang Mukha, Abo ng Simula and
+  Mantsa — every Era 1 enemy Level 1 carries — plus Bakod and Takip. The one Level 1 entry Level 2
+  does not carry is Hati, which is a Pamana-era enemy whose presence in Level 1's roster is itself
+  questionable (it is the enemy Level 1's heart-loss demo uses, carrying a symbol Level 1 never
+  teaches). There is nothing worth importing.
+- **Wave count is not what makes it short.** Level 2 already resolves five waves from `Curve_Ugat`.
+- **The win rule is what makes it short.** `WaveManager.Update` calls `BeginInstantWin()` the moment
+  `IsTargetTextRestored()` goes true. BATA/MATA is four slots (ba·ta, ma·ta), so a competent player
+  finishes in wave 1-2 however many waves exist. Reducing the count to four would make the level
+  *shorter*, not longer.
+
+The mechanic actually wanted: **hold one syllable back so the level cannot end before its final
+wave**, and keep pressure on until that syllable is resolved.
+
+## Decisions taken
+
+| # | Decision | Chosen |
+|---|---|---|
+| 1 | How the finale works | Gate the last syllable so it cannot be restored before the final wave |
+| 2 | Scope | Levels 2-4 (Level 1 is tutorial-paced; Level 5's segments await the D3 ruling) |
+| 3 | Introduction cadence | Replay every run, for both symbol and enemy |
+| 4 | Respawn behaviour | Escort waves — pressure keeps building until resolved |
+| 5 | Wave count | Four waves across Levels 2-4 |
+
+## What already exists
+
+Almost all of this is shipped machinery; the new code is small.
+
+- **Slot gating.** `SpawnSlotGate` (SpawnAssignmentPolicy.cs:8) binds a flattened slot to a token
+  that must open before the slot is fillable. `SpawnSlot.GateToken` carries it
+  (SpawnAssignmentTypes.cs:19-33), `SpawnAssignmentDirector.IsGateOpen` (:611) enforces it, and
+  `SpawnAssignmentCoordinator.OpenGate(token)` (:202) opens one. **Level 1 already uses this**, gating
+  the MA of AMA behind `SpawnGateRegistry.AboAshShown`.
+- **Respawn with escorts.** `WaveManager.RunRestorationOverflow` (:726) already runs after the last
+  wave, spawning batches of `OverflowBatchSize = 3` while `coordinator.WantsOverflow` — i.e. while
+  the target text is incomplete. `allowFinalWaveOverflow` is already `1` on all five levels.
+
+## Section 1 — the gated finale
+
+**The slot is derived, never authored.** `slotGates` entries carry a literal `slotIndex`. Authoring
+`slotIndex: 3` on three level assets couples the gate to content position: re-author MATA as MATAAS
+and the gate silently lands mid-word. This codebase has been bitten by that class of drift before
+(the derived `cumulativeSymbolPool` that must be edited in two places; Level 5's narrowed wave roster
+that no test caught). So the mechanism is reused, the index is not authored.
+
+1. **New token.** `SpawnGateRegistry.FinalWaveReached = "final_wave_reached"`.
+2. **New opt-in.** One bool on `SpawnAssignmentPolicy`, `gateFinalSlotToFinalWave`, default `false`.
+   It lives on the policy — which already owns `slotGates`, `slotFloors` and
+   `allowFinalWaveOverflow` — so spawn concerns stay in the spawn policy rather than leaking into
+   `LevelConfigSO`. Set `true` on Levels 2, 3, 4.
+3. **Derive the slot.** At the end of `SpawnAssignmentCoordinator.BuildSlots` (:173-199), when the
+   policy opts in, `_slots.Count > 1`, and the last slot carries no authored gate, replace the last
+   entry with an identical `SpawnSlot` carrying `FinalWaveReached`. `GateToken` is readonly, so this
+   is a replace rather than a mutate. An authored gate always wins, so Level 1's hand-authoring is
+   untouched by construction.
+4. **Open it on the final wave.** In `WaveManager`'s wave loop, immediately before
+   `_spawner.SpawnWave` for the last wave in the run, call
+   `AssignmentCoordinator.OpenGate(SpawnGateRegistry.FinalWaveReached)`.
+5. **Guard it in the validator.** A level opting in must have at least two slots and at least one
+   wave. A one-slot level that gated its only slot would be unwinnable; that must fail at author
+   time, not in the player's hands.
+
+## Section 2 — respawn pressure
+
+`MaxOverflowBatches` is a hardcoded `const int = 12` (WaveManager.cs:49), so overflow gives up after
+roughly 36 enemies. The requested behaviour is "until the game is won or lost".
+
+Make it a policy field defaulting to the current 12, and treat a non-positive value as unbounded.
+Levels 2-4 opt into unbounded. A hard cap stays available for any level that wants one, and the
+default keeps every other level on exactly today's behaviour.
+
+Deliberately **not** an unconditional `while(true)`: the loop already exits on `CanContinueRun()` and
+on `WantsOverflow`, and the existing warning at :763 is a genuine diagnostic for a starved director.
+Unbounded is opt-in, per level, and visible in data.
+
+## Section 3 — four waves
+
+A second curve asset, `Curve_Ugat_Short`, with `waveCount: 4` and the existing ramp fields, which
+Levels 2-4 reference in place of `Curve_Ugat`. This is what curve assets are for — shared shape
+definitions — so it needs no new field and no per-level override.
+
+Re-pins `UgatWaveCurveMigrationTests.MigratedUgatLevel_ResolvesFiveWavesCarryingItsWholeRoster`,
+which currently asserts five waves and `enemyCount [2,4,5,6,7]` for levels 2,3,4,5. Levels 2-4 move
+to the four-wave expectation; Level 5 stays on `Curve_Ugat`.
+
+**Recorded disagreement:** five waves reads better with the gate, because the held-back syllable has
+more room before the finale. This is a feel judgement and it is the product owner's call; it is one
+field to flip either way.
+
+## Section 4 — introductions (separate change, do not bundle)
+
+Requested: introductions replay every run, for both the symbol and the enemy. In Era 1 these
+coincide, because the roster is a bijection — one enemy per syllable.
+
+**Scope note:** unlike Sections 1-3 this is *not* confined to Levels 2-4. Introduction state is
+campaign-wide, so changing its cadence changes every level including the tutorial. That widening is
+another reason to ship it on its own.
+
+**Why this ships separately.** `EnemyIntroductionProgress.TryClaimIntroduction` is campaign-wide and
+permanent, and `SpawnGateRegistry.Level1RosterMet` is raised *as a consequence of an introduction
+having played*. `LevelRosterTests.ApplyLevel_OpensTheRosterGateWhenTheCampaignHasAlreadyMetEveryType`
+documents the bug that came from that coupling: on a retry no introduction plays, so a gate raised
+only after an introduction never opened and the level could not be completed. Introduction cadence
+and a completion gate are tangled.
+
+**The durable order is therefore:**
+
+1. Decouple first — derive `Level1RosterMet` from roster state (has every type been met) rather than
+   from an introduction having fired.
+2. Then make cadence an explicit, single-source policy, at which point "every run" is a free choice
+   rather than a load-bearing one.
+
+**Known consequence to accept before doing it:** an introduction spawn is deliberately inert
+(`Enemy.ApplyIntroductionSpawnSuppression`). Replaying introductions every run means the *first*
+Bakod, Takip and Mantsa of **every run** has its ability suppressed. Since the same conversation
+asked whether abilities were firing, this makes that impression worse, not better.
+
+## Testing
+
+- **EditMode.** Coordinator: the final slot is gated when the policy opts in, ungated when it does
+  not, and an authored gate is never overwritten. Validator: a one-slot level opting in is rejected.
+  Migration tests re-pinned to four waves for Levels 2-4.
+- **PlayMode.** The gated slot cannot be filled before the final wave; it becomes fillable once the
+  final wave starts; overflow keeps spawning while it is unresolved.
+- **Negative control.** Point the gate at a level that has not opted in and confirm the finale test
+  fails — a gate that never closes is indistinguishable from a passing test otherwise.
+- **In-Editor.** Play Level 2 end to end. Batchmode cannot see pacing, and the last two defects in
+  this area were both found by playing, not by the suite.
+
+## Out of scope
+
+- Level 1 and Level 5 keep today's behaviour.
+- The three dead ability controllers found while investigating — `ShokanCorruptionVeil`,
+  `GeneralAura`, `KishaMover` — have no enabling field and no asset. Deleting them is its own change.
+- `Kadena` is functioning but first reachable at Level 6; nothing to do in Era 1.
+
+## Open question
+
+Whether `gateFinalSlotToFinalWave` should also require the final wave to actually *contain* a carrier
+for the gated symbol. Today the director falls back rather than blocking when a wave's roster cannot
+supply a needed symbol, so the gate opening is sufficient — but on a level whose final wave narrowed
+its roster, the syllable could open and still not arrive. The `WAVE_ROSTER_NARROWS_RESTORATION`
+validator rule added earlier already rejects that shape, so this is believed covered; worth
+confirming during implementation.
