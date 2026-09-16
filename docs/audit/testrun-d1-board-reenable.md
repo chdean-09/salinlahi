@@ -135,3 +135,52 @@ tickets at once.
 | PlayMode | 211 | 4 | 217 | 4 | **0** | **0** |
 
 Diffed by name against the same fresh `origin/dev` baseline. Nothing vanished.
+
+---
+
+# Step 4 — focus words: closed as already satisfied
+
+Neither change the plan describes is needed. Both of its step-4 claims describe the shipped state
+inaccurately, which is different from the Level 14/15 case — there the plan and a ticket AC
+disagreed about what *should* be, and the plan's own precedence rule settled it.
+
+## Level 5 already covers all six Era 1 characters
+
+Its three `ParagraphRestoration` units answer:
+
+| Unit | Answers |
+|---|---|
+| `ugat05-restore-line-01` | IBA, MANA |
+| `ugat05-restore-line-02` | INA, AMA |
+| `ugat05-restore-line-03` | TAMA |
+
+Spelling out to **A, BA, EI, MA, NA, TA** — the complete Era 1 set, with nothing missing.
+
+The plan read the `focusWords` list (IBA, MANA) and concluded A and TA were absent.
+`docs/content/ugat-levels-2-5-narrative.md` is explicit that these are different axes: *"IBA and
+MANA are the level's taught words; INA, AMA and TAMA are review blanks from Levels 2-4"*, and
+*"every blanked word is spellable from the six Era 1 characters only"*.
+
+Worth noting why this was easy to miss: the coverage lives in the challenge, and until step 1 of
+this plan that challenge had never run. The data was right and invisible at the same time.
+
+Adding A and TA to `focusWords` would also demote IBA and MANA from being the level's taught
+words, and each new focus word carries its own dialogue and restored-memory cutscene — authoring,
+not reconciliation.
+
+## PAMANA is Level 15's word
+
+The narrative roster assigns `level.pamana.05 | PAMANA | MALAYA`, and Level 15 ships exactly
+those. Level 11 ships DALA and DAMA, matching SALIN-153 AC2 (`DALA = DA + LA`, `DAMA = DA + MA`).
+
+`Char_PA.firstIntroductionLevelId` is `level.pamana.05`, so spelling PAMANA on Level 11 would use
+PA four levels before it is introduced — what `SYMBOL_NOT_INTRODUCED` and
+`PA_INSTRUCTION_ORDER_INVALID` exist to catch — and would duplicate Level 15's own focus word.
+
+Confirmed 2026-09-17: Level 11 keeps DALA and DAMA.
+
+## Remaining
+
+Step 3 only — the five missing sequences on Levels 6, 7, 8, 10 and 13, which need Filipino copy
+the team writes. Level 13 has no focus words either, which is why `Char_RA` is introduced by no
+level. Level 15's paragraph copy (SALIN-158 AC3) is part of the same writing task.

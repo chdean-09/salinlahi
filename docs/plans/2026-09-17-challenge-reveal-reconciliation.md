@@ -67,7 +67,12 @@ L15 → `ParagraphRestoration`. One field each; no code.
 Level 13 needs focus words first; it currently has none, which is also why `Char_RA` is introduced
 by no level (see the symbol-introduction integrity rule).
 
-**4. Reconcile the focus words** — Level 5 to cover all six Era 1 characters, Level 11 to `PAMANA`.
+**4. Reconcile the focus words** — CLOSED 2026-09-17, no change needed. Level 5 already
+covers all six Era 1 characters through its three paragraph answers (IBA, MANA, INA, AMA, TAMA);
+PAMANA is Level 15's focus word, and Level 11's DALA/DAMA match SALIN-153 AC2. See
+`docs/audit/testrun-d1-board-reenable.md`. Original text follows.
+
+~~4. Reconcile the focus words~~ — Level 5 to cover all six Era 1 characters, Level 11 to `PAMANA`.
 Level 5's change interacts with the gated finale: the gate derives onto the last slot whose symbol
 occurs exactly once, so changing its focus words moves the gate. Re-run
 `GatedFinaleCampaignOptInTests` and the withholding tests after.
