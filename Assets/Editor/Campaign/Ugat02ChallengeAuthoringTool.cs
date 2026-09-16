@@ -97,7 +97,9 @@ public static class Ugat02ChallengeAuthoringTool
         {
             unitId = unitId,
             mode = ChallengeMode.WordPlacement,
-            cluePolicy = ChallengeCluePolicy.Full,      // Level 2 still teaches; clues stay full
+            cluePolicy = ChallengeCluePolicy.Reduced,   // D1: the reveal table withholds Level 2's
+                                                       // words -- it is independent completion, not
+                                                       // the guided restoration Level 1 runs.
             prompt = prompt,
             tokens = new[]
             {

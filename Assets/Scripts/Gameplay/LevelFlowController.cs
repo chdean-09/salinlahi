@@ -622,14 +622,28 @@ public class LevelFlowController : MonoBehaviour
 
     private IEnumerator ExecuteContextChallenge()
     {
-        // D-003. Levels that opt into the shared combat-restoration path fill their focus-word
-        // slots as clues are accepted during Defense. They do not open the retired, separate
-        // post-wave challenge board; Level 1 remains on that authored path until its final-
-        // syllable gate is migrated in a later slice.
+        // D1 (docs/design/spec-rulings-2026-09.md). Levels that opt into the shared
+        // combat-restoration path fill their focus-word slots as clues are accepted during
+        // Defense. That pass subsumes the WordPlacement units, which stay retired — but it is
+        // not the whole authored challenge. Any SentenceRestoration or ParagraphRestoration
+        // unit still plays on the board afterwards, keyed on unit mode rather than level
+        // number so Levels 6-15 inherit it as their sequences are authored.
+        //
+        // Every level on this path sets both activeClue flags, Level 1 included; the board it
+        // opens is the authored sequence, not a legacy surface.
+        List<string> boardUnitIds = null;
         if (UsesCombatRestorationPath())
         {
-            yield return ExecuteCombatRestoration();
-            yield break;
+            boardUnitIds = CollectPostCombatBoardUnitIds();
+
+            // The combat pass owns phase completion only when no board follows it. When one
+            // does, the board's own result switch below reports, so the phase is completed
+            // exactly once. A segment with no restoration leg yields no board units, so it
+            // still completes inside ExecuteCombatRestoration.
+            yield return ExecuteCombatRestoration(reportPhaseComplete: boardUnitIds.Count == 0);
+
+            if (boardUnitIds.Count == 0 || _flowAborted || _machine.IsTerminal)
+                yield break;
         }
 
         // SALIN-223: phase 6 is planned on every level now, so this executor is the
@@ -659,9 +673,16 @@ public class LevelFlowController : MonoBehaviour
         // SALIN-226. On a segmented level this phase plays only the current segment's
         // restoration leg. The two refusals above are unchanged and still run first, so a
         // level with no authored sequence refuses exactly as SALIN-223 made it refuse.
-        IReadOnlyList<string> segmentUnitIds = _phasePlan != null
-            ? _phasePlan.SegmentChallengeUnitIds(_machine.CurrentSegmentIndex)
-            : System.Array.Empty<string>();
+        // D1. On the combat-restoration path the list is already narrowed to this segment's
+        // board units and is never empty here; everywhere else the segment's own list governs.
+        IReadOnlyList<string> segmentUnitIds;
+        if (boardUnitIds != null)
+            segmentUnitIds = boardUnitIds;
+        else if (_phasePlan != null)
+            segmentUnitIds = _phasePlan.SegmentChallengeUnitIds(_machine.CurrentSegmentIndex);
+        else
+            segmentUnitIds = System.Array.Empty<string>();
+
         bool isSegmented = _phasePlan != null && _phasePlan.SegmentCount > 1;
 
         if (isSegmented && segmentUnitIds.Count == 0)
@@ -719,6 +740,87 @@ public class LevelFlowController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// D1. The unit ids this segment plays on the challenge board after its combat-restoration
+    /// pass. <see cref="SelectPostCombatBoardUnitIds"/> holds the rule; this only supplies the
+    /// level's sequence and the current segment's list.
+    /// </summary>
+    private List<string> CollectPostCombatBoardUnitIds()
+    {
+        bool isSegmented = _phasePlan != null && _phasePlan.SegmentCount > 1;
+        IReadOnlyList<string> segmentUnitIds = isSegmented
+            ? _phasePlan.SegmentChallengeUnitIds(_machine.CurrentSegmentIndex)
+            : null;
+
+        return SelectPostCombatBoardUnitIds(
+            _levelConfig != null ? _levelConfig.challengeSequence : null,
+            segmentUnitIds,
+            isSegmented);
+    }
+
+    /// <summary>
+    /// D1 (docs/design/spec-rulings-2026-09.md). Of <paramref name="sequence"/>, the units that
+    /// still open a challenge board after a combat-restoration pass: SentenceRestoration and
+    /// ParagraphRestoration only. WordPlacement stays retired because slot-fill during Defense
+    /// subsumes it; GuidedTracing and TimedMemory are not part of the reveal progression this
+    /// restores. Keyed on unit mode, never on level number, so Levels 6-15 inherit the board as
+    /// their sequences are authored.
+    /// </summary>
+    /// <remarks>
+    /// Segment order wins when <paramref name="isSegmented"/>, matching the list the segmented
+    /// path hands to ChallengeFlowController.Play; authored sequence order otherwise. Static and
+    /// public so the rule can be asserted against the shipped campaign without standing up a scene.
+    /// </remarks>
+    public static List<string> SelectPostCombatBoardUnitIds(
+        ChallengeSequenceSO sequence,
+        IReadOnlyList<string> segmentUnitIds,
+        bool isSegmented)
+    {
+        var boardUnitIds = new List<string>();
+        if (sequence == null || sequence.units == null)
+            return boardUnitIds;
+
+        ChallengeUnitDefinition[] units = sequence.units;
+
+        if (!isSegmented)
+        {
+            for (int index = 0; index < units.Length; index++)
+            {
+                if (IsPostCombatBoardUnit(units[index]))
+                    boardUnitIds.Add(units[index].unitId);
+            }
+
+            return boardUnitIds;
+        }
+
+        if (segmentUnitIds == null)
+            return boardUnitIds;
+
+        for (int idIndex = 0; idIndex < segmentUnitIds.Count; idIndex++)
+        {
+            for (int unitIndex = 0; unitIndex < units.Length; unitIndex++)
+            {
+                ChallengeUnitDefinition unit = units[unitIndex];
+                if (unit == null || unit.unitId != segmentUnitIds[idIndex])
+                    continue;
+
+                if (IsPostCombatBoardUnit(unit))
+                    boardUnitIds.Add(unit.unitId);
+                break;
+            }
+        }
+
+        return boardUnitIds;
+    }
+
+    private static bool IsPostCombatBoardUnit(ChallengeUnitDefinition unit)
+    {
+        return unit != null
+            && !string.IsNullOrEmpty(unit.unitId)
+            && (unit.mode == ChallengeMode.SentenceRestoration
+                || unit.mode == ChallengeMode.ParagraphRestoration);
+    }
+
     private bool UsesCombatRestorationPath()
     {
         return _levelConfig != null
@@ -726,7 +828,7 @@ public class LevelFlowController : MonoBehaviour
             && _levelConfig.activeClueRestorationEnabled;
     }
 
-    private IEnumerator ExecuteCombatRestoration()
+    private IEnumerator ExecuteCombatRestoration(bool reportPhaseComplete)
     {
         if (_activeCluePresenter == null || !_activeCluePresenter.HasRestorationWords)
         {
@@ -765,7 +867,10 @@ public class LevelFlowController : MonoBehaviour
             yield break;
         }
 
-        _machine.ReportPhaseComplete(LevelPhase.ContextChallenge);
+        // D1. Suppressed when a challenge board follows this pass: the board reports the
+        // phase instead, so it is reported exactly once either way.
+        if (reportPhaseComplete)
+            _machine.ReportPhaseComplete(LevelPhase.ContextChallenge);
     }
 
     private bool TryResolveCombatRestorationTargets(

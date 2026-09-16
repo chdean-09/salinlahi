@@ -17,7 +17,7 @@ MonoBehaviour:
   units:
   - unitId: pamana11-complete-dala
     mode: 1
-    cluePolicy: 1
+    cluePolicy: 0
     prompt: May dala kang alaala mula sa mga naunang panahon. Buuin mo ang salitang
       nagsasabi kung ano ang ginagawa mo.
     tokens:
@@ -56,7 +56,7 @@ MonoBehaviour:
     evidenceContentId: level.pamana.01.focus.01
   - unitId: pamana11-complete-dama
     mode: 1
-    cluePolicy: 1
+    cluePolicy: 0
     prompt: Hindi sapat na dalhin lamang ang alaala. Buuin mo ang salitang nagsasabi
       kung paano mo ito nauunawaan.
     tokens:
