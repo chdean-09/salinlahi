@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 /// <summary>
 /// SALIN-138: the Focus Words phase surface — presents both restoration goals
-/// (word, meaning, and readable decomposition) after the story intro and before
+/// (word and readable decomposition) after the story intro and before
 /// any drawing is possible. Drawing input stays suppressed for the whole preview;
 /// the Defense executor releases it exactly once as it opens. Glyph badge
 /// art attaches when SALIN-199's assets land; until then the decomposition reads
@@ -69,8 +69,13 @@ public class FocusWordPreviewController : MonoBehaviour
             builder.Append(string.IsNullOrEmpty(focus.displayLabel)
                 ? focus.latinSpelling
                 : focus.displayLabel);
-            if (!string.IsNullOrEmpty(focus.meaning))
-                builder.Append(" — ").Append(focus.meaning);
+            // Ugat QA 2026-09-16: the meaning is English ("IBA - different", "MANA - inheritance")
+            // and this card is player-facing, which Q16 does not allow: English is UI copy only,
+            // and story text, cutscenes and focus-word explanations stay Filipino. The meaning is
+            // still content — it is what the Meaning mastery dimension matches on — it simply is
+            // not a gloss to print beside the word. The Filipino explanation the player is meant to
+            // read already arrives as focus-word dialogue (Dialogue_Ugat01_Ina / _Ama and their
+            // siblings), so removing it here drops a duplicate, not the only copy.
 
             if (focus.decomposition != null && focus.decomposition.Count > 0)
             {

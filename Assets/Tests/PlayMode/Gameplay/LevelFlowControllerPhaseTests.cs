@@ -961,11 +961,20 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Assert.IsNotNull(preview, "The flow must provide the focus-word preview surface.");
             Assert.IsTrue(preview.IsPresenting);
             StringAssert.Contains("LUNA", preview.RenderedText);
-            StringAssert.Contains("test-moon", preview.RenderedText);
             StringAssert.Contains("TALA", preview.RenderedText);
-            StringAssert.Contains("test-star", preview.RenderedText);
             StringAssert.Contains("lu", preview.RenderedText);
             StringAssert.Contains("ta", preview.RenderedText);
+
+            // Ugat QA 2026-09-16: this used to assert the MEANINGS were rendered too
+            // ("test-moon", "test-star"). They no longer are, and that is the point of the change
+            // rather than a regression — the meaning is English, this card is story-facing, and
+            // Q16 keeps English to UI copy. Playing Level 5 showed the shipped card reading
+            // "IBA — different" / "MANA — inheritance". The meaning stays authored because the
+            // Meaning mastery dimension matches on it; it is simply not printed beside the word.
+            Assert.That(preview.RenderedText, Does.Not.Contain("test-moon"),
+                "the preview printed a focus word's English meaning: " + preview.RenderedText);
+            Assert.That(preview.RenderedText, Does.Not.Contain("test-star"),
+                "the preview printed a focus word's English meaning: " + preview.RenderedText);
         }
 
         [UnityTest]
