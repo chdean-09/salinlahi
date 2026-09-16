@@ -189,9 +189,7 @@ public sealed class LevelContentMissingPanel : MonoBehaviour
         label.alignment = TextAlignmentOptions.Center;
         label.textWrappingMode = TextWrappingModes.Normal;
         label.raycastTarget = false;
-        if (TMP_Settings.defaultFontAsset != null)
-            label.font = TMP_Settings.defaultFontAsset;
-        TutorialFontProvider.ApplyLegibilityEffects(label);
+        TutorialFontProvider.ApplyTo(label);
 
         RectTransform rect = textObject.GetComponent<RectTransform>();
         rect.anchorMin = new Vector2(0f, 1f);

@@ -488,9 +488,7 @@ public sealed class EraCompletionScreenUI : MonoBehaviour
         label.alignment = TextAlignmentOptions.Center;
         label.textWrappingMode = TextWrappingModes.Normal;
         label.raycastTarget = false;
-        if (TMP_Settings.defaultFontAsset != null)
-            label.font = TMP_Settings.defaultFontAsset;
-        TutorialFontProvider.ApplyLegibilityEffects(label);
+        TutorialFontProvider.ApplyTo(label);
         return label;
     }
 

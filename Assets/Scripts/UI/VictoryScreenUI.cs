@@ -326,9 +326,7 @@ public class VictoryScreenUI : MonoBehaviour
         label.fontSize = fontSize;
         label.alignment = TextAlignmentOptions.Center;
         label.raycastTarget = false;
-        if (TMP_Settings.defaultFontAsset != null)
-            label.font = TMP_Settings.defaultFontAsset;
-        TutorialFontProvider.ApplyLegibilityEffects(label);
+        TutorialFontProvider.ApplyTo(label);
         return label;
     }
 
