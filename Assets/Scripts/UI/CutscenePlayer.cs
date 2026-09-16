@@ -396,8 +396,7 @@ public class CutscenePlayer : MonoBehaviour
     {
         if (type == TransitionType.None)
         {
-            if (_panelImage != null)
-                _panelImage.sprite = sprite;
+            ApplyPanelSprite(sprite);
             if (_canvasGroup != null)
                 _canvasGroup.alpha = 1f;
             yield break;
@@ -405,16 +404,29 @@ public class CutscenePlayer : MonoBehaviour
 
         if (type == TransitionType.Fade)
         {
-            if (_panelImage != null)
-                _panelImage.sprite = sprite;
+            ApplyPanelSprite(sprite);
             yield return FadeCanvasGroup(0f, 1f, duration);
         }
         else
         {
-            if (_panelImage != null)
-                _panelImage.sprite = sprite;
+            ApplyPanelSprite(sprite);
             yield return SlideIn(type, duration);
         }
+    }
+
+    // Single funnel for every panel sprite assignment. A panel authored without art would
+    // otherwise leave the Image showing its default white texture across the full screen,
+    // so the component is disabled while the sprite is null and re-enabled by the next
+    // panel that does have art. Every panel routes through here (PlayRoutine -> TransitionIn),
+    // so the re-enable path always runs; SetCutsceneContentVisible toggles the GameObject,
+    // not this component, and so cannot clobber the flag.
+    private void ApplyPanelSprite(Sprite sprite)
+    {
+        if (_panelImage == null)
+            return;
+
+        _panelImage.sprite = sprite;
+        _panelImage.enabled = sprite != null;
     }
 
     private IEnumerator FadeCanvasGroup(float from, float to, float duration)

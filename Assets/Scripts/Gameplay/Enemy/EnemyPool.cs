@@ -191,7 +191,20 @@ public class EnemyPool : Singleton<EnemyPool>
             if (_poolStatesByEnemyID.TryGetValue(key, out PoolState mappedState))
                 return mappedState;
 
-            DebugLogger.LogWarning($"EnemyPool: Unknown enemyID '{enemyID}'. Falling back to default pool.");
+            // Most enemies deliberately share the default '[Enemy] Corrupted' shell instead of
+            // registering a dedicated pool, so an unregistered enemyID is the normal spawn path,
+            // not a fault. Only the case where there is no default pool to fall back to — and the
+            // enemy therefore cannot spawn at all — deserves a warning.
+            if (_defaultPoolState != null)
+            {
+                DebugLogger.Log(
+                    $"EnemyPool: enemyID '{enemyID}' has no dedicated pool. Using the shared default pool.");
+            }
+            else
+            {
+                DebugLogger.LogWarning(
+                    $"EnemyPool: Unknown enemyID '{enemyID}' and no default pool to fall back to.");
+            }
         }
 
         if (_defaultPoolState == null)
