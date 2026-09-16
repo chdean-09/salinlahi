@@ -43,10 +43,9 @@ public class WaveManager : MonoBehaviour
              + "be re-authored to ship the beat.")]
     [SerializeField] private InstantWinPresenter _instantWinPresenter;
 
-    // Restoration overflow: how many enemies per batch, and how many batches before giving up and
-    // letting the existing refuse-completion path report the real problem.
+    // Restoration overflow: how many enemies per batch. The batch budget before giving up is a
+    // per-level policy field (SpawnAssignmentPolicy.maxOverflowBatches), not a constant here.
     private const int OverflowBatchSize = 3;
-    private const int MaxOverflowBatches = 12;
 
     private int _currentWaveIndex;
     private int _currentWaveSpawnedCount;
@@ -760,9 +759,16 @@ public class WaveManager : MonoBehaviour
             yield break;
         }
 
-        // Bounded so a broken gate or an unrestorable target cannot spin forever. Reaching the
-        // bound leaves the existing refuse-completion path to report the real problem.
-        for (int batch = 0; batch < MaxOverflowBatches; batch++)
+        SpawnAssignmentPolicy overflowPolicy =
+            _levelConfig != null ? _levelConfig.spawnAssignmentPolicy : null;
+        bool unbounded = overflowPolicy != null && overflowPolicy.OverflowIsUnbounded;
+        int maxBatches = overflowPolicy != null ? overflowPolicy.maxOverflowBatches : 12;
+
+        // Bounded by default so a broken gate or an unrestorable target cannot spin forever;
+        // unbounded when a level's policy asks for escorts to keep coming. Both still exit on
+        // CanContinueRun() and on WantsOverflow above, so an unbounded run still ends when the run
+        // is won or lost - it just never gives up on its own.
+        for (int batch = 0; unbounded || batch < maxBatches; batch++)
         {
             if (!CanContinueRun() || !coordinator.WantsOverflow)
                 yield break;
@@ -779,9 +785,12 @@ public class WaveManager : MonoBehaviour
             yield return WaitForActiveEnemiesCleared();
         }
 
+        // Only reachable for a bounded level whose budget ran out - an unbounded level's loop
+        // condition never goes false, so it only ever leaves through a yield break above.
         DebugLogger.LogWarning(
-            $"WaveManager: restoration overflow ran {MaxOverflowBatches} batches without finishing "
-            + "the focus words. Check that every gated slot has something calling OpenGate.");
+            $"WaveManager: restoration overflow ran {maxBatches} batches (this level's "
+            + "spawnAssignmentPolicy.maxOverflowBatches budget) without finishing the focus words. "
+            + "Check that every gated slot has something calling OpenGate.");
     }
 
     /// <summary>Last non-intermission wave, whose roster and cadence the overflow reuses.</summary>
