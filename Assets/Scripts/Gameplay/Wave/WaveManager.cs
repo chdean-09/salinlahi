@@ -729,6 +729,16 @@ public class WaveManager : MonoBehaviour
         endWaveIndexExclusive > 0 && waveIndex == endWaveIndexExclusive - 1;
 
     /// <summary>
+    /// True while <see cref="RunRestorationOverflow"/>'s loop should spawn another batch. Pure and
+    /// static for the same reason as <see cref="IsFinalWaveIndex"/>: not because the expression is
+    /// complex, but so an off-by-one on the bound (<c>&lt;=</c> instead of <c>&lt;</c>) or a flipped
+    /// operator (<c>&amp;&amp;</c> instead of <c>||</c>) is an EditMode test failure instead of a
+    /// silent behaviour change only a full play session would surface.
+    /// </summary>
+    internal static bool ShouldContinueOverflow(int batch, bool unbounded, int maxBatches) =>
+        unbounded || batch < maxBatches;
+
+    /// <summary>
     /// Keeps the defense running past the authored wave budget until the level's focus words are
     /// finished.
     ///
@@ -768,7 +778,7 @@ public class WaveManager : MonoBehaviour
         // unbounded when a level's policy asks for escorts to keep coming. Both still exit on
         // CanContinueRun() and on WantsOverflow above, so an unbounded run still ends when the run
         // is won or lost - it just never gives up on its own.
-        for (int batch = 0; unbounded || batch < maxBatches; batch++)
+        for (int batch = 0; ShouldContinueOverflow(batch, unbounded, maxBatches); batch++)
         {
             if (!CanContinueRun() || !coordinator.WantsOverflow)
                 yield break;
