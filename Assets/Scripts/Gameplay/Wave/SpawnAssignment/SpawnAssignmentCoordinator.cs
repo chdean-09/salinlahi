@@ -22,6 +22,7 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
 
     private SpawnAssignmentDirector _director;
     private LevelConfigSO _level;
+    private bool _loggedEnemyRosterFallback;
     private ActiveCluePresenter _presenter;
 
     /// <summary>
@@ -123,6 +124,7 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
     public void ApplyLevel(LevelConfigSO level, ActiveCluePresenter presenter)
     {
         _level = level;
+        _loggedEnemyRosterFallback = false;
         _presenter = presenter;
         _clock = 0f;
         _clockFrozen = false;
@@ -378,17 +380,45 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
     /// <summary>
     /// The enemy that embodies a symbol. Level 1 is a clean bijection - Iligaw is E/I, Nawalang
     /// Mukha is NA, Abo ng Simula is A, Mantsa is MA - so choosing the symbol chooses the enemy,
-    /// and the identity the glyph badge asserts stays true. Returns null when no enemy in this
-    /// wave owns the symbol, and the caller then keeps its own type roll.
+    /// and the identity the glyph badge asserts stays true. When the wave's own list does not
+    /// carry the symbol we fall back to the level roster, exactly as ResolveCharacter does: a wave
+    /// that narrows its enemyTypes must not be able to put a needed symbol on a body that
+    /// contradicts its badge. Returns null only when no enemy on the level owns the symbol, and
+    /// the caller then keeps its own type roll.
     /// </summary>
     public EnemyDataSO ResolveEnemyData(string symbolStableId, WaveDefinition wave)
     {
-        if (string.IsNullOrEmpty(symbolStableId) || wave?.enemyTypes == null)
+        if (string.IsNullOrEmpty(symbolStableId))
             return null;
 
-        for (int i = 0; i < wave.enemyTypes.Count; i++)
+        EnemyDataSO fromWave = FindEnemyData(wave?.enemyTypes, symbolStableId);
+        if (fromWave != null)
+            return fromWave;
+
+        EnemyDataSO fromLevel = FindEnemyData(
+            _level != null ? _level.allowedEnemyTypes : null, symbolStableId);
+        if (fromLevel != null && !_loggedEnemyRosterFallback)
         {
-            EnemyDataSO data = wave.enemyTypes[i];
+            // Once per level: a narrowed wave is authoring drift, and the validator's
+            // WAVE_ROSTER_NARROWS_RESTORATION check should have caught it before it shipped.
+            _loggedEnemyRosterFallback = true;
+            DebugLogger.LogWarning(
+                "SpawnAssignmentCoordinator: wave enemyTypes did not carry '" + symbolStableId
+                + "'; fell back to the level roster (" + fromLevel.name + "). The wave narrows the "
+                + "level's enemy roster - see WAVE_ROSTER_NARROWS_RESTORATION.");
+        }
+
+        return fromLevel;
+    }
+
+    private static EnemyDataSO FindEnemyData(List<EnemyDataSO> candidates, string symbolStableId)
+    {
+        if (candidates == null)
+            return null;
+
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            EnemyDataSO data = candidates[i];
             if (data?.assignedCharacter != null && data.assignedCharacter.stableId == symbolStableId)
                 return data;
         }

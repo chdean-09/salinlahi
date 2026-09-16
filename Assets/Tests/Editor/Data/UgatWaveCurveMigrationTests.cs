@@ -17,6 +17,7 @@ namespace Salinlahi.Tests.Editor.Data
         [TestCase(2)]
         [TestCase(3)]
         [TestCase(4)]
+        [TestCase(5)]
         public void MigratedUgatLevel_HasNoAuthoredWaves_AndUsesCurveUgat(int levelNumber)
         {
             LevelConfigSO level = Load(levelNumber);
@@ -30,6 +31,7 @@ namespace Salinlahi.Tests.Editor.Data
         [TestCase(2)]
         [TestCase(3)]
         [TestCase(4)]
+        [TestCase(5)]
         public void MigratedUgatLevel_ResolvesFiveWavesCarryingItsWholeRoster(int levelNumber)
         {
             LevelConfigSO level = Load(levelNumber);
@@ -48,7 +50,6 @@ namespace Salinlahi.Tests.Editor.Data
         }
 
         [TestCase(1)]
-        [TestCase(5)]
         public void ReferenceLevels_KeepAuthoredWaves(int levelNumber)
         {
             LevelConfigSO level = Load(levelNumber);

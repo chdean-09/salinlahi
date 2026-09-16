@@ -397,6 +397,7 @@ public static class CampaignConfigValidator
                 ValidateCumulativePool(campaign, level, globalIndex, path, issues);
                 ValidateCombatRoster(campaign, level, globalIndex, path, issues);
                 ValidateWaveCharacters(level, path, issues);
+                ValidateCombatWaveRoster(level, path, issues);
                 ValidateFinalRestoration(campaign, level, path, issues);
                 ValidateRequiredReferences(level, path, issues);
                 ValidatePaInstructionOrder(level, path, issues);
@@ -1045,6 +1046,128 @@ public static class CampaignConfigValidator
         }
 
         return -1;
+    }
+
+    /// <summary>
+    /// Ugat QA 2026-09-16: a level that restores its focus text through combat has to be able to
+    /// spawn every symbol that text needs, in every wave. A wave that narrows its own roster
+    /// starves the spawn director — once the narrowed symbol is restored the filler pool has
+    /// nothing else to draw, so the marked enemy carries a glyph no open slot wants, and a needed
+    /// symbol with no matching enemy in the wave spawns on a body that contradicts its badge.
+    /// An empty wave list is the healthy shape: it means "carry the whole level roster", so only a
+    /// non-empty, narrowed list is reported here. (A curve-driven level passes on merit rather
+    /// than by that exemption - WaveCurveExpander copies the full roster into every wave.)
+    /// </summary>
+    private static void ValidateCombatWaveRoster(
+        LevelConfigSO level,
+        string path,
+        IssueSink issues)
+    {
+        if (!level.activeClueCombatEnabled || level.waves == null || level.focusWords == null)
+            return;
+
+        var requiredSymbolIds = new List<string>();
+        var seenSymbolIds = new HashSet<string>(StringComparer.Ordinal);
+        for (int focusIndex = 0; focusIndex < level.focusWords.Count; focusIndex++)
+        {
+            FocusWordDefinition focus = level.focusWords[focusIndex];
+            if (focus?.decomposition == null)
+                continue;
+
+            for (int index = 0; index < focus.decomposition.Count; index++)
+            {
+                BaybayinCharacterSO symbol = focus.decomposition[index]?.symbol;
+                if (symbol == null || string.IsNullOrEmpty(symbol.stableId))
+                    continue;
+
+                if (seenSymbolIds.Add(symbol.stableId))
+                    requiredSymbolIds.Add(symbol.stableId);
+            }
+        }
+
+        if (requiredSymbolIds.Count == 0)
+            return;
+
+        for (int waveIndex = 0; waveIndex < level.waves.Count; waveIndex++)
+        {
+            WaveDefinition wave = level.waves[waveIndex];
+            if (wave == null || wave.isIntermissionWave)
+                continue;
+
+            string wavePath = path + ".waves[" + waveIndex + "]";
+
+            if (wave.characters != null && wave.characters.Count > 0)
+            {
+                var missing = new List<string>();
+                for (int index = 0; index < requiredSymbolIds.Count; index++)
+                {
+                    if (FindCharacterId(wave.characters, requiredSymbolIds[index]) == null)
+                        missing.Add(requiredSymbolIds[index]);
+                }
+
+                if (missing.Count > 0)
+                {
+                    AddContentIssue(issues, ContentValidationCode.WaveRosterNarrowsRestoration,
+                        wavePath + ".characters",
+                        "A combat-restoration wave that lists characters must carry every symbol its "
+                        + "focus text needs, or the spawn director starves once the listed symbols are "
+                        + "restored. Leave the list empty to inherit the level roster. Missing: "
+                        + string.Join(", ", missing) + ".", level);
+                }
+            }
+
+            if (wave.enemyTypes == null || wave.enemyTypes.Count == 0)
+                continue;
+
+            var unrepresented = new List<string>();
+            for (int index = 0; index < requiredSymbolIds.Count; index++)
+            {
+                if (!WaveCarriesEnemyFor(wave.enemyTypes, requiredSymbolIds[index]))
+                    unrepresented.Add(requiredSymbolIds[index]);
+            }
+
+            if (unrepresented.Count > 0)
+            {
+                AddContentIssue(issues, ContentValidationCode.WaveRosterNarrowsRestoration,
+                    wavePath + ".enemyTypes",
+                    "A combat-restoration wave that lists enemy types must include an enemy whose "
+                    + "assignedCharacter covers each symbol its focus text needs, or a needed symbol "
+                    + "spawns on a body that contradicts its badge. Leave the list empty to inherit "
+                    + "the level roster. Unrepresented: " + string.Join(", ", unrepresented) + ".", level);
+            }
+        }
+    }
+
+    private static BaybayinCharacterSO FindCharacterId(
+        List<BaybayinCharacterSO> candidates,
+        string symbolStableId)
+    {
+        if (candidates == null)
+            return null;
+
+        for (int index = 0; index < candidates.Count; index++)
+        {
+            if (candidates[index] != null && candidates[index].stableId == symbolStableId)
+                return candidates[index];
+        }
+
+        return null;
+    }
+
+    private static bool WaveCarriesEnemyFor(List<EnemyDataSO> enemyTypes, string symbolStableId)
+    {
+        for (int index = 0; index < enemyTypes.Count; index++)
+        {
+            EnemyDataSO enemyData = enemyTypes[index];
+            if (enemyData != null &&
+                enemyData.assignedCharacter != null &&
+                enemyData.assignedCharacter.stableId == symbolStableId)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
