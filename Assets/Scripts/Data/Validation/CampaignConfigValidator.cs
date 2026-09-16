@@ -398,6 +398,7 @@ public static class CampaignConfigValidator
                 ValidateCombatRoster(campaign, level, globalIndex, path, issues);
                 ValidateWaveCharacters(level, path, issues);
                 ValidateCombatWaveRoster(level, path, issues);
+                ValidateGatedFinale(level, path, issues);
                 ValidateFinalRestoration(campaign, level, path, issues);
                 ValidateRequiredReferences(level, path, issues);
                 ValidatePaInstructionOrder(level, path, issues);
@@ -1135,6 +1136,56 @@ public static class CampaignConfigValidator
                     + "spawns on a body that contradicts its badge. Leave the list empty to inherit "
                     + "the level roster. Unrepresented: " + string.Join(", ", unrepresented) + ".", level);
             }
+        }
+    }
+
+    /// <summary>
+    /// A level that withholds its final slot until the final wave needs at least two slots and at
+    /// least one wave. With one slot the gate withholds the sole win condition; with no waves the
+    /// token never opens. Either shape is an unwinnable level, so it fails at author time.
+    /// </summary>
+    private static void ValidateGatedFinale(
+        LevelConfigSO level,
+        string path,
+        IssueSink issues)
+    {
+        SpawnAssignmentPolicy policy = level.spawnAssignmentPolicy;
+        if (policy == null || !policy.gateFinalSlotToFinalWave)
+            return;
+
+        int slotCount = 0;
+        if (level.focusWords != null)
+        {
+            for (int focusIndex = 0; focusIndex < level.focusWords.Count; focusIndex++)
+            {
+                FocusWordDefinition focus = level.focusWords[focusIndex];
+                if (focus?.decomposition == null)
+                    continue;
+
+                for (int index = 0; index < focus.decomposition.Count; index++)
+                {
+                    if (focus.decomposition[index]?.symbol != null)
+                        slotCount++;
+                }
+            }
+        }
+
+        if (slotCount < 2)
+        {
+            AddContentIssue(issues, ContentValidationCode.GatedFinaleUnwinnable,
+                path + ".spawnAssignmentPolicy.gateFinalSlotToFinalWave",
+                "This level withholds its final slot until the final wave but has "
+                + slotCount + " slot(s). Gating the only slot withholds the level's sole win "
+                + "condition, so it could never be completed.", level);
+        }
+
+        int waveCount = level.waves != null ? level.waves.Count : 0;
+        if (waveCount < 1)
+        {
+            AddContentIssue(issues, ContentValidationCode.GatedFinaleUnwinnable,
+                path + ".spawnAssignmentPolicy.gateFinalSlotToFinalWave",
+                "This level withholds its final slot until the final wave but authors no waves, "
+                + "so the gate would never open.", level);
         }
     }
 
