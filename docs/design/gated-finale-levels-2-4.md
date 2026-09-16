@@ -60,16 +60,39 @@ that no test caught). So the mechanism is reused, the index is not authored.
    `allowFinalWaveOverflow` — so spawn concerns stay in the spawn policy rather than leaking into
    `LevelConfigSO`. Set `true` on Levels 2, 3, 4.
 3. **Derive the slot.** At the end of `SpawnAssignmentCoordinator.BuildSlots` (:173-199), when the
-   policy opts in, `_slots.Count > 1`, and the last slot carries no authored gate, replace the last
-   entry with an identical `SpawnSlot` carrying `FinalWaveReached`. `GateToken` is readonly, so this
-   is a replace rather than a mutate. An authored gate always wins, so Level 1's hand-authoring is
-   untouched by construction.
+   policy opts in and `_slots.Count > 1`, replace the target entry with an identical `SpawnSlot`
+   carrying `FinalWaveReached`. `GateToken` is readonly, so this is a replace rather than a mutate.
+   An authored gate on the target always wins, so Level 1's hand-authoring is untouched by
+   construction.
+
+   **The target is the last slot whose symbol occurs EXACTLY ONCE in the flattened list, not simply
+   the last slot** (`DerivedFinaleGate.LastUniquelyOccurringIndex`). Restoration is by SYMBOL:
+   `ActiveCluePresenter.ActiveClueRestorationState.Apply` fills *every* slot matching a defeated
+   carrier's symbol across *every* focus word, so a gate on a repeated symbol withholds nothing.
+   Level 2 was exactly that shape — BATA + MATA flatten to `[ba, ta, ma, ta]`, the last slot is
+   `ta@MATA`, and any TA carrier taken for BATA's slot 1 filled it for free, so the level this
+   feature was built for completed in wave 2 with the gate nominally on. It now gates `ma@MATA`
+   (slot 2). Levels 3 (`[ba, ta, ta, ma]`) and 4 (`[i, na, a, ma]`) end on a unique symbol, so
+   their gate is unchanged — which is why the defect survived every per-level review.
+
+   A level whose every symbol repeats cannot support a gated finale at all: it is left ungated at
+   runtime and reported at author time (see 5).
 4. **Open it on the final wave.** In `WaveManager`'s wave loop, immediately before
-   `_spawner.SpawnWave` for the last wave in the run, call
-   `AssignmentCoordinator.OpenGate(SpawnGateRegistry.FinalWaveReached)`.
-5. **Guard it in the validator.** A level opting in must have at least two slots and at least one
-   wave. A one-slot level that gated its only slot would be unwinnable; that must fail at author
-   time, not in the player's hands.
+   `_spawner.SpawnWave` for the last wave in the run, call `OpenFinaleGate()`
+   (`AssignmentCoordinator.OpenGate(SpawnGateRegistry.FinalWaveReached)`).
+
+   **And unconditionally immediately before `RunRestorationOverflow`.** Reaching overflow means the
+   wave list is exhausted by definition, so the gate must be open by then. The per-wave opening
+   alone is not enough: `ResolveResumeWaveIndex` returns `waves.Count` when the player paused or
+   quit during the final wave after its last enemy had spawned, the resumed loop body then never
+   executes, and the run falls through to overflow with the gate still closed. With Levels 2-4's
+   `maxOverflowBatches: 0`, `ShouldContinueOverflow` is permanently true and the director emits
+   `HoldForGate` forever: the run becomes unwinnable *and* unloseable. `OpenGate` is idempotent, so
+   both openings coexist.
+5. **Guard it in the validator.** A level opting in must have at least two slots, at least one
+   wave, and at least one symbol that occurs exactly once. A one-slot level that gated its only
+   slot would be unwinnable; a level with no uniquely-occurring symbol gates nothing at all. Both
+   must fail at author time, not in the player's hands.
 
 ## Section 2 — respawn pressure
 
@@ -128,8 +151,13 @@ asked whether abilities were firing, this makes that impression worse, not bette
 
 ## Testing
 
-- **EditMode.** Coordinator: the final slot is gated when the policy opts in, ungated when it does
-  not, and an authored gate is never overwritten. Validator: a one-slot level opting in is rejected.
+- **EditMode.** Coordinator: the derived slot is gated when the policy opts in, ungated when it does
+  not, and an authored gate is never overwritten; a level whose last symbol repeats gates the last
+  *unique* slot instead, and a level with no unique symbol is left ungated. Validator: a one-slot
+  level and a no-unique-symbol level opting in are both rejected. Shipped data: each of Levels 2-4
+  gates a symbol that occurs exactly once. Resume: `ResolveResumeWaveIndex` returns `waves.Count`
+  for a pause after the final wave's last spawn, `IsFinalWaveIndex` is false there, unbounded
+  overflow never self-terminates, and `OpenFinaleGate` releases the slot with no wave having run.
   Migration tests re-pinned to four waves for Levels 2-4.
 - **PlayMode.** The gated slot cannot be filled before the final wave; it becomes fillable once the
   final wave starts; overflow keeps spawning while it is unresolved.

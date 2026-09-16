@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEditor;
+using UnityEngine;
 
 namespace Salinlahi.Tests.Editor.Data
 {
@@ -66,6 +68,77 @@ namespace Salinlahi.Tests.Editor.Data
                 $"{level.spawnAssignmentPolicy.maxOverflowBatches} does not read as unbounded " +
                 "through OverflowIsUnbounded, which is the property the escort director actually " +
                 "consults.");
+        }
+
+        /// <summary>
+        /// The Level 2 defect, asserted against the SHIPPED data rather than a synthetic shape.
+        ///
+        /// <para>
+        /// Level 2's BATA + MATA flatten to <c>[ba, ta, ma, ta]</c>. Restoration is by symbol -
+        /// <c>ActiveCluePresenter.ActiveClueRestorationState.Apply</c> fills every slot matching a
+        /// defeated carrier's symbol across every focus word - so a gate on a REPEATED symbol
+        /// withholds nothing at all. The engine derived the gate onto the literal last slot,
+        /// <c>ta@MATA</c>, so the level the feature was built for was never gated, while Levels 3
+        /// and 4 (which end on a unique symbol) held and hid the defect from every per-task review.
+        /// </para>
+        ///
+        /// <para>
+        /// This test makes that return impossible silently: it re-derives the gate from the shipped
+        /// asset and requires the gated symbol to occur exactly once. An authoring edit that adds a
+        /// second MA to Level 2, or a regression that puts the gate back on the tail, fails here.
+        /// </para>
+        /// </summary>
+        [TestCase("level.ugat.02", "Level 2")]
+        [TestCase("level.ugat.03", "Level 3")]
+        [TestCase("level.ugat.04", "Level 4")]
+        public void GatedLevel_WithholdsASymbolThatOccursExactlyOnce(string stableId, string label)
+        {
+            CampaignConfigSO campaign = LoadCampaign();
+            LevelConfigSO level = GetLevel(campaign, stableId);
+
+            var go = new GameObject(nameof(SpawnAssignmentCoordinator));
+            try
+            {
+                var coordinator = go.AddComponent<SpawnAssignmentCoordinator>();
+                coordinator.ApplyLevel(level, null);
+
+                IReadOnlyList<SpawnSlot> slots = coordinator.Slots;
+                string gatedSymbol = null;
+                int gatedIndex = -1;
+                for (int index = 0; index < slots.Count; index++)
+                {
+                    if (slots[index].GateToken != SpawnGateRegistry.FinalWaveReached)
+                        continue;
+
+                    gatedSymbol = slots[index].SymbolStableId;
+                    gatedIndex = index;
+                }
+
+                Assert.IsNotNull(gatedSymbol,
+                    $"{label} ({stableId}) opts into the gated finale but no slot carries " +
+                    $"{SpawnGateRegistry.FinalWaveReached}, so nothing is withheld.");
+
+                int occurrences = 0;
+                var flattened = new List<string>(slots.Count);
+                for (int index = 0; index < slots.Count; index++)
+                {
+                    flattened.Add(slots[index].SymbolStableId);
+                    if (slots[index].SymbolStableId == gatedSymbol)
+                        occurrences++;
+                }
+
+                Assert.AreEqual(1, occurrences,
+                    $"{label} ({stableId}) gates slot {gatedIndex} on '{gatedSymbol}', which " +
+                    $"occurs {occurrences} times in [{string.Join(", ", flattened)}]. Restoration " +
+                    "is by SYMBOL, not by slot: any carrier of a repeated symbol fills the gated " +
+                    "slot for free, so the gate withholds nothing and the level completes before " +
+                    "its final wave exactly as if gateFinalSlotToFinalWave were off. This is the " +
+                    "Level 2 defect; it must never come back silently.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(go);
+            }
         }
 
         [TestCase("level.ugat.01", "Level 1")]
