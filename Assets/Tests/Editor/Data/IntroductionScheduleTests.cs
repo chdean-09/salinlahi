@@ -141,11 +141,47 @@ namespace Salinlahi.Tests.Editor.Data
                 new[] { "symbol.ei", "symbol.na" }, fillers,
                 "Level 2's padding is the syllables Level 1 taught.");
 
-            Assert.AreEqual("symbol.ba", schedule.ResolveFinaleSymbolId(levelTwo),
-                "Level 2 teaches BA and TA, so it should end on one of them. Its focus words are "
-                + "BATA and MATA, so its slots are BA, TA, MA, TA -- and the DERIVED finale picks "
-                + "MA, the last symbol occurring exactly once. Authoring BA is the whole reason "
-                + "this field exists.");
+            Assert.AreEqual("symbol.ta", schedule.ResolveFinaleSymbolId(levelTwo),
+                "Level 2 ends on TA: drawing it wins the level. The DERIVED finale picks MA, the "
+                + "last symbol occurring exactly once, because gating a single TA slot leaks -- a "
+                + "carrier spawned for the other TA slot fills both. The authored gate covers every "
+                + "slot carrying the symbol, which is what makes TA gateable at all.");
+        }
+
+        /// <summary>
+        /// The authored finale gates every slot carrying its symbol, not just one. A single-slot
+        /// gate on a repeated symbol withholds nothing — a carrier spawned for an ungated duplicate
+        /// restores the gated slot for free, and the level finishes before its final wave exactly
+        /// as if gating were switched off. That is the defect DerivedFinaleGate was written to
+        /// avoid, and it is why the derived rule refuses repeated symbols instead of gating them.
+        /// </summary>
+        [Test]
+        public void AuthoredFinale_MayRepeat_BecauseEverySlotCarryingItIsGated()
+        {
+            IntroductionScheduleSO schedule = Campaign().introductionSchedule;
+            LevelConfigSO levelTwo = Level(2);
+
+            int taSlots = 0;
+            int totalSlots = 0;
+            foreach (FocusWordDefinition word in levelTwo.focusWords)
+            {
+                if (word?.decomposition == null)
+                    continue;
+
+                foreach (SymbolValueReference reference in word.decomposition)
+                {
+                    totalSlots++;
+                    if (reference?.symbol != null && reference.symbol.stableId == "symbol.ta")
+                        taSlots++;
+                }
+            }
+
+            Assert.AreEqual(2, taSlots,
+                "Level 2's BATA and MATA both end in TA. If that ever stops being true this test "
+                + "is no longer covering the repeated-symbol case it exists for.");
+            Assert.Less(taSlots, totalSlots,
+                "Gating every slot would leave nothing restorable before the final wave, which is "
+                + "a level that cannot be played rather than one with a finale.");
         }
 
         [Test]

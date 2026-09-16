@@ -228,15 +228,21 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
         for (int index = 0; index < _slots.Count; index++)
             symbols.Add(_slots[index].SymbolStableId);
 
-        // An authored finale wins. The derived rule picks the last slot whose symbol occurs
-        // exactly once, which is a sensible default and not a decision anyone made: the level that
-        // wants a specific syllable held for last names it in the campaign's IntroductionSchedule.
-        // An authored symbol that this level has no slot for is ignored rather than obeyed, and
-        // reported at author time, because gating a slot that does not exist withholds nothing.
-        int gateIndex = ResolveAuthoredFinaleIndex(symbols);
-        if (gateIndex == DerivedFinaleGate.NoSlot)
-            gateIndex = DerivedFinaleGate.LastUniquelyOccurringIndex(symbols);
+        // An authored finale wins, and it gates BY SYMBOL rather than by slot.
+        //
+        // That difference is the whole reason a repeated symbol can be a finale at all. The derived
+        // rule gates ONE slot, so it must avoid a repeated symbol: restoration fills every slot
+        // matching a defeated carrier's symbol, and a carrier spawned for an ungated duplicate
+        // would fill the gated one for free (see DerivedFinaleGate). Gating EVERY slot carrying the
+        // symbol removes the duplicate that leaked: no carrier for it spawns until the final wave,
+        // and when one does, defeating it restores all of them together and completes the level.
+        //
+        // Level 2 is exactly this shape -- BATA + MATA flatten to [ba, ta, ma, ta] -- and TA is
+        // what it is meant to end on.
+        if (ApplyAuthoredFinaleGate(symbols))
+            return;
 
+        int gateIndex = DerivedFinaleGate.LastUniquelyOccurringIndex(symbols);
         if (gateIndex == DerivedFinaleGate.NoSlot)
             return;
 
@@ -250,27 +256,57 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
     }
 
     /// <summary>
-    /// The slot index carrying this level's authored finale symbol, or
-    /// <see cref="DerivedFinaleGate.NoSlot"/> when none is authored or it names a symbol no slot
-    /// carries. The LAST matching slot, to match the derived rule's tie-breaking.
+    /// Gates every slot carrying this level's authored finale symbol. Returns whether a finale was
+    /// authored and applied, so the caller knows to skip the derived rule.
     /// </summary>
-    private int ResolveAuthoredFinaleIndex(List<string> symbols)
+    /// <remarks>
+    /// Refuses to gate ALL of the level's slots. Withholding every slot means nothing can be
+    /// restored before the final wave, which is a level that cannot be played rather than one with
+    /// a finale — reported rather than shipped.
+    /// </remarks>
+    private bool ApplyAuthoredFinaleGate(List<string> symbols)
     {
         IntroductionScheduleSO schedule = IntroductionScheduleLookup.Resolve();
         string authored = schedule != null ? schedule.ResolveFinaleSymbolId(_level) : null;
         if (string.IsNullOrEmpty(authored))
-            return DerivedFinaleGate.NoSlot;
+            return false;
 
-        for (int index = symbols.Count - 1; index >= 0; index--)
+        var matches = new List<int>();
+        for (int index = 0; index < symbols.Count; index++)
         {
             if (string.Equals(symbols[index], authored, System.StringComparison.Ordinal))
-                return index;
+                matches.Add(index);
         }
 
-        DebugLogger.LogWarning(
-            $"SpawnAssignmentCoordinator: the schedule names '{authored}' as this level's finale, "
-            + "but no focus-word slot carries it, so the derived finale is used instead.");
-        return DerivedFinaleGate.NoSlot;
+        if (matches.Count == 0)
+        {
+            DebugLogger.LogWarning(
+                $"SpawnAssignmentCoordinator: the schedule names '{authored}' as this level's "
+                + "finale, but no focus-word slot carries it, so the derived finale is used.");
+            return false;
+        }
+
+        if (matches.Count == symbols.Count)
+        {
+            DebugLogger.LogError(
+                $"SpawnAssignmentCoordinator: '{authored}' is the only symbol this level asks for, "
+                + "so gating it withholds every slot and nothing can be restored before the final "
+                + "wave. Left ungated; give the level a symbol to work on first.");
+            return false;
+        }
+
+        for (int i = 0; i < matches.Count; i++)
+        {
+            SpawnSlot target = _slots[matches[i]];
+            if (target.IsGated)
+                continue;
+
+            _slots[matches[i]] = new SpawnSlot(
+                target.SymbolStableId, target.WordStableId, target.SlotIndexInWord,
+                SpawnGateRegistry.FinalWaveReached);
+        }
+
+        return true;
     }
 
     /// <summary>Marks a beat resolved, ungating any slot that was waiting on it.</summary>

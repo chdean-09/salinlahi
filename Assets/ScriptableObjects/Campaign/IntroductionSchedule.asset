@@ -28,7 +28,7 @@ MonoBehaviour:
     fillerSymbols:
     - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
     - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
-    finaleSymbol: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+    finaleSymbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
   - level: {fileID: 11400000, guid: 03bfbde0b892043a482dd1c3507bd5ed, type: 2}
     introduces:
     - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
