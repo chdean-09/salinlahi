@@ -1351,6 +1351,10 @@ public class LevelFlowController : MonoBehaviour
 
         _activeCluePresenter?.ApplyLevel(_levelConfig);
 
+        // A new attempt forgets last attempt's introductions BEFORE the coordinator evaluates the
+        // roster gate below against that record.
+        EnemyIntroductionBeat.BeginAttempt();
+
         // Built after the presenter, because the schedule reads restoration state back from it.
         _spawnAssignmentCoordinator?.ApplyLevel(_levelConfig, _activeCluePresenter);
     }

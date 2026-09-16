@@ -6,7 +6,8 @@ using System.Collections.Generic;
 ///
 /// Derived rather than authored so a wave-table edit cannot leave the roster gate waiting on a
 /// type the level no longer spawns — which would hold slot 3 closed forever and make the level
-/// unwinnable.
+/// unwinnable. For the same reason the gate itself waits on <see cref="BuildRosterGateRoster"/>,
+/// which drops the types that can only spawn once the gate is open.
 ///
 /// The filters mirror the data-level half of EnemyIntroductionBeat.IsIntroducibleSpawn. Its
 /// remaining checks (IsBoss, an introduction already playing, drawing input not yet accepted) are
@@ -88,10 +89,78 @@ public static class LevelRoster
         if (config == null || openGate == null)
             return false;
 
-        if (!AllIntroduced(BuildIntroducibleRoster(config), hasBeenIntroduced))
+        if (!AllIntroduced(BuildRosterGateRoster(config), hasBeenIntroduced))
             return false;
 
         openGate(SpawnGateRegistry.Level1RosterMet);
         return true;
+    }
+
+    /// <summary>
+    /// The roster the <see cref="SpawnGateRegistry.Level1RosterMet"/> gate actually waits on: the
+    /// introducible roster minus every type whose assigned symbol sits in a slot that gate
+    /// withholds.
+    ///
+    /// <para>
+    /// <b>The deadlock this closes.</b> On Level 1 the enemy is chosen BY the symbol
+    /// (<c>SpawnAssignmentCoordinator.ResolveEnemyData</c>): Mantsa embodies MA and nothing else.
+    /// Slot 3 is MA, gated on this token, and the director keeps a gated symbol out of filler as
+    /// well as out of the needed slot — so Mantsa never spawns while the gate is shut. A gate that
+    /// waits on Mantsa's introduction therefore waits on a spawn it is itself preventing: MA never
+    /// appears, AMA can never be restored, and the level cannot be completed. The types that can
+    /// only be met behind the gate are exactly the ones the gate must not require.
+    /// </para>
+    /// </summary>
+    public static List<EnemyDataSO> BuildRosterGateRoster(LevelConfigSO config)
+    {
+        List<EnemyDataSO> roster = BuildIntroducibleRoster(config);
+        HashSet<string> gatedSymbols = CollectSymbolsGatedBy(config, SpawnGateRegistry.Level1RosterMet);
+        if (gatedSymbols.Count == 0)
+            return roster;
+
+        roster.RemoveAll(data =>
+            data.assignedCharacter != null
+            && !string.IsNullOrEmpty(data.assignedCharacter.stableId)
+            && gatedSymbols.Contains(data.assignedCharacter.stableId));
+        return roster;
+    }
+
+    /// <summary>
+    /// The stable IDs of every symbol in a slot gated on <paramref name="gateToken"/>. Flattens the
+    /// focus words exactly as <c>SpawnAssignmentCoordinator.BuildSlots</c> does — every word's
+    /// decomposition in order, skipping null or ID-less symbols — so the slot indices the policy's
+    /// gates name resolve to the same symbols the director withholds.
+    /// </summary>
+    public static HashSet<string> CollectSymbolsGatedBy(LevelConfigSO config, string gateToken)
+    {
+        var gated = new HashSet<string>();
+        if (config?.focusWords == null || string.IsNullOrEmpty(gateToken))
+            return gated;
+
+        SpawnAssignmentPolicy policy = config.spawnAssignmentPolicy;
+        if (policy == null)
+            return gated;
+
+        int flatIndex = 0;
+        for (int wordIndex = 0; wordIndex < config.focusWords.Count; wordIndex++)
+        {
+            FocusWordDefinition word = config.focusWords[wordIndex];
+            if (word?.decomposition == null)
+                continue;
+
+            for (int slotIndex = 0; slotIndex < word.decomposition.Count; slotIndex++)
+            {
+                SymbolValueReference reference = word.decomposition[slotIndex];
+                if (reference?.symbol == null || string.IsNullOrEmpty(reference.symbol.stableId))
+                    continue;
+
+                if (policy.GateTokenForSlot(flatIndex) == gateToken)
+                    gated.Add(reference.symbol.stableId);
+
+                flatIndex++;
+            }
+        }
+
+        return gated;
     }
 }

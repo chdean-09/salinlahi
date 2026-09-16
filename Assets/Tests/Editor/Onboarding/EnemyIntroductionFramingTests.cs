@@ -137,5 +137,76 @@ namespace Salinlahi.Tests.Editor.Onboarding
             _cameraHost.transform.position = new Vector3(0f, MeasuredSpawnY, -10f);
             Assert.IsTrue(EnemyIntroductionBeat.IsVerticallyInsideView(camera, enemy, 0.35f));
         }
+
+        // ------------------------------------------------------------------ halt line
+
+        /// <summary>
+        /// The halt line: an authored fraction of the camera's view, measured down from its top
+        /// edge, that the introduced enemy's top must drop below before the beat halts it. The HUD
+        /// rule alone parks the enemy just under the clue panel — on camera, but so high that the
+        /// card and vignette land on a sprite the player has barely seen walk in.
+        /// </summary>
+        [Test]
+        public void HaltCeiling_DropsToTheHaltLineWhenItIsBelowTheHud()
+        {
+            Camera camera = CreateLevel1Camera();
+            Assert.IsTrue(EnemyIntroductionBeat.TryGetCameraWorldRect(camera, out Rect view));
+
+            float ceiling = EnemyIntroductionBeat.ResolveHaltCeilingWorldY(
+                camera, view, hudOcclusionRect: null, hudClearanceWorld: 0.25f,
+                haltLineViewportFromTop: 0.3f);
+
+            // 30% of a 20.05-unit-tall view is 6.015 units below the top edge.
+            Assert.AreEqual(view.yMax - 0.3f * view.height, ceiling, 0.001f);
+            Assert.Less(ceiling, view.yMax, "the line must lower the ceiling below the camera top");
+        }
+
+        [Test]
+        public void HaltCeiling_AtZeroLine_IsTheCameraTopWhenThereIsNoHud()
+        {
+            Camera camera = CreateLevel1Camera();
+            Assert.IsTrue(EnemyIntroductionBeat.TryGetCameraWorldRect(camera, out Rect view));
+
+            float ceiling = EnemyIntroductionBeat.ResolveHaltCeilingWorldY(
+                camera, view, null, 0.25f, haltLineViewportFromTop: 0f);
+
+            Assert.AreEqual(view.yMax, ceiling, 0.001f,
+                "a zero line disables the rule, so the existing behaviour is untouched");
+        }
+
+        [Test]
+        public void HaltCeiling_FourArgumentOverload_IsTheZeroLineBehaviour()
+        {
+            Camera camera = CreateLevel1Camera();
+            Assert.IsTrue(EnemyIntroductionBeat.TryGetCameraWorldRect(camera, out Rect view));
+
+            Assert.AreEqual(
+                EnemyIntroductionBeat.ResolveHaltCeilingWorldY(camera, view, null, 0.25f),
+                EnemyIntroductionBeat.ResolveHaltCeilingWorldY(camera, view, null, 0.25f, 0f),
+                0.001f);
+        }
+
+        [Test]
+        public void IsFramedForLesson_RejectsAnEnemyAboveTheHaltLine()
+        {
+            Camera camera = CreateLevel1Camera();
+            Assert.IsTrue(EnemyIntroductionBeat.TryGetCameraWorldRect(camera, out Rect view));
+            float line = view.yMax - 0.3f * view.height;
+
+            // Fully inside the camera, clear of the top edge by a wide margin, but its top is
+            // still above the halt line: not framed yet.
+            Bounds tooHigh = new Bounds(new Vector3(0f, line + 0.5f, 0f), new Vector3(1f, 2f, 1f));
+            Assert.IsFalse(EnemyIntroductionBeat.IsFramedForLesson(
+                camera, tooHigh, 0.35f, null, 0.25f, haltLineViewportFromTop: 0.3f));
+            Assert.IsTrue(EnemyIntroductionBeat.IsFramedForLesson(
+                camera, tooHigh, 0.35f, null, 0.25f),
+                "negative control: without the line the same enemy counts as framed");
+
+            // Walked down until its top (plus margin) has cleared the line: framed.
+            Bounds lowEnough = new Bounds(
+                new Vector3(0f, line - 1f - 0.35f - 0.01f, 0f), new Vector3(1f, 2f, 1f));
+            Assert.IsTrue(EnemyIntroductionBeat.IsFramedForLesson(
+                camera, lowEnough, 0.35f, null, 0.25f, haltLineViewportFromTop: 0.3f));
+        }
     }
 }
