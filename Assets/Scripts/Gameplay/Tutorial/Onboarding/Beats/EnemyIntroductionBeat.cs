@@ -684,9 +684,17 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             // already framed must cost this beat nothing at all, not even the frame a nested
             // coroutine spends completing. Beat 1's halt, vignette and time-scale drop are expected
             // to be in place the instant Initialize returns.
-            if (NeedsToWalkIntoView(enemy))
+            // Playtest 2026-09-17. The halt line is a LESSON requirement, not a card one. It
+            // exists to leave room for beat 7's badge reveal without clipping the screen edge, and
+            // the four-step card has no such beat. Applied to the card it cost ~4.5 seconds of
+            // walking after the enemy was already fully visible -- measured at 1.07 units/second
+            // against a ceiling of y=2.95 in a view topping out at 7.82 -- and the card arrived
+            // long after the player had dealt with its subject. The card now lands as soon as the
+            // enemy is wholly on screen.
+            float haltLine = lesson != null ? _haltLineViewportFromTop : 0f;
+            if (NeedsToWalkIntoView(enemy, haltLine))
             {
-                yield return WaitUntilEnemyIsOnScreen(enemy, data);
+                yield return WaitUntilEnemyIsOnScreen(enemy, data, haltLine);
 
                 if (!IsStillPresentable(enemy, data))
                     yield break;
@@ -740,7 +748,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// condition could never be met by walking.
     /// </para>
     /// </summary>
-    private bool NeedsToWalkIntoView(Enemy enemy)
+    private bool NeedsToWalkIntoView(Enemy enemy, float haltLineViewportFromTop)
     {
         if (_onScreenWaitTimeoutSeconds <= 0f)
             return false;
@@ -750,7 +758,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             return false;
 
         return !IsFramedForLesson(camera, ResolveEnemyWorldBounds(enemy), _onScreenMarginWorld,
-            ResolveHudOcclusionRect(), _hudClearanceWorld, _haltLineViewportFromTop);
+            ResolveHudOcclusionRect(), _hudClearanceWorld, haltLineViewportFromTop);
     }
 
     /// <summary>
@@ -771,7 +779,8 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         return presenter != null ? presenter.CluePanelRect : null;
     }
 
-    private IEnumerator WaitUntilEnemyIsOnScreen(Enemy enemy, EnemyDataSO data)
+    private IEnumerator WaitUntilEnemyIsOnScreen(
+        Enemy enemy, EnemyDataSO data, float haltLineViewportFromTop)
     {
         Camera camera = _worldCamera != null ? _worldCamera : Camera.main;
         if (camera == null || _onScreenWaitTimeoutSeconds <= 0f)
@@ -780,11 +789,12 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         float waited = 0f;
         while (waited < _onScreenWaitTimeoutSeconds)
         {
+
             if (!IsStillPresentable(enemy, data))
                 yield break;
 
             if (IsFramedForLesson(camera, ResolveEnemyWorldBounds(enemy), _onScreenMarginWorld,
-                    ResolveHudOcclusionRect(), _hudClearanceWorld, _haltLineViewportFromTop))
+                    ResolveHudOcclusionRect(), _hudClearanceWorld, haltLineViewportFromTop))
                 yield break;
 
             waited += Time.unscaledDeltaTime;
