@@ -604,7 +604,9 @@ Edit the YAML in place. Do NOT re-run any authoring tool — `CreateAsset` reiss
 
 - [ ] **Step 3: Re-pin the migration tests**
 
-In `UgatWaveCurveMigrationTests.cs`, `MigratedUgatLevel_ResolvesFiveWavesCarryingItsWholeRoster` asserts `Assert.AreEqual(5, waves.Count)` and `CollectionAssert.AreEqual(new[] { 2, 4, 5, 6, 7 }, ...)` for levels 2,3,4,5. Split it: levels 2,3,4 expect four waves with enemy counts `{ 2, 4, 5, 7 }` (verify against `WaveCurveExpander.EnemyCountAt` with `waveCount: 4` — compute it, do not guess); level 5 keeps the five-wave expectation. Rename the five-wave case to `Level5_ResolvesFiveWavesCarryingItsWholeRoster` and add `MigratedShortUgatLevel_ResolvesFourWavesCarryingItsWholeRoster` for 2,3,4.
+In `UgatWaveCurveMigrationTests.cs`, `MigratedUgatLevel_ResolvesFiveWavesCarryingItsWholeRoster` asserts `Assert.AreEqual(5, waves.Count)` and `CollectionAssert.AreEqual(new[] { 2, 4, 5, 6, 7 }, ...)` for levels 2,3,4,5. Split it: levels 2,3,4 expect FOUR waves with enemy counts `{ 2, 4, 6, 7 }`; level 5 keeps the five-wave expectation `{ 2, 4, 5, 6, 7 }`. Rename the five-wave case to `Level5_ResolvesFiveWavesCarryingItsWholeRoster` and add `MigratedShortUgatLevel_ResolvesFourWavesCarryingItsWholeRoster` for 2,3,4.
+
+These counts are COMPUTED, not guessed. `RampT(4, i) = (i-1)/2` because `rampWaves = 3`, and `EnemyCountAt` rounds with `MidpointRounding.AwayFromZero` (`WaveCurveExpander.cs:54-63`): wave 0 = `openingEnemyCount` = 2; wave 1 = t 0 -> 4; wave 2 = t 0.5 -> `4 + 3*0.5` = 5.5 -> **6**; wave 3 = t 1 -> 7. Spawn intervals by the same path are `6, 5, 4.25, 3.5`. Note the midpoint: round-half-to-even would give 5 there and the test would fail.
 
 - [ ] **Step 4: Run the suites**
 
@@ -640,11 +642,22 @@ Gates, all of which must hold:
 - Failing to defeat the final carrier brings escorts, continuously, with no give-up.
 - Hearts reaching zero still ends the level in defeat.
 
-- [ ] **Step 3: Record the evidence**
+- [ ] **Step 3: Close the spec's open question**
+
+The spec asks whether an opted-in level also needs its FINAL WAVE to carry an enemy for the gated
+symbol - the gate could open while no carrier can arrive. Confirm the
+`WAVE_ROSTER_NARROWS_RESTORATION` rule already covers it: Levels 2-4 resolve their waves from a
+curve, and `WaveCurveExpander` copies the full `allowedEnemyTypes` into every wave, so the final
+wave always carries the whole roster. Verify by asserting the resolved final wave of each of
+Levels 2-4 contains an enemy whose `assignedCharacter.stableId` equals that level's last slot
+symbol. If it holds, record it in the audit note - no code needed. If it does not, STOP and report:
+that is a new validator rule, not a tweak.
+
+- [ ] **Step 4: Record the evidence**
 
 Screenshots to `QA/screenshots/` with a `-gated-finale` suffix, and a short note in `docs/audit/`. Batchmode cannot see pacing — the last two defects in this area were both found by playing, not by the suite.
 
-- [ ] **Step 4: Commit the evidence**
+- [ ] **Step 5: Commit the evidence**
 
 ```bash
 git add QA/screenshots docs/audit
