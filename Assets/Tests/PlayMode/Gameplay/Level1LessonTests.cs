@@ -1480,6 +1480,76 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         /// </para>
         /// </summary>
         /// <summary>
+        /// Playtest 2026-09-17. The introduced type's badge is blank from the claim until the card
+        /// reveals it, so the player cannot read the symbol off an enemy they have not been
+        /// introduced to yet.
+        ///
+        /// <para>
+        /// Asserted rather than reasoned about. The blanking works by alpha, not by disabling the
+        /// renderer, and there was no public observable for it at all — which is exactly why its
+        /// first report ("glyph is visible") could not be settled from the code.
+        /// </para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator IntroducedEnemy_CarriesABlankBadge_UntilTheCardRevealsIt()
+        {
+            yield return null;
+
+            SetPrivateField(_beat, "_nameStepSeconds", 0f);
+            SetPrivateField(_beat, "_abilityStepSeconds", 0f);
+            SetPrivateField(_beat, "_glyphRevealStepSeconds", 0f);
+            SetPrivateField(_beat, "_onScreenWaitTimeoutSeconds", 0f);
+
+            BaybayinCharacterSO character = MakeCharacter("EI", "symbol.test.blank.ei");
+            EnemyDataSO data = CreateEnemyData("test_blank", "Iligaw", character);
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO> { data },
+                System.Array.Empty<EnemyLessonSO>(),
+                new List<FocusWordDefinition>());
+            _gameManager.SetLevel(config);
+
+            // The default shell carries no badge, and Enemy resolves one on Initialize — so it has
+            // to be attached BEFORE, or the blanking has nothing to act on and this test would
+            // assert against a null instead of against the rule.
+            GameObject shell = new GameObject("Iligaw_Blank");
+            shell.SetActive(false);
+            shell.AddComponent<SpriteRenderer>();
+            shell.AddComponent<BoxCollider2D>();
+            shell.AddComponent<EnemyMover>();
+            var badgeConfig = GlyphBadgePlayModeTestHelpers.CreateBadgeConfig();
+            _objectsToDestroy.Add(badgeConfig);
+            (EnemyGlyphBadge badge, SpriteRenderer badgeRenderer) =
+                GlyphBadgePlayModeTestHelpers.AddGlyphBadgeChild(shell, badgeConfig);
+            badgeRenderer.sprite = GlyphBadgePlayModeTestHelpers.CreateSprite(Color.white);
+            Enemy enemy = shell.AddComponent<Enemy>();
+            GlyphBadgePlayModeTestHelpers.DisableDebugLabels(enemy);
+            shell.SetActive(true);
+            _objectsToDestroy.Add(shell);
+
+            enemy.transform.position = Vector3.zero;
+            Assert.IsTrue(enemy.Initialize(data));
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndSuppress, enemy.IntroductionOutcome,
+                "setup: this spawn must be the one that gets a card.");
+
+            // The spawner assigns the carried glyph AFTER Initialize returns, and that path runs
+            // Refresh -> SetCharacter -> ApplyBadgeColor. The blanking has to survive it.
+            enemy.AssignCharacter(character);
+
+            Assert.IsNotNull(enemy.GlyphBadge, "setup: the shell must carry a badge to blank.");
+            Assert.IsFalse(enemy.GlyphBadge.IsVisible,
+                "The badge must be blank from the claim onward, and must stay blank across the "
+                + "spawner's own character assignment. A readable badge here is a symbol the "
+                + "player can act on before they have been told what carries it.");
+
+            for (int frame = 0; frame < 180 && !enemy.GlyphBadge.IsVisible; frame++)
+                yield return null;
+
+            Assert.IsTrue(enemy.GlyphBadge.IsVisible,
+                "The card must put the badge back. Left blank, the enemy is unreadable for the "
+                + "rest of its life and the player has nothing to draw.");
+        }
+
+        /// <summary>
         /// Playtest 2026-09-17. The card's last step holds for the player instead of a clock, and
         /// the field is frozen outright while it waits.
         ///

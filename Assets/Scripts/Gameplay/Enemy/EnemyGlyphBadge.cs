@@ -157,6 +157,14 @@ public class EnemyGlyphBadge : MonoBehaviour
     public bool IsCovered => _covered;
 
     /// <summary>
+    /// Whether the badge is actually readable on screen: a renderer that exists, is enabled, and is
+    /// not fully transparent. <see cref="Hide"/> works by alpha rather than by disabling, so
+    /// checking <c>enabled</c> alone reports a hidden badge as visible.
+    /// </summary>
+    public bool IsVisible =>
+        _renderer != null && _renderer.enabled && _renderer.color.a > 0.01f;
+
+    /// <summary>
     /// Hides or reveals the badge without touching its sprite or colour, so a covered enemy still
     /// swaps, flashes and resolves its glyph normally underneath the cover.
     /// </summary>

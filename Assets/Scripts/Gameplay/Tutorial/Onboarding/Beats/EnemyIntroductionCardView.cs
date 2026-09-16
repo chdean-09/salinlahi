@@ -100,7 +100,48 @@ public sealed class EnemyIntroductionCardView : MonoBehaviour
     /// </summary>
     public void ShowContinuePrompt()
     {
+        EnsureContinuePrompt();
         SetTextOrHide(_continuePromptText, _continuePromptMessage);
+    }
+
+    /// <summary>
+    /// Builds the hold prompt when the scene has not wired one.
+    /// </summary>
+    /// <remarks>
+    /// Playtest 2026-09-17. <c>_continuePromptText</c> is a new serialized field, so it is null on
+    /// every scene saved before it existed — and a null label meant the card froze the game with
+    /// nothing on screen telling the player to tap. That is strictly worse than the timed card it
+    /// replaced, and it would have stayed broken until someone opened Gameplay.unity.
+    ///
+    /// <para>
+    /// Cloned from the ability line rather than built from nothing, so it inherits the card's font,
+    /// material and canvas without this class having to know any of them. A wired field always
+    /// wins; this only fills a gap.
+    /// </para>
+    /// </remarks>
+    private void EnsureContinuePrompt()
+    {
+        if (_continuePromptText != null || _abilityText == null)
+            return;
+
+        _continuePromptText = Instantiate(_abilityText, _abilityText.transform.parent);
+        _continuePromptText.name = "[Runtime] ContinuePrompt";
+        _continuePromptText.fontStyle = FontStyles.Italic;
+        _continuePromptText.alignment = TextAlignmentOptions.Center;
+        _continuePromptText.raycastTarget = false;
+
+        // Under the ability line, in the card's own layout space.
+        if (_continuePromptText.rectTransform != null && _abilityText.rectTransform != null)
+        {
+            RectTransform prompt = _continuePromptText.rectTransform;
+            RectTransform ability = _abilityText.rectTransform;
+            prompt.anchorMin = ability.anchorMin;
+            prompt.anchorMax = ability.anchorMax;
+            prompt.pivot = ability.pivot;
+            prompt.sizeDelta = ability.sizeDelta;
+            prompt.anchoredPosition =
+                ability.anchoredPosition + new Vector2(0f, -Mathf.Abs(ability.sizeDelta.y) - 12f);
+        }
     }
 
     /// <summary>Drops the hold prompt. Safe to call when it was never raised.</summary>
