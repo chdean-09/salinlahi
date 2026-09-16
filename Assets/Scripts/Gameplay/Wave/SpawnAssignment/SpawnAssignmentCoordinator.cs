@@ -41,6 +41,9 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
 
     public SpawnGateRegistry Gates => _gates;
 
+    /// <summary>The flattened target slots, exposed read-only so gating is testable without reflection.</summary>
+    public IReadOnlyList<SpawnSlot> Slots => _slots;
+
     /// <summary>Seconds between the two members of a choice pair.</summary>
     public float ChoicePairWindow =>
         _level?.spawnAssignmentPolicy != null ? _level.spawnAssignmentPolicy.choicePairWindow : 0f;
@@ -196,6 +199,29 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
                     policy.GateTokenForSlot(_slots.Count)));
             }
         }
+
+        ApplyDerivedFinalSlotGate(policy);
+    }
+
+    /// <summary>
+    /// Withholds the final slot on <see cref="SpawnGateRegistry.FinalWaveReached"/> when the level
+    /// opts in. Derived rather than authored so content edits cannot move the gate off the finale;
+    /// skipped for a single-slot level, which would otherwise withhold its own win condition.
+    /// <see cref="SpawnSlot.GateToken"/> is readonly, so the tail entry is replaced, not mutated.
+    /// </summary>
+    private void ApplyDerivedFinalSlotGate(SpawnAssignmentPolicy policy)
+    {
+        if (policy == null || !policy.gateFinalSlotToFinalWave || _slots.Count < 2)
+            return;
+
+        int last = _slots.Count - 1;
+        SpawnSlot tail = _slots[last];
+        if (tail.IsGated)
+            return;
+
+        _slots[last] = new SpawnSlot(
+            tail.SymbolStableId, tail.WordStableId, tail.SlotIndexInWord,
+            SpawnGateRegistry.FinalWaveReached);
     }
 
     /// <summary>Marks a beat resolved, ungating any slot that was waiting on it.</summary>

@@ -154,6 +154,16 @@ public class SpawnAssignmentPolicy
     /// </summary>
     public bool allowFinalWaveOverflow = true;
 
+    /// <summary>
+    /// Withholds this level's LAST flattened slot until the final wave begins, so the restoration
+    /// cannot complete early and the level always reaches its finale.
+    ///
+    /// The slot is derived at level start, never authored: an authored index would couple the gate
+    /// to content position, and re-authoring a focus word would silently move the gate mid-word.
+    /// An authored <see cref="slotGates"/> entry for that slot still wins.
+    /// </summary>
+    public bool gateFinalSlotToFinalWave = false;
+
     /// <summary>Non-zero makes a playtest replayable. 0 seeds from the clock.</summary>
     public int assignmentSeed = 0;
 
