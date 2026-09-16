@@ -662,12 +662,7 @@ public class WaveManager : MonoBehaviour
             // exclusive bound the overflow pass uses, so a segmented run gates per segment rather
             // than once per level.
             if (IsFinalWaveIndex(waveIndex, lastWaveIndexExclusive))
-            {
-                SpawnAssignmentCoordinator gateCoordinator =
-                    FindFirstObjectByType<SpawnAssignmentCoordinator>(FindObjectsInactive.Include);
-                if (gateCoordinator != null)
-                    gateCoordinator.OpenGate(SpawnGateRegistry.FinalWaveReached);
-            }
+                OpenFinaleGate();
 
             float startDelay = ClampWaveStartDelay(wave.waveStartDelay, waveIndex);
             if (startDelay > 0f)
@@ -708,6 +703,20 @@ public class WaveManager : MonoBehaviour
             yield break;
         }
 
+        // Belt and braces for the finale gate. Reaching overflow means the wave list is exhausted
+        // BY DEFINITION, so the gate must be open by now - but the per-wave opening above only
+        // fires if the loop body ran, and a run resumed mid-final-wave can start at waves.Count
+        // (ResolveResumeWaveIndex, when the player paused or quit after the last enemy spawned),
+        // in which case the loop body never executes and the gate above is never reached.
+        //
+        // Falling through to overflow with the gate still closed used to softlock the level for
+        // good: Levels 2-4 ship maxOverflowBatches = 0, so ShouldContinueOverflow is permanently
+        // true, the director's eligible set is empty, it emits HoldForGate forever and
+        // WantsOverflow never goes false. The player could neither win nor lose. Opening here is
+        // unconditional precisely so the guarantee does not depend on how the resume index was
+        // computed. OpenGate is idempotent, so the ordinary path is unaffected.
+        OpenFinaleGate();
+
         // The words, not the wave list, decide when the defense is over.
         yield return RunRestorationOverflow(lastWaveIndexExclusive);
 
@@ -718,6 +727,27 @@ public class WaveManager : MonoBehaviour
         }
 
         CompleteRun();
+    }
+
+    /// <summary>
+    /// Opens <see cref="SpawnGateRegistry.FinalWaveReached"/> on the scene's spawn-assignment
+    /// coordinator, releasing whichever slot the gated finale withheld.
+    ///
+    /// <para>
+    /// Called from two places on purpose. The per-wave call in <see cref="RunAllWavesRoutine"/> is
+    /// the designed moment - the finale becomes completable as the last wave begins. The
+    /// unconditional call before <see cref="RunRestorationOverflow"/> is the guard: overflow is
+    /// only reached once the wave list is exhausted, so the gate must be open by then regardless of
+    /// how the resume index was computed. <see cref="SpawnAssignmentCoordinator.OpenGate"/> is
+    /// idempotent, so calling it twice on the ordinary path costs nothing.
+    /// </para>
+    /// </summary>
+    internal void OpenFinaleGate()
+    {
+        SpawnAssignmentCoordinator coordinator =
+            FindFirstObjectByType<SpawnAssignmentCoordinator>(FindObjectsInactive.Include);
+        if (coordinator != null)
+            coordinator.OpenGate(SpawnGateRegistry.FinalWaveReached);
     }
 
     /// <summary>
@@ -891,18 +921,41 @@ public class WaveManager : MonoBehaviour
         bool hasSavedWaveProgress,
         int savedWaveIndex,
         int savedWaveSpawnedCount,
+        out int spawnOffset) =>
+        ResolveResumeWaveIndex(
+            _levelConfig?.waves, hasSavedWaveProgress, savedWaveIndex, savedWaveSpawnedCount,
+            out spawnOffset);
+
+    /// <summary>
+    /// Where a resumed run picks the wave list back up, and how far into that wave it starts.
+    ///
+    /// <para>
+    /// Pure and static so its most consequential answer is an EditMode test rather than something
+    /// only a pause-and-quit play session could surface: when the player left during the FINAL wave
+    /// after its last enemy had spawned, this returns <c>waves.Count</c>, one past the end. The
+    /// resumed run's loop body then never executes, so the per-wave finale-gate opening inside
+    /// <see cref="RunAllWavesRoutine"/> is never reached. That is exactly the hole the
+    /// unconditional <see cref="OpenFinaleGate"/> before <see cref="RunRestorationOverflow"/>
+    /// exists to close.
+    /// </para>
+    /// </summary>
+    internal static int ResolveResumeWaveIndex(
+        List<WaveDefinition> waves,
+        bool hasSavedWaveProgress,
+        int savedWaveIndex,
+        int savedWaveSpawnedCount,
         out int spawnOffset)
     {
         spawnOffset = 0;
 
-        if (!hasSavedWaveProgress || _levelConfig?.waves == null || _levelConfig.waves.Count == 0)
+        if (!hasSavedWaveProgress || waves == null || waves.Count == 0)
             return 0;
 
-        int safeWaveIndex = Mathf.Clamp(savedWaveIndex, 0, _levelConfig.waves.Count);
-        if (safeWaveIndex >= _levelConfig.waves.Count)
-            return _levelConfig.waves.Count;
+        int safeWaveIndex = Mathf.Clamp(savedWaveIndex, 0, waves.Count);
+        if (safeWaveIndex >= waves.Count)
+            return waves.Count;
 
-        WaveDefinition savedWave = _levelConfig.waves[safeWaveIndex];
+        WaveDefinition savedWave = waves[safeWaveIndex];
         int enemyCount = savedWave != null ? Mathf.Max(0, savedWave.enemyCount) : 0;
         int safeSpawnedCount = Mathf.Clamp(savedWaveSpawnedCount, 0, enemyCount);
 
@@ -912,7 +965,7 @@ public class WaveManager : MonoBehaviour
             return safeWaveIndex;
         }
 
-        return Mathf.Min(safeWaveIndex + 1, _levelConfig.waves.Count);
+        return Mathf.Min(safeWaveIndex + 1, waves.Count);
     }
 
     private IEnumerator WaitForActiveEnemiesCleared()
