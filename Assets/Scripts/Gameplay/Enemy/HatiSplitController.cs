@@ -15,6 +15,47 @@ public sealed class HatiSplitController : MonoBehaviour
     private Enemy _enemy;
     private bool _splitThisLife;
 
+    /// <summary>
+    /// True while this spawn is the one that introduced its type, in which case the split must not
+    /// happen at all. See <see cref="SetSuppressedForIntroductionSpawn"/>.
+    /// </summary>
+    private bool _suppressedForIntroductionSpawn;
+
+    /// <summary>True while this spawn is suppressed as its type's introduction spawn. Test/diagnostic seam, mirroring <see cref="AshFirstSlotController.IsSuppressedForIntroductionSpawn"/>.</summary>
+    public bool IsSuppressedForIntroductionSpawn => _suppressedForIntroductionSpawn;
+
+    /// <summary>
+    /// Makes this ability inert for one spawn — the spawn on which the enemy's introduction card
+    /// plays — and arms it again on every later spawn of the type.
+    ///
+    /// <para>
+    /// <b>Why the split must not happen on the spawn that introduces it.</b> Hati's introduction is
+    /// the player's first correct draw against him, and the reward for it is two more enemies. A
+    /// player who has just been told what Hati is, and is then punished for beating him by a board
+    /// that got worse, reads the split as the defeat having failed rather than as the enemy's
+    /// ability. Worse, the pieces arrive while the card is still framing the source, so the portrait
+    /// is naming one of three bodies. The card states the dividing; the next Hati performs it.
+    /// </para>
+    ///
+    /// <para>
+    /// Nothing to withdraw when suppression is switched on: unlike the cover, the shield or the
+    /// stain, this ability has no standing effect to lift — it either spawns pieces at the moment of
+    /// defeat or it does not, and pieces already on the field are real enemies of their own that the
+    /// player must still clear.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Pooling.</b> Suppression is per spawn, never per shell. <c>Enemy.Initialize</c> restates it
+    /// on every spawn and <see cref="OnEnable"/> clears it, so a recycled shell always comes back
+    /// unsuppressed — a stuck flag here would silently disable Hati's split for the rest of the run,
+    /// on a shell that looks identical to a working one.
+    /// </para>
+    /// </summary>
+    public void SetSuppressedForIntroductionSpawn(bool suppressed)
+    {
+        _suppressedForIntroductionSpawn = suppressed;
+    }
+
     private void Awake()
     {
         _enemy = GetComponent<Enemy>();
@@ -23,13 +64,22 @@ public sealed class HatiSplitController : MonoBehaviour
     private void OnEnable()
     {
         _splitThisLife = false;
+        // A pooled shell must not inherit the previous occupant's suppression.
+        _suppressedForIntroductionSpawn = false;
     }
 
     /// <summary>
-    /// Spawns the pieces. Safe to call more than once per life; only the first call splits.
+    /// Spawns the pieces. Safe to call more than once per life; only the first call splits, and a
+    /// spawn suppressed as its type's introduction splits not at all.
     /// </summary>
     public void SpawnOnDefeat()
     {
+        // The introduction spawn shows the enemy, never the dividing. Returning before
+        // _splitThisLife is latched means an un-suppression later in this same life would still get
+        // its split, which keeps the flag's meaning exactly "not right now" rather than "not ever".
+        if (_suppressedForIntroductionSpawn)
+            return;
+
         if (_splitThisLife)
             return;
         _splitThisLife = true;
