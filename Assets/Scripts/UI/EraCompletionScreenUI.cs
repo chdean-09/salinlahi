@@ -287,7 +287,7 @@ public sealed class EraCompletionScreenUI : MonoBehaviour
             CreateTileLabel(
                 "LockedTile_" + entry.LevelNumber,
                 MemoryArchiveController.LockedRowLabel(entry),
-                28f,
+                UITextScale.Secondary,
                 new Color32(122, 110, 92, 255));
             return;
         }
@@ -309,7 +309,7 @@ public sealed class EraCompletionScreenUI : MonoBehaviour
             tileObject.transform,
             "Label",
             MemoryCardCopy.CollectibleNumber(entry.EraLocalOrder, eraTotal) + "  " + entry.Title,
-            30f);
+            UITextScale.Body);
         label.color = new Color32(240, 226, 198, 255);
         StretchLabel(label);
 
@@ -400,7 +400,7 @@ public sealed class EraCompletionScreenUI : MonoBehaviour
         overlayRect.anchorMax = Vector2.one;
         overlayRect.offsetMin = overlayRect.offsetMax = Vector2.zero;
 
-        _headingText = CreateText(transform, "EraCompleteHeadingText", string.Empty, 52f);
+        _headingText = CreateText(transform, "EraCompleteHeadingText", string.Empty, UITextScale.Title);
         RectTransform headingRect = ((Component)_headingText).GetComponent<RectTransform>();
         headingRect.anchorMin = new Vector2(0f, 1f);
         headingRect.anchorMax = new Vector2(1f, 1f);
@@ -411,7 +411,7 @@ public sealed class EraCompletionScreenUI : MonoBehaviour
 
         // ⚠️ The AC-2 slot. Built so the layout is finished and the guard can see it; left
         // inactive because no era ending line is authored. See the class summary.
-        _endingLineText = CreateText(transform, "EraEndingLineText", string.Empty, 30f);
+        _endingLineText = CreateText(transform, "EraEndingLineText", string.Empty, UITextScale.Body);
         RectTransform endingRect = ((Component)_endingLineText).GetComponent<RectTransform>();
         endingRect.anchorMin = new Vector2(0f, 1f);
         endingRect.anchorMax = new Vector2(1f, 1f);
@@ -422,7 +422,7 @@ public sealed class EraCompletionScreenUI : MonoBehaviour
         _endingLineText.gameObject.SetActive(false);
 
         _memoriesHeadingText =
-            CreateText(transform, "MemoriesHeadingText", EraCompletionCopy.MemoriesHeading, 32f);
+            CreateText(transform, "MemoriesHeadingText", EraCompletionCopy.MemoriesHeading, UITextScale.Body);
         RectTransform memoriesRect = ((Component)_memoriesHeadingText).GetComponent<RectTransform>();
         memoriesRect.anchorMin = new Vector2(0f, 1f);
         memoriesRect.anchorMax = new Vector2(1f, 1f);
@@ -488,8 +488,7 @@ public sealed class EraCompletionScreenUI : MonoBehaviour
         label.alignment = TextAlignmentOptions.Center;
         label.textWrappingMode = TextWrappingModes.Normal;
         label.raycastTarget = false;
-        if (TMP_Settings.defaultFontAsset != null)
-            label.font = TMP_Settings.defaultFontAsset;
+        TutorialFontProvider.ApplyTo(label);
         return label;
     }
 
@@ -512,7 +511,7 @@ public sealed class EraCompletionScreenUI : MonoBehaviour
         Button button = buttonObject.GetComponent<Button>();
         button.targetGraphic = image;
 
-        TMP_Text label = CreateText(buttonObject.transform, "Label", labelText, 30f);
+        TMP_Text label = CreateText(buttonObject.transform, "Label", labelText, UITextScale.Body);
         RectTransform labelRect = ((Component)label).GetComponent<RectTransform>();
         labelRect.anchorMin = Vector2.zero;
         labelRect.anchorMax = Vector2.one;

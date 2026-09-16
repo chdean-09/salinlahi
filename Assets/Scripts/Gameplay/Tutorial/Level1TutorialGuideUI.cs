@@ -109,7 +109,7 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         Level1TutorialGuideUI guide = root.AddComponent<Level1TutorialGuideUI>();
         guide._root = root;
         guide._promptText = CreateText(root.transform, "PromptText", new Vector2(0.5f, 0.88f), 42, TextAlignmentOptions.Center);
-        guide._feedbackText = CreateText(root.transform, "FeedbackText", new Vector2(0.5f, 0.76f), 28, TextAlignmentOptions.Center);
+        guide._feedbackText = CreateText(root.transform, "FeedbackText", new Vector2(0.5f, 0.76f), UITextScale.Caption, TextAlignmentOptions.Center);
         guide._useRuntimeResponsiveLayout = true;
         guide.ApplyConfiguredLayout();
         guide._skipButton = CreateSkipButton(root.transform);
@@ -148,8 +148,8 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
 
     public static void ApplyResponsiveTextLayout(TMP_Text promptText, TMP_Text feedbackText)
     {
-        ConfigureTextBand(promptText, PromptMinY, PromptMaxY, 38f, 56f);
-        ConfigureTextBand(feedbackText, FeedbackMinY, FeedbackMaxY, 32f, 46f);
+        ConfigureTextBand(promptText, PromptMinY, PromptMaxY, UITextScale.Body, 56f);
+        ConfigureTextBand(feedbackText, FeedbackMinY, FeedbackMaxY, UITextScale.Secondary, 46f);
     }
 
     private void ApplyConfiguredLayout()
@@ -196,7 +196,7 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         Image image = buttonObject.GetComponent<Image>();
         image.color = new Color(0f, 0f, 0f, 0.45f);
 
-        TextMeshProUGUI label = CreateText(buttonObject.transform, "Label", new Vector2(0.5f, 0.5f), 24, TextAlignmentOptions.Center);
+        TextMeshProUGUI label = CreateText(buttonObject.transform, "Label", new Vector2(0.5f, 0.5f), UITextScale.Caption, TextAlignmentOptions.Center);
         RectTransform labelRect = label.GetComponent<RectTransform>();
         labelRect.sizeDelta = rect.sizeDelta;
         label.text = "Skip";
@@ -626,7 +626,7 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
             arrowRect.sizeDelta = new Vector2(72f, 48f);
             TextMeshProUGUI arrowText = arrowObject.GetComponent<TextMeshProUGUI>();
             arrowText.text = "➜";
-            arrowText.fontSize = 38f;
+            arrowText.fontSize = 44f;
             arrowText.alignment = TextAlignmentOptions.Center;
             arrowText.color = new Color(0.1f, 1f, 0.2f, 1f);
             arrowText.raycastTarget = false;

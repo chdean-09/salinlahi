@@ -133,9 +133,10 @@ public class FocusWordPreviewController : MonoBehaviour
         textRect.offsetMin = new Vector2(24f, 8f);
         textRect.offsetMax = new Vector2(-24f, -16f);
         _previewText = textObject.AddComponent<TextMeshProUGUI>();
-        _previewText.fontSize = 30f;
+        _previewText.fontSize = UITextScale.Body;
         _previewText.alignment = TextAlignmentOptions.Center;
         _previewText.raycastTarget = false;
+        TutorialFontProvider.ApplyTo(_previewText);
 
         GameObject buttonObject = new GameObject("[Runtime] FocusWordContinue", typeof(RectTransform), typeof(Image));
         buttonObject.transform.SetParent(_panelRoot.transform, false);
@@ -152,9 +153,10 @@ public class FocusWordPreviewController : MonoBehaviour
         buttonLabel.transform.SetParent(buttonObject.transform, false);
         TextMeshProUGUI label = buttonLabel.AddComponent<TextMeshProUGUI>();
         label.text = "Continue";
-        label.fontSize = 26f;
+        label.fontSize = UITextScale.Body;
         label.alignment = TextAlignmentOptions.Center;
         label.raycastTarget = false;
+        TutorialFontProvider.ApplyTo(label);
         RectTransform labelRect = label.rectTransform;
         labelRect.anchorMin = Vector2.zero;
         labelRect.anchorMax = Vector2.one;
@@ -186,8 +188,8 @@ public class FocusWordPreviewController : MonoBehaviour
                 preview.rectTransform,
                 Rect.MinMaxRect(0.17f, 0.31f, 0.83f, 0.76f));
             preview.enableAutoSizing = true;
-            preview.fontSizeMin = 26f;
-            preview.fontSizeMax = 34f;
+            preview.fontSizeMin = UITextScale.Caption;
+            preview.fontSizeMax = 44f;
             preview.textWrappingMode = TextWrappingModes.Normal;
         }
 

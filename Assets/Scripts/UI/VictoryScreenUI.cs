@@ -181,7 +181,7 @@ public class VictoryScreenUI : MonoBehaviour
         TextMeshProUGUI text = summaryObject.GetComponent<TextMeshProUGUI>();
         if (text == null)
             text = summaryObject.AddComponent<TextMeshProUGUI>();
-        text.fontSize = 24f;
+        text.fontSize = UITextScale.Body;
         text.alignment = TextAlignmentOptions.Center;
         text.raycastTarget = false;
         text.text = summaryText;
@@ -292,7 +292,7 @@ public class VictoryScreenUI : MonoBehaviour
             labelRect.pivot = new Vector2(0.5f, 0.5f);
             labelRect.offsetMin = Vector2.zero;
             labelRect.offsetMax = Vector2.zero;
-            TextMeshProUGUI label = CreateOrGetLabel(labelObject, 30f);
+            TextMeshProUGUI label = CreateOrGetLabel(labelObject, UITextScale.Body);
             label.text = LevelResultsCopy.ReplayLevelLabel;
             label.color = Color.black;
 
@@ -326,8 +326,7 @@ public class VictoryScreenUI : MonoBehaviour
         label.fontSize = fontSize;
         label.alignment = TextAlignmentOptions.Center;
         label.raycastTarget = false;
-        if (TMP_Settings.defaultFontAsset != null)
-            label.font = TMP_Settings.defaultFontAsset;
+        TutorialFontProvider.ApplyTo(label);
         return label;
     }
 

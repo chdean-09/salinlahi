@@ -176,7 +176,7 @@ public sealed class WaveClearedScreenUI : MonoBehaviour
         bool onParchment = ScrollPanelArt.ApplyFull(cardImage);
 
         _bannerText = CreateText(card.transform, "BannerText", string.Empty, 45f, 120f, 56f);
-        _heartsText = CreateText(card.transform, "HeartsText", string.Empty, 185f, 90f, 36f);
+        _heartsText = CreateText(card.transform, "HeartsText", string.Empty, 185f, 90f, UITextScale.Body);
         _continueButton = CreateButton(
             card.transform, "ContinueButton", WaveClearedCopy.ContinueLabel, 25f);
 
@@ -205,8 +205,8 @@ public sealed class WaveClearedScreenUI : MonoBehaviour
 
         card.sizeDelta = new Vector2(720f, 620f);
 
-        ScrollPanelArt.PlaceText(banner, Rect.MinMaxRect(0.17f, 0.60f, 0.83f, 0.77f), 38f, 52f);
-        ScrollPanelArt.PlaceText(hearts, Rect.MinMaxRect(0.17f, 0.44f, 0.83f, 0.56f), 26f, 34f);
+        ScrollPanelArt.PlaceText(banner, Rect.MinMaxRect(0.17f, 0.60f, 0.83f, 0.77f), UITextScale.Body, 56f);
+        ScrollPanelArt.PlaceText(hearts, Rect.MinMaxRect(0.17f, 0.44f, 0.83f, 0.56f), UITextScale.Caption, UITextScale.Body);
         ScrollPanelArt.PlaceButton(continueButton, Rect.MinMaxRect(0.22f, 0.20f, 0.78f, 0.33f));
     }
 
@@ -228,8 +228,7 @@ public sealed class WaveClearedScreenUI : MonoBehaviour
         label.alignment = TextAlignmentOptions.Center;
         label.textWrappingMode = TextWrappingModes.Normal;
         label.raycastTarget = false;
-        if (TMP_Settings.defaultFontAsset != null)
-            label.font = TMP_Settings.defaultFontAsset;
+        TutorialFontProvider.ApplyTo(label);
 
         RectTransform rect = textObject.GetComponent<RectTransform>();
         rect.anchorMin = new Vector2(0f, 1f);
@@ -257,7 +256,7 @@ public sealed class WaveClearedScreenUI : MonoBehaviour
         Button button = buttonObject.GetComponent<Button>();
         button.targetGraphic = image;
 
-        TMP_Text label = CreateText(buttonObject.transform, "Label", labelText, 0f, 110f, 32f);
+        TMP_Text label = CreateText(buttonObject.transform, "Label", labelText, 0f, 110f, UITextScale.Body);
         RectTransform labelRect = ((Component)label).GetComponent<RectTransform>();
         labelRect.anchorMin = Vector2.zero;
         labelRect.anchorMax = Vector2.one;

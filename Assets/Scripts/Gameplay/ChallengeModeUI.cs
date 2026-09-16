@@ -73,10 +73,10 @@ public class ChallengeModeUI : MonoBehaviour
         panelImage.raycastTarget = false;
         bool onParchment = ScrollPanelArt.ApplyTop(panelImage);
 
-        _progressText = CreateLabel("Progress", 24, new Vector2(0.04f, 0.78f), new Vector2(0.96f, 0.98f));
-        _promptText = CreateLabel("Prompt", 30, new Vector2(0.04f, 0.55f), new Vector2(0.96f, 0.78f));
-        _statusText = CreateLabel("Status", 20, new Vector2(0.04f, 0.38f), new Vector2(0.72f, 0.54f));
-        _timerText = CreateLabel("Timer", 20, new Vector2(0.74f, 0.38f), new Vector2(0.96f, 0.54f));
+        _progressText = CreateLabel("Progress", UITextScale.Secondary, new Vector2(0.04f, 0.78f), new Vector2(0.96f, 0.98f));
+        _promptText = CreateLabel("Prompt", UITextScale.Body, new Vector2(0.04f, 0.55f), new Vector2(0.96f, 0.78f));
+        _statusText = CreateLabel("Status", UITextScale.Caption, new Vector2(0.04f, 0.38f), new Vector2(0.72f, 0.54f));
+        _timerText = CreateLabel("Timer", UITextScale.Caption, new Vector2(0.74f, 0.38f), new Vector2(0.96f, 0.54f));
 
         GameObject choices = new GameObject("AnswerChoices", typeof(RectTransform), typeof(HorizontalLayoutGroup));
         choices.transform.SetParent(transform, false);
@@ -293,7 +293,7 @@ public class ChallengeModeUI : MonoBehaviour
         text.color = Color.white;
         text.alignment = TextAlignmentOptions.Center;
         text.enableAutoSizing = true;
-        text.fontSizeMin = Mathf.Max(12f, size * 0.55f);
+        text.fontSizeMin = Mathf.Max(UITextScale.AutoSizeFloor, size * 0.55f);
         text.fontSizeMax = size;
         text.raycastTarget = false;
         TutorialFontProvider.ApplyTo(text);
@@ -374,7 +374,7 @@ public class ChallengeModeUI : MonoBehaviour
         textRect.offsetMin = textRect.offsetMax = Vector2.zero;
         TextMeshProUGUI text = textObject.GetComponent<TextMeshProUGUI>();
         text.text = label;
-        text.fontSize = 20f;
+        text.fontSize = UITextScale.Caption;
         text.alignment = TextAlignmentOptions.Center;
         text.color = Color.white;
         text.raycastTarget = false;

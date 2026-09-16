@@ -303,6 +303,7 @@ public class SymbolLearningCardController : MonoBehaviour
         _labelText.fontSize = 48f;
         _labelText.alignment = TextAlignmentOptions.Center;
         _labelText.raycastTarget = false;
+        TutorialFontProvider.ApplyTo(_labelText);
 
         GameObject replayObject = new GameObject(
             "[Runtime] SymbolLearningReplay", typeof(RectTransform), typeof(Image), typeof(Button));
@@ -322,9 +323,10 @@ public class SymbolLearningCardController : MonoBehaviour
         replayLabelObject.transform.SetParent(replayObject.transform, false);
         TextMeshProUGUI replayLabel = replayLabelObject.AddComponent<TextMeshProUGUI>();
         replayLabel.text = "Listen";
-        replayLabel.fontSize = 22f;
+        replayLabel.fontSize = UITextScale.Body;
         replayLabel.alignment = TextAlignmentOptions.Center;
         replayLabel.raycastTarget = false;
+        TutorialFontProvider.ApplyTo(replayLabel);
 
         GameObject continueObject = new GameObject(
             "[Runtime] SymbolLearningContinue", typeof(RectTransform), typeof(Image));
@@ -342,9 +344,10 @@ public class SymbolLearningCardController : MonoBehaviour
         continueLabelObject.transform.SetParent(continueObject.transform, false);
         TextMeshProUGUI continueLabel = continueLabelObject.AddComponent<TextMeshProUGUI>();
         continueLabel.text = "Continue";
-        continueLabel.fontSize = 26f;
+        continueLabel.fontSize = UITextScale.Body;
         continueLabel.alignment = TextAlignmentOptions.Center;
         continueLabel.raycastTarget = false;
+        TutorialFontProvider.ApplyTo(continueLabel);
 
         if (_onParchment)
         {

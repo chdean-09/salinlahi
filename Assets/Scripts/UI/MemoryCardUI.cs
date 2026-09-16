@@ -351,9 +351,9 @@ public sealed class MemoryCardUI : MonoBehaviour
         _frontRoot = CreateFace(card.transform, "FrontFace");
         _backRoot = CreateFace(card.transform, "BackFace");
 
-        _numberText = CreateText(_frontRoot.transform, "NumberText", string.Empty, 24f, 56f, 34f);
-        _titleText = CreateText(_frontRoot.transform, "TitleText", string.Empty, 78f, 84f, 46f);
-        _wordsText = CreateText(_frontRoot.transform, "WordsText", string.Empty, 168f, 180f, 30f);
+        _numberText = CreateText(_frontRoot.transform, "NumberText", string.Empty, 24f, 56f, UITextScale.Secondary);
+        _titleText = CreateText(_frontRoot.transform, "TitleText", string.Empty, 78f, 84f, UITextScale.Title);
+        _wordsText = CreateText(_frontRoot.transform, "WordsText", string.Empty, 168f, 180f, UITextScale.Body);
 
         GameObject glyphRowObject = new GameObject("GlyphRow", typeof(RectTransform));
         glyphRowObject.transform.SetParent(_frontRoot.transform, false);
@@ -365,7 +365,7 @@ public sealed class MemoryCardUI : MonoBehaviour
         glyphRowRect.offsetMax = new Vector2(-60f, -360f);
         _glyphRow = glyphRowObject.transform;
 
-        _loreText = CreateText(_backRoot.transform, "LoreText", string.Empty, 60f, 400f, 30f);
+        _loreText = CreateText(_backRoot.transform, "LoreText", string.Empty, 60f, 400f, UITextScale.Body);
 
         _flipButton = CreateButton(card.transform, "FlipButton", MemoryCardCopy.FlipLabel, -250f, 24f);
         _closeButton = CreateButton(card.transform, "CloseButton", MemoryCardCopy.CloseLabel, 250f, 24f);
@@ -414,10 +414,10 @@ public sealed class MemoryCardUI : MonoBehaviour
         StretchFace(frontFace);
         StretchFace(backFace);
 
-        ScrollPanelArt.PlaceText(number, Band(0.72f, 0.785f), 20f, 28f);
-        ScrollPanelArt.PlaceText(title, Band(0.615f, 0.71f), 30f, 44f);
-        ScrollPanelArt.PlaceText(words, Band(0.43f, 0.60f), 22f, 30f);
-        ScrollPanelArt.PlaceText(lore, Band(0.33f, 0.785f), 22f, 30f);
+        ScrollPanelArt.PlaceText(number, Band(0.72f, 0.785f), UITextScale.AutoSizeFloor, UITextScale.Secondary);
+        ScrollPanelArt.PlaceText(title, Band(0.615f, 0.71f), UITextScale.Body, UITextScale.Title);
+        ScrollPanelArt.PlaceText(words, Band(0.43f, 0.60f), UITextScale.Caption, UITextScale.Body);
+        ScrollPanelArt.PlaceText(lore, Band(0.33f, 0.785f), UITextScale.Caption, UITextScale.Body);
 
         ScrollPanelArt.SetAnchors(glyphRow, Band(0.33f, 0.42f));
         if (glyphRow != null)
@@ -516,8 +516,7 @@ public sealed class MemoryCardUI : MonoBehaviour
         label.alignment = TextAlignmentOptions.Center;
         label.textWrappingMode = TextWrappingModes.Normal;
         label.raycastTarget = false;
-        if (TMP_Settings.defaultFontAsset != null)
-            label.font = TMP_Settings.defaultFontAsset;
+        TutorialFontProvider.ApplyTo(label);
 
         RectTransform rect = textObject.GetComponent<RectTransform>();
         rect.anchorMin = new Vector2(0f, 1f);
@@ -547,7 +546,7 @@ public sealed class MemoryCardUI : MonoBehaviour
         Button button = buttonObject.GetComponent<Button>();
         button.targetGraphic = image;
 
-        TMP_Text label = CreateText(buttonObject.transform, "Label", labelText, 0f, 92f, 30f);
+        TMP_Text label = CreateText(buttonObject.transform, "Label", labelText, 0f, 92f, UITextScale.Body);
         RectTransform labelRect = ((Component)label).GetComponent<RectTransform>();
         labelRect.anchorMin = Vector2.zero;
         labelRect.anchorMax = Vector2.one;

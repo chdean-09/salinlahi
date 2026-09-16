@@ -177,7 +177,7 @@ public sealed class MemoryArchiveController : MonoBehaviour
                 CreateRowLabel(
                     "EraHeader_" + currentEra,
                     currentEra,
-                    38f,
+                    UITextScale.Body,
                     new Color32(224, 196, 120, 255));
             }
 
@@ -218,7 +218,7 @@ public sealed class MemoryArchiveController : MonoBehaviour
             CreateRowLabel(
                 "LockedRow_" + entry.LevelNumber,
                 LockedRowLabel(entry),
-                28f,
+                UITextScale.Secondary,
                 new Color32(122, 110, 92, 255));
             return;
         }
@@ -240,7 +240,7 @@ public sealed class MemoryArchiveController : MonoBehaviour
             rowObject.transform,
             "Label",
             MemoryCardCopy.CollectibleNumber(entry.EraLocalOrder, eraTotal) + "  " + entry.Title,
-            30f);
+            UITextScale.Body);
         label.color = new Color32(240, 226, 198, 255);
         RectTransform labelRect = ((Component)label).GetComponent<RectTransform>();
         labelRect.anchorMin = Vector2.zero;
@@ -333,7 +333,7 @@ public sealed class MemoryArchiveController : MonoBehaviour
         overlayRect.anchorMax = Vector2.one;
         overlayRect.offsetMin = overlayRect.offsetMax = Vector2.zero;
 
-        _titleText = CreateText(transform, "ArchiveTitleText", MemoryCardCopy.ArchiveTitle, 52f);
+        _titleText = CreateText(transform, "ArchiveTitleText", MemoryCardCopy.ArchiveTitle, UITextScale.Title);
         RectTransform titleRect = ((Component)_titleText).GetComponent<RectTransform>();
         titleRect.anchorMin = new Vector2(0f, 1f);
         titleRect.anchorMax = new Vector2(1f, 1f);
@@ -342,7 +342,7 @@ public sealed class MemoryArchiveController : MonoBehaviour
         titleRect.offsetMax = new Vector2(-60f, -40f);
         _titleText.color = new Color32(240, 226, 198, 255);
 
-        _emptyStateText = CreateText(transform, "EmptyStateText", MemoryCardCopy.EmptyArchiveBody, 28f);
+        _emptyStateText = CreateText(transform, "EmptyStateText", MemoryCardCopy.EmptyArchiveBody, UITextScale.Body);
         RectTransform emptyRect = ((Component)_emptyStateText).GetComponent<RectTransform>();
         emptyRect.anchorMin = new Vector2(0f, 1f);
         emptyRect.anchorMax = new Vector2(1f, 1f);
@@ -405,8 +405,7 @@ public sealed class MemoryArchiveController : MonoBehaviour
         label.alignment = TextAlignmentOptions.Center;
         label.textWrappingMode = TextWrappingModes.Normal;
         label.raycastTarget = false;
-        if (TMP_Settings.defaultFontAsset != null)
-            label.font = TMP_Settings.defaultFontAsset;
+        TutorialFontProvider.ApplyTo(label);
         return label;
     }
 
@@ -429,7 +428,7 @@ public sealed class MemoryArchiveController : MonoBehaviour
         Button button = buttonObject.GetComponent<Button>();
         button.targetGraphic = image;
 
-        TMP_Text label = CreateText(buttonObject.transform, "Label", labelText, 30f);
+        TMP_Text label = CreateText(buttonObject.transform, "Label", labelText, UITextScale.Body);
         RectTransform labelRect = ((Component)label).GetComponent<RectTransform>();
         labelRect.anchorMin = Vector2.zero;
         labelRect.anchorMax = Vector2.one;

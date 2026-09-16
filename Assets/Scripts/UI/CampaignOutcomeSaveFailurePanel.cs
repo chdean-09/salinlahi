@@ -170,8 +170,8 @@ public sealed class CampaignOutcomeSaveFailurePanel : MonoBehaviour
         cardImage.raycastTarget = true;
         bool onParchment = ScrollPanelArt.ApplyFull(cardImage);
 
-        _titleText = CreateText(card.transform, "TitleText", "Your progress is waiting to be saved", 45f, 120f, 48f);
-        _bodyText = CreateText(card.transform, "BodyText", string.Empty, 185f, 280f, 32f);
+        _titleText = CreateText(card.transform, "TitleText", "Your progress is waiting to be saved", 45f, 120f, UITextScale.Title);
+        _bodyText = CreateText(card.transform, "BodyText", string.Empty, 185f, 280f, UITextScale.Body);
         _retryButton = CreateButton(card.transform, "RetryButton", "Retry", 145f);
         _mainMenuButton = CreateButton(card.transform, "MainMenuButton", "Main Menu", 25f);
 
@@ -195,8 +195,7 @@ public sealed class CampaignOutcomeSaveFailurePanel : MonoBehaviour
         label.alignment = TextAlignmentOptions.Center;
         label.textWrappingMode = TextWrappingModes.Normal;
         label.raycastTarget = false;
-        if (TMP_Settings.defaultFontAsset != null)
-            label.font = TMP_Settings.defaultFontAsset;
+        TutorialFontProvider.ApplyTo(label);
 
         RectTransform rect = textObject.GetComponent<RectTransform>();
         rect.anchorMin = new Vector2(0f, 1f);
@@ -224,7 +223,7 @@ public sealed class CampaignOutcomeSaveFailurePanel : MonoBehaviour
         Button button = buttonObject.GetComponent<Button>();
         button.targetGraphic = image;
 
-        TMP_Text label = CreateText(buttonObject.transform, "Label", labelText, 0f, 110f, 32f);
+        TMP_Text label = CreateText(buttonObject.transform, "Label", labelText, 0f, 110f, UITextScale.Body);
         RectTransform labelRect = ((Component)label).GetComponent<RectTransform>();
         labelRect.anchorMin = Vector2.zero;
         labelRect.anchorMax = Vector2.one;

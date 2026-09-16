@@ -170,7 +170,7 @@ public sealed class MemoryClaimPanel : MonoBehaviour
         cardImage.raycastTarget = true;
         bool onParchment = ScrollPanelArt.ApplyFull(cardImage);
 
-        _bodyText = CreateText(card.transform, "BodyText", string.Empty, 60f, 120f, 36f);
+        _bodyText = CreateText(card.transform, "BodyText", string.Empty, 60f, 120f, UITextScale.Body);
         _claimButton = CreateButton(card.transform, "ClaimButton", MemoryCardCopy.ClaimLabel, -190f, 30f);
         _dismissButton = CreateButton(card.transform, "DismissButton", MemoryCardCopy.CloseLabel, 190f, 30f);
 
@@ -196,7 +196,7 @@ public sealed class MemoryClaimPanel : MonoBehaviour
 
         card.sizeDelta = new Vector2(700f, 620f);
 
-        ScrollPanelArt.PlaceText(body, Rect.MinMaxRect(0.17f, 0.54f, 0.83f, 0.77f), 26f, 36f);
+        ScrollPanelArt.PlaceText(body, Rect.MinMaxRect(0.17f, 0.54f, 0.83f, 0.77f), UITextScale.Caption, 44f);
         ScrollPanelArt.PlaceButton(claim, Rect.MinMaxRect(0.21f, 0.36f, 0.79f, 0.49f));
         ScrollPanelArt.PlaceButton(dismiss, Rect.MinMaxRect(0.21f, 0.19f, 0.79f, 0.32f));
     }
@@ -212,8 +212,7 @@ public sealed class MemoryClaimPanel : MonoBehaviour
         label.alignment = TextAlignmentOptions.Center;
         label.textWrappingMode = TextWrappingModes.Normal;
         label.raycastTarget = false;
-        if (TMP_Settings.defaultFontAsset != null)
-            label.font = TMP_Settings.defaultFontAsset;
+        TutorialFontProvider.ApplyTo(label);
 
         RectTransform rect = textObject.GetComponent<RectTransform>();
         rect.anchorMin = new Vector2(0f, 1f);
@@ -243,7 +242,7 @@ public sealed class MemoryClaimPanel : MonoBehaviour
         Button button = buttonObject.GetComponent<Button>();
         button.targetGraphic = image;
 
-        TMP_Text label = CreateText(buttonObject.transform, "Label", labelText, 0f, 92f, 30f);
+        TMP_Text label = CreateText(buttonObject.transform, "Label", labelText, 0f, 92f, UITextScale.Body);
         RectTransform labelRect = ((Component)label).GetComponent<RectTransform>();
         labelRect.anchorMin = Vector2.zero;
         labelRect.anchorMax = Vector2.one;
