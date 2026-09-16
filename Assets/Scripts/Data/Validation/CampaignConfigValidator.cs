@@ -36,7 +36,14 @@ public static class CampaignConfigValidator
             ValidateLearningTuning(campaign, issues);
             ValidateEraTopology(campaign, issues);
             ValidateSymbolCatalog(campaign, issues);
-            ValidateLevelTopology(campaign, issues);
+
+            // SALIN: docs/design/gated-finale-levels-2-4.md Section 4. Built once here because
+            // both the campaign-wide check below and ValidateLevelTopology's per-level pool check
+            // need the same fact -- which level's learningRequirements actually introduces each
+            // symbol via an Instruction entry -- and it requires a full pass over every level.
+            Dictionary<string, List<string>> symbolIntroducersById = BuildSymbolIntroductionMap(campaign);
+            ValidateSymbolIntroductionSources(campaign, symbolIntroducersById, issues);
+            ValidateLevelTopology(campaign, symbolIntroducersById, issues);
         }
         catch (Exception exception)
         {
@@ -343,8 +350,117 @@ public static class CampaignConfigValidator
         }
     }
 
+    /// <summary>
+    /// docs/design/gated-finale-levels-2-4.md Section 4. Scans every level's
+    /// <c>learningRequirements</c> for <see cref="ContentRequirementKind.Instruction"/> entries --
+    /// the same entries <c>SymbolLearningCardController.HasPresentableRequirement</c> presents to
+    /// the player as "this level teaches you X" -- and records which level(s) name each symbol.
+    /// This is the authored fact; <see cref="BaybayinCharacterSO.firstIntroductionLevelId"/> is a
+    /// second, unenforced restatement of it from the symbol's side, and the two can drift.
+    /// </summary>
+    private static Dictionary<string, List<string>> BuildSymbolIntroductionMap(CampaignConfigSO campaign)
+    {
+        var introducersBySymbolId = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        if (campaign?.eras == null)
+            return introducersBySymbolId;
+
+        for (int eraIndex = 0; eraIndex < campaign.eras.Count; eraIndex++)
+        {
+            EraConfigSO era = campaign.eras[eraIndex];
+            if (era == null || era.levels == null)
+                continue;
+
+            for (int levelIndex = 0; levelIndex < era.levels.Count; levelIndex++)
+            {
+                LevelConfigSO level = era.levels[levelIndex];
+                if (level == null || level.learningRequirements == null ||
+                    string.IsNullOrEmpty(level.stableId))
+                    continue;
+
+                for (int reqIndex = 0; reqIndex < level.learningRequirements.Count; reqIndex++)
+                {
+                    ContentRequirement requirement = level.learningRequirements[reqIndex];
+                    if (requirement == null || requirement.kind != ContentRequirementKind.Instruction)
+                        continue;
+
+                    string symbolId = requirement.symbolValue?.symbol?.stableId;
+                    if (string.IsNullOrEmpty(symbolId))
+                        continue;
+
+                    if (!introducersBySymbolId.TryGetValue(symbolId, out List<string> introducingLevelIds))
+                    {
+                        introducingLevelIds = new List<string>();
+                        introducersBySymbolId.Add(symbolId, introducingLevelIds);
+                    }
+
+                    if (!ContainsOrdinal(introducingLevelIds, level.stableId))
+                        introducingLevelIds.Add(level.stableId);
+                }
+            }
+        }
+
+        return introducersBySymbolId;
+    }
+
+    /// <summary>
+    /// docs/design/gated-finale-levels-2-4.md Section 4, rules 1 and 2. Campaign-wide because both
+    /// rules ask a question about the whole registry ("how many levels introduce this symbol",
+    /// "does the symbol's own metadata point at the level that actually introduces it"), not about
+    /// any single level's authored fields -- unlike rule 3 below, which is naturally a per-level
+    /// check and is registered in <see cref="ValidateLevelTopology"/> instead.
+    /// </summary>
+    private static void ValidateSymbolIntroductionSources(
+        CampaignConfigSO campaign,
+        Dictionary<string, List<string>> symbolIntroducersById,
+        IssueSink issues)
+    {
+        if (campaign.symbols == null)
+            return;
+
+        for (int symbolIndex = 0; symbolIndex < campaign.symbols.Count; symbolIndex++)
+        {
+            BaybayinCharacterSO symbol = campaign.symbols[symbolIndex];
+            if (symbol == null || string.IsNullOrEmpty(symbol.stableId))
+                continue;
+
+            string path = CampaignPath + ".symbols[" + symbolIndex + "]";
+            symbolIntroducersById.TryGetValue(symbol.stableId, out List<string> introducingLevelIds);
+            int introducerCount = introducingLevelIds != null ? introducingLevelIds.Count : 0;
+
+            if (introducerCount == 0)
+            {
+                AddContentIssue(issues, ContentValidationCode.SymbolIntroductionIntegrityInvalid,
+                    path + ".firstIntroductionLevelId",
+                    "Symbol '" + symbol.stableId + "' is introduced by no level: no level's " +
+                    "learningRequirements carries an Instruction requirement naming it, so a " +
+                    "player can meet it as a spawnable symbol having never been taught it.", symbol);
+            }
+            else if (introducerCount > 1)
+            {
+                AddContentIssue(issues, ContentValidationCode.SymbolIntroductionIntegrityInvalid,
+                    path + ".firstIntroductionLevelId",
+                    "Symbol '" + symbol.stableId + "' is introduced by more than one level: " +
+                    string.Join(", ", introducingLevelIds) + ". Exactly one level's " +
+                    "learningRequirements may carry an Instruction requirement for a symbol.", symbol);
+            }
+
+            bool firstIntroductionLevelAgrees = introducingLevelIds != null &&
+                ContainsOrdinal(introducingLevelIds, symbol.firstIntroductionLevelId);
+            if (!firstIntroductionLevelAgrees)
+            {
+                AddContentIssue(issues, ContentValidationCode.SymbolIntroductionIntegrityInvalid,
+                    path + ".firstIntroductionLevelId",
+                    "Symbol '" + symbol.stableId + "' declares firstIntroductionLevelId '" +
+                    symbol.firstIntroductionLevelId + "', but no level carries an Instruction " +
+                    "requirement for it there. firstIntroductionLevelId must name the level whose " +
+                    "learningRequirements actually introduces this symbol.", symbol);
+            }
+        }
+    }
+
     private static void ValidateLevelTopology(
         CampaignConfigSO campaign,
+        Dictionary<string, List<string>> symbolIntroducersById,
         IssueSink issues)
     {
         if (campaign.eras == null)
@@ -395,6 +511,7 @@ public static class CampaignConfigValidator
                 ValidateFocusWords(campaign, level, path, issues);
                 ValidateRequirements(campaign, level, path, issues);
                 ValidateCumulativePool(campaign, level, globalIndex, path, issues);
+                ValidateSymbolIntroductionOrder(level, globalIndex, symbolIntroducersById, path, issues);
                 ValidateCombatRoster(campaign, level, globalIndex, path, issues);
                 ValidateWaveCharacters(level, path, issues);
                 ValidateCombatWaveRoster(level, path, issues);
@@ -729,6 +846,62 @@ public static class CampaignConfigValidator
         {
             AddContentIssue(issues, ContentValidationCode.CumulativePoolInvalid, path + ".cumulativeSymbolPool",
                 "Cumulative symbol pool does not match the symbols introduced through this level.", level);
+        }
+    }
+
+    /// <summary>
+    /// docs/design/gated-finale-levels-2-4.md Section 4, rule 3 -- "the property that actually
+    /// protects the player". Checks each pool entry against <paramref name="symbolIntroducersById"/>
+    /// (the authored Instruction data built once by <see cref="BuildSymbolIntroductionMap"/>) rather
+    /// than against <c>firstIntroductionLevelId</c>, so this stays correct even when that metadata
+    /// has drifted from the authored requirements -- see
+    /// <see cref="ValidateSymbolIntroductionSources"/>, which reports the drift itself. A symbol
+    /// with no recorded introducer at all fails here on every level whose pool carries it, exactly
+    /// like the known Char_RA gap: firstIntroductionLevelId claims level.pamana.03, but no level's
+    /// learningRequirements actually introduces RA, so it fails this check on levels 13-15 too.
+    /// </summary>
+    private static void ValidateSymbolIntroductionOrder(
+        LevelConfigSO level,
+        int globalIndex,
+        Dictionary<string, List<string>> symbolIntroducersById,
+        string path,
+        IssueSink issues)
+    {
+        if (level.cumulativeSymbolPool == null)
+            return;
+
+        for (int index = 0; index < level.cumulativeSymbolPool.Count; index++)
+        {
+            SymbolValueReference reference = level.cumulativeSymbolPool[index];
+            BaybayinCharacterSO symbol = reference?.symbol;
+            if (symbol == null || string.IsNullOrEmpty(symbol.stableId))
+                continue;
+
+            symbolIntroducersById.TryGetValue(symbol.stableId, out List<string> introducingLevelIds);
+
+            bool introducedInTime = false;
+            if (introducingLevelIds != null)
+            {
+                for (int levelIdIndex = 0; levelIdIndex < introducingLevelIds.Count; levelIdIndex++)
+                {
+                    int introducingGlobalIndex = IndexOfOrdinal(
+                        ContentIdentity.RevisedLevelIds, introducingLevelIds[levelIdIndex]);
+                    if (introducingGlobalIndex >= 0 && introducingGlobalIndex <= globalIndex)
+                    {
+                        introducedInTime = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!introducedInTime)
+            {
+                AddContentIssue(issues, ContentValidationCode.SymbolIntroductionIntegrityInvalid,
+                    path + ".cumulativeSymbolPool[" + index + "]",
+                    "Cumulative symbol pool includes '" + symbol.stableId + "', but no level at or " +
+                    "before this one carries an Instruction requirement introducing it, so a player " +
+                    "could meet it as a spawnable symbol having never been taught it.", level);
+            }
         }
     }
 
