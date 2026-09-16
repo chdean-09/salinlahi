@@ -22,6 +22,7 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
 
     private SpawnAssignmentDirector _director;
     private LevelConfigSO _level;
+    private bool _loggedEnemyRosterFallback;
     private ActiveCluePresenter _presenter;
 
     /// <summary>
@@ -39,6 +40,9 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
     private const int GateStuckSpawnThreshold = 12;
 
     public SpawnGateRegistry Gates => _gates;
+
+    /// <summary>The flattened target slots, exposed read-only so gating is testable without reflection.</summary>
+    public IReadOnlyList<SpawnSlot> Slots => _slots;
 
     /// <summary>Seconds between the two members of a choice pair.</summary>
     public float ChoicePairWindow =>
@@ -123,6 +127,7 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
     public void ApplyLevel(LevelConfigSO level, ActiveCluePresenter presenter)
     {
         _level = level;
+        _loggedEnemyRosterFallback = false;
         _presenter = presenter;
         _clock = 0f;
         _clockFrozen = false;
@@ -196,6 +201,44 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
                     policy.GateTokenForSlot(_slots.Count)));
             }
         }
+
+        ApplyDerivedFinalSlotGate(policy);
+    }
+
+    /// <summary>
+    /// Withholds the level's finale slot on <see cref="SpawnGateRegistry.FinalWaveReached"/> when
+    /// the level opts in. Derived rather than authored so content edits cannot move the gate off
+    /// the finale; skipped for a single-slot level, which would otherwise withhold its own win
+    /// condition. <see cref="SpawnSlot.GateToken"/> is readonly, so the entry is replaced, not
+    /// mutated, and an authored gate on the chosen slot always wins.
+    ///
+    /// <para>
+    /// The chosen slot is the last one whose symbol occurs EXACTLY ONCE in the flattened list, not
+    /// simply the last slot - see <see cref="DerivedFinaleGate"/> for why gating a repeated symbol
+    /// withholds nothing. When no symbol is unique the level is left ungated here and reported at
+    /// author time by <c>CampaignConfigValidator.ValidateGatedFinale</c>.
+    /// </para>
+    /// </summary>
+    private void ApplyDerivedFinalSlotGate(SpawnAssignmentPolicy policy)
+    {
+        if (policy == null || !policy.gateFinalSlotToFinalWave || _slots.Count < 2)
+            return;
+
+        var symbols = new List<string>(_slots.Count);
+        for (int index = 0; index < _slots.Count; index++)
+            symbols.Add(_slots[index].SymbolStableId);
+
+        int gateIndex = DerivedFinaleGate.LastUniquelyOccurringIndex(symbols);
+        if (gateIndex == DerivedFinaleGate.NoSlot)
+            return;
+
+        SpawnSlot target = _slots[gateIndex];
+        if (target.IsGated)
+            return;
+
+        _slots[gateIndex] = new SpawnSlot(
+            target.SymbolStableId, target.WordStableId, target.SlotIndexInWord,
+            SpawnGateRegistry.FinalWaveReached);
     }
 
     /// <summary>Marks a beat resolved, ungating any slot that was waiting on it.</summary>
@@ -380,17 +423,45 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
     /// <summary>
     /// The enemy that embodies a symbol. Level 1 is a clean bijection - Iligaw is E/I, Nawalang
     /// Mukha is NA, Abo ng Simula is A, Mantsa is MA - so choosing the symbol chooses the enemy,
-    /// and the identity the glyph badge asserts stays true. Returns null when no enemy in this
-    /// wave owns the symbol, and the caller then keeps its own type roll.
+    /// and the identity the glyph badge asserts stays true. When the wave's own list does not
+    /// carry the symbol we fall back to the level roster, exactly as ResolveCharacter does: a wave
+    /// that narrows its enemyTypes must not be able to put a needed symbol on a body that
+    /// contradicts its badge. Returns null only when no enemy on the level owns the symbol, and
+    /// the caller then keeps its own type roll.
     /// </summary>
     public EnemyDataSO ResolveEnemyData(string symbolStableId, WaveDefinition wave)
     {
-        if (string.IsNullOrEmpty(symbolStableId) || wave?.enemyTypes == null)
+        if (string.IsNullOrEmpty(symbolStableId))
             return null;
 
-        for (int i = 0; i < wave.enemyTypes.Count; i++)
+        EnemyDataSO fromWave = FindEnemyData(wave?.enemyTypes, symbolStableId);
+        if (fromWave != null)
+            return fromWave;
+
+        EnemyDataSO fromLevel = FindEnemyData(
+            _level != null ? _level.allowedEnemyTypes : null, symbolStableId);
+        if (fromLevel != null && !_loggedEnemyRosterFallback)
         {
-            EnemyDataSO data = wave.enemyTypes[i];
+            // Once per level: a narrowed wave is authoring drift, and the validator's
+            // WAVE_ROSTER_NARROWS_RESTORATION check should have caught it before it shipped.
+            _loggedEnemyRosterFallback = true;
+            DebugLogger.LogWarning(
+                "SpawnAssignmentCoordinator: wave enemyTypes did not carry '" + symbolStableId
+                + "'; fell back to the level roster (" + fromLevel.name + "). The wave narrows the "
+                + "level's enemy roster - see WAVE_ROSTER_NARROWS_RESTORATION.");
+        }
+
+        return fromLevel;
+    }
+
+    private static EnemyDataSO FindEnemyData(List<EnemyDataSO> candidates, string symbolStableId)
+    {
+        if (candidates == null)
+            return null;
+
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            EnemyDataSO data = candidates[i];
             if (data?.assignedCharacter != null && data.assignedCharacter.stableId == symbolStableId)
                 return data;
         }

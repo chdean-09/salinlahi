@@ -76,6 +76,13 @@ public sealed class ActiveCluePresenter : MonoBehaviour
              + "the SAFE area and the home indicator's inset is already taken out underneath it.")]
     [SerializeField] private Vector2 _railAnchoredPosition = new Vector2(0f, 24f);
 
+    [Tooltip("Clearance in canvas units left between the top of the restoration rail and the "
+             + "bottom of the authored 'draw the glowing symbol' instruction.")]
+    [SerializeField, Min(0f)] private float _instructionGapAboveRail = 40f;
+
+    private readonly Vector3[] _railCornerBuffer = new Vector3[4];
+    private readonly Vector3[] _instructionCornerBuffer = new Vector3[4];
+
     [Tooltip("Clearance in canvas units left between the top of the rail and the foot of the play "
              + "field, added to the band the rail asks the play column to reserve. Keeps the fence's "
              + "bottom plank and Juan's feet from ending exactly on the rail's top edge, which reads "
@@ -1607,6 +1614,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         }
 
         ReservePlayFieldBandForRail(railRect);
+        PositionInstructionAboveRail(railRect);
 
         // The band is measured in screen pixels, so it goes stale the moment the screen changes
         // size — a rotation, or a Game view resized while playing. Re-measured from the rail's own
@@ -1615,7 +1623,10 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         _bandRefreshHandler ??= () =>
         {
             if (_railRoot != null && _railRoot.transform is RectTransform live)
+            {
                 ReservePlayFieldBandForRail(live);
+                PositionInstructionAboveRail(live);
+            }
         };
         if (AspectLockedCamera.Instance != null)
         {
@@ -1626,6 +1637,53 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
         _railRoot.SetActive(false);
         RepaintRail(forceRestored: false);
+    }
+
+    /// <summary>
+    /// Ugat QA 2026-09-16, second pass. Keeps the authored instruction clear of the rail.
+    ///
+    /// <para>
+    /// The two rects are measured from DIFFERENT origins, which is what made the first attempt at
+    /// this fail. The instruction is authored under this presenter, a SIBLING of HUDRoot, so its
+    /// anchored Y is measured from the bottom of the glass. The rail is parented to HUDLayer INSIDE
+    /// HUDRoot, and HUDRoot carries SafeAreaHandler — so the rail's y=0 is the bottom of the SAFE
+    /// AREA. On any device with a home-indicator inset the rail therefore rides higher than its
+    /// anchored Y suggests, by exactly that inset. Anchoring the instruction to a number computed
+    /// from the rail's anchored Y read as a 24-unit gap and rendered as an overlap, with
+    /// "SYMBOL TO DEFEND" sitting on the slot frames.
+    /// </para>
+    ///
+    /// <para>
+    /// Measuring in world space removes the mismatch entirely: whatever either parent does to its
+    /// children, the instruction ends up a fixed distance above the rail's ACTUAL top edge. Re-run
+    /// whenever the play area changes, for the same reason the band is.
+    /// </para>
+    /// </summary>
+    private void PositionInstructionAboveRail(RectTransform railRect)
+    {
+        if (railRect == null)
+            return;
+
+        TextMeshProUGUI instruction = ResolveClueInstruction();
+        if (instruction == null || instruction.transform is not RectTransform instructionRect)
+            return;
+
+        float scale = instructionRect.lossyScale.y;
+        if (Mathf.Approximately(scale, 0f))
+            return;
+
+        railRect.GetWorldCorners(_railCornerBuffer);
+        instructionRect.GetWorldCorners(_instructionCornerBuffer);
+
+        // corners[1] is top-left, corners[0] bottom-left.
+        float railTopWorld = _railCornerBuffer[1].y;
+        float instructionBottomWorld = _instructionCornerBuffer[0].y;
+
+        float shift = (railTopWorld - instructionBottomWorld) / scale + _instructionGapAboveRail;
+        if (Mathf.Approximately(shift, 0f))
+            return;
+
+        instructionRect.anchoredPosition += new Vector2(0f, shift);
     }
 
     /// <summary>

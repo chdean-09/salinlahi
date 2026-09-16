@@ -37,13 +37,65 @@ public sealed class BakodShieldController : MonoBehaviour
     /// <summary>Enemies this controller currently holds blocked, so it can release exactly its own.</summary>
     private readonly List<Enemy> _blocked = new List<Enemy>();
 
+    /// <summary>
+    /// True while this spawn is the one that introduced its type, in which case the shield must do
+    /// nothing at all. See <see cref="SetSuppressedForIntroductionSpawn"/>.
+    /// </summary>
+    private bool _suppressedForIntroductionSpawn;
+
     public int BlockedCount => _blocked.Count;
 
     public bool IsBlocking(Enemy enemy) => enemy != null && _blocked.Contains(enemy);
 
+    /// <summary>True while this spawn is suppressed as its type's introduction spawn. Test/diagnostic seam, mirroring <see cref="AshFirstSlotController.IsSuppressedForIntroductionSpawn"/>.</summary>
+    public bool IsSuppressedForIntroductionSpawn => _suppressedForIntroductionSpawn;
+
+    /// <summary>
+    /// Makes this ability inert for one spawn — the spawn on which the enemy's introduction card
+    /// plays — and arms it again on every later spawn of the type.
+    ///
+    /// <para>
+    /// <b>Why the shield must not raise on the spawn that introduces it.</b> Bakod's block is
+    /// invisible: nothing on screen says why a symbol the player drew correctly did no damage. A
+    /// player meeting Bakod for the first time, with the card still framing him, would read a
+    /// correct draw that does nothing as recognition being broken — the exact "bug, not threat"
+    /// failure the per-spawn arming rule exists to prevent. The card states the blocking; the next
+    /// Bakod performs it, once the player knows a body can be in the way.
+    /// </para>
+    ///
+    /// <para>
+    /// Suppression releases every hold this controller owns, so toggling it mid-life cannot strand
+    /// an enemy that is unresolvable with nothing shielding it.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Pooling.</b> Suppression is per spawn, never per shell. <c>Enemy.Initialize</c> restates it
+    /// on every spawn and <see cref="OnEnable"/> clears it, so a recycled shell always comes back
+    /// unsuppressed — a stuck flag here would silently disable Bakod's shield for the rest of the
+    /// run, on a shell that looks identical to a working one.
+    /// </para>
+    /// </summary>
+    public void SetSuppressedForIntroductionSpawn(bool suppressed)
+    {
+        if (_suppressedForIntroductionSpawn == suppressed)
+            return;
+
+        _suppressedForIntroductionSpawn = suppressed;
+        if (suppressed)
+            ReleaseAll();
+    }
+
     private void Awake()
     {
         _enemy = GetComponent<Enemy>();
+    }
+
+    private void OnEnable()
+    {
+        // A pooled shell must not inherit the previous occupant's suppression. Added for the
+        // suppression flag alone: everything else this controller owns is rebuilt from live
+        // positions on the next Tick, and its holds are released in OnDisable.
+        _suppressedForIntroductionSpawn = false;
     }
 
     private void OnDisable()
@@ -77,10 +129,13 @@ public sealed class BakodShieldController : MonoBehaviour
             _enemy = GetComponent<Enemy>();
 
         EnemyDataSO data = _enemy != null ? _enemy.Data : null;
-        if (data == null || !data.blocksEnemiesBehind || _enemy.IsDying)
+        // The introduction-spawn suppression joins the same gate as the data flag rather than
+        // getting its own early return, so every way of being inert lets its held enemies go
+        // through the one path that has always done it.
+        if (_suppressedForIntroductionSpawn || data == null || !data.blocksEnemiesBehind || _enemy.IsDying)
         {
-            // Dead, disarmed or recycled: the shield is down. This is what lifts the block when
-            // Bakod is defeated.
+            // Dead, disarmed, suppressed or recycled: the shield is down. This is what lifts the
+            // block when Bakod is defeated.
             ReleaseAll();
             return;
         }

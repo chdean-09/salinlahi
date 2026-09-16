@@ -359,10 +359,19 @@ public class Enemy : MonoBehaviour
     /// could be carrying.
     ///
     /// <para>
-    /// Applied uniformly to all four Era 1 abilities rather than per-ability, and that is the point:
-    /// one rule is reasonable about, and any exception ("name loss is gentle enough to fire
+    /// Applied uniformly to every suppressible signature ability rather than per-ability, and that is
+    /// the point: one rule is reasonable about, and any exception ("name loss is gentle enough to fire
     /// immediately") becomes a per-enemy special case somebody has to rediscover later. Each ability
     /// only needs to know how to be a no-op; deciding <i>when</i> lives here.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Every ability with a visible effect belongs in this list.</b>
+    /// <c>IntroductionDecision.IntroduceAndSuppress</c> promises the ability "is inert this spawn",
+    /// and an ability missing from here quietly breaks that promise: the card explains what the
+    /// enemy does while the enemy is already doing it. <see cref="KadenaChainController"/> is the
+    /// deliberate omission — it carries no <c>SetSuppressedForIntroductionSpawn</c> of its own, so
+    /// there is nothing here to call; adding one is its own change.
     /// </para>
     ///
     /// <para>
@@ -389,6 +398,18 @@ public class Enemy : MonoBehaviour
         MirrorDecoyController decoy = GetComponent<MirrorDecoyController>();
         if (decoy != null && decoy.enabled)
             decoy.SetSuppressedForIntroductionSpawn(suppressed);
+
+        GlyphCoverController cover = GetComponent<GlyphCoverController>();
+        if (cover != null && cover.enabled)
+            cover.SetSuppressedForIntroductionSpawn(suppressed);
+
+        BakodShieldController shield = GetComponent<BakodShieldController>();
+        if (shield != null && shield.enabled)
+            shield.SetSuppressedForIntroductionSpawn(suppressed);
+
+        HatiSplitController split = GetComponent<HatiSplitController>();
+        if (split != null && split.enabled)
+            split.SetSuppressedForIntroductionSpawn(suppressed);
     }
 
     private bool ShouldRaiseEnemyDiscoveryEvent(EnemyDataSO data)

@@ -154,6 +154,29 @@ public class SpawnAssignmentPolicy
     /// </summary>
     public bool allowFinalWaveOverflow = true;
 
+    /// <summary>
+    /// Withholds this level's LAST flattened slot until the final wave begins, so the restoration
+    /// cannot complete early and the level always reaches its finale.
+    ///
+    /// The slot is derived at level start, never authored: an authored index would couple the gate
+    /// to content position, and re-authoring a focus word would silently move the gate mid-word.
+    /// An authored <see cref="slotGates"/> entry for that slot still wins.
+    /// </summary>
+    public bool gateFinalSlotToFinalWave = false;
+
+    /// <summary>
+    /// How many escort batches restoration overflow may spawn before giving up. 12 is the historical
+    /// hardcoded bound and stays the default, so levels that never opt in are unchanged.
+    ///
+    /// Zero or less means unbounded: escorts keep arriving until the text is restored or the run
+    /// ends. Unbounded is per level and visible in data rather than a blanket `while(true)`, because
+    /// the bound is also what surfaces a starved director instead of hanging the run.
+    /// </summary>
+    public int maxOverflowBatches = 12;
+
+    /// <summary>True when overflow should continue until the run is won or lost.</summary>
+    public bool OverflowIsUnbounded => maxOverflowBatches <= 0;
+
     /// <summary>Non-zero makes a playtest replayable. 0 seeds from the clock.</summary>
     public int assignmentSeed = 0;
 

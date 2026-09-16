@@ -44,6 +44,15 @@ public sealed class SpawnGateRegistry
     /// </summary>
     public const string Level1RosterMet = "level1_roster_met";
 
+    /// <summary>
+    /// Opened by WaveManager as the last wave of a run begins. Levels that opt into
+    /// <see cref="SpawnAssignmentPolicy.gateFinalSlotToFinalWave"/> withhold their final slot on
+    /// this token, so the text cannot be completed before the finale and the level always plays its
+    /// full arc. Unlike <see cref="AboAshShown"/> this is not a narrative beat - it is a pacing
+    /// gate, which is why the slot it applies to is derived rather than authored.
+    /// </summary>
+    public const string FinalWaveReached = "final_wave_reached";
+
     private readonly HashSet<string> _open = new HashSet<string>();
 
     public IReadOnlyCollection<string> OpenTokens => _open;

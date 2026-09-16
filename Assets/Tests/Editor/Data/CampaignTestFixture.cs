@@ -203,6 +203,19 @@ namespace Salinlahi.Tests.Editor.Data
                             symbol = symbolsById[ContentIdentity.RevisedFinaleSymbolId],
                             spokenValueId = ContentIdentity.RevisedFinaleSpokenValueId,
                         };
+
+                        // SALIN: docs/design/gated-finale-levels-2-4.md Section 4. LA and RA both
+                        // carry firstIntroductionLevelId == level.pamana.05 (CreateSymbols() above
+                        // clamps every symbol past index 14 to the last level), same as NGA (the
+                        // focus symbol, instructed above via the general flow) and PA (instructed
+                        // above). Without these, the symbol introduction integrity check reports
+                        // LA and RA as introduced by zero levels even on this "valid" fixture.
+                        // Appended last, after PA, so CampaignConfigValidatorTests's
+                        // learningRequirements[1] (== the PA Instruction entry) is unaffected.
+                        AddRequirement(level.learningRequirements, ContentRequirementKind.Instruction,
+                            symbolsById["symbol.la"], "value.la");
+                        AddRequirement(level.learningRequirements, ContentRequirementKind.Instruction,
+                            symbolsById["symbol.ra"], "value.ra");
                     }
 
                     era.levels.Add(level);

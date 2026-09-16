@@ -36,7 +36,14 @@ public static class CampaignConfigValidator
             ValidateLearningTuning(campaign, issues);
             ValidateEraTopology(campaign, issues);
             ValidateSymbolCatalog(campaign, issues);
-            ValidateLevelTopology(campaign, issues);
+
+            // SALIN: docs/design/gated-finale-levels-2-4.md Section 4. Built once here because
+            // both the campaign-wide check below and ValidateLevelTopology's per-level pool check
+            // need the same fact -- which level's learningRequirements actually introduces each
+            // symbol via an Instruction entry -- and it requires a full pass over every level.
+            Dictionary<string, List<string>> symbolIntroducersById = BuildSymbolIntroductionMap(campaign);
+            ValidateSymbolIntroductionSources(campaign, symbolIntroducersById, issues);
+            ValidateLevelTopology(campaign, symbolIntroducersById, issues);
         }
         catch (Exception exception)
         {
@@ -343,8 +350,117 @@ public static class CampaignConfigValidator
         }
     }
 
+    /// <summary>
+    /// docs/design/gated-finale-levels-2-4.md Section 4. Scans every level's
+    /// <c>learningRequirements</c> for <see cref="ContentRequirementKind.Instruction"/> entries --
+    /// the same entries <c>SymbolLearningCardController.HasPresentableRequirement</c> presents to
+    /// the player as "this level teaches you X" -- and records which level(s) name each symbol.
+    /// This is the authored fact; <see cref="BaybayinCharacterSO.firstIntroductionLevelId"/> is a
+    /// second, unenforced restatement of it from the symbol's side, and the two can drift.
+    /// </summary>
+    private static Dictionary<string, List<string>> BuildSymbolIntroductionMap(CampaignConfigSO campaign)
+    {
+        var introducersBySymbolId = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        if (campaign?.eras == null)
+            return introducersBySymbolId;
+
+        for (int eraIndex = 0; eraIndex < campaign.eras.Count; eraIndex++)
+        {
+            EraConfigSO era = campaign.eras[eraIndex];
+            if (era == null || era.levels == null)
+                continue;
+
+            for (int levelIndex = 0; levelIndex < era.levels.Count; levelIndex++)
+            {
+                LevelConfigSO level = era.levels[levelIndex];
+                if (level == null || level.learningRequirements == null ||
+                    string.IsNullOrEmpty(level.stableId))
+                    continue;
+
+                for (int reqIndex = 0; reqIndex < level.learningRequirements.Count; reqIndex++)
+                {
+                    ContentRequirement requirement = level.learningRequirements[reqIndex];
+                    if (requirement == null || requirement.kind != ContentRequirementKind.Instruction)
+                        continue;
+
+                    string symbolId = requirement.symbolValue?.symbol?.stableId;
+                    if (string.IsNullOrEmpty(symbolId))
+                        continue;
+
+                    if (!introducersBySymbolId.TryGetValue(symbolId, out List<string> introducingLevelIds))
+                    {
+                        introducingLevelIds = new List<string>();
+                        introducersBySymbolId.Add(symbolId, introducingLevelIds);
+                    }
+
+                    if (!ContainsOrdinal(introducingLevelIds, level.stableId))
+                        introducingLevelIds.Add(level.stableId);
+                }
+            }
+        }
+
+        return introducersBySymbolId;
+    }
+
+    /// <summary>
+    /// docs/design/gated-finale-levels-2-4.md Section 4, rules 1 and 2. Campaign-wide because both
+    /// rules ask a question about the whole registry ("how many levels introduce this symbol",
+    /// "does the symbol's own metadata point at the level that actually introduces it"), not about
+    /// any single level's authored fields -- unlike rule 3 below, which is naturally a per-level
+    /// check and is registered in <see cref="ValidateLevelTopology"/> instead.
+    /// </summary>
+    private static void ValidateSymbolIntroductionSources(
+        CampaignConfigSO campaign,
+        Dictionary<string, List<string>> symbolIntroducersById,
+        IssueSink issues)
+    {
+        if (campaign.symbols == null)
+            return;
+
+        for (int symbolIndex = 0; symbolIndex < campaign.symbols.Count; symbolIndex++)
+        {
+            BaybayinCharacterSO symbol = campaign.symbols[symbolIndex];
+            if (symbol == null || string.IsNullOrEmpty(symbol.stableId))
+                continue;
+
+            string path = CampaignPath + ".symbols[" + symbolIndex + "]";
+            symbolIntroducersById.TryGetValue(symbol.stableId, out List<string> introducingLevelIds);
+            int introducerCount = introducingLevelIds != null ? introducingLevelIds.Count : 0;
+
+            if (introducerCount == 0)
+            {
+                AddContentIssue(issues, ContentValidationCode.SymbolIntroductionIntegrityInvalid,
+                    path + ".firstIntroductionLevelId",
+                    "Symbol '" + symbol.stableId + "' is introduced by no level: no level's " +
+                    "learningRequirements carries an Instruction requirement naming it, so a " +
+                    "player can meet it as a spawnable symbol having never been taught it.", symbol);
+            }
+            else if (introducerCount > 1)
+            {
+                AddContentIssue(issues, ContentValidationCode.SymbolIntroductionIntegrityInvalid,
+                    path + ".firstIntroductionLevelId",
+                    "Symbol '" + symbol.stableId + "' is introduced by more than one level: " +
+                    string.Join(", ", introducingLevelIds) + ". Exactly one level's " +
+                    "learningRequirements may carry an Instruction requirement for a symbol.", symbol);
+            }
+
+            bool firstIntroductionLevelAgrees = introducingLevelIds != null &&
+                ContainsOrdinal(introducingLevelIds, symbol.firstIntroductionLevelId);
+            if (!firstIntroductionLevelAgrees)
+            {
+                AddContentIssue(issues, ContentValidationCode.SymbolIntroductionIntegrityInvalid,
+                    path + ".firstIntroductionLevelId",
+                    "Symbol '" + symbol.stableId + "' declares firstIntroductionLevelId '" +
+                    symbol.firstIntroductionLevelId + "', but no level carries an Instruction " +
+                    "requirement for it there. firstIntroductionLevelId must name the level whose " +
+                    "learningRequirements actually introduces this symbol.", symbol);
+            }
+        }
+    }
+
     private static void ValidateLevelTopology(
         CampaignConfigSO campaign,
+        Dictionary<string, List<string>> symbolIntroducersById,
         IssueSink issues)
     {
         if (campaign.eras == null)
@@ -395,8 +511,11 @@ public static class CampaignConfigValidator
                 ValidateFocusWords(campaign, level, path, issues);
                 ValidateRequirements(campaign, level, path, issues);
                 ValidateCumulativePool(campaign, level, globalIndex, path, issues);
+                ValidateSymbolIntroductionOrder(level, globalIndex, symbolIntroducersById, path, issues);
                 ValidateCombatRoster(campaign, level, globalIndex, path, issues);
                 ValidateWaveCharacters(level, path, issues);
+                ValidateCombatWaveRoster(level, path, issues);
+                ValidateGatedFinale(level, path, issues);
                 ValidateFinalRestoration(campaign, level, path, issues);
                 ValidateRequiredReferences(level, path, issues);
                 ValidatePaInstructionOrder(level, path, issues);
@@ -731,6 +850,62 @@ public static class CampaignConfigValidator
     }
 
     /// <summary>
+    /// docs/design/gated-finale-levels-2-4.md Section 4, rule 3 -- "the property that actually
+    /// protects the player". Checks each pool entry against <paramref name="symbolIntroducersById"/>
+    /// (the authored Instruction data built once by <see cref="BuildSymbolIntroductionMap"/>) rather
+    /// than against <c>firstIntroductionLevelId</c>, so this stays correct even when that metadata
+    /// has drifted from the authored requirements -- see
+    /// <see cref="ValidateSymbolIntroductionSources"/>, which reports the drift itself. A symbol
+    /// with no recorded introducer at all fails here on every level whose pool carries it, exactly
+    /// like the known Char_RA gap: firstIntroductionLevelId claims level.pamana.03, but no level's
+    /// learningRequirements actually introduces RA, so it fails this check on levels 13-15 too.
+    /// </summary>
+    private static void ValidateSymbolIntroductionOrder(
+        LevelConfigSO level,
+        int globalIndex,
+        Dictionary<string, List<string>> symbolIntroducersById,
+        string path,
+        IssueSink issues)
+    {
+        if (level.cumulativeSymbolPool == null)
+            return;
+
+        for (int index = 0; index < level.cumulativeSymbolPool.Count; index++)
+        {
+            SymbolValueReference reference = level.cumulativeSymbolPool[index];
+            BaybayinCharacterSO symbol = reference?.symbol;
+            if (symbol == null || string.IsNullOrEmpty(symbol.stableId))
+                continue;
+
+            symbolIntroducersById.TryGetValue(symbol.stableId, out List<string> introducingLevelIds);
+
+            bool introducedInTime = false;
+            if (introducingLevelIds != null)
+            {
+                for (int levelIdIndex = 0; levelIdIndex < introducingLevelIds.Count; levelIdIndex++)
+                {
+                    int introducingGlobalIndex = IndexOfOrdinal(
+                        ContentIdentity.RevisedLevelIds, introducingLevelIds[levelIdIndex]);
+                    if (introducingGlobalIndex >= 0 && introducingGlobalIndex <= globalIndex)
+                    {
+                        introducedInTime = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!introducedInTime)
+            {
+                AddContentIssue(issues, ContentValidationCode.SymbolIntroductionIntegrityInvalid,
+                    path + ".cumulativeSymbolPool[" + index + "]",
+                    "Cumulative symbol pool includes '" + symbol.stableId + "', but no level at or " +
+                    "before this one carries an Instruction requirement introducing it, so a player " +
+                    "could meet it as a spawnable symbol having never been taught it.", level);
+            }
+        }
+    }
+
+    /// <summary>
     /// The symbols a level may legitimately use: every catalog symbol introduced at or before it.
     /// Derived from symbol metadata, never from the level's own authored fields.
     /// </summary>
@@ -1045,6 +1220,198 @@ public static class CampaignConfigValidator
         }
 
         return -1;
+    }
+
+    /// <summary>
+    /// Ugat QA 2026-09-16: a level that restores its focus text through combat has to be able to
+    /// spawn every symbol that text needs, in every wave. A wave that narrows its own roster
+    /// starves the spawn director — once the narrowed symbol is restored the filler pool has
+    /// nothing else to draw, so the marked enemy carries a glyph no open slot wants, and a needed
+    /// symbol with no matching enemy in the wave spawns on a body that contradicts its badge.
+    /// An empty wave list is the healthy shape: it means "carry the whole level roster", so only a
+    /// non-empty, narrowed list is reported here. (A curve-driven level passes on merit rather
+    /// than by that exemption - WaveCurveExpander copies the full roster into every wave.)
+    /// </summary>
+    private static void ValidateCombatWaveRoster(
+        LevelConfigSO level,
+        string path,
+        IssueSink issues)
+    {
+        if (!level.activeClueCombatEnabled || level.waves == null || level.focusWords == null)
+            return;
+
+        var requiredSymbolIds = new List<string>();
+        var seenSymbolIds = new HashSet<string>(StringComparer.Ordinal);
+        for (int focusIndex = 0; focusIndex < level.focusWords.Count; focusIndex++)
+        {
+            FocusWordDefinition focus = level.focusWords[focusIndex];
+            if (focus?.decomposition == null)
+                continue;
+
+            for (int index = 0; index < focus.decomposition.Count; index++)
+            {
+                BaybayinCharacterSO symbol = focus.decomposition[index]?.symbol;
+                if (symbol == null || string.IsNullOrEmpty(symbol.stableId))
+                    continue;
+
+                if (seenSymbolIds.Add(symbol.stableId))
+                    requiredSymbolIds.Add(symbol.stableId);
+            }
+        }
+
+        if (requiredSymbolIds.Count == 0)
+            return;
+
+        for (int waveIndex = 0; waveIndex < level.waves.Count; waveIndex++)
+        {
+            WaveDefinition wave = level.waves[waveIndex];
+            if (wave == null || wave.isIntermissionWave)
+                continue;
+
+            string wavePath = path + ".waves[" + waveIndex + "]";
+
+            if (wave.characters != null && wave.characters.Count > 0)
+            {
+                var missing = new List<string>();
+                for (int index = 0; index < requiredSymbolIds.Count; index++)
+                {
+                    if (FindCharacterId(wave.characters, requiredSymbolIds[index]) == null)
+                        missing.Add(requiredSymbolIds[index]);
+                }
+
+                if (missing.Count > 0)
+                {
+                    AddContentIssue(issues, ContentValidationCode.WaveRosterNarrowsRestoration,
+                        wavePath + ".characters",
+                        "A combat-restoration wave that lists characters must carry every symbol its "
+                        + "focus text needs, or the spawn director starves once the listed symbols are "
+                        + "restored. Leave the list empty to inherit the level roster. Missing: "
+                        + string.Join(", ", missing) + ".", level);
+                }
+            }
+
+            if (wave.enemyTypes == null || wave.enemyTypes.Count == 0)
+                continue;
+
+            var unrepresented = new List<string>();
+            for (int index = 0; index < requiredSymbolIds.Count; index++)
+            {
+                if (!WaveCarriesEnemyFor(wave.enemyTypes, requiredSymbolIds[index]))
+                    unrepresented.Add(requiredSymbolIds[index]);
+            }
+
+            if (unrepresented.Count > 0)
+            {
+                AddContentIssue(issues, ContentValidationCode.WaveRosterNarrowsRestoration,
+                    wavePath + ".enemyTypes",
+                    "A combat-restoration wave that lists enemy types must include an enemy whose "
+                    + "assignedCharacter covers each symbol its focus text needs, or a needed symbol "
+                    + "spawns on a body that contradicts its badge. Leave the list empty to inherit "
+                    + "the level roster. Unrepresented: " + string.Join(", ", unrepresented) + ".", level);
+            }
+        }
+    }
+
+    /// <summary>
+    /// A level that withholds its final slot until the final wave needs at least two slots, at
+    /// least one wave, and at least one symbol that occurs exactly once across its flattened slots.
+    /// With one slot the gate withholds the sole win condition; with no waves the token never
+    /// opens; with no uniquely-occurring symbol there is nothing to withhold, because restoration
+    /// is by symbol (see <see cref="DerivedFinaleGate"/>) and another slot's carrier always fills
+    /// the gated one for free. The first two are unwinnable levels, the third a silent no-op that
+    /// reads as a shipped feature. All three fail at author time.
+    /// </summary>
+    private static void ValidateGatedFinale(
+        LevelConfigSO level,
+        string path,
+        IssueSink issues)
+    {
+        SpawnAssignmentPolicy policy = level.spawnAssignmentPolicy;
+        if (policy == null || !policy.gateFinalSlotToFinalWave)
+            return;
+
+        var symbolStableIds = new List<string>();
+        if (level.focusWords != null)
+        {
+            for (int focusIndex = 0; focusIndex < level.focusWords.Count; focusIndex++)
+            {
+                FocusWordDefinition focus = level.focusWords[focusIndex];
+                if (focus?.decomposition == null)
+                    continue;
+
+                for (int index = 0; index < focus.decomposition.Count; index++)
+                {
+                    BaybayinCharacterSO symbol = focus.decomposition[index]?.symbol;
+                    if (symbol != null)
+                        symbolStableIds.Add(symbol.stableId);
+                }
+            }
+        }
+
+        int slotCount = symbolStableIds.Count;
+
+        if (slotCount >= 2 &&
+            DerivedFinaleGate.LastUniquelyOccurringIndex(symbolStableIds) == DerivedFinaleGate.NoSlot)
+        {
+            AddContentIssue(issues, ContentValidationCode.GatedFinaleUnwinnable,
+                path + ".spawnAssignmentPolicy.gateFinalSlotToFinalWave",
+                "This level withholds its final slot until the final wave but every symbol in its "
+                + "focus words occurs more than once. Restoration is by symbol, so whichever slot "
+                + "the gate lands on is filled for free by another slot's carrier: the gate "
+                + "withholds nothing and the level completes before its final wave exactly as if "
+                + "the option were off. Give the level a syllable that appears exactly once, or "
+                + "turn gateFinalSlotToFinalWave off.", level);
+        }
+
+        if (slotCount < 2)
+        {
+            AddContentIssue(issues, ContentValidationCode.GatedFinaleUnwinnable,
+                path + ".spawnAssignmentPolicy.gateFinalSlotToFinalWave",
+                "This level withholds its final slot until the final wave but has "
+                + slotCount + " slot(s). Gating the only slot withholds the level's sole win "
+                + "condition, so it could never be completed.", level);
+        }
+
+        int waveCount = level.waves != null ? level.waves.Count : 0;
+        if (waveCount < 1)
+        {
+            AddContentIssue(issues, ContentValidationCode.GatedFinaleUnwinnable,
+                path + ".spawnAssignmentPolicy.gateFinalSlotToFinalWave",
+                "This level withholds its final slot until the final wave but authors no waves, "
+                + "so the gate would never open.", level);
+        }
+    }
+
+    private static BaybayinCharacterSO FindCharacterId(
+        List<BaybayinCharacterSO> candidates,
+        string symbolStableId)
+    {
+        if (candidates == null)
+            return null;
+
+        for (int index = 0; index < candidates.Count; index++)
+        {
+            if (candidates[index] != null && candidates[index].stableId == symbolStableId)
+                return candidates[index];
+        }
+
+        return null;
+    }
+
+    private static bool WaveCarriesEnemyFor(List<EnemyDataSO> enemyTypes, string symbolStableId)
+    {
+        for (int index = 0; index < enemyTypes.Count; index++)
+        {
+            EnemyDataSO enemyData = enemyTypes[index];
+            if (enemyData != null &&
+                enemyData.assignedCharacter != null &&
+                enemyData.assignedCharacter.stableId == symbolStableId)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
