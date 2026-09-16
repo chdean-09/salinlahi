@@ -136,6 +136,7 @@ public class FocusWordPreviewController : MonoBehaviour
         _previewText.fontSize = UITextScale.Body;
         _previewText.alignment = TextAlignmentOptions.Center;
         _previewText.raycastTarget = false;
+        TutorialFontProvider.ApplyTo(_previewText);
 
         GameObject buttonObject = new GameObject("[Runtime] FocusWordContinue", typeof(RectTransform), typeof(Image));
         buttonObject.transform.SetParent(_panelRoot.transform, false);
@@ -155,6 +156,7 @@ public class FocusWordPreviewController : MonoBehaviour
         label.fontSize = UITextScale.Body;
         label.alignment = TextAlignmentOptions.Center;
         label.raycastTarget = false;
+        TutorialFontProvider.ApplyTo(label);
         RectTransform labelRect = label.rectTransform;
         labelRect.anchorMin = Vector2.zero;
         labelRect.anchorMax = Vector2.one;
