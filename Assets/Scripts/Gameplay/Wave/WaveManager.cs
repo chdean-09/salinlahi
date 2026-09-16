@@ -658,6 +658,18 @@ public class WaveManager : MonoBehaviour
             _currentWaveSpawnedCount = 0;
             EventBus.RaiseWaveStarted(waveIndex);
 
+            // The finale gate opens as the LAST wave starts, so a level that withheld its final
+            // slot becomes completable exactly here and not before. Resolved against the same
+            // exclusive bound the overflow pass uses, so a segmented run gates per segment rather
+            // than once per level.
+            if (IsFinalWaveIndex(waveIndex, lastWaveIndexExclusive))
+            {
+                SpawnAssignmentCoordinator gateCoordinator =
+                    FindFirstObjectByType<SpawnAssignmentCoordinator>(FindObjectsInactive.Include);
+                if (gateCoordinator != null)
+                    gateCoordinator.OpenGate(SpawnGateRegistry.FinalWaveReached);
+            }
+
             float startDelay = ClampWaveStartDelay(wave.waveStartDelay, waveIndex);
             if (startDelay > 0f)
                 yield return new WaitForSeconds(startDelay);
@@ -708,6 +720,14 @@ public class WaveManager : MonoBehaviour
 
         CompleteRun();
     }
+
+    /// <summary>
+    /// True when this wave index is the last of the run. Pure and static so the finale gate's timing
+    /// is an EditMode test rather than something only a full play session can exercise: an inline
+    /// comparison here could be silently wrong and no suite would notice.
+    /// </summary>
+    internal static bool IsFinalWaveIndex(int waveIndex, int endWaveIndexExclusive) =>
+        endWaveIndexExclusive > 0 && waveIndex == endWaveIndexExclusive - 1;
 
     /// <summary>
     /// Keeps the defense running past the authored wave budget until the level's focus words are
