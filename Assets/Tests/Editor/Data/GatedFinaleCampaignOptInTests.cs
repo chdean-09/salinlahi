@@ -118,22 +118,20 @@ namespace Salinlahi.Tests.Editor.Data
                     $"{label} ({stableId}) opts into the gated finale but no slot carries " +
                     $"{SpawnGateRegistry.FinalWaveReached}, so nothing is withheld.");
 
-                int occurrences = 0;
                 var flattened = new List<string>(slots.Count);
                 for (int index = 0; index < slots.Count; index++)
-                {
                     flattened.Add(slots[index].SymbolStableId);
-                    if (slots[index].SymbolStableId == gatedSymbol)
-                        occurrences++;
-                }
 
-                Assert.AreEqual(1, occurrences,
-                    $"{label} ({stableId}) gates slot {gatedIndex} on '{gatedSymbol}', which " +
-                    $"occurs {occurrences} times in [{string.Join(", ", flattened)}]. Restoration " +
-                    "is by SYMBOL, not by slot: any carrier of a repeated symbol fills the gated " +
-                    "slot for free, so the gate withholds nothing and the level completes before " +
-                    "its final wave exactly as if gateFinalSlotToFinalWave were off. This is the " +
-                    "Level 2 defect; it must never come back silently.");
+                // Until 2026-09-17 this asserted the gated symbol occurred EXACTLY ONCE, because
+                // restoration was by symbol and a repeated one was filled for free by another
+                // slot's carrier -- the Level 2 defect. Per-slot restoration removed that, so the
+                // assertion is now about POSITION: the withheld slot must be the last one, or the
+                // level can be completed before reaching it.
+                Assert.AreEqual(slots.Count - 1, gatedIndex,
+                    $"{label} ({stableId}) gates slot {gatedIndex} of " +
+                    $"[{string.Join(", ", flattened)}] on '{gatedSymbol}'. Anything but the last " +
+                    "slot can be restored while later slots remain, so the level finishes without " +
+                    "the gate ever mattering.");
             }
             finally
             {

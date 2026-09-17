@@ -71,22 +71,30 @@ namespace Salinlahi.Tests.Editor.Data
         }
 
         /// <summary>
-        /// A level whose every symbol repeats cannot support a gated finale at all. Restoration is
-        /// by symbol, so whichever slot the gate landed on would be filled for free by another
-        /// slot's carrier - the level would opt in, look gated, and complete before its final wave
-        /// exactly as if the option were off. The engine therefore leaves it ungated, and the
-        /// author has to be TOLD, or the opt-in is a silent no-op that reads as a shipped feature.
+        /// Retired 2026-09-17. A level whose every symbol repeated used to be rejected here:
+        /// restoration was by symbol, so whichever slot the gate landed on was filled for free by
+        /// another slot's carrier, and the gate was a silent no-op dressed as a feature.
+        ///
+        /// <para>
+        /// One carrier now restores one slot, so a repeated symbol is withholdable like any other
+        /// and there is nothing left to reject. This assertion replaces the rejection: the shape
+        /// that used to be an authoring error must now validate clean, or the retirement is
+        /// incomplete and authors are still being blocked on a problem that no longer exists.
+        /// </para>
         /// </summary>
         [Test]
-        public void LevelWithNoUniquelyOccurringSymbol_IsRejected()
+        public void LevelWhereEverySymbolRepeats_IsNoLongerRejected()
         {
             using CampaignTestFixture fixture = CampaignTestFixture.CreateValid();
             LevelConfigSO level = fixture.Campaign.eras[0].levels[0];
             level.activeClueCombatEnabled = true;
             level.spawnAssignmentPolicy.gateFinalSlotToFinalWave = true;
 
-            // Two words, two slots, one symbol: [x, x]. Enough slots to clear the slot-count
-            // branch, so only the new uniqueness branch can fire.
+            // The other two GatedFinaleUnwinnable branches are still live and still correct, and
+            // the no-waves one fires on this fixture. Give the level a wave so only the retired
+            // branch could possibly report -- otherwise this passes or fails for the wrong reason.
+            level.waves = new List<WaveDefinition> { new WaveDefinition() };
+
             BaybayinCharacterSO repeated = fixture.Campaign.symbols[0];
             while (level.focusWords.Count < 2)
                 level.focusWords.Add(new FocusWordDefinition { stableId = "word.repeat" });
@@ -100,11 +108,14 @@ namespace Salinlahi.Tests.Editor.Data
                 };
             }
 
-            List<string> offenders = Offenders(fixture.Campaign);
-            Assert.IsTrue(offenders.Any(o => o.Contains("occurs more than once")),
-                "a level that opts into the gated finale with no uniquely-occurring symbol has "
-                + "nothing its gate can withhold, and must be reported rather than silently left "
-                + "ungated.\n" + string.Join("\n", offenders));
+            IReadOnlyList<ContentValidationIssue> issues =
+                CampaignConfigValidator.Validate(fixture.Campaign);
+
+            foreach (ContentValidationIssue issue in issues)
+            {
+                Assert.AreNotEqual(ContentValidationCode.GatedFinaleUnwinnable, issue.Code,
+                    "A repeated symbol is no longer unwinnable: " + issue.Message);
+            }
         }
 
         /// <summary>

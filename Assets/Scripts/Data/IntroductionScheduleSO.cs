@@ -40,8 +40,9 @@ public sealed class IntroductionScheduleSO : ScriptableObject
         public BaybayinCharacterSO[] fillerSymbols = Array.Empty<BaybayinCharacterSO>();
 
         [Tooltip("The syllable held back for last: the level is won when its slot is restored. "
-                 + "Must be one of the level's own focus-word symbols. Left null, the finale is "
-                 + "derived as the last slot whose symbol occurs exactly once (DerivedFinaleGate).")]
+                 + "Must be one of the level's own focus-word symbols; the LAST slot carrying it is "
+                 + "the one gated, so a syllable that also appears earlier still ends the level. "
+                 + "Left null, the finale is simply the level's last slot.")]
         public BaybayinCharacterSO finaleSymbol;
     }
 

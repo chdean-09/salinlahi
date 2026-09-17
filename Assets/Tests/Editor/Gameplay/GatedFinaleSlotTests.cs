@@ -147,7 +147,7 @@ public class GatedFinaleSlotTests
     /// for free, and the level completes in wave 2 exactly as if the feature were off.
     /// </summary>
     [Test]
-    public void LastSymbolRepeats_GatesTheLastUniqueSlot_NotTheLastSlot()
+    public void LastSymbolRepeats_StillGatesTheLastSlot()
     {
         var go = new GameObject("SpawnAssignmentCoordinator");
         try
@@ -158,17 +158,16 @@ public class GatedFinaleSlotTests
             IReadOnlyList<SpawnSlot> slots = coordinator.Slots;
             Assert.AreEqual(4, slots.Count, "test setup: BATA + MATA is four flattened slots.");
 
-            Assert.IsFalse(slots[3].IsGated,
-                "slot 3 is ta@MATA and TA also fills slot 1 of BATA. Restoration is by symbol, so "
-                + "gating this slot withholds nothing: any TA carrier fills it, the target text "
-                + "completes in wave 2, and the gated finale is inert on the very level it was "
-                + "built for.");
-
-            Assert.AreEqual(2, GatedSlotIndex(slots),
-                "the gate must land on slot 2 (ma@MATA), the LAST slot whose symbol occurs exactly "
-                + "once, because that is the only slot no other carrier can restore.");
-            Assert.AreEqual("symbol.ma", slots[2].SymbolStableId,
-                "test setup: slot 2 is MA, the level's last uniquely-occurring symbol.");
+            // Until 2026-09-17 this asserted the OPPOSITE: the gate had to avoid slot 3 and land on
+            // slot 2 (ma@MATA), because restoration was by symbol and any TA carrier filled both TA
+            // slots at once -- so gating ta@MATA withheld nothing and Level 2 finished early. One
+            // carrier now restores one slot, so the last slot is genuinely withholdable and the
+            // level ends on the syllable it is teaching.
+            Assert.AreEqual(3, GatedSlotIndex(slots),
+                "the gate lands on the last slot, ta@MATA, even though TA also fills slot 1. "
+                + "Per-slot restoration means BATA's TA cannot fill MATA's.");
+            Assert.AreEqual("symbol.ta", slots[3].SymbolStableId,
+                "test setup: slot 3 is the repeated TA -- the case this fixture exists for.");
         }
         finally
         {
@@ -176,12 +175,6 @@ public class GatedFinaleSlotTests
         }
     }
 
-    /// <summary>
-    /// Levels 3 (<c>[ba, ta, ta, ma]</c>) and 4 (<c>[i, na, a, ma]</c>) both end on a symbol that
-    /// occurs once, so the rule change must leave them exactly where they were: on the last slot.
-    /// This is the regression guard for the levels that were NOT broken.
-    /// </summary>
-    [Test]
     public void LastSymbolIsUnique_StillGatesTheLastSlot()
     {
         var go = new GameObject("SpawnAssignmentCoordinator");
@@ -191,8 +184,8 @@ public class GatedFinaleSlotTests
             coordinator.ApplyLevel(MultiWordLevel(true, "ba.ta", "ta.ma"), null);
 
             Assert.AreEqual(3, GatedSlotIndex(coordinator.Slots),
-                "TA repeats but MA does not, so the last slot is still the last unique one and "
-                + "Level 3's shipped behaviour must be unchanged by the rule change.");
+                "The last slot, as always. This case used to be the interesting one -- the last "
+                + "slot happening to also be the last UNIQUE slot -- and is now simply the rule.");
         }
         finally
         {
@@ -201,14 +194,18 @@ public class GatedFinaleSlotTests
     }
 
     /// <summary>
-    /// When every symbol repeats, no slot can be withheld: whichever one the gate picked, another
-    /// slot's carrier would fill it. Gating anyway would be a silent no-op dressed as a feature, so
-    /// the level is left ungated at runtime and rejected at author time by
-    /// <c>CampaignConfigValidator.ValidateGatedFinale</c> (see
-    /// <c>GatedFinaleValidationTests.LevelWithNoUniquelyOccurringSymbol_IsRejected</c>).
+    /// A level whose every symbol repeats used to be left ungated: whichever slot the gate picked,
+    /// another slot's carrier filled it, so attaching one would have claimed a guarantee the engine
+    /// could not keep. It was an author-time error too
+    /// (<c>CampaignConfigValidator.ValidateGatedFinale</c>).
+    ///
+    /// <para>
+    /// Per-slot restoration removed the problem entirely: no slot can be filled by another slot's
+    /// carrier, so this shape gates like any other and the validator case was retired with it.
+    /// </para>
     /// </summary>
     [Test]
-    public void NoUniquelyOccurringSymbol_LeavesEverySlotUngated()
+    public void EverySymbolRepeating_IsNowGatedLikeAnyOtherLevel()
     {
         var go = new GameObject("SpawnAssignmentCoordinator");
         try
@@ -217,10 +214,9 @@ public class GatedFinaleSlotTests
             coordinator.ApplyLevel(MultiWordLevel(true, "ba.ta", "ta.ba"), null);
 
             Assert.AreEqual(4, coordinator.Slots.Count, "test setup: four flattened slots.");
-            Assert.AreEqual(-1, GatedSlotIndex(coordinator.Slots),
-                "every symbol here occurs twice, so no gate can withhold anything. Attaching one "
-                + "anyway would claim a guarantee the engine cannot keep; this shape is an "
-                + "author-time error instead.");
+            Assert.AreEqual(3, GatedSlotIndex(coordinator.Slots),
+                "Both BA and TA appear twice. That used to make the level ungateable; it is now "
+                + "an ordinary level whose last slot is withheld.");
         }
         finally
         {
@@ -229,9 +225,8 @@ public class GatedFinaleSlotTests
     }
 
     /// <summary>
-    /// An authored gate wins even when it sits on the derived slot rather than the last slot: the
-    /// derivation now targets slot 2 of <c>[ba, ta, ma, ta]</c>, so that is where the override has
-    /// to be respected.
+    /// An authored gate wins where the derivation would have landed: slot 3, the last slot of
+    /// <c>[ba, ta, ma, ta]</c>.
     /// </summary>
     [Test]
     public void AuthoredGate_OnTheDerivedSlot_IsNeverOverwritten()
@@ -241,12 +236,12 @@ public class GatedFinaleSlotTests
         {
             LevelConfigSO config = MultiWordLevel(true, "ba.ta", "ma.ta");
             config.spawnAssignmentPolicy.slotGates.Add(
-                new SpawnSlotGate { slotIndex = 2, gateToken = SpawnGateRegistry.AboAshShown });
+                new SpawnSlotGate { slotIndex = 3, gateToken = SpawnGateRegistry.AboAshShown });
 
             var coordinator = go.AddComponent<SpawnAssignmentCoordinator>();
             coordinator.ApplyLevel(config, null);
 
-            Assert.AreEqual(SpawnGateRegistry.AboAshShown, coordinator.Slots[2].GateToken,
+            Assert.AreEqual(SpawnGateRegistry.AboAshShown, coordinator.Slots[3].GateToken,
                 "an authored gate is a deliberate per-level choice and must win over the derived "
                 + "one wherever the derivation lands.");
             Assert.AreEqual(-1, GatedSlotIndex(coordinator.Slots),

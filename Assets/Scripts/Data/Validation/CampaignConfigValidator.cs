@@ -1393,13 +1393,16 @@ public static class CampaignConfigValidator
     }
 
     /// <summary>
-    /// A level that withholds its final slot until the final wave needs at least two slots, at
-    /// least one wave, and at least one symbol that occurs exactly once across its flattened slots.
-    /// With one slot the gate withholds the sole win condition; with no waves the token never
-    /// opens; with no uniquely-occurring symbol there is nothing to withhold, because restoration
-    /// is by symbol (see <see cref="DerivedFinaleGate"/>) and another slot's carrier always fills
-    /// the gated one for free. The first two are unwinnable levels, the third a silent no-op that
-    /// reads as a shipped feature. All three fail at author time.
+    /// A level that withholds its final slot until the final wave needs at least two slots and at
+    /// least one wave. With one slot the gate withholds the sole win condition; with no waves the
+    /// token never opens. Both are unwinnable levels and fail at author time.
+    ///
+    /// <para>
+    /// A third case was removed on 2026-09-17: a level whose every symbol repeated used to be
+    /// reported, because restoration was by symbol and another slot's carrier always filled the
+    /// gated one for free. One carrier now restores one slot, so a repeated symbol gates normally
+    /// and there is nothing left to report. See <see cref="DerivedFinaleGate"/>.
+    /// </para>
     /// </summary>
     private static void ValidateGatedFinale(
         LevelConfigSO level,
@@ -1429,19 +1432,6 @@ public static class CampaignConfigValidator
         }
 
         int slotCount = symbolStableIds.Count;
-
-        if (slotCount >= 2 &&
-            DerivedFinaleGate.LastUniquelyOccurringIndex(symbolStableIds) == DerivedFinaleGate.NoSlot)
-        {
-            AddContentIssue(issues, ContentValidationCode.GatedFinaleUnwinnable,
-                path + ".spawnAssignmentPolicy.gateFinalSlotToFinalWave",
-                "This level withholds its final slot until the final wave but every symbol in its "
-                + "focus words occurs more than once. Restoration is by symbol, so whichever slot "
-                + "the gate lands on is filled for free by another slot's carrier: the gate "
-                + "withholds nothing and the level completes before its final wave exactly as if "
-                + "the option were off. Give the level a syllable that appears exactly once, or "
-                + "turn gateFinalSlotToFinalWave off.", level);
-        }
 
         if (slotCount < 2)
         {
