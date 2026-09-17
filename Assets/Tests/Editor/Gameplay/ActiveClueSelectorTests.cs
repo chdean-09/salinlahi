@@ -530,8 +530,19 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Object.DestroyImmediate(level);
         }
 
+        /// <summary>
+        /// Updated 2026-09-17: one carrier restores ONE slot.
+        ///
+        /// <para>
+        /// This test used to assert the opposite — that a shared syllable filled every target text
+        /// using it from a single kill — and it was the only fixture in the suite that did. That
+        /// rule is what made a repeated symbol ungateable, and it is what Level 3's sentence
+        /// cannot be built on: "guMAgawa ng TAMA" needs its two MA slots earned separately. The
+        /// assertions below are the same walk through the same shared state, one kill per slot.
+        /// </para>
+        /// </summary>
         [Test]
-        public void RestorationState_FillsMatchingSlotsAcrossFocusWords_Once()
+        public void RestorationState_FillsOneSlotPerCarrier_AcrossFocusWords()
         {
             BaybayinCharacterSO ba = CreateSymbol("BA", "symbol.ba");
             BaybayinCharacterSO ta = CreateSymbol("TA", "symbol.ta");
@@ -557,11 +568,21 @@ namespace Salinlahi.Tests.Editor.Gameplay
             var state = new ActiveClueRestorationState();
             state.Configure(new[] { bata, tama });
 
-            Assert.That(state.Apply("symbol.ba").Count, Is.EqualTo(2),
-                "A shared syllable fills each authored target text that uses it.");
+            // BATA is [ba, ta] and TAMA is [ta, ba], so each symbol is owed twice — once per word.
+            Assert.That(state.Apply("symbol.ba").Count, Is.EqualTo(1),
+                "One carrier, one slot. BATA's BA is first in reading order, so it is the one "
+                + "filled; TAMA's BA is still owed.");
+            Assert.That(state.Apply("symbol.ba").Count, Is.EqualTo(1),
+                "The second BA carrier fills TAMA's BA.");
             Assert.That(state.Apply("symbol.ba").Count, Is.EqualTo(0),
                 "Repeating an already restored clue must not award the slots twice.");
-            Assert.That(state.Apply("symbol.ta").Count, Is.EqualTo(2));
+
+            Assert.That(state.Apply("symbol.ta").Count, Is.EqualTo(1));
+            Assert.IsFalse(state.AreWordsComplete(new[] { "focus.bata", "focus.tama" }),
+                "One TA is still owed. Under the old rule both were filled here and the words read "
+                + "complete a kill early.");
+
+            Assert.That(state.Apply("symbol.ta").Count, Is.EqualTo(1));
             Assert.IsTrue(state.AreWordsComplete(new[] { "focus.bata", "focus.tama" }));
             Assert.IsFalse(state.AreWordsComplete(new[] { "focus.unknown" }),
                 "An unknown segment word must never count as restored.");

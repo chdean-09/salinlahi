@@ -3086,9 +3086,33 @@ public sealed class ActiveClueRestorationState
     }
 
     /// <summary>
-    /// Restores every matching slot in the focus words and returns only words changed by this
-    /// call. The returned list is reused on the next call and is intended for immediate use.
+    /// Restores ONE slot — the first unrestored slot carrying this symbol, in reading order — and
+    /// returns the single word changed by it, or nothing when the text does not owe this symbol.
+    /// The returned list is reused on the next call and is intended for immediate use.
     /// </summary>
+    /// <remarks>
+    /// <b>One carrier, one slot.</b> This used to fill EVERY slot matching the symbol, across every
+    /// focus word, from a single kill. Level 3 is the shape that exposes it: "Ang MAbuting BATA ay
+    /// guMAgawa ng TAMA" needs two separate MA slots and two separate TA slots earned separately,
+    /// and under the old rule one MA carrier filled both.
+    ///
+    /// <para>
+    /// It also silently defeated withholding. Restoration by symbol meant a gate on a repeated
+    /// symbol withheld nothing — a carrier spawned for an ungated duplicate filled the gated slot
+    /// for free — and four separate mechanisms existed to route around that: DerivedFinaleGate's
+    /// "last symbol occurring exactly once", the GatedFinaleUnwinnable validator rule, Level 2's
+    /// finale landing on MA rather than its last slot, and the authored finale gating every slot
+    /// carrying its symbol. With one kill filling one slot, the last slot is always withholdable
+    /// and none of those are needed.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Reading order, not word order alone.</b> The first unrestored match wins, scanning words
+    /// in authored order and slots left to right — the same order the clue rail renders and the
+    /// player is following. A level whose symbols are all distinct behaves exactly as before, which
+    /// is every level shipped before Level 3 and why nothing caught this.
+    /// </para>
+    /// </remarks>
     public IReadOnlyList<FocusWordDefinition> Apply(string symbolStableId)
     {
         _changedWords.Clear();
@@ -3098,7 +3122,6 @@ public sealed class ActiveClueRestorationState
         for (int wordIndex = 0; wordIndex < _words.Count; wordIndex++)
         {
             WordState state = _words[wordIndex];
-            bool changed = false;
             if (state.Word.decomposition == null)
                 continue;
 
@@ -3113,11 +3136,9 @@ public sealed class ActiveClueRestorationState
                 }
 
                 state.RestoredSlots[slotIndex] = true;
-                changed = true;
-            }
-
-            if (changed)
                 _changedWords.Add(state.Word);
+                return _changedWords;
+            }
         }
 
         return _changedWords;
