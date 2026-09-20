@@ -22,6 +22,8 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         [SetUp]
         public void SetUp()
         {
+            ClearSingletonInstance<GameManager>();
+            ClearSingletonInstance<ProgressManager>();
             ClearSingletonInstance<EnemyPool>();
             var trackerGo = new GameObject("ActiveEnemyTracker_Unregister_Test");
             _tracker = trackerGo.AddComponent<ActiveEnemyTracker>();
@@ -32,6 +34,8 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         [TearDown]
         public void TearDown()
         {
+            ClearSingletonInstance<GameManager>();
+            ClearSingletonInstance<ProgressManager>();
             ClearSingletonInstance<ActiveEnemyTracker>();
             ClearSingletonInstance<EnemyPool>();
 
@@ -69,6 +73,86 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Assert.IsFalse(pool.IsCheckedOut(enemy));
             Assert.AreEqual(0, _tracker.ActiveCount);
             Assert.IsFalse(enemy.gameObject.activeInHierarchy);
+        }
+
+        [UnityTest]
+        public IEnumerator GameOver_StopsWaveOwnedCoroutines_AndReturnsCheckedOutEnemies()
+        {
+            Enemy prefab = CreateEnemyPrefab();
+            EnemyPool pool = CreateEnemyPool(prefab);
+            EnemyDataSO data = CreateEnemyDataWithoutDeathAnimation();
+            Enemy first = pool.Get(data);
+            Enemy second = pool.Get(data);
+            Assert.IsNotNull(first);
+            Assert.IsNotNull(second);
+            Assert.AreEqual(2, _tracker.ActiveCount);
+
+            WaveManager waveManager = CreateTerminalWaveManager("WaveManager_TerminalTeardown_Test");
+
+            bool resumedAfterTerminal = false;
+            waveManager.StartCoroutine(ResumeAfterDelay(() => resumedAfterTerminal = true));
+            InvokePrivate<object>(waveManager, "HandleGameOver");
+
+            yield return new WaitForSecondsRealtime(0.1f);
+
+            Assert.IsFalse(resumedAfterTerminal,
+                "A coroutine owned by WaveManager resumed after Game Over.");
+            Assert.IsFalse(pool.IsCheckedOut(first));
+            Assert.IsFalse(pool.IsCheckedOut(second));
+            Assert.AreEqual(0, _tracker.ActiveCount);
+        }
+
+        [UnityTest]
+        public IEnumerator AbortRun_StopsWaveOwnedCoroutines_AndReturnsCheckedOutEnemies()
+        {
+            Enemy prefab = CreateEnemyPrefab();
+            EnemyPool pool = CreateEnemyPool(prefab);
+            EnemyDataSO data = CreateEnemyDataWithoutDeathAnimation();
+            Enemy first = pool.Get(data);
+            Enemy second = pool.Get(data);
+            Assert.IsNotNull(first);
+            Assert.IsNotNull(second);
+            Assert.AreEqual(2, _tracker.ActiveCount);
+
+            WaveManager waveManager = CreateTerminalWaveManager("WaveManager_AbortTeardown_Test");
+
+            bool resumedAfterAbort = false;
+            waveManager.StartCoroutine(ResumeAfterDelay(() => resumedAfterAbort = true));
+            InvokePrivate<object>(waveManager, "AbortRun");
+
+            yield return new WaitForSecondsRealtime(0.1f);
+
+            Assert.IsFalse(resumedAfterAbort,
+                "A coroutine owned by WaveManager resumed after abort.");
+            Assert.IsFalse(pool.IsCheckedOut(first));
+            Assert.IsFalse(pool.IsCheckedOut(second));
+            Assert.AreEqual(0, _tracker.ActiveCount);
+        }
+
+        private static IEnumerator ResumeAfterDelay(System.Action onResume)
+        {
+            yield return new WaitForSecondsRealtime(0.05f);
+            onResume?.Invoke();
+        }
+
+        private WaveManager CreateTerminalWaveManager(string objectName)
+        {
+            LevelConfigSO level = ScriptableObject.CreateInstance<LevelConfigSO>();
+            level.levelNumber = 1;
+            _objectsToDestroy.Add(level);
+
+            GameObject gameManagerObject = new GameObject("GameManager_TerminalTeardown_Test");
+            _objectsToDestroy.Add(gameManagerObject);
+            GameManager gameManager = gameManagerObject.AddComponent<GameManager>();
+            gameManager.SetLevel(level);
+
+            GameObject waveObject = new GameObject(objectName);
+            waveObject.SetActive(false);
+            _objectsToDestroy.Add(waveObject);
+            WaveManager waveManager = waveObject.AddComponent<WaveManager>();
+            SetPrivateField(waveManager, "_waitForExternalStart", true);
+            waveObject.SetActive(true);
+            return waveManager;
         }
 
         private Enemy CreateEnemyPrefab()
@@ -117,6 +201,24 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             return data;
         }
 
+        private EnemyDataSO CreateEnemyDataWithoutDeathAnimation()
+        {
+            BaybayinCharacterSO character = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            character.characterID = "BA";
+            character.syllable = "ba";
+            _objectsToDestroy.Add(character);
+
+            EnemyDataSO data = ScriptableObject.CreateInstance<EnemyDataSO>();
+            data.enemyID = "soldado";
+            data.maxHealth = 1;
+            data.moveSpeed = 1f;
+            data.assignedCharacter = character;
+            data.deathFrames = System.Array.Empty<Sprite>();
+            data.deathAnimationFps = 0f;
+            _objectsToDestroy.Add(data);
+            return data;
+        }
+
         private Sprite CreateSprite(Color color)
         {
             Texture2D tex = new Texture2D(2, 2);
@@ -148,6 +250,15 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             FieldInfo field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.IsNotNull(field, $"Missing field '{fieldName}' on {target.GetType().Name}.");
             field.SetValue(target, value);
+        }
+
+        private static T InvokePrivate<T>(object target, string methodName, params object[] args)
+        {
+            MethodInfo method = target.GetType().GetMethod(
+                methodName,
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(method, $"Missing method '{methodName}' on {target.GetType().Name}.");
+            return (T)method.Invoke(target, args);
         }
     }
 }

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -53,6 +54,61 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.AreEqual("Learn the symbols, then defend the shrine.", copy);
             StringAssert.DoesNotContain("INA", copy);
             StringAssert.DoesNotContain("AMA", copy);
+
+            Object.DestroyImmediate(config);
+        }
+
+        [Test]
+        public void ReadyObjective_ExplainsMarkedSentenceRestoration()
+        {
+            BaybayinCharacterSO ma = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            ma.stableId = "symbol.test.ma.ready";
+            ma.syllable = "ma";
+
+            LevelConfigSO config = ScriptableObject.CreateInstance<LevelConfigSO>();
+            config.restorationObjective = new RestorationObjectiveDefinition
+            {
+                displayMode = RestorationDisplayMode.MarkedContext,
+                units = new System.Collections.Generic.List<RestorationObjectiveUnit>
+                {
+                    new RestorationObjectiveUnit
+                    {
+                        stableId = "sentence",
+                        tokens = new System.Collections.Generic.List<RestorationObjectiveToken>
+                        {
+                            new RestorationObjectiveToken
+                            {
+                                kind = RestorationTokenKind.Target,
+                                occurrenceId = "sentence.ma",
+                                target = new SymbolValueReference { symbol = ma },
+                            },
+                        },
+                    },
+                },
+            };
+
+            string copy = LevelReadyScreenController.BuildObjectiveText(config);
+
+            Assert.AreEqual("Restore the marked syllables in the sentence.", copy);
+
+            Object.DestroyImmediate(config);
+            Object.DestroyImmediate(ma);
+        }
+
+        [Test]
+        public void ReadyObjective_ExplainsLegacyFocusWordRestoration()
+        {
+            LevelConfigSO config = ScriptableObject.CreateInstance<LevelConfigSO>();
+            config.activeClueRestorationEnabled = true;
+            config.focusWords.Add(new FocusWordDefinition
+            {
+                displayLabel = "BATA",
+                meaning = "bunga ng pagmamahalan",
+            });
+
+            Assert.AreEqual(
+                "Restore the focus words, then defend the shrine.",
+                LevelReadyScreenController.BuildObjectiveText(config));
 
             Object.DestroyImmediate(config);
         }

@@ -80,6 +80,43 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.IsFalse(enemy.gameObject.activeInHierarchy);
         }
 
+        [Test]
+        public void ReturnAllCheckedOut_SkipsEntriesReturnedByDisableCascade()
+        {
+            Enemy prefab = CreateEnemyPrefab();
+            prefab.gameObject.AddComponent<EnemyPoolCascadeReturnOnDisable>();
+            EnemyPool pool = CreateEnemyPool(prefab);
+            EnemyDataSO data = CreateEnemyDataWithoutDeathAnimation();
+
+            Enemy source = pool.Get(data);
+            Enemy dependent = pool.Get(data);
+            Assert.IsNotNull(source);
+            Assert.IsNotNull(dependent);
+            source.GetComponent<EnemyPoolCascadeReturnOnDisable>().Target = dependent;
+
+            var duplicateReturns = new List<string>();
+            Application.LogCallback callback = (message, stackTrace, type) =>
+            {
+                if (message != null && message.Contains("was already returned"))
+                    duplicateReturns.Add(message);
+            };
+            Application.logMessageReceived += callback;
+            try
+            {
+                pool.ReturnAllCheckedOut();
+            }
+            finally
+            {
+                Application.logMessageReceived -= callback;
+            }
+
+            CollectionAssert.IsEmpty(duplicateReturns,
+                "Bulk cleanup must tolerate an OnDisable cascade returning a later snapshot entry.");
+            Assert.IsFalse(pool.IsCheckedOut(source));
+            Assert.IsFalse(pool.IsCheckedOut(dependent));
+            Assert.AreEqual(0, _tracker.ActiveCount);
+        }
+
         private Enemy CreateEnemyPrefab()
         {
             var prefabGo = new GameObject("EnemyPrefab_Unregister_Test");
@@ -183,6 +220,22 @@ namespace Salinlahi.Tests.Editor.Gameplay
             MethodInfo method = target.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.IsNotNull(method, $"Missing method '{methodName}' on {target.GetType().Name}.");
             return (T)method.Invoke(target, args);
+        }
+    }
+
+    /// <summary>
+    /// Test-only stand-in for MirrorDecoyController's OnDisable cascade. The production decoy
+    /// returns itself when its source shell is released, which is the ordering that used to make
+    /// ReturnAllCheckedOut call Return on an already-returned snapshot entry.
+    /// </summary>
+    public sealed class EnemyPoolCascadeReturnOnDisable : MonoBehaviour
+    {
+        public Enemy Target;
+
+        private void OnDisable()
+        {
+            if (Target != null && Target.gameObject.activeInHierarchy)
+                Target.ReturnToPool();
         }
     }
 }

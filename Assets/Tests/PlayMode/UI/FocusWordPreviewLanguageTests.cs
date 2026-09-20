@@ -71,5 +71,120 @@ namespace Salinlahi.Tests.PlayMode.UI
                 + "this card is story-facing: the Filipino explanation reaches the player as "
                 + "focus-word dialogue instead. Actual copy: " + controller.RenderedText);
         }
+
+        [UnityTest]
+        public IEnumerator Preview_UsesMarkedSentenceObjectiveInsteadOfLegacyFocusWords()
+        {
+            BaybayinCharacterSO ma = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            ma.characterID = "MA";
+            ma.stableId = "symbol.test.ma.marked";
+            ma.syllable = "ma";
+            _objectsToDestroy.Add(ma);
+
+            LevelConfigSO level = ScriptableObject.CreateInstance<LevelConfigSO>();
+            level.focusWords.Add(new FocusWordDefinition
+            {
+                stableId = "legacy.bata",
+                displayLabel = "BATA",
+                decomposition = new List<SymbolValueReference>
+                {
+                    new SymbolValueReference { symbol = ma },
+                },
+            });
+            level.restorationObjective = new RestorationObjectiveDefinition
+            {
+                displayMode = RestorationDisplayMode.MarkedContext,
+                units = new List<RestorationObjectiveUnit>
+                {
+                    new RestorationObjectiveUnit
+                    {
+                        stableId = "sentence.01",
+                        tokens = new List<RestorationObjectiveToken>
+                        {
+                            new RestorationObjectiveToken
+                            {
+                                kind = RestorationTokenKind.Literal,
+                                literalText = "Ang ",
+                            },
+                            new RestorationObjectiveToken
+                            {
+                                kind = RestorationTokenKind.Target,
+                                occurrenceId = "sentence.ma.01",
+                                target = new SymbolValueReference { symbol = ma },
+                            },
+                        },
+                    },
+                },
+            };
+            _objectsToDestroy.Add(level);
+
+            var go = new GameObject("FocusWordPreviewController_ObjectiveTest");
+            var controller = go.AddComponent<FocusWordPreviewController>();
+            _objectsToDestroy.Add(go);
+
+            IEnumerator present = controller.Present(level);
+            present.MoveNext();
+            yield return null;
+
+            StringAssert.Contains("Ang", controller.RenderedText);
+            StringAssert.Contains("<u>MA</u>", controller.RenderedText);
+            StringAssert.DoesNotContain("BATA", controller.RenderedText);
+        }
+
+        [UnityTest]
+        public IEnumerator Preview_HidesHiddenContextTargetsUntilRestored()
+        {
+            BaybayinCharacterSO i = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            i.characterID = "I";
+            i.stableId = "symbol.test.i.hidden";
+            i.syllable = "i";
+            _objectsToDestroy.Add(i);
+
+            LevelConfigSO level = ScriptableObject.CreateInstance<LevelConfigSO>();
+            level.focusWords.Add(new FocusWordDefinition
+            {
+                stableId = "legacy.ina",
+                displayLabel = "INA",
+            });
+            level.restorationObjective = new RestorationObjectiveDefinition
+            {
+                displayMode = RestorationDisplayMode.HiddenContext,
+                units = new List<RestorationObjectiveUnit>
+                {
+                    new RestorationObjectiveUnit
+                    {
+                        stableId = "sentence.hidden",
+                        tokens = new List<RestorationObjectiveToken>
+                        {
+                            new RestorationObjectiveToken
+                            {
+                                kind = RestorationTokenKind.Literal,
+                                literalText = "Ang ",
+                            },
+                            new RestorationObjectiveToken
+                            {
+                                kind = RestorationTokenKind.Target,
+                                occurrenceId = "sentence.hidden.i",
+                                target = new SymbolValueReference { symbol = i },
+                            },
+                        },
+                    },
+                },
+            };
+            _objectsToDestroy.Add(level);
+
+            GameObject go = new GameObject("FocusWordPreviewController_HiddenObjectiveTest");
+            FocusWordPreviewController controller = go.AddComponent<FocusWordPreviewController>();
+            _objectsToDestroy.Add(go);
+
+            IEnumerator present = controller.Present(level);
+            present.MoveNext();
+            yield return null;
+
+            StringAssert.Contains("Ang __", controller.RenderedText);
+            StringAssert.DoesNotContain("INA", controller.RenderedText);
+            StringAssert.DoesNotContain("AMA", controller.RenderedText);
+            StringAssert.DoesNotContain("<u>I</u>", controller.RenderedText);
+        }
     }
 }

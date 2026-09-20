@@ -50,4 +50,26 @@ public class FinalWaveIndexTests
         Assert.IsFalse(WaveManager.IsFinalWaveIndex(-2, -1),
             "a negative bound is never a valid run length and must never read as final.");
     }
+
+    [Test]
+    public void IntermediateSegmentRange_IsNotTerminalForTheCompleteLevel()
+    {
+        Assert.IsFalse(WaveManager.IsTerminalWaveRange(2, 5),
+            "a segment ending after wave 2 of a 5-wave level must not open the finale gate or " +
+            "run restoration overflow.");
+    }
+
+    [Test]
+    public void FinalSegmentRange_IsTerminalForTheCompleteLevel()
+    {
+        Assert.IsTrue(WaveManager.IsTerminalWaveRange(5, 5),
+            "only the range ending at the complete level wave count is terminal.");
+    }
+
+    [Test]
+    public void RangeBeyondCompleteLevel_IsNotTerminal()
+    {
+        Assert.IsFalse(WaveManager.IsTerminalWaveRange(6, 5),
+            "a malformed range beyond the authored wave count must not be treated as the finale.");
+    }
 }

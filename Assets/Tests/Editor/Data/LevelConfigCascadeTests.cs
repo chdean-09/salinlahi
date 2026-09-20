@@ -82,15 +82,20 @@ namespace Salinlahi.Tests.Editor.Data
         }
 
         [Test]
-        public void LevelTwoConfig_EnablesAdvancedCombatAndAssignsTutorial()
+        public void LevelTwoConfig_UsesCombatDiscoveryWithoutOnboarding()
         {
             LevelConfigSO level = AssetDatabase.LoadAssetAtPath<LevelConfigSO>(
                 "Assets/ScriptableObjects/Levels/Level2_Config.asset");
 
             Assert.IsNotNull(level);
-            Assert.IsTrue(level.multiKillChainEnabled);
-            Assert.IsNotNull(level.onboardingSequence,
-                "Level 2 must have the advanced onboarding sequence assigned or the tutorial flow will not start.");
+            Assert.IsFalse(level.multiKillChainEnabled,
+                "Level 2 keeps mass-clear disabled in the combat-discovery slice.");
+            Assert.IsTrue(level.activeClueCombatEnabled,
+                "Level 2 must enter the active-clue combat path.");
+            Assert.IsTrue(level.suppressSymbolLearningCards,
+                "Level 2 should discover symbols through combat instead of reference cards.");
+            Assert.IsNull(level.onboardingSequence,
+                "Level 2 intentionally has no onboarding sequence; null is not a flow error.");
         }
 #endif
     }

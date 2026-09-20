@@ -14,17 +14,8 @@ namespace Salinlahi.Tests.Editor.Data
     /// wave, so the spawner uses the level's taught glyphs while retaining the
     /// enemy's shared armored behavior.
     ///
-    /// SALIN-283 (split out of SALIN-273) activated the level: it cleared bossConfig
-    /// and authored flowSegments in one commit. The two scaffold assertions that held
-    /// the pre-activation state — <c>Level5_StillDeclaresItsBossConfig</c> and
-    /// <c>Level5_DeclaresNoFlowSegmentsYet</c> — were DELETED per this fixture's own
-    /// standing instruction, not inverted, and replaced by
-    /// <see cref="Level5_DeclaresNoBossConfig"/> and
-    /// <see cref="Level5_AuthorsItsAlternatingFlowSegments"/>.
-    ///
-    /// Both changes had to land in one commit: authoring segments while bossConfig was
-    /// still set would make the level run its boss twice, because the boss branch at
-    /// WaveManager.cs:433-437 returns before the segment's wave range is ever read.
+    /// Level 5 is the Era 1 mastery finale: a hidden, three-line paragraph restored
+    /// through the existing scene-scoped objective and five authored waves.
     /// </summary>
     [TestFixture]
     public sealed class Level5WaveAuthoringTests
@@ -184,7 +175,7 @@ namespace Salinlahi.Tests.Editor.Data
         }
 
         [Test]
-        public void Level5_AuthorsItsAlternatingFlowSegments()
+        public void Level5_AuthorsItsThreeParagraphFlowSegments()
         {
             LevelConfigSO level = LoadLevelFive();
 
@@ -192,24 +183,26 @@ namespace Salinlahi.Tests.Editor.Data
                 "challengePrototypeEnabled must stay false or the segment plan is rejected " +
                 "outright (LevelPhasePlan.cs:200-204).");
 
-            Assert.AreEqual(2, level.flowSegments.Count,
-                "SALIN-283 authors a two-segment alternating flow: clear waves 1-2, restore IBA, " +
-                "clear wave 3, restore MANA.");
+            Assert.AreEqual(3, level.flowSegments.Count,
+                "The paragraph is restored in three authored units after wave groups 2, 2, and 1.");
 
             Assert.AreEqual(2, level.flowSegments[0].waveCount,
-                "Segment 0 runs waves 1-2. Unit ugat05-complete-iba's decoy set includes MA, which " +
-                "wave 2 introduces, so restoring after wave 1 would offer a decoy the player has " +
-                "never met.");
+                "Segment 0 runs waves 1-2 before the first paragraph line.");
             CollectionAssert.AreEqual(
-                new[] { "ugat05-complete-iba" }, level.flowSegments[0].challengeUnitIds,
-                "Segment 0 restores exactly the IBA line.");
+                new[] { "ugat05-restore-line-01" }, level.flowSegments[0].challengeUnitIds,
+                "Segment 0 restores exactly the first paragraph line.");
 
-            Assert.AreEqual(1, level.flowSegments[1].waveCount,
-                "Segment 1 runs wave 3, which is where SALIN-247 first introduces NA.");
+            Assert.AreEqual(2, level.flowSegments[1].waveCount,
+                "Segment 1 runs waves 3-4 before the second paragraph line.");
             CollectionAssert.AreEqual(
-                new[] { "ugat05-complete-mana" }, level.flowSegments[1].challengeUnitIds,
-                "Segment 1 restores MANA last: its answer NA is the level's finalRestorationValue, " +
-                "which D-003/D-004 keep as a distinct ceremonial final syllable.");
+                new[] { "ugat05-restore-line-02" }, level.flowSegments[1].challengeUnitIds,
+                "Segment 1 restores exactly the second paragraph line.");
+
+            Assert.AreEqual(1, level.flowSegments[2].waveCount,
+                "Segment 2 runs wave 5 before the final paragraph line.");
+            CollectionAssert.AreEqual(
+                new[] { "ugat05-restore-line-03" }, level.flowSegments[2].challengeUnitIds,
+                "Segment 2 restores exactly the final paragraph line.");
 
             // NOT OPTIONAL. This is the ONLY guard in the repository against under-consumption.
             // The segment list partitions the flat waves list, and both rejection paths test
@@ -226,6 +219,61 @@ namespace Salinlahi.Tests.Editor.Data
             Assert.IsFalse(LevelPhasePlan.FromConfig(level).SegmentPlanInvalid,
                 "The authored segment list must survive all six PlanSegments rejections " +
                 "(LevelPhasePlan.cs:191-263); an invalid list collapses Level 5 back to a single pass.");
+        }
+
+        [Test]
+        public void Level5_AuthorsHiddenEraMasteryParagraph()
+        {
+            LevelConfigSO level = LoadLevelFive();
+
+            Assert.IsNotNull(level.restorationObjective);
+            Assert.AreEqual(RestorationDisplayMode.HiddenContext, level.restorationObjective.displayMode);
+            Assert.IsTrue(level.restorationObjective.HasTargets);
+            Assert.AreEqual(3, level.restorationObjective.units.Count);
+
+            string[] expectedUnits =
+            {
+                "level.ugat.05.paragraph.line.01",
+                "level.ugat.05.paragraph.line.02",
+                "level.ugat.05.paragraph.line.03",
+            };
+            CollectionAssert.AreEqual(expectedUnits,
+                level.restorationObjective.units.Select(unit => unit.stableId).ToArray());
+
+            string[] expectedSequence = { "value.ma", "value.na", "value.i", "value.ma", "value.ma", "value.ba", "value.ma", "value.ma", "value.na", "value.a", "value.ma", "value.ma", "value.na", "value.ta" };
+            var targets = level.restorationObjective.units
+                .SelectMany(unit => unit.tokens ?? new List<RestorationObjectiveToken>())
+                .Where(token => token != null && token.IsTarget)
+                .OrderBy(token => token.completionOrder)
+                .ToList();
+            Assert.AreEqual(expectedSequence.Length, targets.Count);
+            CollectionAssert.AreEqual(expectedSequence, targets.Select(token => token.target.spokenValueId).ToArray());
+            CollectionAssert.AllItemsAreUnique(targets.Select(token => token.occurrenceId).ToArray());
+            CollectionAssert.AreEqual(Enumerable.Range(0, expectedSequence.Length),
+                targets.Select(token => token.completionOrder).ToArray());
+
+            Assert.IsTrue(level.suppressSymbolLearningCards,
+                "Level 5 is cumulative recall and must not enter reference-form learning cards.");
+            Assert.IsTrue(level.activeClueRestorationEnabled);
+            Assert.IsNotEmpty(level.focusWords);
+            Assert.IsTrue(level.spawnAssignmentPolicy.gateFinalSlotToFinalWave);
+            Assert.AreEqual("value.ta", level.finalRestorationValue.spokenValueId);
+            Assert.IsTrue(level.spawnAssignmentPolicy.allowFinalWaveOverflow,
+                "Bounded overflow remains the recovery path for misses or unlucky filler selection.");
+            Assert.Greater(level.spawnAssignmentPolicy.maxOverflowBatches, 0);
+            Assert.LessOrEqual(level.spawnAssignmentPolicy.maxOverflowBatches, 12);
+        }
+
+        [Test]
+        public void Level5_AllowedCharactersAreExactlyEraOne()
+        {
+            LevelConfigSO level = LoadLevelFive();
+
+            string[] expected = { "A", "EI", "BA", "MA", "NA", "TA" };
+            CollectionAssert.AreEquivalent(expected,
+                level.allowedCharacters.Where(character => character != null).Select(character => character.characterID));
+            Assert.IsFalse(level.allowedCharacters.Any(character => character != null &&
+                                                                       !expected.Contains(character.characterID)));
         }
     }
 }
