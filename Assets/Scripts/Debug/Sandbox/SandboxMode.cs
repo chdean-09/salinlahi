@@ -6,6 +6,10 @@ namespace Salinlahi.Debug.Sandbox
         private static bool _isActive;
         private static float _movementSpeedScale = 1f;
         private static bool _movementPaused;
+        // Editor-only QA protection is deliberately separate from IsActive. It keeps the normal
+        // campaign phase machine running while a replay operator freezes pressure and prevents
+        // base damage from racing the recognizer.
+        private static bool _qaProtectionEnabled;
 
 #if UNITY_INCLUDE_TESTS
         private static bool? _availabilityOverride;
@@ -32,6 +36,8 @@ namespace Salinlahi.Debug.Sandbox
 
         public static float MovementSpeedScale => IsActive ? _movementSpeedScale : 1f;
 
+        public static bool IsQaProtectionEnabled => IsAvailable && _qaProtectionEnabled;
+
         public static bool IsAvailableForSymbols(bool unityEditor, bool salinlahiSandbox)
         {
             return unityEditor || salinlahiSandbox;
@@ -56,6 +62,16 @@ namespace Salinlahi.Debug.Sandbox
             _isActive = false;
             _movementSpeedScale = 1f;
             _movementPaused = false;
+            _qaProtectionEnabled = false;
+        }
+
+        /// <summary>
+        /// Enables the Editor-only manual-QA guard without entering the standalone sandbox flow.
+        /// Normal campaign phases, wave authoring, and objective resolution remain active.
+        /// </summary>
+        public static void SetQaProtectionEnabled(bool enabled)
+        {
+            _qaProtectionEnabled = IsAvailable && enabled;
         }
 
         public static void SetMovementSpeedScale(float scale)

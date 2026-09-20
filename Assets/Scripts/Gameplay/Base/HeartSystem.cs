@@ -47,6 +47,12 @@ public class HeartSystem : MonoBehaviour
     public void LoseHeart(int amount = 1)
     {
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
+        if (SandboxMode.IsQaProtectionEnabled)
+        {
+            DebugLogger.Log("HeartSystem: QA protection ignored heart loss.");
+            return;
+        }
+
         if (SandboxMode.ShouldBypassLifeLoss)
         {
             DebugLogger.Log($"HeartSystem: Sandbox mode ignored heart loss. Hearts remain {_currentHearts}/{_maxHearts}.");
