@@ -130,5 +130,17 @@ namespace Salinlahi.Tests.Editor.Data
             Assert.IsNotNull(level.focusWords[0].media.cutscene);
             Assert.IsNotNull(level.focusWords[1].media.cutscene);
         }
+
+        [Test]
+        public void HeartLossDemoCopy_ExplainsItsTemporaryNatureAndRestoration()
+        {
+            OnboardingSequenceSO sequence = AssetDatabase.LoadAssetAtPath<OnboardingSequenceSO>(
+                "Assets/ScriptableObjects/Tutorial/Level1OnboardingSequence.asset");
+
+            Assert.IsNotNull(sequence);
+            StringAssert.Contains("demonstration", sequence.heartLossDialogue.fallbackText.ToLowerInvariant());
+            StringAssert.Contains("restore", sequence.heartLossDialogue.fallbackText.ToLowerInvariant());
+            StringAssert.Contains("restored", sequence.release.fallbackText.ToLowerInvariant());
+        }
     }
 }

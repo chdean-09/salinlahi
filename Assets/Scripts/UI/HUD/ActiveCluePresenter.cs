@@ -76,6 +76,13 @@ public sealed class ActiveCluePresenter : MonoBehaviour
              + "the SAFE area and the home indicator's inset is already taken out underneath it.")]
     [SerializeField] private Vector2 _railAnchoredPosition = new Vector2(0f, 24f);
 
+    [Tooltip("Clearance in canvas units left between the top of the restoration rail and the "
+             + "bottom of the authored 'draw the glowing symbol' instruction.")]
+    [SerializeField, Min(0f)] private float _instructionGapAboveRail = 40f;
+
+    private readonly Vector3[] _railCornerBuffer = new Vector3[4];
+    private readonly Vector3[] _instructionCornerBuffer = new Vector3[4];
+
     [Tooltip("Clearance in canvas units left between the top of the rail and the foot of the play "
              + "field, added to the band the rail asks the play column to reserve. Keeps the fence's "
              + "bottom plank and Juan's feet from ending exactly on the rail's top edge, which reads "
@@ -306,6 +313,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     {
         public FocusWordDefinition Word;
         public int DecompositionIndex;
+        public string OccurrenceId;
+        public string UnitId;
         public RectTransform Anchor;
         public Image Frame;
         public Image Glyph;
@@ -355,6 +364,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private readonly List<RailSlot> _slotsInFlight = new List<RailSlot>();
 
     private readonly List<RailSlot> _railSlots = new List<RailSlot>();
+    private readonly List<FocusWordDefinition> _runtimeObjectiveWords =
+        new List<FocusWordDefinition>();
 
     /// <summary>
     /// The rail's slot rects in flattened reading order, handed out through
@@ -364,6 +375,20 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private readonly List<RectTransform> _railSlotAnchors = new List<RectTransform>();
 
     private GameObject _railRoot;
+    private TextMeshProUGUI _objectiveContextText;
+    private GameObject _runtimeObjectiveContextObject;
+    private float _objectiveContextRowHeight;
+    private bool _objectiveContextUsesMeasuredRow;
+
+    // Runtime-only layout values. Serialized fields remain the nominal Level 1-4 layout; long
+    // objectives derive a uniform scale here so the rail stays inside the safe-area viewport.
+    private Vector2 _railLayoutSlotSize;
+    private float _railLayoutSlotSpacing;
+    private float _railLayoutWordGap;
+    private float _railLayoutLabelFontSize;
+    private float _railLayoutLabelRowHeight;
+    private float _railLayoutLabelGap;
+    private float _railLayoutSeparatorFontSize;
     private System.Action _bandRefreshHandler;
     private AspectLockedCamera _bandRefreshColumn;
     private CanvasGroup _railCanvasGroup;
@@ -384,6 +409,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private bool _animateClueCrumble;
     private readonly ActiveClueRestorationState _restorationState =
         new ActiveClueRestorationState();
+    private RestorationObjectiveController _restorationObjectiveController;
 
     /// <summary>Reused by HandleActiveClueChanged so badge sweeps do not allocate per clue.</summary>
     private readonly System.Collections.Generic.List<Enemy> _badgeSweepBuffer =
@@ -422,8 +448,22 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     /// <summary>The text of the most recent word-restoration cue, or null before the first.</summary>
     public string LastWordRestoredMessage => _lastWordRestoredMessage;
 
-    /// <summary>The shared combat restoration state for this level attempt.</summary>
+    /// <summary>The legacy focus-word projection used by existing HUD/ability callers.</summary>
     public ActiveClueRestorationState RestorationState => _restorationState;
+
+    /// <summary>The scene-scoped objective owner when the level uses the new definition.</summary>
+    public RestorationObjectiveController RestorationObjective => _restorationObjectiveController;
+
+    public bool UsesRestorationObjectiveDefinition =>
+        _restorationObjectiveController != null
+        && _restorationObjectiveController.IsConfigured
+        && !_restorationObjectiveController.UsesLegacyFallback;
+
+    /// <summary>Assigns the scene-scoped objective before the level is applied.</summary>
+    public void SetRestorationObjectiveController(RestorationObjectiveController controller)
+    {
+        _restorationObjectiveController = controller;
+    }
 
     /// <summary>
     /// The clue panel's own rect, or null on a HUD with no panel wired.
@@ -453,7 +493,9 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     public static void SetActiveForTests(ActiveCluePresenter presenter) => Active = presenter;
 
     /// <summary>How many target-text slots the player has already restored.</summary>
-    public int RestoredSlotCount => _restorationState.RestoredSlotCount;
+    public int RestoredSlotCount => UsesRestorationObjectiveDefinition
+        ? _restorationObjectiveController.State.RestoredTargetCount
+        : _restorationState.RestoredSlotCount;
 
     /// <summary>
     /// The 1-based position, inside its own focus word, of the slot the target text needs next —
@@ -472,6 +514,32 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     {
         get
         {
+            if (UsesRestorationObjectiveDefinition)
+            {
+                int activeUnit = _restorationObjectiveController.State.ActiveUnitIndex;
+                RestorationObjectiveUnit unit = activeUnit >= 0
+                    && _restorationObjectiveController.State.Definition?.units != null
+                    && activeUnit < _restorationObjectiveController.State.Definition.units.Count
+                    ? _restorationObjectiveController.State.Definition.units[activeUnit]
+                    : null;
+                if (unit?.tokens != null)
+                {
+                    int position = 0;
+                    for (int tokenIndex = 0; tokenIndex < unit.tokens.Count; tokenIndex++)
+                    {
+                        RestorationObjectiveToken token = unit.tokens[tokenIndex];
+                        if (token?.IsTarget != true)
+                            continue;
+
+                        position++;
+                        if (!_restorationObjectiveController.IsOccurrenceRestored(token.occurrenceId))
+                            return position;
+                    }
+                }
+
+                return 0;
+            }
+
             if (_level?.focusWords == null)
                 return 0;
 
@@ -501,7 +569,9 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     }
 
     /// <summary>True when the level has authored at least one focus word to restore.</summary>
-    public bool HasRestorationWords => _restorationState.FocusWordCount > 0;
+    public bool HasRestorationWords => UsesRestorationObjectiveDefinition
+        ? _restorationObjectiveController.State.TargetCount > 0
+        : _restorationState.FocusWordCount > 0;
 
     /// <summary>Checks whether the requested focus words have all filled their slots.</summary>
     public bool AreRestorationWordsComplete(IReadOnlyList<string> stableIds)
@@ -644,6 +714,12 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     {
         _level = level;
         _restorationState.Configure(level?.focusWords);
+
+        if (_restorationObjectiveController == null)
+            _restorationObjectiveController = FindFirstObjectByType<RestorationObjectiveController>(
+                FindObjectsInactive.Include);
+
+        _restorationObjectiveController?.Configure(level);
 
         // A new level means a new target text, so the rail is rebuilt from the incoming focus
         // words rather than repainted over the previous level's slots.
@@ -1040,6 +1116,27 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     {
         if (!IsClueCombatArmed || clue == null || clue.Character == null)
             return;
+
+        if (UsesRestorationObjectiveDefinition)
+        {
+            RestorationProgressResult result =
+                _restorationObjectiveController.TryRestore(clue.Character.stableId);
+            if (!result.Applied)
+                return;
+
+            UpdateCluePanel(_currentClue);
+            UpdateRestorationProgress();
+            PopSlotForOccurrence(result.OccurrenceId);
+            LaunchSlotGlyphFlightForOccurrence(result.OccurrenceId, clue.transform.position);
+
+            RestorationObjectiveUnit unit = result.UnitIndex >= 0
+                && _restorationObjectiveController.State.Definition?.units != null
+                && result.UnitIndex < _restorationObjectiveController.State.Definition.units.Count
+                ? _restorationObjectiveController.State.Definition.units[result.UnitIndex]
+                : null;
+            ShowWordRestoredCue(unit?.displayLabel ?? unit?.clue ?? result.UnitId);
+            return;
+        }
 
         // The at-accept cue predates the shared restoration gate and remains useful on
         // Level 1, which still owns its authored post-wave challenge. Do not let that legacy
@@ -1483,12 +1580,51 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     /// two-slot level and a nine-slot one with no scene work at all.
     /// </para>
     /// </summary>
+    private IReadOnlyList<FocusWordDefinition> GetRestorationRailWords()
+    {
+        if (!UsesRestorationObjectiveDefinition)
+            return _restorationState.FocusWords;
+
+        _runtimeObjectiveWords.Clear();
+        RestorationObjectiveDefinition definition = _restorationObjectiveController.State.Definition;
+        if (definition?.units == null)
+            return _runtimeObjectiveWords;
+
+        for (int unitIndex = 0; unitIndex < definition.units.Count; unitIndex++)
+        {
+            RestorationObjectiveUnit unit = definition.units[unitIndex];
+            if (unit?.tokens == null)
+                continue;
+
+            var word = new FocusWordDefinition
+            {
+                stableId = unit.stableId,
+                displayLabel = unit.displayLabel,
+                latinSpelling = unit.displayLabel,
+                meaning = unit.clue,
+                decomposition = new List<SymbolValueReference>(),
+            };
+
+            for (int tokenIndex = 0; tokenIndex < unit.tokens.Count; tokenIndex++)
+            {
+                RestorationObjectiveToken token = unit.tokens[tokenIndex];
+                if (token?.IsTarget == true)
+                    word.decomposition.Add(token.target);
+            }
+
+            if (word.decomposition.Count > 0)
+                _runtimeObjectiveWords.Add(word);
+        }
+
+        return _runtimeObjectiveWords;
+    }
+
     private void EnsureRestorationRail()
     {
         if (_railRoot != null)
             return;
 
-        IReadOnlyList<FocusWordDefinition> words = _restorationState.FocusWords;
+        IReadOnlyList<FocusWordDefinition> words = GetRestorationRailWords();
         if (words.Count == 0)
             return;
 
@@ -1532,12 +1668,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         railRect.pivot = new Vector2(0.5f, 0f);
         railRect.anchoredPosition = _railAnchoredPosition;
 
-        // Slots occupy the TOP of the rail rect and their labels the row beneath, so the rail's own
-        // bottom edge is the bottom of the label row. Children are laid out from the rect's top-left
-        // as before; only the rect itself moved.
-        float labelRow = _latinWordLabelRowHeight + _latinWordLabelGap;
-        const float slotRowTop = 0f;
-
         float totalWidth = 0f;
         for (int wordIndex = 0; wordIndex < words.Count; wordIndex++)
         {
@@ -1550,7 +1680,32 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             totalWidth += WordWidth(slotCount);
         }
 
-        railRect.sizeDelta = new Vector2(totalWidth, labelRow + _slotSize.y);
+        // Slots occupy the TOP of the rail rect and their labels the row beneath. Start from the
+        // nominal values, then derive one uniform scale when the complete rail exceeds the
+        // available safe-area width. Short Levels 1-4 retain their authored geometry exactly.
+        float availableWidth = ResolveRailAvailableWidth(hudContainer, canvas);
+        float layoutScale = CalculateRailScale(totalWidth, availableWidth);
+        _railLayoutSlotSize = _slotSize * layoutScale;
+        _railLayoutSlotSpacing = _slotSpacing * layoutScale;
+        _railLayoutWordGap = _wordGap * layoutScale;
+        _railLayoutLabelFontSize = _latinWordLabelFontSize * layoutScale;
+        _railLayoutLabelRowHeight = _latinWordLabelRowHeight * layoutScale;
+        _railLayoutLabelGap = _latinWordLabelGap * layoutScale;
+        _railLayoutSeparatorFontSize = _wordSeparatorFontSize * layoutScale;
+
+        float labelRow = _railLayoutLabelRowHeight + _railLayoutLabelGap;
+        railRect.sizeDelta = new Vector2(totalWidth * layoutScale, labelRow + _railLayoutSlotSize.y);
+
+        // Measure the context before laying out slots. A multiline objective gets a reserved row
+        // inside the rail; single-line objectives keep the historic label placement above it.
+        BuildObjectiveContextLabel(railRect, fontTemplate, availableWidth);
+        float contextRow = _objectiveContextUsesMeasuredRow
+            ? _objectiveContextRowHeight + ObjectiveContextGap
+            : 0f;
+        railRect.sizeDelta = new Vector2(
+            totalWidth * layoutScale,
+            labelRow + _railLayoutSlotSize.y + contextRow);
+        float slotRowTop = _objectiveContextUsesMeasuredRow ? -contextRow : 0f;
 
         float x = 0f;
         bool anyWordPlaced = false;
@@ -1568,7 +1723,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             if (anyWordPlaced)
             {
                 BuildWordSeparator(railRect, fontTemplate, wordIndex, x, slotRowTop);
-                x += _wordGap;
+                x += _railLayoutWordGap;
             }
 
             anyWordPlaced = true;
@@ -1592,12 +1747,37 @@ public sealed class ActiveCluePresenter : MonoBehaviour
                 if (reference?.symbol == null)
                     continue;
 
-                float slotX = x + (emitted * (_slotSize.x + _slotSpacing));
+                float slotX = x + (emitted * (_railLayoutSlotSize.x + _railLayoutSlotSpacing));
                 RailSlot built = BuildSlot(
                     railRect, word, reference, slotIndex, _railSlots.Count, slotX, slotRowTop);
+                if (UsesRestorationObjectiveDefinition)
+                {
+                    RestorationObjectiveUnit objectiveUnit = FindObjectiveUnit(word.stableId);
+                    built.UnitId = objectiveUnit?.stableId;
+                    int targetIndex = emitted;
+                    if (objectiveUnit?.tokens != null)
+                    {
+                        for (int targetTokenIndex = 0; targetTokenIndex < objectiveUnit.tokens.Count;
+                             targetTokenIndex++)
+                        {
+                            RestorationObjectiveToken target = objectiveUnit.tokens[targetTokenIndex];
+                            if (target?.IsTarget != true)
+                                continue;
+
+                            if (targetIndex-- == 0)
+                            {
+                                built.OccurrenceId = target.occurrenceId;
+                                break;
+                            }
+                        }
+                    }
+                }
                 built.Label = BuildSlotLabel(
                     railRect, fontTemplate, _railSlots.Count, slotX, slotRowTop);
-                built.LatinLabel = ResolveSlotLatinLabel(reference.symbol);
+                built.LatinLabel = UsesRestorationObjectiveDefinition
+                    ? SpokenValueResolver.ResolveLabel(reference.symbol, reference.spokenValueId)
+                        .ToUpperInvariant()
+                    : ResolveSlotLatinLabel(reference.symbol);
                 _railSlots.Add(built);
                 _railSlotAnchors.Add(built.Anchor);
                 emitted++;
@@ -1607,6 +1787,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         }
 
         ReservePlayFieldBandForRail(railRect);
+        PositionInstructionAboveRail(railRect);
 
         // The band is measured in screen pixels, so it goes stale the moment the screen changes
         // size — a rotation, or a Game view resized while playing. Re-measured from the rail's own
@@ -1615,7 +1796,10 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         _bandRefreshHandler ??= () =>
         {
             if (_railRoot != null && _railRoot.transform is RectTransform live)
+            {
                 ReservePlayFieldBandForRail(live);
+                PositionInstructionAboveRail(live);
+            }
         };
         if (AspectLockedCamera.Instance != null)
         {
@@ -1626,6 +1810,135 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
         _railRoot.SetActive(false);
         RepaintRail(forceRestored: false);
+    }
+
+    private RestorationObjectiveUnit FindObjectiveUnit(string stableId)
+    {
+        IReadOnlyList<RestorationObjectiveUnit> units =
+            _restorationObjectiveController?.State?.Definition?.units;
+        if (units == null)
+            return null;
+
+        for (int index = 0; index < units.Count; index++)
+        {
+            if (units[index] != null && units[index].stableId == stableId)
+                return units[index];
+        }
+
+        return null;
+    }
+
+    private const float ObjectiveContextNominalHeight = 72f;
+    private const float ObjectiveContextGap = 12f;
+
+    private void BuildObjectiveContextLabel(
+        RectTransform railRect,
+        TextMeshProUGUI fontTemplate,
+        float availableWidth)
+    {
+        if (!UsesRestorationObjectiveDefinition || railRect == null || fontTemplate == null)
+            return;
+
+        if (_runtimeObjectiveContextObject == null)
+        {
+            _runtimeObjectiveContextObject = new GameObject(
+                "[Runtime] RestorationObjectiveContext", typeof(RectTransform));
+            _runtimeObjectiveContextObject.transform.SetParent(railRect, false);
+            _objectiveContextText = _runtimeObjectiveContextObject.AddComponent<TextMeshProUGUI>();
+            CopyFont(fontTemplate, _objectiveContextText);
+            _objectiveContextText.fontSize = Mathf.Max(18f, _latinWordLabelFontSize * 0.68f);
+            _objectiveContextText.alignment = TextAlignmentOptions.Center;
+            _objectiveContextText.color = _latinWordLabelColor;
+            _objectiveContextText.raycastTarget = false;
+            _objectiveContextText.textWrappingMode = TextWrappingModes.Normal;
+            _objectiveContextText.enableAutoSizing = true;
+            _objectiveContextText.fontSizeMin = 14f;
+            _objectiveContextText.fontSizeMax = Mathf.Max(18f, _latinWordLabelFontSize * 0.68f);
+
+            RectTransform configuredContextRect =
+                _runtimeObjectiveContextObject.GetComponent<RectTransform>();
+            configuredContextRect.anchorMin = new Vector2(0.5f, 1f);
+            configuredContextRect.anchorMax = new Vector2(0.5f, 1f);
+            configuredContextRect.pivot = new Vector2(0.5f, 1f);
+        }
+
+        UpdateObjectiveContextLabel();
+
+        RectTransform contextRect = _runtimeObjectiveContextObject.GetComponent<RectTransform>();
+        float contextWidth = Mathf.Min(
+            Mathf.Max(railRect.sizeDelta.x, 640f),
+            Mathf.Max(1f, availableWidth));
+        string rendered = _objectiveContextText.text ?? string.Empty;
+        Vector2 preferred = _objectiveContextText.GetPreferredValues(rendered, contextWidth, 0f);
+        _objectiveContextUsesMeasuredRow = rendered.IndexOf('\n') >= 0
+            || preferred.y > ObjectiveContextNominalHeight + 1f;
+        _objectiveContextRowHeight = _objectiveContextUsesMeasuredRow
+            ? Mathf.Max(ObjectiveContextNominalHeight, preferred.y)
+            : ObjectiveContextNominalHeight;
+        contextRect.anchoredPosition = new Vector2(
+            0f,
+            _objectiveContextUsesMeasuredRow ? 0f : 10f);
+        contextRect.sizeDelta = new Vector2(contextWidth, _objectiveContextRowHeight);
+    }
+
+    private void UpdateObjectiveContextLabel()
+    {
+        if (_objectiveContextText == null || !UsesRestorationObjectiveDefinition)
+            return;
+
+        RestorationObjectiveDefinition definition = _restorationObjectiveController.State.Definition;
+        string rendered = RestorationObjectiveTextFormatter.Render(
+            definition,
+            _restorationObjectiveController.State);
+        _objectiveContextText.text = rendered;
+        _objectiveContextText.gameObject.SetActive(!string.IsNullOrEmpty(rendered));
+    }
+
+    /// <summary>
+    /// Ugat QA 2026-09-16, second pass. Keeps the authored instruction clear of the rail.
+    ///
+    /// <para>
+    /// The two rects are measured from DIFFERENT origins, which is what made the first attempt at
+    /// this fail. The instruction is authored under this presenter, a SIBLING of HUDRoot, so its
+    /// anchored Y is measured from the bottom of the glass. The rail is parented to HUDLayer INSIDE
+    /// HUDRoot, and HUDRoot carries SafeAreaHandler — so the rail's y=0 is the bottom of the SAFE
+    /// AREA. On any device with a home-indicator inset the rail therefore rides higher than its
+    /// anchored Y suggests, by exactly that inset. Anchoring the instruction to a number computed
+    /// from the rail's anchored Y read as a 24-unit gap and rendered as an overlap, with
+    /// "SYMBOL TO DEFEND" sitting on the slot frames.
+    /// </para>
+    ///
+    /// <para>
+    /// Measuring in world space removes the mismatch entirely: whatever either parent does to its
+    /// children, the instruction ends up a fixed distance above the rail's ACTUAL top edge. Re-run
+    /// whenever the play area changes, for the same reason the band is.
+    /// </para>
+    /// </summary>
+    private void PositionInstructionAboveRail(RectTransform railRect)
+    {
+        if (railRect == null)
+            return;
+
+        TextMeshProUGUI instruction = ResolveClueInstruction();
+        if (instruction == null || instruction.transform is not RectTransform instructionRect)
+            return;
+
+        float scale = instructionRect.lossyScale.y;
+        if (Mathf.Approximately(scale, 0f))
+            return;
+
+        railRect.GetWorldCorners(_railCornerBuffer);
+        instructionRect.GetWorldCorners(_instructionCornerBuffer);
+
+        // corners[1] is top-left, corners[0] bottom-left.
+        float railTopWorld = _railCornerBuffer[1].y;
+        float instructionBottomWorld = _instructionCornerBuffer[0].y;
+
+        float shift = (railTopWorld - instructionBottomWorld) / scale + _instructionGapAboveRail;
+        if (Mathf.Approximately(shift, 0f))
+            return;
+
+        instructionRect.anchoredPosition += new Vector2(0f, shift);
     }
 
     /// <summary>
@@ -1680,8 +1993,31 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             topScreenY + (_railPlayFieldClearance * Mathf.Max(0.01f, canvas.scaleFactor)));
     }
 
-    private float WordWidth(int slotCount) =>
-        (slotCount * _slotSize.x) + ((slotCount - 1) * _slotSpacing);
+    private float WordWidth(int slotCount)
+    {
+        Vector2 slotSize = _railLayoutSlotSize == Vector2.zero ? _slotSize : _railLayoutSlotSize;
+        float spacing = _railLayoutSlotSize == Vector2.zero ? _slotSpacing : _railLayoutSlotSpacing;
+        return (slotCount * slotSize.x) + ((slotCount - 1) * spacing);
+    }
+
+    private float ResolveRailAvailableWidth(Transform hudContainer, Canvas canvas)
+    {
+        if (hudContainer is RectTransform rect && rect.rect.width > 0f)
+            return rect.rect.width;
+
+        if (canvas != null && canvas.scaleFactor > 0f)
+            return Screen.width / canvas.scaleFactor;
+
+        return Screen.width;
+    }
+
+    internal static float CalculateRailScale(float nominalWidth, float availableWidth)
+    {
+        if (nominalWidth <= 0f || availableWidth <= 0f)
+            return 1f;
+
+        return Mathf.Min(1f, availableWidth / nominalWidth);
+    }
 
     /// <summary>Slots this word contributes to the rail, under TargetTextSlotMap's skip rule.</summary>
     private static int CountEmittedSlots(FocusWordDefinition word)
@@ -1729,7 +2065,9 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
         TextMeshProUGUI label = labelObject.AddComponent<TextMeshProUGUI>();
         CopyFont(fontTemplate, label);
-        label.fontSize = _latinWordLabelFontSize;
+        label.fontSize = _railLayoutLabelFontSize == 0f
+            ? _latinWordLabelFontSize
+            : _railLayoutLabelFontSize;
         label.alignment = TextAlignmentOptions.Top;
         label.color = _latinWordLabelColor;
         label.raycastTarget = false;
@@ -1747,8 +2085,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         rect.anchorMax = new Vector2(0f, 1f);
         rect.pivot = new Vector2(0f, 1f);
         rect.anchoredPosition =
-            new Vector2(slotX, slotRowTop - _slotSize.y - _latinWordLabelGap);
-        rect.sizeDelta = new Vector2(_slotSize.x, _latinWordLabelRowHeight);
+            new Vector2(slotX, slotRowTop - _railLayoutSlotSize.y - _railLayoutLabelGap);
+        rect.sizeDelta = new Vector2(_railLayoutSlotSize.x, _railLayoutLabelRowHeight);
         return label;
     }
 
@@ -1774,7 +2112,9 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
         TextMeshProUGUI separator = separatorObject.AddComponent<TextMeshProUGUI>();
         CopyFont(fontTemplate, separator);
-        separator.fontSize = _wordSeparatorFontSize;
+        separator.fontSize = _railLayoutSeparatorFontSize == 0f
+            ? _wordSeparatorFontSize
+            : _railLayoutSeparatorFontSize;
         separator.alignment = TextAlignmentOptions.Center;
         separator.color = _wordSeparatorColor;
         separator.raycastTarget = false;
@@ -1787,7 +2127,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         rect.anchorMax = new Vector2(0f, 1f);
         rect.pivot = new Vector2(0f, 1f);
         rect.anchoredPosition = new Vector2(gapX, slotRowTop);
-        rect.sizeDelta = new Vector2(_wordGap, _slotSize.y);
+        rect.sizeDelta = new Vector2(_railLayoutWordGap, _railLayoutSlotSize.y);
     }
 
     /// <summary>
@@ -1833,7 +2173,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         rect.anchorMax = new Vector2(0f, 1f);
         rect.pivot = new Vector2(0f, 1f);
         rect.anchoredPosition = new Vector2(x, y);
-        rect.sizeDelta = _slotSize;
+        rect.sizeDelta = _railLayoutSlotSize == Vector2.zero ? _slotSize : _railLayoutSlotSize;
 
         var glyphObject = new GameObject(
             $"[Runtime] RestorationSlotGlyph_{flattenedIndex}", typeof(RectTransform), typeof(Image));
@@ -1885,7 +2225,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         glyphRect.anchorMax = new Vector2(0.5f, 0.5f);
         glyphRect.pivot = new Vector2(0.5f, 0.5f);
         glyphRect.anchoredPosition = Vector2.zero;
-        glyphRect.sizeDelta = new Vector2(_slotSize.x * scale, _slotSize.y * scale);
+        Vector2 slotSize = _railLayoutSlotSize == Vector2.zero ? _slotSize : _railLayoutSlotSize;
+        glyphRect.sizeDelta = new Vector2(slotSize.x * scale, slotSize.y * scale);
     }
 
     /// <summary>
@@ -1939,6 +2280,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             return;
 
         RepaintRail(forceRestored: false);
+        UpdateObjectiveContextLabel();
         _railRoot.SetActive(true);
     }
 
@@ -1959,7 +2301,9 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         {
             RailSlot slot = _railSlots[i];
             bool restored = forceRestored
-                || _restorationState.IsSlotRestored(slot.Word, slot.DecompositionIndex);
+                || (UsesRestorationObjectiveDefinition
+                    ? _restorationObjectiveController.IsOccurrenceRestored(slot.OccurrenceId)
+                    : _restorationState.IsSlotRestored(slot.Word, slot.DecompositionIndex));
 
             slot.Frame.color = restored ? _filledSlotColor : _emptySlotColor;
 
@@ -1979,12 +2323,24 @@ public sealed class ActiveCluePresenter : MonoBehaviour
                 slot.Glyph.gameObject.SetActive(showGlyph);
 
             // The syllable under the box follows the same rule as the glyph inside it. The label
-            // row was originally treated as a fact about the target text rather than about the
-            // player's progress, so it printed "I NA" under two empty boxes and read the word out
-            // before either had been earned — the same leak the clue panel's mask closes.
+            // row follows the authored display policy: guided and marked objectives intentionally
+            // teach the target label, while clue-only and hidden objectives keep it private until
+            // the relevant unit/occurrence is earned.
             if (slot.Label != null)
             {
-                slot.Label.text = restored ? slot.LatinLabel : UnreadableSlotMask;
+                bool showLabel = restored;
+                if (UsesRestorationObjectiveDefinition)
+                {
+                    RestorationDisplayMode mode = _restorationObjectiveController
+                        .State.Definition.displayMode;
+                    showLabel = mode == RestorationDisplayMode.GuidedWords
+                        || mode == RestorationDisplayMode.MarkedContext
+                        || (mode == RestorationDisplayMode.ClueOnlyWords
+                            && IsObjectiveUnitComplete(slot.UnitId))
+                        || (mode == RestorationDisplayMode.HiddenContext && restored);
+                }
+
+                slot.Label.text = showLabel ? slot.LatinLabel : UnreadableSlotMask;
 
                 // Colour is restored here too, so a repaint landing after a killed flight puts the
                 // label back to full brightness even though the routine that was dimming it never
@@ -2001,6 +2357,41 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         // cannot snap the rail back to full opacity halfway through a dip.
         if (_railCanvasGroup != null && _railFlashRoutine == null)
             _railCanvasGroup.alpha = 1f;
+    }
+
+    private bool IsObjectiveUnitComplete(string unitId)
+    {
+        if (string.IsNullOrEmpty(unitId))
+            return false;
+
+        RestorationObjectiveState state = _restorationObjectiveController?.State;
+        RestorationObjectiveDefinition definition = state?.Definition;
+        if (definition?.units == null)
+            return false;
+
+        for (int unitIndex = 0; unitIndex < definition.units.Count; unitIndex++)
+        {
+            RestorationObjectiveUnit unit = definition.units[unitIndex];
+            if (unit == null || unit.stableId != unitId)
+                continue;
+
+            if (unit.tokens == null)
+                return false;
+
+            for (int tokenIndex = 0; tokenIndex < unit.tokens.Count; tokenIndex++)
+            {
+                RestorationObjectiveToken token = unit.tokens[tokenIndex];
+                if (token?.IsTarget == true
+                    && !state.IsOccurrenceRestored(token.occurrenceId))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -2041,6 +2432,28 @@ public sealed class ActiveCluePresenter : MonoBehaviour
                 continue;
 
             StartCoroutine(PopSlot(slot.Anchor));
+        }
+    }
+
+    private void PopSlotForOccurrence(string occurrenceId)
+    {
+        if (string.IsNullOrEmpty(occurrenceId) || _slotFillPopScale <= 1f
+            || _slotFillPopSeconds <= 0f || !isActiveAndEnabled)
+        {
+            return;
+        }
+
+        for (int i = 0; i < _railSlots.Count; i++)
+        {
+            RailSlot slot = _railSlots[i];
+            if (slot?.Anchor == null || slot.OccurrenceId != occurrenceId)
+                continue;
+
+            if (!_restorationObjectiveController.IsOccurrenceRestored(occurrenceId))
+                continue;
+
+            StartCoroutine(PopSlot(slot.Anchor));
+            return;
         }
     }
 
@@ -2105,8 +2518,18 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     /// <param name="symbolStableId">The symbol whose boxes just filled.</param>
     /// <param name="sourceWorldPosition">Where the enemy died, in world space.</param>
     private void LaunchSlotGlyphFlights(string symbolStableId, Vector3 sourceWorldPosition)
+        => LaunchSlotGlyphFlightsInternal(symbolStableId, null, sourceWorldPosition);
+
+    private void LaunchSlotGlyphFlightForOccurrence(
+        string occurrenceId, Vector3 sourceWorldPosition)
+        => LaunchSlotGlyphFlightsInternal(null, occurrenceId, sourceWorldPosition);
+
+    private void LaunchSlotGlyphFlightsInternal(
+        string symbolStableId, string occurrenceId, Vector3 sourceWorldPosition)
     {
-        if (!_slotGlyphFlightEnabled || string.IsNullOrEmpty(symbolStableId) || !isActiveAndEnabled)
+        if (!_slotGlyphFlightEnabled
+            || (string.IsNullOrEmpty(symbolStableId) && string.IsNullOrEmpty(occurrenceId))
+            || !isActiveAndEnabled)
             return;
 
         if (_railRoot == null || !_railRoot.activeInHierarchy)
@@ -2146,10 +2569,20 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             if (slot?.Glyph == null || slot.Glyph.sprite == null)
                 continue;
 
-            if (!SlotCarriesSymbol(slot, symbolStableId))
+            if (!string.IsNullOrEmpty(occurrenceId))
+            {
+                if (slot.OccurrenceId != occurrenceId)
+                    continue;
+            }
+            else if (!SlotCarriesSymbol(slot, symbolStableId))
+            {
                 continue;
+            }
 
-            if (!_restorationState.IsSlotRestored(slot.Word, slot.DecompositionIndex))
+            bool restored = UsesRestorationObjectiveDefinition
+                ? _restorationObjectiveController.IsOccurrenceRestored(slot.OccurrenceId)
+                : _restorationState.IsSlotRestored(slot.Word, slot.DecompositionIndex);
+            if (!restored)
                 continue;
 
             TryBeginSlotFlight(slot, railRect, uiCamera, startLocal);
@@ -2377,7 +2810,9 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
         _slotsInFlight.Remove(slot);
 
-        bool restored = _restorationState.IsSlotRestored(slot.Word, slot.DecompositionIndex);
+        bool restored = UsesRestorationObjectiveDefinition
+            ? _restorationObjectiveController.IsOccurrenceRestored(slot.OccurrenceId)
+            : _restorationState.IsSlotRestored(slot.Word, slot.DecompositionIndex);
 
         if (slot.Glyph != null)
         {
@@ -2530,6 +2965,11 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
         _railSlots.Clear();
         _railSlotAnchors.Clear();
+        _runtimeObjectiveWords.Clear();
+
+        DestroyOwnedObject(_runtimeObjectiveContextObject);
+        _runtimeObjectiveContextObject = null;
+        _objectiveContextText = null;
 
         Texture2D frameTexture =
             _runtimeSlotFrameSprite != null ? _runtimeSlotFrameSprite.texture : null;
@@ -2572,6 +3012,13 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         if (_clueText == null || clue == null || clue.Character == null)
             return;
 
+        if (UsesRestorationObjectiveDefinition)
+        {
+            _clueText.text = BuildObjectivePanelText();
+            StopClueCrumble();
+            return;
+        }
+
         FocusWordDefinition word = FindFocusWordContaining(clue.Character.stableId);
         if (word == null)
         {
@@ -2611,6 +3058,14 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         }
 
         _clueText.text = finalText;
+    }
+
+    private string BuildObjectivePanelText()
+    {
+        RestorationObjectiveDefinition definition = _restorationObjectiveController?.State?.Definition;
+        return RestorationObjectiveTextFormatter.Render(
+            definition,
+            _restorationObjectiveController?.State);
     }
 
     /// <summary>
@@ -3028,9 +3483,33 @@ public sealed class ActiveClueRestorationState
     }
 
     /// <summary>
-    /// Restores every matching slot in the focus words and returns only words changed by this
-    /// call. The returned list is reused on the next call and is intended for immediate use.
+    /// Restores ONE slot — the first unrestored slot carrying this symbol, in reading order — and
+    /// returns the single word changed by it, or nothing when the text does not owe this symbol.
+    /// The returned list is reused on the next call and is intended for immediate use.
     /// </summary>
+    /// <remarks>
+    /// <b>One carrier, one slot.</b> This used to fill EVERY slot matching the symbol, across every
+    /// focus word, from a single kill. Level 3 is the shape that exposes it: "Ang MAbuting BATA ay
+    /// guMAgawa ng TAMA" needs two separate MA slots and two separate TA slots earned separately,
+    /// and under the old rule one MA carrier filled both.
+    ///
+    /// <para>
+    /// It also silently defeated withholding. Restoration by symbol meant a gate on a repeated
+    /// symbol withheld nothing — a carrier spawned for an ungated duplicate filled the gated slot
+    /// for free — and four separate mechanisms existed to route around that: DerivedFinaleGate's
+    /// "last symbol occurring exactly once", the GatedFinaleUnwinnable validator rule, Level 2's
+    /// finale landing on MA rather than its last slot, and the authored finale gating every slot
+    /// carrying its symbol. With one kill filling one slot, the last slot is always withholdable
+    /// and none of those are needed.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Reading order, not word order alone.</b> The first unrestored match wins, scanning words
+    /// in authored order and slots left to right — the same order the clue rail renders and the
+    /// player is following. A level whose symbols are all distinct behaves exactly as before, which
+    /// is every level shipped before Level 3 and why nothing caught this.
+    /// </para>
+    /// </remarks>
     public IReadOnlyList<FocusWordDefinition> Apply(string symbolStableId)
     {
         _changedWords.Clear();
@@ -3040,7 +3519,6 @@ public sealed class ActiveClueRestorationState
         for (int wordIndex = 0; wordIndex < _words.Count; wordIndex++)
         {
             WordState state = _words[wordIndex];
-            bool changed = false;
             if (state.Word.decomposition == null)
                 continue;
 
@@ -3055,11 +3533,9 @@ public sealed class ActiveClueRestorationState
                 }
 
                 state.RestoredSlots[slotIndex] = true;
-                changed = true;
-            }
-
-            if (changed)
                 _changedWords.Add(state.Word);
+                return _changedWords;
+            }
         }
 
         return _changedWords;

@@ -43,10 +43,9 @@ public class WaveManager : MonoBehaviour
              + "be re-authored to ship the beat.")]
     [SerializeField] private InstantWinPresenter _instantWinPresenter;
 
-    // Restoration overflow: how many enemies per batch, and how many batches before giving up and
-    // letting the existing refuse-completion path report the real problem.
+    // Restoration overflow: how many enemies per batch. The batch budget before giving up is a
+    // per-level policy field (SpawnAssignmentPolicy.maxOverflowBatches), not a constant here.
     private const int OverflowBatchSize = 3;
-    private const int MaxOverflowBatches = 12;
 
     private int _currentWaveIndex;
     private int _currentWaveSpawnedCount;
@@ -59,10 +58,10 @@ public class WaveManager : MonoBehaviour
     private bool _instantWinTaken;
     private Coroutine _instantWinRoutine;
 
-    // Resolved lazily and cached: the presenter that owns focus-word restoration state. Read
-    // rather than subscribed to because the moment a slot fills lives inside
-    // ActiveCluePresenter.HandleActiveClueResolved, which raises no per-slot signal.
+    // Resolved lazily and cached: the HUD presenter used by the instant-win beat. The objective
+    // controller owns completion for migrated levels; the presenter remains the legacy projection.
     private ActiveCluePresenter _restorationSource;
+    private RestorationObjectiveController _restorationObjectiveSource;
 
     public int CurrentWaveIndex => _currentWaveIndex;
     public int CurrentWaveSpawnedCount => _currentWaveSpawnedCount;
@@ -325,20 +324,17 @@ public class WaveManager : MonoBehaviour
     {
         _running = false;
 
-        if (_waveRoutine != null)
-            StopCoroutine(_waveRoutine);
+        // SpawnWave is started as a sibling coroutine, so stopping only the coordinator leaves a
+        // live spawn loop behind. A terminal outcome owns every coroutine on this component.
+        StopAllCoroutines();
+        _waveRoutine = null;
+        _instantWinRoutine = null;
 
         // A defeat or an abort underneath the instant-win beat has to take the beat down with
         // it, or the dipped timeScale outlives the level and the defeat screen crawls.
-        if (_instantWinRoutine != null)
-        {
-            StopCoroutine(_instantWinRoutine);
-            _instantWinRoutine = null;
-        }
         _instantWinPresenter?.Cancel();
 
         ReturnAllActiveEnemies();
-        _waveRoutine = null;
     }
 
     /// <summary>
@@ -354,10 +350,10 @@ public class WaveManager : MonoBehaviour
     /// not a win condition.
     ///
     /// WHY THIS IS A PER-FRAME READ AND NOT AN EVENT SUBSCRIPTION. The moment a slot fills is
-    /// ActiveCluePresenter.HandleActiveClueResolved, which mutates its ActiveClueRestorationState
-    /// and raises nothing per slot. Reading the state every frame reaches the same conclusion in
-    /// the same frame as an event would, and it needs no change to the presenter — which is what
-    /// keeps the win rule out of the HUD layer.
+    /// ActiveCluePresenter.HandleActiveClueResolved, which applies either the scene-scoped
+    /// objective or the legacy presenter state and raises nothing per slot. Reading the state every
+    /// frame reaches the same conclusion in the same frame as an event would, and it needs no
+    /// change to the presenter — which is what keeps the win rule out of the HUD layer.
     ///
     /// WHY IT IS IN Update AND NOT IN THE WAVE COROUTINE. RunAllWavesRoutine is a sequential
     /// chain of waits: a check inside it can only run when whatever it is waiting on releases,
@@ -377,7 +373,8 @@ public class WaveManager : MonoBehaviour
     }
 
     /// <summary>
-    /// True once every authored slot of every focus word has been restored.
+    /// True once every authored occurrence in the active restoration objective has been restored.
+    /// Legacy focus-word levels use the compatibility projection owned by the presenter.
     ///
     /// Levels that do not opt into combat restoration never reach the state at all —
     /// ActiveCluePresenter only applies a restored symbol when activeClueRestorationEnabled is
@@ -397,13 +394,31 @@ public class WaveManager : MonoBehaviour
         if (_levelConfig.bossConfig != null)
             return false;
 
+        if (_restorationObjectiveSource == null)
+        {
+            _restorationObjectiveSource = FindFirstObjectByType<RestorationObjectiveController>(
+                FindObjectsInactive.Include);
+        }
+
+        // Resolve the presenter even when the objective owns completion. The instant-win beat
+        // still needs the HUD rail to celebrate the player's final occurrence and to compose the
+        // completed text line; the old fallback-only lookup left that source null on authored
+        // objectives.
         if (_restorationSource == null)
         {
             _restorationSource = FindFirstObjectByType<ActiveCluePresenter>(
                 FindObjectsInactive.Include);
-            if (_restorationSource == null)
-                return false;
         }
+
+        if (_restorationObjectiveSource != null
+            && _restorationObjectiveSource.IsConfigured
+            && !_restorationObjectiveSource.UsesLegacyFallback)
+        {
+            return _restorationObjectiveSource.IsComplete;
+        }
+
+        if (_restorationSource == null)
+            return false;
 
         // IsComplete is false for a level with no focus words, so an unauthored level cannot
         // win itself on an empty target text.
@@ -632,6 +647,8 @@ public class WaveManager : MonoBehaviour
         int lastWaveIndexExclusive = endWaveIndexExclusive < 0
             ? _levelConfig.waves.Count
             : Mathf.Clamp(endWaveIndexExclusive, 0, _levelConfig.waves.Count);
+        int totalWaveCount = _levelConfig.waves.Count;
+        bool isTerminalWaveRange = IsTerminalWaveRange(lastWaveIndexExclusive, totalWaveCount);
 
         for (int waveIndex = firstWaveIndex; waveIndex < lastWaveIndexExclusive; waveIndex++)
         {
@@ -657,6 +674,13 @@ public class WaveManager : MonoBehaviour
             _currentWaveIndex = waveIndex;
             _currentWaveSpawnedCount = 0;
             EventBus.RaiseWaveStarted(waveIndex);
+
+            // The finale gate opens as the LAST wave of the COMPLETE LEVEL starts, so a level that
+            // withheld its final slot becomes completable exactly here and not before. Segment
+            // ranges intentionally use the full authored wave count: an intermediate 2-wave
+            // segment in a 5-wave level must not release the final slot early.
+            if (IsFinalWaveIndex(waveIndex, totalWaveCount))
+                OpenFinaleGate();
 
             float startDelay = ClampWaveStartDelay(wave.waveStartDelay, waveIndex);
             if (startDelay > 0f)
@@ -697,8 +721,27 @@ public class WaveManager : MonoBehaviour
             yield break;
         }
 
-        // The words, not the wave list, decide when the defense is over.
-        yield return RunRestorationOverflow(lastWaveIndexExclusive);
+        // Intermediate segments complete their ordinary defense range here. The flow machine then
+        // presents the authored challenge board and resumes the next range. Only the terminal
+        // range may open the final gate or run restoration overflow; doing either after every
+        // segment would release Level 5's final TA during wave 2 and start overflow three times.
+        if (!isTerminalWaveRange)
+        {
+            CompleteRun();
+            yield break;
+        }
+
+        // Belt and braces for the finale gate. Reaching overflow means the complete wave list is
+        // exhausted BY DEFINITION, so the gate must be open by now - but the per-wave opening
+        // above only fires if the loop body ran, and a run resumed mid-final-wave can start at
+        // waves.Count (ResolveResumeWaveIndex, when the player paused or quit after the last enemy
+        // spawned), in which case the loop body never executes and the gate above is never reached.
+        // Opening here is unconditional precisely so the guarantee does not depend on how the
+        // resume index was computed. OpenGate is idempotent, so the ordinary path is unaffected.
+        OpenFinaleGate();
+
+        // The objective, not the authored wave list, decides when the defense is over.
+        yield return RunRestorationOverflow(totalWaveCount);
 
         if (!CanContinueRun())
         {
@@ -708,6 +751,53 @@ public class WaveManager : MonoBehaviour
 
         CompleteRun();
     }
+
+    /// <summary>
+    /// Opens <see cref="SpawnGateRegistry.FinalWaveReached"/> on the scene's spawn-assignment
+    /// coordinator, releasing whichever slot the gated finale withheld.
+    ///
+    /// <para>
+    /// Called from two places on purpose. The per-wave call in <see cref="RunAllWavesRoutine"/> is
+    /// the designed moment - the finale becomes completable as the last wave begins. The
+    /// unconditional call before <see cref="RunRestorationOverflow"/> is the guard: overflow is
+    /// only reached once the wave list is exhausted, so the gate must be open by then regardless of
+    /// how the resume index was computed. <see cref="SpawnAssignmentCoordinator.OpenGate"/> is
+    /// idempotent, so calling it twice on the ordinary path costs nothing.
+    /// </para>
+    /// </summary>
+    internal void OpenFinaleGate()
+    {
+        SpawnAssignmentCoordinator coordinator =
+            FindFirstObjectByType<SpawnAssignmentCoordinator>(FindObjectsInactive.Include);
+        if (coordinator != null)
+            coordinator.OpenGate(SpawnGateRegistry.FinalWaveReached);
+    }
+
+    /// <summary>
+    /// True when this wave index is the last of the run. Pure and static so the finale gate's timing
+    /// is an EditMode test rather than something only a full play session can exercise: an inline
+    /// comparison here could be silently wrong and no suite would notice.
+    /// </summary>
+    internal static bool IsFinalWaveIndex(int waveIndex, int endWaveIndexExclusive) =>
+        endWaveIndexExclusive > 0 && waveIndex == endWaveIndexExclusive - 1;
+
+    /// <summary>
+    /// True only when a segmented run reaches the complete authored wave count. This keeps the
+    /// finale gate and restoration overflow level-scoped while preserving the existing half-open
+    /// segment ranges used by the flow machine.
+    /// </summary>
+    internal static bool IsTerminalWaveRange(int endWaveIndexExclusive, int totalWaveCount) =>
+        totalWaveCount > 0 && endWaveIndexExclusive == totalWaveCount;
+
+    /// <summary>
+    /// True while <see cref="RunRestorationOverflow"/>'s loop should spawn another batch. Pure and
+    /// static for the same reason as <see cref="IsFinalWaveIndex"/>: not because the expression is
+    /// complex, but so an off-by-one on the bound (<c>&lt;=</c> instead of <c>&lt;</c>) or a flipped
+    /// operator (<c>&amp;&amp;</c> instead of <c>||</c>) is an EditMode test failure instead of a
+    /// silent behaviour change only a full play session would surface.
+    /// </summary>
+    internal static bool ShouldContinueOverflow(int batch, bool unbounded, int maxBatches) =>
+        unbounded || batch < maxBatches;
 
     /// <summary>
     /// Keeps the defense running past the authored wave budget until the level's focus words are
@@ -740,9 +830,16 @@ public class WaveManager : MonoBehaviour
             yield break;
         }
 
-        // Bounded so a broken gate or an unrestorable target cannot spin forever. Reaching the
-        // bound leaves the existing refuse-completion path to report the real problem.
-        for (int batch = 0; batch < MaxOverflowBatches; batch++)
+        SpawnAssignmentPolicy overflowPolicy =
+            _levelConfig != null ? _levelConfig.spawnAssignmentPolicy : null;
+        bool unbounded = overflowPolicy != null && overflowPolicy.OverflowIsUnbounded;
+        int maxBatches = overflowPolicy != null ? overflowPolicy.maxOverflowBatches : 12;
+
+        // Bounded by default so a broken gate or an unrestorable target cannot spin forever;
+        // unbounded when a level's policy asks for escorts to keep coming. Both still exit on
+        // CanContinueRun() and on WantsOverflow above, so an unbounded run still ends when the run
+        // is won or lost - it just never gives up on its own.
+        for (int batch = 0; ShouldContinueOverflow(batch, unbounded, maxBatches); batch++)
         {
             if (!CanContinueRun() || !coordinator.WantsOverflow)
                 yield break;
@@ -759,9 +856,12 @@ public class WaveManager : MonoBehaviour
             yield return WaitForActiveEnemiesCleared();
         }
 
+        // Only reachable for a bounded level whose budget ran out - an unbounded level's loop
+        // condition never goes false, so it only ever leaves through a yield break above.
         DebugLogger.LogWarning(
-            $"WaveManager: restoration overflow ran {MaxOverflowBatches} batches without finishing "
-            + "the focus words. Check that every gated slot has something calling OpenGate.");
+            $"WaveManager: restoration overflow ran {maxBatches} batches (this level's "
+            + "spawnAssignmentPolicy.maxOverflowBatches budget) without finishing the focus words. "
+            + "Check that every gated slot has something calling OpenGate.");
     }
 
     /// <summary>Last non-intermission wave, whose roster and cadence the overflow reuses.</summary>
@@ -852,18 +952,41 @@ public class WaveManager : MonoBehaviour
         bool hasSavedWaveProgress,
         int savedWaveIndex,
         int savedWaveSpawnedCount,
+        out int spawnOffset) =>
+        ResolveResumeWaveIndex(
+            _levelConfig?.waves, hasSavedWaveProgress, savedWaveIndex, savedWaveSpawnedCount,
+            out spawnOffset);
+
+    /// <summary>
+    /// Where a resumed run picks the wave list back up, and how far into that wave it starts.
+    ///
+    /// <para>
+    /// Pure and static so its most consequential answer is an EditMode test rather than something
+    /// only a pause-and-quit play session could surface: when the player left during the FINAL wave
+    /// after its last enemy had spawned, this returns <c>waves.Count</c>, one past the end. The
+    /// resumed run's loop body then never executes, so the per-wave finale-gate opening inside
+    /// <see cref="RunAllWavesRoutine"/> is never reached. That is exactly the hole the
+    /// unconditional <see cref="OpenFinaleGate"/> before <see cref="RunRestorationOverflow"/>
+    /// exists to close.
+    /// </para>
+    /// </summary>
+    internal static int ResolveResumeWaveIndex(
+        List<WaveDefinition> waves,
+        bool hasSavedWaveProgress,
+        int savedWaveIndex,
+        int savedWaveSpawnedCount,
         out int spawnOffset)
     {
         spawnOffset = 0;
 
-        if (!hasSavedWaveProgress || _levelConfig?.waves == null || _levelConfig.waves.Count == 0)
+        if (!hasSavedWaveProgress || waves == null || waves.Count == 0)
             return 0;
 
-        int safeWaveIndex = Mathf.Clamp(savedWaveIndex, 0, _levelConfig.waves.Count);
-        if (safeWaveIndex >= _levelConfig.waves.Count)
-            return _levelConfig.waves.Count;
+        int safeWaveIndex = Mathf.Clamp(savedWaveIndex, 0, waves.Count);
+        if (safeWaveIndex >= waves.Count)
+            return waves.Count;
 
-        WaveDefinition savedWave = _levelConfig.waves[safeWaveIndex];
+        WaveDefinition savedWave = waves[safeWaveIndex];
         int enemyCount = savedWave != null ? Mathf.Max(0, savedWave.enemyCount) : 0;
         int safeSpawnedCount = Mathf.Clamp(savedWaveSpawnedCount, 0, enemyCount);
 
@@ -873,7 +996,7 @@ public class WaveManager : MonoBehaviour
             return safeWaveIndex;
         }
 
-        return Mathf.Min(safeWaveIndex + 1, _levelConfig.waves.Count);
+        return Mathf.Min(safeWaveIndex + 1, waves.Count);
     }
 
     private IEnumerator WaitForActiveEnemiesCleared()
@@ -906,14 +1029,17 @@ public class WaveManager : MonoBehaviour
         ActiveEnemyTracker tracker = ActiveEnemyTracker.Instance;
         EnemyPool pool = EnemyPool.Instance;
 
-        if (tracker == null || pool == null)
+        if (pool != null)
+            pool.ReturnAllCheckedOut();
+
+        if (tracker == null)
             return;
 
+        // The pool is authoritative for ownership. Remove any stale tracker entries left by a
+        // defeat/return race without sending a second Return call to the pool.
         var activeEnemies = tracker.GetActiveEnemiesSnapshot();
         for (int i = 0; i < activeEnemies.Count; i++)
-        {
-            pool.Return(activeEnemies[i]);
-        }
+            tracker.Unregister(activeEnemies[i]);
     }
 
     private bool ValidateRunDependencies()
@@ -989,7 +1115,16 @@ public class WaveManager : MonoBehaviour
     private void AbortRun()
     {
         _running = false;
+
+        // AbortRun is also reached by dependency/encounter failures that happen before an
+        // EventBus terminal notification. Treat it as terminal on this component as well: a
+        // sibling SpawnWave coroutine must not outlive the failed run, and any checked-out
+        // enemies must be returned before a retry or scene transition can reuse the pool.
+        StopAllCoroutines();
         _waveRoutine = null;
+        _instantWinRoutine = null;
+        _instantWinPresenter?.Cancel();
+        ReturnAllActiveEnemies();
     }
 
     private void ResetRunState()

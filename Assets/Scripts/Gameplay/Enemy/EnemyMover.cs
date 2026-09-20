@@ -98,6 +98,11 @@ public class EnemyMover : MonoBehaviour
 
     protected float GetFinalSpeed()
     {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        if (SandboxMode.IsQaProtectionEnabled)
+            return 0f;
+#endif
+
         if (IsSandboxMovementPaused())
             return 0f;
 

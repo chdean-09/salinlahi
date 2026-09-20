@@ -17,6 +17,7 @@ MonoBehaviour:
   discoverySubtitle: 
   description: A beast formed from torn pages, broken cloth, and ripped letters.
     It tears sentences into separate pieces.
+  abilityLine: It presses ahead of the enemies around it.
   moveSpeed: 1.7
   maxHealth: 1
   walkFrames:

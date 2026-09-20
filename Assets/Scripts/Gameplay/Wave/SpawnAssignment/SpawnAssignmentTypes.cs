@@ -16,18 +16,27 @@ public sealed class SpawnSlot
     /// <summary>Index of this slot inside its own word's decomposition.</summary>
     public readonly int SlotIndexInWord;
 
+    /// <summary>Stable occurrence identity for sentence/objective targets.</summary>
+    public readonly string OccurrenceId;
+
     /// <summary>
     /// Beat that must resolve before this slot is fillable, or null/empty when ungated.
     /// Level 1's final slot carries "abo_ash_shown".
     /// </summary>
     public readonly string GateToken;
 
-    public SpawnSlot(string symbolStableId, string wordStableId, int slotIndexInWord, string gateToken = null)
+    public SpawnSlot(
+        string symbolStableId,
+        string wordStableId,
+        int slotIndexInWord,
+        string gateToken = null,
+        string occurrenceId = null)
     {
         SymbolStableId = symbolStableId;
         WordStableId = wordStableId;
         SlotIndexInWord = slotIndexInWord;
         GateToken = gateToken;
+        OccurrenceId = occurrenceId;
     }
 
     public bool IsGated => !string.IsNullOrEmpty(GateToken);
@@ -55,8 +64,9 @@ public struct SpawnAssignmentRequest
     /// <summary>
     /// Restoration state per flattened slot, in the same order as the director's slot list.
     /// Re-read every spawn rather than tracked internally, because
-    /// ActiveClueRestorationState.Apply restores every matching slot across all words at once:
-    /// one correct draw can fill several slots, and a privately-tracked cursor would drift.
+    /// accepted clue resolution advances the scene objective and may unlock a new active unit;
+    /// a privately-tracked cursor would drift after that transition (the legacy fallback uses the
+    /// same read path for compatibility).
     /// </summary>
     public IReadOnlyList<bool> RestoredSlots;
 

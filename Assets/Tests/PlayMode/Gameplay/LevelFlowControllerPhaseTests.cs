@@ -789,6 +789,107 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 "A fully authored level must never build a content-missing panel.");
         }
 
+        // ---------------------------------------------------------------------
+        // D1 — the challenge board after a combat-restoration pass
+        // ---------------------------------------------------------------------
+
+        /// <summary>
+        /// Ruling D1 (docs/design/spec-rulings-2026-09.md). ExecuteContextChallenge used to call
+        /// ExecuteCombatRestoration and then yield break nine lines in, before the board was
+        /// reached, so no level on the shared combat-restoration path had ever shown its authored
+        /// challenge. The board is restored for SentenceRestoration and ParagraphRestoration units.
+        ///
+        /// These two tests are the first in the suite to set BOTH activeClue flags, which is what
+        /// UsesCombatRestorationPath requires. Before them that whole branch was unexecuted by any
+        /// test, so re-introducing the yield break would have left the suite completely green.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CombatRestoration_WithASentenceUnit_StillOpensTheBoard_AndCompletesOnce()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+
+            BaybayinCharacterSO symbol = RestorationSymbol("symbol.d1-na", "NA", "na");
+            LevelConfigSO captured = null;
+            TestPhaseFlowController controller = BootstrapFlow(
+                config =>
+                {
+                    captured = config;
+                    config.activeClueCombatEnabled = true;
+                    config.activeClueRestorationEnabled = true;
+                    ConfigureD1FocusWord(config, symbol);
+                    ConfigureCombatRestorationChallenge(config, ChallengeMode.SentenceRestoration);
+                },
+                out GameObject victoryPanel, out _, out _, dialogueController: null);
+
+            yield return WaitFrames(10);
+            yield return AdvancePastFocusWordPreview(controller);
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "Fixture: the flow must be holding Defense before combat restoration is stood in "
+                + "for, or the phase under test is not the one being reached.");
+
+            RestoreFocusWordInCombat(controller, captured, symbol);
+            yield return CompleteDefense();
+
+            // The assertion D1 exists for. Under the old routing the combat pass reported the
+            // phase complete and yield broke, so the machine has already left ContextChallenge.
+            Assert.AreEqual(LevelPhase.ContextChallenge, MachineOf(controller).Phase,
+                "After the combat-restoration pass a SentenceRestoration unit must still open the "
+                + "authored board. If the machine has already left ContextChallenge, the level "
+                + "completed on wave clear and the authored challenge never ran — the defect D1 "
+                + "ruled on.");
+
+            yield return ClearContextChallenge(controller);
+
+            Assert.AreEqual(LevelPhase.Completed, MachineOf(controller).Phase);
+            Assert.AreEqual(1, controller.CommitCalls,
+                "The phase is reported by the board when a board follows and by the combat pass "
+                + "when none does. A second commit here means both legs claimed it.");
+            Assert.IsTrue(victoryPanel.activeSelf);
+            Assert.IsNull(Object.FindFirstObjectByType<LevelContentMissingPanel>(FindObjectsInactive.Include),
+                "A fully authored combat-restoration level must never build a content-missing panel.");
+        }
+
+        /// <summary>
+        /// The other half of D1. Levels 1 and 2 ship WordPlacement units on this same path, and
+        /// those stay retired because slot-fill during Defense already assembled the word. The
+        /// combat pass must therefore complete the phase by itself and open no board, or the
+        /// player is asked to do the same work twice.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CombatRestoration_WithOnlyWordPlacementUnits_CompletesWithoutABoard()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+
+            BaybayinCharacterSO symbol = RestorationSymbol("symbol.d1-na", "NA", "na");
+            LevelConfigSO captured = null;
+            TestPhaseFlowController controller = BootstrapFlow(
+                config =>
+                {
+                    captured = config;
+                    config.activeClueCombatEnabled = true;
+                    config.activeClueRestorationEnabled = true;
+                    ConfigureD1FocusWord(config, symbol);
+                    ConfigureCombatRestorationChallenge(config, ChallengeMode.WordPlacement);
+                },
+                out GameObject victoryPanel, out _, out _, dialogueController: null);
+
+            yield return WaitFrames(10);
+            yield return AdvancePastFocusWordPreview(controller);
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "Fixture: the flow must be holding Defense before combat restoration is stood in "
+                + "for, or the phase under test is not the one being reached.");
+
+            RestoreFocusWordInCombat(controller, captured, symbol);
+            yield return CompleteDefense();
+
+            Assert.AreEqual(LevelPhase.Completed, MachineOf(controller).Phase,
+                "A WordPlacement unit must not open a board after combat restoration. Holding at "
+                + "ContextChallenge here means the retired path came back and the player is being "
+                + "asked to assemble a word they already restored during Defense.");
+            Assert.AreEqual(1, controller.CommitCalls);
+            Assert.IsTrue(victoryPanel.activeSelf);
+        }
+
         // SALIN-135 AC3/AC4. TutorialRuntimeState is static, so it outlives the scene. A defeat
         // landing mid-beat skips the beat's own unwind, and the retried attempt would inherit a
         // combat override or an input lock -- combat or drawing dead on arrival, with no way for
@@ -961,11 +1062,20 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Assert.IsNotNull(preview, "The flow must provide the focus-word preview surface.");
             Assert.IsTrue(preview.IsPresenting);
             StringAssert.Contains("LUNA", preview.RenderedText);
-            StringAssert.Contains("test-moon", preview.RenderedText);
             StringAssert.Contains("TALA", preview.RenderedText);
-            StringAssert.Contains("test-star", preview.RenderedText);
             StringAssert.Contains("lu", preview.RenderedText);
             StringAssert.Contains("ta", preview.RenderedText);
+
+            // Ugat QA 2026-09-16: this used to assert the MEANINGS were rendered too
+            // ("test-moon", "test-star"). They no longer are, and that is the point of the change
+            // rather than a regression — the meaning is English, this card is story-facing, and
+            // Q16 keeps English to UI copy. Playing Level 5 showed the shipped card reading
+            // "IBA — different" / "MANA — inheritance". The meaning stays authored because the
+            // Meaning mastery dimension matches on it; it is simply not printed beside the word.
+            Assert.That(preview.RenderedText, Does.Not.Contain("test-moon"),
+                "the preview printed a focus word's English meaning: " + preview.RenderedText);
+            Assert.That(preview.RenderedText, Does.Not.Contain("test-star"),
+                "the preview printed a focus word's English meaning: " + preview.RenderedText);
         }
 
         [UnityTest]
@@ -1465,6 +1575,123 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 },
             };
             config.challengeSequence = sequence;
+        }
+
+        private const string D1FocusWordId = "level.d1.focus.01";
+
+        private BaybayinCharacterSO RestorationSymbol(
+            string stableId, string characterId, string syllable)
+        {
+            var symbol = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            symbol.characterID = characterId;
+            symbol.syllable = syllable;
+            symbol.stableId = stableId;
+            _objectsToDestroy.Add(symbol);
+            return symbol;
+        }
+
+        /// <summary>
+        /// One focus word of one symbol. ExecuteCombatRestoration refuses outright when the level
+        /// has no focus words, so without this the D1 tests would assert the refusal rather than
+        /// the routing.
+        /// </summary>
+        private void ConfigureD1FocusWord(LevelConfigSO config, BaybayinCharacterSO symbol)
+        {
+            config.focusWords.Add(new FocusWordDefinition
+            {
+                stableId = D1FocusWordId,
+                latinSpelling = "NA",
+                displayLabel = "NA",
+                meaning = "test",
+                decomposition = new List<SymbolValueReference>
+                {
+                    new SymbolValueReference { symbol = symbol, spokenValueId = "value.d1-na" },
+                },
+            });
+        }
+
+        /// <summary>
+        /// A one-unit sequence in <paramref name="mode"/>. The evidence id maps the unit to the
+        /// fixture's focus word — TryBuildRestorationTarget refuses a unit without one — and the
+        /// occurrence id matches what <see cref="ClearContextChallenge"/> submits, so a board that
+        /// does open can actually be cleared.
+        /// </summary>
+        private void ConfigureCombatRestorationChallenge(LevelConfigSO config, ChallengeMode mode)
+        {
+            ChallengeSequenceSO sequence = ScriptableObject.CreateInstance<ChallengeSequenceSO>();
+            _objectsToDestroy.Add(sequence);
+            sequence.sequenceId = "d1-" + mode;
+            sequence.units = new[]
+            {
+                new ChallengeUnitDefinition
+                {
+                    unitId = "d1-unit-1",
+                    mode = mode,
+                    evidenceContentId = D1FocusWordId,
+                    tokens = new[]
+                    {
+                        new ChallengeTokenDefinition
+                        {
+                            tokenId = "t1", displayText = "NA", occurrenceId = "w-1",
+                            role = ChallengeTokenRole.Focus,
+                        },
+                        new ChallengeTokenDefinition
+                        {
+                            tokenId = "t2", displayText = "BA", occurrenceId = "w-2",
+                        },
+                    },
+                    slots = new[]
+                    {
+                        new ChallengeSlotDefinition { slotId = "s1", expectedOccurrenceId = "w-1" },
+                    },
+                    candidateOccurrenceIds = new[] { "w-1", "w-2" },
+                    maxErrors = 3,
+                    heartPenalty = 1,
+                },
+            };
+            config.challengeSequence = sequence;
+        }
+
+        /// <summary>
+        /// Authoring focus words plans the FocusWords phase, which holds a preview until the
+        /// player continues. The D1 tests need focus words (combat restoration refuses without
+        /// them), so they have to pass that gate the way the player does before Defense exists.
+        /// </summary>
+        private static IEnumerator AdvancePastFocusWordPreview(LevelFlowController controller)
+        {
+            if (MachineOf(controller).Phase != LevelPhase.FocusWords)
+                yield break;
+
+            FocusWordPreviewController preview =
+                Object.FindFirstObjectByType<FocusWordPreviewController>();
+            Assert.IsNotNull(preview,
+                "Fixture: the FocusWords phase must present a preview to continue from.");
+
+            preview.Continue();
+            yield return WaitFrames(10);
+        }
+
+        /// <summary>
+        /// Stands in for Defense: the clue was read and the focus word's slots filled. Asserted
+        /// rather than assumed, because an incomplete word makes ExecuteCombatRestoration refuse
+        /// and the D1 tests would then pass or fail on the refusal instead of on the routing.
+        /// </summary>
+        private static void RestoreFocusWordInCombat(
+            LevelFlowController controller, LevelConfigSO config, BaybayinCharacterSO symbol)
+        {
+            ActiveCluePresenter presenter =
+                GetPrivateField<ActiveCluePresenter>(controller, "_activeCluePresenter");
+            Assert.IsNotNull(presenter,
+                "Fixture: the combat-restoration path reads the presenter, so one must exist.");
+
+            presenter.ApplyLevel(config);
+            Assert.IsTrue(presenter.HasRestorationWords,
+                "Fixture: the presenter must carry the level's focus words before they can be "
+                + "restored.");
+
+            presenter.RestorationState.Apply(symbol.stableId);
+            Assert.IsTrue(presenter.RestorationState.IsComplete,
+                "Fixture: combat must have restored every authored slot.");
         }
 
         /// <summary>

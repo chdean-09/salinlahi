@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -22,7 +23,9 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
 
     private SpawnAssignmentDirector _director;
     private LevelConfigSO _level;
+    private bool _loggedEnemyRosterFallback;
     private ActiveCluePresenter _presenter;
+    private RestorationObjectiveController _objective;
 
     /// <summary>
     /// Pause-aware seconds since the level's spawning began. Advanced in Update and frozen while
@@ -40,6 +43,9 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
 
     public SpawnGateRegistry Gates => _gates;
 
+    /// <summary>The flattened target slots, exposed read-only so gating is testable without reflection.</summary>
+    public IReadOnlyList<SpawnSlot> Slots => _slots;
+
     /// <summary>Seconds between the two members of a choice pair.</summary>
     public float ChoicePairWindow =>
         _level?.spawnAssignmentPolicy != null ? _level.spawnAssignmentPolicy.choicePairWindow : 0f;
@@ -54,6 +60,9 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
         {
             if (_slots.Count == 0)
                 return false;
+
+            if (_objective != null && !_objective.UsesLegacyFallback)
+                return _objective.IsComplete;
 
             ActiveClueRestorationState state = _presenter != null ? _presenter.RestorationState : null;
             if (state == null)
@@ -123,7 +132,10 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
     public void ApplyLevel(LevelConfigSO level, ActiveCluePresenter presenter)
     {
         _level = level;
+        _loggedEnemyRosterFallback = false;
         _presenter = presenter;
+        _objective = RestorationObjectiveController.Active
+            ?? FindFirstObjectByType<RestorationObjectiveController>(FindObjectsInactive.Include);
         _clock = 0f;
         _clockFrozen = false;
         _gates.Reset();
@@ -169,9 +181,53 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
             level, data => EnemyIntroductionBeat.CountsAsIntroducedThisAttempt(level, data), OpenGate);
     }
 
-    /// <summary>Flattens every focus word's decomposition into one ordered slot list.</summary>
+    /// <summary>Flattens the active objective, or legacy focus words, into ordered spawn slots.</summary>
     private void BuildSlots(LevelConfigSO level)
     {
+        if (level.restorationObjective != null && level.restorationObjective.HasTargets)
+        {
+            SpawnAssignmentPolicy objectivePolicy =
+                level.spawnAssignmentPolicy ?? new SpawnAssignmentPolicy();
+            int objectiveIndex = 0;
+            for (int unitIndex = 0; unitIndex < level.restorationObjective.units.Count; unitIndex++)
+            {
+                RestorationObjectiveUnit unit = level.restorationObjective.units[unitIndex];
+                if (unit?.tokens == null)
+                    continue;
+
+                var targets = new List<RestorationObjectiveToken>();
+                for (int tokenIndex = 0; tokenIndex < unit.tokens.Count; tokenIndex++)
+                {
+                    RestorationObjectiveToken token = unit.tokens[tokenIndex];
+                    if (token?.IsTarget != true)
+                        continue;
+
+                    targets.Add(token);
+                }
+
+                targets.Sort((left, right) =>
+                    left.EffectiveCompletionOrder(unit.tokens.IndexOf(left))
+                        .CompareTo(right.EffectiveCompletionOrder(unit.tokens.IndexOf(right))));
+
+                for (int targetIndex = 0; targetIndex < targets.Count; targetIndex++)
+                {
+                    RestorationObjectiveToken token = targets[targetIndex];
+                    int tokenIndex = unit.tokens.IndexOf(token);
+
+                    _slots.Add(new SpawnSlot(
+                        token.SymbolStableId,
+                        unit.stableId,
+                        tokenIndex,
+                        objectivePolicy.GateTokenForSlot(objectiveIndex),
+                        token.occurrenceId));
+                    objectiveIndex++;
+                }
+            }
+
+            ApplyDerivedFinalSlotGate(objectivePolicy);
+            return;
+        }
+
         if (level.focusWords == null)
             return;
 
@@ -193,9 +249,99 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
                     reference.symbol.stableId,
                     word.stableId,
                     slotIndex,
-                    policy.GateTokenForSlot(_slots.Count)));
+                    policy.GateTokenForSlot(_slots.Count),
+                    word.stableId + ".slot." + slotIndex.ToString("00")));
             }
         }
+
+        ApplyDerivedFinalSlotGate(policy);
+    }
+
+    /// <summary>
+    /// Withholds the level's finale slot on <see cref="SpawnGateRegistry.FinalWaveReached"/> when
+    /// the level opts in. Derived rather than authored so content edits cannot move the gate off
+    /// the finale; skipped for a single-slot level, which would otherwise withhold its own win
+    /// condition. <see cref="SpawnSlot.GateToken"/> is readonly, so the entry is replaced, not
+    /// mutated, and an authored gate on the chosen slot always wins.
+    ///
+    /// <para>
+    /// The chosen slot is simply the last one. It used to have to be the last slot whose symbol
+    /// occurred exactly once, because restoration was by symbol and a duplicate filled the gated
+    /// slot for free; one carrier now restores one slot, so the last slot is always withholdable.
+    /// See <see cref="DerivedFinaleGate"/> for that history.
+    /// </para>
+    /// </summary>
+    private void ApplyDerivedFinalSlotGate(SpawnAssignmentPolicy policy)
+    {
+        if (policy == null || !policy.gateFinalSlotToFinalWave || _slots.Count < 2)
+            return;
+
+        var symbols = new List<string>(_slots.Count);
+        for (int index = 0; index < _slots.Count; index++)
+            symbols.Add(_slots[index].SymbolStableId);
+
+        // An authored finale wins: the level names the syllable it ends on, in the campaign's
+        // IntroductionSchedule. It gates ONE slot -- the last one carrying that symbol -- exactly
+        // like the derived rule, because one carrier now restores one slot.
+        //
+        // This gated every slot carrying the symbol until 2026-09-17, which was a workaround for
+        // symbol-wide restoration: a carrier spawned for an ungated duplicate would have filled the
+        // gated slot for free, so the only way to withhold a repeated symbol was to withhold all of
+        // its slots. Per-slot restoration removed the need, and the workaround was worse than the
+        // thing it replaced -- withholding every TA meant Level 2's first phrase could not use TA
+        // at all.
+        if (ApplyAuthoredFinaleGate(symbols))
+            return;
+
+        int gateIndex = DerivedFinaleGate.LastSlotIndex(symbols);
+        if (gateIndex == DerivedFinaleGate.NoSlot)
+            return;
+
+        SpawnSlot target = _slots[gateIndex];
+        if (target.IsGated)
+            return;
+
+        _slots[gateIndex] = new SpawnSlot(
+            target.SymbolStableId, target.WordStableId, target.SlotIndexInWord,
+            SpawnGateRegistry.FinalWaveReached, target.OccurrenceId);
+    }
+
+    /// <summary>
+    /// Gates the last slot carrying this level's authored finale symbol. Returns whether a finale
+    /// was authored and applied, so the caller knows to skip the derived rule.
+    /// </summary>
+    /// <remarks>
+    /// The LAST match, so an authored symbol that also appears earlier still ends the level rather
+    /// than gating a slot the player reaches mid-way. Level 2 names TA and has two TA slots; the
+    /// gate lands on TAMA's, leaving BATA's TA playable during the level.
+    /// </remarks>
+    private bool ApplyAuthoredFinaleGate(List<string> symbols)
+    {
+        IntroductionScheduleSO schedule = IntroductionScheduleLookup.Resolve();
+        string authored = schedule != null ? schedule.ResolveFinaleSymbolId(_level) : null;
+        if (string.IsNullOrEmpty(authored))
+            return false;
+
+        for (int index = symbols.Count - 1; index >= 0; index--)
+        {
+            if (!string.Equals(symbols[index], authored, System.StringComparison.Ordinal))
+                continue;
+
+            SpawnSlot target = _slots[index];
+            if (!target.IsGated)
+            {
+                _slots[index] = new SpawnSlot(
+                    target.SymbolStableId, target.WordStableId, target.SlotIndexInWord,
+                    SpawnGateRegistry.FinalWaveReached, target.OccurrenceId);
+            }
+
+            return true;
+        }
+
+        DebugLogger.LogWarning(
+            $"SpawnAssignmentCoordinator: the schedule names '{authored}' as this level's finale, "
+            + "but no focus-word slot carries it, so the derived finale is used instead.");
+        return false;
     }
 
     /// <summary>Marks a beat resolved, ungating any slot that was waiting on it.</summary>
@@ -274,16 +420,26 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
 
     /// <summary>
     /// Re-reads restoration state every spawn rather than tracking it here, because
-    /// ActiveClueRestorationState.Apply restores every matching slot across all words at once: one
-    /// correct draw can fill several slots, and a private cursor would drift out of step.
+    /// accepted clue resolution advances one occurrence and can activate the next objective unit;
+    /// a private cursor would drift out of step (the legacy focus-word fallback remains supported).
     /// </summary>
     private IReadOnlyList<bool> BuildRestoredFlags()
     {
         _restoredBuffer.Clear();
         ActiveClueRestorationState state = _presenter != null ? _presenter.RestorationState : null;
+        RestorationObjectiveState objectiveState = _objective != null
+            && !_objective.UsesLegacyFallback
+            ? _objective.State
+            : null;
 
         for (int i = 0; i < _slots.Count; i++)
         {
+            if (objectiveState != null)
+            {
+                _restoredBuffer.Add(objectiveState.IsOccurrenceRestored(_slots[i].OccurrenceId));
+                continue;
+            }
+
             if (state == null)
             {
                 _restoredBuffer.Add(false);
@@ -319,6 +475,25 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
     private IReadOnlyList<string> BuildOffTargetSymbols()
     {
         _offTargetBuffer.Clear();
+
+        // Authored fillers win. Without them this derives "everything the player already knows
+        // that this level is not asking for", which is a reasonable default and grows with the
+        // cumulative pool — by Pamana it is every syllable in the game. A level that wants
+        // specific padding names it in the campaign's IntroductionSchedule.
+        IntroductionScheduleSO schedule = IntroductionScheduleLookup.Resolve();
+        List<string> authored = schedule != null ? schedule.ResolveFillerSymbolIds(_level) : null;
+        if (authored != null)
+        {
+            for (int i = 0; i < authored.Count; i++)
+            {
+                // A filler the level is also asking for is not padding, it is the answer.
+                if (!IsTargetSymbol(authored[i]) && !_offTargetBuffer.Contains(authored[i]))
+                    _offTargetBuffer.Add(authored[i]);
+            }
+
+            return _offTargetBuffer;
+        }
+
         if (_level?.cumulativeSymbolPool == null)
             return _offTargetBuffer;
 
@@ -380,17 +555,45 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
     /// <summary>
     /// The enemy that embodies a symbol. Level 1 is a clean bijection - Iligaw is E/I, Nawalang
     /// Mukha is NA, Abo ng Simula is A, Mantsa is MA - so choosing the symbol chooses the enemy,
-    /// and the identity the glyph badge asserts stays true. Returns null when no enemy in this
-    /// wave owns the symbol, and the caller then keeps its own type roll.
+    /// and the identity the glyph badge asserts stays true. When the wave's own list does not
+    /// carry the symbol we fall back to the level roster, exactly as ResolveCharacter does: a wave
+    /// that narrows its enemyTypes must not be able to put a needed symbol on a body that
+    /// contradicts its badge. Returns null only when no enemy on the level owns the symbol, and
+    /// the caller then keeps its own type roll.
     /// </summary>
     public EnemyDataSO ResolveEnemyData(string symbolStableId, WaveDefinition wave)
     {
-        if (string.IsNullOrEmpty(symbolStableId) || wave?.enemyTypes == null)
+        if (string.IsNullOrEmpty(symbolStableId))
             return null;
 
-        for (int i = 0; i < wave.enemyTypes.Count; i++)
+        EnemyDataSO fromWave = FindEnemyData(wave?.enemyTypes, symbolStableId);
+        if (fromWave != null)
+            return fromWave;
+
+        EnemyDataSO fromLevel = FindEnemyData(
+            _level != null ? _level.allowedEnemyTypes : null, symbolStableId);
+        if (fromLevel != null && !_loggedEnemyRosterFallback)
         {
-            EnemyDataSO data = wave.enemyTypes[i];
+            // Once per level: a narrowed wave is authoring drift, and the validator's
+            // WAVE_ROSTER_NARROWS_RESTORATION check should have caught it before it shipped.
+            _loggedEnemyRosterFallback = true;
+            DebugLogger.LogWarning(
+                "SpawnAssignmentCoordinator: wave enemyTypes did not carry '" + symbolStableId
+                + "'; fell back to the level roster (" + fromLevel.name + "). The wave narrows the "
+                + "level's enemy roster - see WAVE_ROSTER_NARROWS_RESTORATION.");
+        }
+
+        return fromLevel;
+    }
+
+    private static EnemyDataSO FindEnemyData(List<EnemyDataSO> candidates, string symbolStableId)
+    {
+        if (candidates == null)
+            return null;
+
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            EnemyDataSO data = candidates[i];
             if (data?.assignedCharacter != null && data.assignedCharacter.stableId == symbolStableId)
                 return data;
         }

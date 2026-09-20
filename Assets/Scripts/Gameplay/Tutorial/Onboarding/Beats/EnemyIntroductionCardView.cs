@@ -64,6 +64,14 @@ public sealed class EnemyIntroductionCardView : MonoBehaviour
     [Tooltip("The banner's single line of copy.")]
     [SerializeField] private TMP_Text _bannerText;
 
+    [Header("Continue Prompt")]
+    [Tooltip("Shown once the card's content has fully landed, while the beat holds for the player's "
+             + "tap. Optional: with no prompt the beat still holds, it just says so nowhere.")]
+    [SerializeField] private TMP_Text _continuePromptText;
+
+    [Tooltip("Copy for the hold prompt.")]
+    [SerializeField] private string _continuePromptMessage = "Tap to continue";
+
     /// <summary>
     /// True when this view has enough wiring to show a card at all. The beat checks this
     /// <b>before</b> claiming a type's one-shot introduction: a claim consumed against an unwired
@@ -82,6 +90,64 @@ public sealed class EnemyIntroductionCardView : MonoBehaviour
         DisableRaycastsOnEveryGraphic();
         HideCardImmediate();
         HideBanner();
+        HideContinuePrompt();
+    }
+
+    /// <summary>
+    /// Raises the "tap to continue" line. The card still takes NO input — see the class note; the
+    /// beat polls the Input System itself and this is only the label that says so. Keeping the
+    /// read here and the input there is what lets the card stay raycast-transparent.
+    /// </summary>
+    public void ShowContinuePrompt()
+    {
+        EnsureContinuePrompt();
+        SetTextOrHide(_continuePromptText, _continuePromptMessage);
+    }
+
+    /// <summary>
+    /// Builds the hold prompt when the scene has not wired one.
+    /// </summary>
+    /// <remarks>
+    /// Playtest 2026-09-17. <c>_continuePromptText</c> is a new serialized field, so it is null on
+    /// every scene saved before it existed — and a null label meant the card froze the game with
+    /// nothing on screen telling the player to tap. That is strictly worse than the timed card it
+    /// replaced, and it would have stayed broken until someone opened Gameplay.unity.
+    ///
+    /// <para>
+    /// Cloned from the ability line rather than built from nothing, so it inherits the card's font,
+    /// material and canvas without this class having to know any of them. A wired field always
+    /// wins; this only fills a gap.
+    /// </para>
+    /// </remarks>
+    private void EnsureContinuePrompt()
+    {
+        if (_continuePromptText != null || _abilityText == null)
+            return;
+
+        _continuePromptText = Instantiate(_abilityText, _abilityText.transform.parent);
+        _continuePromptText.name = "[Runtime] ContinuePrompt";
+        _continuePromptText.fontStyle = FontStyles.Italic;
+        _continuePromptText.alignment = TextAlignmentOptions.Center;
+        _continuePromptText.raycastTarget = false;
+
+        // Under the ability line, in the card's own layout space.
+        if (_continuePromptText.rectTransform != null && _abilityText.rectTransform != null)
+        {
+            RectTransform prompt = _continuePromptText.rectTransform;
+            RectTransform ability = _abilityText.rectTransform;
+            prompt.anchorMin = ability.anchorMin;
+            prompt.anchorMax = ability.anchorMax;
+            prompt.pivot = ability.pivot;
+            prompt.sizeDelta = ability.sizeDelta;
+            prompt.anchoredPosition =
+                ability.anchoredPosition + new Vector2(0f, -Mathf.Abs(ability.sizeDelta.y) - 12f);
+        }
+    }
+
+    /// <summary>Drops the hold prompt. Safe to call when it was never raised.</summary>
+    public void HideContinuePrompt()
+    {
+        SetTextOrHide(_continuePromptText, null);
     }
 
     /// <summary>
@@ -107,6 +173,7 @@ public sealed class EnemyIntroductionCardView : MonoBehaviour
         SetTextOrHide(_nameText, displayName);
         SetTextOrHide(_subtitleText, subtitle);
         SetTextOrHide(_abilityText, null);
+        HideContinuePrompt();
 
         SetCardProgress(0f);
         if (_cardGroup != null)
@@ -148,6 +215,7 @@ public sealed class EnemyIntroductionCardView : MonoBehaviour
     /// <summary>Drops the card out of view at once, without touching the banner.</summary>
     public void HideCardImmediate()
     {
+        HideContinuePrompt();
         SetCardProgress(0f);
         if (_cardGroup != null)
             _cardGroup.gameObject.SetActive(false);

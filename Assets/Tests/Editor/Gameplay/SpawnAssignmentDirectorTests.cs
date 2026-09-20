@@ -17,6 +17,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
         private const string A = "symbol.a";
         private const string Ma = "symbol.ma";
         private const string IligawGate = "iligaw_beat_resolved";
+        private const string FinalWaveGate = SpawnGateRegistry.FinalWaveReached;
 
         /// <summary>Abo ng Simula's spoken value. Level 1's opening directive names this.</summary>
         private const string AValue = "value.a";
@@ -700,6 +701,101 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 Assert.That(assignment.SymbolStableId, Is.EqualTo(Na),
                     "Only NA is both whitelisted and legal filler here.");
             }
+        }
+
+        [Test]
+        public void Whitelist_NeededSelectionSkipsUnavailableWindowSlots()
+        {
+            var policy = Level1Policy();
+            policy.activeSlotWindow = 2;
+            policy.minSpawnsBeforeNeeded = 0;
+            var director = new SpawnAssignmentDirector(
+                Level1Slots(), policy, new AlwaysNeededRandom());
+
+            SpawnAssignment assignment = director.AssignNext(new SpawnAssignmentRequest
+            {
+                RestoredSlots = NoneRestored(),
+                OpenGateTokens = new List<string>(),
+                WaveSymbolWhitelist = new List<string> { Na },
+            });
+
+            Assert.That(assignment.Role, Is.EqualTo(SpawnAssignmentRole.Needed));
+            Assert.That(assignment.SymbolStableId, Is.EqualTo(Na),
+                "A needed slot outside this wave's symbol whitelist must not be assigned.");
+        }
+
+        [Test]
+        public void Level5Paragraph_AllUngatedOccurrencesReachBeforeFinalWave()
+        {
+            string[] symbols =
+            {
+                Ma, Na, Ei, Ma, Ma, "symbol.ba", Ma, Ma, Na, A, Ma, Ma, Na, "symbol.ta",
+            };
+            var slots = new List<SpawnSlot>(symbols.Length);
+            for (int index = 0; index < symbols.Length; index++)
+            {
+                slots.Add(new SpawnSlot(
+                    symbols[index],
+                    "level.ugat.05.paragraph",
+                    index,
+                    index == symbols.Length - 1 ? FinalWaveGate : null,
+                    "level.ugat.05.paragraph." + index.ToString("00")));
+            }
+
+            var policy = new SpawnAssignmentPolicy
+            {
+                minSpawnsBeforeNeeded = 0,
+                neededWeight = 1f,
+                starvationTimeout = 30f,
+                hardStarvationTimeout = 50f,
+                activeSlotWindow = 1,
+                minFillerVariety = 2,
+                offTargetFillerWeight = 0.3f,
+                maxOverflowBatches = 12,
+            };
+            var director = new SpawnAssignmentDirector(slots, policy, new AlwaysNeededRandom());
+            var restored = new bool[symbols.Length];
+            var preFinalWhitelist = new List<string> { A, Ei, "symbol.ba", Ma, Na };
+            int reachableBeforeFinalWave = 0;
+
+            int[] waveSpawnCounts = { 2, 4, 5, 6 };
+            for (int wave = 0; wave < waveSpawnCounts.Length; wave++)
+            {
+                for (int spawn = 0; spawn < waveSpawnCounts[wave]; spawn++)
+                {
+                    SpawnAssignment assignment = director.AssignNext(new SpawnAssignmentRequest
+                    {
+                        RestoredSlots = restored,
+                        OpenGateTokens = new List<string>(),
+                        WaveSymbolWhitelist = preFinalWhitelist,
+                        Now = (wave * 10f) + spawn,
+                    });
+
+                    if (assignment.Role == SpawnAssignmentRole.Needed)
+                    {
+                        Assert.That(assignment.SlotIndex, Is.LessThan(symbols.Length - 1),
+                            "The terminal TA slot must remain gated until wave 5.");
+                        restored[assignment.SlotIndex] = true;
+                        reachableBeforeFinalWave++;
+                    }
+                }
+            }
+
+            Assert.AreEqual(13, reachableBeforeFinalWave,
+                "All thirteen ungated paragraph occurrences must be reachable before wave 5.");
+            Assert.IsFalse(restored[symbols.Length - 1]);
+
+            SpawnAssignment final = director.AssignNext(new SpawnAssignmentRequest
+            {
+                RestoredSlots = restored,
+                OpenGateTokens = new List<string> { FinalWaveGate },
+                WaveSymbolWhitelist = new List<string> { "symbol.ta" },
+                Now = 50f,
+            });
+
+            Assert.AreEqual(SpawnAssignmentRole.Needed, final.Role);
+            Assert.AreEqual(symbols.Length - 1, final.SlotIndex);
+            Assert.AreEqual("symbol.ta", final.SymbolStableId);
         }
 
         // ---------------------------------------------------------------- All levels

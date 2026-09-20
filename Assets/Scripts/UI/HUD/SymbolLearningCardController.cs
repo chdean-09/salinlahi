@@ -136,7 +136,7 @@ public class SymbolLearningCardController : MonoBehaviour
     /// </summary>
     public static bool HasPresentableRequirement(LevelConfigSO config)
     {
-        if (config == null || config.learningRequirements == null)
+        if (config == null || config.suppressSymbolLearningCards || config.learningRequirements == null)
             return false;
 
         for (int i = 0; i < config.learningRequirements.Count; i++)
@@ -158,7 +158,7 @@ public class SymbolLearningCardController : MonoBehaviour
     private void CollectCards(LevelConfigSO config)
     {
         _cards.Clear();
-        if (config == null || config.learningRequirements == null)
+        if (config == null || config.suppressSymbolLearningCards || config.learningRequirements == null)
             return;
 
         for (int i = 0; i < config.learningRequirements.Count; i++)

@@ -14,10 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   waveCount: 5
   openingEnemyCount: 2
-  openingSpawnInterval: 6
-  openingWaveStartDelay: 3
+  openingSpawnInterval: 3
+  openingWaveStartDelay: 1.25
   rampFirstEnemyCount: 4
   rampLastEnemyCount: 7
-  rampFirstSpawnInterval: 5
-  rampLastSpawnInterval: 3.5
-  rampWaveStartDelay: 2
+  rampFirstSpawnInterval: 2.75
+  rampLastSpawnInterval: 2
+  rampWaveStartDelay: 1

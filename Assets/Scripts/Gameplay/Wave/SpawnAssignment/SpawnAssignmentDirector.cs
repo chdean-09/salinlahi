@@ -192,7 +192,9 @@ public sealed class SpawnAssignmentDirector
         _eligible.Clear();
         for (int i = 0; i < _window.Count; i++)
         {
-            if (IsGateOpen(request, _slots[_window[i]].GateToken))
+            SpawnSlot slot = _slots[_window[i]];
+            if (IsGateOpen(request, slot.GateToken)
+                && IsSymbolAllowedByWave(request, slot.SymbolStableId))
                 _eligible.Add(_window[i]);
         }
     }
@@ -623,6 +625,15 @@ public sealed class SpawnAssignmentDirector
         }
 
         return false;
+    }
+
+    private static bool IsSymbolAllowedByWave(
+        SpawnAssignmentRequest request, string symbolStableId)
+    {
+        if (request.WaveSymbolWhitelist == null || request.WaveSymbolWhitelist.Count == 0)
+            return true;
+
+        return Contains(request.WaveSymbolWhitelist, symbolStableId);
     }
 
     private static bool Contains(IReadOnlyList<string> list, string value)

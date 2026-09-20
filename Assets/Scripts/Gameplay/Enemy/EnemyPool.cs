@@ -178,7 +178,15 @@ public class EnemyPool : Singleton<EnemyPool>
 
         var checkedOutSnapshot = new List<Enemy>(_checkedOutEnemies);
         for (int i = 0; i < checkedOutSnapshot.Count; i++)
-            Return(checkedOutSnapshot[i]);
+        {
+            Enemy enemy = checkedOutSnapshot[i];
+            // Returning one shell can disable an ability such as MirrorDecoyController, which
+            // returns a dependent shell while this snapshot is still being iterated. Re-check the
+            // live set so that cascading cleanup does not turn a valid terminal path into a
+            // duplicate-return warning. Direct callers of Return still retain their diagnostics.
+            if (_checkedOutEnemies.Contains(enemy))
+                Return(enemy);
+        }
     }
 
     private PoolState ResolvePoolState(EnemyDataSO data)
@@ -191,7 +199,20 @@ public class EnemyPool : Singleton<EnemyPool>
             if (_poolStatesByEnemyID.TryGetValue(key, out PoolState mappedState))
                 return mappedState;
 
-            DebugLogger.LogWarning($"EnemyPool: Unknown enemyID '{enemyID}'. Falling back to default pool.");
+            // Most enemies deliberately share the default '[Enemy] Corrupted' shell instead of
+            // registering a dedicated pool, so an unregistered enemyID is the normal spawn path,
+            // not a fault. Only the case where there is no default pool to fall back to — and the
+            // enemy therefore cannot spawn at all — deserves a warning.
+            if (_defaultPoolState != null)
+            {
+                DebugLogger.Log(
+                    $"EnemyPool: enemyID '{enemyID}' has no dedicated pool. Using the shared default pool.");
+            }
+            else
+            {
+                DebugLogger.LogWarning(
+                    $"EnemyPool: Unknown enemyID '{enemyID}' and no default pool to fall back to.");
+            }
         }
 
         if (_defaultPoolState == null)

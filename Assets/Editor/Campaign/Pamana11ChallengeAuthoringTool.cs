@@ -13,7 +13,11 @@ using UnityEngine;
 ///
 /// TWO DECISIONS HERE ARE MINE AND NEED CONFIRMING.
 ///
-/// 1. Clue policy is Reduced, not Minimal. The escalation so far runs Full (Ugat 1-3) then Reduced
+/// 1. RESOLVED 2026-09-17 by ruling D1: clue policy is FULL, not Reduced. The reasoning below
+///    argued itself into Full and stopped at Reduced as a compromise; the reveal table makes it
+///    explicit -- guided word restoration shows everything. The original note follows.
+///
+///    Clue policy is Reduced, not Minimal. The escalation so far runs Full (Ugat 1-3) then Reduced
 ///    (Ugat 4, Ugat 5, Ugnayan 9), so Minimal would be the next step for a final-era level. But
 ///    Level 11 INTRODUCES DA/RA and LA -- the user story asks for "guided instruction for DALA and
 ///    DAMA" -- and withholding clues on symbols the player is meeting for the first time works
@@ -88,7 +92,7 @@ public static class Pamana11ChallengeAuthoringTool
 
             unit.FindPropertyRelative("unitId").stringValue = spec.UnitId;
             unit.FindPropertyRelative("mode").enumValueIndex = 1;         // WordPlacement
-            unit.FindPropertyRelative("cluePolicy").enumValueIndex = 1;   // Reduced -- see class note
+            unit.FindPropertyRelative("cluePolicy").enumValueIndex = 0;   // Full -- D1, see class note
             unit.FindPropertyRelative("prompt").stringValue = spec.Prompt;
 
             SerializedProperty t = unit.FindPropertyRelative("tokens");
@@ -118,7 +122,7 @@ public static class Pamana11ChallengeAuthoringTool
             unit.FindPropertyRelative("evidenceContentId").stringValue = spec.EvidenceId;
 
             log.AppendLine($"  unit {u + 1}: {spec.FocusText} (+{spec.Decoys.Length} decoys)  " +
-                           $"mode=WordPlacement cluePolicy=Reduced");
+                           $"mode=WordPlacement cluePolicy=Full");
         }
 
         so.ApplyModifiedPropertiesWithoutUndo();

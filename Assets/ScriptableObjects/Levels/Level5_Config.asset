@@ -122,13 +122,232 @@ MonoBehaviour:
       symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
       spokenValueId: value.ta
     requiredSuccesses: 2
+  suppressSymbolLearningCards: 1
+  restorationObjective:
+    displayMode: 3
+    units:
+    - stableId: level.ugat.05.paragraph.line.01
+      displayLabel: Kapag may gana at isip,
+      clue: Kapag may gana at isip,
+      tokens:
+      - kind: 0
+        literalText: 'Kapag '
+        occurrenceId: 
+        completionOrder: -1
+        target:
+          symbol: {fileID: 0}
+          spokenValueId: 
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.05.paragraph.ma.01
+        completionOrder: 0
+        target:
+          symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+          spokenValueId: value.ma
+      - kind: 0
+        literalText: y ga
+        occurrenceId: 
+        completionOrder: -1
+        target:
+          symbol: {fileID: 0}
+          spokenValueId: 
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.05.paragraph.na.01
+        completionOrder: 1
+        target:
+          symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+          spokenValueId: value.na
+      - kind: 0
+        literalText: ' at '
+        occurrenceId: 
+        completionOrder: -1
+        target:
+          symbol: {fileID: 0}
+          spokenValueId: 
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.05.paragraph.ei.01
+        completionOrder: 2
+        target:
+          symbol: {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+          spokenValueId: value.i
+      - kind: 0
+        literalText: "sip, \n"
+        occurrenceId: 
+        completionOrder: -1
+        target:
+          symbol: {fileID: 0}
+          spokenValueId: 
+    - stableId: level.ugat.05.paragraph.line.02
+      displayLabel: mas maraming bagay ang kaya, mas maraming pangarap ang naaabot,
+      clue: mas maraming bagay ang kaya, mas maraming pangarap ang naaabot,
+      tokens:
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.05.paragraph.ma.02
+        completionOrder: 3
+        target:
+          symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+          spokenValueId: value.ma
+      - kind: 0
+        literalText: 's '
+        occurrenceId: 
+        completionOrder: -1
+        target:
+          symbol: {fileID: 0}
+          spokenValueId: 
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.05.paragraph.ma.03
+        completionOrder: 4
+        target:
+          symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+          spokenValueId: value.ma
+      - kind: 0
+        literalText: 'raming '
+        occurrenceId: 
+        completionOrder: -1
+        target:
+          symbol: {fileID: 0}
+          spokenValueId: 
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.05.paragraph.ba.01
+        completionOrder: 5
+        target:
+          symbol: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+          spokenValueId: value.ba
+      - kind: 0
+        literalText: 'gay ang kaya, '
+        occurrenceId: 
+        completionOrder: -1
+        target:
+          symbol: {fileID: 0}
+          spokenValueId: 
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.05.paragraph.ma.04
+        completionOrder: 6
+        target:
+          symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+          spokenValueId: value.ma
+      - kind: 0
+        literalText: 's '
+        occurrenceId: 
+        completionOrder: -1
+        target:
+          symbol: {fileID: 0}
+          spokenValueId: 
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.05.paragraph.ma.05
+        completionOrder: 7
+        target:
+          symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+          spokenValueId: value.ma
+      - kind: 0
+        literalText: 'raming pangarap ang '
+        occurrenceId: 
+        completionOrder: -1
+        target:
+          symbol: {fileID: 0}
+          spokenValueId: 
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.05.paragraph.na.02
+        completionOrder: 8
+        target:
+          symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+          spokenValueId: value.na
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.05.paragraph.a.01
+        completionOrder: 9
+        target:
+          symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+          spokenValueId: value.a
+      - kind: 0
+        literalText: "abot, \n"
+        occurrenceId: 
+        completionOrder: -1
+        target:
+          symbol: {fileID: 0}
+          spokenValueId: 
+    - stableId: level.ugat.05.paragraph.line.03
+      displayLabel: at mas malayo ang napupuntahan.
+      clue: at mas malayo ang napupuntahan.
+      tokens:
+      - kind: 0
+        literalText: 'at '
+        occurrenceId: 
+        completionOrder: -1
+        target:
+          symbol: {fileID: 0}
+          spokenValueId: 
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.05.paragraph.ma.06
+        completionOrder: 10
+        target:
+          symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+          spokenValueId: value.ma
+      - kind: 0
+        literalText: 's '
+        occurrenceId: 
+        completionOrder: -1
+        target:
+          symbol: {fileID: 0}
+          spokenValueId: 
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.05.paragraph.ma.07
+        completionOrder: 11
+        target:
+          symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+          spokenValueId: value.ma
+      - kind: 0
+        literalText: 'layo ang '
+        occurrenceId: 
+        completionOrder: -1
+        target:
+          symbol: {fileID: 0}
+          spokenValueId: 
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.05.paragraph.na.03
+        completionOrder: 12
+        target:
+          symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+          spokenValueId: value.na
+      - kind: 0
+        literalText: pupun
+        occurrenceId: 
+        completionOrder: -1
+        target:
+          symbol: {fileID: 0}
+          spokenValueId: 
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.05.paragraph.ta.01
+        completionOrder: 13
+        target:
+          symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+          spokenValueId: value.ta
+      - kind: 0
+        literalText: han.
+        occurrenceId: 
+        completionOrder: -1
+        target:
+          symbol: {fileID: 0}
+          spokenValueId: 
   activeClueCombatEnabled: 1
   activeClueRestorationEnabled: 1
   clueChannels: 18
   audioVisualFallback: 4
   spawnAssignmentPolicy:
-    minSpawnsBeforeNeeded: 3
-    neededWeight: 0.5
+    minSpawnsBeforeNeeded: 0
+    neededWeight: 0.7
     starvationTimeout: 30
     hardStarvationTimeout: 50
     minFillerVariety: 2
@@ -139,6 +358,8 @@ MonoBehaviour:
     maxConcurrentEnemies: 8
     openingSpawnSpokenValueId: 
     allowFinalWaveOverflow: 1
+    gateFinalSlotToFinalWave: 1
+    maxOverflowBatches: 12
     assignmentSeed: 0
     slotGates: []
     slotFloors: []
@@ -154,8 +375,8 @@ MonoBehaviour:
     dialogue: {fileID: 11400000, guid: 2e50af9e1e44e4f5e9de1d0559db9b88, type: 2}
     cutscene: {fileID: 11400000, guid: c0c562742118d436ba2ce9067d321ac4, type: 2}
   finalRestorationValue:
-    symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
-    spokenValueId: value.na
+    symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+    spokenValueId: value.ta
   rewardIds:
   - memory.ugat.05
   masteryRequirements:
@@ -191,46 +412,8 @@ MonoBehaviour:
     requiredSuccesses: 1
   eraTheme: {fileID: 11400000, guid: 4a3f16684c91d284eafb13ac69eecbfc, type: 2}
   numberSprite: {fileID: 7455636090941830803, guid: 38c4b91829544e24287be97f9e8a85e4, type: 3}
-  _authoredWaves:
-  - isIntermissionWave: 0
-    characters:
-    - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
-    enemyTypes:
-    - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
-    - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
-    - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
-    enemyCount: 5
-    spawnInterval: 3.5
-    waveStartDelay: 1.5
-  - isIntermissionWave: 0
-    characters:
-    - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
-    - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
-    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
-    - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
-    - {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
-    enemyTypes:
-    - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
-    - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
-    - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
-    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
-    - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
-    enemyCount: 7
-    spawnInterval: 3
-    waveStartDelay: 1.5
-  - isIntermissionWave: 0
-    characters:
-    - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
-    enemyTypes:
-    - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
-    - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
-    - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
-    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
-    - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
-    - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
-    enemyCount: 9
-    spawnInterval: 3
-    waveStartDelay: 1.5
+  _authoredWaves: []
+  waveCurve: {fileID: 11400000, guid: d976cc471270472581e14aadcafda1c5, type: 2}
   allowedCharacters:
   - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
   - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
@@ -245,6 +428,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
   - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
   - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
+  - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
   bossConfig: {fileID: 0}
   isAvailableInLite: 0
   multiKillChainEnabled: 0
@@ -262,10 +446,10 @@ MonoBehaviour:
     emergencyHintsPerAttempt: 1
     emergencyHintScorePenalty: 0.1
   flowSegments:
-  - waveCount: 1
+  - waveCount: 2
     challengeUnitIds:
     - ugat05-restore-line-01
-  - waveCount: 1
+  - waveCount: 2
     challengeUnitIds:
     - ugat05-restore-line-02
   - waveCount: 1

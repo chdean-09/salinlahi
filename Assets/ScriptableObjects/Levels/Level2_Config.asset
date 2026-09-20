@@ -122,6 +122,46 @@ MonoBehaviour:
       symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
       spokenValueId: value.ta
     requiredSuccesses: 2
+  suppressSymbolLearningCards: 1
+  restorationObjective:
+    displayMode: 1
+    units:
+    - stableId: level.ugat.02.objective.bata
+      displayLabel: BATA
+      clue: bunga ng pagmamahalan
+      tokens:
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.02.bata.ba
+        completionOrder: 1
+        target:
+          symbol: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+          spokenValueId: value.ba
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.02.bata.ta
+        completionOrder: 0
+        target:
+          symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+          spokenValueId: value.ta
+    - stableId: level.ugat.02.objective.mata
+      displayLabel: MATA
+      clue: dungawan ng kaluluwa
+      tokens:
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.02.mata.ma
+        completionOrder: 2
+        target:
+          symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+          spokenValueId: value.ma
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.02.mata.ta
+        completionOrder: 3
+        target:
+          symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+          spokenValueId: value.ta
   activeClueCombatEnabled: 1
   activeClueRestorationEnabled: 1
   clueChannels: 19
@@ -137,8 +177,10 @@ MonoBehaviour:
     choiceMomentSlotIndex: 1
     choicePairWindow: 1.5
     maxConcurrentEnemies: 8
-    openingSpawnSpokenValueId: 
+    openingSpawnSpokenValueId: value.ta
     allowFinalWaveOverflow: 1
+    gateFinalSlotToFinalWave: 1
+    maxOverflowBatches: 0
     assignmentSeed: 0
     slotGates: []
     slotFloors: []
@@ -192,7 +234,7 @@ MonoBehaviour:
   eraTheme: {fileID: 11400000, guid: 4a3f16684c91d284eafb13ac69eecbfc, type: 2}
   numberSprite: {fileID: 187839122118532240, guid: 04da23af290d613448e27c47ec8f91c0, type: 3}
   _authoredWaves: []
-  waveCurve: {fileID: 11400000, guid: d976cc471270472581e14aadcafda1c5, type: 2}
+  waveCurve: {fileID: 11400000, guid: e171d9110e754285a9a609c1d0d697b5, type: 2}
   allowedCharacters:
   - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
   - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}

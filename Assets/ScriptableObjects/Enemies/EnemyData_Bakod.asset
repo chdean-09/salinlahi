@@ -17,6 +17,7 @@ MonoBehaviour:
   discoverySubtitle: 
   description: A wide stone creature shaped like a moving wall. It blocks paths,
     separates family members, and prevents Juan from moving forward.
+  abilityLine: It raises a shell that guards the enemies walking behind it.
   moveSpeed: 0.85
   maxHealth: 1
   walkFrames:

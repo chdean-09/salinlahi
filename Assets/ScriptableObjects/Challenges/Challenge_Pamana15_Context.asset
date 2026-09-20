@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Huling Alaala
   units:
   - unitId: pamana15-complete-pamana
-    mode: 1
+    mode: 3
     cluePolicy: 1
     prompt: Ito ang huling salitang ibinigay sa iyo ng mga nauna. Buuin mo ang pangalan
       ng iniwan nila sa iyo.
@@ -55,7 +55,7 @@ MonoBehaviour:
     heartPenalty: 1
     evidenceContentId: level.pamana.05.focus.01
   - unitId: pamana15-complete-malaya
-    mode: 1
+    mode: 3
     cluePolicy: 1
     prompt: Hindi na makukuha ng Paglimot ang naibalik mo. Buuin mo ang salitang
       nagsasabi kung ano ka na ngayon.

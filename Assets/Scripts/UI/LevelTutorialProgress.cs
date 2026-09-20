@@ -71,6 +71,17 @@ public static class LevelTutorialProgress
     }
 
     /// <summary>
+    /// True only when the level itself authored an onboarding source. A level may still use the
+    /// historical level-number gate for its progress record, but a null sequence is an intentional
+    /// "no onboarding" choice and must not produce a missing-asset warning at runtime.
+    /// </summary>
+    public static bool HasAuthoredOnboardingSequence(LevelConfigSO levelConfig)
+    {
+        return levelConfig != null
+            && (levelConfig.onboardingSequence != null || levelConfig.tutorialSequence != null);
+    }
+
+    /// <summary>
     /// True when the given level's onboarding sequence should play now. Resolves the level's
     /// config from the active campaign to read its <c>alwaysShowTutorial</c> flag, so the two
     /// overloads agree; callers that already hold the config should prefer
@@ -221,8 +232,9 @@ public static class LevelTutorialProgress
 
     private static bool ShouldShowTutorial(int levelNumber, bool alwaysShowTutorial)
     {
-        // Only these two levels have an authored onboarding sequence. The flag can defeat the seen
-        // gate; it cannot conjure a tutorial for a level that has none, so this check stays first.
+        // The legacy progress record only covers Levels 1 and 2. The caller that owns level-flow
+        // sequencing additionally checks HasAuthoredOnboardingSequence, so a null Level 2 asset
+        // cannot turn this historical key into a missing-onboarding warning.
         if (levelNumber != Level1TutorialLevelNumber && levelNumber != Level2TutorialLevelNumber)
             return false;
 

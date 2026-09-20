@@ -57,8 +57,14 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             TutorialRuntimeState.Clear();
             EnemyIntroductionProgress.ResetForTests();
             EnemyDebutLookup.CampaignOverrideForTests = null;
+            IntroductionScheduleLookup.ScheduleOverrideForTests = null;
             AshFirstSlotController.ResetRegistryForTests();
             ActiveCluePresenter.SetActiveForTests(null);
+            // The card's last step now holds for a player's tap, and a fixture has no player.
+            // Left on, every test that drives a card to completion would wait out the hold and
+            // then fail on a card still up. The gate itself is covered by ContinueHoldTests, which
+            // leaves this off and sends real input.
+            EnemyIntroductionBeat.SetSkipContinueHoldForTests(true);
             Time.timeScale = 1f;
 
             _gameManager = CreateComponent<GameManager>("GameManager_Level1LessonTests");
@@ -108,6 +114,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         [TearDown]
         public void TearDown()
         {
+            EnemyIntroductionBeat.SetSkipContinueHoldForTests(false);
             for (int i = _objectsToDestroy.Count - 1; i >= 0; i--)
             {
                 if (_objectsToDestroy[i] != null)
@@ -123,6 +130,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             TutorialRuntimeState.Clear();
             EnemyIntroductionProgress.ResetForTests();
             EnemyDebutLookup.CampaignOverrideForTests = null;
+            IntroductionScheduleLookup.ScheduleOverrideForTests = null;
             AshFirstSlotController.ResetRegistryForTests();
             ActiveCluePresenter.SetActiveForTests(null);
 
@@ -1473,6 +1481,158 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         /// the case below is not the case that shipped.
         /// </para>
         /// </summary>
+        /// <summary>
+        /// Playtest 2026-09-17. The introduced type's badge is blank from the claim until the card
+        /// reveals it, so the player cannot read the symbol off an enemy they have not been
+        /// introduced to yet.
+        ///
+        /// <para>
+        /// Asserted rather than reasoned about. The blanking works by alpha, not by disabling the
+        /// renderer, and there was no public observable for it at all — which is exactly why its
+        /// first report ("glyph is visible") could not be settled from the code.
+        /// </para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator IntroducedEnemy_CarriesABlankBadge_UntilTheCardRevealsIt()
+        {
+            yield return null;
+
+            SetPrivateField(_beat, "_nameStepSeconds", 0f);
+            SetPrivateField(_beat, "_abilityStepSeconds", 0f);
+            SetPrivateField(_beat, "_glyphRevealStepSeconds", 0f);
+            SetPrivateField(_beat, "_onScreenWaitTimeoutSeconds", 0f);
+
+            BaybayinCharacterSO character = MakeCharacter("EI", "symbol.test.blank.ei");
+            EnemyDataSO data = CreateEnemyData("test_blank", "Iligaw", character);
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO> { data },
+                System.Array.Empty<EnemyLessonSO>(),
+                new List<FocusWordDefinition>());
+            _gameManager.SetLevel(config);
+
+            // The default shell carries no badge, and Enemy resolves one on Initialize — so it has
+            // to be attached BEFORE, or the blanking has nothing to act on and this test would
+            // assert against a null instead of against the rule.
+            GameObject shell = new GameObject("Iligaw_Blank");
+            shell.SetActive(false);
+            shell.AddComponent<SpriteRenderer>();
+            shell.AddComponent<BoxCollider2D>();
+            shell.AddComponent<EnemyMover>();
+            var badgeConfig = GlyphBadgePlayModeTestHelpers.CreateBadgeConfig();
+            _objectsToDestroy.Add(badgeConfig);
+            (EnemyGlyphBadge badge, SpriteRenderer badgeRenderer) =
+                GlyphBadgePlayModeTestHelpers.AddGlyphBadgeChild(shell, badgeConfig);
+            badgeRenderer.sprite = GlyphBadgePlayModeTestHelpers.CreateSprite(Color.white);
+            Enemy enemy = shell.AddComponent<Enemy>();
+            GlyphBadgePlayModeTestHelpers.DisableDebugLabels(enemy);
+            shell.SetActive(true);
+            _objectsToDestroy.Add(shell);
+
+            enemy.transform.position = Vector3.zero;
+            Assert.IsTrue(enemy.Initialize(data));
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndSuppress, enemy.IntroductionOutcome,
+                "setup: this spawn must be the one that gets a card.");
+
+            // The spawner assigns the carried glyph AFTER Initialize returns, and that path runs
+            // Refresh -> SetCharacter -> ApplyBadgeColor. The blanking has to survive it.
+            enemy.AssignCharacter(character);
+
+            Assert.IsNotNull(enemy.GlyphBadge, "setup: the shell must carry a badge to blank.");
+            Assert.IsFalse(enemy.GlyphBadge.IsVisible,
+                "The badge must be blank from the claim onward, and must stay blank across the "
+                + "spawner's own character assignment. A readable badge here is a symbol the "
+                + "player can act on before they have been told what carries it.");
+
+            for (int frame = 0; frame < 180 && !enemy.GlyphBadge.IsVisible; frame++)
+                yield return null;
+
+            Assert.IsTrue(enemy.GlyphBadge.IsVisible,
+                "The card must put the badge back. Left blank, the enemy is unreadable for the "
+                + "rest of its life and the player has nothing to draw.");
+        }
+
+        /// <summary>
+        /// Playtest 2026-09-17. The card's last step holds for the player instead of a clock, and
+        /// the field is frozen outright while it waits.
+        ///
+        /// <para>
+        /// This is the ONE fixture that lets the hold actually run — every other test here skips it
+        /// in SetUp, because a fixture has no player. Without this the seam would be switched on
+        /// everywhere and the gate would be covered nowhere, which is how a green suite hides a
+        /// feature that never runs.
+        /// </para>
+        ///
+        /// <para>
+        /// <b>Not covered here:</b> the device bindings in ContinuePressedThisFrame. The PlayMode
+        /// assembly does not reference the Input System, so this raises the continue through a seam.
+        /// Whether a finger on a phone produces one is a play session, not this test.
+        /// </para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CardHold_FreezesTheField_AndWaitsForTheContinue()
+        {
+            yield return null;
+
+            EnemyIntroductionBeat.SetSkipContinueHoldForTests(false);
+
+            SetPrivateField(_beat, "_nameStepSeconds", 0f);
+            SetPrivateField(_beat, "_abilityStepSeconds", 0f);
+            SetPrivateField(_beat, "_glyphRevealStepSeconds", 0f);
+            SetPrivateField(_beat, "_onScreenWaitTimeoutSeconds", 0f);
+
+            BaybayinCharacterSO character = MakeCharacter("EI", "symbol.test.hold.ei");
+            EnemyDataSO data = CreateEnemyData("test_hold", "Iligaw", character);
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO> { data },
+                System.Array.Empty<EnemyLessonSO>(),
+                new List<FocusWordDefinition>());
+            _gameManager.SetLevel(config);
+
+            Enemy enemy = CreateEnemyShell("Iligaw_Hold");
+            enemy.transform.position = Vector3.zero;
+            Assert.IsTrue(enemy.Initialize(data));
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndSuppress, enemy.IntroductionOutcome,
+                "setup: this spawn must be the one that gets a card, or there is no hold to test.");
+
+            for (int frame = 0; frame < 120 && !EnemyIntroductionBeat.IsHoldingForContinue; frame++)
+                yield return null;
+
+            Assert.IsTrue(EnemyIntroductionBeat.IsHoldingForContinue,
+                "The card must stop and wait for the player. Reaching the end of its steps and "
+                + "releasing itself is the timing the playtest reported: the description is gone "
+                + "before it has been read.");
+            Assert.AreEqual(0f, Time.timeScale, 1e-4f,
+                "The field must be frozen while the card holds. Holding at the introduction's own "
+                + "0.15 leaves the wave creeping toward the shrine for as long as the player reads, "
+                + "and it is the freeze that makes taking input here legitimate at all.");
+
+            // Nothing but a continue may end it: a hold that times itself out is the old behaviour
+            // wearing a prompt.
+            for (int frame = 0; frame < 30; frame++)
+                yield return null;
+
+            Assert.IsTrue(EnemyIntroductionBeat.IsHoldingForContinue,
+                "The hold must not expire on its own while _continueHoldTimeoutSeconds is 0.");
+
+            EnemyIntroductionBeat.RequestContinueForTests();
+
+            for (int frame = 0; frame < 120 && EnemyIntroductionBeat.IsHoldingForContinue; frame++)
+                yield return null;
+
+            Assert.IsFalse(EnemyIntroductionBeat.IsHoldingForContinue,
+                "The continue must release the card.");
+
+            // The flag drops when the hold ends; step 4's release ramp runs AFTER it, so the time
+            // scale is still on its way back for a few frames. Waiting for the ramp rather than
+            // reading across it — the first version of this test failed here for that reason.
+            for (int frame = 0; frame < 180 && Mathf.Approximately(Time.timeScale, 0f); frame++)
+                yield return null;
+
+            Assert.AreNotEqual(0f, Time.timeScale,
+                "The field must be running again once the card has been dismissed, or the level is "
+                + "frozen for the rest of its life.");
+        }
+
         [UnityTest]
         public IEnumerator BannerStandingAfterACard_StillLetsTheNextTypeIntroduceItself()
         {
@@ -1480,6 +1640,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
 
             SetPrivateField(_beat, "_nameStepSeconds", 0f);
             SetPrivateField(_beat, "_abilityStepSeconds", 0f);
+            SetPrivateField(_beat, "_glyphRevealStepSeconds", 0f);
             SetPrivateField(_beat, "_onScreenWaitTimeoutSeconds", 0f);
 
             BaybayinCharacterSO iligawChar = MakeCharacter("EI", "symbol.test.banner.ei");
@@ -1782,6 +1943,125 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
 
             _beat.enabled = false;
             yield return null;
+        }
+
+        /// <summary>
+        /// The authored plan decides. A player entering the campaign at Level 2 met Abo, Iligaw and
+        /// Mantsa there, because the only gate was "never introduced before" and their cards were
+        /// unspent. Level 2 exists to teach Bakod and Takip.
+        ///
+        /// <para>
+        /// Note this is the NEVER-MET case. The older non-debut test spends the one-shot first, so
+        /// it only ever covered "already met" — which is why this shipped.
+        /// </para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TypeTheScheduleDoesNotNameHere_IsNotIntroduced_EvenIfNeverMet()
+        {
+            yield return null;
+
+            BaybayinCharacterSO aChar = MakeCharacter("A", "symbol.test.sched.a");
+            EnemyDataSO aboData = CreateEnemyData("test_abo_sched", "Abo ng Simula", aChar);
+            EnemyDataSO takipData = CreateEnemyData("test_takip_sched", "Takip", aChar);
+
+            LevelConfigSO here = CreateLevelConfig(
+                new List<EnemyDataSO> { aboData, takipData }, null, new List<FocusWordDefinition>());
+            here.levelNumber = 2;
+            here.stableId = "level.test.sched.here";
+            _gameManager.SetLevel(here);
+
+            // The plan names only Takip for this level, exactly as Level 2 names only Bakod and
+            // Takip. Abo is spawnable here and still not this level's to explain.
+            IntroductionScheduleLookup.ScheduleOverrideForTests = CreateSchedule(here, takipData);
+
+            Assert.IsFalse(EnemyIntroductionProgress.HasBeenIntroduced(aboData),
+                "setup: the point of this case is an UNSPENT card. Claiming it would make this the "
+                + "already-met case another test already covers.");
+
+            Enemy spawn = CreateEnemyShell("Abo_Unscheduled");
+            Assert.IsTrue(spawn.Initialize(aboData));
+
+            Assert.AreEqual(IntroductionOutcome.None, spawn.IntroductionOutcome,
+                "The schedule does not name Abo for this level, so he gets no card here.");
+            Assert.IsFalse(EnemyIntroductionProgress.HasBeenIntroduced(aboData),
+                "Declining must not spend the one-shot, or the level that DOES name him would meet "
+                + "him in silence.");
+
+            _beat.enabled = false;
+            yield return null;
+        }
+
+        /// <summary>
+        /// The other half. Without this the rule above could silence every introduction in the game
+        /// and the suite would report nothing.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TypeTheScheduleNamesHere_IsStillIntroduced()
+        {
+            yield return null;
+
+            BaybayinCharacterSO taChar = MakeCharacter("TA", "symbol.test.sched.ta");
+            EnemyDataSO takipData = CreateEnemyData("test_takip_named", "Takip", taChar);
+
+            LevelConfigSO here = CreateLevelConfig(
+                new List<EnemyDataSO> { takipData }, null, new List<FocusWordDefinition>());
+            here.levelNumber = 2;
+            here.stableId = "level.test.sched.named";
+            _gameManager.SetLevel(here);
+            IntroductionScheduleLookup.ScheduleOverrideForTests = CreateSchedule(here, takipData);
+
+            Enemy spawn = CreateEnemyShell("Takip_Named");
+            Assert.IsTrue(spawn.Initialize(takipData));
+
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndSuppress, spawn.IntroductionOutcome,
+                "The schedule names Takip for this level, so this level must explain him.");
+
+            _beat.enabled = false;
+            yield return null;
+        }
+
+        /// <summary>
+        /// A campaign with no schedule assigned is not configured, not a decision. Every fixture in
+        /// this file depends on that — with no schedule the rule is skipped entirely — so it is
+        /// asserted rather than left implicit.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator NoScheduleConfigured_LeavesIntroductionsAsTheyWere()
+        {
+            yield return null;
+
+            BaybayinCharacterSO ch = MakeCharacter("EI", "symbol.test.nosched.ei");
+            EnemyDataSO data = CreateEnemyData("test_nosched", "Iligaw", ch);
+            LevelConfigSO here = CreateLevelConfig(
+                new List<EnemyDataSO> { data }, null, new List<FocusWordDefinition>());
+            here.stableId = "level.test.nosched";
+            _gameManager.SetLevel(here);
+            IntroductionScheduleLookup.ScheduleOverrideForTests = null;
+
+            Enemy spawn = CreateEnemyShell("Iligaw_NoSchedule");
+            Assert.IsTrue(spawn.Initialize(data));
+
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndSuppress, spawn.IntroductionOutcome,
+                "With no schedule the first-encounter rule still applies. Treating an absent asset "
+                + "as an empty plan would silence introductions everywhere it is not wired.");
+
+            _beat.enabled = false;
+            yield return null;
+        }
+
+        private IntroductionScheduleSO CreateSchedule(LevelConfigSO level, params EnemyDataSO[] introduces)
+        {
+            var schedule = ScriptableObject.CreateInstance<IntroductionScheduleSO>();
+            _objectsToDestroy.Add(schedule);
+            schedule.levels = new[]
+            {
+                new IntroductionScheduleSO.LevelIntroductions
+                {
+                    level = level,
+                    introduces = introduces,
+                },
+            };
+            return schedule;
         }
 
         private CampaignConfigSO CreateCampaign(params LevelConfigSO[] levels)

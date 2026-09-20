@@ -46,10 +46,14 @@ MonoBehaviour:
     animationClip: {fileID: 0}
     tapToProceedText: Tap anywhere to continue
   heartLossDialogue:
-    fallbackText: The base took damage. Draw before enemies reach it.
+    fallbackText: 'This is only a demonstration: if an enemy reaches the base, one heart is lost.
+
+      We will restore it before combat begins.'
     dialogue: {fileID: 0}
   release:
-    fallbackText: You are ready. Defend the base.
+    fallbackText: 'The demonstration is over. Your hearts are restored. You are ready. Defend the
+
+      base.'
     dialogue: {fileID: 0}
   fallbackMessageSeconds: 1.25
   failuresBeforeAssist: 3

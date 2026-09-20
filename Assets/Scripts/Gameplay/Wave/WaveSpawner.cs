@@ -12,6 +12,12 @@ public class WaveSpawner : MonoBehaviour
     [Tooltip("Top-of-screen positions where enemies appear. Add 3-5 evenly spaced.")]
     [SerializeField] private Transform[] _spawnPoints;
 
+    [Tooltip("World units an enemy may start ABOVE the camera's visible top. The authored spawn "
+             + "points are capped to this, never raised to it. About 1.5s of walking at a typical "
+             + "1.1 units/second, so an enemy reads as walking in rather than popping in — and its "
+             + "introduction card is not spent waiting for it to arrive.")]
+    [SerializeField, Min(0f)] private float _spawnLeadAboveViewWorld = 1.6f;
+
     [Tooltip("Where the boss appears at encounter start. Y is used instead of the enemy spawn-point Y so the boss enters within the visible play area even when enemy spawn points are above the screen.")]
     [SerializeField] private Transform _bossSpawnPoint;
 
@@ -486,7 +492,47 @@ public class WaveSpawner : MonoBehaviour
 
         minX = Mathf.Min(first.position.x, last.position.x);
         maxX = Mathf.Max(first.position.x, last.position.x);
-        spawnY = first.position.y;
+        spawnY = ClampSpawnYToCamera(first.position.y);
         return true;
+    }
+
+    /// <summary>
+    /// Caps the authored spawn height at <see cref="_spawnLeadAboveViewWorld"/> above the camera's
+    /// visible top, so an enemy is never released further off-screen than it needs to be.
+    /// </summary>
+    /// <remarks>
+    /// Playtest 2026-09-17. The authored spawn points sit at y≈11.4 while the RUNTIME view tops out
+    /// at 7.82 on a phone aspect — measured, not guessed — so Takip walked for about 5.8 seconds
+    /// before it was visible at all, and its introduction card could not land until after that. The
+    /// points were authored against the scene-time camera, whose view is -10..10; the runtime one is
+    /// -16.52..7.82. A serialized world y cannot be right for both, which is why this is clamped
+    /// against the live camera rather than retuned in the scene.
+    ///
+    /// <para>
+    /// A cap, never a lift: an authored point already lower than the cap is left exactly where it
+    /// is, so a level that deliberately spawns close never has its enemies pushed further out.
+    /// </para>
+    /// </remarks>
+    private float ClampSpawnYToCamera(float authoredSpawnY)
+    {
+        Camera camera = Camera.main;
+        if (camera == null || !camera.orthographic)
+            return authoredSpawnY;
+
+        return ClampSpawnY(
+            authoredSpawnY,
+            camera.transform.position.y + camera.orthographicSize,
+            _spawnLeadAboveViewWorld);
+    }
+
+    /// <summary>
+    /// The rule on its own, so it can be asserted without standing up a camera: the authored height
+    /// or <paramref name="leadAboveViewWorld"/> above <paramref name="viewTopWorldY"/>, whichever is
+    /// lower. A negative lead is treated as zero rather than pulling the spawn into view.
+    /// </summary>
+    public static float ClampSpawnY(
+        float authoredSpawnY, float viewTopWorldY, float leadAboveViewWorld)
+    {
+        return Mathf.Min(authoredSpawnY, viewTopWorldY + Mathf.Max(0f, leadAboveViewWorld));
     }
 }

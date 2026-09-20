@@ -17,6 +17,7 @@ MonoBehaviour:
   discoverySubtitle: 
   description: A floating figure surrounded by thick gray fog. It hides symbols,
     faces, paths, and environmental clues.
+  abilityLine: It fades out of sight and returns.
   moveSpeed: 1.35
   maxHealth: 1
   walkFrames:

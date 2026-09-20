@@ -91,6 +91,12 @@ public static class EnemyDebutLookup
         return result;
     }
 
+    /// <summary>
+    /// The campaign these lookups run against, exposed so IntroductionScheduleLookup resolves it
+    /// the same way rather than keeping a second, divergent copy of the rule.
+    /// </summary>
+    public static CampaignConfigSO ResolveCampaignForLookup() => ResolveCampaign();
+
     private static CampaignConfigSO ResolveCampaign()
     {
 #if UNITY_EDITOR || UNITY_INCLUDE_TESTS

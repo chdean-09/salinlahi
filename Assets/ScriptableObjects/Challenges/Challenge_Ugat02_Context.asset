@@ -17,7 +17,7 @@ MonoBehaviour:
   units:
   - unitId: ugat02-complete-bata
     mode: 1
-    cluePolicy: 0
+    cluePolicy: 1
     prompt: Hindi makikita ang mukha ng bata hangga't walang MATA. Buuin mo ang dalawang
       salita upang mabuo ang larawan.
     tokens:
@@ -49,7 +49,7 @@ MonoBehaviour:
     evidenceContentId: level.ugat.02.focus.01
   - unitId: ugat02-complete-mata
     mode: 1
-    cluePolicy: 0
+    cluePolicy: 1
     prompt: Buuin mo ang dalawang salita upang mabuo ang larawan.
     tokens:
     - tokenId: ugat02-ta

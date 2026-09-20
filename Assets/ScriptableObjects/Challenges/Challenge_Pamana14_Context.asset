@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Ikaapat na Alaala ng Pamana
   units:
   - unitId: pamana14-timed-recall
-    mode: 4
+    mode: 2
     cluePolicy: 1
     prompt: 'Titingnan mo muna ang buong pangungusap, pagkatapos ay maglalaho ito.
       Ibalik mo ang dalawang salitang nawala, mula sa iyong alaala.

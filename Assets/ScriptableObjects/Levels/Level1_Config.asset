@@ -98,6 +98,46 @@ MonoBehaviour:
       symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
       spokenValueId: value.ma
     requiredSuccesses: 2
+  suppressSymbolLearningCards: 0
+  restorationObjective:
+    displayMode: 0
+    units:
+    - stableId: level.ugat.01.objective.ina
+      displayLabel: INA
+      clue: ilaw ng tahanan
+      tokens:
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.01.ina.i
+        completionOrder: 0
+        target:
+          symbol: {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+          spokenValueId: value.i
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.01.ina.na
+        completionOrder: 1
+        target:
+          symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+          spokenValueId: value.na
+    - stableId: level.ugat.01.objective.ama
+      displayLabel: AMA
+      clue: ang haligi ng tahanan
+      tokens:
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.01.ama.a
+        completionOrder: 2
+        target:
+          symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+          spokenValueId: value.a
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.01.ama.ma
+        completionOrder: 3
+        target:
+          symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+          spokenValueId: value.ma
   activeClueCombatEnabled: 1
   activeClueRestorationEnabled: 1
   clueChannels: 19
@@ -113,15 +153,17 @@ MonoBehaviour:
     choiceMomentSlotIndex: 1
     choicePairWindow: 1.5
     maxConcurrentEnemies: 8
-    openingSpawnSpokenValueId: value.ei
+    openingSpawnSpokenValueId: value.a
     allowFinalWaveOverflow: 1
+    gateFinalSlotToFinalWave: 0
+    maxOverflowBatches: 12
     assignmentSeed: 0
     slotGates:
     - slotIndex: 3
-      gateToken: level1_roster_met
+      gateToken: abo_ash_shown
     slotFloors:
     - slotIndex: 0
-      minSpawnsBeforeNeeded: 0
+      minSpawnsBeforeNeeded: 1
   enemySpeedMultiplier: 0.6
   overrideDrawingAccuracyThreshold: 1
   drawingAccuracyThresholdOverride: 0.45
@@ -232,6 +274,7 @@ MonoBehaviour:
     enemyCount: 7
     spawnInterval: 3.5
     waveStartDelay: 2
+  waveCurve: {fileID: 0}
   allowedCharacters:
   - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
   - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}

@@ -189,6 +189,26 @@ namespace Salinlahi.Tests.Editor.Data
         }
 
         [Test]
+        public void Level2_CombatDiscoverySuppressesReferenceCards_WithoutChangingInstructionSemantics()
+        {
+            CampaignConfigSO campaign = LoadCampaign();
+
+            Assert.IsTrue(campaign.TryGetLevel("level.ugat.02", out LevelConfigSO level),
+                "Expected level.ugat.02 to resolve.");
+
+            Assert.IsTrue(level.suppressSymbolLearningCards,
+                "Level 2 uses combat discovery and must not show reference-form symbol cards.");
+            Assert.IsFalse(SymbolLearningCardController.HasPresentableRequirement(level),
+                "Suppressing Level 2 reference cards must make the SymbolLearning presentation skip.");
+            Assert.IsFalse(LevelPhasePlan.FromConfig(level).Has(LevelPhase.SymbolLearning),
+                "A suppressed card list must not create an empty SymbolLearning phase.");
+
+            Assert.AreEqual(2,
+                EntriesOfKind(level, ContentRequirementKind.Instruction).Count(),
+                "BA and TA remain Instruction entries for semantic learning/progression data.");
+        }
+
+        [Test]
         public void Level3_InstructsNothing()
         {
             CampaignConfigSO campaign = LoadCampaign();

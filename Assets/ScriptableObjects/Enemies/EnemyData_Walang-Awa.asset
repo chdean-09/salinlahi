@@ -17,6 +17,7 @@ MonoBehaviour:
   discoverySubtitle: 
   description: An armored creature with an empty space where its heart should be.
     It weakens villagers and prevents Juan from healing or helping them.
+  abilityLine: It endures two correct symbols before it falls, and walks slowly.
   moveSpeed: 0.95
   maxHealth: 3
   walkFrames:
