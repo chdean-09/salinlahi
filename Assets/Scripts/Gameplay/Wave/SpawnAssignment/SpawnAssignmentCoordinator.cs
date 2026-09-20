@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -24,6 +25,7 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
     private LevelConfigSO _level;
     private bool _loggedEnemyRosterFallback;
     private ActiveCluePresenter _presenter;
+    private RestorationObjectiveController _objective;
 
     /// <summary>
     /// Pause-aware seconds since the level's spawning began. Advanced in Update and frozen while
@@ -58,6 +60,9 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
         {
             if (_slots.Count == 0)
                 return false;
+
+            if (_objective != null && !_objective.UsesLegacyFallback)
+                return _objective.IsComplete;
 
             ActiveClueRestorationState state = _presenter != null ? _presenter.RestorationState : null;
             if (state == null)
@@ -129,6 +134,8 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
         _level = level;
         _loggedEnemyRosterFallback = false;
         _presenter = presenter;
+        _objective = RestorationObjectiveController.Active
+            ?? FindFirstObjectByType<RestorationObjectiveController>(FindObjectsInactive.Include);
         _clock = 0f;
         _clockFrozen = false;
         _gates.Reset();
@@ -174,9 +181,53 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
             level, data => EnemyIntroductionBeat.CountsAsIntroducedThisAttempt(level, data), OpenGate);
     }
 
-    /// <summary>Flattens every focus word's decomposition into one ordered slot list.</summary>
+    /// <summary>Flattens the active objective, or legacy focus words, into ordered spawn slots.</summary>
     private void BuildSlots(LevelConfigSO level)
     {
+        if (level.restorationObjective != null && level.restorationObjective.HasTargets)
+        {
+            SpawnAssignmentPolicy objectivePolicy =
+                level.spawnAssignmentPolicy ?? new SpawnAssignmentPolicy();
+            int objectiveIndex = 0;
+            for (int unitIndex = 0; unitIndex < level.restorationObjective.units.Count; unitIndex++)
+            {
+                RestorationObjectiveUnit unit = level.restorationObjective.units[unitIndex];
+                if (unit?.tokens == null)
+                    continue;
+
+                var targets = new List<RestorationObjectiveToken>();
+                for (int tokenIndex = 0; tokenIndex < unit.tokens.Count; tokenIndex++)
+                {
+                    RestorationObjectiveToken token = unit.tokens[tokenIndex];
+                    if (token?.IsTarget != true)
+                        continue;
+
+                    targets.Add(token);
+                }
+
+                targets.Sort((left, right) =>
+                    left.EffectiveCompletionOrder(unit.tokens.IndexOf(left))
+                        .CompareTo(right.EffectiveCompletionOrder(unit.tokens.IndexOf(right))));
+
+                for (int targetIndex = 0; targetIndex < targets.Count; targetIndex++)
+                {
+                    RestorationObjectiveToken token = targets[targetIndex];
+                    int tokenIndex = unit.tokens.IndexOf(token);
+
+                    _slots.Add(new SpawnSlot(
+                        token.SymbolStableId,
+                        unit.stableId,
+                        tokenIndex,
+                        objectivePolicy.GateTokenForSlot(objectiveIndex),
+                        token.occurrenceId));
+                    objectiveIndex++;
+                }
+            }
+
+            ApplyDerivedFinalSlotGate(objectivePolicy);
+            return;
+        }
+
         if (level.focusWords == null)
             return;
 
@@ -198,7 +249,8 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
                     reference.symbol.stableId,
                     word.stableId,
                     slotIndex,
-                    policy.GateTokenForSlot(_slots.Count)));
+                    policy.GateTokenForSlot(_slots.Count),
+                    word.stableId + ".slot." + slotIndex.ToString("00")));
             }
         }
 
@@ -251,7 +303,7 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
 
         _slots[gateIndex] = new SpawnSlot(
             target.SymbolStableId, target.WordStableId, target.SlotIndexInWord,
-            SpawnGateRegistry.FinalWaveReached);
+            SpawnGateRegistry.FinalWaveReached, target.OccurrenceId);
     }
 
     /// <summary>
@@ -280,7 +332,7 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
             {
                 _slots[index] = new SpawnSlot(
                     target.SymbolStableId, target.WordStableId, target.SlotIndexInWord,
-                    SpawnGateRegistry.FinalWaveReached);
+                    SpawnGateRegistry.FinalWaveReached, target.OccurrenceId);
             }
 
             return true;
@@ -368,16 +420,26 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
 
     /// <summary>
     /// Re-reads restoration state every spawn rather than tracking it here, because
-    /// ActiveClueRestorationState.Apply restores every matching slot across all words at once: one
-    /// correct draw can fill several slots, and a private cursor would drift out of step.
+    /// accepted clue resolution advances one occurrence and can activate the next objective unit;
+    /// a private cursor would drift out of step (the legacy focus-word fallback remains supported).
     /// </summary>
     private IReadOnlyList<bool> BuildRestoredFlags()
     {
         _restoredBuffer.Clear();
         ActiveClueRestorationState state = _presenter != null ? _presenter.RestorationState : null;
+        RestorationObjectiveState objectiveState = _objective != null
+            && !_objective.UsesLegacyFallback
+            ? _objective.State
+            : null;
 
         for (int i = 0; i < _slots.Count; i++)
         {
+            if (objectiveState != null)
+            {
+                _restoredBuffer.Add(objectiveState.IsOccurrenceRestored(_slots[i].OccurrenceId));
+                continue;
+            }
+
             if (state == null)
             {
                 _restoredBuffer.Add(false);

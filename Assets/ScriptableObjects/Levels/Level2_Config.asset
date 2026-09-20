@@ -122,6 +122,46 @@ MonoBehaviour:
       symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
       spokenValueId: value.ta
     requiredSuccesses: 2
+  suppressSymbolLearningCards: 1
+  restorationObjective:
+    displayMode: 1
+    units:
+    - stableId: level.ugat.02.objective.bata
+      displayLabel: BATA
+      clue: bunga ng pagmamahalan
+      tokens:
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.02.bata.ba
+        completionOrder: 1
+        target:
+          symbol: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+          spokenValueId: value.ba
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.02.bata.ta
+        completionOrder: 0
+        target:
+          symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+          spokenValueId: value.ta
+    - stableId: level.ugat.02.objective.mata
+      displayLabel: MATA
+      clue: dungawan ng kaluluwa
+      tokens:
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.02.mata.ma
+        completionOrder: 2
+        target:
+          symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+          spokenValueId: value.ma
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.02.mata.ta
+        completionOrder: 3
+        target:
+          symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+          spokenValueId: value.ta
   activeClueCombatEnabled: 1
   activeClueRestorationEnabled: 1
   clueChannels: 19
@@ -137,7 +177,7 @@ MonoBehaviour:
     choiceMomentSlotIndex: 1
     choicePairWindow: 1.5
     maxConcurrentEnemies: 8
-    openingSpawnSpokenValueId: 
+    openingSpawnSpokenValueId: value.ta
     allowFinalWaveOverflow: 1
     gateFinalSlotToFinalWave: 1
     maxOverflowBatches: 0

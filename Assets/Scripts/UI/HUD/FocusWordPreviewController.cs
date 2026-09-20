@@ -30,10 +30,17 @@ public class FocusWordPreviewController : MonoBehaviour
 
     public IEnumerator Present(LevelConfigSO config)
     {
-        if (config == null || config.focusWords == null || config.focusWords.Count == 0)
+        if (config == null)
             yield break;
 
-        RenderedText = BuildPreviewText(config);
+        bool hasAuthoredObjective = config.restorationObjective?.HasTargets == true;
+        bool hasLegacyFocusWords = config.focusWords != null && config.focusWords.Count > 0;
+        if (!hasAuthoredObjective && !hasLegacyFocusWords)
+            yield break;
+
+        RenderedText = hasAuthoredObjective
+            ? RestorationObjectiveTextFormatter.Render(config.restorationObjective)
+            : BuildPreviewText(config);
         EnsurePanel();
         if (_previewText != null)
             _previewText.text = RenderedText;

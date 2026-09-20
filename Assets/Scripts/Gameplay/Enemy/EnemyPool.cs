@@ -178,7 +178,15 @@ public class EnemyPool : Singleton<EnemyPool>
 
         var checkedOutSnapshot = new List<Enemy>(_checkedOutEnemies);
         for (int i = 0; i < checkedOutSnapshot.Count; i++)
-            Return(checkedOutSnapshot[i]);
+        {
+            Enemy enemy = checkedOutSnapshot[i];
+            // Returning one shell can disable an ability such as MirrorDecoyController, which
+            // returns a dependent shell while this snapshot is still being iterated. Re-check the
+            // live set so that cascading cleanup does not turn a valid terminal path into a
+            // duplicate-return warning. Direct callers of Return still retain their diagnostics.
+            if (_checkedOutEnemies.Contains(enemy))
+                Return(enemy);
+        }
     }
 
     private PoolState ResolvePoolState(EnemyDataSO data)

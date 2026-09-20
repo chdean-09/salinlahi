@@ -391,11 +391,25 @@ public class CombatResolver : MonoBehaviour
         cursorIndex = -1;
 
         ActiveCluePresenter presenter = ResolvePresenter();
-        ActiveClueRestorationState state = presenter != null ? presenter.RestorationState : null;
-        if (state == null)
+        if (presenter == null)
             return DrawTextRelation.Unknown;
 
-        TargetTextSlotMap.Build(state.FocusWords, state.IsSlotRestored, _slotBuffer);
+        if (presenter.UsesRestorationObjectiveDefinition)
+        {
+            TargetTextSlotMap.Build(
+                presenter.RestorationObjective.State.Definition,
+                presenter.RestorationObjective.State,
+                _slotBuffer);
+        }
+        else
+        {
+            ActiveClueRestorationState state = presenter.RestorationState;
+            if (state == null)
+                return DrawTextRelation.Unknown;
+
+            TargetTextSlotMap.Build(state.FocusWords, state.IsSlotRestored, _slotBuffer);
+        }
+
         if (_slotBuffer.Count == 0)
             return DrawTextRelation.Unknown;
 

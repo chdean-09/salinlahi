@@ -374,22 +374,13 @@ public sealed class Level1OnboardingController : MonoBehaviour
     /// Level-specific normalization keeps the runtime copy aligned with the campaign content.
     /// The serialized asset is never mutated.
     ///
-    /// SALIN-241. Level 2's AUTHORED beat order wins. The <c>[Release]</c> forcing that SALIN-225
-    /// left here survives only as the empty-order fallback.
+    /// Legacy compatibility for a Level 2 sequence if one is authored again. The current Level 2
+    /// config intentionally has no sequence, so normal level flow never calls this path.
     /// </summary>
     /// <remarks>
-    /// History: Level 2's authored order was ComboTeach, FocusModeTeach, Release. Both teaching
-    /// beats went with the mechanics they taught (SALIN-225, ruling Q15), and the level-2 arm was
-    /// then made to overwrite the order unconditionally so the level could not fall through to the
-    /// SO's five-beat default and re-teach Level 1's basics.
-    ///
-    /// That unconditional overwrite is now wrong: it silently discarded whatever the asset carried,
-    /// so authoring a beat into Level2AdvancedOnboardingSequence.asset had no runtime effect at all
-    /// -- no compile error, no warning, no failing test, just a beat that never played. SALIN-241
-    /// authors the mass-clear teach beat into that asset, so the overwrite is narrowed to the case
-    /// it was actually protecting against: an EMPTY order. A non-empty authored order is preserved
-    /// verbatim, which keeps the anti-fallthrough guard while making the asset, not this method,
-    /// the source of truth for what Level 2 teaches.
+    /// The empty-order fallback remains for that compatibility path so an accidentally authored
+    /// sequence cannot inherit Level 1's multi-beat defaults. A non-empty authored order is still
+    /// preserved verbatim.
     ///
     /// This mutates a clone, never the on-disk asset -- <c>EnsureMutableSequence</c> instantiates a
     /// copy with <c>HideFlags.HideAndDontSave</c> before this runs.

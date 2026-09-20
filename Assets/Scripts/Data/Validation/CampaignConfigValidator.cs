@@ -509,6 +509,7 @@ public static class CampaignConfigValidator
                 }
 
                 ValidateFocusWords(campaign, level, path, issues);
+                ValidateRestorationObjective(campaign, level, path, issues);
                 ValidateRequirements(campaign, level, path, issues);
                 ValidateCumulativePool(campaign, level, globalIndex, path, issues);
                 ValidateSymbolIntroductionOrder(level, globalIndex, symbolIntroducersById, path, issues);
@@ -849,6 +850,165 @@ public static class CampaignConfigValidator
                     AddContentIssue(issues, ContentValidationCode.SymbolNotIntroduced, referencePath,
                         "Focus decomposition references a symbol outside this level's cumulative pool.", level);
                 }
+            }
+        }
+    }
+
+    private static void ValidateRestorationObjective(
+        CampaignConfigSO campaign,
+        LevelConfigSO level,
+        string path,
+        IssueSink issues)
+    {
+        RestorationObjectiveDefinition definition = level.restorationObjective;
+        // Empty/default definitions are the compatibility signal for legacy focus-word levels.
+        // Once units are authored, validate the shape even when HasTargets is false so a malformed
+        // target token cannot silently opt out of validation.
+        if (definition == null || definition.units == null || definition.units.Count == 0)
+            return;
+
+        var unitIds = new HashSet<string>(StringComparer.Ordinal);
+        var occurrenceIds = new HashSet<string>(StringComparer.Ordinal);
+        var targetSymbols = new HashSet<string>(StringComparer.Ordinal);
+        int targetCount = 0;
+
+        for (int unitIndex = 0; unitIndex < definition.units.Count; unitIndex++)
+        {
+            RestorationObjectiveUnit unit = definition.units[unitIndex];
+            string unitPath = path + ".restorationObjective.units[" + unitIndex + "]";
+            if (unit == null || string.IsNullOrWhiteSpace(unit.stableId))
+            {
+                AddError(issues, ContentValidationCode.RestorationObjectiveInvalid,
+                    unitPath + ".stableId", "Restoration unit must have a stable ID.", level);
+                continue;
+            }
+
+            if (!unitIds.Add(unit.stableId))
+            {
+                AddError(issues, ContentValidationCode.DuplicateId,
+                    unitPath + ".stableId", "Restoration unit stable ID is duplicated.", level);
+            }
+
+            if (unit.tokens == null || unit.tokens.Count == 0)
+            {
+                AddError(issues, ContentValidationCode.RestorationObjectiveInvalid,
+                    unitPath + ".tokens", "Restoration unit must contain at least one token.", level);
+                continue;
+            }
+
+            var completionOrders = new HashSet<int>();
+
+            for (int tokenIndex = 0; tokenIndex < unit.tokens.Count; tokenIndex++)
+            {
+                RestorationObjectiveToken token = unit.tokens[tokenIndex];
+                string tokenPath = unitPath + ".tokens[" + tokenIndex + "]";
+                if (token == null)
+                {
+                    AddError(issues, ContentValidationCode.RestorationObjectiveInvalid,
+                        tokenPath, "Restoration token is missing.", level);
+                    continue;
+                }
+
+                if (token.kind == RestorationTokenKind.Literal)
+                {
+                    if (!string.IsNullOrEmpty(token.occurrenceId)
+                        || token.target?.symbol != null
+                        || !string.IsNullOrEmpty(token.target?.spokenValueId))
+                    {
+                        AddError(issues, ContentValidationCode.RestorationObjectiveInvalid,
+                            tokenPath,
+                            "Literal restoration tokens cannot carry an occurrence or target reference.",
+                            level);
+                    }
+
+                    continue;
+                }
+
+                if (token.kind != RestorationTokenKind.Target)
+                {
+                    AddError(issues, ContentValidationCode.RestorationObjectiveInvalid,
+                        tokenPath + ".kind", "Restoration token kind is invalid.", level);
+                    continue;
+                }
+
+                targetCount++;
+                if (!token.IsTarget)
+                {
+                    AddError(issues, ContentValidationCode.RestorationObjectiveInvalid,
+                        tokenPath, "Target token needs a unique occurrence ID and symbol reference.", level);
+                    continue;
+                }
+
+                if (!string.IsNullOrEmpty(token.literalText))
+                {
+                    AddError(issues, ContentValidationCode.RestorationObjectiveInvalid,
+                        tokenPath + ".literalText",
+                        "Target restoration tokens cannot carry literal text.", level);
+                }
+
+                if (token.completionOrder >= 0 && !completionOrders.Add(token.completionOrder))
+                {
+                    AddError(issues, ContentValidationCode.DuplicateId,
+                        tokenPath + ".completionOrder",
+                        "Restoration completion order must be unique within a unit.", level);
+                }
+
+                if (!occurrenceIds.Add(token.occurrenceId))
+                {
+                    AddError(issues, ContentValidationCode.DuplicateId,
+                        tokenPath + ".occurrenceId", "Restoration occurrence ID is duplicated.", level);
+                }
+
+                if (!TryResolveReference(campaign, token.target, out _))
+                {
+                    AddError(issues, ContentValidationCode.RestorationObjectiveInvalid,
+                        tokenPath + ".target", "Target token references an unknown symbol value.", level);
+                    continue;
+                }
+
+                targetSymbols.Add(token.SymbolStableId);
+            }
+        }
+
+        if (targetCount == 0)
+        {
+            AddError(issues, ContentValidationCode.RestorationObjectiveInvalid,
+                path + ".restorationObjective", "Restoration objective must contain a target token.", level);
+            return;
+        }
+
+        if (!level.activeClueCombatEnabled || !level.activeClueRestorationEnabled)
+            return;
+
+        List<WaveDefinition> waves = level.waves;
+        if (waves == null || waves.Count == 0)
+        {
+            AddContentIssue(issues, ContentValidationCode.RestorationOccurrenceUnreachable,
+                path + ".waves", "Restoration objective has no authored or generated waves.", level);
+            return;
+        }
+
+        foreach (string symbolId in targetSymbols)
+        {
+            bool reachable = false;
+            for (int waveIndex = 0; waveIndex < waves.Count && !reachable; waveIndex++)
+            {
+                WaveDefinition wave = waves[waveIndex];
+                if (wave == null || wave.isIntermissionWave)
+                    continue;
+
+                bool characterAllowed = wave.characters == null || wave.characters.Count == 0
+                    || FindCharacterId(wave.characters, symbolId) != null;
+                bool carrierAllowed = wave.enemyTypes == null || wave.enemyTypes.Count == 0
+                    || WaveCarriesEnemyFor(wave.enemyTypes, symbolId);
+                reachable = characterAllowed && carrierAllowed;
+            }
+
+            if (!reachable)
+            {
+                AddContentIssue(issues, ContentValidationCode.RestorationOccurrenceUnreachable,
+                    path + ".restorationObjective", "No wave can spawn a natural carrier for target '"
+                    + symbolId + "'.", level);
             }
         }
     }
@@ -1317,25 +1477,44 @@ public static class CampaignConfigValidator
         string path,
         IssueSink issues)
     {
-        if (!level.activeClueCombatEnabled || level.waves == null || level.focusWords == null)
+        if (!level.activeClueCombatEnabled || level.waves == null)
             return;
 
         var requiredSymbolIds = new List<string>();
         var seenSymbolIds = new HashSet<string>(StringComparer.Ordinal);
-        for (int focusIndex = 0; focusIndex < level.focusWords.Count; focusIndex++)
+        if (level.restorationObjective != null && level.restorationObjective.HasTargets)
         {
-            FocusWordDefinition focus = level.focusWords[focusIndex];
-            if (focus?.decomposition == null)
-                continue;
-
-            for (int index = 0; index < focus.decomposition.Count; index++)
+            for (int unitIndex = 0; unitIndex < level.restorationObjective.units.Count; unitIndex++)
             {
-                BaybayinCharacterSO symbol = focus.decomposition[index]?.symbol;
-                if (symbol == null || string.IsNullOrEmpty(symbol.stableId))
+                RestorationObjectiveUnit unit = level.restorationObjective.units[unitIndex];
+                if (unit?.tokens == null)
                     continue;
 
-                if (seenSymbolIds.Add(symbol.stableId))
-                    requiredSymbolIds.Add(symbol.stableId);
+                for (int tokenIndex = 0; tokenIndex < unit.tokens.Count; tokenIndex++)
+                {
+                    string symbolId = unit.tokens[tokenIndex]?.SymbolStableId;
+                    if (!string.IsNullOrEmpty(symbolId) && seenSymbolIds.Add(symbolId))
+                        requiredSymbolIds.Add(symbolId);
+                }
+            }
+        }
+        else if (level.focusWords != null)
+        {
+            for (int focusIndex = 0; focusIndex < level.focusWords.Count; focusIndex++)
+            {
+                FocusWordDefinition focus = level.focusWords[focusIndex];
+                if (focus?.decomposition == null)
+                    continue;
+
+                for (int index = 0; index < focus.decomposition.Count; index++)
+                {
+                    BaybayinCharacterSO symbol = focus.decomposition[index]?.symbol;
+                    if (symbol == null || string.IsNullOrEmpty(symbol.stableId))
+                        continue;
+
+                    if (seenSymbolIds.Add(symbol.stableId))
+                        requiredSymbolIds.Add(symbol.stableId);
+                }
             }
         }
 
@@ -1414,7 +1593,23 @@ public static class CampaignConfigValidator
             return;
 
         var symbolStableIds = new List<string>();
-        if (level.focusWords != null)
+        if (level.restorationObjective != null && level.restorationObjective.HasTargets)
+        {
+            for (int unitIndex = 0; unitIndex < level.restorationObjective.units.Count; unitIndex++)
+            {
+                RestorationObjectiveUnit unit = level.restorationObjective.units[unitIndex];
+                if (unit?.tokens == null)
+                    continue;
+
+                for (int tokenIndex = 0; tokenIndex < unit.tokens.Count; tokenIndex++)
+                {
+                    string symbolId = unit.tokens[tokenIndex]?.SymbolStableId;
+                    if (!string.IsNullOrEmpty(symbolId))
+                        symbolStableIds.Add(symbolId);
+                }
+            }
+        }
+        else if (level.focusWords != null)
         {
             for (int focusIndex = 0; focusIndex < level.focusWords.Count; focusIndex++)
             {

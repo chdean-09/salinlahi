@@ -133,6 +133,7 @@ public class LevelFlowController : MonoBehaviour
     private ActiveClueDirector _activeClueDirector;
     private ActiveCluePresenter _activeCluePresenter;
     private SpawnAssignmentCoordinator _spawnAssignmentCoordinator;
+    private RestorationObjectiveController _restorationObjectiveController;
     private FocusWordPreviewController _focusWordPreview;
     private SymbolLearningCardController _symbolLearningCards;
     private LevelReadyScreenController _levelReadyScreen;
@@ -458,7 +459,10 @@ public class LevelFlowController : MonoBehaviour
         if (_skipLessonForCombatRetry)
             yield break;
 
-        if (_levelConfig.focusWords == null || _levelConfig.focusWords.Count == 0)
+        bool hasAuthoredObjective = _levelConfig.restorationObjective?.HasTargets == true;
+        bool hasLegacyFocusWords = _levelConfig.focusWords != null
+            && _levelConfig.focusWords.Count > 0;
+        if (!hasAuthoredObjective && !hasLegacyFocusWords)
             yield break;
 
         // Both words and their decompositions must be readable BEFORE drawing
@@ -634,6 +638,11 @@ public class LevelFlowController : MonoBehaviour
         List<string> boardUnitIds = null;
         if (UsesCombatRestorationPath())
         {
+            // The combat objective replaces only the old word-slot ownership. The existing
+            // post-combat board remains part of the level flow for authored SentenceRestoration
+            // and ParagraphRestoration units (D1); WordPlacement stays retired by
+            // SelectPostCombatBoardUnitIds. This preserves the challenge board and its save/
+            // results lifecycle while letting the scene-scoped objective own combat occurrences.
             boardUnitIds = CollectPostCombatBoardUnitIds();
 
             // The combat pass owns phase completion only when no board follows it. When one
@@ -830,6 +839,32 @@ public class LevelFlowController : MonoBehaviour
 
     private IEnumerator ExecuteCombatRestoration(bool reportPhaseComplete)
     {
+        if (_restorationObjectiveController != null
+            && !_restorationObjectiveController.UsesLegacyFallback)
+        {
+            // A segmented restoration level may intentionally open a challenge board
+            // between wave groups while its paragraph is still being restored. Only the
+            // terminal segment (or an unsegmented run that reports the phase directly)
+            // must hold on an incomplete objective. Requiring the overall objective here
+            // at every boundary strands Level 5 after its first two-wave segment.
+            bool isSegmented = _phasePlan != null && _phasePlan.SegmentCount > 1;
+            bool isTerminalSegment = !isSegmented
+                || _machine.CurrentSegmentIndex + 1 >= _phasePlan.SegmentCount;
+
+            if (!_restorationObjectiveController.IsComplete
+                && (reportPhaseComplete || isTerminalSegment))
+            {
+                yield return RefuseCompletionForMissingContent(
+                    LevelPhase.ContextChallenge,
+                    $"level {_levelConfig.levelNumber} combat restoration objective is incomplete");
+                yield break;
+            }
+
+            if (reportPhaseComplete)
+                _machine.ReportPhaseComplete(LevelPhase.ContextChallenge);
+            yield break;
+        }
+
         if (_activeCluePresenter == null || !_activeCluePresenter.HasRestorationWords)
         {
             yield return RefuseCompletionForMissingContent(
@@ -1389,6 +1424,8 @@ public class LevelFlowController : MonoBehaviour
         _bossTutorialController ??= FindFirstObjectByType<BossTutorialController>(FindObjectsInactive.Include);
         _activeClueDirector ??= FindFirstObjectByType<ActiveClueDirector>(FindObjectsInactive.Include);
         _activeCluePresenter ??= FindFirstObjectByType<ActiveCluePresenter>(FindObjectsInactive.Include);
+        _restorationObjectiveController ??=
+            FindFirstObjectByType<RestorationObjectiveController>(FindObjectsInactive.Include);
 
         if (_activeClueDirector == null)
         {
@@ -1402,6 +1439,14 @@ public class LevelFlowController : MonoBehaviour
             GameObject presenterObject = new GameObject("[Runtime] ActiveCluePresenter");
             presenterObject.transform.SetParent(transform, false);
             _activeCluePresenter = presenterObject.AddComponent<ActiveCluePresenter>();
+        }
+
+        if (_restorationObjectiveController == null)
+        {
+            GameObject objectiveObject = new GameObject("[Runtime] RestorationObjectiveController");
+            objectiveObject.transform.SetParent(transform, false);
+            _restorationObjectiveController =
+                objectiveObject.AddComponent<RestorationObjectiveController>();
         }
 
         _spawnAssignmentCoordinator ??=
@@ -1454,6 +1499,8 @@ public class LevelFlowController : MonoBehaviour
                         && GameManager.Instance.AcceptsDrawingInput));
         }
 
+        _restorationObjectiveController?.Configure(_levelConfig);
+        _activeCluePresenter?.SetRestorationObjectiveController(_restorationObjectiveController);
         _activeCluePresenter?.ApplyLevel(_levelConfig);
 
         // A new attempt forgets last attempt's introductions BEFORE the coordinator evaluates the
@@ -1467,8 +1514,7 @@ public class LevelFlowController : MonoBehaviour
     private bool ShouldCreateRuntimeOnboardingController()
     {
         return _levelConfig != null
-            && LevelTutorialProgress.ShouldShowForLevelNumber(_levelConfig.levelNumber)
-            && (_levelConfig.onboardingSequence != null || _levelConfig.tutorialSequence != null);
+            && IsTutorialLevelWithSequence(_levelConfig);
     }
 
     private Level1OnboardingController CreateRuntimeOnboardingController()
@@ -1477,13 +1523,13 @@ public class LevelFlowController : MonoBehaviour
         go.transform.SetParent(transform, false);
 
         // SALIN-225 deleted ComboTeachBeat and FocusModeTeachBeat with the mechanics they taught.
-        // SALIN-241 replaced them with MassClearTeachBeat, which teaches the AOE mass-clear that
-        // Level 2 switches on, so the level-2 arm attaches that beat plus ReleaseBeat and still
-        // skips Level 1's four basics rather than re-teaching them.
+        // The retained Level 2 branch below is compatibility-only for a future authored sequence;
+        // the current Level 2 config intentionally leaves onboardingSequence null and never calls
+        // this factory.
         //
         // This split is cosmetic: Level1OnboardingController.Awake calls EnsureDefaultBeatComponents,
         // which attaches every beat regardless of level. It is kept in step with that method so the
-        // two sites do not drift and read as disagreeing about what Level 2 runs.
+        // two sites do not drift if a later level-authored onboarding sequence opts back in.
         bool isLevel2Onboarding = _levelConfig != null
             && _levelConfig.levelNumber == LevelTutorialProgress.Level2TutorialLevelNumber;
         if (isLevel2Onboarding)
@@ -1505,7 +1551,24 @@ public class LevelFlowController : MonoBehaviour
     {
         return levelConfig != null
             && LevelTutorialProgress.ShouldShowForLevelNumber(levelConfig.levelNumber)
-            && (levelConfig.onboardingSequence != null || levelConfig.tutorialSequence != null);
+            && LevelTutorialProgress.HasAuthoredOnboardingSequence(levelConfig);
+    }
+
+    private static bool IsTutorialDueForFlow(LevelConfigSO levelConfig)
+    {
+        if (levelConfig == null
+            || !LevelTutorialProgress.ShouldShowForLevelNumber(levelConfig.levelNumber))
+            return false;
+
+        // Level 2 intentionally uses combat discovery and leaves onboardingSequence null. That
+        // null is a complete authoring choice: skip the legacy tutorial path without warning.
+        if (levelConfig.levelNumber == LevelTutorialProgress.Level2TutorialLevelNumber
+            && !LevelTutorialProgress.HasAuthoredOnboardingSequence(levelConfig))
+            return false;
+
+        // Keep Level 1's historical missing-controller/sequence diagnostics for synthetic flow
+        // harness configs that intentionally omit the authored asset.
+        return true;
     }
 
     private static DialogueController FindActiveDialogueController()
@@ -1580,12 +1643,24 @@ public class LevelFlowController : MonoBehaviour
             yield break;
         }
 
-        bool isTutorialLevel = LevelTutorialProgress.ShouldShowForLevelNumber(_levelConfig.levelNumber);
+        // A legacy level-number entry is not enough to make onboarding due. Level 2 intentionally
+        // has no authored sequence and should enter combat discovery without a missing-asset error.
+        bool isTutorialLevel = IsTutorialDueForFlow(_levelConfig);
 
         if (!isTutorialLevel)
             yield break;
 
         // Tutorial is due from this point on.
+        // Legacy flow harnesses can intentionally supply a synthetic Level 1 config without an
+        // authored sequence while a stale controller remains in the bootstrap scene. Treat that
+        // as the historical missing-controller case instead of trying to resolve the stale asset.
+        if (_levelConfig.levelNumber == LevelTutorialProgress.Level1TutorialLevelNumber
+            && !LevelTutorialProgress.HasAuthoredOnboardingSequence(_levelConfig))
+        {
+            DebugLogger.LogError($"LevelFlowController: Level {_levelConfig.levelNumber} tutorial is due, but Level1OnboardingController is not in the scene. Run Salinlahi → Tutorial → 5. Wire Level Scene.");
+            yield break;
+        }
+
         if (_level1OnboardingController == null)
         {
             DebugLogger.LogError($"LevelFlowController: Level {_levelConfig.levelNumber} tutorial is due, but Level1OnboardingController is not in the scene. Run Salinlahi → Tutorial → 5. Wire Level Scene.");
@@ -1891,6 +1966,7 @@ public class LevelFlowController : MonoBehaviour
         // full scene reload today, so this is belt-and-braces for a host that reuses the
         // controller — the same reason _levelEnded is latched twice above.
         _instantWinEarned = false;
+        _restorationObjectiveController?.ResetAttempt();
     }
 
     protected virtual CampaignOutcomeCommitResult CommitCompletion()

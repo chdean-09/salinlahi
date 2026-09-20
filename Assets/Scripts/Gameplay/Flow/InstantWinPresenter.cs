@@ -163,9 +163,10 @@ public sealed class InstantWinPresenter : MonoBehaviour
     /// full clear uses.
     /// </summary>
     /// <param name="restorationSource">
-    /// The presenter that owns the focus-word restoration state, read only to compose the
-    /// restored-text line. Null is tolerated: the beat still freezes, holds and dissolves,
-    /// because the win rule is what it teaches and the text line is decoration on top.
+    /// The HUD presenter, read only to compose the restored-text line and celebrate the final
+    /// occurrence. It can render either the scene objective or the legacy focus-word projection.
+    /// Null is tolerated: the beat still freezes, holds and dissolves, because the win rule is
+    /// what it teaches and the text line is decoration on top.
     /// </param>
     /// <param name="levelNumber">
     /// LevelConfigSO.levelNumber, which selects this level's frozen-hold duration.
@@ -528,6 +529,54 @@ public sealed class InstantWinPresenter : MonoBehaviour
     {
         if (restorationSource == null)
             return InstantWinCopy.RestoredTextUnavailableLabel;
+
+        if (restorationSource.UsesRestorationObjectiveDefinition)
+        {
+            RestorationObjectiveDefinition definition =
+                restorationSource.RestorationObjective?.State?.Definition;
+            if (definition?.units != null)
+            {
+                var objectiveText = new System.Text.StringBuilder();
+                for (int unitIndex = 0; unitIndex < definition.units.Count; unitIndex++)
+                {
+                    RestorationObjectiveUnit unit = definition.units[unitIndex];
+                    if (unit?.tokens == null)
+                        continue;
+
+                    for (int tokenIndex = 0; tokenIndex < unit.tokens.Count; tokenIndex++)
+                    {
+                        RestorationObjectiveToken token = unit.tokens[tokenIndex];
+                        if (token == null)
+                            continue;
+
+                        if (token.kind == RestorationTokenKind.Literal)
+                            objectiveText.Append(token.literalText);
+                        else
+                        {
+                            string label = SpokenValueResolver.ResolveLabel(
+                                token.target?.symbol, token.SpokenValueId);
+                            objectiveText.Append(string.IsNullOrWhiteSpace(label)
+                                ? token.target?.symbol?.characterID ?? string.Empty
+                                : label.ToUpperInvariant());
+                        }
+                    }
+
+                    // Word objectives have separate units without literal separators, so keep
+                    // their readable word boundary. Marked/hidden context units already author
+                    // the exact sentence spacing in their literal tokens and must concatenate
+                    // byte-for-byte here (for example, "u" + "NAng").
+                    if (unitIndex < definition.units.Count - 1
+                        && (definition.displayMode == RestorationDisplayMode.GuidedWords
+                            || definition.displayMode == RestorationDisplayMode.ClueOnlyWords))
+                    {
+                        objectiveText.Append(' ');
+                    }
+                }
+
+                if (objectiveText.Length > 0)
+                    return objectiveText.ToString();
+            }
+        }
 
         IReadOnlyList<FocusWordDefinition> words = restorationSource.RestorationState.FocusWords;
         var labels = new List<string>(words.Count);

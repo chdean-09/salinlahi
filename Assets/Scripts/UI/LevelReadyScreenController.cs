@@ -102,12 +102,39 @@ public sealed class LevelReadyScreenController : MonoBehaviour
     }
 
     /// <summary>
-    /// Keeps Ready distinct from Focus Words: this is the one-line level contract,
-    /// while the following screen owns the authored words and meanings.
+    /// Describes the interaction the player is about to perform without duplicating the target
+    /// text. Authored restoration modes own their contract; legacy active-clue levels keep a
+    /// compatibility line, and unrelated levels retain the generic lesson copy.
     /// </summary>
     public static string BuildObjectiveText(LevelConfigSO config)
     {
-        return config == null ? string.Empty : "Learn the symbols, then defend the shrine.";
+        if (config == null)
+            return string.Empty;
+
+        RestorationObjectiveDefinition objective = config.restorationObjective;
+        if (objective?.HasTargets == true)
+        {
+            switch (objective.displayMode)
+            {
+                case RestorationDisplayMode.GuidedWords:
+                    return "Restore the guided words, then defend the shrine.";
+                case RestorationDisplayMode.ClueOnlyWords:
+                    return "Use each clue to restore the hidden words.";
+                case RestorationDisplayMode.MarkedContext:
+                    return "Restore the marked syllables in the sentence.";
+                case RestorationDisplayMode.HiddenContext:
+                    return "Find and restore the missing syllables.";
+            }
+        }
+
+        if (config.activeClueRestorationEnabled
+            && config.focusWords != null
+            && config.focusWords.Count > 0)
+        {
+            return "Restore the focus words, then defend the shrine.";
+        }
+
+        return "Learn the symbols, then defend the shrine.";
     }
 
     private void EnsurePanel()

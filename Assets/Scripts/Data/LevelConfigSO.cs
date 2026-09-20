@@ -20,6 +20,17 @@ public class LevelConfigSO : ScriptableObject
     public List<SymbolValueReference> cumulativeSymbolPool = new();
     public List<ContentRequirement> learningRequirements = new();
     public List<ContentRequirement> practiceRequirements = new();
+
+    [Tooltip("When true, this level keeps Instruction entries for semantic learning/progression "
+        + "data but discovers their symbols through combat instead of showing reference-form "
+        + "learning cards. Existing levels default to false.")]
+    public bool suppressSymbolLearningCards;
+
+    [Header("Combat Restoration Objective")]
+    [Tooltip("Optional ordered word/sentence restoration definition. When empty, active-clue "
+        + "combat falls back to the level's focusWords for compatibility.")]
+    public RestorationObjectiveDefinition restorationObjective = new();
+
     [Header("Active-Clue Combat")]
     [Tooltip("Arms active-clue combat for this level. Default false so existing levels keep legacy combat.")]
     public bool activeClueCombatEnabled;
@@ -177,7 +188,8 @@ public class LevelConfigSO : ScriptableObject
     [Tooltip("Optional legacy tutorial phase played before this level's waves.")]
     public Level1TutorialSequenceSO tutorialSequence;
 
-    [Tooltip("Optional onboarding sequence played before waves. Level 1 uses basic onboarding; Level 2 uses advanced combat onboarding.")]
+    [Tooltip("Optional onboarding sequence played before waves. Levels with no authored sequence "
+        + "skip onboarding and enter their normal flow.")]
     public OnboardingSequenceSO onboardingSequence;
 
     [Tooltip("Enemy introduction lessons authored for this level. Level 1 carries one (Abo ng "

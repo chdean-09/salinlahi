@@ -5,10 +5,9 @@ using System.Collections.Generic;
 /// Flattens a level's focus words into the ordered slot list the player is restoring, and classifies
 /// a drawn syllable against it.
 ///
-/// <para>The flattened order is the order the player reads: word 0's syllables left to right, then
-/// word 1's, and so on. That is the same flattening <see cref="SpawnAssignmentCoordinator"/> builds
-/// its schedule from, restated here rather than borrowed because the coordinator's list is private
-/// and this classification must work on a level that routes spawns the legacy way.</para>
+/// <para>The slot list is kept in visual reading order: word 0's syllables left to right, then word
+/// 1's, and so on. An authored objective may separately assign a completion order, so the cursor
+/// follows that order while returned indices still address the visual rail.</para>
 ///
 /// <para>Deliberately free of UnityEngine types apart from the content assets it reads, following
 /// <see cref="ActiveClueSelector"/> and <see cref="DrawTargetResolver"/>, so every classification
@@ -27,6 +26,15 @@ public static class TargetTextSlotMap
 
         /// <summary>Combat character id, so a drawn glyph can be compared without a content lookup.</summary>
         public string CharacterId;
+
+        /// <summary>
+        /// Objective completion order. Legacy focus-word slots use their visual order; authored
+        /// objectives may teach a later visual token first while the rail remains in reading order.
+        /// </summary>
+        public int CompletionOrder;
+
+        /// <summary>True when the objective has not activated this slot's unit yet.</summary>
+        public bool Locked;
 
         public bool Restored;
     }
@@ -51,6 +59,7 @@ public static class TargetTextSlotMap
         if (words == null)
             return;
 
+        int flatOrder = 0;
         for (int w = 0; w < words.Count; w++)
         {
             FocusWordDefinition word = words[w];
@@ -68,28 +77,77 @@ public static class TargetTextSlotMap
                     WordStableId = word.stableId,
                     SlotIndexInWord = s,
                     CharacterId = symbol.characterID,
+                    CompletionOrder = flatOrder++,
                     Restored = isRestored != null && isRestored(word, s),
                 });
             }
         }
     }
 
+    /// <summary>Builds the same classification map from a data-driven restoration objective.</summary>
+    public static void Build(
+        RestorationObjectiveDefinition definition,
+        RestorationObjectiveState state,
+        List<Slot> slots)
+    {
+        if (slots == null)
+            return;
+
+        slots.Clear();
+        if (definition?.units == null)
+            return;
+
+        for (int unitIndex = 0; unitIndex < definition.units.Count; unitIndex++)
+        {
+            RestorationObjectiveUnit unit = definition.units[unitIndex];
+            if (unit?.tokens == null)
+                continue;
+
+            for (int tokenIndex = 0; tokenIndex < unit.tokens.Count; tokenIndex++)
+            {
+                RestorationObjectiveToken token = unit.tokens[tokenIndex];
+                BaybayinCharacterSO symbol = token?.target?.symbol;
+                if (token?.IsTarget != true || symbol == null)
+                    continue;
+
+                slots.Add(new Slot
+                {
+                    WordStableId = unit.stableId,
+                    SlotIndexInWord = tokenIndex,
+                    CharacterId = symbol.characterID,
+                    CompletionOrder = token.EffectiveCompletionOrder(tokenIndex),
+                    Locked = state != null
+                        && !string.IsNullOrEmpty(state.ActiveUnitId)
+                        && !string.Equals(state.ActiveUnitId, unit.stableId, StringComparison.Ordinal),
+                    Restored = state != null && state.IsOccurrenceRestored(token.occurrenceId),
+                });
+            }
+        }
+    }
+
     /// <summary>
-    /// Flattened index of the first unrestored slot — the one the text is waiting on — or -1 when
-    /// every slot is filled.
+    /// Visual index of the next unrestored slot by completion order, or -1 when every slot is filled.
     /// </summary>
     public static int FindCursorIndex(IReadOnlyList<Slot> slots)
     {
         if (slots == null)
             return -1;
 
+        int cursorIndex = -1;
+        int cursorOrder = int.MaxValue;
         for (int i = 0; i < slots.Count; i++)
         {
-            if (!slots[i].Restored)
-                return i;
+            if (slots[i].Restored || slots[i].Locked)
+                continue;
+
+            if (slots[i].CompletionOrder < cursorOrder)
+            {
+                cursorIndex = i;
+                cursorOrder = slots[i].CompletionOrder;
+            }
         }
 
-        return -1;
+        return cursorIndex;
     }
 
     /// <summary>
@@ -124,16 +182,29 @@ public static class TargetTextSlotMap
         // occupy both — Level 1 has no repeat, but INA/AMA-shaped texts generally will — and in that
         // case the honest answer is the one that still has a future: "that one comes later" is true
         // and useful, while "already restored" would be true of a different instance of the same
-        // syllable and read as a flat contradiction of the empty slot the player can see.
-        // Starting past the cursor is safe even when the cursor is -1 (text complete): every slot is
-        // restored in that case, so the Restored filter below rejects all of them anyway.
-        for (int i = cursorIndex + 1; i < slots.Count; i++)
+        // syllable and read as a flat contradiction of the empty slot the player can see. Compare
+        // completion order rather than list position because Level 2 teaches TA before the BA that
+        // appears to its left in the visible word.
+        int cursorOrder = cursorIndex >= 0 ? slots[cursorIndex].CompletionOrder : int.MinValue;
+        int laterIndex = -1;
+        int laterOrder = int.MaxValue;
+        for (int i = 0; i < slots.Count; i++)
         {
-            if (!slots[i].Restored && Matches(slots[i], drawnCharacterId))
+            if (!slots[i].Restored
+                && !slots[i].Locked
+                && slots[i].CompletionOrder > cursorOrder
+                && Matches(slots[i], drawnCharacterId)
+                && slots[i].CompletionOrder < laterOrder)
             {
-                slotIndex = i;
-                return DrawTextRelation.LaterNeeded;
+                laterIndex = i;
+                laterOrder = slots[i].CompletionOrder;
             }
+        }
+
+        if (laterIndex >= 0)
+        {
+            slotIndex = laterIndex;
+            return DrawTextRelation.LaterNeeded;
         }
 
         for (int i = 0; i < slots.Count; i++)

@@ -168,7 +168,9 @@ public sealed class LevelPhasePlan
 
         return new LevelPhasePlan(
             hasFocusWords: config.focusWords != null && config.focusWords.Count > 0,
-            hasSymbolLearning: config.learningRequirements != null && config.learningRequirements.Count > 0,
+            hasSymbolLearning: !config.suppressSymbolLearningCards
+                && config.learningRequirements != null
+                && config.learningRequirements.Count > 0,
             hasRequiredPractice: config.practiceRequirements != null && config.practiceRequirements.Count > 0,
             hasContextChallenge: contextChallenge,
             hasMemoryReward: true,
