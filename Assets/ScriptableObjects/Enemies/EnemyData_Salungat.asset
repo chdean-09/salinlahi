@@ -15,9 +15,8 @@ MonoBehaviour:
   enemyID: salungat
   displayName: Salungat
   discoverySubtitle: 
-  description: A two-headed creature whose heads constantly argue. It reverses commands
-    and causes allies to attack the wrong target.
-  abilityLine: It carries a symbol that is not its own.
+  description: Salungat speaks with two heads because Paglimot filled one with memory and the other with contradiction. It carries a character that does not belong to it, trusting haste to turn a familiar mark into a harmful choice.
+  abilityLine: It presents a false character that turns a careless drawing against the Living Scroll.
   moveSpeed: 1.5
   maxHealth: 1
   walkFrames:
@@ -71,3 +70,7 @@ MonoBehaviour:
   scrambleRadius: 3
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
+  corruptedMeaning: A false carrier turns automatic recognition against the player.
+  trueMeaning: Reading the glyph prevents a confident wrong choice.
+  restoredLesson: Check whether the carrier belongs before drawing.
+  learningAbility: 13

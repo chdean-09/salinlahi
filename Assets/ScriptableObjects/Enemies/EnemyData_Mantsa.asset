@@ -15,9 +15,8 @@ MonoBehaviour:
   enemyID: mantsa
   displayName: Mantsa
   discoverySubtitle: 
-  description: A crawling mass of black ink that spreads across family portraits.
-    It stains correct symbols and changes them into incorrect forms.
-  abilityLine: It stains correct symbols and changes them into incorrect forms.
+  description: Mantsa crawled from ink spilled across forgotten family records. It covers the small marks that distinguish one Baybayin character from another, while the original remains beneath the stain.
+  abilityLine: It stains part of a correct character until its true form is hard to see.
   moveSpeed: 1.15
   maxHealth: 1
   walkFrames:
@@ -91,4 +90,8 @@ MonoBehaviour:
   splitCount: 2
   splitOffsetX: 0.9
   spriteScale: 1
+  corruptedMeaning: Ink hides the details that distinguish a correct form.
+  trueMeaning: Stable strokes carry identity even when partly obscured.
+  restoredLesson: Complete the true shape instead of learning the stain.
+  learningAbility: 3
   suppressDiscovery: 0

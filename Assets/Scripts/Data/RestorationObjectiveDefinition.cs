@@ -188,6 +188,15 @@ public sealed class RestorationObjectiveState
         }
     }
 
+    /// <summary>
+    /// Stable id of the next eligible target in the active unit. This is a read-only context seam
+    /// for enemy abilities such as Bakod and Gapos; it never grants restoration credit or changes
+    /// the objective cursor.
+    /// </summary>
+    public string NextTargetSymbolStableId => ResolveNextTarget()?.SymbolStableId;
+
+    public string NextTargetSpokenValueId => ResolveNextTarget()?.SpokenValueId;
+
     public void Configure(RestorationObjectiveDefinition definition)
     {
         _definition = definition;
@@ -212,6 +221,35 @@ public sealed class RestorationObjectiveState
                     _targetCount++;
             }
         }
+    }
+
+    private RestorationObjectiveToken ResolveNextTarget()
+    {
+        int unitIndex = ActiveUnitIndex;
+        if (unitIndex < 0)
+            return null;
+
+        RuntimeUnit unit = _units[unitIndex];
+        RestorationObjectiveToken selected = null;
+        int selectedOrder = int.MaxValue;
+        for (int tokenIndex = 0; tokenIndex < unit.Restored.Length; tokenIndex++)
+        {
+            if (unit.Restored[tokenIndex])
+                continue;
+
+            RestorationObjectiveToken token = unit.Definition.tokens[tokenIndex];
+            if (token?.IsTarget != true || !EarlierTargetsRestored(unit, token, tokenIndex))
+                continue;
+
+            int order = token.EffectiveCompletionOrder(tokenIndex);
+            if (selected == null || order < selectedOrder)
+            {
+                selected = token;
+                selectedOrder = order;
+            }
+        }
+
+        return selected;
     }
 
     /// <summary>Builds the compatibility objective used by legacy focus-word levels.</summary>

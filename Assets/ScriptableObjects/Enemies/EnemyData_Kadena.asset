@@ -15,9 +15,8 @@ MonoBehaviour:
   enemyID: kadena
   displayName: Kadena
   discoverySubtitle: 
-  description: A warrior made of chains and broken locks. It binds villagers and
-    prevents them from helping Juan.
-  abilityLine: It binds itself by chain to the enemy nearest to it.
+  description: Kadena gathers characters Paglimot has torn from their words and locks them into forced order. Its chains insist that memory has only one path, but the links themselves still reveal the sequence they stole.
+  abilityLine: Its chain bears a sequence of characters that binds both enemies together.
   moveSpeed: 1.05
   maxHealth: 2
   walkFrames:
@@ -72,3 +71,7 @@ MonoBehaviour:
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
   chainsNearestEnemy: 1
+  corruptedMeaning: Forced order breaks the connection between marks.
+  trueMeaning: Syllables form meaningful sequences.
+  restoredLesson: Remember the short chain in its shown order.
+  learningAbility: 9

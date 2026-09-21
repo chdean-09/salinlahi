@@ -15,9 +15,8 @@ MonoBehaviour:
   enemyID: ngatngat
   displayName: Ngatngat
   discoverySubtitle: 
-  description: A swarm of ink moths with sharp paper-like wings. It eats letters,
-    woven patterns, documents, and inscriptions.
-  abilityLine: It moves faster than anything else in its wave.
+  description: Ngatngat is a swarm raised by Paglimot from the edges of neglected manuscripts. It eats context first—one syllable, then another—until only the marks themselves remain.
+  abilityLine: It eats away the written clue one syllable at a time.
   moveSpeed: 1.9
   maxHealth: 1
   walkFrames:
@@ -71,3 +70,7 @@ MonoBehaviour:
   scrambleRadius: 3
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
+  corruptedMeaning: Context is eaten away one syllable at a time.
+  trueMeaning: Recall can carry a word after its clue fades.
+  restoredLesson: Decide when you know enough to draw without the clue.
+  learningAbility: 11

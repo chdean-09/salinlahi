@@ -15,9 +15,8 @@ MonoBehaviour:
   enemyID: labo
   displayName: Labo
   discoverySubtitle: 
-  description: A floating figure surrounded by thick gray fog. It hides symbols,
-    faces, paths, and environmental clues.
-  abilityLine: It fades out of sight and returns.
+  description: Labo is the fog Paglimot spreads over memories that were once clear. It does not change the character; it simply removes it from sight and waits for certainty to fade.
+  abilityLine: It disappears with its character, but remains vulnerable to what Juan remembers.
   moveSpeed: 1.35
   maxHealth: 1
   walkFrames:
@@ -71,3 +70,7 @@ MonoBehaviour:
   scrambleRadius: 3
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
+  corruptedMeaning: Fog makes a known character disappear from sight.
+  trueMeaning: A remembered form remains usable without a prompt.
+  restoredLesson: Hold the glyph in memory and draw it when hidden.
+  learningAbility: 10

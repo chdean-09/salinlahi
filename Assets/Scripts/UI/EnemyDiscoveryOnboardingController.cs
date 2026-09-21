@@ -604,7 +604,15 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
     private static string BuildFormattedCopy(EnemyDiscoveryCopy copy, bool hideTitle = false)
     {
         string title = hideTitle ? string.Empty : copy.Title;
-        return $"<size=56><b>{title}</b></size>\n<size=42>{copy.Description}</size>\n<size=42>Power: {copy.Power}</size>";
+        string curriculum = string.Empty;
+        if (!string.IsNullOrWhiteSpace(copy.CorruptedMeaning))
+            curriculum += $"\n<size=34>What it corrupts: {copy.CorruptedMeaning}</size>";
+        if (!string.IsNullOrWhiteSpace(copy.TrueMeaning))
+            curriculum += $"\n<size=34>What it protects: {copy.TrueMeaning}</size>";
+        if (!string.IsNullOrWhiteSpace(copy.RestoredLesson))
+            curriculum += $"\n<size=34>Restored lesson: {copy.RestoredLesson}</size>";
+
+        return $"<size=56><b>{title}</b></size>\n<size=42>{copy.Description}</size>\n<size=42>Power: {copy.Power}</size>{curriculum}";
     }
 
     private void StartTypewriter()

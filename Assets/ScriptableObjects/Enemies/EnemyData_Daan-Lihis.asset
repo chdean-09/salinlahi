@@ -15,9 +15,8 @@ MonoBehaviour:
   enemyID: daan-lihis
   displayName: Daan-Lihis
   discoverySubtitle: 
-  description: A long serpent with road markings across its body. It changes the
-    direction of paths and sends Juan back to previous areas.
-  abilityLine: It weaves from side to side instead of walking straight down.
+  description: Daan-Lihis coils across paths Paglimot has bent away from memory. At every fork it places a familiar-looking sign on the wrong road and trusts Juan to follow without reading.
+  abilityLine: It creates two character-marked paths, but only one belongs to the current word.
   moveSpeed: 1.5
   maxHealth: 1
   walkFrames:
@@ -71,3 +70,7 @@ MonoBehaviour:
   scrambleRadius: 3
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
+  corruptedMeaning: A familiar sign can point memory down the wrong path.
+  trueMeaning: Character identity stays stable even when position changes.
+  restoredLesson: Read the glyph and context, not its location.
+  learningAbility: 17

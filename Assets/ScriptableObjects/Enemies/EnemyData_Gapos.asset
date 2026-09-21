@@ -15,9 +15,8 @@ MonoBehaviour:
   enemyID: gapos
   displayName: Gapos
   discoverySubtitle: 
-  description: A creature made of dark roots and ropes. It traps Juan's hands and
-    slows down symbol drawing.
-  abilityLine: It holds together after the first correct symbol.
+  description: Gapos grows from roots Paglimot wrapped around words that once belonged together. It binds two characters into uncertainty, hoping Juan will choose by position instead of meaning.
+  abilityLine: It binds two characters and allows only the one that belongs to the current word to break free.
   moveSpeed: 1
   maxHealth: 2
   walkFrames:
@@ -71,3 +70,7 @@ MonoBehaviour:
   scrambleRadius: 3
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
+  corruptedMeaning: Bound memories are mistaken for interchangeable ones.
+  trueMeaning: Meaning tells which character belongs together.
+  restoredLesson: Choose the bound carrier that fits the active word.
+  learningAbility: 7

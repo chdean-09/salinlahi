@@ -177,26 +177,26 @@ public class EnemyDataSO : ScriptableObject
     public float pauseDuration = 0.35f;
 
     [Header("Kempei Censor")]
-    [Tooltip("Variant-specific: used only by KempeiScrambleController. World-space radius around Kempei that receives visual-only label scrambling.")]
+    [Tooltip("Variant-specific: used only by KempeiScrambleController. World-space radius around Mantsa that receives visual-only ink staining.")]
     public float scrambleRadius = 3f;
 
-    [Tooltip("Variant-specific: used only by KempeiScrambleController. Minimum seconds a stained badge holds one WRONG face while churning. Floored at GlyphStainCycle.MinimumFalseGlyphInterval so the churn reads as a blur rather than a hard strobe.")]
+    [Tooltip("Variant-specific: used only by KempeiScrambleController. Minimum seconds an ink stain holds before changing its obscuring tint. The stable Baybayin glyph is never replaced.")]
     public float scrambleMinGlitchInterval = GlyphStainCycle.DefaultFalseMinInterval;
 
-    [Tooltip("Variant-specific: used only by KempeiScrambleController. Maximum seconds a stained badge holds one WRONG face while churning.")]
+    [Tooltip("Variant-specific: used only by KempeiScrambleController. Maximum seconds an ink stain holds before changing its obscuring tint.")]
     public float scrambleMaxGlitchInterval = GlyphStainCycle.DefaultFalseMaxInterval;
 
-    [Tooltip("Variant-specific: used only by KempeiScrambleController. Minimum seconds the badge rests on its TRUE face between churns. This is the window the player reads and acts in, so it is floored at GlyphStainCycle.MinimumReadableInterval.")]
+    [Tooltip("Variant-specific: used only by KempeiScrambleController. Minimum seconds the badge remains visibly readable between stain pulses.")]
     public float scrambleTrueGlyphMinDwell = GlyphStainCycle.DefaultTrueMinInterval;
 
-    [Tooltip("Variant-specific: used only by KempeiScrambleController. Maximum seconds the badge rests on its TRUE face between churns.")]
+    [Tooltip("Variant-specific: used only by KempeiScrambleController. Maximum seconds the badge remains visibly readable between stain pulses.")]
     public float scrambleTrueGlyphMaxDwell = GlyphStainCycle.DefaultTrueMaxInterval;
 
-    [Tooltip("Variant-specific: used only by KempeiScrambleController. How many wrong faces scroll past before the true face returns. 1 would be a slow alternation rather than a scroll.")]
+    [Tooltip("Variant-specific: used only by KempeiScrambleController. How many stain pulses pass before the stable glyph is readable again.")]
     public int scrambleFalseBurstCount = GlyphStainCycle.DefaultFalseBurstCount;
 
     [Header("Corruption Signature Abilities")]
-    [Tooltip("Mantsa (and Kempei): while this enemy lives, nearby enemies' badges are stained into their scrambled, incorrect form. Uses the Kempei Censor radius and glitch intervals above. Enemy.Initialize attaches KempeiScrambleController on the shared shell when set.")]
+    [Tooltip("Mantsa (and Kempei): while this enemy lives, nearby badges receive a visual ink stain while their stable glyph identity remains unchanged. Uses the radius and stain intervals above. Enemy.Initialize attaches KempeiScrambleController on the shared shell when set.")]
     public bool stainsNearbyGlyphs;
 
     [Tooltip("Takip: this enemy's own glyph badge stays covered and is only revealed briefly. Enemy.Initialize attaches GlyphCoverController when set.")]
@@ -251,7 +251,7 @@ public class EnemyDataSO : ScriptableObject
     [Tooltip("Kadena: on spawn this enemy chains the nearest other enemy and holds it under a resolution block — it can be neither marked nor damaged — until Kadena is defeated. One target, acquired once, never re-chained. Enemy.Initialize attaches KadenaChainController when set.")]
     public bool chainsNearestEnemy;
 
-    [Tooltip("Hati: when this enemy is defeated it splits into splitCount pieces of splitSpawnData around its position, each carrying this enemy's glyph. The pieces are real enemies that never split again. Enemy.Initialize attaches HatiSplitController when set; Enemy.Defeat invokes it.")]
+    [Tooltip("Hati: when this enemy is defeated it splits into splitCount pieces of splitSpawnData around its position. Pieces review distinct learned glyphs when the active roster provides alternatives, and fall back to the source glyph otherwise. Enemy.Initialize attaches HatiSplitController when set; Enemy.Defeat invokes it.")]
     public bool splitsOnDefeat;
 
     [Tooltip("Hati: the enemy data each piece spawns with (the minion). Must not itself split.")]
@@ -266,6 +266,22 @@ public class EnemyDataSO : ScriptableObject
     [Tooltip("Multiplier on the shared shell's authored transform scale, applied on spawn. 1 keeps the shell's scale; Hati's pieces use a smaller value so they read as the 'smaller enemies' in Hati's description.")]
     public float spriteScale = 1f;
 
+    [Header("Learning Curriculum")]
+    [TextArea]
+    [Tooltip("The Baybayin idea this enemy corrupts. Discovery cards use this as the first curriculum prompt.")]
+    public string corruptedMeaning;
+
+    [TextArea]
+    [Tooltip("The positive linguistic or cultural idea restored when this enemy is understood.")]
+    public string trueMeaning;
+
+    [TextArea]
+    [Tooltip("The concise Baybayin lesson the player reclaims through this enemy's encounter.")]
+    public string restoredLesson;
+
+    [Tooltip("The retention-oriented ability used by this enemy. Existing signature flags remain the runtime compatibility layer for Levels 1-5.")]
+    public EnemyLearningAbility learningAbility = EnemyLearningAbility.None;
+
     [HideInInspector]
     [Tooltip("Runtime-only: set on generated decoy copies so they never raise their own discovery event.")]
     public bool suppressDiscovery;
@@ -276,4 +292,33 @@ public enum Era
     Spanish,
     American,
     Japanese
+}
+
+/// <summary>
+/// Retention-oriented enemy abilities. The enum is data only: existing signature components remain
+/// responsible for the shipped Levels 1-5 mechanics, while this identity lets discovery copy,
+/// validation, and future introductions describe the learning purpose without inferring it from a
+/// movement or health modifier.
+/// </summary>
+public enum EnemyLearningAbility
+{
+    None,
+    AshenBeginning,
+    ConfusableReflection,
+    StainedStroke,
+    NamelessGlyphs,
+    ContextGate,
+    RememberedReveal,
+    BoundPair,
+    SplitReview,
+    ChainSequence,
+    MemoryFade,
+    ProgressiveNibble,
+    TornContext,
+    ContradictingDecoy,
+    FinalWordSeal,
+    InkAbsorption,
+    ForkedGlyph,
+    ContextRush,
+    ChangingArmor,
 }
