@@ -13,83 +13,81 @@ MonoBehaviour:
   m_Name: Challenge_Pamana11_Context
   m_EditorClassIdentifier: Salinlahi.Runtime::ChallengeSequenceSO
   sequenceId: challenge.pamana.11
-  displayName: Unang Alaala ng Pamana
+  displayName: Dalang Alaala
   units:
   - unitId: pamana11-complete-dala
     mode: 1
     cluePolicy: 0
-    prompt: May dala kang alaala mula sa mga naunang panahon. Buuin mo ang salitang
-      nagsasabi kung ano ang ginagawa mo.
+    prompt: May ______ kang alaala mula sa mga naunang panahon.
     tokens:
-    - tokenId: pamana11-dala
+    - tokenId: pamana11-dala-focus
       displayText: DALA
-      occurrenceId: pamana11-dala
+      occurrenceId: pamana11-dala-focus-occ
       role: 1
       targetCharacter: {fileID: 0}
       evidenceContentId: 
-    - tokenId: pamana11-mana-decoy
+    - tokenId: pamana11-dala-decoy-01
       displayText: MANA
-      occurrenceId: pamana11-mana-decoy
+      occurrenceId: pamana11-dala-decoy-01-occ
       role: 0
       targetCharacter: {fileID: 0}
       evidenceContentId: 
-    - tokenId: pamana11-sama-decoy
+    - tokenId: pamana11-dala-decoy-02
       displayText: SAMA
-      occurrenceId: pamana11-sama-decoy
+      occurrenceId: pamana11-dala-decoy-02-occ
       role: 0
       targetCharacter: {fileID: 0}
       evidenceContentId: 
     slots:
-    - slotId: pamana11-complete-dala-slot
-      expectedOccurrenceId: pamana11-dala
+    - slotId: pamana11-dala-slot
+      expectedOccurrenceId: pamana11-dala-focus-occ
     candidateOccurrenceIds:
-    - pamana11-dala
-    - pamana11-mana-decoy
-    - pamana11-sama-decoy
+    - pamana11-dala-focus-occ
+    - pamana11-dala-decoy-01-occ
+    - pamana11-dala-decoy-02-occ
     guidedStep: {fileID: 0}
     timerSeconds: 0
     allowHint: 1
     checkpointOnSuccess: 1
-    memoryRevealSeconds: 0
+    memoryRevealSeconds: 1
     maxErrors: 3
     heartPenalty: 1
     evidenceContentId: level.pamana.01.focus.01
   - unitId: pamana11-complete-dama
     mode: 1
     cluePolicy: 0
-    prompt: Hindi sapat na dalhin lamang ang alaala. Buuin mo ang salitang nagsasabi
-      kung paano mo ito nauunawaan.
+    prompt: Hindi sapat na dalhin ang alaala; kailangan din itong ______.
     tokens:
-    - tokenId: pamana11-dama
+    - tokenId: pamana11-dama-focus
       displayText: DAMA
-      occurrenceId: pamana11-dama
+      occurrenceId: pamana11-dama-focus-occ
       role: 1
       targetCharacter: {fileID: 0}
       evidenceContentId: 
-    - tokenId: pamana11-mata-decoy
+    - tokenId: pamana11-dama-decoy-01
       displayText: MATA
-      occurrenceId: pamana11-mata-decoy
+      occurrenceId: pamana11-dama-decoy-01-occ
       role: 0
       targetCharacter: {fileID: 0}
       evidenceContentId: 
-    - tokenId: pamana11-gawa-decoy
+    - tokenId: pamana11-dama-decoy-02
       displayText: GAWA
-      occurrenceId: pamana11-gawa-decoy
+      occurrenceId: pamana11-dama-decoy-02-occ
       role: 0
       targetCharacter: {fileID: 0}
       evidenceContentId: 
     slots:
-    - slotId: pamana11-complete-dama-slot
-      expectedOccurrenceId: pamana11-dama
+    - slotId: pamana11-dama-slot
+      expectedOccurrenceId: pamana11-dama-focus-occ
     candidateOccurrenceIds:
-    - pamana11-dama
-    - pamana11-mata-decoy
-    - pamana11-gawa-decoy
+    - pamana11-dama-focus-occ
+    - pamana11-dama-decoy-01-occ
+    - pamana11-dama-decoy-02-occ
     guidedStep: {fileID: 0}
     timerSeconds: 0
     allowHint: 1
     checkpointOnSuccess: 1
-    memoryRevealSeconds: 0
+    memoryRevealSeconds: 1
     maxErrors: 3
     heartPenalty: 1
     evidenceContentId: level.pamana.01.focus.02

@@ -12,18 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5bcd7fccabc7c46ceb246e8068fbcf0e, type: 3}
   m_Name: BossConfig_Kadiliman
   m_EditorClassIdentifier: Salinlahi.Runtime::BossConfigSO
-  bossName: Kadiliman
-  bossID: KADILIMAN
+  bossName: Paglimot
+  bossID: PAGLIMOT
   bossSprite: {fileID: 0}
-  description: 'Kadiliman is the Darkness itself, the embodiment of cultural forgetting.
-    A formless shadow entity that combines all three eras of corruption.
-
-
-
-
-    Power:
-    Summons enemies from every era. Drawing all 18 characters in a timed sequence
-    restores Baybayin to the world.'
+  description: Paglimot is the force of cultural forgetting that gathers the corruptions
+    of every era. Juan must hold fast to all eighteen Baybayin characters, restore
+    the final memory, and complete MALAYA so the inheritance can pass to the next
+    salinlahi.
   bossEnemyData: {fileID: 11400000, guid: 052b00742308dce4499cfb4cf6b8c33e, type: 2}
   phases:
   - summonPhaseDuration: 30

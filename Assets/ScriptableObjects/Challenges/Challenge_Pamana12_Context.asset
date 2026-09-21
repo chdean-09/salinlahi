@@ -13,83 +13,81 @@ MonoBehaviour:
   m_Name: Challenge_Pamana12_Context
   m_EditorClassIdentifier: Salinlahi.Runtime::ChallengeSequenceSO
   sequenceId: challenge.pamana.12
-  displayName: Ikalawang Alaala ng Pamana
+  displayName: Mga Tagapag-ingat
   units:
   - unitId: pamana12-complete-hanga
     mode: 1
     cluePolicy: 1
-    prompt: May mga tao na nag-ingat sa sulat nang walang humihingi sa kanila. Buuin
-      mo ang salitang nararapat sa kanila.
+    prompt: Sa mga nag-ingat ng sulat at alaala, nararapat ang ating ______.
     tokens:
-    - tokenId: pamana12-hanga
+    - tokenId: pamana12-hanga-focus
       displayText: HANGA
-      occurrenceId: pamana12-hanga
+      occurrenceId: pamana12-hanga-focus-occ
       role: 1
       targetCharacter: {fileID: 0}
       evidenceContentId: 
-    - tokenId: pamana12-awa-decoy
+    - tokenId: pamana12-hanga-decoy-01
       displayText: AWA
-      occurrenceId: pamana12-awa-decoy
+      occurrenceId: pamana12-hanga-decoy-01-occ
       role: 0
       targetCharacter: {fileID: 0}
       evidenceContentId: 
-    - tokenId: pamana12-dama-decoy
+    - tokenId: pamana12-hanga-decoy-02
       displayText: DAMA
-      occurrenceId: pamana12-dama-decoy
+      occurrenceId: pamana12-hanga-decoy-02-occ
       role: 0
       targetCharacter: {fileID: 0}
       evidenceContentId: 
     slots:
-    - slotId: pamana12-complete-hanga-slot
-      expectedOccurrenceId: pamana12-hanga
+    - slotId: pamana12-hanga-slot
+      expectedOccurrenceId: pamana12-hanga-focus-occ
     candidateOccurrenceIds:
-    - pamana12-hanga
-    - pamana12-awa-decoy
-    - pamana12-dama-decoy
+    - pamana12-hanga-focus-occ
+    - pamana12-hanga-decoy-01-occ
+    - pamana12-hanga-decoy-02-occ
     guidedStep: {fileID: 0}
     timerSeconds: 0
     allowHint: 1
     checkpointOnSuccess: 1
-    memoryRevealSeconds: 0
+    memoryRevealSeconds: 1
     maxErrors: 3
     heartPenalty: 1
     evidenceContentId: level.pamana.02.focus.01
   - unitId: pamana12-complete-halaga
     mode: 1
     cluePolicy: 1
-    prompt: Hindi nasusukat sa ginto ang kanilang iniingatan. Buuin mo ang salitang
-      nagsasabi kung ano ang taglay nito.
+    prompt: Hindi ginto ang sukatan; nasa kuwentong ipinasa ang tunay na ______.
     tokens:
-    - tokenId: pamana12-halaga
+    - tokenId: pamana12-halaga-focus
       displayText: HALAGA
-      occurrenceId: pamana12-halaga
+      occurrenceId: pamana12-halaga-focus-occ
       role: 1
       targetCharacter: {fileID: 0}
       evidenceContentId: 
-    - tokenId: pamana12-kasama-decoy
+    - tokenId: pamana12-halaga-decoy-01
       displayText: KASAMA
-      occurrenceId: pamana12-kasama-decoy
+      occurrenceId: pamana12-halaga-decoy-01-occ
       role: 0
       targetCharacter: {fileID: 0}
       evidenceContentId: 
-    - tokenId: pamana12-dala-decoy
+    - tokenId: pamana12-halaga-decoy-02
       displayText: DALA
-      occurrenceId: pamana12-dala-decoy
+      occurrenceId: pamana12-halaga-decoy-02-occ
       role: 0
       targetCharacter: {fileID: 0}
       evidenceContentId: 
     slots:
-    - slotId: pamana12-complete-halaga-slot
-      expectedOccurrenceId: pamana12-halaga
+    - slotId: pamana12-halaga-slot
+      expectedOccurrenceId: pamana12-halaga-focus-occ
     candidateOccurrenceIds:
-    - pamana12-halaga
-    - pamana12-kasama-decoy
-    - pamana12-dala-decoy
+    - pamana12-halaga-focus-occ
+    - pamana12-halaga-decoy-01-occ
+    - pamana12-halaga-decoy-02-occ
     guidedStep: {fileID: 0}
     timerSeconds: 0
     allowHint: 1
     checkpointOnSuccess: 1
-    memoryRevealSeconds: 0
+    memoryRevealSeconds: 1
     maxErrors: 3
     heartPenalty: 1
     evidenceContentId: level.pamana.02.focus.02

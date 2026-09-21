@@ -1,0 +1,93 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b7c9d9cf2f34d9c9e1a0d437f2f6e90, type: 3}
+  m_Name: Challenge_Ugnayan08_Context
+  m_EditorClassIdentifier: Salinlahi.Runtime::ChallengeSequenceSO
+  sequenceId: challenge.ugnayan.08
+  displayName: Gana at Kaya
+  units:
+  - unitId: ugnayan08-restore-gana
+    mode: 2
+    cluePolicy: 1
+    prompt: Ang ______ ang nagtutulak sa atin upang magsimula.
+    tokens:
+    - tokenId: ugnayan08-gana-focus
+      displayText: GANA
+      occurrenceId: ugnayan08-gana-focus-occ
+      role: 1
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugnayan08-gana-decoy-01
+      displayText: GAWA
+      occurrenceId: ugnayan08-gana-decoy-01-occ
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugnayan08-gana-decoy-02
+      displayText: SAMA
+      occurrenceId: ugnayan08-gana-decoy-02-occ
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    slots:
+    - slotId: ugnayan08-gana-slot
+      expectedOccurrenceId: ugnayan08-gana-focus-occ
+    candidateOccurrenceIds:
+    - ugnayan08-gana-focus-occ
+    - ugnayan08-gana-decoy-01-occ
+    - ugnayan08-gana-decoy-02-occ
+    guidedStep: {fileID: 0}
+    timerSeconds: 0
+    allowHint: 1
+    checkpointOnSuccess: 1
+    memoryRevealSeconds: 1
+    maxErrors: 3
+    heartPenalty: 1
+    evidenceContentId: level.ugnayan.03.focus.01
+  - unitId: ugnayan08-restore-kaya
+    mode: 2
+    cluePolicy: 1
+    prompt: Dahil sa pagsisikap at tulong ng kapwa, ______ natin itong tapusin.
+    tokens:
+    - tokenId: ugnayan08-kaya-focus
+      displayText: KAYA
+      occurrenceId: ugnayan08-kaya-focus-occ
+      role: 1
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugnayan08-kaya-decoy-01
+      displayText: SAYA
+      occurrenceId: ugnayan08-kaya-decoy-01-occ
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugnayan08-kaya-decoy-02
+      displayText: UNA
+      occurrenceId: ugnayan08-kaya-decoy-02-occ
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    slots:
+    - slotId: ugnayan08-kaya-slot
+      expectedOccurrenceId: ugnayan08-kaya-focus-occ
+    candidateOccurrenceIds:
+    - ugnayan08-kaya-focus-occ
+    - ugnayan08-kaya-decoy-01-occ
+    - ugnayan08-kaya-decoy-02-occ
+    guidedStep: {fileID: 0}
+    timerSeconds: 0
+    allowHint: 1
+    checkpointOnSuccess: 1
+    memoryRevealSeconds: 1
+    maxErrors: 3
+    heartPenalty: 1
+    evidenceContentId: level.ugnayan.03.focus.02

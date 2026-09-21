@@ -31,8 +31,8 @@ MonoBehaviour:
     media:
       contextImage: {fileID: 0}
       narrationClip: {fileID: 0}
-      dialogue: {fileID: 0}
-      cutscene: {fileID: 0}
+      dialogue: {fileID: 11400000, guid: c2b511ba30af0ca42986669073ab9d68, type: 2}
+      cutscene: {fileID: 11400000, guid: cd487b7fee0cf644ea0798d84182aea5, type: 2}
   - stableId: level.pamana.01.focus.02
     latinSpelling: DAMA
     displayLabel: DAMA
@@ -45,8 +45,8 @@ MonoBehaviour:
     media:
       contextImage: {fileID: 0}
       narrationClip: {fileID: 0}
-      dialogue: {fileID: 0}
-      cutscene: {fileID: 0}
+      dialogue: {fileID: 11400000, guid: 61eda7c6aab52f5408696e62bc2f59ec, type: 2}
+      cutscene: {fileID: 11400000, guid: cd487b7fee0cf644ea0798d84182aea5, type: 2}
   cumulativeSymbolPool:
   - symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
     spokenValueId: value.a
@@ -218,8 +218,12 @@ MonoBehaviour:
       symbol: {fileID: 11400000, guid: 9aae464ed65b8416b9aa3ad6ee4ce2c4, type: 2}
       spokenValueId: value.la
     requiredSuccesses: 2
-  activeClueCombatEnabled: 0
-  activeClueRestorationEnabled: 0
+  suppressSymbolLearningCards: 0
+  restorationObjective:
+    displayMode: 0
+    units: []
+  activeClueCombatEnabled: 1
+  activeClueRestorationEnabled: 1
   clueChannels: 17
   audioVisualFallback: 4
   spawnAssignmentPolicy:
@@ -235,6 +239,8 @@ MonoBehaviour:
     maxConcurrentEnemies: 8
     openingSpawnSpokenValueId: 
     allowFinalWaveOverflow: 1
+    gateFinalSlotToFinalWave: 0
+    maxOverflowBatches: 12
     assignmentSeed: 0
     slotGates: []
     slotFloors: []
@@ -247,12 +253,13 @@ MonoBehaviour:
   contextMedia:
     contextImage: {fileID: 0}
     narrationClip: {fileID: 0}
-    dialogue: {fileID: 0}
-    cutscene: {fileID: 0}
+    dialogue: {fileID: 11400000, guid: 074371a3cf5a94a40819d3c0d54d17a4, type: 2}
+    cutscene: {fileID: 11400000, guid: cd487b7fee0cf644ea0798d84182aea5, type: 2}
   finalRestorationValue:
     symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
     spokenValueId: value.ma
-  rewardIds: []
+  rewardIds:
+  - memory.pamana.01
   masteryRequirements:
   - kind: 3
     symbolValue:
@@ -325,7 +332,7 @@ MonoBehaviour:
       spokenValueId: value.la
     requiredSuccesses: 1
   eraTheme: {fileID: 11400000, guid: c58190bf930deed43b75ce44c3c548bd, type: 2}
-  numberSprite: {fileID: 0}
+  numberSprite: {fileID: -8255703752285137255, guid: 1f48d5c864048764490aef7ead1b86fc, type: 3}
   _authoredWaves:
   - isIntermissionWave: 0
     characters:
@@ -380,6 +387,7 @@ MonoBehaviour:
     enemyCount: 7
     spawnInterval: 2.2
     waveStartDelay: 1
+  waveCurve: {fileID: 0}
   allowedCharacters:
   - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
   - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
@@ -416,8 +424,8 @@ MonoBehaviour:
     emergencyHintsPerAttempt: 1
     emergencyHintScorePenalty: 0.1
   flowSegments: []
-  introDialogue: {fileID: 0}
-  outroDialogue: {fileID: 0}
+  introDialogue: {fileID: 11400000, guid: 074371a3cf5a94a40819d3c0d54d17a4, type: 2}
+  outroDialogue: {fileID: 11400000, guid: 25ccd48011d268a4faf38cce64158847, type: 2}
   bgmClip: {fileID: 0}
-  hasProtagonist: 0
+  hasProtagonist: 1
   protagonistWalksIn: 0

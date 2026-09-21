@@ -31,8 +31,8 @@ MonoBehaviour:
     media:
       contextImage: {fileID: 0}
       narrationClip: {fileID: 0}
-      dialogue: {fileID: 0}
-      cutscene: {fileID: 0}
+      dialogue: {fileID: 11400000, guid: 33da0c2dd20235d4a879458236ac8122, type: 2}
+      cutscene: {fileID: 11400000, guid: 9a2aae86dccd12041a11ddbe513a6525, type: 2}
   - stableId: level.ugnayan.02.focus.02
     latinSpelling: KASAMA
     displayLabel: KASAMA
@@ -47,8 +47,8 @@ MonoBehaviour:
     media:
       contextImage: {fileID: 0}
       narrationClip: {fileID: 0}
-      dialogue: {fileID: 0}
-      cutscene: {fileID: 0}
+      dialogue: {fileID: 11400000, guid: 607f6c43c9d98f04190d028f2af0ed36, type: 2}
+      cutscene: {fileID: 11400000, guid: 9a2aae86dccd12041a11ddbe513a6525, type: 2}
   cumulativeSymbolPool:
   - symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
     spokenValueId: value.a
@@ -172,8 +172,12 @@ MonoBehaviour:
       symbol: {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
       spokenValueId: value.wa
     requiredSuccesses: 2
-  activeClueCombatEnabled: 0
-  activeClueRestorationEnabled: 0
+  suppressSymbolLearningCards: 0
+  restorationObjective:
+    displayMode: 0
+    units: []
+  activeClueCombatEnabled: 1
+  activeClueRestorationEnabled: 1
   clueChannels: 19
   audioVisualFallback: 4
   spawnAssignmentPolicy:
@@ -189,6 +193,8 @@ MonoBehaviour:
     maxConcurrentEnemies: 8
     openingSpawnSpokenValueId: 
     allowFinalWaveOverflow: 1
+    gateFinalSlotToFinalWave: 0
+    maxOverflowBatches: 12
     assignmentSeed: 0
     slotGates: []
     slotFloors: []
@@ -201,12 +207,13 @@ MonoBehaviour:
   contextMedia:
     contextImage: {fileID: 0}
     narrationClip: {fileID: 0}
-    dialogue: {fileID: 0}
-    cutscene: {fileID: 0}
+    dialogue: {fileID: 11400000, guid: 9aa1eea89cce7cc418654c710cc0d380, type: 2}
+    cutscene: {fileID: 11400000, guid: 9a2aae86dccd12041a11ddbe513a6525, type: 2}
   finalRestorationValue:
     symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
     spokenValueId: value.ma
-  rewardIds: []
+  rewardIds:
+  - memory.ugnayan.02
   masteryRequirements:
   - kind: 3
     symbolValue:
@@ -259,7 +266,7 @@ MonoBehaviour:
       spokenValueId: value.wa
     requiredSuccesses: 1
   eraTheme: {fileID: 11400000, guid: 80a50c4bceb3cc946a8586e47777bb12, type: 2}
-  numberSprite: {fileID: 0}
+  numberSprite: {fileID: 187839122118532240, guid: 04da23af290d613448e27c47ec8f91c0, type: 3}
   _authoredWaves:
   - isIntermissionWave: 0
     characters:
@@ -316,6 +323,7 @@ MonoBehaviour:
     enemyCount: 7
     spawnInterval: 1.9
     waveStartDelay: 1
+  waveCurve: {fileID: 0}
   allowedCharacters:
   - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
   - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
@@ -338,7 +346,7 @@ MonoBehaviour:
   onboardingSequence: {fileID: 0}
   enemyLessons: []
   challengePrototypeEnabled: 0
-  challengeSequence: {fileID: 0}
+  challengeSequence: {fileID: 11400000, guid: 8cb45057a9ea29d4290395fe6b9c9f2b, type: 2}
   challengePolicy:
     tier: 2
     heartPenaltiesEnabled: 1
@@ -348,8 +356,8 @@ MonoBehaviour:
     emergencyHintsPerAttempt: 1
     emergencyHintScorePenalty: 0.1
   flowSegments: []
-  introDialogue: {fileID: 0}
-  outroDialogue: {fileID: 0}
+  introDialogue: {fileID: 11400000, guid: 9aa1eea89cce7cc418654c710cc0d380, type: 2}
+  outroDialogue: {fileID: 11400000, guid: 4ccecae62e5d7674fbda1918bd3ddb4a, type: 2}
   bgmClip: {fileID: 0}
-  hasProtagonist: 0
+  hasProtagonist: 1
   protagonistWalksIn: 0

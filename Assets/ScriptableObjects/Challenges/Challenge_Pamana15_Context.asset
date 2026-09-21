@@ -13,39 +13,38 @@ MonoBehaviour:
   m_Name: Challenge_Pamana15_Context
   m_EditorClassIdentifier: Salinlahi.Runtime::ChallengeSequenceSO
   sequenceId: challenge.pamana.15
-  displayName: Huling Alaala
+  displayName: Ang Huling Pamana
   units:
-  - unitId: pamana15-complete-pamana
+  - unitId: pamana15-restore-line-01
     mode: 3
-    cluePolicy: 1
-    prompt: Ito ang huling salitang ibinigay sa iyo ng mga nauna. Buuin mo ang pangalan
-      ng iniwan nila sa iyo.
+    cluePolicy: 2
+    prompt: Ang ______ ay hindi lamang bagay na iniwan; ito ay aral na piniling ipasa.
     tokens:
-    - tokenId: pamana15-pamana
+    - tokenId: pamana15-line-01-focus
       displayText: PAMANA
-      occurrenceId: pamana15-pamana
+      occurrenceId: pamana15-line-01-focus-occ
       role: 1
       targetCharacter: {fileID: 0}
       evidenceContentId: 
-    - tokenId: pamana15-mana-decoy
+    - tokenId: pamana15-line-01-decoy-01
       displayText: MANA
-      occurrenceId: pamana15-mana-decoy
+      occurrenceId: pamana15-line-01-decoy-01-occ
       role: 0
       targetCharacter: {fileID: 0}
       evidenceContentId: 
-    - tokenId: pamana15-alaala-decoy
+    - tokenId: pamana15-line-01-decoy-02
       displayText: ALAALA
-      occurrenceId: pamana15-alaala-decoy
+      occurrenceId: pamana15-line-01-decoy-02-occ
       role: 0
       targetCharacter: {fileID: 0}
       evidenceContentId: 
     slots:
-    - slotId: pamana15-complete-pamana-slot
-      expectedOccurrenceId: pamana15-pamana
+    - slotId: pamana15-line-01-slot
+      expectedOccurrenceId: pamana15-line-01-focus-occ
     candidateOccurrenceIds:
-    - pamana15-pamana
-    - pamana15-mana-decoy
-    - pamana15-alaala-decoy
+    - pamana15-line-01-focus-occ
+    - pamana15-line-01-decoy-01-occ
+    - pamana15-line-01-decoy-02-occ
     guidedStep: {fileID: 0}
     timerSeconds: 0
     allowHint: 1
@@ -54,37 +53,37 @@ MonoBehaviour:
     maxErrors: 3
     heartPenalty: 1
     evidenceContentId: level.pamana.05.focus.01
-  - unitId: pamana15-complete-malaya
+  - unitId: pamana15-restore-line-02
     mode: 3
-    cluePolicy: 1
-    prompt: Hindi na makukuha ng Paglimot ang naibalik mo. Buuin mo ang salitang
-      nagsasabi kung ano ka na ngayon.
+    cluePolicy: 2
+    prompt: Kapag naalala ang ugat at pinili ang sariling landas, nagiging ______
+      ang tinig.
     tokens:
-    - tokenId: pamana15-malaya
+    - tokenId: pamana15-line-02-focus
       displayText: MALAYA
-      occurrenceId: pamana15-malaya
+      occurrenceId: pamana15-line-02-focus-occ
       role: 1
       targetCharacter: {fileID: 0}
       evidenceContentId: 
-    - tokenId: pamana15-saya-decoy
+    - tokenId: pamana15-line-02-decoy-01
       displayText: SAYA
-      occurrenceId: pamana15-saya-decoy
+      occurrenceId: pamana15-line-02-decoy-01-occ
       role: 0
       targetCharacter: {fileID: 0}
       evidenceContentId: 
-    - tokenId: pamana15-mahalaga-decoy
+    - tokenId: pamana15-line-02-decoy-02
       displayText: MAHALAGA
-      occurrenceId: pamana15-mahalaga-decoy
+      occurrenceId: pamana15-line-02-decoy-02-occ
       role: 0
       targetCharacter: {fileID: 0}
       evidenceContentId: 
     slots:
-    - slotId: pamana15-complete-malaya-slot
-      expectedOccurrenceId: pamana15-malaya
+    - slotId: pamana15-line-02-slot
+      expectedOccurrenceId: pamana15-line-02-focus-occ
     candidateOccurrenceIds:
-    - pamana15-malaya
-    - pamana15-saya-decoy
-    - pamana15-mahalaga-decoy
+    - pamana15-line-02-focus-occ
+    - pamana15-line-02-decoy-01-occ
+    - pamana15-line-02-decoy-02-occ
     guidedStep: {fileID: 0}
     timerSeconds: 0
     allowHint: 1
@@ -93,3 +92,41 @@ MonoBehaviour:
     maxErrors: 3
     heartPenalty: 1
     evidenceContentId: level.pamana.05.focus.02
+  - unitId: pamana15-restore-line-03
+    mode: 3
+    cluePolicy: 2
+    prompt: Hindi na maaangkin ng Paglimot ang ______ na buhay sa bawat salinlahi.
+    tokens:
+    - tokenId: pamana15-line-03-focus
+      displayText: PAMANA
+      occurrenceId: pamana15-line-03-focus-occ
+      role: 1
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: pamana15-line-03-decoy-01
+      displayText: HARAYA
+      occurrenceId: pamana15-line-03-decoy-01-occ
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: pamana15-line-03-decoy-02
+      displayText: KASAMA
+      occurrenceId: pamana15-line-03-decoy-02-occ
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    slots:
+    - slotId: pamana15-line-03-slot
+      expectedOccurrenceId: pamana15-line-03-focus-occ
+    candidateOccurrenceIds:
+    - pamana15-line-03-focus-occ
+    - pamana15-line-03-decoy-01-occ
+    - pamana15-line-03-decoy-02-occ
+    guidedStep: {fileID: 0}
+    timerSeconds: 0
+    allowHint: 1
+    checkpointOnSuccess: 1
+    memoryRevealSeconds: 1
+    maxErrors: 3
+    heartPenalty: 1
+    evidenceContentId: level.pamana.05.focus.01
