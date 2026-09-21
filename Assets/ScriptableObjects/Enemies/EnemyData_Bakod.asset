@@ -15,9 +15,8 @@ MonoBehaviour:
   enemyID: bakod
   displayName: Bakod
   discoverySubtitle: 
-  description: A wide stone creature shaped like a moving wall. It blocks paths,
-    separates family members, and prevents Juan from moving forward.
-  abilityLine: It raises a shell that guards the enemies walking behind it.
+  description: Bakod is a wall built from broken tablets and forgotten boundaries. Paglimot places it between related words and their missing parts, teaching people to see separation where meaning once connected them.
+  abilityLine: It raises a wall that guards the characters walking behind it.
   moveSpeed: 0.85
   maxHealth: 1
   walkFrames:
@@ -72,3 +71,7 @@ MonoBehaviour:
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
   blocksEnemiesBehind: 1
+  corruptedMeaning: Separation replaces connection between related syllables.
+  trueMeaning: Context connects syllables into meaningful words.
+  restoredLesson: Use the current word to decide which character matters.
+  learningAbility: 5

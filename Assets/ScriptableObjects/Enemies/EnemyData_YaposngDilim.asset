@@ -15,9 +15,8 @@ MonoBehaviour:
   enemyID: yapos-ng-dilim
   displayName: Yapos ng Dilim
   discoverySubtitle: 
-  description: A tall shadow with long arms wrapped around a glowing child. It traps
-    the final symbol of important words such as saya, haraya, and malaya.
-  abilityLine: It endures two correct symbols before it falls.
+  description: Yapos ng Dilim is the embrace Paglimot uses to keep a word from reaching completion. Within its arms it traps the last sequence that would turn scattered syllables into a living word.
+  abilityLine: It seals the final word behind an ordered chain of remembered characters.
   moveSpeed: 1.1
   maxHealth: 3
   walkFrames:
@@ -71,3 +70,7 @@ MonoBehaviour:
   scrambleRadius: 3
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
+  corruptedMeaning: A final word can be trapped behind darkness.
+  trueMeaning: Completion is a sequence, not repeated force.
+  restoredLesson: Restore the final sequence in order.
+  learningAbility: 15

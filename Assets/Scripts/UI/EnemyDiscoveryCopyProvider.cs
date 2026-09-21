@@ -5,6 +5,17 @@ using UnityEngine;
 public readonly struct EnemyDiscoveryCopy
 {
     public EnemyDiscoveryCopy(string title, string description, string power)
+        : this(title, description, power, null, null, null)
+    {
+    }
+
+    public EnemyDiscoveryCopy(
+        string title,
+        string description,
+        string power,
+        string corruptedMeaning,
+        string trueMeaning,
+        string restoredLesson)
     {
         Title = string.IsNullOrWhiteSpace(title) ? "Unknown" : title.Trim();
         Description = string.IsNullOrWhiteSpace(description)
@@ -13,11 +24,23 @@ public readonly struct EnemyDiscoveryCopy
         Power = string.IsNullOrWhiteSpace(power)
             ? "Observe its movement and draw the matching Baybayin character."
             : power.Trim();
+        CorruptedMeaning = string.IsNullOrWhiteSpace(corruptedMeaning)
+            ? string.Empty
+            : corruptedMeaning.Trim();
+        TrueMeaning = string.IsNullOrWhiteSpace(trueMeaning)
+            ? string.Empty
+            : trueMeaning.Trim();
+        RestoredLesson = string.IsNullOrWhiteSpace(restoredLesson)
+            ? string.Empty
+            : restoredLesson.Trim();
     }
 
     public string Title { get; }
     public string Description { get; }
     public string Power { get; }
+    public string CorruptedMeaning { get; }
+    public string TrueMeaning { get; }
+    public string RestoredLesson { get; }
 }
 
 public static class EnemyDiscoveryCopyProvider
@@ -30,7 +53,13 @@ public static class EnemyDiscoveryCopyProvider
             return new EnemyDiscoveryCopy(null, null, null);
 
         SplitDescription(data.description, out string description, out string power);
-        return new EnemyDiscoveryCopy(BuildTitle(data), description, power);
+        return new EnemyDiscoveryCopy(
+            BuildTitle(data),
+            description,
+            power,
+            data.corruptedMeaning,
+            data.trueMeaning,
+            data.restoredLesson);
     }
 
     private static string BuildTitle(EnemyDataSO data)

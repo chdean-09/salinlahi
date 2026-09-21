@@ -43,6 +43,24 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
+        public void NextTargetSymbol_ReportsOnlyTheFirstIncompleteOrderedOccurrence()
+        {
+            BaybayinCharacterSO ma = Symbol("MA", "symbol.test.next.ma");
+            BaybayinCharacterSO ta = Symbol("TA", "symbol.test.next.ta");
+            RestorationObjectiveDefinition definition = Definition(
+                Unit("ordered",
+                    Target("ordered.ma", ma, 0),
+                    Target("ordered.ta", ta, 1)));
+
+            var state = new RestorationObjectiveState();
+            state.Configure(definition);
+
+            Assert.AreEqual(ma.stableId, state.NextTargetSymbolStableId);
+            Assert.IsTrue(state.TryRestore(ma.stableId).Applied);
+            Assert.AreEqual(ta.stableId, state.NextTargetSymbolStableId);
+        }
+
+        [Test]
         public void LaterUnitSymbol_DoesNotBypassAnIncompleteEarlierUnit()
         {
             BaybayinCharacterSO ma = Symbol("MA", "symbol.test.ma");

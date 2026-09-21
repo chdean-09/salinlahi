@@ -190,7 +190,22 @@ public sealed class BakodShieldController : MonoBehaviour
         if (candidate.IsDying)
             return false;
 
-        return candidate.transform.position.y > ownY;
+        if (candidate.transform.position.y <= ownY)
+            return false;
+
+        // Context Gate: a carrier matching the next objective occurrence remains an opening in the
+        // wall. The active objective is authoritative for the slot; no alternate recognizer or
+        // target-selection rule is introduced here.
+        if (_enemy.Data.learningAbility == EnemyLearningAbility.ContextGate)
+        {
+            string next = RestorationObjectiveController.Active?.State.NextTargetSymbolStableId;
+            if (!string.IsNullOrEmpty(next)
+                && candidate.Character != null
+                && string.Equals(candidate.Character.stableId, next, System.StringComparison.Ordinal))
+                return false;
+        }
+
+        return true;
     }
 
     private void ReleaseAll()
