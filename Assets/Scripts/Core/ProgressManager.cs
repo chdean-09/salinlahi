@@ -48,6 +48,31 @@ public class ProgressManager : Singleton<ProgressManager>
     private LevelResults _pendingLevelResults;
     private LevelObjectiveFlags _pendingObjectiveFlags;
 
+#if UNITY_EDITOR || SALINLAHI_DEV
+    [Header("Development")]
+    [SerializeField]
+    [Tooltip("Makes every campaign level selectable and enables era navigation without changing saved unlock state.")]
+    private bool _enableAllLevelsForTesting;
+
+    private LevelConfigSO _testingSelectedLevel;
+#endif
+
+    /// <summary>
+    /// Editor/development-only access override used for manually exercising authored levels.
+    /// It never writes unlock flags to the active save.
+    /// </summary>
+    public bool EnableAllLevelsForTesting
+    {
+        get
+        {
+#if UNITY_EDITOR || SALINLAHI_DEV
+            return _enableAllLevelsForTesting;
+#else
+            return false;
+#endif
+        }
+    }
+
     /// <summary>
     /// SALIN-202: the level flow computes LevelResults before committing; the
     /// star calculation consults them so revised outcomes reflect learning
@@ -83,6 +108,9 @@ public class ProgressManager : Singleton<ProgressManager>
 
     public int GetSelectedLevelNumber()
     {
+        if (TryGetTestingSelectedLevel(out LevelConfigSO testingLevel))
+            return testingLevel.levelNumber;
+
         if (UsesRevisedProgress)
         {
             string selectedId = SaveManager.Instance.Repository.ActiveLevelId;
@@ -95,6 +123,9 @@ public class ProgressManager : Singleton<ProgressManager>
 
     public string GetSelectedLevelId()
     {
+        if (TryGetTestingSelectedLevel(out LevelConfigSO testingLevel))
+            return testingLevel.stableId;
+
         if (UsesRevisedProgress)
             return SaveManager.Instance.Repository.ActiveLevelId;
         return ResolveLegacyLevelId(PlayerPrefs.GetInt(SelectedLevelKey, 1));
@@ -103,6 +134,20 @@ public class ProgressManager : Singleton<ProgressManager>
     public bool TrySetSelectedLevel(LevelConfigSO level)
     {
         if (level == null) return false;
+
+#if UNITY_EDITOR || SALINLAHI_DEV
+        if (_enableAllLevelsForTesting)
+        {
+            if (level.levelNumber < 1 || level.levelNumber > TotalLevels)
+                return false;
+
+            _testingSelectedLevel = level;
+            DebugLogger.Log(
+                $"ProgressManager: Testing override selected Level {level.levelNumber} ({level.stableId}) without changing saved unlock state.");
+            return true;
+        }
+#endif
+
         if (UsesRevisedProgress)
             return SaveManager.Instance.Repository.TrySetActiveLevel(level.stableId);
         if (IsRevisedBlocked) return false;
@@ -113,6 +158,12 @@ public class ProgressManager : Singleton<ProgressManager>
 
     public bool TrySetSelectedLevelNumber(int levelNumber)
     {
+        if (EnableAllLevelsForTesting)
+        {
+            if (!TryResolveRevisedLevel(levelNumber, out LevelConfigSO testingLevel)) return false;
+            return TrySetSelectedLevel(testingLevel);
+        }
+
         if (UsesRevisedProgress)
         {
             if (!TryResolveRevisedLevel(levelNumber, out LevelConfigSO level)) return false;
@@ -216,6 +267,9 @@ public class ProgressManager : Singleton<ProgressManager>
         if (levelNumber < 1 || levelNumber > TotalLevels)
             return LevelLockState.Unknown;
 
+        if (EnableAllLevelsForTesting)
+            return IsLevelCompleted(levelNumber) ? LevelLockState.Completed : LevelLockState.Unlocked;
+
         if (UsesRevisedProgress)
         {
             LevelLockStatus status =
@@ -259,9 +313,26 @@ public class ProgressManager : Singleton<ProgressManager>
 
     public bool TryGetSelectedLevel(out LevelConfigSO level)
     {
+        if (TryGetTestingSelectedLevel(out level))
+            return true;
+
         level = null;
         if (UsesRevisedProgress)
             return SaveManager.Instance.Campaign.TryGetLevel(GetSelectedLevelId(), out level);
+        return false;
+    }
+
+    private bool TryGetTestingSelectedLevel(out LevelConfigSO level)
+    {
+#if UNITY_EDITOR || SALINLAHI_DEV
+        if (_enableAllLevelsForTesting && _testingSelectedLevel != null)
+        {
+            level = _testingSelectedLevel;
+            return true;
+        }
+#endif
+
+        level = null;
         return false;
     }
 
@@ -585,6 +656,9 @@ public class ProgressManager : Singleton<ProgressManager>
             DebugLogger.LogWarning($"ProgressManager: Invalid levelID {levelID}.");
             return false;
         }
+
+        if (EnableAllLevelsForTesting)
+            return true;
 
         if (UsesRevisedProgress)
             return SaveManager.Instance.Repository.IsLevelUnlocked(GetRevisedLevelId(levelID));

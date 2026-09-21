@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 70f95914c0af94d7bbb1e9ce7cf6e6a8, type: 3}
+  m_Name: Cutscene_Pamana15_Memory
+  m_EditorClassIdentifier: Salinlahi.Runtime::CutsceneSO
+  cutsceneId: memory.pamana.05
+  panels:
+  - image: {fileID: 0}
+    text: "Nagtipon ang mga salitang naibalik\u2014ugat, ugnayan, at pamana\u2014sa
+      iisang buhay na sulat."
+    transitionIn: 1
+    transitionDuration: 0.5
+    typewriterSpeed: 30
+  - image: {fileID: 0}
+    text: Nang mabuo ang MALAYA, kumawala ang tinta at naglakbay sa kamay ng susunod
+      na salinlahi.
+    transitionIn: 1
+    transitionDuration: 0.5
+    typewriterSpeed: 30
+  defaultTransition: 1
+  defaultTransitionDuration: 0.5
+  defaultTypewriterSpeed: 30

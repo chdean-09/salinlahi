@@ -13,57 +13,81 @@ MonoBehaviour:
   m_Name: Challenge_Ugnayan09_Context
   m_EditorClassIdentifier: Salinlahi.Runtime::ChallengeSequenceSO
   sequenceId: challenge.ugnayan.09
-  displayName: Ikasiyam na Alaala
+  displayName: Ang Unang Oo
   units:
-  - unitId: ugnayan09-restore-sentence
+  - unitId: ugnayan09-restore-oo
     mode: 2
     cluePolicy: 1
-    prompt: 'Dalawang salita ang kulang sa alaala ng pagtulong. Ilagay mo ang bawat
-      isa sa tamang puwang.
-
-
-      Sinabi niyang ______ at siya ang naging ______
-      sa pagtulong.'
+    prompt: Nang tanungin kung tutulong siya, sumagot siya ng ______.
     tokens:
-    - tokenId: ugnayan09-oo
+    - tokenId: ugnayan09-oo-focus
       displayText: OO
-      occurrenceId: ugnayan09-oo
+      occurrenceId: ugnayan09-oo-focus-occ
       role: 1
       targetCharacter: {fileID: 0}
       evidenceContentId: 
-    - tokenId: ugnayan09-una
-      displayText: UNA
-      occurrenceId: ugnayan09-una
-      role: 1
-      targetCharacter: {fileID: 0}
-      evidenceContentId: 
-    - tokenId: ugnayan09-sana-decoy
-      displayText: SANA
-      occurrenceId: ugnayan09-sana-decoy
+    - tokenId: ugnayan09-oo-decoy-01
+      displayText: AWA
+      occurrenceId: ugnayan09-oo-decoy-01-occ
       role: 0
       targetCharacter: {fileID: 0}
       evidenceContentId: 
-    - tokenId: ugnayan09-gana-decoy
-      displayText: GANA
-      occurrenceId: ugnayan09-gana-decoy
+    - tokenId: ugnayan09-oo-decoy-02
+      displayText: SANA
+      occurrenceId: ugnayan09-oo-decoy-02-occ
       role: 0
       targetCharacter: {fileID: 0}
       evidenceContentId: 
     slots:
-    - slotId: ugnayan09-slot-01
-      expectedOccurrenceId: ugnayan09-oo
-    - slotId: ugnayan09-slot-02
-      expectedOccurrenceId: ugnayan09-una
+    - slotId: ugnayan09-oo-slot
+      expectedOccurrenceId: ugnayan09-oo-focus-occ
     candidateOccurrenceIds:
-    - ugnayan09-oo
-    - ugnayan09-una
-    - ugnayan09-sana-decoy
-    - ugnayan09-gana-decoy
+    - ugnayan09-oo-focus-occ
+    - ugnayan09-oo-decoy-01-occ
+    - ugnayan09-oo-decoy-02-occ
     guidedStep: {fileID: 0}
     timerSeconds: 0
     allowHint: 1
     checkpointOnSuccess: 1
-    memoryRevealSeconds: 0
+    memoryRevealSeconds: 1
     maxErrors: 3
     heartPenalty: 1
     evidenceContentId: level.ugnayan.04.focus.01
+  - unitId: ugnayan09-restore-una
+    mode: 2
+    cluePolicy: 1
+    prompt: Siya ang naging ______ sa paglapit at pagtulong.
+    tokens:
+    - tokenId: ugnayan09-una-focus
+      displayText: UNA
+      occurrenceId: ugnayan09-una-focus-occ
+      role: 1
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugnayan09-una-decoy-01
+      displayText: GANA
+      occurrenceId: ugnayan09-una-decoy-01-occ
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugnayan09-una-decoy-02
+      displayText: SAMA
+      occurrenceId: ugnayan09-una-decoy-02-occ
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    slots:
+    - slotId: ugnayan09-una-slot
+      expectedOccurrenceId: ugnayan09-una-focus-occ
+    candidateOccurrenceIds:
+    - ugnayan09-una-focus-occ
+    - ugnayan09-una-decoy-01-occ
+    - ugnayan09-una-decoy-02-occ
+    guidedStep: {fileID: 0}
+    timerSeconds: 0
+    allowHint: 1
+    checkpointOnSuccess: 1
+    memoryRevealSeconds: 1
+    maxErrors: 3
+    heartPenalty: 1
+    evidenceContentId: level.ugnayan.04.focus.02

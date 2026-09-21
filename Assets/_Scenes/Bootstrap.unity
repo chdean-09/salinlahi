@@ -378,6 +378,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ffafe5d7dd78f244c81bba614c279d76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ProgressManager
+  _enableAllLevelsForTesting: 1
 --- !u!4 &1681108567
 Transform:
   m_ObjectHideFlags: 0

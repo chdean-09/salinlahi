@@ -1,0 +1,93 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b7c9d9cf2f34d9c9e1a0d437f2f6e90, type: 3}
+  m_Name: Challenge_Ugnayan07_Context
+  m_EditorClassIdentifier: Salinlahi.Runtime::ChallengeSequenceSO
+  sequenceId: challenge.ugnayan.07
+  displayName: Sama-Samang Lakas
+  units:
+  - unitId: ugnayan07-restore-sama
+    mode: 1
+    cluePolicy: 0
+    prompt: 'Buuin ang ugat na nangangahulugang paglapit at pakikiisa: ______.'
+    tokens:
+    - tokenId: ugnayan07-sama-focus
+      displayText: SAMA
+      occurrenceId: ugnayan07-sama-focus-occ
+      role: 1
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugnayan07-sama-decoy-01
+      displayText: AWA
+      occurrenceId: ugnayan07-sama-decoy-01-occ
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugnayan07-sama-decoy-02
+      displayText: GANA
+      occurrenceId: ugnayan07-sama-decoy-02-occ
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    slots:
+    - slotId: ugnayan07-sama-slot
+      expectedOccurrenceId: ugnayan07-sama-focus-occ
+    candidateOccurrenceIds:
+    - ugnayan07-sama-focus-occ
+    - ugnayan07-sama-decoy-01-occ
+    - ugnayan07-sama-decoy-02-occ
+    guidedStep: {fileID: 0}
+    timerSeconds: 0
+    allowHint: 1
+    checkpointOnSuccess: 1
+    memoryRevealSeconds: 1
+    maxErrors: 3
+    heartPenalty: 1
+    evidenceContentId: level.ugnayan.02.focus.01
+  - unitId: ugnayan07-restore-kasama
+    mode: 2
+    cluePolicy: 0
+    prompt: "Sa KA + ______ nabubuo ang KASAMA\u2014ang taong kapiling sa gawain."
+    tokens:
+    - tokenId: ugnayan07-kasama-focus
+      displayText: SAMA
+      occurrenceId: ugnayan07-kasama-focus-occ
+      role: 1
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugnayan07-kasama-decoy-01
+      displayText: SAYA
+      occurrenceId: ugnayan07-kasama-decoy-01-occ
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugnayan07-kasama-decoy-02
+      displayText: MANA
+      occurrenceId: ugnayan07-kasama-decoy-02-occ
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    slots:
+    - slotId: ugnayan07-kasama-slot
+      expectedOccurrenceId: ugnayan07-kasama-focus-occ
+    candidateOccurrenceIds:
+    - ugnayan07-kasama-focus-occ
+    - ugnayan07-kasama-decoy-01-occ
+    - ugnayan07-kasama-decoy-02-occ
+    guidedStep: {fileID: 0}
+    timerSeconds: 0
+    allowHint: 1
+    checkpointOnSuccess: 1
+    memoryRevealSeconds: 1
+    maxErrors: 3
+    heartPenalty: 1
+    evidenceContentId: level.ugnayan.02.focus.02

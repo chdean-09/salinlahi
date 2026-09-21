@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 70f95914c0af94d7bbb1e9ce7cf6e6a8, type: 3}
+  m_Name: Level6_Opening
+  m_EditorClassIdentifier: Salinlahi.Runtime::CutsceneSO
+  cutsceneId: cutscene.ugnayan.01.opening
+  panels:
+  - image: {fileID: 21300000, guid: 7b2aa1a062ccbb74b979704d62285cdc, type: 3}
+    text: 'Juan enters the fishing village at dusk. The houses are lit, the nets
+      are hung, and food has spilled into the road.
+
+      Everything says people
+      were here only moments ago.
+
+      But the village is silent, and no one comes
+      when he calls.'
+    transitionIn: 0
+    transitionDuration: 0
+    typewriterSpeed: 0
+  - image: {fileID: 21300000, guid: d22d77eb664fd4c4fb9d2c5cda671e46, type: 3}
+    text: "Above the empty village, the Living Scroll opens in a wash of gold.\nFour
+      faces appear over its pages \u2014 neighbors whose lives were once bound together.\nTheir
+      names are still there, but the ties between them are beginning to fade."
+    transitionIn: 0
+    transitionDuration: 0
+    typewriterSpeed: 0
+  - image: {fileID: 21300000, guid: 21c92f67d08b73d4684d22765a57a6d4, type: 3}
+    text: 'Juan finds the village caught inside a vast net of darkened characters.
+
+      Every
+      knot holds a word the people once shared: trust, care, work, home.
+
+      To
+      free them, he must restore the language that binds one person to another.'
+    transitionIn: 0
+    transitionDuration: 0
+    typewriterSpeed: 0
+  defaultTransition: 1
+  defaultTransitionDuration: 0.5
+  defaultTypewriterSpeed: 30

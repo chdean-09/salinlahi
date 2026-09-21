@@ -33,8 +33,8 @@ MonoBehaviour:
     media:
       contextImage: {fileID: 0}
       narrationClip: {fileID: 0}
-      dialogue: {fileID: 0}
-      cutscene: {fileID: 0}
+      dialogue: {fileID: 11400000, guid: 4ea1e20916627a1438d6643a16b3c683, type: 2}
+      cutscene: {fileID: 11400000, guid: 198aaff5fe5cccf49aecaefeb355cf2a, type: 2}
   - stableId: level.pamana.05.focus.02
     latinSpelling: MALAYA
     displayLabel: MALAYA
@@ -49,8 +49,8 @@ MonoBehaviour:
     media:
       contextImage: {fileID: 0}
       narrationClip: {fileID: 0}
-      dialogue: {fileID: 0}
-      cutscene: {fileID: 0}
+      dialogue: {fileID: 11400000, guid: 905d2fd60709caa45adafd12989a052b, type: 2}
+      cutscene: {fileID: 11400000, guid: 198aaff5fe5cccf49aecaefeb355cf2a, type: 2}
   cumulativeSymbolPool:
   - symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
     spokenValueId: value.a
@@ -169,6 +169,11 @@ MonoBehaviour:
       symbol: {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
       spokenValueId: value.nga
     requiredSuccesses: 1
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 17e3fad969764564bf71a5ba85567115, type: 2}
+      spokenValueId: value.ra
+    requiredSuccesses: 1
   - kind: 0
     symbolValue:
       symbol: {fileID: 11400000, guid: 01bec631a12545f091f1348d9408ad47, type: 2}
@@ -257,11 +262,20 @@ MonoBehaviour:
     requiredSuccesses: 2
   - kind: 1
     symbolValue:
+      symbol: {fileID: 11400000, guid: 17e3fad969764564bf71a5ba85567115, type: 2}
+      spokenValueId: value.ra
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
       symbol: {fileID: 11400000, guid: 01bec631a12545f091f1348d9408ad47, type: 2}
       spokenValueId: value.pa
     requiredSuccesses: 2
-  activeClueCombatEnabled: 0
-  activeClueRestorationEnabled: 0
+  suppressSymbolLearningCards: 0
+  restorationObjective:
+    displayMode: 0
+    units: []
+  activeClueCombatEnabled: 1
+  activeClueRestorationEnabled: 1
   clueChannels: 17
   audioVisualFallback: 4
   spawnAssignmentPolicy:
@@ -277,6 +291,8 @@ MonoBehaviour:
     maxConcurrentEnemies: 8
     openingSpawnSpokenValueId: 
     allowFinalWaveOverflow: 1
+    gateFinalSlotToFinalWave: 0
+    maxOverflowBatches: 12
     assignmentSeed: 0
     slotGates: []
     slotFloors: []
@@ -289,12 +305,13 @@ MonoBehaviour:
   contextMedia:
     contextImage: {fileID: 0}
     narrationClip: {fileID: 0}
-    dialogue: {fileID: 0}
-    cutscene: {fileID: 0}
+    dialogue: {fileID: 11400000, guid: 249f265ac85b16746b71974f1eccbb73, type: 2}
+    cutscene: {fileID: 11400000, guid: 198aaff5fe5cccf49aecaefeb355cf2a, type: 2}
   finalRestorationValue:
     symbol: {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
     spokenValueId: value.ya
-  rewardIds: []
+  rewardIds:
+  - memory.pamana.05
   masteryRequirements:
   - kind: 3
     symbolValue:
@@ -378,12 +395,18 @@ MonoBehaviour:
     requiredSuccesses: 1
   - kind: 3
     symbolValue:
+      symbol: {fileID: 11400000, guid: 17e3fad969764564bf71a5ba85567115, type: 2}
+      spokenValueId: value.ra
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
       symbol: {fileID: 11400000, guid: 01bec631a12545f091f1348d9408ad47, type: 2}
       spokenValueId: value.pa
     requiredSuccesses: 1
   eraTheme: {fileID: 11400000, guid: c58190bf930deed43b75ce44c3c548bd, type: 2}
-  numberSprite: {fileID: 0}
+  numberSprite: {fileID: 7455636090941830803, guid: 38c4b91829544e24287be97f9e8a85e4, type: 3}
   _authoredWaves: []
+  waveCurve: {fileID: 0}
   allowedCharacters:
   - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
   - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
@@ -421,8 +444,8 @@ MonoBehaviour:
     emergencyHintsPerAttempt: 1
     emergencyHintScorePenalty: 0.1
   flowSegments: []
-  introDialogue: {fileID: 0}
-  outroDialogue: {fileID: 0}
+  introDialogue: {fileID: 11400000, guid: 249f265ac85b16746b71974f1eccbb73, type: 2}
+  outroDialogue: {fileID: 11400000, guid: b030f7a5495071143b24993ef9afbf1c, type: 2}
   bgmClip: {fileID: 0}
-  hasProtagonist: 0
+  hasProtagonist: 1
   protagonistWalksIn: 0

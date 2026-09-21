@@ -13,57 +13,81 @@ MonoBehaviour:
   m_Name: Challenge_Pamana14_Context
   m_EditorClassIdentifier: Salinlahi.Runtime::ChallengeSequenceSO
   sequenceId: challenge.pamana.14
-  displayName: Ikaapat na Alaala ng Pamana
+  displayName: Halaga ng Alaala
   units:
-  - unitId: pamana14-timed-recall
+  - unitId: pamana14-restore-alaala
     mode: 2
     cluePolicy: 1
-    prompt: 'Titingnan mo muna ang buong pangungusap, pagkatapos ay maglalaho ito.
-      Ibalik mo ang dalawang salitang nawala, mula sa iyong alaala.
-
-
-      Ang ______
-      ay ______ dahil dito nagsisimula ang pagkilala sa ating pinagmulan.'
+    prompt: Ang ______ ang nag-uugnay sa atin sa mga naunang tinig.
     tokens:
-    - tokenId: pamana14-alaala
+    - tokenId: pamana14-alaala-focus
       displayText: ALAALA
-      occurrenceId: pamana14-alaala
+      occurrenceId: pamana14-alaala-focus-occ
       role: 1
       targetCharacter: {fileID: 0}
       evidenceContentId: 
-    - tokenId: pamana14-mahalaga
-      displayText: MAHALAGA
-      occurrenceId: pamana14-mahalaga
-      role: 1
-      targetCharacter: {fileID: 0}
-      evidenceContentId: 
-    - tokenId: pamana14-halaga-decoy
-      displayText: HALAGA
-      occurrenceId: pamana14-halaga-decoy
+    - tokenId: pamana14-alaala-decoy-01
+      displayText: DALA
+      occurrenceId: pamana14-alaala-decoy-01-occ
       role: 0
       targetCharacter: {fileID: 0}
       evidenceContentId: 
-    - tokenId: pamana14-dala-decoy
-      displayText: DALA
-      occurrenceId: pamana14-dala-decoy
+    - tokenId: pamana14-alaala-decoy-02
+      displayText: HANGA
+      occurrenceId: pamana14-alaala-decoy-02-occ
       role: 0
       targetCharacter: {fileID: 0}
       evidenceContentId: 
     slots:
-    - slotId: pamana14-slot-01
-      expectedOccurrenceId: pamana14-alaala
-    - slotId: pamana14-slot-02
-      expectedOccurrenceId: pamana14-mahalaga
+    - slotId: pamana14-alaala-slot
+      expectedOccurrenceId: pamana14-alaala-focus-occ
     candidateOccurrenceIds:
-    - pamana14-alaala
-    - pamana14-mahalaga
-    - pamana14-halaga-decoy
-    - pamana14-dala-decoy
+    - pamana14-alaala-focus-occ
+    - pamana14-alaala-decoy-01-occ
+    - pamana14-alaala-decoy-02-occ
     guidedStep: {fileID: 0}
-    timerSeconds: 45
+    timerSeconds: 0
     allowHint: 1
     checkpointOnSuccess: 1
-    memoryRevealSeconds: 5
+    memoryRevealSeconds: 1
     maxErrors: 3
     heartPenalty: 1
     evidenceContentId: level.pamana.04.focus.01
+  - unitId: pamana14-restore-mahalaga
+    mode: 2
+    cluePolicy: 1
+    prompt: Ito ay ______ sapagkat dito nagsisimula ang pagkilala sa ating pinagmulan.
+    tokens:
+    - tokenId: pamana14-mahalaga-focus
+      displayText: MAHALAGA
+      occurrenceId: pamana14-mahalaga-focus-occ
+      role: 1
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: pamana14-mahalaga-decoy-01
+      displayText: HALAGA
+      occurrenceId: pamana14-mahalaga-decoy-01-occ
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: pamana14-mahalaga-decoy-02
+      displayText: HARAYA
+      occurrenceId: pamana14-mahalaga-decoy-02-occ
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    slots:
+    - slotId: pamana14-mahalaga-slot
+      expectedOccurrenceId: pamana14-mahalaga-focus-occ
+    candidateOccurrenceIds:
+    - pamana14-mahalaga-focus-occ
+    - pamana14-mahalaga-decoy-01-occ
+    - pamana14-mahalaga-decoy-02-occ
+    guidedStep: {fileID: 0}
+    timerSeconds: 0
+    allowHint: 1
+    checkpointOnSuccess: 1
+    memoryRevealSeconds: 1
+    maxErrors: 3
+    heartPenalty: 1
+    evidenceContentId: level.pamana.04.focus.02

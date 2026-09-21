@@ -9,8 +9,9 @@ using UnityEngine.UI;
 /// Prev/Next arrow buttons remain visible at era edges; their interactable
 /// flag is toggled and Unity's Button ColorBlock disabled-color tints them grey.
 ///
-/// Era navigation is currently switched off at compile time — see
-/// <see cref="EraNavigationEnabled"/>.
+/// Era navigation is normally switched off at compile time — see
+/// <see cref="EraNavigationEnabled"/> — but the ProgressManager development override
+/// enables it for manually exercising all authored levels.
 /// </summary>
 public class LevelSelectUI : MonoBehaviour
 {
@@ -32,10 +33,9 @@ public class LevelSelectUI : MonoBehaviour
     [SerializeField] private Button _nextEraButton;
 
     /// <summary>
-    /// Master switch for the Prev/Next era arrows. Eras 2-3 are configured in
-    /// CampaignConfig_RevisedV1 but their content is not authored (levels 6-15 have no
-    /// numberSprite, and ResolveEras() deliberately falls back to the campaign list, so
-    /// the Next arrow would otherwise go live on Era 1).
+    /// Production switch for the Prev/Next era arrows. Eras 2-3 are configured in
+    /// CampaignConfig_RevisedV1 but still lack their final art assets, so normal player
+    /// navigation remains disabled until the release-facing gate is intentionally opened.
     ///
     /// Deliberately a private compile-time const, NOT a [SerializeField] and NOT an
     /// #if UNITY_EDITOR guard:
@@ -43,9 +43,10 @@ public class LevelSelectUI : MonoBehaviour
     ///     scene/prefab value, so the lock would not be guaranteed;
     ///   - an #if guard would disable it in the Editor but leave it live in a player
     ///     build, which is the opposite of what is wanted.
-    /// As a const there is no runtime, Inspector, or save-data path that can turn era
-    /// navigation back on. Re-enabling it requires editing this line and recompiling,
-    /// which is the intended contract until Eras 2-3 are playable.
+    /// As a const there is no release runtime, Inspector, or save-data path that can turn
+    /// era navigation back on. ProgressManager's Editor/development-only testing flag is
+    /// the deliberate exception used to exercise authored content without changing this
+    /// production gate.
     ///
     /// When flipping it back to true, also restore the per-edge conditions that
     /// <see cref="UpdateNavigationButtons"/> replaced with a flat assignment:
@@ -155,8 +156,13 @@ public class LevelSelectUI : MonoBehaviour
         if (_eraBackgroundImage != null && era.backgroundSprite != null)
             _eraBackgroundImage.sprite = era.backgroundSprite;
 
-        if (_eraBannerImage != null && era.bannerSprite != null)
+        if (_eraBannerImage != null)
+        {
+            // Do not carry the previous era's title into an era whose banner art has not
+            // been authored yet. Assigning the future banner asset is enough to restore it.
             _eraBannerImage.sprite = era.bannerSprite;
+            _eraBannerImage.enabled = era.bannerSprite != null;
+        }
 
         bool pmAvailable = ProgressManager.Instance != null;
         if (!pmAvailable)
@@ -220,15 +226,18 @@ public class LevelSelectUI : MonoBehaviour
 
     private void UpdateNavigationButtons()
     {
-        // Both arrows, not just Next: the screen can be entered at a non-zero era via
-        // EraCompletionScreenUI.PendingEraIndex, where a live Prev arrow would be a
-        // one-way door back into Era 1. Assigned straight off the const so no runtime
-        // branch can re-enable either arrow.
+        bool testingOverride = ProgressManager.Instance != null &&
+            ProgressManager.Instance.EnableAllLevelsForTesting;
+        bool navigationEnabled = EraNavigationEnabled || testingOverride;
+        int eraCount = ResolveEras().Count;
+
+        // Production remains locked behind EraNavigationEnabled. The development override
+        // restores normal edge-aware arrows so every authored era can be reached manually.
         if (_prevEraButton != null)
-            _prevEraButton.interactable = EraNavigationEnabled;
+            _prevEraButton.interactable = navigationEnabled && _currentEraIndex > 0;
 
         if (_nextEraButton != null)
-            _nextEraButton.interactable = EraNavigationEnabled;
+            _nextEraButton.interactable = navigationEnabled && _currentEraIndex < eraCount - 1;
     }
 
     /// <summary>
@@ -243,18 +252,15 @@ public class LevelSelectUI : MonoBehaviour
     /// the same order the unlock rule advances through, so the screen and the rule can
     /// never disagree.
     ///
-    /// The fallback is KEPT rather than gated to fully-authored eras. Levels 6-15 have no
-    /// <c>numberSprite</c>, but <see cref="LevelButton.Setup"/> now clears the sprite
-    /// instead of leaving the previous era's numbered scroll behind, so the worst case is
-    /// a blank placeholder scroll with the correct lock / unlock / completed state. Gating
-    /// would instead hide two thirds of the campaign and leave the era arrows permanently
-    /// disabled, making AC3 undemonstrable on the very screen it must be shown from —
-    /// a strictly worse outcome than a missing numeral.
+    /// The fallback is KEPT rather than gated to fully-authored eras. The later eras reuse
+    /// the five era-local number sprites from Ugat until dedicated art is authored, while
+    /// <see cref="LevelButton.Setup"/> still clears a missing sprite defensively instead of
+    /// leaving the previous era's numbered scroll behind.
     ///
     /// OWED SCENE WORK: assigning Era_02 and Era_03 to <c>_eras</c> in the Inspector
     /// makes this fallback inert. It is kept as the safety net for legacy/blocked mode,
     /// where <c>SaveManager.Campaign</c> is unavailable.
-    /// OWED ART: numbered scroll sprites for levels 6-15 (Assets/Art/UI/level6..15.png).
+    /// OWED ART: dedicated Era 2 and Era 3 banners and backgrounds.
     /// </summary>
     private List<EraConfigSO> ResolveEras()
     {

@@ -16,3 +16,9 @@ MonoBehaviour:
   - levelNumber: 1
     cutscene: {fileID: 11400000, guid: aec36e2ee108f42cdb9f47056c15c180, type: 2}
     triggerType: 0
+  - levelNumber: 6
+    cutscene: {fileID: 11400000, guid: 5b02e5a87eab8aa48be614ef7b6ffc8e, type: 2}
+    triggerType: 0
+  - levelNumber: 11
+    cutscene: {fileID: 11400000, guid: 19c49fbc6ac1d3e49bb1e8c15a6e21d7, type: 2}
+    triggerType: 0
