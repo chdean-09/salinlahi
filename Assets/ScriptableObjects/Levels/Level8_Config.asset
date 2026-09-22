@@ -298,6 +298,8 @@ MonoBehaviour:
     enemyTypes:
     - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
     - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
+    - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+    - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
     enemyCount: 5
     spawnInterval: 2
     waveStartDelay: 1.1
@@ -316,6 +318,8 @@ MonoBehaviour:
     enemyTypes:
     - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
     - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
+    - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+    - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
     enemyCount: 6
     spawnInterval: 1.9
     waveStartDelay: 1
@@ -334,6 +338,8 @@ MonoBehaviour:
     enemyTypes:
     - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
     - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
+    - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+    - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
     enemyCount: 6
     spawnInterval: 1.8
     waveStartDelay: 1
@@ -352,6 +358,8 @@ MonoBehaviour:
     enemyTypes:
     - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
     - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
+    - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+    - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
     enemyCount: 7
     spawnInterval: 1.75
     waveStartDelay: 1
@@ -370,6 +378,8 @@ MonoBehaviour:
     enemyTypes:
     - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
     - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
+    - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+    - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
     enemyCount: 8
     spawnInterval: 1.7
     waveStartDelay: 1
