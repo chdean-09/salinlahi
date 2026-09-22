@@ -1,8 +1,14 @@
 # 01 — System Overview
 **Project:** Salinlahi
-**Version:** 1.6
-**Date:** 2026-08-31
+**Version:** 1.7
+**Date:** 2026-09-22
 **Owner:** Jon Wayne Cabusbusan
+
+> **Current implementation reconciliation (2026-09-22):** The live campaign has fifteen authored
+> levels, no boss reference on Level 10, and the sole campaign boss on Level 15. Runtime ownership
+> includes direct flow/singleton orchestration alongside EventBus signals; the older EventBus-only
+> summary below is design history. Current verification status is recorded in
+> `docs/audit/IMPLEMENTATION_STATUS-2026-09-22.md`.
 
 ---
 
@@ -25,7 +31,7 @@ Salinlahi is a 2D pixel art mobile defense game whose core mechanic is drawing B
 |----------|----------|
 | Portrait-mode vertical defense gameplay on Android and iOS | GDD §1.3 Platforms |
 | $P Point-Cloud gesture recognition for 18 Baybayin **glyph shapes** (recognition scope; the curriculum teaches **17** identities — `DA` carries both `da` and `ra`. See REQ-42, doc 10) | Salinlahi.md §3.3.3; RecognitionConfigSO.cs; `Assets/ScriptableObjects/Characters/` (18 `Char_*.asset`) |
-| Story Mode: 15 levels across 3 chapters, boss encounters at levels 5, 10, 15 | GDD §2.4 |
+| Story Mode: 15 levels across 3 chapters, with the authored campaign boss at Level 15 | GDD §2.4; current level contracts |
 | Endless Mode: Unlocked after completing Story Mode or defeating the final boss, random characters, high-score tracking | GDD §2.4 |
 | Tracing Dojo: Pressure-free practice mode for the 17 taught characters, no enemies | GDD §2.4; `Assets/_Scenes/TracingDojo.unity`; doc 10 REQ-32 |
 | Enemy wave system driven by ScriptableObject data (LevelConfigSO with embedded WaveDefinitions) | Salinlahi.md §3.5.1; LevelConfigSO.cs |

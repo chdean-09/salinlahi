@@ -4,9 +4,9 @@ A 2D Pixel Art Defense Game
 
 **TECHNICAL DESIGN DOCUMENT**
 
-Version 1.5 | August 17, 2026
+Version 1.6 | September 22, 2026
 
-Updated: 2026-08-17
+Updated: 2026-09-22
 
 **Engine: **Unity 6 LTS | URP 2D | C#
 
@@ -20,6 +20,26 @@ Chad (Product Owner / Designer) | Jon Wayne (Core Systems)
 
 Jeff Andre (UI/UX) | Ian Clyde (Audio / Polish / Build)
 
+## Current implementation reconciliation (2026-09-22)
+
+The historical architecture description below is retained for provenance. The current Unity
+implementation is the authority for runtime ownership: `WaveManager` owns coroutine execution and
+spawning while `WaveTerminalPolicy` owns pure finale/terminal/overflow predicates; the
+`ActiveCluePresenter` owns Unity presentation while `RestorationRailLayoutPolicy` owns pure rail
+geometry; and `LevelResultsCalculator` / `LevelResultsCopy` own result math and player-facing result
+copy. Correct drawings resolve against the closest eligible carrier, and pooled enemies are
+returned during defeat, abort, and retry teardown.
+
+The current authored campaign has fifteen levels, no boss reference on Level 10, and the sole
+campaign boss on Level 15. Levels 6–14 carry explicit natural carriers for every focus symbol in
+each authored non-intermission wave. These statements are covered by current asset contracts;
+Unity compile, Test Runner, and terminal gameplay verification are recorded separately in
+`docs/audit/IMPLEMENTATION_STATUS-2026-09-22.md` and are not implied by this document alone.
+The current build-settings file contains eight scene entries, seven enabled for builds; gameplay
+uses the shared `Gameplay` scene plus the Bootstrap, menu, level-select, tutorial, dojo, and
+almanac scenes. Runtime-created HUD and result surfaces remain part of the live flow and are not
+represented as additional build scenes.
+
 # 1. Architecture Overview
 
 Salinlahi is a single-codebase Unity 6 LTS project targeting Android and iOS in portrait orientation. The rendering pipeline is Universal Render Pipeline (URP) configured for 2D. The camera is top-down / bird's eye orthographic at 32 PPU. No 3D geometry exists anywhere in the project. The entire game runs offline with zero network calls. Maps use top-down tilesets (not parallax layers). The protagonist is visible on screen during gameplay as a 32x32 sprite with era-specific designs (Kuya, Laban, Manong). Enemy sprites are 32x32 (regular/variant), 48x48 (elite), and 64x64 (boss).
@@ -28,13 +48,20 @@ The architecture follows three core principles:
 
 - **Singleton Managers: **Core systems (GameManager, AudioManager, RecognitionManager) are singletons instantiated once in the Bootstrap scene and persist across all scene loads.
 
-- **Event-Driven Communication: **Managers never reference each other directly. All inter-system communication flows through a static EventBus. This keeps systems testable in isolation and prevents circular dependencies.
+- **Event-Driven Communication: **EventBus is the shared signal boundary, but lifecycle orchestration
+  and a few singleton lookups are intentionally direct. `LevelFlowController`, `WaveManager`, and
+  runtime-created UI therefore must be audited through lifecycle and serialized references, not
+  treated as EventBus-only coupling.
 
 - **Data-Driven Content: **All level pacing, enemy stats, wave composition, and recognition thresholds are defined in ScriptableObject assets editable in the Unity Inspector. Designers can tune the entire game without touching compiled scripts.
 
 ## 1.1 Scene Structure
 
-The game uses five scenes loaded asynchronously through a SceneLoader utility. Bootstrap is the entry point, loads all manager prefabs, then auto-transitions to MainMenu. From there, the player navigates to LevelSelect (for story mode), TracingDojo, or EndlessMode. The Gameplay scene is shared by both story levels and endless mode, configured at load time by the LevelConfigSO or an endless-mode flag.
+The game uses the enabled scenes recorded in `ProjectSettings/EditorBuildSettings.asset`, loaded
+asynchronously through `SceneLoader`. Bootstrap is the entry point and auto-transitions to MainMenu;
+the shared Gameplay scene is configured at load time by the selected `LevelConfigSO`. TracingDojo,
+Almanac, LevelSelect, and the Level 1 tutorial are separate enabled scenes; the old EndlessMode
+description is historical and is not a current build-scene entry.
 
 *Figure 1. Scene navigation flow*
 
@@ -96,7 +123,10 @@ Enemies are managed through Unity's built-in ObjectPool<T> class. At scene load,
 
 WaveManager reads a LevelConfigSO at level load, which embeds an ordered list of WaveDefinition values for that level. Each WaveDefinition specifies the enemy types, spawn count, spawn interval, and allowed character pool for one wave. WaveManager triggers WaveSpawner per wave and fires OnWaveStarted and OnWaveCleared events so the HUD and GameManager can track progress.
 
-For boss levels (5, 10, 15), a BossConfigSO defines the boss encounter. Boss enemies are 64x64 sprites: El Inquisidor (Spanish, summons Soldados), The Superintendent (American, decree-scrambles labels), and Kadiliman (Final, summons enemies from all eras). Bosses use a phase-based system with distinct mechanics per phase.
+When a level carries a `BossConfigSO`, it runs the phase-based boss encounter. The current
+campaign assigns that reference only to Level 15 (Kadiliman, which summons enemies from all eras);
+the El Inquisidor and Superintendent configs remain legacy assets. Bosses use 64x64 sprites and
+distinct mechanics per phase.
 
 ## 3.3 Combat Resolution
 
@@ -172,7 +202,7 @@ surface consumers query.
 | BaybayinCharacterSO | Legacy character/template fields plus stable visual ID, explicit legacy aliases, contextual spoken values, and first-introduction level metadata. |
 | GlyphBadgeConfigSO | Global badge layout and animation tuning: default offset/scale, swap slide/durations, final-draw charge/release, decoy-reject flash/shake, boss fail-flash colors/durations. Single shared asset (`GlyphBadgeConfig_Default`). |
 | EnemyDataSO (glyph badge) | Optional per-enemy overrides: `overrideBadgeOffset`, `glyphBadgeOffsetOverride`, `overrideBadgeScale`, `glyphBadgeScaleOverride`. |
-| BossConfigSO | Boss name (El Inquisidor, The Superintendent, Kadiliman), boss health pool, number of phases, required characters per phase, timing windows, summon ability configuration, special ability (decree scramble for Superintendent). |
+| BossConfigSO | Boss name, boss health pool, number of phases, required characters per phase, timing windows, summon ability configuration, and optional special ability. The current campaign references only the Level 15 boss; older Level 5/10 boss configs are retained as legacy assets. |
 | RecognitionConfigSO | Confidence threshold (0.60), resample point count (32), scale square size (250), idle timer duration (1.5s). |
 
 # 6. Audio Feedback System
@@ -231,5 +261,6 @@ Both Salinlahi Lite and Salinlahi Full are built from the same Unity codebase. A
 | v1.4 (Updated 2026-08-13) | Adds SALIN-171 validated atomic campaign JSON persistence, immutable legacy archive migration, recovery precedence, and SaveManager activation modes. |
 | v1.5 (Updated 2026-08-17) | Adds SALIN-174 checksummed outcome journaling, schema-v2 migration, monotonic receipt replay, rollback verification, reset-generation invalidation, and the explicit Victory/save-failure gate. |
 | v1.6 (Updated 2026-08-18) | Adds SALIN-175 unified learning data: save schema v3 mastery records, outcome schema v2 with session kind and evidence batch, chained save migration, session-kind dispatch that keeps practice out of level progression, the pure mastery/review/priority layer, and the read-only LearningState snapshot surface. |
+| v1.7 (Updated 2026-09-22) | Reconciles current runtime ownership, pooled teardown, closest-carrier combat, Level 10/15 boss topology, and the evidence-gated status of Unity verification. |
 
 *This document is a living reference. Update it whenever a system**'**s design changes. Track every change in the changelog above.*

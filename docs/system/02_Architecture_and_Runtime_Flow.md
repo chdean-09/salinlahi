@@ -1,8 +1,15 @@
 # 02 — Architecture and Runtime Flow
 **Project:** Salinlahi
-**Version:** 2.3
-**Date:** 2026-08-27
+**Version:** 2.4
+**Date:** 2026-09-22
 **Owner:** Jon Wayne Cabusbusan
+
+> **Current implementation note (2026-09-22):** The enabled build has seven scene entries (plus
+> one disabled sample), with `Gameplay` shared by the authored campaign. `LevelFlowController`
+> owns terminal routing and creates several result/HUD surfaces at runtime; EventBus remains a
+> shared signal boundary but is not the only coupling mechanism. Level 10 is non-boss and Level 15
+> is the sole authored campaign boss. Historical flow descriptions below are retained where they
+> document earlier product intent; live code and serialized assets are authoritative.
 
 ---
 
@@ -20,7 +27,7 @@
 
 [EVIDENCE: Assets/_Scenes/ directory listing]
 [EVIDENCE: docs/capstone/GDD.md, §5.1 Player Journey]
-[EVIDENCE: docs/capstone/TDD.md, §1.1 — five scenes specified]
+[EVIDENCE: ProjectSettings/EditorBuildSettings.asset — seven enabled scene entries]
 
 ---
 

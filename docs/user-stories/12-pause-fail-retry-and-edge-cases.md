@@ -2,6 +2,11 @@
 
 Prefix **`FAIL`**. Covers pausing, restarting, quitting, losing, checkpoints, and the awkward states in between.
 
+> **Current implementation note (2026-09-22):** Level 10's boss reference has been removed in the
+> live asset contract. Pause/retry/reset behavior described below still requires Unity runtime
+> verification; the current implementation record labels those runs `BLOCKED` rather than inferring
+> a pass from static code.
+
 ---
 
 ## Pause
@@ -70,5 +75,5 @@ As a player, I want the app not to run the fight while I am not looking, so that
 As a player, I want cut boss content not to appear, so that the game does not contain stray old encounters.
 - AC: No level references `BossConfig_ElInquisidor` or `BossConfig_Superintendent`.
 - System: Content · `Level*_Config.asset`
-- Status: Partial — Level 5's boss reference is cleared (SALIN-283), but `Level10_Config.bossConfig` still points at `BossConfig_Superintendent`. See U-2.
+- Status: Partial — Level 5's boss reference is cleared and Level 10 is now non-boss in the live asset. Checkpoint behavior itself remains a product gap and requires runtime verification.
 - Refs: `Level10_Config.asset`, `Level5_Config.asset`, SALIN-280

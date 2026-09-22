@@ -1,8 +1,15 @@
 # 10 — Requirements Traceability Matrix
 **Project:** Salinlahi
-**Version:** 1.6
-**Date:** 2026-08-27
+**Version:** 1.7
+**Date:** 2026-09-22
 **Owner:** Jon Wayne Cabusbusan
+
+> **Current implementation reconciliation (2026-09-22):** Live serialized campaign data is now the
+> source of truth for topology: Level 10 is non-boss and Level 15 is the sole authored campaign
+> boss. Current runtime ownership also includes direct flow/singleton orchestration and
+> runtime-created UI; rows below that describe the older design remain historical requirements
+> until explicitly updated. Fresh Unity/Test Runner/manual evidence is tracked separately in
+> `docs/audit/IMPLEMENTATION_STATUS-2026-09-22.md`.
 
 > **SALIN-186 revision.** This file was stored **double-encoded** — every `—`, `✅`, `⚠`, `❌` and
 > severity emoji was mojibake (`â€"`, `âœ…`) across 55 of its 90 lines, and it carried a UTF-8 BOM.
@@ -50,14 +57,14 @@
 | REQ-15 | An enemy reaching the PlayerBase shall decrement hearts by 1 | GDD §2.3; TDD §3.3 | P0 | `EnemyMover.OnTriggerEnter2D` fires `RaiseBaseHit()`; `HeartSystem.cs` | WV-05 | ✅ Implemented | None |
 | REQ-16 | Hearts shall start at 3 per level | GDD §2.3 | P0 | `HeartSystem.cs` | WV-05 | ✅ Implemented | None |
 | REQ-17 | When hearts reach 0, GameOver state shall be triggered | GDD §2.3; TDD §3.3 | P0 | `HeartSystem.cs` fires `OnGameOver`; `GameManager.HandleGameOver()` responds | WV-06 | ✅ Implemented | None |
-| REQ-18 | GameOver shall load the GameOver scene | GDD §5.1 | P0 | `GameManager.HandleGameOver()` → `SceneLoader.LoadGameOver()` | CS-01 | ✅ Implemented | None |
+| REQ-18 | GameOver shall present the defeat surface | GDD §5.1 | P0 | `GameManager.HandleGameOver()` → `DefeatScreenUI` overlay in Gameplay; the old GameOver scene is deprecated | CS-01 | ⚠ Partial | Current overlay routing is implemented; terminal Unity verification is pending |
 | REQ-19 | A pronunciation audio clip shall play on every correct enemy defeat | TDD §6; GDD §5.4 | P1 | `AudioManager.PlayPronunciationClip()` subscribed to `OnEnemyDefeated` | CS-05 | ⚠ Partial | Missing clips |
 | REQ-20 | BGM shall loop during gameplay | TDD §6 | P2 | `AudioManager.PlayBGM()` sets `loop = true` | — | ⚠ Partial | Missing clip asset |
 | REQ-21 | All manager singletons shall persist across scene loads via DontDestroyOnLoad | TDD §1 | P0 | `Singleton<T>.Awake()` — DontDestroyOnLoad confirmed | CS-01 | ✅ Implemented | None |
 | REQ-22 | Only one instance of each Singleton type shall exist at runtime | TDD §1 | P0 | `Singleton<T>.Awake()` — duplicate destruction confirmed | CS-01 | ✅ Implemented | None |
 | REQ-23 | Enemies shall be managed via Unity ObjectPool; no Instantiate/Destroy in game loop | TDD §1; EnemyPool.cs lifecycle | P0 | `EnemyPool` + Unity `ObjectPool<Enemy>` confirmed | EN-02 | ✅ Implemented | None |
 | REQ-24 | Story Mode shall have 15 levels across 3 chapters | GDD §2.4 | P1 | **All 15 `Level<n>_Config.asset` authored**, plus `CampaignConfig_RevisedV1.asset` with `level.ugat.01`–`.05` (SALIN-204) | WV-01 | ⚠ Partial | 🟠 P1 (configs exist; Ugat L2–5 narrative and assets pending SALIN-205/206) |
-| REQ-25 | Boss encounters shall occur at levels 5, 10, 15 | GDD §2.4; TDD §3.2 | P1 | Level 5 wired to fully-authored `BossConfig_ElInquisidor.asset`; Levels 10 and 15 wired to placeholder `BossConfig_Superintendent.asset` and `BossConfig_Kadiliman.asset` (single phase using legacy schema, both reuse El Inquisidor `bossEnemyData`). `WaveManager.RunBossEncounter` activates boss when `LevelConfigSO.bossConfig != null` | BS-01 | ⚠ Partial | 🟠 P1 (Levels 10 and 15 still need dedicated boss prefab/data and new-schema BossPhase values before they ship) |
+| REQ-25 | The authored campaign shall have one boss encounter at Level 15 | GDD §2.4; TDD §3.2 | P1 | `Level15_Config.bossConfig` references `BossConfig_Kadiliman`; Level 10 and the mixed-wave restoration levels have no boss reference; `WaveManager.RunBossEncounter` activates a boss when `LevelConfigSO.bossConfig != null` | BS-01 | ⚠ Partial | Asset topology is reconciled; terminal boss runtime and presentation remain Unity-blocked |
 | REQ-26 | WaveManager shall read LevelConfigSO and drive wave spawning | TDD §3.2; Salinlahi.md §3.5.1 | P0 | `WaveManager.cs` + `WaveSpawner.cs` | WV-01 | ✅ Implemented | None |
 | REQ-27 | Wave spawning shall respect waveStartDelay and spawnInterval from WaveDefinition | TDD §3.2 | P1 | `WaveSpawner.cs` reads `WaveDefinition` embedded in `LevelConfigSO` | WV-02, WV-03 | ✅ Implemented | None |
 | REQ-28 | The Lite build shall restrict access to levels 1–3 only | TDD §7.2; Salinlahi.md §3.4 | P1 | `LevelConfigSO.isAvailableInLite` field defined; ❌ gate logic not implemented | — | ⚠ Partial | 🟠 P1 |
@@ -66,7 +73,7 @@
 | REQ-31 | Failed strokes shall show a red flash and X mark | GDD §5.4 | P1 | `HUD.cs` | RC-02 | ✅ Implemented | None |
 | REQ-32 | The Tracing Dojo shall allow zero-pressure practice of all 17 characters | GDD §2.4; §5.4 | P2 | **`Assets/_Scenes/TracingDojo.unity` exists**, with `TracingDojoController` + `FeedbackToast`; covers all **18** characters | — | ✅ Implemented | None (SALIN-186: previously recorded as NOT FOUND) |
 | REQ-33 | Endless Mode shall activate after completing Story Mode or defeating the final boss, with high-score tracking (waves survived, enemies defeated, longest combo) | GDD §2.4; Team README §9 | P2 | ❌ Not implemented | — | ❌ NOT FOUND | 🟡 P2 |
-| REQ-34 | Cross-system communication shall use EventBus exclusively | TDD §1; EventBus.cs comment | P0 | All systems use EventBus; no direct cross-manager calls observed | CS-03 | ✅ Implemented | None |
+| REQ-34 | Cross-system signals shall use EventBus while orchestration may use direct owners/singletons | TDD §1; EventBus.cs; LevelFlowController.cs | P0 | EventBus is used for gameplay signals; LevelFlowController/WaveManager and selected singleton lookups are direct, lifecycle-owned coupling | CS-03 | ⚠ Partial | Current ownership is documented; subscription/scene verification remains in the Unity QA gate |
 | REQ-35 | EventBus subscriptions shall be in OnEnable and unsubscribed in OnDisable | EventBus.cs comment | P0 | `GameManager`, `AudioManager` — OnEnable/OnDisable confirmed | CS-03 | ✅ Implemented | None |
 | REQ-36 | Protagonist shall be visible on screen during gameplay as a 32×32 sprite with 3 era-specific designs | GDD §4.2 | P1 | ❌ Not implemented | — | ❌ NOT FOUND | 🟠 P1 |
 | REQ-37 | 12 enemy types shall be era-themed (4 per era: Soldado/Fraile/Guardia/Capitan, Soldier/Maestro/Pensionado/General, Heitai/Kisha/Kempei/Shokan) | GDD §4.3 | P1 | 9 of 12 implemented (Soldado, Soldier, Heitai, Maestro, Pensionado, General, Kisha, Kempei, Shokan); 3 remain PLANNED (Fraile, Guardia, Capitan) | EN-07–EN-11 | ⚠ Partial | 🟠 P1 |

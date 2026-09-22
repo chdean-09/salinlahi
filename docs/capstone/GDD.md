@@ -6,8 +6,8 @@ A 2D Pixel Art Defense Game
 
 **GAME DESIGN DOCUMENT**
 
-Version 1.3
-Date: August 17, 2026
+Version 1.4
+Date: September 22, 2026
 
 March 2026
 
@@ -20,6 +20,16 @@ Jon Wayne (Core Systems)
 Jeff Andre (UI/UX)
 
 Ian Clyde (Audio / Polish / Build)
+
+## Current implementation reconciliation (2026-09-22)
+
+The original design history below remains preserved. For the current campaign implementation, the
+demo contract is fifteen authored levels with Level 10 as a mixed-wave, non-boss level and Level 15
+as the sole campaign boss. Combat resolution selects the closest eligible carrier for a recognized
+glyph; restoration occurrences are credited one at a time; and terminal victory is gated through
+the authored final wave and the restoration objective. See
+`docs/audit/IMPLEMENTATION_STATUS-2026-09-22.md` for evidence status. Manual Unity verification is
+not inferred from these design statements.
 
 # 1. Overview
 
@@ -197,7 +207,7 @@ Enemy behavior is data-driven, not adaptive. Enemies do not react to the player'
 
 - **EnemyDataSO: **Defines movement speed, movement pattern, health (for shielded enemies), and the assigned Baybayin character.
 
-- **BossConfigSO: **Defines boss behavior phases, health pools, and mini-game sequences for boss encounters at Levels 5, 10, and 15.
+- **BossConfigSO: **Defines boss behavior phases, health pools, and mini-game sequences for an authored boss encounter. The current campaign references one boss at Level 15; legacy Level 5/10 boss assets remain historical content.
 
 There is no machine learning, no difficulty adaptation, and no procedural generation. All content is hand-authored for precise pacing control.
 
@@ -224,7 +234,7 @@ The game has 15 story mode levels divided into 3 chapters of 5 levels each. Each
 | 2: Paglaban | American Occupation | 6 to 10 | A new system replaces the old tongue with a foreign language. You battle to preserve what was nearly lost. Map: top-down cold grey cobblestone street with colonial buildings, lamp posts, American flags. |
 | 3: Pagbalik | Japanese Occupation | 11 to 15 | Another wave of occupation and cultural disruption. You make your final stand as the last guardian. Map: top-down bombed cobblestone (Map 2 destroyed), bombed buildings, fires in rubble, ash particles, rising sun flags. |
 
-Boss encounters happen at Level 5 (El Inquisidor), Level 10 (The Superintendent), and Level 15 (Kadiliman). The final boss is Kadiliman (Darkness itself), the embodiment of cultural erasure. Defeating Kadiliman requires the player to draw all 17 Baybayin characters in a timed sequence.
+The current campaign has one authored boss encounter at Level 15 (Kadiliman, Darkness itself), while Levels 5 and 10 are mixed-wave restoration levels without a boss reference. Defeating Kadiliman requires the player to draw the authored phase sequence; the live asset currently carries 17 required draws across four phases.
 
 Each era has its own shrine/base structure at 64x96: Baybayin Altar (Spanish), Ancestral Door (American), Scroll Shrine (Japanese). Each shrine has 4 visual damage states (full, crack 1, crack 2, destroyed).
 
@@ -480,7 +490,7 @@ No existing product combines all three elements: real Baybayin characters as the
 | **Product** | **Details** |
 | --- | --- |
 | Salinlahi Lite (Free) | Free download on Google Play Store and Apple App Store. Gives access to the first 3 story mode levels. No ads. No in-app purchases. No subscription. Exists to let players experience the core loop before deciding to buy. |
-| Salinlahi Full (PHP 149) | One-time purchase. Unlocks all 15 story mode levels, all 3 boss encounters, Endless Mode, all cosmetic content, and all future content updates within the same app version. |
+| Salinlahi Full (PHP 149) | One-time purchase. Unlocks all 15 story mode levels, the authored Level 15 boss encounter, Endless Mode, all cosmetic content, and all future content updates within the same app version. |
 
 Both versions are distributed as separate app store listings built from the same Unity codebase using a build configuration flag. No ads are shown in either version. No data is collected beyond what the app stores require. The game is fully offline.
 
@@ -493,5 +503,6 @@ Both versions are distributed as separate app store listings built from the same
 | v1.2 (June 2026) | Added "New Character Unlocked!" reveal subsection in §5.4 (SALIN-120). Documents level-start character reveal cards: per-character scroll overlay, ✕ dismissal, Almanac registration, and replay behaviour. |
 | v1.3 (August 17, 2026) | Clarifies that unsaved level completion blocks Victory/Next, offers Retry or Main Menu, and preserves recoverable completion for the next launch. |
 | v1.4 (August 18, 2026) | Adds player-facing mastery states (Introduced, Practiced, Recalled, Mastered) surfaced in Results and review, and documents that Tracing Dojo practice contributes recall evidence but can never alter Story Mode level progression. |
+| v1.5 (September 22, 2026) | Reconciles the current authored topology: Level 10 is non-boss, Level 15 is the sole campaign boss, and the current combat/restoration terminal contract is evidence-gated. |
 
 *This document is a living reference. Update it as design decisions change. Track every change in the changelog above.*

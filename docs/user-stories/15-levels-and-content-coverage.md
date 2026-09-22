@@ -4,6 +4,13 @@ Prefix **`LVL`**. Outstanding work per level. Levels whose behaviour is fully im
 
 Levels are named to the player as **"Era N · Level 1–5"**. The global numbering below is for file identification only.
 
+> **Current asset-contract update (2026-09-22):** The older table and statuses are preserved as
+> dated backlog evidence. The current branch now has production challenge/reward contracts for
+> Levels 6–15, natural focus-symbol carriers in every non-intermission wave for Levels 6–14,
+> Level 10 as a non-boss mixed-wave level, and Level 15 as the sole authored boss. This does not
+> infer terminal playability: Unity compilation, Test Runner execution, and clean victory/results
+> runs for Levels 1–15 are `BLOCKED`; see `docs/audit/IMPLEMENTATION_STATUS-2026-09-22.md`.
+
 | Global | Player-facing | Title | Focus words | Challenge | Rewards | Tier | Combat restoration | Status |
 |---:|---|---|---|:-:|:-:|:-:|:-:|---|
 | 1 | Ugat · 1 | Ang Unang Tinig | INA, AMA | ✅ | ✅ | 1 | on | Partial (played to Wave 2; Juan not rendering) |
@@ -22,7 +29,7 @@ Levels are named to the player as **"Era N · Level 1–5"**. The global numberi
 | 14 | Pamana · 4 | Halaga ng Alaala | ALAALA, MAHALAGA | ✅ | ❌ | 4 | off | Missing |
 | 15 | Pamana · 5 | Ang Huling Pamana | PAMANA, MALAYA | ✅ | ❌ | 5 | off | Missing |
 
-**Playable slice:** Levels 1–5 (Ugat) are the only levels with both a challenge sequence and non-empty `rewardIds`, so they are the only ones that can complete. Levels 6–15 are **intentionally** blocked by the content-missing guard (FLOW-03) rather than accidentally broken. Runtime end-to-end playability of 1–5 was **not verified** at the last audit.
+**Historical playable-slice note (2026-09-15):** Levels 1–5 were the only levels with both a challenge sequence and non-empty `rewardIds` at the last story-register audit. The current branch has since authored those contracts for Levels 6–15; runtime end-to-end playability remains `BLOCKED` pending Unity verification.
 
 ---
 

@@ -6,6 +6,11 @@ Prefix **`RET`** (retired by ruling) and **`DEV`** (developer-only surfaces, out
 
 Outstanding player-facing work lives in [`../user-stories/00-overview.md`](../user-stories/00-overview.md).
 
+> **Current implementation update (2026-09-22):** The live campaign contract now has no boss
+> reference on Level 10 and one boss reference on Level 15. Legacy boss assets are retained until
+> serialized, runtime, test, and historical dependencies are proven safe to remove; Unity terminal
+> behavior remains `BLOCKED` in the current QA environment.
+
 ---
 
 ## Retired by ruling
@@ -39,13 +44,16 @@ Original: *As a player, I want a boss at the end of the first era, so that the e
 ### RET-05 — Fight a boss at Level 10 *(retired)*
 Original: *As a player, I want a boss at the end of the second era.*
 - **Cut by:** ruling Q5 — The Superintendent is a legacy mechanic to retire.
-- **State:** **not yet removed.** `Level10_Config.bossConfig` still references `BossConfig_Superintendent`. This is the live deviation U-2, tracked as LVL-10.
+- **State:** Removed from the live level asset. `Level10_Config.bossConfig` is null; the
+  `BossConfig_Superintendent` asset is retained as legacy content pending dependency review.
 - Refs: ruling Q5, SALIN-280
 
 ### RET-06 — Fight Kadiliman as the final boss *(retired)*
 Original: *As a player, I want to face Darkness itself at Level 15 and draw every character to defeat it.*
 - **Cut by:** SALIN-273 — the finale is Paglimot, not Kadiliman.
-- **State:** **not yet removed.** `Level15_Config.bossConfig` still references `BossConfig_Kadiliman`. This is U-3, tracked across [`09-boss-paglimot.md`](../user-stories/09-boss-paglimot.md).
+- **State:** The current Level 15 asset still references `BossConfig_Kadiliman`, so the encounter is
+  live under a legacy asset name. The product-facing Paglimot/Kadiliman naming decision and boss
+  presentation remain unresolved; retain the asset and classify runtime verification as `BLOCKED`.
 - **Replacement:** BOSS-01 … BOSS-18.
 - Refs: SALIN-273, ruling Q5 third round
 

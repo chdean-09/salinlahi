@@ -4,7 +4,11 @@ Prefix **`BOSS`**. Covers the single boss encounter at Era 3 Level 5 (global Lev
 
 **Ruling Q5 + third round.** **Paglimot on Level 15 is the only boss.** El Inquisidor (Level 5) and The Superintendent (Level 10) are retired legacy mechanics. Level 15 is *both* a boss encounter *and* a mixed-wave paragraph level: one wave per phase (Ugat symbols, then Ugnayan, then all), one paragraph line restored per phase, **YA into MALAYA last**, and a per-phase checkpoint.
 
-> **U-3 applies to this whole file.** The boss the level actually references is `BossConfig_Kadiliman`, the retired finale. `SALIN-273` ("retire Kadiliman from the campaign finale and reconcile the data, code and docs") is marked Done, but `Level15_Config.bossConfig` still points at `BossConfig_Kadiliman.asset` and `EnemyData_Boss_Kadiliman.asset` is still the boss enemy data. Whether this is naming debt or a live design mismatch is unresolved. Every story below describes the **required** behaviour and states the shipped state.
+> **Current implementation reconciliation (2026-09-22).** `Level15_Config.bossConfig` points at the
+> four-phase `BossConfig_Kadiliman` asset and `Level10_Config.bossConfig` is null. Levels 5 and 10
+> are therefore non-boss authored restoration levels; the Kadiliman asset name is retained legacy
+> naming, not evidence of an additional boss. The requirements below remain acceptance criteria;
+> any item marked missing or partial is not implied to be implemented by the asset contract.
 
 ---
 
@@ -13,8 +17,8 @@ As a player, I want a final antagonist to fight, so that the campaign has a clim
 - AC: Era 3 Level 5 runs a boss encounter instead of a plain wave level.
 - AC: No other level has a boss.
 - System: Boss · `WaveManager.RunBossEncounter`, `LevelConfigSO.bossConfig`
-- Status: Partial — Level 15 has a boss and Level 5's has been cleared, but **Level 10 still references `BossConfig_Superintendent`** (U-2), and Level 15's boss is still the retired Kadiliman config (U-3).
-- Refs: `Level15_Config.asset` (`bossConfig` → `BossConfig_Kadiliman`), `Level10_Config.asset` (`bossConfig` → `BossConfig_Superintendent`), ruling Q5
+- Status: Current asset topology is reconciled — Level 15 is the sole campaign boss; Levels 5 and 10 have no boss reference. The boss asset remains named `BossConfig_Kadiliman`; terminal gameplay and boss presentation are still `BLOCKED` pending Unity verification.
+- Refs: `Level15_Config.asset` (`bossConfig` → `BossConfig_Kadiliman`), `Level10_Config.asset` (`bossConfig: null`), ruling Q5
 
 ### BOSS-02 — Be taught the boss's rules before the fight
 As a player, I want the boss's mechanics explained before it starts, so that I am not learning them while losing.
@@ -49,7 +53,7 @@ As a player, I want the final action of the campaign to be writing one symbol in
 - AC: `Level15_Config.finalRestorationValue` is YA.
 - AC: The finale symbol is the last entry of `ContentIdentity.RevisedSymbolIds`, and RA is not last.
 - System: Boss / restoration · `ContentIdentity`, `CampaignConfigValidator.ValidateFinalRestoration`, `ChallengeSession`
-- Status: Partial — the finale reorder and validator change were delivered with SALIN-217, but Level 15's challenge content and the final trace-and-place ceremony are unauthored.
+- Status: `Level15_Config.finalRestorationValue` is authored as `value.ya`; the paragraph challenge is authored, but the final trace-and-place ceremony and terminal runtime behavior remain `BLOCKED` pending Unity verification.
 - Refs: ruling Q1 + qualifier, SALIN-217, SALIN-252 (To Do)
 
 ### BOSS-12 — Restart only the phase I died in

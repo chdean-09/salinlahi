@@ -1,7 +1,7 @@
 # 00 — Documentation Index
 **Project:** Salinlahi
-**Version:** 1.2
-**Date:** 2026-03-25
+**Version:** 1.3
+**Date:** 2026-09-22
 **Owner:** Jon Wayne Cabusbusan (Systems Lead)
 **Review Cadence:** End of each sprint (every two weeks)
 
@@ -36,6 +36,7 @@ This index is the single entry point for all Salinlahi system documentation. Eve
 | 11 | `11_Risks_Dependencies_and_Mitigations.md` | Technical risks, production deps, mitigations, owners | Scrum Master | Live |
 | 12 | `12_Glossary_and_Naming_Standard.md` | Canonical terms, forbidden synonyms, naming rules | Systems Lead | Live |
 | 13 | `13_Document_Change_Log.md` | Versioned history of all doc changes | Systems Lead | Live |
+| A-2026-09 | `../audit/IMPLEMENTATION_STATUS-2026-09-22.md` | Current campaign QA-hardening reconciliation, implementation evidence, and verification blockers | Systems Lead / QA | Current evidence |
 
 ---
 
@@ -45,6 +46,13 @@ This index is the single entry point for all Salinlahi system documentation. Eve
 2. Any contradiction between documents must be escalated to the Systems Lead within one working day.
 3. The `10_Requirements_Traceability_Matrix.md` is the authoritative gap tracker. P0 gaps block sprint sign-off.
 4. Generating new documentation that invents unimplemented features is prohibited.
+5. Dated audits, plans, handoffs, and screenshots are historical evidence unless the current status
+   document names a fresh test run. Static asset checks do not substitute for Unity compilation,
+   Test Runner execution, or terminal gameplay.
+6. The current implementation contract records Level 10 as a non-boss mixed-wave level and Level
+   15 as the sole authored campaign boss. The live Level 6/7 challenge mode map is intentionally
+   documented in the current status file until the product ruling is updated; older documents that
+   describe the pre-revision boss topology remain historical and are not silently rewritten.
 
 ---
 

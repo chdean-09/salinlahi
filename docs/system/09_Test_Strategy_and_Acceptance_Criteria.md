@@ -1,8 +1,16 @@
 # 09 — Test Strategy and Acceptance Criteria
 **Project:** Salinlahi
-**Version:** 2.1
-**Date:** 2026-08-27
+**Version:** 2.2
+**Date:** 2026-09-22
 **Owner:** Whole Team (QA responsibility shared)
+
+### 1.0.1 Current verification status
+
+The historical measured totals below are retained as historical evidence. The current hardening
+branch adds production asset contracts for Levels 2–15, recognizer-driven replay cases, terminal
+race coverage, and defeat/retry pool cleanup. A fresh Unity 6000.3.9f1 compile/Test Runner run did
+not complete because batchmode was blocked by Package Manager/licensing startup, so current focused,
+full-suite, and manual Level 1–15 results remain `BLOCKED` until a Unity session reaches completion.
 
 ---
 
