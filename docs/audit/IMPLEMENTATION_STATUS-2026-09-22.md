@@ -5,6 +5,9 @@
 **Starting commit:** `7149b175098c8baa79a14e49ec36f29c7b228f4d`
 **Unity target:** `6000.3.9f1`
 
+**Post-merge review:** commit `c05160c7` merged `origin/dev` into this branch. The post-merge
+Unity rerun is recorded below; the original 2026-09-22 totals remain historical evidence.
+
 This is a current implementation record, not a replacement for dated audit evidence. It records
 what was changed on this branch and what was or was not verified. A static check is labelled
 `OBSERVED`; a Unity result is labelled `PASSED` or `FAILED` only when the Test Runner or a manual
@@ -19,7 +22,7 @@ run actually completed.
 | Exact Levels 2–5 production contracts | `Batch2ProductionAssetContractTests` | Unity Edit Mode run: 7/7; Level 10/13 carrier authoring corrections were required before green | `PASSED` |
 | Recognizer-driven correct/wrong/miss | `StrokeReplayRecognitionPlayModeTests` | Play Mode fixture uses the real recognizer and downstream path: 3/3 | `PASSED` |
 | Defeat → retry → pooled-enemy cleanup | `EnemyPoolLifecyclePlayModeTests.DefeatThenRetry_ReturnsPoolBeforeTheNextAttempt`, `Level1EndToEndTests` | Pool lifecycle: 4/4; Level 1 defeat→retry→complete: 2/2 | `PASSED` |
-| Completed-level replay | `VictoryScreenResultsTests.ReplayPressed_DoesNotAdvanceTheSelectedLevel`, with `NextLevelPressed_StillAdvances_ProvingTheReplayGuardDiscriminates` as the control | Included in the full Edit Mode run: 1,469/1,469 passed. The test invokes the production replay handler with a completed level and verifies the selected level remains unchanged; the advancing control proves replay and next-level routing are distinct | `PASSED` (manual scene-button replay remains `BLOCKED`) |
+| Completed-level replay | `VictoryScreenResultsTests.ReplayPressed_DoesNotAdvanceTheSelectedLevel`, with `NextLevelPressed_StillAdvances_ProvingTheReplayGuardDiscriminates` as the control | Included in the post-merge full Edit Mode run: 1,471/1,471 passed. The test invokes the production replay handler with a completed level and verifies the selected level remains unchanged; the advancing control proves replay and next-level routing are distinct | `PASSED` (manual scene-button replay remains `BLOCKED`) |
 
 The manual completed-level replay interaction is not counted as a pass. Historical XML and earlier
 suite totals remain historical evidence only.
@@ -29,17 +32,24 @@ suite totals remain historical evidence only.
 * `dotnet build Salinlahi.Runtime.csproj --no-restore -v:q` — `PASSED` (0 warnings, 0 errors;
   this is a generated non-Unity static check, not a Unity compilation or Test Runner result).
 * `git diff --check` — `PASSED`.
-* Unity full Edit Mode suite — `PASSED`: 1,469/1,469, 0 failed, 0 inconclusive.
-* Unity full Play Mode suite — `PASSED`: 230/230, 0 failed, 0 inconclusive. The first complete run
+* Pre-merge Unity full Edit Mode suite — `PASSED`: 1,469/1,469, 0 failed, 0 inconclusive.
+* Pre-merge Unity full Play Mode suite — `PASSED`: 230/230, 0 failed, 0 inconclusive. The first complete run
   exposed one timing-sensitive `Phaser_PulsesBeforeBecomingInvisible` failure (229/230); its isolated
   rerun passed 1/1, and the subsequent complete rerun passed 230/230.
+* Post-merge Unity verification at `c05160c7` — `PASSED`: focused Edit Mode 16/16, focused Play Mode
+  35/35, full Edit Mode 1,471/1,471, and full Play Mode 231/231; 0 failed and 0 inconclusive in each
+  result XML.
+* Post-merge banner re-review — `NOT REPRODUCED` as a defect: `Assets/Art/UI/era-three.png` is a
+  1,758 × 1,290 RGBA PNG and direct inspection shows the intended two-line `ERA` / `THREE` title.
+  Its checked-in `.meta` GUID was left unchanged; no replacement asset was introduced.
 * After the proven-safe asset cleanup, one intermediate full Edit Mode run reported 1,461/1,469
   with eight onboarding failures while the focused onboarding fixture remained green (22/22). A
   clean-console full rerun completed 1,469/1,469; the intermediate result is retained as an
   order/timing observation, not a confirmed production defect.
 * Branch/worktree review — `PASSED`: branch is `bugfix/campaign-qa-hardening`; no staged files;
   no `Packages/`, `ProjectSettings/`, generated Unity project, GUID, fileID, save-schema, or
-  unrelated generated-file changes were detected.
+  unrelated generated-file changes were detected. The later merge commit `c05160c7` was reviewed;
+  no push or pull request was made.
 
 ## Current implementation changes
 
@@ -87,8 +97,9 @@ still cannot build without Unity-generated restore assets;
 the generated runtime project did build as a non-Unity static C# check.
 
 No package, project setting, GUID, fileID, save schema, or generated Unity project file was changed.
-The approved changes are divided into focused commits on this branch; nothing was pushed, merged,
-or opened as a pull request.
+The approved changes are divided into focused commits on this branch. At the time of the original
+record nothing had been pushed or merged; the subsequent `c05160c7` merge brought `origin/dev` into
+the branch, and no push or pull request was opened.
 
 ## Documentation disposition
 
@@ -107,7 +118,7 @@ or opened as a pull request.
 
 | Batch | Result | Evidence and boundary |
 |---|---|---|
-| 1. Lock Batch 2 and restore baseline | `PASSED` | Corrected stale expectations and legacy-fixture coverage; full Edit Mode `1,469/1,469` and full Play Mode `230/230` are green. |
+| 1. Lock Batch 2 and restore baseline | `PASSED` | Corrected stale expectations and legacy-fixture coverage; the pre-merge full Edit Mode `1,469/1,469` and full Play Mode `230/230` were green, and the post-merge rerun is `1,471/1,471` and `231/231`. |
 | 2. Confirmed campaign-authoring defects | `FIXED` / `PASSED` | Levels 6–14 roster repairs preserve authored wave timing/count fields; campaign contracts and full suites are green. Manual starvation/overflow behavior remains `BLOCKED`. |
 | 3. Levels 6–15 contracts and scene-flow coverage | `BLOCKED` | Production asset contracts cover Levels 6–15 and pass. A real-scene clean completion for all 15 levels, save/load transitions, and terminal screenshots were not exercised. |
 | 4. Low-risk cleanup | `PASSED` | Runtime test seams are `internal`, teardown reset was added, and the focused/full suites pass. The `Resources.Load` fallback was retained because serialized/build/editor dependencies were not disproven. |
@@ -162,8 +173,9 @@ still `BLOCKED`.
 
 ## Release readiness
 
-Automated readiness is `PASSED`: Unity `6000.3.9f1` full Edit Mode is `1,469/1,469` and full Play
-Mode is `230/230` after the isolated Phaser timing rerun. Repository hygiene is `PASSED` (`git
+Automated readiness is `PASSED`: Unity `6000.3.9f1` post-merge full Edit Mode is `1,471/1,471`
+and full Play Mode is `231/231`; the earlier `1,469/1,469` and `230/230` totals remain historical.
+Repository hygiene is `PASSED` (`git
 diff --check`; no package, project-setting, generated-project, GUID, fileID, or staged changes).
 Release readiness overall is `BLOCKED` until a reliable input path permits clean Levels 1–15 runs,
 defeat/retry/abort/replay and save-transition checks, terminal-result screenshots, physical-touch
