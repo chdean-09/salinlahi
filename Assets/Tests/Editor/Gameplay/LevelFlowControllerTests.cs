@@ -160,6 +160,37 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.IsTrue(panel.activeSelf);
         }
 
+        [Test]
+        public void InstantWinCompletion_LateGameOverCannotReplaceVictory()
+        {
+            GameObject victoryPanel = CreatePanel("VictoryPanel_Race");
+            VictoryScreenUI victory = CreateComponent<VictoryScreenUI>("VictoryScreen_Race");
+            SetPrivateField(victory, "_panel", victoryPanel);
+
+            GameObject defeatPanel = CreatePanel("DefeatPanel_Race");
+            DefeatScreenUI defeat = CreateComponent<DefeatScreenUI>("DefeatScreen_Race");
+            SetPrivateField(defeat, "_panel", defeatPanel);
+
+            LevelFlowController controller = CreateComponent<LevelFlowController>(
+                "LevelFlowController_Race");
+            SetPrivateField(controller, "_levelConfig", CreateLevelConfig());
+            SetPrivateField(controller, "_victoryScreen", victory);
+            SetPrivateField(controller, "_defeatScreen", defeat);
+            EnableComponent(controller);
+
+            // This is the boundary the instant-win beat crosses: restoration completion is
+            // latched, the ordinary level-complete route owns the terminal result, and a late
+            // base-contact notification must be inert rather than reopening defeat.
+            EventBus.RaiseFocusWordRestorationComplete();
+            EventBus.RaiseLevelComplete();
+            EventBus.RaiseGameOver();
+
+            Assert.IsTrue(victoryPanel.activeSelf,
+                "A late Game Over must not replace an already-owned instant-win result.");
+            Assert.IsFalse(defeatPanel.activeSelf,
+                "The defeat surface must remain hidden after terminal completion.");
+        }
+
         [UnityTest]
         public IEnumerator DialogueCanPlayFromLevelCompleteAndRestoresLevelComplete()
         {

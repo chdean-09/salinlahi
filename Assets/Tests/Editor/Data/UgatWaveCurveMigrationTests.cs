@@ -77,7 +77,6 @@ namespace Salinlahi.Tests.Editor.Data
             Assert.IsFalse(level.UsesWaveCurve);
         }
 
-        [TestCase(10)]
         [TestCase(15)]
         public void BossLevels_HaveNeitherWavesNorCurve(int levelNumber)
         {
@@ -87,6 +86,17 @@ namespace Salinlahi.Tests.Editor.Data
             Assert.IsEmpty(level.AuthoredWaves);
             Assert.IsNull(level.waveCurve);
             Assert.IsEmpty(level.waves);
+        }
+
+        [Test]
+        public void Level10_IsMixedWaveParagraphContentWithoutABoss()
+        {
+            LevelConfigSO level = Load(10);
+
+            Assert.IsNull(level.bossConfig);
+            Assert.IsNotEmpty(level.AuthoredWaves);
+            Assert.IsNull(level.waveCurve);
+            Assert.IsNotEmpty(level.waves);
         }
     }
 }

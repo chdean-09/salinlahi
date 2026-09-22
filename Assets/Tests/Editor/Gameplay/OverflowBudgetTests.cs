@@ -72,4 +72,12 @@ public class OverflowBudgetTests
             "unbounded must keep going regardless of batch count or budget; an '&&' instead of "
             + "'||' would stop this at batch 1.");
     }
+
+    [Test]
+    public void PurePolicyHelper_MatchesTheWaveManagerCompatibilityWrapper()
+    {
+        Assert.AreEqual(
+            WaveManager.ShouldContinueOverflow(batch: 3, unbounded: false, maxBatches: 4),
+            WaveTerminalPolicy.ShouldContinueOverflow(batch: 3, unbounded: false, maxBatches: 4));
+    }
 }

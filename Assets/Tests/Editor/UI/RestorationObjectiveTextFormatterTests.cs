@@ -104,6 +104,30 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.AreEqual(1f, ActiveCluePresenter.CalculateRailScale(720f, 1920f));
         }
 
+        [Test]
+        public void RestorationRailLayoutPolicy_ScalesEveryGeometryInputTogether()
+        {
+            RestorationRailLayoutMetrics metrics = RestorationRailLayoutPolicy.Calculate(
+                nominalWidth: 2000f,
+                availableWidth: 1000f,
+                slotSize: new Vector2(120f, 80f),
+                slotSpacing: 16f,
+                wordGap: 80f,
+                labelFontSize: 46f,
+                labelRowHeight: 56f,
+                labelGap: 12f,
+                separatorFontSize: 40f);
+
+            Assert.AreEqual(0.5f, metrics.Scale, 0.0001f);
+            Assert.AreEqual(new Vector2(60f, 40f), metrics.SlotSize);
+            Assert.AreEqual(8f, metrics.SlotSpacing, 0.0001f);
+            Assert.AreEqual(40f, metrics.WordGap, 0.0001f);
+            Assert.AreEqual(23f, metrics.LabelFontSize, 0.0001f);
+            Assert.AreEqual(28f, metrics.LabelRowHeight, 0.0001f);
+            Assert.AreEqual(6f, metrics.LabelGap, 0.0001f);
+            Assert.AreEqual(20f, metrics.SeparatorFontSize, 0.0001f);
+        }
+
         private BaybayinCharacterSO CreateSymbol(string label)
         {
             BaybayinCharacterSO symbol = ScriptableObject.CreateInstance<BaybayinCharacterSO>();

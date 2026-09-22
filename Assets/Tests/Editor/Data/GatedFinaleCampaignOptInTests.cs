@@ -15,10 +15,8 @@ namespace Salinlahi.Tests.Editor.Data
     /// This fixture closes that hole directly against the shipped campaign. Levels 2-4 must carry
     /// <see cref="SpawnAssignmentPolicy.gateFinalSlotToFinalWave"/> and an unbounded escort budget
     /// (<c>maxOverflowBatches == 0</c>, read through <see cref="SpawnAssignmentPolicy.OverflowIsUnbounded"/>).
-    /// Levels 1 and 5 are a scope guarantee, not an incidental detail: the whole change was scoped
-    /// to Levels 2-4 (Level 1 is tutorial pacing, Level 5's segment design is unsettled), so both
-    /// must still read exactly as they did before this feature existed — gate off, and the
-    /// historical default budget of 12 escort batches untouched.
+    /// Level 1 remains outside the gated-finale scope (tutorial pacing), while Level 5 now carries
+    /// an explicit authored gate and bounded escort budget for its mastery paragraph.
     /// </summary>
     [TestFixture]
     public sealed class GatedFinaleCampaignOptInTests
@@ -140,7 +138,6 @@ namespace Salinlahi.Tests.Editor.Data
         }
 
         [TestCase("level.ugat.01", "Level 1")]
-        [TestCase("level.ugat.05", "Level 5")]
         public void OutOfScopeLevel_StaysUngatedWithDefaultEscortBudget(string stableId, string label)
         {
             CampaignConfigSO campaign = LoadCampaign();
@@ -148,14 +145,28 @@ namespace Salinlahi.Tests.Editor.Data
 
             Assert.IsFalse(level.spawnAssignmentPolicy.gateFinalSlotToFinalWave,
                 $"{label} ({stableId}) now has gateFinalSlotToFinalWave = true. The gated-finale " +
-                "change was scoped to Levels 2-4 only: Level 1 is tutorial pacing and Level 5's " +
-                "segment design is unsettled, so neither may pick up this behavior as a side " +
-                "effect of authoring Levels 2-4.");
+                "change is scoped away from Level 1's tutorial pacing, so it must not pick up " +
+                "this behavior as a side effect of authoring the gated campaign levels.");
 
             Assert.AreEqual(DefaultMaxOverflowBatches, level.spawnAssignmentPolicy.maxOverflowBatches,
                 $"{label} ({stableId})'s maxOverflowBatches must stay the historical default of " +
                 $"{DefaultMaxOverflowBatches}. Changing it here would alter escort behavior for a " +
                 "level this feature was never meant to touch.");
+        }
+
+        [Test]
+        public void Level5_UsesItsAuthoredFinaleGateWithBoundedEscortBudget()
+        {
+            CampaignConfigSO campaign = LoadCampaign();
+            LevelConfigSO level = GetLevel(campaign, "level.ugat.05");
+
+            Assert.IsTrue(level.spawnAssignmentPolicy.gateFinalSlotToFinalWave,
+                "Level 5's authored mastery paragraph ends on TA and must withhold that final " +
+                "occurrence until the final wave.");
+            Assert.AreEqual(DefaultMaxOverflowBatches,
+                level.spawnAssignmentPolicy.maxOverflowBatches,
+                "Level 5 deliberately uses bounded overflow; unbounded escort behavior belongs " +
+                "to Levels 2-4.");
         }
     }
 }

@@ -64,6 +64,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             // Left on, every test that drives a card to completion would wait out the hold and
             // then fail on a card still up. The gate itself is covered by ContinueHoldTests, which
             // leaves this off and sends real input.
+            EnemyIntroductionBeat.ResetTestState();
             EnemyIntroductionBeat.SetSkipContinueHoldForTests(true);
             Time.timeScale = 1f;
 
@@ -114,7 +115,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         [TearDown]
         public void TearDown()
         {
-            EnemyIntroductionBeat.SetSkipContinueHoldForTests(false);
+            EnemyIntroductionBeat.ResetTestState();
             for (int i = _objectsToDestroy.Count - 1; i >= 0; i--)
             {
                 if (_objectsToDestroy[i] != null)

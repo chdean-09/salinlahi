@@ -129,6 +129,38 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Assert.AreEqual(0, _tracker.ActiveCount);
         }
 
+        [UnityTest]
+        public IEnumerator DefeatThenRetry_ReturnsPoolBeforeTheNextAttempt()
+        {
+            Enemy prefab = CreateEnemyPrefab();
+            EnemyPool pool = CreateEnemyPool(prefab);
+            EnemyDataSO data = CreateEnemyDataWithoutDeathAnimation();
+            WaveManager waveManager = CreateTerminalWaveManager("WaveManager_RetryTeardown_Test");
+
+            Enemy firstAttempt = pool.Get(data);
+            Assert.IsNotNull(firstAttempt);
+            Assert.AreEqual(1, _tracker.ActiveCount);
+
+            InvokePrivate<object>(waveManager, "HandleGameOver");
+            yield return null;
+
+            Assert.IsFalse(pool.IsCheckedOut(firstAttempt));
+            Assert.AreEqual(0, _tracker.ActiveCount,
+                "The defeated attempt must leave no active enemy before retry starts.");
+
+            Enemy retryAttempt = pool.Get(data);
+            Assert.IsNotNull(retryAttempt);
+            Assert.AreEqual(1, _tracker.ActiveCount,
+                "Retry should check out a clean enemy, not inherit the previous attempt.");
+
+            InvokePrivate<object>(waveManager, "HandleGameOver");
+            yield return null;
+
+            Assert.IsFalse(pool.IsCheckedOut(retryAttempt));
+            Assert.AreEqual(0, _tracker.ActiveCount,
+                "Retry teardown must return its own checked-out enemies exactly once.");
+        }
+
         private static IEnumerator ResumeAfterDelay(System.Action onResume)
         {
             yield return new WaitForSecondsRealtime(0.05f);

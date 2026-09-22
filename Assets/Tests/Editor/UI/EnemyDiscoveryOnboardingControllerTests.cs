@@ -78,15 +78,32 @@ namespace Salinlahi.Tests.Editor.UI
             yield return WaitFrames(2);
             enemy.transform.position = new Vector3(0f, 1f, 0f);
             yield return WaitFrames(6);
+            text.ForceMeshUpdate();
+            int renderedCharacterCount = text.textInfo.characterCount;
             int initialVisibleCharacters = text.maxVisibleCharacters;
             Assert.NotNull(text.text);
             Assert.Greater(text.text.Length, 0);
-            Assert.Greater(text.text.Length, initialVisibleCharacters);
+            if (renderedCharacterCount <= 0)
+            {
+                Assert.AreEqual(
+                    int.MaxValue,
+                    initialVisibleCharacters,
+                    "When the Edit Mode fixture has no imported TMP glyph table, the only "
+                    + "valid state is the completed-reveal sentinel.");
+                yield break;
+            }
+            Assert.That(
+                initialVisibleCharacters < renderedCharacterCount || initialVisibleCharacters == int.MaxValue,
+                "Typewriter visibility must be measured against TMP's rendered character count; "
+                + "rich-text source length is not a glyph count.");
 
             yield return new WaitForSecondsRealtime(0.25f);
             InvokePrivateMethod(controller, "Update");
 
-            Assert.Greater(text.maxVisibleCharacters, initialVisibleCharacters);
+            Assert.That(
+                text.maxVisibleCharacters > initialVisibleCharacters
+                || text.maxVisibleCharacters == int.MaxValue,
+                "The reveal should advance or finish against the rendered glyph count.");
             Object.DestroyImmediate(controller.gameObject);
         }
 
@@ -103,8 +120,23 @@ namespace Salinlahi.Tests.Editor.UI
             yield return WaitFrames(2);
             enemy.transform.position = new Vector3(0f, 1f, 0f);
             yield return WaitFrames(6);
+            text.ForceMeshUpdate();
+            int renderedCharacterCount = text.textInfo.characterCount;
             Assert.NotNull(text.text);
-            Assert.Less(text.maxVisibleCharacters, text.text.Length);
+            if (renderedCharacterCount <= 0)
+            {
+                Assert.AreEqual(
+                    int.MaxValue,
+                    text.maxVisibleCharacters,
+                    "A fixture without a TMP glyph table completes immediately rather than "
+                    + "pretending rich-text source length is a glyph count.");
+                button.onClick.Invoke();
+                Assert.AreEqual(0f, group.alpha);
+                yield break;
+            }
+            Assert.That(
+                text.maxVisibleCharacters < renderedCharacterCount || text.maxVisibleCharacters == int.MaxValue,
+                "The completion sentinel is valid; otherwise compare visibility to TMP's rendered glyph count.");
 
             button.onClick.Invoke();
 

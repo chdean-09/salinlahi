@@ -231,7 +231,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         [UnityTest]
-        public IEnumerator CorrectTraceOnANonMarkedEnemy_Misses()
+        public IEnumerator CorrectTraceOnClosestEligibleCarrier_DamagesIt()
         {
             EnemyDataSO nearData = CreateEnemyData();
             nearData.maxHealth = 3;
@@ -270,9 +270,9 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
 
             EventBus.OnDrawingMissed -= OnMiss;
 
-            Assert.IsTrue(missed, "A trace for a non-marked enemy must raise a miss.");
-            Assert.That(far.CurrentHealth, Is.EqualTo(farData.maxHealth),
-                "Only the active clue is drawable; the unmarked enemy takes no damage.");
+            Assert.IsFalse(missed, "A valid glyph with an eligible carrier must resolve, even when the carrier is not marked.");
+            Assert.That(far.CurrentHealth, Is.LessThan(farData.maxHealth),
+                "Correct recognition resolves against the closest eligible carrier rather than requiring the marked enemy.");
         }
 
         [Test]
@@ -571,7 +571,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         // the sweep in HandleActiveClueChanged never reaches it. "One visibly marked clue"
         // would fail in steady state on a glyph level.
         [UnityTest]
-        public IEnumerator Presenter_EnemySpawnedWhileMarkLatched_HidesItsBadge()
+        public IEnumerator Presenter_EnemySpawnedWhileMarkLatched_AppliesCrowdLocalBadgePolicy()
         {
             LevelConfigSO level = ScriptableObject.CreateInstance<LevelConfigSO>();
             level.activeClueCombatEnabled = true;
@@ -613,8 +613,19 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 "The mark must still be latched, or this test would not exercise the spawn path.");
             Assert.IsTrue(badgeRenderer.enabled,
                 "The late spawn must actually carry a renderable badge for this test to bite.");
-            Assert.That(badgeRenderer.color.a, Is.EqualTo(0f).Within(0.001f),
-                "An enemy spawned while the mark is latched must not display its answer badge.");
+            Assert.That(badgeRenderer.color.a, Is.EqualTo(1f).Within(0.001f),
+                "A distant late spawn remains readable under the crowd-local badge policy.");
+
+            Enemy crowdedSpawn = CreateEnemyShell();
+            (EnemyGlyphBadge crowdedBadge, SpriteRenderer crowdedRenderer) =
+                GlyphBadgePlayModeTestHelpers.AddGlyphBadgeChild(crowdedSpawn.gameObject, badgeConfig);
+            GlyphBadgePlayModeTestHelpers.SetPrivateField(crowdedSpawn, "_glyphBadge", crowdedBadge);
+            crowdedSpawn.transform.position = new Vector3(0f, 3.5f, 0f);
+            Assert.IsTrue(crowdedSpawn.Initialize(data));
+            yield return null;
+
+            Assert.That(crowdedRenderer.color.a, Is.EqualTo(0f).Within(0.001f),
+                "A late spawn inside the active clue crowd radius suppresses its badge.");
         }
 
         // Spec section 3.5: the mark is a marker treatment on the active enemy, driven
@@ -771,7 +782,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
 
             EnemyDataSO otherData = CreateEnemyData();
             otherData.maxHealth = 3;
-            otherData.assignedCharacter = CreateTestCharacter("MA", "symbol.ma");
+            otherData.assignedCharacter = CreateTestCharacter("TA", "symbol.ta");
             CreateEnemyAt(otherData, y: 9f);
 
             ActiveClueDirector director = CreateDirector(clueCombatActive: true);

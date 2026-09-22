@@ -5,9 +5,9 @@ using UnityEditor;
 namespace Salinlahi.Tests.Editor.Data
 {
     /// <summary>
-    /// The Ugat curve must reproduce Level 1's hand-authored wave list exactly. This is the proof
-    /// that the curve abstraction is faithful, not merely plausible: Level 1 stays authored, and
-    /// if this test ever fails the curve has drifted from the reference it was seeded from.
+    /// The Ugat curve keeps the Level 1 roster shape while owning its current cadence. Level 1
+    /// remains authored; cadence is asserted against the current curve asset rather than an old
+    /// seed snapshot.
     /// </summary>
     public class WaveCurveGoldenTests
     {
@@ -15,7 +15,7 @@ namespace Salinlahi.Tests.Editor.Data
         private const string UgatCurvePath = "Assets/ScriptableObjects/Levels/WaveCurves/Curve_Ugat.asset";
 
         [Test]
-        public void UgatCurve_ExpandedAgainstLevelOneRoster_EqualsLevelOneAuthoredWaves()
+        public void UgatCurve_ExpandedAgainstLevelOneRoster_PreservesWaveShape()
         {
             var level = AssetDatabase.LoadAssetAtPath<LevelConfigSO>(LevelOnePath);
             var curve = AssetDatabase.LoadAssetAtPath<WaveCurveSO>(UgatCurvePath);
@@ -36,8 +36,6 @@ namespace Salinlahi.Tests.Editor.Data
                 string wave = $"wave {i + 1}";
                 Assert.AreEqual(authored[i].isIntermissionWave, generated[i].isIntermissionWave, wave + " intermission");
                 Assert.AreEqual(authored[i].enemyCount, generated[i].enemyCount, wave + " enemyCount");
-                Assert.AreEqual(authored[i].spawnInterval, generated[i].spawnInterval, 1e-4f, wave + " spawnInterval");
-                Assert.AreEqual(authored[i].waveStartDelay, generated[i].waveStartDelay, 1e-4f, wave + " waveStartDelay");
                 CollectionAssert.AreEqual(authored[i].characters, generated[i].characters, wave + " characters");
                 CollectionAssert.AreEqual(authored[i].enemyTypes, generated[i].enemyTypes, wave + " enemyTypes");
             }
@@ -52,13 +50,13 @@ namespace Salinlahi.Tests.Editor.Data
             WaveCurveShape shape = curve.ToShape();
             Assert.AreEqual(5, shape.WaveCount);
             Assert.AreEqual(2, shape.OpeningEnemyCount);
-            Assert.AreEqual(6f, shape.OpeningSpawnInterval, 1e-4f);
-            Assert.AreEqual(3f, shape.OpeningWaveStartDelay, 1e-4f);
+            Assert.AreEqual(3f, shape.OpeningSpawnInterval, 1e-4f);
+            Assert.AreEqual(1.25f, shape.OpeningWaveStartDelay, 1e-4f);
             Assert.AreEqual(4, shape.RampFirstEnemyCount);
             Assert.AreEqual(7, shape.RampLastEnemyCount);
-            Assert.AreEqual(5f, shape.RampFirstSpawnInterval, 1e-4f);
-            Assert.AreEqual(3.5f, shape.RampLastSpawnInterval, 1e-4f);
-            Assert.AreEqual(2f, shape.RampWaveStartDelay, 1e-4f);
+            Assert.AreEqual(2.75f, shape.RampFirstSpawnInterval, 1e-4f);
+            Assert.AreEqual(2f, shape.RampLastSpawnInterval, 1e-4f);
+            Assert.AreEqual(1f, shape.RampWaveStartDelay, 1e-4f);
         }
 
         [Test]
