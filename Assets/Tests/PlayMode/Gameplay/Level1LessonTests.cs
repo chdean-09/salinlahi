@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 
@@ -1564,9 +1565,8 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         /// </para>
         ///
         /// <para>
-        /// <b>Not covered here:</b> the device bindings in ContinuePressedThisFrame. The PlayMode
-        /// assembly does not reference the Input System, so this raises the continue through a seam.
-        /// Whether a finger on a phone produces one is a play session, not this test.
+        /// This case uses the test seam to isolate the hold and release lifecycle. The short-touch
+        /// regression below separately drives the real Input System boundary.
         /// </para>
         /// </summary>
         [UnityTest]
@@ -1632,6 +1632,64 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Assert.AreNotEqual(0f, Time.timeScale,
                 "The field must be running again once the card has been dismissed, or the level is "
                 + "frozen for the rest of its life.");
+        }
+
+        /// <summary>
+        /// Regression for a Device Simulator playtest where a visible "Tap to continue" prompt
+        /// intermittently ignored a short finger contact. A synthetic test flag cannot cover that
+        /// boundary: this case sends a real Input System touch whose down and up events are both
+        /// processed before the next player-loop frame, then observes the card's public hold state.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CardHold_ReleasesForAShortTouchProcessedWithinOneInputUpdate()
+        {
+            yield return null;
+
+            var input = new InputTestFixture();
+            input.Setup();
+            try
+            {
+                EnemyIntroductionBeat.SetSkipContinueHoldForTests(false);
+                SetPrivateField(_beat, "_nameStepSeconds", 0f);
+                SetPrivateField(_beat, "_abilityStepSeconds", 0f);
+                SetPrivateField(_beat, "_glyphRevealStepSeconds", 0f);
+                SetPrivateField(_beat, "_onScreenWaitTimeoutSeconds", 0f);
+
+                BaybayinCharacterSO character = MakeCharacter("EI", "symbol.test.touch.ei");
+                EnemyDataSO data = CreateEnemyData("test_touch", "Iligaw", character);
+                LevelConfigSO config = CreateLevelConfig(
+                    new List<EnemyDataSO> { data },
+                    System.Array.Empty<EnemyLessonSO>(),
+                    new List<FocusWordDefinition>());
+                _gameManager.SetLevel(config);
+
+                Enemy enemy = CreateEnemyShell("Iligaw_Touch");
+                enemy.transform.position = Vector3.zero;
+                Assert.IsTrue(enemy.Initialize(data));
+
+                for (int frame = 0; frame < 120 && !EnemyIntroductionBeat.IsHoldingForContinue; frame++)
+                    yield return null;
+
+                Assert.IsTrue(EnemyIntroductionBeat.IsHoldingForContinue,
+                    "setup: the prompt must be waiting before the touch arrives.");
+
+                Touchscreen touchscreen = InputSystem.AddDevice<Touchscreen>();
+                input.BeginTouch(1, new Vector2(450f, 800f), queueEventOnly: true,
+                    screen: touchscreen);
+                input.EndTouch(1, new Vector2(450f, 800f), queueEventOnly: true,
+                    screen: touchscreen);
+                InputSystem.Update();
+
+                yield return null;
+
+                Assert.IsFalse(EnemyIntroductionBeat.IsHoldingForContinue,
+                    "A complete short tap must dismiss a prompt that was already visible. Polling "
+                    + "only the touchscreen's final frame state can lose this contact.");
+            }
+            finally
+            {
+                input.TearDown();
+            }
         }
 
         [UnityTest]

@@ -18,7 +18,7 @@ MonoBehaviour:
   storyReference: {fileID: 0}
   memoryReference: {fileID: 0}
   backgroundSprite: {fileID: 0}
-  bannerSprite: {fileID: 0}
+  bannerSprite: {fileID: 21300000, guid: ad60350421fabae4f9e6a0309bcfb1f4, type: 3}
   levels:
   - {fileID: 11400000, guid: 03bfbde0b892043a482dd1c3507bd5ed, type: 2}
   - {fileID: 11400000, guid: 674cb26efbdf740b6988b1853504af81, type: 2}

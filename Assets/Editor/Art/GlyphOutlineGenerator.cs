@@ -18,9 +18,10 @@ using UnityEngine;
 /// guide show exactly the shape the player is being asked to produce, which authored art could
 /// only approximate.
 ///
-/// Templates are authored y-up, so Y is flipped into image space. Aspect ratio is preserved
-/// rather than stretched to the canvas: HA is essentially one-dimensional (bounding-box aspect
-/// 5.53-12.77) and stretching it to a square is precisely the bug that made it unrecognisable.
+/// Templates and Unity texture rows are both y-up, so their Y direction is preserved. Aspect ratio
+/// is preserved rather than stretched to the canvas: HA is essentially one-dimensional
+/// (bounding-box aspect 5.53-12.77) and stretching it to a square is precisely the bug that made it
+/// unrecognisable.
 /// </summary>
 public static class GlyphOutlineGenerator
 {
@@ -136,7 +137,7 @@ public static class GlyphOutlineGenerator
     {
         float x = offX + (p.x - minX) * scale;
         float y = offY + (p.y - minY) * scale;
-        return new Vector2(x, Size - 1 - y);          // templates are y-up; images are y-down
+        return new Vector2(x, y);
     }
 
     /// <summary>Distance-to-segment stamp, limited to the segment's neighbourhood so this stays fast.</summary>

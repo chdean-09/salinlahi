@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// The four-step enemy introduction beat: <b>Halt, Name, Ability, Release</b>. It fires once per
@@ -172,6 +173,8 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     private bool _routineActive;
     private bool _timeScaleTaken;
     private bool _drawStepAbandoned;
+    private InputAction _continueAction;
+    private bool _continueRequestedByInput;
     private float _restoreTimeScale = 1f;
     private TutorialSpotlightOverlay _runtimeVignette;
 
@@ -351,6 +354,8 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
 
     private void OnDisable()
     {
+        ReleaseContinueInputAction();
+
         // The beat holds two pieces of global state. A scene unload or a level abort mid-card would
         // otherwise leave the game running at 0.15 with the screen dimmed and no way back.
         //
@@ -1719,12 +1724,6 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     }
 
     /// <summary>
-    /// Moves <c>Time.timeScale</c> between two values over a wall-clock duration. The value the beat
-    /// found on entry is remembered on the first ramp and is what the release ramps back to, rather
-    /// than a hardcoded 1: a level that is already running slowed for its own reasons should be given
-    /// back what it had.
-    /// </summary>
-    /// <summary>
     /// Test seam for the hold. A PlayMode fixture has no player, so a card driven to completion
     /// would wait for a press that never arrives and then fail on a card that is still up — which
     /// is exactly how BannerStandingAfterACard_StillLetsTheNextTypeIntroduceItself reported it.
@@ -1757,16 +1756,8 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// it. Consumed once by the waiting card.
     /// </summary>
     /// <remarks>
-    /// This exists because the PlayMode test assembly does not reference the Input System — it sets
-    /// <c>overrideReferences</c> and lists its precompiled assemblies explicitly — so a fixture
-    /// cannot queue a real touch without reshaping the build config.
-    ///
-    /// <para>
-    /// <b>What that leaves uncovered:</b> the device bindings in
-    /// <see cref="ContinuePressedThisFrame"/>. A test using this proves the card holds, freezes the
-    /// field and releases on a continue — not that a finger on a phone produces one. That last step
-    /// is a play session.
-    /// </para>
+    /// Kept for tests that are concerned with the hold's surrounding behavior rather than the
+    /// device boundary. The short-touch regression queues a real Input System touch separately.
     /// </remarks>
     internal static void RequestContinueForTests() => s_continueRequestedByTest = true;
 
@@ -1784,9 +1775,11 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// step 4 restores from whatever it finds, so starting that ramp from 0 needs no special case.
     ///
     /// <para>
-    /// Input is polled through the Input System directly. The card view cannot take it: every
+    /// Input is captured through an Input System action. The card view cannot take it: every
     /// graphic there is forced raycast-transparent on wake so the player can draw through the card,
-    /// and a full-screen catcher would undo that for the one spawn that can never be retried.
+    /// and a full-screen catcher would undo that for the one spawn that can never be retried. The
+    /// action callback latches the press until this coroutine observes it, so a short contact whose
+    /// down and up events land in one Input System update is not lost between player-loop frames.
     /// </para>
     /// </remarks>
     private IEnumerator HoldForContinue()
@@ -1794,13 +1787,15 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         if (s_skipContinueHoldForTests)
             yield break;
 
+        EnsureContinueInputAction();
+        _continueRequestedByInput = false;
         Time.timeScale = 0f;
         _card.ShowContinuePrompt();
         IsHoldingForContinue = true;
 
         s_continueRequestedByTest = false;
         float waited = 0f;
-        while (!ContinuePressedThisFrame() && !s_continueRequestedByTest)
+        while (!_continueRequestedByInput && !s_continueRequestedByTest)
         {
             if (_continueHoldTimeoutSeconds > 0f && waited >= _continueHoldTimeoutSeconds)
             {
@@ -1814,30 +1809,51 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             yield return null;
         }
 
+        _continueRequestedByInput = false;
         s_continueRequestedByTest = false;
         IsHoldingForContinue = false;
         _card.HideContinuePrompt();
     }
 
-    /// <summary>
-    /// A press on any device the player could plausibly be holding. Deliberately not a uGUI button:
-    /// see <see cref="HoldForContinue"/>.
-    /// </summary>
-    private static bool ContinuePressedThisFrame()
+    private void EnsureContinueInputAction()
     {
-        UnityEngine.InputSystem.Touchscreen touch = UnityEngine.InputSystem.Touchscreen.current;
-        if (touch != null && touch.primaryTouch.press.wasPressedThisFrame)
-            return true;
+        if (_continueAction == null)
+        {
+            _continueAction = new InputAction("Continue enemy introduction", InputActionType.Button);
+            _continueAction.AddBinding("<Pointer>/press");
+            _continueAction.AddBinding("<Keyboard>/space");
+            _continueAction.AddBinding("<Keyboard>/enter");
+            _continueAction.performed += HandleContinuePerformed;
+        }
 
-        UnityEngine.InputSystem.Mouse mouse = UnityEngine.InputSystem.Mouse.current;
-        if (mouse != null && mouse.leftButton.wasPressedThisFrame)
-            return true;
-
-        UnityEngine.InputSystem.Keyboard keyboard = UnityEngine.InputSystem.Keyboard.current;
-        return keyboard != null
-            && (keyboard.spaceKey.wasPressedThisFrame || keyboard.enterKey.wasPressedThisFrame);
+        if (!_continueAction.enabled)
+            _continueAction.Enable();
     }
 
+    private void HandleContinuePerformed(InputAction.CallbackContext context)
+    {
+        if (IsHoldingForContinue)
+            _continueRequestedByInput = true;
+    }
+
+    private void ReleaseContinueInputAction()
+    {
+        if (_continueAction == null)
+            return;
+
+        _continueAction.performed -= HandleContinuePerformed;
+        _continueAction.Disable();
+        _continueAction.Dispose();
+        _continueAction = null;
+        _continueRequestedByInput = false;
+    }
+
+    /// <summary>
+    /// Moves <c>Time.timeScale</c> between two values over a wall-clock duration. The value the beat
+    /// found on entry is remembered on the first ramp and is what the release ramps back to, rather
+    /// than a hardcoded 1: a level that is already running slowed for its own reasons should be given
+    /// back what it had.
+    /// </summary>
     private IEnumerator RampTimeScale(float from, float to, float seconds)
     {
         if (!_timeScaleTaken)

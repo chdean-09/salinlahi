@@ -67,6 +67,15 @@ namespace Salinlahi.Tests.Editor.Data
         }
 
         [Test]
+        public void Ragasa_HasAnAlmanacDescription()
+        {
+            var ragasa = Load<EnemyDataSO>(EnemyDir + "EnemyData_Ragasa.asset");
+
+            Assert.IsFalse(string.IsNullOrWhiteSpace(ragasa.description),
+                "Ragasa's Almanac entry must not render with an empty description area.");
+        }
+
+        [Test]
         public void Ragasa_SpawnsOnLevel13_WhereRaIsIntroduced()
         {
             var ragasa = Load<EnemyDataSO>(EnemyDir + "EnemyData_Ragasa.asset");
