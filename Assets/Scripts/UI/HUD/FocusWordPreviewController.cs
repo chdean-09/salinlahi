@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Text;
 using TMPro;
 using UnityEngine;
@@ -19,6 +20,8 @@ public class FocusWordPreviewController : MonoBehaviour
     [SerializeField] private TextMeshProUGUI _previewText;
     [SerializeField] private Button _continueButton;
 
+    private GameObject _overlayRoot;
+    private GameObject _wordBlocksRoot;
     private bool _continueRequested;
     private bool _runtimePanelBuilt;
 
@@ -42,24 +45,38 @@ public class FocusWordPreviewController : MonoBehaviour
             ? RestorationObjectiveTextFormatter.Render(config.restorationObjective)
             : BuildPreviewText(config);
         EnsurePanel();
+        EnsureModalChrome();
         if (_previewText != null)
             _previewText.text = RenderedText;
-        if (_panelRoot != null)
-            _panelRoot.SetActive(true);
+        BuildWordBlocks(config);
+        SetVisible(true);
 
         _continueRequested = false;
         IsPresenting = true;
         yield return new WaitUntil(() => _continueRequested);
 
         IsPresenting = false;
-        if (_panelRoot != null)
-            _panelRoot.SetActive(false);
+        SetVisible(false);
     }
 
     /// <summary>Tap-to-continue: closes the preview and lets the flow advance.</summary>
     public void Continue()
     {
         _continueRequested = true;
+    }
+
+    private void OnDestroy()
+    {
+        // The overlay is parented to the shared modal canvas, not this controller —
+        // a scene teardown while presenting would leave the modal floating over
+        // whatever loads next (observed live: an orphaned preview over the victory
+        // screen). Scene-authored panels are reparented into the overlay by
+        // EnsureModalChrome, so destroying it takes them along.
+        if (_overlayRoot != null)
+            Destroy(_overlayRoot);
+        else if (_panelRoot != null && IsPresenting)
+            _panelRoot.SetActive(false);
+        IsPresenting = false;
     }
 
     private static string BuildPreviewText(LevelConfigSO config)
@@ -118,40 +135,33 @@ public class FocusWordPreviewController : MonoBehaviour
 
         // Prefer the HUD canvas so the authored scene renders the preview; a bare
         // test scene parents under this controller (text data still observable).
-        Canvas canvas = GetComponentInParent<Canvas>();
-        if (canvas == null)
-            canvas = FindFirstObjectByType<Canvas>();
+        Canvas canvas = ScrollPanelArt.ResolveModalCanvas(this);
         Transform parent = canvas != null ? canvas.transform : transform;
 
-        _panelRoot = new GameObject("[Runtime] FocusWordPreview", typeof(RectTransform), typeof(Image));
-        _panelRoot.transform.SetParent(parent, false);
-        RectTransform panelRect = _panelRoot.GetComponent<RectTransform>();
-        panelRect.anchorMin = new Vector2(0.5f, 0.5f);
-        panelRect.anchorMax = new Vector2(0.5f, 0.5f);
-        panelRect.pivot = new Vector2(0.5f, 0.5f);
-        panelRect.sizeDelta = new Vector2(520f, 360f);
+        _overlayRoot = ScrollPanelArt.CreateDimOverlay(
+            parent, "[Runtime] FocusWordPreviewOverlay");
+        RectTransform panelRect = ScrollPanelArt.CreateScrollPanel(
+            _overlayRoot.transform, "[Runtime] FocusWordPreview");
+        _panelRoot = panelRect.gameObject;
 
-        // No builtin-sprite lookup: it logs an assert in batch mode; a flat tinted
-        // quad is the approved unstyled fallback (see ActiveCluePresenter).
-        Image background = _panelRoot.GetComponent<Image>();
-        background.color = new Color(0.04f, 0.06f, 0.12f, 0.94f);
+        Image background = panelRect.GetComponent<Image>();
         bool onParchment = ScrollPanelArt.ApplyFull(background);
 
         GameObject textObject = new GameObject("[Runtime] FocusWordPreviewText", typeof(RectTransform));
-        textObject.transform.SetParent(_panelRoot.transform, false);
+        textObject.transform.SetParent(panelRect.transform, false);
         RectTransform textRect = textObject.GetComponent<RectTransform>();
         textRect.anchorMin = new Vector2(0f, 0.25f);
         textRect.anchorMax = new Vector2(1f, 1f);
         textRect.offsetMin = new Vector2(24f, 8f);
         textRect.offsetMax = new Vector2(-24f, -16f);
         _previewText = textObject.AddComponent<TextMeshProUGUI>();
-        _previewText.fontSize = UITextScale.Body;
+        _previewText.fontSize = UITextScale.Title;
         _previewText.alignment = TextAlignmentOptions.Center;
         _previewText.raycastTarget = false;
         TutorialFontProvider.ApplyTo(_previewText);
 
         GameObject buttonObject = new GameObject("[Runtime] FocusWordContinue", typeof(RectTransform), typeof(Image));
-        buttonObject.transform.SetParent(_panelRoot.transform, false);
+        buttonObject.transform.SetParent(panelRect.transform, false);
         RectTransform buttonRect = buttonObject.GetComponent<RectTransform>();
         buttonRect.anchorMin = new Vector2(0.5f, 0f);
         buttonRect.anchorMax = new Vector2(0.5f, 0f);
@@ -179,10 +189,283 @@ public class FocusWordPreviewController : MonoBehaviour
         _continueButton.onClick.AddListener(Continue);
         if (onParchment)
         {
-            ScrollPanelArt.InkifyRecursive(_panelRoot.transform);
+            ScrollPanelArt.InkifyRecursive(panelRect.transform);
             ScrollPanelArt.Inkify(label);
         }
-        _panelRoot.SetActive(false);
+        _overlayRoot.SetActive(false);
+    }
+
+    /// <summary>
+    /// Wraps a scene-authored panel in the same dim overlay the runtime path
+    /// builds, then seats it at the shared scroll rect so an authored
+    /// <c>FocusWordPreview</c> panel presents identically.
+    /// </summary>
+    private void EnsureModalChrome()
+    {
+        if (_panelRoot == null || _overlayRoot != null)
+            return;
+
+        Canvas canvas = ScrollPanelArt.ResolveModalCanvas(this);
+        Transform parent = canvas != null ? canvas.transform : _panelRoot.transform.parent;
+
+        _overlayRoot = ScrollPanelArt.CreateDimOverlay(
+            parent, "[Runtime] FocusWordPreviewOverlay");
+        RectTransform panelRect = _panelRoot.GetComponent<RectTransform>();
+        panelRect.SetParent(_overlayRoot.transform, false);
+        panelRect.SetAsLastSibling();
+
+        ApplyParchmentLayout(panelRect, _previewText, _continueButton);
+        if (ScrollPanelArt.ApplyFull(_panelRoot.GetComponent<Image>()))
+        {
+            ScrollPanelArt.InkifyRecursive(panelRect.transform);
+            if (_continueButton != null)
+                ScrollPanelArt.Inkify(_continueButton.GetComponentInChildren<TMP_Text>(true));
+        }
+    }
+
+    /// <summary>
+    /// SALIN-199 follow-through: each focus word renders its decomposition as
+    /// inked glyph outlines (the same bare sprites the memory card uses) above
+    /// the word's caption, so the preview teaches the shapes, not just the
+    /// spelling. Modes that hide targets until restored (ClueOnlyWords,
+    /// MarkedContext, HiddenContext) keep the text-only presentation — the
+    /// glyph row would leak what the mode withholds.
+    /// </summary>
+    private void BuildWordBlocks(LevelConfigSO config)
+    {
+        if (_wordBlocksRoot != null)
+        {
+            Destroy(_wordBlocksRoot);
+            _wordBlocksRoot = null;
+        }
+
+        var entries = CollectWordEntries(config);
+        bool anyGlyphs = false;
+        for (int i = 0; i < entries.Count; i++)
+            anyGlyphs |= entries[i].glyphs.Count > 0;
+
+        if (_previewText != null)
+            _previewText.gameObject.SetActive(!anyGlyphs);
+        if (!anyGlyphs || _panelRoot == null)
+            return;
+
+        _wordBlocksRoot = new GameObject("[Runtime] FocusWordBlocks", typeof(RectTransform));
+        _wordBlocksRoot.transform.SetParent(_panelRoot.transform, false);
+        RectTransform blocksRect = _wordBlocksRoot.GetComponent<RectTransform>();
+        // The blocks band reaches toward both rods — the scroll sprite's own frame
+        // supplies the visual margin, so a tighter band left a dead paper tail
+        // below the Continue button on portrait.
+        ScrollPanelArt.SetAnchors(
+            blocksRect, Rect.MinMaxRect(0.18f, BlocksBandBottom, 0.82f, BlocksBandTop));
+
+        float blockHeight = 1f / entries.Count;
+        for (int i = 0; i < entries.Count; i++)
+            BuildWordBlock(blocksRect, entries[i], i, entries.Count, blockHeight);
+    }
+
+    /// <summary>
+    /// A resolved glyph plus how its art behaves: the almanac PNG is self-coloured and inks
+    /// only part of its frame (the share differs per glyph — see GlyphInkMetrics), while the
+    /// outline fallback is a white silhouette that needs inking.
+    /// </summary>
+    private struct GlyphVisual
+    {
+        public Sprite sprite;
+        public float inkFraction;
+        public bool selfColoured;
+    }
+
+    /// <summary>
+    /// Prefers the almanac's finished glyph over the bare outline — same chain the
+    /// restoration rail resolves, so every surface shows the player the same mark.
+    /// </summary>
+    private static GlyphVisual? ResolveGlyphVisual(BaybayinCharacterSO symbol)
+    {
+        if (symbol == null)
+            return null;
+
+        if (symbol.almanacSprite != null)
+        {
+            return new GlyphVisual
+            {
+                sprite = symbol.almanacSprite,
+                inkFraction = GlyphInkMetrics.ForAlmanac(symbol),
+                selfColoured = true,
+            };
+        }
+
+        if (symbol.glyphOutlineSprite != null)
+        {
+            return new GlyphVisual
+            {
+                sprite = symbol.glyphOutlineSprite,
+                inkFraction = GlyphInkMetrics.OutlineFraction,
+                selfColoured = false,
+            };
+        }
+
+        return null;
+    }
+
+    // Panel-space layout, shared by BuildWordBlocks and BuildGlyphRow so the band
+    // math cannot drift: the blocks band spans BlocksBandBottom..BlocksBandTop of
+    // the panel, each block gives its top GlyphRowShare to glyphs and the rest to
+    // the caption.
+    private const float BlocksBandTop = 0.86f;
+    private const float BlocksBandBottom = 0.27f;
+    private const float GlyphRowShare = 0.57f;
+    private const float ReferencePanelHeight = 998f;
+
+    private struct WordEntry
+    {
+        public List<GlyphVisual> glyphs;
+        public string caption;
+    }
+
+    private static List<WordEntry> CollectWordEntries(LevelConfigSO config)
+    {
+        var entries = new List<WordEntry>();
+        RestorationObjectiveDefinition objective = config.restorationObjective;
+        if (objective?.HasTargets == true
+            && objective.displayMode == RestorationDisplayMode.GuidedWords
+            && objective.units != null)
+        {
+            foreach (RestorationObjectiveUnit unit in objective.units)
+            {
+                if (unit == null)
+                    continue;
+                var entry = new WordEntry { glyphs = new List<GlyphVisual>() };
+                if (unit.tokens != null)
+                    foreach (RestorationObjectiveToken token in unit.tokens)
+                        if (token?.IsTarget == true)
+                        {
+                            GlyphVisual? glyph = ResolveGlyphVisual(token.target?.symbol);
+                            if (glyph.HasValue)
+                                entry.glyphs.Add(glyph.Value);
+                        }
+                entry.caption = RestorationObjectiveTextFormatter.RenderUnit(
+                    unit, objective.displayMode);
+                entries.Add(entry);
+            }
+        }
+        else if (config.focusWords != null)
+        {
+            foreach (FocusWordDefinition focus in config.focusWords)
+            {
+                if (focus == null)
+                    continue;
+                var entry = new WordEntry
+                {
+                    glyphs = new List<GlyphVisual>(),
+                    caption = string.IsNullOrEmpty(focus.displayLabel)
+                        ? focus.latinSpelling : focus.displayLabel,
+                };
+                if (focus.decomposition != null)
+                {
+                    var syllables = new StringBuilder();
+                    foreach (SymbolValueReference reference in focus.decomposition)
+                    {
+                        GlyphVisual? glyph = ResolveGlyphVisual(reference?.symbol);
+                        if (glyph.HasValue)
+                            entry.glyphs.Add(glyph.Value);
+                        if (syllables.Length > 0)
+                            syllables.Append(" · ");
+                        syllables.Append(SyllableLabel(reference));
+                    }
+                    if (syllables.Length > 0)
+                        entry.caption += "\n" + syllables;
+                }
+                entries.Add(entry);
+            }
+        }
+        return entries;
+    }
+
+    private void BuildWordBlock(
+        RectTransform blocksRect, WordEntry entry, int index, int count, float blockHeight)
+    {
+        GameObject block = new GameObject("[Runtime] FocusWordBlock" + index, typeof(RectTransform));
+        block.transform.SetParent(blocksRect, false);
+        RectTransform blockRect = block.GetComponent<RectTransform>();
+        float top = 1f - index * blockHeight;
+        blockRect.anchorMin = new Vector2(0f, top - blockHeight);
+        blockRect.anchorMax = new Vector2(1f, top);
+        blockRect.offsetMin = blockRect.offsetMax = Vector2.zero;
+
+        if (entry.glyphs.Count > 0)
+            BuildGlyphRow(blockRect, entry.glyphs, count);
+
+        GameObject captionObject = new GameObject("Caption", typeof(RectTransform));
+        captionObject.transform.SetParent(block.transform, false);
+        RectTransform captionRect = captionObject.GetComponent<RectTransform>();
+        captionRect.anchorMin = new Vector2(0f, entry.glyphs.Count > 0 ? 0.02f : 0f);
+        captionRect.anchorMax = new Vector2(1f, entry.glyphs.Count > 0 ? 1f - GlyphRowShare - 0.02f : 1f);
+        captionRect.offsetMin = captionRect.offsetMax = Vector2.zero;
+        TMP_Text caption = captionObject.AddComponent<TextMeshProUGUI>();
+        caption.text = entry.caption;
+        caption.alignment = TextAlignmentOptions.Center;
+        caption.fontSize = UITextScale.Title;
+        caption.enableAutoSizing = true;
+        caption.fontSizeMin = UITextScale.Caption;
+        caption.fontSizeMax = UITextScale.Title;
+        caption.raycastTarget = false;
+        TutorialFontProvider.ApplyTo(caption);
+        ScrollPanelArt.Inkify(caption);
+    }
+
+    private static void BuildGlyphRow(RectTransform blockRect, List<GlyphVisual> glyphs, int count)
+    {
+        GameObject row = new GameObject("GlyphRow", typeof(RectTransform));
+        row.transform.SetParent(blockRect, false);
+        RectTransform rowRect = row.GetComponent<RectTransform>();
+        rowRect.anchorMin = new Vector2(0f, 1f - GlyphRowShare);
+        rowRect.anchorMax = new Vector2(1f, 1f);
+        rowRect.offsetMin = rowRect.offsetMax = Vector2.zero;
+
+        // The scroll panel is ~907x998 at reference resolution and the block's
+        // glyph band is GlyphRowShare of the block height. Rows cap at 560px so a
+        // long word (4+ symbols) shrinks to fit the paper instead of overflowing
+        // it, and glyphs stay under the band height so they never hit the caption.
+        // Sizes and spacing are ink-to-ink: each sprite's frame is mostly transparent
+        // padding (the share differs per glyph — GlyphInkMetrics), so its rect is
+        // enlarged by 1/inkFraction while the stride still walks the ink —
+        // neighbouring transparent regions overlap harmlessly.
+        const float maxRowWidth = 560f;
+        const float gap = 22f;
+        float bandHeight =
+            GlyphRowShare * ((BlocksBandTop - BlocksBandBottom) / count) * ReferencePanelHeight;
+        float inkSize = Mathf.Min(170f, (maxRowWidth + gap) / glyphs.Count - gap, bandHeight * 0.92f);
+        float stride = inkSize + gap;
+        float rowWidth = stride * glyphs.Count - gap;
+        for (int i = 0; i < glyphs.Count; i++)
+        {
+            if (glyphs[i].sprite == null)
+                continue;
+            GameObject glyphObject = new GameObject("Glyph" + i, typeof(RectTransform), typeof(Image));
+            glyphObject.transform.SetParent(row.transform, false);
+            RectTransform glyphRect = glyphObject.GetComponent<RectTransform>();
+            glyphRect.anchorMin = glyphRect.anchorMax = new Vector2(0.5f, 0.5f);
+            glyphRect.pivot = new Vector2(0.5f, 0.5f);
+            glyphRect.anchoredPosition = new Vector2(
+                -rowWidth * 0.5f + stride * i + inkSize * 0.5f, 0f);
+            float rectSize = inkSize / Mathf.Max(0.01f, glyphs[i].inkFraction);
+            glyphRect.sizeDelta = new Vector2(rectSize, rectSize);
+            Image image = glyphObject.GetComponent<Image>();
+            image.sprite = glyphs[i].sprite;
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+            image.color = glyphs[i].selfColoured ? Color.white : (Color)ScrollPanelArt.InkColor;
+        }
+    }
+
+    private void SetVisible(bool visible)
+    {
+        // Authored panels can be serialized inactive, so the panel itself is
+        // toggled alongside the overlay rather than relying on the hierarchy.
+        if (_overlayRoot != null)
+            _overlayRoot.SetActive(visible);
+        if (_panelRoot != null)
+            _panelRoot.SetActive(visible);
     }
 
     public static void ApplyParchmentLayout(
@@ -193,23 +476,23 @@ public class FocusWordPreviewController : MonoBehaviour
         if (panel == null)
             return;
 
-        panel.sizeDelta = new Vector2(560f, 520f);
+        ScrollPanelArt.SetAnchors(panel, ScrollPanelArt.ScrollArea);
         if (preview != null)
         {
             ScrollPanelArt.SetAnchors(
                 preview.rectTransform,
-                Rect.MinMaxRect(0.17f, 0.31f, 0.83f, 0.76f));
+                Rect.MinMaxRect(0.20f, 0.26f, 0.80f, 0.84f));
             preview.enableAutoSizing = true;
             preview.fontSizeMin = UITextScale.Caption;
-            preview.fontSizeMax = 44f;
+            preview.fontSizeMax = UITextScale.Title;
             preview.textWrappingMode = TextWrappingModes.Normal;
         }
 
         if (continueButton == null)
             return;
 
-        ScrollPanelArt.SetAnchors(
-            continueButton.GetComponent<RectTransform>(),
-            Rect.MinMaxRect(0.26f, 0.17f, 0.74f, 0.28f));
+        ScrollPanelArt.PlaceButton(
+            continueButton,
+            Rect.MinMaxRect(0.30f, 0.13f, 0.70f, 0.22f));
     }
 }

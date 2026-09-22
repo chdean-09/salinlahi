@@ -200,12 +200,20 @@ public sealed class MemoryCardUI : MonoBehaviour
         return string.Join("\n", lines);
     }
 
+    /// <summary>A placed glyph image plus the share of its sprite frame that is ink.</summary>
+    private struct GlyphPlacement
+    {
+        public RectTransform rect;
+        public float inkFraction;
+    }
+
     /// <summary>
-    /// AC-4. One Image per decomposition symbol, drawn from glyphOutlineSprite -- the bare
-    /// glyph on a transparent background, the only sprite with no card, frame or
-    /// romanisation. A symbol whose outline sprite is missing contributes no Image; the
-    /// Latin label on the front still names the word, so the card degrades to text rather
-    /// than showing an empty box.
+    /// AC-4. One Image per decomposition symbol, drawn from the same finished art the
+    /// almanac prints — <c>almanacSprite</c> is self-coloured (cream fill in a brown
+    /// outline) so it renders as-is. The bare <c>glyphOutlineSprite</c> is the fallback;
+    /// it ships white so consumers tint it, and is inked here to match the card. A symbol
+    /// with neither sprite contributes no Image; the Latin label on the front still names
+    /// the word, so the card degrades to text rather than showing an empty box.
     /// </summary>
     private void BuildGlyphs(MemoryArchiveEntry entry)
     {
@@ -215,7 +223,7 @@ public sealed class MemoryCardUI : MonoBehaviour
         if (entry.Words == null)
             return;
 
-        var placed = new List<RectTransform>();
+        var placed = new List<GlyphPlacement>();
         int index = 0;
         foreach (MemoryArchiveWord word in entry.Words)
         {
@@ -224,7 +232,12 @@ public sealed class MemoryCardUI : MonoBehaviour
 
             foreach (BaybayinCharacterSO symbol in word.Symbols)
             {
-                if (symbol == null || symbol.glyphOutlineSprite == null)
+                if (symbol == null)
+                    continue;
+
+                bool isAlmanacArt = symbol.almanacSprite != null;
+                Sprite sprite = isAlmanacArt ? symbol.almanacSprite : symbol.glyphOutlineSprite;
+                if (sprite == null)
                     continue;
 
                 GameObject glyphObject = new GameObject(
@@ -236,16 +249,22 @@ public sealed class MemoryCardUI : MonoBehaviour
                 glyphRect.pivot = new Vector2(0.5f, 0.5f);
 
                 Image glyphImage = glyphObject.GetComponent<Image>();
-                glyphImage.sprite = symbol.glyphOutlineSprite;
+                glyphImage.sprite = sprite;
                 glyphImage.preserveAspect = true;
                 glyphImage.raycastTarget = false;
-                // The outline sprite ships white so consumers tint it; cream on parchment
-                // is all but invisible, so ink it to match the rest of the card.
-                glyphImage.color = _onParchment
-                    ? (Color32)ScrollPanelArt.InkColor
-                    : new Color32(240, 226, 198, 255);
+                glyphImage.color = isAlmanacArt
+                    ? (Color32)Color.white
+                    : _onParchment
+                        ? (Color32)ScrollPanelArt.InkColor
+                        : new Color32(240, 226, 198, 255);
 
-                placed.Add(glyphRect);
+                placed.Add(new GlyphPlacement
+                {
+                    rect = glyphRect,
+                    inkFraction = isAlmanacArt
+                        ? GlyphInkMetrics.ForAlmanac(symbol)
+                        : GlyphInkMetrics.OutlineFraction,
+                });
                 index++;
             }
         }
@@ -254,10 +273,13 @@ public sealed class MemoryCardUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Sizes the row to fit the paper and centres it. The glyphs used to run left to right
-    /// from the row's left edge at a fixed size, so a five-symbol level ran off the card.
+    /// Sizes the row to fit the paper and centres it. Sizes and spacing are ink-to-ink: an
+    /// almanac sprite's frame is mostly transparent padding, so its rect is enlarged by
+    /// 1/inkFraction while the stride walks the ink — neighbouring padding overlaps
+    /// harmlessly. The glyphs used to run left to right from the row's left edge at a
+    /// fixed size, so a five-symbol level ran off the card.
     /// </summary>
-    private void CenterGlyphRow(List<RectTransform> glyphs)
+    private void CenterGlyphRow(List<GlyphPlacement> glyphs)
     {
         if (glyphs.Count == 0)
             return;
@@ -265,14 +287,15 @@ public sealed class MemoryCardUI : MonoBehaviour
         RectTransform rowRect = _glyphRow as RectTransform;
         float rowWidth = ResolveGlyphRowWidth(rowRect != null ? rowRect.rect.width : 0f);
 
-        float size = ResolveGlyphSize(glyphs.Count, rowWidth);
-        float stride = size + GlyphGap;
+        float inkSize = ResolveGlyphSize(glyphs.Count, rowWidth);
+        float stride = inkSize + GlyphGap;
         float offset = (glyphs.Count - 1) * 0.5f;
 
         for (int i = 0; i < glyphs.Count; i++)
         {
-            glyphs[i].sizeDelta = new Vector2(size, size);
-            glyphs[i].anchoredPosition = new Vector2((i - offset) * stride, 0f);
+            float rectSize = inkSize / Mathf.Max(0.01f, glyphs[i].inkFraction);
+            glyphs[i].rect.sizeDelta = new Vector2(rectSize, rectSize);
+            glyphs[i].rect.anchoredPosition = new Vector2((i - offset) * stride, 0f);
         }
     }
 
@@ -326,7 +349,9 @@ public sealed class MemoryCardUI : MonoBehaviour
         Image overlayImage = GetComponent<Image>();
         if (overlayImage == null)
             overlayImage = gameObject.AddComponent<Image>();
-        overlayImage.color = new Color(0f, 0f, 0f, 205f / 255f);
+        // Shared modal dim — the same navy overlay every other scroll modal uses, so
+        // the card doesn't read brighter/noisier behind than the preview or ready panels.
+        overlayImage.color = ScrollPanelArt.DimOverlayColor;
         overlayImage.raycastTarget = true;
 
         RectTransform overlayRect = gameObject.GetComponent<RectTransform>();
@@ -416,8 +441,8 @@ public sealed class MemoryCardUI : MonoBehaviour
 
         ScrollPanelArt.PlaceText(number, Band(0.72f, 0.785f), UITextScale.AutoSizeFloor, UITextScale.Secondary);
         ScrollPanelArt.PlaceText(title, Band(0.615f, 0.71f), UITextScale.Body, UITextScale.Title);
-        ScrollPanelArt.PlaceText(words, Band(0.43f, 0.60f), UITextScale.Caption, UITextScale.Body);
-        ScrollPanelArt.PlaceText(lore, Band(0.33f, 0.785f), UITextScale.Caption, UITextScale.Body);
+        ScrollPanelArt.PlaceText(words, Band(0.43f, 0.60f), UITextScale.Caption, UITextScale.Title);
+        ScrollPanelArt.PlaceText(lore, Band(0.33f, 0.785f), UITextScale.Caption, UITextScale.Title);
 
         ScrollPanelArt.SetAnchors(glyphRow, Band(0.33f, 0.42f));
         if (glyphRow != null)

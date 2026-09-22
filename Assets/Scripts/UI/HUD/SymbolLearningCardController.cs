@@ -31,7 +31,19 @@ public class SymbolLearningCardController : MonoBehaviour
     /// </summary>
     private const float PronunciationDebounceSeconds = 0.5f;
 
+    // Content bands inside the shared scroll rect (ScrollPanelArt.ScrollArea),
+    // all kept inside ScrollPanelArt.FullSafeArea. Text and button bands are a
+    // tenth of the panel height so auto-sizing can actually reach the title
+    // tier — the old 8% bands capped every label near the body floor no matter
+    // how high fontSizeMax was set.
+    private static readonly Rect ProgressBand = Rect.MinMaxRect(0.20f, 0.70f, 0.80f, 0.80f);
+    private static readonly Rect LabelBand = Rect.MinMaxRect(0.20f, 0.59f, 0.80f, 0.69f);
+    private static readonly Rect GlyphBand = Rect.MinMaxRect(0.30f, 0.38f, 0.70f, 0.58f);
+    private static readonly Rect ReplayBand = Rect.MinMaxRect(0.30f, 0.27f, 0.70f, 0.37f);
+    private static readonly Rect ContinueBand = Rect.MinMaxRect(0.30f, 0.16f, 0.70f, 0.26f);
+
     private readonly List<ContentRequirement> _cards = new();
+    private GameObject _overlayRoot;
     private bool _continueRequested;
     private bool _runtimePanelBuilt;
     private bool _onParchment;
@@ -93,10 +105,11 @@ public class SymbolLearningCardController : MonoBehaviour
             yield break;
 
         EnsurePanel();
+        EnsureModalChrome();
         EnsureProgressText();
         BindButtons();
-        if (_panelRoot != null)
-            _panelRoot.SetActive(true);
+        EnsureParchmentArt();
+        SetVisible(true);
         IsPresenting = true;
 
         for (int index = 0; index < _cards.Count; index++)
@@ -108,8 +121,7 @@ public class SymbolLearningCardController : MonoBehaviour
 
         IsPresenting = false;
         CurrentCardIndex = -1;
-        if (_panelRoot != null)
-            _panelRoot.SetActive(false);
+        SetVisible(false);
     }
 
     /// <summary>Advances past the active card; the last card ends the presentation.</summary>
@@ -260,60 +272,43 @@ public class SymbolLearningCardController : MonoBehaviour
 
         // Prefer the HUD canvas so the authored scene renders the card; a bare
         // test scene parents under this controller (card data still observable).
-        Canvas canvas = GetComponentInParent<Canvas>();
-        if (canvas == null)
-            canvas = FindFirstObjectByType<Canvas>();
+        Canvas canvas = ScrollPanelArt.ResolveModalCanvas(this);
         Transform parent = canvas != null ? canvas.transform : transform;
 
-        _panelRoot = new GameObject("[Runtime] SymbolLearningCard", typeof(RectTransform), typeof(Image));
-        _panelRoot.transform.SetParent(parent, false);
-        RectTransform panelRect = _panelRoot.GetComponent<RectTransform>();
-        panelRect.anchorMin = new Vector2(0.5f, 0.5f);
-        panelRect.anchorMax = new Vector2(0.5f, 0.5f);
-        panelRect.pivot = new Vector2(0.5f, 0.5f);
-        panelRect.sizeDelta = new Vector2(420f, 480f);
+        _overlayRoot = ScrollPanelArt.CreateDimOverlay(
+            parent, "[Runtime] SymbolLearningCardOverlay");
+        RectTransform panelRect = ScrollPanelArt.CreateScrollPanel(
+            _overlayRoot.transform, "[Runtime] SymbolLearningCard");
+        _panelRoot = panelRect.gameObject;
 
         // No builtin-sprite lookup: it logs an assert in batch mode; a flat tinted
         // quad is the approved unstyled fallback (see FocusWordPreviewController).
-        Image background = _panelRoot.GetComponent<Image>();
-        background.color = new Color(0.04f, 0.06f, 0.12f, 0.94f);
+        Image background = panelRect.GetComponent<Image>();
         _onParchment = ScrollPanelArt.ApplyFull(background);
 
         GameObject glyphObject = new GameObject("[Runtime] SymbolLearningGlyph", typeof(RectTransform), typeof(Image));
-        glyphObject.transform.SetParent(_panelRoot.transform, false);
-        RectTransform glyphRect = glyphObject.GetComponent<RectTransform>();
-        glyphRect.anchorMin = new Vector2(0.5f, 1f);
-        glyphRect.anchorMax = new Vector2(0.5f, 1f);
-        glyphRect.pivot = new Vector2(0.5f, 1f);
-        glyphRect.anchoredPosition = new Vector2(0f, -72f);
-        glyphRect.sizeDelta = new Vector2(220f, 220f);
+        glyphObject.transform.SetParent(panelRect.transform, false);
+        ScrollPanelArt.SetAnchors(
+            glyphObject.GetComponent<RectTransform>(), GlyphBand);
         _glyphImage = glyphObject.GetComponent<Image>();
         _glyphImage.preserveAspect = true;
         _glyphImage.raycastTarget = false;
 
         GameObject labelObject = new GameObject("[Runtime] SymbolLearningLabel", typeof(RectTransform));
-        labelObject.transform.SetParent(_panelRoot.transform, false);
-        RectTransform labelRect = labelObject.GetComponent<RectTransform>();
-        labelRect.anchorMin = new Vector2(0.5f, 1f);
-        labelRect.anchorMax = new Vector2(0.5f, 1f);
-        labelRect.pivot = new Vector2(0.5f, 1f);
-        labelRect.anchoredPosition = new Vector2(0f, -86f);
-        labelRect.sizeDelta = new Vector2(190f, 64f);
+        labelObject.transform.SetParent(panelRect.transform, false);
+        ScrollPanelArt.SetAnchors(
+            labelObject.GetComponent<RectTransform>(), LabelBand);
         _labelText = labelObject.AddComponent<TextMeshProUGUI>();
-        _labelText.fontSize = 48f;
+        _labelText.fontSize = UITextScale.Title;
         _labelText.alignment = TextAlignmentOptions.Center;
         _labelText.raycastTarget = false;
         TutorialFontProvider.ApplyTo(_labelText);
 
         GameObject replayObject = new GameObject(
             "[Runtime] SymbolLearningReplay", typeof(RectTransform), typeof(Image), typeof(Button));
-        replayObject.transform.SetParent(_panelRoot.transform, false);
-        RectTransform replayRect = replayObject.GetComponent<RectTransform>();
-        replayRect.anchorMin = new Vector2(0.5f, 0f);
-        replayRect.anchorMax = new Vector2(0.5f, 0f);
-        replayRect.pivot = new Vector2(0.5f, 0f);
-        replayRect.anchoredPosition = new Vector2(0f, 104f);
-        replayRect.sizeDelta = new Vector2(200f, 48f);
+        replayObject.transform.SetParent(panelRect.transform, false);
+        ScrollPanelArt.SetAnchors(
+            replayObject.GetComponent<RectTransform>(), ReplayBand);
         Image replayImage = replayObject.GetComponent<Image>();
         replayImage.color = new Color(0.18f, 0.45f, 0.76f, 1f);
         replayObject.GetComponent<Button>().targetGraphic = replayImage;
@@ -330,13 +325,9 @@ public class SymbolLearningCardController : MonoBehaviour
 
         GameObject continueObject = new GameObject(
             "[Runtime] SymbolLearningContinue", typeof(RectTransform), typeof(Image));
-        continueObject.transform.SetParent(_panelRoot.transform, false);
-        RectTransform continueRect = continueObject.GetComponent<RectTransform>();
-        continueRect.anchorMin = new Vector2(0.5f, 0f);
-        continueRect.anchorMax = new Vector2(0.5f, 0f);
-        continueRect.pivot = new Vector2(0.5f, 0f);
-        continueRect.anchoredPosition = new Vector2(0f, 32f);
-        continueRect.sizeDelta = new Vector2(240f, 56f);
+        continueObject.transform.SetParent(panelRect.transform, false);
+        ScrollPanelArt.SetAnchors(
+            continueObject.GetComponent<RectTransform>(), ContinueBand);
         continueObject.GetComponent<Image>().color = new Color(0.85f, 0.72f, 0.35f, 1f);
         _continueButton = continueObject.AddComponent<Button>();
 
@@ -351,11 +342,76 @@ public class SymbolLearningCardController : MonoBehaviour
 
         if (_onParchment)
         {
-            ScrollPanelArt.InkifyRecursive(_panelRoot.transform);
+            ScrollPanelArt.InkifyRecursive(panelRect.transform);
             ScrollPanelArt.Inkify(continueLabel);
         }
 
-        _panelRoot.SetActive(false);
+        _overlayRoot.SetActive(false);
+    }
+
+    /// <summary>
+    /// Wraps a scene-authored panel in the same dim overlay the runtime path
+    /// builds, then seats it at the shared scroll rect so an authored
+    /// <c>SymbolLearningPanel</c> presents identically.
+    /// </summary>
+    private void EnsureModalChrome()
+    {
+        if (_panelRoot == null || _overlayRoot != null)
+            return;
+
+        Canvas canvas = ScrollPanelArt.ResolveModalCanvas(this);
+        Transform parent = canvas != null ? canvas.transform : _panelRoot.transform.parent;
+
+        _overlayRoot = ScrollPanelArt.CreateDimOverlay(
+            parent, "[Runtime] SymbolLearningCardOverlay");
+        RectTransform panelRect = _panelRoot.GetComponent<RectTransform>();
+        panelRect.SetParent(_overlayRoot.transform, false);
+        panelRect.SetAsLastSibling();
+        ScrollPanelArt.SetAnchors(panelRect, ScrollPanelArt.ScrollArea);
+    }
+
+    private void SetVisible(bool visible)
+    {
+        // Authored panels can be serialized inactive, so the panel itself is
+        // toggled alongside the overlay rather than relying on the hierarchy.
+        if (_overlayRoot != null)
+            _overlayRoot.SetActive(visible);
+        if (_panelRoot != null)
+            _panelRoot.SetActive(visible);
+    }
+
+    /// <summary>
+    /// Seats the children inside the paper band of the shared scroll rect.
+    /// A missing sprite keeps the flat fallback panel at the same rect.
+    /// </summary>
+    private void EnsureParchmentArt()
+    {
+        if (_panelRoot == null)
+            return;
+
+        Image background = _panelRoot.GetComponent<Image>();
+        if (!_onParchment && !ScrollPanelArt.ApplyFull(background))
+            return;
+        _onParchment = true;
+
+        ScrollPanelArt.InkifyRecursive(_panelRoot.transform);
+        if (_continueButton != null)
+            ScrollPanelArt.Inkify(_continueButton.GetComponentInChildren<TMP_Text>(true));
+
+        ScrollPanelArt.PlaceText(
+            _progressText, ProgressBand,
+            UITextScale.AutoSizeFloor, UITextScale.Title);
+        ScrollPanelArt.PlaceText(
+            _labelText, LabelBand,
+            UITextScale.AutoSizeFloor, UITextScale.Display);
+        if (_glyphImage != null)
+            ScrollPanelArt.SetAnchors(_glyphImage.rectTransform, GlyphBand);
+        if (_replayAudioButton != null)
+        {
+            ScrollPanelArt.PlaceButton(
+                _replayAudioButton.GetComponent<Button>(), ReplayBand);
+        }
+        ScrollPanelArt.PlaceButton(_continueButton, ContinueBand);
     }
 
     private void EnsureProgressText()
@@ -367,12 +423,10 @@ public class SymbolLearningCardController : MonoBehaviour
             "[Runtime] SymbolLearningProgress", typeof(RectTransform));
         progressObject.transform.SetParent(_panelRoot.transform, false);
         RectTransform rect = progressObject.GetComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0.08f, 0.85f);
-        rect.anchorMax = new Vector2(0.92f, 0.995f);
-        rect.offsetMin = rect.offsetMax = Vector2.zero;
+        ScrollPanelArt.SetAnchors(rect, ProgressBand);
 
         _progressText = progressObject.AddComponent<TextMeshProUGUI>();
-        _progressText.fontSize = 50f;
+        _progressText.fontSize = UITextScale.Title;
         _progressText.color = new Color(0.82f, 0.86f, 0.94f, 1f);
         _progressText.alignment = TextAlignmentOptions.Center;
         _progressText.raycastTarget = false;

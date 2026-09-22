@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -14,6 +16,29 @@ public class VictoryScreenUI : MonoBehaviour
 
     /// <summary>Name of the object <see cref="EnsureRuntimeControls"/> builds. Read by tests.</summary>
     public const string RuntimeReplayButtonName = "[Runtime] ReplayButton";
+    /// <summary>Star rating row built by <see cref="PresentResultsSummary"/>. Read by tests.</summary>
+    public const string RuntimeStarRowName = "[Runtime] StarRow";
+    /// <summary>Score readout built by <see cref="PresentResultsSummary"/>. Read by tests.</summary>
+    public const string RuntimeScoreTextName = "[Runtime] ScoreText";
+    /// <summary>Stats block built by <see cref="PresentResultsSummary"/>. Read by tests.</summary>
+    public const string RuntimeStatsPanelName = "[Runtime] StatsPanel";
+
+    private const int StarCount = 3;
+    private const string StarFullPath = "Art/UI/Results/ui_star_full";
+    private const string StarEmptyPath = "Art/UI/Results/ui_star_empty";
+    private const string HeartFullPath = "Art/UI/Heart/ui_heart_full";
+    private const string HeartEmptyPath = "Art/UI/Heart/ui_heart_empty";
+    private const string FramePath = "Art/UI/Frames/border";
+    private const string ButtonSpritePath = "Art/UI/Buttons/ui_button_generic";
+    private const string ButtonPressedPath = "Art/UI/Buttons/ui_button_generic_pressed";
+
+    private static Sprite _starFull, _starEmpty, _heartFull, _heartEmpty;
+    private static Sprite _frame, _buttonSprite, _buttonPressed;
+    private static bool _spritesLoaded;
+
+    private Coroutine _starAnimation;
+    private RectTransform _starRowRef;
+    private bool _starPopPending;
 
     /// <summary>
     /// SALIN-234 (AC-10): this attempt's results, pushed by the flow before the screen opens.
@@ -35,6 +60,10 @@ public class VictoryScreenUI : MonoBehaviour
 
     private bool _replayListenerBound;
 
+    /// <summary>Gameplay HUD root, found by name at Show time — left unwired to keep
+    /// the scene diffs out; null is a safe no-op in test scenes.</summary>
+    private GameObject _hudRoot;
+
     private void Awake()
     {
         if (_panel != null) _panel.SetActive(false);
@@ -47,6 +76,12 @@ public class VictoryScreenUI : MonoBehaviour
         if (_levelSelectButton != null)
             _levelSelectButton.onClick.AddListener(OnLevelSelectPressed);
         BindReplayListener();
+
+        // This component sits ON the victory panel in Gameplay.unity, so it is
+        // inactive when PresentResultsSummary stages the stars — StartCoroutine
+        // would throw there. Show() activates the panel, which lands here.
+        if (_starPopPending)
+            StartStarPop();
     }
 
     private void OnDisable()
@@ -95,7 +130,21 @@ public class VictoryScreenUI : MonoBehaviour
     public void Show()
     {
         if (_panel != null)
+        {
             _panel.SetActive(true);
+            // Translucent dim over the live frame — the world stays visible behind the
+            // results instead of the authored opaque scrim. Runtime-only: the scenes
+            // keep their opaque backdrop and EndScreenBackdropSceneTests keeps passing.
+            EndScreenDim.Apply(_panel, EndScreenDim.VictoryTint);
+        }
+
+        // The HUD would otherwise read through the dim and float over the results —
+        // the defeat screen already hides it for the same reason. All three buttons
+        // leave the scene, so nothing has to put it back: the reload does.
+        if (_hudRoot == null)
+            _hudRoot = GameObject.Find("HUDRoot");
+        if (_hudRoot != null)
+            _hudRoot.SetActive(false);
 
         EnsureRuntimeControls();
 
@@ -168,6 +217,413 @@ public class VictoryScreenUI : MonoBehaviour
     }
 
     /// <summary>
+    /// Structured results readout: a star rating row, the score, and a framed
+    /// stats block (hearts as icons, hints, restored words, new symbols).
+    /// Built at runtime under <c>_panel</c> for the same reason as
+    /// <see cref="EnsureRuntimeControls"/> — zero scene edits on the two
+    /// highest-collision serialized assets. Idempotent: a second call rebuilds
+    /// in place rather than stacking duplicates.
+    /// </summary>
+    public void PresentResultsSummary(LevelResultsViewData data)
+    {
+        if (_panel == null)
+            return;
+
+        EnsureRuntimeControls();
+        EnsureSpritesLoaded();
+
+        // TEMP DISABLED (victory screen simplification): star row and score readout
+        // intentionally not rendered. Uncomment to restore.
+        // RectTransform starRow = EnsureStarRow();
+        // ApplyStars(starRow, data.Stars);
+        // EnsureScoreText(data.Score);
+        EnsureHeartsRow(_panel.transform, data.HeartsRemaining, data.HeartsMax);
+        EnsureHeartsCaption();
+        EnsureStatsPanel(data);
+        PositionButtons();
+    }
+
+    private RectTransform EnsureStarRow()
+    {
+        GameObject row = FindOrCreateChild(_panel.transform, RuntimeStarRowName);
+        RectTransform rect = row.GetComponent<RectTransform>();
+        rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = new Vector2(0f, 170f);
+        rect.sizeDelta = new Vector2(560f, 150f);
+
+        for (int i = 0; i < StarCount; i++)
+        {
+            GameObject starObject = FindOrCreateChild(row.transform, "Star_" + i);
+            RectTransform starRect = starObject.GetComponent<RectTransform>();
+            starRect.anchorMin = starRect.anchorMax = new Vector2(0.5f, 0.5f);
+            starRect.pivot = new Vector2(0.5f, 0.5f);
+            starRect.anchoredPosition = new Vector2((i - 1) * 190f, 0f);
+            starRect.sizeDelta = new Vector2(150f, 150f);
+            Image image = starObject.GetComponent<Image>();
+            if (image == null)
+                image = starObject.AddComponent<Image>();
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+        }
+
+        return rect;
+    }
+
+    private void ApplyStars(RectTransform starRow, int stars)
+    {
+        int filled = Mathf.Clamp(stars, 0, StarCount);
+        for (int i = 0; i < StarCount; i++)
+        {
+            Transform child = starRow.Find("Star_" + i);
+            if (child == null)
+                continue;
+            Image image = child.GetComponent<Image>();
+            if (image == null)
+                continue;
+
+            bool earned = i < filled;
+            image.sprite = earned ? _starFull : _starEmpty;
+            // Fallback tint when the sprites have not loaded (batch/edit-mode):
+            // gold for earned, dimmed for missed — never an invisible blank.
+            image.color = image.sprite != null
+                ? Color.white
+                : (earned ? new Color32(209, 168, 82, 255) : new Color32(60, 50, 35, 200));
+            child.localScale = Vector3.one;
+        }
+
+        if (_starAnimation != null)
+        {
+            StopCoroutine(_starAnimation);
+            _starAnimation = null;
+        }
+        _starRowRef = starRow;
+        _starPopPending = Application.isPlaying;
+        if (_starPopPending && isActiveAndEnabled)
+            StartStarPop();
+    }
+
+    private void StartStarPop()
+    {
+        _starPopPending = false;
+        if (_starRowRef != null)
+            _starAnimation = StartCoroutine(PopStars(_starRowRef));
+    }
+
+    /// <summary>Staggered pop per star: 0 → 1.25 → 1, ~0.12s apart, unscaled time.</summary>
+    private IEnumerator PopStars(RectTransform starRow)
+    {
+        const float popDuration = 0.28f;
+        const float stagger = 0.12f;
+
+        var stars = new List<RectTransform>(StarCount);
+        for (int i = 0; i < StarCount; i++)
+        {
+            Transform child = starRow.Find("Star_" + i);
+            if (child != null)
+            {
+                child.localScale = Vector3.zero;
+                stars.Add((RectTransform)child);
+            }
+        }
+
+        float elapsed = 0f;
+        bool anyScaling = true;
+        while (anyScaling)
+        {
+            anyScaling = false;
+            elapsed += Time.unscaledDeltaTime;
+            for (int i = 0; i < stars.Count; i++)
+            {
+                float t = Mathf.Clamp01((elapsed - i * stagger) / popDuration);
+                if (t < 1f)
+                    anyScaling = true;
+                // Ease-out cubic with a slight overshoot peak mid-way.
+                float scale = t < 0.5f
+                    ? Mathf.Lerp(0f, 1.25f, 1f - Mathf.Pow(1f - t * 2f, 3f))
+                    : Mathf.Lerp(1.25f, 1f, (t - 0.5f) * 2f);
+                stars[i].localScale = Vector3.one * scale;
+            }
+            yield return null;
+        }
+
+        foreach (RectTransform star in stars)
+            star.localScale = Vector3.one;
+        _starAnimation = null;
+    }
+
+    private void EnsureScoreText(int score)
+    {
+        GameObject scoreObject = FindOrCreateChild(_panel.transform, RuntimeScoreTextName);
+        RectTransform rect = scoreObject.GetComponent<RectTransform>();
+        rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = new Vector2(0f, 30f);
+        rect.sizeDelta = new Vector2(560f, 90f);
+
+        TextMeshProUGUI text = scoreObject.GetComponent<TextMeshProUGUI>();
+        if (text == null)
+            text = scoreObject.AddComponent<TextMeshProUGUI>();
+        text.text = LevelResultsCopy.Score(score);
+        text.fontSize = UITextScale.Display;
+        text.color = new Color32(209, 168, 82, 255);
+        text.alignment = TextAlignmentOptions.Center;
+        text.raycastTarget = false;
+        TutorialFontProvider.ApplyTo(text);
+    }
+
+    private void EnsureStatsPanel(LevelResultsViewData data)
+    {
+        GameObject panel = FindOrCreateChild(_panel.transform, RuntimeStatsPanelName);
+        RectTransform rect = panel.GetComponent<RectTransform>();
+        rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        // Text-only frame now — the hearts row moved up to the old star position.
+        // Slimmer box centred between the hearts caption and Next Level.
+        rect.anchoredPosition = new Vector2(0f, -110f);
+        rect.sizeDelta = new Vector2(620f, 170f);
+
+        Image frame = panel.GetComponent<Image>();
+        if (frame == null)
+            frame = panel.AddComponent<Image>();
+        if (_frame != null)
+        {
+            frame.sprite = _frame;
+            frame.type = Image.Type.Sliced;
+            frame.color = Color.white;
+        }
+        else
+        {
+            frame.sprite = null;
+            frame.color = new Color(0.05f, 0.06f, 0.12f, 0.85f);
+        }
+        frame.raycastTarget = false;
+
+        EnsureStatsText(panel.transform, data);
+
+        // With the hearts row moved out, an empty frame would read as a defect —
+        // hide the border when the run restored nothing and unlocked nothing.
+        bool hasStatsText =
+            !string.IsNullOrEmpty(LevelResultsCopy.Restored(data.RestoredLabels))
+            || data.NewSymbolCount > 0;
+        frame.enabled = hasStatsText;
+    }
+
+    /// <summary>
+    /// Hearts moved out of the framed stats box to the vacated star-row band —
+    /// larger icons, centre-anchored on the panel, captioned by
+    /// <see cref="EnsureHeartsCaption"/>.
+    /// </summary>
+    private void EnsureHeartsRow(Transform parent, int remaining, int max)
+    {
+        GameObject row = FindOrCreateChild(parent, "HeartsRow");
+        RectTransform rect = row.GetComponent<RectTransform>();
+        rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = new Vector2(0f, 160f);
+        rect.sizeDelta = new Vector2(Mathf.Max(1, max) * 96f, 84f);
+
+        // Transform.Find skips inactive children, so match by iteration: icons
+        // beyond the current max get retired below and must be reusable, not
+        // duplicated, if a later run needs them again.
+        for (int i = 0; i < max; i++)
+        {
+            Transform heartTransform = null;
+            foreach (Transform child in row.transform)
+                if (child.name == "Heart_" + i)
+                    heartTransform = child;
+            GameObject heartObject;
+            if (heartTransform != null)
+            {
+                heartObject = heartTransform.gameObject;
+            }
+            else
+            {
+                heartObject = new GameObject("Heart_" + i, typeof(RectTransform));
+                heartObject.transform.SetParent(row.transform, false);
+            }
+            heartObject.SetActive(true);
+
+            RectTransform heartRect = heartObject.GetComponent<RectTransform>();
+            heartRect.anchorMin = heartRect.anchorMax = new Vector2(0f, 0.5f);
+            heartRect.pivot = new Vector2(0f, 0.5f);
+            heartRect.anchoredPosition = new Vector2(i * 96f + 6f, 0f);
+            heartRect.sizeDelta = new Vector2(84f, 84f);
+            Image image = heartObject.GetComponent<Image>();
+            if (image == null)
+                image = heartObject.AddComponent<Image>();
+            bool filled = i < remaining;
+            image.sprite = filled ? _heartFull : _heartEmpty;
+            image.color = image.sprite != null
+                ? Color.white
+                : (filled ? new Color32(190, 60, 60, 255) : new Color32(70, 60, 60, 160));
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+        }
+
+        // Retire icons beyond the current max so a run with fewer hearts cannot
+        // leave stale hearts on the row.
+        foreach (Transform child in row.transform)
+        {
+            if (!child.name.StartsWith("Heart_"))
+                continue;
+            if (int.TryParse(child.name.Substring(6), out int index) && index >= max)
+                child.gameObject.SetActive(false);
+        }
+    }
+
+    /// <summary>Caption under the hearts row naming what the icons count.</summary>
+    private void EnsureHeartsCaption()
+    {
+        GameObject captionObject = FindOrCreateChild(_panel.transform, "HeartsCaption");
+        RectTransform rect = captionObject.GetComponent<RectTransform>();
+        rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = new Vector2(0f, 90f);
+        rect.sizeDelta = new Vector2(560f, 56f);
+
+        TextMeshProUGUI text = captionObject.GetComponent<TextMeshProUGUI>();
+        if (text == null)
+            text = captionObject.AddComponent<TextMeshProUGUI>();
+        text.text = LevelResultsCopy.HeartsLeftLabel;
+        text.fontSize = UITextScale.Body;
+        text.color = new Color(0.93f, 0.89f, 0.78f, 1f);
+        text.alignment = TextAlignmentOptions.Center;
+        text.raycastTarget = false;
+        TutorialFontProvider.ApplyTo(text);
+    }
+
+    private void EnsureStatsText(Transform parent, LevelResultsViewData data)
+    {
+        GameObject textObject = FindOrCreateChild(parent, "StatsText");
+        RectTransform rect = textObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.08f, 0f);
+        rect.anchorMax = new Vector2(0.92f, 1f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        // Full-height band now that the hearts row no longer reserves the top.
+        rect.offsetMin = new Vector2(0f, 24f);
+        rect.offsetMax = new Vector2(0f, -24f);
+
+        var builder = new System.Text.StringBuilder();
+        // TEMP DISABLED (victory screen simplification): hint count and hint-cost
+        // lines hidden; restored words and new symbols remain. Uncomment to restore.
+        // builder.Append(LevelResultsCopy.Hints(data.HintsUsed));
+        // if (data.HintPenaltyScorePoints > 0)
+        // {
+        //     builder.Append(LevelResultsCopy.InlineSeparator)
+        //         .Append(LevelResultsCopy.HintPenalty(data.HintPenaltyScorePoints));
+        // }
+        string restored = LevelResultsCopy.Restored(data.RestoredLabels);
+        if (!string.IsNullOrEmpty(restored))
+            builder.Append(restored);
+        if (data.NewSymbolCount > 0)
+        {
+            if (builder.Length > 0)
+                builder.Append(LevelResultsCopy.LineSeparator);
+            builder.Append(LevelResultsCopy.NewSymbols(data.NewSymbolCount));
+        }
+
+        TextMeshProUGUI text = textObject.GetComponent<TextMeshProUGUI>();
+        if (text == null)
+            text = textObject.AddComponent<TextMeshProUGUI>();
+        text.text = builder.ToString();
+        text.fontSize = UITextScale.Body;
+        text.color = new Color(0.93f, 0.89f, 0.78f, 1f);
+        text.alignment = TextAlignmentOptions.Center;
+        text.textWrappingMode = TextWrappingModes.Normal;
+        text.raycastTarget = false;
+        TutorialFontProvider.ApplyTo(text);
+    }
+
+    /// <summary>
+    /// Next Level stays the full-width primary action; Replay and Level Select
+    /// become a balanced secondary pair beneath it. Authored positions are only
+    /// nudged on this path — the legacy Show() layout is untouched.
+    /// </summary>
+    private void PositionButtons()
+    {
+        PositionButton(_nextLevelButton, new Vector2(0f, -430f), new Vector2(446f, 200f));
+        PositionButton(_levelSelectButton, new Vector2(-180f, -660f), new Vector2(340f, 170f));
+        PositionButton(_replayButton, new Vector2(180f, -660f), new Vector2(340f, 170f));
+        ApplyButtonSkin(_replayButton);
+    }
+
+    private static void PositionButton(Button button, Vector2 position, Vector2 size)
+    {
+        if (button == null)
+            return;
+        RectTransform rect = button.GetComponent<RectTransform>();
+        if (rect == null)
+            return;
+        rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = position;
+        rect.sizeDelta = size;
+    }
+
+    /// <summary>Skins a runtime-built button to the shared parchment plaque with
+    /// a pressed swap — the same sprite the authored buttons already carry.</summary>
+    private static void ApplyButtonSkin(Button button)
+    {
+        if (button == null)
+            return;
+        Image image = button.GetComponent<Image>();
+        if (image != null && _buttonSprite != null)
+        {
+            image.sprite = _buttonSprite;
+            image.type = Image.Type.Simple;
+            image.color = Color.white;
+            // Match the authored victory buttons (Gameplay.unity m_PreserveAspect: 1):
+            // the sprite letterboxes inside the rect instead of stretching, so the
+            // Replay plaque renders the same size as Level Select.
+            image.preserveAspect = true;
+        }
+        if (_buttonPressed != null)
+        {
+            button.transition = Selectable.Transition.SpriteSwap;
+            SpriteState state = button.spriteState;
+            state.pressedSprite = _buttonPressed;
+            button.spriteState = state;
+        }
+    }
+
+    private static void EnsureSpritesLoaded()
+    {
+        if (_spritesLoaded)
+            return;
+        _spritesLoaded = true;
+        _starFull = LoadSprite(StarFullPath);
+        _starEmpty = LoadSprite(StarEmptyPath);
+        _heartFull = LoadSprite(HeartFullPath);
+        _heartEmpty = LoadSprite(HeartEmptyPath);
+        _frame = LoadSprite(FramePath);
+        _buttonSprite = LoadSprite(ButtonSpritePath);
+        _buttonPressed = LoadSprite(ButtonPressedPath);
+    }
+
+    /// <summary>
+    /// Loads the whole-texture sprite, falling back to the first sub-sprite for
+    /// textures imported in Multiple mode. Null-safe: missing art leaves the
+    /// tinted fallback colors in place.
+    /// </summary>
+    private static Sprite LoadSprite(string resourcePath)
+    {
+        Sprite single = Resources.Load<Sprite>(resourcePath);
+        if (single != null)
+            return single;
+        Sprite[] all = Resources.LoadAll<Sprite>(resourcePath);
+        return all != null && all.Length > 0 ? all[0] : null;
+    }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetSpriteCache()
+    {
+        _spritesLoaded = false;
+        _starFull = _starEmpty = _heartFull = _heartEmpty = null;
+        _frame = _buttonSprite = _buttonPressed = null;
+    }
+
+    /// <summary>
     /// SALIN-234. Builds the controls this screen needs and the scene does not author,
     /// under <c>_panel</c>, once.
     ///
@@ -215,9 +671,29 @@ public class VictoryScreenUI : MonoBehaviour
             labelRect.pivot = new Vector2(0.5f, 0.5f);
             labelRect.offsetMin = Vector2.zero;
             labelRect.offsetMax = Vector2.zero;
-            TextMeshProUGUI label = CreateOrGetLabel(labelObject, UITextScale.Body);
+            TextMeshProUGUI label = CreateOrGetLabel(labelObject, 42f);
             label.text = LevelResultsCopy.ReplayLevelLabel;
-            label.color = Color.black;
+            // Match the authored victory-button labels (Gameplay.unity: m_fontColor
+            // 0.702/0.502/0.075, m_fontStyle Bold, m_fontSize 42).
+            label.color = new Color32(179, 128, 19, 255);
+            label.fontStyle = FontStyles.Bold;
+            // The authored labels render LiberationSans SDF on its Outline material
+            // variant; CreateOrGetLabel's tutorial treatment swaps in the pixel font,
+            // so both the font and its shared material are copied back on top —
+            // assigning .font alone resets the material to the plain default and the
+            // gold reads washed out without the outline.
+            TMP_Text authoredLabel =
+                (_levelSelectButton != null
+                    ? _levelSelectButton.GetComponentInChildren<TMP_Text>(true)
+                    : null)
+                ?? (_nextLevelButton != null
+                    ? _nextLevelButton.GetComponentInChildren<TMP_Text>(true)
+                    : null);
+            if (authoredLabel != null)
+            {
+                label.font = authoredLabel.font;
+                label.fontSharedMaterial = authoredLabel.fontSharedMaterial;
+            }
 
             _replayButton = button;
             BindReplayListener();

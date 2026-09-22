@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 61ca8a9790566074b9e108592f6a7e6a
+guid: 2979e5937c07110448dada511295be02
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 5492327305593120934
-    second: ui_button_generic_0
+      213: -2499727196521557130
+    second: v2_01_cutscene_rail_hidden_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -96,17 +96,30 @@ TextureImporter:
     ignorePlatformSupport: 0
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: ui_button_generic_0
+      name: v2_01_cutscene_rail_hidden_0
       rect:
         serializedVersion: 2
-        x: 3
-        y: 1
-        width: 60
-        height: 22
+        x: 0
+        y: 0
+        width: 1280
+        height: 720
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -115,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 6a86e08b59aa83c40800000000000000
-      internalID: 5492327305593120934
+      spriteID: 67313ffdb5f2f4dd0800000000000000
+      internalID: -2499727196521557130
       vertices: []
       indices: 
       edges: []
@@ -135,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      ui_button_generic_0: 5492327305593120934
+      v2_01_cutscene_rail_hidden_0: -2499727196521557130
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

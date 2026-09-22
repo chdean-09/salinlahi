@@ -30,6 +30,9 @@ public sealed class HeartLossDemoBeat : OnboardingBeat
     [TextArea(1, 3)]
     [SerializeField] private string _restoreMessage = "Don't worry, anak — I'll restore our strength for this lesson.";
 
+    [Tooltip("Total seconds the restore message stays on screen. The restore pulse alone only holds ~0.6s — nowhere near enough to read the line.")]
+    [SerializeField] private float _restoreMessageSeconds = 3.5f;
+
     /// <summary>
     /// The stand-in currently on the field, held so an aborted demo can still undo what the demo
     /// did to it. A coroutine's <c>finally</c> does NOT run when Unity stops the coroutine — a
@@ -204,7 +207,9 @@ public sealed class HeartLossDemoBeat : OnboardingBeat
 
         // Now restore the heart intentionally and visibly, with a message so it reads as
         // a deliberate tutorial reset rather than an unexplained refill.
-        if (ctx.GuideUI != null && !string.IsNullOrEmpty(_restoreMessage))
+        bool restoreMessageShown = ctx.GuideUI != null && !string.IsNullOrEmpty(_restoreMessage);
+        float restoreMessageShownAt = Time.unscaledTime;
+        if (restoreMessageShown)
             ctx.GuideUI.ShowMessage(_restoreMessage, canSkip: false);
         if (ctx.DemoHearts != null)
         {
@@ -215,6 +220,16 @@ public sealed class HeartLossDemoBeat : OnboardingBeat
             EventBus.RaiseTutorialBaseRestoreDemo();
             yield return new WaitForSecondsRealtime(0.6f);
         }
+
+        // The restore hold is ~0.6s — too short to read the reassurance. Keep it up
+        // for the rest of its readable window before hiding it.
+        if (restoreMessageShown)
+        {
+            float remaining = _restoreMessageSeconds - (Time.unscaledTime - restoreMessageShownAt);
+            if (remaining > 0f)
+                yield return new WaitForSecondsRealtime(remaining);
+        }
+
         if (ctx.GuideUI != null)
             ctx.GuideUI.Hide();
 

@@ -132,6 +132,7 @@ public class LevelFlowController : MonoBehaviour
     private CampaignOutcomeCommitResult _completionCommitResult;
     private ActiveClueDirector _activeClueDirector;
     private ActiveCluePresenter _activeCluePresenter;
+    private SentenceHintController _sentenceHintController;
     private SpawnAssignmentCoordinator _spawnAssignmentCoordinator;
     private RestorationObjectiveController _restorationObjectiveController;
     private FocusWordPreviewController _focusWordPreview;
@@ -1356,6 +1357,46 @@ public class LevelFlowController : MonoBehaviour
         return builder.ToString();
     }
 
+    /// <summary>
+    /// The structured twin of <see cref="BuildResultsSummary"/> — same reads, same
+    /// null guards — handed to <see cref="VictoryScreenUI.PresentResultsSummary"/>
+    /// so the results screen can lay out stars, hearts, and stats as structured
+    /// rows instead of one flat string.
+    /// </summary>
+    private LevelResultsViewData BuildResultsViewData()
+    {
+        var data = new LevelResultsViewData
+        {
+            Stars = LastResults.Stars,
+            HeartsRemaining = _lastHeartsRemaining,
+            HeartsMax = _lastMaxHearts,
+        };
+
+        if (LastResults.Metrics.TryGetValue(LevelResultsCalculator.ScoreMetricId, out float score))
+            data.Score = Mathf.RoundToInt(score);
+        if (LastResults.Metrics.TryGetValue(LevelResultsCalculator.HintsUsedMetricId, out float hints))
+            data.HintsUsed = Mathf.RoundToInt(hints);
+        if (LastResults.Metrics.TryGetValue(
+                LevelResultsCalculator.EmergencyHintPenaltyMetricId, out float hintPenalty)
+            && hintPenalty > 0f)
+        {
+            data.HintPenaltyScorePoints = Mathf.RoundToInt(hintPenalty * 100f);
+        }
+
+        if (_levelConfig != null && _levelConfig.focusWords != null && _levelConfig.focusWords.Count > 0)
+        {
+            var restored = new List<string>(_levelConfig.focusWords.Count);
+            for (int i = 0; i < _levelConfig.focusWords.Count; i++)
+                restored.Add(_levelConfig.focusWords[i].displayLabel);
+            data.RestoredLabels = restored;
+        }
+
+        if (LastRewardGrant != null && LastRewardGrant.UnlockedSymbolIds != null)
+            data.NewSymbolCount = LastRewardGrant.UnlockedSymbolIds.Count;
+
+        return data;
+    }
+
     private void HandleMachinePhaseChanged(LevelPhase from, LevelPhase to)
     {
         // Terminal cleanup: no stale waits may survive a defeat or exit. Deeper
@@ -1441,6 +1482,17 @@ public class LevelFlowController : MonoBehaviour
             _activeCluePresenter = presenterObject.AddComponent<ActiveCluePresenter>();
         }
 
+        if (_sentenceHintController == null)
+        {
+            _sentenceHintController = FindFirstObjectByType<SentenceHintController>(FindObjectsInactive.Include);
+            if (_sentenceHintController == null)
+            {
+                GameObject hintObject = new GameObject("[Runtime] SentenceHintController");
+                hintObject.transform.SetParent(transform, false);
+                _sentenceHintController = hintObject.AddComponent<SentenceHintController>();
+            }
+        }
+
         if (_restorationObjectiveController == null)
         {
             GameObject objectiveObject = new GameObject("[Runtime] RestorationObjectiveController");
@@ -1502,6 +1554,7 @@ public class LevelFlowController : MonoBehaviour
         _restorationObjectiveController?.Configure(_levelConfig);
         _activeCluePresenter?.SetRestorationObjectiveController(_restorationObjectiveController);
         _activeCluePresenter?.ApplyLevel(_levelConfig);
+        _sentenceHintController?.ApplyLevel(_levelConfig);
 
         // A new attempt forgets last attempt's introductions BEFORE the coordinator evaluates the
         // roster gate below against that record.
@@ -2080,7 +2133,7 @@ public class LevelFlowController : MonoBehaviour
             return;
 
         if (LastResults != null)
-            _victoryScreen.ShowResultsSummary(BuildResultsSummary());
+            _victoryScreen.PresentResultsSummary(BuildResultsViewData());
 
         // SALIN-253 (AC-5). The era boundary is resolved HERE, where the campaign and the
         // level config are both in hand, and pushed into the Results screen — which reads

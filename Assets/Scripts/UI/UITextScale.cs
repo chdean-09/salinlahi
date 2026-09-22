@@ -20,7 +20,7 @@ public static class UITextScale
     /// <summary>Supporting labels: slider readouts, locked rows, secondary lines.</summary>
     public const float Secondary = 34f;
 
-    /// <summary>Reading text and standard button labels.</summary>
+    /// <summary>Reading text and the floor for standard button labels.</summary>
     public const float Body = 40f;
 
     /// <summary>Panel titles and headings.</summary>

@@ -196,7 +196,7 @@ public sealed class MemoryClaimPanel : MonoBehaviour
 
         card.sizeDelta = new Vector2(700f, 620f);
 
-        ScrollPanelArt.PlaceText(body, Rect.MinMaxRect(0.17f, 0.54f, 0.83f, 0.77f), UITextScale.Caption, 44f);
+        ScrollPanelArt.PlaceText(body, Rect.MinMaxRect(0.17f, 0.54f, 0.83f, 0.77f), UITextScale.Caption, UITextScale.Title);
         ScrollPanelArt.PlaceButton(claim, Rect.MinMaxRect(0.21f, 0.36f, 0.79f, 0.49f));
         ScrollPanelArt.PlaceButton(dismiss, Rect.MinMaxRect(0.21f, 0.19f, 0.79f, 0.32f));
     }

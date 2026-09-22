@@ -67,6 +67,13 @@ public class DialogueController : MonoBehaviour
     private Coroutine _slideRoutine;
     private bool _onParchment;
 
+    // A cutscene owns the same bottom band this scroll sits in, and both print
+    // narration — live together they render as two lines over one strip. While a
+    // CutscenePlayer is playing the scroll yields: it hides for the duration and
+    // resumes where it left off when the cutscene completes.
+    private CutscenePlayer[] _cutscenePlayers;
+    private bool _suppressedForCutscene;
+
     public static DialogueController CreateRuntime()
     {
         Canvas canvas = FindTutorialCanvas();
@@ -226,6 +233,8 @@ public class DialogueController : MonoBehaviour
     {
         ConfigureResponsiveLayout(hasPortrait: _portraitImage != null && _portraitImage.gameObject.activeSelf);
         NameLossEffectRegistry.Changed += HandleNameLossEffectChanged;
+        EventBus.OnCutsceneStarted += HandleCutsceneStarted;
+        EventBus.OnCutsceneComplete += HandleCutsceneComplete;
 
         if (_tapCatcher != null)
             _tapCatcher.onClick.AddListener(OnTapCatcherPressed);
@@ -234,8 +243,67 @@ public class DialogueController : MonoBehaviour
     private void OnDisable()
     {
         NameLossEffectRegistry.Changed -= HandleNameLossEffectChanged;
+        EventBus.OnCutsceneStarted -= HandleCutsceneStarted;
+        EventBus.OnCutsceneComplete -= HandleCutsceneComplete;
+        _suppressedForCutscene = false;
         if (_tapCatcher != null)
             _tapCatcher.onClick.RemoveListener(OnTapCatcherPressed);
+    }
+
+    /// <summary>
+    /// Hides the scroll and its tap catcher for the cutscene's duration. Only fires when a
+    /// dialogue is actually live and a cutscene is genuinely playing — a bare
+    /// OnCutsceneStarted with nothing on screen, or a Play call with no cutscene up, must
+    /// not suppress or later resurrect a panel that was never involved.
+    /// </summary>
+    private void HandleCutsceneStarted()
+    {
+        if (_currentDialogue == null || _suppressedForCutscene || !IsAnyCutscenePlaying())
+            return;
+
+        _suppressedForCutscene = true;
+        if (_overlayPanel != null)
+            _overlayPanel.SetActive(false);
+        SetTapCatcherActive(false);
+    }
+
+    /// <summary>
+    /// Brings the scroll back if the dialogue is still live — a dialogue that ended during
+    /// the cutscene clears _currentDialogue, so it stays closed. The tap catcher returns
+    /// only once a line is actually up for reading: a rise still in flight re-enables it
+    /// itself when it settles.
+    /// </summary>
+    private void HandleCutsceneComplete()
+    {
+        if (!_suppressedForCutscene)
+            return;
+
+        _suppressedForCutscene = false;
+        if (_currentDialogue == null)
+            return;
+
+        if (_overlayPanel != null)
+            _overlayPanel.SetActive(true);
+        SetTapCatcherActive(_slideRoutine == null);
+    }
+
+    /// <summary>
+    /// True while any CutscenePlayer in the scene is playing. Inactive objects are included
+    /// and the lookup retries while the cache is empty, so a still-switched-off cutscene
+    /// canvas at first evaluation cannot leave the gate permanently open.
+    /// </summary>
+    private bool IsAnyCutscenePlaying()
+    {
+        if (_cutscenePlayers == null || _cutscenePlayers.Length == 0)
+            _cutscenePlayers = FindObjectsByType<CutscenePlayer>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+        for (int i = 0; i < _cutscenePlayers.Length; i++)
+        {
+            if (_cutscenePlayers[i] != null && _cutscenePlayers[i].IsPlaying)
+                return true;
+        }
+        return false;
     }
 
     public void Play(DialogueSO dialogue)
@@ -273,13 +341,18 @@ public class DialogueController : MonoBehaviour
 
         EventBus.RaiseDialogueStarted();
 
+        // A Play that lands while a cutscene is already up would put the scroll and the
+        // caption in the same band — fold it straight away. The controller can subscribe
+        // after the cutscene began, so the started event is not a reliable gate here.
+        HandleCutsceneStarted();
+
         if (CanAnimate)
         {
             _slideRoutine = StartCoroutine(RiseThenShowFirstLine());
             return;
         }
 
-        SetTapCatcherActive(true);
+        SetTapCatcherActive(!_suppressedForCutscene);
         ShowLine(_currentDialogue.lines[0]);
     }
 
@@ -296,7 +369,8 @@ public class DialogueController : MonoBehaviour
         yield return Slide(0f, 1f, SlideUpSeconds);
 
         _slideRoutine = null;
-        SetTapCatcherActive(true);
+        // A rise that settles mid-cutscene must not resurrect the catcher over it.
+        SetTapCatcherActive(!_suppressedForCutscene);
 
         if (_currentDialogue != null)
             ShowLine(_currentDialogue.lines[_lineIndex]);

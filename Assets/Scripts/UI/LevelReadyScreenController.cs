@@ -144,9 +144,7 @@ public sealed class LevelReadyScreenController : MonoBehaviour
 
         _runtimePanelBuilt = true;
 
-        Canvas canvas = GetComponentInParent<Canvas>();
-        if (canvas == null)
-            canvas = FindFirstObjectByType<Canvas>();
+        Canvas canvas = ScrollPanelArt.ResolveModalCanvas(this);
         bool createdFallbackCanvas = false;
         if (canvas == null)
         {
@@ -177,35 +175,17 @@ public sealed class LevelReadyScreenController : MonoBehaviour
         if (canvas.GetComponent<GraphicRaycaster>() == null)
             canvas.gameObject.AddComponent<GraphicRaycaster>();
 
-        GameObject overlay = new GameObject(
-            "[Runtime] LevelReadyOverlay",
-            typeof(RectTransform),
-            typeof(Image));
-        overlay.transform.SetParent(canvas.transform, false);
-        overlay.transform.SetAsLastSibling();
-        RectTransform overlayRect = overlay.GetComponent<RectTransform>();
-        overlayRect.anchorMin = Vector2.zero;
-        overlayRect.anchorMax = Vector2.one;
-        overlayRect.offsetMin = overlayRect.offsetMax = Vector2.zero;
-        Image overlayImage = overlay.GetComponent<Image>();
-        overlayImage.color = new Color(0.015f, 0.02f, 0.045f, 0.88f);
-        overlayImage.raycastTarget = true;
+        GameObject overlay = ScrollPanelArt.CreateDimOverlay(
+            canvas.transform, "[Runtime] LevelReadyOverlay");
+        RectTransform panelRect = ScrollPanelArt.CreateScrollPanel(
+            overlay.transform, "[Runtime] LevelReadyPanel");
 
-        _panelRoot = new GameObject("[Runtime] LevelReadyPanel", typeof(RectTransform), typeof(Image));
-        _panelRoot.transform.SetParent(overlay.transform, false);
-        RectTransform panelRect = _panelRoot.GetComponent<RectTransform>();
-        panelRect.anchorMin = new Vector2(0.08f, 0.24f);
-        panelRect.anchorMax = new Vector2(0.92f, 0.76f);
-        panelRect.offsetMin = panelRect.offsetMax = Vector2.zero;
-
-        Image panelImage = _panelRoot.GetComponent<Image>();
-        panelImage.color = new Color(0.025f, 0.035f, 0.08f, 0.98f);
-        panelImage.raycastTarget = true;
+        Image panelImage = panelRect.GetComponent<Image>();
         bool onParchment = ScrollPanelArt.ApplyFull(panelImage);
 
-        _titleText = CreateText("Title", _panelRoot.transform, 68f,
+        _titleText = CreateText("Title", panelRect.transform, 68f,
             new Vector2(0.17f, 0.55f), new Vector2(0.83f, 0.88f));
-        _objectiveText = CreateText("Objective", _panelRoot.transform, 44f,
+        _objectiveText = CreateText("Objective", panelRect.transform, UITextScale.Title,
             new Vector2(0.18f, 0.34f), new Vector2(0.82f, 0.57f));
         _objectiveText.alignment = TextAlignmentOptions.Center;
         if (onParchment)
@@ -219,7 +199,7 @@ public sealed class LevelReadyScreenController : MonoBehaviour
             typeof(RectTransform),
             typeof(Image),
             typeof(Button));
-        buttonObject.transform.SetParent(_panelRoot.transform, false);
+        buttonObject.transform.SetParent(panelRect.transform, false);
         RectTransform buttonRect = buttonObject.GetComponent<RectTransform>();
         buttonRect.anchorMin = new Vector2(0.66f, 0.18f);
         buttonRect.anchorMax = new Vector2(0.66f, 0.18f);
@@ -245,7 +225,7 @@ public sealed class LevelReadyScreenController : MonoBehaviour
             ScrollPanelArt.Inkify(label);
 
         GameObject backObject = new GameObject("BackButton", typeof(RectTransform), typeof(Image), typeof(Button));
-        backObject.transform.SetParent(_panelRoot.transform, false);
+        backObject.transform.SetParent(panelRect.transform, false);
         RectTransform backRect = backObject.GetComponent<RectTransform>();
         backRect.anchorMin = new Vector2(0.34f, 0.18f);
         backRect.anchorMax = new Vector2(0.34f, 0.18f);
@@ -267,6 +247,11 @@ public sealed class LevelReadyScreenController : MonoBehaviour
         backLabel.alignment = TextAlignmentOptions.Center;
         backLabel.raycastTarget = false;
         TutorialFontProvider.ApplyTo(backLabel);
+
+        // Same auto-sized label treatment PlaceButton gives the other scroll
+        // surfaces; these buttons are point-anchored, so they opt in directly.
+        ScrollPanelArt.SizeButtonLabel(_startButton);
+        ScrollPanelArt.SizeButtonLabel(_backButton);
 
         overlay.SetActive(false);
         _panelRoot = overlay;

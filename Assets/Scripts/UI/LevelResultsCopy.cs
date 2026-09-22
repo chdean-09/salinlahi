@@ -54,6 +54,7 @@ public static class LevelResultsCopy
     /// same screen.
     /// </summary>
     public const string HeartsLabel = "Hearts ";
+    public const string HeartsLeftLabel = "Hearts left";
 
     /// <summary>Separator between a count and its maximum, as in "2/3".</summary>
     public const string OutOfSeparator = "/";
