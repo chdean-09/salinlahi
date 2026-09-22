@@ -15,7 +15,7 @@ MonoBehaviour:
   enemyID: ragasa
   displayName: Ragasa
   discoverySubtitle: 
-  description: 
+  description: A many-limbed beast that surges from side to side as it charges toward the shrine.
   abilityLine: It sweeps down the field in wide arcs instead of a straight line.
   moveSpeed: 1.5
   maxHealth: 1

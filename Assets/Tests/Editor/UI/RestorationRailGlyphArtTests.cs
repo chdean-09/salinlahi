@@ -175,6 +175,57 @@ namespace Salinlahi.Tests.Editor.UI
                 "The glyph rect has to be scaled up well past the box for the INK to reach it.");
         }
 
+        [Test]
+        public void GlyphOutlineGenerator_PreservesTemplateYDirection()
+        {
+            var strokes = new List<List<Vector2>>
+            {
+                new List<Vector2>
+                {
+                    new Vector2(0f, 0.85f),
+                    new Vector2(1f, 0.85f),
+                },
+                new List<Vector2>
+                {
+                    new Vector2(0.45f, 0.05f),
+                    new Vector2(0.55f, 0.05f),
+                },
+            };
+
+            MethodInfo render = typeof(GlyphOutlineGenerator).GetMethod(
+                "Render", BindingFlags.Static | BindingFlags.NonPublic);
+            Assert.IsNotNull(render, "Missing GlyphOutlineGenerator.Render.");
+
+            object[] arguments = { strokes, 0f };
+            var texture = (Texture2D)render.Invoke(null, arguments);
+            _created.Add(texture);
+
+            Color32[] pixels = texture.GetPixels32();
+            int upperInk = CountInk(pixels, texture.width, texture.height / 2, texture.height);
+            int lowerInk = CountInk(pixels, texture.width, 0, texture.height / 2);
+
+            Assert.Greater(upperInk, lowerInk,
+                "A long stroke authored above a short stroke must remain above it in the generated "
+                + "Texture2D. Reversing Unity's bottom-up texture rows turns every outline upside down.");
+        }
+
+        private static int CountInk(
+            IReadOnlyList<Color32> pixels, int width, int firstRow, int rowLimit)
+        {
+            int count = 0;
+            for (int y = firstRow; y < rowLimit; y++)
+            {
+                int row = y * width;
+                for (int x = 0; x < width; x++)
+                {
+                    if (pixels[row + x].a > 0)
+                        count++;
+                }
+            }
+
+            return count;
+        }
+
         private static float GetPrivateFloat(ActiveCluePresenter presenter, string name)
         {
             FieldInfo field = typeof(ActiveCluePresenter).GetField(
