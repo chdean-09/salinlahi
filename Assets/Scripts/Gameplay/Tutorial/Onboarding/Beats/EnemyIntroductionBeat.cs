@@ -1738,7 +1738,19 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     private static bool s_skipContinueHoldForTests;
 
     /// <summary>Sets the hold seam. Fixtures that set it must reset it in teardown.</summary>
-    public static void SetSkipContinueHoldForTests(bool skip) => s_skipContinueHoldForTests = skip;
+    internal static void SetSkipContinueHoldForTests(bool skip) => s_skipContinueHoldForTests = skip;
+
+    /// <summary>
+    /// Clears every static test seam, including a queued continue request that a failed fixture
+    /// might not have consumed. Test teardown calls this so one onboarding case cannot release a
+    /// later card without real input.
+    /// </summary>
+    internal static void ResetTestState()
+    {
+        s_skipContinueHoldForTests = false;
+        s_continueRequestedByTest = false;
+        IsHoldingForContinue = false;
+    }
 
     /// <summary>
     /// Stands in for the player's tap, so a fixture can let the hold actually happen and then end
@@ -1756,7 +1768,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// is a play session.
     /// </para>
     /// </remarks>
-    public static void RequestContinueForTests() => s_continueRequestedByTest = true;
+    internal static void RequestContinueForTests() => s_continueRequestedByTest = true;
 
     private static bool s_continueRequestedByTest;
 

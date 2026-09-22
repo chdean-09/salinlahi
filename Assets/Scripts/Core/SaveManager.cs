@@ -99,12 +99,12 @@ public sealed class SaveManager : Singleton<SaveManager>
                 CampaignSaveNoticeKind.Recovery, "outcome-replay-pending");
     }
 
-    public void SetCampaignForTests(CampaignConfigSO campaign)
+    internal void SetCampaignForTests(CampaignConfigSO campaign)
     {
         _campaign = campaign;
     }
 
-    public void SetServiceForTests(CampaignSaveService service)
+    internal void SetServiceForTests(CampaignSaveService service)
     {
         Initialize(service);
     }

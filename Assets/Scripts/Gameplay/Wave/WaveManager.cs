@@ -779,7 +779,7 @@ public class WaveManager : MonoBehaviour
     /// comparison here could be silently wrong and no suite would notice.
     /// </summary>
     internal static bool IsFinalWaveIndex(int waveIndex, int endWaveIndexExclusive) =>
-        endWaveIndexExclusive > 0 && waveIndex == endWaveIndexExclusive - 1;
+        WaveTerminalPolicy.IsFinalWaveIndex(waveIndex, endWaveIndexExclusive);
 
     /// <summary>
     /// True only when a segmented run reaches the complete authored wave count. This keeps the
@@ -787,7 +787,7 @@ public class WaveManager : MonoBehaviour
     /// segment ranges used by the flow machine.
     /// </summary>
     internal static bool IsTerminalWaveRange(int endWaveIndexExclusive, int totalWaveCount) =>
-        totalWaveCount > 0 && endWaveIndexExclusive == totalWaveCount;
+        WaveTerminalPolicy.IsTerminalWaveRange(endWaveIndexExclusive, totalWaveCount);
 
     /// <summary>
     /// True while <see cref="RunRestorationOverflow"/>'s loop should spawn another batch. Pure and
@@ -797,7 +797,7 @@ public class WaveManager : MonoBehaviour
     /// silent behaviour change only a full play session would surface.
     /// </summary>
     internal static bool ShouldContinueOverflow(int batch, bool unbounded, int maxBatches) =>
-        unbounded || batch < maxBatches;
+        WaveTerminalPolicy.ShouldContinueOverflow(batch, unbounded, maxBatches);
 
     /// <summary>
     /// Keeps the defense running past the authored wave budget until the level's focus words are
@@ -1412,4 +1412,22 @@ public class WaveManager : MonoBehaviour
         }
     }
 #endif
+}
+
+/// <summary>
+/// Pure policy for the wave-range predicates that control the finale gate and restoration
+/// overflow. WaveManager remains responsible for coroutines, spawning, and scene references;
+/// this helper owns only the level-range decisions so they can be characterized without a live
+/// Unity hierarchy.
+/// </summary>
+internal static class WaveTerminalPolicy
+{
+    internal static bool IsFinalWaveIndex(int waveIndex, int endWaveIndexExclusive) =>
+        endWaveIndexExclusive > 0 && waveIndex == endWaveIndexExclusive - 1;
+
+    internal static bool IsTerminalWaveRange(int endWaveIndexExclusive, int totalWaveCount) =>
+        totalWaveCount > 0 && endWaveIndexExclusive == totalWaveCount;
+
+    internal static bool ShouldContinueOverflow(int batch, bool unbounded, int maxBatches) =>
+        unbounded || batch < maxBatches;
 }
