@@ -1,22 +1,19 @@
 using System;
 
 /// <summary>
-/// Readability policy for a <b>stained</b> glyph badge — a badge showing a visual character
-/// override instead of the enemy's true symbol (<see cref="Enemy.ApplyVisualCharacterOverride"/>,
-/// driven today by <see cref="KempeiScrambleController"/> for any enemy authored with
-/// <c>stainsNearbyGlyphs</c>).
+/// Readability timing for a <b>stained</b> glyph badge. The cycle controls how long an ink stain
+/// pulses and how long the stable character remains readable; it never changes the enemy's true
+/// symbol. The same pure helpers also remain available to deliberate false-carrier badges.
 ///
 /// <para>Two separable decisions live here, both pure:</para>
 /// <list type="number">
-/// <item><b>How fast may a badge change?</b> Deliberately <b>asymmetric</b>: wrong faces churn
-/// past quickly in a burst, then the true face rests for a long, readable beat. Symmetric timing
-/// forced a bad trade - slow enough to read the true glyph meant slow enough to mistake a wrong
-/// one for the answer. Splitting the two removes the trade: the churn reads as noise and the rest
-/// reads as the answer. <see cref="ResolveFalseInterval"/> and <see cref="ResolveInterval"/> own
-/// the two bands, each with its own floor.</item>
-/// <item><b>Is the shown face the true one?</b> <see cref="ResolveBadgeAlpha"/> turns that answer
-/// into the badge's opacity, so a false face reads as a faded ghost of a glyph and a true face
-/// reads at full strength.</item>
+/// <item><b>How fast may a badge change?</b> Deliberately <b>asymmetric</b>: short stain pulses
+/// pass quickly, then the true face rests for a long, readable beat. Splitting the two bands keeps
+/// the pulse legible as an interruption rather than a replacement glyph. <see
+/// cref="ResolveFalseInterval"/> and <see cref="ResolveInterval"/> own the two bands, each with
+/// its own floor.</item>
+/// <item><b>How should the badge be tinted?</b> <see cref="ResolveBadgeAlpha"/> keeps the legacy
+/// dimming helper for deliberate false-carrier badges without changing their identity.</item>
 /// </list>
 ///
 /// <para>Deliberately free of UnityEngine types, following <see cref="DrawTargetResolver"/> and
@@ -33,17 +30,17 @@ public sealed class GlyphStainCycle
     public const float MinimumReadableInterval = 0.9f;
 
     /// <summary>
-    /// Shortest dwell a <b>wrong</b> face may be held for. Far below
+    /// Shortest dwell a short stain pulse may be held for. Far below
     /// <see cref="MinimumReadableInterval"/> - churning is the point - but not zero: a wrong face
     /// should read as a blur flicking past, never as a hard strobe. The dim from
     /// <see cref="ResolveBadgeAlpha"/> already keeps the churn visually quiet.
     /// </summary>
     public const float MinimumFalseGlyphInterval = 0.22f;
 
-    /// <summary>Authoring default: minimum seconds a <b>wrong</b> face is held.</summary>
+    /// <summary>Authoring default: minimum seconds a short stain pulse is held.</summary>
     public const float DefaultFalseMinInterval = 0.28f;
 
-    /// <summary>Authoring default: maximum seconds a <b>wrong</b> face is held.</summary>
+    /// <summary>Authoring default: maximum seconds a short stain pulse is held.</summary>
     public const float DefaultFalseMaxInterval = 0.45f;
 
     /// <summary>Authoring default: minimum seconds the <b>true</b> face rests.</summary>
@@ -53,8 +50,8 @@ public sealed class GlyphStainCycle
     public const float DefaultTrueMaxInterval = 3.6f;
 
     /// <summary>
-    /// How many wrong faces churn past before the true face returns. One would be an alternation,
-    /// not a scroll; the burst is what makes the stain read as the badge searching for its face.
+    /// How many short stain pulses pass before the true face returns. The burst makes the stain
+    /// read as an interruption while preserving the stable character underneath.
     /// </summary>
     public const int DefaultFalseBurstCount = 4;
 
@@ -69,12 +66,15 @@ public sealed class GlyphStainCycle
 
     private int _remainingFalseFaces;
 
-    /// <summary>True while the badge should be showing a wrong face.</summary>
+    /// <summary>
+    /// True while the badge is in its short stain-pulse phase. The legacy property name is kept for
+    /// existing timing tests and false-carrier helpers; Mantsa never swaps the actual glyph.
+    /// </summary>
     public bool IsFalseGlyphVisible { get; private set; }
 
     /// <summary>
-    /// True when the caller should roll a <b>fresh</b> wrong character before showing it. Every
-    /// churn step needs a different glyph; repeating one reads as a flicker, not a scroll.
+    /// True when the caller should advance to a fresh stain pulse. The legacy name remains for
+    /// compatibility with the existing timing seam.
     /// </summary>
     public bool NeedsNewFalseGlyph { get; private set; }
 
@@ -110,9 +110,9 @@ public sealed class GlyphStainCycle
     }
 
     /// <summary>
-    /// Advances the cycle to <paramref name="now"/>. Returns true when the badge needs updating -
-    /// which includes staying on a wrong face but swapping to a <i>different</i> one, so a caller
-    /// that only watches <see cref="IsFalseGlyphVisible"/> would miss most of the churn.
+    /// Advances the cycle to <paramref name="now"/>. Returns true when the badge needs updating,
+    /// including each short stain pulse, so a caller that only watches <see
+    /// cref="IsFalseGlyphVisible"/> would miss most of the pulse.
     /// <paramref name="unitRandom"/> is a 0..1 roll used to pick the next dwell.
     /// </summary>
     public bool Advance(float now, float unitRandom)
@@ -122,7 +122,7 @@ public sealed class GlyphStainCycle
 
         if (IsFalseGlyphVisible && _remainingFalseFaces > 0)
         {
-            // Mid-burst: still a wrong face, but a new one.
+            // Mid-burst: another short stain pulse.
             _remainingFalseFaces--;
             NeedsNewFalseGlyph = true;
             NextToggleTime = now + ResolveFalseInterval(_falseMinInterval, _falseMaxInterval, unitRandom);
@@ -147,8 +147,8 @@ public sealed class GlyphStainCycle
     }
 
     /// <summary>
-    /// Dwell for a <b>wrong</b> face. Same shape as <see cref="ResolveInterval"/> but floored at
-    /// <see cref="MinimumFalseGlyphInterval"/>, so the churn stays fast.
+    /// Dwell for a short stain pulse. Same shape as <see cref="ResolveInterval"/> but floored at
+    /// <see cref="MinimumFalseGlyphInterval"/>, so the pulse stays brief.
     /// </summary>
     public static float ResolveFalseInterval(float minInterval, float maxInterval, float unitRandom)
         => ResolveBand(minInterval, maxInterval, unitRandom, MinimumFalseGlyphInterval);

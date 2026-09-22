@@ -15,9 +15,8 @@ MonoBehaviour:
   enemyID: uhaw
   displayName: Uhaw
   discoverySubtitle: 
-  description: A hollow creature with a large empty mouth and a body made of dry
-    soil. It drains sound from nearby words.
-  abilityLine: It holds together after the first correct symbol.
+  description: Uhaw is an empty vessel shaped from soil where old writing has dried away. Paglimot gives it an endless thirst for freshly restored characters, hoping each success will vanish as soon as it appears.
+  abilityLine: It absorbs the last restored character and carries that memory inside itself.
   moveSpeed: 1.25
   maxHealth: 2
   walkFrames:
@@ -71,3 +70,7 @@ MonoBehaviour:
   scrambleRadius: 3
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
+  corruptedMeaning: Freshly restored knowledge can be stolen again.
+  trueMeaning: Immediate recall strengthens a newly learned character.
+  restoredLesson: Recover the absorbed mark without losing the completed slot.
+  learningAbility: 16

@@ -1,11 +1,13 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
 /// Hati's signature ability: "A masked creature that splits into two smaller enemies. It divides
 /// villagers and creates arguments between them." When the source is defeated it spawns
 /// <see cref="EnemyDataSO.splitCount"/> pieces of <see cref="EnemyDataSO.splitSpawnData"/> around
-/// its own position, each carrying the source's glyph. The pieces are real enemies: they walk,
-/// deal contact damage, must be defeated for the wave to clear, and never split again.
+/// its own position. When the active roster provides alternatives, each piece carries a different
+/// learned glyph; a one-symbol roster falls back to the source. The pieces are real enemies: they
+/// walk, deal contact damage, must be defeated for the wave to clear, and never split again.
 /// Data-driven through <see cref="EnemyDataSO.splitsOnDefeat"/>; Enemy.Initialize attaches this
 /// component on the shared corruption shell and toggles it per spawn; Enemy.Defeat invokes it.
 /// </summary>
@@ -106,8 +108,45 @@ public sealed class HatiSplitController : MonoBehaviour
 
             piece.transform.position = transform.position + SplitOffset(i, count, data.splitOffsetX);
             if (glyph != null)
-                piece.AssignCharacter(glyph);
+                piece.AssignCharacter(SelectReviewCharacter(
+                    glyph,
+                    i,
+                    count,
+                    WaveManager.CurrentAllowedCharacters));
         }
+    }
+
+    /// <summary>
+    /// Selects a different learned character for each split piece when the current wave has other
+    /// learned characters available. Falling back to the source keeps Hati safe in a one-symbol
+    /// roster and preserves the old split behavior for isolated tests or early content.
+    /// </summary>
+    public static BaybayinCharacterSO SelectReviewCharacter(
+        BaybayinCharacterSO source,
+        int pieceIndex,
+        int pieceCount,
+        IReadOnlyList<BaybayinCharacterSO> allowedCharacters)
+    {
+        if (source == null || allowedCharacters == null || allowedCharacters.Count == 0)
+            return source;
+
+        var alternatives = new List<BaybayinCharacterSO>();
+        for (int i = 0; i < allowedCharacters.Count; i++)
+        {
+            BaybayinCharacterSO candidate = allowedCharacters[i];
+            if (candidate == null || candidate == source)
+                continue;
+            if (string.Equals(candidate.characterID, source.characterID, System.StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (!alternatives.Contains(candidate))
+                alternatives.Add(candidate);
+        }
+
+        if (alternatives.Count == 0)
+            return source;
+
+        int index = Mathf.Abs(pieceIndex) % alternatives.Count;
+        return alternatives[index];
     }
 
     /// <summary>

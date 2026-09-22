@@ -49,6 +49,7 @@ public class Enemy : MonoBehaviour
     private TextMeshPro _baybayinLabel;
     private TextMeshPro _enemyTypeLabel;
     private readonly Dictionary<object, BaybayinCharacterSO> _labelOverrides = new();
+    private readonly HashSet<object> _glyphStainSources = new();
     /// <summary>
     /// Source-keyed resolution blocks, ref-counted the same way <see cref="_labelOverrides"/>
     /// ref-counts badge visual overrides: one entry per holding ability, so two abilities blocking
@@ -69,13 +70,16 @@ public class Enemy : MonoBehaviour
     public BaybayinCharacterSO Character => _runtimeCharacter != null ? _runtimeCharacter : _data?.assignedCharacter;
     public BaybayinCharacterSO VisualCharacter => ResolveVisualCharacter();
     public bool HasVisualCharacterOverride => _labelOverrides.Count > 0;
+    public bool IsGlyphStained => _glyphStainSources.Count > 0;
     public EnemyGlyphBadge GlyphBadge => _glyphBadge;
     public string EnemyID => _data?.enemyID;
     public EnemyDataSO Data => _data;
     public int CurrentHealth => _currentHealth;
     public bool IsDecoy => _data != null && _data.isDecoy;
     public bool IsDying => _isDying;
-    public bool IsPhaserVisible => _phaserEnemy == null || _phaserEnemy.IsVisible;
+    public bool IsPhaserVisible => _phaserEnemy == null
+        || _phaserEnemy.IsVisible
+        || _data?.learningAbility == EnemyLearningAbility.MemoryFade;
 
     /// <summary>
     /// True while at least one ability holds a resolution block on this enemy. A blocked enemy is
@@ -254,6 +258,7 @@ public class Enemy : MonoBehaviour
         _data = data;
         _currentHealth = _data.maxHealth;
         _labelOverrides.Clear();
+        ClearGlyphStains();
         ClearResolutionBlocks();
 
         if (_data.useHurtFeedback && _hurtFeedback == null)
@@ -294,6 +299,11 @@ public class Enemy : MonoBehaviour
         EnsureAbilityComponent<AshFirstSlotController>(_data.ashesFirstSlot);
         EnsureAbilityComponent<NawalangMukhaNameLossController>(_data.removesNames);
         EnsureAbilityComponent<PhaserEnemy>(_data.isPhaser);
+        EnsureAbilityComponent<EnemyLearningAbilityController>(_data.learningAbility != EnemyLearningAbility.None);
+
+        EnemyLearningAbilityController learningAbility = GetComponent<EnemyLearningAbilityController>();
+        if (learningAbility != null && learningAbility.enabled)
+            learningAbility.ResetForSpawn();
 
         // Restated on EVERY spawn, not only introduction ones. The abilities clear their own flag in
         // OnEnable, but a pooled shell reused for the same enemy type stays enabled through the
@@ -410,6 +420,10 @@ public class Enemy : MonoBehaviour
         HatiSplitController split = GetComponent<HatiSplitController>();
         if (split != null && split.enabled)
             split.SetSuppressedForIntroductionSpawn(suppressed);
+
+        EnemyLearningAbilityController learningAbility = GetComponent<EnemyLearningAbilityController>();
+        if (learningAbility != null && learningAbility.enabled)
+            learningAbility.SetSuppressedForIntroductionSpawn(suppressed);
     }
 
     private bool ShouldRaiseEnemyDiscoveryEvent(EnemyDataSO data)
@@ -444,6 +458,7 @@ public class Enemy : MonoBehaviour
             _runtimeCharacter = null;
             _speedBuffs.Clear();
             _labelOverrides.Clear();
+            ClearGlyphStains();
             ClearResolutionBlocks();
             _hurtFeedback?.ResetState();
             _isDying = false;
@@ -736,6 +751,29 @@ public class Enemy : MonoBehaviour
             RefreshDebugLabels();
             _glyphBadge?.Refresh();
         }
+    }
+
+    /// <summary>
+    /// Holds a visual ink stain on this enemy's badge without changing its real character. Sources
+    /// are ref-counted like resolution blocks so two Mantsa enemies can overlap safely.
+    /// </summary>
+    public void SetGlyphStained(object source, bool stained)
+    {
+        if (source == null || _glyphBadge == null)
+            return;
+
+        bool changed = stained
+            ? _glyphStainSources.Add(source)
+            : _glyphStainSources.Remove(source);
+
+        if (changed)
+            _glyphBadge.SetStained(_glyphStainSources.Count > 0);
+    }
+
+    private void ClearGlyphStains()
+    {
+        _glyphStainSources.Clear();
+        _glyphBadge?.SetStained(false);
     }
 
     /// <summary>

@@ -15,9 +15,8 @@ MonoBehaviour:
   enemyID: takip
   displayName: Takip
   discoverySubtitle: 
-  description: A cloaked creature with a large hand covering its single eye. It hides
-    correct answers and covers important objects.
-  abilityLine: It covers its own symbol with its hand and uncovers it again.
+  description: Takip keeps one hand over its eye because Paglimot taught it that unseen knowledge will soon become forgotten knowledge. It reveals a character only long enough to tempt memory, then covers it before certainty can settle.
+  abilityLine: It covers its own character and reveals it only for short moments.
   moveSpeed: 1.3
   maxHealth: 1
   walkFrames:
@@ -75,3 +74,7 @@ MonoBehaviour:
   glyphCoverInitialRevealSeconds: 1.2
   glyphCoverHiddenSeconds: 2.4
   glyphCoverRevealSeconds: 0.8
+  corruptedMeaning: Hidden marks fade from short-term memory.
+  trueMeaning: A briefly seen form can be recalled accurately.
+  restoredLesson: Draw from memory or wait for a fair reveal.
+  learningAbility: 6

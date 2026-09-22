@@ -6,7 +6,6 @@ public class KempeiScrambleController : MonoBehaviour
 {
     private sealed class ScrambleState
     {
-        public BaybayinCharacterSO Character;
         public GlyphStainCycle Cycle;
         public bool AppliedScrambledVisible;
     }
@@ -15,7 +14,6 @@ public class KempeiScrambleController : MonoBehaviour
     private readonly HashSet<Enemy> _stillAffected = new();
     private readonly Dictionary<Enemy, ScrambleState> _activeScrambles = new();
     private readonly List<Enemy> _activeSnapshot = new();
-    private readonly List<BaybayinCharacterSO> _candidateCharacters = new();
     private readonly List<Enemy> _enemiesToClear = new();
     private Enemy _enemy;
 
@@ -30,17 +28,17 @@ public class KempeiScrambleController : MonoBehaviour
     /// plays — and arms it again on every later spawn of the type.
     ///
     /// <para>
-    /// <b>Why the stain must not fire on the spawn that introduces it.</b> Mantsa's stain churns a
-    /// neighbour's badge between its true face and wrong ones several times a second. A player who
-    /// has never been told that happens, watching it for the first time while the card explaining it
-    /// is still sliding in, reads a flickering glyph as a rendering fault — and, worse, may be
-    /// mid-stroke against the very badge that is churning. The card sets the expectation first; the
-    /// stain arms on a later Mantsa, against a board the player has already read cleanly.
+    /// <b>Why the stain must not fire on the spawn that introduces it.</b> Mantsa's ink pulse makes a
+    /// neighbour's stable badge harder to read. A player who has never been told that happens,
+    /// watching it for the first time while the card explaining it is still sliding in, reads the
+    /// visual change as a rendering fault — and, worse, may be mid-stroke against the very badge
+    /// that is being stained. The card sets the expectation first; the stain arms on a later Mantsa,
+    /// against a board the player has already read cleanly.
     /// </para>
     ///
     /// <para>
     /// Suppression withdraws the effect as well as preventing it: any neighbour already carrying a
-    /// scrambled face is handed its real glyph back immediately, rather than waiting for the next
+    /// stain is lifted immediately, rather than waiting for the next
     /// churn step that will now never come.
     /// </para>
     ///
@@ -75,14 +73,13 @@ public class KempeiScrambleController : MonoBehaviour
     {
         ClearAffectedEnemies();
         _activeSnapshot.Clear();
-        _candidateCharacters.Clear();
         _enemiesToClear.Clear();
     }
 
     private void Update()
     {
-        // Gated by data so the shared corruption shell can carry this for Mantsa ("It stains
-        // correct symbols and changes them into incorrect forms") and stay inert for everyone else.
+        // Gated by data so the shared corruption shell can carry this for Mantsa ("It stains part
+        // of a correct character until its true form is hard to see") and stay inert for everyone else.
         // The introduction-spawn suppression joins the same gate rather than getting its own early
         // return, so both ways of being inert release held neighbours through one path.
         if (_suppressedForIntroductionSpawn
@@ -118,7 +115,7 @@ public class KempeiScrambleController : MonoBehaviour
                 continue;
 
             ScrambleState scramble = GetOrCreateScramble(target);
-            if (scramble?.Character == null)
+            if (scramble == null)
                 continue;
 
             bool wasAffected = _affectedEnemies.Contains(target);
@@ -152,7 +149,7 @@ public class KempeiScrambleController : MonoBehaviour
         {
             Enemy enemy = _enemiesToClear[i];
             if (enemy != null)
-                enemy.ClearVisualCharacterOverride(this);
+                enemy.SetGlyphStained(this, false);
 
             _affectedEnemies.Remove(enemy);
             _activeScrambles.Remove(enemy);
@@ -166,23 +163,13 @@ public class KempeiScrambleController : MonoBehaviour
         if (target == null)
             return null;
 
-        BaybayinCharacterSO realCharacter = target.Character;
-        if (_activeScrambles.TryGetValue(target, out ScrambleState existing)
-            && IsWrongCharacter(existing.Character, realCharacter))
+        if (_activeScrambles.TryGetValue(target, out ScrambleState existing))
         {
             return existing;
         }
 
-        BaybayinCharacterSO next = SelectWrongCharacter(realCharacter);
-        if (next == null)
-        {
-            _activeScrambles.Remove(target);
-            return null;
-        }
-
         var state = new ScrambleState
         {
-            Character = next,
             Cycle = new GlyphStainCycle(
                 Time.time,
                 GetMinGlitchInterval(),
@@ -202,63 +189,20 @@ public class KempeiScrambleController : MonoBehaviour
 
         if (scramble.Cycle.IsFalseGlyphVisible)
         {
-            // Each churn step needs a DIFFERENT wrong face. Re-showing the same one reads as a
-            // flicker; scrolling through several is what sells the badge as searching for itself.
-            if (changed && scramble.Cycle.NeedsNewFalseGlyph)
-            {
-                BaybayinCharacterSO next = SelectWrongCharacter(target.Character);
-                if (next != null)
-                    scramble.Character = next;
-            }
-
             if (changed || !wasAffected || !scramble.AppliedScrambledVisible)
             {
-                target.ApplyVisualCharacterOverride(this, scramble.Character);
+                // The stain is presentation-only. Do not replace the stable glyph with a polished
+                // wrong character: doing so teaches a false Baybayin association and makes a
+                // correctly recognized drawing appear to disagree with the enemy.
+                target.SetGlyphStained(this, true);
                 scramble.AppliedScrambledVisible = true;
             }
         }
         else if (wasAffected && scramble.AppliedScrambledVisible)
         {
-            target.ClearVisualCharacterOverride(this);
+            target.SetGlyphStained(this, false);
             scramble.AppliedScrambledVisible = false;
         }
-    }
-
-    private BaybayinCharacterSO SelectWrongCharacter(BaybayinCharacterSO realCharacter)
-    {
-        _candidateCharacters.Clear();
-        IReadOnlyList<BaybayinCharacterSO> allowedCharacters = WaveManager.CurrentAllowedCharacters;
-
-        if (allowedCharacters != null)
-        {
-            for (int i = 0; i < allowedCharacters.Count; i++)
-                AddIfWrongCharacter(allowedCharacters[i], realCharacter);
-        }
-
-        if (_candidateCharacters.Count == 0)
-            return null;
-
-        return _candidateCharacters[Random.Range(0, _candidateCharacters.Count)];
-    }
-
-    private void AddIfWrongCharacter(BaybayinCharacterSO candidate, BaybayinCharacterSO realCharacter)
-    {
-        if (!IsWrongCharacter(candidate, realCharacter))
-            return;
-
-        if (!_candidateCharacters.Contains(candidate))
-            _candidateCharacters.Add(candidate);
-    }
-
-    private bool IsWrongCharacter(BaybayinCharacterSO candidate, BaybayinCharacterSO realCharacter)
-    {
-        if (candidate == null || candidate == realCharacter)
-            return false;
-
-        if (realCharacter != null && candidate.characterID == realCharacter.characterID)
-            return false;
-
-        return true;
     }
 
     private void ClearAffectedEnemies()
@@ -272,7 +216,7 @@ public class KempeiScrambleController : MonoBehaviour
         foreach (Enemy enemy in _affectedEnemies)
         {
             if (enemy != null)
-                enemy.ClearVisualCharacterOverride(this);
+                enemy.SetGlyphStained(this, false);
         }
 
         _affectedEnemies.Clear();

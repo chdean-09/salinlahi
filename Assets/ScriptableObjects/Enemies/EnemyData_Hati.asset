@@ -15,9 +15,8 @@ MonoBehaviour:
   enemyID: hati
   displayName: Hati
   discoverySubtitle: 
-  description: A masked creature that splits into two smaller enemies. It divides
-    villagers and creates arguments between them.
-  abilityLine: It splits into two smaller enemies when it falls.
+  description: Hati was born where Paglimot turned one shared memory into opposing versions. When struck, it divides and gives each half a different fragment of what the people once knew.
+  abilityLine: It divides into two smaller enemies carrying different remembered characters.
   moveSpeed: 1.4
   maxHealth: 1
   walkFrames:
@@ -75,3 +74,7 @@ MonoBehaviour:
   splitSpawnData: {fileID: 11400000, guid: 1320e9b202c8b71ac93b6983e2d0b414, type: 2}
   splitCount: 2
   splitOffsetX: 0.9
+  corruptedMeaning: Division turns one memory into two arguments.
+  trueMeaning: Reviewing distinct characters keeps shared language whole.
+  restoredLesson: Reclassify each new carrier after a split.
+  learningAbility: 8

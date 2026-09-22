@@ -34,13 +34,13 @@ public class EnemyGlyphBadge : MonoBehaviour
     private bool _usingOutlineFallback;
     private const float OutlineFallbackScale = 125f / 256f;
 
-    // True while the badge is showing a FALSE face: a visual character override (Mantsa's stain)
-    // rather than the enemy's own symbol. Before this, a stained badge was pixel-identical to a
-    // genuine one, so the player could not tell a real NA from Nawalang Mukha's borrowed face.
-    // The tell is a dim + cool tint rather than a different sprite because
-    // BaybayinCharacterSO.scrambledBadgeSprite is null on all eighteen characters (verified
-    // 2026-09-14); wire that art in here when it lands and this treatment can retire.
+    // True while the badge is showing a FALSE face: a visual character override used by a
+    // deliberate decoy, rather than the enemy's own symbol. Mantsa no longer takes this path: its
+    // stain is presentation-only and keeps the stable glyph visible under ink.
     private bool _showingFalseGlyph;
+    // True while Mantsa's ink obscures a stable glyph. This deliberately changes presentation
+    // only; the badge continues to resolve against the enemy's real character.
+    private bool _stained;
     // Alpha the swap/fade/final-draw coroutines own. The false-glyph dim multiplies it instead of
     // overwriting it, so the two never fight. See GlyphStainCycle.ResolveBadgeAlpha.
     private float _routineAlpha = 1f;
@@ -155,6 +155,20 @@ public class EnemyGlyphBadge : MonoBehaviour
     }
 
     public bool IsCovered => _covered;
+    public bool IsStained => _stained;
+
+    /// <summary>
+    /// Applies Mantsa's stain without replacing the real Baybayin glyph. The player must read a
+    /// partially obscured form or remove the source of the ink, never learn a polished false form.
+    /// </summary>
+    public void SetStained(bool stained)
+    {
+        if (_stained == stained)
+            return;
+
+        _stained = stained;
+        ApplyBadgeColor();
+    }
 
     /// <summary>
     /// Whether the badge is actually readable on screen: a renderer that exists, is enabled, and is
@@ -207,6 +221,7 @@ public class EnemyGlyphBadge : MonoBehaviour
 
     /// <summary>Placeholder dim applied to a blocked badge. Replace with authored art.</summary>
     private static readonly Color BlockedTint = new Color(0.45f, 0.45f, 0.5f, 1f);
+    private static readonly Color StainedTint = new Color(0.62f, 0.42f, 0.22f, 1f);
 
     private void ApplyResolutionBlockTint() => ApplyBadgeColor();
 
@@ -223,6 +238,9 @@ public class EnemyGlyphBadge : MonoBehaviour
         Color tint = _flashTint ?? _baseColor;
         if (_resolutionBlocked && !_flashTint.HasValue)
             tint = new Color(tint.r * BlockedTint.r, tint.g * BlockedTint.g, tint.b * BlockedTint.b, tint.a);
+
+        if (_stained && !_flashTint.HasValue)
+            tint = new Color(tint.r * StainedTint.r, tint.g * StainedTint.g, tint.b * StainedTint.b, tint.a);
 
         float falseAlpha = _config != null ? _config.falseGlyphAlpha : GlyphStainCycle.DefaultFalseGlyphAlpha;
         // The dim always applies while a false face is up; the hue yields to an in-flight flash so
@@ -295,6 +313,7 @@ public class EnemyGlyphBadge : MonoBehaviour
         _covered = false;
         // Pool safety: a badge that left play dimmed must not come back dimmed.
         _resolutionBlocked = false;
+        _stained = false;
         // Pool safety: a badge that left play wearing a false face must not come back wearing one.
         _showingFalseGlyph = false;
         _routineAlpha = 1f;

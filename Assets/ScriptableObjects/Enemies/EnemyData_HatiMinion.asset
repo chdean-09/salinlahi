@@ -73,3 +73,7 @@ MonoBehaviour:
   splitsOnDefeat: 0
   spriteScale: 0.6
   suppressDiscovery: 1
+  corruptedMeaning: Hati's divided memory becomes two fragments that no longer agree.
+  trueMeaning: Meaning can be rebuilt by reading each fragment as part of a whole.
+  restoredLesson: When the split pieces carry different glyphs, reclassify each one instead of repeating the first answer.
+  learningAbility: 8

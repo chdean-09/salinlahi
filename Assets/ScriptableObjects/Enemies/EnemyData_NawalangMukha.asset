@@ -15,9 +15,8 @@ MonoBehaviour:
   enemyID: nawalang-mukha
   displayName: Nawalang Mukha
   discoverySubtitle: 
-  description: A faceless figure carrying stolen nameplates. It removes names from
-    characters and dialogue boxes.
-  abilityLine: It removes names from characters and dialogue boxes.
+  description: Nawalang Mukha once collected the names Paglimot stripped from people, homes, and memories. With every stolen name its own face vanished, until only the Baybayin marks remained to reveal what stood before Juan.
+  abilityLine: It steals written names and leaves only the Baybayin characters behind.
   moveSpeed: 1.45
   maxHealth: 1
   walkFrames:
@@ -92,3 +91,7 @@ MonoBehaviour:
   splitOffsetX: 0.9
   spriteScale: 1
   suppressDiscovery: 0
+  corruptedMeaning: Names are shortcuts that can be stolen.
+  trueMeaning: Baybayin itself can identify a character.
+  restoredLesson: Read the glyph when Romanized labels disappear.
+  learningAbility: 4

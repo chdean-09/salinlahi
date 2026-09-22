@@ -38,7 +38,7 @@ public class BaybayinCharacterSO : ScriptableObject
              "enemies. It carries no romanisation, so it is also what the trace hint shows.")]
     public Sprite badgeSprite;
 
-    [Tooltip("Optional. Framed + glitched variant shown when a visual override (e.g. Kempei scramble) is active. If null, falls back to badgeSprite.")]
+    [Tooltip("Optional. Framed + glitched variant shown when a deliberate false-carrier visual override is active. If null, falls back to badgeSprite.")]
     public Sprite scrambledBadgeSprite;
 
     [Tooltip("Bare glyph on a transparent background (Art/UI/GlyphOutlines/[ID].png) — the only " +

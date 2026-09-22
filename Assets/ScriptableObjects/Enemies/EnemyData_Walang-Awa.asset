@@ -15,9 +15,8 @@ MonoBehaviour:
   enemyID: walang-awa
   displayName: Walang-Awa
   discoverySubtitle: 
-  description: An armored creature with an empty space where its heart should be.
-    It weakens villagers and prevents Juan from healing or helping them.
-  abilityLine: It endures two correct symbols before it falls, and walks slowly.
+  description: Walang-Awa forged its armor from memories Paglimot stripped from different generations. Every plate bears a stolen character, and breaking one only reveals another beneath it.
+  abilityLine: Each broken armor layer reveals a different remembered character beneath it.
   moveSpeed: 0.95
   maxHealth: 3
   walkFrames:
@@ -71,3 +70,7 @@ MonoBehaviour:
   scrambleRadius: 3
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
+  corruptedMeaning: Different generations of memory are locked in layers.
+  trueMeaning: Every layer can carry a distinct learned character.
+  restoredLesson: Reassess the glyph after each armor layer breaks.
+  learningAbility: 19

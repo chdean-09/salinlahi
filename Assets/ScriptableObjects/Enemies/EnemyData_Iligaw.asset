@@ -15,10 +15,8 @@ MonoBehaviour:
   enemyID: iligaw
   displayName: Iligaw
   discoverySubtitle: 
-  description: A thin mirror-like creature with two faces. One face says E, while
-    the other says I. It changes directions and creates false copies of the correct
-    symbol.
-  abilityLine: It makes a false copy of the character it carries.
+  description: Iligaw is a reflection torn from the Living Scroll and taught to lie. Paglimot gives it a second face so that a familiar character appears almost right, yet leads memory in the wrong direction.
+  abilityLine: It makes a false copy carrying a misleading character.
   moveSpeed: 1.5
   maxHealth: 1
   walkFrames:
@@ -92,4 +90,8 @@ MonoBehaviour:
   splitCount: 2
   splitOffsetX: 0.9
   spriteScale: 1
+  corruptedMeaning: A near copy can make a true glyph look doubtful.
+  trueMeaning: Small marks distinguish related characters.
+  restoredLesson: Compare glyphs before committing a drawing.
+  learningAbility: 2
   suppressDiscovery: 0

@@ -15,9 +15,8 @@ MonoBehaviour:
   enemyID: punit
   displayName: Punit
   discoverySubtitle: 
-  description: A beast formed from torn pages, broken cloth, and ripped letters.
-    It tears sentences into separate pieces.
-  abilityLine: It presses ahead of the enemies around it.
+  description: Punit stitches itself from pages Paglimot tore out of stories and family records. It separates the lines around a missing character until their connection is forgotten.
+  abilityLine: It tears the current sentence apart around its missing character.
   moveSpeed: 1.7
   maxHealth: 1
   walkFrames:
@@ -71,3 +70,7 @@ MonoBehaviour:
   scrambleRadius: 3
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
+  corruptedMeaning: Separated lines make related syllables feel unrelated.
+  trueMeaning: Meaning survives a visible break in context.
+  restoredLesson: Reconnect the fragments before choosing a glyph.
+  learningAbility: 12
