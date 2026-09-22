@@ -3,7 +3,9 @@
     "rootNamespace": "",
     "references": [
         "Salinlahi.Runtime",
-        "Unity.TextMeshPro"
+        "Unity.TextMeshPro",
+        "Unity.InputSystem",
+        "Unity.InputSystem.TestFramework"
     ],
     "includePlatforms": [],
     "optionalUnityReferences": [
