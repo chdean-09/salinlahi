@@ -481,7 +481,7 @@ public class FocusWordPreviewController : MonoBehaviour
         {
             ScrollPanelArt.SetAnchors(
                 preview.rectTransform,
-                Rect.MinMaxRect(0.20f, 0.26f, 0.80f, 0.84f));
+                Rect.MinMaxRect(0.20f, 0.27f, 0.80f, 0.80f));
             preview.enableAutoSizing = true;
             preview.fontSizeMin = UITextScale.Caption;
             preview.fontSizeMax = UITextScale.Title;
@@ -493,6 +493,6 @@ public class FocusWordPreviewController : MonoBehaviour
 
         ScrollPanelArt.PlaceButton(
             continueButton,
-            Rect.MinMaxRect(0.30f, 0.13f, 0.70f, 0.22f));
+            Rect.MinMaxRect(0.30f, 0.16f, 0.70f, 0.25f));
     }
 }
