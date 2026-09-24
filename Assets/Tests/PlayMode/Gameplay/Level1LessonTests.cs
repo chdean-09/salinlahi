@@ -142,20 +142,17 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         // ------------------------------------------------------------------------------------
-        // 1. Deferral suppresses (+ required negative control)
+        // 1. A pending lesson does not defer another type's first appearance
         // ------------------------------------------------------------------------------------
 
         /// <summary>
-        /// An enemy type with no lesson of its own, spawned while the level's one authored lesson
-        /// (here: a stand-in for Abo) is still pending, must defer: no card, and its own signature
-        /// ability suppressed too. The negative control is required, not decorative — Salinlahi has
-        /// shipped a suppression check that matched nothing before (see
-        /// a-filter-that-matches-nothing-looks-like-a-pass): without a case that proves the ability
-        /// CAN read armed, "suppressed" could be passing against a matcher that always reports
-        /// suppressed regardless of state.
+        /// Abo's first spawn gets its own introduction while Iligaw's lesson is still pending.
+        /// The ability is suppressed because this is Abo's introduction spawn, not because Iligaw
+        /// has not appeared. Once the card runner is reset, the negative control confirms an
+        /// already-introduced Abo leaves its ability armed.
         /// </summary>
         [UnityTest]
-        public IEnumerator DeferralWhileLessonPending_SuppressesOtherType_ArmsWithNothingPending()
+        public IEnumerator OtherTypeIntroducesWhileIligawLessonIsPending_AlreadyIntroducedTypeArms()
         {
             yield return null;
 
@@ -166,50 +163,55 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 "test_iligaw_defer", "Iligaw", iligawChar, spawnsMirrorDecoy: true);
             EnemyDataSO aboData = CreateEnemyData(
                 "test_abo_defer", "Abo ng Simula", aboChar, ashesFirstSlot: true);
-            EnemyLessonSO aboLesson = CreateAboShapedLesson(aboData);
+            EnemyLessonSO iligawLesson = CreateIligawShapedLesson(iligawData);
 
             LevelConfigSO pendingConfig = CreateLevelConfig(
                 new List<EnemyDataSO> { iligawData, aboData },
-                new[] { aboLesson },
+                new[] { iligawLesson },
                 new List<FocusWordDefinition>());
             _gameManager.SetLevel(pendingConfig);
+            Assert.IsFalse(EnemyIntroductionProgress.HasBeenIntroduced(iligawData),
+                "Setup: Iligaw's authored lesson has not played yet.");
 
-            // --- Main case: Abo's lesson has not played yet, so Iligaw must defer. ---
-            Enemy iligaw = CreateEnemyShell("Iligaw_Deferred");
-            Assert.IsTrue(iligaw.Initialize(iligawData));
+            // --- Main case: Iligaw's lesson is pending, but Abo introduces on first appearance. ---
+            Enemy abo = CreateEnemyShell("Abo_WhileIligawLessonPending");
+            Assert.IsTrue(abo.Initialize(aboData));
 
-            Assert.AreEqual(IntroductionOutcome.DeferAndSuppress, iligaw.IntroductionOutcome,
-                "A type with no lesson of its own, spawned while the level's lesson is still "
-                + "pending, must defer rather than play its own card.");
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndSuppress, abo.IntroductionOutcome,
+                "Abo's first appearance must introduce him immediately even though Iligaw's "
+                + "lesson has not played.");
+            Assert.IsTrue(EnemyIntroductionProgress.HasBeenIntroduced(aboData),
+                "The first-appearance card must claim Abo's introduction.");
+            Assert.IsFalse(EnemyIntroductionProgress.HasBeenIntroduced(iligawData),
+                "Abo's first-appearance card must not wait for Iligaw's introduction.");
 
-            MirrorDecoyController decoy = iligaw.GetComponent<MirrorDecoyController>();
-            Assert.IsNotNull(decoy, "spawnsMirrorDecoy should attach MirrorDecoyController.");
-            Assert.IsTrue(decoy.IsSuppressedForIntroductionSpawn,
-                "Deferral must suppress the deferred type's own signature ability, not just "
-                + "withhold its card.");
+            AshFirstSlotController ash = abo.GetComponent<AshFirstSlotController>();
+            Assert.IsNotNull(ash, "ashesFirstSlot should attach AshFirstSlotController.");
+            Assert.IsTrue(ash.IsSuppressedForIntroductionSpawn,
+                "Abo's ability stays suppressed on its own introduction spawn.");
 
-            // --- Negative control: seed Iligaw as already met, with nothing else pending. ---
-            // Seeded directly through the progress store (not by letting a first spawn's card
-            // actually play) so this half of the test is isolated from the beat/coroutine machinery
-            // exercised elsewhere in this fixture.
-            Assert.IsTrue(EnemyIntroductionProgress.TryClaimIntroduction(iligawData),
-                "setup: seed Iligaw as already introduced for the control");
+            // Stop the card before the control spawn so it can prove its ability is armed without
+            // overlapping an active introduction.
+            _beat.enabled = false;
+            yield return null;
+            _beat.enabled = true;
+            yield return null;
 
             LevelConfigSO clearConfig = CreateLevelConfig(
-                new List<EnemyDataSO> { iligawData },
+                new List<EnemyDataSO> { aboData },
                 System.Array.Empty<EnemyLessonSO>(),
                 new List<FocusWordDefinition>());
             _gameManager.SetLevel(clearConfig);
 
-            Enemy iligawControl = CreateEnemyShell("Iligaw_Control");
-            Assert.IsTrue(iligawControl.Initialize(iligawData));
+            Enemy aboControl = CreateEnemyShell("Abo_Control");
+            Assert.IsTrue(aboControl.Initialize(aboData));
 
-            Assert.AreEqual(IntroductionOutcome.None, iligawControl.IntroductionOutcome,
-                "Negative control precondition: with nothing pending, and this type already met, "
+            Assert.AreEqual(IntroductionOutcome.None, aboControl.IntroductionOutcome,
+                "With nothing pending and this type already met, "
                 + "this must be an ordinary spawn.");
 
-            MirrorDecoyController controlDecoy = iligawControl.GetComponent<MirrorDecoyController>();
-            Assert.IsFalse(controlDecoy.IsSuppressedForIntroductionSpawn,
+            AshFirstSlotController controlAsh = aboControl.GetComponent<AshFirstSlotController>();
+            Assert.IsFalse(controlAsh.IsSuppressedForIntroductionSpawn,
                 "Negative control: with no lesson pending the ability must be ARMED. Without this "
                 + "case the suppression assertion above could be passing against a check that "
                 + "never actually fires.");

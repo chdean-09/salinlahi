@@ -10,7 +10,7 @@ public enum IntroductionOutcome
     /// <summary>Eight-beat lesson plays; the ability fires during it. Beat 2 depends on this.</summary>
     IntroduceAndArm = 2,
 
-    /// <summary>Held back so a pending lesson lands first. Ability suppressed until it does.</summary>
+    /// <summary>This type's pending lesson has not played yet. Its ability stays suppressed.</summary>
     DeferAndSuppress = 3,
 }
 
@@ -21,9 +21,9 @@ public enum IntroductionOutcome
 /// <para>
 /// <b>Two opposite rules live here and both are correct.</b> An ordinary declined claim leaves the
 /// ability ARMED: an ability with no card is a better failure than a card's worth of silence with
-/// the ability switched off. A claim declined because a lesson is pending SUPPRESSES: that decline
-/// is deliberate, and the whole point of the lesson is that the player meets an ability only after
-/// being told abilities exist. Do not collapse these two into one branch.
+/// the ability switched off. A claim declined because this type's own lesson is pending SUPPRESSES:
+/// that decline is deliberate, and the whole point of the lesson is that the player meets the
+/// ability only after being told abilities exist. Do not collapse these two into one branch.
 /// </para>
 /// </summary>
 public static class IntroductionDecision

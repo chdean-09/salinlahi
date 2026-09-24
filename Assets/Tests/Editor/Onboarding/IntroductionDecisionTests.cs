@@ -24,10 +24,10 @@ public class IntroductionDecisionTests
     }
 
     [Test]
-    public void DeclinedWhileALessonIsPending_DefersAndSuppresses()
+    public void DeclinedWhileItsOwnLessonIsPending_DefersAndSuppresses()
     {
-        // The 7.1 rule. Without it Iligaw spawns a mirror decoy before beat 4 has told the
-        // player abilities exist.
+        // A type whose own lesson is still pending keeps its ability suppressed until that lesson
+        // can run. Unrelated types do not feed this flag; their first appearances are independent.
         IntroductionOutcome outcome = IntroductionDecision.Resolve(
             claimAccepted: false, lessonArmsAbility: false, aLessonIsPending: true);
 

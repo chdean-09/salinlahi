@@ -7,10 +7,8 @@
 /// <see cref="TargetTextSlotMap"/>, <see cref="DrawTargetResolver"/> and
 /// <see cref="ActiveClueSelector"/>. <see cref="WaveCurveSO"/> is the inspector-facing carrier.
 ///
-/// Why an opening wave and not a single first-to-last line: Level 1's authored intervals are
-/// 6.0, 5.0, 4.5, 4.0, 3.5 and its delays 3.0 then 2.0. No straight line through five points
-/// gives that; an opening wave plus a straight ramp over the other four gives it exactly, and the
-/// golden test in WaveCurveGoldenTests holds this type to that.
+/// The opening wave has its own cadence; later waves use the authored ramp. This lets the three-
+/// and five-wave Ugat curves share one expansion rule.
 /// </summary>
 [System.Serializable]
 public struct WaveCurveShape

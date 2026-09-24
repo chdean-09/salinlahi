@@ -59,6 +59,7 @@ public sealed class ActiveClueDirector : MonoBehaviour
     private bool _frozen;
     private float _freezeDeadline;
     private bool _currentClueConsumed;
+    private readonly HashSet<long> _creditedSpawnSequences = new HashSet<long>();
 
     public static ActiveClueDirector Instance { get; private set; }
 
@@ -69,10 +70,10 @@ public sealed class ActiveClueDirector : MonoBehaviour
     public event Action<Enemy, Enemy> OnActiveClueChanged;
 
     /// <summary>
-    /// Fires once per clue instance, at the moment an accepted draw claims its credit
+    /// Fires once per real enemy spawn, at the moment an accepted draw claims its credit
     /// (SALIN-135). This is the at-accept "the word just got this symbol back" signal that the
-    /// HUD hangs its word-restoration cue on; once-ness comes from <see cref="TryConsumeClue"/>
-    /// rather than from any timing guard on the listener side.
+    /// HUD hangs its word-restoration cue on; both consume paths share the same per-spawn
+    /// credit guard rather than relying on timing in the listener.
     ///
     /// Deliberately a director-scoped event rather than an EventBus one: the presenter already
     /// tracks this director, and an instance event cannot survive a scene reload the way a
@@ -90,13 +91,9 @@ public sealed class ActiveClueDirector : MonoBehaviour
     /// only other thing it could infer from silence is a miss — and a shattered copy is the
     /// opposite of a miss. The player read the glyph correctly; the glyph was a lie.
     ///
-    /// <para><b>Coverage boundary, and it is deliberate.</b> This fires only where a copy's death
-    /// actually costs the player credit they would otherwise have had — that is, when the glyph
-    /// drawn was the marked clue's own. A copy struck on a glyph the mark does not carry took
-    /// nothing away, so there is no credit to withhold and nothing for this event to report. The
-    /// general case — every shattered copy wearing its own wording rather than a successful fill's
-    /// — belongs in the draw-feedback relation that CombatResolver publishes, because that is the
-    /// signal the feedback HUD words its prompts from. This event is the credit-side half of it.</para>
+    /// <para>This event covers the marked clue's glyph. Other false-copy draws are still denied
+    /// credit by <see cref="TryConsumeUnmarkedCarrier"/>; CombatResolver reports their outcome
+    /// through the draw-feedback relation so the HUD can say a copy shattered.</para>
     /// </summary>
     public event Action<Enemy> OnFalseCopyShattered;
 
@@ -149,6 +146,7 @@ public sealed class ActiveClueDirector : MonoBehaviour
     public void SetObjectiveSource(IClueObjectiveSource source)
     {
         _objectiveSource = source;
+        _creditedSpawnSequences.Clear();
     }
 
     public bool IsClueCombatActive =>
@@ -229,7 +227,8 @@ public sealed class ActiveClueDirector : MonoBehaviour
     /// </summary>
     public bool TryConsumeClue(Enemy enemy)
     {
-        if (enemy == null || enemy != _currentClue || _currentClueConsumed)
+        if (enemy == null || enemy != _currentClue || _currentClueConsumed
+            || _creditedSpawnSequences.Contains(enemy.SpawnSequence))
             return false;
 
         Enemy falseCopy = FindFalseCopyHoldingTheDraw(enemy);
@@ -243,9 +242,25 @@ public sealed class ActiveClueDirector : MonoBehaviour
         }
 
         _currentClueConsumed = true;
+        _creditedSpawnSequences.Add(enemy.SpawnSequence);
 
         // Raised from the single winning consume so the at-accept cue inherits the same
         // once-per-clue guarantee the objective credit has (SALIN-135).
+        OnActiveClueResolved?.Invoke(enemy);
+        return true;
+    }
+
+    /// <summary>
+    /// Credits a real carrier drawn while another glyph holds the mark. CombatResolver has
+    /// already selected this enemy as the draw's target; false copies never restore text.
+    /// </summary>
+    public bool TryConsumeUnmarkedCarrier(Enemy enemy)
+    {
+        if (enemy == null || enemy == _currentClue || enemy.IsDecoy
+            || !IsClueTargetable(enemy)
+            || !_creditedSpawnSequences.Add(enemy.SpawnSequence))
+            return false;
+
         OnActiveClueResolved?.Invoke(enemy);
         return true;
     }

@@ -244,8 +244,9 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// <see cref="IntroductionOutcome.None"/> leaves the ability armed, which is the safe failure:
     /// the player meets an ability with no card, rather than meeting an enemy whose ability is
     /// silently switched off forever. <see cref="IntroductionOutcome.DeferAndSuppress"/> is the
-    /// deliberate exception — the decline exists so a pending lesson lands first, so it suppresses
-    /// instead of arming. See <c>IntroductionDecision</c> for both rules together.
+    /// deliberate exception for this type's own pending lesson — its ability stays suppressed until
+    /// that lesson can run. A lesson for another type never delays this spawn. See
+    /// <c>IntroductionDecision</c> for both rules together.
     /// </para>
     /// </summary>
     public static IntroductionOutcome ResolveIntroduction(Enemy enemy, EnemyDataSO data)
@@ -260,75 +261,17 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     {
         EnemyLessonSO lesson = ResolveLesson(data);
         bool claimed = TryClaim(enemy, data, lesson);
+        bool thisTypeHasPendingLesson =
+            !claimed && lesson != null && !HasLessonHadItsRun(lesson);
         return IntroductionDecision.Resolve(
             claimAccepted: claimed,
             lessonArmsAbility: claimed && lesson != null && lesson.armAbilityOnIntroduction,
-            aLessonIsPending: !claimed && ResolvePendingLesson() != null);
+            aLessonIsPending: thisTypeHasPendingLesson);
     }
 
     /// <summary>The level's authored lesson for this type, or null.</summary>
     private EnemyLessonSO ResolveLesson(EnemyDataSO data) =>
         EnemyLessonLookup.Find(GameManager.CurrentLevelConfig, data);
-
-    /// <summary>
-    /// The level's authored lesson if it has not played yet, else null. A lesson whose enemy has
-    /// already been introduced is not pending, which is what lets deferral end.
-    /// </summary>
-    private EnemyLessonSO ResolvePendingLesson()
-    {
-        LevelConfigSO config = GameManager.CurrentLevelConfig;
-        if (config?.enemyLessons == null)
-            return null;
-
-        List<EnemyDataSO> roster = LevelRoster.BuildIntroducibleRoster(config);
-
-        for (int i = 0; i < config.enemyLessons.Length; i++)
-        {
-            EnemyLessonSO lesson = config.enemyLessons[i];
-            if (lesson?.enemy == null)
-                continue;
-
-            // A lesson for an enemy the level's wave table never spawns must not defer forever:
-            // ResolvePendingLesson only stops returning a lesson once its enemy has been
-            // introduced, and an enemy that never spawns is never introduced — which would wedge
-            // every other type on the level into permanent suppression.
-            if (!RosterContains(roster, lesson.enemy))
-                continue;
-
-            if (!HasLessonHadItsRun(lesson))
-                return lesson;
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Whether the roster contains this enemy type. Matches the same identity rule as
-    /// <see cref="EnemyLessonLookup.Find"/> — reference or case-insensitive <c>enemyID</c> — so a
-    /// pooled or domain-reloaded instance still matches its roster entry.
-    /// </summary>
-    private static bool RosterContains(List<EnemyDataSO> roster, EnemyDataSO enemy)
-    {
-        if (roster == null || enemy == null)
-            return false;
-
-        for (int i = 0; i < roster.Count; i++)
-        {
-            EnemyDataSO candidate = roster[i];
-            if (candidate == null)
-                continue;
-
-            if (candidate == enemy)
-                return true;
-
-            if (!string.IsNullOrEmpty(candidate.enemyID)
-                && string.Equals(candidate.enemyID, enemy.enemyID,
-                    System.StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
-
-        return false;
-    }
 
     /// <summary>
     /// Starts the beat for an enemy whose claim was accepted. Separate from the claim because
@@ -620,11 +563,9 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             return false;
         }
 
-        // Deferral. While this level's lesson is still pending, every other type waits: the rule
-        // that enemies have abilities is taught once, by the lesson, and a card that lands first
-        // would spend that first-meeting moment on an enemy the lesson did not choose.
-        if (lesson == null && s_instance != null && s_instance.ResolvePendingLesson() != null)
-            return false;
+        // A pending lesson only governs its own type. Other eligible types introduce themselves
+        // on their first spawn; WaveSpawner holds the spawn schedule while any card is playing, so
+        // these introductions remain sequential without waiting for one specific lesson enemy.
 
         // The beat's promise is that input stays live through it. Before the run has started
         // accepting drawings there is no such promise to keep, and the halt would read as a freeze.

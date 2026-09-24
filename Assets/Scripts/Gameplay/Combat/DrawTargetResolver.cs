@@ -21,8 +21,8 @@ using System.Collections.Generic;
 /// glyph the player can plainly read on a body on screen, so drawing it resolves here like any
 /// other carrier and competes for the kill on the same closest-to-base terms. The single-target
 /// winner is chosen with no knowledge of whether it is a copy — the consequence of striking one is
-/// decided downstream, where <see cref="ActiveClueDirector.TryConsumeClue"/> withholds the word's
-/// credit so the copy falls and the text does not advance.</para>
+/// decided downstream by the director's credit checks, which withhold restoration so the copy
+/// falls and the text does not advance.</para>
 ///
 /// <para><b>The multi-kill chain is the one place that does ask.</b> A copy earns the kill when it is
 /// the closest carrier, but it is not a legitimate member of a set: counted toward the chain

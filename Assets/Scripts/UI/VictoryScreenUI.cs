@@ -59,6 +59,7 @@ public class VictoryScreenUI : MonoBehaviour
     private bool _isEraFinalLevel;
 
     private bool _replayListenerBound;
+    private bool _showRequested;
 
     /// <summary>Gameplay HUD root, found by name at Show time — left unwired to keep
     /// the scene diffs out; null is a safe no-op in test scenes.</summary>
@@ -66,7 +67,10 @@ public class VictoryScreenUI : MonoBehaviour
 
     private void Awake()
     {
-        if (_panel != null) _panel.SetActive(false);
+        // In Gameplay.unity this component and _panel are the same object, authored inactive.
+        // The first Show() activates it and runs Awake re-entrantly, so preserve that request.
+        if (_panel != null && !_showRequested)
+            _panel.SetActive(false);
     }
 
     private void OnEnable()
@@ -129,6 +133,8 @@ public class VictoryScreenUI : MonoBehaviour
 
     public void Show()
     {
+        // Set before activation because activating an inactive panel can run Awake immediately.
+        _showRequested = true;
         if (_panel != null)
         {
             _panel.SetActive(true);

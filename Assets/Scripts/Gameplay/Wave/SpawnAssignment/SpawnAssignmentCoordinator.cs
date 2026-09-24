@@ -42,6 +42,7 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
     private const int GateStuckSpawnThreshold = 12;
 
     public SpawnGateRegistry Gates => _gates;
+    internal LevelConfigSO Level => _level;
 
     /// <summary>The flattened target slots, exposed read-only so gating is testable without reflection.</summary>
     public IReadOnlyList<SpawnSlot> Slots => _slots;
@@ -349,6 +350,43 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
     {
         if (_gates.Open(token))
             DebugLogger.Log($"SpawnAssignmentCoordinator: gate '{token}' resolved.");
+    }
+
+    /// <summary>Uses the same slot gates for draw credit as for spawn assignment.</summary>
+    public bool CanRestoreOccurrence(string occurrenceId)
+    {
+        if (string.IsNullOrEmpty(occurrenceId))
+            return false;
+
+        for (int index = 0; index < _slots.Count; index++)
+        {
+            SpawnSlot slot = _slots[index];
+            if (slot.OccurrenceId != occurrenceId)
+                continue;
+
+            if (!string.IsNullOrEmpty(slot.GateToken) && !_gates.IsOpen(slot.GateToken))
+                return false;
+
+            bool finale = slot.GateToken == SpawnGateRegistry.FinalWaveReached
+                || (_level?.spawnAssignmentPolicy?.gateFinalSlotToFinalWave == true
+                    && index == _slots.Count - 1);
+            if (finale)
+            {
+                if (!_gates.IsOpen(SpawnGateRegistry.FinalWaveReached))
+                    return false;
+
+                IReadOnlyList<bool> restored = BuildRestoredFlags();
+                for (int other = 0; other < restored.Count; other++)
+                {
+                    if (other != index && !restored[other])
+                        return false;
+                }
+            }
+
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>

@@ -279,9 +279,9 @@ public class Enemy : MonoBehaviour
         // signal for suppression. Three outcomes, not two: see IntroductionDecision — an
         // ordinarily declined claim still arms, because that is the safe failure: the player
         // meets an ability with no card, rather than meeting an enemy whose ability is silently
-        // switched off forever. A claim declined because a lesson is still pending is the
-        // exception and suppresses instead — that decline is deliberate, not a beat that
-        // couldn't be bothered.
+        // switched off forever. A claim declined because this type's own lesson is still pending is
+        // the exception and suppresses instead — that decline is deliberate, not a beat that
+        // couldn't be bothered. A different type's lesson never blocks this enemy's first card.
         _introductionOutcome = EnemyIntroductionBeat.ResolveIntroduction(this, _data);
         _isIntroductionSpawn = _introductionOutcome == IntroductionOutcome.IntroduceAndSuppress
             || _introductionOutcome == IntroductionOutcome.IntroduceAndArm;

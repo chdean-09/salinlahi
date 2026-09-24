@@ -1,6 +1,6 @@
 /// <summary>
 /// Player-facing wording for the drawing-feedback states that are not plain success or failure:
-/// a syllable needed later, a syllable already restored, a syllable whose carrier turned out to be
+/// a syllable still gated, a syllable already restored, a syllable whose carrier turned out to be
 /// a false copy, and a drawing refused for accuracy.
 ///
 /// <para>Kept apart from <see cref="DrawingFeedbackVocabulary"/>, which words the accept/reject
@@ -15,10 +15,9 @@
 public static class DrawFeedbackVocabulary
 {
     /// <summary>
-    /// A target syllable whose slot comes after the cursor. States the ORDER, not a mistake: the
-    /// player recalled a real syllable of the real word and the only thing wrong was the turn.
+    /// A target syllable whose occurrence is still gated by a level beat.
     /// </summary>
-    public const string LaterNeeded = "That one comes later — the text fills in order.";
+    public const string LaterNeeded = "That syllable is needed later.";
 
     /// <summary>A duplicate of a slot already restored.</summary>
     public const string AlreadyFilled = "That one is already restored.";

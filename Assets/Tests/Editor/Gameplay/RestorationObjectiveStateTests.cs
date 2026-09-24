@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 
 namespace Salinlahi.Tests.Editor.Gameplay
@@ -43,6 +44,133 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
+        public void InaNa_RestoresBeforeI_AndAmaCanRestoreBeforeInaCompletes()
+        {
+            BaybayinCharacterSO i = Symbol("I", "symbol.test.ina.i");
+            BaybayinCharacterSO na = Symbol("NA", "symbol.test.ina.na");
+            BaybayinCharacterSO a = Symbol("A", "symbol.test.ama.a");
+            BaybayinCharacterSO ma = Symbol("MA", "symbol.test.ama.ma");
+            RestorationObjectiveDefinition definition = Definition(
+                Unit("ina", Target("ina.i", i, 0), Target("ina.na", na, 1)),
+                Unit("ama", Target("ama.a", a, 2), Target("ama.ma", ma, 3)));
+            var state = new RestorationObjectiveState();
+            state.Configure(definition);
+
+            Assert.AreEqual("ina.na", state.TryRestore(na.stableId).OccurrenceId);
+            Assert.AreEqual("ama.a", state.TryRestore(a.stableId).OccurrenceId);
+            Assert.IsTrue(state.IsOccurrenceRestored("ina.na"));
+            Assert.IsTrue(state.IsOccurrenceRestored("ama.a"));
+            Assert.AreEqual("ina.i", state.TryRestore(i.stableId).OccurrenceId);
+            Assert.AreEqual("ama.ma", state.TryRestore(ma.stableId).OccurrenceId);
+            Assert.IsTrue(state.IsComplete);
+        }
+
+        [Test]
+        public void LevelFourFinale_MustWaitForLastWaveAndEveryOtherOccurrence()
+        {
+            LevelConfigSO level = AssetDatabase.LoadAssetAtPath<LevelConfigSO>(
+                "Assets/ScriptableObjects/Levels/Level4_Config.asset");
+            Assert.IsNotNull(level);
+            var objectiveObject = new GameObject("restoration objective test");
+            var coordinatorObject = new GameObject("spawn assignment test");
+            _created.Add(objectiveObject);
+            _created.Add(coordinatorObject);
+            RestorationObjectiveController objective =
+                objectiveObject.AddComponent<RestorationObjectiveController>();
+            SpawnAssignmentCoordinator coordinator =
+                coordinatorObject.AddComponent<SpawnAssignmentCoordinator>();
+            objective.Configure(level);
+            coordinator.ApplyLevel(level, null);
+            Assert.IsTrue(coordinator.IsActive);
+            Assert.AreEqual(SpawnGateRegistry.FinalWaveReached,
+                coordinator.Slots[5].GateToken);
+            const string finale = "level.ugat.04.sentence.na.03";
+            Assert.IsFalse(coordinator.CanRestoreOccurrence(finale));
+            Assert.IsFalse(objective.CanRestoreOccurrence(finale));
+
+            Assert.IsTrue(objective.TryRestore("symbol.ei").Applied);
+            Assert.IsTrue(objective.TryRestore("symbol.na").Applied);
+            Assert.IsTrue(objective.TryRestore("symbol.a").Applied);
+            Assert.IsTrue(objective.TryRestore("symbol.na").Applied);
+            Assert.IsFalse(objective.TryRestore("symbol.na").Applied,
+                "The finale occurrence must wait before the last wave.");
+
+            coordinator.OpenGate(SpawnGateRegistry.FinalWaveReached);
+            Assert.IsFalse(objective.TryRestore("symbol.na").Applied,
+                "The last wave alone must not release the finale while other slots remain.");
+            Assert.IsTrue(objective.TryRestore("symbol.ma").Applied);
+            Assert.AreEqual(finale, objective.TryRestore("symbol.na").OccurrenceId);
+            Assert.IsTrue(objective.IsComplete);
+        }
+
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(3)]
+        [TestCase(4)]
+        [TestCase(5)]
+        public void FirstFiveLevels_RestoreEveryNonFinalOccurrenceInAnyOrder(int levelNumber)
+        {
+            LevelConfigSO level = AssetDatabase.LoadAssetAtPath<LevelConfigSO>(
+                $"Assets/ScriptableObjects/Levels/Level{levelNumber}_Config.asset");
+            Assert.IsNotNull(level);
+            var objectiveObject = new GameObject("restoration objective test");
+            var coordinatorObject = new GameObject("spawn assignment test");
+            _created.Add(objectiveObject);
+            _created.Add(coordinatorObject);
+            RestorationObjectiveController objective =
+                objectiveObject.AddComponent<RestorationObjectiveController>();
+            SpawnAssignmentCoordinator coordinator =
+                coordinatorObject.AddComponent<SpawnAssignmentCoordinator>();
+            objective.Configure(level);
+            coordinator.ApplyLevel(level, null);
+
+            IReadOnlyList<SpawnSlot> slots = coordinator.Slots;
+            Assert.Greater(slots.Count, 1);
+            int finaleIndex = slots.Count - 1;
+            for (int index = finaleIndex - 1; index >= 0; index--)
+            {
+                RestorationProgressResult result = objective.TryRestore(slots[index].SymbolStableId);
+                Assert.IsTrue(result.Applied,
+                    $"Level {levelNumber} slot {index} failed to restore out of order.");
+            }
+
+            Assert.AreEqual(finaleIndex, objective.State.RestoredTargetCount);
+            Assert.IsFalse(objective.IsComplete);
+            if (levelNumber == 1)
+                coordinator.OpenGate(SpawnGateRegistry.AboAshShown);
+            Assert.IsFalse(objective.TryRestore(slots[finaleIndex].SymbolStableId).Applied,
+                "The last occurrence must wait until the final wave.");
+
+            coordinator.OpenGate(SpawnGateRegistry.FinalWaveReached);
+            Assert.AreEqual(slots[finaleIndex].OccurrenceId,
+                objective.TryRestore(slots[finaleIndex].SymbolStableId).OccurrenceId);
+            Assert.IsTrue(objective.IsComplete);
+        }
+
+        [Test]
+        public void DrawFeedback_ReportsAnUnrestoredLaterOccurrenceAsARealFill()
+        {
+            BaybayinCharacterSO i = Symbol("I", "symbol.test.feedback.i");
+            BaybayinCharacterSO na = Symbol("NA", "symbol.test.feedback.na");
+            BaybayinCharacterSO a = Symbol("A", "symbol.test.feedback.a");
+            RestorationObjectiveDefinition definition = Definition(
+                Unit("ina", Target("ina.i", i, 0), Target("ina.na", na, 1)),
+                Unit("ama", Target("ama.a", a, 2)));
+            var state = new RestorationObjectiveState();
+            state.Configure(definition);
+            var slots = new List<TargetTextSlotMap.Slot>();
+            TargetTextSlotMap.Build(definition, state, slots);
+
+            Assert.AreEqual(DrawTextRelation.FillsCursorSlot,
+                TargetTextSlotMap.Classify(slots, na.characterID, out int naSlot, out _));
+            Assert.AreEqual(1, naSlot);
+            Assert.AreEqual(DrawTextRelation.FillsCursorSlot,
+                TargetTextSlotMap.Classify(slots, a.characterID, out int aSlot, out _));
+            Assert.AreEqual(2, aSlot);
+        }
+
+
+        [Test]
         public void NextTargetSymbol_ReportsOnlyTheFirstIncompleteOrderedOccurrence()
         {
             BaybayinCharacterSO ma = Symbol("MA", "symbol.test.next.ma");
@@ -61,7 +189,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
-        public void LaterUnitSymbol_DoesNotBypassAnIncompleteEarlierUnit()
+        public void LaterUnitSymbol_RestoresWhileAnEarlierUnitIsIncomplete()
         {
             BaybayinCharacterSO ma = Symbol("MA", "symbol.test.ma");
             BaybayinCharacterSO ba = Symbol("BA", "symbol.test.ba");
@@ -74,8 +202,9 @@ namespace Salinlahi.Tests.Editor.Gameplay
 
             RestorationProgressResult result = state.TryRestore(ma.stableId);
 
-            Assert.IsFalse(result.Applied);
-            Assert.AreEqual(0, state.RestoredTargetCount);
+            Assert.IsTrue(result.Applied);
+            Assert.AreEqual("mata.ma", result.OccurrenceId);
+            Assert.AreEqual(1, state.RestoredTargetCount);
             Assert.AreEqual("bata", state.ActiveUnitId);
         }
 
@@ -122,7 +251,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
-        public void ExplicitCompletionOrder_BlocksALaterSymbolUntilTheEarlierOccurrenceIsRestored()
+        public void ExplicitCompletionOrder_DoesNotBlockALaterDrawnSymbol()
         {
             BaybayinCharacterSO ba = Symbol("BA", "symbol.test.ba.blocked");
             BaybayinCharacterSO ta = Symbol("TA", "symbol.test.ta.blocked");
@@ -134,11 +263,10 @@ namespace Salinlahi.Tests.Editor.Gameplay
             var state = new RestorationObjectiveState();
             state.Configure(definition);
 
-            Assert.IsFalse(state.TryRestore(ba.stableId).Applied,
-                "A later completion-order symbol must not bypass the active earlier target.");
-            Assert.AreEqual(0, state.RestoredTargetCount);
-            Assert.AreEqual("bata.ta", state.TryRestore(ta.stableId).OccurrenceId);
             Assert.AreEqual("bata.ba", state.TryRestore(ba.stableId).OccurrenceId);
+            Assert.AreEqual(1, state.RestoredTargetCount);
+            Assert.AreEqual("bata.ta", state.TryRestore(ta.stableId).OccurrenceId);
+            Assert.IsTrue(state.IsComplete);
         }
 
         [Test]
@@ -210,9 +338,8 @@ namespace Salinlahi.Tests.Editor.Gameplay
             var state = new RestorationObjectiveState();
             state.Configure(definition);
 
-            Assert.IsFalse(state.TryRestore(ei.stableId, "value.i").Applied);
-            Assert.AreEqual("spoken.e", state.TryRestore(ei.stableId, "value.e").OccurrenceId);
             Assert.AreEqual("spoken.i", state.TryRestore(ei.stableId, "value.i").OccurrenceId);
+            Assert.AreEqual("spoken.e", state.TryRestore(ei.stableId, "value.e").OccurrenceId);
         }
 
         private BaybayinCharacterSO Symbol(string characterId, string stableId)
