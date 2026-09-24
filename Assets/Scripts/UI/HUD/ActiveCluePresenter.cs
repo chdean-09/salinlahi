@@ -109,14 +109,14 @@ public sealed class ActiveCluePresenter : MonoBehaviour
              + "that left a sensible margin on a small box leaves a huge one on a large box.")]
     [SerializeField, Range(0.3f, 1f)] private float _slotGlyphFill = 0.84f;
 
-    [Tooltip("Share of an almanac PNG's square that actually carries ink.\n\n"
-             + "The almanac art is authored on a 320x320 canvas with the glyph drawn small and "
-             + "centred: the opaque pixels of A, NA and MA span 42-44% of the width. Fitting that "
-             + "sprite to the box therefore fills the box with mostly-transparent art and the glyph "
-             + "reads at about 40% of its frame, which is the complaint. The glyph rect is scaled up "
-             + "by fill/ink so it is the INK, not the PNG's empty margin, that meets the frame. "
-             + "Applies only to almanac art; the outline and badge fallbacks are drawn tight and are "
-             + "fitted to the box directly.")]
+    [Tooltip("Fallback ink share for almanac art that has no measured value in GlyphInkMetrics.\n\n"
+             + "The almanac PNGs are authored on a 320x320 canvas with the glyph drawn small and "
+             + "centred, and the inked share differs per glyph (roughly 40-72% of the frame — "
+             + "GlyphInkMetrics carries the measured values). Fitting that sprite to the box "
+             + "fills the box with mostly-transparent art, so the glyph rect is scaled up by "
+             + "fill/ink and it is the INK, not the PNG's empty margin, that meets the frame. "
+             + "Applies only to almanac art; the badge fallback is drawn tight and is fitted to "
+             + "the box directly.")]
     [SerializeField, Range(0.1f, 1f)] private float _almanacGlyphInkFraction = 0.44f;
 
     [Tooltip("Frame colour of a slot that is still waiting for its symbol.")]
@@ -375,6 +375,15 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private readonly List<RectTransform> _railSlotAnchors = new List<RectTransform>();
 
     private GameObject _railRoot;
+
+    // Cached players for the cutscene check the rail's visibility funnel runs. The rail
+    // lives in the same bottom band as the cutscene caption and its scrim, and it cannot
+    // change while gameplay is dialogue-paused — so while any CutscenePlayer is playing
+    // the rail stays hidden rather than fighting the caption for the strip.
+    private CutscenePlayer[] _cutscenePlayers;
+    private FocusWordPreviewController[] _focusWordPreviews;
+    private SymbolLearningCardController[] _symbolCards;
+    private bool _suppressedByIntroModal;
     private TextMeshProUGUI _objectiveContextText;
     private GameObject _runtimeObjectiveContextObject;
     private float _objectiveContextRowHeight;
@@ -629,7 +638,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             return false;
 
         RepaintRail(forceRestored: true);
-        _railRoot.SetActive(true);
+        _railRoot.SetActive(!IsAnyCutscenePlaying());
 
         if (_railFlashRoutine != null)
         {
@@ -662,6 +671,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         BindReplayAudioButton();
         EventBus.OnPronunciationRequested += HandlePronunciationRequested;
         EventBus.OnEnemySpawned += HandleEnemySpawned;
+        EventBus.OnCutsceneStarted += HandleCutsceneTransitioned;
+        EventBus.OnCutsceneComplete += HandleCutsceneTransitioned;
     }
 
     private void Start()
@@ -692,6 +703,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
         EventBus.OnPronunciationRequested -= HandlePronunciationRequested;
         EventBus.OnEnemySpawned -= HandleEnemySpawned;
+        EventBus.OnCutsceneStarted -= HandleCutsceneTransitioned;
+        EventBus.OnCutsceneComplete -= HandleCutsceneTransitioned;
         DestroyActiveClueMark();
         DestroyRuntimeWordRestoredLabel();
 
@@ -911,6 +924,16 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         WatchAshOnset();
         ReconcileSlotFlights();
 
+        // Intro modals raise no events, so the rail polls their IsPresenting and reruns
+        // the visibility funnel on the edge — cheap because the flag only changes once
+        // per modal open/close, and the presenter arrays are tiny.
+        bool modalPresenting = IsAnyIntroModalPresenting();
+        if (modalPresenting != _suppressedByIntroModal)
+        {
+            _suppressedByIntroModal = modalPresenting;
+            UpdateRestorationProgress();
+        }
+
         if (_activeClueMark == null)
             return;
 
@@ -1101,6 +1124,67 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private void HandlePronunciationRequested(BaybayinCharacterSO character)
     {
         _lastPronunciationTime = Time.unscaledTime;
+    }
+
+    /// <summary>
+    /// A cutscene takes the bottom of the screen for its narration band, which is the rail's
+    /// band — the caption landed on the slot labels and neither line survived the collision.
+    /// Both events just re-run the visibility funnel: the gate reads the players' live
+    /// IsPlaying state, so overlapping plays and a missed Started event cannot leave the
+    /// flag stale in either direction.
+    /// </summary>
+    private void HandleCutsceneTransitioned()
+    {
+        UpdateRestorationProgress();
+    }
+
+    /// <summary>
+    /// True while any CutscenePlayer in the scene is playing. Inactive objects are included
+    /// and the lookup is retried while the cache is empty: the cutscene canvas can still be
+    /// switched off the first time the rail's visibility is evaluated, and an empty cache
+    /// frozen from that moment would leave the gate permanently open.
+    /// </summary>
+    private bool IsAnyCutscenePlaying()
+    {
+        if (_cutscenePlayers == null || _cutscenePlayers.Length == 0)
+            _cutscenePlayers = FindObjectsByType<CutscenePlayer>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+        for (int i = 0; i < _cutscenePlayers.Length; i++)
+        {
+            if (_cutscenePlayers[i] != null && _cutscenePlayers[i].IsPlaying)
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Same gate as <see cref="IsAnyCutscenePlaying"/> for the intro modals (focus-word
+    /// preview, symbol learning card): while one is up, its dimmed overlay owns the screen
+    /// and the rail's labels would ghost through the parchment. Both are queried live
+    /// rather than tracked — a rail armed while a modal is already up never saw an open
+    /// event, and empty caches are re-found because the controllers are created lazily.
+    /// </summary>
+    private bool IsAnyIntroModalPresenting()
+    {
+        if (_focusWordPreviews == null || _focusWordPreviews.Length == 0)
+            _focusWordPreviews = FindObjectsByType<FocusWordPreviewController>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < _focusWordPreviews.Length; i++)
+        {
+            if (_focusWordPreviews[i] != null && _focusWordPreviews[i].IsPresenting)
+                return true;
+        }
+
+        if (_symbolCards == null || _symbolCards.Length == 0)
+            _symbolCards = FindObjectsByType<SymbolLearningCardController>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < _symbolCards.Length; i++)
+        {
+            if (_symbolCards[i] != null && _symbolCards[i].IsPresenting)
+                return true;
+        }
+        return false;
     }
 
     /// <summary>
@@ -2225,7 +2309,10 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             return;
 
         bool isAlmanacArt = symbol != null && sprite != null && sprite == symbol.almanacSprite;
-        float inkFraction = isAlmanacArt ? Mathf.Max(0.01f, _almanacGlyphInkFraction) : 1f;
+        bool isOutlineArt = !isAlmanacArt && symbol != null && sprite == symbol.glyphOutlineSprite;
+        float inkFraction = isAlmanacArt
+            ? GlyphInkMetrics.ForAlmanac(symbol, Mathf.Max(0.01f, _almanacGlyphInkFraction))
+            : isOutlineArt ? GlyphInkMetrics.OutlineFraction : 1f;
         float scale = Mathf.Max(0.01f, _slotGlyphFill) / inkFraction;
 
         // Centred, sized as a share of the slot, rather than stretched with an absolute inset: the
@@ -2270,7 +2357,9 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         bool shouldShow = IsClueCombatArmed
             && _level != null
             && _level.activeClueRestorationEnabled
-            && HasRestorationWords;
+            && HasRestorationWords
+            && !IsAnyCutscenePlaying()
+            && !_suppressedByIntroModal;
 
         if (!shouldShow)
         {

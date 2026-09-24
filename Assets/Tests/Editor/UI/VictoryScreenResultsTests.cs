@@ -235,6 +235,115 @@ namespace Salinlahi.Tests.Editor.UI
         }
 
         // ------------------------------------------------------------------
+        // Structured results readout — star row, score, framed stats panel.
+        // Built by PresentResultsSummary from LevelResultsViewData; runtime-built
+        // under the panel for the same zero-scene-edit reason as the replay button.
+        // ------------------------------------------------------------------
+
+        [Test]
+        public void PresentResultsSummary_BuildsStarRowScoreAndStatsPanel_ExactlyOnce()
+        {
+            CreateProgressManager();
+            VictoryScreenUI screen = CreateScreen();
+
+            screen.PresentResultsSummary(Data(stars: 2, heartsRemaining: 2, heartsMax: 3));
+            screen.PresentResultsSummary(Data(stars: 3, heartsRemaining: 3, heartsMax: 3));
+
+            GameObject panel = Panel(screen);
+            // TEMP DISABLED (victory screen simplification): star row and score
+            // readout are intentionally not rendered; their names are absent.
+            foreach (string name in new[]
+                     {
+                         // VictoryScreenUI.RuntimeStarRowName,
+                         // VictoryScreenUI.RuntimeScoreTextName,
+                         VictoryScreenUI.RuntimeStatsPanelName,
+                     })
+            {
+                int count = 0;
+                foreach (Transform child in panel.GetComponentsInChildren<Transform>(true))
+                    if (child.name == name)
+                        count++;
+                Assert.AreEqual(1, count,
+                    "'" + name + "' must be built exactly once. ShowVictoryScreen runs on " +
+                    "every completion path, so a duplicate build would stack invisibly.");
+            }
+        }
+
+        // TEMP DISABLED (victory screen simplification): the star row is not
+        // rendered and every assertion below is star-specific. Restore with the
+        // star row.
+        // [Test]
+        public void PresentResultsSummary_RendersTheAttemptsStarsAsIcons()
+        {
+            CreateProgressManager();
+            VictoryScreenUI screen = CreateScreen();
+
+            screen.PresentResultsSummary(Data(stars: 2, heartsRemaining: 2, heartsMax: 3));
+
+            Transform row = Panel(screen).transform.Find(VictoryScreenUI.RuntimeStarRowName);
+            Assert.IsNotNull(row, "The star row was not built under the victory panel.");
+            Assert.AreEqual(3, row.childCount, "The star row must always show all three slots.");
+
+            int filled = 0;
+            foreach (Transform star in row)
+            {
+                var image = star.GetComponent<Image>();
+                Assert.IsNotNull(image, star.name + " carries no Image.");
+                bool earned = image.sprite != null
+                    ? image.sprite.name.Contains("full")
+                    : image.color.r > 0.5f && image.color.g > 0.4f;
+                if (earned)
+                    filled++;
+            }
+            Assert.AreEqual(2, filled, "A two-star run must fill exactly two star icons.");
+        }
+
+        [Test]
+        public void PresentResultsSummary_RendersHeartsAsIconsAndStatsAsText()
+        {
+            CreateProgressManager();
+            VictoryScreenUI screen = CreateScreen();
+
+            screen.PresentResultsSummary(Data(stars: 3, heartsRemaining: 2, heartsMax: 3,
+                hintsUsed: 1, hintPenalty: 25));
+
+            Transform stats = Panel(screen).transform.Find(VictoryScreenUI.RuntimeStatsPanelName);
+            Assert.IsNotNull(stats, "The stats panel was not built.");
+
+            // The hearts row moved out of the stats frame to the vacated star band.
+            Transform hearts = Panel(screen).transform.Find("HeartsRow");
+            Assert.IsNotNull(hearts, "The hearts row was not built under the victory panel.");
+            Assert.AreEqual(3, hearts.childCount,
+                "Three heart slots render for a three-heart level.");
+
+            // TEMP DISABLED (victory screen simplification): hint lines hidden —
+            // the stats text is only read by the commented asserts below.
+            // var statsText = stats.Find("StatsText").GetComponent<TMP_Text>();
+            // StringAssert.Contains("Hints 1", statsText.text);
+            // StringAssert.Contains("Hint cost -25", statsText.text,
+            //     "The emergency-hint penalty must render when it removed score points.");
+        }
+
+        [Test]
+        public void PresentResultsSummary_OffersNoAccuracyReadout()
+        {
+            CreateProgressManager();
+            VictoryScreenUI screen = CreateScreen();
+
+            screen.PresentResultsSummary(Data(stars: 3, heartsRemaining: 3, heartsMax: 3));
+
+            foreach (TMP_Text text in
+                     Panel(screen).GetComponentsInChildren<TMP_Text>(includeInactive: true))
+            {
+                string lower = text.text.ToLowerInvariant();
+                Assert.IsFalse(lower.Contains("accuracy"),
+                    "R1: no accuracy figure reaches the player. Found in: " + text.text);
+                Assert.IsFalse(lower.Contains("%"),
+                    "R1: the percentage readouts were the accuracy figures. Found in: " + text.text);
+            }
+        }
+
+        // ------------------------------------------------------------------
         // OWNER RULING R1 (2026-09-13) + D-006.
         // ------------------------------------------------------------------
 
@@ -268,6 +377,20 @@ namespace Salinlahi.Tests.Editor.UI
         private static LevelResults Results(int stars)
         {
             return new LevelResults(new Dictionary<string, float>(), stars);
+        }
+
+        private static LevelResultsViewData Data(
+            int stars, int heartsRemaining, int heartsMax,
+            int hintsUsed = 0, int hintPenalty = 0)
+        {
+            return new LevelResultsViewData
+            {
+                Stars = stars,
+                HeartsRemaining = heartsRemaining,
+                HeartsMax = heartsMax,
+                HintsUsed = hintsUsed,
+                HintPenaltyScorePoints = hintPenalty,
+            };
         }
 
         private VictoryScreenUI CreateScreen()

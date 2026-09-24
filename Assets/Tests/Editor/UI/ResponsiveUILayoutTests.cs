@@ -206,7 +206,8 @@ namespace Salinlahi.Tests.Editor.UI
 
             FocusWordPreviewController.ApplyParchmentLayout(panel, preview, continueButton);
 
-            Assert.AreEqual(new Vector2(560f, 520f), panel.sizeDelta);
+            Assert.AreEqual(ScrollPanelArt.ScrollArea.min, panel.anchorMin);
+            Assert.AreEqual(ScrollPanelArt.ScrollArea.max, panel.anchorMax);
             AssertAnchorsInside(preview.rectTransform, ScrollPanelArt.FullSafeArea);
             AssertAnchorsInside(continueButton.GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
             Assert.GreaterOrEqual(preview.fontSizeMin, UITextScale.AutoSizeFloor);
