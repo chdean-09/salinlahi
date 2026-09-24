@@ -1193,8 +1193,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     /// back. Before this the only "Restored:" surface was the end-of-level summary, so a player
     /// mid-defense never saw the point of the symbol they had just drawn.
     ///
-    /// Fired from ActiveClueDirector.TryConsumeClue, so it is already exactly-once per clue and
-    /// an echoed recognition cannot double it.
+    /// Fired by the director's marked or unmarked consume path, so it is already once per
+    /// real carrier and an echoed recognition cannot double it.
     /// </summary>
     private void HandleActiveClueResolved(Enemy clue)
     {

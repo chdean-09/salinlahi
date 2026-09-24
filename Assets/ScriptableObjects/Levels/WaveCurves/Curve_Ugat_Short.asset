@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fa6b2535bda7444ebfa37f690d7bfa21, type: 3}
   m_Name: Curve_Ugat_Short
   m_EditorClassIdentifier:
-  waveCount: 4
+  waveCount: 3
   openingEnemyCount: 2
   openingSpawnInterval: 3.5
   openingWaveStartDelay: 1.5

@@ -275,6 +275,45 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 "Correct recognition resolves against the closest eligible carrier rather than requiring the marked enemy.");
         }
 
+        [UnityTest]
+        public IEnumerator DrawingAnUnmarkedRealCarrier_CreditsItsRestorationOnce()
+        {
+            EnemyDataSO markedData = CreateEnemyData();
+            markedData.maxHealth = 3;
+            Enemy marked = CreateEnemyAt(markedData, y: 2f);
+
+            EnemyDataSO otherData = CreateEnemyData();
+            otherData.maxHealth = 3;
+            otherData.assignedCharacter = CreateTestCharacter("NA", "symbol.na");
+            Enemy other = CreateEnemyAt(otherData, y: 9f);
+
+            ActiveClueDirector director = CreateDirector(clueCombatActive: true);
+            director.Reevaluate();
+            Assert.That(director.CurrentClue, Is.EqualTo(marked));
+
+            int credited = 0;
+            Enemy creditedCarrier = null;
+            director.OnActiveClueResolved += carrier =>
+            {
+                credited++;
+                creditedCarrier = carrier;
+            };
+
+            GameObject resolverGo = new GameObject("CombatResolver_UnmarkedCredit_Test");
+            resolverGo.AddComponent<CombatResolver>();
+            _objectsToDestroy.Add(resolverGo);
+            yield return null;
+
+            EventBus.RaiseCharacterRecognized("NA");
+            EventBus.RaiseCharacterRecognized("NA");
+            yield return new WaitForSeconds(0.2f);
+
+            Assert.That(credited, Is.EqualTo(1),
+                "Drawing a visible real character must credit restoration even when another glyph is marked.");
+            Assert.That(creditedCarrier, Is.EqualTo(other));
+            Assert.That(director.CurrentClue, Is.EqualTo(marked));
+        }
+
         [Test]
         public void CachePausedRun_OrdersEnemiesByDistanceToBase()
         {

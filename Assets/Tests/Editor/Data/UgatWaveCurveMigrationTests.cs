@@ -33,14 +33,14 @@ namespace Salinlahi.Tests.Editor.Data
         [TestCase(2)]
         [TestCase(3)]
         [TestCase(4)]
-        public void MigratedShortUgatLevel_ResolvesFourWavesCarryingItsWholeRoster(int levelNumber)
+        public void MigratedShortUgatLevel_ResolvesThreeWavesCarryingItsWholeRoster(int levelNumber)
         {
             LevelConfigSO level = Load(levelNumber);
 
             List<WaveDefinition> waves = level.waves;
 
-            Assert.AreEqual(4, waves.Count);
-            CollectionAssert.AreEqual(new[] { 2, 4, 6, 7 }, waves.ConvertAll(w => w.enemyCount));
+            Assert.AreEqual(3, waves.Count);
+            CollectionAssert.AreEqual(new[] { 2, 4, 7 }, waves.ConvertAll(w => w.enemyCount));
             for (int i = 0; i < waves.Count; i++)
             {
                 Assert.IsFalse(waves[i].isIntermissionWave);
@@ -75,6 +75,9 @@ namespace Salinlahi.Tests.Editor.Data
 
             Assert.IsNotEmpty(level.AuthoredWaves);
             Assert.IsFalse(level.UsesWaveCurve);
+            Assert.AreEqual(3, level.waves.Count);
+            CollectionAssert.AreEqual(new[] { 2, 4, 7 },
+                level.waves.ConvertAll(w => w.enemyCount));
         }
 
         [TestCase(15)]

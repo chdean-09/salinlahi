@@ -329,15 +329,17 @@ public class CombatResolver : MonoBehaviour
 
         PublishTextRelation(relation, characterID, relationSlotIndex, cursorSlotIndex, primaryTarget);
 
-        // Objective credit follows the GLYPH, not the enemy instance. Once any carrier is a legal
-        // target, the closest carrier of the clue's glyph is often not the marked enemy itself;
-        // keying credit to instance identity would silently drop progress for a draw that was
-        // correct. Consumed before the pronunciation-lead coroutine because recognition can fire
-        // twice inside that window and once-ness is the director's guard.
+        // The mark does not dictate restoration order. The drawn real carrier earns its own
+        // glyph's credit; for the marked glyph, preserve the existing false-copy check and
+        // once-per-clue behavior. Consume before the pronunciation lead so an echo cannot
+        // restore the same enemy twice.
         bool matchesClueGlyph = clue != null
                                 && clue.Character != null
                                 && clue.Character.characterID == characterID;
-        bool creditsObjective = matchesClueGlyph && director.TryConsumeClue(clue);
+        bool creditsObjective = matchesClueGlyph
+            ? director.TryConsumeClue(clue)
+            : director.TryConsumeUnmarkedCarrier(primaryTarget);
+        Enemy creditedCarrier = matchesClueGlyph ? clue : primaryTarget;
 
         if (primaryTarget != null && primaryTarget.Character != null)
             EventBus.RaisePronunciationRequested(primaryTarget.Character);
@@ -359,11 +361,12 @@ public class CombatResolver : MonoBehaviour
         }
 
         if (creditsObjective && ProgressManager.Instance != null
-            && !string.IsNullOrEmpty(clue.Character.stableId))
+            && creditedCarrier != null && creditedCarrier.Character != null
+            && !string.IsNullOrEmpty(creditedCarrier.Character.stableId))
         {
             ActiveCluePresenter presenter = ResolvePresenter();
             ProgressManager.Instance.LevelEvidence.RecordAttempt(
-                contentId: clue.Character.stableId,
+                contentId: creditedCarrier.Character.stableId,
                 contentKind: LearningContentKind.Symbol,
                 dimension: MasteryDimension.Form,
                 success: true,
@@ -399,7 +402,8 @@ public class CombatResolver : MonoBehaviour
             TargetTextSlotMap.Build(
                 presenter.RestorationObjective.State.Definition,
                 presenter.RestorationObjective.State,
-                _slotBuffer);
+                _slotBuffer,
+                presenter.RestorationObjective.CanRestoreOccurrence);
         }
         else
         {

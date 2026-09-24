@@ -182,10 +182,28 @@ public sealed class SpawnAssignmentDirector
         _window.Clear();
         for (int i = 0; i < _slots.Count && _window.Count < _policy.activeSlotWindow; i++)
         {
-            if (!IsRestored(request, i))
+            if (!IsRestored(request, i) && FinalePrerequisitesMet(request, i))
                 _window.Add(i);
         }
     }
+
+    private bool FinalePrerequisitesMet(SpawnAssignmentRequest request, int slotIndex)
+    {
+        if (_slots[slotIndex].GateToken != SpawnGateRegistry.FinalWaveReached
+            && !IsFinaleSlot(slotIndex))
+            return true;
+
+        for (int i = 0; i < _slots.Count; i++)
+        {
+            if (i != slotIndex && !IsRestored(request, i))
+                return false;
+        }
+
+        return true;
+    }
+
+    private bool IsFinaleSlot(int slotIndex) =>
+        _policy.gateFinalSlotToFinalWave && slotIndex == _slots.Count - 1;
 
     private void BuildEligible(SpawnAssignmentRequest request)
     {
@@ -194,6 +212,8 @@ public sealed class SpawnAssignmentDirector
         {
             SpawnSlot slot = _slots[_window[i]];
             if (IsGateOpen(request, slot.GateToken)
+                && (!IsFinaleSlot(_window[i])
+                    || IsGateOpen(request, SpawnGateRegistry.FinalWaveReached))
                 && IsSymbolAllowedByWave(request, slot.SymbolStableId))
                 _eligible.Add(_window[i]);
         }
@@ -582,9 +602,26 @@ public sealed class SpawnAssignmentDirector
             if (IsRestored(request, i))
                 continue;
 
-            if (!IsGateOpen(request, _slots[i].GateToken))
+            bool blocked = !IsGateOpen(request, _slots[i].GateToken)
+                || (IsFinaleSlot(i)
+                    && (!IsGateOpen(request, SpawnGateRegistry.FinalWaveReached)
+                        || !FinalePrerequisitesMet(request, i)));
+            if (blocked && !HasOtherUnrestoredOccurrence(request, i))
                 _excluded.Add(_slots[i].SymbolStableId);
         }
+    }
+
+    private bool HasOtherUnrestoredOccurrence(SpawnAssignmentRequest request, int slotIndex)
+    {
+        for (int i = 0; i < _slots.Count; i++)
+        {
+            if (i != slotIndex
+                && !IsRestored(request, i)
+                && _slots[i].SymbolStableId == _slots[slotIndex].SymbolStableId)
+                return true;
+        }
+
+        return false;
     }
 
     private void AddCandidate(SpawnAssignmentRequest request, string symbolId)

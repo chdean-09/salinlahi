@@ -22,19 +22,15 @@ public enum DrawAccuracyVerdict
 }
 
 /// <summary>
-/// Where a correctly drawn syllable sits relative to the target text's cursor. This is the
-/// distinction the spawn-assignment filler policy depends on: filler enemies deliberately carry
-/// syllables needed LATER, so drawing one is correct recall that does not advance the text. Without
-/// a relation this specific, every one of those draws would have to be rendered as the same
-/// undifferentiated "nothing happened", and a policy built on later-needed filler would spend the
-/// whole level telling the player they were wrong for being right.
+/// How a drawn syllable relates to the target text. Any eligible unfinished occurrence restores;
+/// a separately gated occurrence waits for its level beat.
 /// </summary>
 public enum DrawTextRelation
 {
     /// <summary>No target text to classify against — a legacy level, or a level with no focus words.</summary>
     Unknown,
 
-    /// <summary>The cursor slot's syllable. The text advances; this is the ordinary success.</summary>
+    /// <summary>An eligible unfinished occurrence. The text advances.</summary>
     FillsCursorSlot,
 
     /// <summary>
@@ -55,7 +51,7 @@ public enum DrawTextRelation
     /// </summary>
     FalseCopyShattered,
 
-    /// <summary>An unfilled slot that comes after the cursor. Correct recall, out of order.</summary>
+    /// <summary>An unfinished occurrence still withheld by a level gate.</summary>
     LaterNeeded,
 
     /// <summary>A slot already restored earlier in this level.</summary>

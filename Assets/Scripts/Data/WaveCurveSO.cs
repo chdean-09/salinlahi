@@ -6,8 +6,8 @@ using UnityEngine;
 /// against its own allowedCharacters and allowedEnemyTypes, so the roster is written once on the
 /// level and never restated per wave.
 ///
-/// The numbers live in <see cref="WaveCurveShape"/>; this asset only carries them. Curve_Ugat is
-/// seeded from Level 1's authored waves and WaveCurveGoldenTests holds it to that.
+/// The numbers live in <see cref="WaveCurveShape"/>; this asset only carries them. Curve_Ugat
+/// supplies Level 5's five waves, while Curve_Ugat_Short supplies Levels 2-4's three waves.
 /// </summary>
 [CreateAssetMenu(fileName = "Curve_", menuName = "Salinlahi/Wave Curve")]
 public class WaveCurveSO : ScriptableObject

@@ -6,17 +6,9 @@ using UnityEngine;
 namespace Salinlahi.Tests.Editor.Data
 {
     /// <summary>
-    /// Tasks 1-5 built the gated-finale engine, validator, escort budget and data opt-in for
-    /// Levels 2-4, but every existing test constructs its own synthetic level config. Nothing
-    /// asserted that the SHIPPED campaign actually opts in: the feature could ship switched off
-    /// in <c>CampaignConfig_RevisedV1.asset</c> and all of those tests would still pass, because
-    /// none of them ever loads that asset.
-    ///
-    /// This fixture closes that hole directly against the shipped campaign. Levels 2-4 must carry
-    /// <see cref="SpawnAssignmentPolicy.gateFinalSlotToFinalWave"/> and an unbounded escort budget
-    /// (<c>maxOverflowBatches == 0</c>, read through <see cref="SpawnAssignmentPolicy.OverflowIsUnbounded"/>).
-    /// Level 1 remains outside the gated-finale scope (tutorial pacing), while Level 5 now carries
-    /// an explicit authored gate and bounded escort budget for its mastery paragraph.
+    /// Checks finale gates and escort budgets against the shipped campaign assets. Levels 1-4
+    /// use unbounded escorts so a missed draw cannot exhaust the shortened defense. Level 5
+    /// retains its bounded paragraph pacing.
     /// </summary>
     [TestFixture]
     public sealed class GatedFinaleCampaignOptInTests
@@ -138,20 +130,16 @@ namespace Salinlahi.Tests.Editor.Data
         }
 
         [TestCase("level.ugat.01", "Level 1")]
-        public void OutOfScopeLevel_StaysUngatedWithDefaultEscortBudget(string stableId, string label)
+        public void LevelOne_UsesFinaleGateWithUnboundedEscorts(string stableId, string label)
         {
             CampaignConfigSO campaign = LoadCampaign();
             LevelConfigSO level = GetLevel(campaign, stableId);
 
-            Assert.IsFalse(level.spawnAssignmentPolicy.gateFinalSlotToFinalWave,
-                $"{label} ({stableId}) now has gateFinalSlotToFinalWave = true. The gated-finale " +
-                "change is scoped away from Level 1's tutorial pacing, so it must not pick up " +
-                "this behavior as a side effect of authoring the gated campaign levels.");
+            Assert.IsTrue(level.spawnAssignmentPolicy.gateFinalSlotToFinalWave,
+                $"{label} ({stableId}) must withhold its final MA occurrence until wave 3.");
 
-            Assert.AreEqual(DefaultMaxOverflowBatches, level.spawnAssignmentPolicy.maxOverflowBatches,
-                $"{label} ({stableId})'s maxOverflowBatches must stay the historical default of " +
-                $"{DefaultMaxOverflowBatches}. Changing it here would alter escort behavior for a " +
-                "level this feature was never meant to touch.");
+            Assert.AreEqual(0, level.spawnAssignmentPolicy.maxOverflowBatches,
+                $"{label} ({stableId}) needs escorts until the gated occurrence is restored.");
         }
 
         [Test]
