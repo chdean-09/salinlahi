@@ -19,7 +19,8 @@ The post-test Console snapshot showed 586 logs, 98 warnings, and 13 errors; thos
 not fully classified. A separate Play Mode run of the authored Bootstrap scene, which transitioned
 to MainMenu, showed 131 logs, one warning (`Account API did not become accessible within 30 seconds`),
 and zero errors. The manual Level 1–15/device acceptance matrix remains `NOT RUN`. The current
-complete Play Mode suite is not green, so the branch is not ready to merge.
+complete Play Mode suite is not green; the subsequent merge was explicitly authorized despite these
+unresolved checks and must not be read as a passing verification result.
 
 ---
 

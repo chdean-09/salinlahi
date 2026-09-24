@@ -37,8 +37,9 @@ run actually completed.
 * Manual clean Levels 1–15 progression, defeat/retry/abort/replay, save/load transitions, terminal
   screenshots, and physical touch/device behavior — `NOT RUN`.
 * The full Edit Mode gate passes, but the full Play Mode gate fails. The authored Bootstrap-to-MainMenu
-  Console smoke check had zero errors; the broader campaign/manual gates remain unverified. PR #254
-  therefore remains a draft and must not be merged until the required gates clear.
+  Console smoke check had zero errors; the broader campaign/manual gates remain unverified. After
+  reviewing these results, the user explicitly directed that PR #254 be merged anyway. That decision
+  does not change or waive the recorded failed/unrun verification results; follow-up QA remains needed.
 
 ## Batch 2 reconciliation
 
