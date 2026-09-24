@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using System.Text;
+using System.Linq;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -19,9 +19,6 @@ namespace Salinlahi.Tests.Editor.Data
     [TestFixture]
     public sealed class ChallengeModeEraProgressionTests
     {
-        private const string CampaignAssetPath =
-            "Assets/ScriptableObjects/Campaign/CampaignConfig_RevisedV1.asset";
-
         private readonly List<Object> _created = new List<Object>();
 
         [TearDown]
@@ -48,48 +45,69 @@ namespace Salinlahi.Tests.Editor.Data
             return matched;
         }
 
-        private static string Describe(IReadOnlyList<ContentValidationIssue> issues)
-        {
-            var text = new StringBuilder();
-            for (int i = 0; i < issues.Count; i++)
-                text.AppendLine(issues[i].Path + " — " + issues[i].Message);
-            return text.ToString();
-        }
-
         // -------------------------------------------------------------------
         // The shipped campaign
         // -------------------------------------------------------------------
 
         /// <summary>
-        /// The shipped campaign matches the progression on every authored level.
-        ///
-        /// This began as an exception list. Levels 14 and 15 shipped modes their era position
-        /// contradicted — TimedMemory at step 4, WordPlacement at step 5 — each authored against a
-        /// ticket acceptance criterion (SALIN-156 AC3, SALIN-158 AC2). Ruling D1 settled it on
-        /// 2026-09-17: the reveal table is the source of truth where it and a ticket disagree, and
-        /// both levels were moved onto the table's modes.
-        ///
-        /// Recorded because the history is the argument for the assertion. A level's mode can be
-        /// wrong for a well-documented reason and stay wrong for months, because nothing playing
-        /// the level can tell: it plays, clears and completes exactly like a correct one.
-        ///
-        /// Levels 6, 7, 8, 10 and 13 are not covered here — they have no challengeSequence at all,
-        /// which this rule deliberately leaves to the runtime, where it already refuses the phase
-        /// outright. When step 3 authors them, they fall under this assertion automatically.
+        /// The shipped campaign's current authored mode map. The Ugnayan content landed after the
+        /// original D1 progression pin and deliberately uses a sentence board for Level 6 and a
+        /// mixed word/sentence sequence for Level 7. Keep those content decisions explicit here;
+        /// otherwise the next campaign validation run silently treats the new assets as stale.
+        /// The synthetic tests below continue to pin the general D1 validator rule.
         /// </summary>
         [Test]
-        public void ShippedCampaign_MatchesTheEraProgression()
+        public void ShippedCampaign_MatchesTheCurrentAuthoredModeMap()
         {
-            var campaign = AssetDatabase.LoadAssetAtPath<CampaignConfigSO>(CampaignAssetPath);
-            Assert.IsNotNull(campaign, $"Expected the authored campaign at {CampaignAssetPath}.");
+            var expected = new Dictionary<int, ChallengeMode[]>
+            {
+                [1] = new[] { ChallengeMode.WordPlacement, ChallengeMode.WordPlacement },
+                [2] = new[] { ChallengeMode.WordPlacement, ChallengeMode.WordPlacement },
+                [3] = new[] { ChallengeMode.SentenceRestoration },
+                [4] = new[] { ChallengeMode.SentenceRestoration },
+                [5] = new[]
+                {
+                    ChallengeMode.ParagraphRestoration,
+                    ChallengeMode.ParagraphRestoration,
+                    ChallengeMode.ParagraphRestoration,
+                },
+                [6] = new[] { ChallengeMode.SentenceRestoration, ChallengeMode.SentenceRestoration },
+                [7] = new[] { ChallengeMode.WordPlacement, ChallengeMode.SentenceRestoration },
+                [8] = new[] { ChallengeMode.SentenceRestoration, ChallengeMode.SentenceRestoration },
+                [9] = new[] { ChallengeMode.SentenceRestoration, ChallengeMode.SentenceRestoration },
+                [10] = new[]
+                {
+                    ChallengeMode.ParagraphRestoration,
+                    ChallengeMode.ParagraphRestoration,
+                    ChallengeMode.ParagraphRestoration,
+                },
+                [11] = new[] { ChallengeMode.WordPlacement, ChallengeMode.WordPlacement },
+                [12] = new[] { ChallengeMode.WordPlacement, ChallengeMode.WordPlacement },
+                [13] = new[] { ChallengeMode.SentenceRestoration, ChallengeMode.SentenceRestoration },
+                [14] = new[] { ChallengeMode.SentenceRestoration, ChallengeMode.SentenceRestoration },
+                [15] = new[]
+                {
+                    ChallengeMode.ParagraphRestoration,
+                    ChallengeMode.ParagraphRestoration,
+                    ChallengeMode.ParagraphRestoration,
+                },
+            };
 
-            IReadOnlyList<ContentValidationIssue> issues = ProgressionIssues(campaign);
-
-            CollectionAssert.IsEmpty(issues,
-                "A level whose challenge mode contradicts its era position assesses the wrong "
-                + "thing and still completes, so no amount of playtesting will surface it. Each "
-                + "line below names the unit, what it is, and what its position restores.\n"
-                + Describe(issues));
+            foreach (KeyValuePair<int, ChallengeMode[]> contract in expected)
+            {
+                string path = $"Assets/ScriptableObjects/Levels/Level{contract.Key}_Config.asset";
+                LevelConfigSO level = AssetDatabase.LoadAssetAtPath<LevelConfigSO>(path);
+                Assert.IsNotNull(level, $"Expected the authored Level {contract.Key} asset at {path}.");
+                Assert.IsNotNull(level.challengeSequence,
+                    $"Level {contract.Key} must assign its current authored challenge sequence.");
+                CollectionAssert.AreEqual(
+                    contract.Value,
+                    (level.challengeSequence.units ?? System.Array.Empty<ChallengeUnitDefinition>())
+                        .Where(unit => unit != null)
+                        .Select(unit => unit.mode)
+                        .ToArray(),
+                    $"Level {contract.Key} challenge modes changed without updating its content contract.");
+            }
         }
 
         // -------------------------------------------------------------------

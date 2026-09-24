@@ -1,10 +1,7 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEditor;
-using UnityEngine;
 
 namespace Salinlahi.Tests.Editor.Gameplay
 {
@@ -19,19 +16,18 @@ namespace Salinlahi.Tests.Editor.Gameplay
         // AssetDatabase needs a path under Assets/, and TearDown removes it.
         private const string TempAssetPath = "Assets/__TestBossPhaseLegacy.asset";
 
-        // YAML blob using ONLY the old field names, shaped like a BossConfig
-        // asset authored before the SALIN-98 rename. Every value here must
-        // differ from the matching BossPhase field initializer — otherwise a
-        // dropped [FormerlySerializedAs] leaves the field at its default and
-        // the assert still passes, which is exactly the blind spot this
-        // fixture exists to cover.
-        private const string LegacyPhaseYaml =
-            "summonDuration: 42\n" +
-            "summonInterval: 7\n" +
-            "summonBurstMin: 1\n" +
-            "summonBurstMax: 2\n" +
-            "requiredCharacterCount: 3\n" +
-            "vulnerabilityTimer: 20\n";
+        // Use a real imported BossConfig asset as the fixture source instead of creating a
+        // ScriptableObject and then mutating its still-loaded YAML. Unity may serialize that
+        // live object back over the mutation during ImportAsset, which makes a migration test
+        // read today's defaults rather than a historical pre-rename asset.
+        private const string SourceBossConfigPath =
+            "Assets/ScriptableObjects/Enemies/Boss Configs/BossConfig_Superintendent.asset";
+
+        [SetUp]
+        public void DeleteStaleTempAssetBeforeImport()
+        {
+            AssetDatabase.DeleteAsset(TempAssetPath);
+        }
 
         // Runs even when an assert fails, so a red test cannot leave the
         // scratch asset behind for someone to commit by accident.
@@ -44,22 +40,14 @@ namespace Salinlahi.Tests.Editor.Gameplay
         [Test]
         public void BossPhase_LoadedFromLegacyYaml_MigratesRenamedFields()
         {
-            // Build a host ScriptableObject so we can drive Unity's serializer
-            // (BossPhase itself isn't a SO — it's a [Serializable] class
-            // embedded in BossConfigSO.phases).
-            BossConfigSO host = ScriptableObject.CreateInstance<BossConfigSO>();
-            host.phases = new List<BossPhase> { new BossPhase() };
-            AssetDatabase.CreateAsset(host, TempAssetPath);
-
-            // Rewrite the asset's on-disk YAML to use the old field names so
-            // we exercise the FormerlySerializedAs migration on reload.
-            string raw = File.ReadAllText(TempAssetPath);
-            File.WriteAllText(TempAssetPath, ReplacePhasesWithLegacyKeys(raw));
+            string source = File.ReadAllText(SourceBossConfigPath);
+            string historical = RewriteAsPreRenameFixture(source);
+            File.WriteAllText(TempAssetPath, historical);
             AssetDatabase.ImportAsset(TempAssetPath, ImportAssetOptions.ForceSynchronousImport);
 
             BossConfigSO reloaded = AssetDatabase.LoadAssetAtPath<BossConfigSO>(TempAssetPath);
             Assert.IsNotNull(reloaded, "Reloaded asset must not be null.");
-            Assert.AreEqual(1, reloaded.phases.Count, "Phase count must round-trip.");
+            Assert.AreEqual(1, reloaded.phases.Count, "The one-phase historical fixture must round-trip.");
 
             BossPhase p = reloaded.phases[0];
             Assert.AreEqual(42f, p.summonPhaseDuration, "summonDuration must migrate to summonPhaseDuration.");
@@ -68,26 +56,35 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.AreEqual(2, p.minionsPerSummonMax, "summonBurstMax must migrate to minionsPerSummonMax.");
         }
 
-        // Swaps the entire serialized `phases:` list for one phase written with
-        // only the pre-rename keys. Replacing the whole block is the point: a
-        // post-rename key left alongside its legacy counterpart wins during
-        // deserialization, so the migration would never actually be exercised.
-        private static string ReplacePhasesWithLegacyKeys(string yaml)
+        // Converts the checked-in current asset into a freshly imported historical fixture. All
+        // four renamed fields are replaced everywhere, so no post-rename key remains alongside a
+        // legacy key. The first phase values are deliberately different from BossPhase defaults;
+        // a removed FormerlySerializedAs then fails loudly instead of passing by coincidence.
+        private static string RewriteAsPreRenameFixture(string yaml)
         {
-            int phasesIndex = yaml.IndexOf("\n  phases:", StringComparison.Ordinal);
-            Assert.GreaterOrEqual(phasesIndex, 0, "Could not locate the phases list in the asset YAML.");
+            Assert.IsNotEmpty(yaml, "The checked-in BossConfig fixture could not be read.");
 
-            int listStart = yaml.IndexOf('\n', phasesIndex + 1);
-            Assert.GreaterOrEqual(listStart, 0, "Phases list is missing a following field.");
+            string historical = yaml
+                .Replace("summonPhaseDuration:", "summonDuration:")
+                .Replace("delayBetweenSummons:", "summonInterval:")
+                .Replace("minionsPerSummonMin:", "summonBurstMin:")
+                .Replace("minionsPerSummonMax:", "summonBurstMax:")
+                .Replace("m_Name: BossConfig_Superintendent", "m_Name: __TestBossPhaseLegacy");
 
-            // The list ends at the next sibling field: a two-space-indented line
-            // that is neither a "  - " list item nor a "    " continuation line.
-            Match sibling = Regex.Match(yaml.Substring(listStart), "\n  [A-Za-z_]");
-            Assert.IsTrue(sibling.Success, "Could not locate the field following the phases list.");
+            historical = ReplaceFirst(historical, "summonDuration: 30", "summonDuration: 42");
+            historical = ReplaceFirst(historical, "summonInterval: 5", "summonInterval: 7");
+            historical = ReplaceFirst(historical, "summonBurstMin: 2", "summonBurstMin: 1");
+            historical = ReplaceFirst(historical, "summonBurstMax: 3", "summonBurstMax: 2");
 
-            return yaml.Substring(0, phasesIndex)
-                + "\n  phases:\n  - " + LegacyPhaseYaml.Replace("\n", "\n    ").TrimEnd()
-                + yaml.Substring(listStart + sibling.Index);
+            return historical;
+        }
+
+        private static string ReplaceFirst(string value, string oldValue, string newValue)
+        {
+            int index = value.IndexOf(oldValue, StringComparison.Ordinal);
+            Assert.GreaterOrEqual(index, 0, "Fixture did not contain expected text: " + oldValue);
+            return value.Substring(0, index) + newValue
+                + value.Substring(index + oldValue.Length);
         }
     }
 }

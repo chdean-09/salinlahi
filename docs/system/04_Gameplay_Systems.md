@@ -1,7 +1,7 @@
 # 04 — Gameplay Systems
 **Project:** Salinlahi
-**Version:** 2.7
-**Date:** 2026-08-27
+**Version:** 2.8
+**Date:** 2026-09-22
 
 **Owner:** Gameplay Developer (Jon Wayne Cabusbusan / Chad Andrada)
 
@@ -142,6 +142,15 @@ transform.Translate(Vector2.down * _speed * Time.deltaTime, Space.World);
 [EVIDENCE: Assets/Scripts/Gameplay/Enemy/EnemyPool.cs]
 [EVIDENCE: Assets/Scripts/Gameplay/Enemy/EnemyPool.cs — Unity `ObjectPool<Enemy>` implementation]
 
+### 3.3 Current QA contract
+
+The current campaign contract requires every non-intermission wave in Levels 6–14 to carry each
+symbol used by that level's focus words and at least one natural enemy carrier for that symbol.
+Level 10 is not a boss; Level 15 is the sole authored campaign boss. `WaveTerminalPolicy` is the
+pure policy seam for final-wave, terminal-range, and overflow predicates; `WaveManager` remains the
+owner of coroutines, spawning, and pooled-object cleanup. These are current implementation facts,
+not a claim that the Unity Test Runner or manual level runs have completed.
+
 ---
 
 ## 4. Combat Resolution
@@ -243,8 +252,10 @@ generation and invalidates any stale outcome from the previous journey.
   3. Spawn `enemyCount` enemies at intervals of `spawnInterval` seconds.
   4. Enemy type and character drawn from `WaveDefinition.characters` / `WaveDefinition.enemyTypes` (subsets of the level rosters).
   5. When all enemies in wave are defeated or return to pool: advance to next wave.
-- After all waves complete: fire `EventBus.RaiseLevelComplete()`.
-- Boss levels (5, 10, 15): when `LevelConfigSO.bossConfig != null`, `WaveManager.RunBossEncounter` activates the boss immediately and the level's `waves` list is ignored. `OnLevelComplete` is raised by `BossController` (not `WaveManager`) when the boss outro finishes.
+- After all waves complete, `WaveManager` reports defense completion to the active flow; the
+  `LevelFlowController`/`LevelFlowMachine` owns the atomic-save and results route. Bare legacy
+  hosts retain the direct completion event path.
+- Boss levels are data-driven: when `LevelConfigSO.bossConfig != null`, `WaveManager.RunBossEncounter` activates the boss immediately and the level's `waves` list is ignored. In the current campaign only Level 15 has this reference; Levels 5 and 10 use their authored mixed-wave restoration content. `OnLevelComplete` is raised by `BossController` (not `WaveManager`) when a boss outro finishes.
 
 ### 6.2 WaveDefinition Fields Used by WaveManager
 
@@ -299,8 +310,8 @@ The following enemy types are specified in the GDD §4.3 and the Team README §9
 
 | Boss ID | Era | Level | Mechanic | Status |
 |---------|-----|-------|----------|--------|
-| `"el_inquisidor"` | Spanish | 5 | Phase-based. Can summon Soldado reinforcements during phases. | Implemented (`[Enemy] Boss_ElInquisidor.prefab`) |
-| `"superintendent"` | American | 10 | Phase-based. Decree ability temporarily scrambles nearby Baybayin labels. | PLANNED |
+| `"el_inquisidor"` | Spanish | Legacy / unreferenced | Phase-based. Can summon Soldado reinforcements during phases. | Retained legacy asset; not referenced by the current campaign |
+| `"superintendent"` | American | Legacy / unreferenced | Phase-based. Decree ability temporarily scrambles nearby Baybayin labels. | Retained legacy asset; Level 10 is non-boss |
 | `"kadiliman"` | Final | 15 | Phase-based formless shadow entity. Four phases walking through the three eras and then combining them; drawing all 17 characters defeats it. | ✅ Authored — see the encounter table below |
 
 > **Kadiliman encounter, authored 2026-08-31 (SALIN-207).** It previously shipped as a stub: 1 phase,

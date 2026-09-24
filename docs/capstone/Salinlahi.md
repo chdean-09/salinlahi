@@ -15,7 +15,15 @@ Cabusbusan, Jon Wayne
 Millan, Jeff Andre  
 Tejada, Ian Clyde
 
-March 2026  
+March 2026
+
+> **Current implementation reconciliation (2026-09-22):** This March 2026 study report is retained
+> as the research and product-intent authority. For live implementation facts, the current Unity
+> assets and scripts supersede historical examples: the campaign has fifteen authored levels,
+> Level 10 is non-boss, Level 15 is the sole authored campaign boss, and flow orchestration uses
+> direct owners alongside EventBus signals. Current QA status and blockers are recorded in
+> `docs/audit/IMPLEMENTATION_STATUS-2026-09-22.md`.
+
 **Table of Contents**
 
 **[Chapter 1	1](#chapter-1)**

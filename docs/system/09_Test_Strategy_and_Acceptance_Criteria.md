@@ -1,8 +1,26 @@
 # 09 — Test Strategy and Acceptance Criteria
 **Project:** Salinlahi
-**Version:** 2.1
-**Date:** 2026-08-27
+**Version:** 2.2
+**Date:** 2026-09-24
 **Owner:** Whole Team (QA responsibility shared)
+
+### 1.0.1 Current verification status
+
+The historical measured totals below are retained as historical evidence. After syncing the current
+`dev` changes in merge `f6f4690f`, Unity 6000.3.9f1 Test Runner completed the full Edit Mode suite:
+1,491/1,491 passed. The latest full Play Mode run was `FAILED` at 228/231. Two pause lifecycle
+tests hit Unity Input System's `Already added touchscreen` assertion, and
+`Salin69AcceptanceTests.PhaseFailure_TimerExpires_NoHPLossRepeatsSamePhase` observed
+`OnBossVulnerabilityEnabled` twice instead of once. An isolated rerun of those three tests passed
+3/3, but that does not clear the full-suite failures. The structured victory-panel assertions were
+updated for `StatsPanel/StatsText` after `dev` replaced the legacy results-summary object.
+
+The post-test Console snapshot showed 586 logs, 98 warnings, and 13 errors; those error entries were
+not fully classified. A separate Play Mode run of the authored Bootstrap scene, which transitioned
+to MainMenu, showed 131 logs, one warning (`Account API did not become accessible within 30 seconds`),
+and zero errors. The manual Level 1–15/device acceptance matrix remains `NOT RUN`. The current
+complete Play Mode suite is not green; the subsequent merge was explicitly authorized despite these
+unresolved checks and must not be read as a passing verification result.
 
 ---
 

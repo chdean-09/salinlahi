@@ -1,7 +1,7 @@
 # 05 — Data Contracts and ScriptableObjects
 **Project:** Salinlahi
-**Version:** 3.0
-**Date:** 2026-08-31
+**Version:** 3.1
+**Date:** 2026-09-22
 **Owner:** Chad Andrada (Product Owner / Designer)
 
 ---
@@ -53,6 +53,16 @@ the editor-only adapter and does not repair or save assets. SALIN-170 exposes
 compatibility metadata but performs no save I/O or migration; save conversion remains
 the SALIN-171 boundary. The complete production three-era/15-level asset set remains
 SALIN-172 authoring work.
+
+### 1.2 Current authored-campaign contract
+
+The live Level 6–15 assets now carry stable identity, two focus words, cumulative pools, rewards,
+challenge sequences, and final restoration values. Levels 6–14 are wave levels with natural
+carriers for every focus symbol in each authored non-intermission wave. Level 10 has no
+`bossConfig`; Level 15 has the campaign boss and no flow segments. `Batch2ProductionAssetContractTests`
+is the executable contract for these serialized facts, including dormant challenge assets that the
+runtime validation gate may not execute yet. It does not replace Unity import/compile or Play Mode
+evidence.
 
 For a revised level, `challengePrototypeEnabled` is the authoring-validation gate. When
 false, `challengeSequence` may be null or may contain dormant staged authoring and

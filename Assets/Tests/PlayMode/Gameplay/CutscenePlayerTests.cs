@@ -309,7 +309,10 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             TMP_Text promptText = GetPrivateField<TMP_Text>(_player, "_continuePromptText");
             Assert.GreaterOrEqual(promptText.fontSizeMax, 50f, "Prompt should be large enough to read over cutscene art.");
             Assert.GreaterOrEqual(promptText.fontSizeMin, 34f, "Prompt should not auto-size down into caption text.");
-            Assert.NotNull(promptText.GetComponent<Outline>(), "Prompt needs an outline for contrast over bright cutscene frames.");
+            Assert.IsTrue(promptText.fontMaterial.IsKeywordEnabled("OUTLINE_ON"),
+                "Prompt material should enable a TMP SDF outline for contrast over bright cutscene frames.");
+            Assert.Greater(promptText.fontMaterial.GetFloat("_OutlineWidth"), 0f,
+                "Prompt material should carry a non-zero TMP SDF outline width.");
         }
 
         [UnityTest]

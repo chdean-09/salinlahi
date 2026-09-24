@@ -162,10 +162,11 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             ConfigureDeterministicTime();
             yield return null;
 
+            const float fadeOutDuration = 0.18f;
             Enemy enemy = CreateEnemy(
                 isPhaser: true,
                 phaserInterval: 0.02f,
-                phaserFadeOutDuration: 0.18f,
+                phaserFadeOutDuration: fadeOutDuration,
                 phaserFadeOutPulseCount: 4,
                 phaserFadeOutPulseAmplitude: 1f);
             PhaserEnemy phaser = enemy.GetComponent<PhaserEnemy>();
@@ -180,8 +181,8 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
 
             Assert.Less(renderer.color.a, 0.999f, "Pulse/fade should begin within the expected window.");
 
-            float sampleStart = Time.realtimeSinceStartup;
-            while (Time.realtimeSinceStartup - sampleStart < 0.12f)
+            float sampleDeadline = Time.realtimeSinceStartup + (fadeOutDuration * 0.9f);
+            while (phaser.IsVisible && Time.realtimeSinceStartup < sampleDeadline)
             {
                 float alpha = renderer.color.a;
                 minAlpha = Mathf.Min(minAlpha, alpha);
@@ -199,6 +200,10 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                     previousDirection = direction;
 
                 previousAlpha = alpha;
+
+                if (minAlpha < 0.95f && maxAlpha > 0.98f && significantDirectionChanges >= 2)
+                    break;
+
                 yield return null;
             }
 

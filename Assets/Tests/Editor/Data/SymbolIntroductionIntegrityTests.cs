@@ -151,37 +151,17 @@ namespace Salinlahi.Tests.Editor.Data
         }
 
         /// <summary>
-        /// The known live defect recorded in docs/design/gated-finale-levels-2-4.md Section 4:
-        /// Char_RA declares firstIntroductionLevelId level.pamana.03, but no shipped level carries
-        /// an Instruction requirement for RA anywhere, while RA sits in the cumulativeSymbolPool of
-        /// Levels 13-15. Pinned to RA specifically -- an Assert.IsEmpty would be wrong here (RA is
-        /// a real, known, un-fixed content gap) and an unpinned "some offenders exist" assertion
-        /// would be too weak to catch a NEW drift landing somewhere else in the campaign.
+        /// The authored campaign currently has no symbol-introduction integrity offenders.
         /// </summary>
         [Test]
-        public void ShippedCampaign_OnlyOffenderIsRa()
+        public void ShippedCampaign_HasNoSymbolIntroductionOffenders()
         {
             var campaign = AssetDatabase.LoadAssetAtPath<CampaignConfigSO>(CampaignAssetPath);
             Assert.IsNotNull(campaign, $"Expected the authored campaign at {CampaignAssetPath}.");
 
             List<string> offenders = Offenders(campaign);
-            Assert.IsNotEmpty(offenders,
-                "the shipped campaign is expected to report the known RA introduction gap; an "
-                + "empty result here means the gap was fixed (update this test) or the check "
-                + "regressed silently.");
-
-            var offendingSymbolIds = new SortedSet<string>(System.StringComparer.Ordinal);
-            foreach (string offender in offenders)
-            {
-                foreach (Match match in Regex.Matches(offender, "symbol\\.[a-z]+"))
-                    offendingSymbolIds.Add(match.Value);
-            }
-
-            CollectionAssert.AreEqual(new[] { "symbol.ra" }, offendingSymbolIds,
-                "the shipped campaign's symbol-introduction-integrity offenders drifted from the "
-                + "known RA-only gap. If this is a NEW, real content drift, that is exactly what "
-                + "this check exists to catch -- do not widen this assertion without fixing the "
-                + "content or confirming the new offender is understood. Actual:\n"
+            Assert.IsEmpty(offenders,
+                "The shipped campaign must not contain symbol-introduction integrity offenders.\n"
                 + string.Join("\n", offenders));
         }
     }

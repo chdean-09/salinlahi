@@ -272,10 +272,12 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             CollectionAssert.AreEqual(new[] { "memory.e2e.ugat01" },
                 controller.LastRewardGrant.UnlockedMemoryIds.ToList());
 
-            // The results summary names the restored words.
-            GameObject summary = GameObject.Find("[Runtime] ResultsSummary");
-            Assert.IsNotNull(summary);
-            StringAssert.Contains("INA", summary.GetComponent<TMPro.TextMeshProUGUI>().text);
+            // The structured results panel names the restored words.
+            GameObject statsPanel = GameObject.Find(VictoryScreenUI.RuntimeStatsPanelName);
+            Assert.IsNotNull(statsPanel);
+            Transform statsText = statsPanel.transform.Find("StatsText");
+            Assert.IsNotNull(statsText);
+            StringAssert.Contains("INA", statsText.GetComponent<TMPro.TextMeshProUGUI>().text);
 
             // Level 2 becomes available (legacy unlock path persists on level complete).
             Assert.IsTrue(progressManager.IsLevelUnlocked(2),

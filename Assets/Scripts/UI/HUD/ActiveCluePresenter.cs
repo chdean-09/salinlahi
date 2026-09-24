@@ -499,7 +499,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     public static ActiveCluePresenter Active { get; private set; }
 
     /// <summary>Test seam: stand in for the OnEnable that EditMode never runs.</summary>
-    public static void SetActiveForTests(ActiveCluePresenter presenter) => Active = presenter;
+    internal static void SetActiveForTests(ActiveCluePresenter presenter) => Active = presenter;
 
     /// <summary>How many target-text slots the player has already restored.</summary>
     public int RestoredSlotCount => UsesRestorationObjectiveDefinition
@@ -1768,17 +1768,26 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         // nominal values, then derive one uniform scale when the complete rail exceeds the
         // available safe-area width. Short Levels 1-4 retain their authored geometry exactly.
         float availableWidth = ResolveRailAvailableWidth(hudContainer, canvas);
-        float layoutScale = CalculateRailScale(totalWidth, availableWidth);
-        _railLayoutSlotSize = _slotSize * layoutScale;
-        _railLayoutSlotSpacing = _slotSpacing * layoutScale;
-        _railLayoutWordGap = _wordGap * layoutScale;
-        _railLayoutLabelFontSize = _latinWordLabelFontSize * layoutScale;
-        _railLayoutLabelRowHeight = _latinWordLabelRowHeight * layoutScale;
-        _railLayoutLabelGap = _latinWordLabelGap * layoutScale;
-        _railLayoutSeparatorFontSize = _wordSeparatorFontSize * layoutScale;
+        RestorationRailLayoutMetrics layout = RestorationRailLayoutPolicy.Calculate(
+            totalWidth,
+            availableWidth,
+            _slotSize,
+            _slotSpacing,
+            _wordGap,
+            _latinWordLabelFontSize,
+            _latinWordLabelRowHeight,
+            _latinWordLabelGap,
+            _wordSeparatorFontSize);
+        _railLayoutSlotSize = layout.SlotSize;
+        _railLayoutSlotSpacing = layout.SlotSpacing;
+        _railLayoutWordGap = layout.WordGap;
+        _railLayoutLabelFontSize = layout.LabelFontSize;
+        _railLayoutLabelRowHeight = layout.LabelRowHeight;
+        _railLayoutLabelGap = layout.LabelGap;
+        _railLayoutSeparatorFontSize = layout.SeparatorFontSize;
 
         float labelRow = _railLayoutLabelRowHeight + _railLayoutLabelGap;
-        railRect.sizeDelta = new Vector2(totalWidth * layoutScale, labelRow + _railLayoutSlotSize.y);
+        railRect.sizeDelta = new Vector2(totalWidth * layout.Scale, labelRow + _railLayoutSlotSize.y);
 
         // Measure the context before laying out slots. A multiline objective gets a reserved row
         // inside the rail; single-line objectives keep the historic label placement above it.
@@ -1787,7 +1796,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             ? _objectiveContextRowHeight + ObjectiveContextGap
             : 0f;
         railRect.sizeDelta = new Vector2(
-            totalWidth * layoutScale,
+            totalWidth * layout.Scale,
             labelRow + _railLayoutSlotSize.y + contextRow);
         float slotRowTop = _objectiveContextUsesMeasuredRow ? -contextRow : 0f;
 
@@ -3427,6 +3436,68 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
         return builder.Length > 0 ? builder.ToString() : word.latinSpelling;
     }
+}
+
+/// <summary>
+/// Pure restoration-rail geometry policy. ActiveCluePresenter owns GameObjects and lifecycle;
+/// this helper owns the scaled values that make a complete rail fit the available safe-area width.
+/// </summary>
+internal static class RestorationRailLayoutPolicy
+{
+    internal static RestorationRailLayoutMetrics Calculate(
+        float nominalWidth,
+        float availableWidth,
+        Vector2 slotSize,
+        float slotSpacing,
+        float wordGap,
+        float labelFontSize,
+        float labelRowHeight,
+        float labelGap,
+        float separatorFontSize)
+    {
+        float scale = ActiveCluePresenter.CalculateRailScale(nominalWidth, availableWidth);
+        return new RestorationRailLayoutMetrics(
+            scale,
+            slotSize * scale,
+            slotSpacing * scale,
+            wordGap * scale,
+            labelFontSize * scale,
+            labelRowHeight * scale,
+            labelGap * scale,
+            separatorFontSize * scale);
+    }
+}
+
+internal sealed class RestorationRailLayoutMetrics
+{
+    internal RestorationRailLayoutMetrics(
+        float scale,
+        Vector2 slotSize,
+        float slotSpacing,
+        float wordGap,
+        float labelFontSize,
+        float labelRowHeight,
+        float labelGap,
+        float separatorFontSize)
+    {
+        Scale = scale;
+        SlotSize = slotSize;
+        SlotSpacing = slotSpacing;
+        WordGap = wordGap;
+        LabelFontSize = labelFontSize;
+        LabelRowHeight = labelRowHeight;
+        LabelGap = labelGap;
+        SeparatorFontSize = separatorFontSize;
+    }
+
+    internal float Scale { get; }
+    internal Vector2 SlotSize { get; }
+    internal float SlotSpacing { get; }
+    internal float WordGap { get; }
+    internal float LabelFontSize { get; }
+    internal float LabelRowHeight { get; }
+    internal float LabelGap { get; }
+    internal float SeparatorFontSize { get; }
 }
 
 /// <summary>One authored focus-word target for the shared combat-restoration gate.</summary>

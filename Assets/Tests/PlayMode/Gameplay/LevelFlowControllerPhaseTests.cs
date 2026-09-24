@@ -1310,10 +1310,14 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             CollectionAssert.AreEqual(new[] { "symbol.test" }, controller.LastRewardGrant.UnlockedSymbolIds);
             CollectionAssert.AreEqual(new[] { "memory.test" }, controller.LastRewardGrant.UnlockedMemoryIds);
 
-            GameObject summary = GameObject.Find("[Runtime] ResultsSummary");
-            Assert.IsNotNull(summary, "Results must present the learning outcome summary.");
+            GameObject statsPanel = GameObject.Find(VictoryScreenUI.RuntimeStatsPanelName);
+            Assert.IsNotNull(statsPanel,
+                "Results must present the structured learning outcome stats panel.");
+            Transform statsText = statsPanel.transform.Find("StatsText");
+            Assert.IsNotNull(statsText,
+                "The stats panel must include its learning outcome copy.");
             Assert.IsFalse(string.IsNullOrWhiteSpace(
-                summary.GetComponent<TMPro.TextMeshProUGUI>().text));
+                statsText.GetComponent<TMPro.TextMeshProUGUI>().text));
         }
 
         // ---------------------------------------------------------------------

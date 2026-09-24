@@ -17,7 +17,7 @@ public static class IntroductionScheduleLookup
     /// Test seam. When set, the schedule is read from here instead of the campaign. Tests must
     /// clear it in teardown. Mirrors <see cref="EnemyDebutLookup.CampaignOverrideForTests"/>.
     /// </summary>
-    public static IntroductionScheduleSO ScheduleOverrideForTests { get; set; }
+    internal static IntroductionScheduleSO ScheduleOverrideForTests { get; set; }
 
     /// <summary>
     /// Whether <paramref name="level"/> may introduce <paramref name="data"/>: true when no

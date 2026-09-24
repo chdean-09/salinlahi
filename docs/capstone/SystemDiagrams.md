@@ -749,7 +749,8 @@ flowchart LR
 ## 4. State Diagrams
 
 Two state machines run during gameplay. The outer one is the global `GameState`; the inner one
-is the per-encounter boss phase machine that only runs on boss levels (5, 10, 15).
+is the per-encounter boss phase machine that runs when a level carries `BossConfigSO`; the current
+campaign uses it only for Level 15.
 
 ### 4.1 Global `GameState` (owned by `GameManager`)
 

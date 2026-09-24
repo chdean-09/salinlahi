@@ -1724,12 +1724,6 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     }
 
     /// <summary>
-    /// Moves <c>Time.timeScale</c> between two values over a wall-clock duration. The value the beat
-    /// found on entry is remembered on the first ramp and is what the release ramps back to, rather
-    /// than a hardcoded 1: a level that is already running slowed for its own reasons should be given
-    /// back what it had.
-    /// </summary>
-    /// <summary>
     /// Test seam for the hold. A PlayMode fixture has no player, so a card driven to completion
     /// would wait for a press that never arrives and then fail on a card that is still up — which
     /// is exactly how BannerStandingAfterACard_StillLetsTheNextTypeIntroduceItself reported it.
@@ -1743,7 +1737,19 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     private static bool s_skipContinueHoldForTests;
 
     /// <summary>Sets the hold seam. Fixtures that set it must reset it in teardown.</summary>
-    public static void SetSkipContinueHoldForTests(bool skip) => s_skipContinueHoldForTests = skip;
+    internal static void SetSkipContinueHoldForTests(bool skip) => s_skipContinueHoldForTests = skip;
+
+    /// <summary>
+    /// Clears every static test seam, including a queued continue request that a failed fixture
+    /// might not have consumed. Test teardown calls this so one onboarding case cannot release a
+    /// later card without real input.
+    /// </summary>
+    internal static void ResetTestState()
+    {
+        s_skipContinueHoldForTests = false;
+        s_continueRequestedByTest = false;
+        IsHoldingForContinue = false;
+    }
 
     /// <summary>
     /// Stands in for the player's tap, so a fixture can let the hold actually happen and then end
@@ -1753,7 +1759,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// Kept for tests that are concerned with the hold's surrounding behavior rather than the
     /// device boundary. The short-touch regression queues a real Input System touch separately.
     /// </remarks>
-    public static void RequestContinueForTests() => s_continueRequestedByTest = true;
+    internal static void RequestContinueForTests() => s_continueRequestedByTest = true;
 
     private static bool s_continueRequestedByTest;
 
@@ -1842,6 +1848,12 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         _continueRequestedByInput = false;
     }
 
+    /// <summary>
+    /// Moves <c>Time.timeScale</c> between two values over a wall-clock duration. The value the beat
+    /// found on entry is remembered on the first ramp and is what the release ramps back to, rather
+    /// than a hardcoded 1: a level that is already running slowed for its own reasons should be given
+    /// back what it had.
+    /// </summary>
     private IEnumerator RampTimeScale(float from, float to, float seconds)
     {
         if (!_timeScaleTaken)

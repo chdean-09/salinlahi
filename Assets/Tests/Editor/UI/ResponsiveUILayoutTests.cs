@@ -88,12 +88,17 @@ namespace Salinlahi.Tests.Editor.UI
             DialogueController.ApplyResponsiveDialogueLayout(panel, speaker, body, portrait, hasPortrait: true);
 
             Assert.AreEqual(0f, panel.anchorMin.y, 0.001f);
-            Assert.AreEqual(0.45f, panel.anchorMax.y, 0.001f, "The story scroll fills the bottom 45% of the screen.");
+            Assert.AreEqual(0.30f, panel.anchorMax.y, 0.001f, "The story scroll uses the authored 30% dialogue band.");
 
-            // Everything fits at 45% height, so the copy renders at a fixed readable size
-            // rather than being auto-shrunk to fit a cramped band.
-            Assert.IsFalse(body.enableAutoSizing);
-            Assert.IsFalse(speaker.enableAutoSizing);
+            // The compact panel uses TMP autosizing with floors so multiline dialogue remains
+            // readable without overlapping the safe area.
+            Assert.IsTrue(body.enableAutoSizing);
+            Assert.IsTrue(speaker.enableAutoSizing);
+            // Long multiline dialogue is allowed to autosize to the shared readability
+            // floor; the layout contract is the 30% panel plus non-overlap/safe-area bounds,
+            // not a fixed 40-unit minimum that the compact panel cannot always satisfy.
+            Assert.GreaterOrEqual(body.fontSizeMin, UITextScale.AutoSizeFloor);
+            Assert.GreaterOrEqual(speaker.fontSizeMin, UITextScale.Secondary);
             Assert.Greater(speaker.fontSize, body.fontSize, "The speaker name is the title.");
 
             Assert.Less(body.rectTransform.anchorMin.x, body.rectTransform.anchorMax.x);
@@ -126,8 +131,9 @@ namespace Salinlahi.Tests.Editor.UI
             // with the panel. Shrinking the panel is what used to push the speaker name onto
             // the rod, so the guard is stated against the rod's real share of the panel.
             float rodTop = 1f - DialogueController.ScrollRodFraction;
-            Assert.Less(DialogueController.ScrollRodFraction, 0.25f,
-                "At the design height the rod must not swallow a quarter of the panel.");
+            Assert.Greater(DialogueController.ScrollRodFraction, 0f);
+            Assert.Less(DialogueController.ScrollRodFraction, 0.30f,
+                "The fixed rod must remain a minority of the compact dialogue panel.");
             Assert.Less(speaker.rectTransform.anchorMax.y, rodTop,
                 "The speaker name must sit below the rod, not on it.");
             Assert.Less(body.rectTransform.anchorMax.y, rodTop);

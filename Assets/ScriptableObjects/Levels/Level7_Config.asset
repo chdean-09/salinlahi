@@ -270,6 +270,7 @@ MonoBehaviour:
   _authoredWaves:
   - isIntermissionWave: 0
     characters:
+    - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
     - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
     - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
     - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
@@ -277,11 +278,13 @@ MonoBehaviour:
     enemyTypes:
     - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
     - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
+    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
     enemyCount: 5
     spawnInterval: 2.2
     waveStartDelay: 1.2
   - isIntermissionWave: 0
     characters:
+    - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
     - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
     - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
     - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
@@ -290,6 +293,7 @@ MonoBehaviour:
     enemyTypes:
     - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
     - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
+    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
     enemyCount: 5
     spawnInterval: 2.1
     waveStartDelay: 1
@@ -304,6 +308,7 @@ MonoBehaviour:
     enemyTypes:
     - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
     - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
+    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
     enemyCount: 6
     spawnInterval: 2
     waveStartDelay: 1
@@ -320,6 +325,7 @@ MonoBehaviour:
     enemyTypes:
     - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
     - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
+    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
     enemyCount: 7
     spawnInterval: 1.9
     waveStartDelay: 1

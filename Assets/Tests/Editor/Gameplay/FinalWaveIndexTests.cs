@@ -72,4 +72,15 @@ public class FinalWaveIndexTests
         Assert.IsFalse(WaveManager.IsTerminalWaveRange(6, 5),
             "a malformed range beyond the authored wave count must not be treated as the finale.");
     }
+
+    [Test]
+    public void PurePolicyHelper_MatchesTheWaveManagerCompatibilityWrappers()
+    {
+        Assert.AreEqual(
+            WaveManager.IsFinalWaveIndex(2, 3),
+            WaveTerminalPolicy.IsFinalWaveIndex(2, 3));
+        Assert.AreEqual(
+            WaveManager.IsTerminalWaveRange(5, 5),
+            WaveTerminalPolicy.IsTerminalWaveRange(5, 5));
+    }
 }

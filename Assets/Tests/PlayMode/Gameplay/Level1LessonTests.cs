@@ -65,6 +65,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             // Left on, every test that drives a card to completion would wait out the hold and
             // then fail on a card still up. The gate itself is covered by ContinueHoldTests, which
             // leaves this off and sends real input.
+            EnemyIntroductionBeat.ResetTestState();
             EnemyIntroductionBeat.SetSkipContinueHoldForTests(true);
             Time.timeScale = 1f;
 
@@ -115,7 +116,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         [TearDown]
         public void TearDown()
         {
-            EnemyIntroductionBeat.SetSkipContinueHoldForTests(false);
+            EnemyIntroductionBeat.ResetTestState();
             for (int i = _objectsToDestroy.Count - 1; i >= 0; i--)
             {
                 if (_objectsToDestroy[i] != null)
@@ -1564,9 +1565,8 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         /// </para>
         ///
         /// <para>
-        /// <b>Not covered here:</b> the device bindings in ContinuePressedThisFrame. The PlayMode
-        /// assembly does not reference the Input System, so this raises the continue through a seam.
-        /// Whether a finger on a phone produces one is a play session, not this test.
+        /// This case uses the test seam to isolate the hold and release lifecycle. The short-touch
+        /// regression below separately drives the real Input System boundary.
         /// </para>
         /// </summary>
         [UnityTest]

@@ -26,7 +26,7 @@
 | **Bootstrap Scene** | The first scene loaded on app launch. It initializes all manager singletons and immediately transitions to MainMenu. It is never returned to after the initial load. | BootstrapLoader.cs; GDD §5.1 |
 | **Boss Movement Pattern** | The per-phase movement mode (`Hover`, `Pace`, `Teleport`) driven imperatively by `PhaseBasedMovement` based on `BossPhase.movementPattern`. | `BossPhase.cs`; `PhaseBasedMovement.cs` |
 | **Manager** | A persistent `MonoBehaviour` Singleton that survives all scene loads. All managers are instantiated in the Bootstrap scene. | Singleton.cs; 02_Architecture |
-| **EventBus** | The static C# event hub used for all cross-system communication. No direct inter-manager references except through `Instance` accessor and EventBus. | EventBus.cs |
+| **EventBus** | The static C# event hub used for cross-system signals. Flow orchestration and selected singleton lookups are direct coupling and must be inspected alongside EventBus subscriptions. | EventBus.cs; LevelFlowController.cs |
 | **Lite Build** | The free version of Salinlahi. Includes Story Mode levels 1–3 only. Endless Mode disabled. Separate app identifier. | TDD §7.2; Salinlahi.md §3.4 |
 | **Full Build** | The premium version of Salinlahi (PHP 149). All 15 story levels, Endless Mode, all boss encounters. | TDD §7.2; Salinlahi.md §3.4 |
 | **Tracing Dojo** | A pressure-free practice mode where players trace the taught character set (17) with no enemies, no timer, and no penalty. | GDD §2.4; doc 10 REQ-32 |

@@ -1,6 +1,6 @@
 # Salinlahi — Player User Stories (living backlog)
 
-**Created:** 2026-09-15 · **Repo state:** `dev` @ `f6edeba1` (working tree dirty — 45+ modified tracked files)
+**Created:** 2026-09-15 · **Repo state:** `bugfix/campaign-qa-hardening` @ `7149b175` (working tree intentionally dirty with uncommitted QA-hardening changes)
 **Re-verified:** 2026-09-15 against `feature/ugat-2-5-realignment` @ `9198e8f4` (= `dev` @ `6fc34851` + 4). The 40 commits since the register was cut are reconciled in [`PROGRESS-DELTA-2026-09-15.md`](PROGRESS-DELTA-2026-09-15.md).
 **Scope:** the whole player-facing experience, broken into atomic user stories with acceptance criteria and implementation status.
 
@@ -16,6 +16,14 @@ This is a **living backlog**. It is not a design document and it does not make d
 - authored narrative content in [`docs/content/`](../content/).
 
 Where sources conflict, the story is marked **Unclear** and the conflict is named. Nothing has been invented to pad the list.
+
+> **Current implementation update (2026-09-22):** Levels 6–15 now carry authored challenge,
+> reward, identity, and focus-symbol contracts; Levels 6–14 also carry natural carriers for every
+> focus symbol in each non-intermission wave. Level 10 has no boss reference and Level 15 is the
+> sole authored campaign boss. These facts are statically checked on
+> `bugfix/campaign-qa-hardening`; Unity compilation, Test Runner execution, and terminal play are
+> still `BLOCKED` in the current environment. Dated story statuses below remain historical unless
+> this note or a linked current evidence record supersedes them.
 
 ---
 
@@ -95,7 +103,7 @@ These are the conflicts that make individual stories **Unclear**. They are produ
 | # | Conflict | Where it bites |
 |---|---|---|
 | **U-1** | **17 vs 18 characters.** Ruling Q2/OQ-6 says 18; seven `docs/system/` files and the GDD still say 17 taught. Code has 18 `Char_*.asset` and 18 `RevisedSymbolIds`. | `LEARN-01`, `CODEX-02`, `LVL-13` |
-| **U-2** | **Level 10 still references a retired boss.** `Level10_Config.bossConfig` → `BossConfig_Superintendent`, although Q5 retires it and `SALIN-280` is marked Done. | `LVL-10`, `BOSS-09` |
+| **U-2** | **Resolved in current assets.** `Level10_Config.bossConfig` is null; the old Superintendent config is retained only as a legacy asset. | `LVL-10`, `BOSS-09` |
 | **U-3** | **Level 15's boss asset is still `BossConfig_Kadiliman`,** not Paglimot, although `SALIN-273` ("retire Kadiliman from the finale") is marked Done. Whether this is a rename debt or a live design mismatch is unresolved. | `BOSS-01`–`BOSS-08` |
 | **U-4** | **Tracing Dojo is still a live main-menu destination** although D-005 deletes it and folds free practice into the Codex. | `PRAC-01`–`PRAC-07`, `MM-08` |
 | **U-5** | **Ready-screen ownership.** `SALIN-235` was closed as wholly obsolete under D-004, but Master row 10 still requires a neutral Ready/checkpoint screen, and `LevelReadyScreenController` exists. | `FLOW-11`, `FLOW-12` |
