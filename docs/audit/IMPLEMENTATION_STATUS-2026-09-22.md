@@ -5,13 +5,40 @@
 **Starting commit:** `7149b175098c8baa79a14e49ec36f29c7b228f4d`
 **Unity target:** `6000.3.9f1`
 
-**Post-merge review:** commit `c05160c7` merged `origin/dev` into this branch. The post-merge
-Unity rerun is recorded below; the original 2026-09-22 totals remain historical evidence.
+**Latest sync:** merge commit `f6f4690f` brings the newer `origin/dev` UI changes into this branch.
+The 2026-09-24 verification addendum below supersedes earlier post-merge results for current status;
+the original 2026-09-22 totals remain historical evidence.
 
 This is a current implementation record, not a replacement for dated audit evidence. It records
 what was changed on this branch and what was or was not verified. A static check is labelled
 `OBSERVED`; a Unity result is labelled `PASSED` or `FAILED` only when the Test Runner or a manual
 run actually completed.
+
+## Verification after dev sync — 2026-09-24
+
+* Unity 6000.3.9f1 Test Runner loaded and executed the current assemblies. Full Edit Mode —
+  `PASSED`, 1,491/1,491.
+* Full Play Mode — `FAILED`, 228/231 on the latest complete run. The failures were
+  `PauseLifecycleTests.Abort_ResetsPerAttemptCombatState` and
+  `PauseLifecycleTests.Pause_FreezesTheUnscaledStrokeTimers` (Input System assertion
+  `Already added touchscreen`), plus
+  `Salin69AcceptanceTests.PhaseFailure_TimerExpires_NoHPLossRepeatsSamePhase` (`OnBossVulnerabilityEnabled`
+  count expected 1, observed 2 at `Salin69AcceptanceTests.cs:186`). An isolated rerun of those three
+  failures passed 3/3, but the complete rerun still failed 3 tests; the full-suite result remains
+  `FAILED`/order-sensitive. The earlier post-sync run also exposed stale expectations for the legacy
+  results summary and a timing-sensitive Phaser assertion. Result assertions now target the incoming
+  structured `StatsPanel/StatsText` UI.
+* Unity Console after automated tests — 586 logs, 98 warnings, 13 errors. The visible fixture
+  warnings include missing optional test components/configuration. Error entries were not fully
+  classified. A separate Play Mode run of authored `Assets/_Scenes/Bootstrap.unity` transitioned to
+  `MainMenu`; its fresh Console view showed 131 logs, one warning (`Account API did not become
+  accessible within 30 seconds`), and zero errors. This verifies that authored scene transition,
+  not the full manual campaign flow.
+* Manual clean Levels 1–15 progression, defeat/retry/abort/replay, save/load transitions, terminal
+  screenshots, and physical touch/device behavior — `NOT RUN`.
+* The full Edit Mode gate passes, but the full Play Mode gate fails. The authored Bootstrap-to-MainMenu
+  Console smoke check had zero errors; the broader campaign/manual gates remain unverified. PR #254
+  therefore remains a draft and must not be merged until the required gates clear.
 
 ## Batch 2 reconciliation
 
@@ -82,12 +109,13 @@ suite totals remain historical evidence only.
   full Play Mode suite timing-sensitive. This is a test-only stability change; the production Phaser
   implementation is unchanged.
 
-## Verification blockers and remaining work
+## Verification blockers in the 2026-09-22 record
 
-The focused and complete Unity automated suites now have current results. The final post-suite Console
-review after the green Play Mode rerun showed 589 logs, 98 warnings, and 11 errors; the visible errors
-were missing fixture wiring (`WaveManager` config/fallback, `LevelConfigSO`, and `WaveSpawner`), not
-assertion failures. The Console was then cleared.
+The original post-merge run recorded focused and complete Unity automated suite results. Its
+post-suite Console review after the green Play Mode rerun showed 589 logs, 98 warnings, and 11 errors;
+the visible errors were missing fixture wiring (`WaveManager` config/fallback, `LevelConfigSO`, and
+`WaveSpawner`). Those counts and observations are historical and are superseded by the 2026-09-24
+post-sync evidence above.
 
 Manual clean-progress Levels 1–15, defeat/retry/abort, replay through the real scene UI, terminal-result
 screenshots, and physical touch capture remain `BLOCKED` or `NOT RUN`. Desktop automation has not
@@ -96,10 +124,10 @@ handler itself is covered by the passing Edit Mode regression above. The generat
 still cannot build without Unity-generated restore assets;
 the generated runtime project did build as a non-Unity static C# check.
 
-No package, project setting, GUID, fileID, save schema, or generated Unity project file was changed.
-The approved changes are divided into focused commits on this branch. At the time of the original
-record nothing had been pushed or merged; the subsequent `c05160c7` merge brought `origin/dev` into
-the branch, and no push or pull request was opened.
+No package, project setting, GUID, fileID, save schema, or generated Unity project file was changed by
+the original audit batch. At the time of that record nothing had been pushed or merged; PR #254 was
+opened afterward, and the later `c05160c7` and `f6f4690f` merge commits brought successive `origin/dev`
+updates into the branch.
 
 ## Documentation disposition
 
