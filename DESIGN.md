@@ -29,8 +29,8 @@ Warm parchment-and-ink storybook: a Living Scroll aesthetic drawn from Philippin
 ## Layout
 
 - Canvas 1080×1920 reference, `ScaleWithScreenSize`, `SafeAreaHandler` on HUD root.
-- Top band: hearts left, wave text center, pause right; secondary controls stack under the pause button on the right edge.
-- Bottom band: restoration rail; instruction text sits above it.
+- Top band: hearts left, pause right; secondary controls stack under the pause button on the right edge. (No wave indicator — removed from all levels; `OnWaveStarted` still drives wave progression.)
+- Bottom band: restoration rail; instruction text sits above it and yields while any story surface (cutscene, dialogue, intro modal) or the challenge board owns the band.
 
 ## Motion
 
