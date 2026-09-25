@@ -32,12 +32,12 @@ namespace Salinlahi.Tests.Editor.UI
             EndScreenDim.Apply(panel, EndScreenDim.VictoryTint);
 
             Assert.That(backdrop.color, Is.EqualTo(EndScreenDim.VictoryTint),
-                "The Backdrop layer must take the dim tint so the world shows through at ~80%.");
+                "The Backdrop layer must take the dim tint so the world shows through at ~93%.");
             Assert.IsTrue(backdrop.enabled, "The dim layer must render.");
             Assert.IsTrue(backdrop.raycastTarget,
                 "The dim must keep eating clicks — a translucent backdrop still blocks the world.");
             Assert.IsFalse(background.enabled,
-                "The second layer must be disabled — stacked alphas would compound past 80%.");
+                "The second layer must be disabled — stacked alphas would compound past 93%.");
         }
 
         [Test]
@@ -107,9 +107,12 @@ namespace Salinlahi.Tests.Editor.UI
         [Test]
         public void VictoryAndDefeatTints_AreMoodGraded_AtTheChosenOpacity()
         {
-            Assert.AreEqual(0.80f, EndScreenDim.VictoryTint.a, 0.001f,
-                "User direction: ~80% dim — world visible but pushed back.");
-            Assert.AreEqual(0.80f, EndScreenDim.DefeatTint.a, 0.001f);
+            Assert.AreEqual(0.93f, EndScreenDim.VictoryTint.a, 0.001f,
+                "User direction: end screens dim to house scrim depth — the board is "
+                + "backdrop, not context the player still needs to read.");
+            Assert.AreEqual(0.93f, EndScreenDim.DefeatTint.a, 0.001f,
+                "User direction: defeat dims to house scrim depth — a lost board is "
+                + "backdrop, not context the player still needs to read.");
             Assert.Greater(EndScreenDim.DefeatTint.r, EndScreenDim.VictoryTint.r,
                 "Defeat leans red to sit under the DEFEAT banner; victory stays neutral navy.");
         }
