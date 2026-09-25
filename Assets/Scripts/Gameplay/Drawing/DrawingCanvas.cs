@@ -171,7 +171,11 @@ public class DrawingCanvas : MonoBehaviour
 
     private IEnumerator ClearAfterDelayRoutine(List<LineRenderer> linesToClear)
     {
-        yield return new WaitForSeconds(_clearDelaySeconds);
+        // Realtime, not scaled: the delay is a cosmetic grace so a finished stroke stays visible
+        // for a beat. A scaled wait parks whenever a surface freezes Time.timeScale (the enemy
+        // introduction's tap-to-continue hold, the pause menu), and the stroke trail then stays
+        // on screen for the whole freeze — read by players as "the drawing got stuck".
+        yield return new WaitForSecondsRealtime(_clearDelaySeconds);
 
         foreach (var line in linesToClear)
         {
