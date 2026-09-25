@@ -320,6 +320,50 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Assert.AreEqual(-1d, GetPrivateField<double>(capture, "_multiStrokeTimerEndTime"));
         }
 
+        /// <summary>
+        /// The enemy-introduction card suppresses drawing for its on-screen window and calls
+        /// SubmitInFlightStrokes first: a stroke mid-flight when the card lands must complete as
+        /// though the finger lifted and submit against the live field — parked through the card,
+        /// it would resolve afterwards on a field the player was no longer looking at.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator SubmitInFlightStrokes_CompletesTheActiveStroke_AndSubmitsImmediately()
+        {
+            GameManager gameManager = CreateGameManager();
+            gameManager.StartGame();
+            StrokeCapture capture = CreateStrokeCapture();
+
+            // Finger still down mid-stroke: an active CapturedStroke with real travel so it is
+            // not tap-like, plus the timeout the draw armed.
+            var stroke = new CapturedStroke(0, 1, Time.unscaledTimeAsDouble);
+            stroke.Begin(new Vector2(100f, 100f));
+            stroke.AddRawSample(new Vector2(500f, 500f), 0f);
+            SetPrivateField(capture, "_isDrawing", true);
+            SetPrivateField(capture, "_currentStroke", stroke);
+            SetPrivateField(capture, "_strokeTimeoutEndTime", Time.unscaledTimeAsDouble + 60d);
+
+            int submitted = 0;
+            void CountSubmit(IReadOnlyList<List<Vector2>> _) => submitted++;
+            StrokeCapture.OnStrokesSubmitted += CountSubmit;
+            try
+            {
+                capture.SubmitInFlightStrokes();
+                yield return null;
+            }
+            finally
+            {
+                StrokeCapture.OnStrokesSubmitted -= CountSubmit;
+            }
+
+            Assert.AreEqual(1, submitted,
+                "The in-flight stroke must submit at once rather than park through the card.");
+            Assert.IsFalse(GetPrivateField<bool>(capture, "_isDrawing"));
+            Assert.IsNull(GetPrivateField<CapturedStroke>(capture, "_currentStroke"));
+            Assert.AreEqual(-1d, GetPrivateField<double>(capture, "_multiStrokeTimerEndTime"),
+                "The multi-stroke window must not stay armed after the immediate submit.");
+            Assert.IsFalse(GetPrivateField<bool>(capture, "_pendingRecognitionSubmit"));
+        }
+
         // ------------------------------------------------------------------
         // Fixture helpers
         // ------------------------------------------------------------------

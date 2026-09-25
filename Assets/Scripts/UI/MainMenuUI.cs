@@ -23,9 +23,6 @@ public class MainMenuUI : MonoBehaviour
     // reason: MainMenu.unity is not edited by this ticket either.
     public const string ExitButtonName = "ExitButton";
 
-    // SALIN-256. The progress readout is a runtime-built label, not an authored scene object.
-    public const string ProgressLineName = "ProgressLine";
-
     private static readonly string[] MainMenuButtonNames =
     {
         "PlayButton",
@@ -66,7 +63,6 @@ public class MainMenuUI : MonoBehaviour
         ApplyMainMenuTextEffects();
         EnsureSandboxEntryPoint();
         UpdatePlayButtonLabel();
-        EnsureProgressLine();
         if (SaveManager.Instance != null && _campaignSaveNoticePanel != null)
             _campaignSaveNoticePanel.Present(SaveManager.Instance.PendingNotice);
     }
@@ -341,72 +337,6 @@ public class MainMenuUI : MonoBehaviour
         button.onClick.AddListener(OnExitPressed);
         button.interactable = true;
         button.gameObject.SetActive(true);
-    }
-
-    /// <summary>
-    /// SALIN-256 (spec UF-03/UF-06). Builds the "Ugat Level 3  ·  13%" readout.
-    ///
-    /// Built at runtime rather than authored, for the same MainMenu.unity reason as the two
-    /// cloned buttons. Refreshed in Start() only: the menu has no other mutation point, and
-    /// progress cannot change while the player is looking at this screen.
-    ///
-    /// Renders nothing when the line would be untruthful — no ProgressManager, or a level the
-    /// campaign cannot name. MainMenuProgressLine.Format owns that decision.
-    /// </summary>
-    private void EnsureProgressLine()
-    {
-        if (ProgressManager.Instance == null)
-            return;
-
-        ProgressManager progress = ProgressManager.Instance;
-        progress.GetJourneyEntryPoint(out int currentLevelNumber);
-
-        int completed = 0;
-        for (int levelNumber = 1; levelNumber <= ProgressManager.TotalLevels; levelNumber++)
-        {
-            if (progress.IsLevelCompleted(levelNumber))
-                completed++;
-        }
-
-        string line = MainMenuProgressLine.Format(
-            SaveManager.Instance?.Campaign,
-            currentLevelNumber,
-            completed,
-            ProgressManager.TotalLevels);
-
-        if (string.IsNullOrEmpty(line))
-            return;
-
-        // Fully qualified on purpose — see the note in EnsureMemoryArchiveEntryPoint.
-        TMPro.TextMeshProUGUI label = FindOrCreateProgressLabel();
-        if (label != null)
-            label.text = line;
-    }
-
-    private TMPro.TextMeshProUGUI FindOrCreateProgressLabel()
-    {
-        if (transform.Find(ProgressLineName) is Transform existing)
-            return existing.GetComponent<TMPro.TextMeshProUGUI>();
-
-        GameObject labelObject = new GameObject(
-            ProgressLineName, typeof(RectTransform), typeof(TMPro.TextMeshProUGUI));
-        labelObject.transform.SetParent(transform, false);
-
-        RectTransform rect = labelObject.GetComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0.5f, 0f);
-        rect.anchorMax = new Vector2(0.5f, 0f);
-        rect.pivot = new Vector2(0.5f, 0f);
-        // Directly above the Exit button at y = 124, continuing the same bottom-anchored stack.
-        rect.anchoredPosition = new Vector2(0f, 212f);
-        rect.sizeDelta = new Vector2(720f, 56f);
-
-        TMPro.TextMeshProUGUI label = labelObject.GetComponent<TMPro.TextMeshProUGUI>();
-        label.fontSize = UITextScale.Body;
-        label.alignment = TMPro.TextAlignmentOptions.Center;
-        label.color = ActiveTextColor;
-        label.raycastTarget = false;
-        TutorialFontProvider.ApplyLegibilityEffects(label);
-        return label;
     }
 
     public void OnSettingsPressed()

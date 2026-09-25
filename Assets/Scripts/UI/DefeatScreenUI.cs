@@ -22,7 +22,6 @@ public class DefeatScreenUI : MonoBehaviour
 
     [Header("Buttons")]
     [SerializeField] private Button _retryButton;
-    [SerializeField] private Button _reviewLessonButton;
     [SerializeField] private Button _levelSelectButton;
 
     [Header("Panel")]
@@ -34,15 +33,19 @@ public class DefeatScreenUI : MonoBehaviour
     private void Awake()
     {
         EnsureGuidanceAndActions();
-        if (_panel != null) _panel.SetActive(false);
+        // This component sits ON the panel it opens in the shipped scenes (DefeatPanel in
+        // Gameplay.unity and Level_01_Tutorial.unity, both serialized inactive). Awake on an
+        // inactive-at-load object is deferred to its first activation, so an unguarded
+        // self-deactivate here runs INSIDE the first Show()'s SetActive(true) and the defeat
+        // screen never renders a frame. Guarded: only hide a _panel that lives on another
+        // object.
+        if (_panel != null && _panel != gameObject) _panel.SetActive(false);
     }
 
     private void OnEnable()
     {
         if (_retryButton != null)
             _retryButton.onClick.AddListener(OnRetryPressed);
-        if (_reviewLessonButton != null)
-            _reviewLessonButton.onClick.AddListener(OnReviewLessonPressed);
         if (_levelSelectButton != null)
             _levelSelectButton.onClick.AddListener(OnLevelSelectPressed);
     }
@@ -51,8 +54,6 @@ public class DefeatScreenUI : MonoBehaviour
     {
         if (_retryButton != null)
             _retryButton.onClick.RemoveListener(OnRetryPressed);
-        if (_reviewLessonButton != null)
-            _reviewLessonButton.onClick.RemoveListener(OnReviewLessonPressed);
         if (_levelSelectButton != null)
             _levelSelectButton.onClick.RemoveListener(OnLevelSelectPressed);
     }
@@ -78,6 +79,14 @@ public class DefeatScreenUI : MonoBehaviour
         if (_hudRoot != null)
             _hudRoot.SetActive(false);
 
+        // ActiveCluePresenter is a HUDCanvas SIBLING of HUDRoot, so hiding the root
+        // leaves the instruction, the rail and the restored-word cue rendering
+        // through the dim behind the buttons. Same reasoning as the HUD takedown:
+        // both actions below leave the scene, and the reload puts it back.
+        ActiveCluePresenter cluePresenter = FindFirstObjectByType<ActiveCluePresenter>();
+        if (cluePresenter != null)
+            cluePresenter.gameObject.SetActive(false);
+
         int hearts = GameManager.Instance != null ? GameManager.Instance.LastDefeatHearts : 0;
         HeartSystem heartSystem = FindFirstObjectByType<HeartSystem>();
         int maxHearts = heartSystem != null ? heartSystem.GetMaxHearts() : 3;
@@ -90,9 +99,8 @@ public class DefeatScreenUI : MonoBehaviour
             // dev turned this line off deliberately. It previously rendered behind the button
             // stack, and this branch had fixed that by re-parenting it to the top on every Show —
             // but a hidden element cannot have a layering bug, so that fix is moot and the removal
-            // wins. If the explanation is ever brought back, it needs SetAsLastSibling() here:
-            // ReviewLessonButton is cloned at Show time and inserts itself into the same stack, so
-            // paint order cannot be left to whoever was created last.
+            // wins. If the explanation is ever brought back, it needs SetAsLastSibling() here so
+            // paint order does not depend on which child was created last.
             _explanationText.gameObject.SetActive(false);
 
         DebugLogger.Log($"DefeatScreenUI: Showing defeat. Hearts: {hearts}/{maxHearts}");
@@ -105,18 +113,6 @@ public class DefeatScreenUI : MonoBehaviour
 
         LevelRetryIntent.RequestCombatOnly();
 
-        if (SceneLoader.Instance != null)
-            SceneLoader.Instance.LoadGameplay();
-        else
-            DebugLogger.LogError("DefeatScreenUI: SceneLoader not available.");
-    }
-
-    private void OnReviewLessonPressed()
-    {
-        AudioManager.Instance?.PlayMenuButtonClick();
-        DebugLogger.Log("DefeatScreenUI: Review lesson pressed");
-
-        LevelRetryIntent.Clear();
         if (SceneLoader.Instance != null)
             SceneLoader.Instance.LoadGameplay();
         else
@@ -148,10 +144,10 @@ public class DefeatScreenUI : MonoBehaviour
             GameObject explanationObject = new GameObject("DefeatExplanation", typeof(RectTransform));
             explanationObject.transform.SetParent(_panel.transform, false);
             RectTransform rect = explanationObject.GetComponent<RectTransform>();
-            // 0.43-0.62 of the panel is the button stack: Retry sits at the panel's centre and the
-            // other two hang below it, so the explanation was laid straight over three opaque
-            // buttons and could not be read at all. This band is the gap between the DEFEAT banner
-            // above and the topmost button below.
+            // 0.43-0.62 of the panel is the button stack: Retry sits at the panel's centre and
+            // Level Select hangs below it, so the explanation was laid straight over opaque
+            // buttons and could not be read at all. This band is the gap between the DEFEAT
+            // banner above and the topmost button below.
             rect.anchorMin = new Vector2(0.12f, 0.570f);
             rect.anchorMax = new Vector2(0.88f, 0.680f);
             rect.offsetMin = rect.offsetMax = Vector2.zero;
@@ -162,15 +158,6 @@ public class DefeatScreenUI : MonoBehaviour
             _explanationText.textWrappingMode = TextWrappingModes.Normal;
             _explanationText.raycastTarget = false;
             TutorialFontProvider.ApplyTo(_explanationText);
-        }
-
-        if (_reviewLessonButton == null && _retryButton != null)
-        {
-            _reviewLessonButton = Instantiate(_retryButton, _retryButton.transform.parent);
-            _reviewLessonButton.name = "ReviewLessonButton";
-            _reviewLessonButton.onClick.RemoveAllListeners();
-            _reviewLessonButton.transform.SetSiblingIndex(_retryButton.transform.GetSiblingIndex() + 1);
-            SetButtonLabel(_reviewLessonButton, DefeatScreenCopy.ReviewLessonLabel);
         }
 
         EnsureSpritesLoaded();
@@ -335,14 +322,17 @@ public class DefeatScreenUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Same arrangement as the victory screen: the primary action full-width at
-    /// -430, the secondary pair side by side at -660.
+    /// The shared button convention on a two-action column: Retry Combat carries
+    /// the gold primary fill, Level Select the slate secondary — hierarchy by
+    /// colour, not by mismatched plaque sizes. Both buttons share one rect so the
+    /// column reads as a pair.
     /// </summary>
     private void PositionDefeatButtons()
     {
-        PositionButton(_retryButton, new Vector2(0f, -430f), new Vector2(446f, 200f));
-        PositionButton(_levelSelectButton, new Vector2(-180f, -660f), new Vector2(340f, 170f));
-        PositionButton(_reviewLessonButton, new Vector2(180f, -660f), new Vector2(340f, 170f));
+        ScrollPanelArt.StylePrimaryButton(_retryButton);
+        ScrollPanelArt.StyleSecondaryButton(_levelSelectButton);
+        PositionButton(_retryButton, new Vector2(0f, -430f), new Vector2(420f, 140f));
+        PositionButton(_levelSelectButton, new Vector2(0f, -610f), new Vector2(420f, 140f));
     }
 
     private static void PositionButton(Button button, Vector2 position, Vector2 size)

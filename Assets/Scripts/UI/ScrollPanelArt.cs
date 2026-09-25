@@ -32,6 +32,11 @@ public static class ScrollPanelArt
     /// <summary>Flat panel fallback used until/unless the parchment sprite applies.</summary>
     public static readonly Color FlatPanelColor = new Color(0.025f, 0.035f, 0.08f, 0.98f);
 
+    /// <summary>The scroll-family button convention: gold carries the primary action,
+    /// dark slate the secondary — the same pair the ready screen ships.</summary>
+    public static readonly Color GoldButtonFill = new Color(0.85f, 0.72f, 0.35f, 1f);
+    public static readonly Color SlateButtonFill = new Color(0.18f, 0.24f, 0.34f, 1f);
+
     private static Sprite[] _sprites;
     private static bool _loaded;
 
@@ -152,6 +157,50 @@ public static class ScrollPanelArt
             label.fontSizeMin = UITextScale.Body;
             label.fontSizeMax = UITextScale.Title;
         }
+    }
+
+    /// <summary>Primary-action skin: gold fill, ink label.</summary>
+    public static void StylePrimaryButton(Button button)
+    {
+        StyleActionButton(button, GoldButtonFill, true);
+    }
+
+    /// <summary>Secondary-action skin: slate fill, white label.</summary>
+    public static void StyleSecondaryButton(Button button)
+    {
+        StyleActionButton(button, SlateButtonFill, false);
+    }
+
+    /// <summary>
+    /// Restyles a button — authored or runtime — to the shared flat convention: the
+    /// plaque sprite comes off (its unsealed edges read mismatched at different
+    /// aspect ratios), the flat fill goes on, press feedback falls back to color
+    /// tint so an authored SpriteSwap cannot flash the old skin, and the label
+    /// takes the shared font, role color, and autosized rect.
+    /// </summary>
+    public static void StyleActionButton(Button button, Color fill, bool inkLabel)
+    {
+        if (button == null)
+            return;
+        Image image = button.GetComponent<Image>();
+        if (image != null)
+        {
+            image.sprite = null;
+            image.type = Image.Type.Simple;
+            image.color = fill;
+            image.preserveAspect = false;
+            button.targetGraphic = image;
+        }
+        button.transition = Selectable.Transition.ColorTint;
+        foreach (TMP_Text label in button.GetComponentsInChildren<TMP_Text>(true))
+        {
+            TutorialFontProvider.ApplyTo(label);
+            if (inkLabel)
+                Inkify(label);
+            else
+                label.color = Color.white;
+        }
+        SizeButtonLabel(button);
     }
 
     public static void SetAnchors(RectTransform rect, Rect area)

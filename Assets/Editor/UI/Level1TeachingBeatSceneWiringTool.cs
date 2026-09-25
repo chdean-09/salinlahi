@@ -87,7 +87,8 @@ public static class Level1TeachingBeatSceneWiringTool
     // ---- layout, all in HUDCanvas reference units (1080x1920, centre origin) ----
     //
     // Every number below was chosen against the bands Gameplay.unity's HUD already occupies:
-    //   WaveText            +910..+830      MassClearBadge   +820..+680
+    //   (the WaveText band at +910..+830 is free — the wave label was removed entirely)
+    //   MassClearBadge      +820..+680
     //   ActiveCluePanel     +730..+550      FeedbackMessage  +640..+550
     //   TraceHintPrompt     +510..+432      TraceHintGhost   -160..-480
     //   boss bars               +25..-25    GlyphCounter      -64..-96
@@ -296,7 +297,7 @@ public static class Level1TeachingBeatSceneWiringTool
 
     /// <summary>
     /// The font the teaching surfaces use. This scene runs two font families — the generic HUD
-    /// (WaveText, FeedbackMessage) is LiberationSans while the clue panel, the restoration progress
+    /// (FeedbackMessage) is LiberationSans while the clue panel, the restoration progress
     /// line and the draw instruction are TutorialFont — and the introduction card belongs to the
     /// second group, so the font is taken from ActiveCluePresenter's own labels rather than from
     /// whichever TMP_Text happens to be found first.

@@ -133,7 +133,7 @@ Verified against local `dev` @ `80aa29ec`, 2026-09-15; re-verified against `feat
 | ID | Implemented behaviour | System | Evidence |
 |---|---|---|---|
 | `CMB-01` | Face enemies in waves | Waves · `WaveManager`, `WaveDefinition` | `Assets/Scripts/Gameplay/Wave/WaveManager.cs`, `Assets/Scripts/Data/WaveDefinition.cs`, `docs/system/04_Gameplay_Systems.md` §6 |
-| `CMB-02` | Know which wave I am on | HUD · `WaveDisplay` | `Assets/Scripts/UI/HUD/WaveDisplay.cs` |
+| `CMB-02` | No wave indicator — the "Wave X" label was removed from every level by design decision; `OnWaveStarted` still drives wave progression | HUD · (was `WaveDisplay`, removed) | — |
 | `CMB-03` | Only face enemies carrying symbols I have been taught | Waves / content · `WaveDefinition`, `LevelConfigSO`, `CampaignConfigValidator` | SALIN-216, `Assets/Scripts/Data/Validation/CampaignConfigValidator.cs` |
 | `CMB-04` | Only face enemy types this level uses | Waves · `WaveDefinition`, `LevelConfigSO` | `WaveDefinition.cs`, `LevelConfigSO.cs:98` |
 | `CMB-06` | Be given the symbol I need, not left waiting for it | Spawning · `SpawnAssignmentDirector`, `SpawnAssignmentCoordinator`, `SpawnAssignmentPolicy` | `Assets/Scripts/Gameplay/Wave/SpawnAssignment/SpawnAssignmentDirector.cs`, `docs/design/spawn-assignment-system.md` |
@@ -275,7 +275,7 @@ Verified against local `dev` @ `80aa29ec`, 2026-09-15; re-verified against `feat
 |---|---|---|---|
 | `HUD-01` | Have the HUD stay out of my way | HUD · `HUD`, `PlayAreaContainer` | `Assets/Scripts/UI/HUD.cs`, `docs/capstone/GDD.md` §5.2 |
 | `HUD-02` | See how many hearts I have left | HUD · `HeartDisplay` | `Assets/Scripts/UI/HUD/HeartDisplay.cs` |
-| `HUD-03` | See which wave I am on | HUD · `WaveDisplay` | `Assets/Scripts/UI/HUD/WaveDisplay.cs` |
+| `HUD-03` | No wave indicator — same removal as `CMB-02`; the wave label is gone on levels 1–15 | HUD · (was `WaveDisplay`, removed) | — |
 | `HUD-04` | See the symbol I am being asked for (Levels 1–5) | HUD · `ActiveCluePresenter` | `Assets/Scripts/UI/HUD/ActiveCluePresenter.cs` |
 | `HUD-05` | See the words I am restoring on the HUD (Levels 1–5) | HUD · `ActiveCluePresenter`, `FocusWordPreviewController` | `ActiveCluePresenter.cs` |
 | `HUD-06` | Reach the pause button easily | HUD · `HUD`, `SafeAreaHandler` | `Assets/Scripts/UI/SafeAreaHandler.cs`, `docs/capstone/GDD.md` §5.2 |

@@ -24,6 +24,13 @@ public class GameManager : Singleton<GameManager>
     /// <summary>Suppress/allow drawing input regardless of game state. Callers must always release it.</summary>
     public void SuppressDrawingInput(bool suppressed) => _drawingSuppressed = suppressed;
 
+    /// <summary>
+    /// True while <see cref="SuppressDrawingInput"/> is engaged. Surfaces that suppress drawing
+    /// for a window of their own should read this first and hand it back rather than forcing it
+    /// off, so an overlapping suppressor's flag is not lifted early.
+    /// </summary>
+    public bool IsDrawingSuppressed => _drawingSuppressed;
+
     // GameState.Paused has two independent sources — the player's pause menu and a
     // dialogue/cutscene beat — and the state alone cannot tell them apart. Without
     // this split, Resume lifts a dialogue pause (dropping the player into gameplay
