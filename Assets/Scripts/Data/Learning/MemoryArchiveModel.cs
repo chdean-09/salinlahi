@@ -157,7 +157,7 @@ public static class MemoryArchiveModel
     ///
     /// WHY THIS LIVES HERE. Both existing consumers hand-roll their own era scoping —
     /// MemoryArchiveController.RenderRows re-groups the whole-campaign list by era name, and
-    /// LevelFlowController.ShowMemoryClaimPanel reaches for era.levels.Count directly. The era
+    /// LevelFlowController.ShowMemoryCard reaches for era.levels.Count directly. The era
     /// completion screen needs the same slice a third time, and a third hand-rolled copy is how
     /// the three drift apart. This is the era filter that did not exist; it reuses
     /// <see cref="BuildEntry"/> and the same stable sort <see cref="Build"/> uses, so an entry
