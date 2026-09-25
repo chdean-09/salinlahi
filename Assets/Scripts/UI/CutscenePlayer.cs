@@ -408,10 +408,12 @@ public class CutscenePlayer : MonoBehaviour
 
             yield return TransitionIn(panel.image, transition, duration);
 
-            SetContinuePromptVisible(true);
             yield return TypewriterRoutine(panel.text ?? "", speed);
             _isTypewriting = false;
 
+            // The prompt goes up only once the whole line is on screen — raised mid-reveal it
+            // asks for the tap before the panel has finished saying anything.
+            SetContinuePromptVisible(true);
             _waitingForTap = true;
             yield return new WaitUntil(() => _currentCutscene == null || !_waitingForTap);
             SetContinuePromptVisible(false);
