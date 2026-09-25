@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// SALIN-231. Construct-and-inspect guard for the hint cost modal.
@@ -60,6 +61,27 @@ public class HintModalTests
         modal.Cancel();
 
         Assert.IsFalse(modal.IsOpen);
+        AssertNothingSpent(session);
+        Assert.IsTrue(session.CanRequestHint, "The hint must still be there to buy.");
+    }
+
+    /// <summary>
+    /// The dim overlay doubles as the tap-outside dismiss. Its Button is the same Cancel
+    /// path the Cancel control fires, so the test invokes that listener directly rather
+    /// than simulating a pointer — same handler, same no-spend contract as AC-2.
+    /// </summary>
+    [Test]
+    public void TappingOutsideTheCard_CancelsWithoutSpending()
+    {
+        ChallengeSession session = CreateTierFiveSession();
+        HintModal modal = CreateModal();
+        modal.Open(session, "IBA", "different", () => session.RequestHint());
+
+        Button backdrop = modal.transform.Find("DimOverlay")?.GetComponent<Button>();
+        Assert.IsNotNull(backdrop, "The dim overlay must carry the tap-outside dismiss control.");
+        backdrop.onClick.Invoke();
+
+        Assert.IsFalse(modal.IsOpen, "An outside tap closes the card.");
         AssertNothingSpent(session);
         Assert.IsTrue(session.CanRequestHint, "The hint must still be there to buy.");
     }

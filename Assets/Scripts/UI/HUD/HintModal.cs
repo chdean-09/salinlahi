@@ -222,6 +222,11 @@ public sealed class HintModal : MonoBehaviour
                 "HintModalCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             canvas = canvasObject.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1080f, 1920f);
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 0.5f;
             transform.SetParent(canvas.transform, false);
         }
         // Above ChallengeModeUI's own 250 so the card is never rendered behind the HUD.
@@ -232,29 +237,32 @@ public sealed class HintModal : MonoBehaviour
         root.anchorMax = Vector2.one;
         root.offsetMin = root.offsetMax = Vector2.zero;
 
-        Image scrim = gameObject.GetComponent<Image>();
-        if (scrim == null)
-            scrim = gameObject.AddComponent<Image>();
-        scrim.color = new Color(0f, 0f, 0f, 0.65f);
+        // Shared modal chrome: the navy dim every scroll modal sits on. It doubles as the
+        // tap-outside dismiss — a click that lands off the card is a Cancel in every mode
+        // (drops the unfired confirm, closes the card, spends nothing), which is exactly
+        // what the Cancel control does, so both paths run the same public method.
+        GameObject overlay = ScrollPanelArt.CreateDimOverlay(transform, "DimOverlay");
+        Button dismissArea = overlay.AddComponent<Button>();
+        dismissArea.transition = Selectable.Transition.None;
+        dismissArea.targetGraphic = overlay.GetComponent<Image>();
+        dismissArea.onClick.AddListener(Cancel);
 
-        var cardObject = new GameObject("Card", typeof(RectTransform), typeof(Image));
-        cardObject.transform.SetParent(transform, false);
-        _card = cardObject.GetComponent<RectTransform>();
-        _card.anchorMin = new Vector2(0.22f, 0.30f);
-        _card.anchorMax = new Vector2(0.78f, 0.72f);
-        _card.offsetMin = _card.offsetMax = Vector2.zero;
-        cardObject.GetComponent<Image>().color = new Color(0.05f, 0.07f, 0.13f, 0.98f);
-        bool onParchment = ScrollPanelArt.ApplyFull(cardObject.GetComponent<Image>());
+        // The card is a SIBLING created after the overlay, so it renders above the dim and
+        // — just as important — is not its descendant: a click on the card does not walk
+        // up to the dismiss control.
+        _card = ScrollPanelArt.CreateScrollPanel(transform, "Card");
+        bool onParchment = ScrollPanelArt.ApplyFull(_card.GetComponent<Image>());
 
-        _titleText = CreateLabel("Title", UITextScale.Title, new Vector2(0.06f, 0.72f), new Vector2(0.94f, 0.94f));
-        _bodyText = CreateLabel("Body", UITextScale.Body, new Vector2(0.06f, 0.44f), new Vector2(0.94f, 0.70f));
-        _costText = CreateLabel("Cost", UITextScale.Caption, new Vector2(0.06f, 0.28f), new Vector2(0.94f, 0.42f));
+        // Everything inside FullSafeArea — the paper, not the rods.
+        _titleText = CreateLabel("Title", UITextScale.Title, new Vector2(0.16f, 0.66f), new Vector2(0.84f, 0.80f));
+        _bodyText = CreateLabel("Body", UITextScale.Body, new Vector2(0.16f, 0.40f), new Vector2(0.84f, 0.64f));
+        _costText = CreateLabel("Cost", UITextScale.Caption, new Vector2(0.16f, 0.30f), new Vector2(0.84f, 0.40f));
 
         var actions = new GameObject("Actions", typeof(RectTransform), typeof(HorizontalLayoutGroup));
         actions.transform.SetParent(_card, false);
         RectTransform actionsRect = actions.GetComponent<RectTransform>();
-        actionsRect.anchorMin = new Vector2(0.06f, 0.06f);
-        actionsRect.anchorMax = new Vector2(0.94f, 0.26f);
+        actionsRect.anchorMin = new Vector2(0.16f, 0.17f);
+        actionsRect.anchorMax = new Vector2(0.84f, 0.30f);
         actionsRect.offsetMin = actionsRect.offsetMax = Vector2.zero;
         HorizontalLayoutGroup layout = actions.GetComponent<HorizontalLayoutGroup>();
         layout.spacing = 16f;
@@ -263,13 +271,20 @@ public sealed class HintModal : MonoBehaviour
         layout.childForceExpandHeight = true;
 
         _confirmButton = CreateButton(
-            HintModalCopy.ConfirmLabel, actions.transform, out _confirmLabel, HandleConfirmPressed);
+            HintModalCopy.ConfirmLabel, actions.transform, out _confirmLabel, HandleConfirmPressed,
+            GoldButton, ScrollPanelArt.InkColor);
         _cancelButton = CreateButton(
-            HintModalCopy.CancelLabel, actions.transform, out _cancelLabel, Cancel);
+            HintModalCopy.CancelLabel, actions.transform, out _cancelLabel, Cancel,
+            SlateButton, Color.white);
 
         if (onParchment)
             ScrollPanelArt.InkifyRecursive(_card);
     }
+
+    // The scroll-family button convention: gold is the forward action, dark slate the
+    // retreating one — the same pair LevelReadyScreenController ships.
+    private static readonly Color GoldButton = new Color(0.85f, 0.72f, 0.35f, 1f);
+    private static readonly Color SlateButton = new Color(0.18f, 0.24f, 0.34f, 1f);
 
     // One control serves confirm and retry: the exhausted card has nothing to confirm, so
     // the same button carries the only forward action that state offers.
@@ -305,17 +320,19 @@ public sealed class HintModal : MonoBehaviour
         string label,
         Transform parent,
         out TextMeshProUGUI labelText,
-        UnityEngine.Events.UnityAction action)
+        UnityEngine.Events.UnityAction action,
+        Color fill,
+        Color labelColor)
     {
         var go = new GameObject(label, typeof(RectTransform), typeof(Image), typeof(Button));
         go.transform.SetParent(parent, false);
-        go.GetComponent<Image>().color = new Color(0.12f, 0.42f, 0.62f, 0.95f);
+        go.GetComponent<Image>().color = fill;
         Button button = go.GetComponent<Button>();
         button.onClick.AddListener(action);
 
         LayoutElement layout = go.AddComponent<LayoutElement>();
-        layout.preferredWidth = 190f;
-        layout.preferredHeight = 56f;
+        layout.preferredWidth = 250f;
+        layout.preferredHeight = 64f;
 
         var textObject = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
         textObject.transform.SetParent(go.transform, false);
@@ -327,9 +344,17 @@ public sealed class HintModal : MonoBehaviour
         labelText.text = label;
         labelText.fontSize = UITextScale.Body;
         labelText.alignment = TextAlignmentOptions.Center;
-        labelText.color = Color.white;
+        labelText.color = labelColor;
         labelText.raycastTarget = false;
+        // "Use This Hint" is wider than the button at Body size: shrink into the floor
+        // rather than wrap a second line that would clip the 64px button.
+        labelText.enableAutoSizing = true;
+        labelText.fontSizeMin = UITextScale.AutoSizeFloor;
+        labelText.fontSizeMax = UITextScale.Body;
+        labelText.textWrappingMode = TextWrappingModes.NoWrap;
         TutorialFontProvider.ApplyTo(labelText);
+        if (labelColor == ScrollPanelArt.InkColor)
+            ScrollPanelArt.Inkify(labelText);
         return button;
     }
 }
