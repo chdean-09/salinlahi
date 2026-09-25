@@ -36,13 +36,13 @@ namespace Salinlahi.Tests.Editor.UI
         }
 
         [Test]
-        public void Build_GroupsDialogueAndMatchedPromptPerFocusWord()
+        public void Build_KeepsMeaningAndDescriptorOnly()
         {
             LevelConfigSO level = CreateLevel(
-                FocusWord("level.ugnayan.01.focus.01", "AWA",
+                FocusWord("level.ugnayan.01.focus.01", "AWA", "compassion",
                     "AWA—malasakit na nadarama para sa kapwa.",
                     "A + WA. Ang awa ang damdaming gumigising sa akin."),
-                FocusWord("level.ugnayan.01.focus.02", "GAWA",
+                FocusWord("level.ugnayan.01.focus.02", "GAWA", "action",
                     "GAWA—ang malasakit na isinasakatuparan."));
             level.challengeSequence = CreateSequence(
                 Unit(ChallengeMode.SentenceRestoration,
@@ -54,87 +54,174 @@ namespace Salinlahi.Tests.Editor.UI
 
             List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(level);
 
+            // Only the descriptor survives per word: usage/instruction lines and
+            // challenge prompts are excluded so the scroll stays scannable.
             Assert.AreEqual(2, entries.Count);
-            Assert.AreEqual("AWA", entries[0].Label);
+            Assert.AreEqual("compassion", entries[0].Label);
             Assert.AreEqual(
-                new[]
-                {
-                    "AWA—malasakit na nadarama para sa kapwa.",
-                    "A + WA. Ang awa ang damdaming gumigising sa akin.",
-                    "Ang ______ ay malasakit na nadarama para sa kapwa.",
-                },
+                new[] { "______—malasakit na nadarama para sa kapwa." },
                 entries[0].Lines);
-            Assert.AreEqual("GAWA", entries[1].Label);
+            Assert.AreEqual("action", entries[1].Label);
             Assert.AreEqual(
-                new[]
-                {
-                    "GAWA—ang malasakit na isinasakatuparan.",
-                    "Sa ______ naipapakita kung tunay ang malasakit.",
-                },
+                new[] { "______—ang malasakit na isinasakatuparan." },
                 entries[1].Lines);
         }
 
         [Test]
-        public void Build_SkipsGuidedTracingPrompts()
+        public void Build_ExcludesPromptsAndInstructionLines()
         {
             LevelConfigSO level = CreateLevel(
-                FocusWord("level.ugat.01.focus.01", "INA", "INA — ang nagluwal at nag-aruga."));
+                FocusWord("level.ugat.01.focus.01", "INA", "mother",
+                    "INA — ang nagluwal at nag-aruga.",
+                    "Bakasin mo ang bawat titik upang maibalik ang alaala ni Ina."));
             level.challengeSequence = CreateSequence(
                 Unit(ChallengeMode.GuidedTracing, "Draw E/I. Follow the guide.", ""),
                 Unit(ChallengeMode.SentenceRestoration,
-                    "Restore the family words: choose INA, then AMA.", ""));
-
-            List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(level);
-
-            // The word entry holds only its dialogue line; the restoration prompt has no
-            // focus-word evidence id, so it lands in the trailing unlabeled entry.
-            Assert.AreEqual(2, entries.Count);
-            Assert.AreEqual("INA", entries[0].Label);
-            Assert.AreEqual(new[] { "INA — ang nagluwal at nag-aruga." }, entries[0].Lines);
-            Assert.AreEqual(string.Empty, entries[1].Label);
-            Assert.AreEqual(
-                new[] { "Restore the family words: choose INA, then AMA." },
-                entries[1].Lines);
-        }
-
-        [Test]
-        public void Build_DedupesIdenticalLinesAcrossSources()
-        {
-            const string shared = "Ang ______ ay malasakit na nadarama para sa kapwa.";
-            LevelConfigSO level = CreateLevel(
-                FocusWord("level.ugnayan.01.focus.01", "AWA", shared));
-            level.challengeSequence = CreateSequence(
-                Unit(ChallengeMode.SentenceRestoration, shared, "level.ugnayan.01.focus.01"));
+                    "Ibalik ang INA sa alaala.", "level.ugat.01.focus.01"));
 
             List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(level);
 
             Assert.AreEqual(1, entries.Count);
-            Assert.AreEqual(new[] { shared }, entries[0].Lines);
+            Assert.AreEqual("mother", entries[0].Label);
+            Assert.AreEqual(
+                new[] { "______ — ang nagluwal at nag-aruga." },
+                entries[0].Lines);
+        }
+
+        [Test]
+        public void Build_PromptOnlyLevel_ReturnsEmpty()
+        {
+            LevelConfigSO level = CreateLevel(
+                FocusWord("level.ugat.01.focus.01", "INA", "mother"));
+            level.challengeSequence = CreateSequence(
+                Unit(ChallengeMode.WordPlacement,
+                    "Ibalik ang INA sa alaala.", "level.ugat.01.focus.01"));
+
+            // Prompts are never hint content — a level whose only material is a
+            // prompt has no scroll and no chip.
+            Assert.AreEqual(0, SentenceHintContent.Build(level).Count);
+        }
+
+        [Test]
+        public void Build_RedactsAnswerWordCaseInsensitively()
+        {
+            LevelConfigSO level = CreateLevel(
+                FocusWord("level.ugat.01.focus.01", "INA", "mother",
+                    "Bakasin mo ang bawat titik upang maibalik ang alaala ni Ina."));
+
+            List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(level);
+
+            Assert.AreEqual(
+                new[] { "Bakasin mo ang bawat titik upang maibalik ang alaala ni ______." },
+                entries[0].Lines);
+        }
+
+        [Test]
+        public void Build_StripsBinubuoSpellingRecipe()
+        {
+            LevelConfigSO level = CreateLevel(
+                FocusWord("level.ugat.01.focus.01", "INA", "mother",
+                    "INA — ang nagluwal at nag-aruga. Binubuo ito ng dalawang titik: I at NA."));
+
+            List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(level);
+
+            Assert.AreEqual(
+                new[] { "______ — ang nagluwal at nag-aruga." },
+                entries[0].Lines);
+        }
+
+        [Test]
+        public void Build_DedupesIdenticalDescriptors()
+        {
+            LevelConfigSO level = CreateLevel(
+                FocusWord("level.x.focus.01", "AWA", "compassion",
+                    "AWA—malasakit na nadarama para sa kapwa."),
+                FocusWord("level.x.focus.02", "GAWA", "action",
+                    "AWA—malasakit na nadarama para sa kapwa."));
+
+            List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(level);
+
+            // The second descriptor cleans to the same line, so it is dropped and
+            // the empty entry never appears.
+            Assert.AreEqual(1, entries.Count);
+            Assert.AreEqual("compassion", entries[0].Label);
+        }
+
+        [Test]
+        public void Build_RendersWordModeObjectiveWithClueAndHiddenTargets()
+        {
+            LevelConfigSO level = CreateLevel(
+                FocusWord("level.ugat.01.focus.01", "INA", "mother"));
+            level.restorationObjective = new RestorationObjectiveDefinition
+            {
+                displayMode = RestorationDisplayMode.GuidedWords,
+                units = new List<RestorationObjectiveUnit>
+                {
+                    ObjectiveUnit("u1", "ilaw ng tahanan",
+                        Target("occ.1"), Target("occ.2")),
+                },
+            };
+
+            List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(level);
+
+            Assert.AreEqual(1, entries.Count);
+            Assert.AreEqual(string.Empty, entries[0].Label);
+            Assert.AreEqual(new[] { "__ __ — ilaw ng tahanan" }, entries[0].Lines);
+        }
+
+        [Test]
+        public void Build_RendersContextModeObjectiveAsSentenceSkeleton()
+        {
+            LevelConfigSO level = CreateLevel(
+                FocusWord("level.ugat.03.focus.01", "BATA", "child"),
+                FocusWord("level.ugat.03.focus.02", "TAMA", "correct"));
+            level.restorationObjective = new RestorationObjectiveDefinition
+            {
+                displayMode = RestorationDisplayMode.MarkedContext,
+                units = new List<RestorationObjectiveUnit>
+                {
+                    ObjectiveUnit("s1", null,
+                        Literal("Ang "), Target("occ.1"), Literal("buting "),
+                        Target("occ.2"), Target("occ.3")),
+                    ObjectiveUnit("s2", null,
+                        Literal(" ay gu"), Target("occ.4"), Literal("gawa ng "),
+                        Target("occ.5"), Target("occ.6"), Literal(".")),
+                },
+            };
+
+            List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(level);
+
+            Assert.AreEqual(1, entries.Count);
+            Assert.AreEqual(
+                new[] { "Ang __buting __ __ ay gu__gawa ng __ __." },
+                entries[0].Lines);
         }
 
         [Test]
         public void Build_SkipsFocusWordsWithNoContent()
         {
             LevelConfigSO level = CreateLevel(
-                FocusWord("level.x.focus.01", "EMPTY"),
-                FocusWord("level.x.focus.02", "AWA", "AWA—malasakit na nadarama para sa kapwa."));
+                FocusWord("level.x.focus.01", "EMPTY", null),
+                FocusWord("level.x.focus.02", "AWA", "compassion",
+                    "AWA—malasakit na nadarama para sa kapwa."));
 
             List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(level);
 
             Assert.AreEqual(1, entries.Count);
-            Assert.AreEqual("AWA", entries[0].Label);
+            Assert.AreEqual("compassion", entries[0].Label);
         }
 
         [Test]
-        public void Build_FallsBackToLatinSpellingLabel()
+        public void Build_WithoutMeaning_LeavesLabelUnlabeled()
         {
             LevelConfigSO level = CreateLevel(
-                FocusWord("level.x.focus.01", null, "hint line"));
+                FocusWord("level.x.focus.01", null, null, "hint line"));
             level.focusWords[0].latinSpelling = "KASAMA";
 
             List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(level);
 
-            Assert.AreEqual("KASAMA", entries[0].Label);
+            // The word itself is the answer, so it is never used as the heading.
+            Assert.AreEqual(string.Empty, entries[0].Label);
         }
 
         private LevelConfigSO CreateLevel(params FocusWordDefinition[] words)
@@ -145,12 +232,14 @@ namespace Salinlahi.Tests.Editor.UI
             return level;
         }
 
-        private FocusWordDefinition FocusWord(string stableId, string label, params string[] dialogueLines)
+        private FocusWordDefinition FocusWord(
+            string stableId, string displayLabel, string meaning, params string[] dialogueLines)
         {
             return new FocusWordDefinition
             {
                 stableId = stableId,
-                displayLabel = label,
+                displayLabel = displayLabel,
+                meaning = meaning,
                 media = new ContentMediaReferences
                 {
                     dialogue = dialogueLines.Length == 0 ? null : CreateDialogue(dialogueLines),
@@ -185,6 +274,36 @@ namespace Salinlahi.Tests.Editor.UI
                 mode = mode,
                 prompt = prompt,
                 evidenceContentId = evidenceContentId,
+            };
+        }
+
+        private static RestorationObjectiveUnit ObjectiveUnit(
+            string stableId, string clue, params RestorationObjectiveToken[] tokens)
+        {
+            return new RestorationObjectiveUnit
+            {
+                stableId = stableId,
+                displayLabel = stableId,
+                clue = clue,
+                tokens = new List<RestorationObjectiveToken>(tokens),
+            };
+        }
+
+        private static RestorationObjectiveToken Literal(string text)
+        {
+            return new RestorationObjectiveToken
+            {
+                kind = RestorationTokenKind.Literal,
+                literalText = text,
+            };
+        }
+
+        private static RestorationObjectiveToken Target(string occurrenceId)
+        {
+            return new RestorationObjectiveToken
+            {
+                kind = RestorationTokenKind.Target,
+                occurrenceId = occurrenceId,
             };
         }
     }
