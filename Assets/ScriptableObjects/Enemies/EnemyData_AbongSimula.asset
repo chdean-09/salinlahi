@@ -15,7 +15,9 @@ MonoBehaviour:
   enemyID: abo-ng-simula
   displayName: Abo ng Simula
   discoverySubtitle: 
-  description: Abo ng Simula was formed from the ashes of names burned and beginnings forgotten. Paglimot sends it to cover the first mark of every word, because a people who forget where a word begins may soon forget where they came from.
+  description: Abo ng Simula was formed from the ashes of names burned and beginnings
+    forgotten. Paglimot sends it to cover the first mark of every word, because a
+    people who forget where a word begins may soon forget where they came from.
   abilityLine: It covers the first symbol of a word with ash.
   moveSpeed: 1.6
   maxHealth: 1
@@ -25,6 +27,26 @@ MonoBehaviour:
   - {fileID: 8453393145806432802, guid: 17b6e6dc334c84c91a8a30ba2cb17bfd, type: 3}
   - {fileID: 7328526258764469357, guid: 17b6e6dc334c84c91a8a30ba2cb17bfd, type: 3}
   animatorController: {fileID: 0}
+  abilityVisuals: []
+  hudAbilityVisuals:
+  - id: 0
+    activeSprite: {fileID: 21300000, guid: 6ec1f7240d0694cb48ee2e1560d6aadf, type: 3}
+    activationFrames:
+    - {fileID: 21300000, guid: a264ba041fe8742289ea278ccc654f8a, type: 3}
+    - {fileID: 21300000, guid: 9c74c736c1c6b44cf91febc0c7e266d7, type: 3}
+    - {fileID: 21300000, guid: 1a46637efbce741d9a1dcb0dd90a0e72, type: 3}
+    - {fileID: 21300000, guid: 6ec1f7240d0694cb48ee2e1560d6aadf, type: 3}
+    activationFramesPerSecond: 16
+    activationOpacity: 1
+    exitFrames:
+    - {fileID: 21300000, guid: 5a2fa1ea2bdd8482fbad873cfd5eca6e, type: 3}
+    - {fileID: 21300000, guid: 06aa117879e7e45f988d60c2866e26c6, type: 3}
+    - {fileID: 21300000, guid: 4db7774d48b5a401eb485820859d5777, type: 3}
+    - {fileID: 21300000, guid: 3e03f7eac6a21427d84736e16734ddcb, type: 3}
+    exitFramesPerSecond: 12
+    exitOpacity: 1
+    slotSizeMultiplier: {x: 2.5, y: 2.5}
+    localOffset: {x: 0, y: 0}
   portraitSprite: {fileID: 0}
   assignedCharacter: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
   isDecoy: 0

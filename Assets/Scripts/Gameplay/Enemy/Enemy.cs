@@ -36,6 +36,9 @@ public class Enemy : MonoBehaviour
 
     private EnemyMover _mover;
     private EnemyHurtFeedback _hurtFeedback;
+    private EnemyAbilityVisualPresenter _abilityVisualPresenter;
+    private bool _hasBeenExternalAbilityVisualTarget;
+    private EnemyArmorStateBinder _armorVisualBinder;
     private PhaserEnemy _phaserEnemy;
     private BossSummonTicker _summonTicker;
     // REWORK: SummonWaveOnPhaseStart removed — replaced by BossSummonTicker.
@@ -72,6 +75,7 @@ public class Enemy : MonoBehaviour
     public bool HasVisualCharacterOverride => _labelOverrides.Count > 0;
     public bool IsGlyphStained => _glyphStainSources.Count > 0;
     public EnemyGlyphBadge GlyphBadge => _glyphBadge;
+    public EnemyAbilityVisualPresenter AbilityVisuals => _abilityVisualPresenter;
     public string EnemyID => _data?.enemyID;
     public EnemyDataSO Data => _data;
     public int CurrentHealth => _currentHealth;
@@ -126,8 +130,14 @@ public class Enemy : MonoBehaviour
     // placeholder for now. will be replaced in salin 68
     public virtual bool IsBoss => false;
     public event Action<Enemy, int, int> HealthChanged;
+    /// <summary>Raised only for a hit that leaves the enemy alive, before hurt feedback begins.</summary>
+    public event Action<Enemy, int, int> NonLethalDamageTaken;
+    /// <summary>Raised after initialization, manual walk-frame advancement, or an explicit reset.</summary>
+    public event Action<Enemy, int> WalkFrameChanged;
 
     public int MaxHealth => _data != null ? _data.maxHealth : 0;
+    public int CurrentWalkFrameIndex => _walkFrameIndex;
+    public int WalkFrameCount => _data != null && _data.walkFrames != null ? _data.walkFrames.Length : 0;
 
     public float EffectiveSpeed
     {
@@ -171,6 +181,8 @@ public class Enemy : MonoBehaviour
         _summonTicker = GetComponent<BossSummonTicker>();
         _renderer = GetComponent<SpriteRenderer>();
         _glyphBadge = GetComponentInChildren<EnemyGlyphBadge>(includeInactive: true);
+        _abilityVisualPresenter = GetComponent<EnemyAbilityVisualPresenter>();
+        _armorVisualBinder = GetComponent<EnemyArmorStateBinder>();
 
         if (_renderer != null)
             _baseRendererColor = _renderer.color;
@@ -227,6 +239,7 @@ public class Enemy : MonoBehaviour
             _mover?.Stop();
             _currentHealth = 0;
             _data = null;
+            _abilityVisualPresenter?.StopAll();
             ResetRendererState();
             return false;
         }
@@ -237,6 +250,7 @@ public class Enemy : MonoBehaviour
             ActiveEnemyTracker.Instance?.Unregister(this);
             _currentHealth = 0;
             _data = null;
+            _abilityVisualPresenter?.StopAll();
             ResetRendererState();
             return false;
         }
@@ -248,6 +262,7 @@ public class Enemy : MonoBehaviour
             _mover.Stop();
             _currentHealth = 0;
             _data = null;
+            _abilityVisualPresenter?.StopAll();
             ResetRendererState();
             return false;
         }
@@ -257,6 +272,7 @@ public class Enemy : MonoBehaviour
 
         _data = data;
         _currentHealth = _data.maxHealth;
+        _abilityVisualPresenter?.StopAll();
         _labelOverrides.Clear();
         ClearGlyphStains();
         ClearResolutionBlocks();
@@ -300,6 +316,13 @@ public class Enemy : MonoBehaviour
         EnsureAbilityComponent<NawalangMukhaNameLossController>(_data.removesNames);
         EnsureAbilityComponent<PhaserEnemy>(_data.isPhaser);
         EnsureAbilityComponent<EnemyLearningAbilityController>(_data.learningAbility != EnemyLearningAbility.None);
+        EnsureAbilityComponent<EnemyAbilityVisualPresenter>(
+            (_data.abilityVisuals != null && _data.abilityVisuals.Length > 0)
+            || _hasBeenExternalAbilityVisualTarget);
+        EnsureAbilityComponent<EnemyArmorStateBinder>(
+            HasDataAbilityVisual(_data, EnemyAbilityVisualId.Armor));
+        _abilityVisualPresenter = GetComponent<EnemyAbilityVisualPresenter>();
+        _armorVisualBinder = GetComponent<EnemyArmorStateBinder>();
 
         EnemyLearningAbilityController learningAbility = GetComponent<EnemyLearningAbilityController>();
         if (learningAbility != null && learningAbility.enabled)
@@ -323,17 +346,16 @@ public class Enemy : MonoBehaviour
         if (transform.localScale != wantedScale)
             transform.localScale = wantedScale;
 
+        _walkFrameIndex = 0;
+        _walkFrameTimer = 0f;
         if (_renderer != null)
         {
             if (_data.walkFrames != null && _data.walkFrames.Length > 0)
             {
-                _walkFrameIndex = 0;
-                _walkFrameTimer = 0f;
                 _renderer.sprite = _data.walkFrames[0];
             }
 
             _renderer.color = _baseRendererColor;
-            ResetShieldBreakVisual();
         }
 
         _spawnSequence = ++_spawnSequenceCounter;
@@ -345,6 +367,15 @@ public class Enemy : MonoBehaviour
             _glyphBadge.ApplyLayout();
             _glyphBadge.Refresh();
         }
+        if (_abilityVisualPresenter != null)
+            _abilityVisualPresenter.Configure(_data, _renderer, _glyphBadge != null ? _glyphBadge.Renderer : null);
+        // Resolve the legacy color feedback only after this spawn's visuals have been configured.
+        // A pooled shell may still hold the previous occupant's armor definition at the point
+        // where the base sprite color is reset above.
+        ResetShieldBreakVisual();
+        if (_armorVisualBinder != null && _armorVisualBinder.enabled)
+            _armorVisualBinder.Bind(this, _abilityVisualPresenter);
+        WalkFrameChanged?.Invoke(this, _walkFrameIndex);
         UpdateLabelLayout();
         HealthChanged?.Invoke(this, _currentHealth, _currentHealth);
 
@@ -411,7 +442,7 @@ public class Enemy : MonoBehaviour
 
         GlyphCoverController cover = GetComponent<GlyphCoverController>();
         if (cover != null && cover.enabled)
-            cover.SetSuppressedForIntroductionSpawn(suppressed);
+            cover.ResetForSpawn(suppressed);
 
         BakodShieldController shield = GetComponent<BakodShieldController>();
         if (shield != null && shield.enabled)
@@ -451,10 +482,26 @@ public class Enemy : MonoBehaviour
         component.enabled = wanted;
     }
 
+    private static bool HasDataAbilityVisual(EnemyDataSO data, EnemyAbilityVisualId id)
+    {
+        if (data == null || data.abilityVisuals == null)
+            return false;
+
+        for (int i = 0; i < data.abilityVisuals.Length; i++)
+        {
+            EnemyAbilityVisualDefinition definition = data.abilityVisuals[i];
+            if (definition != null && definition.id == id && definition.activeSprite != null)
+                return true;
+        }
+
+        return false;
+    }
+
     public void ResetForPool()
     {
         try
         {
+            _abilityVisualPresenter?.StopAll();
             _runtimeCharacter = null;
             _speedBuffs.Clear();
             _labelOverrides.Clear();
@@ -526,8 +573,11 @@ public class Enemy : MonoBehaviour
         }
         else
         {
-            if (ShouldTriggerShieldBreak(previousHealth))
+            if (!HasArmorAbilityVisual() && ShouldTriggerShieldBreak(previousHealth))
                 TriggerShieldBreakVisual();
+
+            if (previousHealth == _data.maxHealth && _currentHealth < previousHealth)
+                NonLethalDamageTaken?.Invoke(this, previousHealth, _currentHealth);
 
             if (_data.useHurtFeedback && _hurtFeedback == null)
             {
@@ -548,10 +598,19 @@ public class Enemy : MonoBehaviour
         _currentHealth = Mathf.Clamp(currentHealth, 1, _data.maxHealth);
         HealthChanged?.Invoke(this, previousHealth, _currentHealth);
 
-        if (_data.maxHealth > 1 && _currentHealth < _data.maxHealth)
-            TriggerShieldBreakVisual();
-        else
-            ResetShieldBreakVisual();
+        if (!HasArmorAbilityVisual())
+        {
+            if (_data.maxHealth > 1 && _currentHealth < _data.maxHealth)
+                TriggerShieldBreakVisual();
+            else
+                ResetShieldBreakVisual();
+        }
+    }
+
+    private bool HasArmorAbilityVisual()
+    {
+        return _abilityVisualPresenter != null
+            && _abilityVisualPresenter.HasVisual(EnemyAbilityVisualId.Armor);
     }
 
     private bool ShouldTriggerShieldBreak(int previousHealth)
@@ -568,7 +627,7 @@ public class Enemy : MonoBehaviour
         if (_renderer == null)
             return;
 
-        if (!_useShieldBreakColorFeedback || _data == null || _data.maxHealth <= 1)
+        if (HasArmorAbilityVisual() || !_useShieldBreakColorFeedback || _data == null || _data.maxHealth <= 1)
             return;
 
         _renderer.color = _shieldIntactColor;
@@ -576,7 +635,7 @@ public class Enemy : MonoBehaviour
 
     private void TriggerShieldBreakVisual()
     {
-        if (_renderer == null || !_useShieldBreakColorFeedback)
+        if (_renderer == null || HasArmorAbilityVisual() || !_useShieldBreakColorFeedback)
             return;
 
         _renderer.color = _shieldBrokenColor;
@@ -586,6 +645,15 @@ public class Enemy : MonoBehaviour
     public void Defeat()
     {
         if (_isDying) return;
+
+        // Bakod's barrier has a specific break one-shot. Keep that one layer through a badge-only
+        // defeat, while all other persistent ability art clears before any death presentation.
+        BakodShieldController bakod = GetComponent<BakodShieldController>();
+        bool hasBakodBreak = bakod != null && bakod.enabled && bakod.BeginDefeatVisual();
+        if (hasBakodBreak)
+            _abilityVisualPresenter?.StopAllExcept(EnemyAbilityVisualId.BakodBarrier);
+        else
+            _abilityVisualPresenter?.StopAll();
 
         BaybayinCharacterSO capturedCharacter = Character;
 
@@ -641,6 +709,16 @@ public class Enemy : MonoBehaviour
             EventBus.RaiseEnemyDefeated(capturedCharacter);
             _deathRoutine = StartCoroutine(PlayBadgeFinalDrawThenReturn());
         }
+        else if (hasBakodBreak)
+        {
+            _isDying = true;
+            _hurtFeedback?.ResetState();
+            _mover?.Stop();
+            DisableContactCollider();
+            GetComponent<GeneralAura>()?.ClearAllAffected();
+            EventBus.RaiseEnemyDefeated(capturedCharacter);
+            _deathRoutine = StartCoroutine(PlayBakodBarrierBreakThenReturn());
+        }
         else
         {
             ReturnToPool();
@@ -659,6 +737,18 @@ public class Enemy : MonoBehaviour
     {
         while (_glyphBadge != null && _glyphBadge.IsPlayingFinalDraw)
             yield return null;
+        while (_abilityVisualPresenter != null
+               && _abilityVisualPresenter.IsExitPlaying(EnemyAbilityVisualId.BakodBarrier))
+            yield return null;
+        _deathRoutine = null;
+        ReturnToPool();
+    }
+
+    private IEnumerator PlayBakodBarrierBreakThenReturn()
+    {
+        while (_abilityVisualPresenter != null
+               && _abilityVisualPresenter.IsExitPlaying(EnemyAbilityVisualId.BakodBarrier))
+            yield return null;
         _deathRoutine = null;
         ReturnToPool();
     }
@@ -668,6 +758,7 @@ public class Enemy : MonoBehaviour
     // boss return-to-pool itself and just wants the visual played).
     public IEnumerator PlayDeathAnimationFrames()
     {
+        _abilityVisualPresenter?.StopAll();
         Sprite[] frames = _data != null ? _data.deathFrames : null;
         if (_renderer == null || frames == null || frames.Length == 0)
             yield break;
@@ -704,6 +795,7 @@ public class Enemy : MonoBehaviour
         // would re-enter and raise another OnBaseHit before the pool return.
         if (_isDying) return;
         _isDying = true;
+        _abilityVisualPresenter?.StopAll();
 
         _mover?.Stop();
         DisableContactCollider();
@@ -762,18 +854,42 @@ public class Enemy : MonoBehaviour
         if (source == null || _glyphBadge == null)
             return;
 
+        bool wasStained = _glyphStainSources.Count > 0;
         bool changed = stained
             ? _glyphStainSources.Add(source)
             : _glyphStainSources.Remove(source);
 
         if (changed)
-            _glyphBadge.SetStained(_glyphStainSources.Count > 0);
+        {
+            bool isStained = _glyphStainSources.Count > 0;
+            _glyphBadge.SetStained(isStained);
+            if (isStained)
+            {
+                object visualSource = FindAbilityVisualSource(
+                    _glyphStainSources,
+                    EnemyAbilityVisualId.MantsaStain);
+                UpdateExternalAbilityVisual(
+                    EnemyAbilityVisualId.MantsaStain,
+                    visualSource,
+                    active: visualSource != null,
+                    animateRemoval: true);
+            }
+            else if (wasStained)
+            {
+                UpdateExternalAbilityVisual(
+                    EnemyAbilityVisualId.MantsaStain,
+                    source,
+                    active: false,
+                    animateRemoval: true);
+            }
+        }
     }
 
     private void ClearGlyphStains()
     {
         _glyphStainSources.Clear();
         _glyphBadge?.SetStained(false);
+        _abilityVisualPresenter?.SetActive(EnemyAbilityVisualId.MantsaStain, false);
     }
 
     /// <summary>
@@ -786,8 +902,13 @@ public class Enemy : MonoBehaviour
         if (source == null)
             return;
 
-        if (_resolutionBlocks.Add(source) && _resolutionBlocks.Count == 1)
-            RefreshResolutionBlockTell();
+        if (!_resolutionBlocks.Add(source))
+            return;
+
+        if (_resolutionBlocks.Count == 1)
+            RefreshResolutionBlockTell(animateRemoval: false);
+        else
+            RefreshResolutionBlockAbilityVisual();
     }
 
     /// <summary>
@@ -798,8 +919,13 @@ public class Enemy : MonoBehaviour
         if (source == null)
             return;
 
-        if (_resolutionBlocks.Remove(source) && _resolutionBlocks.Count == 0)
-            RefreshResolutionBlockTell();
+        if (_resolutionBlocks.Remove(source))
+        {
+            if (_resolutionBlocks.Count == 0)
+                RefreshResolutionBlockTell(animateRemoval: true);
+            else
+                RefreshResolutionBlockAbilityVisual();
+        }
     }
 
     /// <summary>
@@ -812,12 +938,100 @@ public class Enemy : MonoBehaviour
             return;
 
         _resolutionBlocks.Clear();
-        RefreshResolutionBlockTell();
+        RefreshResolutionBlockTell(animateRemoval: false);
     }
 
-    private void RefreshResolutionBlockTell()
+    private void RefreshResolutionBlockTell(bool animateRemoval)
     {
         _glyphBadge?.SetResolutionBlocked(IsResolutionBlocked);
+        RefreshResolutionBlockAbilityVisual(animateRemoval);
+    }
+
+    private void RefreshResolutionBlockAbilityVisual(bool animateRemoval = true)
+    {
+        object source = FindAbilityVisualSource(_resolutionBlocks, EnemyAbilityVisualId.BakodBlockedTarget);
+        UpdateExternalAbilityVisual(
+            EnemyAbilityVisualId.BakodBlockedTarget,
+            source,
+            source != null,
+            animateRemoval);
+    }
+
+    private void UpdateExternalAbilityVisual(
+        EnemyAbilityVisualId id,
+        object source,
+        bool active,
+        bool animateRemoval)
+    {
+        EnemyAbilityVisualPresenter presenter = _abilityVisualPresenter;
+        EnemyAbilityVisualDefinition definition = FindAbilityVisualDefinition(source, id);
+        if (active && definition != null && _glyphBadge != null && _glyphBadge.Renderer != null)
+        {
+            _hasBeenExternalAbilityVisualTarget = true;
+            if (presenter == null)
+            {
+                presenter = GetComponent<EnemyAbilityVisualPresenter>();
+                if (presenter == null)
+                    presenter = gameObject.AddComponent<EnemyAbilityVisualPresenter>();
+                _abilityVisualPresenter = presenter;
+            }
+
+            // A pooled shell can retain the component after an enemy type without its own visuals
+            // disabled it. External effects must wake that component before configuring the new
+            // source's layer; setting enabled before Configure also guarantees OnEnable cleanup.
+            if (!presenter.enabled)
+                presenter.enabled = true;
+
+            presenter.ConfigureExternalVisual(definition, _glyphBadge.Renderer);
+            if (_phaserEnemy != null)
+                presenter.SetVisibilityAlphaMultiplier(_phaserEnemy.CurrentVisibilityAlpha);
+            presenter.SetActive(id, true);
+            return;
+        }
+
+        if (presenter == null || !presenter.HasVisual(id))
+            return;
+
+        if (active)
+            presenter.SetActive(id, true);
+        else if (animateRemoval)
+            presenter.PlayExit(id);
+        else
+            presenter.SetActive(id, false);
+    }
+
+    private static object FindAbilityVisualSource(
+        HashSet<object> sources,
+        EnemyAbilityVisualId id)
+    {
+        foreach (object source in sources)
+        {
+            if (FindAbilityVisualDefinition(source, id) != null)
+                return source;
+        }
+
+        return null;
+    }
+
+    private static EnemyAbilityVisualDefinition FindAbilityVisualDefinition(
+        object source,
+        EnemyAbilityVisualId id)
+    {
+        MonoBehaviour sourceComponent = source as MonoBehaviour;
+        Enemy sourceEnemy = sourceComponent != null ? sourceComponent.GetComponent<Enemy>() : null;
+        EnemyDataSO sourceData = sourceEnemy != null ? sourceEnemy.Data : null;
+        EnemyAbilityVisualDefinition[] definitions = sourceData != null ? sourceData.abilityVisuals : null;
+        if (definitions == null)
+            return null;
+
+        for (int i = 0; i < definitions.Length; i++)
+        {
+            EnemyAbilityVisualDefinition definition = definitions[i];
+            if (definition != null && definition.id == id && definition.activeSprite != null)
+                return definition;
+        }
+
+        return null;
     }
 
     public void ReturnToPool()
@@ -837,6 +1051,7 @@ public class Enemy : MonoBehaviour
     {
         NameLossEffectRegistry.Changed -= HandleNameLossEffectChanged;
         _mover?.Stop();
+        _abilityVisualPresenter?.StopAll();
     }
 
     private void HandleNameLossEffectChanged()
@@ -869,6 +1084,8 @@ public class Enemy : MonoBehaviour
         {
             _renderer.sprite = _data.walkFrames[0];
         }
+
+        WalkFrameChanged?.Invoke(this, _walkFrameIndex);
     }
 
     private void AdvanceWalkAnimation()
@@ -900,6 +1117,7 @@ public class Enemy : MonoBehaviour
 
         float frameDuration = 1f / _walkAnimationFps;
         _walkFrameTimer += Time.deltaTime;
+        int previousFrame = _walkFrameIndex;
 
         while (_walkFrameTimer >= frameDuration)
         {
@@ -908,6 +1126,8 @@ public class Enemy : MonoBehaviour
         }
 
         _renderer.sprite = _data.walkFrames[_walkFrameIndex];
+        if (previousFrame != _walkFrameIndex)
+            WalkFrameChanged?.Invoke(this, _walkFrameIndex);
     }
 
     private void ResetRendererState()

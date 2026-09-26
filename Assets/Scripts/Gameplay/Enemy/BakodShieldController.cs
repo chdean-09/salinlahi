@@ -82,7 +82,38 @@ public sealed class BakodShieldController : MonoBehaviour
 
         _suppressedForIntroductionSpawn = suppressed;
         if (suppressed)
+        {
             ReleaseAll();
+            _enemy?.AbilityVisuals?.SetActive(EnemyAbilityVisualId.BakodBarrier, false);
+        }
+    }
+
+    /// <summary>Starts Bakod's authored wall-break one-shot when this spawn is defeated.</summary>
+    public bool BeginDefeatVisual()
+    {
+        if (_enemy == null)
+            _enemy = GetComponent<Enemy>();
+
+        EnemyDataSO data = _enemy != null ? _enemy.Data : null;
+        if (!IsBarrierActiveForSpawn()
+            || (data?.deathFrames != null && data.deathFrames.Length > 0))
+            return false;
+
+        EnemyAbilityVisualPresenter presenter = _enemy != null ? _enemy.AbilityVisuals : null;
+        if (presenter == null || !presenter.HasVisual(EnemyAbilityVisualId.BakodBarrier))
+            return false;
+
+        presenter.PlayExit(EnemyAbilityVisualId.BakodBarrier);
+        return presenter.IsExitPlaying(EnemyAbilityVisualId.BakodBarrier);
+    }
+
+    private bool IsBarrierActiveForSpawn()
+    {
+        EnemyDataSO data = _enemy != null ? _enemy.Data : null;
+        return !_suppressedForIntroductionSpawn
+            && data != null
+            && data.blocksEnemiesBehind
+            && !_enemy.IsDying;
     }
 
     private void Awake()
@@ -104,6 +135,7 @@ public sealed class BakodShieldController : MonoBehaviour
         // leaves play without releasing its holds strands a permanently unresolvable enemy on
         // screen — no exception, no failing test, just a level the player cannot finish.
         ReleaseAll();
+        _enemy?.AbilityVisuals?.SetActive(EnemyAbilityVisualId.BakodBarrier, false);
     }
 
     private void Update()
@@ -128,11 +160,13 @@ public sealed class BakodShieldController : MonoBehaviour
         if (_enemy == null)
             _enemy = GetComponent<Enemy>();
 
-        EnemyDataSO data = _enemy != null ? _enemy.Data : null;
         // The introduction-spawn suppression joins the same gate as the data flag rather than
         // getting its own early return, so every way of being inert lets its held enemies go
         // through the one path that has always done it.
-        if (_suppressedForIntroductionSpawn || data == null || !data.blocksEnemiesBehind || _enemy.IsDying)
+        bool abilityActive = IsBarrierActiveForSpawn();
+        _enemy.AbilityVisuals?.SetActive(EnemyAbilityVisualId.BakodBarrier, abilityActive);
+
+        if (!abilityActive)
         {
             // Dead, disarmed, suppressed or recycled: the shield is down. This is what lifts the
             // block when Bakod is defeated.

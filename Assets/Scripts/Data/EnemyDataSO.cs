@@ -1,4 +1,5 @@
 using UnityEngine;
+using System;
 
 [CreateAssetMenu(fileName = "EnemyData", menuName = "Salinlahi/Enemy Data")]
 public class EnemyDataSO : ScriptableObject
@@ -51,6 +52,12 @@ public class EnemyDataSO : ScriptableObject
     [Header("Visuals")]
     public Sprite[] walkFrames;
     public RuntimeAnimatorController animatorController;
+
+    [Tooltip("Ability-driven sprite layers synchronized to the Enemy walk-frame index. Definitions share pooled presenter layers and may anchor to the body or glyph badge.")]
+    public EnemyAbilityVisualDefinition[] abilityVisuals = Array.Empty<EnemyAbilityVisualDefinition>();
+
+    [Tooltip("Ability artwork targeting HUD elements instead of the enemy sprite. The HUD presenter resolves these definitions from the currently active ability source.")]
+    public EnemyHudAbilityVisualDefinition[] hudAbilityVisuals = Array.Empty<EnemyHudAbilityVisualDefinition>();
 
     [Tooltip("Almanac grid thumbnail + detail picture. Optional — falls back to walkFrames[0].")]
     public Sprite portraitSprite;

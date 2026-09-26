@@ -1,0 +1,598 @@
+fileFormatVersion: 2
+guid: e27967465711b4350a9dc301b5b5ee71
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 6134321629661980057
+    second: splash-paint-clear-1622-07_0
+  - first:
+      213: 5912409104859978098
+    second: splash-paint-clear-1622-07_1
+  - first:
+      213: 7169275713837568186
+    second: splash-paint-clear-1622-07_2
+  - first:
+      213: 4262277958116830332
+    second: splash-paint-clear-1622-07_3
+  - first:
+      213: 8403932403571146524
+    second: splash-paint-clear-1622-07_4
+  - first:
+      213: -7533910030102996807
+    second: splash-paint-clear-1622-07_5
+  - first:
+      213: -499135789828084494
+    second: splash-paint-clear-1622-07_6
+  - first:
+      213: 4585247681208104120
+    second: splash-paint-clear-1622-07_7
+  - first:
+      213: -1747273122453121138
+    second: splash-paint-clear-1622-07_8
+  - first:
+      213: 3633453354892837906
+    second: splash-paint-clear-1622-07_9
+  - first:
+      213: 2416830176147452040
+    second: splash-paint-clear-1622-07_10
+  - first:
+      213: -1145336617064874849
+    second: splash-paint-clear-1622-07_11
+  - first:
+      213: -5318227444397144651
+    second: splash-paint-clear-1622-07_12
+  - first:
+      213: -1689582371813686702
+    second: splash-paint-clear-1622-07_13
+  - first:
+      213: 202773572962029865
+    second: splash-paint-clear-1622-07_14
+  - first:
+      213: -6125748926280467570
+    second: splash-paint-clear-1622-07_15
+  - first:
+      213: -5986866735552779526
+    second: splash-paint-clear-1622-07_16
+  - first:
+      213: -6818657906706398538
+    second: splash-paint-clear-1622-07_17
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 96
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: iOS
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: splash-paint-clear-1622-07_0
+      rect:
+        serializedVersion: 2
+        x: 99
+        y: 287
+        width: 48
+        height: 79
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9956ff9650d712550800000000000000
+      internalID: 6134321629661980057
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: splash-paint-clear-1622-07_1
+      rect:
+        serializedVersion: 2
+        x: 185
+        y: 332
+        width: 32
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 279d6fd61c81d0250800000000000000
+      internalID: 5912409104859978098
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: splash-paint-clear-1622-07_2
+      rect:
+        serializedVersion: 2
+        x: 226
+        y: 315
+        width: 22
+        height: 26
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ab09f1cf6426e7360800000000000000
+      internalID: 7169275713837568186
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: splash-paint-clear-1622-07_3
+      rect:
+        serializedVersion: 2
+        x: 293
+        y: 300
+        width: 34
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c7ce78b6837a62b30800000000000000
+      internalID: 4262277958116830332
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: splash-paint-clear-1622-07_4
+      rect:
+        serializedVersion: 2
+        x: 332
+        y: 308
+        width: 69
+        height: 51
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c1fb04fbef3c0a470800000000000000
+      internalID: 8403932403571146524
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: splash-paint-clear-1622-07_5
+      rect:
+        serializedVersion: 2
+        x: 173
+        y: 46
+        width: 135
+        height: 279
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9b855f57ebc227790800000000000000
+      internalID: -7533910030102996807
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: splash-paint-clear-1622-07_6
+      rect:
+        serializedVersion: 2
+        x: 292
+        y: 274
+        width: 16
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2fcec98c4a6b219f0800000000000000
+      internalID: -499135789828084494
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: splash-paint-clear-1622-07_7
+      rect:
+        serializedVersion: 2
+        x: 324
+        y: 282
+        width: 17
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8b4b79de87212af30800000000000000
+      internalID: 4585247681208104120
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: splash-paint-clear-1622-07_8
+      rect:
+        serializedVersion: 2
+        x: 92
+        y: 205
+        width: 18
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e8718924a5070c7e0800000000000000
+      internalID: -1747273122453121138
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: splash-paint-clear-1622-07_9
+      rect:
+        serializedVersion: 2
+        x: 109
+        y: 151
+        width: 53
+        height: 76
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 214c65e439e9c6230800000000000000
+      internalID: 3633453354892837906
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: splash-paint-clear-1622-07_10
+      rect:
+        serializedVersion: 2
+        x: 332
+        y: 191
+        width: 66
+        height: 74
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 880b6b38d3e4a8120800000000000000
+      internalID: 2416830176147452040
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: splash-paint-clear-1622-07_11
+      rect:
+        serializedVersion: 2
+        x: 120
+        y: 132
+        width: 13
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f9cb99f3a62fa10f0800000000000000
+      internalID: -1145336617064874849
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: splash-paint-clear-1622-07_12
+      rect:
+        serializedVersion: 2
+        x: 310
+        y: 123
+        width: 70
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5b589f5015cd136b0800000000000000
+      internalID: -5318227444397144651
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: splash-paint-clear-1622-07_13
+      rect:
+        serializedVersion: 2
+        x: 142
+        y: 92
+        width: 32
+        height: 32
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 252884dd8c56d88e0800000000000000
+      internalID: -1689582371813686702
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: splash-paint-clear-1622-07_14
+      rect:
+        serializedVersion: 2
+        x: 159
+        y: 60
+        width: 13
+        height: 30
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9211d328d7560d200800000000000000
+      internalID: 202773572962029865
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: splash-paint-clear-1622-07_15
+      rect:
+        serializedVersion: 2
+        x: 231
+        y: 53
+        width: 106
+        height: 60
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e8b72d1aec7fcfaa0800000000000000
+      internalID: -6125748926280467570
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: splash-paint-clear-1622-07_16
+      rect:
+        serializedVersion: 2
+        x: 319
+        y: 80
+        width: 33
+        height: 36
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: afa26cd7c606aeca0800000000000000
+      internalID: -5986866735552779526
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: splash-paint-clear-1622-07_17
+      rect:
+        serializedVersion: 2
+        x: 360
+        y: 46
+        width: 46
+        height: 77
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6b24bd9b2c24f51a0800000000000000
+      internalID: -6818657906706398538
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    outline: []
+    customData:
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices:
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      splash-paint-clear-1622-07_0: 6134321629661980057
+      splash-paint-clear-1622-07_1: 5912409104859978098
+      splash-paint-clear-1622-07_10: 2416830176147452040
+      splash-paint-clear-1622-07_11: -1145336617064874849
+      splash-paint-clear-1622-07_12: -5318227444397144651
+      splash-paint-clear-1622-07_13: -1689582371813686702
+      splash-paint-clear-1622-07_14: 202773572962029865
+      splash-paint-clear-1622-07_15: -6125748926280467570
+      splash-paint-clear-1622-07_16: -5986866735552779526
+      splash-paint-clear-1622-07_17: -6818657906706398538
+      splash-paint-clear-1622-07_2: 7169275713837568186
+      splash-paint-clear-1622-07_3: 4262277958116830332
+      splash-paint-clear-1622-07_4: 8403932403571146524
+      splash-paint-clear-1622-07_5: -7533910030102996807
+      splash-paint-clear-1622-07_6: -499135789828084494
+      splash-paint-clear-1622-07_7: 4585247681208104120
+      splash-paint-clear-1622-07_8: -1747273122453121138
+      splash-paint-clear-1622-07_9: 3633453354892837906
+  mipmapLimitGroupName:
+  pSDRemoveMatte: 0
+  userData:
+  assetBundleName:
+  assetBundleVariant:

@@ -261,6 +261,48 @@ All gameplay sprites must use:
 
 [EVIDENCE: git commit `d718060` — "art(placeholders): import placeholder sprites with correct PPU and filter settings"]
 
+### 5.2.1 Enemy Ability Visual Layers
+
+Enemy ability sprites are authored on `EnemyDataSO.abilityVisuals` and rendered as child
+`SpriteRenderer` layers synchronized to `Enemy.CurrentWalkFrameIndex`. Each definition selects a body
+or glyph-badge anchor, a full-loop/single-frame/inclusive-range gate, active and exit opacity/tint,
+optional activation/exit sequences, material, local transform, and sorting offset. Mantsa's source
+definition can be presented on an affected enemy's badge; aggregate stain-source transitions avoid
+restarting or prematurely clearing its overlay. HUD-targeted definitions live separately on
+`EnemyDataSO.hudAbilityVisuals`, allowing clue-slot art to follow TMP layout without entering the
+enemy walk-frame clock. An invalid enemy-frame gate stays hidden and reports a warning rather than
+wrapping to another base frame.
+
+The supplied armor-break archive confidently maps to Walang-Awa. Only its eight individual PNGs are
+imported under `Assets/Art/VFX/EnemyAbilities/WalangAwaArmor/`; the ZIP, GIF, APNG, and contact sheet
+are not runtime assets. The first sprite is the intact layer on base walk frame index 0 at 0.45
+opacity, and frames 01–08 are its one-shot break animation at 8 fps and 0.85 opacity. Point filtering,
+alpha transparency, centered pivot, 96 PPU, mipmaps off, and uncompressed texture data preserve the
+supplied pixel art and alignment.
+
+The same import pass wires the other supplied packs from numbered PNGs only. Bakod shows frame 01 on
+its body while its shield is active and on a blocked target's glyph badge; the eight-frame break plays
+when the target is released or Bakod falls. Mantsa's four-frame splash settles into frame 04 on each
+affected badge at partial opacity, then frames 05–07 clear it when the last stain source lifts. Abo
+ng Simula uses ash frames 01–04 to settle over the first character box of the active incomplete-word
+clue and frames 05–08 to scatter on reveal. The underlying clue masking remains authoritative and
+display-only. These sprites use Point filtering, alpha transparency, centered pivot, 96 PPU, mipmaps
+off, and uncompressed texture data.
+
+| Supplied art | Ability/content owner | Integration status |
+|---|---|---|
+| `cracking-barrier-break` | Bakod barrier and blocked-target badge | Confident match; imported and wired |
+| `splash-paint-clear` | Mantsa ink/stain on affected glyph badges | Confident match; imported and wired |
+| `ash-settle-cover` | Abo ng Simula's separate clue/HUD first-slot flow | Confident match; imported and wired to the HUD |
+| `cover-reveal-glyph` | Takip glyph cover | Confident match; eight frames imported and wired |
+
+Takip's eight individual frames are imported under
+`Assets/Art/VFX/EnemyAbilities/TakipGlyphCover/`; the APNG and contact sheet are references, not runtime
+assets. Frame 01 is the opaque closed state, frames 05–08 play the closing animation, and frames 01–04
+play the opening animation, both at 8 fps. The cover sits above the still-rendered glyph badge and is
+removed by its opening animation. Point filtering, alpha transparency, centered pivot, 96 PPU, mipmaps
+off, and uncompressed texture data preserve the supplied pixel art.
+
 ### 5.3 Asset Status Summary
 
 | Category | Status |

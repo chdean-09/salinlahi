@@ -410,6 +410,16 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     /// event, and the panel would keep showing the readable spelling until something else moved.
     /// </summary>
     private bool _ashWasActive;
+    private Image _ashCoverImage;
+    private RectTransform _ashCoverRect;
+    private EnemyHudAbilityVisualDefinition _ashCoverDefinition;
+    private Sprite[] _ashCoverSequence;
+    private int _ashCoverFrameIndex;
+    private float _ashCoverFrameTimer;
+    private bool _ashCoverExiting;
+    private bool _ashCoverStateActive;
+    private bool _ashCoverUsesRestorationRail;
+    private RailSlot _ashCoverRailSlot;
 
     /// <summary>
     /// Set only for the refresh raised by the ash onset, so the crumble animates exactly there
@@ -695,6 +705,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
         _clueCrumbleRoutine = null;
         _railFlashRoutine = null;
+        HideAshCover();
 
         // Before anything is torn down. Disabling the component is one of the ways Unity kills a
         // coroutine without running its tail, so the slots are put back at rest here, by hand,
@@ -922,6 +933,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private void LateUpdate()
     {
         WatchAshOnset();
+        TickAshCover(Time.unscaledDeltaTime);
+        PositionAshCoverOverFirstSlot();
         ReconcileSlotFlights();
 
         // Intro modals raise no events, so the rail polls their IsPresenting and reruns
@@ -2395,9 +2408,16 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     /// </param>
     private void RepaintRail(bool forceRestored)
     {
+        // The clue mask is ability state, not artwork state. If an Abo definition is missing or
+        // its cover sprite cannot be presented, the restored glyph and label must still stay
+        // hidden while the ability is active (including while the rail itself is suppressed).
+        bool ashActive = AshFirstSlotController.IsAnyActive();
+        RailSlot ashTargetSlot = ashActive ? GetAshCoverRailSlot() : null;
+
         for (int i = 0; i < _railSlots.Count; i++)
         {
             RailSlot slot = _railSlots[i];
+            bool ashCoveringSlot = ashActive && slot == ashTargetSlot;
             bool restored = forceRestored
                 || (UsesRestorationObjectiveDefinition
                     ? _restorationObjectiveController.IsOccurrenceRestored(slot.OccurrenceId)
@@ -2408,7 +2428,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             // A symbol with no glyph art leaves the child off rather than showing it: an Image with
             // no sprite draws a solid quad, which would fill the slot with a block instead of a
             // glyph. The frame colour still reports the slot as restored.
-            bool showGlyph = restored && slot.Glyph.sprite != null;
+            bool showGlyph = restored && slot.Glyph.sprite != null && !ashCoveringSlot;
 
             // A slot with a glyph in the air is the one case where the resting glyph stays hidden
             // while the state says restored: the flier is standing in for it. This is the ONLY
@@ -2438,7 +2458,9 @@ public sealed class ActiveCluePresenter : MonoBehaviour
                         || (mode == RestorationDisplayMode.HiddenContext && restored);
                 }
 
-                slot.Label.text = showLabel ? slot.LatinLabel : UnreadableSlotMask;
+                slot.Label.text = showLabel && !ashCoveringSlot
+                    ? slot.LatinLabel
+                    : UnreadableSlotMask;
 
                 // Colour is restored here too, so a repaint landing after a killed flight puts the
                 // label back to full brightness even though the routine that was dimming it never
@@ -3054,6 +3076,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
     private void DestroyRestorationRail()
     {
+        HideAshCover();
         _railFlashRoutine = null;
 
         // Drained before the slot list is cleared, so each flight still has a slot to rest. Fliers
@@ -3195,17 +3218,388 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     /// </summary>
     private void WatchAshOnset()
     {
-        if (!IsClueCombatArmed || _clueText == null)
+        if (!IsClueCombatArmed)
+        {
+            if (_ashCoverStateActive)
+                BeginAshCoverExit();
             return;
+        }
 
         bool ashActive = AshFirstSlotController.IsAnyActive();
-        if (ashActive == _ashWasActive)
+        bool stateChanged = ashActive != _ashWasActive;
+        if (stateChanged)
+        {
+            _ashWasActive = ashActive;
+            _animateClueCrumble = ashActive;
+            UpdateCluePanel(_currentClue);
+            _animateClueCrumble = false;
+
+            // Repaint the state-backed rail mask on the ability edge itself. The cover artwork
+            // may be absent, and BeginAshCoverActivation intentionally has no presentation work
+            // to do in that fallback, so it cannot be responsible for hiding a restored answer.
+            if (_railSlots.Count > 0)
+                RepaintRail(forceRestored: false);
+        }
+
+        bool wantsCoverArt = ashActive && CanPresentAshCoverOnClue();
+        if (wantsCoverArt && !_ashCoverStateActive)
+            BeginAshCoverActivation();
+        else if (!wantsCoverArt && _ashCoverStateActive)
+            BeginAshCoverExit();
+        else if (wantsCoverArt && _ashCoverStateActive && _ashCoverUsesRestorationRail)
+        {
+            RailSlot currentTarget = GetAshCoverRailSlot();
+            if (currentTarget != _ashCoverRailSlot)
+            {
+                _ashCoverRailSlot = currentTarget;
+                RepaintRail(forceRestored: false);
+            }
+        }
+    }
+
+    private bool CanPresentAshCoverOnClue()
+    {
+        // A hidden rail is still a valid visual target: intro modals and cutscenes temporarily
+        // deactivate it, but the ash state must remain latched so repainting the rail cannot show
+        // a restored answer for one frame when the HUD becomes visible again.
+        if (_railRoot != null && GetAshCoverRailSlot() != null)
+        {
+            return true;
+        }
+
+        return _clueText != null
+            && _clueText.gameObject.activeInHierarchy
+            && _currentClue != null
+            && (_resolvedChannels & ClueChannels.IncompleteWord) != ClueChannels.None
+            && (_resolvedChannels & ClueChannels.LatinText) == ClueChannels.None
+            && _clueText.textInfo != null
+            && !string.IsNullOrEmpty(_clueText.text);
+    }
+
+    /// <summary>
+    /// Selects the first target slot in the active restoration unit. Older clue-only levels use
+    /// their first built rail slot; the legacy TMP path remains separate and unchanged.
+    /// </summary>
+    private RailSlot GetAshCoverRailSlot()
+    {
+        if (_railSlots.Count == 0)
+            return null;
+
+        if (!UsesRestorationObjectiveDefinition)
+            return _railSlots[0];
+
+        string activeUnitId = _restorationObjectiveController.State.ActiveUnitId;
+        if (string.IsNullOrEmpty(activeUnitId))
+            return null;
+
+        for (int i = 0; i < _railSlots.Count; i++)
+        {
+            RailSlot slot = _railSlots[i];
+            if (slot.UnitId == activeUnitId && !string.IsNullOrEmpty(slot.OccurrenceId))
+                return slot;
+        }
+
+        return null;
+    }
+
+    private void BeginAshCoverActivation()
+    {
+        EnemyHudAbilityVisualDefinition definition = AshFirstSlotController.GetActiveHudVisualDefinition(
+            EnemyHudAbilityVisualId.AshClueFirstSlot);
+        if (definition == null || definition.activeSprite == null)
             return;
 
-        _ashWasActive = ashActive;
-        _animateClueCrumble = ashActive;
-        UpdateCluePanel(_currentClue);
-        _animateClueCrumble = false;
+        EnsureAshCoverImage();
+        if (_ashCoverImage == null)
+            return;
+
+        _ashCoverDefinition = definition;
+        _ashCoverStateActive = true;
+        _ashCoverExiting = false;
+        _ashCoverSequence = definition.activationFrames;
+        _ashCoverFrameIndex = 0;
+        _ashCoverFrameTimer = 0f;
+        _ashCoverImage.gameObject.SetActive(true);
+        if (_ashCoverUsesRestorationRail)
+            RepaintRail(forceRestored: false);
+
+        if (_ashCoverSequence != null && _ashCoverSequence.Length > 0)
+            DrawAshCoverFrame(_ashCoverSequence[0], definition.activationOpacity);
+        else
+            DrawAshCoverFrame(definition.activeSprite, 1f);
+    }
+
+    private void BeginAshCoverExit()
+    {
+        _ashCoverStateActive = false;
+        if (_ashCoverUsesRestorationRail)
+            RepaintRail(forceRestored: false);
+        if (_ashCoverImage == null || _ashCoverDefinition == null)
+        {
+            HideAshCover();
+            return;
+        }
+
+        _ashCoverSequence = _ashCoverDefinition.exitFrames;
+        _ashCoverFrameIndex = 0;
+        _ashCoverFrameTimer = 0f;
+        _ashCoverExiting = _ashCoverSequence != null && _ashCoverSequence.Length > 0;
+        if (!_ashCoverExiting)
+        {
+            HideAshCover();
+            return;
+        }
+
+        _ashCoverImage.gameObject.SetActive(true);
+        DrawAshCoverFrame(_ashCoverSequence[0], _ashCoverDefinition.exitOpacity);
+    }
+
+    private void EnsureAshCoverImage()
+    {
+        _ashCoverRailSlot = _railRoot != null ? GetAshCoverRailSlot() : null;
+        _ashCoverUsesRestorationRail = _ashCoverRailSlot != null && _railRoot != null;
+
+        Transform parent = _ashCoverUsesRestorationRail
+            ? _railRoot.transform
+            : _clueText != null ? _clueText.transform : null;
+        if (parent == null)
+            return;
+
+        GameObject coverObject = _ashCoverImage != null
+            ? _ashCoverImage.gameObject
+            : new GameObject("AshClueFirstSlotCover", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        coverObject.transform.SetParent(parent, false);
+        coverObject.transform.SetAsLastSibling();
+        _ashCoverImage = coverObject.GetComponent<Image>();
+        _ashCoverImage.raycastTarget = false;
+        _ashCoverImage.preserveAspect = true;
+        _ashCoverRect = coverObject.GetComponent<RectTransform>();
+        _ashCoverRect.anchorMin = new Vector2(0.5f, 0.5f);
+        _ashCoverRect.anchorMax = new Vector2(0.5f, 0.5f);
+        _ashCoverRect.pivot = new Vector2(0.5f, 0.5f);
+        _ashCoverRect.localScale = Vector3.one;
+        coverObject.SetActive(false);
+    }
+
+    private void TickAshCover(float deltaTime)
+    {
+        if (_ashCoverImage == null || _ashCoverSequence == null || _ashCoverSequence.Length == 0)
+            return;
+
+        float fps = _ashCoverExiting
+            ? _ashCoverDefinition.exitFramesPerSecond
+            : _ashCoverDefinition.activationFramesPerSecond;
+        float opacity = _ashCoverExiting
+            ? _ashCoverDefinition.exitOpacity
+            : _ashCoverDefinition.activationOpacity;
+        float duration = 1f / (fps > 0f ? fps : 8f);
+        _ashCoverFrameTimer += Mathf.Max(0f, deltaTime);
+        while (_ashCoverFrameTimer >= duration)
+        {
+            _ashCoverFrameTimer -= duration;
+            _ashCoverFrameIndex++;
+            if (_ashCoverFrameIndex >= _ashCoverSequence.Length)
+            {
+                if (_ashCoverExiting)
+                {
+                    HideAshCover();
+                    return;
+                }
+
+                _ashCoverSequence = null;
+                _ashCoverExiting = false;
+                DrawAshCoverFrame(_ashCoverDefinition.activeSprite, 1f);
+                return;
+            }
+
+            DrawAshCoverFrame(_ashCoverSequence[_ashCoverFrameIndex], opacity);
+        }
+    }
+
+    private void PositionAshCoverOverFirstSlot()
+    {
+        if (_ashCoverImage == null || !_ashCoverImage.gameObject.activeSelf
+            || _ashCoverDefinition == null)
+            return;
+
+        if (_ashCoverUsesRestorationRail)
+        {
+            if (_ashCoverRailSlot == null || _ashCoverRailSlot.Anchor == null)
+                return;
+
+            RectTransform slotRect = _ashCoverRailSlot.Anchor;
+            float width = slotRect.rect.width;
+            float height = slotRect.rect.height + _railLayoutLabelGap + _railLayoutLabelRowHeight;
+            _ashCoverRect.anchorMin = new Vector2(0f, 1f);
+            _ashCoverRect.anchorMax = new Vector2(0f, 1f);
+            _ashCoverRect.pivot = new Vector2(0.5f, 0.5f);
+            _ashCoverRect.anchoredPosition = slotRect.anchoredPosition
+                + new Vector2(width * 0.5f, -height * 0.5f);
+            _ashCoverRect.sizeDelta = new Vector2(width, height);
+            return;
+        }
+
+        if (_clueText == null)
+            return;
+
+        _clueText.ForceMeshUpdate();
+        TMP_TextInfo info = _clueText.textInfo;
+        if (!TryCalculateFirstSlotBounds(info, GetAshCoverSlotCharacterCount(), out Rect slotBounds))
+            return;
+
+        Vector2 multiplier = _ashCoverDefinition.slotSizeMultiplier;
+        _ashCoverRect.anchoredPosition = slotBounds.center + _ashCoverDefinition.localOffset;
+        _ashCoverRect.sizeDelta = new Vector2(
+            Mathf.Max(1f, slotBounds.width * Mathf.Max(0.1f, multiplier.x)),
+            Mathf.Max(1f, slotBounds.height * Mathf.Max(0.1f, multiplier.y)));
+    }
+
+    private int GetAshCoverSlotCharacterCount()
+    {
+        bool ashActive = AshFirstSlotController.IsAnyActive();
+        string firstSlotLabel = null;
+        if (!ashActive && _currentClue?.Character != null)
+        {
+            FocusWordDefinition word = FindFocusWordContaining(_currentClue.Character.stableId);
+            if (word?.decomposition != null)
+            {
+                for (int i = 0; i < word.decomposition.Count; i++)
+                {
+                    SymbolValueReference reference = word.decomposition[i];
+                    if (reference?.symbol == null)
+                        continue;
+
+                    firstSlotLabel = SpokenValueResolver.ResolveLabel(
+                        reference.symbol,
+                        reference.spokenValueId);
+                    break;
+                }
+            }
+        }
+
+        return GetAshCoverSlotCharacterCount(ashActive, firstSlotLabel);
+    }
+
+    /// <summary>Returns the rendered span of the first slot: its mask while ashed, its full label while revealing.</summary>
+    internal static int GetAshCoverSlotCharacterCount(bool ashActive, string firstSlotLabel)
+    {
+        if (ashActive)
+            return UnreadableSlotMask.Length;
+
+        return string.IsNullOrEmpty(firstSlotLabel)
+            ? UnreadableSlotMask.Length
+            : firstSlotLabel.Length;
+    }
+
+    /// <summary>
+    /// Measures the requested leading TMP characters using their text advances and line metrics.
+    /// The advance bounds cover the full logical slot (including thin glyphs such as underscores),
+    /// while the line metrics keep the cover centered over the clue row rather than the glyph ink.
+    /// </summary>
+    internal static bool TryCalculateFirstSlotBounds(
+        TMP_TextInfo info,
+        int slotCharacterCount,
+        out Rect bounds)
+    {
+        bounds = default;
+        if (info == null || info.characterInfo == null || info.characterCount <= 0)
+            return false;
+
+        int characterCount = Mathf.Min(info.characterCount, info.characterInfo.Length);
+        int firstIndex = -1;
+        for (int i = 0; i < characterCount; i++)
+        {
+            TMP_CharacterInfo candidate = info.characterInfo[i];
+            if (!candidate.isVisible || char.IsWhiteSpace(candidate.character))
+                continue;
+
+            firstIndex = i;
+            break;
+        }
+
+        if (firstIndex < 0)
+            return false;
+
+        TMP_CharacterInfo first = info.characterInfo[firstIndex];
+        float minX = float.PositiveInfinity;
+        float maxX = float.NegativeInfinity;
+        float minY = float.PositiveInfinity;
+        float maxY = float.NegativeInfinity;
+        int wanted = Mathf.Max(1, slotCharacterCount);
+        int collected = 0;
+
+        for (int i = firstIndex; i < characterCount && collected < wanted; i++)
+        {
+            TMP_CharacterInfo candidate = info.characterInfo[i];
+            if (char.IsWhiteSpace(candidate.character) || candidate.character == '\n')
+                break;
+
+            minX = Mathf.Min(minX, Mathf.Min(candidate.origin, candidate.xAdvance));
+            maxX = Mathf.Max(maxX, Mathf.Max(candidate.origin, candidate.xAdvance));
+
+            int lineIndex = candidate.lineNumber;
+            if (info.lineInfo != null && lineIndex >= 0 && lineIndex < info.lineCount
+                && lineIndex < info.lineInfo.Length)
+            {
+                TMP_LineInfo line = info.lineInfo[lineIndex];
+                minY = Mathf.Min(minY, line.descender);
+                maxY = Mathf.Max(maxY, line.ascender);
+            }
+            else
+            {
+                minY = Mathf.Min(minY, candidate.bottomLeft.y);
+                maxY = Mathf.Max(maxY, candidate.topRight.y);
+            }
+
+            collected++;
+        }
+
+        if (collected == 0)
+            return false;
+
+        if (maxX <= minX)
+        {
+            minX = first.bottomLeft.x;
+            maxX = first.topRight.x;
+        }
+        if (maxY <= minY)
+        {
+            minY = first.bottomLeft.y;
+            maxY = first.topRight.y;
+        }
+
+        if (maxX <= minX || maxY <= minY)
+            return false;
+
+        bounds = Rect.MinMaxRect(minX, minY, maxX, maxY);
+        return true;
+    }
+
+    private void DrawAshCoverFrame(Sprite sprite, float opacity)
+    {
+        if (_ashCoverImage == null || sprite == null)
+            return;
+
+        _ashCoverImage.sprite = sprite;
+        _ashCoverImage.color = new Color(1f, 1f, 1f, Mathf.Clamp01(opacity));
+        _ashCoverImage.enabled = true;
+    }
+
+    private void HideAshCover()
+    {
+        _ashCoverStateActive = false;
+        _ashCoverExiting = false;
+        _ashCoverUsesRestorationRail = false;
+        _ashCoverRailSlot = null;
+        _ashCoverSequence = null;
+        _ashCoverFrameIndex = 0;
+        _ashCoverFrameTimer = 0f;
+        if (_ashCoverImage != null)
+        {
+            _ashCoverImage.sprite = null;
+            _ashCoverImage.enabled = false;
+            _ashCoverImage.gameObject.SetActive(false);
+        }
     }
 
     /// <summary>
