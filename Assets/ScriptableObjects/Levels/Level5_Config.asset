@@ -343,7 +343,7 @@ MonoBehaviour:
           spokenValueId: 
   activeClueCombatEnabled: 1
   activeClueRestorationEnabled: 1
-  clueChannels: 18
+  clueChannels: 19
   audioVisualFallback: 4
   spawnAssignmentPolicy:
     minSpawnsBeforeNeeded: 0
