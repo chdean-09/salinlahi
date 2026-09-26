@@ -47,6 +47,43 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 "A delayed clear should only remove strokes that existed when ClearCanvas was requested.");
         }
 
+        /// <summary>
+        /// Regression for "the drawing got stuck": a surface that freezes Time.timeScale — the
+        /// enemy introduction's tap-to-continue hold — must not park the trail's clear on screen
+        /// for the whole freeze. The clear delay is a cosmetic grace and rides realtime.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ClearCanvas_StillClearsWhileTimeIsFrozen()
+        {
+            _cameraObject = new GameObject("Main Camera");
+            _cameraObject.tag = "MainCamera";
+            _cameraObject.AddComponent<Camera>();
+
+            _canvasObject = new GameObject("DrawingCanvas");
+            DrawingCanvas canvas = _canvasObject.AddComponent<DrawingCanvas>();
+            GlyphBadgePlayModeTestHelpers.SetPrivateField(canvas, "_clearDelaySeconds", 0.05f);
+
+            canvas.BeginStroke();
+            canvas.EndStroke();
+
+            Time.timeScale = 0f;
+            try
+            {
+                canvas.ClearCanvas();
+
+                yield return new WaitForSecondsRealtime(0.15f);
+                yield return null;
+            }
+            finally
+            {
+                Time.timeScale = 1f;
+            }
+
+            Assert.AreEqual(0, _canvasObject.transform.childCount,
+                "A stroke cleared into a frozen field must still clear — a scaled delay parks "
+                + "the trail on screen for the whole hold.");
+        }
+
         [UnityTest]
         public IEnumerator BeginStroke_ConfiguresRoundedLineJoins()
         {

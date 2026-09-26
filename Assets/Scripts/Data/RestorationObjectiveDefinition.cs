@@ -65,7 +65,7 @@ public sealed class RestorationObjectiveToken
     public RestorationTokenKind kind = RestorationTokenKind.Literal;
     public string literalText;
     public string occurrenceId;
-    [Tooltip("Optional order inside the unit. Values >= 0 override visual token order.")]
+    [Tooltip("Tie-break order for repeated symbols; drawing other symbols never has to follow it.")]
     public int completionOrder = -1;
     public SymbolValueReference target = new();
 
@@ -238,7 +238,7 @@ public sealed class RestorationObjectiveState
                 continue;
 
             RestorationObjectiveToken token = unit.Definition.tokens[tokenIndex];
-            if (token?.IsTarget != true || !EarlierTargetsRestored(unit, token, tokenIndex))
+            if (token?.IsTarget != true)
                 continue;
 
             int order = token.EffectiveCompletionOrder(tokenIndex);
@@ -317,91 +317,64 @@ public sealed class RestorationObjectiveState
         => TryRestore(symbolStableId, null);
 
     public RestorationProgressResult TryRestore(string symbolStableId, string spokenValueId)
+        => TryRestore(symbolStableId, spokenValueId, null);
+
+    public RestorationProgressResult TryRestore(
+        string symbolStableId, string spokenValueId, Func<string, bool> canRestoreOccurrence)
     {
         if (string.IsNullOrEmpty(symbolStableId))
             return RestorationProgressResult.None;
 
-        int unitIndex = ActiveUnitIndex;
-        if (unitIndex < 0)
-            return RestorationProgressResult.None;
-
-        RuntimeUnit unit = _units[unitIndex];
+        int selectedUnitIndex = -1;
         int selectedTokenIndex = -1;
         int selectedOrder = int.MaxValue;
-        for (int tokenIndex = 0; tokenIndex < unit.Restored.Length; tokenIndex++)
+        for (int unitIndex = 0; unitIndex < _units.Count; unitIndex++)
         {
-            RestorationObjectiveToken token = unit.Definition.tokens[tokenIndex];
-            if (unit.Restored[tokenIndex]
-                || token == null
-                || !token.IsTarget
-                || !string.Equals(token.SymbolStableId, symbolStableId, StringComparison.Ordinal))
+            RuntimeUnit unit = _units[unitIndex];
+            for (int tokenIndex = 0; tokenIndex < unit.Restored.Length; tokenIndex++)
             {
-                continue;
-            }
+                RestorationObjectiveToken token = unit.Definition.tokens[tokenIndex];
+                if (unit.Restored[tokenIndex]
+                    || token?.IsTarget != true
+                    || !string.Equals(token.SymbolStableId, symbolStableId, StringComparison.Ordinal)
+                    || (canRestoreOccurrence != null && !canRestoreOccurrence(token.occurrenceId)))
+                {
+                    continue;
+                }
 
-            if (!string.IsNullOrEmpty(spokenValueId)
-                && !string.IsNullOrEmpty(token.SpokenValueId)
-                && !string.Equals(token.SpokenValueId, spokenValueId, StringComparison.Ordinal))
-            {
-                continue;
-            }
+                if (!string.IsNullOrEmpty(spokenValueId)
+                    && !string.IsNullOrEmpty(token.SpokenValueId)
+                    && !string.Equals(token.SpokenValueId, spokenValueId, StringComparison.Ordinal))
+                {
+                    continue;
+                }
 
-            int order = token.EffectiveCompletionOrder(tokenIndex);
-            if (!EarlierTargetsRestored(unit, token, tokenIndex))
-                continue;
-
-            if (order < selectedOrder)
-            {
-                selectedOrder = order;
-                selectedTokenIndex = tokenIndex;
+                int order = token.EffectiveCompletionOrder(tokenIndex);
+                if (order < selectedOrder)
+                {
+                    selectedOrder = order;
+                    selectedUnitIndex = unitIndex;
+                    selectedTokenIndex = tokenIndex;
+                }
             }
         }
 
         if (selectedTokenIndex < 0)
             return RestorationProgressResult.None;
 
-        unit.Restored[selectedTokenIndex] = true;
+        RuntimeUnit selectedUnit = _units[selectedUnitIndex];
+        selectedUnit.Restored[selectedTokenIndex] = true;
         _restoredTargetCount++;
-        bool unitCompleted = unit.IsComplete;
-        RestorationObjectiveToken selected = unit.Definition.tokens[selectedTokenIndex];
+        bool unitCompleted = selectedUnit.IsComplete;
+        RestorationObjectiveToken selected = selectedUnit.Definition.tokens[selectedTokenIndex];
         return new RestorationProgressResult(
             true,
-            unit.Definition.stableId,
+            selectedUnit.Definition.stableId,
             selected.occurrenceId,
-            unitIndex,
+            selectedUnitIndex,
             selectedTokenIndex,
             unitCompleted,
             IsComplete);
-    }
-
-    private static bool EarlierTargetsRestored(
-        RuntimeUnit unit,
-        RestorationObjectiveToken candidate,
-        int candidateIndex)
-    {
-        // With no explicit completion order, a unit is intentionally opportunistic: the first
-        // valid matching carrier may restore its occurrence even when the visible token is later
-        // in the authored text. Explicit orders are opt-in gates used by the sentence/word
-        // sequences that require a strict teaching or restoration order.
-        if (candidate == null || candidate.completionOrder < 0)
-            return true;
-
-        int candidateOrder = candidate.completionOrder;
-        for (int tokenIndex = 0; tokenIndex < unit.Restored.Length; tokenIndex++)
-        {
-            if (tokenIndex == candidateIndex || unit.Restored[tokenIndex])
-                continue;
-
-            RestorationObjectiveToken token = unit.Definition.tokens[tokenIndex];
-            if (token?.IsTarget == true
-                && token.completionOrder >= 0
-                && token.completionOrder < candidateOrder)
-            {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     public bool IsOccurrenceRestored(string occurrenceId)

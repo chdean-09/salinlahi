@@ -181,5 +181,32 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.That(neededSymbolsSeen.Contains(A), Is.True,
                 "A was never assigned as Needed while only the finale slot should be withheld.");
         }
+
+        [Test]
+        public void FinaleInMiddle_WaitsForLaterOccurrencesEvenAfterFinalWaveBegins()
+        {
+            var slots = new List<SpawnSlot>
+            {
+                new SpawnSlot(Ei, "sentence.one", 0),
+                new SpawnSlot(Ma, "sentence.one", 1, FinalWaveGate),
+                new SpawnSlot(Na, "sentence.two", 0),
+            };
+            SpawnAssignmentPolicy policy = Policy();
+            policy.minSpawnsBeforeNeeded = 0;
+            var director = new SpawnAssignmentDirector(
+                slots, policy, new AlwaysFavoursNeededRandom());
+            var restored = new[] { true, false, false };
+
+            SpawnAssignment beforeLastOther = director.AssignNext(
+                Request(restored, now: 100f, activeEnemies: 0, openGates: FinalWaveGate));
+            Assert.AreEqual(Na, beforeLastOther.SymbolStableId);
+            Assert.AreEqual(2, beforeLastOther.SlotIndex);
+
+            restored[2] = true;
+            SpawnAssignment afterLastOther = director.AssignNext(
+                Request(restored, now: 110f, activeEnemies: 0, openGates: FinalWaveGate));
+            Assert.AreEqual(Ma, afterLastOther.SymbolStableId);
+            Assert.AreEqual(1, afterLastOther.SlotIndex);
+        }
     }
 }

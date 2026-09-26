@@ -2,6 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.EnhancedTouch;
+using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 
 /// <summary>
 /// The four-step enemy introduction beat: <b>Halt, Name, Ability, Release</b>. It fires once per
@@ -19,12 +21,16 @@ using UnityEngine.InputSystem;
 /// </para>
 ///
 /// <para>
-/// <b>Player input stays enabled for the whole beat.</b> That is deliberate and it is the rule most
-/// likely to be broken by a well-meaning edit. The beat interrupts a live field — other enemies keep
-/// walking, slowed — so a player who has already read the board and started a stroke must be able to
-/// finish it. Nothing here calls <c>EnterDialoguePause</c> or
-/// <c>TutorialRuntimeState.SetDrawingInputLocked</c>, and the card surface disables its own
-/// raycasts.
+/// <b>Drawing input is closed for exactly the window the card surface is up.</b> The beat
+/// interrupts a live field — the walk-in and halt stay drawable, and a stroke already in flight
+/// when the card arrives is completed and submitted rather than dropped — but while the card is
+/// on screen a finger press belongs to it: each press advances the card one step (snapping the
+/// slide-in, skipping a dwell, finishing the typewriter, or releasing the hold) and must not also
+/// be a draw into a field the player is not watching. The card surface still
+/// disables its own raycasts, so the continue taps reach it through the beat's own listeners —
+/// EnhancedTouch for touches, an Input System action for keys — and
+/// <c>GameManager.SuppressDrawingInput</c> carries the no-draw rule. Nothing here calls
+/// <c>EnterDialoguePause</c> or <c>TutorialRuntimeState.SetDrawingInputLocked</c>.
 /// </para>
 ///
 /// <para>
@@ -73,6 +79,11 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     [Header("Step 3 — Ability")]
     [Tooltip("Seconds (wall-clock) the ability line is held on the card before the release begins.")]
     [SerializeField] private float _abilityStepSeconds = 3f;
+
+    [Tooltip("Glyphs per second the ability line types out at. The whole line is laid out first "
+             + "and revealed by count, so the block never re-wraps or drifts while it types. 0 "
+             + "shows the line at once.")]
+    [SerializeField, Min(0f)] private float _abilityCharactersPerSecond = 45f;
 
     [Header("Step 4 — Release")]
     [Tooltip("Seconds (wall-clock) the release takes: the card slides out, the vignette lifts and Time.timeScale ramps back to the value the beat found on entry.")]
@@ -175,8 +186,28 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     private bool _drawStepAbandoned;
     private InputAction _continueAction;
     private bool _continueRequestedByInput;
+
+    /// <summary>
+    /// True for the whole window the card owns the screen — slide-in through the end of the hold.
+    /// Drawing is already closed for that stretch (<see cref="SuppressDrawingForCard"/>), so a
+    /// press there cannot be a stroke; the callback latches <see cref="_continueRequestedByInput"/>
+    /// and whichever step is polling consumes it — the reveal completes, a dwell ends early, the
+    /// hold releases. A press outside the window latches nothing rather than being a skip the card
+    /// eats later.
+    /// </summary>
+    private bool _cardConsumesPresses;
     private float _restoreTimeScale = 1f;
     private TutorialSpotlightOverlay _runtimeVignette;
+
+    /// <summary>
+    /// Drawing input is suppressed for exactly the window the card surface is on screen: while the
+    /// card is up a finger press belongs to it (each press advances one step — snap the slide-in,
+    /// skip a dwell, finish the typewriter, release the hold), not to a field the player is no
+    /// longer watching. The flag the beat found is restored on release
+    /// rather than forced off, so an overlapping suppressor is not lifted early.
+    /// </summary>
+    private bool _drawingSuppressedForCard;
+    private bool _drawingSuppressedBeforeCard;
 
     /// <summary>
     /// The banner's own lifetime wait, which deliberately outlives the run that raised it.
@@ -220,7 +251,8 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// <para>
     /// <b>Why the schedule is held rather than the player made safe.</b> Beats 8 and 9 hand time
     /// and movement back on purpose — the draw the lesson asks for is real combat against a real
-    /// enemy, and the beat's standing promise is that player INPUT is live throughout. Making the
+    /// enemy, and the beat's standing promise is that drawing input is live whenever the card is
+    /// not up. Making the
     /// player invulnerable would break that promise from the other side: the one draw the lesson
     /// teaches would be the one draw that could not matter. What actually killed five runs out of
     /// five was not the enemy on screen but the ones still ARRIVING behind it, on a spawn clock
@@ -244,8 +276,9 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// <see cref="IntroductionOutcome.None"/> leaves the ability armed, which is the safe failure:
     /// the player meets an ability with no card, rather than meeting an enemy whose ability is
     /// silently switched off forever. <see cref="IntroductionOutcome.DeferAndSuppress"/> is the
-    /// deliberate exception — the decline exists so a pending lesson lands first, so it suppresses
-    /// instead of arming. See <c>IntroductionDecision</c> for both rules together.
+    /// deliberate exception for this type's own pending lesson — its ability stays suppressed until
+    /// that lesson can run. A lesson for another type never delays this spawn. See
+    /// <c>IntroductionDecision</c> for both rules together.
     /// </para>
     /// </summary>
     public static IntroductionOutcome ResolveIntroduction(Enemy enemy, EnemyDataSO data)
@@ -260,75 +293,17 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     {
         EnemyLessonSO lesson = ResolveLesson(data);
         bool claimed = TryClaim(enemy, data, lesson);
+        bool thisTypeHasPendingLesson =
+            !claimed && lesson != null && !HasLessonHadItsRun(lesson);
         return IntroductionDecision.Resolve(
             claimAccepted: claimed,
             lessonArmsAbility: claimed && lesson != null && lesson.armAbilityOnIntroduction,
-            aLessonIsPending: !claimed && ResolvePendingLesson() != null);
+            aLessonIsPending: thisTypeHasPendingLesson);
     }
 
     /// <summary>The level's authored lesson for this type, or null.</summary>
     private EnemyLessonSO ResolveLesson(EnemyDataSO data) =>
         EnemyLessonLookup.Find(GameManager.CurrentLevelConfig, data);
-
-    /// <summary>
-    /// The level's authored lesson if it has not played yet, else null. A lesson whose enemy has
-    /// already been introduced is not pending, which is what lets deferral end.
-    /// </summary>
-    private EnemyLessonSO ResolvePendingLesson()
-    {
-        LevelConfigSO config = GameManager.CurrentLevelConfig;
-        if (config?.enemyLessons == null)
-            return null;
-
-        List<EnemyDataSO> roster = LevelRoster.BuildIntroducibleRoster(config);
-
-        for (int i = 0; i < config.enemyLessons.Length; i++)
-        {
-            EnemyLessonSO lesson = config.enemyLessons[i];
-            if (lesson?.enemy == null)
-                continue;
-
-            // A lesson for an enemy the level's wave table never spawns must not defer forever:
-            // ResolvePendingLesson only stops returning a lesson once its enemy has been
-            // introduced, and an enemy that never spawns is never introduced — which would wedge
-            // every other type on the level into permanent suppression.
-            if (!RosterContains(roster, lesson.enemy))
-                continue;
-
-            if (!HasLessonHadItsRun(lesson))
-                return lesson;
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Whether the roster contains this enemy type. Matches the same identity rule as
-    /// <see cref="EnemyLessonLookup.Find"/> — reference or case-insensitive <c>enemyID</c> — so a
-    /// pooled or domain-reloaded instance still matches its roster entry.
-    /// </summary>
-    private static bool RosterContains(List<EnemyDataSO> roster, EnemyDataSO enemy)
-    {
-        if (roster == null || enemy == null)
-            return false;
-
-        for (int i = 0; i < roster.Count; i++)
-        {
-            EnemyDataSO candidate = roster[i];
-            if (candidate == null)
-                continue;
-
-            if (candidate == enemy)
-                return true;
-
-            if (!string.IsNullOrEmpty(candidate.enemyID)
-                && string.Equals(candidate.enemyID, enemy.enemyID,
-                    System.StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
-
-        return false;
-    }
 
     /// <summary>
     /// Starts the beat for an enemy whose claim was accepted. Separate from the claim because
@@ -620,14 +595,13 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             return false;
         }
 
-        // Deferral. While this level's lesson is still pending, every other type waits: the rule
-        // that enemies have abilities is taught once, by the lesson, and a card that lands first
-        // would spend that first-meeting moment on an enemy the lesson did not choose.
-        if (lesson == null && s_instance != null && s_instance.ResolvePendingLesson() != null)
-            return false;
+        // A pending lesson only governs its own type. Other eligible types introduce themselves
+        // on their first spawn; WaveSpawner holds the spawn schedule while any card is playing, so
+        // these introductions remain sequential without waiting for one specific lesson enemy.
 
-        // The beat's promise is that input stays live through it. Before the run has started
-        // accepting drawings there is no such promise to keep, and the halt would read as a freeze.
+        // A card over a field that is not accepting drawings — paused, suppressed by another
+        // surface, or not yet Playing — would read as a freeze, not an interruption. Decline and
+        // let the type introduce on a later spawn instead.
         return GameManager.Instance != null && GameManager.Instance.AcceptsDrawingInput;
     }
 
@@ -738,6 +712,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             // is not a recoverable state for a player. The glyph badge is restored here too, on every
             // exit path, so an abort mid-lesson never leaves an enemy permanently unmarked.
             ReleaseTimeScale();
+            ReleaseDrawingSuppression();
             LiftVignette();
             ReleaseEnemy(enemy);
             if (enemy != null) enemy.GlyphBadge?.Show();
@@ -747,6 +722,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             _lessonIsForcedReplay = false;
             _claimedEnemy = null;
             _routine = null;
+            _cardConsumesPresses = false;
         }
     }
 
@@ -1123,36 +1099,56 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         HaltEnemy(enemy);
         RaiseVignette(enemy);
         yield return RampTimeScale(Time.timeScale, _introductionTimeScale, _haltRampSeconds);
-        yield return RampCard(0f, 1f, _haltRampSeconds);
+
+        // The card is modal while it is up: a finger press belongs to it (finish the typewriter,
+        // release the hold), not to the field. Flush what is already drawn FIRST — an in-flight
+        // stroke completes as though the finger lifted and resolves on the live field it was
+        // drawn against — then close drawing until the card is gone. Skipping the flush parks a
+        // queued or half-drawn stroke through the card, to resolve afterwards on a field the
+        // player was no longer looking at.
+        SubmitInFlightStrokesNow();
+        SuppressDrawingForCard();
+        ArmCardContinueWindow();
+        yield return RampCard(0f, 1f, _haltRampSeconds, skippable: true);
 
         // Step 2 — Name. Walk sprite, display name, subtitle. Held long enough to be read, and
-        // no longer: the field is still moving underneath.
-        yield return WaitRealtime(_nameStepSeconds);
+        // no longer: the field is still moving underneath. A press skips ahead to the ability line.
+        yield return WaitRealtimeOrContinue(_nameStepSeconds);
 
         // Step 3 — Ability. One line, stating what the enemy does. The player derives the
         // counter; see EnemyDataSO.abilityLine for why the copy may never state it.
-        _card.ShowAbilityLine(data.abilityLine);
-        yield return WaitRealtime(_abilityStepSeconds);
+        //
+        // The line typewriters in place: ShowAbilityLine lays the whole string out once and
+        // hands back its glyph count, and RevealAbilityLine drives that count up — the block can
+        // never re-wrap or drift while it types. A tap while the line is typing completes it and
+        // is consumed there, so the same press can never also end the dwell after it. The dwells
+        // keep their authored length but answer a press the same way — drawing is closed for the
+        // card's whole window, so a press here cannot be a stroke — and each press moves the card
+        // one step instead of vanishing into a dead window.
+        int abilityGlyphs = _card.ShowAbilityLine(data.abilityLine);
+        yield return RevealAbilityLine(abilityGlyphs);
+        yield return WaitRealtimeOrContinue(_abilityStepSeconds);
 
         // Step 3b — Glyph. The badge comes back while the enemy is still spotlit, so the symbol the
         // player will have to draw is read HERE, against a named and explained enemy, rather than
         // discovered on a shape already walking away. Mirrors the lesson's beat 7.
         enemy.GlyphBadge?.Show();
-        yield return WaitRealtime(_glyphRevealStepSeconds);
+        yield return WaitRealtimeOrContinue(_glyphRevealStepSeconds);
 
         // Step 3c — Hold. The card has said everything it is going to say; it now waits for the
         // player rather than for a clock. The field is frozen outright for the hold, which is what
-        // makes taking input here legitimate at all: the card view's standing rule is that the
-        // player can draw straight through it, and that rule exists because the beat used to leave
-        // the field live. Nothing to draw through while it is stopped.
+        // makes taking input here legitimate at all: drawing is already closed for the card's
+        // whole window, so the only thing a press can mean here is "continue".
         //
         // The poll lives here and not in the view so the card stays raycast-transparent, and so an
         // injected TouchState reaches it -- uGUI buttons do not receive those.
         yield return HoldForContinue();
+        _cardConsumesPresses = false;
 
         // Step 4 — Release. Card out, vignette lifts, time ramps back, the enemy walks again.
         yield return RampCard(1f, 0f, _releaseRampSeconds);
         _card.HideCardImmediate();
+        ReleaseDrawingSuppression();
         LiftVignette();
         yield return RampTimeScale(Time.timeScale, _restoreTimeScale, _releaseRampSeconds);
         ReleaseTimeScale();
@@ -1247,13 +1243,21 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             EnemyIntroductionProgress.MarkAbilityRuleSeen();
         }
 
-        // Beats 5 and 6 — Name, then ability line. The card's own steps, in its own order.
-        yield return RampCard(0f, 1f, _haltRampSeconds);
-        yield return WaitRealtime(_nameStepSeconds);
-        _card.ShowAbilityLine(data.abilityLine);
-        yield return WaitRealtime(_abilityStepSeconds);
+        // Beats 5 and 6 — Name, then ability line. The card's own steps, in its own order —
+        // including the same in-place reveal and press-to-advance steps as the standalone card,
+        // because the lesson teaches through the same surface and keeps the same reading rules.
+        SubmitInFlightStrokesNow();
+        SuppressDrawingForCard();
+        ArmCardContinueWindow();
+        yield return RampCard(0f, 1f, _haltRampSeconds, skippable: true);
+        yield return WaitRealtimeOrContinue(_nameStepSeconds);
+        int abilityGlyphs = _card.ShowAbilityLine(data.abilityLine);
+        yield return RevealAbilityLine(abilityGlyphs);
+        yield return WaitRealtimeOrContinue(_abilityStepSeconds);
+        _cardConsumesPresses = false;
         yield return RampCard(1f, 0f, _releaseRampSeconds);
         _card.HideCardImmediate();
+        ReleaseDrawingSuppression();
 
         // Beat 7 — Glyph. The badge comes up while the enemy is still spotlit and time is still
         // slow, so the reveal is the only thing moving on screen.
@@ -1704,7 +1708,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         return _runtimeVignette;
     }
 
-    private IEnumerator RampCard(float from, float to, float seconds)
+    private IEnumerator RampCard(float from, float to, float seconds, bool skippable = false)
     {
         if (seconds <= 0f)
         {
@@ -1715,6 +1719,14 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         float elapsed = 0f;
         while (elapsed < seconds)
         {
+            // The slide-in answers a press like every other card-window step: the card snaps in
+            // rather than the tap vanishing while the surface is visibly arriving.
+            if (skippable && ConsumeContinueRequest())
+            {
+                _card.SetCardProgress(to);
+                yield break;
+            }
+
             elapsed += Time.unscaledDeltaTime;
             _card.SetCardProgress(Mathf.Lerp(from, to, Mathf.Clamp01(elapsed / seconds)));
             yield return null;
@@ -1775,11 +1787,23 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// step 4 restores from whatever it finds, so starting that ramp from 0 needs no special case.
     ///
     /// <para>
-    /// Input is captured through an Input System action. The card view cannot take it: every
-    /// graphic there is forced raycast-transparent on wake so the player can draw through the card,
-    /// and a full-screen catcher would undo that for the one spawn that can never be retried. The
-    /// action callback latches the press until this coroutine observes it, so a short contact whose
-    /// down and up events land in one Input System update is not lost between player-loop frames.
+    /// Input is captured through EnhancedTouch's <c>Touch.onFingerDown</c> — the same path
+    /// <see cref="StrokeCapture"/> reads all drawing input through — with an Input System action
+    /// for keys and pointer presses alongside. The card view cannot take it: every graphic there
+    /// is forced raycast-transparent on wake so the player can draw through the card, and a
+    /// full-screen catcher would undo that for the one spawn that can never be retried. The
+    /// callbacks latch the press until this coroutine observes it, so a short contact whose down
+    /// and up events land in one Input System update is not lost between player-loop frames.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Why the touch path is EnhancedTouch and not the action's <c>&lt;Pointer&gt;/press</c>.</b>
+    /// Observed live on the Device Simulator under Input System 1.19: a real tap raised the
+    /// touchscreen's press control to 1 while the bound action never performed — and no action
+    /// binding to that device (<c>&lt;Touchscreen&gt;/press</c>, <c>primaryTouch/tap</c>) fired
+    /// either — while <c>Touch.onFingerDown</c> reported every one of those taps. The card could
+    /// therefore hold forever behind a working prompt. The action bindings stay for keys and for
+    /// pointers whose action path does deliver; the touch itself is answered through EnhancedTouch.
     /// </para>
     /// </remarks>
     private IEnumerator HoldForContinue()
@@ -1790,6 +1814,9 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         EnsureContinueInputAction();
         _continueRequestedByInput = false;
         Time.timeScale = 0f;
+        // The prompt goes up only once the whole line is on screen — raised mid-reveal it would
+        // ask for the tap before the card had finished saying anything.
+        _card.CompleteAbilityLine();
         _card.ShowContinuePrompt();
         IsHoldingForContinue = true;
 
@@ -1824,15 +1851,28 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             _continueAction.AddBinding("<Keyboard>/space");
             _continueAction.AddBinding("<Keyboard>/enter");
             _continueAction.performed += HandleContinuePerformed;
+
+            // The touch path that actually reaches a play session. EnhancedTouch is what
+            // StrokeCapture reads all drawing input through, and a tap is observed as a finger
+            // even on devices whose touchscreen never performs an action bound to it — see
+            // HoldForContinue. Enable is idempotent; Disable is deliberately never called here
+            // because StrokeCapture owns that switch scene-wide.
+            EnhancedTouchSupport.Enable();
+            Touch.onFingerDown += HandleContinueFingerDown;
         }
 
         if (!_continueAction.enabled)
             _continueAction.Enable();
     }
 
-    private void HandleContinuePerformed(InputAction.CallbackContext context)
+    private void HandleContinuePerformed(InputAction.CallbackContext context) =>
+        LatchContinueRequest();
+
+    private void HandleContinueFingerDown(Finger finger) => LatchContinueRequest();
+
+    private void LatchContinueRequest()
     {
-        if (IsHoldingForContinue)
+        if (_cardConsumesPresses || IsHoldingForContinue)
             _continueRequestedByInput = true;
     }
 
@@ -1842,6 +1882,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             return;
 
         _continueAction.performed -= HandleContinuePerformed;
+        Touch.onFingerDown -= HandleContinueFingerDown;
         _continueAction.Disable();
         _continueAction.Dispose();
         _continueAction = null;
@@ -1888,6 +1929,50 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         _timeScaleTaken = false;
     }
 
+    /// <summary>
+    /// Closes drawing input for the card's on-screen window. The in-flight flush must run first
+    /// (<see cref="SubmitInFlightStrokesNow"/>): once suppressed, a queued multi-stroke submit can
+    /// only defer itself, which would park the drawn trail and its recognition through the whole
+    /// card — the "the drawing got stuck" report.
+    /// </summary>
+    private void SuppressDrawingForCard()
+    {
+        GameManager gameManager = GameManager.Instance;
+        if (gameManager == null || _drawingSuppressedForCard)
+            return;
+
+        _drawingSuppressedBeforeCard = gameManager.IsDrawingSuppressed;
+        _drawingSuppressedForCard = true;
+        gameManager.SuppressDrawingInput(true);
+    }
+
+    /// <summary>
+    /// Hands drawing input back. Idempotent, and restores the flag to the value the beat found
+    /// rather than forcing it off — an overlapping suppressor (an instant-win banner landing
+    /// mid-card, say) is not this beat's to lift.
+    /// </summary>
+    private void ReleaseDrawingSuppression()
+    {
+        if (!_drawingSuppressedForCard)
+            return;
+
+        _drawingSuppressedForCard = false;
+        GameManager.Instance?.SuppressDrawingInput(_drawingSuppressedBeforeCard);
+        _drawingSuppressedBeforeCard = false;
+    }
+
+    /// <summary>
+    /// Ends and submits whatever the player has already drawn, while the field it was drawn on is
+    /// still the live one. FindFirstObjectByType like every other scene lookup in this file:
+    /// <see cref="StrokeCapture"/> has no static seam, and this runs once per card.
+    /// </summary>
+    private void SubmitInFlightStrokesNow()
+    {
+        StrokeCapture capture = FindFirstObjectByType<StrokeCapture>();
+        if (capture != null)
+            capture.SubmitInFlightStrokes();
+    }
+
     private void StopPlayback()
     {
         if (_routine != null)
@@ -1905,6 +1990,98 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         _routineActive = false;
         _lessonIsForcedReplay = false;
         _claimedEnemy = null;
+        _cardConsumesPresses = false;
+        // A coroutine stopped here does not run its pending finally — Unity removes it from the
+        // scheduler without unwinding — so the card window's drawing suppression must be handed
+        // back explicitly, the same way ReleaseTimeScale is.
+        ReleaseDrawingSuppression();
+    }
+
+    /// <summary>
+    /// Types the ability line out in place at <see cref="_abilityCharactersPerSecond"/>.
+    /// <see cref="EnemyIntroductionCardView.ShowAbilityLine"/> has already laid the whole string
+    /// out once — progress here is a glyph count on a finished layout, so the block can never
+    /// re-wrap or drift while it types.
+    ///
+    /// <para>
+    /// A tap while the line is typing completes it immediately, and the request is consumed here:
+    /// the same press can never also release the card, and the hold's prompt is what answers the
+    /// NEXT one. A queued test continue doubles as the skip, so a fixture can exercise the reveal
+    /// boundary without a real device.
+    /// </para>
+    /// </summary>
+    private IEnumerator RevealAbilityLine(int glyphCount)
+    {
+        if (glyphCount <= 0 || _abilityCharactersPerSecond <= 0f)
+        {
+            _card.CompleteAbilityLine();
+            yield break;
+        }
+
+        float revealed = 0f;
+        while (revealed < glyphCount)
+        {
+            if (ConsumeContinueRequest())
+            {
+                _card.CompleteAbilityLine();
+                yield break;
+            }
+
+            revealed += _abilityCharactersPerSecond * Time.unscaledDeltaTime;
+            _card.SetAbilityLineProgress(Mathf.FloorToInt(revealed));
+            yield return null;
+        }
+
+        _card.CompleteAbilityLine();
+    }
+
+    /// <summary>
+    /// Opens the card's input window: the listeners are live and presses start latching
+    /// <see cref="_continueRequestedByInput"/> for whatever step is currently polling. Called the
+    /// moment drawing closes for the card — from there until the hold ends a press always belongs
+    /// to the card, so arming early is what keeps a tap during the slide-in or the name dwell from
+    /// being silently dropped. The release press is still a deliberate second gesture: the hold
+    /// clears the latch as it opens.
+    /// </summary>
+    private void ArmCardContinueWindow()
+    {
+        EnsureContinueInputAction();
+        _continueRequestedByInput = false;
+        s_continueRequestedByTest = false;
+        _cardConsumesPresses = true;
+    }
+
+    /// <summary>
+    /// Reads and clears a queued continue, from the device or the test seam. Shared by every
+    /// card-window wait so a press serves exactly one step — the tap that completed the sentence
+    /// cannot also end the dwell after it.
+    /// </summary>
+    private bool ConsumeContinueRequest()
+    {
+        if (!_continueRequestedByInput && !s_continueRequestedByTest)
+            return false;
+
+        _continueRequestedByInput = false;
+        s_continueRequestedByTest = false;
+        return true;
+    }
+
+    /// <summary>
+    /// <see cref="WaitRealtime"/> that ends early on a continue press. For the card's dwells: they
+    /// keep their authored length for a reader and yield to a press for a skipper, which is what
+    /// lets every tap on the card visibly do something instead of dying between armed windows.
+    /// </summary>
+    private IEnumerator WaitRealtimeOrContinue(float seconds)
+    {
+        float waited = 0f;
+        while (waited < seconds)
+        {
+            if (ConsumeContinueRequest())
+                yield break;
+
+            waited += Time.unscaledDeltaTime;
+            yield return null;
+        }
     }
 
     private static IEnumerator WaitRealtime(float seconds)

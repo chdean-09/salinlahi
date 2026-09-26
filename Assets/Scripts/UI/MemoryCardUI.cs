@@ -312,9 +312,10 @@ public sealed class MemoryCardUI : MonoBehaviour
     public const float GlyphGap = 16f;
 
     // The card's own geometry, shared by the layout and by the glyph-fit fallback so the
-    // two cannot drift apart.
+    // two cannot drift apart. The card itself is anchor-stretched to ScrollPanelArt.ScrollArea
+    // like every other scroll modal, so CardWidth is only the reference-resolution basis for
+    // the fallback path, not the live size.
     private const float CardWidth = 820f;
-    private const float CardHeight = 700f;
     private const float ContentMinX = 0.17f;
     private const float ContentMaxX = 0.83f;
 
@@ -364,10 +365,6 @@ public sealed class MemoryCardUI : MonoBehaviour
         GameObject card = new GameObject("MemoryCard", typeof(RectTransform), typeof(Image));
         card.transform.SetParent(transform, false);
         RectTransform cardRect = card.GetComponent<RectTransform>();
-        cardRect.anchorMin = cardRect.anchorMax = new Vector2(0.5f, 0.5f);
-        cardRect.pivot = new Vector2(0.5f, 0.5f);
-        cardRect.anchoredPosition = Vector2.zero;
-        cardRect.sizeDelta = new Vector2(880f, 620f);
         Image cardImage = card.GetComponent<Image>();
         cardImage.color = new Color32(45, 32, 25, 255);
         cardImage.raycastTarget = true;
@@ -392,8 +389,10 @@ public sealed class MemoryCardUI : MonoBehaviour
 
         _loreText = CreateText(_backRoot.transform, "LoreText", string.Empty, 60f, 400f, UITextScale.Body);
 
-        _flipButton = CreateButton(card.transform, "FlipButton", MemoryCardCopy.FlipLabel, -250f, 24f);
-        _closeButton = CreateButton(card.transform, "CloseButton", MemoryCardCopy.CloseLabel, 250f, 24f);
+        _flipButton = CreateButton(card.transform, "FlipButton", MemoryCardCopy.FlipLabel, -250f, 24f,
+            GoldButtonFill, ScrollPanelArt.InkColor);
+        _closeButton = CreateButton(card.transform, "CloseButton", MemoryCardCopy.CloseLabel, 250f, 24f,
+            SlateButtonFill, Color.white);
 
         _onParchment = onParchment;
         ApplyParchmentLayout(
@@ -431,7 +430,9 @@ public sealed class MemoryCardUI : MonoBehaviour
         if (card == null)
             return;
 
-        card.sizeDelta = new Vector2(CardWidth, CardHeight);
+        // The same scroll every modal shows: ready screen, focus preview, wave-cleared.
+        ScrollPanelArt.SetAnchors(card, ScrollPanelArt.ScrollArea);
+        card.pivot = new Vector2(0.5f, 0.5f);
 
         // The faces used to reserve 120px at the bottom for a button row that sat below the
         // card. The buttons live inside the paper now, so the faces span the card and their
@@ -479,9 +480,17 @@ public sealed class MemoryCardUI : MonoBehaviour
     /// </summary>
     public static float ResolveGlyphRowWidth(float measuredWidth)
     {
-        return measuredWidth > 0f
-            ? measuredWidth
-            : CardWidth * (ContentMaxX - ContentMinX);
+        if (measuredWidth > 0f)
+            return measuredWidth;
+
+        // The card stretches to ScrollArea, so its paper width tracks the screen — sizing
+        // off the live screen keeps a five-symbol row inside the card on narrow phones,
+        // where the old fixed 820px basis would have over-promised the row real width.
+        // CardWidth is the stand-in when no screen is live (edit-mode fixture hosts).
+        float cardWidth = Screen.width > 0
+            ? Screen.width * ScrollPanelArt.ScrollArea.width
+            : CardWidth;
+        return cardWidth * (ContentMaxX - ContentMinX);
     }
 
     /// <summary>
@@ -552,8 +561,15 @@ public sealed class MemoryCardUI : MonoBehaviour
         return label;
     }
 
+    // The scroll-family button convention: gold is the card's feature action (Flip keeps
+    // you inside the memory), dark slate the one that leaves it — the pair the ready
+    // screen and the hint modal already ship.
+    private static readonly Color GoldButtonFill = ScrollPanelArt.GoldButtonFill;
+    private static readonly Color SlateButtonFill = ScrollPanelArt.SlateButtonFill;
+
     private static Button CreateButton(
-        Transform parent, string name, string labelText, float x, float y)
+        Transform parent, string name, string labelText, float x, float y,
+        Color fill, Color labelColor)
     {
         GameObject buttonObject = new GameObject(
             name, typeof(RectTransform), typeof(Image), typeof(Button));
@@ -566,7 +582,7 @@ public sealed class MemoryCardUI : MonoBehaviour
         rect.sizeDelta = new Vector2(380f, 92f);
 
         Image image = buttonObject.GetComponent<Image>();
-        image.color = new Color32(209, 168, 82, 255);
+        image.color = fill;
         image.raycastTarget = true;
         Button button = buttonObject.GetComponent<Button>();
         button.targetGraphic = image;
@@ -578,7 +594,10 @@ public sealed class MemoryCardUI : MonoBehaviour
         labelRect.pivot = new Vector2(0.5f, 0.5f);
         labelRect.offsetMin = Vector2.zero;
         labelRect.offsetMax = Vector2.zero;
-        label.color = Color.black;
+        if (labelColor == ScrollPanelArt.InkColor)
+            ScrollPanelArt.Inkify(label);
+        else
+            label.color = labelColor;
         return button;
     }
 }

@@ -101,7 +101,7 @@ public class LevelConfigSO : ScriptableObject
     [FormerlySerializedAs("embeddedWaves")]
     [Tooltip("Hand-authored waves, played in order from index 0. Leave EMPTY to generate the "
         + "waves from waveCurve against allowedCharacters and allowedEnemyTypes. Level 1 keeps "
-        + "an authored list and is the reference the Ugat curve is held to.")]
+        + "its own three authored waves.")]
     [SerializeField] private List<WaveDefinition> _authoredWaves = new();
 
     [Tooltip("Shared chapter difficulty curve, used only while the authored list above is empty. "

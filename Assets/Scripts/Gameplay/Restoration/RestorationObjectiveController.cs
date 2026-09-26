@@ -11,6 +11,7 @@ public sealed class RestorationObjectiveController : MonoBehaviour
     private readonly RestorationObjectiveState _state = new RestorationObjectiveState();
     private LevelConfigSO _level;
     private bool _usesLegacyFallback;
+    private SpawnAssignmentCoordinator _assignmentCoordinator;
 
     public static RestorationObjectiveController Active { get; private set; }
     public RestorationObjectiveState State => _state;
@@ -33,6 +34,7 @@ public sealed class RestorationObjectiveController : MonoBehaviour
     public void Configure(LevelConfigSO level)
     {
         _level = level;
+        _assignmentCoordinator = null;
         if (level == null)
         {
             _usesLegacyFallback = false;
@@ -64,7 +66,30 @@ public sealed class RestorationObjectiveController : MonoBehaviour
 
     public RestorationProgressResult TryRestore(string symbolStableId, string spokenValueId)
     {
-        return _state.TryRestore(symbolStableId, spokenValueId);
+        return _state.TryRestore(symbolStableId, spokenValueId, CanRestoreOccurrence);
+    }
+
+    public bool CanRestoreOccurrence(string occurrenceId)
+    {
+        if (_assignmentCoordinator == null || _assignmentCoordinator.Level != _level)
+        {
+            _assignmentCoordinator = null;
+            SpawnAssignmentCoordinator[] candidates =
+                FindObjectsByType<SpawnAssignmentCoordinator>(
+                    FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int index = 0; index < candidates.Length; index++)
+            {
+                if (candidates[index].Level != _level)
+                    continue;
+
+                _assignmentCoordinator = candidates[index];
+                break;
+            }
+        }
+
+        return _assignmentCoordinator == null
+            || !_assignmentCoordinator.IsActive
+            || _assignmentCoordinator.CanRestoreOccurrence(occurrenceId);
     }
 
     public bool IsOccurrenceRestored(string occurrenceId)

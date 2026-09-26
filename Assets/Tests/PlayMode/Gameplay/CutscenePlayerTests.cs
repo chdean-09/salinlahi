@@ -234,11 +234,13 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         [UnityTest]
-        public IEnumerator ContinuePrompt_AppearsWhileTypewritingAndWaitingForTap()
+        public IEnumerator ContinuePrompt_StaysHiddenWhileTypewriting_ThenAppears()
         {
             _cutscene.panels = new CutscenePanel[]
             {
-                new CutscenePanel { text = "Panel 1", typewriterSpeed = 200f },
+                // Slow enough that the reveal is still running several frames in — the prompt
+                // must stay hidden for all of them and appear only once the line is complete.
+                new CutscenePanel { text = "Panel 1 has enough text to type for a while", typewriterSpeed = 15f },
                 new CutscenePanel { text = "Panel 2", typewriterSpeed = 200f }
             };
 
@@ -247,23 +249,24 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             TMP_Text prompt = GetPrivateField<TMP_Text>(_player, "_continuePromptText");
             CanvasGroup promptGroup = GetPrivateField<CanvasGroup>(_player, "_continuePromptCanvasGroup");
             Assert.NotNull(prompt);
-            // The prompt appears right after the forced first-panel transition;
-            // wait that transition out on real time before asserting.
+
+            // Wait out the forced first-panel transition until the typewriter is running.
             yield return WaitUntilRealtime(
-                () => prompt.gameObject.activeSelf, timeoutSeconds: 2f);
+                () => GetPrivateField<bool>(_player, "_isTypewriting"), timeoutSeconds: 2f);
+
+            // Mid-reveal: typing, and there is nothing yet for a tap to continue FROM.
+            Assert.IsFalse(prompt.gameObject.activeSelf,
+                "The prompt must not appear while the line is still typing.");
+
+            // The reveal completes; only then does the prompt appear.
+            yield return WaitUntilRealtime(
+                () => prompt.gameObject.activeSelf, timeoutSeconds: 10f);
             Assert.AreEqual("Tap anywhere to continue", prompt.text);
-            Assert.IsTrue(prompt.gameObject.activeSelf, "Prompt should show as soon as the panel can react to taps.");
             Assert.Greater(promptGroup.alpha, 0.5f);
-
-            float waited = 0f;
-            while (waited < 1f && !GetPrivateField<bool>(_player, "_waitingForTap"))
-            {
-                yield return null;
-                waited += Time.unscaledDeltaTime;
-            }
-
-            Assert.IsTrue(prompt.gameObject.activeSelf, "Prompt should show once the cutscene waits for player input.");
-            Assert.Greater(promptGroup.alpha, 0.5f);
+            Assert.IsFalse(GetPrivateField<bool>(_player, "_isTypewriting"),
+                "The prompt must not appear until the typewriter has finished.");
+            Assert.IsTrue(GetPrivateField<bool>(_player, "_waitingForTap"),
+                "The cutscene should be waiting for the player's tap once the prompt is up.");
 
             _tapCatcher.onClick.Invoke();
             yield return null;

@@ -383,11 +383,12 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private CutscenePlayer[] _cutscenePlayers;
     private FocusWordPreviewController[] _focusWordPreviews;
     private SymbolLearningCardController[] _symbolCards;
+    private DialogueController[] _dialogueControllers;
+    private InstantWinPresenter[] _instantWinPresenters;
     private bool _suppressedByIntroModal;
-    private TextMeshProUGUI _objectiveContextText;
-    private GameObject _runtimeObjectiveContextObject;
-    private float _objectiveContextRowHeight;
-    private bool _objectiveContextUsesMeasuredRow;
+    private bool _instructionSuppressedByCue;
+    private bool _clueInstructionResolved;
+
 
     // Runtime-only layout values. Serialized fields remain the nominal Level 1-4 layout; long
     // objectives derive a uniform scale here so the rail stays inside the safe-area viewport.
@@ -647,6 +648,12 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         if (_railRoot == null)
             return false;
 
+        // The completion beat's banner is the announcement now — the transient per-word
+        // cue parks in the same band and would print straight through it. Its coroutine
+        // still owns the instruction-suppression flag's cleanup.
+        if (_wordRestoredText != null)
+            _wordRestoredText.gameObject.SetActive(false);
+
         RepaintRail(forceRestored: true);
         _railRoot.SetActive(!IsAnyCutscenePlaying());
 
@@ -676,6 +683,10 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private void OnEnable()
     {
         Active = this;
+        // The cue's restore coroutine dies with a disable; a latched flag would keep the
+        // instruction hidden forever. Everything else in the funnel re-derives from live
+        // state each LateUpdate, so this is the only latch that needs clearing here.
+        _instructionSuppressedByCue = false;
         _ashWasActive = AshFirstSlotController.IsAnyActive();
         SubscribeToDirector();
         BindReplayAudioButton();
@@ -947,6 +958,11 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             UpdateRestorationProgress();
         }
 
+        // The instruction's gate is polled rather than evented for the same reason the
+        // intro modals are: a presenter that enables mid-dialogue or mid-challenge never
+        // saw a Started event, and ChallengeRuntimeState raises none at all.
+        UpdateClueInstructionVisibility();
+
         if (_activeClueMark == null)
             return;
 
@@ -1149,6 +1165,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private void HandleCutsceneTransitioned()
     {
         UpdateRestorationProgress();
+        UpdateClueInstructionVisibility();
     }
 
     /// <summary>
@@ -1201,13 +1218,75 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     }
 
     /// <summary>
+    /// Same gate as <see cref="IsAnyIntroModalPresenting"/> for the story scroll: a live
+    /// dialogue owns the bottom band the standing instruction sits in, so the instruction
+    /// yields for its duration. Live-polled rather than evented — a presenter enabled
+    /// mid-dialogue never saw OnDialogueStarted, and a runtime-built controller can
+    /// appear after the first evaluation, so the empty cache retries.
+    /// </summary>
+    private bool IsAnyDialoguePresenting()
+    {
+        if (_dialogueControllers == null || _dialogueControllers.Length == 0)
+            _dialogueControllers = FindObjectsByType<DialogueController>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < _dialogueControllers.Length; i++)
+        {
+            if (_dialogueControllers[i] != null && _dialogueControllers[i].IsPresenting)
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Same gate for the instant-win beat: its banner parks on the rail's top edge, which is
+    /// the standing instruction's band, and "DRAW THE GLOWING SYMBOL TO DEFEND" has nothing
+    /// left to ask for once the text is whole. Live-polled like the others because the
+    /// presenter is runtime-built and can appear after the first evaluation.
+    /// </summary>
+    private bool IsAnyInstantWinPresenting()
+    {
+        if (_instantWinPresenters == null || _instantWinPresenters.Length == 0)
+            _instantWinPresenters = FindObjectsByType<InstantWinPresenter>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < _instantWinPresenters.Length; i++)
+        {
+            if (_instantWinPresenters[i] != null && _instantWinPresenters[i].IsPresenting)
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// The standing instruction's single visibility funnel: every surface that owns its
+    /// bottom band — the word-restored cue, the enemy introduction card, the instant-win
+    /// banner, cutscenes, dialogue, the intro modals and the challenge board — suppresses
+    /// it, and it comes back only once none of them does. The introduction gate reads
+    /// IsPlaying rather than the lifetime banner: the card sits on the instruction's
+    /// band, but the banner outlives the lesson by up to a whole enemy lifetime, and
+    /// standing down for all of it would erase the instruction from ordinary combat.
+    /// Idempotent: SetClueInstructionVisible already early-outs on an unchanged state,
+    /// so this is cheap enough to re-evaluate every LateUpdate.
+    /// </summary>
+    private void UpdateClueInstructionVisibility()
+    {
+        bool suppressed = _instructionSuppressedByCue
+            || _suppressedByIntroModal
+            || EnemyIntroductionBeat.IsPlaying
+            || IsAnyCutscenePlaying()
+            || IsAnyDialoguePresenting()
+            || IsAnyInstantWinPresenting()
+            || ChallengeRuntimeState.IsActive;
+        SetClueInstructionVisible(!suppressed);
+    }
+
+    /// <summary>
     /// AC1's word-restoration half (SALIN-135). An accepted draw earns two answers: the combat
     /// response the enemy plays, and a language response saying which word just got its symbol
     /// back. Before this the only "Restored:" surface was the end-of-level summary, so a player
     /// mid-defense never saw the point of the symbol they had just drawn.
     ///
-    /// Fired from ActiveClueDirector.TryConsumeClue, so it is already exactly-once per clue and
-    /// an echoed recognition cannot double it.
+    /// Fired by the director's marked or unmarked consume path, so it is already once per
+    /// real carrier and an echoed recognition cannot double it.
     /// </summary>
     private void HandleActiveClueResolved(Enemy clue)
     {
@@ -1333,13 +1412,15 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         // instruction is the one that has nothing to say at that moment — the player has just done
         // the thing it asks for — so it stands down for the length of the cue and comes back with
         // it. See HideWordRestoredCueAfterDelay.
-        SetClueInstructionVisible(false);
+        _instructionSuppressedByCue = true;
+        UpdateClueInstructionVisibility();
 
         // A disabled presenter cannot run a coroutine, so nothing would ever bring the instruction
         // back. Restore it now and leave the cue up: OnDisable tears the runtime label down anyway.
         if (!isActiveAndEnabled)
         {
-            SetClueInstructionVisible(true);
+            _instructionSuppressedByCue = false;
+            UpdateClueInstructionVisibility();
             return;
         }
 
@@ -1366,7 +1447,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         if (_wordRestoredText != null)
             _wordRestoredText.gameObject.SetActive(false);
 
-        SetClueInstructionVisible(true);
+        _instructionSuppressedByCue = false;
+        UpdateClueInstructionVisibility();
         _wordRestoredRoutine = null;
     }
 
@@ -1505,8 +1587,13 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
     private TextMeshProUGUI ResolveClueInstruction()
     {
-        if (_clueInstructionText != null)
+        // Resolved means resolved, including "this HUD has no instruction": the visibility
+        // funnel re-evaluates every LateUpdate, and a HUD without the line (the tutorial
+        // scene) would otherwise canvas-scan every frame forever. The line is scene-authored,
+        // so it exists — or never will — by the time the first evaluation runs.
+        if (_clueInstructionResolved)
             return _clueInstructionText;
+        _clueInstructionResolved = true;
 
         // Authored first: on a HUD that stands its own instruction line — every HUD, now that no
         // panel is built at runtime — that line is the one the player sees.
@@ -1800,18 +1887,10 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         _railLayoutSeparatorFontSize = layout.SeparatorFontSize;
 
         float labelRow = _railLayoutLabelRowHeight + _railLayoutLabelGap;
-        railRect.sizeDelta = new Vector2(totalWidth * layout.Scale, labelRow + _railLayoutSlotSize.y);
-
-        // Measure the context before laying out slots. A multiline objective gets a reserved row
-        // inside the rail; single-line objectives keep the historic label placement above it.
-        BuildObjectiveContextLabel(railRect, fontTemplate, availableWidth);
-        float contextRow = _objectiveContextUsesMeasuredRow
-            ? _objectiveContextRowHeight + ObjectiveContextGap
-            : 0f;
         railRect.sizeDelta = new Vector2(
             totalWidth * layout.Scale,
-            labelRow + _railLayoutSlotSize.y + contextRow);
-        float slotRowTop = _objectiveContextUsesMeasuredRow ? -contextRow : 0f;
+            labelRow + _railLayoutSlotSize.y);
+        float slotRowTop = 0f;
 
         float x = 0f;
         bool anyWordPlaced = false;
@@ -1932,72 +2011,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         }
 
         return null;
-    }
-
-    private const float ObjectiveContextNominalHeight = 72f;
-    private const float ObjectiveContextGap = 12f;
-
-    private void BuildObjectiveContextLabel(
-        RectTransform railRect,
-        TextMeshProUGUI fontTemplate,
-        float availableWidth)
-    {
-        if (!UsesRestorationObjectiveDefinition || railRect == null || fontTemplate == null)
-            return;
-
-        if (_runtimeObjectiveContextObject == null)
-        {
-            _runtimeObjectiveContextObject = new GameObject(
-                "[Runtime] RestorationObjectiveContext", typeof(RectTransform));
-            _runtimeObjectiveContextObject.transform.SetParent(railRect, false);
-            _objectiveContextText = _runtimeObjectiveContextObject.AddComponent<TextMeshProUGUI>();
-            CopyFont(fontTemplate, _objectiveContextText);
-            _objectiveContextText.fontSize = Mathf.Max(18f, _latinWordLabelFontSize * 0.68f);
-            _objectiveContextText.alignment = TextAlignmentOptions.Center;
-            _objectiveContextText.color = _latinWordLabelColor;
-            _objectiveContextText.raycastTarget = false;
-            _objectiveContextText.textWrappingMode = TextWrappingModes.Normal;
-            _objectiveContextText.enableAutoSizing = true;
-            _objectiveContextText.fontSizeMin = 14f;
-            _objectiveContextText.fontSizeMax = Mathf.Max(18f, _latinWordLabelFontSize * 0.68f);
-
-            RectTransform configuredContextRect =
-                _runtimeObjectiveContextObject.GetComponent<RectTransform>();
-            configuredContextRect.anchorMin = new Vector2(0.5f, 1f);
-            configuredContextRect.anchorMax = new Vector2(0.5f, 1f);
-            configuredContextRect.pivot = new Vector2(0.5f, 1f);
-        }
-
-        UpdateObjectiveContextLabel();
-
-        RectTransform contextRect = _runtimeObjectiveContextObject.GetComponent<RectTransform>();
-        float contextWidth = Mathf.Min(
-            Mathf.Max(railRect.sizeDelta.x, 640f),
-            Mathf.Max(1f, availableWidth));
-        string rendered = _objectiveContextText.text ?? string.Empty;
-        Vector2 preferred = _objectiveContextText.GetPreferredValues(rendered, contextWidth, 0f);
-        _objectiveContextUsesMeasuredRow = rendered.IndexOf('\n') >= 0
-            || preferred.y > ObjectiveContextNominalHeight + 1f;
-        _objectiveContextRowHeight = _objectiveContextUsesMeasuredRow
-            ? Mathf.Max(ObjectiveContextNominalHeight, preferred.y)
-            : ObjectiveContextNominalHeight;
-        contextRect.anchoredPosition = new Vector2(
-            0f,
-            _objectiveContextUsesMeasuredRow ? 0f : 10f);
-        contextRect.sizeDelta = new Vector2(contextWidth, _objectiveContextRowHeight);
-    }
-
-    private void UpdateObjectiveContextLabel()
-    {
-        if (_objectiveContextText == null || !UsesRestorationObjectiveDefinition)
-            return;
-
-        RestorationObjectiveDefinition definition = _restorationObjectiveController.State.Definition;
-        string rendered = RestorationObjectiveTextFormatter.Render(
-            definition,
-            _restorationObjectiveController.State);
-        _objectiveContextText.text = rendered;
-        _objectiveContextText.gameObject.SetActive(!string.IsNullOrEmpty(rendered));
     }
 
     /// <summary>
@@ -2391,7 +2404,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             return;
 
         RepaintRail(forceRestored: false);
-        UpdateObjectiveContextLabel();
         _railRoot.SetActive(true);
     }
 
@@ -3087,10 +3099,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         _railSlots.Clear();
         _railSlotAnchors.Clear();
         _runtimeObjectiveWords.Clear();
-
-        DestroyOwnedObject(_runtimeObjectiveContextObject);
-        _runtimeObjectiveContextObject = null;
-        _objectiveContextText = null;
 
         Texture2D frameTexture =
             _runtimeSlotFrameSprite != null ? _runtimeSlotFrameSprite.texture : null;

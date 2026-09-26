@@ -17,8 +17,9 @@ using UnityEngine.UI;
 /// </para>
 ///
 /// <para>
-/// <b>Nothing here may take input.</b> The introduction beat keeps player input enabled — the card
-/// is an overlay the player can draw straight through — so every graphic is forced to
+/// <b>Nothing here may take input.</b> The card is modal while it is up — drawing is suppressed for
+/// its window and the only legitimate press is the beat's own continue, which it reads through an
+/// Input System action rather than through uGUI — so every graphic is forced to
 /// <c>raycastTarget = false</c> on wake. A card that swallowed a touch would turn the level's most
 /// input-sensitive moment into a dead zone, and it would do it only on the one spawn that can never
 /// be retried.
@@ -191,7 +192,8 @@ public sealed class EnemyIntroductionCardView : MonoBehaviour
         if (_cardGroup != null)
         {
             _cardGroup.alpha = clamped;
-            // Never blocks raycasts: input stays live through the card for the whole beat.
+            // Never blocks raycasts: the card takes no input of its own, and a raycastable card
+            // would only ever be a dead zone between a finger and whatever lies under it.
             _cardGroup.blocksRaycasts = false;
             _cardGroup.interactable = false;
         }
@@ -206,10 +208,35 @@ public sealed class EnemyIntroductionCardView : MonoBehaviour
     /// <summary>
     /// Reveals step 3's line. Blank copy hides the row instead of showing an empty one, which is
     /// what lets a type with no ability use the same beat without authored filler.
+    ///
+    /// <para>
+    /// The whole string is assigned and laid out before a single glyph is shown — the beat then
+    /// drives the visible count through <see cref="SetAbilityLineProgress"/> — so the block can
+    /// never re-wrap or drift while it types. Returns the laid-out glyph count; a blank line
+    /// hides the row and reports 0.
+    /// </para>
     /// </summary>
-    public void ShowAbilityLine(string abilityLine)
+    public int ShowAbilityLine(string abilityLine)
     {
         SetTextOrHide(_abilityText, abilityLine);
+        return _abilityText != null && _abilityText.gameObject.activeSelf
+            ? UITextReveal.Begin(_abilityText)
+            : 0;
+    }
+
+    /// <summary>
+    /// The reveal's progress, in glyphs. Driven by the beat rather than a clock in here, for the
+    /// same reason every other animated state is: the view owns pixels, the beat owns time.
+    /// </summary>
+    public void SetAbilityLineProgress(int visibleCharacters)
+    {
+        UITextReveal.SetProgress(_abilityText, visibleCharacters);
+    }
+
+    /// <summary>Ends the reveal with the whole line on screen. Safe mid-reveal or after.</summary>
+    public void CompleteAbilityLine()
+    {
+        UITextReveal.Complete(_abilityText);
     }
 
     /// <summary>Drops the card out of view at once, without touching the banner.</summary>
@@ -274,9 +301,9 @@ public sealed class EnemyIntroductionCardView : MonoBehaviour
     }
 
     /// <summary>
-    /// The card and banner are pure read surfaces over a live play field. Clearing raycastTarget on
-    /// every graphic under them — rather than trusting each one to have been authored that way — is
-    /// what guarantees a drawing stroke started on top of the card still reaches the play field.
+    /// The card and banner are pure read surfaces. Clearing raycastTarget on every graphic under
+    /// them — rather than trusting each one to have been authored that way — guarantees no label
+    /// or portrait can swallow a touch meant for the beat's continue action or the field beneath.
     /// </summary>
     private void DisableRaycastsOnEveryGraphic()
     {

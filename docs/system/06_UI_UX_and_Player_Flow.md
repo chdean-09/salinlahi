@@ -89,7 +89,6 @@ The HUD is implemented in `Assets/Scripts/UI/HUD.cs`. Elements below reflect cur
 | HUD Element | Description | EventBus Trigger |
 |-------------|-------------|-----------------|
 | Heart display | Shows current heart count (0–3 icons) | `OnHeartsChanged(int)` |
-| Wave indicator | Shows "Wave X of Y" | `OnWaveStarted(int)` |
 | Combo counter | Shows current streak count; appears only when active, fades when streak breaks | `OnComboChanged(int)` |
 | Pause button | Top corner; opens Pause Menu overlay | (UI tap) |
 | Drawing canvas | Full-screen transparent touch surface for drawing | `OnDrawingStarted`, `OnDrawingFailed` |

@@ -216,7 +216,7 @@ MonoBehaviour:
   clueChannels: 19
   audioVisualFallback: 4
   spawnAssignmentPolicy:
-    minSpawnsBeforeNeeded: 4
+    minSpawnsBeforeNeeded: 1
     neededWeight: 0.5
     starvationTimeout: 30
     hardStarvationTimeout: 50

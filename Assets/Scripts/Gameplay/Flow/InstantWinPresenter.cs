@@ -13,7 +13,9 @@ using UnityEngine.UI;
 ///   1. the slots join and the text flashes whole — the player's own last drawing is credited;
 ///   2. time freezes at a near-zero timeScale with the remaining enemies mid-stride;
 ///   3. the board HOLDS there, frozen, for a per-level duration;
-///   4. the banner states that the text is whole and the wave no longer matters;
+///   4. the board keeps HOLDING until the player taps — a fixed timer cannot know a
+///      reader's pace. The beat carries no words of its own: the enemies frozen
+///      mid-stride are the message, and the only text is the shared continue prompt;
 ///   5. the remaining enemies dissolve into light — they are never slashed;
 ///   6. control returns to the caller, which completes the run.
 ///
@@ -26,7 +28,9 @@ using UnityEngine.UI;
 /// Everything that follows from that is a constraint, not a style choice:
 ///   - the overlay NEVER dims the board and never blocks raycasts. WaveClearedScreenUI's
 ///     near-opaque black card is right for a screen whose subject is the card; here the
-///     subject is the enemies behind it, and dimming them defeats the beat.
+///     subject is the enemies behind it, and dimming them defeats the beat. The single
+///     exception is the tap catcher that arms only while the beat waits to be released —
+///     the hold is tap-gated like every text surface in the game.
 ///   - the freeze is a near-zero timeScale, not zero. At exactly zero the enemies' walk
 ///     animation stops dead and the board reads as a paused game — a system state — rather
 ///     than as living enemies caught mid-stride.
@@ -63,13 +67,6 @@ public sealed class InstantWinPresenter : MonoBehaviour
         [Min(0f)] public float holdSeconds;
     }
 
-    [Header("Step 1 — the text flashes whole")]
-    [Tooltip("Seconds per flash half-cycle (on, then off) of the completed target text.")]
-    [Min(0f)] [SerializeField] private float _textFlashHalfCycleSeconds = 0.14f;
-
-    [Tooltip("How many times the completed target text flashes before time freezes.")]
-    [Min(0)] [SerializeField] private int _textFlashCount = 3;
-
     [Header("Step 2 — the freeze")]
     [Tooltip("timeScale held during the beat. Near-zero, never zero: at exactly zero the "
              + "enemies stop animating and the frozen board reads as a paused game rather "
@@ -95,8 +92,8 @@ public sealed class InstantWinPresenter : MonoBehaviour
     [Min(0f)] [SerializeField] private float _fallbackFrozenHoldSeconds = 0f;
 
     [Header("Step 4 — the banner")]
-    [Tooltip("Seconds the banner reads on its own, after the hold and before the dissolve "
-             + "begins.")]
+    [Tooltip("Seconds between the frozen hold ending and the tap prompt arming, so a tap "
+             + "already in flight cannot skip the beat before it has been seen.")]
     [Min(0f)] [SerializeField] private float _bannerSeconds = 1.2f;
 
     [Header("Step 5 — the dissolve")]
@@ -117,15 +114,21 @@ public sealed class InstantWinPresenter : MonoBehaviour
              + "still draws over this beat rather than under it.")]
     [SerializeField] private int _canvasSortingOrder = 280;
 
-    [Tooltip("Font size of the restored target text line.")]
-    [Min(1f)] [SerializeField] private float _restoredTextFontSize = 72f;
-
     [Tooltip("Font size of the instant-win banner.")]
     [Min(1f)] [SerializeField] private float _bannerFontSize = 46f;
 
+    [Tooltip("Font size of the tap-to-continue prompt shown once the hold's arming pause "
+             + "has passed. The beat's only on-screen words, so it reads at banner weight.")]
+    [Min(1f)] [SerializeField] private float _continuePromptFontSize = 40f;
+
     private GameObject _overlayRoot;
-    private TMP_Text _restoredTextLabel;
     private TMP_Text _bannerLabel;
+    private TMP_Text _continuePromptLabel;
+    private Button _tapCatcher;
+
+    // Armed only while the banner's read-gate is open — a tap before then is drawing
+    // input, not a skip request.
+    private bool _waitingForTap;
 
     // Set while Play holds a dipped timeScale, so Cancel knows whether it owns the restore.
     private bool _timeScaleDipped;
@@ -163,10 +166,9 @@ public sealed class InstantWinPresenter : MonoBehaviour
     /// full clear uses.
     /// </summary>
     /// <param name="restorationSource">
-    /// The HUD presenter, read only to compose the restored-text line and celebrate the final
-    /// occurrence. It can render either the scene objective or the legacy focus-word projection.
-    /// Null is tolerated: the beat still freezes, holds and dissolves, because the win rule is
-    /// what it teaches and the text line is decoration on top.
+    /// The HUD presenter, asked only to celebrate the final fill on the real rail and to lend
+    /// its flash duration as the pre-freeze hold. Null is tolerated: the beat still freezes,
+    /// holds and dissolves, because the win rule is what it teaches.
     /// </param>
     /// <param name="levelNumber">
     /// LevelConfigSO.levelNumber, which selects this level's frozen-hold duration.
@@ -177,16 +179,17 @@ public sealed class InstantWinPresenter : MonoBehaviour
 
         try
         {
+            _waitingForTap = false;
             EnsureOverlay();
-            ShowOverlay(BuildRestoredTextLine(restorationSource));
+            ShowOverlay();
+            PositionBannerClearOfRail(restorationSource);
 
-            // Step 1 proper: flash the REAL target-text rail, not just this overlay's copy of the
-            // line. The rail is the thing the player has been filling all level, so it is the only
-            // surface where "the slots join and the text flashes whole" actually reads as their own
-            // four drawings completing. The overlay line stays as the readable restatement beneath
-            // it, and as the sole presentation on a level whose HUD has no rail to celebrate.
-            if (restorationSource != null)
-                restorationSource.CelebrateRestorationComplete();
+            // Step 1 proper: flash the REAL target-text rail. The rail is the thing the
+            // player has been filling all level, so it is the only surface where "the slots
+            // join and the text flashes whole" actually reads as their own four drawings
+            // completing — the overlay carries no copy of the line.
+            bool celebrated = restorationSource != null
+                && restorationSource.CelebrateRestorationComplete();
 
             // Drawing closes for the duration of the beat. The level is already won, so no
             // further drawing can change its outcome — but an accepted drawing during the
@@ -195,7 +198,12 @@ public sealed class InstantWinPresenter : MonoBehaviour
             // ordinary kill.
             SuppressDrawing(true);
 
-            yield return FlashRestoredText();
+            // Hold while the rail's own flash is still moving — its authored duration, so
+            // the freeze lands the frame the celebration finishes. A level with no rail to
+            // flash skips the wait rather than pausing on an invisible celebration.
+            if (celebrated)
+                yield return new WaitForSecondsRealtime(
+                    restorationSource.RestorationCelebrationDurationSeconds);
 
             DipTimeScale();
 
@@ -204,11 +212,25 @@ public sealed class InstantWinPresenter : MonoBehaviour
             if (hold > 0f)
                 yield return new WaitForSecondsRealtime(hold);
 
-            if (_bannerLabel != null)
-                _bannerLabel.text = InstantWinCopy.BannerLabel;
-
+            // The banner band stays wordless — the frozen enemies mid-stride are the
+            // message. _bannerSeconds is now just the pause before the prompt arms, so a
+            // tap already in flight cannot release a beat the player has not seen yet.
             if (_bannerSeconds > 0f)
                 yield return new WaitForSecondsRealtime(_bannerSeconds);
+
+            if (IsPresenting)
+            {
+                _waitingForTap = true;
+                SetContinuePromptVisible(true);
+                yield return new WaitUntil(() => !_waitingForTap || !IsPresenting);
+                SetContinuePromptVisible(false);
+            }
+
+            // The paths that cancel a live beat (game over, attempt aborted) already
+            // returned the active enemies themselves — see Cancel's doc — so dissolving
+            // now would return them to the pool a second time.
+            if (!IsPresenting)
+                yield break;
 
             yield return DissolveRemainingEnemies();
         }
@@ -236,6 +258,8 @@ public sealed class InstantWinPresenter : MonoBehaviour
         RestoreDissolveVisuals();
         DestroyDissolveVfx();
         _dissolvingEnemies.Clear();
+        _waitingForTap = false;
+        SetContinuePromptVisible(false);
         SuppressDrawing(false);
         RestoreTimeScale();
         HideOverlay();
@@ -259,32 +283,6 @@ public sealed class InstantWinPresenter : MonoBehaviour
         }
 
         return Mathf.Max(0f, _fallbackFrozenHoldSeconds);
-    }
-
-    private IEnumerator FlashRestoredText()
-    {
-        if (_restoredTextLabel == null || _textFlashCount <= 0 || _textFlashHalfCycleSeconds <= 0f)
-            yield break;
-
-        // Alpha rather than enabled/disabled: toggling the GameObject rebuilds the TMP mesh
-        // every half-cycle, which shows up as a one-frame reflow on a long target text.
-        for (int i = 0; i < _textFlashCount; i++)
-        {
-            SetRestoredTextAlpha(0.25f);
-            yield return new WaitForSecondsRealtime(_textFlashHalfCycleSeconds);
-            SetRestoredTextAlpha(1f);
-            yield return new WaitForSecondsRealtime(_textFlashHalfCycleSeconds);
-        }
-    }
-
-    private void SetRestoredTextAlpha(float alpha)
-    {
-        if (_restoredTextLabel == null)
-            return;
-
-        Color color = _restoredTextLabel.color;
-        color.a = Mathf.Clamp01(alpha);
-        _restoredTextLabel.color = color;
     }
 
     /// <summary>
@@ -520,113 +518,94 @@ public sealed class InstantWinPresenter : MonoBehaviour
         _dissolveVfxInstances.Clear();
     }
 
-    /// <summary>
-    /// The finished target text, read back from the restoration state the win was decided on
-    /// rather than re-derived from config, so the line can never disagree with the HUD about
-    /// which words were restored.
-    /// </summary>
-    private static string BuildRestoredTextLine(ActiveCluePresenter restorationSource)
-    {
-        if (restorationSource == null)
-            return InstantWinCopy.RestoredTextUnavailableLabel;
-
-        if (restorationSource.UsesRestorationObjectiveDefinition)
-        {
-            RestorationObjectiveDefinition definition =
-                restorationSource.RestorationObjective?.State?.Definition;
-            if (definition?.units != null)
-            {
-                var objectiveText = new System.Text.StringBuilder();
-                for (int unitIndex = 0; unitIndex < definition.units.Count; unitIndex++)
-                {
-                    RestorationObjectiveUnit unit = definition.units[unitIndex];
-                    if (unit?.tokens == null)
-                        continue;
-
-                    for (int tokenIndex = 0; tokenIndex < unit.tokens.Count; tokenIndex++)
-                    {
-                        RestorationObjectiveToken token = unit.tokens[tokenIndex];
-                        if (token == null)
-                            continue;
-
-                        if (token.kind == RestorationTokenKind.Literal)
-                            objectiveText.Append(token.literalText);
-                        else
-                        {
-                            string label = SpokenValueResolver.ResolveLabel(
-                                token.target?.symbol, token.SpokenValueId);
-                            objectiveText.Append(string.IsNullOrWhiteSpace(label)
-                                ? token.target?.symbol?.characterID ?? string.Empty
-                                : label.ToUpperInvariant());
-                        }
-                    }
-
-                    // Word objectives have separate units without literal separators, so keep
-                    // their readable word boundary. Marked/hidden context units already author
-                    // the exact sentence spacing in their literal tokens and must concatenate
-                    // byte-for-byte here (for example, "u" + "NAng").
-                    if (unitIndex < definition.units.Count - 1
-                        && (definition.displayMode == RestorationDisplayMode.GuidedWords
-                            || definition.displayMode == RestorationDisplayMode.ClueOnlyWords))
-                    {
-                        objectiveText.Append(' ');
-                    }
-                }
-
-                if (objectiveText.Length > 0)
-                    return objectiveText.ToString();
-            }
-        }
-
-        IReadOnlyList<FocusWordDefinition> words = restorationSource.RestorationState.FocusWords;
-        var labels = new List<string>(words.Count);
-        for (int i = 0; i < words.Count; i++)
-        {
-            FocusWordDefinition word = words[i];
-            if (word == null)
-                continue;
-
-            string label = !string.IsNullOrEmpty(word.displayLabel)
-                ? word.displayLabel
-                : word.latinSpelling;
-            if (!string.IsNullOrEmpty(label))
-                labels.Add(label);
-        }
-
-        return labels.Count == 0
-            ? InstantWinCopy.RestoredTextUnavailableLabel
-            : string.Join("  ", labels);
-    }
-
-    private void ShowOverlay(string restoredText)
+    private void ShowOverlay()
     {
         if (_overlayRoot == null)
             return;
 
-        if (_restoredTextLabel != null)
-        {
-            _restoredTextLabel.text = restoredText;
-            SetRestoredTextAlpha(1f);
-        }
-
-        // Blank until step 4. The banner states the win rule, and a banner already on screen
-        // during the hold tells the player the answer before the frozen board has asked the
-        // question.
+        // Always blank: the banner band is a wordless layout anchor — the continue prompt
+        // is its only child and the beat's only text. The frozen board states the win rule.
         if (_bannerLabel != null)
             _bannerLabel.text = string.Empty;
+
+        // Same reset for a reused presenter: the prompt and its catcher belong to the
+        // read-gate alone, never to the flash or the frozen hold before it.
+        SetContinuePromptVisible(false);
 
         _overlayRoot.SetActive(true);
     }
 
     private void HideOverlay()
     {
+        // The catcher lives outside the overlay root (see EnsureOverlay), so deactivating
+        // the root cannot reach it — it has to be hidden explicitly, or an orphaned
+        // full-screen button would keep swallowing taps after the beat ends.
+        SetContinuePromptVisible(false);
         if (_overlayRoot != null)
             _overlayRoot.SetActive(false);
     }
 
+    /// <summary>
+    /// Canvas units of clear air between the restoration rail's top edge and the banner's
+    /// bottom edge. Matches ActiveCluePresenter's rail gap so the whole bottom band reads as
+    /// one spaced stack.
+    /// </summary>
+    private const float BannerRailGap = 34f;
+
+    /// <summary>
+    /// Canvas units between the banner's top edge and the continue prompt's bottom edge —
+    /// the prompt floats in the open band above the banner rather than crowding the rail.
+    /// </summary>
+    private const float ContinuePromptGapAboveBanner = 14f;
+
+    /// <summary>Height of the continue prompt's rect, in canvas units.</summary>
+    private const float ContinuePromptHeight = 56f;
+
+    /// <summary>
+    /// Lifts the banner clear of the restoration rail. The authored y=220 lands inside the
+    /// rail's band on scaled canvases — the rail is about 190 units tall and rides higher by
+    /// the safe-area inset its HUD parent applies — so like the word-restoration cue, the
+    /// banner is positioned off the rail's LIVE world rect instead of an authored number.
+    /// No rail (a HUD-less fixture) keeps the authored position.
+    /// </summary>
+    private void PositionBannerClearOfRail(ActiveCluePresenter restorationSource)
+    {
+        if (_bannerLabel == null || restorationSource == null)
+            return;
+        if (restorationSource.RestorationRailRect is not RectTransform railRect)
+            return;
+        if (_bannerLabel.rectTransform.parent is not RectTransform parentRect)
+            return;
+
+        var railCorners = new Vector3[4];
+        railRect.GetWorldCorners(railCorners);
+        float railTopWorld = Mathf.Max(
+            Mathf.Max(railCorners[0].y, railCorners[1].y),
+            Mathf.Max(railCorners[2].y, railCorners[3].y));
+
+        RectTransform bannerRect = _bannerLabel.rectTransform;
+        var bannerCorners = new Vector3[4];
+        bannerRect.GetWorldCorners(bannerCorners);
+        float bannerBottomWorld = Mathf.Min(
+            Mathf.Min(bannerCorners[0].y, bannerCorners[1].y),
+            Mathf.Min(bannerCorners[2].y, bannerCorners[3].y));
+
+        float parentScale = Mathf.Abs(parentRect.lossyScale.y);
+        if (parentScale <= Mathf.Epsilon)
+            return;
+
+        float desiredBottomWorld = railTopWorld + BannerRailGap * parentScale;
+        if (bannerBottomWorld >= desiredBottomWorld)
+            return;
+
+        bannerRect.anchoredPosition +=
+            new Vector2(0f, (desiredBottomWorld - bannerBottomWorld) / parentScale);
+    }
+
     private void EnsureOverlay()
     {
-        if (_overlayRoot != null && _restoredTextLabel != null && _bannerLabel != null)
+        if (_overlayRoot != null && _bannerLabel != null
+            && _continuePromptLabel != null && _tapCatcher != null)
             return;
 
         Canvas canvas = GetComponentInParent<Canvas>();
@@ -637,9 +616,23 @@ public sealed class InstantWinPresenter : MonoBehaviour
                 typeof(Canvas), typeof(CanvasScaler));
             canvas = canvasObject.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            // The scaler has to be configured, not just added: the default
+            // ConstantPixelSize mode reads the offsets below as raw pixels, which on a
+            // tall phone parks the banner inside the restoration rail's band.
+            CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1080f, 1920f);
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 0.5f;
             transform.SetParent(canvas.transform, false);
         }
         canvas.sortingOrder = Mathf.Max(canvas.sortingOrder, _canvasSortingOrder);
+
+        // The tap catcher below is the overlay's only raycast target, and only while the
+        // banner holds for a read. It is dead without a raycaster, and an authored host
+        // canvas is not guaranteed to carry one.
+        if (canvas.GetComponent<GraphicRaycaster>() == null)
+            canvas.gameObject.AddComponent<GraphicRaycaster>();
 
         _overlayRoot = gameObject;
 
@@ -660,17 +653,8 @@ public sealed class InstantWinPresenter : MonoBehaviour
         canvasGroup.interactable = false;
         canvasGroup.blocksRaycasts = false;
 
-        if (_restoredTextLabel == null)
-        {
-            _restoredTextLabel = CreateLabel(
-                transform,
-                "RestoredTextLabel",
-                new Vector2(0.5f, 1f),
-                new Vector2(0f, -170f),
-                new Vector2(900f, 140f),
-                _restoredTextFontSize);
-        }
-
+        // Wordless by product decision — kept as the continue prompt's anchor band so the
+        // rail-clearance math below still parks the prompt clear of the slots.
         if (_bannerLabel == null)
         {
             _bannerLabel = CreateLabel(
@@ -681,10 +665,71 @@ public sealed class InstantWinPresenter : MonoBehaviour
                 new Vector2(900f, 180f),
                 _bannerFontSize);
         }
+
+        // A child of the banner anchored to its top edge: the prompt rides wherever
+        // PositionBannerClearOfRail parks the banner, and the rail below is never
+        // approached. Hidden until the banner's minimum read time passes.
+        if (_continuePromptLabel == null && _bannerLabel != null)
+        {
+            _continuePromptLabel = CreateLabel(
+                _bannerLabel.transform,
+                "InstantWinContinuePrompt",
+                new Vector2(0.5f, 1f),
+                // Pivot equals the anchor (top-center), so this offset parks the prompt's
+                // TOP edge here — its bottom lands exactly ContinuePromptGapAboveBanner
+                // above the banner's top edge.
+                new Vector2(0f, ContinuePromptGapAboveBanner + ContinuePromptHeight),
+                new Vector2(700f, ContinuePromptHeight),
+                _continuePromptFontSize);
+            _continuePromptLabel.text = InstantWinCopy.ContinuePromptLabel;
+            _continuePromptLabel.gameObject.SetActive(false);
+        }
+
+        // The read-gate's only input: a full-screen invisible button, armed only while the
+        // banner waits. Drawing is already suppressed for the whole beat, so it steals
+        // nothing. It is parented to the CANVAS — a sibling of this overlay root — because
+        // the root's CanvasGroup sets interactable=false and blocksRaycasts=false, and a
+        // child under it could never receive a real pointer tap (DialogueController uses
+        // the same sibling structure for its DialogueTapCatcher).
+        if (_tapCatcher == null)
+        {
+            GameObject catcherObject = new GameObject(
+                "InstantWinTapCatcher",
+                typeof(RectTransform), typeof(Image), typeof(Button));
+            catcherObject.transform.SetParent(canvas.transform, false);
+            RectTransform catcherRect = catcherObject.GetComponent<RectTransform>();
+            catcherRect.anchorMin = Vector2.zero;
+            catcherRect.anchorMax = Vector2.one;
+            catcherRect.offsetMin = catcherRect.offsetMax = Vector2.zero;
+
+            Image catcherImage = catcherObject.GetComponent<Image>();
+            catcherImage.color = new Color(0f, 0f, 0f, 0f);
+            catcherImage.raycastTarget = true;
+
+            _tapCatcher = catcherObject.GetComponent<Button>();
+            _tapCatcher.transition = Selectable.Transition.None;
+            _tapCatcher.onClick.AddListener(OnTapCatcherPressed);
+            catcherObject.transform.SetAsLastSibling();
+            catcherObject.SetActive(false);
+        }
     }
 
-    // The banner sits low and the restored text sits high so the middle band of the screen —
-    // where the frozen enemies are — stays uncovered.
+    private void SetContinuePromptVisible(bool visible)
+    {
+        if (_continuePromptLabel != null)
+            _continuePromptLabel.gameObject.SetActive(visible);
+        if (_tapCatcher != null)
+            _tapCatcher.gameObject.SetActive(visible);
+    }
+
+    private void OnTapCatcherPressed()
+    {
+        if (_waitingForTap)
+            _waitingForTap = false;
+    }
+
+    // The banner band sits low so the middle of the screen — where the frozen enemies
+    // are — stays uncovered.
     private static TMP_Text CreateLabel(
         Transform parent,
         string name,

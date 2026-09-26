@@ -148,7 +148,9 @@ public sealed class MemoryClaimPanel : MonoBehaviour
         Image overlayImage = GetComponent<Image>();
         if (overlayImage == null)
             overlayImage = gameObject.AddComponent<Image>();
-        overlayImage.color = new Color(0f, 0f, 0f, 150f / 255f);
+        // Shared modal dim — the same navy overlay every scroll modal uses, so the claim
+        // prompt doesn't read brighter behind than the card it opens.
+        overlayImage.color = ScrollPanelArt.DimOverlayColor;
         overlayImage.raycastTarget = true;
 
         RectTransform overlayRect = gameObject.GetComponent<RectTransform>();
@@ -171,8 +173,10 @@ public sealed class MemoryClaimPanel : MonoBehaviour
         bool onParchment = ScrollPanelArt.ApplyFull(cardImage);
 
         _bodyText = CreateText(card.transform, "BodyText", string.Empty, 60f, 120f, UITextScale.Body);
-        _claimButton = CreateButton(card.transform, "ClaimButton", MemoryCardCopy.ClaimLabel, -190f, 30f);
-        _dismissButton = CreateButton(card.transform, "DismissButton", MemoryCardCopy.CloseLabel, 190f, 30f);
+        _claimButton = CreateButton(card.transform, "ClaimButton", MemoryCardCopy.ClaimLabel, -190f, 30f,
+            GoldButtonFill, ScrollPanelArt.InkColor);
+        _dismissButton = CreateButton(card.transform, "DismissButton", MemoryCardCopy.CloseLabel, 190f, 30f,
+            SlateButtonFill, Color.white);
 
         ApplyParchmentLayout(cardRect, _bodyText, _claimButton, _dismissButton);
 
@@ -223,8 +227,14 @@ public sealed class MemoryClaimPanel : MonoBehaviour
         return label;
     }
 
+    // The scroll-family button convention: gold is the forward action that opens the
+    // memory, dark slate the one that leaves it unviewed.
+    private static readonly Color GoldButtonFill = ScrollPanelArt.GoldButtonFill;
+    private static readonly Color SlateButtonFill = ScrollPanelArt.SlateButtonFill;
+
     private static Button CreateButton(
-        Transform parent, string name, string labelText, float x, float y)
+        Transform parent, string name, string labelText, float x, float y,
+        Color fill, Color labelColor)
     {
         GameObject buttonObject = new GameObject(
             name, typeof(RectTransform), typeof(Image), typeof(Button));
@@ -237,7 +247,7 @@ public sealed class MemoryClaimPanel : MonoBehaviour
         rect.sizeDelta = new Vector2(340f, 92f);
 
         Image image = buttonObject.GetComponent<Image>();
-        image.color = new Color32(209, 168, 82, 255);
+        image.color = fill;
         image.raycastTarget = true;
         Button button = buttonObject.GetComponent<Button>();
         button.targetGraphic = image;
@@ -249,7 +259,10 @@ public sealed class MemoryClaimPanel : MonoBehaviour
         labelRect.pivot = new Vector2(0.5f, 0.5f);
         labelRect.offsetMin = Vector2.zero;
         labelRect.offsetMax = Vector2.zero;
-        label.color = Color.black;
+        if (labelColor == ScrollPanelArt.InkColor)
+            ScrollPanelArt.Inkify(label);
+        else
+            label.color = labelColor;
         return button;
     }
 }

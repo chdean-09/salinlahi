@@ -74,6 +74,13 @@ public class DialogueController : MonoBehaviour
     private CutscenePlayer[] _cutscenePlayers;
     private bool _suppressedForCutscene;
 
+    /// <summary>
+    /// True while a dialogue is live — the scroll is up, rising, or folded under a
+    /// cutscene. The bottom band is spoken for in every one of those states, so the
+    /// standing combat instruction yields to it (ActiveCluePresenter polls this).
+    /// </summary>
+    public bool IsPresenting => _currentDialogue != null;
+
     public static DialogueController CreateRuntime()
     {
         Canvas canvas = FindTutorialCanvas();

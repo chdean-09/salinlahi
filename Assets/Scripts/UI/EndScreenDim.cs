@@ -17,11 +17,14 @@ using UnityEngine.UI;
 /// </summary>
 public static class EndScreenDim
 {
-    /// <summary>House navy at ~80% — the world reads clearly but stays pushed back.</summary>
-    public static readonly Color VictoryTint = new Color(0.015f, 0.02f, 0.045f, 0.80f);
+    /// <summary>House navy at 0.93 — matches ScrollPanelArt's DimOverlayColor so the
+    /// end screens read like every other modal scrim in the game.</summary>
+    public static readonly Color VictoryTint = new Color(0.015f, 0.02f, 0.045f, 0.93f);
 
-    /// <summary>Same depth, a faint red lean — sits under the red DEFEAT banner.</summary>
-    public static readonly Color DefeatTint = new Color(0.055f, 0.015f, 0.025f, 0.80f);
+    /// <summary>House-dim depth with a faint red lean — matches ScrollPanelArt's
+    /// DimOverlayColor at 0.93 so the end screen reads like every other modal scrim,
+    /// tinted to sit under the red DEFEAT banner.</summary>
+    public static readonly Color DefeatTint = new Color(0.055f, 0.015f, 0.025f, 0.93f);
 
     public const string RuntimeDimName = "[Runtime] DimBackdrop";
 

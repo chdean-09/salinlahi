@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
+using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.TestTools;
@@ -142,20 +143,17 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         // ------------------------------------------------------------------------------------
-        // 1. Deferral suppresses (+ required negative control)
+        // 1. A pending lesson does not defer another type's first appearance
         // ------------------------------------------------------------------------------------
 
         /// <summary>
-        /// An enemy type with no lesson of its own, spawned while the level's one authored lesson
-        /// (here: a stand-in for Abo) is still pending, must defer: no card, and its own signature
-        /// ability suppressed too. The negative control is required, not decorative — Salinlahi has
-        /// shipped a suppression check that matched nothing before (see
-        /// a-filter-that-matches-nothing-looks-like-a-pass): without a case that proves the ability
-        /// CAN read armed, "suppressed" could be passing against a matcher that always reports
-        /// suppressed regardless of state.
+        /// Abo's first spawn gets its own introduction while Iligaw's lesson is still pending.
+        /// The ability is suppressed because this is Abo's introduction spawn, not because Iligaw
+        /// has not appeared. Once the card runner is reset, the negative control confirms an
+        /// already-introduced Abo leaves its ability armed.
         /// </summary>
         [UnityTest]
-        public IEnumerator DeferralWhileLessonPending_SuppressesOtherType_ArmsWithNothingPending()
+        public IEnumerator OtherTypeIntroducesWhileIligawLessonIsPending_AlreadyIntroducedTypeArms()
         {
             yield return null;
 
@@ -166,50 +164,55 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 "test_iligaw_defer", "Iligaw", iligawChar, spawnsMirrorDecoy: true);
             EnemyDataSO aboData = CreateEnemyData(
                 "test_abo_defer", "Abo ng Simula", aboChar, ashesFirstSlot: true);
-            EnemyLessonSO aboLesson = CreateAboShapedLesson(aboData);
+            EnemyLessonSO iligawLesson = CreateIligawShapedLesson(iligawData);
 
             LevelConfigSO pendingConfig = CreateLevelConfig(
                 new List<EnemyDataSO> { iligawData, aboData },
-                new[] { aboLesson },
+                new[] { iligawLesson },
                 new List<FocusWordDefinition>());
             _gameManager.SetLevel(pendingConfig);
+            Assert.IsFalse(EnemyIntroductionProgress.HasBeenIntroduced(iligawData),
+                "Setup: Iligaw's authored lesson has not played yet.");
 
-            // --- Main case: Abo's lesson has not played yet, so Iligaw must defer. ---
-            Enemy iligaw = CreateEnemyShell("Iligaw_Deferred");
-            Assert.IsTrue(iligaw.Initialize(iligawData));
+            // --- Main case: Iligaw's lesson is pending, but Abo introduces on first appearance. ---
+            Enemy abo = CreateEnemyShell("Abo_WhileIligawLessonPending");
+            Assert.IsTrue(abo.Initialize(aboData));
 
-            Assert.AreEqual(IntroductionOutcome.DeferAndSuppress, iligaw.IntroductionOutcome,
-                "A type with no lesson of its own, spawned while the level's lesson is still "
-                + "pending, must defer rather than play its own card.");
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndSuppress, abo.IntroductionOutcome,
+                "Abo's first appearance must introduce him immediately even though Iligaw's "
+                + "lesson has not played.");
+            Assert.IsTrue(EnemyIntroductionProgress.HasBeenIntroduced(aboData),
+                "The first-appearance card must claim Abo's introduction.");
+            Assert.IsFalse(EnemyIntroductionProgress.HasBeenIntroduced(iligawData),
+                "Abo's first-appearance card must not wait for Iligaw's introduction.");
 
-            MirrorDecoyController decoy = iligaw.GetComponent<MirrorDecoyController>();
-            Assert.IsNotNull(decoy, "spawnsMirrorDecoy should attach MirrorDecoyController.");
-            Assert.IsTrue(decoy.IsSuppressedForIntroductionSpawn,
-                "Deferral must suppress the deferred type's own signature ability, not just "
-                + "withhold its card.");
+            AshFirstSlotController ash = abo.GetComponent<AshFirstSlotController>();
+            Assert.IsNotNull(ash, "ashesFirstSlot should attach AshFirstSlotController.");
+            Assert.IsTrue(ash.IsSuppressedForIntroductionSpawn,
+                "Abo's ability stays suppressed on its own introduction spawn.");
 
-            // --- Negative control: seed Iligaw as already met, with nothing else pending. ---
-            // Seeded directly through the progress store (not by letting a first spawn's card
-            // actually play) so this half of the test is isolated from the beat/coroutine machinery
-            // exercised elsewhere in this fixture.
-            Assert.IsTrue(EnemyIntroductionProgress.TryClaimIntroduction(iligawData),
-                "setup: seed Iligaw as already introduced for the control");
+            // Stop the card before the control spawn so it can prove its ability is armed without
+            // overlapping an active introduction.
+            _beat.enabled = false;
+            yield return null;
+            _beat.enabled = true;
+            yield return null;
 
             LevelConfigSO clearConfig = CreateLevelConfig(
-                new List<EnemyDataSO> { iligawData },
+                new List<EnemyDataSO> { aboData },
                 System.Array.Empty<EnemyLessonSO>(),
                 new List<FocusWordDefinition>());
             _gameManager.SetLevel(clearConfig);
 
-            Enemy iligawControl = CreateEnemyShell("Iligaw_Control");
-            Assert.IsTrue(iligawControl.Initialize(iligawData));
+            Enemy aboControl = CreateEnemyShell("Abo_Control");
+            Assert.IsTrue(aboControl.Initialize(aboData));
 
-            Assert.AreEqual(IntroductionOutcome.None, iligawControl.IntroductionOutcome,
-                "Negative control precondition: with nothing pending, and this type already met, "
+            Assert.AreEqual(IntroductionOutcome.None, aboControl.IntroductionOutcome,
+                "With nothing pending and this type already met, "
                 + "this must be an ordinary spawn.");
 
-            MirrorDecoyController controlDecoy = iligawControl.GetComponent<MirrorDecoyController>();
-            Assert.IsFalse(controlDecoy.IsSuppressedForIntroductionSpawn,
+            AshFirstSlotController controlAsh = aboControl.GetComponent<AshFirstSlotController>();
+            Assert.IsFalse(controlAsh.IsSuppressedForIntroductionSpawn,
                 "Negative control: with no lesson pending the ability must be ARMED. Without this "
                 + "case the suppression assertion above could be passing against a check that "
                 + "never actually fires.");
@@ -1635,6 +1638,58 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         /// <summary>
+        /// The card is modal while it is up: drawing input closes for the card's whole window —
+        /// a press there belongs to the card, not to a field the player is not watching — and is
+        /// handed back when the card releases. Regression for the "I can still draw even the
+        /// enemy appears, and then the drawing got stuck" report.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Card_SuppressesDrawingInput_WhileUp_AndRestoresIt()
+        {
+            yield return null;
+
+            EnemyIntroductionBeat.SetSkipContinueHoldForTests(false);
+
+            SetPrivateField(_beat, "_nameStepSeconds", 0f);
+            SetPrivateField(_beat, "_abilityStepSeconds", 0f);
+            SetPrivateField(_beat, "_glyphRevealStepSeconds", 0f);
+            SetPrivateField(_beat, "_onScreenWaitTimeoutSeconds", 0f);
+
+            BaybayinCharacterSO character = MakeCharacter("EI", "symbol.test.suppress.ei");
+            EnemyDataSO data = CreateEnemyData("test_suppress", "Iligaw", character);
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO> { data },
+                System.Array.Empty<EnemyLessonSO>(),
+                new List<FocusWordDefinition>());
+            _gameManager.SetLevel(config);
+
+            Assert.IsTrue(_gameManager.AcceptsDrawingInput,
+                "setup: the field is live before the card lands.");
+
+            Enemy enemy = CreateEnemyShell("Iligaw_Suppress");
+            enemy.transform.position = Vector3.zero;
+            Assert.IsTrue(enemy.Initialize(data));
+
+            // The suppression window opens with the card's fade-in, ahead of the hold; the hold
+            // is simply the deterministic point that must be inside it.
+            for (int frame = 0; frame < 120 && !EnemyIntroductionBeat.IsHoldingForContinue; frame++)
+                yield return null;
+
+            Assert.IsTrue(EnemyIntroductionBeat.IsHoldingForContinue,
+                "setup: the card must reach its hold for the window to be under test.");
+            Assert.IsFalse(_gameManager.AcceptsDrawingInput,
+                "While the card is up a finger press belongs to it — drawing must be closed.");
+
+            EnemyIntroductionBeat.RequestContinueForTests();
+
+            for (int frame = 0; frame < 120 && !_gameManager.AcceptsDrawingInput; frame++)
+                yield return null;
+
+            Assert.IsTrue(_gameManager.AcceptsDrawingInput,
+                "Releasing the card must hand drawing input back to the field.");
+        }
+
+        /// <summary>
         /// Regression for a Device Simulator playtest where a visible "Tap to continue" prompt
         /// intermittently ignored a short finger contact. A synthetic test flag cannot cover that
         /// boundary: this case sends a real Input System touch whose down and up events are both
@@ -1690,6 +1745,255 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             {
                 input.TearDown();
             }
+        }
+
+        /// <summary>
+        /// Companion to <see cref="CardHold_ReleasesForAShortTouchProcessedWithinOneInputUpdate"/>
+        /// that isolates the EnhancedTouch path: the beat's InputAction is disabled outright once
+        /// the hold is up, so only <c>Touch.onFingerDown</c> can release the card. That is the path
+        /// a real tap actually reaches — observed live on the Device Simulator under Input System
+        /// 1.19, where a tap raised the touchscreen's press control to 1 while every action bound
+        /// to that device stayed silent, leaving "Tap to continue" unanswerable.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CardHold_ReleasesForEnhancedTouchFingerDown()
+        {
+            yield return null;
+
+            var input = new InputTestFixture();
+            input.Setup();
+            try
+            {
+                EnemyIntroductionBeat.SetSkipContinueHoldForTests(false);
+                SetPrivateField(_beat, "_nameStepSeconds", 0f);
+                SetPrivateField(_beat, "_abilityStepSeconds", 0f);
+                SetPrivateField(_beat, "_glyphRevealStepSeconds", 0f);
+                SetPrivateField(_beat, "_onScreenWaitTimeoutSeconds", 0f);
+
+                BaybayinCharacterSO character = MakeCharacter("EI", "symbol.test.finger.ei");
+                EnemyDataSO data = CreateEnemyData("test_finger", "Iligaw", character);
+                LevelConfigSO config = CreateLevelConfig(
+                    new List<EnemyDataSO> { data },
+                    System.Array.Empty<EnemyLessonSO>(),
+                    new List<FocusWordDefinition>());
+                _gameManager.SetLevel(config);
+
+                Enemy enemy = CreateEnemyShell("Iligaw_Finger");
+                enemy.transform.position = Vector3.zero;
+                Assert.IsTrue(enemy.Initialize(data));
+
+                for (int frame = 0; frame < 120 && !EnemyIntroductionBeat.IsHoldingForContinue; frame++)
+                    yield return null;
+
+                Assert.IsTrue(EnemyIntroductionBeat.IsHoldingForContinue,
+                    "setup: the prompt must be waiting before the touch arrives.");
+
+                // Cut the action path so the release below can only have come through
+                // EnhancedTouch — the path the stuck-card report was missing.
+                InputAction continueAction = GetPrivateField<InputAction>(_beat, "_continueAction");
+                Assert.NotNull(continueAction,
+                    "setup: the hold must have armed its input before this test can cut it.");
+                continueAction.Disable();
+
+                Touchscreen touchscreen = InputSystem.AddDevice<Touchscreen>();
+                input.BeginTouch(1, new Vector2(450f, 800f), queueEventOnly: true,
+                    screen: touchscreen);
+                input.EndTouch(1, new Vector2(450f, 800f), queueEventOnly: true,
+                    screen: touchscreen);
+                InputSystem.Update();
+
+                yield return null;
+
+                Assert.IsFalse(EnemyIntroductionBeat.IsHoldingForContinue,
+                    "A finger down must release the hold even with the pointer action disabled: "
+                    + "EnhancedTouch is the boundary a real tap reaches.");
+            }
+            finally
+            {
+                input.TearDown();
+            }
+        }
+
+        /// <summary>
+        /// The ability line typewriters in place — the whole string is assigned up front and
+        /// revealed by glyph count — and a tap while it is typing completes the sentence WITHOUT
+        /// releasing the card. The continue prompt goes up only once the whole line is on screen,
+        /// and only a LATER tap lets the card go.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator AbilityLine_TypesInPlace_TapCompletes_PromptFollowsTheText()
+        {
+            yield return null;
+
+            EnemyIntroductionBeat.SetSkipContinueHoldForTests(false);
+
+            SetPrivateField(_beat, "_nameStepSeconds", 0f);
+            SetPrivateField(_beat, "_abilityStepSeconds", 0f);
+            SetPrivateField(_beat, "_glyphRevealStepSeconds", 0f);
+            SetPrivateField(_beat, "_onScreenWaitTimeoutSeconds", 0f);
+            // Slow enough that the reveal spans many frames — the test observes it mid-flight.
+            SetPrivateField(_beat, "_abilityCharactersPerSecond", 5f);
+
+            // The fixture's card view wires no text rows; give it the one this test reads.
+            // TextMeshProUGUI only shapes text under a Canvas — without one, ForceMeshUpdate
+            // leaves textInfo empty and the reveal would complete instantly, never typing.
+            GameObject canvasGO = CreateTracked("AbilityCanvas");
+            canvasGO.AddComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
+            GameObject abilityGO = new GameObject("AbilityText");
+            abilityGO.transform.SetParent(canvasGO.transform, false);
+            var abilityText = abilityGO.AddComponent<TextMeshProUGUI>();
+            abilityGO.SetActive(false);
+            SetPrivateField(_cardView, "_abilityText", abilityText);
+
+            BaybayinCharacterSO character = MakeCharacter("EI", "symbol.test.reveal.ei");
+            EnemyDataSO data = CreateEnemyData("test_reveal", "Iligaw", character);
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO> { data },
+                System.Array.Empty<EnemyLessonSO>(),
+                new List<FocusWordDefinition>());
+            _gameManager.SetLevel(config);
+
+            Enemy enemy = CreateEnemyShell("Iligaw_Reveal");
+            enemy.transform.position = Vector3.zero;
+            Assert.IsTrue(enemy.Initialize(data));
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndSuppress, enemy.IntroductionOutcome,
+                "setup: this spawn must get a card, or there is no reveal to test.");
+
+            // Wait until the ability step is mid-reveal: row shown, glyphs still hidden.
+            for (int frame = 0;
+                 frame < 240 && !(abilityGO.activeSelf
+                     && abilityText.maxVisibleCharacters < abilityText.textInfo.characterCount);
+                 frame++)
+            {
+                yield return null;
+            }
+
+            Assert.IsTrue(abilityGO.activeSelf, "The ability row must be on the card.");
+            Assert.AreEqual("test ability line", abilityText.text,
+                "The full line is assigned up front — the reveal clips glyphs, it never reflows.");
+            Assert.Less(abilityText.maxVisibleCharacters, abilityText.textInfo.characterCount,
+                "The line must still be mid-reveal when this assert runs.");
+
+            // The prompt does not exist until the hold builds it — during the reveal there is
+            // nothing for a tap to continue FROM.
+            Assert.IsNull(GetPrivateField<TMP_Text>(_cardView, "_continuePromptText"),
+                "No continue prompt may exist while the line is still typing.");
+
+            // Tap 1: completes the sentence. It must NOT release the card.
+            EnemyIntroductionBeat.RequestContinueForTests();
+
+            for (int frame = 0;
+                 frame < 120 && abilityText.maxVisibleCharacters < abilityText.textInfo.characterCount;
+                 frame++)
+            {
+                yield return null;
+            }
+
+            Assert.IsTrue(abilityText.maxVisibleCharacters >= abilityText.textInfo.characterCount,
+                "The skip tap must leave the whole line on screen.");
+            Assert.IsTrue(EnemyIntroductionBeat.IsPlaying,
+                "The skip tap completes the text — it must not release the card.");
+
+            for (int frame = 0; frame < 120 && !EnemyIntroductionBeat.IsHoldingForContinue; frame++)
+                yield return null;
+
+            Assert.IsTrue(EnemyIntroductionBeat.IsHoldingForContinue,
+                "After the text completes, the card must still arrive at its hold.");
+
+            TMP_Text prompt = GetPrivateField<TMP_Text>(_cardView, "_continuePromptText");
+            Assert.NotNull(prompt, "The hold must have built the continue prompt.");
+            Assert.IsTrue(prompt.gameObject.activeSelf,
+                "The prompt appears only once the full text is on screen.");
+
+            // Tap 2: the actual continue.
+            EnemyIntroductionBeat.RequestContinueForTests();
+
+            for (int frame = 0; frame < 120 && EnemyIntroductionBeat.IsPlaying; frame++)
+                yield return null;
+
+            Assert.IsFalse(EnemyIntroductionBeat.IsPlaying,
+                "The tap after the completed text is the one that releases the card.");
+        }
+
+        /// <summary>
+        /// Regression for the "tap does nothing" report: while the card is up a press must always
+        /// move it one step. The name, post-reveal and glyph dwells keep their authored length for
+        /// a reader, but each must yield to a press — a dwell that only ever ran on the clock is
+        /// exactly the dead window the playtest hit, where taps between the reveal and the hold
+        /// were silently dropped.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CardDwells_EachPressAdvancesOneStep_UntilTheHoldReleases()
+        {
+            yield return null;
+
+            EnemyIntroductionBeat.SetSkipContinueHoldForTests(false);
+
+            // Long enough that only a press can end them: if any dwell still ran purely on the
+            // authored clock the test would stall there instead of reaching the hold, so an early
+            // arrival IS the assertion.
+            SetPrivateField(_beat, "_nameStepSeconds", 30f);
+            SetPrivateField(_beat, "_abilityStepSeconds", 30f);
+            SetPrivateField(_beat, "_glyphRevealStepSeconds", 30f);
+            SetPrivateField(_beat, "_onScreenWaitTimeoutSeconds", 0f);
+            // The reveal itself completes at once — the dwells around it are what is under test.
+            SetPrivateField(_beat, "_abilityCharactersPerSecond", 0f);
+
+            // The ability row must be observable — wired under a Canvas like the reveal test,
+            // because TextMeshProUGUI only shapes text under one.
+            GameObject canvasGO = CreateTracked("DwellCanvas");
+            canvasGO.AddComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
+            GameObject abilityGO = new GameObject("AbilityText");
+            abilityGO.transform.SetParent(canvasGO.transform, false);
+            var abilityText = abilityGO.AddComponent<TextMeshProUGUI>();
+            abilityGO.SetActive(false);
+            SetPrivateField(_cardView, "_abilityText", abilityText);
+
+            BaybayinCharacterSO character = MakeCharacter("EI", "symbol.test.dwell.ei");
+            EnemyDataSO data = CreateEnemyData("test_dwell", "Iligaw", character);
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO> { data },
+                System.Array.Empty<EnemyLessonSO>(),
+                new List<FocusWordDefinition>());
+            _gameManager.SetLevel(config);
+
+            Enemy enemy = CreateEnemyShell("Iligaw_Dwell");
+            enemy.transform.position = Vector3.zero;
+            Assert.IsTrue(enemy.Initialize(data));
+
+            // Give the name dwell a moment to prove it does not leave on its own — otherwise
+            // "a press ends it" proves nothing.
+            for (int frame = 0; frame < 10; frame++)
+                yield return null;
+
+            Assert.IsFalse(abilityGO.activeSelf,
+                "setup: the ability row must still be hidden behind the name dwell.");
+
+            // Presses alone must walk the card to its hold: each press ends whatever step is
+            // current — name dwell, ability dwell, glyph dwell — and none may be swallowed.
+            for (int burst = 0; burst < 12 && !EnemyIntroductionBeat.IsHoldingForContinue; burst++)
+            {
+                EnemyIntroductionBeat.RequestContinueForTests();
+                for (int frame = 0;
+                     frame < 10 && !EnemyIntroductionBeat.IsHoldingForContinue;
+                     frame++)
+                {
+                    yield return null;
+                }
+            }
+
+            Assert.IsTrue(EnemyIntroductionBeat.IsHoldingForContinue,
+                "Presses alone must carry the card to its hold — no dwell may be a dead window.");
+            Assert.IsTrue(abilityGO.activeSelf,
+                "The ability row must have been shown along the way.");
+
+            EnemyIntroductionBeat.RequestContinueForTests();
+
+            for (int frame = 0; frame < 120 && EnemyIntroductionBeat.IsPlaying; frame++)
+                yield return null;
+
+            Assert.IsFalse(EnemyIntroductionBeat.IsPlaying,
+                "The press at the prompt is still the one that releases the card.");
         }
 
         [UnityTest]

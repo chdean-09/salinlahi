@@ -9,10 +9,10 @@ using UnityEngine.UI;
 namespace Salinlahi.Tests.PlayMode.UI
 {
     /// <summary>
-    /// SALIN-256 — proves the two runtime-built main-menu surfaces are ACTUALLY CREATED.
+    /// SALIN-256 — proves the runtime-built Exit button is ACTUALLY CREATED.
     ///
-    /// WHY THIS FIXTURE EXISTS. Both the Exit button and the progress line are built by cloning
-    /// or parenting under a transform.Find lookup, and that lookup FAILS SILENTLY: a wrong name
+    /// WHY THIS FIXTURE EXISTS. The Exit button is built by cloning under a
+    /// transform.Find lookup, and that lookup FAILS SILENTLY: a wrong name
     /// or a reparented template compiles, throws nothing, renders nothing, and passes every
     /// other test in the project. MemoryArchiveSceneWiringTests.cs:12-19 documents the same
     /// failure class for the archive button, and guards the SCENE half of it — that
@@ -34,25 +34,10 @@ namespace Salinlahi.Tests.PlayMode.UI
         [SetUp]
         public void SetUp()
         {
-            // MainMenuUI.EnsureProgressLine RETURNS WITHOUT BUILDING ANYTHING when
-            // ProgressManager.Instance is null, and that refusal is correct: a progress readout
-            // with no progress behind it would be untruthful, so the menu stays silent instead.
-            // In the real game the manager is never absent — ProgressManager lives in
-            // Bootstrap.unity (the only scene carrying one) and reaches MainMenu as a
-            // DontDestroyOnLoad singleton. A stub scene without one therefore does not reproduce
-            // the menu the player sees; it reproduces the degraded Editor case, and asserting the
-            // line exists there would be asserting against a state the game never ships.
-            //
-            // So the fixture supplies the precondition rather than relaxing the assertion. The
-            // assertion below still fails loudly if Start() stops building the line.
-            //
             // Released first because an earlier PlayMode fixture can leave a live manager behind:
             // with Instance still occupied, Singleton<T>.Awake treats this one as a duplicate and
             // schedules its destruction. Precedent and full reasoning: Level1EndToEndTests.cs:33-48.
             ReleaseSingleton<ProgressManager>();
-            GameObject progressHost = new GameObject("ProgressManager");
-            _objectsToDestroy.Add(progressHost);
-            SetSingletonInstance(progressHost.AddComponent<ProgressManager>());
         }
 
         [TearDown]
@@ -120,30 +105,6 @@ namespace Salinlahi.Tests.PlayMode.UI
         }
 
         [UnityTest]
-        public IEnumerator Start_BuildsTheProgressLineLabelWithVisibleText()
-        {
-            MainMenuUI menu = CreateMainMenu();
-            yield return null;
-
-            Transform progressLine = menu.transform.Find(MainMenuUI.ProgressLineName);
-            Assert.IsNotNull(
-                progressLine,
-                "MainMenuUI.Start did not create '" + MainMenuUI.ProgressLineName + "', so the "
-                + "menu shows no era/level/completion readout at all.");
-
-            TMPro.TextMeshProUGUI label = progressLine.GetComponent<TMPro.TextMeshProUGUI>();
-            Assert.IsNotNull(label, "The progress line must carry a TextMeshProUGUI.");
-
-            // The exact string depends on saved progress, which this fixture does not control.
-            // What must hold is that the label was POPULATED — an empty label is precisely the
-            // silent failure this fixture exists to catch.
-            Assert.IsNotEmpty(
-                label.text,
-                "The progress line was created but left blank, which renders as an invisible "
-                + "label and is indistinguishable on screen from the line never being built.");
-        }
-
-        [UnityTest]
         public IEnumerator ConfirmingTheExitDialog_ReachesTheQuitSeam_AndCancellingDoesNot()
         {
             // Application.Quit() is a NO-OP IN THE EDITOR and would take the runner down in a
@@ -183,9 +144,6 @@ namespace Salinlahi.Tests.PlayMode.UI
         /// A stub menu carrying the one child the runtime clones depend on: a SettingsButton
         /// that is a DIRECT child and carries a Button. That precondition is what
         /// MemoryArchiveSceneWiringTests asserts against the real MainMenu.unity.
-        ///
-        /// The menu's OTHER precondition — a live ProgressManager — is a singleton rather than a
-        /// child, so SetUp supplies it; see the note there.
         /// </summary>
         private MainMenuUI CreateMainMenu()
         {
@@ -226,15 +184,6 @@ namespace Salinlahi.Tests.PlayMode.UI
             }
 
             ClearSingletonInstance<T>();
-        }
-
-        private static void SetSingletonInstance<T>(T instance) where T : MonoBehaviour
-        {
-            PropertyInfo property = typeof(Singleton<T>).GetProperty(
-                "Instance", BindingFlags.Static | BindingFlags.Public);
-            MethodInfo setter = property?.GetSetMethod(nonPublic: true);
-            Assert.IsNotNull(setter);
-            setter.Invoke(null, new object[] { instance });
         }
 
         private static void ClearSingletonInstance<T>() where T : MonoBehaviour

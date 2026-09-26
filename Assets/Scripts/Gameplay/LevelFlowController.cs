@@ -67,8 +67,8 @@ public class LevelFlowController : MonoBehaviour
     private LevelContentMissingPanel _contentMissingPanel;
 
     // SALIN-240. Same shape and same reason as _contentMissingPanel: unwired in every scene,
-    // built on demand, so no scene edit is forced. See ShowMemoryClaimPanel.
-    private MemoryClaimPanel _memoryClaimPanel;
+    // built on demand, so no scene edit is forced. See ShowMemoryCard.
+    private MemoryCardUI _memoryCardUI;
 
     // SALIN-253. Same shape and same reason again. See ShowEraCompletionScreen.
     private EraCompletionScreenUI _eraCompletionScreen;
@@ -1897,11 +1897,11 @@ public class LevelFlowController : MonoBehaviour
 
         // INSTANT-WIN PATH. The run was won by finishing the target text, not by clearing the
         // waves, and WaveManager has already played the beat that says so: the board froze with
-        // enemies alive, the banner read "the wave no longer matters", and those enemies then
-        // dissolved. Holding a "Wave Cleared" screen on top of that would contradict, in the
-        // player's next breath, the one rule the beat exists to teach — and the rule is the
-        // reason the beat is staged at all (level-01 design plan §2 B10). Reported straight
-        // through instead, which is the pre-SALIN-232 behaviour for this raise.
+        // enemies alive and those enemies then dissolved. Holding a "Wave Cleared" screen on
+        // top of that would contradict, in the player's next breath, the one rule the beat
+        // exists to teach — and the rule is the reason the beat is staged at all (level-01
+        // design plan §2 B10). Reported straight through instead, which is the
+        // pre-SALIN-232 behaviour for this raise.
         if (_instantWinEarned)
         {
             _machine.ReportDefenseComplete();
@@ -2147,7 +2147,7 @@ public class LevelFlowController : MonoBehaviour
         // Null on the legacy path; VictoryScreenUI falls back to ProgressManager.GetStars there.
         _victoryScreen.PresentResults(LastResults, isEraFinalLevel);
 
-        ShowMemoryClaimPanel();
+        ShowMemoryCard();
         ShowEraCompletionScreen(campaign, completedEra, isEraFinalLevel);
     }
 
@@ -2157,10 +2157,10 @@ public class LevelFlowController : MonoBehaviour
     ///
     /// It is an overlay rather than a new LevelPhase for the reasons recorded on
     /// <see cref="EraCompletionScreenUI"/>, and it sits directly beside
-    /// <see cref="ShowMemoryClaimPanel"/> because that is the shipped precedent for stacking a
+    /// <see cref="ShowMemoryCard"/> because that is the shipped precedent for stacking a
     /// surface on Results.
     ///
-    /// NOTHING AWAITS IT — the same contract as ShowMemoryClaimPanel. A false from Present
+    /// NOTHING AWAITS IT — the same contract as ShowMemoryCard. A false from Present
     /// means there is nothing to show and the Results screen simply stands alone, which is
     /// exactly the behaviour that shipped before this ticket.
     ///
@@ -2227,19 +2227,21 @@ public class LevelFlowController : MonoBehaviour
     }
 
     /// <summary>
-    /// SALIN-240. Offers the Claim Memory control over the Results screen when this
-    /// completion granted a memory. Before this, unlockedMemoryIds was written to the save
-    /// and never read back, so the reward was unreachable.
+    /// SALIN-240. Presents the granted memory's card over the Results screen when this
+    /// completion unlocked one. Before this, unlockedMemoryIds was written to the save and
+    /// never read back, so the reward was unreachable.
     ///
-    /// It is a separate overlay rather than a button on the Results panel because
-    /// VictoryScreenUI.cs belongs to SALIN-258 this sprint; see MemoryClaimPanel's summary.
+    /// The reveal is AUTOMATIC — no pressable claim step. unlockedMemoryIds is already
+    /// committed by ExecuteAtomicSave before Results appears, so a "Claim" prompt would be a
+    /// transaction with nothing left to transact; the card renders straight away and its
+    /// Close returns to the Results screen underneath.
     ///
     /// Nothing waits on the result. A false from Present means there is nothing to show —
     /// no memory granted, or the level's memory content is not authored (Levels 6-15 under
     /// D-015, which carry rewardIds: []) — and the Results screen simply stands alone, which
     /// is exactly the behaviour that shipped before this ticket.
     /// </summary>
-    private void ShowMemoryClaimPanel()
+    private void ShowMemoryCard()
     {
         if (LastRewardGrant == null
             || LastRewardGrant.UnlockedMemoryIds == null
@@ -2255,17 +2257,17 @@ public class LevelFlowController : MonoBehaviour
         if (entry == null || !entry.HasAuthoredContent)
             return;
 
-        if (_memoryClaimPanel == null)
-            _memoryClaimPanel = FindFirstObjectByType<MemoryClaimPanel>(FindObjectsInactive.Include);
+        if (_memoryCardUI == null)
+            _memoryCardUI = FindFirstObjectByType<MemoryCardUI>(FindObjectsInactive.Include);
 
-        if (_memoryClaimPanel == null)
+        if (_memoryCardUI == null)
         {
-            GameObject panelObject = new GameObject("[Runtime] MemoryClaimPanel");
-            _memoryClaimPanel = panelObject.AddComponent<MemoryClaimPanel>();
+            GameObject cardObject = new GameObject("[Runtime] MemoryCardUI");
+            _memoryCardUI = cardObject.AddComponent<MemoryCardUI>();
         }
 
         int eraTotal = era != null && era.levels != null ? era.levels.Count : entry.EraLocalOrder;
-        _memoryClaimPanel.Present(entry, eraTotal, null);
+        _memoryCardUI.Present(entry, eraTotal, null);
     }
 
     private static EraConfigSO FindEraForLevel(CampaignConfigSO campaign, LevelConfigSO level)

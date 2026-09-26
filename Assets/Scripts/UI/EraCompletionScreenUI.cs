@@ -22,7 +22,7 @@ using UnityEngine.UI;
 /// whose `default: return false` means an unhandled new phase is silently never planned —
 /// and LevelFlowController.ExecutePhase, whose `default: return ExecuteStubPhase()` silently
 /// auto-completes it. Two silent-failure defaults for no benefit.
-/// LevelFlowController.ShowMemoryClaimPanel() is the shipped precedent for stacking a surface
+/// LevelFlowController.ShowMemoryCard() is the shipped precedent for stacking a surface
 /// on Results, and this sits directly beside it.
 ///
 /// FIVE TILES, NOT FIVE CARDS. MemoryCardUI.Present is a single-card FULL-SCREEN modal with a

@@ -29,11 +29,9 @@ public class VictoryScreenUI : MonoBehaviour
     private const string HeartFullPath = "Art/UI/Heart/ui_heart_full";
     private const string HeartEmptyPath = "Art/UI/Heart/ui_heart_empty";
     private const string FramePath = "Art/UI/Frames/border";
-    private const string ButtonSpritePath = "Art/UI/Buttons/ui_button_generic";
-    private const string ButtonPressedPath = "Art/UI/Buttons/ui_button_generic_pressed";
 
     private static Sprite _starFull, _starEmpty, _heartFull, _heartEmpty;
-    private static Sprite _frame, _buttonSprite, _buttonPressed;
+    private static Sprite _frame;
     private static bool _spritesLoaded;
 
     private Coroutine _starAnimation;
@@ -59,6 +57,7 @@ public class VictoryScreenUI : MonoBehaviour
     private bool _isEraFinalLevel;
 
     private bool _replayListenerBound;
+    private bool _showRequested;
 
     /// <summary>Gameplay HUD root, found by name at Show time — left unwired to keep
     /// the scene diffs out; null is a safe no-op in test scenes.</summary>
@@ -66,7 +65,10 @@ public class VictoryScreenUI : MonoBehaviour
 
     private void Awake()
     {
-        if (_panel != null) _panel.SetActive(false);
+        // In Gameplay.unity this component and _panel are the same object, authored inactive.
+        // The first Show() activates it and runs Awake re-entrantly, so preserve that request.
+        if (_panel != null && !_showRequested)
+            _panel.SetActive(false);
     }
 
     private void OnEnable()
@@ -129,6 +131,8 @@ public class VictoryScreenUI : MonoBehaviour
 
     public void Show()
     {
+        // Set before activation because activating an inactive panel can run Awake immediately.
+        _showRequested = true;
         if (_panel != null)
         {
             _panel.SetActive(true);
@@ -145,6 +149,13 @@ public class VictoryScreenUI : MonoBehaviour
             _hudRoot = GameObject.Find("HUDRoot");
         if (_hudRoot != null)
             _hudRoot.SetActive(false);
+
+        // ActiveCluePresenter sits beside HUDRoot on HUDCanvas, not under it, so the
+        // instruction, rail and restored-word cue keep rendering through the dim.
+        // Same reload-owns-restore reasoning as the HUD takedown above.
+        ActiveCluePresenter cluePresenter = FindFirstObjectByType<ActiveCluePresenter>();
+        if (cluePresenter != null)
+            cluePresenter.gameObject.SetActive(false);
 
         EnsureRuntimeControls();
 
@@ -537,15 +548,13 @@ public class VictoryScreenUI : MonoBehaviour
 
     /// <summary>
     /// Next Level stays the full-width primary action; Replay and Level Select
-    /// become a balanced secondary pair beneath it. Authored positions are only
-    /// nudged on this path — the legacy Show() layout is untouched.
+    /// become a balanced secondary pair beneath it.
     /// </summary>
     private void PositionButtons()
     {
-        PositionButton(_nextLevelButton, new Vector2(0f, -430f), new Vector2(446f, 200f));
-        PositionButton(_levelSelectButton, new Vector2(-180f, -660f), new Vector2(340f, 170f));
-        PositionButton(_replayButton, new Vector2(180f, -660f), new Vector2(340f, 170f));
-        ApplyButtonSkin(_replayButton);
+        PositionButton(_nextLevelButton, new Vector2(0f, -430f), new Vector2(446f, 150f));
+        PositionButton(_levelSelectButton, new Vector2(-185f, -645f), new Vector2(330f, 130f));
+        PositionButton(_replayButton, new Vector2(185f, -645f), new Vector2(330f, 130f));
     }
 
     private static void PositionButton(Button button, Vector2 position, Vector2 size)
@@ -561,32 +570,6 @@ public class VictoryScreenUI : MonoBehaviour
         rect.sizeDelta = size;
     }
 
-    /// <summary>Skins a runtime-built button to the shared parchment plaque with
-    /// a pressed swap — the same sprite the authored buttons already carry.</summary>
-    private static void ApplyButtonSkin(Button button)
-    {
-        if (button == null)
-            return;
-        Image image = button.GetComponent<Image>();
-        if (image != null && _buttonSprite != null)
-        {
-            image.sprite = _buttonSprite;
-            image.type = Image.Type.Simple;
-            image.color = Color.white;
-            // Match the authored victory buttons (Gameplay.unity m_PreserveAspect: 1):
-            // the sprite letterboxes inside the rect instead of stretching, so the
-            // Replay plaque renders the same size as Level Select.
-            image.preserveAspect = true;
-        }
-        if (_buttonPressed != null)
-        {
-            button.transition = Selectable.Transition.SpriteSwap;
-            SpriteState state = button.spriteState;
-            state.pressedSprite = _buttonPressed;
-            button.spriteState = state;
-        }
-    }
-
     private static void EnsureSpritesLoaded()
     {
         if (_spritesLoaded)
@@ -597,8 +580,6 @@ public class VictoryScreenUI : MonoBehaviour
         _heartFull = LoadSprite(HeartFullPath);
         _heartEmpty = LoadSprite(HeartEmptyPath);
         _frame = LoadSprite(FramePath);
-        _buttonSprite = LoadSprite(ButtonSpritePath);
-        _buttonPressed = LoadSprite(ButtonPressedPath);
     }
 
     /// <summary>
@@ -620,7 +601,7 @@ public class VictoryScreenUI : MonoBehaviour
     {
         _spritesLoaded = false;
         _starFull = _starEmpty = _heartFull = _heartEmpty = null;
-        _frame = _buttonSprite = _buttonPressed = null;
+        _frame = null;
     }
 
     /// <summary>
@@ -673,31 +654,21 @@ public class VictoryScreenUI : MonoBehaviour
             labelRect.offsetMax = Vector2.zero;
             TextMeshProUGUI label = CreateOrGetLabel(labelObject, 42f);
             label.text = LevelResultsCopy.ReplayLevelLabel;
-            // Match the authored victory-button labels (Gameplay.unity: m_fontColor
-            // 0.702/0.502/0.075, m_fontStyle Bold, m_fontSize 42).
-            label.color = new Color32(179, 128, 19, 255);
-            label.fontStyle = FontStyles.Bold;
-            // The authored labels render LiberationSans SDF on its Outline material
-            // variant; CreateOrGetLabel's tutorial treatment swaps in the pixel font,
-            // so both the font and its shared material are copied back on top —
-            // assigning .font alone resets the material to the plain default and the
-            // gold reads washed out without the outline.
-            TMP_Text authoredLabel =
-                (_levelSelectButton != null
-                    ? _levelSelectButton.GetComponentInChildren<TMP_Text>(true)
-                    : null)
-                ?? (_nextLevelButton != null
-                    ? _nextLevelButton.GetComponentInChildren<TMP_Text>(true)
-                    : null);
-            if (authoredLabel != null)
-            {
-                label.font = authoredLabel.font;
-                label.fontSharedMaterial = authoredLabel.fontSharedMaterial;
-            }
+            // Font, fill and label colour land in the shared convention pass at the
+            // bottom of this method — nothing else to author here.
 
             _replayButton = button;
             BindReplayListener();
         }
+
+        // The shared convention, applied to authored and runtime buttons alike on
+        // every Show: Next Level carries the gold primary fill; Level Select and
+        // Replay take slate — hierarchy by colour, not mismatched plaque sizes.
+        // Positions stay authored on the legacy path; PresentResultsSummary's
+        // PositionButtons reflows them into the primary/secondary arrangement.
+        ScrollPanelArt.StylePrimaryButton(_nextLevelButton);
+        ScrollPanelArt.StyleSecondaryButton(_levelSelectButton);
+        ScrollPanelArt.StyleSecondaryButton(_replayButton);
     }
 
     /// <summary>

@@ -13,13 +13,10 @@ public static class DefeatScreenCopy
     /// <summary>Caption under the hearts row when hearts somehow remain.</summary>
     public const string HeartsLeftLabel = "Hearts left";
 
-    /// <summary>Framed tip: restates the loss mechanic and points at recovery.</summary>
+    /// <summary>Framed tip: restates the loss mechanic and names the counterplay.</summary>
     public const string TipLine1 = "Enemies at the base cost hearts.";
-    public const string TipLine2 = "Review the lesson first.";
+    public const string TipLine2 = "Draw the glowing symbols to stop them.";
 
     /// <summary>Primary action — re-enter the level.</summary>
     public const string RetryLabel = "Retry Combat";
-
-    /// <summary>Secondary action — revisit the onboarding lesson.</summary>
-    public const string ReviewLessonLabel = "Review Lesson";
 }

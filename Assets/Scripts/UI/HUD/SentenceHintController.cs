@@ -7,7 +7,8 @@ using UnityEngine.UI;
 /// <summary>
 /// The sentence-hint affordance on the combat HUD: a small scroll chip below the
 /// pause button that opens a parchment scroll of the level's sentence hints
-/// (focus-word dialogue lines plus challenge-sequence prompts, assembled by
+/// (the blanked restoration context plus each focus word's meaning and
+/// descriptor line with every answer withheld, assembled by
 /// <see cref="SentenceHintContent"/>). Levels 6-15 carry no authored objective
 /// subtext above the restoration rail, so this scroll is how the player asks for
 /// the sentence context levels 1-5 print by default.
@@ -20,9 +21,9 @@ using UnityEngine.UI;
 public sealed class SentenceHintController : MonoBehaviour
 {
     [Header("Hint Chip")]
-    [Tooltip("Chip size in canvas units. Compact enough to read as a control, wide "
-             + "enough for the label to breathe.")]
-    [SerializeField] private Vector2 _chipSize = new Vector2(240f, 72f);
+    [Tooltip("Chip size in canvas units. Square, roughly 2x the authored 80x80 "
+             + "pause button it parks under.")]
+    [SerializeField] private Vector2 _chipSize = new Vector2(160f, 160f);
 
     [Tooltip("Gap between the pause button's bottom edge and the chip's top edge.")]
     [SerializeField, Min(0f)] private float _chipGapBelowPause = 12f;
@@ -33,9 +34,15 @@ public sealed class SentenceHintController : MonoBehaviour
     [SerializeField] private Vector2 _chipFallbackPosition = new Vector2(-20f, -112f);
 
     [Header("Copy")]
+    [Tooltip("Fallback chip text, used only when the parchment or hint icon art "
+             + "fails to load.")]
     [SerializeField] private string _chipLabel = "Sentences";
     [SerializeField] private string _panelTitle = "Sentence Hints";
     [SerializeField] private string _closeLabel = "Close";
+
+    // The almanac's ink "?" glyph — a Resources copy of Assets/Art/UI/Almanac/
+    // Questionmark.png so the runtime-built chip can resolve it.
+    private const string IconResourcePath = "Art/UI/Almanac/Questionmark";
 
     private List<SentenceHintContent.Entry> _entries = new List<SentenceHintContent.Entry>();
     private string _bodyText = string.Empty;
@@ -248,25 +255,56 @@ public sealed class SentenceHintController : MonoBehaviour
         background.color = ScrollPanelArt.FlatPanelColor;
         bool onParchment = ScrollPanelArt.ApplyTop(background);
 
-        GameObject labelObject = new GameObject(
-            "[Runtime] SentenceHintChipLabel", typeof(RectTransform));
-        labelObject.transform.SetParent(_chipRoot.transform, false);
-        TextMeshProUGUI label = labelObject.AddComponent<TextMeshProUGUI>();
-        label.text = _chipLabel;
-        label.fontSize = UITextScale.Caption;
-        label.alignment = TextAlignmentOptions.Center;
-        label.raycastTarget = false;
-        TutorialFontProvider.ApplyTo(label);
-        RectTransform labelRect = label.rectTransform;
-        labelRect.anchorMin = Vector2.zero;
-        labelRect.anchorMax = Vector2.one;
-        labelRect.offsetMin = new Vector2(12f, 0f);
-        labelRect.offsetMax = new Vector2(-12f, -6f);
+        // The almanac "?" reads as the hint affordance in ink on the parchment;
+        // it only rides the scroll skin — on the dark flat fallback the glyph
+        // would be illegible, so that path keeps the text label.
+        Sprite icon = LoadIconSprite();
+        if (onParchment && icon != null)
+        {
+            GameObject iconObject = new GameObject(
+                "[Runtime] SentenceHintChipIcon", typeof(RectTransform));
+            iconObject.transform.SetParent(_chipRoot.transform, false);
+            Image iconImage = iconObject.AddComponent<Image>();
+            iconImage.sprite = icon;
+            iconImage.preserveAspect = true;
+            iconImage.raycastTarget = false;
+            ScrollPanelArt.SetAnchors(iconImage.rectTransform, ScrollPanelArt.TopSafeArea);
+        }
+        else
+        {
+            GameObject labelObject = new GameObject(
+                "[Runtime] SentenceHintChipLabel", typeof(RectTransform));
+            labelObject.transform.SetParent(_chipRoot.transform, false);
+            TextMeshProUGUI label = labelObject.AddComponent<TextMeshProUGUI>();
+            label.text = _chipLabel;
+            label.fontSize = UITextScale.Caption;
+            label.alignment = TextAlignmentOptions.Center;
+            label.raycastTarget = false;
+            TutorialFontProvider.ApplyTo(label);
+            RectTransform labelRect = label.rectTransform;
+            labelRect.anchorMin = Vector2.zero;
+            labelRect.anchorMax = Vector2.one;
+            labelRect.offsetMin = new Vector2(12f, 0f);
+            labelRect.offsetMax = new Vector2(-12f, -6f);
+
+            if (onParchment)
+                ScrollPanelArt.Inkify(label);
+        }
 
         _chipRoot.GetComponent<Button>().onClick.AddListener(Open);
+    }
 
-        if (onParchment)
-            ScrollPanelArt.Inkify(label);
+    /// <summary>
+    /// Loads the almanac "?" sprite, falling back to the first sub-sprite for
+    /// the Multiple-mode import. Null-safe: missing art leaves the text label.
+    /// </summary>
+    private static Sprite LoadIconSprite()
+    {
+        Sprite single = Resources.Load<Sprite>(IconResourcePath);
+        if (single != null)
+            return single;
+        Sprite[] all = Resources.LoadAll<Sprite>(IconResourcePath);
+        return all != null && all.Length > 0 ? all[0] : null;
     }
 
     private Vector2 ChipPosition(Transform parent)
@@ -381,7 +419,9 @@ public sealed class SentenceHintController : MonoBehaviour
         _bodyLabel.text = _bodyText;
         _bodyLabel.raycastTarget = false;
         TutorialFontProvider.ApplyTo(_bodyLabel);
-        ScrollPanelArt.PlaceText(_bodyLabel, Rect.MinMaxRect(0.12f, 0.26f, 0.88f, 0.72f), UITextScale.AutoSizeFloor, UITextScale.Body);
+        // Secondary floor, not AutoSizeFloor: the scroll is trimmed to context +
+        // descriptor lines precisely so the body can hold reading size.
+        ScrollPanelArt.PlaceText(_bodyLabel, Rect.MinMaxRect(0.12f, 0.26f, 0.88f, 0.72f), UITextScale.Secondary, UITextScale.Body);
 
         GameObject closeObject = new GameObject(
             "[Runtime] SentenceHintClose", typeof(RectTransform), typeof(Image));
@@ -414,7 +454,7 @@ public sealed class SentenceHintController : MonoBehaviour
         _overlayRoot.SetActive(false);
     }
 
-    /// <summary>Composes the scroll body: bold word headings over their sentences.</summary>
+    /// <summary>Composes the scroll body: bold meaning headings over their sentences.</summary>
     private static string ComposeBody(List<SentenceHintContent.Entry> entries)
     {
         if (entries == null || entries.Count == 0)

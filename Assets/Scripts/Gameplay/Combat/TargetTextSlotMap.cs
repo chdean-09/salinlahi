@@ -2,12 +2,12 @@ using System;
 using System.Collections.Generic;
 
 /// <summary>
-/// Flattens a level's focus words into the ordered slot list the player is restoring, and classifies
+/// Flattens a level's focus words into the slot list the player is restoring, and classifies
 /// a drawn syllable against it.
 ///
 /// <para>The slot list is kept in visual reading order: word 0's syllables left to right, then word
-/// 1's, and so on. An authored objective may separately assign a completion order, so the cursor
-/// follows that order while returned indices still address the visual rail.</para>
+/// 1's, and so on. Completion order breaks ties between repeated symbols; every eligible
+/// unfinished occurrence can restore regardless of that order.</para>
 ///
 /// <para>Deliberately free of UnityEngine types apart from the content assets it reads, following
 /// <see cref="ActiveClueSelector"/> and <see cref="DrawTargetResolver"/>, so every classification
@@ -33,7 +33,7 @@ public static class TargetTextSlotMap
         /// </summary>
         public int CompletionOrder;
 
-        /// <summary>True when the objective has not activated this slot's unit yet.</summary>
+        /// <summary>True while a separate beat gates this occurrence.</summary>
         public bool Locked;
 
         public bool Restored;
@@ -88,7 +88,8 @@ public static class TargetTextSlotMap
     public static void Build(
         RestorationObjectiveDefinition definition,
         RestorationObjectiveState state,
-        List<Slot> slots)
+        List<Slot> slots,
+        Func<string, bool> canRestoreOccurrence = null)
     {
         if (slots == null)
             return;
@@ -116,9 +117,8 @@ public static class TargetTextSlotMap
                     SlotIndexInWord = tokenIndex,
                     CharacterId = symbol.characterID,
                     CompletionOrder = token.EffectiveCompletionOrder(tokenIndex),
-                    Locked = state != null
-                        && !string.IsNullOrEmpty(state.ActiveUnitId)
-                        && !string.Equals(state.ActiveUnitId, unit.stableId, StringComparison.Ordinal),
+                    Locked = canRestoreOccurrence != null
+                        && !canRestoreOccurrence(token.occurrenceId),
                     Restored = state != null && state.IsOccurrenceRestored(token.occurrenceId),
                 });
             }
@@ -154,10 +154,8 @@ public static class TargetTextSlotMap
     /// Classifies <paramref name="drawnCharacterId"/> against the flattened text.
     /// </summary>
     /// <param name="slotIndex">
-    /// The slot this syllable belongs to: the cursor for a fill, the earliest matching future slot
-    /// for later-needed, the earliest matching filled slot for a duplicate, and -1 when the syllable
-    /// is in no slot at all. It is what the badge flies to, so "earliest" matters: a syllable with
-    /// two slots left should promise the player the nearer one.
+    /// The earliest eligible matching occurrence, a gated occurrence if none is eligible, an
+    /// already filled occurrence if none remains, or -1 when the syllable is absent.
     /// </param>
     /// <param name="cursorIndex">The cursor at the moment of the draw, for the slot that pulses.</param>
     public static DrawTextRelation Classify(
@@ -172,39 +170,36 @@ public static class TargetTextSlotMap
         if (slots == null || slots.Count == 0 || string.IsNullOrEmpty(drawnCharacterId))
             return DrawTextRelation.Unknown;
 
-        if (cursorIndex >= 0 && Matches(slots[cursorIndex], drawnCharacterId))
-        {
-            slotIndex = cursorIndex;
-            return DrawTextRelation.FillsCursorSlot;
-        }
-
-        // Unrestored slots are scanned before restored ones on purpose. A syllable can legitimately
-        // occupy both — Level 1 has no repeat, but INA/AMA-shaped texts generally will — and in that
-        // case the honest answer is the one that still has a future: "that one comes later" is true
-        // and useful, while "already restored" would be true of a different instance of the same
-        // syllable and read as a flat contradiction of the empty slot the player can see. Compare
-        // completion order rather than list position because Level 2 teaches TA before the BA that
-        // appears to its left in the visible word.
-        int cursorOrder = cursorIndex >= 0 ? slots[cursorIndex].CompletionOrder : int.MinValue;
-        int laterIndex = -1;
-        int laterOrder = int.MaxValue;
+        // Any unfinished eligible occurrence can fill. Completion order only breaks ties when
+        // a glyph occurs more than once; it never makes a correctly drawn glyph ineligible.
+        int matchingIndex = -1;
+        int matchingOrder = int.MaxValue;
         for (int i = 0; i < slots.Count; i++)
         {
             if (!slots[i].Restored
                 && !slots[i].Locked
-                && slots[i].CompletionOrder > cursorOrder
                 && Matches(slots[i], drawnCharacterId)
-                && slots[i].CompletionOrder < laterOrder)
+                && slots[i].CompletionOrder < matchingOrder)
             {
-                laterIndex = i;
-                laterOrder = slots[i].CompletionOrder;
+                matchingIndex = i;
+                matchingOrder = slots[i].CompletionOrder;
             }
         }
 
-        if (laterIndex >= 0)
+        if (matchingIndex >= 0)
         {
-            slotIndex = laterIndex;
-            return DrawTextRelation.LaterNeeded;
+            slotIndex = matchingIndex;
+            cursorIndex = matchingIndex;
+            return DrawTextRelation.FillsCursorSlot;
+        }
+
+        for (int i = 0; i < slots.Count; i++)
+        {
+            if (!slots[i].Restored && slots[i].Locked && Matches(slots[i], drawnCharacterId))
+            {
+                slotIndex = i;
+                return DrawTextRelation.LaterNeeded;
+            }
         }
 
         for (int i = 0; i < slots.Count; i++)

@@ -5,44 +5,38 @@ using UnityEditor;
 namespace Salinlahi.Tests.Editor.Data
 {
     /// <summary>
-    /// The Ugat curve keeps the Level 1 roster shape while owning its current cadence. Level 1
-    /// remains authored; cadence is asserted against the current curve asset rather than an old
-    /// seed snapshot.
+    /// The five-wave Ugat curve supplies Level 5; Levels 1-4 use shorter pacing.
     /// </summary>
     public class WaveCurveGoldenTests
     {
-        private const string LevelOnePath = "Assets/ScriptableObjects/Levels/Level1_Config.asset";
+        private const string LevelFivePath = "Assets/ScriptableObjects/Levels/Level5_Config.asset";
         private const string UgatCurvePath = "Assets/ScriptableObjects/Levels/WaveCurves/Curve_Ugat.asset";
 
         [Test]
-        public void UgatCurve_ExpandedAgainstLevelOneRoster_PreservesWaveShape()
+        public void UgatCurve_ExpandedAgainstLevelFiveRoster_PreservesFiveWaveShape()
         {
-            var level = AssetDatabase.LoadAssetAtPath<LevelConfigSO>(LevelOnePath);
+            var level = AssetDatabase.LoadAssetAtPath<LevelConfigSO>(LevelFivePath);
             var curve = AssetDatabase.LoadAssetAtPath<WaveCurveSO>(UgatCurvePath);
-            Assert.IsNotNull(level, LevelOnePath);
+            Assert.IsNotNull(level, LevelFivePath);
             Assert.IsNotNull(curve, UgatCurvePath);
 
-            List<WaveDefinition> authored = level.waves;
-            Assert.IsNotEmpty(authored, "Level 1 is the hand-authored reference and must keep its waves.");
-
-            // Level 1's roster lists Hati in allowedEnemyTypes but no wave spawns it, so the
-            // reference roster is what wave 1 actually carries, not the level roster.
+            Assert.IsTrue(level.UsesWaveCurve);
             List<WaveDefinition> generated = WaveCurveExpander.Expand(
-                curve, authored[0].characters, authored[0].enemyTypes);
+                curve, level.allowedCharacters, level.allowedEnemyTypes);
 
-            Assert.AreEqual(authored.Count, generated.Count, "wave count");
-            for (int i = 0; i < authored.Count; i++)
+            Assert.AreEqual(5, generated.Count, "wave count");
+            CollectionAssert.AreEqual(new[] { 2, 4, 5, 6, 7 },
+                generated.ConvertAll(w => w.enemyCount));
+            for (int i = 0; i < generated.Count; i++)
             {
-                string wave = $"wave {i + 1}";
-                Assert.AreEqual(authored[i].isIntermissionWave, generated[i].isIntermissionWave, wave + " intermission");
-                Assert.AreEqual(authored[i].enemyCount, generated[i].enemyCount, wave + " enemyCount");
-                CollectionAssert.AreEqual(authored[i].characters, generated[i].characters, wave + " characters");
-                CollectionAssert.AreEqual(authored[i].enemyTypes, generated[i].enemyTypes, wave + " enemyTypes");
+                Assert.IsFalse(generated[i].isIntermissionWave);
+                CollectionAssert.AreEqual(level.allowedCharacters, generated[i].characters);
+                CollectionAssert.AreEqual(level.allowedEnemyTypes, generated[i].enemyTypes);
             }
         }
 
         [Test]
-        public void UgatCurveAsset_CarriesTheLevelOneSeed()
+        public void UgatCurveAsset_CarriesTheFiveWaveCadence()
         {
             var curve = AssetDatabase.LoadAssetAtPath<WaveCurveSO>(UgatCurvePath);
             Assert.IsNotNull(curve, UgatCurvePath);

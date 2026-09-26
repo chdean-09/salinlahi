@@ -1,8 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
 using NUnit.Framework;
+using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.TestTools;
+using UnityEngine.UI;
 
 namespace Salinlahi.Tests.PlayMode.Gameplay
 {
@@ -44,6 +47,17 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 restoredCue = GameObject.Find("[Runtime] WordRestoredCue");
             }
 
+            // InstantWinPresenter.EnsureOverlay builds this canvas when the beat has no
+            // parent canvas, and the tap catcher is parented to it — destroying the beat
+            // alone strands both, and the loose canvas can hijack a later test's
+            // FindFirstObjectByType<Canvas> HUD lookup.
+            GameObject instantWinCanvas = GameObject.Find("[Runtime] InstantWinCanvas");
+            while (instantWinCanvas != null)
+            {
+                Object.DestroyImmediate(instantWinCanvas);
+                instantWinCanvas = GameObject.Find("[Runtime] InstantWinCanvas");
+            }
+
             for (int i = _objectsToDestroy.Count - 1; i >= 0; i--)
             {
                 if (_objectsToDestroy[i] != null)
@@ -51,6 +65,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             }
 
             _objectsToDestroy.Clear();
+            ChallengeRuntimeState.Clear();
         }
 
         [Test]
@@ -273,6 +288,45 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Assert.IsFalse(missed, "A valid glyph with an eligible carrier must resolve, even when the carrier is not marked.");
             Assert.That(far.CurrentHealth, Is.LessThan(farData.maxHealth),
                 "Correct recognition resolves against the closest eligible carrier rather than requiring the marked enemy.");
+        }
+
+        [UnityTest]
+        public IEnumerator DrawingAnUnmarkedRealCarrier_CreditsItsRestorationOnce()
+        {
+            EnemyDataSO markedData = CreateEnemyData();
+            markedData.maxHealth = 3;
+            Enemy marked = CreateEnemyAt(markedData, y: 2f);
+
+            EnemyDataSO otherData = CreateEnemyData();
+            otherData.maxHealth = 3;
+            otherData.assignedCharacter = CreateTestCharacter("NA", "symbol.na");
+            Enemy other = CreateEnemyAt(otherData, y: 9f);
+
+            ActiveClueDirector director = CreateDirector(clueCombatActive: true);
+            director.Reevaluate();
+            Assert.That(director.CurrentClue, Is.EqualTo(marked));
+
+            int credited = 0;
+            Enemy creditedCarrier = null;
+            director.OnActiveClueResolved += carrier =>
+            {
+                credited++;
+                creditedCarrier = carrier;
+            };
+
+            GameObject resolverGo = new GameObject("CombatResolver_UnmarkedCredit_Test");
+            resolverGo.AddComponent<CombatResolver>();
+            _objectsToDestroy.Add(resolverGo);
+            yield return null;
+
+            EventBus.RaiseCharacterRecognized("NA");
+            EventBus.RaiseCharacterRecognized("NA");
+            yield return new WaitForSeconds(0.2f);
+
+            Assert.That(credited, Is.EqualTo(1),
+                "Drawing a visible real character must credit restoration even when another glyph is marked.");
+            Assert.That(creditedCarrier, Is.EqualTo(other));
+            Assert.That(director.CurrentClue, Is.EqualTo(marked));
         }
 
         [Test]
@@ -816,6 +870,292 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 "A rejected draw must leave the player the same target to retry.");
             Assert.That(marked.CurrentHealth, Is.EqualTo(markedData.maxHealth),
                 "A rejected draw is non-destructive on both sides of the fight.");
+        }
+
+        /// <summary>
+        /// The standing "DRAW THE GLOWING SYMBOL TO DEFEND" line shares the bottom band with
+        /// the challenge board — on the shipped screenshot it printed straight through the
+        /// board's parchment. While a challenge runs, the instruction must stand down, and
+        /// it must come back when the challenge ends rather than staying hidden forever.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ClueInstruction_YieldsToTheChallengeBoard_AndReturns()
+        {
+            GameObject presenterObject = new GameObject("ActiveCluePresenter_Instruction_Test");
+            _objectsToDestroy.Add(presenterObject);
+            GameObject labelObject = new GameObject(
+                "DrawGlowingSymbolInstruction", typeof(RectTransform), typeof(TextMeshProUGUI));
+            labelObject.transform.SetParent(presenterObject.transform, false);
+            presenterObject.AddComponent<ActiveCluePresenter>();
+
+            yield return null;
+
+            Assert.IsTrue(labelObject.activeSelf,
+                "Settled combat HUD shows its standing instruction.");
+
+            ChallengeRuntimeState.Begin(1);
+            yield return null;
+
+            Assert.IsFalse(labelObject.activeSelf,
+                "The challenge board owns the band; the instruction must stand down.");
+
+            ChallengeRuntimeState.Clear();
+            yield return null;
+
+            Assert.IsTrue(labelObject.activeSelf,
+                "Once the board leaves, the instruction comes back — suppression is not a latch.");
+        }
+
+        /// <summary>
+        /// The enemy introduction card parks on the same bottom band as the standing
+        /// "DRAW THE GLOWING SYMBOL TO DEFEND" line — the gold instruction printed straight
+        /// through the card's slate. While a card or lesson owns the screen the instruction
+        /// must stand down, and it must come back the moment the beat ends: the lifetime
+        /// banner deliberately outlives IsPlaying, and standing down for all of it would
+        /// erase the instruction from ordinary combat.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ClueInstruction_YieldsToTheEnemyIntroduction_AndReturns()
+        {
+            GameObject presenterObject = new GameObject("ActiveCluePresenter_IntroInstruction_Test");
+            _objectsToDestroy.Add(presenterObject);
+            GameObject labelObject = new GameObject(
+                "DrawGlowingSymbolInstruction", typeof(RectTransform), typeof(TextMeshProUGUI));
+            labelObject.transform.SetParent(presenterObject.transform, false);
+            presenterObject.AddComponent<ActiveCluePresenter>();
+
+            GameObject beatObject = new GameObject("EnemyIntroductionBeat_Test");
+            _objectsToDestroy.Add(beatObject);
+            EnemyIntroductionBeat beat = beatObject.AddComponent<EnemyIntroductionBeat>();
+
+            yield return null;
+
+            Assert.IsTrue(labelObject.activeSelf,
+                "Settled combat HUD shows its standing instruction.");
+
+            GlyphBadgePlayModeTestHelpers.SetPrivateField(beat, "_isPlaying", true);
+            yield return null;
+
+            Assert.IsFalse(labelObject.activeSelf,
+                "The introduction card owns the band; the instruction must stand down.");
+
+            GlyphBadgePlayModeTestHelpers.SetPrivateField(beat, "_isPlaying", false);
+            yield return null;
+
+            Assert.IsTrue(labelObject.activeSelf,
+                "Once the beat ends the instruction comes back — suppression is not a latch.");
+        }
+
+        /// <summary>
+        /// The story scroll owns the bottom band while it is live — the standing
+        /// "DRAW THE GLOWING SYMBOL TO DEFEND" line would print through it, so the
+        /// instruction yields for the dialogue's duration and comes back when it ends.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ClueInstruction_YieldsToDialogue_AndReturns()
+        {
+            GameObject presenterObject = new GameObject("ActiveCluePresenter_DialogueInstruction_Test");
+            _objectsToDestroy.Add(presenterObject);
+            GameObject labelObject = new GameObject(
+                "DrawGlowingSymbolInstruction", typeof(RectTransform), typeof(TextMeshProUGUI));
+            labelObject.transform.SetParent(presenterObject.transform, false);
+            presenterObject.AddComponent<ActiveCluePresenter>();
+
+            GameObject dialogueObject = new GameObject("DialogueController_Test");
+            _objectsToDestroy.Add(dialogueObject);
+            DialogueController dialogue = dialogueObject.AddComponent<DialogueController>();
+            DialogueSO dialogueData = ScriptableObject.CreateInstance<DialogueSO>();
+            _objectsToDestroy.Add(dialogueData);
+
+            yield return null;
+
+            Assert.IsTrue(labelObject.activeSelf,
+                "Settled combat HUD shows its standing instruction.");
+
+            // IsPresenting reads only _currentDialogue, so field injection stands a live
+            // dialogue up without driving the scroll's own UI.
+            GlyphBadgePlayModeTestHelpers.SetPrivateField(
+                dialogue, "_currentDialogue", dialogueData);
+            yield return null;
+
+            Assert.IsFalse(labelObject.activeSelf,
+                "A live dialogue owns the band; the instruction must stand down.");
+
+            GlyphBadgePlayModeTestHelpers.SetPrivateField(
+                dialogue, "_currentDialogue", (DialogueSO)null);
+            yield return null;
+
+            Assert.IsTrue(labelObject.activeSelf,
+                "Once the dialogue ends the instruction comes back — suppression is not a latch.");
+        }
+
+        /// <summary>
+        /// The instant-win beat's banner parks on the restoration rail's top edge — the same
+        /// bottom band the standing "DRAW THE GLOWING SYMBOL TO DEFEND" line occupies, which is
+        /// where the shipped screenshot showed them colliding. While the beat presents, the
+        /// instruction must stand down, and it must come back once the board is clear.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ClueInstruction_YieldsToTheInstantWinBeat_AndReturns()
+        {
+            GameObject presenterObject = new GameObject("ActiveCluePresenter_WinInstruction_Test");
+            _objectsToDestroy.Add(presenterObject);
+            GameObject labelObject = new GameObject(
+                "DrawGlowingSymbolInstruction", typeof(RectTransform), typeof(TextMeshProUGUI));
+            labelObject.transform.SetParent(presenterObject.transform, false);
+            presenterObject.AddComponent<ActiveCluePresenter>();
+
+            GameObject beatObject = new GameObject("InstantWinPresenter_Test");
+            _objectsToDestroy.Add(beatObject);
+            InstantWinPresenter beat = beatObject.AddComponent<InstantWinPresenter>();
+
+            yield return null;
+
+            Assert.IsTrue(labelObject.activeSelf,
+                "Settled combat HUD shows its standing instruction.");
+
+            // IsPresenting is an auto-property; the backing field is the only reachable seam.
+            GlyphBadgePlayModeTestHelpers.SetPrivateField(
+                beat, "<IsPresenting>k__BackingField", true);
+            yield return null;
+
+            Assert.IsFalse(labelObject.activeSelf,
+                "The win banner owns the band; the instruction must stand down.");
+
+            GlyphBadgePlayModeTestHelpers.SetPrivateField(
+                beat, "<IsPresenting>k__BackingField", false);
+            yield return null;
+
+            Assert.IsTrue(labelObject.activeSelf,
+                "Once the beat clears, the instruction comes back — suppression is not a latch.");
+        }
+
+        /// <summary>
+        /// The beat holds for a tap rather than dissolving on a timer — a fixed duration
+        /// cannot know a reader's pace, and every other text surface in the game is already
+        /// tap-gated. The tap then releases the dissolve and the beat ends.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator InstantWinBeat_HoldsForTap_ThenDissolvesOnCue()
+        {
+            GameObject beatObject = new GameObject("InstantWinPresenter_TapGate");
+            _objectsToDestroy.Add(beatObject);
+            InstantWinPresenter beat = beatObject.AddComponent<InstantWinPresenter>();
+
+            beat.StartCoroutine(beat.Play(null, 6));
+
+            // No rail means no celebration wait, and level 6 has no authored frozen hold,
+            // so the read-gate arms after the 1.2 s arming pause alone. Three and a half
+            // is generous — the point is the beat is still waiting at a moment a fixed
+            // timer would already have dismissed it.
+            yield return new WaitForSecondsRealtime(3.5f);
+
+            Assert.IsTrue(beat.IsPresenting,
+                "The banner's seconds are a floor, not a ceiling — the beat must hold "
+                + "for a tap instead of auto-dismissing.");
+
+            Button catcher =
+                GlyphBadgePlayModeTestHelpers.GetPrivateField<Button>(beat, "_tapCatcher");
+            Assert.IsNotNull(catcher, "The read-gate needs its tap catcher built.");
+            Assert.IsTrue(catcher.gameObject.activeSelf,
+                "The tap catcher arms once the minimum read time passes.");
+
+            catcher.onClick.Invoke();
+            yield return null;
+            yield return null;
+
+            Assert.IsFalse(beat.IsPresenting,
+                "The player's tap releases the dissolve and the beat ends.");
+        }
+
+        /// <summary>
+        /// Regression for the stuck win: the read-gate's tap catcher was built UNDER the
+        /// overlay's own CanvasGroup, which EnsureOverlay authors interactable=false and
+        /// blocksRaycasts=false so the beat never swallows gameplay input. Both flags
+        /// propagate to children, so the catcher could neither be hit by a raycast nor
+        /// pressed — no real tap could ever release the hold. Play() waited on
+        /// _waitingForTap forever with the board frozen, WaveManager's routine never
+        /// reached CompleteRun, and the victory screen never appeared.
+        ///
+        /// onClick.Invoke() (the test above) cannot cover this: it bypasses the raycast
+        /// and interactable checks entirely. This test drives the REAL input path — the
+        /// CanvasGroup hit-validity and interactable predicates a raycast applies, plus an
+        /// ExecuteEvents pointer click, the same call InputSystemUIInputModule makes for a
+        /// physical tap.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator InstantWinBeat_TapCatcher_IsReachableByRealPointerInput()
+        {
+            GameObject beatObject = new GameObject("InstantWinPresenter_RealTap");
+            _objectsToDestroy.Add(beatObject);
+            InstantWinPresenter beat = beatObject.AddComponent<InstantWinPresenter>();
+
+            // PointerEventData needs an EventSystem; no input module is required because
+            // the click is delivered through ExecuteEvents directly — the same call an
+            // input module makes once a raycast has picked the catcher.
+            GameObject eventSystemObject = new GameObject("EventSystem", typeof(EventSystem));
+            _objectsToDestroy.Add(eventSystemObject);
+
+            // StartCoroutine runs Play up to its first yield synchronously, so the
+            // catcher already exists once this returns.
+            beat.StartCoroutine(beat.Play(null, 6));
+            Button catcher =
+                GlyphBadgePlayModeTestHelpers.GetPrivateField<Button>(beat, "_tapCatcher");
+            Assert.IsNotNull(catcher, "The read-gate needs its tap catcher built.");
+
+            // Wait for the read-gate to arm, bounded so a broken gate fails rather than
+            // hanging the run.
+            yield return GlyphBadgePlayModeTestHelpers.WaitUntilOrTimeout(
+                () => catcher.gameObject.activeSelf, 6f);
+            Assert.IsTrue(catcher.gameObject.activeSelf,
+                "The tap catcher arms once the minimum read time passes.");
+
+            Canvas canvas = beat.GetComponentInParent<Canvas>();
+            Assert.IsNotNull(canvas, "EnsureOverlay must parent the beat under a canvas.");
+            GraphicRaycaster raycaster = canvas.GetComponent<GraphicRaycaster>();
+            Assert.IsNotNull(raycaster, "EnsureOverlay must guarantee a raycaster.");
+
+            // GraphicRaycaster.Raycast itself cannot be exercised here: it skips graphics
+            // whose CanvasRenderer never got a render depth (depth==-1), and nothing
+            // renders a screen-space canvas in a PlayMode run — even a perfectly wired
+            // button returns zero hits. Instead this asserts every condition the raycast
+            // applies, through the same public APIs the raycaster itself calls:
+            //   * IsRaycastLocationValid — the CanvasGroup-blocking check (this is the
+            //     exact predicate GraphicRaycaster evaluates per graphic);
+            //   * IsInteractable — the CanvasGroup interactable chain Selectable gates on;
+            //   * RectangleContainsScreenPoint — the hit geometry;
+            // then delivers a REAL pointer click through ExecuteEvents — the same call an
+            // input module makes after its raycast picks the catcher.
+            var pointer = new PointerEventData(EventSystem.current)
+            {
+                position = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f),
+            };
+            Image catcherImage = catcher.GetComponent<Image>();
+            Assert.IsNotNull(catcherImage, "The tap catcher needs its raycast-target Image.");
+
+            var failures = new List<string>();
+            if (!catcherImage.raycastTarget)
+                failures.Add("the catcher's Image is not a raycast target");
+            if (!catcherImage.IsRaycastLocationValid(pointer.position, null))
+                failures.Add("a centre-screen raycast never reaches the catcher "
+                    + "(an ancestor CanvasGroup has blocksRaycasts=false)");
+            if (!RectTransformUtility.RectangleContainsScreenPoint(
+                    (RectTransform)catcher.transform, pointer.position))
+                failures.Add("the catcher's rect does not cover the screen centre");
+            if (!catcher.IsInteractable())
+                failures.Add("the catcher is not interactable "
+                    + "(an ancestor CanvasGroup has interactable=false)");
+
+            ExecuteEvents.Execute(
+                catcher.gameObject, pointer, ExecuteEvents.pointerClickHandler);
+            yield return null;
+            yield return null;
+
+            if (beat.IsPresenting)
+                failures.Add("a real pointer click did not release the read-gate — the "
+                    + "beat holds forever and the run never reaches the victory screen");
+
+            Assert.IsEmpty(failures, string.Join("; ", failures));
         }
 
         /// <summary>

@@ -235,7 +235,40 @@ public class StrokeCapture : MonoBehaviour
         _canvas.ClearCanvas();
 
         OnStrokesSubmitted?.Invoke(strokesForRecognition);
-        RecognitionManager.Instance.Recognize(strokesForRecognition);
+        RecognitionManager.Instance?.Recognize(strokesForRecognition);
+    }
+
+    /// <summary>
+    /// Called when a surface is about to take input away from the field mid-attempt — the enemy
+    /// introduction card suppresses drawing for the time it is on screen. A stroke still in
+    /// progress is completed as though the finger lifted (HandleGamePaused's rule), and anything
+    /// queued in the multi-stroke window is submitted immediately rather than left to resolve
+    /// after the surface releases, on a field the player was no longer looking at.
+    ///
+    /// Must run BEFORE the caller suppresses input: once <see cref="GameManager.AcceptsDrawingInput"/>
+    /// is false, <see cref="SubmitForRecognition"/> can only defer the queue.
+    /// </summary>
+    public void SubmitInFlightStrokes()
+    {
+        if (_isDrawing)
+        {
+            _isDrawing = false;
+            _strokeTimeoutEndTime = -1d;
+
+            if (_currentStroke != null)
+                CompleteCurrentStroke();
+            else
+            {
+                _activeFinger = null;
+                _canvas.DiscardCurrentStroke();
+            }
+        }
+
+        _multiStrokeTimerEndTime = -1d;
+        _pausedMultiStrokeRemainingSeconds = -1d;
+
+        if (_strokes.Count > 0)
+            SubmitForRecognition();
     }
 
     private void HandleGameResumed()
