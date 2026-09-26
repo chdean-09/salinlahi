@@ -50,6 +50,7 @@ public class EnemyGlyphBadge : MonoBehaviour
     private Color? _flashTint;
 
     public GlyphBadgeConfigSO Config => _config;
+    public SpriteRenderer Renderer => _renderer;
     public bool IsSwapping => _swapRoutine != null;
     public bool IsPlayingFinalDraw => _finalDrawRoutine != null;
     public bool IsPlayingDecoyReject => _decoyRejectRoutine != null;

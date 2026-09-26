@@ -162,6 +162,33 @@ public sealed class AshFirstSlotController : MonoBehaviour, IIntroducibleAbility
         return Registered.Count > 0;
     }
 
+    /// <summary>
+    /// Resolves the HUD art from a currently active Abo. The clue HUD remains the renderer and
+    /// animation clock; the enemy contributes only its authored state definition.
+    /// </summary>
+    public static EnemyHudAbilityVisualDefinition GetActiveHudVisualDefinition(EnemyHudAbilityVisualId id)
+    {
+        Registered.RemoveWhere(controller => !IsAshingNow(controller));
+        foreach (AshFirstSlotController controller in Registered)
+        {
+            Enemy enemy = controller._enemy != null ? controller._enemy : controller.GetComponent<Enemy>();
+            EnemyHudAbilityVisualDefinition[] definitions = enemy != null && enemy.Data != null
+                ? enemy.Data.hudAbilityVisuals
+                : null;
+            if (definitions == null)
+                continue;
+
+            for (int i = 0; i < definitions.Length; i++)
+            {
+                EnemyHudAbilityVisualDefinition definition = definitions[i];
+                if (definition != null && definition.id == id && definition.activeSprite != null)
+                    return definition;
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>Test seam: forget every registration and every level latch.</summary>
     public static void ResetRegistryForTests()
     {

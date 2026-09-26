@@ -85,7 +85,8 @@ public class KempeiScrambleController : MonoBehaviour
         if (_suppressedForIntroductionSpawn
             || _enemy == null
             || _enemy.Data == null
-            || !_enemy.Data.stainsNearbyGlyphs)
+            || !_enemy.Data.stainsNearbyGlyphs
+            || _enemy.IsDying)
         {
             ClearAffectedEnemies();
             return;

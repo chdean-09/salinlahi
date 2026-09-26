@@ -12,6 +12,7 @@ public class PhaserEnemy : MonoBehaviour
     [SerializeField] private Renderer[] _renderers;
 
     private Enemy _enemy;
+    private EnemyAbilityVisualPresenter _abilityVisualPresenter;
     private Coroutine _toggleRoutine;
     private bool _isVisible = true;
     private SpriteRenderer[] _spriteRenderers;
@@ -19,12 +20,15 @@ public class PhaserEnemy : MonoBehaviour
     private Color[] _spriteBaseColors;
     private Color[] _labelBaseColors;
     private bool _hasCompletedInvisibleState;
+    private float _currentVisibilityAlpha = 1f;
 
     public bool IsVisible => _isVisible;
+    public float CurrentVisibilityAlpha => _currentVisibilityAlpha;
 
     private void Awake()
     {
         _enemy = GetComponent<Enemy>();
+        _abilityVisualPresenter = GetComponent<EnemyAbilityVisualPresenter>();
         CacheRenderersIfMissing();
         CacheFadeTargets();
     }
@@ -33,6 +37,8 @@ public class PhaserEnemy : MonoBehaviour
     {
         if (_enemy == null)
             _enemy = GetComponent<Enemy>();
+        if (_abilityVisualPresenter == null)
+            _abilityVisualPresenter = GetComponent<EnemyAbilityVisualPresenter>();
 
         CacheRenderersIfMissing();
         if (_spriteRenderers == null || _textLabels == null || _spriteBaseColors == null || _labelBaseColors == null)
@@ -268,24 +274,33 @@ public class PhaserEnemy : MonoBehaviour
     {
         alpha = Mathf.Clamp01(alpha);
 
-        if (_renderers == null)
-            return;
+        _currentVisibilityAlpha = alpha;
 
-        for (int i = 0; i < _spriteRenderers.Length; i++)
+        if (_renderers != null && _spriteRenderers != null && _spriteBaseColors != null)
         {
-            SpriteRenderer sr = _spriteRenderers[i];
-            if (sr == null) continue;
-            Color baseColor = _spriteBaseColors[i];
-            sr.color = new Color(baseColor.r, baseColor.g, baseColor.b, baseColor.a * alpha);
+            for (int i = 0; i < _spriteRenderers.Length; i++)
+            {
+                SpriteRenderer sr = _spriteRenderers[i];
+                if (sr == null) continue;
+                Color baseColor = _spriteBaseColors[i];
+                sr.color = new Color(baseColor.r, baseColor.g, baseColor.b, baseColor.a * alpha);
+            }
         }
 
-        for (int i = 0; i < _textLabels.Length; i++)
+        if (_renderers != null && _textLabels != null && _labelBaseColors != null)
         {
-            TextMeshPro label = _textLabels[i];
-            if (label == null) continue;
-            Color baseColor = _labelBaseColors[i];
-            label.color = new Color(baseColor.r, baseColor.g, baseColor.b, baseColor.a * alpha);
+            for (int i = 0; i < _textLabels.Length; i++)
+            {
+                TextMeshPro label = _textLabels[i];
+                if (label == null) continue;
+                Color baseColor = _labelBaseColors[i];
+                label.color = new Color(baseColor.r, baseColor.g, baseColor.b, baseColor.a * alpha);
+            }
         }
+
+        if (_abilityVisualPresenter == null && _enemy != null)
+            _abilityVisualPresenter = _enemy.AbilityVisuals;
+        _abilityVisualPresenter?.SetVisibilityAlphaMultiplier(alpha);
     }
 
     private void StopToggleRoutine()
