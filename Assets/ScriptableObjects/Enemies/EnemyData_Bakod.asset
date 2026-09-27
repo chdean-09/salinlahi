@@ -15,7 +15,9 @@ MonoBehaviour:
   enemyID: bakod
   displayName: Bakod
   discoverySubtitle: 
-  description: Bakod is a wall built from broken tablets and forgotten boundaries. Paglimot places it between related words and their missing parts, teaching people to see separation where meaning once connected them.
+  description: Bakod is a wall built from broken tablets and forgotten boundaries.
+    Paglimot places it between related words and their missing parts, teaching people
+    to see separation where meaning once connected them.
   abilityLine: It raises a wall that guards the characters walking behind it.
   moveSpeed: 0.85
   maxHealth: 1
@@ -25,6 +27,66 @@ MonoBehaviour:
   - {fileID: -5268742417072764580, guid: 039e07690bd594bc49fee6226b8f5847, type: 3}
   - {fileID: 8783759873441989083, guid: 039e07690bd594bc49fee6226b8f5847, type: 3}
   animatorController: {fileID: 0}
+  abilityVisuals:
+  - id: 2
+    anchor: 0
+    frameMode: 0
+    singleFrameIndex: 0
+    frameRangeStartIndex: 0
+    frameRangeEndIndex: 0
+    activeSprite: {fileID: 21300000, guid: 92e96d2e4a76848b2af41eaeaea86e52, type: 3}
+    activeTint: {r: 1, g: 1, b: 1, a: 1}
+    activeOpacity: 1
+    activationFrames: []
+    activationFramesPerSecond: 8
+    activationTint: {r: 1, g: 1, b: 1, a: 1}
+    activationOpacity: 1
+    exitFrames:
+    - {fileID: 21300000, guid: 92e96d2e4a76848b2af41eaeaea86e52, type: 3}
+    - {fileID: 21300000, guid: e630d9bf210304d34bc74ac01034b8b8, type: 3}
+    - {fileID: 21300000, guid: a8351abc536b646db845b37f5d35a357, type: 3}
+    - {fileID: 21300000, guid: ee3ff75dd267546fa99a03855700442a, type: 3}
+    - {fileID: 21300000, guid: 3aae288fc3ffa4fdfa6f6ca38acb25b6, type: 3}
+    - {fileID: 21300000, guid: eb7fca76806234edca942b322f30cc2c, type: 3}
+    - {fileID: 21300000, guid: 3eb526a9c1cee4ca296ab6ad46c30944, type: 3}
+    - {fileID: 21300000, guid: 15e5bf9294cd54b3bbf409c154ac743a, type: 3}
+    exitFramesPerSecond: 8
+    exitTint: {r: 1, g: 1, b: 1, a: 1}
+    exitOpacity: 1
+    material: {fileID: 0}
+    localOffset: {x: 0, y: 0, z: 0}
+    localScale: {x: 1, y: 1, z: 1}
+    sortingOrderOffset: 1
+  - id: 4
+    anchor: 1
+    frameMode: 0
+    singleFrameIndex: 0
+    frameRangeStartIndex: 0
+    frameRangeEndIndex: 0
+    activeSprite: {fileID: 21300000, guid: 92e96d2e4a76848b2af41eaeaea86e52, type: 3}
+    activeTint: {r: 1, g: 1, b: 1, a: 1}
+    activeOpacity: 0.95
+    activationFrames: []
+    activationFramesPerSecond: 8
+    activationTint: {r: 1, g: 1, b: 1, a: 1}
+    activationOpacity: 1
+    exitFrames:
+    - {fileID: 21300000, guid: 92e96d2e4a76848b2af41eaeaea86e52, type: 3}
+    - {fileID: 21300000, guid: e630d9bf210304d34bc74ac01034b8b8, type: 3}
+    - {fileID: 21300000, guid: a8351abc536b646db845b37f5d35a357, type: 3}
+    - {fileID: 21300000, guid: ee3ff75dd267546fa99a03855700442a, type: 3}
+    - {fileID: 21300000, guid: 3aae288fc3ffa4fdfa6f6ca38acb25b6, type: 3}
+    - {fileID: 21300000, guid: eb7fca76806234edca942b322f30cc2c, type: 3}
+    - {fileID: 21300000, guid: 3eb526a9c1cee4ca296ab6ad46c30944, type: 3}
+    - {fileID: 21300000, guid: 15e5bf9294cd54b3bbf409c154ac743a, type: 3}
+    exitFramesPerSecond: 8
+    exitTint: {r: 1, g: 1, b: 1, a: 1}
+    exitOpacity: 1
+    material: {fileID: 0}
+    localOffset: {x: 0, y: 0, z: 0}
+    localScale: {x: 0.9, y: 0.9, z: 1}
+    sortingOrderOffset: 1
+  hudAbilityVisuals: []
   portraitSprite: {fileID: 0}
   assignedCharacter: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
   isDecoy: 0
@@ -70,8 +132,28 @@ MonoBehaviour:
   scrambleRadius: 3
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
+  scrambleTrueGlyphMinDwell: 2.6
+  scrambleTrueGlyphMaxDwell: 3.6
+  scrambleFalseBurstCount: 4
+  stainsNearbyGlyphs: 0
+  coversOwnGlyph: 0
+  glyphCoverInitialRevealSeconds: 1.2
+  glyphCoverHiddenSeconds: 2.4
+  glyphCoverRevealSeconds: 0.8
+  spawnsMirrorDecoy: 0
+  mirrorDecoyOffsetX: 1.4
+  mirrorDecoyConfusionPairs: {fileID: 0}
   blocksEnemiesBehind: 1
+  ashesFirstSlot: 0
+  removesNames: 0
+  chainsNearestEnemy: 0
+  splitsOnDefeat: 0
+  splitSpawnData: {fileID: 0}
+  splitCount: 2
+  splitOffsetX: 0.9
+  spriteScale: 1
   corruptedMeaning: Separation replaces connection between related syllables.
   trueMeaning: Context connects syllables into meaningful words.
   restoredLesson: Use the current word to decide which character matters.
   learningAbility: 5
+  suppressDiscovery: 0

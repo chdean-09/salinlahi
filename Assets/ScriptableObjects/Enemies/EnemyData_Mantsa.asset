@@ -15,8 +15,11 @@ MonoBehaviour:
   enemyID: mantsa
   displayName: Mantsa
   discoverySubtitle: 
-  description: Mantsa crawled from ink spilled across forgotten family records. It covers the small marks that distinguish one Baybayin character from another, while the original remains beneath the stain.
-  abilityLine: It stains part of a correct character until its true form is hard to see.
+  description: Mantsa crawled from ink spilled across forgotten family records. It
+    covers the small marks that distinguish one Baybayin character from another,
+    while the original remains beneath the stain.
+  abilityLine: It stains part of a correct character until its true form is hard
+    to see.
   moveSpeed: 1.15
   maxHealth: 1
   walkFrames:
@@ -25,6 +28,36 @@ MonoBehaviour:
   - {fileID: -4083920117069499327, guid: a464990bd41564e29bf7e12e074c9095, type: 3}
   - {fileID: 2349381710759319061, guid: a464990bd41564e29bf7e12e074c9095, type: 3}
   animatorController: {fileID: 0}
+  abilityVisuals:
+  - id: 3
+    anchor: 1
+    frameMode: 0
+    singleFrameIndex: 0
+    frameRangeStartIndex: 0
+    frameRangeEndIndex: 0
+    activeSprite: {fileID: 21300000, guid: 551df95defed042de97ed0aff4a88274, type: 3}
+    activeTint: {r: 1, g: 1, b: 1, a: 1}
+    activeOpacity: 0.72
+    activationFrames:
+    - {fileID: 21300000, guid: 4106bed81671f4d369d3466685ad6628, type: 3}
+    - {fileID: 21300000, guid: a6d9be517d4914d08a5f22029bee148b, type: 3}
+    - {fileID: 21300000, guid: 0f0a032a741c74177aedaaef12002dcf, type: 3}
+    - {fileID: 21300000, guid: 551df95defed042de97ed0aff4a88274, type: 3}
+    activationFramesPerSecond: 12
+    activationTint: {r: 1, g: 1, b: 1, a: 1}
+    activationOpacity: 0.88
+    exitFrames:
+    - {fileID: 21300000, guid: d97e93e19882e49c096aa61057fb7f08, type: 3}
+    - {fileID: 21300000, guid: c1437c93286a2455c8a2c54d5930eaed, type: 3}
+    - {fileID: 21300000, guid: e27967465711b4350a9dc301b5b5ee71, type: 3}
+    exitFramesPerSecond: 12
+    exitTint: {r: 1, g: 1, b: 1, a: 1}
+    exitOpacity: 0.88
+    material: {fileID: 0}
+    localOffset: {x: 0, y: 0, z: 0}
+    localScale: {x: 0.32, y: 0.32, z: 1}
+    sortingOrderOffset: 1
+  hudAbilityVisuals: []
   portraitSprite: {fileID: 0}
   assignedCharacter: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
   isDecoy: 0

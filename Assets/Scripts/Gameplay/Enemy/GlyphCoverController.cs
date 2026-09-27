@@ -63,9 +63,18 @@ public sealed class GlyphCoverController : MonoBehaviour
         _suppressedForIntroductionSpawn = suppressed;
         if (suppressed)
         {
-            SetCovered(false);
+            SetCovered(false, animateRemoval: false);
             _initialized = false;
         }
+    }
+
+    /// <summary>Clear the previous pooled occupant's phase and establish this spawn's suppression.</summary>
+    public void ResetForSpawn(bool suppressed)
+    {
+        SetCovered(false, animateRemoval: false);
+        _initialized = false;
+        _phaseTimer = 0f;
+        _suppressedForIntroductionSpawn = suppressed;
     }
 
     private void Awake()
@@ -83,7 +92,7 @@ public sealed class GlyphCoverController : MonoBehaviour
 
     private void OnDisable()
     {
-        SetCovered(false);
+        SetCovered(false, animateRemoval: false);
         _initialized = false;
     }
 
@@ -108,7 +117,7 @@ public sealed class GlyphCoverController : MonoBehaviour
         if (_suppressedForIntroductionSpawn || data == null || !data.coversOwnGlyph || _enemy.IsDying)
         {
             if (_covered)
-                SetCovered(false);
+                SetCovered(false, animateRemoval: false);
             return;
         }
 
@@ -117,6 +126,19 @@ public sealed class GlyphCoverController : MonoBehaviour
             _initialized = true;
             _phaseTimer = Mathf.Max(0f, data.glyphCoverInitialRevealSeconds);
             SetCovered(false);
+        }
+
+        // The configured hidden/reveal durations describe time spent in the settled state, not
+        // the cover's closing/opening one-shot. Keep the phase timer paused through either motion
+        // so the player still gets the full authored covered and readable windows.
+        EnemyAbilityVisualPresenter presenter = _enemy.AbilityVisuals;
+        bool transitionPlaying = presenter != null
+            && (_covered
+                ? presenter.IsActivationPlaying(EnemyAbilityVisualId.GlyphCover)
+                : presenter.IsExitPlaying(EnemyAbilityVisualId.GlyphCover));
+        if (transitionPlaying)
+        {
+            return;
         }
 
         _phaseTimer -= Mathf.Max(0f, deltaTime);
@@ -128,10 +150,24 @@ public sealed class GlyphCoverController : MonoBehaviour
             _covered ? data.glyphCoverHiddenSeconds : data.glyphCoverRevealSeconds);
     }
 
-    private void SetCovered(bool covered)
+    private void SetCovered(bool covered, bool animateRemoval = true)
     {
+        bool wasCovered = _covered;
         _covered = covered;
+
+        EnemyAbilityVisualPresenter presenter = _enemy != null ? _enemy.AbilityVisuals : null;
+        bool hasCoverVisual = presenter != null && presenter.HasVisual(EnemyAbilityVisualId.GlyphCover);
         if (_enemy != null && _enemy.GlyphBadge != null)
-            _enemy.GlyphBadge.SetCovered(covered);
+            _enemy.GlyphBadge.SetCovered(hasCoverVisual ? false : covered);
+
+        if (!hasCoverVisual)
+            return;
+
+        if (covered)
+            presenter.SetActive(EnemyAbilityVisualId.GlyphCover, true);
+        else if (wasCovered && animateRemoval)
+            presenter.PlayExit(EnemyAbilityVisualId.GlyphCover);
+        else
+            presenter.SetActive(EnemyAbilityVisualId.GlyphCover, false);
     }
 }

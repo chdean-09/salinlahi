@@ -15,8 +15,11 @@ MonoBehaviour:
   enemyID: walang-awa
   displayName: Walang-Awa
   discoverySubtitle: 
-  description: Walang-Awa forged its armor from memories Paglimot stripped from different generations. Every plate bears a stolen character, and breaking one only reveals another beneath it.
-  abilityLine: Each broken armor layer reveals a different remembered character beneath it.
+  description: Walang-Awa forged its armor from memories Paglimot stripped from different
+    generations. Every plate bears a stolen character, and breaking one only reveals
+    another beneath it.
+  abilityLine: Each broken armor layer reveals a different remembered character beneath
+    it.
   moveSpeed: 0.95
   maxHealth: 3
   walkFrames:
@@ -25,6 +28,32 @@ MonoBehaviour:
   - {fileID: 6119168458706163183, guid: 9006741a37bca40e3b552070e14632d2, type: 3}
   - {fileID: -151798962215182357, guid: 9006741a37bca40e3b552070e14632d2, type: 3}
   animatorController: {fileID: 0}
+  abilityVisuals:
+  - id: 0
+    anchor: 0
+    frameMode: 1
+    singleFrameIndex: 0
+    frameRangeStartIndex: 0
+    frameRangeEndIndex: 0
+    activeSprite: {fileID: 21300000, guid: db7c947ed43854af1afa25a98a34dee4, type: 3}
+    activeTint: {r: 1, g: 1, b: 1, a: 1}
+    activeOpacity: 0.45
+    exitFrames:
+    - {fileID: 21300000, guid: db7c947ed43854af1afa25a98a34dee4, type: 3}
+    - {fileID: 21300000, guid: d6990f5c5f05340d5a3b4ae4fd2f4084, type: 3}
+    - {fileID: 21300000, guid: 3474db20679d14ae2a55add5e409f638, type: 3}
+    - {fileID: 21300000, guid: 78411d79ab6ac4e9789a43a298b7ae59, type: 3}
+    - {fileID: 21300000, guid: 2e037f0327b994dc2b6dc5ddf22965e5, type: 3}
+    - {fileID: 21300000, guid: 5fb8a7bf014984165818bf7a838ae67f, type: 3}
+    - {fileID: 21300000, guid: fb51e34f113a7410b9a1b35ac53c5a31, type: 3}
+    - {fileID: 21300000, guid: 1e6e5f9e97e0e464a8ef952654d459e3, type: 3}
+    exitFramesPerSecond: 8
+    exitTint: {r: 1, g: 1, b: 1, a: 1}
+    exitOpacity: 0.85
+    material: {fileID: 0}
+    localOffset: {x: 0, y: 0, z: 0}
+    localScale: {x: 1, y: 1, z: 1}
+    sortingOrderOffset: 1
   portraitSprite: {fileID: 0}
   assignedCharacter: {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
   isDecoy: 0
@@ -70,7 +99,28 @@ MonoBehaviour:
   scrambleRadius: 3
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
+  scrambleTrueGlyphMinDwell: 2.6
+  scrambleTrueGlyphMaxDwell: 3.6
+  scrambleFalseBurstCount: 4
+  stainsNearbyGlyphs: 0
+  coversOwnGlyph: 0
+  glyphCoverInitialRevealSeconds: 1.2
+  glyphCoverHiddenSeconds: 2.4
+  glyphCoverRevealSeconds: 0.8
+  spawnsMirrorDecoy: 0
+  mirrorDecoyOffsetX: 1.4
+  mirrorDecoyConfusionPairs: {fileID: 0}
+  blocksEnemiesBehind: 0
+  ashesFirstSlot: 0
+  removesNames: 0
+  chainsNearestEnemy: 0
+  splitsOnDefeat: 0
+  splitSpawnData: {fileID: 0}
+  splitCount: 2
+  splitOffsetX: 0.9
+  spriteScale: 1
   corruptedMeaning: Different generations of memory are locked in layers.
   trueMeaning: Every layer can carry a distinct learned character.
   restoredLesson: Reassess the glyph after each armor layer breaks.
   learningAbility: 19
+  suppressDiscovery: 0

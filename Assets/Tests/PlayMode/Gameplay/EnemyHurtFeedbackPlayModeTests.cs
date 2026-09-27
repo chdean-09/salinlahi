@@ -46,7 +46,8 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
 
             float waited = 0f;
             int frameCount = 0;
-            while (waited < 0.2f && frameCount < 300)
+            // Batch PlayMode can run 300 frames before the pause window elapses.
+            while (waited < 0.2f && frameCount < 100000)
             {
                 yield return null;
                 waited += Time.deltaTime;
