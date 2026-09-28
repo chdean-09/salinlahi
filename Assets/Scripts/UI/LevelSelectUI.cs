@@ -9,9 +9,8 @@ using UnityEngine.UI;
 /// Prev/Next arrow buttons remain visible at era edges; their interactable
 /// flag is toggled and Unity's Button ColorBlock disabled-color tints them grey.
 ///
-/// Era navigation is normally switched off at compile time — see
-/// <see cref="EraNavigationEnabled"/> — but the ProgressManager development override
-/// enables it for manually exercising all authored levels.
+/// Era arrows allow browsing configured campaign eras. Progression locks remain enforced
+/// per level by ProgressManager and LevelButton.
 /// </summary>
 public class LevelSelectUI : MonoBehaviour
 {
@@ -33,27 +32,10 @@ public class LevelSelectUI : MonoBehaviour
     [SerializeField] private Button _nextEraButton;
 
     /// <summary>
-    /// Production switch for the Prev/Next era arrows. Eras 2-3 are configured in
-    /// CampaignConfig_RevisedV1 but still lack their final art assets, so normal player
-    /// navigation remains disabled until the release-facing gate is intentionally opened.
-    ///
-    /// Deliberately a private compile-time const, NOT a [SerializeField] and NOT an
-    /// #if UNITY_EDITOR guard:
-    ///   - a serialized field could be re-checked in the Inspector or overridden by a
-    ///     scene/prefab value, so the lock would not be guaranteed;
-    ///   - an #if guard would disable it in the Editor but leave it live in a player
-    ///     build, which is the opposite of what is wanted.
-    /// As a const there is no release runtime, Inspector, or save-data path that can turn
-    /// era navigation back on. ProgressManager's Editor/development-only testing flag is
-    /// the deliberate exception used to exercise authored content without changing this
-    /// production gate.
-    ///
-    /// When flipping it back to true, also restore the per-edge conditions that
-    /// <see cref="UpdateNavigationButtons"/> replaced with a flat assignment:
-    ///     _prevEraButton.interactable = _currentEraIndex &gt; 0;
-    ///     _nextEraButton.interactable = _currentEraIndex &lt; ResolveEras().Count - 1;
+    /// Enables browsing configured campaign eras. Both arrows stay within the first and
+    /// last era, while LevelButton enforces each level's progression lock.
     /// </summary>
-    private const bool EraNavigationEnabled = false;
+    private const bool EraNavigationEnabled = true;
 
     [Header("Back")]
     [SerializeField] private Button _backButton;
@@ -226,40 +208,28 @@ public class LevelSelectUI : MonoBehaviour
 
     private void UpdateNavigationButtons()
     {
-        bool testingOverride = ProgressManager.Instance != null &&
-            ProgressManager.Instance.EnableAllLevelsForTesting;
-        bool navigationEnabled = EraNavigationEnabled || testingOverride;
         int eraCount = ResolveEras().Count;
 
-        // Production remains locked behind EraNavigationEnabled. The development override
-        // restores normal edge-aware arrows so every authored era can be reached manually.
         if (_prevEraButton != null)
-            _prevEraButton.interactable = navigationEnabled && _currentEraIndex > 0;
+            _prevEraButton.interactable = EraNavigationEnabled && _currentEraIndex > 0;
 
         if (_nextEraButton != null)
-            _nextEraButton.interactable = navigationEnabled && _currentEraIndex < eraCount - 1;
+            _nextEraButton.interactable = EraNavigationEnabled && _currentEraIndex < eraCount - 1;
     }
 
     /// <summary>
     /// SALIN-137 AC3: resolves which eras this screen can show.
     ///
-    /// The serialized <c>_eras</c> list in <c>Assets/_Scenes/LevelSelect.unity</c>
-    /// currently holds only <c>Era_01</c>, while <c>CampaignConfig_RevisedV1</c>
-    /// configures three — so era progression would be undemonstrable from the scene
-    /// alone. When the campaign configures more eras than the scene authored, the
-    /// campaign's own order wins. That is the same order
-    /// <see cref="CampaignSaveValidator.GetConfiguredLevelIds"/> flattens, and therefore
-    /// the same order the unlock rule advances through, so the screen and the rule can
-    /// never disagree.
+    /// The LevelSelect scene assigns <c>Era_01</c>, <c>Era_02</c>, and <c>Era_03</c>.
+    /// If the campaign configures more eras than the scene authored, the campaign's order
+    /// wins. That matches <see cref="CampaignSaveValidator.GetConfiguredLevelIds"/> and the
+    /// progression rule, so the screen and unlock order stay aligned.
     ///
-    /// The fallback is KEPT rather than gated to fully-authored eras. The later eras reuse
-    /// the five era-local number sprites from Ugat until dedicated art is authored, while
-    /// <see cref="LevelButton.Setup"/> still clears a missing sprite defensively instead of
+    /// The fallback is KEPT rather than gated to fully-authored eras. Later eras reuse the
+    /// five era-local number sprites from Ugat until dedicated art is authored, while
+    /// <see cref="LevelButton.Setup"/> clears a missing sprite defensively instead of
     /// leaving the previous era's numbered scroll behind.
     ///
-    /// OWED SCENE WORK: assigning Era_02 and Era_03 to <c>_eras</c> in the Inspector
-    /// makes this fallback inert. It is kept as the safety net for legacy/blocked mode,
-    /// where <c>SaveManager.Campaign</c> is unavailable.
     /// OWED ART: dedicated Era 2 and Era 3 banners and backgrounds.
     /// </summary>
     private List<EraConfigSO> ResolveEras()
