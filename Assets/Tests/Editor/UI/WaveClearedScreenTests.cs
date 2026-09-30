@@ -188,6 +188,23 @@ namespace Salinlahi.Tests.Editor.UI
         }
 
         /// <summary>
+        /// Every size on this screen is a 1080x1920 reference unit (UITextScale). The canvas it
+        /// builds for itself used to keep Unity's ConstantPixelSize default, which draws those
+        /// units 1:1 in device pixels — a quarter smaller than the rest of the UI on a
+        /// 1284x2778 phone.
+        /// </summary>
+        [Test]
+        public void BuiltCanvas_ScalesWithTheScreenLikeEveryOtherSurface()
+        {
+            WaveClearedScreenUI screen = CreateBuiltScreen();
+
+            CanvasScaler scaler = screen.GetComponentInParent<CanvasScaler>();
+            Assert.IsNotNull(scaler, "setup: the screen builds its own canvas when it has none.");
+            Assert.AreEqual(CanvasScaler.ScaleMode.ScaleWithScreenSize, scaler.uiScaleMode);
+            Assert.AreEqual(new Vector2(1080f, 1920f), scaler.referenceResolution);
+        }
+
+        /// <summary>
         /// Negative control for <see cref="WaveClearedScreenUI.HasRequiredReferences"/>.
         ///
         /// HOW THIS CONTROL BREAKS THE SURFACE, AND WHY NOT BY THE OBVIOUS ROUTE. Removing

@@ -327,6 +327,26 @@ namespace Salinlahi.Tests.Editor.Core
             finally { Object.DestroyImmediate(sting); }
         }
 
+        /// <summary>
+        /// Playtest 2026-09-29: the victory fanfare started while Level 1's outro dialogue was still
+        /// on screen. OnLevelComplete is raised at the atomic save, before the outro and the
+        /// after-level cutscene, so the sting has to wait for the Results screen itself.
+        /// </summary>
+        [Test]
+        public void VictorySting_ListensForTheResultsScreen_NotLevelComplete()
+        {
+            InvokePrivateMethod(_audioManager, "OnEnable");
+            try
+            {
+                Assert.IsTrue(SubscribesTo("OnResultsScreenShown"),
+                    "The victory sting must be bound to the Results screen appearing.");
+                Assert.IsFalse(SubscribesTo("OnLevelComplete"),
+                    "OnLevelComplete fires before the outro dialogue, so a sting bound there plays "
+                    + "over the story instead of over the win.");
+            }
+            finally { InvokePrivateMethod(_audioManager, "OnDisable"); }
+        }
+
         [Test]
         public void SceneLoad_StopsAnInFlightSting()
         {

@@ -285,7 +285,9 @@ public sealed class MemoryCardUI : MonoBehaviour
             return;
 
         RectTransform rowRect = _glyphRow as RectTransform;
-        float rowWidth = ResolveGlyphRowWidth(rowRect != null ? rowRect.rect.width : 0f);
+        Canvas canvas = GetComponentInParent<Canvas>();
+        float canvasWidth = canvas != null ? ((RectTransform)canvas.transform).rect.width : 0f;
+        float rowWidth = ResolveGlyphRowWidth(rowRect != null ? rowRect.rect.width : 0f, canvasWidth);
 
         float inkSize = ResolveGlyphSize(glyphs.Count, rowWidth);
         float stride = inkSize + GlyphGap;
@@ -338,6 +340,14 @@ public sealed class MemoryCardUI : MonoBehaviour
                 typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             canvas = canvasObject.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            // The card's sizes are 1080x1920 reference units (UITextScale). The default
+            // ConstantPixelSize scaler drew them 1:1 in device pixels — about a quarter smaller
+            // than the Results screen behind it on a 1284x2778 phone ("1/5" barely readable).
+            CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1080f, 1920f);
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 0.5f;
             transform.SetParent(canvas.transform, false);
         }
         canvas.sortingOrder = Mathf.Max(canvas.sortingOrder, 320);
@@ -478,7 +488,7 @@ public sealed class MemoryCardUI : MonoBehaviour
     /// <see cref="Hide"/> leaves that root inactive between cards. Falling back to the
     /// card's own paper width keeps a five-symbol level inside the scroll either way.
     /// </summary>
-    public static float ResolveGlyphRowWidth(float measuredWidth)
+    public static float ResolveGlyphRowWidth(float measuredWidth, float canvasWidth = 0f)
     {
         if (measuredWidth > 0f)
             return measuredWidth;
@@ -486,9 +496,13 @@ public sealed class MemoryCardUI : MonoBehaviour
         // The card stretches to ScrollArea, so its paper width tracks the screen — sizing
         // off the live screen keeps a five-symbol row inside the card on narrow phones,
         // where the old fixed 820px basis would have over-promised the row real width.
-        // CardWidth is the stand-in when no screen is live (edit-mode fixture hosts).
-        float cardWidth = Screen.width > 0
-            ? Screen.width * ScrollPanelArt.ScrollArea.width
+        // The canvas's own width comes first: glyph sizes are canvas units, and under a
+        // ScaleWithScreenSize scaler those are not screen pixels, so sizing off Screen.width
+        // would overestimate the row by the scale factor. CardWidth is the stand-in when
+        // neither is live (edit-mode fixture hosts).
+        float basis = canvasWidth > 0f ? canvasWidth : Screen.width;
+        float cardWidth = basis > 0f
+            ? basis * ScrollPanelArt.ScrollArea.width
             : CardWidth;
         return cardWidth * (ContentMaxX - ContentMinX);
     }

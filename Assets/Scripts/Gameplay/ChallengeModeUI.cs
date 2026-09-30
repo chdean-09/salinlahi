@@ -78,19 +78,22 @@ public class ChallengeModeUI : MonoBehaviour
         panelImage.raycastTarget = false;
         bool onParchment = ScrollPanelArt.ApplyFull(panelImage);
 
-        _progressText = CreateLabel("Progress", UITextScale.Secondary, new Vector2(0.17f, 0.66f), new Vector2(0.79f, 0.80f));
+        // Every row sits inside ScrollPanelArt.FullSafeArea (y 0.16-0.80), the paper between the
+        // rods. The action row used to start at y 0.025, so the Hint button was drawn over the
+        // bottom rod instead of on the parchment (playtest 2026-09-29).
+        _progressText = CreateLabel("Progress", UITextScale.Secondary, new Vector2(0.17f, 0.69f), new Vector2(0.79f, 0.79f));
         _progressText.textWrappingMode = TextWrappingModes.NoWrap;
-        _timerText = CreateLabel("Timer", UITextScale.Caption, new Vector2(0.72f, 0.66f), new Vector2(0.86f, 0.80f));
+        _timerText = CreateLabel("Timer", UITextScale.Caption, new Vector2(0.72f, 0.69f), new Vector2(0.83f, 0.79f));
         _timerText.alignment = TextAlignmentOptions.Right;
         _timerText.textWrappingMode = TextWrappingModes.NoWrap;
-        _promptText = CreateLabel("Prompt", UITextScale.Body, new Vector2(0.20f, 0.42f), new Vector2(0.80f, 0.64f));
-        _statusText = CreateLabel("Status", UITextScale.Caption, new Vector2(0.20f, 0.30f), new Vector2(0.80f, 0.41f));
+        _promptText = CreateLabel("Prompt", UITextScale.Body, new Vector2(0.18f, 0.47f), new Vector2(0.82f, 0.68f));
+        _statusText = CreateLabel("Status", UITextScale.Caption, new Vector2(0.20f, 0.39f), new Vector2(0.80f, 0.46f));
 
         GameObject choices = new GameObject("AnswerChoices", typeof(RectTransform), typeof(HorizontalLayoutGroup));
         choices.transform.SetParent(transform, false);
         _choicesRoot = choices.GetComponent<RectTransform>();
-        _choicesRoot.anchorMin = new Vector2(0.18f, 0.17f);
-        _choicesRoot.anchorMax = new Vector2(0.82f, 0.29f);
+        _choicesRoot.anchorMin = new Vector2(0.18f, 0.27f);
+        _choicesRoot.anchorMax = new Vector2(0.82f, 0.38f);
         _choicesRoot.offsetMin = _choicesRoot.offsetMax = Vector2.zero;
         HorizontalLayoutGroup choicesLayout = choices.GetComponent<HorizontalLayoutGroup>();
         choicesLayout.spacing = 12f;
@@ -102,8 +105,8 @@ public class ChallengeModeUI : MonoBehaviour
         GameObject actions = new GameObject("ChallengeActions", typeof(RectTransform), typeof(HorizontalLayoutGroup));
         actions.transform.SetParent(transform, false);
         _actionsRoot = actions.GetComponent<RectTransform>();
-        _actionsRoot.anchorMin = new Vector2(0.18f, 0.025f);
-        _actionsRoot.anchorMax = new Vector2(0.82f, 0.15f);
+        _actionsRoot.anchorMin = new Vector2(0.18f, 0.17f);
+        _actionsRoot.anchorMax = new Vector2(0.82f, 0.26f);
         _actionsRoot.offsetMin = _actionsRoot.offsetMax = Vector2.zero;
         HorizontalLayoutGroup actionsLayout = actions.GetComponent<HorizontalLayoutGroup>();
         actionsLayout.spacing = 12f;

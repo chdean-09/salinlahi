@@ -76,6 +76,23 @@ namespace Salinlahi.Tests.Editor.UI
             }
         }
 
+        /// <summary>
+        /// Playtest 2026-09-29: "increase the text size of the 3/5". The card's fonts are 1080x1920
+        /// reference units, but the canvas it builds for itself kept Unity's ConstantPixelSize
+        /// default, so on a phone the card rendered a quarter smaller than the Results screen
+        /// behind it.
+        /// </summary>
+        [Test]
+        public void Present_OwnCanvas_ScalesWithTheScreenLikeEveryOtherSurface()
+        {
+            MemoryCardUI card = PresentAuthoredCard();
+
+            CanvasScaler scaler = card.GetComponentInParent<CanvasScaler>();
+            Assert.IsNotNull(scaler, "setup: the card builds its own canvas when it has none.");
+            Assert.AreEqual(CanvasScaler.ScaleMode.ScaleWithScreenSize, scaler.uiScaleMode);
+            Assert.AreEqual(new Vector2(1080f, 1920f), scaler.referenceResolution);
+        }
+
         [Test]
         public void Present_BuildsBothButtons()
         {

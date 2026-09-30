@@ -20,6 +20,10 @@ public static class EventBus
     // machine converts an accepted atomic save into OnLevelComplete; defense
     // systems can never mark a level complete or write campaign rewards.
     public static event Action OnDefenseComplete;
+    // The Results (victory) screen has just been put in front of the player. Distinct from
+    // OnLevelComplete, which the flow raises at the atomic save, BEFORE the outro dialogue and
+    // the after-level cutscene: celebration cues keyed to that moment play over the outro.
+    public static event Action OnResultsScreenShown;
     public static event Action<int> OnWaveStarted; // int = wave index
     public static event Action<int> OnWaveCleared; // int = wave index
     // The target text is whole: every slot of every focus word has been restored, which is
@@ -109,6 +113,7 @@ public static class EventBus
     public static void RaiseGameOver() => OnGameOver?.Invoke();
     public static void RaiseLevelComplete() => OnLevelComplete?.Invoke();
     public static void RaiseDefenseComplete() => OnDefenseComplete?.Invoke();
+    public static void RaiseResultsScreenShown() => OnResultsScreenShown?.Invoke();
     public static void RaiseWaveStarted(int index) => OnWaveStarted?.Invoke(index);
     public static void RaiseWaveCleared(int index) => OnWaveCleared?.Invoke(index);
     public static void RaiseFocusWordRestorationComplete() => OnFocusWordRestorationComplete?.Invoke();

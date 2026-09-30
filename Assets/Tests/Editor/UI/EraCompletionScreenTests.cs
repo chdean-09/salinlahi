@@ -117,6 +117,42 @@ namespace Salinlahi.Tests.Editor.UI
             }
         }
 
+        /// <summary>
+        /// Playtest 2026-09-29: the era screen rendered small and its heading never appeared. Its
+        /// sizes are 1080x1920 reference units, but the canvas it builds for itself kept Unity's
+        /// ConstantPixelSize default, and the heading sat under the notch.
+        /// </summary>
+        [Test]
+        public void Present_OwnCanvas_ScalesWithTheScreenLikeEveryOtherSurface()
+        {
+            EraCompletionScreenUI screen = PresentUgat();
+
+            CanvasScaler scaler = screen.GetComponentInParent<CanvasScaler>();
+            Assert.IsNotNull(scaler, "setup: the screen builds its own canvas when it has none.");
+            Assert.AreEqual(CanvasScaler.ScaleMode.ScaleWithScreenSize, scaler.uiScaleMode);
+            Assert.AreEqual(new Vector2(1080f, 1920f), scaler.referenceResolution);
+        }
+
+        [Test]
+        public void Present_HeadingAndButtons_SitInsideTheDeviceSafeArea()
+        {
+            EraCompletionScreenUI screen = PresentUgat();
+            var serialized = new SerializedObject(screen);
+
+            foreach (string field in new[] { "_headingText", "_enterNextEraButton", "_closeButton" })
+            {
+                GameObject control = GameObjectOf(Reference(serialized, field));
+                Assert.IsNotNull(
+                    control.GetComponentInParent<SafeAreaHandler>(),
+                    field + " is laid out against the raw screen edge, where a notch or the home "
+                    + "indicator can cover it.");
+            }
+
+            Assert.IsNull(
+                screen.GetComponent<SafeAreaHandler>(),
+                "The dim itself must stay full-screen; only the content is inset.");
+        }
+
         // ----- the five tiles -----------------------------------------------------------
 
         [Test]

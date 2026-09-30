@@ -376,6 +376,14 @@ public sealed class EraCompletionScreenUI : MonoBehaviour
                 typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             canvas = canvasObject.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            // Every size below is in 1080x1920 reference units (UITextScale). The default
+            // ConstantPixelSize scaler drew them 1:1 in device pixels, so on a 1284x2778 phone
+            // the whole screen came out small and cramped (playtest 2026-09-29).
+            CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1080f, 1920f);
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 0.5f;
             transform.SetParent(canvas.transform, false);
         }
 
@@ -400,7 +408,19 @@ public sealed class EraCompletionScreenUI : MonoBehaviour
         overlayRect.anchorMax = Vector2.one;
         overlayRect.offsetMin = overlayRect.offsetMax = Vector2.zero;
 
-        _headingText = CreateText(transform, "EraCompleteHeadingText", string.Empty, UITextScale.Title);
+        // The dim covers the whole screen; the content lives inside the device safe area. The
+        // heading used to sit 40 units from the very top, under a notch or dynamic island, where
+        // the playtest never saw it, and Close hugged the home indicator at the bottom.
+        GameObject safeAreaObject = new GameObject("SafeArea", typeof(RectTransform));
+        safeAreaObject.transform.SetParent(transform, false);
+        RectTransform safeAreaRect = safeAreaObject.GetComponent<RectTransform>();
+        safeAreaRect.anchorMin = Vector2.zero;
+        safeAreaRect.anchorMax = Vector2.one;
+        safeAreaRect.offsetMin = safeAreaRect.offsetMax = Vector2.zero;
+        safeAreaObject.AddComponent<SafeAreaHandler>();
+        Transform safeArea = safeAreaObject.transform;
+
+        _headingText = CreateText(safeArea, "EraCompleteHeadingText", string.Empty, UITextScale.Title);
         RectTransform headingRect = ((Component)_headingText).GetComponent<RectTransform>();
         headingRect.anchorMin = new Vector2(0f, 1f);
         headingRect.anchorMax = new Vector2(1f, 1f);
@@ -411,7 +431,7 @@ public sealed class EraCompletionScreenUI : MonoBehaviour
 
         // ⚠️ The AC-2 slot. Built so the layout is finished and the guard can see it; left
         // inactive because no era ending line is authored. See the class summary.
-        _endingLineText = CreateText(transform, "EraEndingLineText", string.Empty, UITextScale.Body);
+        _endingLineText = CreateText(safeArea, "EraEndingLineText", string.Empty, UITextScale.Body);
         RectTransform endingRect = ((Component)_endingLineText).GetComponent<RectTransform>();
         endingRect.anchorMin = new Vector2(0f, 1f);
         endingRect.anchorMax = new Vector2(1f, 1f);
@@ -422,7 +442,7 @@ public sealed class EraCompletionScreenUI : MonoBehaviour
         _endingLineText.gameObject.SetActive(false);
 
         _memoriesHeadingText =
-            CreateText(transform, "MemoriesHeadingText", EraCompletionCopy.MemoriesHeading, UITextScale.Body);
+            CreateText(safeArea, "MemoriesHeadingText", EraCompletionCopy.MemoriesHeading, UITextScale.Body);
         RectTransform memoriesRect = ((Component)_memoriesHeadingText).GetComponent<RectTransform>();
         memoriesRect.anchorMin = new Vector2(0f, 1f);
         memoriesRect.anchorMax = new Vector2(1f, 1f);
@@ -433,7 +453,7 @@ public sealed class EraCompletionScreenUI : MonoBehaviour
 
         GameObject viewport = new GameObject(
             "Viewport", typeof(RectTransform), typeof(Image), typeof(Mask), typeof(ScrollRect));
-        viewport.transform.SetParent(transform, false);
+        viewport.transform.SetParent(safeArea, false);
         RectTransform viewportRect = viewport.GetComponent<RectTransform>();
         viewportRect.anchorMin = Vector2.zero;
         viewportRect.anchorMax = Vector2.one;
@@ -473,9 +493,9 @@ public sealed class EraCompletionScreenUI : MonoBehaviour
         _contentRoot = content.transform;
 
         _enterNextEraButton = CreateButton(
-            transform, "EnterNextEraButton", EraCompletionCopy.EnterNextEraLabel, 0f, 116f);
+            safeArea, "EnterNextEraButton", EraCompletionCopy.EnterNextEraLabel, 0f, 116f);
         _closeButton = CreateButton(
-            transform, "CloseButton", EraCompletionCopy.CloseLabel, 0f, 24f);
+            safeArea, "CloseButton", EraCompletionCopy.CloseLabel, 0f, 24f);
     }
 
     private static TMP_Text CreateText(Transform parent, string name, string text, float fontSize)

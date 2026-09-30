@@ -207,7 +207,9 @@ public class AudioManager : Singleton<AudioManager>
         EventBus.OnChainAttackHit += PlayChainLightningSfx;
         EventBus.OnCharacterRecognized += PlayCorrectGlyphSfx;
         EventBus.OnDrawingFailed += PlayWrongGlyphSfx;
-        EventBus.OnLevelComplete += PlayVictorySting;
+        // On the Results screen, not OnLevelComplete: the flow raises that at the atomic save,
+        // so the sting used to play under the outro dialogue before the player had seen a win.
+        EventBus.OnResultsScreenShown += PlayVictorySting;
         EventBus.OnGameOver += PlayDefeatSting;
         EventBus.OnEnemyDefeated += PlayEnemyDefeatedSfx;
         EventBus.OnCharacterUnlocked += PlayCharacterUnlockedSfx;
@@ -222,7 +224,7 @@ public class AudioManager : Singleton<AudioManager>
         EventBus.OnChainAttackHit -= PlayChainLightningSfx;
         EventBus.OnCharacterRecognized -= PlayCorrectGlyphSfx;
         EventBus.OnDrawingFailed -= PlayWrongGlyphSfx;
-        EventBus.OnLevelComplete -= PlayVictorySting;
+        EventBus.OnResultsScreenShown -= PlayVictorySting;
         EventBus.OnGameOver -= PlayDefeatSting;
         EventBus.OnEnemyDefeated -= PlayEnemyDefeatedSfx;
         EventBus.OnCharacterUnlocked -= PlayCharacterUnlockedSfx;

@@ -799,6 +799,118 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 "The badge stays hidden into beat 3 as well — beat 7 is the only reveal.");
         }
 
+        /// <summary>
+        /// Playtest 2026-09-29: while the real Iligaw's glyph was held back for beat 7, the mirror
+        /// copy beside it showed its false glyph (A, one dot from E/I). The first symbol the player
+        /// read was the decoy's. A late-reveal lesson must keep the copy dark with its source and
+        /// reveal them together.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LateRevealLesson_ConcealsTheMirrorCopysGlyph_UntilBeat7()
+        {
+            yield return null;
+
+            SetPrivateField(_beat, "_nameStepSeconds", 0f);
+            SetPrivateField(_beat, "_abilityStepSeconds", 0f);
+            SetPrivateField(_beat, "_onScreenWaitTimeoutSeconds", 0f);
+
+            GiveTheDecoyAPoolToDrawFrom();
+
+            BaybayinCharacterSO eiChar = MakeCharacter("EI", "symbol.test.conceal.ei");
+            BaybayinCharacterSO naChar = MakeCharacter("NA", "symbol.test.conceal.na");
+            eiChar.badgeSprite = GlyphBadgePlayModeTestHelpers.CreateSprite(Color.red);
+
+            EnemyDataSO iligawData = CreateEnemyData(
+                "test_iligaw_conceal", "Iligaw", eiChar, spawnsMirrorDecoy: true);
+            EnemyLessonSO lesson = CreateIligawShapedLesson(iligawData);
+            lesson.abilityBeatSeconds = 0.05f;
+            Assert.IsTrue(lesson.revealGlyphLate, "setup: this is the shipped late-reveal shape.");
+
+            FocusWordDefinition word = CreateWord(
+                "level.test.conceal.ina", "ina", "INA", eiChar, naChar);
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO> { iligawData }, new[] { lesson },
+                new List<FocusWordDefinition> { word });
+            _gameManager.SetLevel(config);
+            SetPrivateField(_presenter, "_level", config);
+            _presenter.RestorationState.Configure(config.focusWords);
+
+            Enemy iligaw = CreateEnemyShell("Iligaw_Conceal");
+            (_, SpriteRenderer badgeRenderer) = GlyphBadgePlayModeTestHelpers
+                .AddGlyphBadgeChild(iligaw.gameObject, GlyphBadgePlayModeTestHelpers.CreateBadgeConfig());
+            Assert.IsTrue(iligaw.Initialize(iligawData));
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndArm, iligaw.IntroductionOutcome,
+                "setup: this spawn must be the lesson.");
+
+            MirrorDecoyController mirror = iligaw.GetComponent<MirrorDecoyController>();
+            Assert.IsNotNull(mirror, "setup: spawnsMirrorDecoy should attach MirrorDecoyController.");
+            // Same device as the beat 2 tests: keep Update from drawing on the stand-in pool.
+            SetPrivateField(mirror, "_spawnAttempted", true);
+
+            yield return new WaitForSecondsRealtime(0.2f);
+
+            Assert.IsTrue(IsBadgeHidden(badgeRenderer),
+                "setup: the real glyph must still be held back for beat 7.");
+            Assert.IsTrue(GetPrivateField<bool>(mirror, "_copyGlyphConcealed"),
+                "While the real glyph is dark, a copy placed now must be dark too — otherwise the "
+                + "decoy's false glyph is the first one the player reads.");
+
+            // The copy lands; beat 2 releases and the lesson runs on to beat 7.
+            SetPrivateField(mirror, "_decoySpawnedThisSpawn", true);
+
+            float deadline = Time.realtimeSinceStartup + 5f;
+            while (IsBadgeHidden(badgeRenderer) && Time.realtimeSinceStartup < deadline)
+                yield return null;
+
+            Assert.IsFalse(IsBadgeHidden(badgeRenderer), "setup: beat 7 must have revealed the glyph.");
+            Assert.IsFalse(GetPrivateField<bool>(mirror, "_copyGlyphConcealed"),
+                "Beat 7 reveals the real glyph and its look-alike together; the copy must not stay "
+                + "dark once the reveal has happened.");
+        }
+
+        /// <summary>
+        /// The concealment works through <see cref="EnemyGlyphBadge.SetCovered"/>, which toggles the
+        /// renderer and leaves its colour alone — so the copy comes back still wearing its shadow
+        /// tint instead of as a full-strength badge that reads as the real enemy.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CopyGlyphConcealed_HidesTheCopysBadge_AndKeepsItsShadowTint()
+        {
+            yield return null;
+
+            BaybayinCharacterSO eiChar = MakeCharacter("EI", "symbol.test.copytint.ei");
+            BaybayinCharacterSO aChar = MakeCharacter("A", "symbol.test.copytint.a");
+            aChar.badgeSprite = GlyphBadgePlayModeTestHelpers.CreateSprite(Color.red);
+            EnemyDataSO iligawData = CreateEnemyData(
+                "test_iligaw_copytint", "Iligaw", eiChar, spawnsMirrorDecoy: true);
+
+            // The source is never initialised, so its own Update finds no data and never tries to
+            // place a copy of its own: the copy below is the only one.
+            Enemy source = CreateEnemyShell("Iligaw_CopyTintSource");
+            MirrorDecoyController mirror = source.gameObject.AddComponent<MirrorDecoyController>();
+
+            Enemy copy = CreateEnemyShell("Iligaw_CopyTintCopy");
+            (_, SpriteRenderer copyBadge) = GlyphBadgePlayModeTestHelpers
+                .AddGlyphBadgeChild(copy.gameObject, GlyphBadgePlayModeTestHelpers.CreateBadgeConfig());
+            Assert.IsTrue(copy.Initialize(MirrorDecoyController.GetDecoyData(iligawData)));
+            copy.AssignCharacter(aChar);
+            Assert.IsTrue(copyBadge.enabled && copyBadge.sprite != null,
+                "setup: the copy must be carrying a visible glyph.");
+
+            var shadow = new Color(0.4f, 0.42f, 0.5f, 0.45f);
+            copyBadge.color = shadow;
+            SetPrivateField(mirror, "_decoy", copy);
+
+            mirror.SetCopyGlyphConcealed(true);
+            Assert.IsFalse(copyBadge.enabled, "A concealed copy must show no glyph at all.");
+
+            mirror.SetCopyGlyphConcealed(false);
+            Assert.IsTrue(copyBadge.enabled, "Releasing the concealment must bring the glyph back.");
+            Assert.AreEqual(shadow.a, copyBadge.color.a, 0.001f,
+                "The copy must come back shadowed. A full-strength badge over a faded body reads as "
+                + "the real enemy, which is the tell the shadow exists to give.");
+        }
+
         // ------------------------------------------------------------------------------------
         // 4c-3. Blank glyph-rule copy no-ops, exactly like the other lines
         // ------------------------------------------------------------------------------------
@@ -1459,6 +1571,81 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 "…and the lesson must stop claiming the screen with it.");
             Assert.AreEqual(1f, Time.timeScale,
                 "…and hand real time back.");
+
+            LogAssert.ignoreFailingMessages = false;
+            _beat.enabled = false;
+            yield return null;
+        }
+
+        /// <summary>
+        /// Playtest 2026-09-29: beat 8 said "Draw E/I. Follow the guide." with no guide anywhere on
+        /// screen. The draw step raised the prompt through <c>ShowMessage</c>, which deliberately
+        /// hides the guide sprite, so the step's authored <c>guideSprite</c> never appeared.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Beat8_ShowsTheDrawStepsGuideSprite()
+        {
+            yield return null;
+
+            SetPrivateField(_beat, "_nameStepSeconds", 0f);
+            SetPrivateField(_beat, "_abilityStepSeconds", 0f);
+            SetPrivateField(_beat, "_drawSuccessHoldSeconds", 0f);
+            SetPrivateField(_beat, "_onScreenWaitTimeoutSeconds", 0f);
+
+            // The guide exactly as Gameplay.unity authors it: its root is its own GameObject,
+            // inactive, with the guide image as an inactive child.
+            GameObject guideRoot = CreateTracked("Level1TutorialGuideUI_Beat8Guide");
+            guideRoot.SetActive(false);
+            Level1TutorialGuideUI guide = guideRoot.AddComponent<Level1TutorialGuideUI>();
+            GameObject promptGO = new GameObject("DrawPromptText");
+            promptGO.transform.SetParent(guideRoot.transform, false);
+            TMPro.TextMeshProUGUI prompt = promptGO.AddComponent<TMPro.TextMeshProUGUI>();
+            GameObject imageGO = new GameObject("GuideSpriteImage", typeof(RectTransform), typeof(UnityEngine.UI.Image));
+            imageGO.transform.SetParent(guideRoot.transform, false);
+            imageGO.SetActive(false);
+            UnityEngine.UI.Image guideImage = imageGO.GetComponent<UnityEngine.UI.Image>();
+            SetPrivateField(guide, "_root", guideRoot);
+            SetPrivateField(guide, "_promptText", prompt);
+            SetPrivateField(guide, "_guideSpriteImage", guideImage);
+
+            BaybayinCharacterSO iChar = MakeCharacter("I", "symbol.test.beat8guide.i");
+            EnemyDataSO iligawData = CreateEnemyData(
+                "test_iligaw_beat8guide", "Iligaw", iChar, spawnsMirrorDecoy: false);
+            EnemyLessonSO lesson = CreateIligawShapedLesson(iligawData);
+            lesson.abilityBeatSeconds = 0f;
+            lesson.drawStep = CreateDrawStep(iChar);
+            lesson.drawStep.guideSprite = MakeTestSprite("GuideSprite_EI");
+
+            FocusWordDefinition word = CreateWord(
+                "level.test.beat8guide.ina", "ina", "INA", iChar, iChar);
+            LevelConfigSO config = CreateLevelConfig(
+                new List<EnemyDataSO> { iligawData }, new[] { lesson },
+                new List<FocusWordDefinition> { word });
+            _gameManager.SetLevel(config);
+            SetPrivateField(_presenter, "_level", config);
+            _presenter.RestorationState.Configure(config.focusWords);
+
+            Enemy iligaw = CreateEnemyShell("Iligaw_Beat8Guide");
+            iligaw.transform.position = Vector3.zero;
+            Assert.IsTrue(iligaw.Initialize(iligawData));
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndArm, iligaw.IntroductionOutcome,
+                "setup: this must be a real lesson spawn.");
+
+            // The fixture's shell carries no ability, so beat 2's missing-ability warning is
+            // expected and is not the subject.
+            LogAssert.ignoreFailingMessages = true;
+
+            for (int frame = 0; frame < 60; frame++)
+                yield return null;
+
+            Assert.IsTrue(EnemyIntroductionBeat.IsHoldingSpawnSchedule,
+                "setup: the beat must be parked at beat 8 waiting for the draw.");
+            Assert.AreEqual("Draw E/I. Follow the guide.", prompt.text,
+                "setup: beat 8's prompt must be up.");
+            Assert.IsTrue(imageGO.activeInHierarchy,
+                "Beat 8 tells the player to follow the guide, so the guide has to be on screen.");
+            Assert.AreSame(lesson.drawStep.guideSprite, guideImage.sprite,
+                "The guide must show the draw step's own authored guide sprite.");
 
             LogAssert.ignoreFailingMessages = false;
             _beat.enabled = false;
