@@ -11,9 +11,14 @@ using UnityEngine.UI;
 /// <para>The point of the component is that these read as five visibly different things. A correct
 /// draw on a filler enemy — which the spawn schedule produces deliberately and often — is correct
 /// recall arriving out of order, and if it renders the same way a miss does, the schedule spends the
-/// level telling the player they were wrong for remembering. So each state gets its own motion: the
-/// badge flies to a FUTURE slot and settles there as an outline, or flies to a FILLED slot and
-/// bounces off it, or never leaves the draw site at all and dims in place.</para>
+/// level telling the player they were wrong for remembering. So a later-needed or already-restored
+/// draw is answered with its own line and a pulse on the slot still to fill, while a miss never
+/// leaves the draw site and dims in place.</para>
+///
+/// <para>The later-needed and already-restored states used to fly the badge to their slot as well,
+/// settling as an outline or bouncing off. Removed after the 2026-09-29 playtest: a glyph landing
+/// on a box it did not fill read as a drawing that failed to register, and the only glyph that
+/// travels into a box now is the one that fills it (ActiveCluePresenter's slot flight).</para>
 ///
 /// <para>Every scene reference below is optional. The HUD this belongs on does not carry any of them
 /// yet, and the state this component reports has to stay correct and assertable in the meantime
@@ -38,14 +43,10 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
     [Header("Target Text Slots")]
     [Tooltip("The target text's slots in reading order — word 0's syllables left to right, then "
              + "word 1's. Index-aligned with the flattened slot list the feedback reports, so the "
-             + "order here is not cosmetic: a badge flies to whichever entry the report names.")]
+             + "order here is not cosmetic: the cursor pulse lands on whichever entry it names.")]
     [SerializeField] private RectTransform[] _slotAnchors = new RectTransform[0];
 
     [Header("Overlays")]
-    [Tooltip("Reused badge proxy flown from an enemy toward a slot. One Image serves every flight; "
-             + "only one is ever in the air, because one draw resolves at a time.")]
-    [SerializeField] private Image _flightGlyph;
-
     [Tooltip("Glyph flashed at the draw site on a miss, then left dimmed in place.")]
     [SerializeField] private Image _missGlyph;
 
@@ -79,29 +80,8 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
              + "lands on an enemy the player is still watching die and reads as part of the kill.")]
     [SerializeField, Min(0f)] private float _silentCorrectionDelaySeconds = 0.6f;
 
-    [Header("Badge Flight")]
-    [Tooltip("Seconds the badge takes to travel from the enemy toward its slot.")]
-    [SerializeField, Min(0.01f)] private float _flightSeconds = 0.45f;
-
-    [Tooltip("Fraction of the way to a FUTURE slot the badge travels before settling. Below 1 so it "
-             + "visibly stops short — the slot is not its to occupy yet.")]
-    [SerializeField, Range(0.1f, 1f)] private float _laterNeededStopShort = 0.82f;
-
-    [Tooltip("Alpha the badge settles to on a future slot. A ghost outline, not an occupant.")]
+    [Tooltip("Alpha the replayed ideal form reaches over the badge. An outline, not an occupant.")]
     [SerializeField, Range(0f, 1f)] private float _ghostOutlineAlpha = 0.45f;
-
-    [Tooltip("Seconds the badge takes to close the remaining gap and settle onto its future slot "
-             + "after the stop-short. Short — the hesitation is the message, not the travel.")]
-    [SerializeField, Min(0f)] private float _ghostOutlineSettleSeconds = 0.18f;
-
-    [Tooltip("Seconds the ghost outline lingers on its future slot before clearing.")]
-    [SerializeField, Min(0f)] private float _ghostOutlineHoldSeconds = 0.5f;
-
-    [Tooltip("Fraction of the flight distance the badge rebounds after hitting a filled slot.")]
-    [SerializeField, Range(0f, 0.5f)] private float _bounceBackFraction = 0.18f;
-
-    [Tooltip("Seconds the bounce-off takes.")]
-    [SerializeField, Min(0.01f)] private float _bounceSeconds = 0.25f;
 
     [Header("Cursor Pulse")]
     [Tooltip("How many times the cursor slot pulses after a non-advancing draw. Design value: 2.")]
@@ -157,7 +137,6 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
     // the kill, and the kill is not known until the text relation arrives.
     private bool _silentCorrectionPending;
 
-    private Coroutine _flightRoutine;
     private Coroutine _replayRoutine;
     private Coroutine _inkRoutine;
     private Coroutine _missRoutine;
@@ -169,7 +148,6 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
         if (_canvas == null)
             _canvas = GetComponentInParent<Canvas>();
 
-        HideOverlay(_flightGlyph);
         HideOverlay(_missGlyph);
         HideOverlay(_ghostStrokeOverlay);
     }
@@ -276,13 +254,11 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
         {
             case DrawTextRelation.LaterNeeded:
                 LaterNeededCueCount++;
-                StartFlight(report, settleAsGhost: true);
                 StartCursorPulse(report.CursorSlotIndex);
                 break;
 
             case DrawTextRelation.AlreadyFilled:
                 AlreadyFilledCueCount++;
-                StartFlight(report, settleAsGhost: false);
                 StartCursorPulse(report.CursorSlotIndex);
                 break;
 
@@ -392,90 +368,6 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
         // taking it away would leave the player with a prompt about a syllable they can no longer see.
         SetAlpha(_missGlyph, _missDimAlpha);
         _missRoutine = null;
-    }
-
-    private void StartFlight(DrawFeedbackReport report, bool settleAsGhost)
-    {
-        if (_flightGlyph == null || report.ResolvedTarget == null)
-            return;
-
-        Sprite sprite = ResolveFormSprite(report.DrawnCharacter);
-        if (sprite == null)
-            return;
-
-        RectTransform slot = ResolveSlotAnchor(report.SlotIndex);
-        if (slot == null)
-            return;
-
-        if (_flightRoutine != null)
-            StopCoroutine(_flightRoutine);
-        _flightRoutine = StartCoroutine(
-            FlyBadgeToSlot(sprite, report.ResolvedTarget.transform.position, slot, settleAsGhost));
-    }
-
-    private IEnumerator FlyBadgeToSlot(
-        Sprite sprite, Vector3 originWorldPoint, RectTransform slot, bool settleAsGhost)
-    {
-        RectTransform badge = _flightGlyph.rectTransform;
-        _flightGlyph.sprite = sprite;
-        _flightGlyph.enabled = true;
-        SetAlpha(_flightGlyph, 1f);
-
-        if (!TryPlaceOverWorldPoint(badge, originWorldPoint))
-        {
-            HideOverlay(_flightGlyph);
-            _flightRoutine = null;
-            yield break;
-        }
-
-        Vector2 from = badge.anchoredPosition;
-        Vector2 to = LocalPointOf(badge, slot);
-
-        // Both states fly the same path and are told apart by how it ends. A future slot is
-        // approached, visibly hesitated in front of, and then settled onto as an outline — it is the
-        // player's slot eventually, just not now. A filled slot is reached at full strength and
-        // refused entry. Sharing the travel is what makes the two read as variants of one idea
-        // rather than as two unconnected animations.
-        Vector2 arrival = settleAsGhost ? Vector2.Lerp(from, to, _laterNeededStopShort) : to;
-
-        yield return Travel(badge, from, arrival, _flightSeconds);
-
-        if (settleAsGhost)
-        {
-            SetAlpha(_flightGlyph, _ghostOutlineAlpha);
-            yield return Travel(badge, arrival, to, _ghostOutlineSettleSeconds);
-            yield return WaitUnscaled(_ghostOutlineHoldSeconds);
-        }
-        else
-        {
-            Vector2 rebound = Vector2.LerpUnclamped(to, from, _bounceBackFraction);
-            yield return Travel(badge, to, rebound, _bounceSeconds);
-        }
-
-        HideOverlay(_flightGlyph);
-        _flightRoutine = null;
-    }
-
-    private IEnumerator Travel(RectTransform target, Vector2 from, Vector2 to, float seconds)
-    {
-        if (seconds <= 0f)
-        {
-            target.anchoredPosition = to;
-            yield break;
-        }
-
-        float elapsed = 0f;
-        while (elapsed < seconds)
-        {
-            elapsed += Time.unscaledDeltaTime;
-            // Smoothstep rather than linear: a badge that decelerates into a slot reads as arriving
-            // at something, which is the whole content of both these states.
-            float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / seconds));
-            target.anchoredPosition = Vector2.Lerp(from, to, t);
-            yield return null;
-        }
-
-        target.anchoredPosition = to;
     }
 
     private void StartCursorPulse(int cursorSlotIndex)
