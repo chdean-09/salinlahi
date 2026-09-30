@@ -391,7 +391,9 @@ namespace Salinlahi.Tests.Editor.UI
             // Present() renders the glyphs before it activates the overlay root, and Hide()
             // leaves that root inactive, so from the second card on the row measures zero.
             // The fit has to come from the card's own width, not from a layout pass.
-            float unmeasured = MemoryCardUI.ResolveGlyphRowWidth(0f);
+            // A tall phone's canvas (1284x2778 is ~979 units wide under the 1080x1920
+            // scaler), not the live Screen, which is whatever the editor's view happens to be.
+            float unmeasured = MemoryCardUI.ResolveGlyphRowWidth(0f, canvasWidth: 979f);
             Assert.Greater(unmeasured, 0f);
 
             float size = MemoryCardUI.ResolveGlyphSize(5, unmeasured);
