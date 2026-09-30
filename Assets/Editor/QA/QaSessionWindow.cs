@@ -223,7 +223,7 @@ public sealed class QaSessionWindow : EditorWindow
         _screenshotSlug = EditorGUILayout.TextField("Screenshot slug", _screenshotSlug);
         if (GUILayout.Button("Capture", GUILayout.Width(80f)))
         {
-            string path = DevInputInjector.CaptureQaScreenshot(level.levelNumber, _screenshotSlug);
+            string path = QaScreenshotCapture.Capture(level.levelNumber, _screenshotSlug);
             _status = path != null ? "Capturing: " + path : "Screenshot request failed.";
         }
         EditorGUILayout.EndHorizontal();
@@ -306,7 +306,7 @@ public sealed class QaSessionWindow : EditorWindow
             _status = $"Loaded {scenePath} in Edit Mode. Capturing the baseline image.";
             EditorApplication.delayCall += () =>
             {
-                string path = DevInputInjector.CaptureQaScreenshot(level.levelNumber, "baseline");
+                string path = QaScreenshotCapture.Capture(level.levelNumber, "baseline");
                 _status = path != null ? "Baseline capture requested: " + path : "Baseline capture failed.";
                 Repaint();
             };
