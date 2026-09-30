@@ -25,6 +25,15 @@ MonoBehaviour:
   - {fileID: 4072980849746507536, guid: 7cc5776d4b8e2494fa3c844b6f55b3e5, type: 3}
   - {fileID: 2343724096133767999, guid: 7cc5776d4b8e2494fa3c844b6f55b3e5, type: 3}
   animatorController: {fileID: 0}
+  relationshipVisual:
+    firstEndpoint: {fileID: 8495636738459506919, guid: fa697fd1b871e4c6eb9837ab8a4d2437, type: 3}
+    middle: {fileID: -8991491528210620322, guid: fa697fd1b871e4c6eb9837ab8a4d2437, type: 3}
+    secondEndpoint: {fileID: -5292974004179906033, guid: fa697fd1b871e4c6eb9837ab8a4d2437, type: 3}
+    bodyMode: 0
+    endpointLength: 0.42
+    endpointHeight: 0.22
+    bodyHeight: 0.22
+    sortingOrder: -1
   portraitSprite: {fileID: 0}
   assignedCharacter: {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
   isDecoy: 0

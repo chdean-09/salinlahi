@@ -274,6 +274,19 @@ public sealed class ActiveCluePresenter : MonoBehaviour
              + "mask is settling ash, not an arriving object.")]
     [SerializeField] private float _clueCrumbleMaskRiseEm = 0.22f;
 
+    [Header("Punit Torn Clue")]
+    [Tooltip("How long Punit's clue fragments take to separate or reconnect, in unscaled seconds.")]
+    [SerializeField, Min(0.01f)] private float _punitTearTransitionSeconds = 0.28f;
+
+    [Tooltip("Distance each side of the clue moves away from its torn seam, in canvas units.")]
+    [SerializeField, Min(1f)] private float _punitTearSeparation = 15f;
+
+    [Header("Uhaw Restoration Capture")]
+    [Tooltip("Unscaled seconds a restored glyph takes to travel into Uhaw or return to its slot.")]
+    [SerializeField, Min(0.01f)] private float _uhawGlyphTransferSeconds = 0.42f;
+    [Tooltip("Scale of a captured glyph while it is held over Uhaw.")]
+    [SerializeField, Range(0.1f, 1f)] private float _uhawCapturedGlyphScale = 0.48f;
+
     /// <summary>
     /// Suppresses a clue announcement that lands on top of one CombatResolver just made.
     /// AudioManager uses PlayOneShot, so pronunciation clips overlap rather than interrupt.
@@ -296,6 +309,36 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private Coroutine _clueCrumbleRoutine;
     private int _wordRestoredCueCount;
     private string _lastWordRestoredMessage;
+
+    private readonly List<TornRailFragment> _punitRailFragments =
+        new List<TornRailFragment>();
+    private RectTransform _punitTornBoundRail;
+    private ProceduralClueTearGraphic _punitTearGraphic;
+    private TMP_Text _punitTornTextSurface;
+    private string _punitTextBaselineString;
+    private Vector3[][] _punitTextBaselineVertices;
+    private float _punitTextSplitX;
+    private float _punitTextTopY;
+    private float _punitTextBottomY;
+    private bool _punitTextCanSplit;
+    private float _punitTearProgress;
+    private bool _punitTearTargetActive;
+
+    // EnemyData_Uhaw currently carries ForkedGlyph as its gameplay enum value. Use its stable
+    // enemy identity for this visual so we do not change or reinterpret that serialized mechanic.
+    private const string UhawEnemyId = "uhaw";
+    private int _ngatngatDamageStage;
+    private bool _ngatngatVisualActive;
+    private readonly Dictionary<TextMeshProUGUI, NgatngatLabelBinding> _ngatngatLabelBindings =
+        new Dictionary<TextMeshProUGUI, NgatngatLabelBinding>();
+    private readonly List<TextMeshProUGUI> _ngatngatLabelRemovalBuffer =
+        new List<TextMeshProUGUI>();
+    private readonly List<Enemy> _abilityVisualEnemyBuffer = new List<Enemy>();
+    private readonly List<UhawGlyphCapture> _uhawGlyphCaptures = new List<UhawGlyphCapture>();
+    private Enemy _activeUhaw;
+    private RailSlot _pendingUhawGlyphSlot;
+    private Enemy _pendingUhawGlyphTarget;
+    private long _pendingUhawGlyphTargetSpawnSequence;
 
     /// <summary>
     /// One built slot on the target-text rail. Holds the authored slot it stands for, so the rail
@@ -344,6 +387,45 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         /// </para>
         /// </summary>
         public float FlightDeadline;
+
+        /// <summary>True while Uhaw's one UI proxy stands in for this restored glyph.</summary>
+        public bool IsUhawCaptured;
+    }
+
+    private sealed class NgatngatLabelBinding
+    {
+        public TextMeshProUGUI Label;
+        public int Stage;
+        public System.Action<TMP_TextInfo> PreRenderCallback;
+    }
+
+    private enum UhawGlyphCaptureState
+    {
+        Capturing,
+        Captured,
+        Returning,
+    }
+
+    private sealed class UhawGlyphCapture
+    {
+        public RailSlot Slot;
+        public Enemy Target;
+        public long TargetSpawnSequence;
+        public GameObject Proxy;
+        public RectTransform ProxyRect;
+        public UhawGlyphCaptureState State;
+        public Vector2 TravelStart;
+        public Vector2 ReturnStart;
+        public float Elapsed;
+        public float StartScale;
+        public float EndScale;
+    }
+
+    private sealed class TornRailFragment
+    {
+        public RectTransform Rect;
+        public Vector3 RestPosition;
+        public float Direction;
     }
 
     /// <summary>
@@ -688,6 +770,11 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         // state each LateUpdate, so this is the only latch that needs clearing here.
         _instructionSuppressedByCue = false;
         _ashWasActive = AshFirstSlotController.IsAnyActive();
+        _punitTearTargetActive = false;
+        _punitTearProgress = 0f;
+        _ngatngatVisualActive = false;
+        _ngatngatDamageStage = 0;
+        _activeUhaw = null;
         SubscribeToDirector();
         BindReplayAudioButton();
         EventBus.OnPronunciationRequested += HandlePronunciationRequested;
@@ -713,6 +800,10 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         // presenter is not left with a null one when the old presenter tears down after it.
         if (Active == this)
             Active = null;
+
+        ResetPunitTornEffect();
+        ResetNgatngatTextDamage();
+        ResetUhawGlyphCaptures();
 
         _clueCrumbleRoutine = null;
         _railFlashRoutine = null;
@@ -747,6 +838,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     /// <summary>Resolves this level's channels, including the visual audio fallback.</summary>
     public void ApplyLevel(LevelConfigSO level)
     {
+        ResetPunitTornEffect();
         _level = level;
         _restorationState.Configure(level?.focusWords);
 
@@ -944,6 +1036,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private void LateUpdate()
     {
         WatchAshOnset();
+        WatchPunitTornState(Time.unscaledDeltaTime);
+        WatchAbilityHudEffects(Time.unscaledDeltaTime);
         TickAshCover(Time.unscaledDeltaTime);
         PositionAshCoverOverFirstSlot();
         ReconcileSlotFlights();
@@ -1300,10 +1394,21 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             if (!result.Applied)
                 return;
 
+            SetNgatngatVisualActive(FindActiveEnemyWithAbility(
+                EnemyLearningAbility.ProgressiveNibble, null) != null);
+            RecordNgatngatRestoration();
             UpdateCluePanel(_currentClue);
             UpdateRestorationProgress();
             PopSlotForOccurrence(result.OccurrenceId);
-            LaunchSlotGlyphFlightForOccurrence(result.OccurrenceId, clue.transform.position);
+            _activeUhaw = FindActiveUhaw();
+            RailSlot restoredSlot = FindRailSlotForOccurrence(result.OccurrenceId);
+            bool objectiveGlyphCaptured = _activeUhaw != null
+                && CaptureOrQueueUhawGlyph(restoredSlot, _activeUhaw);
+            if (!objectiveGlyphCaptured)
+            {
+                LaunchSlotGlyphFlightForOccurrence(
+                    result.OccurrenceId, clue.transform.position);
+            }
 
             RestorationObjectiveUnit unit = result.UnitIndex >= 0
                 && _restorationObjectiveController.State.Definition?.units != null
@@ -1341,6 +1446,10 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         if (string.IsNullOrEmpty(restored))
             return;
 
+        SetNgatngatVisualActive(FindActiveEnemyWithAbility(
+            EnemyLearningAbility.ProgressiveNibble, null) != null);
+        RecordNgatngatRestoration();
+
         // The clue stays latched through the pronunciation lead. Refreshing the panel here
         // makes the accepted syllable appear in the target text before the enemy leaves.
         UpdateCluePanel(_currentClue);
@@ -1353,7 +1462,15 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         // And AFTER the repaint for the same reason plus one more: the repaint is what leaves every
         // slot in its finished state, so if the flight below never starts, never finishes, or is
         // killed halfway, the rail is already correct. The flight only borrows the glyph.
-        LaunchSlotGlyphFlights(clue.Character.stableId, clue.transform.position);
+        _activeUhaw = FindActiveUhaw();
+        RailSlot uhawSlot = _activeUhaw != null
+            ? FindLastRestoredSlotForSymbol(clue.Character.stableId)
+            : null;
+        bool capturedByUhaw = uhawSlot != null
+            && CaptureOrQueueUhawGlyph(uhawSlot, _activeUhaw);
+        LaunchSlotGlyphFlightsInternal(
+            clue.Character.stableId, null, clue.transform.position,
+            capturedByUhaw ? uhawSlot : null);
 
         ShowWordRestoredCue(restored);
     }
@@ -1997,6 +2114,1064 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         RepaintRail(forceRestored: false);
     }
 
+    /// <summary>
+    /// Tracks Punit's live ability state and animates the visible target text. The current Gameplay
+    /// scene uses the slot rail; older authored HUDs can still use the TMP clue line, whose glyph
+    /// meshes are displaced directly so existing font, colour and rich-text formatting stays
+    /// intact.
+    /// </summary>
+    private void WatchPunitTornState(float deltaTime)
+    {
+        _punitTearTargetActive = PunitTornController.IsAnyActive();
+        if (_punitTearTargetActive || _punitTearProgress > 0f)
+            EnsurePunitTornSurface();
+
+        float duration = Mathf.Max(0.01f, _punitTearTransitionSeconds);
+        float step = Mathf.Max(0f, deltaTime) / duration;
+        _punitTearProgress = Mathf.MoveTowards(
+            _punitTearProgress, _punitTearTargetActive ? 1f : 0f, step);
+
+        if (_punitTornBoundRail != null)
+            ApplyPunitTearToRail();
+        else if (_punitTornTextSurface != null)
+            ApplyPunitTearToText();
+    }
+
+    private void WatchAbilityHudEffects(float deltaTime)
+    {
+        SetNgatngatVisualActive(FindActiveEnemyWithAbility(
+            EnemyLearningAbility.ProgressiveNibble, null) != null);
+
+        _activeUhaw = FindActiveUhaw();
+        if (_railRoot == null)
+        {
+            ResetUhawGlyphCaptures();
+            return;
+        }
+
+        if (_pendingUhawGlyphSlot != null
+            && (_pendingUhawGlyphTarget != _activeUhaw
+                || !IsUhawTargetUsable(_pendingUhawGlyphTarget)
+                || _pendingUhawGlyphTargetSpawnSequence
+                    != _pendingUhawGlyphTarget.SpawnSequence
+                || !_railSlots.Contains(_pendingUhawGlyphSlot)))
+        {
+            ClearPendingUhawGlyphCapture();
+        }
+
+        if (_railRoot.activeInHierarchy && _pendingUhawGlyphSlot != null)
+        {
+            RailSlot slot = _pendingUhawGlyphSlot;
+            Enemy target = _pendingUhawGlyphTarget;
+            ClearPendingUhawGlyphCapture();
+            BeginUhawGlyphCapture(slot, target);
+        }
+
+        // A hidden rail keeps its visual state intact. When it is shown again the captured proxy
+        // resumes following Uhaw; destroying/rebuilding the rail and disabling this presenter
+        // instead drain the proxies and reveal their source glyphs.
+        if (!_railRoot.activeInHierarchy)
+        {
+            for (int i = 0; i < _uhawGlyphCaptures.Count; i++)
+            {
+                UhawGlyphCapture capture = _uhawGlyphCaptures[i];
+                if (capture.State != UhawGlyphCaptureState.Returning
+                    && (capture.Target != _activeUhaw
+                        || !IsUhawTargetUsable(capture.Target)
+                        || capture.TargetSpawnSequence != capture.Target.SpawnSequence))
+                {
+                    ResetUhawGlyphCaptures();
+                    break;
+                }
+            }
+            return;
+        }
+
+        for (int i = _uhawGlyphCaptures.Count - 1; i >= 0; i--)
+        {
+            UhawGlyphCapture capture = _uhawGlyphCaptures[i];
+            if (capture.State != UhawGlyphCaptureState.Returning
+                && (capture.Target != _activeUhaw
+                    || !IsUhawTargetUsable(capture.Target)
+                    || capture.TargetSpawnSequence != capture.Target.SpawnSequence))
+            {
+                BeginUhawGlyphReturn(capture);
+            }
+        }
+
+        TickUhawGlyphCaptures(deltaTime);
+    }
+
+    private Enemy FindActiveEnemyWithAbility(EnemyLearningAbility ability, string enemyId)
+    {
+        ActiveEnemyTracker tracker = ActiveEnemyTracker.Instance;
+        if (tracker == null)
+            return null;
+
+        tracker.FillActiveEnemiesSnapshot(_abilityVisualEnemyBuffer);
+        for (int i = 0; i < _abilityVisualEnemyBuffer.Count; i++)
+        {
+            Enemy enemy = _abilityVisualEnemyBuffer[i];
+            if (enemy == null || enemy.Data == null || enemy.IsDying
+                || !enemy.gameObject.activeInHierarchy || enemy.CurrentHealth <= 0)
+            {
+                continue;
+            }
+
+            EnemyLearningAbilityController abilityController =
+                enemy.GetComponent<EnemyLearningAbilityController>();
+            if (abilityController == null || !abilityController.isActiveAndEnabled
+                || abilityController.IsSuppressedForIntroductionSpawn)
+            {
+                continue;
+            }
+
+            bool matches = enemyId != null
+                ? string.Equals(enemy.Data.enemyID, enemyId,
+                    System.StringComparison.OrdinalIgnoreCase)
+                : enemy.Data.learningAbility == ability;
+            if (matches)
+                return enemy;
+        }
+
+        return null;
+    }
+
+    private void SetNgatngatVisualActive(bool active)
+    {
+        if (_ngatngatVisualActive == active)
+            return;
+
+        _ngatngatVisualActive = active;
+        _ngatngatDamageStage = 0;
+        SyncNgatngatTextDamage();
+    }
+
+    private void RecordNgatngatRestoration()
+    {
+        // ProgressiveNibble has no separate runtime counter; each accepted restoration while
+        // the live, unsuppressed Ngatngat is present advances its visual damage by one stage.
+        if (!_ngatngatVisualActive || _ngatngatDamageStage >= 2)
+            return;
+
+        _ngatngatDamageStage++;
+        SyncNgatngatTextDamage();
+    }
+
+    private void SyncNgatngatTextDamage()
+    {
+        bool wantsDamage = _ngatngatVisualActive && _ngatngatDamageStage > 0;
+        _ngatngatLabelRemovalBuffer.Clear();
+
+        if (wantsDamage)
+        {
+            for (int i = 0; i < _railSlots.Count; i++)
+            {
+                RailSlot slot = _railSlots[i];
+                TextMeshProUGUI label = slot?.Label;
+                if (label == null || string.IsNullOrEmpty(slot.LatinLabel)
+                    || label.text != slot.LatinLabel)
+                {
+                    continue;
+                }
+
+                if (_ngatngatLabelBindings.TryGetValue(label, out NgatngatLabelBinding binding))
+                {
+                    if (binding.Stage != _ngatngatDamageStage)
+                    {
+                        binding.Stage = _ngatngatDamageStage;
+                        label.ForceMeshUpdate(true, false);
+                        ApplyNgatngatDamage(binding, label.textInfo);
+                        label.UpdateVertexData(TMP_VertexDataUpdateFlags.Colors32);
+                    }
+                }
+                else
+                {
+                    BindNgatngatDamage(label, _ngatngatDamageStage);
+                }
+            }
+        }
+
+        foreach (KeyValuePair<TextMeshProUGUI, NgatngatLabelBinding> pair
+                 in _ngatngatLabelBindings)
+        {
+            TextMeshProUGUI label = pair.Key;
+            if (!wantsDamage || !IsVisibleLatinLabel(label))
+                _ngatngatLabelRemovalBuffer.Add(label);
+        }
+
+        for (int i = 0; i < _ngatngatLabelRemovalBuffer.Count; i++)
+            UnbindNgatngatDamage(_ngatngatLabelRemovalBuffer[i]);
+    }
+
+    private bool IsVisibleLatinLabel(TextMeshProUGUI label)
+    {
+        for (int i = 0; i < _railSlots.Count; i++)
+        {
+            RailSlot slot = _railSlots[i];
+            if (slot?.Label == label && !string.IsNullOrEmpty(slot.LatinLabel)
+                && label.text == slot.LatinLabel)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void BindNgatngatDamage(TextMeshProUGUI label, int stage)
+    {
+        if (label == null)
+            return;
+
+        var binding = new NgatngatLabelBinding { Label = label, Stage = stage };
+        binding.PreRenderCallback = textInfo => ApplyNgatngatDamage(binding, textInfo);
+        _ngatngatLabelBindings.Add(label, binding);
+        label.OnPreRenderText += binding.PreRenderCallback;
+        label.ForceMeshUpdate(true, false);
+        ApplyNgatngatDamage(binding, label.textInfo);
+        label.UpdateVertexData(TMP_VertexDataUpdateFlags.Colors32);
+    }
+
+    private static void ApplyNgatngatDamage(
+        NgatngatLabelBinding binding, TMP_TextInfo textInfo)
+    {
+        if (binding?.Label == null || textInfo == null || binding.Stage <= 0)
+            return;
+
+        int lastVisible = -1;
+        int previousVisible = -1;
+        for (int i = 0; i < textInfo.characterCount; i++)
+        {
+            TMP_CharacterInfo character = textInfo.characterInfo[i];
+            if (!character.isVisible || char.IsWhiteSpace(character.character))
+                continue;
+
+            previousVisible = lastVisible;
+            lastVisible = i;
+        }
+
+        if (lastVisible < 0)
+            return;
+
+        if (binding.Stage == 1)
+        {
+            EraseRightHalf(textInfo, textInfo.characterInfo[lastVisible]);
+            return;
+        }
+
+        EraseCharacter(textInfo, textInfo.characterInfo[lastVisible]);
+        if (previousVisible >= 0)
+            EraseRightHalf(textInfo, textInfo.characterInfo[previousVisible]);
+    }
+
+    private static void EraseRightHalf(TMP_TextInfo textInfo, TMP_CharacterInfo character)
+    {
+        int materialIndex = character.materialReferenceIndex;
+        int firstVertex = character.vertexIndex;
+        if (materialIndex < 0 || materialIndex >= textInfo.meshInfo.Length
+            || firstVertex < 0)
+        {
+            return;
+        }
+
+        TMP_MeshInfo mesh = textInfo.meshInfo[materialIndex];
+        if (firstVertex + 3 >= mesh.colors32.Length || firstVertex + 3 >= mesh.vertices.Length)
+            return;
+
+        float minX = Mathf.Min(mesh.vertices[firstVertex].x, mesh.vertices[firstVertex + 1].x,
+            mesh.vertices[firstVertex + 2].x, mesh.vertices[firstVertex + 3].x);
+        float maxX = Mathf.Max(mesh.vertices[firstVertex].x, mesh.vertices[firstVertex + 1].x,
+            mesh.vertices[firstVertex + 2].x, mesh.vertices[firstVertex + 3].x);
+        float splitX = (minX + maxX) * 0.5f;
+        for (int vertex = firstVertex; vertex < firstVertex + 4; vertex++)
+        {
+            if (mesh.vertices[vertex].x < splitX)
+                continue;
+
+            Color32 color = mesh.colors32[vertex];
+            color.a = 0;
+            mesh.colors32[vertex] = color;
+        }
+    }
+
+    private static void EraseCharacter(TMP_TextInfo textInfo, TMP_CharacterInfo character)
+    {
+        int materialIndex = character.materialReferenceIndex;
+        int firstVertex = character.vertexIndex;
+        if (materialIndex < 0 || materialIndex >= textInfo.meshInfo.Length
+            || firstVertex < 0)
+        {
+            return;
+        }
+
+        Color32[] colors = textInfo.meshInfo[materialIndex].colors32;
+        if (firstVertex + 3 >= colors.Length)
+            return;
+
+        for (int vertex = firstVertex; vertex < firstVertex + 4; vertex++)
+        {
+            Color32 color = colors[vertex];
+            color.a = 0;
+            colors[vertex] = color;
+        }
+    }
+
+    private void UnbindNgatngatDamage(TextMeshProUGUI label)
+    {
+        if (object.ReferenceEquals(label, null) || !_ngatngatLabelBindings.TryGetValue(
+                label, out NgatngatLabelBinding binding))
+        {
+            return;
+        }
+
+        if (binding.Label != null)
+            binding.Label.OnPreRenderText -= binding.PreRenderCallback;
+        _ngatngatLabelBindings.Remove(label);
+        if (binding.Label != null)
+            binding.Label.ForceMeshUpdate(true, false);
+    }
+
+    private Enemy FindActiveUhaw()
+        => FindActiveEnemyWithAbility(EnemyLearningAbility.None, UhawEnemyId);
+
+    private bool CaptureOrQueueUhawGlyph(RailSlot slot, Enemy target)
+    {
+        if (slot?.Glyph == null || slot.Glyph.sprite == null || !IsUhawTargetUsable(target))
+            return false;
+
+        if (BeginUhawGlyphCapture(slot, target))
+            return true;
+
+        if (_railRoot != null && !_railRoot.activeInHierarchy)
+        {
+            _pendingUhawGlyphSlot = slot;
+            _pendingUhawGlyphTarget = target;
+            _pendingUhawGlyphTargetSpawnSequence = target.SpawnSequence;
+            return true;
+        }
+
+        return false;
+    }
+
+    private void ClearPendingUhawGlyphCapture()
+    {
+        _pendingUhawGlyphSlot = null;
+        _pendingUhawGlyphTarget = null;
+        _pendingUhawGlyphTargetSpawnSequence = 0;
+    }
+
+    private RailSlot FindRailSlotForOccurrence(string occurrenceId)
+    {
+        if (string.IsNullOrEmpty(occurrenceId))
+            return null;
+
+        for (int i = 0; i < _railSlots.Count; i++)
+        {
+            RailSlot slot = _railSlots[i];
+            if (slot != null && string.Equals(slot.OccurrenceId, occurrenceId,
+                    System.StringComparison.Ordinal))
+            {
+                return slot;
+            }
+        }
+
+        return null;
+    }
+
+    private RailSlot FindLastRestoredSlotForSymbol(string symbolStableId)
+    {
+        if (string.IsNullOrEmpty(symbolStableId))
+            return null;
+
+        for (int i = _railSlots.Count - 1; i >= 0; i--)
+        {
+            RailSlot slot = _railSlots[i];
+            if (slot == null || !SlotCarriesSymbol(slot, symbolStableId))
+                continue;
+
+            bool restored = UsesRestorationObjectiveDefinition
+                ? _restorationObjectiveController.IsOccurrenceRestored(slot.OccurrenceId)
+                : _restorationState.IsSlotRestored(slot.Word, slot.DecompositionIndex);
+            if (restored)
+                return slot;
+        }
+
+        return null;
+    }
+
+    private bool BeginUhawGlyphCapture(RailSlot slot, Enemy target)
+    {
+        if (slot?.Glyph == null || slot.Glyph.sprite == null || target == null
+            || _railRoot == null || !_railRoot.activeInHierarchy
+            || !( _railRoot.transform is RectTransform railRect))
+        {
+            return false;
+        }
+
+        if (slot.Flier != null || slot.FlightRoutine != null)
+            FinishSlotFlight(slot);
+
+        if (!slot.Glyph.gameObject.activeSelf)
+            return false;
+
+        Canvas canvas = railRect.GetComponentInParent<Canvas>();
+        if (canvas == null || !TryGetUhawTargetLocalPosition(target, railRect, canvas,
+                out Vector2 destination))
+        {
+            return false;
+        }
+
+        // If this exact occurrence is being recaptured, return its old proxy immediately before
+        // creating the replacement. Other held characters get a normal return animation.
+        for (int i = _uhawGlyphCaptures.Count - 1; i >= 0; i--)
+        {
+            UhawGlyphCapture previous = _uhawGlyphCaptures[i];
+            if (previous.Slot == slot)
+                CompleteUhawGlyphCapture(previous);
+            else
+                BeginUhawGlyphReturn(previous);
+        }
+
+        RectTransform glyphRect = slot.Glyph.transform as RectTransform;
+        if (glyphRect == null)
+            return false;
+
+        var proxyObject = new GameObject(
+            "[Runtime] UhawCapturedRestorationGlyph", typeof(RectTransform), typeof(Image));
+        proxyObject.transform.SetParent(railRect, false);
+        proxyObject.transform.SetAsLastSibling();
+
+        Image proxy = proxyObject.GetComponent<Image>();
+        proxy.sprite = slot.Glyph.sprite;
+        proxy.color = slot.Glyph.color;
+        proxy.preserveAspect = true;
+        proxy.raycastTarget = false;
+
+        RectTransform proxyRect = (RectTransform)proxyObject.transform;
+        proxyRect.anchorMin = new Vector2(0.5f, 0.5f);
+        proxyRect.anchorMax = new Vector2(0.5f, 0.5f);
+        proxyRect.pivot = new Vector2(0.5f, 0.5f);
+        proxyRect.sizeDelta = glyphRect.rect.size;
+        proxyRect.anchoredPosition = railRect.InverseTransformPoint(glyphRect.position);
+
+        slot.IsUhawCaptured = true;
+        slot.Glyph.gameObject.SetActive(false);
+        _uhawGlyphCaptures.Add(new UhawGlyphCapture
+        {
+            Slot = slot,
+            Target = target,
+            TargetSpawnSequence = target.SpawnSequence,
+            Proxy = proxyObject,
+            ProxyRect = proxyRect,
+            State = UhawGlyphCaptureState.Capturing,
+            TravelStart = proxyRect.anchoredPosition,
+            StartScale = 1f,
+            EndScale = _uhawCapturedGlyphScale,
+        });
+
+        return true;
+    }
+
+    private void TickUhawGlyphCaptures(float deltaTime)
+    {
+        if (_railRoot == null || !(_railRoot.transform is RectTransform railRect))
+        {
+            ResetUhawGlyphCaptures();
+            return;
+        }
+
+        if (!_railRoot.activeInHierarchy)
+            return;
+
+        Canvas canvas = railRect.GetComponentInParent<Canvas>();
+        for (int i = _uhawGlyphCaptures.Count - 1; i >= 0; i--)
+        {
+            UhawGlyphCapture capture = _uhawGlyphCaptures[i];
+            if (capture == null || capture.Slot?.Glyph == null
+                || !_railSlots.Contains(capture.Slot))
+            {
+                CompleteUhawGlyphCapture(capture);
+                continue;
+            }
+
+            if (capture.Proxy == null || capture.ProxyRect == null || canvas == null)
+            {
+                CompleteUhawGlyphCapture(capture);
+                continue;
+            }
+
+            if (capture.State != UhawGlyphCaptureState.Returning
+                && (!IsUhawTargetUsable(capture.Target)
+                    || capture.TargetSpawnSequence != capture.Target.SpawnSequence))
+            {
+                BeginUhawGlyphReturn(capture);
+            }
+
+            if (capture.State == UhawGlyphCaptureState.Capturing
+                || capture.State == UhawGlyphCaptureState.Captured)
+            {
+                if (!TryGetUhawTargetLocalPosition(capture.Target, railRect, canvas,
+                        out Vector2 targetPosition))
+                {
+                    BeginUhawGlyphReturn(capture);
+                }
+                else if (capture.State == UhawGlyphCaptureState.Captured)
+                {
+                    capture.ProxyRect.anchoredPosition = targetPosition;
+                }
+                else
+                {
+                    capture.Elapsed += Mathf.Max(0f, deltaTime);
+                    float t = Mathf.Clamp01(capture.Elapsed
+                        / Mathf.Max(0.01f, _uhawGlyphTransferSeconds));
+                    float eased = t * t * (3f - (2f * t));
+                    capture.ProxyRect.anchoredPosition = Vector2.LerpUnclamped(
+                        capture.TravelStart, targetPosition, eased);
+                    float scale = Mathf.Lerp(capture.StartScale, capture.EndScale, eased);
+                    capture.ProxyRect.localScale = Vector3.one * scale;
+
+                    if (t >= 1f)
+                    {
+                        capture.State = UhawGlyphCaptureState.Captured;
+                        capture.ProxyRect.anchoredPosition = targetPosition;
+                        capture.ProxyRect.localScale = Vector3.one * _uhawCapturedGlyphScale;
+                    }
+                }
+            }
+
+            if (capture.State == UhawGlyphCaptureState.Returning)
+            {
+                capture.Elapsed += Mathf.Max(0f, deltaTime);
+                float t = Mathf.Clamp01(capture.Elapsed
+                    / Mathf.Max(0.01f, _uhawGlyphTransferSeconds));
+                float eased = t * t * (3f - (2f * t));
+                Vector2 slotPosition = railRect.InverseTransformPoint(
+                    capture.Slot.Glyph.rectTransform.position);
+                capture.ProxyRect.anchoredPosition = Vector2.LerpUnclamped(
+                    capture.ReturnStart, slotPosition, eased);
+                float scale = Mathf.Lerp(capture.StartScale, 1f, eased);
+                capture.ProxyRect.localScale = Vector3.one * scale;
+
+                if (t >= 1f)
+                    CompleteUhawGlyphCapture(capture);
+            }
+        }
+    }
+
+    private void BeginUhawGlyphReturn(UhawGlyphCapture capture)
+    {
+        if (capture == null || capture.State == UhawGlyphCaptureState.Returning)
+            return;
+
+        if (capture.ProxyRect == null || capture.Slot?.Glyph == null)
+        {
+            CompleteUhawGlyphCapture(capture);
+            return;
+        }
+
+        capture.State = UhawGlyphCaptureState.Returning;
+        capture.Elapsed = 0f;
+        capture.ReturnStart = capture.ProxyRect.anchoredPosition;
+        capture.StartScale = capture.ProxyRect.localScale.x;
+    }
+
+    private void ReleaseUhawGlyphCaptures(bool immediate)
+    {
+        if (immediate)
+        {
+            ResetUhawGlyphCaptures();
+            return;
+        }
+
+        for (int i = _uhawGlyphCaptures.Count - 1; i >= 0; i--)
+            BeginUhawGlyphReturn(_uhawGlyphCaptures[i]);
+    }
+
+    private void ResetUhawGlyphCaptures()
+    {
+        ClearPendingUhawGlyphCapture();
+
+        for (int i = _uhawGlyphCaptures.Count - 1; i >= 0; i--)
+        {
+            UhawGlyphCapture capture = _uhawGlyphCaptures[i];
+            if (capture?.Slot != null)
+                capture.Slot.IsUhawCaptured = false;
+            if (capture?.Proxy != null)
+            {
+                capture.Proxy.SetActive(false);
+                DestroyOwnedObject(capture.Proxy);
+            }
+        }
+
+        _uhawGlyphCaptures.Clear();
+        for (int i = 0; i < _railSlots.Count; i++)
+            _railSlots[i].IsUhawCaptured = false;
+
+        if (_railRoot != null && _railSlots.Count > 0)
+            RepaintRail(forceRestored: false);
+    }
+
+    private void CompleteUhawGlyphCapture(UhawGlyphCapture capture)
+    {
+        if (capture == null)
+            return;
+
+        _uhawGlyphCaptures.Remove(capture);
+        if (capture.Proxy != null)
+        {
+            capture.Proxy.SetActive(false);
+            DestroyOwnedObject(capture.Proxy);
+        }
+
+        if (capture.Slot != null)
+            capture.Slot.IsUhawCaptured = false;
+
+        if (capture.Slot != null && _railSlots.Contains(capture.Slot)
+            && _railRoot != null)
+        {
+            RepaintRail(forceRestored: false);
+        }
+    }
+
+    private static bool IsUhawTargetUsable(Enemy target) =>
+        target != null && target.gameObject.activeInHierarchy && !target.IsDying;
+
+    private static bool TryGetUhawTargetLocalPosition(
+        Enemy target, RectTransform railRect, Canvas canvas, out Vector2 localPosition)
+    {
+        localPosition = default;
+        if (!IsUhawTargetUsable(target) || railRect == null || canvas == null)
+            return false;
+
+        Camera worldCamera = Camera.main;
+        if (worldCamera == null)
+            return false;
+
+        Vector3 screenPosition = worldCamera.WorldToScreenPoint(
+            target.transform.position + Vector3.up * 0.35f);
+        if (screenPosition.z <= 0f)
+            return false;
+
+        Camera uiCamera = canvas.renderMode == RenderMode.ScreenSpaceOverlay
+            ? null
+            : canvas.worldCamera;
+        return RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            railRect, screenPosition, uiCamera, out localPosition);
+    }
+
+    private void ResetNgatngatTextDamage()
+    {
+        _ngatngatLabelRemovalBuffer.Clear();
+        foreach (KeyValuePair<TextMeshProUGUI, NgatngatLabelBinding> pair
+                 in _ngatngatLabelBindings)
+        {
+            _ngatngatLabelRemovalBuffer.Add(pair.Key);
+        }
+
+        for (int i = 0; i < _ngatngatLabelRemovalBuffer.Count; i++)
+            UnbindNgatngatDamage(_ngatngatLabelRemovalBuffer[i]);
+
+        _ngatngatDamageStage = 0;
+        _ngatngatVisualActive = false;
+    }
+
+    private void EnsurePunitTornSurface()
+    {
+        if (_railRoot != null)
+        {
+            RectTransform rail = _railRoot.GetComponent<RectTransform>();
+            if (_punitTornBoundRail != rail)
+            {
+                ResetPunitTornSurface();
+                BindPunitTornRail(rail);
+            }
+
+            return;
+        }
+
+        if (_clueText == null || !_clueText.gameObject.activeInHierarchy)
+            return;
+
+        if (_punitTornTextSurface != _clueText)
+        {
+            ResetPunitTornSurface();
+            BindPunitTornText(_clueText);
+        }
+        else if (_punitTextBaselineString != _clueText.text)
+        {
+            CapturePunitTornTextGeometry();
+            if (_punitTearGraphic != null)
+                DestroyOwnedObject(_punitTearGraphic.gameObject);
+            _punitTearGraphic = null;
+            ConfigurePunitTextTearGraphic();
+        }
+    }
+
+    private void BindPunitTornRail(RectTransform rail)
+    {
+        if (rail == null)
+            return;
+
+        // Mark even a one-slot rail as bound: it has no two-fragment boundary, and repeatedly
+        // retrying its layout on every LateUpdate would do no useful work.
+        _punitTornBoundRail = rail;
+        if (_railSlots.Count < 2)
+            return;
+
+        int splitSlot = _railSlots.Count / 2;
+        RailSlot left = _railSlots[splitSlot - 1];
+        RailSlot right = _railSlots[splitSlot];
+        float splitLocalX = FindPunitRailSplitLocalX(rail, left, right);
+
+        _punitRailFragments.Clear();
+        for (int i = 0; i < rail.childCount; i++)
+        {
+            Transform child = rail.GetChild(i);
+            if (child is not RectTransform rect || !IsPunitRailFragment(child.name))
+                continue;
+
+            Vector3 rest = rect.localPosition;
+            float center = rail.InverseTransformPoint(
+                rect.TransformPoint(rect.rect.center)).x;
+            float direction = center < splitLocalX ? -1f : 1f;
+            _punitRailFragments.Add(new TornRailFragment
+            {
+                Rect = rect,
+                RestPosition = rest,
+                Direction = direction,
+            });
+        }
+
+        if (_punitRailFragments.Count == 0)
+            return;
+
+        _punitTearGraphic = CreatePunitTearGraphic(rail, matchParentRect: true);
+        _punitTearGraphic.transform.SetAsLastSibling();
+        ApplyPunitRailTearGraphic();
+        ApplyPunitTearToRail();
+    }
+
+    private static bool IsPunitRailFragment(string childName)
+    {
+        return childName.StartsWith("[Runtime] RestorationSlot_", System.StringComparison.Ordinal)
+            || childName.StartsWith("[Runtime] RestorationSlotLabel_", System.StringComparison.Ordinal)
+            || childName.StartsWith("[Runtime] RestorationWordSeparator_", System.StringComparison.Ordinal);
+    }
+
+    private void ApplyPunitTearToRail()
+    {
+        if (_punitTornBoundRail == null)
+            return;
+
+        float separation = _punitTearSeparation * _punitTearProgress;
+        for (int i = 0; i < _punitRailFragments.Count; i++)
+        {
+            TornRailFragment fragment = _punitRailFragments[i];
+            if (fragment.Rect == null)
+                continue;
+
+            Vector3 position = fragment.RestPosition;
+            position.x += fragment.Direction * separation;
+            position.y += fragment.Direction * separation * 0.12f;
+            fragment.Rect.localPosition = position;
+        }
+
+        if (_punitTearGraphic != null)
+            ApplyPunitRailTearGraphic();
+    }
+
+    private float FindPunitRailSplitLocalX()
+    {
+        if (_railSlots.Count < 2 || _punitTornBoundRail == null)
+            return 0f;
+
+        int splitSlot = _railSlots.Count / 2;
+        RailSlot left = _railSlots[splitSlot - 1];
+        RailSlot right = _railSlots[splitSlot];
+        return FindPunitRailSplitLocalX(_punitTornBoundRail, left, right);
+    }
+
+    private static float FindPunitRailSplitLocalX(
+        RectTransform rail,
+        RailSlot left,
+        RailSlot right)
+    {
+        float leftCenter = rail.InverseTransformPoint(
+            left.Anchor.TransformPoint(left.Anchor.rect.center)).x;
+        float rightCenter = rail.InverseTransformPoint(
+            right.Anchor.TransformPoint(right.Anchor.rect.center)).x;
+        return (leftCenter + rightCenter) * 0.5f;
+    }
+
+    private void ApplyPunitRailTearGraphic()
+    {
+        if (_punitTearGraphic == null || _punitTornBoundRail == null)
+            return;
+
+        RectTransform graphicRect = _punitTearGraphic.rectTransform;
+        Vector3 seamInRail = new Vector3(FindPunitRailSplitLocalX(), 0f, 0f);
+        float splitInGraphic = graphicRect.InverseTransformPoint(
+            _punitTornBoundRail.TransformPoint(seamInRail)).x;
+        Rect graphicBounds = graphicRect.rect;
+        _punitTearGraphic.SetTear(
+            splitInGraphic,
+            graphicBounds.yMax,
+            graphicBounds.yMin,
+            _punitTearSeparation * 1.5f,
+            _punitTearProgress);
+    }
+
+    private void BindPunitTornText(TMP_Text text)
+    {
+        if (text == null)
+            return;
+
+        _punitTornTextSurface = text;
+        CapturePunitTornTextGeometry();
+        ConfigurePunitTextTearGraphic();
+    }
+
+    private void CapturePunitTornTextGeometry()
+    {
+        if (_punitTornTextSurface == null)
+            return;
+
+        _punitTornTextSurface.ForceMeshUpdate(true, true);
+        TMP_TextInfo info = _punitTornTextSurface.textInfo;
+        _punitTextBaselineString = _punitTornTextSurface.text;
+        _punitTextCanSplit = false;
+        _punitTextBaselineVertices = null;
+
+        if (info == null || info.characterCount < 2 || info.meshInfo == null)
+            return;
+
+        _punitTextBaselineVertices = new Vector3[info.meshInfo.Length][];
+        for (int i = 0; i < info.meshInfo.Length; i++)
+        {
+            Vector3[] vertices = info.meshInfo[i].vertices;
+            _punitTextBaselineVertices[i] = vertices != null
+                ? (Vector3[])vertices.Clone()
+                : System.Array.Empty<Vector3>();
+        }
+
+        int visibleCount = 0;
+        for (int i = 0; i < info.characterCount; i++)
+        {
+            if (info.characterInfo[i].isVisible)
+                visibleCount++;
+        }
+
+        int leftTarget = visibleCount / 2;
+        if (leftTarget < 1 || leftTarget >= visibleCount)
+            return;
+
+        TMP_CharacterInfo leftChar = default;
+        TMP_CharacterInfo rightChar = default;
+        int visibleIndex = 0;
+        for (int i = 0; i < info.characterCount; i++)
+        {
+            TMP_CharacterInfo character = info.characterInfo[i];
+            if (!character.isVisible)
+                continue;
+
+            if (visibleIndex == leftTarget - 1)
+                leftChar = character;
+            else if (visibleIndex == leftTarget)
+                rightChar = character;
+
+            visibleIndex++;
+        }
+
+        _punitTextSplitX = (leftChar.topRight.x + rightChar.bottomLeft.x) * 0.5f;
+        int splitLine = rightChar.lineNumber;
+        _punitTextTopY = float.NegativeInfinity;
+        _punitTextBottomY = float.PositiveInfinity;
+        for (int i = 0; i < info.characterCount; i++)
+        {
+            TMP_CharacterInfo character = info.characterInfo[i];
+            if (!character.isVisible || character.lineNumber != splitLine)
+                continue;
+
+            _punitTextTopY = Mathf.Max(_punitTextTopY, character.ascender);
+            _punitTextBottomY = Mathf.Min(_punitTextBottomY, character.descender);
+        }
+
+        _punitTextCanSplit = _punitTextTopY > _punitTextBottomY;
+    }
+
+    private void ConfigurePunitTextTearGraphic()
+    {
+        if (_punitTornTextSurface == null || !_punitTextCanSplit)
+            return;
+
+        RectTransform textRect = _punitTornTextSurface.rectTransform;
+        _punitTearGraphic = CreatePunitTearGraphic(textRect, matchParentRect: false);
+        _punitTearGraphic.transform.SetAsLastSibling();
+        _punitTearGraphic.SetTear(
+            _punitTextSplitX,
+            _punitTextTopY,
+            _punitTextBottomY,
+            _punitTearSeparation * 1.5f,
+            _punitTearProgress);
+    }
+
+    private ProceduralClueTearGraphic CreatePunitTearGraphic(
+        RectTransform parent,
+        bool matchParentRect)
+    {
+        var graphicObject = new GameObject(
+            "[Runtime] PunitTornClueEdge", typeof(RectTransform));
+        graphicObject.transform.SetParent(parent, false);
+        RectTransform rect = graphicObject.GetComponent<RectTransform>();
+        if (matchParentRect)
+        {
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+        }
+        else
+        {
+            rect.anchorMin = parent.pivot;
+            rect.anchorMax = parent.pivot;
+            rect.pivot = parent.pivot;
+            rect.sizeDelta = parent.rect.size;
+            rect.anchoredPosition = Vector2.zero;
+        }
+
+        ProceduralClueTearGraphic graphic = graphicObject.AddComponent<ProceduralClueTearGraphic>();
+        graphic.raycastTarget = false;
+        return graphic;
+    }
+
+    private void ApplyPunitTearToText()
+    {
+        if (_punitTornTextSurface == null)
+            return;
+
+        if (_punitTextBaselineString != _punitTornTextSurface.text)
+        {
+            CapturePunitTornTextGeometry();
+            if (_punitTearGraphic != null)
+                DestroyOwnedObject(_punitTearGraphic.gameObject);
+            _punitTearGraphic = null;
+            ConfigurePunitTextTearGraphic();
+        }
+
+        TMP_TextInfo info = _punitTornTextSurface.textInfo;
+        if (info == null || _punitTextBaselineVertices == null
+            || _punitTextBaselineVertices.Length != info.meshInfo.Length)
+            return;
+
+        for (int meshIndex = 0; meshIndex < info.meshInfo.Length; meshIndex++)
+        {
+            Vector3[] vertices = info.meshInfo[meshIndex].vertices;
+            Vector3[] baseline = _punitTextBaselineVertices[meshIndex];
+            System.Array.Copy(baseline, vertices, Mathf.Min(vertices.Length, baseline.Length));
+        }
+
+        int visibleCount = 0;
+        for (int i = 0; i < info.characterCount; i++)
+        {
+            if (info.characterInfo[i].isVisible)
+                visibleCount++;
+        }
+
+        int splitIndex = visibleCount / 2;
+        int visibleIndex = 0;
+        float separation = _punitTearSeparation * _punitTearProgress;
+        for (int i = 0; i < info.characterCount; i++)
+        {
+            TMP_CharacterInfo character = info.characterInfo[i];
+            if (!character.isVisible)
+                continue;
+
+            float direction = visibleIndex < splitIndex ? -1f : 1f;
+            visibleIndex++;
+            int materialIndex = character.materialReferenceIndex;
+            int vertexIndex = character.vertexIndex;
+            if (materialIndex < 0 || materialIndex >= _punitTextBaselineVertices.Length)
+                continue;
+
+            Vector3[] baseline = _punitTextBaselineVertices[materialIndex];
+            Vector3[] vertices = info.meshInfo[materialIndex].vertices;
+            if (vertexIndex < 0 || vertexIndex + 3 >= baseline.Length
+                || vertexIndex + 3 >= vertices.Length)
+                continue;
+
+            Vector3 offset = new Vector3(
+                direction * separation, direction * separation * 0.08f, 0f);
+            for (int corner = 0; corner < 4; corner++)
+                vertices[vertexIndex + corner] = baseline[vertexIndex + corner] + offset;
+        }
+
+        _punitTornTextSurface.UpdateVertexData(TMP_VertexDataUpdateFlags.Vertices);
+        if (_punitTearGraphic != null)
+        {
+            _punitTearGraphic.SetTear(
+                _punitTextSplitX,
+                _punitTextTopY,
+                _punitTextBottomY,
+                _punitTearSeparation * 1.5f,
+                _punitTearProgress);
+        }
+    }
+
+    private void ResetPunitTornSurface()
+    {
+        for (int i = 0; i < _punitRailFragments.Count; i++)
+        {
+            TornRailFragment fragment = _punitRailFragments[i];
+            if (fragment.Rect != null)
+                fragment.Rect.localPosition = fragment.RestPosition;
+        }
+
+        _punitRailFragments.Clear();
+        _punitTornBoundRail = null;
+
+        if (_punitTornTextSurface != null
+            && _punitTextBaselineString != _punitTornTextSurface.text)
+        {
+            // A clue may have changed while its effect was active. Rebuild from the unchanged TMP
+            // source string instead of copying an older mesh snapshot onto the new sentence.
+            _punitTornTextSurface.ForceMeshUpdate(true, true);
+        }
+        else if (_punitTornTextSurface != null && _punitTextBaselineVertices != null)
+        {
+            TMP_TextInfo info = _punitTornTextSurface.textInfo;
+            if (info != null && info.meshInfo != null)
+            {
+                int meshCount = Mathf.Min(info.meshInfo.Length, _punitTextBaselineVertices.Length);
+                for (int meshIndex = 0; meshIndex < meshCount; meshIndex++)
+                {
+                    Vector3[] vertices = info.meshInfo[meshIndex].vertices;
+                    Vector3[] baseline = _punitTextBaselineVertices[meshIndex];
+                    System.Array.Copy(baseline, vertices, Mathf.Min(vertices.Length, baseline.Length));
+                }
+
+                _punitTornTextSurface.UpdateVertexData(TMP_VertexDataUpdateFlags.Vertices);
+            }
+        }
+
+        _punitTornTextSurface = null;
+        _punitTextBaselineString = null;
+        _punitTextBaselineVertices = null;
+        _punitTextCanSplit = false;
+
+        if (_punitTearGraphic != null)
+            DestroyOwnedObject(_punitTearGraphic.gameObject);
+        _punitTearGraphic = null;
+    }
+
+    private void ResetPunitTornEffect()
+    {
+        ResetPunitTornSurface();
+        _punitTearProgress = 0f;
+        _punitTearTargetActive = false;
+    }
+
     private RestorationObjectiveUnit FindObjectiveUnit(string stableId)
     {
         IReadOnlyList<RestorationObjectiveUnit> units =
@@ -2440,7 +3615,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             // A symbol with no glyph art leaves the child off rather than showing it: an Image with
             // no sprite draws a solid quad, which would fill the slot with a block instead of a
             // glyph. The frame colour still reports the slot as restored.
-            bool showGlyph = restored && slot.Glyph.sprite != null && !ashCoveringSlot;
+            bool showGlyph = restored && slot.Glyph.sprite != null
+                && !ashCoveringSlot && !slot.IsUhawCaptured;
 
             // A slot with a glyph in the air is the one case where the resting glyph stays hidden
             // while the state says restored: the flier is standing in for it. This is the ONLY
@@ -2489,6 +3665,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         // cannot snap the rail back to full opacity halfway through a dip.
         if (_railCanvasGroup != null && _railFlashRoutine == null)
             _railCanvasGroup.alpha = 1f;
+
+        SyncNgatngatTextDamage();
     }
 
     private bool IsObjectiveUnitComplete(string unitId)
@@ -2657,7 +3835,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         => LaunchSlotGlyphFlightsInternal(null, occurrenceId, sourceWorldPosition);
 
     private void LaunchSlotGlyphFlightsInternal(
-        string symbolStableId, string occurrenceId, Vector3 sourceWorldPosition)
+        string symbolStableId, string occurrenceId, Vector3 sourceWorldPosition,
+        RailSlot excludedSlot = null)
     {
         if (!_slotGlyphFlightEnabled
             || (string.IsNullOrEmpty(symbolStableId) && string.IsNullOrEmpty(occurrenceId))
@@ -2698,7 +3877,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         for (int i = 0; i < _railSlots.Count; i++)
         {
             RailSlot slot = _railSlots[i];
-            if (slot?.Glyph == null || slot.Glyph.sprite == null)
+            if (slot == excludedSlot || slot?.Glyph == null || slot.Glyph.sprite == null)
                 continue;
 
             if (!string.IsNullOrEmpty(occurrenceId))
@@ -3088,6 +4267,9 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
     private void DestroyRestorationRail()
     {
+        ResetPunitTornSurface();
+        ResetNgatngatTextDamage();
+        ResetUhawGlyphCaptures();
         HideAshCover();
         _railFlashRoutine = null;
 

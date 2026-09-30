@@ -92,8 +92,8 @@ As a player, I want Kadena to protect a neighbour, so that I have to break the c
 - AC: Kadena chains the nearest enemy and makes it invulnerable while the chain holds.
 - AC: Defeating Kadena releases the chained enemy.
 - System: Enemies · `chainsNearestEnemy` → `KadenaChainController`
-- Status: Partial — the controller is implemented; the chain badge art is missing, and the spec's clause about which assist Kadena disables conflicts with the shipped invulnerability implementation.
-- Refs: `Assets/Scripts/Gameplay/Enemy/KadenaChainController.cs`, SALIN-287, `docs/audit/STATUS-2026-09-13.md` Gaps row 9
+- Status: Partial — the controller and linked chain art are implemented and covered by focused Edit Mode, Play Mode defeat, and rendered-art checks. The spec's clause about which assist Kadena disables still conflicts with the shipped invulnerability implementation; a full in-level Play Mode review remains outstanding.
+- Refs: `Assets/Scripts/Gameplay/Enemy/KadenaChainController.cs`, `Assets/Scripts/Gameplay/Enemy/EnemyRelationshipConnector.cs`, SALIN-287, `docs/audit/STATUS-2026-09-13.md` Gaps row 9
 
 ### ENM-21 — Daan-Lihis (DA) takes a crooked path
 As a player, I want Daan-Lihis to be hard to track, so that its lesson about wrong turnings shows in its movement.
@@ -126,7 +126,7 @@ As a player, I want these four enemies to do something I can see in combat, so t
 - AC: **Uhaw (O/U)** — a combat-time effect that drains something in play.
 - AC: Each has an ability flag on `EnemyDataSO`, a controller attached through `Enemy.EnsureAbilityComponent`, and coverage in `CorruptionSignatureAbilityTests`.
 - System: Enemies · `EnemyDataSO` ability flags, `StrokeCapture` hook, `ChallengeSession` hook
-- Status: Missing — all four carry description text and stats only (Gapos HP 2, Uhaw HP 2, Punit speed 1.7, Ngatngat speed 1.9) with no ability flag and no controller. **Blocked:** the R6 rule sheet that maps each to an existing hook lives in the untracked `AUDIT.md §6.3` and is not in the repository, so none of the four has an implementable rule yet. See U-8.
+- Status: Partial — Gapos has a `BoundPair` ability flag/controller and linked root art; its Edit Mode, Play Mode defeat, and rendered connector checks pass. Its current pair-binding rule differs from this story's older stroke-constraining AC. Punit, Ngatngat, and Uhaw still lack implementable rules because the R6 rule sheet is not in the repository. See U-8.
 - Refs: `EnemyData_Gapos.asset`, `EnemyData_Punit.asset`, `EnemyData_Ngatngat.asset`, `EnemyData_Uhaw.asset`, SALIN-259 (To Do), `docs/audit/BACKLOG.md` T61
 - Merged: absorbs ENM-25, ENM-26, ENM-27
 
