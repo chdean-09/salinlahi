@@ -22,7 +22,7 @@ public static class OnboardingPersistence
             TutorialProgressRecord record = SaveManager.Instance.Repository.GetTutorialProgress(GetStableLevelId(levelNumber));
             return record == null ? NoBeatCompleted : record.lastCompletedBeatIndex;
         }
-        return PlayerPrefs.GetInt(GetBeatIndexKey(levelNumber), NoBeatCompleted);
+        return ProgressPrefs.GetInt(GetBeatIndexKey(levelNumber), NoBeatCompleted);
     }
 
     /// <summary>Records the last completed beat index. Negative values are clamped to -1.</summary>
@@ -40,8 +40,8 @@ public static class OnboardingPersistence
                 GetStableLevelId(levelNumber), false, clamped);
             return;
         }
-        PlayerPrefs.SetInt(GetBeatIndexKey(levelNumber), clamped);
-        PlayerPrefs.Save();
+        ProgressPrefs.SetInt(GetBeatIndexKey(levelNumber), clamped);
+        ProgressPrefs.Save();
     }
 
     /// <summary>Returns the beat index to start the loop from on the next run.</summary>
@@ -75,17 +75,17 @@ public static class OnboardingPersistence
     {
         if (UsesRevisedProgress())
             return;
-        PlayerPrefs.DeleteKey(ProgressManager.Level1FtueBeatIndexKey);
-        PlayerPrefs.DeleteKey(ProgressManager.Level2AdvancedBeatIndexKey);
-        PlayerPrefs.Save();
+        ProgressPrefs.DeleteKey(ProgressManager.Level1FtueBeatIndexKey);
+        ProgressPrefs.DeleteKey(ProgressManager.Level2AdvancedBeatIndexKey);
+        ProgressPrefs.Save();
     }
 
     public static void Clear(int levelNumber)
     {
         if (UsesRevisedProgress())
             return;
-        PlayerPrefs.DeleteKey(GetBeatIndexKey(levelNumber));
-        PlayerPrefs.Save();
+        ProgressPrefs.DeleteKey(GetBeatIndexKey(levelNumber));
+        ProgressPrefs.Save();
     }
 
     private static string GetBeatIndexKey(int levelNumber)

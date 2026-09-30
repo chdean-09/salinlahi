@@ -56,6 +56,9 @@ public class EnemyDataSO : ScriptableObject
     [Tooltip("Ability-driven sprite layers synchronized to the Enemy walk-frame index. Definitions share pooled presenter layers and may anchor to the body or glyph badge.")]
     public EnemyAbilityVisualDefinition[] abilityVisuals = Array.Empty<EnemyAbilityVisualDefinition>();
 
+    [Tooltip("Optional connector art drawn between this enemy and the targets selected by its relationship ability.")]
+    public EnemyRelationshipVisualDefinition relationshipVisual;
+
     [Tooltip("Ability artwork targeting HUD elements instead of the enemy sprite. The HUD presenter resolves these definitions from the currently active ability source.")]
     public EnemyHudAbilityVisualDefinition[] hudAbilityVisuals = Array.Empty<EnemyHudAbilityVisualDefinition>();
 

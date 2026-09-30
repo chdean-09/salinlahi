@@ -1,0 +1,308 @@
+fileFormatVersion: 2
+guid: fa697fd1b871e4c6eb9837ab8a4d2437
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 9113868167174301981
+    second: kadena-chain-sheet_0
+  - first:
+      213: 2960522650658185262
+    second: kadena-chain-sheet_1
+  - first:
+      213: -6302419022793384262
+    second: kadena-chain-sheet_2
+  - first:
+      213: 2235454703675021640
+    second: kadena-chain-sheet_3
+  - first:
+      213: 7150922791491198330
+    second: kadena-chain-sheet_4
+  - first:
+      213: 620759982911830508
+    second: kadena-chain-sheet_5
+  - first:
+      213: 585024937530724737
+    second: kadena-chain-sheet_6
+  - first:
+      213: 9184435705430900555
+    second: kadena-chain-sheet_7
+  - first:
+      213: 6042555804425606211
+    second: kadena-chain-sheet_8
+  - first:
+      213: 1095360257575068861
+    second: kadena-chain-sheet_9
+  - first:
+      213: 268520196565176978
+    second: kadena-chain-sheet_10
+  - first:
+      213: -5872405657491251879
+    second: kadena-chain-sheet_11
+  - first:
+      213: -4506919887852648739
+    second: kadena-chain-sheet_12
+  - first:
+      213: 376359992219455208
+    second: kadena-chain-sheet_13
+  - first:
+      213: -5479428384694108068
+    second: kadena-chain-sheet_14
+  - first:
+      213: 535101748878468778
+    second: kadena-chain-sheet_15
+  - first:
+      213: -4996300655878610484
+    second: kadena-chain-sheet_16
+  - first:
+      213: 513531285745542401
+    second: kadena-chain-sheet_17
+  - first:
+      213: 3077580307446198060
+    second: kadena-chain-sheet_18
+  - first:
+      213: 4158723528187072429
+    second: kadena-chain-sheet_19
+  - first:
+      213: 4903308487300816751
+    second: kadena-chain-sheet_20
+  - first:
+      213: 1864959489197967717
+    second: kadena-chain-sheet_21
+  - first:
+      213: -7138184963472087011
+    second: kadena-chain-sheet_22
+  - first:
+      213: -4932723205320801578
+    second: kadena-chain-sheet_23
+  - first:
+      213: -1151775950447806362
+    second: kadena-chain-sheet_24
+  - first:
+      213: -8991491528210620322
+    second: Kadena_Chain
+  - first:
+      213: 8495636738459506919
+    second: Kadena_LeftHook
+  - first:
+      213: -5292974004179906033
+    second: Kadena_RightHook
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 0
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 512
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: iOS
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Kadena_Chain
+      rect:
+        serializedVersion: 2
+        x: 59
+        y: 449
+        width: 1656
+        height: 210
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e506214181ec73380800000000000000
+      internalID: -8991491528210620322
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Kadena_LeftHook
+      rect:
+        serializedVersion: 2
+        x: 59
+        y: 123
+        width: 674
+        height: 235
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7e813a01a9096e570800000000000000
+      internalID: 8495636738459506919
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Kadena_RightHook
+      rect:
+        serializedVersion: 2
+        x: 1041
+        y: 123
+        width: 674
+        height: 235
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f02da73cf249b86b0800000000000000
+      internalID: -5292974004179906033
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    outline: []
+    customData:
+    physicsShape: []
+    bones: []
+    spriteID:
+    internalID: 0
+    vertices: []
+    indices:
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Kadena_Chain: -8991491528210620322
+      Kadena_LeftHook: 8495636738459506919
+      Kadena_RightHook: -5292974004179906033
+      kadena-chain-sheet_0: 9113868167174301981
+      kadena-chain-sheet_1: 2960522650658185262
+      kadena-chain-sheet_10: 268520196565176978
+      kadena-chain-sheet_11: -5872405657491251879
+      kadena-chain-sheet_12: -4506919887852648739
+      kadena-chain-sheet_13: 376359992219455208
+      kadena-chain-sheet_14: -5479428384694108068
+      kadena-chain-sheet_15: 535101748878468778
+      kadena-chain-sheet_16: -4996300655878610484
+      kadena-chain-sheet_17: 513531285745542401
+      kadena-chain-sheet_18: 3077580307446198060
+      kadena-chain-sheet_19: 4158723528187072429
+      kadena-chain-sheet_2: -6302419022793384262
+      kadena-chain-sheet_20: 4903308487300816751
+      kadena-chain-sheet_21: 1864959489197967717
+      kadena-chain-sheet_22: -7138184963472087011
+      kadena-chain-sheet_23: -4932723205320801578
+      kadena-chain-sheet_24: -1151775950447806362
+      kadena-chain-sheet_3: 2235454703675021640
+      kadena-chain-sheet_4: 7150922791491198330
+      kadena-chain-sheet_5: 620759982911830508
+      kadena-chain-sheet_6: 585024937530724737
+      kadena-chain-sheet_7: 9184435705430900555
+      kadena-chain-sheet_8: 6042555804425606211
+      kadena-chain-sheet_9: 1095360257575068861
+  mipmapLimitGroupName:
+  pSDRemoveMatte: 0
+  userData:
+  assetBundleName:
+  assetBundleVariant:

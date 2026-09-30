@@ -21,6 +21,7 @@ public sealed class PillarFill : MonoBehaviour
     private SpriteRenderer _leftPillar;
     private SpriteRenderer _rightPillar;
     private Sprite _whitePixelSprite;
+    private Texture2D _whitePixelTexture;
     private bool _warnedNoSprite;
     private bool _warnedNoPlayColumn;
     private Vector3 _lastCameraPosition;
@@ -79,6 +80,20 @@ public sealed class PillarFill : MonoBehaviour
         if (_playColumn != null)
             _playColumn.OnPlayAreaChanged -= Apply;
         EventBus.OnThemeApplied -= OnThemeApplied;
+    }
+
+    private void OnDestroy()
+    {
+        if (Application.isPlaying)
+        {
+            if (_whitePixelSprite != null) Destroy(_whitePixelSprite);
+            if (_whitePixelTexture != null) Destroy(_whitePixelTexture);
+        }
+        else
+        {
+            if (_whitePixelSprite != null) DestroyImmediate(_whitePixelSprite);
+            if (_whitePixelTexture != null) DestroyImmediate(_whitePixelTexture);
+        }
     }
 
     private void OnThemeApplied(EraThemeSO _) => Apply();
@@ -244,10 +259,24 @@ public sealed class PillarFill : MonoBehaviour
     private Sprite GetOrCreateWhitePixelSprite()
     {
         if (_whitePixelSprite != null) return _whitePixelSprite;
-        Texture2D tex = new Texture2D(1, 1);
-        tex.SetPixel(0, 0, Color.white);
-        tex.Apply();
-        _whitePixelSprite = Sprite.Create(tex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
+        _whitePixelTexture = new Texture2D(1, 1, TextureFormat.RGBA32, false)
+        {
+            name = "PillarFill White Pixel",
+            hideFlags = HideFlags.DontSave,
+            filterMode = FilterMode.Point,
+            wrapMode = TextureWrapMode.Repeat,
+        };
+        _whitePixelTexture.SetPixel(0, 0, Color.white);
+        _whitePixelTexture.Apply();
+        _whitePixelSprite = Sprite.Create(
+            _whitePixelTexture,
+            new Rect(0, 0, 1, 1),
+            new Vector2(0.5f, 0.5f),
+            1f,
+            0,
+            SpriteMeshType.FullRect);
+        _whitePixelSprite.name = "PillarFill White Pixel Sprite";
+        _whitePixelSprite.hideFlags = HideFlags.DontSave;
         return _whitePixelSprite;
     }
 
@@ -264,4 +293,7 @@ public sealed class PillarFill : MonoBehaviour
     {
         ApplyInternal(mode, color, sprite);
     }
+
+    internal Sprite WhitePixelSpriteForTests => _whitePixelSprite;
+    internal Sprite CreateWhitePixelSpriteForTests() => GetOrCreateWhitePixelSprite();
 }

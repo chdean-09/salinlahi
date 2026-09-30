@@ -16,6 +16,7 @@ public class EnemyGlyphBadge : MonoBehaviour
     private Vector3 _baseLocalPosition;
     private Vector3 _baseLocalScale;
     private Quaternion _baseLocalRotation;
+    private bool _baseFlipX;
     private Color _baseColor = Color.white;
     private bool _layoutApplied;
     // Takip: while covered the badge keeps its sprite but stays hidden (GlyphCoverController).
@@ -62,6 +63,7 @@ public class EnemyGlyphBadge : MonoBehaviour
         if (_renderer != null)
         {
             _renderer.sortingOrder = RenderOrder.EnemyGlyphBadge;
+            _baseFlipX = _renderer.flipX;
             _baseColor = _renderer.color;
         }
         _baseLocalPosition = transform.localPosition;
@@ -135,8 +137,14 @@ public class EnemyGlyphBadge : MonoBehaviour
 
     public void SetCharacter(BaybayinCharacterSO ch)
     {
-        Sprite sprite = ResolveSprite(ch);
         if (_renderer == null) return;
+
+        bool isContradictingDecoy = _enemy != null
+                                    && _enemy.Data != null
+                                    && _enemy.Data.learningAbility == EnemyLearningAbility.ContradictingDecoy;
+        _renderer.flipX = _baseFlipX ^ isContradictingDecoy;
+
+        Sprite sprite = ResolveSprite(ch);
         if (sprite == null)
         {
             _renderer.enabled = false;
@@ -322,6 +330,7 @@ public class EnemyGlyphBadge : MonoBehaviour
         if (_renderer != null)
         {
             Color c = _baseColor; c.a = 1f; _renderer.color = c;
+            _renderer.flipX = _baseFlipX;
             _renderer.enabled = false;
         }
         transform.localPosition = _baseLocalPosition;

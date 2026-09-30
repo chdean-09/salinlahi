@@ -31,13 +31,13 @@ MonoBehaviour:
   abilityVisuals:
   - id: 0
     anchor: 0
-    frameMode: 1
+    frameMode: 0
     singleFrameIndex: 0
     frameRangeStartIndex: 0
     frameRangeEndIndex: 0
     activeSprite: {fileID: 21300000, guid: db7c947ed43854af1afa25a98a34dee4, type: 3}
     activeTint: {r: 1, g: 1, b: 1, a: 1}
-    activeOpacity: 0.45
+    activeOpacity: 0.8
     exitFrames:
     - {fileID: 21300000, guid: db7c947ed43854af1afa25a98a34dee4, type: 3}
     - {fileID: 21300000, guid: d6990f5c5f05340d5a3b4ae4fd2f4084, type: 3}

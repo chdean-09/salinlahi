@@ -1,0 +1,546 @@
+fileFormatVersion: 2
+guid: 7b00e7e332eaf43caac23de4a9527782
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -707958801406846464
+    second: gapos-root-tile_0
+  - first:
+      213: 7167623842334336433
+    second: gapos-root-tile_1
+  - first:
+      213: -571484448887171407
+    second: gapos-root-tile_2
+  - first:
+      213: -2864821862489781808
+    second: gapos-root-tile_3
+  - first:
+      213: -4614028486922492784
+    second: gapos-root-tile_4
+  - first:
+      213: -8755985130571223936
+    second: gapos-root-tile_5
+  - first:
+      213: 1167690519900366862
+    second: gapos-root-tile_6
+  - first:
+      213: 782514851990123347
+    second: gapos-root-tile_7
+  - first:
+      213: -4891987804505507860
+    second: gapos-root-tile_8
+  - first:
+      213: 2799391591007543542
+    second: gapos-root-tile_9
+  - first:
+      213: -8289953249842954253
+    second: gapos-root-tile_10
+  - first:
+      213: 3720741477947995099
+    second: gapos-root-tile_11
+  - first:
+      213: 2848150805932941868
+    second: gapos-root-tile_12
+  - first:
+      213: -8951420968487743390
+    second: gapos-root-tile_13
+  - first:
+      213: -8028995158707290330
+    second: gapos-root-tile_14
+  - first:
+      213: 5250817454391851356
+    second: gapos-root-tile_15
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 2
+    wrapV: 2
+    wrapW: 2
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 0
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 2048
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: iOS
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: gapos-root-tile_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 63
+        width: 2172
+        height: 540
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 00a98869833dc26f0800000000000000
+      internalID: -707958801406846464
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: gapos-root-tile_1
+      rect:
+        serializedVersion: 2
+        x: 418
+        y: 562
+        width: 82
+        height: 45
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1b565fda8e3887360800000000000000
+      internalID: 7167623842334336433
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: gapos-root-tile_2
+      rect:
+        serializedVersion: 2
+        x: 1164
+        y: 594
+        width: 12
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1b69b6debeda118f0800000000000000
+      internalID: -571484448887171407
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: gapos-root-tile_3
+      rect:
+        serializedVersion: 2
+        x: 1174
+        y: 584
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0d9068dc1bb1e38d0800000000000000
+      internalID: -2864821862489781808
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: gapos-root-tile_4
+      rect:
+        serializedVersion: 2
+        x: 635
+        y: 547
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 094a37d898da7ffb0800000000000000
+      internalID: -4614028486922492784
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: gapos-root-tile_5
+      rect:
+        serializedVersion: 2
+        x: 2067
+        y: 546
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 08c23b93aed7c7680800000000000000
+      internalID: -8755985130571223936
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: gapos-root-tile_6
+      rect:
+        serializedVersion: 2
+        x: 629
+        y: 532
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e08a0465758743010800000000000000
+      internalID: 1167690519900366862
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: gapos-root-tile_7
+      rect:
+        serializedVersion: 2
+        x: 991
+        y: 518
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 353b658ac1d0cda00800000000000000
+      internalID: 782514851990123347
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: gapos-root-tile_8
+      rect:
+        serializedVersion: 2
+        x: 121
+        y: 160
+        width: 15
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ce7f7eab20b2c1cb0800000000000000
+      internalID: -4891987804505507860
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: gapos-root-tile_9
+      rect:
+        serializedVersion: 2
+        x: 135
+        y: 166
+        width: 9
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6f06839f1df69d620800000000000000
+      internalID: 2799391591007543542
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: gapos-root-tile_10
+      rect:
+        serializedVersion: 2
+        x: 137
+        y: 130
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3fff38af07b24fc80800000000000000
+      internalID: -8289953249842954253
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: gapos-root-tile_11
+      rect:
+        serializedVersion: 2
+        x: 306
+        y: 136
+        width: 7
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bd3f62e29aab2a330800000000000000
+      internalID: 3720741477947995099
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: gapos-root-tile_12
+      rect:
+        serializedVersion: 2
+        x: 547
+        y: 128
+        width: 8
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c22206e511aa68720800000000000000
+      internalID: 2848150805932941868
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: gapos-root-tile_13
+      rect:
+        serializedVersion: 2
+        x: 1721
+        y: 136
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2601e4a4e0a26c380800000000000000
+      internalID: -8951420968487743390
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: gapos-root-tile_14
+      rect:
+        serializedVersion: 2
+        x: 1003
+        y: 110
+        width: 14
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 62fbbed4177439090800000000000000
+      internalID: -8028995158707290330
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: gapos-root-tile_15
+      rect:
+        serializedVersion: 2
+        x: 1518
+        y: 83
+        width: 14
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c59727d97a6aed840800000000000000
+      internalID: 5250817454391851356
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    outline: []
+    customData:
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices:
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      gapos-root-tile_0: -707958801406846464
+      gapos-root-tile_1: 7167623842334336433
+      gapos-root-tile_10: -8289953249842954253
+      gapos-root-tile_11: 3720741477947995099
+      gapos-root-tile_12: 2848150805932941868
+      gapos-root-tile_13: -8951420968487743390
+      gapos-root-tile_14: -8028995158707290330
+      gapos-root-tile_15: 5250817454391851356
+      gapos-root-tile_2: -571484448887171407
+      gapos-root-tile_3: -2864821862489781808
+      gapos-root-tile_4: -4614028486922492784
+      gapos-root-tile_5: -8755985130571223936
+      gapos-root-tile_6: 1167690519900366862
+      gapos-root-tile_7: 782514851990123347
+      gapos-root-tile_8: -4891987804505507860
+      gapos-root-tile_9: 2799391591007543542
+  mipmapLimitGroupName:
+  pSDRemoveMatte: 0
+  userData:
+  assetBundleName:
+  assetBundleVariant:

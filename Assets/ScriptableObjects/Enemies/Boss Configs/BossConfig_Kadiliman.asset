@@ -21,75 +21,119 @@ MonoBehaviour:
     salinlahi.
   bossEnemyData: {fileID: 11400000, guid: 052b00742308dce4499cfb4cf6b8c33e, type: 2}
   phases:
-  - summonPhaseDuration: 30
-    delayBetweenSummons: 6
-    minionsPerSummonMin: 1
-    minionsPerSummonMax: 2
-    delayBetweenMinions: 0.8
-    summonEnemyTypes:
-    - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
-    - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
-    summonSpawnRange: {x: 3, y: 1.5}
-    requiredCharacterCount: 4
-    vulnerabilityTimer: 25
-    movementPattern: 1
-    movementSpeed: 1
-    paceHalfRange: 2.5
-    teleportHalfRange: {x: 2, y: 0}
-  - summonPhaseDuration: 30
+  - displayName: Ugat
+    summonPhaseDuration: 30
     delayBetweenSummons: 5
     minionsPerSummonMin: 2
     minionsPerSummonMax: 3
-    delayBetweenMinions: 0.8
-    summonEnemyTypes:
-    - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
-    - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
-    - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
-    summonSpawnRange: {x: 3, y: 1.5}
-    requiredCharacterCount: 4
-    vulnerabilityTimer: 24
-    movementPattern: 1
-    movementSpeed: 1.3
-    paceHalfRange: 2.5
-    teleportHalfRange: {x: 2.5, y: 0}
-  - summonPhaseDuration: 30
-    delayBetweenSummons: 4
-    minionsPerSummonMin: 2
-    minionsPerSummonMax: 3
-    delayBetweenMinions: 0.7
-    summonEnemyTypes:
-    - {fileID: 11400000, guid: c5f91a4c7515047cabd59ea63b9bfef6, type: 2}
-    - {fileID: 11400000, guid: e89a049d218824eb18439081351d8c5e, type: 2}
-    - {fileID: 11400000, guid: d32d963289bb94a54ba971ec25be3bbf, type: 2}
-    summonSpawnRange: {x: 3.5, y: 1}
-    requiredCharacterCount: 4
-    vulnerabilityTimer: 22
-    movementPattern: 2
-    movementSpeed: 0
-    paceHalfRange: 2
-    teleportHalfRange: {x: 2.5, y: 2.5}
-  - summonPhaseDuration: 35
-    delayBetweenSummons: 3.5
-    minionsPerSummonMin: 3
-    minionsPerSummonMax: 4
     delayBetweenMinions: 0.6
     summonEnemyTypes:
     - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
+    - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
+    - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
     - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
-    - {fileID: 11400000, guid: 3beab354ec73c4942a045607153e984b, type: 2}
     - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+    - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
+    guaranteedSummonEnemyTypes:
+    - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
+    - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
+    - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
+    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
+    - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+    - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
+    summonSpawnRange: {x: 2, y: 0}
+    requiredCharacterCount: 4
+    vulnerabilityTimer: 12
+    movementPattern: 1
+    movementSpeed: 1
+    paceHalfRange: 1.5
+    teleportHalfRange: {x: 2, y: 0}
+  - displayName: Ugnayan
+    summonPhaseDuration: 30
+    delayBetweenSummons: 5
+    minionsPerSummonMin: 2
+    minionsPerSummonMax: 3
+    delayBetweenMinions: 0.6
+    summonEnemyTypes:
+    - {fileID: 11400000, guid: 8e024019aad5441b2b201c95419d99c7, type: 2}
+    - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
+    - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
+    - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
+    - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
+    - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
+    guaranteedSummonEnemyTypes:
+    - {fileID: 11400000, guid: 8e024019aad5441b2b201c95419d99c7, type: 2}
+    - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
+    - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
+    - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
+    - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
+    - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
+    summonSpawnRange: {x: 2, y: 0}
+    requiredCharacterCount: 4
+    vulnerabilityTimer: 12
+    movementPattern: 1
+    movementSpeed: 1
+    paceHalfRange: 1.5
+    teleportHalfRange: {x: 2, y: 0}
+  - displayName: Lahat
+    summonPhaseDuration: 35
+    delayBetweenSummons: 5
+    minionsPerSummonMin: 2
+    minionsPerSummonMax: 3
+    delayBetweenMinions: 0.6
+    summonEnemyTypes:
+    - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
+    - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
+    - {fileID: 11400000, guid: 896d01723b3854769ba12aa04eff2181, type: 2}
+    - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
     - {fileID: 11400000, guid: c5f91a4c7515047cabd59ea63b9bfef6, type: 2}
-    summonSpawnRange: {x: 3.5, y: 1}
+    - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
+    - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
+    - {fileID: 11400000, guid: e89a049d218824eb18439081351d8c5e, type: 2}
+    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
+    - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+    - {fileID: 11400000, guid: d32d963289bb94a54ba971ec25be3bbf, type: 2}
+    - {fileID: 11400000, guid: 3beab354ec73c4942a045607153e984b, type: 2}
+    - {fileID: 11400000, guid: 579d65d7846bc3a4ce1f0197ec37751a, type: 2}
+    - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
+    - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
+    - {fileID: 11400000, guid: 8e024019aad5441b2b201c95419d99c7, type: 2}
+    - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
+    - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
+    guaranteedSummonEnemyTypes:
+    - {fileID: 11400000, guid: 896d01723b3854769ba12aa04eff2181, type: 2}
+    - {fileID: 11400000, guid: 579d65d7846bc3a4ce1f0197ec37751a, type: 2}
+    - {fileID: 11400000, guid: c5f91a4c7515047cabd59ea63b9bfef6, type: 2}
+    - {fileID: 11400000, guid: e89a049d218824eb18439081351d8c5e, type: 2}
+    - {fileID: 11400000, guid: d32d963289bb94a54ba971ec25be3bbf, type: 2}
+    - {fileID: 11400000, guid: 3beab354ec73c4942a045607153e984b, type: 2}
+    - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
+    summonSpawnRange: {x: 2, y: 0}
     requiredCharacterCount: 5
-    vulnerabilityTimer: 22
-    movementPattern: 2
-    movementSpeed: 0
-    paceHalfRange: 2
-    teleportHalfRange: {x: 3, y: 3}
+    vulnerabilityTimer: 12
+    movementPattern: 1
+    movementSpeed: 1
+    paceHalfRange: 1.5
+    teleportHalfRange: {x: 2, y: 0}
   fallbackEnemyTypes:
-  - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
-  - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
+  - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
+  - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
+  - {fileID: 11400000, guid: 896d01723b3854769ba12aa04eff2181, type: 2}
+  - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
   - {fileID: 11400000, guid: c5f91a4c7515047cabd59ea63b9bfef6, type: 2}
+  - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
+  - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
+  - {fileID: 11400000, guid: e89a049d218824eb18439081351d8c5e, type: 2}
+  - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
+  - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+  - {fileID: 11400000, guid: d32d963289bb94a54ba971ec25be3bbf, type: 2}
+  - {fileID: 11400000, guid: 3beab354ec73c4942a045607153e984b, type: 2}
+  - {fileID: 11400000, guid: 579d65d7846bc3a4ce1f0197ec37751a, type: 2}
+  - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
+  - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
+  - {fileID: 11400000, guid: 8e024019aad5441b2b201c95419d99c7, type: 2}
+  - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
+  - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
   summonHorizontalBounds: {x: -2, y: 2}
   introDuration: 2
   outroDuration: 2.5

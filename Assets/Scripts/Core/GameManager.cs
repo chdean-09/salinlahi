@@ -75,7 +75,16 @@ private bool _hasPausedRunSnapshot;
         public int CurrentHealth { get; }
     }
 
-    protected override void Awake() => base.Awake();
+    protected override void Awake()
+    {
+#if UNITY_EDITOR
+        // The QA session chooses its level before the gameplay scene wakes. Resolve it here so
+        // LevelFlowController.Start sees the same CurrentLevel that normal LevelButton entry sets.
+        if (CurrentLevel == null && QaSessionContext.TryGetSelectedLevel(out LevelConfigSO qaLevel))
+            CurrentLevel = qaLevel;
+#endif
+        base.Awake();
+    }
 
     private void OnEnable()
     {

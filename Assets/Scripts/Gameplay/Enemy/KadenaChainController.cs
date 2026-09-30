@@ -61,6 +61,13 @@ public sealed class KadenaChainController : MonoBehaviour
 
     public bool IsChaining => _chained != null;
 
+    /// <summary>Releases the current block before a pooled enemy shell is reused.</summary>
+    public void ResetForPool()
+    {
+        Release();
+        _acquiredForSpawn = -1;
+    }
+
     private void Awake()
     {
         _enemy = GetComponent<Enemy>();
@@ -71,7 +78,7 @@ public sealed class KadenaChainController : MonoBehaviour
         // Pool safety, and the defect BakodShieldController.cs:49-55 names: a chain that outlives
         // its holder strands a permanently unresolvable enemy on screen — no exception, no failing
         // test, just a level the player cannot finish.
-        Release();
+        ResetForPool();
     }
 
     private void Update()
