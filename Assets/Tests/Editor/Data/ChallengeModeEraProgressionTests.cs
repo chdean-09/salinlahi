@@ -84,7 +84,7 @@ namespace Salinlahi.Tests.Editor.Data
                 [11] = new[] { ChallengeMode.WordPlacement, ChallengeMode.WordPlacement },
                 [12] = new[] { ChallengeMode.WordPlacement, ChallengeMode.WordPlacement },
                 [13] = new[] { ChallengeMode.SentenceRestoration, ChallengeMode.SentenceRestoration },
-                [14] = new[] { ChallengeMode.SentenceRestoration, ChallengeMode.SentenceRestoration },
+                [14] = new[] { ChallengeMode.SentenceRestoration },
                 [15] = new[]
                 {
                     ChallengeMode.ParagraphRestoration,

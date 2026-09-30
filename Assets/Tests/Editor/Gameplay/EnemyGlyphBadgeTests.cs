@@ -38,6 +38,62 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
+        public void SetCharacter_MirrorsBadge_ForSalungat()
+        {
+            BaybayinCharacterSO ch = CreateCharacter("SA", badge: CreateSprite(Color.green));
+            (Enemy enemy, EnemyGlyphBadge badge, SpriteRenderer renderer) = CreateEnemyWithBadge(
+                ch,
+                EnemyLearningAbility.ContradictingDecoy);
+
+            badge.Refresh();
+
+            Assert.IsTrue(renderer.flipX);
+            Assert.AreSame(ch.badgeSprite, renderer.sprite,
+                "The mirrored tell must keep using the assigned character's badge art.");
+        }
+
+        [Test]
+        public void SetCharacter_DoesNotMirrorIligawDecoy()
+        {
+            BaybayinCharacterSO ch = CreateCharacter("EI", badge: CreateSprite(Color.green));
+            (Enemy enemy, EnemyGlyphBadge badge, SpriteRenderer renderer) = CreateEnemyWithBadge(
+                ch,
+                EnemyLearningAbility.ConfusableReflection,
+                isDecoy: true);
+
+            badge.Refresh();
+
+            Assert.IsFalse(renderer.flipX,
+                "Only Salungat's ContradictingDecoy ability mirrors the glyph badge.");
+        }
+
+        [Test]
+        public void ResetForPool_ClearsSalungatMirror_WhenShellIsReused()
+        {
+            BaybayinCharacterSO ch = CreateCharacter("SA", badge: CreateSprite(Color.green));
+            (Enemy enemy, EnemyGlyphBadge badge, SpriteRenderer renderer) = CreateEnemyWithBadge(
+                ch,
+                EnemyLearningAbility.ContradictingDecoy);
+            badge.Refresh();
+            Assert.IsTrue(renderer.flipX);
+
+            badge.ResetForPool();
+
+            Assert.IsFalse(renderer.flipX);
+            EnemyDataSO nextData = ScriptableObject.CreateInstance<EnemyDataSO>();
+            nextData.enemyID = "regular";
+            nextData.moveSpeed = 1f;
+            nextData.maxHealth = 1;
+            nextData.assignedCharacter = ch;
+            _objectsToDestroy.Add(nextData);
+            Assert.IsTrue(enemy.Initialize(nextData));
+            badge.Refresh();
+
+            Assert.IsFalse(renderer.flipX,
+                "A shell reused for a regular enemy must restore its authored badge orientation.");
+        }
+
+        [Test]
         public void SetCharacter_UsesScrambledSprite_WhenOverrideActiveAndAssetPresent()
         {
             BaybayinCharacterSO normal = CreateCharacter("BA", badge: CreateSprite(Color.green));
@@ -198,7 +254,10 @@ namespace Salinlahi.Tests.Editor.Gameplay
             return (enemy, badge, renderer);
         }
 
-        private (Enemy, EnemyGlyphBadge, SpriteRenderer) CreateEnemyWithBadge(BaybayinCharacterSO assignedCharacter)
+        private (Enemy, EnemyGlyphBadge, SpriteRenderer) CreateEnemyWithBadge(
+            BaybayinCharacterSO assignedCharacter,
+            EnemyLearningAbility ability = EnemyLearningAbility.None,
+            bool isDecoy = false)
         {
             GameObject root = new GameObject("Enemy_Test");
             root.SetActive(false);
@@ -225,6 +284,8 @@ namespace Salinlahi.Tests.Editor.Gameplay
             data.moveSpeed = 1f;
             data.maxHealth = 1;
             data.assignedCharacter = assignedCharacter;
+            data.learningAbility = ability;
+            data.isDecoy = isDecoy;
             _objectsToDestroy.Add(data);
             _objectsToDestroy.Add(root);
 

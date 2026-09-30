@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -9,6 +10,18 @@ namespace Salinlahi.Tests.Editor.QA
     public sealed class QaStrokeSampleLibraryTests
     {
         private static readonly string[] ExpectedIds = { "A", "EI", "BA", "MA", "NA", "TA" };
+
+        [SetUp]
+        public void SetUpQaProfile()
+        {
+            QaSessionContext.ClearCampaign();
+        }
+
+        [TearDown]
+        public void ClearQaProfile()
+        {
+            QaSessionContext.ClearCampaign();
+        }
 
         [Test]
         public void ResolvePath_IsCaseInsensitive_AndUsesRecordedHumanFixtures()
@@ -76,6 +89,22 @@ namespace Salinlahi.Tests.Editor.QA
             Assert.Less(result.score, 0.45f,
                 "The replay miss must stay below the campaign acceptance threshold so it "
                 + "exercises RecognitionManager's normal failed-recognition path.");
+        }
+
+        [Test]
+        public void EventTrace_UsesElapsedSecondsFromPlayTimingStart()
+        {
+            QaSessionContext.StartNewCampaign();
+            QaSessionContext.BeginLevel(1, "Assets/ScriptableObjects/Levels/Level1_Config.asset");
+            QaSessionContext.BeginPlayTiming();
+            QaSessionContext.Record("test", "first-runtime-event");
+
+            string[] rows = QaSessionContext.EventTrace.Split('\n');
+            Assert.AreEqual(2, rows.Length, "The session start event should be timestamped after Play Mode begins.");
+            string[] fields = rows[1].Split('\t');
+            Assert.AreEqual(4, fields.Length);
+            double elapsed = double.Parse(fields[1], CultureInfo.InvariantCulture);
+            Assert.That(elapsed, Is.InRange(0d, 1d), "The first runtime event should be close to the Play Mode clock origin.");
         }
     }
 }

@@ -7,7 +7,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// Singleton that persists per-level completion state and star ratings (0-3) to PlayerPrefs.
+/// Singleton that persists per-level completion state and star ratings (0-3) to ProgressPrefs.
 /// Unlocks the next level when a level is completed.
 /// Survives app restarts on Android/iOS.
 /// </summary>
@@ -118,7 +118,7 @@ public class ProgressManager : Singleton<ProgressManager>
                 return selected.levelNumber;
             return 1;
         }
-        return PlayerPrefs.GetInt(SelectedLevelKey, 1);
+        return ProgressPrefs.GetInt(SelectedLevelKey, 1);
     }
 
     public string GetSelectedLevelId()
@@ -128,12 +128,17 @@ public class ProgressManager : Singleton<ProgressManager>
 
         if (UsesRevisedProgress)
             return SaveManager.Instance.Repository.ActiveLevelId;
-        return ResolveLegacyLevelId(PlayerPrefs.GetInt(SelectedLevelKey, 1));
+        return ResolveLegacyLevelId(ProgressPrefs.GetInt(SelectedLevelKey, 1));
     }
 
     public bool TrySetSelectedLevel(LevelConfigSO level)
     {
         if (level == null) return false;
+
+#if UNITY_EDITOR
+        if (QaSessionContext.IsActive)
+            return level.levelNumber >= 1 && level.levelNumber <= TotalLevels;
+#endif
 
 #if UNITY_EDITOR || SALINLAHI_DEV
         if (_enableAllLevelsForTesting)
@@ -151,8 +156,8 @@ public class ProgressManager : Singleton<ProgressManager>
         if (UsesRevisedProgress)
             return SaveManager.Instance.Repository.TrySetActiveLevel(level.stableId);
         if (IsRevisedBlocked) return false;
-        PlayerPrefs.SetInt(SelectedLevelKey, level.levelNumber);
-        PlayerPrefs.Save();
+        ProgressPrefs.SetInt(SelectedLevelKey, level.levelNumber);
+        ProgressPrefs.Save();
         return true;
     }
 
@@ -170,8 +175,8 @@ public class ProgressManager : Singleton<ProgressManager>
             return TrySetSelectedLevel(level);
         }
         if (IsRevisedBlocked || levelNumber < 1 || levelNumber > TotalLevels) return false;
-        PlayerPrefs.SetInt(SelectedLevelKey, levelNumber);
-        PlayerPrefs.Save();
+        ProgressPrefs.SetInt(SelectedLevelKey, levelNumber);
+        ProgressPrefs.Save();
         return true;
     }
 
@@ -267,6 +272,11 @@ public class ProgressManager : Singleton<ProgressManager>
         if (levelNumber < 1 || levelNumber > TotalLevels)
             return LevelLockState.Unknown;
 
+#if UNITY_EDITOR
+        if (QaSessionContext.IsActive)
+            return LevelLockState.Unlocked;
+#endif
+
         if (EnableAllLevelsForTesting)
             return IsLevelCompleted(levelNumber) ? LevelLockState.Completed : LevelLockState.Unlocked;
 
@@ -324,6 +334,11 @@ public class ProgressManager : Singleton<ProgressManager>
 
     private bool TryGetTestingSelectedLevel(out LevelConfigSO level)
     {
+#if UNITY_EDITOR
+        if (QaSessionContext.TryGetSelectedLevel(out level))
+            return true;
+#endif
+
 #if UNITY_EDITOR || SALINLAHI_DEV
         if (_enableAllLevelsForTesting && _testingSelectedLevel != null)
         {
@@ -503,6 +518,14 @@ public class ProgressManager : Singleton<ProgressManager>
 
     private void HandleLevelComplete()
     {
+#if UNITY_EDITOR
+        if (QaSessionContext.IsActive)
+        {
+            QaSessionContext.Record("outcome", "level-complete; campaign progress commit suppressed");
+            return;
+        }
+#endif
+
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
         if (SandboxMode.IsActive)
         {
@@ -543,7 +566,7 @@ public class ProgressManager : Singleton<ProgressManager>
         // Calculate stars based on remaining hearts BEFORE any scene transition
         int stars = CalculateStars();
 
-        // Mark level complete (this also unlocks next level and calls PlayerPrefs.Save())
+        // Mark level complete (this also unlocks next level and calls ProgressPrefs.Save())
         MarkLevelComplete(currentLevelId, stars);
 
         // Track that we've processed this level
@@ -597,6 +620,14 @@ public class ProgressManager : Singleton<ProgressManager>
     /// <param name="stars">Star count (0-3), will be clamped</param>
     public void MarkLevelComplete(int levelID, int stars)
     {
+#if UNITY_EDITOR
+        if (QaSessionContext.IsActive)
+        {
+            QaSessionContext.Record("outcome", $"mark-level-complete level={levelID} stars={stars}; suppressed");
+            return;
+        }
+#endif
+
         if (UsesRevisedProgress)
         {
             if (TryResolveRevisedLevel(levelID, out LevelConfigSO revisedLevel))
@@ -624,23 +655,23 @@ public class ProgressManager : Singleton<ProgressManager>
         int existingStars = GetStars(levelID);
         if (stars > existingStars)
         {
-            PlayerPrefs.SetInt(StarsKey(levelID), stars);
+            ProgressPrefs.SetInt(StarsKey(levelID), stars);
             DebugLogger.Log($"ProgressManager: Updated Level {levelID} stars: {existingStars} -> {stars}");
         }
 
         // Mark this level as completed (unlock key)
-        PlayerPrefs.SetInt(UnlockedKey(levelID), 1);
+        ProgressPrefs.SetInt(UnlockedKey(levelID), 1);
 
         // Unlock next level (if not the last one)
         int nextLevelID = levelID + 1;
         if (nextLevelID <= TotalLevels)
         {
-            PlayerPrefs.SetInt(UnlockedKey(nextLevelID), 1);
+            ProgressPrefs.SetInt(UnlockedKey(nextLevelID), 1);
             DebugLogger.Log($"ProgressManager: Unlocked Level {nextLevelID}");
         }
 
         // Save immediately to ensure persistence before any scene transition
-        PlayerPrefs.Save();
+        ProgressPrefs.Save();
     }
 
     /// <summary>
@@ -657,6 +688,11 @@ public class ProgressManager : Singleton<ProgressManager>
             return false;
         }
 
+#if UNITY_EDITOR
+        if (QaSessionContext.IsActive)
+            return true;
+#endif
+
         if (EnableAllLevelsForTesting)
             return true;
 
@@ -671,7 +707,7 @@ public class ProgressManager : Singleton<ProgressManager>
         }
 
         // Check if the level has been unlocked
-        return PlayerPrefs.GetInt(UnlockedKey(levelID), 0) == 1;
+        return ProgressPrefs.GetInt(UnlockedKey(levelID), 0) == 1;
     }
 
     /// <summary>
@@ -697,7 +733,7 @@ public class ProgressManager : Singleton<ProgressManager>
         if (UsesRevisedProgress)
             return SaveManager.Instance.Repository.GetBestStars(GetRevisedLevelId(levelID));
         if (IsRevisedBlocked) return 0;
-        return PlayerPrefs.GetInt(StarsKey(levelID), 0);
+        return ProgressPrefs.GetInt(StarsKey(levelID), 0);
     }
 
     /// <summary>
@@ -728,7 +764,7 @@ public class ProgressManager : Singleton<ProgressManager>
                 EnemyDiscoveryProgress.ClearAllDiscovered();
                 BossDiscoveryProgress.ClearAllDiscovered();
                 EnemyIntroductionProgress.ClearAllIntroduced();
-                PlayerPrefs.Save();
+                ProgressPrefs.Save();
             }
             _lastProcessedLevelId = -1;
             _currentPlayingLevelId = -1;
@@ -738,18 +774,18 @@ public class ProgressManager : Singleton<ProgressManager>
         if (IsRevisedBlocked) return;
         for (int i = 1; i <= TotalLevels; i++)
         {
-            PlayerPrefs.DeleteKey(UnlockedKey(i));
-            PlayerPrefs.DeleteKey(StarsKey(i));
+            ProgressPrefs.DeleteKey(UnlockedKey(i));
+            ProgressPrefs.DeleteKey(StarsKey(i));
         }
-        PlayerPrefs.DeleteKey(EndlessModeKey);
-        PlayerPrefs.DeleteKey(Level1FtueSeenKey);
-        PlayerPrefs.DeleteKey(Level1FtueBeatIndexKey);
-        PlayerPrefs.DeleteKey(Level2AdvancedSeenKey);
-        PlayerPrefs.DeleteKey(Level2AdvancedBeatIndexKey);
-        PlayerPrefs.DeleteKey(LegacyLevel2AdvancedSeenKey);
-        PlayerPrefs.DeleteKey(LegacyLevel2AdvancedBeatIndexKey);
-        PlayerPrefs.DeleteKey(LegacyLevel2AdvancedFocusV2SeenKey);
-        PlayerPrefs.DeleteKey(LegacyLevel2AdvancedFocusV2BeatIndexKey);
+        ProgressPrefs.DeleteKey(EndlessModeKey);
+        ProgressPrefs.DeleteKey(Level1FtueSeenKey);
+        ProgressPrefs.DeleteKey(Level1FtueBeatIndexKey);
+        ProgressPrefs.DeleteKey(Level2AdvancedSeenKey);
+        ProgressPrefs.DeleteKey(Level2AdvancedBeatIndexKey);
+        ProgressPrefs.DeleteKey(LegacyLevel2AdvancedSeenKey);
+        ProgressPrefs.DeleteKey(LegacyLevel2AdvancedBeatIndexKey);
+        ProgressPrefs.DeleteKey(LegacyLevel2AdvancedFocusV2SeenKey);
+        ProgressPrefs.DeleteKey(LegacyLevel2AdvancedFocusV2BeatIndexKey);
         CharacterUnlockProgress.ClearAllUnlocked();
         EnemyDiscoveryProgress.ClearAllDiscovered();
         BossDiscoveryProgress.ClearAllDiscovered();
@@ -759,7 +795,7 @@ public class ProgressManager : Singleton<ProgressManager>
         _lastProcessedLevelId = -1;
         _currentPlayingLevelId = -1;
 
-        PlayerPrefs.Save();
+        ProgressPrefs.Save();
         DebugLogger.Log("ProgressManager: All progress cleared.");
     }
 
@@ -768,6 +804,12 @@ public class ProgressManager : Singleton<ProgressManager>
         IReadOnlyList<string> unlockedMemoryIds = null,
         IReadOnlyList<string> claimedRewardIds = null)
     {
+#if UNITY_EDITOR
+        if (QaSessionContext.IsActive)
+            return CampaignOutcomeCommitResult.Rejected(
+                null, CampaignSaveFailureCode.InvalidStructure, "qa-session-progress-isolated");
+#endif
+
         // SALIN-141: the commit choke point for both save paths. An attempt the player
         // restarted or left must never write stars, unlocks, or a campaign outcome.
         if (GameManager.Instance != null && GameManager.Instance.IsAttemptAbortInProgress)
@@ -894,6 +936,12 @@ public class ProgressManager : Singleton<ProgressManager>
     /// </summary>
     public CampaignOutcomeCommitResult CommitPracticeSession(LearningEvidenceBatch batch)
     {
+#if UNITY_EDITOR
+        if (QaSessionContext.IsActive)
+            return CampaignOutcomeCommitResult.Rejected(
+                null, CampaignSaveFailureCode.InvalidStructure, "qa-session-progress-isolated");
+#endif
+
         if (batch == null)
             return CampaignOutcomeCommitResult.Rejected(
                 null, CampaignSaveFailureCode.InvalidStructure, "evidence-batch-missing");
@@ -949,10 +997,10 @@ public class ProgressManager : Singleton<ProgressManager>
             return;
         for (int i = 1; i <= TotalLevels; i++)
         {
-            PlayerPrefs.SetInt(UnlockedKey(i), 1);
+            ProgressPrefs.SetInt(UnlockedKey(i), 1);
         }
 
-        PlayerPrefs.Save();
+        ProgressPrefs.Save();
         DebugLogger.Log("ProgressManager: All levels unlocked.");
     }
 #endif

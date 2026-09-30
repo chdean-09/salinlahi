@@ -224,6 +224,54 @@ public class WaveManager : MonoBehaviour
             RunAllWavesRoutine(startWaveIndex, 0, endWaveIndexExclusive));
     }
 
+    public void StartBossPhaseSegment(int phaseIndex)
+    {
+        if (_levelConfig == null || _levelConfig.bossConfig == null)
+        {
+            DebugLogger.LogError("WaveManager.StartBossPhaseSegment: No boss level config assigned.");
+            return;
+        }
+
+        if (_levelConfig.bossConfig.phases == null
+            || phaseIndex < 0
+            || phaseIndex >= _levelConfig.bossConfig.phases.Count)
+        {
+            DebugLogger.LogError($"WaveManager.StartBossPhaseSegment: Phase index {phaseIndex} is outside the boss config.");
+            return;
+        }
+
+        if (_spawner != null)
+            _spawner.SetFallbackEnemyDataIfMissing(_fallbackEnemyData);
+
+        SetCurrentAllowedCharacters(_levelConfig.allowedCharacters);
+        if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing)
+            GameManager.Instance.StartGame();
+
+        if (_running || _waveRoutine != null)
+        {
+            if (_waveRoutine != null)
+                StopCoroutine(_waveRoutine);
+            ReturnAllActiveEnemies();
+            ResetRunState();
+        }
+
+        _running = true;
+        _currentWaveIndex = 0;
+        _currentWaveSpawnedCount = 0;
+        _waveRoutine = StartCoroutine(RunBossPhaseSegmentRoutine(_levelConfig.bossConfig, phaseIndex));
+    }
+
+    private IEnumerator RunBossPhaseSegmentRoutine(BossConfigSO bossConfig, int phaseIndex)
+    {
+        if (!ValidateRunDependencies())
+        {
+            AbortRun();
+            yield break;
+        }
+
+        yield return StartCoroutine(RunBossEncounter(bossConfig, phaseIndex));
+    }
+
     private void StartLevel(int selectedLevel)
     {
         SetCurrentAllowedCharacters(null);
@@ -899,7 +947,7 @@ public class WaveManager : MonoBehaviour
         _currentWaveSpawnedCount++;
     }
 
-    private IEnumerator RunBossEncounter(BossConfigSO bossConfig)
+    private IEnumerator RunBossEncounter(BossConfigSO bossConfig, int phaseIndex = -1)
     {
         if (bossConfig.bossEnemyData == null
             || bossConfig.phases == null
@@ -930,7 +978,10 @@ public class WaveManager : MonoBehaviour
             yield break;
         }
 
-        boss.StartBoss(bossConfig, _spawner);
+        if (phaseIndex < 0)
+            boss.StartBoss(bossConfig, _spawner);
+        else
+            boss.StartBossSegment(bossConfig, _spawner, phaseIndex);
 
         // Wait for the boss to be defeated (Outro complete) — boss raises
         // OnLevelComplete itself.

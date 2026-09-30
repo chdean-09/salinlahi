@@ -168,14 +168,14 @@ public static class LevelTutorialProgress
     {
         if (UsesRevisedProgress())
             return HasSeenRevisedLevel(Level1TutorialLevelNumber);
-        return PlayerPrefs.GetInt(Level1FtueSeenKey, 0) == 1;
+        return ProgressPrefs.GetInt(Level1FtueSeenKey, 0) == 1;
     }
 
     public static bool HasSeenLevel2Tutorial()
     {
         if (UsesRevisedProgress())
             return HasSeenRevisedLevel(Level2TutorialLevelNumber);
-        return PlayerPrefs.GetInt(Level2AdvancedSeenKey, 0) == 1;
+        return ProgressPrefs.GetInt(Level2AdvancedSeenKey, 0) == 1;
     }
 
     public static bool HasSeenTutorialForLevel(int levelNumber)
@@ -203,8 +203,8 @@ public static class LevelTutorialProgress
             SaveManager.Instance.Repository.TryRecordTutorialProgress(GetStableLevelId(Level1TutorialLevelNumber), true, -1);
             return;
         }
-        PlayerPrefs.SetInt(Level1FtueSeenKey, 1);
-        PlayerPrefs.Save();
+        ProgressPrefs.SetInt(Level1FtueSeenKey, 1);
+        ProgressPrefs.Save();
     }
 
     public static void MarkLevel2TutorialSeen()
@@ -214,8 +214,8 @@ public static class LevelTutorialProgress
             SaveManager.Instance.Repository.TryRecordTutorialProgress(GetStableLevelId(Level2TutorialLevelNumber), true, -1);
             return;
         }
-        PlayerPrefs.SetInt(Level2AdvancedSeenKey, 1);
-        PlayerPrefs.Save();
+        ProgressPrefs.SetInt(Level2AdvancedSeenKey, 1);
+        ProgressPrefs.Save();
     }
 
     public static void MarkTutorialSeen(int levelNumber)
@@ -291,10 +291,10 @@ public static class LevelTutorialProgress
         if (UsesRevisedProgress() || !IsForcedTutorialReplay(levelNumber))
             return;
 
-        PlayerPrefs.DeleteKey(levelNumber == Level2TutorialLevelNumber
+        ProgressPrefs.DeleteKey(levelNumber == Level2TutorialLevelNumber
             ? ProgressManager.Level2AdvancedBeatIndexKey
             : ProgressManager.Level1FtueBeatIndexKey);
-        PlayerPrefs.Save();
+        ProgressPrefs.Save();
     }
 
     private static bool UsesRevisedProgress()
@@ -324,9 +324,9 @@ public static class LevelTutorialProgress
         ResumeIndexDiscarded.Clear();
         if (UsesRevisedProgress())
             return;
-        PlayerPrefs.DeleteKey(Level1FtueSeenKey);
-        PlayerPrefs.DeleteKey(Level2AdvancedSeenKey);
-        PlayerPrefs.Save();
+        ProgressPrefs.DeleteKey(Level1FtueSeenKey);
+        ProgressPrefs.DeleteKey(Level2AdvancedSeenKey);
+        ProgressPrefs.Save();
     }
 #endif
 }

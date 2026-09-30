@@ -16,6 +16,7 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
     private Enemy _enemy;
     private ActiveClueDirector _director;
     private readonly List<Enemy> _boundPair = new List<Enemy>(2);
+    private readonly List<Enemy> _visualPair = new List<Enemy>(2);
     private bool _suppressedForIntroductionSpawn;
     private long _spawnSequence = -1;
     private int _reviewIndex;
@@ -23,6 +24,7 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
     public EnemyLearningAbility Ability => _enemy?.Data?.learningAbility ?? EnemyLearningAbility.None;
     public bool IsSuppressedForIntroductionSpawn => _suppressedForIntroductionSpawn;
     public IReadOnlyList<Enemy> BoundPair => _boundPair;
+    public IReadOnlyList<Enemy> VisualPair => _visualPair;
 
     private void Awake()
     {
@@ -43,11 +45,7 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
         if (_enemy != null)
             _enemy.HealthChanged -= HandleHealthChanged;
 
-        UnsubscribeFromDirector();
-        ReleaseBoundPair();
-        _spawnSequence = -1;
-        _reviewIndex = 0;
-        _suppressedForIntroductionSpawn = false;
+        ResetForPool();
     }
 
     private void Update()
@@ -107,6 +105,16 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
     {
         ReleaseBoundPair();
         _reviewIndex = 0;
+    }
+
+    /// <summary>Releases all targets before a pooled enemy shell is reused.</summary>
+    public void ResetForPool()
+    {
+        ReleaseBoundPair();
+        UnsubscribeFromDirector();
+        _spawnSequence = -1;
+        _reviewIndex = 0;
+        _suppressedForIntroductionSpawn = false;
     }
 
     /// <summary>
@@ -183,6 +191,9 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
                 break;
         }
 
+        _visualPair.Clear();
+        _visualPair.AddRange(candidates);
+
         for (int i = _boundPair.Count - 1; i >= 0; i--)
         {
             Enemy held = _boundPair[i];
@@ -232,6 +243,7 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
         for (int i = 0; i < _boundPair.Count; i++)
             _boundPair[i]?.RemoveResolutionBlock(this);
         _boundPair.Clear();
+        _visualPair.Clear();
     }
 
     private void EnsureDirectorSubscription()

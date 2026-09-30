@@ -35,8 +35,8 @@ public static class BossDiscoveryProgress
     {
         if (UsesRevisedProgress())
             return;
-        PlayerPrefs.DeleteKey(Key);
-        PlayerPrefs.Save();
+        ProgressPrefs.DeleteKey(Key);
+        ProgressPrefs.Save();
     }
 
 #if UNITY_EDITOR || UNITY_INCLUDE_TESTS
@@ -58,7 +58,7 @@ public static class BossDiscoveryProgress
     private static HashSet<string> Load()
     {
         var set = new HashSet<string>();
-        string raw = PlayerPrefs.GetString(Key, string.Empty);
+        string raw = ProgressPrefs.GetString(Key, string.Empty);
         if (string.IsNullOrEmpty(raw)) return set;
         foreach (string line in raw.Split('\n'))
         {
@@ -70,7 +70,7 @@ public static class BossDiscoveryProgress
 
     private static void Save(HashSet<string> set)
     {
-        PlayerPrefs.SetString(Key, string.Join("\n", set));
-        PlayerPrefs.Save();
+        ProgressPrefs.SetString(Key, string.Join("\n", set));
+        ProgressPrefs.Save();
     }
 }

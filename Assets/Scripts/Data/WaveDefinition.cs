@@ -11,6 +11,9 @@ public class WaveDefinition
     [Tooltip("Baybayin characters that can appear in this wave (subset of the level roster).")]
     public List<BaybayinCharacterSO> characters = new();
 
+    [Tooltip("Characters that must appear on the first spawns of this wave, in order. Empty keeps the normal assignment policy.")]
+    public List<BaybayinCharacterSO> guaranteedCharacters = new();
+
     [Tooltip("Enemy data assets that can spawn in this wave (subset of the level roster).")]
     public List<EnemyDataSO> enemyTypes = new();
 

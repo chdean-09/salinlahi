@@ -211,6 +211,9 @@ public class Enemy : MonoBehaviour
         _runtimeCharacter = character;
         RefreshDebugLabels();
         _glyphBadge?.Refresh();
+#if UNITY_EDITOR
+        QaSessionContext.RecordSpawn(this);
+#endif
     }
 
     // Called by EnemyPool when this enemy is retrieved from the pool.
@@ -316,6 +319,9 @@ public class Enemy : MonoBehaviour
         EnsureAbilityComponent<NawalangMukhaNameLossController>(_data.removesNames);
         EnsureAbilityComponent<PhaserEnemy>(_data.isPhaser);
         EnsureAbilityComponent<EnemyLearningAbilityController>(_data.learningAbility != EnemyLearningAbility.None);
+        EnsureAbilityComponent<PunitTornController>(
+            _data.learningAbility == EnemyLearningAbility.TornContext);
+        EnsureAbilityComponent<EnemyRelationshipConnector>(_data.relationshipVisual != null);
         EnsureAbilityComponent<EnemyAbilityVisualPresenter>(
             (_data.abilityVisuals != null && _data.abilityVisuals.Length > 0)
             || _hasBeenExternalAbilityVisualTarget);
@@ -324,9 +330,17 @@ public class Enemy : MonoBehaviour
         _abilityVisualPresenter = GetComponent<EnemyAbilityVisualPresenter>();
         _armorVisualBinder = GetComponent<EnemyArmorStateBinder>();
 
+        EnemyRelationshipConnector relationshipConnector = GetComponent<EnemyRelationshipConnector>();
+        if (relationshipConnector != null && relationshipConnector.enabled)
+            relationshipConnector.Configure(_data);
+
         EnemyLearningAbilityController learningAbility = GetComponent<EnemyLearningAbilityController>();
         if (learningAbility != null && learningAbility.enabled)
             learningAbility.ResetForSpawn();
+
+        PunitTornController punitTorn = GetComponent<PunitTornController>();
+        if (punitTorn != null && punitTorn.enabled)
+            punitTorn.ResetForSpawn();
 
         // Restated on EVERY spawn, not only introduction ones. The abilities clear their own flag in
         // OnEnable, but a pooled shell reused for the same enemy type stays enabled through the
@@ -455,6 +469,10 @@ public class Enemy : MonoBehaviour
         EnemyLearningAbilityController learningAbility = GetComponent<EnemyLearningAbilityController>();
         if (learningAbility != null && learningAbility.enabled)
             learningAbility.SetSuppressedForIntroductionSpawn(suppressed);
+
+        PunitTornController punitTorn = GetComponent<PunitTornController>();
+        if (punitTorn != null && punitTorn.enabled)
+            punitTorn.SetSuppressedForIntroductionSpawn(suppressed);
     }
 
     private bool ShouldRaiseEnemyDiscoveryEvent(EnemyDataSO data)
@@ -502,6 +520,10 @@ public class Enemy : MonoBehaviour
         try
         {
             _abilityVisualPresenter?.StopAll();
+            GetComponent<KadenaChainController>()?.ResetForPool();
+            GetComponent<EnemyLearningAbilityController>()?.ResetForPool();
+            GetComponent<PunitTornController>()?.ResetForPool();
+            GetComponent<EnemyRelationshipConnector>()?.ResetForPool();
             _runtimeCharacter = null;
             _speedBuffs.Clear();
             _labelOverrides.Clear();
@@ -645,6 +667,10 @@ public class Enemy : MonoBehaviour
     public void Defeat()
     {
         if (_isDying) return;
+
+        // Punit's HUD effect ends at defeat, before any death presentation is allowed to keep the
+        // pooled shell alive on screen.
+        GetComponent<PunitTornController>()?.NotifyDefeated();
 
         // Bakod's barrier has a specific break one-shot. Keep that one layer through a badge-only
         // defeat, while all other persistent ability art clears before any death presentation.

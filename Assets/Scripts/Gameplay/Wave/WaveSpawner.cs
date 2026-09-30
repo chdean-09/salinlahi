@@ -236,7 +236,15 @@ public class WaveSpawner : MonoBehaviour
             BaybayinCharacterSO character;
             SpawnAssignment assignment = SpawnAssignment.None;
 
-            if (UsesScheduledAssignment)
+            BaybayinCharacterSO guaranteedCharacter = GuaranteedCharacterForSpawn(wave, i);
+            if (guaranteedCharacter != null)
+            {
+                // Authored guaranteed spawns carry their declared glyph even when that glyph
+                // is not a target slot in this level (for example, a review symbol).
+                character = guaranteedCharacter;
+                data = FindEnemyDataForCharacter(wave, guaranteedCharacter) ?? data;
+            }
+            else if (UsesScheduledAssignment)
             {
                 // The schedule picks the symbol, and on a level whose enemies each embody one
                 // symbol that also picks the enemy: choosing MA spawns Mantsa, so the badge never
@@ -268,6 +276,47 @@ public class WaveSpawner : MonoBehaviour
             if (i < enemyCount - 1)
                 yield return new WaitForSeconds(interval);
         }
+    }
+
+    internal static BaybayinCharacterSO GuaranteedCharacterForSpawn(WaveDefinition wave, int spawnIndex)
+    {
+        if (wave?.guaranteedCharacters == null
+            || spawnIndex < 0
+            || spawnIndex >= wave.guaranteedCharacters.Count)
+        {
+            return null;
+        }
+
+        return wave.guaranteedCharacters[spawnIndex];
+    }
+
+    private EnemyDataSO FindEnemyDataForCharacter(WaveDefinition wave, BaybayinCharacterSO character)
+    {
+        if (character == null)
+            return null;
+
+        EnemyDataSO match = FindEnemyDataForCharacter(wave?.enemyTypes, character);
+        if (match != null)
+            return match;
+
+        LevelConfigSO level = GameManager.Instance != null ? GameManager.Instance.CurrentLevel : null;
+        return FindEnemyDataForCharacter(level?.allowedEnemyTypes, character);
+    }
+
+    private static EnemyDataSO FindEnemyDataForCharacter(
+        List<EnemyDataSO> candidates, BaybayinCharacterSO character)
+    {
+        if (candidates == null || character == null)
+            return null;
+
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            EnemyDataSO candidate = candidates[i];
+            if (candidate != null && candidate.assignedCharacter == character)
+                return candidate;
+        }
+
+        return null;
     }
 
     /// <summary>

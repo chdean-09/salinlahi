@@ -42,9 +42,26 @@ public sealed class SaveManager : Singleton<SaveManager>
             return;
         }
 
-        Initialize(new CampaignSaveService(
-            new CampaignSaveFileStorage(),
-            new PlayerPrefsLegacyProgressSource()));
+        ICampaignSaveStorage storage;
+        ILegacyProgressSource legacySource;
+#if UNITY_EDITOR
+        // QA sessions exercise the real save coordinator against a disposable store so
+        // boot-time migrations, pending-outcome recovery, or test completions cannot alter
+        // the player's campaign files. The migration source is isolated too: reading legacy
+        // PlayerPrefs here would import the player's history and present a migration notice
+        // during a supposedly fresh QA run.
+        bool qaSession = QaSessionContext.IsActive;
+        storage = qaSession
+            ? (ICampaignSaveStorage)new InMemoryCampaignSaveStorage()
+            : new CampaignSaveFileStorage();
+        legacySource = qaSession
+            ? (ILegacyProgressSource)EmptyLegacyProgressSource.Instance
+            : new PlayerPrefsLegacyProgressSource();
+#else
+        storage = new CampaignSaveFileStorage();
+        legacySource = new PlayerPrefsLegacyProgressSource();
+#endif
+        Initialize(new CampaignSaveService(storage, legacySource));
     }
 
     public void Initialize(CampaignSaveService service)

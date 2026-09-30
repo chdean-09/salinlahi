@@ -563,9 +563,17 @@ public class LevelFlowController : MonoBehaviour
             && _phasePlan.TryGetSegmentWaveRange(
                 _machine.CurrentSegmentIndex, out int startWave, out int endWaveExclusive))
         {
-            // Segmented: run only this segment's slice of the flat wave list. Reaching the
-            // bound completes the run through the same OnDefenseComplete a full clear uses.
-            _waveManager.StartSegment(startWave, endWaveExclusive);
+            if (_levelConfig.bossConfig != null)
+            {
+                // A segmented boss level pairs each Defense/ContextChallenge checkpoint
+                // with one boss phase. The plan validator requires the counts to match.
+                _waveManager.StartBossPhaseSegment(_machine.CurrentSegmentIndex);
+            }
+            else
+            {
+                // Segmented wave levels run only this slice of the flat wave list.
+                _waveManager.StartSegment(startWave, endWaveExclusive);
+            }
         }
         else
         {

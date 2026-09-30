@@ -10,6 +10,9 @@ public enum BossMovementPattern { Hover, Pace, Teleport }
 [System.Serializable]
 public class BossPhase
 {
+    [Tooltip("Short authored name for the phase, such as Ugat, Ugnayan, or Lahat.")]
+    public string displayName;
+
     [Header("Summoning Phase")]
     [FormerlySerializedAs("summonDuration")]
     [Tooltip("Total phase length in seconds. No NEW summon acts may start after this elapses; an act already in progress always runs to completion.")]
@@ -31,6 +34,8 @@ public class BossPhase
     public float delayBetweenMinions = 0.6f;
     [Tooltip("Pool of enemy types this phase may summon. Empty falls back to BossConfigSO.fallbackEnemyTypes.")]
     public List<EnemyDataSO> summonEnemyTypes;
+    [Tooltip("Enemy types spawned first, in order, before this phase uses its random summon pool. Use this to guarantee authored glyph coverage.")]
+    public List<EnemyDataSO> guaranteedSummonEnemyTypes = new();
     [Tooltip("Half-range around the boss's CURRENT position for each minion's spawn origin.")]
     public Vector2 summonSpawnRange = new Vector2(2f, 0f);
 

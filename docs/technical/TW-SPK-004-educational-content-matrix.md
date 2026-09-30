@@ -8,7 +8,9 @@
 
 ## Outcome
 
-The draft matrix is complete and internally checked. It defines 17 canonical visual symbols, 22 contextual spoken values, and 30 ordered focus-word slots across 15 levels. It preserves intentional word and syllable repetition, treats E/I and O/U as context-dependent vowels, treats DA/RA as one visual identity, and introduces PA at the start of Level 15 before PAMANA is assessed.
+The workbook remains a pending-review row-level artifact. The current ruling in `docs/design/spec-rulings-2026-09.md` Q2 and OQ-6 supersedes its older 17-character model: DA and RA are separate characters, the campaign has 18 visual characters and 18 canonical spoken values, and RA is introduced at Level 13. E/I and O/U remain context-resolved characters. The 30 focus-word slots and ordered repetition rules remain documented here pending a workbook review.
+
+This Markdown reconciliation does not update the XLSX. Counts and rows below that still describe DA/RA as shared, omit the Level 13 RA introduction, or describe a 17-character set are historical workbook findings, not current design acceptance criteria.
 
 This spike records repository discrepancies but does not modify gameplay code, ScriptableObjects, templates, audio, glyphs, or level configurations. Final language and cultural approval remains owned by TW-RES-001, represented by SALIN-188.
 
@@ -27,8 +29,8 @@ The approved workbook SHA-256 is `4a2996ef4f4d3102b4657b1e8bf2b54b2183bc7748d393
 
 ## Matrix rules
 
-- The canonical visual order is A, E/I, BA, MA, NA, TA, O/U, KA, GA, SA, WA, YA, DA/RA, HA, LA, NGA, and PA.
-- The 22 contextual spoken values arise because a shared glyph carries one value per word context. DA and RA share `ᜇ`; E/I and O/U remain shared *visual* vowels rather than separate symbols, but each carries its combined citation value plus the per-context values a decomposition selects — `value.ei` with `value.e`/`value.i`, and `value.ou` with `value.o`/`value.u` (ruling Q2, SALIN-221). The combined value stays first and remains what cumulative pools and requirements resolve.
+- The current canonical character order is A, E/I, BA, MA, NA, TA, O/U, KA, GA, SA, WA, YA, DA, HA, LA, NGA, RA, and PA.
+- DA and RA are separate characters with separate IDs and enemies. E/I and O/U remain context-resolved characters under Q2; the older workbook rows that merge DA/RA or count only 17 visual characters require review.
 - A focus-word decomposition is an ordered list of syllable occurrences. Occurrences are never deduplicated: OO is `O + O`, and ALAALA is `A + LA + A + LA`.
 - Each level contributes exactly two focus slots. For Levels 5, 10, and 15, the slots are the two final/new words from the workbook paragraph lists; previously introduced paragraph words remain usage evidence rather than extra slots.
 - The second slot's final syllable must equal the workbook's `Last Required Syllable`. The first slot is retained in full and marked not applicable for that level-completion check.
@@ -61,13 +63,13 @@ Intentional repeated slots are BATA at Level 3 and INA/AMA at Level 4. Repeated 
 
 The XLSX records 24 discrepancies: nine source/schema/asset/runtime discrepancies and one cumulative-roster discrepancy for each of the 15 current level assets. Key findings are:
 
-- `CharacterRegistry_Default.asset` and `BaybayinCharacterSO` data contain 18 entries because DA and RA are separate, conflicting with the approved 17-visual model.
-- DA and RA have separate templates and different display PNG bytes. The validator also expects 18 character IDs and separate DA/RA coverage.
-- ~~The runtime canonicalizer has no DA/RA alias, and `TemplateLoader` groups DA and RA template IDs independently.~~ **Resolved 2026-09-01 (SALIN-212).** `BaybayinIdCanonicalizer` now folds `RA` into `DA`, joining the existing E/I, O/U, PA/FA, BA/VA and SA/ZA groups, so `TemplateLoader` loads `RA_template_01..05` under `DA` alongside `DA_template_01..12` — one key, 17 variants, 121 templates total and none lost. This was a live gameplay bug, not bookkeeping: every consumer of a recognition result compares raw ids (`ActiveEnemyTracker.FindAllWithCharacter`, the active-clue check in `CombatResolver`, `BossController.TryRouteDraw`) and nothing in the game carries RA, so an unfolded `RA` matched nothing and scored a correct draw as a miss. Measured with the project's own recognizer: the three RA-shaped regression draws now return `DA` at 0.916–0.921 against a 0.60 confidence floor.
+- `CharacterRegistry_Default.asset` and `BaybayinCharacterSO` data contain 18 entries, consistent with Q2/OQ-6. The workbook's older 17-identity statement is superseded.
+- DA and RA have separate templates and use separate character IDs. Q2/OQ-6 require independent DA/RA recognition and Level 13 RA coverage.
+- ~~The runtime canonicalizer has no DA/RA alias, and `TemplateLoader` groups DA and RA template IDs independently.~~ **Superseded by Q2/OQ-6 (2026-09-12).** DA and RA remain separate keys; `DARA` is only a legacy alias for DA. Keep the historical SALIN-212 measurement as evidence of the old shared-identity behavior, not as current acceptance evidence.
 - The template folder contains 121 variants. DA, HA, KA, and SA exceed the validator's stated 3–5 variants per identity and require recognition-owner review.
 - Seven pronunciation clips are linked: BA, DA, HA, KA, O, SA, and WA. Missing contextual pronunciations are explicitly classified as planned; O/U and DA/RA coverage is partial pending reviewer-approved contextual audio. SALIN-221 added the context values `value.e`, `value.i`, `value.o` and `value.u`: only `value.o` has audio (`O.wav`). `E.wav`, `I.wav`, `U.wav` and `RA.wav` do not exist in the repository, and because `SpokenValueResolver.ResolveClip` falls back to the character-level clip, `value.u` currently plays `O.wav`. Recording them is follow-up scope; no existing clip may be substituted.
 - Many character records lack dedicated almanac and badge art and currently depend on display-only or fallback behavior.
-- Every existing Level 1–15 `allowedCharacters` roster differs from the workbook-derived cumulative pool. Notably, Level 15 currently contains only NGA and does not introduce PA before PAMANA.
+- The level roster rows in the XLSX have not been reconciled with the 18-character model or the Level 13 RA introduction. Recompute them from the current level assets and Q2/OQ-6 before treating any old roster discrepancy as current.
 
 Each discrepancy row names its evidence, expected resolution, severity, affected scope, disposition, and owning follow-up. Proposed implementation ownership is assigned to SALIN-170/171 for identity/schema and migration, SALIN-172 for level rosters, SALIN-176 for media, and the recognition owner for template policy.
 
@@ -75,7 +77,7 @@ Each discrepancy row names its evidence, expected resolution, severity, affected
 
 The workbook's formula-driven checks report:
 
-- 17 canonical visual rows and 18 contextual value records.
+- Historical workbook QC recorded 17 visual rows and 18 spoken-value records. These counts do not reflect Q2/OQ-6 and remain pending a workbook update; the current ruling requires 18 character identities and 18 canonical spoken values.
 - 30 focus slots, with exactly two slots for every level.
 - 30 validated decompositions and character/audio mappings to existing or planned data.
 - Three intentional repeated whole-word slots.
