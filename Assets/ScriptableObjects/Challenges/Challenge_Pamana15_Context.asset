@@ -53,6 +53,44 @@ MonoBehaviour:
     maxErrors: 3
     heartPenalty: 1
     evidenceContentId: level.pamana.05.focus.01
+  - unitId: pamana15-restore-line-03
+    mode: 3
+    cluePolicy: 2
+    prompt: Hindi na maaangkin ng Paglimot ang ______ na buhay sa bawat salinlahi.
+    tokens:
+    - tokenId: pamana15-line-03-focus
+      displayText: PAMANA
+      occurrenceId: pamana15-line-03-focus-occ
+      role: 1
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: pamana15-line-03-decoy-01
+      displayText: HARAYA
+      occurrenceId: pamana15-line-03-decoy-01-occ
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: pamana15-line-03-decoy-02
+      displayText: KASAMA
+      occurrenceId: pamana15-line-03-decoy-02-occ
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    slots:
+    - slotId: pamana15-line-03-slot
+      expectedOccurrenceId: pamana15-line-03-focus-occ
+    candidateOccurrenceIds:
+    - pamana15-line-03-focus-occ
+    - pamana15-line-03-decoy-01-occ
+    - pamana15-line-03-decoy-02-occ
+    guidedStep: {fileID: 0}
+    timerSeconds: 0
+    allowHint: 1
+    checkpointOnSuccess: 1
+    memoryRevealSeconds: 1
+    maxErrors: 3
+    heartPenalty: 1
+    evidenceContentId: level.pamana.05.focus.01
   - unitId: pamana15-restore-line-02
     mode: 3
     cluePolicy: 2
@@ -92,41 +130,3 @@ MonoBehaviour:
     maxErrors: 3
     heartPenalty: 1
     evidenceContentId: level.pamana.05.focus.02
-  - unitId: pamana15-restore-line-03
-    mode: 3
-    cluePolicy: 2
-    prompt: Hindi na maaangkin ng Paglimot ang ______ na buhay sa bawat salinlahi.
-    tokens:
-    - tokenId: pamana15-line-03-focus
-      displayText: PAMANA
-      occurrenceId: pamana15-line-03-focus-occ
-      role: 1
-      targetCharacter: {fileID: 0}
-      evidenceContentId: 
-    - tokenId: pamana15-line-03-decoy-01
-      displayText: HARAYA
-      occurrenceId: pamana15-line-03-decoy-01-occ
-      role: 0
-      targetCharacter: {fileID: 0}
-      evidenceContentId: 
-    - tokenId: pamana15-line-03-decoy-02
-      displayText: KASAMA
-      occurrenceId: pamana15-line-03-decoy-02-occ
-      role: 0
-      targetCharacter: {fileID: 0}
-      evidenceContentId: 
-    slots:
-    - slotId: pamana15-line-03-slot
-      expectedOccurrenceId: pamana15-line-03-focus-occ
-    candidateOccurrenceIds:
-    - pamana15-line-03-focus-occ
-    - pamana15-line-03-decoy-01-occ
-    - pamana15-line-03-decoy-02-occ
-    guidedStep: {fileID: 0}
-    timerSeconds: 0
-    allowHint: 1
-    checkpointOnSuccess: 1
-    memoryRevealSeconds: 1
-    maxErrors: 3
-    heartPenalty: 1
-    evidenceContentId: level.pamana.05.focus.01

@@ -443,7 +443,16 @@ MonoBehaviour:
     emergencyHintEnabled: 0
     emergencyHintsPerAttempt: 1
     emergencyHintScorePenalty: 0.1
-  flowSegments: []
+  flowSegments:
+  - waveCount: 0
+    challengeUnitIds:
+    - pamana15-restore-line-01
+  - waveCount: 0
+    challengeUnitIds:
+    - pamana15-restore-line-03
+  - waveCount: 0
+    challengeUnitIds:
+    - pamana15-restore-line-02
   introDialogue: {fileID: 11400000, guid: 249f265ac85b16746b71974f1eccbb73, type: 2}
   outroDialogue: {fileID: 11400000, guid: b030f7a5495071143b24993ef9afbf1c, type: 2}
   bgmClip: {fileID: 0}
