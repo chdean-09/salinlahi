@@ -162,7 +162,7 @@ public sealed class SpawnAssignmentDirector
         }
 
         // Floor. A spawn count, not a timer: what is rationed is opportunities, not seconds.
-        if (_spawnsSinceArmed < CurrentFloor())
+        if (_spawnsSinceArmed < CurrentFloor(request))
         {
             _spawnsSinceArmed++;
             return Filler(request);
@@ -244,8 +244,8 @@ public sealed class SpawnAssignmentDirector
     /// it from the slot that is about to be offered keeps the override meaning what it says once
     /// activeSlotWindow makes several slots fillable at once.
     /// </summary>
-    private int CurrentFloor() =>
-        _policy.MinSpawnsBeforeNeededForSlot(PickNeededSlot());
+    private int CurrentFloor(SpawnAssignmentRequest request) =>
+        _policy.MinSpawnsBeforeNeededForSlot(PickNeededSlot(request, skipStranding: false));
 
     private string BuildWindowKey()
     {
@@ -263,7 +263,13 @@ public sealed class SpawnAssignmentDirector
 
     private SpawnAssignment Needed(SpawnAssignmentRequest request, bool forced)
     {
-        int slotIndex = PickNeededSlot();
+        // Every fillable symbol whose last box is locked already has a carrier on the field for
+        // each of its unlocked boxes. Another one could only die into the locked box and fill
+        // nothing, so this spawn is filler; the carriers already walking are the offer.
+        int slotIndex = PickNeededSlot(request, skipStranding: true);
+        if (slotIndex < 0)
+            return Filler(request);
+
         SpawnSlot slot = _slots[slotIndex];
         _lastNeededSequence[slot.SymbolStableId] = _sequence;
 
@@ -296,17 +302,22 @@ public sealed class SpawnAssignmentDirector
     /// <summary>
     /// With a window of one this is simply the cursor. With a wider window it is the least recently
     /// offered slot, so a sentence-length target cycles its working set instead of hammering the
-    /// leftmost unfilled slot.
+    /// leftmost unfilled slot. With <paramref name="skipStranding"/>, a slot whose symbol
+    /// <see cref="WouldStrandCarrier"/> is passed over, and -1 means every eligible slot was.
     /// </summary>
-    private int PickNeededSlot()
+    private int PickNeededSlot(SpawnAssignmentRequest request, bool skipStranding)
     {
-        int best = _eligible[0];
-        int bestSequence = LastNeededSequence(_slots[best].SymbolStableId);
+        int best = -1;
+        int bestSequence = int.MaxValue;
 
-        for (int i = 1; i < _eligible.Count; i++)
+        for (int i = 0; i < _eligible.Count; i++)
         {
             int candidate = _eligible[i];
-            int sequence = LastNeededSequence(_slots[candidate].SymbolStableId);
+            string symbolId = _slots[candidate].SymbolStableId;
+            if (skipStranding && WouldStrandCarrier(request, symbolId))
+                continue;
+
+            int sequence = LastNeededSequence(symbolId);
             if (sequence < bestSequence)
             {
                 best = candidate;
@@ -588,7 +599,7 @@ public sealed class SpawnAssignmentDirector
 
     /// <summary>
     /// Symbols filler may never carry: anything that would advance a fillable slot, and anything
-    /// still behind a closed gate.
+    /// whose next carrier could only die into a locked slot (<see cref="WouldStrandCarrier"/>).
     /// </summary>
     private void BuildExclusions(SpawnAssignmentRequest request)
     {
@@ -599,29 +610,64 @@ public sealed class SpawnAssignmentDirector
 
         for (int i = 0; i < _slots.Count; i++)
         {
-            if (IsRestored(request, i))
+            if (IsRestored(request, i) || !IsBlocked(request, i))
                 continue;
 
-            bool blocked = !IsGateOpen(request, _slots[i].GateToken)
-                || (IsFinaleSlot(i)
-                    && (!IsGateOpen(request, SpawnGateRegistry.FinalWaveReached)
-                        || !FinalePrerequisitesMet(request, i)));
-            if (blocked && !HasOtherUnrestoredOccurrence(request, i))
+            if (WouldStrandCarrier(request, _slots[i].SymbolStableId))
                 _excluded.Add(_slots[i].SymbolStableId);
         }
     }
 
-    private bool HasOtherUnrestoredOccurrence(SpawnAssignmentRequest request, int slotIndex)
+    /// <summary>
+    /// True when one more carrier of this symbol could only be killed into a locked slot. That
+    /// happens when the symbol still has an unrestored occurrence behind a closed gate (Level 3's
+    /// last MA waits for the final wave) and the carriers already on the field cover every
+    /// occurrence that can fill: the surplus one dies, restores nothing, and reads to the player
+    /// as a correct drawing that did not register.
+    ///
+    /// <para>A symbol with no locked occurrence is never stranded here. A surplus carrier of it
+    /// dies into an already-restored slot, which is the one kill-without-fill the design accepts.</para>
+    /// </summary>
+    private bool WouldStrandCarrier(SpawnAssignmentRequest request, string symbolId)
     {
+        bool hasLockedOccurrence = false;
+        int unlockedOccurrences = 0;
         for (int i = 0; i < _slots.Count; i++)
         {
-            if (i != slotIndex
-                && !IsRestored(request, i)
-                && _slots[i].SymbolStableId == _slots[slotIndex].SymbolStableId)
-                return true;
+            if (IsRestored(request, i) || _slots[i].SymbolStableId != symbolId)
+                continue;
+
+            if (IsBlocked(request, i))
+                hasLockedOccurrence = true;
+            else
+                unlockedOccurrences++;
         }
 
-        return false;
+        return hasLockedOccurrence && CountLiveCarriers(request, symbolId) >= unlockedOccurrences;
+    }
+
+    /// <summary>
+    /// True when a kill of this unrestored slot's symbol could not restore it right now. Mirrors
+    /// <c>SpawnAssignmentCoordinator.CanRestoreOccurrence</c>, which makes that call for the draw.
+    /// </summary>
+    private bool IsBlocked(SpawnAssignmentRequest request, int slotIndex) =>
+        !IsGateOpen(request, _slots[slotIndex].GateToken)
+        || (IsFinaleSlot(slotIndex) && !IsGateOpen(request, SpawnGateRegistry.FinalWaveReached))
+        || !FinalePrerequisitesMet(request, slotIndex);
+
+    private static int CountLiveCarriers(SpawnAssignmentRequest request, string symbolId)
+    {
+        if (request.LiveCarrierSymbols == null)
+            return 0;
+
+        int count = 0;
+        for (int i = 0; i < request.LiveCarrierSymbols.Count; i++)
+        {
+            if (request.LiveCarrierSymbols[i] == symbolId)
+                count++;
+        }
+
+        return count;
     }
 
     private void AddCandidate(SpawnAssignmentRequest request, string symbolId)

@@ -20,6 +20,8 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
     private readonly List<bool> _restoredBuffer = new List<bool>();
     private readonly List<string> _waveSymbolBuffer = new List<string>();
     private readonly List<string> _offTargetBuffer = new List<string>();
+    private readonly List<string> _liveCarrierBuffer = new List<string>();
+    private readonly List<Enemy> _enemyBuffer = new List<Enemy>();
 
     private SpawnAssignmentDirector _director;
     private LevelConfigSO _level;
@@ -453,7 +455,34 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
                 : 0,
             WaveSymbolWhitelist = BuildWaveSymbols(wave),
             OffTargetSymbols = BuildOffTargetSymbols(),
+            LiveCarrierSymbols = BuildLiveCarrierSymbols(),
         };
+    }
+
+    /// <summary>
+    /// What the real enemies on the field carry. Decoys are left out because killing a copy is its
+    /// own outcome and never restores a slot, and dying enemies because their kill already counted.
+    /// </summary>
+    private IReadOnlyList<string> BuildLiveCarrierSymbols()
+    {
+        _liveCarrierBuffer.Clear();
+        if (ActiveEnemyTracker.Instance == null)
+            return _liveCarrierBuffer;
+
+        ActiveEnemyTracker.Instance.FillActiveEnemiesSnapshot(_enemyBuffer);
+        for (int i = 0; i < _enemyBuffer.Count; i++)
+        {
+            Enemy enemy = _enemyBuffer[i];
+            if (enemy == null || enemy.IsDecoy || enemy.IsDying)
+                continue;
+
+            string symbolId = enemy.Character != null ? enemy.Character.stableId : null;
+            if (!string.IsNullOrEmpty(symbolId))
+                _liveCarrierBuffer.Add(symbolId);
+        }
+
+        _enemyBuffer.Clear();
+        return _liveCarrierBuffer;
     }
 
     /// <summary>

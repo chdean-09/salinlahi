@@ -90,6 +90,14 @@ public struct SpawnAssignmentRequest
 
     /// <summary>Level pool minus target symbols, used only when offTargetFillerWeight > 0.</summary>
     public IReadOnlyList<string> OffTargetSymbols;
+
+    /// <summary>
+    /// The symbol each real (non-decoy, not dying) enemy on the field carries, one entry per enemy.
+    /// Lets the director keep a symbol with a locked occurrence from outnumbering its unlocked
+    /// boxes: the surplus carrier could only be killed into the locked box, which fills nothing.
+    /// Null is treated as nothing on the field.
+    /// </summary>
+    public IReadOnlyList<string> LiveCarrierSymbols;
 }
 
 /// <summary>The director's decision for one spawn.</summary>
