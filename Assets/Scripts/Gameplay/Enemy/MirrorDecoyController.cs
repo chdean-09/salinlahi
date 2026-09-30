@@ -51,6 +51,12 @@ public sealed class MirrorDecoyController : MonoBehaviour, IIntroducibleAbility,
     /// </summary>
     private bool _decoySpawnedThisSpawn;
 
+    /// <summary>
+    /// True while the copy's glyph must stay dark because its source's own glyph is being held
+    /// back for a late reveal. See <see cref="SetCopyGlyphConcealed"/>. Per spawn.
+    /// </summary>
+    private bool _copyGlyphConcealed;
+
     public Enemy Decoy => _decoy;
 
     /// <summary>
@@ -123,6 +129,29 @@ public sealed class MirrorDecoyController : MonoBehaviour, IIntroducibleAbility,
         _introductionHold = held;
     }
 
+    /// <summary>
+    /// Keeps the copy's glyph dark while the lesson holds its source's glyph back for beat 7.
+    ///
+    /// <para>
+    /// <b>The defect this closes.</b> Playtest 2026-09-29: through beats 3-6 the real Iligaw carried
+    /// no glyph, by design, while the copy beside it showed its false one. The first glyph a new
+    /// player saw was therefore the decoy's A, on the enemy that costs a heart, during the lesson
+    /// that teaches E/I.
+    /// </para>
+    ///
+    /// <para>
+    /// Works through <see cref="EnemyGlyphBadge.SetCovered"/>, which toggles the renderer and never
+    /// its colour, so the copy's shadow tint survives the reveal. Applies to a copy already on the
+    /// field and to one placed later in this spawn.
+    /// </para>
+    /// </summary>
+    public void SetCopyGlyphConcealed(bool concealed)
+    {
+        _copyGlyphConcealed = concealed;
+        if (_decoy != null && _decoy.GlyphBadge != null)
+            _decoy.GlyphBadge.SetCovered(concealed);
+    }
+
     private void Awake()
     {
         _enemy = GetComponent<Enemy>();
@@ -139,6 +168,7 @@ public sealed class MirrorDecoyController : MonoBehaviour, IIntroducibleAbility,
         // Nor its hold: a shell that came back still held would never place a copy again, and
         // nothing would ever come to free it.
         _introductionHold = false;
+        _copyGlyphConcealed = false;
     }
 
     private void OnDisable()
@@ -226,6 +256,9 @@ public sealed class MirrorDecoyController : MonoBehaviour, IIntroducibleAbility,
             : null;
         if (decoyBadge != null)
             decoyBadge.color = Shadowed(decoyBadge.color);
+
+        if (_copyGlyphConcealed && decoy.GlyphBadge != null)
+            decoy.GlyphBadge.SetCovered(true);
 
         _decoy = decoy;
         _decoySpawnedThisSpawn = true;

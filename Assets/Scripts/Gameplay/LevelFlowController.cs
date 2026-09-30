@@ -2147,6 +2147,11 @@ public class LevelFlowController : MonoBehaviour
         // Null on the legacy path; VictoryScreenUI falls back to ProgressManager.GetStars there.
         _victoryScreen.PresentResults(LastResults, isEraFinalLevel);
 
+        // Raised here, from the one entry point every path to Results shares, and not at the
+        // atomic save's OnLevelComplete — which comes before the outro dialogue and the
+        // after-level cutscene, so the victory sting used to play under them.
+        EventBus.RaiseResultsScreenShown();
+
         ShowMemoryCard();
         ShowEraCompletionScreen(campaign, completedEra, isEraFinalLevel);
     }

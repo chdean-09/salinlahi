@@ -132,6 +132,13 @@ public sealed class WaveClearedScreenUI : MonoBehaviour
                 typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             canvas = canvasObject.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            // Sizes here are 1080x1920 reference units (UITextScale); the default
+            // ConstantPixelSize scaler drew them 1:1 in device pixels, shrunk on a phone.
+            CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1080f, 1920f);
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 0.5f;
             transform.SetParent(canvas.transform, false);
         }
         canvas.sortingOrder = Mathf.Max(canvas.sortingOrder, 300);

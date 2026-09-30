@@ -78,6 +78,60 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.That(GetPrivateField<GameObject>(panel, "_overlayRoot").activeSelf, Is.True);
         }
 
+        /// <summary>
+        /// The victory sting keys off this event, so it must fire exactly when the Results screen
+        /// appears — never at the save, and never when the save failed and no Results is shown.
+        /// </summary>
+        [Test]
+        public void AcceptedCompletion_AnnouncesTheResultsScreenOnce()
+        {
+            VictoryScreenUI victory = CreateVictory(out _victoryObject);
+            TestLevelFlowController controller = CreateController(out _controllerObject);
+            controller.NextResult = CampaignOutcomeCommitResult.Committed(null);
+            SetPrivateField(controller, "_victoryScreen", victory);
+
+            int shown = 0;
+            System.Action onShown = () => shown++;
+            EventBus.OnResultsScreenShown += onShown;
+            try
+            {
+                EventBus.RaiseLevelComplete();
+            }
+            finally
+            {
+                EventBus.OnResultsScreenShown -= onShown;
+            }
+
+            Assert.That(shown, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void PendingCompletion_DoesNotAnnounceTheResultsScreen()
+        {
+            VictoryScreenUI victory = CreateVictory(out _victoryObject);
+            CampaignOutcomeSaveFailurePanel panel = CreateFailurePanel(out _failureObject);
+            TestLevelFlowController controller = CreateController(out _controllerObject);
+            controller.NextResult = CampaignOutcomeCommitResult.PendingRetry(
+                null, CampaignSaveFailureCode.IoFailure, "journal-pending");
+            SetPrivateField(controller, "_victoryScreen", victory);
+            SetPrivateField(controller, "_saveFailurePanel", panel);
+
+            int shown = 0;
+            System.Action onShown = () => shown++;
+            EventBus.OnResultsScreenShown += onShown;
+            try
+            {
+                EventBus.RaiseLevelComplete();
+            }
+            finally
+            {
+                EventBus.OnResultsScreenShown -= onShown;
+            }
+
+            Assert.That(shown, Is.EqualTo(0),
+                "A save that was not accepted shows the failure panel, not a win to celebrate.");
+        }
+
         [Test]
         public void DuplicateLevelComplete_DoesNotCommitTwice()
         {

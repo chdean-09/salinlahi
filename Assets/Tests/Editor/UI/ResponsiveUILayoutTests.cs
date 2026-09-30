@@ -243,6 +243,39 @@ namespace Salinlahi.Tests.Editor.UI
                 hearts.rectTransform.anchorMin.y);
         }
 
+        /// <summary>
+        /// Playtest 2026-09-29, Level 3: the challenge board's Hint button was drawn over the
+        /// scroll's bottom rod. Its row was anchored from y 0.025, below the paper.
+        /// </summary>
+        [Test]
+        public void ChallengeBoard_KeepsEveryRow_IncludingTheHintButton_InsidePaper()
+        {
+            GameObject boardObject = new("ChallengeBoard_Test", typeof(RectTransform));
+            try
+            {
+                ChallengeModeUI board = boardObject.AddComponent<ChallengeModeUI>();
+                board.ShowFeedback(string.Empty);
+
+                string[] rows = { "Progress", "Timer", "Prompt", "Status", "AnswerChoices", "ChallengeActions" };
+                foreach (string row in rows)
+                {
+                    RectTransform rect = boardObject.transform.Find(row) as RectTransform;
+                    Assert.IsNotNull(rect, row + " was not built.");
+                    AssertAnchorsInside(rect, ScrollPanelArt.FullSafeArea);
+                }
+
+                RectTransform actions = (RectTransform)boardObject.transform.Find("ChallengeActions");
+                RectTransform choices = (RectTransform)boardObject.transform.Find("AnswerChoices");
+                Assert.LessOrEqual(actions.anchorMax.y, choices.anchorMin.y,
+                    "The Hint row sits under the answers, not on top of them.");
+            }
+            finally
+            {
+                // The board reparents itself under a canvas it builds; destroy that too.
+                Object.DestroyImmediate(boardObject.transform.root.gameObject);
+            }
+        }
+
         [Test]
         public void MemoryClaim_ParchmentLayout_StacksButtonsInsidePaper()
         {
@@ -368,6 +401,25 @@ namespace Salinlahi.Tests.Editor.UI
 
             // A real measurement still wins when there is one.
             Assert.AreEqual(500f, MemoryCardUI.ResolveGlyphRowWidth(500f), 0.01f);
+        }
+
+        /// <summary>
+        /// The card's canvas now scales with the screen, so its glyph sizes are canvas units, not
+        /// screen pixels. The unmeasured-row fallback must size off the canvas width it is given:
+        /// a 1284px phone is only ~979 units wide under the 1080x1920 scaler, and sizing off the
+        /// pixel width would let five glyphs overflow the paper.
+        /// </summary>
+        [Test]
+        public void MemoryCard_GlyphRow_FallbackMeasuresInCanvasUnits()
+        {
+            const float canvasWidth = 979f;
+            float row = MemoryCardUI.ResolveGlyphRowWidth(0f, canvasWidth);
+
+            Assert.AreEqual(
+                canvasWidth * ScrollPanelArt.ScrollArea.width * (0.83f - 0.17f), row, 0.01f);
+
+            float size = MemoryCardUI.ResolveGlyphSize(5, row);
+            Assert.LessOrEqual((size * 5) + (MemoryCardUI.GlyphGap * 4), row + 0.01f);
         }
 
         [Test]

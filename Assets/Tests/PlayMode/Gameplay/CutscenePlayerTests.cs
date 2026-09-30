@@ -349,6 +349,41 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Assert.IsTrue(_player.IsPlaying, "Should have advanced to panel 2");
         }
 
+        /// <summary>
+        /// Playtest 2026-09-29, Level 1: the memory cutscene opened on the INTRO cutscene's last
+        /// line for about 0.4s before its own first line replaced it. The fade-in ran before the
+        /// panel's text was assigned, so it faded in whatever the shared body text still held.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Transition_NeverShowsThePreviousCutscenesLine()
+        {
+            const string staleLine = "Juan reaches for the Scroll and it answers him.";
+            TMP_Text bodyText = GetPrivateField<TMP_Text>(_player, "_bodyText");
+            bodyText.text = staleLine;
+            bodyText.maxVisibleCharacters = int.MaxValue;
+
+            _cutscene.panels = new CutscenePanel[]
+            {
+                new CutscenePanel
+                {
+                    text = "Sa liwanag ng gabing iyon.",
+                    transitionIn = TransitionType.Fade,
+                    transitionDuration = 1f,
+                    typewriterSpeed = 200f,
+                },
+            };
+
+            _player.Play(_cutscene);
+            yield return null;
+
+            CanvasGroup cg = GetPrivateField<CanvasGroup>(_player, "_canvasGroup");
+            Assert.Less(cg.alpha, 1f, "setup: the first panel must still be fading in.");
+            Assert.AreNotEqual(staleLine, bodyText.text,
+                "The fade-in is showing the previous cutscene's last line.");
+            Assert.AreEqual(0, bodyText.maxVisibleCharacters,
+                "The panel's own line must stay hidden until the typewriter reveals it.");
+        }
+
         [UnityTest]
         public IEnumerator OnTap_OnLastPanel_EndsCutscene()
         {

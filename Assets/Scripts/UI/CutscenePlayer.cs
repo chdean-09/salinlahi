@@ -406,6 +406,11 @@ public class CutscenePlayer : MonoBehaviour
                 ? panel.typewriterSpeed
                 : _currentCutscene.defaultTypewriterSpeed;
 
+            // Staged hidden BEFORE the transition, or the fade-in shows whatever the text still
+            // holds: the previous panel's line, or on panel 0 the last line of the previous
+            // cutscene — Level 1's memory scene flashed the intro's closing line for ~0.4s.
+            StagePanelTextHidden(panel.text ?? "");
+
             yield return TransitionIn(panel.image, transition, duration);
 
             yield return TypewriterRoutine(panel.text ?? "", speed);
@@ -507,6 +512,15 @@ public class CutscenePlayer : MonoBehaviour
             yield return null;
         }
         _imageRectTransform.anchoredPosition = Vector2.zero;
+    }
+
+    private void StagePanelTextHidden(string fullText)
+    {
+        if (_bodyText == null)
+            return;
+
+        _bodyText.text = fullText;
+        UITextReveal.Begin(_bodyText);
     }
 
     private IEnumerator TypewriterRoutine(string fullText, float charsPerSecond)

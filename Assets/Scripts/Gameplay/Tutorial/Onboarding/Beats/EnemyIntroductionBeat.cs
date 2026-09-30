@@ -354,6 +354,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         if (claimedEnemy != null)
         {
             claimedEnemy.GlyphBadge?.Show();
+            SetCopyGlyphConcealed(claimedEnemy, false);
             ReleaseEnemy(claimedEnemy);
             HoldIntroducibleAbility(claimedEnemy, held: false);
         }
@@ -633,6 +634,17 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             holdable.SetIntroductionHold(held);
     }
 
+    /// <summary>
+    /// Keeps a mirror copy's glyph dark alongside its source's. A no-op for any enemy that places
+    /// no copy, and safe on a destroyed or null enemy, because every exit path calls it.
+    /// </summary>
+    private static void SetCopyGlyphConcealed(Enemy enemy, bool concealed)
+    {
+        MirrorDecoyController mirror = enemy != null ? enemy.GetComponent<MirrorDecoyController>() : null;
+        if (mirror != null)
+            mirror.SetCopyGlyphConcealed(concealed);
+    }
+
     private IEnumerator PlayIntroduction(Enemy enemy)
     {
         _routineActive = true;
@@ -716,6 +728,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             LiftVignette();
             ReleaseEnemy(enemy);
             if (enemy != null) enemy.GlyphBadge?.Show();
+            SetCopyGlyphConcealed(enemy, false);
             _isPlaying = false;
             _routineActive = false;
             RaiseRosterGateIfComplete();
@@ -1195,6 +1208,10 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         else
             enemy.GlyphBadge?.Show();
 
+        // The mirror copy placed in beat 3 would otherwise wear its false glyph through beats 3-6
+        // while the real one stays dark — spending beat 7's reveal on the decoy's symbol.
+        SetCopyGlyphConcealed(enemy, lesson.revealGlyphLate);
+
         // Beat 1 — Appear. Halt and vignette, with NO card yet: the player must watch the
         // ability land on an enemy they cannot yet read anything about.
         HaltEnemy(enemy);
@@ -1260,8 +1277,10 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         ReleaseDrawingSuppression();
 
         // Beat 7 — Glyph. The badge comes up while the enemy is still spotlit and time is still
-        // slow, so the reveal is the only thing moving on screen.
+        // slow, so the reveal is the only thing moving on screen. The copy's glyph comes up with
+        // it: the real symbol and its look-alike are revealed together, never the look-alike first.
         enemy.GlyphBadge?.Show();
+        SetCopyGlyphConcealed(enemy, false);
         yield return WaitRealtime(_nameStepSeconds);
 
         // Beat 8 — Draw. Time comes back first: the draw is real combat against a real enemy, not
@@ -1483,8 +1502,11 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         Level1TutorialGuideUI guide = FindFirstObjectByType<Level1TutorialGuideUI>(
             FindObjectsInactive.Include);
 
+        // ShowPrompt, not ShowMessage: the step's copy is "Follow the guide." and ShowMessage
+        // deliberately hides the guide sprite, so the playtest saw the instruction with nothing
+        // on screen to follow. ShowPrompt sets the same prompt text and shows step.guideSprite.
         if (guide != null)
-            guide.ShowMessage(step.promptText, canSkip: false);
+            guide.ShowPrompt(step, canSkip: false);
 
         string expectedID = step.targetCharacter != null ? step.targetCharacter.characterID : null;
         if (string.IsNullOrEmpty(expectedID))
