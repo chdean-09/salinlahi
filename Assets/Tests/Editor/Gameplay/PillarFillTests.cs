@@ -141,5 +141,19 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 Object.DestroyImmediate(go);
             }
         }
+
+        [Test]
+        public void GeneratedColorSprite_UsesFullRectMesh()
+        {
+            var go = MakeRig(out var pf, out _, out _, out _);
+            try
+            {
+                Sprite generated = pf.CreateWhitePixelSpriteForTests();
+                Assert.IsNotNull(generated);
+                Assert.AreEqual(4, generated.vertices.Length,
+                    "A one-pixel color fill needs the full four-corner mesh for tiled rendering.");
+            }
+            finally { Object.DestroyImmediate(go); }
+        }
     }
 }
