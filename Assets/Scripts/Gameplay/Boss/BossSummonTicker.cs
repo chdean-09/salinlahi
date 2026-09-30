@@ -15,6 +15,8 @@ public class BossSummonTicker : MonoBehaviour
 
     private Enemy _enemy;
     private SpriteRenderer _renderer;
+    private BossPhase _activePhase;
+    private int _nextGuaranteedSummonIndex;
 
     // Mirrors EnemyHurtFeedback.IsPlayingHurtAnimation. Enemy.AdvanceWalkAnimation
     // reads this to suppress the walk loop while the tell is playing.
@@ -24,6 +26,12 @@ public class BossSummonTicker : MonoBehaviour
     {
         _enemy = GetComponent<Enemy>();
         _renderer = GetComponent<SpriteRenderer>();
+    }
+
+    public void BeginPhase(BossPhase phase)
+    {
+        _activePhase = phase;
+        _nextGuaranteedSummonIndex = 0;
     }
 
     public IEnumerator PlayTickAndSpawn(BossPhase phase, BossConfigSO config, WaveSpawner spawner)
@@ -84,8 +92,9 @@ public class BossSummonTicker : MonoBehaviour
                     if (summonRenderer != null)
                         summonRenderer.sortingOrder = RenderOrder.BossSummon;
 
-                    // Assign a random allowed character so the minion is defeatable.
-                    BaybayinCharacterSO character = PickAllowedCharacter();
+                    // Keep an enemy on its authored glyph when it belongs to this level's
+                    // permitted set. Only generic enemy data falls back to a random glyph.
+                    BaybayinCharacterSO character = ResolveCharacter(data);
                     if (character != null)
                         summon.AssignCharacter(character);
                 }
@@ -107,8 +116,16 @@ public class BossSummonTicker : MonoBehaviour
         IsPlayingSummonAnimation = false;
     }
 
-    private static EnemyDataSO PickEnemyType(BossPhase phase, BossConfigSO config)
+    private EnemyDataSO PickEnemyType(BossPhase phase, BossConfigSO config)
     {
+        if (phase != null
+            && object.ReferenceEquals(phase, _activePhase)
+            && phase.guaranteedSummonEnemyTypes != null
+            && _nextGuaranteedSummonIndex < phase.guaranteedSummonEnemyTypes.Count)
+        {
+            return phase.guaranteedSummonEnemyTypes[_nextGuaranteedSummonIndex++];
+        }
+
         if (phase.summonEnemyTypes != null && phase.summonEnemyTypes.Count > 0)
         {
             int idx = Random.Range(0, phase.summonEnemyTypes.Count);
@@ -123,11 +140,19 @@ public class BossSummonTicker : MonoBehaviour
         return null;
     }
 
-    private static BaybayinCharacterSO PickAllowedCharacter()
+    private static BaybayinCharacterSO ResolveCharacter(EnemyDataSO data)
     {
         LevelConfigSO level = GameManager.Instance != null ? GameManager.Instance.CurrentLevel : null;
         if (level == null || level.allowedCharacters == null || level.allowedCharacters.Count == 0)
             return null;
+
+        if (data != null
+            && data.assignedCharacter != null
+            && level.allowedCharacters.Contains(data.assignedCharacter))
+        {
+            return data.assignedCharacter;
+        }
+
         int idx = Random.Range(0, level.allowedCharacters.Count);
         return level.allowedCharacters[idx];
     }

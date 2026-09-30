@@ -37,8 +37,19 @@ public class BossController : MonoBehaviour
     private Coroutine _stateRoutine;
     private BaybayinCharacterSO _currentExpectedCharacter;
     private int _correctDrawsThisWindow;
+    private int _singleSegmentPhaseIndex = -1;
 
     public void StartBoss(BossConfigSO config, WaveSpawner spawner)
+    {
+        StartBossInternal(config, spawner, -1);
+    }
+
+    public void StartBossSegment(BossConfigSO config, WaveSpawner spawner, int phaseIndex)
+    {
+        StartBossInternal(config, spawner, phaseIndex);
+    }
+
+    private void StartBossInternal(BossConfigSO config, WaveSpawner spawner, int singleSegmentPhaseIndex)
     {
         if (config == null)
         {
@@ -55,6 +66,11 @@ public class BossController : MonoBehaviour
             DebugLogger.LogError("BossController.StartBoss: config has no phases. Aborting.");
             return;
         }
+        if (singleSegmentPhaseIndex >= config.phases.Count)
+        {
+            DebugLogger.LogError($"BossController.StartBossSegment: phase index {singleSegmentPhaseIndex} is outside the {config.phases.Count}-phase config.");
+            return;
+        }
 
         Config = config;
         _spawner = spawner;
@@ -62,9 +78,12 @@ public class BossController : MonoBehaviour
         _stateVisuals = GetComponent<BossStateVisuals>();
         _phaseMovement = GetComponent<PhaseBasedMovement>();
 
-        HPRemaining = config.phases.Count;
+        _singleSegmentPhaseIndex = singleSegmentPhaseIndex;
+        HPRemaining = singleSegmentPhaseIndex >= 0
+            ? config.phases.Count - singleSegmentPhaseIndex
+            : config.phases.Count;
         IsDefeated = false;
-        CurrentPhaseIndex = -1;
+        CurrentPhaseIndex = singleSegmentPhaseIndex >= 0 ? singleSegmentPhaseIndex - 1 : -1;
         _state = State.Idle;
         _isVulnerableActiveWindow = false;
         _currentExpectedCharacter = null;
@@ -163,9 +182,12 @@ public class BossController : MonoBehaviour
 
     private IEnumerator RunEncounter()
     {
-        yield return RunIntro();
+        if (_singleSegmentPhaseIndex < 0 || _singleSegmentPhaseIndex == 0)
+            yield return RunIntro();
 
-        for (int i = 0; i < Config.phases.Count; i++)
+        int firstPhase = _singleSegmentPhaseIndex >= 0 ? _singleSegmentPhaseIndex : 0;
+        int endPhase = _singleSegmentPhaseIndex >= 0 ? firstPhase + 1 : Config.phases.Count;
+        for (int i = firstPhase; i < endPhase; i++)
         {
             CurrentPhaseIndex = i;
             bool phaseCleared = false;
@@ -186,7 +208,10 @@ public class BossController : MonoBehaviour
             }
         }
 
-        yield return RunOutro();
+        if (_singleSegmentPhaseIndex < 0 || _singleSegmentPhaseIndex == Config.phases.Count - 1)
+            yield return RunOutro();
+        else
+            yield return CompletePhaseSegment();
     }
 
     private IEnumerator RunIntro()
@@ -200,6 +225,8 @@ public class BossController : MonoBehaviour
         BossPhase phase = Config.phases[i];
         _state = State.SummoningPhase;
         EventBus.RaiseBossPhaseStarted(i);
+        if (_summonTicker != null)
+            _summonTicker.BeginPhase(phase);
 
         if (_phaseMovement != null)
             _phaseMovement.StartPattern(phase);
@@ -326,6 +353,26 @@ public class BossController : MonoBehaviour
 
         if (bossEnemy != null)
             bossEnemy.ReturnToPool();
+    }
+
+    private IEnumerator CompletePhaseSegment()
+    {
+        IsDefeated = true;
+        _state = State.Defeated;
+        _stateRoutine = null;
+
+        // This segment's phase is cleared, but the campaign boss remains for the next
+        // Defense/ContextChallenge checkpoint. Only the final phase raises BossDefeated.
+        if (LevelFlowController.RoutesDefenseCompletion)
+            EventBus.RaiseDefenseComplete();
+        else
+            EventBus.RaiseLevelComplete();
+
+        BossEnemy bossEnemy = GetComponent<BossEnemy>();
+        if (bossEnemy != null)
+            bossEnemy.ReturnToPool();
+
+        yield break;
     }
 }
 

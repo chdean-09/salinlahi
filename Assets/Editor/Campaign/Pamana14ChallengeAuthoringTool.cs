@@ -4,51 +4,10 @@ using UnityEditor;
 using UnityEngine;
 
 /// <summary>
-/// SALIN-156. Authors the Pamana Level 14 context challenge and wires it to Level14_Config.
-///
-/// SUPERSEDED 2026-09-17 by ruling D1 and the reveal table: the mode is SentenceRestoration.
-/// Level 14 is step 4 of the Pamana era, and every era restores sentences at steps 3 and 4.
-/// The table is the source of truth where it disagrees with a ticket, so AC3's wording no
-/// longer decides this. timerSeconds and memoryRevealSeconds stay serialized but are now inert:
-/// only TimedMemory reads them. The original reasoning is kept below as the record of what was
-/// decided and why, not as a live instruction.
-///
-/// THIS IS THE FIRST TimedMemory UNIT IN THE GAME. Every other authored challenge is GuidedTracing,
-/// WordPlacement or SentenceRestoration. The mode is fully implemented -- it is not being introduced
-/// here, only used for the first time:
-///
-///   * ChallengeSession shows the sentence for memoryRevealSeconds and BLOCKS submission while it is
-///     revealed (SubmitPlacement returns early when IsMemoryRevealActive), then hides it and takes
-///     slot-by-slot recall under timerSeconds.
-///   * On expiry the session sets State = TimedOut, raises the TimedOut event and calls
-///     ApplyPenalty(), and a checkpoint restore resets _remainingTime from _checkpointTime. That is
-///     AC3's "the current checkpoint applies the approved penalty ... and the level remains
-///     recoverable", satisfied by the runtime rather than by anything authored here.
-///   * ChallengeSequenceSO validation additionally requires, for this mode only, a positive
-///     timerSeconds, a non-negative memoryRevealSeconds, and at least one recall slot.
-///
-/// Mode is TimedMemory rather than SentenceRestoration despite AC4 quoting a sentence, because AC3
-/// calls it "the timed memory sentence" and only this mode carries a timer and a reveal window.
-/// Note the two modes also submit differently: SentenceRestoration compares a whole submitted list
-/// with SequenceEqual, while TimedMemory walks slots one at a time through SubmitPlacement. Slot
-/// order still matters, so the slots run in sentence order.
-///
-/// Clue policy is Reduced, and here that is NOT my choice -- AC2 states "reduced guidance is active".
-///
-/// THE TIMER VALUES ARE UNTUNED STARTING POINTS. Per RISK-14 in doc 11, boss and timed content starts
-/// loose and tightens on playtest feedback. 45s to place two words after a 5s read of the sentence is
-/// deliberately generous. Neither number comes from the ticket, and this is the only level in the
-/// game with a fail-by-timeout state, so there is no precedent to calibrate against.
-///
-/// DECOY CHOICE IS PEDAGOGICAL. HALAGA sits against MAHALAGA on purpose: they differ only by the MA
-/// prefix, so a player skimming the first syllables cannot pass. The others are earlier-level words
-/// this level's own pool can still spell. None is a Level 15 focus word, which would preview the
-/// ending.
-///
-/// THE PROMPT COPY IS MINE AND SHOULD BE REPLACED -- third instance, after Levels 11 and 12. The
-/// SENTENCE is not: it is quoted verbatim from AC4 and is the team's Filipino.
-/// docs/content/pamana-levels-11-15-narrative.md holds Level 14's copy as TO BE WRITTEN.
-/// SALIN-188 gates it.
+/// Authors the approved Pamana 14 sentence restoration and guarantees a review RA spawn.
+/// The challenge sentence is the approved ALAALA/MAHALAGA wording. RA stays a separate
+/// character from DA and appears in the first authored wave through WaveDefinition's
+/// guaranteedCharacters list.
 /// </summary>
 public static class Pamana14ChallengeAuthoringTool
 {
@@ -148,6 +107,8 @@ public static class Pamana14ChallengeAuthoringTool
         if (level == null) { Debug.LogError($"{LevelPath} not found."); return; }
         var lso = new SerializedObject(level);
         lso.FindProperty("challengeSequence").objectReferenceValue = sequence;
+        if (!AddGuaranteedRaSpawn(lso, log))
+            return;
         lso.ApplyModifiedPropertiesWithoutUndo();
         EditorUtility.SetDirty(level);
 
@@ -164,6 +125,46 @@ public static class Pamana14ChallengeAuthoringTool
                        (result.Errors.Count == 0 ? "no errors" : string.Join(" | ", result.Errors)));
 
         Debug.Log(log.ToString());
-        File.WriteAllText("pamana14-challenge-report.txt", log.ToString());
+    }
+
+    private static bool AddGuaranteedRaSpawn(SerializedObject level, StringBuilder log)
+    {
+        const string raCharacterPath = "Assets/ScriptableObjects/Characters/Char_RA.asset";
+        const string raEnemyPath = "Assets/ScriptableObjects/Enemies/EnemyData_Ragasa.asset";
+        BaybayinCharacterSO ra = AssetDatabase.LoadAssetAtPath<BaybayinCharacterSO>(raCharacterPath);
+        EnemyDataSO raEnemy = AssetDatabase.LoadAssetAtPath<EnemyDataSO>(raEnemyPath);
+        SerializedProperty waves = level.FindProperty("_authoredWaves");
+        if (ra == null || raEnemy == null || waves == null || waves.arraySize == 0)
+        {
+            Debug.LogError("Pamana 14 cannot guarantee RA: character, Ragasa, or authored waves are missing.");
+            return false;
+        }
+
+        SerializedProperty wave = waves.GetArrayElementAtIndex(0);
+        SerializedProperty guaranteed = wave.FindPropertyRelative("guaranteedCharacters");
+        AddReferenceIfMissing(guaranteed, ra);
+
+        AddReferenceIfMissing(wave.FindPropertyRelative("characters"), ra);
+        AddReferenceIfMissing(wave.FindPropertyRelative("enemyTypes"), raEnemy);
+        if (wave.FindPropertyRelative("enemyCount").intValue < 1)
+            wave.FindPropertyRelative("enemyCount").intValue = 1;
+
+        log.AppendLine("  First wave guarantees one RA carrier (Ragasa).");
+        return true;
+    }
+
+    private static void AddReferenceIfMissing(SerializedProperty list, Object value)
+    {
+        if (list == null || value == null)
+            return;
+
+        for (int i = 0; i < list.arraySize; i++)
+        {
+            if (list.GetArrayElementAtIndex(i).objectReferenceValue == value)
+                return;
+        }
+
+        int index = list.arraySize++;
+        list.GetArrayElementAtIndex(index).objectReferenceValue = value;
     }
 }

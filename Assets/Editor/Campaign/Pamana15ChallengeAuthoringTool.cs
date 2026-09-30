@@ -1,182 +1,214 @@
-using System.IO;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using UnityEditor;
 using UnityEngine;
 
 /// <summary>
-/// SALIN-158. Authors the Pamana Level 15 context challenge and wires it to Level15_Config.
-///
-/// SUPERSEDED 2026-09-17 by ruling D1 and the reveal table: the mode is ParagraphRestoration.
-/// Level 15 is step 5 of the Pamana era, which restores that era's mastery paragraph. The table
-/// is the source of truth where it disagrees with a ticket, so AC2's word-forming wording no
-/// longer decides the mode.
-///
-/// The COPY below is still the AC2 copy: two single-slot units whose prompts instruct rather
-/// than present a gapped paragraph. The mode is now correct and the writing is not, which is
-/// the AC3 gap this file already records -- one piece of writing still unblocks SALIN-158 AC3,
-/// SALIN-147 AC2 and SALIN-152 AC2. The original reasoning is kept below as the record.
-///
-/// SCOPE: THIS COVERS AC2 ONLY. SALIN-158 is the largest level ticket in the backlog -- seven
-/// acceptance criteria spanning the final challenge, the Paglimot encounter, the ending sequence,
-/// the completed-journey state, save/restore across an app reopen, and a constraint on Endless Mode
-/// controls. Only AC2 is level-content:
-///
-///   AC2  "PAMANA and MALAYA can be completed using the approved basic character set"  -> HERE.
-///   AC1  PA taught and practised before PAMANA assesses it  -> satisfied by the generated
-///        requirement lists; the validator's PaInstructionOrderInvalid rule checks exactly this.
-///   AC3  restore "the configured final paragraph across all three phases"  -> BLOCKED. The
-///        paragraph does not exist. It is also required by SALIN-147 AC2 and SALIN-152 AC2, so one
-///        piece of writing unblocks three tickets. It would use ChallengeMode.ParagraphRestoration,
-///        which no authored challenge uses yet.
-///   AC4  the "memory becoming inheritance" ending message  -> narrative copy, not yet written.
-///   AC5  completed-journey state with review, replay and Credits  -> runtime and UI.
-///   AC6  that state surviving an app reopen  -> save/restore.
-///   AC7  no enabled control may promise Endless Mode  -> UI constraint. Nothing in the copy below
-///        gestures at content beyond the ending, which is the part of AC7 that touches this asset.
-///
-/// Shape follows the era-opener form used by Levels 11 and 12: WordPlacement with two units, one per
-/// focus word. AC2 describes word forming rather than a sentence, and unlike SALIN-155 and SALIN-156
-/// this ticket quotes no sentence to restore.
-///
-/// Clue policy is Reduced, consistent with Levels 11, 12 and 14. Level 15 introduces PA -- the
-/// seventeenth and final symbol -- and AC1 explicitly wants guided instruction and practice before
-/// assessment, so withholding clues on a symbol the player just met would work against the ticket's
-/// own criterion. WORTH SURFACING: Minimal is now the only clue policy never used anywhere in the
-/// campaign, and every level that might have justified it introduces new symbols. Whether Minimal
-/// has a home at all is a design question the backlog has not answered.
-///
-/// DECOYS are chosen to punish skimming. MANA is a suffix of PAMANA, and SAYA rhymes with MALAYA and
-/// shares its final syllable. Both are earlier-level words the 17-symbol pool can still spell.
-///
-/// THE PROMPT COPY IS MINE AND SHOULD BE REPLACED -- fourth instance, after Levels 11, 12 and 14.
-/// docs/content/pamana-levels-11-15-narrative.md holds Level 15's copy as TO BE WRITTEN. SALIN-188
-/// was reopened on 2026-09-01 and gates all of it.
+/// Aligns Level 15's existing paragraph units, boss phases, and flow segments with the
+/// current three-checkpoint ruling. Existing prompt and token copy is preserved for review.
 /// </summary>
 public static class Pamana15ChallengeAuthoringTool
 {
-    private const string AssetPath = "Assets/ScriptableObjects/Challenges/Challenge_Pamana15_Context.asset";
+    private const string SequencePath = "Assets/ScriptableObjects/Challenges/Challenge_Pamana15_Context.asset";
     private const string LevelPath = "Assets/ScriptableObjects/Levels/Level15_Config.asset";
+    private const string BossPath = "Assets/ScriptableObjects/Enemies/Boss Configs/BossConfig_Kadiliman.asset";
+    private const string YaEnemyName = "EnemyData_YaposngDilim";
 
-    private sealed class UnitSpec
+    private static readonly string[] UnitOrder =
     {
-        public string UnitId, Prompt, EvidenceId, FocusId, FocusText;
-        public (string id, string text)[] Decoys;
-    }
-
-    private static readonly UnitSpec[] Units =
-    {
-        new UnitSpec {
-            UnitId = "pamana15-complete-pamana",
-            Prompt = "Ito ang huling salitang ibinigay sa iyo ng mga nauna. " +
-                     "Buuin mo ang pangalan ng iniwan nila sa iyo.",
-            FocusId = "pamana15-pamana", FocusText = "PAMANA",
-            Decoys = new[] { ("pamana15-mana-decoy", "MANA"), ("pamana15-alaala-decoy", "ALAALA") },
-            EvidenceId = "level.pamana.05.focus.01",
-        },
-        new UnitSpec {
-            UnitId = "pamana15-complete-malaya",
-            Prompt = "Hindi na makukuha ng Paglimot ang naibalik mo. " +
-                     "Buuin mo ang salitang nagsasabi kung ano ka na ngayon.",
-            FocusId = "pamana15-malaya", FocusText = "MALAYA",
-            Decoys = new[] { ("pamana15-saya-decoy", "SAYA"), ("pamana15-mahalaga-decoy", "MAHALAGA") },
-            EvidenceId = "level.pamana.05.focus.02",
-        },
+        "pamana15-restore-line-01",
+        "pamana15-restore-line-03",
+        "pamana15-restore-line-02",
     };
 
-    [MenuItem("Salinlahi/SALIN-158/Author Pamana 15 Challenge")]
+    private static readonly string[][] PhaseCharacters =
+    {
+        new[] { "A", "EI", "BA", "MA", "NA", "TA" },
+        new[] { "OU", "KA", "GA", "SA", "WA", "YA" },
+        new[] { "DA", "RA", "HA", "LA", "NGA", "PA", "YA" },
+    };
+
+    private static readonly string[] PhaseNames = { "Ugat", "Ugnayan", "Lahat" };
+
+    [MenuItem("Salinlahi/SALIN-158/Author Pamana 15 Campaign Flow")]
     public static void Apply()
     {
-        var log = new StringBuilder("=== Pamana 15 context challenge (AC2 only) ===\n");
-
-        // Load-and-mutate when it already exists: CreateAsset over an existing path reissues the
-        // GUID and would silently unwire Level15_Config.challengeSequence.
-        var sequence = AssetDatabase.LoadAssetAtPath<ChallengeSequenceSO>(AssetPath);
-        bool created = sequence == null;
-        if (created)
+        ChallengeSequenceSO sequence = AssetDatabase.LoadAssetAtPath<ChallengeSequenceSO>(SequencePath);
+        LevelConfigSO level = AssetDatabase.LoadAssetAtPath<LevelConfigSO>(LevelPath);
+        BossConfigSO boss = AssetDatabase.LoadAssetAtPath<BossConfigSO>(BossPath);
+        if (sequence == null || level == null || boss == null)
         {
-            sequence = ScriptableObject.CreateInstance<ChallengeSequenceSO>();
-            AssetDatabase.CreateAsset(sequence, AssetPath);
+            Debug.LogError("Pamana 15 authoring stopped: the existing sequence, level, or boss asset is missing.");
+            return;
         }
 
-        var so = new SerializedObject(sequence);
-        so.FindProperty("sequenceId").stringValue = "challenge.pamana.15";
-        so.FindProperty("displayName").stringValue = "Huling Alaala";
-
-        SerializedProperty units = so.FindProperty("units");
-        units.arraySize = Units.Length;
-
-        for (int u = 0; u < Units.Length; u++)
+        if (!HasUnits(sequence, UnitOrder))
         {
-            UnitSpec spec = Units[u];
-            SerializedProperty unit = units.GetArrayElementAtIndex(u);
+            Debug.LogError("Pamana 15 authoring stopped: the three existing paragraph units were not found. Their copy was left untouched.");
+            return;
+        }
 
-            unit.FindPropertyRelative("unitId").stringValue = spec.UnitId;
-            unit.FindPropertyRelative("mode").enumValueIndex = 3;         // ParagraphRestoration -- D1
-            unit.FindPropertyRelative("cluePolicy").enumValueIndex = 1;   // Reduced -- see class note
-            unit.FindPropertyRelative("prompt").stringValue = spec.Prompt;
+        Dictionary<string, EnemyDataSO> enemiesByCharacter = LoadEnemyRoster();
+        string[] requiredCharacters = PhaseCharacters.SelectMany(group => group).Distinct().ToArray();
+        string[] missing = requiredCharacters.Where(id => !enemiesByCharacter.ContainsKey(id)).ToArray();
+        if (missing.Length > 0)
+        {
+            Debug.LogError("Pamana 15 authoring stopped: no enemy is assigned for " + string.Join(", ", missing) + ".");
+            return;
+        }
 
-            SerializedProperty t = unit.FindPropertyRelative("tokens");
-            t.arraySize = 1 + spec.Decoys.Length;
-            WriteToken(t.GetArrayElementAtIndex(0), spec.FocusId, spec.FocusText, 1);
-            for (int d = 0; d < spec.Decoys.Length; d++)
-                WriteToken(t.GetArrayElementAtIndex(d + 1), spec.Decoys[d].id, spec.Decoys[d].text, 0);
+        var log = new StringBuilder("=== Pamana 15 three-phase campaign flow ===\n");
+        AuthorSequenceOrder(sequence, log);
+        AuthorBossPhases(boss, enemiesByCharacter, log);
+        AuthorLevelSegments(level, sequence, log);
 
-            SerializedProperty slots = unit.FindPropertyRelative("slots");
-            slots.arraySize = 1;
-            slots.GetArrayElementAtIndex(0).FindPropertyRelative("slotId").stringValue = spec.UnitId + "-slot";
-            slots.GetArrayElementAtIndex(0).FindPropertyRelative("expectedOccurrenceId").stringValue = spec.FocusId;
+        EditorUtility.SetDirty(sequence);
+        EditorUtility.SetDirty(boss);
+        EditorUtility.SetDirty(level);
+        AssetDatabase.SaveAssets();
 
-            SerializedProperty candidates = unit.FindPropertyRelative("candidateOccurrenceIds");
-            candidates.arraySize = t.arraySize;
-            candidates.GetArrayElementAtIndex(0).stringValue = spec.FocusId;
-            for (int d = 0; d < spec.Decoys.Length; d++)
-                candidates.GetArrayElementAtIndex(d + 1).stringValue = spec.Decoys[d].id;
+        LevelPhasePlan plan = LevelPhasePlan.FromConfig(level);
+        log.AppendLine($"  level flow plan: segments={plan.SegmentCount}, invalid={plan.SegmentPlanInvalid}");
+        log.AppendLine("  challenge prompts and token text preserved for language review.");
+        Debug.Log(log.ToString());
+    }
 
-            unit.FindPropertyRelative("guidedStep").objectReferenceValue = null;
-            unit.FindPropertyRelative("timerSeconds").floatValue = 0f;
-            unit.FindPropertyRelative("allowHint").boolValue = true;
-            unit.FindPropertyRelative("checkpointOnSuccess").boolValue = true;
-            unit.FindPropertyRelative("memoryRevealSeconds").floatValue = 1f;
-            unit.FindPropertyRelative("maxErrors").intValue = 3;
-            unit.FindPropertyRelative("heartPenalty").intValue = 1;
-            unit.FindPropertyRelative("evidenceContentId").stringValue = spec.EvidenceId;
+    private static bool HasUnits(ChallengeSequenceSO sequence, IReadOnlyList<string> ids)
+    {
+        if (sequence.units == null || sequence.units.Length != ids.Count)
+            return false;
 
-            log.AppendLine($"  unit {u + 1}: {spec.FocusText} (+{spec.Decoys.Length} decoys)  " +
-                           "mode=ParagraphRestoration cluePolicy=Reduced");
+        var found = new HashSet<string>(sequence.units
+            .Where(unit => unit != null)
+            .Select(unit => unit.unitId));
+        return ids.All(found.Contains);
+    }
+
+    private static Dictionary<string, EnemyDataSO> LoadEnemyRoster()
+    {
+        var result = new Dictionary<string, EnemyDataSO>(StringComparer.OrdinalIgnoreCase);
+        string[] guids = AssetDatabase.FindAssets("t:EnemyDataSO", new[] { "Assets/ScriptableObjects/Enemies" });
+        foreach (string guid in guids)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            EnemyDataSO data = AssetDatabase.LoadAssetAtPath<EnemyDataSO>(path);
+            string characterId = data?.assignedCharacter?.characterID;
+            if (string.IsNullOrWhiteSpace(characterId))
+                continue;
+
+            if (!result.TryGetValue(characterId, out EnemyDataSO existing)
+                || IsPreferredEnemy(data, existing, characterId))
+            {
+                result[characterId] = data;
+            }
+        }
+
+        return result;
+    }
+
+    private static bool IsPreferredEnemy(EnemyDataSO candidate, EnemyDataSO existing, string characterId)
+    {
+        if (characterId == "YA")
+            return candidate.name == YaEnemyName;
+        if (characterId == "HA")
+            return candidate.name == "EnemyData_Hati";
+        return existing == null;
+    }
+
+    private static void AuthorSequenceOrder(ChallengeSequenceSO sequence, StringBuilder log)
+    {
+        var so = new SerializedObject(sequence);
+        SerializedProperty units = so.FindProperty("units");
+        for (int destination = 0; destination < UnitOrder.Length; destination++)
+        {
+            int current = FindUnitIndex(units, UnitOrder[destination]);
+            if (current < 0)
+                throw new InvalidOperationException("A validated Level 15 paragraph unit disappeared during authoring.");
+            if (current != destination)
+                units.MoveArrayElement(current, destination);
         }
 
         so.ApplyModifiedPropertiesWithoutUndo();
-        EditorUtility.SetDirty(sequence);
-        log.AppendLine($"  {(created ? "created" : "updated")} {Path.GetFileName(AssetPath)}");
-
-        var level = AssetDatabase.LoadAssetAtPath<LevelConfigSO>(LevelPath);
-        if (level == null) { Debug.LogError($"{LevelPath} not found."); return; }
-        var lso = new SerializedObject(level);
-        lso.FindProperty("challengeSequence").objectReferenceValue = sequence;
-        lso.ApplyModifiedPropertiesWithoutUndo();
-        EditorUtility.SetDirty(level);
-
-        AssetDatabase.SaveAssets();
-
-        var check = new SerializedObject(level);
-        log.AppendLine("  Level15_Config.challengeSequence wired: " +
-                       (check.FindProperty("challengeSequence").objectReferenceValue == sequence));
-
-        ChallengeValidationResult result = ChallengeSequenceValidator.Validate(sequence);
-        log.AppendLine("  ChallengeSequenceValidator: " +
-                       (result.Errors.Count == 0 ? "no errors" : string.Join(" | ", result.Errors)));
-
-        Debug.Log(log.ToString());
-        File.WriteAllText("pamana15-challenge-report.txt", log.ToString());
+        log.AppendLine("  paragraph checkpoint order: PAMANA, PAMANA, MALAYA (existing unit text retained).");
     }
 
-    private static void WriteToken(SerializedProperty e, string id, string text, int role)
+    private static int FindUnitIndex(SerializedProperty units, string unitId)
     {
-        e.FindPropertyRelative("tokenId").stringValue = id;
-        e.FindPropertyRelative("displayText").stringValue = text;
-        e.FindPropertyRelative("occurrenceId").stringValue = id;
-        e.FindPropertyRelative("role").enumValueIndex = role;
-        e.FindPropertyRelative("targetCharacter").objectReferenceValue = null;
-        e.FindPropertyRelative("evidenceContentId").stringValue = string.Empty;
+        for (int i = 0; i < units.arraySize; i++)
+        {
+            if (units.GetArrayElementAtIndex(i).FindPropertyRelative("unitId").stringValue == unitId)
+                return i;
+        }
+
+        return -1;
+    }
+
+    private static void AuthorBossPhases(
+        BossConfigSO boss, IReadOnlyDictionary<string, EnemyDataSO> enemies, StringBuilder log)
+    {
+        var so = new SerializedObject(boss);
+        SerializedProperty phases = so.FindProperty("phases");
+        phases.arraySize = PhaseNames.Length;
+
+        for (int i = 0; i < PhaseNames.Length; i++)
+        {
+            SerializedProperty phase = phases.GetArrayElementAtIndex(i);
+            phase.FindPropertyRelative("displayName").stringValue = PhaseNames[i];
+            phase.FindPropertyRelative("summonPhaseDuration").floatValue = i == 2 ? 35f : 30f;
+            phase.FindPropertyRelative("delayBetweenSummons").floatValue = 5f;
+            phase.FindPropertyRelative("minionsPerSummonMin").intValue = 2;
+            phase.FindPropertyRelative("minionsPerSummonMax").intValue = 3;
+            phase.FindPropertyRelative("delayBetweenMinions").floatValue = 0.6f;
+            phase.FindPropertyRelative("summonSpawnRange").vector2Value = new Vector2(2f, 0f);
+            phase.FindPropertyRelative("requiredCharacterCount").intValue = i == 2 ? 5 : 4;
+            phase.FindPropertyRelative("vulnerabilityTimer").floatValue = 12f;
+            phase.FindPropertyRelative("movementPattern").enumValueIndex = (int)BossMovementPattern.Pace;
+            phase.FindPropertyRelative("movementSpeed").floatValue = 1f;
+            phase.FindPropertyRelative("paceHalfRange").floatValue = 1.5f;
+            phase.FindPropertyRelative("teleportHalfRange").vector2Value = new Vector2(2f, 0f);
+
+            WriteEnemyList(phase.FindPropertyRelative("guaranteedSummonEnemyTypes"),
+                PhaseCharacters[i].Select(id => enemies[id]));
+            IEnumerable<EnemyDataSO> phasePool = i == 2
+                ? enemies.Values.Distinct()
+                : PhaseCharacters[i].Select(id => enemies[id]);
+            WriteEnemyList(phase.FindPropertyRelative("summonEnemyTypes"), phasePool);
+
+            log.AppendLine($"  phase {i + 1}: {PhaseNames[i]}, guaranteed {string.Join(", ", PhaseCharacters[i])}");
+        }
+
+        WriteEnemyList(so.FindProperty("fallbackEnemyTypes"), enemies.Values.Distinct());
+        so.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void WriteEnemyList(SerializedProperty list, IEnumerable<EnemyDataSO> values)
+    {
+        EnemyDataSO[] assets = values.Where(value => value != null).Distinct().ToArray();
+        list.arraySize = assets.Length;
+        for (int i = 0; i < assets.Length; i++)
+            list.GetArrayElementAtIndex(i).objectReferenceValue = assets[i];
+    }
+
+    private static void AuthorLevelSegments(
+        LevelConfigSO level, ChallengeSequenceSO sequence, StringBuilder log)
+    {
+        var so = new SerializedObject(level);
+        so.FindProperty("challengeSequence").objectReferenceValue = sequence;
+        SerializedProperty segments = so.FindProperty("flowSegments");
+        segments.arraySize = UnitOrder.Length;
+
+        for (int i = 0; i < UnitOrder.Length; i++)
+        {
+            SerializedProperty segment = segments.GetArrayElementAtIndex(i);
+            segment.FindPropertyRelative("waveCount").intValue = 0;
+            SerializedProperty unitIds = segment.FindPropertyRelative("challengeUnitIds");
+            unitIds.arraySize = 1;
+            unitIds.GetArrayElementAtIndex(0).stringValue = UnitOrder[i];
+        }
+
+        so.ApplyModifiedPropertiesWithoutUndo();
+        log.AppendLine("  three zero-wave segments each pair one boss phase with one paragraph checkpoint.");
     }
 }

@@ -261,6 +261,29 @@ public sealed class LevelPhasePlan
             return Array.Empty<LevelFlowSegment>();
         }
 
+        // A segmented boss level advances one authored boss phase per segment. Ordinary
+        // waves cannot also consume the same segment because boss summons own its Defense
+        // leg. Reject mismatched content instead of silently replaying the full encounter.
+        if (config.bossConfig != null)
+        {
+            if (config.bossConfig.phases == null
+                || config.bossConfig.phases.Count != config.flowSegments.Count
+                || waveBudget != 0)
+            {
+                segmentPlanInvalid = true;
+                return Array.Empty<LevelFlowSegment>();
+            }
+
+            foreach (LevelFlowSegment segment in config.flowSegments)
+            {
+                if (segment.waveCount != 0)
+                {
+                    segmentPlanInvalid = true;
+                    return Array.Empty<LevelFlowSegment>();
+                }
+            }
+        }
+
         return new List<LevelFlowSegment>(config.flowSegments).ToArray();
     }
 

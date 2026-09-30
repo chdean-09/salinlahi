@@ -1,16 +1,14 @@
 # Ugnayan Levels 6–10 — Narrative and Memory Content
 
-> **STRUCTURE ONLY — NO COPY WRITTEN YET.** Every Filipino line in this document is a
-> `TO BE WRITTEN` placeholder. This file mirrors the structure of
-> [`ugat-levels-2-5-narrative.md`](ugat-levels-2-5-narrative.md) so the Ugnayan authoring session has
-> a shape to fill rather than a blank page. **Nothing here is approved, and nothing here is a
-> suggestion of wording.**
+> **DRAFT COPY ADDED — NOT APPROVED.** The proposal at the end of this document is for language
+> and cultural review only. It must not be copied into DialogueSO or challenge assets until the
+> user approves it. The level-by-level scaffold below records the authored structure from
+> [`ugat-levels-2-5-narrative.md`](ugat-levels-2-5-narrative.md).
 >
-> **Status: SCAFFOLD — awaiting authoring, then SALIN-188 language and cultural review.** As with
-> Ugat, SALIN-188 is a final acceptance gate on every level Story in this era.
+> **Status: DRAFT — awaiting SALIN-188 language and cultural review.** SALIN-188 remains a final
+> acceptance gate on every level Story in this era.
 >
-> Once the copy exists, **this file becomes the copy of record**: the `DialogueSO` assets are
-> generated from it, so edit here first, then regenerate.
+> Only approved copy from this file may become the copy of record for `DialogueSO` assets.
 
 ## Source of the words
 
@@ -359,3 +357,55 @@ This is the era's **reduced-guidance** level, the counterpart to Ugat 4. AC2 req
 | Tagapagsalaysay | *TO BE WRITTEN — hands off to Pamana, as Ugat's outro hands off to Ugnayan.* |
 
 ---
+
+## Draft copy proposal — review required
+
+Every line in this section is **DRAFT — NOT APPROVED**. These proposals are documentation-only;
+review the Filipino wording, cultural tone, and child-facing clarity before placing any line in a
+game asset. The approved focus words and Level 8 sentence remain unchanged.
+
+### Level 6 — AWA, GAWA
+
+- **Intro:** Tagapagsalaysay: “Sa aming nayon, may nangangailangan ng tulong.” Juan: “Gusto kong tumulong. Saan ako magsisimula?” Tagapagsalaysay: “Magsimula tayo sa awa, at sundan ito ng gawa.”
+- **AWA:** “AWA — habag at malasakit sa kapwa. Binubuo ito ng dalawang titik: A at WA.” / “Bakasin mo ang AWA.” Meaning: *compassion*.
+- **GAWA:** “GAWA — kilos na ginagawa upang makatulong. Binubuo ito ng dalawang titik: GA at WA.” / “Bakasin mo ang GAWA.” Meaning: *action; work*.
+- **Context:** “May AWA sa puso at GAWA sa kamay.”
+- **Memory:** “Kapag sinamahan ng gawa ang awa, nagiging tunay na tulong ito.”
+- **Outro:** Juan: “Nauunawaan ko na ngayon: mahalaga ang malasakit at pagkilos.” Tagapagsalaysay: “Sa susunod, aalamin natin kung paano nagiging mas magaan ang gawain kapag may kasama.”
+
+### Level 7 — SAMA, KASAMA
+
+- **Intro:** Tagapagsalaysay: “May gawain sa nayon na mahirap tapusin nang mag-isa.” Juan: “Kung magtutulungan tayo, kaya natin ito.” Tagapagsalaysay: “Tingnan natin ang SAMA at KASAMA.”
+- **SAMA:** “SAMA — pakikibahagi sa isang gawain. Binubuo ito ng dalawang titik: SA at MA.” / “Bakasin mo ang SAMA.” Meaning: *together; join*.
+- **KASAMA:** “KASAMA — taong karamay mo sa gawain. Binubuo ito ng tatlong titik: KA, SA, at MA.” / “Bakasin mo ang KASAMA.” Meaning: *companion*.
+- **Context:** “SAMA tayo sa gawain; tulungan mo ang iyong KASAMA.”
+- **Memory:** “Kapag may karamay, mas marami tayong kayang gawin.”
+- **Outro:** Juan: “Hindi ko kailangang harapin ang lahat nang mag-isa.” Tagapagsalaysay: “Sa susunod, pag-uugnayin natin ang sigla at kakayahang tumulong.”
+
+### Level 8 — GANA, KAYA
+
+- **Intro:** Tagapagsalaysay: “May bagong hamon sa nayon.” Juan: “Kapag pursigido ako, mas marami akong matutulungan.” Tagapagsalaysay: “Tingnan natin kung paano nagkakaugnay ang sigla at kakayahan.”
+- **GANA:** “GANA — sigla o kagustuhang kumilos. Binubuo ito ng dalawang titik: GA at NA.” / “Bakasin mo ang GANA.” Meaning: *enthusiasm; appetite*.
+- **KAYA:** “KAYA — may kakayahang gawin. Binubuo ito ng dalawang titik: KA at YA.” / “Bakasin mo ang KAYA.” Meaning: *can; able*.
+- **Context (approved sentence):** “Kapag may GANA, mas maraming bagay ang KAYA.”
+- **Memory:** “Ang sigla ay nakatutulong upang maibahagi natin ang ating kakayahan sa pamayanan.”
+- **Outro:** Juan: “Kapag nagsikap ako, mas marami akong naitutulong.” Tagapagsalaysay: “Mula sa pagkilos, babalik tayo sa mga salitang una mong natutuhan.”
+
+### Level 9 — OO, UNA
+
+- **Intro:** Tagapagsalaysay: “May nangangailangan ng tulong bago magsimula ang gawain.” Juan: “Oo, tutulong ako.” Tagapagsalaysay: “Balikan natin ang mga tunog ng patinig at ang salitang UNA.”
+- **OO:** “OO — pagsang-ayon. Binubuo ito ng iisang tunog na inuulit: O at O.” / “Bakasin mo ang OO.” Meaning: *yes*.
+- **UNA:** “UNA — nauuna sa pagkakasunod-sunod. Binubuo ito ng dalawang titik: U at NA.” / “Bakasin mo ang UNA.” Meaning: *first*.
+- **Context:** “OO, tutulong ako. Ito ang UNA kong hakbang.”
+- **Memory:** “Kapag may nangangailangan, ang pagtulong ang maaari nating unahin.”
+- **Outro:** Juan: “Ang pagtulong ang una kong pinili.” Tagapagsalaysay: “Sa huling bahagi ng Ugnayan, babalik ang pag-asa at saya sa nayon.”
+
+### Level 10 — SANA, SAYA
+
+- **Intro:** Tagapagsalaysay: “Maraming pagsubok ang nalampasan ng nayon sa pagtutulungan.” Juan: “Sana magpatuloy ang pagkakaisa.” Tagapagsalaysay: “Ibalik natin ang mga salitang nagpapahayag ng pag-asa at tuwa.”
+- **SANA:** “SANA — hangaring mangyari ang mabuti. Binubuo ito ng dalawang titik: SA at NA.” / “Bakasin mo ang SANA.” Meaning: *hope; wish*.
+- **SAYA:** “SAYA — tuwang nadarama. Binubuo ito ng dalawang titik: SA at YA.” / “Bakasin mo ang SAYA.” Meaning: *joy*.
+- **Context:** “SANA ay magtulungan ang lahat upang may SAYA sa aming nayon.”
+- **Ugnayan paragraph proposal:** “May AWA tayo sa kapwa at GAWA ang ating pagtulong. SAMA tayo sa gawain, kasama ang KASAMA natin. Kapag may GANA, mas maraming bagay ang KAYA. OO, pagtulong ang UNA kong piliin. SANA ay magtulungan ang lahat at magbalik ang SAYA sa nayon.”
+- **Memory:** “Kapag nagtutulungan ang mga tao, bumabalik ang pag-asa at saya sa kanilang pamayanan.”
+- **Outro:** Juan: “Nasa atin ang pag-asa kapag sama-sama tayong kumikilos.” Tagapagsalaysay: “May bagong aral pang naghihintay sa pamana ng mga nauna.”

@@ -189,9 +189,57 @@ namespace Salinlahi.Tests.Editor.Data
                 "Level 15's boss asset must carry at least one authored phase.");
             Assert.IsNotNull(level15.bossConfig.bossEnemyData,
                 "Level 15's boss asset must identify its boss enemy data.");
-            Assert.IsEmpty(level15.flowSegments,
-                "The boss level uses its boss phase rather than alternating wave segments.");
+            Assert.AreEqual(3, level15.bossConfig.phases.Count,
+                "The final Paglimot encounter has one phase for Ugat, Ugnayan, and all.");
+            Assert.AreEqual(3, level15.flowSegments.Count,
+                "Each boss phase must pair with one paragraph checkpoint.");
+            Assert.AreEqual(0, level15.waves.Count,
+                "Level 15's phase minions are authored in the boss config, not ordinary waves.");
             Assert.IsNotNull(level15.challengeSequence);
+            CollectionAssert.AreEqual(
+                new[] { "pamana15-restore-line-01", "pamana15-restore-line-03", "pamana15-restore-line-02" },
+                level15.challengeSequence.units.Select(unit => unit.unitId).ToArray(),
+                "The MALAYA paragraph checkpoint and its YA finale must be last.");
+            Assert.AreEqual("MALAYA",
+                level15.challengeSequence.units[2].tokens.Single(token =>
+                    token.occurrenceId == level15.challengeSequence.units[2].slots[0].expectedOccurrenceId).displayText);
+            CollectionAssert.AreEqual(new[] { "Ugat", "Ugnayan", "Lahat" },
+                level15.bossConfig.phases.Select(phase => phase.displayName).ToArray());
+
+            HashSet<string> permittedCharacters = new HashSet<string>(
+                level15.allowedCharacters.Select(character => character.characterID));
+            HashSet<string> guaranteedCharacters = new HashSet<string>(
+                level15.bossConfig.phases.SelectMany(phase => phase.guaranteedSummonEnemyTypes)
+                    .Where(enemy => enemy != null && enemy.assignedCharacter != null)
+                    .Select(enemy => enemy.assignedCharacter.characterID));
+            CollectionAssert.AreEquivalent(permittedCharacters, guaranteedCharacters,
+                "Every permitted Level 15 glyph must have a guaranteed boss summon.");
+            Assert.AreEqual("EnemyData_YaposngDilim",
+                level15.bossConfig.phases[2].guaranteedSummonEnemyTypes.Last().name,
+                "Yapos ng Dilim is the final guaranteed YA carrier.");
+            CollectionAssert.AreEquivalent(permittedCharacters,
+                level15.bossConfig.phases[2].summonEnemyTypes
+                    .Where(enemy => enemy != null && enemy.assignedCharacter != null)
+                    .Select(enemy => enemy.assignedCharacter.characterID).ToArray(),
+                "The final phase's summon pool includes the full learned character set.");
+        }
+
+        [Test]
+        public void Level14_GuaranteesAnRaCarrierInItsFirstWave()
+        {
+            LevelConfigSO level14 = Load(14);
+            Assert.IsNotEmpty(level14.waves);
+
+            WaveDefinition firstWave = level14.waves[0];
+            Assert.IsTrue(firstWave.guaranteedCharacters.Any(character =>
+                    character != null && character.characterID == "RA"),
+                "Level 14 must guarantee RA on its first wave after RA is taught in Level 13.");
+            Assert.IsTrue(firstWave.enemyTypes.Any(enemy =>
+                    enemy != null && enemy.assignedCharacter != null
+                    && enemy.assignedCharacter.characterID == "RA"),
+                "The guaranteed RA glyph must use its matching enemy type.");
+            Assert.AreEqual("RA", WaveSpawner.GuaranteedCharacterForSpawn(firstWave, 0).characterID);
+            Assert.IsNull(WaveSpawner.GuaranteedCharacterForSpawn(firstWave, 1));
         }
 
         private static HashSet<string> FocusSymbols(LevelConfigSO level)
