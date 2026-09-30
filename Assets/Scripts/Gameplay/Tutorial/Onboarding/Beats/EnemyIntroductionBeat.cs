@@ -184,6 +184,14 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     private bool _routineActive;
     private bool _timeScaleTaken;
     private bool _drawStepAbandoned;
+
+    /// <summary>
+    /// Beat 8's wrong-draw handler while it is on <see cref="EventBus.OnRecognitionResolved"/>.
+    /// Held here, not only in <see cref="PlayDrawStep"/>, because an abort mid-draw stops that
+    /// coroutine without running its finally: the handler would stay subscribed and throw on the
+    /// next recognition anywhere once its guide is destroyed. <see cref="OnDisable"/> takes it off.
+    /// </summary>
+    private System.Action<RecognitionResult, bool, float> _drawStepFeedback;
     private InputAction _continueAction;
     private bool _continueRequestedByInput;
 
@@ -342,6 +350,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         Enemy claimedEnemy = _claimedEnemy;
 
         StopPlayback();
+        ReleaseDrawStepFeedback();
         ReleaseTimeScale();
         LiftVignette();
         IsHoldingForContinue = false;
@@ -1527,10 +1536,9 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             || !enemy.gameObject.activeInHierarchy
             || enemy.IsDying;
 
-        System.Action<RecognitionResult, bool, float> feedback = null;
         if (guide != null)
         {
-            feedback = (result, passed, _) =>
+            _drawStepFeedback = (result, passed, _) =>
             {
                 if (passed && string.Equals(result.characterID, expectedID,
                         System.StringComparison.OrdinalIgnoreCase))
@@ -1540,7 +1548,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
                     ? step.wrongCharacterFeedback
                     : step.recognitionFailedFeedback);
             };
-            EventBus.OnRecognitionResolved += feedback;
+            EventBus.OnRecognitionResolved += _drawStepFeedback;
         }
 
         try
@@ -1566,11 +1574,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             // The draw landed. The wrong-draw handler comes off FIRST, or a stray recognition
             // resolved during the hold would overwrite the success copy with a correction the
             // player did not earn.
-            if (feedback != null)
-            {
-                EventBus.OnRecognitionResolved -= feedback;
-                feedback = null;
-            }
+            ReleaseDrawStepFeedback();
 
             // The instruction the player has just obeyed goes now, not when the guide closes.
             // Left up, "Draw E/I. Follow the guide." sat under its own congratulation for the
@@ -1589,11 +1593,17 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         }
         finally
         {
-            if (feedback != null)
-                EventBus.OnRecognitionResolved -= feedback;
+            ReleaseDrawStepFeedback();
             if (guide != null)
                 guide.Hide();
         }
+    }
+
+    private void ReleaseDrawStepFeedback()
+    {
+        if (_drawStepFeedback == null) return;
+        EventBus.OnRecognitionResolved -= _drawStepFeedback;
+        _drawStepFeedback = null;
     }
 
     /// <summary>

@@ -1585,6 +1585,57 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         [UnityTest]
         public IEnumerator Beat8_ShowsTheDrawStepsGuideSprite()
         {
+            Beat8GuideRig rig = new Beat8GuideRig();
+            yield return ParkAtBeat8WithGuide("beat8guide", rig);
+
+            Assert.IsTrue(rig.GuideImage.gameObject.activeInHierarchy,
+                "Beat 8 tells the player to follow the guide, so the guide has to be on screen.");
+            Assert.AreSame(rig.Lesson.drawStep.guideSprite, rig.GuideImage.sprite,
+                "The guide must show the draw step's own authored guide sprite.");
+
+            LogAssert.ignoreFailingMessages = false;
+            _beat.enabled = false;
+            yield return null;
+        }
+
+        /// <summary>
+        /// Leaving mid-draw (scene unload, level abort) stops the draw step without running its
+        /// finally. Its wrong-draw handler used to stay on <c>EventBus.OnRecognitionResolved</c>
+        /// holding the destroyed guide, so the next recognition anywhere threw
+        /// MissingReferenceException — and, being one multicast call, also cut off every handler
+        /// after it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Beat8_AbortMidDraw_TakesTheWrongDrawHandlerOffTheBus()
+        {
+            Beat8GuideRig rig = new Beat8GuideRig();
+            yield return ParkAtBeat8WithGuide("beat8abort", rig);
+
+            LogAssert.ignoreFailingMessages = false;
+            _beat.enabled = false;
+            Object.Destroy(rig.GuideRoot);
+            yield return null;
+
+            Assert.DoesNotThrow(
+                () => EventBus.RaiseRecognitionResolved(
+                    new RecognitionResult("MA", 0.9f, 1, null, 0f), true, 0.45f),
+                "A wrong draw after the lesson is gone must not reach its destroyed guide.");
+        }
+
+        private sealed class Beat8GuideRig
+        {
+            public GameObject GuideRoot;
+            public UnityEngine.UI.Image GuideImage;
+            public EnemyLessonSO Lesson;
+        }
+
+        /// <summary>
+        /// Runs an Iligaw-shaped lesson with a guide in the scene until beat 8 is waiting for the
+        /// draw. Leaves <c>LogAssert.ignoreFailingMessages</c> on (the fixture's shell carries no
+        /// ability, so beat 2's missing-ability warning is expected); the caller turns it off.
+        /// </summary>
+        private IEnumerator ParkAtBeat8WithGuide(string tag, Beat8GuideRig rig)
+        {
             yield return null;
 
             SetPrivateField(_beat, "_nameStepSeconds", 0f);
@@ -1594,7 +1645,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
 
             // The guide exactly as Gameplay.unity authors it: its root is its own GameObject,
             // inactive, with the guide image as an inactive child.
-            GameObject guideRoot = CreateTracked("Level1TutorialGuideUI_Beat8Guide");
+            GameObject guideRoot = CreateTracked("Level1TutorialGuideUI_" + tag);
             guideRoot.SetActive(false);
             Level1TutorialGuideUI guide = guideRoot.AddComponent<Level1TutorialGuideUI>();
             GameObject promptGO = new GameObject("DrawPromptText");
@@ -1608,16 +1659,16 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             SetPrivateField(guide, "_promptText", prompt);
             SetPrivateField(guide, "_guideSpriteImage", guideImage);
 
-            BaybayinCharacterSO iChar = MakeCharacter("I", "symbol.test.beat8guide.i");
+            BaybayinCharacterSO iChar = MakeCharacter("I", $"symbol.test.{tag}.i");
             EnemyDataSO iligawData = CreateEnemyData(
-                "test_iligaw_beat8guide", "Iligaw", iChar, spawnsMirrorDecoy: false);
+                $"test_iligaw_{tag}", "Iligaw", iChar, spawnsMirrorDecoy: false);
             EnemyLessonSO lesson = CreateIligawShapedLesson(iligawData);
             lesson.abilityBeatSeconds = 0f;
             lesson.drawStep = CreateDrawStep(iChar);
             lesson.drawStep.guideSprite = MakeTestSprite("GuideSprite_EI");
 
             FocusWordDefinition word = CreateWord(
-                "level.test.beat8guide.ina", "ina", "INA", iChar, iChar);
+                $"level.test.{tag}.ina", "ina", "INA", iChar, iChar);
             LevelConfigSO config = CreateLevelConfig(
                 new List<EnemyDataSO> { iligawData }, new[] { lesson },
                 new List<FocusWordDefinition> { word });
@@ -1625,14 +1676,12 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             SetPrivateField(_presenter, "_level", config);
             _presenter.RestorationState.Configure(config.focusWords);
 
-            Enemy iligaw = CreateEnemyShell("Iligaw_Beat8Guide");
+            Enemy iligaw = CreateEnemyShell("Iligaw_" + tag);
             iligaw.transform.position = Vector3.zero;
             Assert.IsTrue(iligaw.Initialize(iligawData));
             Assert.AreEqual(IntroductionOutcome.IntroduceAndArm, iligaw.IntroductionOutcome,
                 "setup: this must be a real lesson spawn.");
 
-            // The fixture's shell carries no ability, so beat 2's missing-ability warning is
-            // expected and is not the subject.
             LogAssert.ignoreFailingMessages = true;
 
             for (int frame = 0; frame < 60; frame++)
@@ -1642,14 +1691,10 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 "setup: the beat must be parked at beat 8 waiting for the draw.");
             Assert.AreEqual("Draw E/I. Follow the guide.", prompt.text,
                 "setup: beat 8's prompt must be up.");
-            Assert.IsTrue(imageGO.activeInHierarchy,
-                "Beat 8 tells the player to follow the guide, so the guide has to be on screen.");
-            Assert.AreSame(lesson.drawStep.guideSprite, guideImage.sprite,
-                "The guide must show the draw step's own authored guide sprite.");
 
-            LogAssert.ignoreFailingMessages = false;
-            _beat.enabled = false;
-            yield return null;
+            rig.GuideRoot = guideRoot;
+            rig.GuideImage = guideImage;
+            rig.Lesson = lesson;
         }
 
         /// <summary>
