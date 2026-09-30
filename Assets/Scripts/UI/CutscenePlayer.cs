@@ -543,6 +543,22 @@ public class CutscenePlayer : MonoBehaviour
         }
     }
 
+#if UNITY_EDITOR
+    /// <summary>
+    /// Advances the active panel through the same handler used by the serialized Button.onClick.
+    /// This is an Editor QA control for getting past blocked cutscene text while input routing is
+    /// being diagnosed; it does not skip the remaining panels.
+    /// </summary>
+    public bool TryAdvanceFromQa()
+    {
+        if (!IsPlaying || _currentCutscene == null)
+            return false;
+
+        OnTap();
+        return true;
+    }
+#endif
+
     private void SkipTypewriter()
     {
         _skipRequested = true;

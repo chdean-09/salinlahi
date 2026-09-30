@@ -12,6 +12,7 @@ public class SceneLoader : Singleton<SceneLoader>
     private const string SCENE_BOOTSTRAP = "Bootstrap";
     private const string SCENE_MAIN_MENU = "MainMenu";
     private const string SCENE_GAMEPLAY = "Gameplay";
+    private const string SCENE_LEVEL_ONE_TUTORIAL = "Level_01_Tutorial";
     private const string SCENE_LEVEL_SELECT = "LevelSelect";
     private const string SCENE_GAME_OVER = "GameOver";
     private const string SCENE_ALMANAC = "Almanac";
@@ -77,6 +78,20 @@ public class SceneLoader : Singleton<SceneLoader>
 #endif
         CleanupGameplayRun();
         LoadScene(SCENE_GAMEPLAY);
+    }
+
+    /// <summary>
+    /// Loads the authored Level 1 tutorial scene through the same cleanup and loading path as the
+    /// shared Gameplay scene. The Editor QA session uses this to exercise the dedicated tutorial
+    /// scene without changing the player's selected-level or unlock data.
+    /// </summary>
+    public void LoadLevelOneTutorial()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        SandboxMode.Deactivate();
+#endif
+        CleanupGameplayRun();
+        LoadScene(SCENE_LEVEL_ONE_TUTORIAL);
     }
 
     public void LoadSandboxGameplay()

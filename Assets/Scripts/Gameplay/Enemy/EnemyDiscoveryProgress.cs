@@ -40,8 +40,8 @@ public static class EnemyDiscoveryProgress
     {
         if (UsesRevisedProgress())
             return;
-        PlayerPrefs.DeleteKey(DiscoveredEnemyIDsKey);
-        PlayerPrefs.Save();
+        ProgressPrefs.DeleteKey(DiscoveredEnemyIDsKey);
+        ProgressPrefs.Save();
     }
 
 #if UNITY_EDITOR || UNITY_INCLUDE_TESTS
@@ -68,7 +68,7 @@ public static class EnemyDiscoveryProgress
     private static HashSet<string> LoadDiscoveredIDs()
     {
         HashSet<string> discovered = new HashSet<string>();
-        string raw = PlayerPrefs.GetString(DiscoveredEnemyIDsKey, string.Empty);
+        string raw = ProgressPrefs.GetString(DiscoveredEnemyIDsKey, string.Empty);
         if (string.IsNullOrWhiteSpace(raw))
             return discovered;
 
@@ -87,7 +87,7 @@ public static class EnemyDiscoveryProgress
     {
         List<string> sorted = new List<string>(discovered);
         sorted.Sort(System.StringComparer.Ordinal);
-        PlayerPrefs.SetString(DiscoveredEnemyIDsKey, string.Join("\n", sorted));
-        PlayerPrefs.Save();
+        ProgressPrefs.SetString(DiscoveredEnemyIDsKey, string.Join("\n", sorted));
+        ProgressPrefs.Save();
     }
 }

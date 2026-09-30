@@ -50,12 +50,12 @@ public static class EnemyIntroductionProgress
     /// played. Once per campaign: the rule is general, so a second level teaching it again would
     /// read as the game forgetting the player.
     /// </summary>
-    public static bool HasSeenAbilityRule() => PlayerPrefs.GetInt(AbilityRuleSeenKey, 0) == 1;
+    public static bool HasSeenAbilityRule() => ProgressPrefs.GetInt(AbilityRuleSeenKey, 0) == 1;
 
     public static void MarkAbilityRuleSeen()
     {
-        PlayerPrefs.SetInt(AbilityRuleSeenKey, 1);
-        PlayerPrefs.Save();
+        ProgressPrefs.SetInt(AbilityRuleSeenKey, 1);
+        ProgressPrefs.Save();
     }
 
     /// <summary>
@@ -114,9 +114,9 @@ public static class EnemyIntroductionProgress
     public static void ClearAllIntroduced()
     {
         IntroducedThisSession.Clear();
-        PlayerPrefs.DeleteKey(IntroducedEnemyIDsKey);
-        PlayerPrefs.DeleteKey(AbilityRuleSeenKey);
-        PlayerPrefs.Save();
+        ProgressPrefs.DeleteKey(IntroducedEnemyIDsKey);
+        ProgressPrefs.DeleteKey(AbilityRuleSeenKey);
+        ProgressPrefs.Save();
     }
 
 #if UNITY_EDITOR || UNITY_INCLUDE_TESTS
@@ -133,7 +133,7 @@ public static class EnemyIntroductionProgress
     private static HashSet<string> LoadIntroducedIDs()
     {
         HashSet<string> introduced = new HashSet<string>();
-        string raw = PlayerPrefs.GetString(IntroducedEnemyIDsKey, string.Empty);
+        string raw = ProgressPrefs.GetString(IntroducedEnemyIDsKey, string.Empty);
         if (string.IsNullOrWhiteSpace(raw))
             return introduced;
 
@@ -152,7 +152,7 @@ public static class EnemyIntroductionProgress
     {
         List<string> sorted = new List<string>(introduced);
         sorted.Sort(System.StringComparer.Ordinal);
-        PlayerPrefs.SetString(IntroducedEnemyIDsKey, string.Join("\n", sorted));
-        PlayerPrefs.Save();
+        ProgressPrefs.SetString(IntroducedEnemyIDsKey, string.Join("\n", sorted));
+        ProgressPrefs.Save();
     }
 }
