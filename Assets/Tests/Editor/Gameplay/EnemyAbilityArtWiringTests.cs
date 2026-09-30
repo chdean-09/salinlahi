@@ -84,9 +84,9 @@ namespace Salinlahi.Tests.Editor.Gameplay
             EnemyAbilityVisualDefinition definition = FindVisual(data, "Armor");
             Assert.IsNotNull(definition);
             Assert.AreEqual(EnemyAbilityVisualAnchor.EnemyBody, definition.anchor);
-            Assert.AreEqual(EnemyAbilityVisualFrameMode.SingleFrame, definition.frameMode);
+            Assert.AreEqual(EnemyAbilityVisualFrameMode.FullLoop, definition.frameMode);
             Assert.AreEqual(0, definition.singleFrameIndex);
-            Assert.AreEqual(0.45f, definition.activeOpacity, 0.001f);
+            Assert.AreEqual(0.8f, definition.activeOpacity, 0.001f);
             Assert.AreEqual(0.85f, definition.exitOpacity, 0.001f);
             AssertSpriteFrame(definition.activeSprite, "WalangAwaArmor", "armor-break-layer-1711", 1);
             AssertSpriteSequence(definition.exitFrames, "WalangAwaArmor", "armor-break-layer-1711", 1, 8);
