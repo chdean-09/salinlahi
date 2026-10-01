@@ -169,59 +169,45 @@ namespace Salinlahi.Tests.Editor.Data
             }
         }
 
-        [Test]
-        public void Level10_IsMixedWaveParagraphContentWithoutABoss_AndLevel15OwnsTheCampaignBoss()
+        [TestCase(10, "A,EI,BA,MA,NA,TA,OU,KA,GA,SA,WA,YA", "value.a,value.wa,value.ga,value.sa,value.ma,value.ka,value.o,value.na")]
+        [TestCase(15, "A,EI,BA,MA,NA,TA,OU,KA,GA,SA,WA,YA,DA,HA,LA,NGA,RA,PA", "value.da,value.la,value.ma,value.sa,value.nga,value.ha,value.ya,value.ra")]
+        public void EraFinales_RestoreTheirParagraphsWithCumulativeRegularEnemies(
+            int levelNumber, string roster, string restorationValues)
         {
-            LevelConfigSO level10 = Load(10);
-            LevelConfigSO level15 = Load(15);
-
-            Assert.IsNull(level10.bossConfig,
-                "Level 10 is authored as mixed-wave paragraph restoration, not a boss level.");
-            Assert.AreEqual(3, level10.flowSegments.Count);
-            Assert.AreEqual(level10.waves.Count,
-                level10.flowSegments.Sum(segment => segment.waveCount));
-            Assert.AreEqual(RestorationDisplayMode.GuidedWords,
-                level10.restorationObjective.displayMode);
-
-            Assert.IsNotNull(level15.bossConfig,
-                "Level 15 is the sole authored campaign boss level.");
-            Assert.IsNotEmpty(level15.bossConfig.phases,
-                "Level 15's boss asset must carry at least one authored phase.");
-            Assert.IsNotNull(level15.bossConfig.bossEnemyData,
-                "Level 15's boss asset must identify its boss enemy data.");
-            Assert.AreEqual(3, level15.bossConfig.phases.Count,
-                "The final Paglimot encounter has one phase for Ugat, Ugnayan, and all.");
-            Assert.AreEqual(3, level15.flowSegments.Count,
-                "Each boss phase must pair with one paragraph checkpoint.");
-            Assert.AreEqual(0, level15.waves.Count,
-                "Level 15's phase minions are authored in the boss config, not ordinary waves.");
-            Assert.IsNotNull(level15.challengeSequence);
-            CollectionAssert.AreEqual(
-                new[] { "pamana15-restore-line-01", "pamana15-restore-line-03", "pamana15-restore-line-02" },
-                level15.challengeSequence.units.Select(unit => unit.unitId).ToArray(),
-                "The MALAYA paragraph checkpoint and its YA finale must be last.");
-            Assert.AreEqual("MALAYA",
-                level15.challengeSequence.units[2].tokens.Single(token =>
-                    token.occurrenceId == level15.challengeSequence.units[2].slots[0].expectedOccurrenceId).displayText);
-            CollectionAssert.AreEqual(new[] { "Ugat", "Ugnayan", "Lahat" },
-                level15.bossConfig.phases.Select(phase => phase.displayName).ToArray());
-
-            HashSet<string> permittedCharacters = new HashSet<string>(
-                level15.allowedCharacters.Select(character => character.characterID));
-            HashSet<string> guaranteedCharacters = new HashSet<string>(
-                level15.bossConfig.phases.SelectMany(phase => phase.guaranteedSummonEnemyTypes)
-                    .Where(enemy => enemy != null && enemy.assignedCharacter != null)
-                    .Select(enemy => enemy.assignedCharacter.characterID));
-            CollectionAssert.AreEquivalent(permittedCharacters, guaranteedCharacters,
-                "Every permitted Level 15 glyph must have a guaranteed boss summon.");
-            Assert.AreEqual("EnemyData_YaposngDilim",
-                level15.bossConfig.phases[2].guaranteedSummonEnemyTypes.Last().name,
-                "Yapos ng Dilim is the final guaranteed YA carrier.");
-            CollectionAssert.AreEquivalent(permittedCharacters,
-                level15.bossConfig.phases[2].summonEnemyTypes
-                    .Where(enemy => enemy != null && enemy.assignedCharacter != null)
-                    .Select(enemy => enemy.assignedCharacter.characterID).ToArray(),
-                "The final phase's summon pool includes the full learned character set.");
+            LevelConfigSO level = Load(levelNumber);
+            Assert.IsNull(level.bossConfig, "Era finales use regular waves, never a boss encounter.");
+            Assert.IsTrue(level.restorationObjective.HasTargets);
+            Assert.AreEqual(RestorationDisplayMode.HiddenContext, level.restorationObjective.displayMode);
+            Assert.AreEqual(3, level.restorationObjective.units.Count);
+            CollectionAssert.AreEquivalent(restorationValues.Split(','), TargetSequence(level).Distinct());
+            CollectionAssert.AreEquivalent(roster.Split(','),
+                level.allowedCharacters.Select(character => character.characterID));
+            CollectionAssert.AreEquivalent(roster.Split(','),
+                level.allowedEnemyTypes.Select(enemy => enemy.assignedCharacter.characterID).Distinct());
+            CollectionAssert.AreEquivalent(roster.Split(','),
+                level.waves.SelectMany(wave => wave.guaranteedCharacters)
+                    .Select(character => character.characterID).Distinct());
+            foreach (WaveDefinition wave in level.waves)
+            {
+                Assert.LessOrEqual(wave.guaranteedCharacters.Count, wave.enemyCount);
+                CollectionAssert.AreEquivalent(roster.Split(','),
+                    wave.enemyTypes.Select(enemy => enemy.assignedCharacter.characterID).Distinct());
+            }
+            Assert.AreEqual(3, level.flowSegments.Count);
+            Assert.IsTrue(level.flowSegments.All(segment => segment.waveCount > 0));
+            Assert.AreEqual(level.waves.Count, level.flowSegments.Sum(segment => segment.waveCount));
+            Assert.IsFalse(LevelPhasePlan.FromConfig(level).SegmentPlanInvalid);
+            Assert.IsTrue(level.suppressSymbolLearningCards);
+            Assert.IsTrue(level.spawnAssignmentPolicy.gateFinalSlotToFinalWave);
+            var targets = level.restorationObjective.units.SelectMany(unit => unit.tokens)
+                .Where(token => token.IsTarget).OrderBy(token => token.completionOrder).ToArray();
+            CollectionAssert.AllItemsAreUnique(targets.Select(token => token.occurrenceId));
+            Assert.AreEqual(level.finalRestorationValue.spokenValueId, targets.Last().SpokenValueId);
+            var state = new RestorationObjectiveState();
+            state.Configure(level.restorationObjective);
+            foreach (var token in targets)
+                Assert.IsTrue(state.TryRestore(token.SymbolStableId, token.SpokenValueId).Applied);
+            Assert.IsTrue(state.IsComplete, "Every authored occurrence must restore without dead slots.");
         }
 
         [Test]

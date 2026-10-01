@@ -79,8 +79,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
         /// pass unless it deliberately authors a segment list. A failure here that is NOT
         /// accompanied by authored segments means a level lost or gained a segment list by accident.
         ///
-        /// D-010 authorises Levels 5, 10 and 15 to author segments. Level 15's three segments
-        /// pair its three boss phases with the matching paragraph checkpoints.
+        /// Levels 5, 10 and 15 pair three regular-wave groups with paragraph checkpoints.
         ///
         /// SegmentPlanInvalid staying false is the stronger half and stays UNCONDITIONAL for
         /// all fifteen levels: it goes true when a level authors segments that its own waves

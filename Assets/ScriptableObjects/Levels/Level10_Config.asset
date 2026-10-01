@@ -23,6 +23,7 @@ MonoBehaviour:
     latinSpelling: SANA
     displayLabel: SANA
     meaning: hope
+    hintText: 
     decomposition:
     - symbol: {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
       spokenValueId: value.sa
@@ -37,6 +38,7 @@ MonoBehaviour:
     latinSpelling: SAYA
     displayLabel: SAYA
     meaning: joy
+    hintText: 
     decomposition:
     - symbol: {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
       spokenValueId: value.sa
@@ -194,28 +196,205 @@ MonoBehaviour:
       symbol: {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
       spokenValueId: value.ya
     requiredSuccesses: 2
-  suppressSymbolLearningCards: 0
+  suppressSymbolLearningCards: 1
   restorationObjective:
-    displayMode: 0
-    units: []
+    displayMode: 3
+    units:
+    - stableId: level.ugnayan.05.paragraph.line.01
+      displayLabel: sa gawa at saya, may gana ang kasama.
+      clue: sa gawa at saya, may gana ang kasama.
+      tokens:
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugnayan.05.paragraph.sa.00
+        completionOrder: 0
+        target:
+          symbol: {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
+          spokenValueId: value.sa
+      - kind: 0
+        literalText: ' '
+        occurrenceId: 
+        completionOrder: -1
+        target:
+          symbol: {fileID: 0}
+          spokenValueId: 
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugnayan.05.paragraph.ga.01
+        completionOrder: 1
+        target:
+          symbol: {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+          spokenValueId: value.ga
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugnayan.05.paragraph.wa.02
+        completionOrder: 2
+        target:
+          symbol: {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+          spokenValueId: value.wa
+      - kind: 0
+        literalText: ' at saya, may ga'
+        occurrenceId: 
+        completionOrder: -1
+        target:
+          symbol: {fileID: 0}
+          spokenValueId: 
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugnayan.05.paragraph.na.03
+        completionOrder: 3
+        target:
+          symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+          spokenValueId: value.na
+      - kind: 0
+        literalText: ' ang '
+        occurrenceId: 
+        completionOrder: -1
+        target:
+          symbol: {fileID: 0}
+          spokenValueId: 
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugnayan.05.paragraph.ka.04
+        completionOrder: 4
+        target:
+          symbol: {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
+          spokenValueId: value.ka
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugnayan.05.paragraph.sa.05
+        completionOrder: 5
+        target:
+          symbol: {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
+          spokenValueId: value.sa
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugnayan.05.paragraph.ma.06
+        completionOrder: 6
+        target:
+          symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+          spokenValueId: value.ma
+      - kind: 0
+        literalText: '.
+
+'
+        occurrenceId: 
+        completionOrder: -1
+        target:
+          symbol: {fileID: 0}
+          spokenValueId: 
+    - stableId: level.ugnayan.05.paragraph.line.02
+      displayLabel: ang wika ay ilaw ng bawat tao.
+      clue: ang wika ay ilaw ng bawat tao.
+      tokens:
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugnayan.05.paragraph.a.07
+        completionOrder: 7
+        target:
+          symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+          spokenValueId: value.a
+      - kind: 0
+        literalText: ng wika ay ilaw ng ba
+        occurrenceId: 
+        completionOrder: -1
+        target:
+          symbol: {fileID: 0}
+          spokenValueId: 
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugnayan.05.paragraph.wa.08
+        completionOrder: 8
+        target:
+          symbol: {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+          spokenValueId: value.wa
+      - kind: 0
+        literalText: t ta
+        occurrenceId: 
+        completionOrder: -1
+        target:
+          symbol: {fileID: 0}
+          spokenValueId: 
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugnayan.05.paragraph.o.09
+        completionOrder: 9
+        target:
+          symbol: {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
+          spokenValueId: value.o
+      - kind: 0
+        literalText: '.
+
+'
+        occurrenceId: 
+        completionOrder: -1
+        target:
+          symbol: {fileID: 0}
+          spokenValueId: 
+    - stableId: level.ugnayan.05.paragraph.line.03
+      displayLabel: sa bagong araw, may pag-asa ang pamayanan.
+      clue: sa bagong araw, may pag-asa ang pamayanan.
+      tokens:
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugnayan.05.paragraph.sa.10
+        completionOrder: 10
+        target:
+          symbol: {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
+          spokenValueId: value.sa
+      - kind: 0
+        literalText: ' bagong araw, '
+        occurrenceId: 
+        completionOrder: -1
+        target:
+          symbol: {fileID: 0}
+          spokenValueId: 
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugnayan.05.paragraph.ma.11
+        completionOrder: 11
+        target:
+          symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+          spokenValueId: value.ma
+      - kind: 0
+        literalText: y pag-asa ang pamaya
+        occurrenceId: 
+        completionOrder: -1
+        target:
+          symbol: {fileID: 0}
+          spokenValueId: 
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugnayan.05.paragraph.na.12
+        completionOrder: 12
+        target:
+          symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+          spokenValueId: value.na
+      - kind: 0
+        literalText: n.
+        occurrenceId: 
+        completionOrder: -1
+        target:
+          symbol: {fileID: 0}
+          spokenValueId: 
   activeClueCombatEnabled: 1
   activeClueRestorationEnabled: 1
   clueChannels: 17
   audioVisualFallback: 4
   spawnAssignmentPolicy:
-    minSpawnsBeforeNeeded: 4
-    neededWeight: 0.5
-    starvationTimeout: 30
-    hardStarvationTimeout: 50
+    minSpawnsBeforeNeeded: 0
+    neededWeight: 0.7
+    starvationTimeout: 12
+    hardStarvationTimeout: 22
     minFillerVariety: 2
-    offTargetFillerWeight: 0
-    activeSlotWindow: 1
-    choiceMomentSlotIndex: 1
+    offTargetFillerWeight: 0.35
+    activeSlotWindow: 4
+    choiceMomentSlotIndex: -1
     choicePairWindow: 1.5
     maxConcurrentEnemies: 8
     openingSpawnSpokenValueId: 
     allowFinalWaveOverflow: 1
-    gateFinalSlotToFinalWave: 0
+    gateFinalSlotToFinalWave: 1
     maxOverflowBatches: 12
     assignmentSeed: 0
     slotGates: []
@@ -232,8 +411,8 @@ MonoBehaviour:
     dialogue: {fileID: 11400000, guid: 50688cf94cd2bb34b9da30fdc65ec97c, type: 2}
     cutscene: {fileID: 11400000, guid: b9abbcfb7e90cbe4fb1a6dbb1cf80c9c, type: 2}
   finalRestorationValue:
-    symbol: {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
-    spokenValueId: value.ya
+    symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+    spokenValueId: value.na
   rewardIds:
   - memory.ugnayan.05
   masteryRequirements:
@@ -302,58 +481,108 @@ MonoBehaviour:
   _authoredWaves:
   - isIntermissionWave: 0
     characters:
+    - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+    - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+    - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
     - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
-    - {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
+    - {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+    - {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
     - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
     - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
     - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
     - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+    - {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
+    guaranteedCharacters:
+    - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+    - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+    - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+    - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+    - {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
     enemyTypes:
-    - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
-    - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
-    - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
-    - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
+    - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
+    - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
+    - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
+    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
     - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+    - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
+    - {fileID: 11400000, guid: 8e024019aad5441b2b201c95419d99c7, type: 2}
+    - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
+    - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
+    - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
+    - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
     - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
     enemyCount: 6
     spawnInterval: 2.2
     waveStartDelay: 1.2
   - isIntermissionWave: 0
     characters:
-    - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
     - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+    - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
     - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
     - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+    - {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
     - {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
+    - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
+    - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+    - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
+    - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+    - {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
+    guaranteedCharacters:
+    - {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
+    - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
+    - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+    - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
+    - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
     - {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
     enemyTypes:
-    - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
-    - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
-    - {fileID: 11400000, guid: 8e024019aad5441b2b201c95419d99c7, type: 2}
+    - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
+    - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
+    - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
+    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
     - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+    - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
+    - {fileID: 11400000, guid: 8e024019aad5441b2b201c95419d99c7, type: 2}
+    - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
+    - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
     - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
+    - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
+    - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
     enemyCount: 7
-    spawnInterval: 2
+    spawnInterval: 2.05
     waveStartDelay: 1
   - isIntermissionWave: 0
     characters:
+    - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+    - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+    - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
     - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+    - {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
     - {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
     - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
     - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
     - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
     - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
     - {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
+    guaranteedCharacters: []
     enemyTypes:
-    - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
-    - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
-    - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
-    - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
-    - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
-    - {fileID: 11400000, guid: 8e024019aad5441b2b201c95419d99c7, type: 2}
+    - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
+    - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
+    - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
+    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
     - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+    - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
+    - {fileID: 11400000, guid: 8e024019aad5441b2b201c95419d99c7, type: 2}
+    - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
+    - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
+    - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
+    - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
+    - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
     enemyCount: 8
-    spawnInterval: 1.9
+    spawnInterval: 1.9000001
     waveStartDelay: 1
   - isIntermissionWave: 0
     characters:
@@ -369,17 +598,23 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
     - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
     - {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
+    guaranteedCharacters: []
     enemyTypes:
-    - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
-    - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
-    - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
-    - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
-    - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
-    - {fileID: 11400000, guid: 8e024019aad5441b2b201c95419d99c7, type: 2}
+    - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
+    - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
+    - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
+    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
     - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+    - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
+    - {fileID: 11400000, guid: 8e024019aad5441b2b201c95419d99c7, type: 2}
+    - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
+    - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
+    - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
+    - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
+    - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
     enemyCount: 9
-    spawnInterval: 1.7
-    waveStartDelay: 0.8
+    spawnInterval: 1.75
+    waveStartDelay: 1
   - isIntermissionWave: 0
     characters:
     - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
@@ -394,17 +629,23 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
     - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
     - {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
+    guaranteedCharacters: []
     enemyTypes:
-    - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
-    - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
-    - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
-    - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
-    - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
-    - {fileID: 11400000, guid: 8e024019aad5441b2b201c95419d99c7, type: 2}
+    - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
+    - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
+    - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
+    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
     - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+    - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
+    - {fileID: 11400000, guid: 8e024019aad5441b2b201c95419d99c7, type: 2}
+    - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
+    - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
+    - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
+    - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
+    - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
     enemyCount: 10
     spawnInterval: 1.6
-    waveStartDelay: 0.8
+    waveStartDelay: 1
   waveCurve: {fileID: 0}
   allowedCharacters:
   - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
@@ -420,13 +661,18 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
   - {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
   allowedEnemyTypes:
-  - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
-  - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
-  - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
-  - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
-  - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
-  - {fileID: 11400000, guid: 8e024019aad5441b2b201c95419d99c7, type: 2}
+  - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
+  - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
+  - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
+  - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
   - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+  - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
+  - {fileID: 11400000, guid: 8e024019aad5441b2b201c95419d99c7, type: 2}
+  - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
+  - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
+  - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
+  - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
+  - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
   bossConfig: {fileID: 0}
   isAvailableInLite: 0
   multiKillChainEnabled: 1

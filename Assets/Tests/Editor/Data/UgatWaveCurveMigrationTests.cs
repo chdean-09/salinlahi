@@ -81,14 +81,14 @@ namespace Salinlahi.Tests.Editor.Data
         }
 
         [TestCase(15)]
-        public void BossLevels_HaveNeitherWavesNorCurve(int levelNumber)
+        public void FinalLevel_UsesAuthoredRegularWaves(int levelNumber)
         {
             LevelConfigSO level = Load(levelNumber);
 
-            Assert.IsNotNull(level.bossConfig);
-            Assert.IsEmpty(level.AuthoredWaves);
+            Assert.IsNull(level.bossConfig);
+            Assert.IsNotEmpty(level.AuthoredWaves);
             Assert.IsNull(level.waveCurve);
-            Assert.IsEmpty(level.waves);
+            Assert.IsNotEmpty(level.waves);
         }
 
         [Test]
