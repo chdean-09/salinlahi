@@ -48,30 +48,18 @@ public class ProgressManager : Singleton<ProgressManager>
     private LevelResults _pendingLevelResults;
     private LevelObjectiveFlags _pendingObjectiveFlags;
 
-#if UNITY_EDITOR || SALINLAHI_DEV
-    [Header("Development")]
+    [Header("Demo and Testing")]
     [SerializeField]
     [Tooltip("Makes every campaign level selectable and enables era navigation without changing saved unlock state.")]
     private bool _enableAllLevelsForTesting;
 
     private LevelConfigSO _testingSelectedLevel;
-#endif
 
     /// <summary>
-    /// Editor/development-only access override used for manually exercising authored levels.
+    /// Demo/testing access override used for manually exercising authored levels in Editor and builds.
     /// It never writes unlock flags to the active save.
     /// </summary>
-    public bool EnableAllLevelsForTesting
-    {
-        get
-        {
-#if UNITY_EDITOR || SALINLAHI_DEV
-            return _enableAllLevelsForTesting;
-#else
-            return false;
-#endif
-        }
-    }
+    public bool EnableAllLevelsForTesting => _enableAllLevelsForTesting;
 
     /// <summary>
     /// SALIN-202: the level flow computes LevelResults before committing; the
@@ -140,7 +128,6 @@ public class ProgressManager : Singleton<ProgressManager>
             return level.levelNumber >= 1 && level.levelNumber <= TotalLevels;
 #endif
 
-#if UNITY_EDITOR || SALINLAHI_DEV
         if (_enableAllLevelsForTesting)
         {
             if (level.levelNumber < 1 || level.levelNumber > TotalLevels)
@@ -151,7 +138,6 @@ public class ProgressManager : Singleton<ProgressManager>
                 $"ProgressManager: Testing override selected Level {level.levelNumber} ({level.stableId}) without changing saved unlock state.");
             return true;
         }
-#endif
 
         if (UsesRevisedProgress)
             return SaveManager.Instance.Repository.TrySetActiveLevel(level.stableId);
@@ -339,13 +325,11 @@ public class ProgressManager : Singleton<ProgressManager>
             return true;
 #endif
 
-#if UNITY_EDITOR || SALINLAHI_DEV
         if (_enableAllLevelsForTesting && _testingSelectedLevel != null)
         {
             level = _testingSelectedLevel;
             return true;
         }
-#endif
 
         level = null;
         return false;

@@ -44,6 +44,62 @@ namespace Salinlahi.Tests.Editor.Core
         }
 
         [Test]
+        public void TestingOverride_AllCampaignLevelsAreUnlockedWithoutSavingProgress()
+        {
+            SetPrivateField(_manager, "_enableAllLevelsForTesting", true);
+
+            for (int level = 1; level <= ProgressManager.TotalLevels; level++)
+            {
+                Assert.IsTrue(_manager.IsLevelUnlocked(level), $"Level {level}");
+                Assert.AreEqual(LevelLockState.Unlocked,
+                    _manager.GetLevelLockState(level, out int required, out bool crossesEra,
+                        out string missingObjective));
+                Assert.AreEqual(0, required);
+                Assert.IsFalse(crossesEra);
+                Assert.IsNull(missingObjective);
+                Assert.IsFalse(_manager.IsLevelCompleted(level));
+                Assert.AreEqual(0, _manager.GetStars(level));
+            }
+
+            SetPrivateField(_manager, "_enableAllLevelsForTesting", false);
+            for (int level = 2; level <= ProgressManager.TotalLevels; level++)
+                Assert.IsFalse(_manager.IsLevelUnlocked(level), "Demo access must not persist unlocks.");
+        }
+
+        [Test]
+        public void TestingOverride_LockedLevelCanBeSelectedWithoutChangingSavedSelection()
+        {
+            var level = ScriptableObject.CreateInstance<LevelConfigSO>();
+            try
+            {
+                level.levelNumber = 15;
+                level.stableId = "level.pamana.05";
+                int savedSelection = _manager.GetSelectedLevelNumber();
+                SetPrivateField(_manager, "_enableAllLevelsForTesting", true);
+
+                Assert.IsTrue(_manager.TrySetSelectedLevel(level));
+                Assert.AreEqual(15, _manager.GetSelectedLevelNumber());
+                Assert.AreEqual(level.stableId, _manager.GetSelectedLevelId());
+                Assert.IsTrue(_manager.TryGetSelectedLevel(out LevelConfigSO selected));
+                Assert.AreSame(level, selected);
+
+                level.levelNumber = 0;
+                Assert.IsFalse(_manager.TrySetSelectedLevel(level));
+                level.levelNumber = ProgressManager.TotalLevels + 1;
+                Assert.IsFalse(_manager.TrySetSelectedLevel(level));
+                Assert.IsFalse(_manager.IsLevelUnlocked(0));
+                Assert.IsFalse(_manager.IsLevelUnlocked(ProgressManager.TotalLevels + 1));
+
+                SetPrivateField(_manager, "_enableAllLevelsForTesting", false);
+                Assert.AreEqual(savedSelection, _manager.GetSelectedLevelNumber());
+            }
+            finally
+            {
+                Object.DestroyImmediate(level);
+            }
+        }
+
+        [Test]
         public void IsLevelUnlocked_Level2_NotUnlockedInitially()
         {
             Assert.IsFalse(_manager.IsLevelUnlocked(2));
