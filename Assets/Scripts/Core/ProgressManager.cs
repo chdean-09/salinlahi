@@ -50,7 +50,7 @@ public class ProgressManager : Singleton<ProgressManager>
 
     [Header("Demo and Testing")]
     [SerializeField]
-    [Tooltip("Makes every campaign level selectable and enables era navigation without changing saved unlock state.")]
+    [Tooltip("Makes every campaign level selectable. Demo completions show Results without saving progression, stars, or rewards.")]
     private bool _enableAllLevelsForTesting;
 
     private LevelConfigSO _testingSelectedLevel;
@@ -58,6 +58,7 @@ public class ProgressManager : Singleton<ProgressManager>
     /// <summary>
     /// Demo/testing access override used for manually exercising authored levels in Editor and builds.
     /// It never writes unlock flags to the active save.
+    /// Demo completions are accepted for display without persisting their progress.
     /// </summary>
     public bool EnableAllLevelsForTesting => _enableAllLevelsForTesting;
 
@@ -612,6 +613,9 @@ public class ProgressManager : Singleton<ProgressManager>
         }
 #endif
 
+        if (EnableAllLevelsForTesting)
+            return;
+
         if (UsesRevisedProgress)
         {
             if (TryResolveRevisedLevel(levelID, out LevelConfigSO revisedLevel))
@@ -801,6 +805,22 @@ public class ProgressManager : Singleton<ProgressManager>
             DebugLogger.Log("ProgressManager: Refused to commit an aborted level attempt.");
             return CampaignOutcomeCommitResult.Rejected(
                 null, CampaignSaveFailureCode.InvalidStructure, "level-attempt-aborted");
+        }
+
+        // Campaign saves require sequential progression. Demo selection intentionally bypasses
+        // those locks, so accept the attempt for Results without producing an invalid journal
+        // or pretending that completion was persisted. Blocking save states still fail below.
+        if (EnableAllLevelsForTesting && !IsRevisedBlocked)
+        {
+            if (!TryGetSelectedLevel(out LevelConfigSO demoLevel) ||
+                demoLevel.levelNumber < 1 || demoLevel.levelNumber > TotalLevels ||
+                (UsesRevisedProgress &&
+                 (!SaveManager.Instance.Campaign.TryGetLevel(demoLevel.stableId, out LevelConfigSO configuredLevel) ||
+                  configuredLevel.levelNumber != demoLevel.levelNumber)))
+                return CampaignOutcomeCommitResult.Rejected(
+                    null, CampaignSaveFailureCode.InvalidStructure, "demo-level-invalid");
+
+            return CampaignOutcomeCommitResult.DemoCompleted();
         }
 
         if (UsesRevisedProgress)

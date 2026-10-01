@@ -105,6 +105,100 @@ namespace Salinlahi.Tests.Editor.Core
             Assert.IsFalse(_manager.IsLevelUnlocked(2));
         }
 
+        [TestCase(6)]
+        [TestCase(11)]
+        [TestCase(15)]
+        public void TestingOverride_RevisedLockedLevelCompletionIsAcceptedWithoutSaving(int levelNumber)
+        {
+            using CampaignTestFixture fixture = CampaignTestFixture.CreateValid();
+            GameObject saveHost = new GameObject("SaveManager_DemoCompletionTest");
+            try
+            {
+                SaveManager saveManager = saveHost.AddComponent<SaveManager>();
+                InvokeLifecycle(saveManager, "Awake");
+                saveManager.SetCampaignForTests(fixture.Campaign);
+                var storage = new InMemoryCampaignSaveStorage();
+                var service = new CampaignSaveService(storage, new DictionaryLegacySource());
+                saveManager.SetServiceForTests(service);
+                Assert.AreEqual(SaveManagerMode.RevisedReady, saveManager.Mode);
+                string levelId = ContentIdentity.RevisedLevelIds[levelNumber - 1];
+                Assert.IsTrue(fixture.Campaign.TryGetLevel(levelId, out LevelConfigSO level));
+                Assert.IsFalse(saveManager.Repository.IsLevelUnlocked(levelId));
+                long revision = service.Current.revision;
+                string savedDocument = CampaignSaveSerializer.Serialize(service.Current);
+                string savedSelection = saveManager.Repository.ActiveLevelId;
+                SetPrivateField(_manager, "_enableAllLevelsForTesting", true);
+                Assert.IsTrue(_manager.TrySetSelectedLevel(level));
+
+                CampaignOutcomeCommitResult result = _manager.CommitCurrentLevelOutcome();
+
+                Assert.IsTrue(result.IsAccepted, "Demo completion must advance to Results.");
+                Assert.AreEqual(CampaignOutcomeCommitStatus.DemoCompleted, result.Status);
+                Assert.AreEqual("demo-progress-not-saved", result.ReasonCode);
+                Assert.AreEqual(revision, service.Current.revision);
+                Assert.AreEqual(savedDocument, CampaignSaveSerializer.Serialize(service.Current));
+                Assert.AreEqual(savedSelection, saveManager.Repository.ActiveLevelId);
+                Assert.IsFalse(saveManager.Repository.IsLevelUnlocked(levelId));
+                Assert.AreEqual(0, saveManager.Repository.GetBestStars(levelId));
+                Assert.IsFalse(storage.Exists(CampaignSaveFileRole.PendingOutcome));
+                Assert.IsFalse(storage.Exists(CampaignSaveFileRole.PendingOutcomeTemporary));
+            }
+            finally
+            {
+                Object.DestroyImmediate(saveHost);
+                ClearSingletonInstance<SaveManager>();
+            }
+        }
+
+        [Test]
+        public void TestingOverride_LegacyCompletionDoesNotWriteStarsOrUnlocks()
+        {
+            var level = ScriptableObject.CreateInstance<LevelConfigSO>();
+            try
+            {
+                level.levelNumber = 15;
+                level.stableId = ContentIdentity.RevisedLevelIds[14];
+                SetPrivateField(_manager, "_enableAllLevelsForTesting", true);
+                Assert.IsTrue(_manager.TrySetSelectedLevel(level));
+
+                _manager.MarkLevelComplete(15, 3);
+                CampaignOutcomeCommitResult result = _manager.CommitCurrentLevelOutcome();
+
+                Assert.IsTrue(result.IsAccepted);
+                Assert.AreEqual(CampaignOutcomeCommitStatus.DemoCompleted, result.Status);
+                Assert.AreEqual("demo-progress-not-saved", result.ReasonCode);
+                Assert.AreEqual(0, _manager.GetStars(15));
+                SetPrivateField(_manager, "_enableAllLevelsForTesting", false);
+                Assert.IsFalse(_manager.IsLevelUnlocked(15));
+            }
+            finally
+            {
+                Object.DestroyImmediate(level);
+            }
+        }
+
+        [TestCase(0)]
+        [TestCase(16)]
+        public void TestingOverride_InvalidSelectedLevelCannotComplete(int levelNumber)
+        {
+            var level = ScriptableObject.CreateInstance<LevelConfigSO>();
+            try
+            {
+                level.levelNumber = levelNumber;
+                SetPrivateField(_manager, "_testingSelectedLevel", level);
+                SetPrivateField(_manager, "_enableAllLevelsForTesting", true);
+
+                CampaignOutcomeCommitResult result = _manager.CommitCurrentLevelOutcome();
+
+                Assert.IsFalse(result.IsAccepted);
+                Assert.AreEqual("demo-level-invalid", result.ReasonCode);
+            }
+            finally
+            {
+                Object.DestroyImmediate(level);
+            }
+        }
+
         [Test]
         public void MarkLevelComplete_UnlocksNextLevel()
         {
@@ -410,8 +504,9 @@ namespace Salinlahi.Tests.Editor.Core
                 "AC-4: no unlock may be committed by an abandoned attempt.");
         }
 
-        [Test]
-        public void CommitCurrentLevelOutcome_WhileAborting_IsRefusedAndWritesNothing()
+        [TestCase(false)]
+        [TestCase(true)]
+        public void CommitCurrentLevelOutcome_WhileAborting_IsRefusedAndWritesNothing(bool demoEnabled)
         {
             GameObject gameManagerHost = new GameObject("GameManager_AbortGuard");
             try
@@ -435,9 +530,11 @@ namespace Salinlahi.Tests.Editor.Core
                 Assert.AreEqual(0, _manager.GetStars(1), "Setup: the control write is rolled back.");
                 Assert.IsFalse(_manager.IsLevelUnlocked(2));
 
+                SetPrivateField(_manager, "_enableAllLevelsForTesting", demoEnabled);
                 gameManager.AbortCurrentLevelAttempt();
 
                 CampaignOutcomeCommitResult result = _manager.CommitCurrentLevelOutcome();
+                SetPrivateField(_manager, "_enableAllLevelsForTesting", false);
 
                 Assert.IsFalse(result.IsAccepted,
                     "AC-4: the commit choke point must refuse an aborted attempt.");
