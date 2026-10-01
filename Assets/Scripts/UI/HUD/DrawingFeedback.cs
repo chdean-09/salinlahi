@@ -126,6 +126,7 @@ public class DrawingFeedback : MonoBehaviour
         if (_messageLabel == null)
             return;
 
+        CombatNotificationBanner.Configure(_messageLabel, 0.32f);
         // One voice per draw. A tutorial step with authored wording is the more specific of the
         // two, and its line is already on screen; printing the generic one underneath put
         // "Nice — that's the one." straight across the clue the player had just changed. LastMessage

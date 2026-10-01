@@ -594,6 +594,7 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
         if (_messageLabel == null)
             return;
 
+        CombatNotificationBanner.Configure(_messageLabel, 0.25f);
         _messageLabel.text = message;
 
         if (_clearMessageRoutine != null)

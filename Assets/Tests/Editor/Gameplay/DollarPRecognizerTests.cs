@@ -9,6 +9,21 @@ namespace Salinlahi.Tests.Editor.Gameplay
     public class DollarPRecognizerTests
     {
         [Test]
+        public void Recognize_ContextFilter_ExcludesInactiveBestMatch()
+        {
+            var recognizer = new DollarPRecognizer();
+            recognizer.SetTemplates(new Dictionary<string, List<Vector2>>
+            {
+                ["NA"] = CreateStroke(0f, 0f, 0f, 1f),
+                ["NGA"] = CreateStroke(0f, 0f, 1f, 0f)
+            });
+            var strokes = new List<List<Vector2>> { CreateStroke(0f, 0f, 0f, 1f) };
+            Assert.AreEqual("NA", recognizer.Recognize(strokes).characterID);
+            Assert.AreEqual("NGA", recognizer.Recognize(strokes, new HashSet<string> { "NGA" }).characterID);
+            Assert.AreEqual("NONE", recognizer.Recognize(strokes, new HashSet<string>()).characterID);
+        }
+
+        [Test]
         public void Recognize_UsesDifferentCharacterForSecondBest_WhenBestCharacterHasMultipleVariants()
         {
             var recognizer = new DollarPRecognizer(32);

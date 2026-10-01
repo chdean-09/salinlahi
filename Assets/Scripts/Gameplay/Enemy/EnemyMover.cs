@@ -10,6 +10,10 @@ public class EnemyMover : MonoBehaviour
     private float _speed;
     private bool _active;
     private bool _externallyMoving;
+    private float _entryGraceUntil = float.NegativeInfinity;
+    private float _entryGraceSeconds;
+    private float _entryGraceStartY;
+    private bool _entryGracePending;
     public bool IsMoving => _externallyMoving || (_active && GetFinalSpeed() > Mathf.Epsilon);
 
     // For movers that drive the transform externally (e.g. PhaseBasedMovement
@@ -20,6 +24,8 @@ public class EnemyMover : MonoBehaviour
 
     public virtual void SetSpeed(float speed)
     {
+        _entryGraceUntil = float.NegativeInfinity;
+        _entryGracePending = false;
         _speed = speed * GetCorridorNormalizationScale();
         _active = true;
     }
@@ -47,6 +53,13 @@ public class EnemyMover : MonoBehaviour
     }
 
     public void Stop() => _active = false;
+
+    public void GiveEntryGrace(float seconds, float startBelowWorldY = float.PositiveInfinity)
+    {
+        _entryGraceSeconds = Mathf.Max(0f, seconds);
+        _entryGraceStartY = startBelowWorldY;
+        _entryGracePending = true;
+    }
 
     protected virtual void Update()
     {
@@ -94,10 +107,18 @@ public class EnemyMover : MonoBehaviour
 
     protected virtual void OnDisable()
     {
+        _entryGraceUntil = float.NegativeInfinity;
+        _entryGracePending = false;
     }
 
     protected float GetFinalSpeed()
     {
+        if (_entryGracePending && transform.position.y <= _entryGraceStartY)
+        {
+            _entryGracePending = false;
+            _entryGraceUntil = Time.time + _entryGraceSeconds;
+        }
+        if (Time.time < _entryGraceUntil) return 0f;
 #if UNITY_EDITOR || SALINLAHI_SANDBOX
         if (SandboxMode.IsQaProtectionEnabled)
             return 0f;

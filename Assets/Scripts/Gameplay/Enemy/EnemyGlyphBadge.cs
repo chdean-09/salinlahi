@@ -23,6 +23,7 @@ public class EnemyGlyphBadge : MonoBehaviour
     private bool _covered;
     // SALIN-286: while blocked the badge stays visible but dimmed. See SetResolutionBlocked.
     private bool _resolutionBlocked;
+    private GameObject _resolutionLock;
     // Cached world-space layout values from EnemyDataSO/GlyphBadgeConfigSO.
     // Used by LateUpdate to recompute the inverse-parent-scale compensation each
     // frame so the badge stays world-stable even after the parent's localScale
@@ -124,8 +125,10 @@ public class EnemyGlyphBadge : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (!_layoutApplied) return;
-        RecomputeBaseFromParentScale();
+        if (_layoutApplied) RecomputeBaseFromParentScale();
+        if (_resolutionLock != null)
+            _resolutionLock.SetActive(_resolutionBlocked && _renderer != null
+                && _renderer.enabled && _renderer.color.a > 0.05f);
     }
 
     public void Refresh()
@@ -223,6 +226,8 @@ public class EnemyGlyphBadge : MonoBehaviour
     {
         if (_resolutionBlocked == blocked) return;
         _resolutionBlocked = blocked;
+        if (blocked && _resolutionLock == null) CreateResolutionLock();
+        if (_resolutionLock != null) _resolutionLock.SetActive(blocked && !_covered);
         ApplyResolutionBlockTint();
     }
 
@@ -233,6 +238,39 @@ public class EnemyGlyphBadge : MonoBehaviour
     private static readonly Color StainedTint = new Color(0.62f, 0.42f, 0.22f, 1f);
 
     private void ApplyResolutionBlockTint() => ApplyBadgeColor();
+
+    private void CreateResolutionLock()
+    {
+        _resolutionLock = new GameObject("ResolutionLock");
+        _resolutionLock.transform.SetParent(transform, false);
+        _resolutionLock.transform.localPosition = new Vector3(0.35f, -0.32f, 0f);
+        CreateLockLine("Body", new[]
+        {
+            new Vector3(-0.16f, -0.12f), new Vector3(0.16f, -0.12f),
+            new Vector3(0.16f, 0.12f), new Vector3(-0.16f, 0.12f)
+        }, true);
+        CreateLockLine("Shackle", new[]
+        {
+            new Vector3(-0.1f, 0.12f), new Vector3(-0.1f, 0.26f),
+            new Vector3(0f, 0.32f), new Vector3(0.1f, 0.26f), new Vector3(0.1f, 0.12f)
+        }, false);
+    }
+
+    private void CreateLockLine(string lineName, Vector3[] points, bool loop)
+    {
+        var child = new GameObject(lineName, typeof(LineRenderer));
+        child.transform.SetParent(_resolutionLock.transform, false);
+        var line = child.GetComponent<LineRenderer>();
+        line.useWorldSpace = false;
+        line.loop = loop;
+        line.positionCount = points.Length;
+        line.SetPositions(points);
+        line.widthMultiplier = 0.05f;
+        line.sharedMaterial = _renderer.sharedMaterial;
+        line.startColor = line.endColor = new Color(1f, 0.84f, 0.29f);
+        line.sortingLayerID = _renderer.sortingLayerID;
+        line.sortingOrder = _renderer.sortingOrder + 1;
+    }
 
     /// <summary>
     /// Single owner of the badge's colour. Composes, in order: the authored base colour, the
@@ -330,6 +368,7 @@ public class EnemyGlyphBadge : MonoBehaviour
         _covered = false;
         // Pool safety: a badge that left play dimmed must not come back dimmed.
         _resolutionBlocked = false;
+        if (_resolutionLock != null) _resolutionLock.SetActive(false);
         _stained = false;
         // Pool safety: a badge that left play wearing a false face must not come back wearing one.
         _showingFalseGlyph = false;

@@ -203,12 +203,7 @@ public class EnemyPool : Singleton<EnemyPool>
             // registering a dedicated pool, so an unregistered enemyID is the normal spawn path,
             // not a fault. Only the case where there is no default pool to fall back to — and the
             // enemy therefore cannot spawn at all — deserves a warning.
-            if (_defaultPoolState != null)
-            {
-                DebugLogger.Log(
-                    $"EnemyPool: enemyID '{enemyID}' has no dedicated pool. Using the shared default pool.");
-            }
-            else
+            if (_defaultPoolState == null)
             {
                 DebugLogger.LogWarning(
                     $"EnemyPool: Unknown enemyID '{enemyID}' and no default pool to fall back to.");

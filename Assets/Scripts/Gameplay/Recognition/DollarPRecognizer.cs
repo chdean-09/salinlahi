@@ -200,7 +200,7 @@ public class DollarPRecognizer
         return Recognize(new List<List<Vector2>> { points });
     }
 
-    public RecognitionResult Recognize(List<List<Vector2>> strokes)
+    public RecognitionResult Recognize(List<List<Vector2>> strokes, ISet<string> candidateCharacterIDs = null)
     {
         if (_templates.Count == 0)
             return new RecognitionResult("NONE", 0f, -1, "NONE", float.MinValue);
@@ -217,6 +217,9 @@ public class DollarPRecognizer
         var shortlist = new List<CandidateMatch>(_templates.Count);
         foreach (var kvp in _templates)
         {
+            if (candidateCharacterIDs != null && !candidateCharacterIDs.Contains(kvp.Key))
+                continue;
+
             _templateUniformScaling.TryGetValue(kvp.Key, out List<bool> variantScaling);
             float bestShape = float.MinValue;
             int bestVariant = -1;

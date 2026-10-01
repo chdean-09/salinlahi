@@ -453,7 +453,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             return true;
         }
 
-        if (enemyID == null || !ReplaysOnThisLevel(data, lesson))
+        if (enemyID == null || !ReplaysOnThisLevel(lesson))
             return false;
 
         if (!_introducedThisAttempt.Add(enemyID))
@@ -464,34 +464,14 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     }
 
     /// <summary>
-    /// Whether this type's introduction plays again on every attempt of the current level, even
-    /// though the campaign-wide one-shot is spent. Two authorities, either suffices:
-    /// <list type="bullet">
-    /// <item>The level replays its tutorial and this is its authored lesson (the original rule).</item>
-    /// <item>The schedule names this level as the type's teaching level. Without a schedule,
-    /// the type's debut level (<see cref="EnemyDebutLookup"/>) supplies that rule.</item>
-    /// </list>
-    /// Per attempt, not per spawn: the second spawn of the same type in one attempt is an
-    /// ordinary enemy, held by <see cref="_introducedThisAttempt"/>.
+    /// Replays an authored lesson only when its level explicitly opts into tutorial replay.
     /// </summary>
-    private static bool ReplaysOnThisLevel(EnemyDataSO data, EnemyLessonSO lesson)
-    {
-        if (lesson != null && LevelReplaysItsTutorial())
-            return true;
-
-        // The authored teaching level can differ from the first mixed-wave appearance.
-        // This also gives scheduled decoy types a replay without adding false carriers to
-        // the clue-restoration roster that EnemyDebutLookup reads.
-        IntroductionScheduleSO schedule = IntroductionScheduleLookup.Resolve();
-        if (schedule != null)
-            return schedule.Introduces(GameManager.CurrentLevelConfig, data);
-
-        return EnemyDebutLookup.DebutsOnCurrentCampaignLevel(GameManager.CurrentLevelConfig, data);
-    }
+    private static bool ReplaysOnThisLevel(EnemyLessonSO lesson) =>
+        lesson != null && LevelReplaysItsTutorial();
 
     /// <summary>
     /// Starts a new level attempt: forgets which types were introduced during the previous one, so
-    /// the debut-level replay and the roster gate both start from zero. Called by the level flow
+    /// explicit tutorial replays and their roster gates start from zero. Called by the level flow
     /// next to <c>SpawnAssignmentCoordinator.ApplyLevel</c>, which resets the gate registry on the
     /// same clock — and BEFORE it, because ApplyLevel evaluates the gate against this record.
     /// </summary>
@@ -502,11 +482,8 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     }
 
     /// <summary>
-    /// The roster gate's notion of "met", on the attempt's clock rather than the campaign's: a
-    /// type introduced during this attempt counts; a type that debuts on this level counts ONLY
-    /// if introduced this attempt, because its card replays every attempt and the gate must hold
-    /// until it has; any other type falls back to the campaign-wide record, exactly as before.
-    /// Shared by the level-start and post-introduction evaluations so they cannot disagree.
+    /// The roster gate counts persisted introductions on ordinary retries. Levels that explicitly
+    /// replay their tutorial still wait for the current attempt's lesson before opening the gate.
     /// </summary>
     public static bool CountsAsIntroducedThisAttempt(LevelConfigSO level, EnemyDataSO data)
     {
@@ -517,7 +494,8 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         if (enemyID != null && s_instance != null && s_instance._introducedThisAttempt.Contains(enemyID))
             return true;
 
-        if (EnemyDebutLookup.DebutsOnCurrentCampaignLevel(level, data))
+        if (LevelTutorialProgress.AlwaysShowsTutorialForLevel(level)
+            && EnemyDebutLookup.DebutsOnCurrentCampaignLevel(level, data))
             return false;
 
         return EnemyIntroductionProgress.HasBeenIntroduced(data);
@@ -537,7 +515,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// </summary>
     private bool HasLessonHadItsRun(EnemyLessonSO lesson)
     {
-        if (!ReplaysOnThisLevel(lesson.enemy, lesson))
+        if (!ReplaysOnThisLevel(lesson))
             return EnemyIntroductionProgress.HasBeenIntroduced(lesson.enemy);
 
         string enemyID = EnemyDiscoveryProgress.NormalizeEnemyID(lesson.enemy);

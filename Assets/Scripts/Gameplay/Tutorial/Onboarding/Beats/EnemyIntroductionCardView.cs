@@ -258,6 +258,7 @@ public sealed class EnemyIntroductionCardView : MonoBehaviour
             return;
 
         bool hasCopy = !string.IsNullOrWhiteSpace(text);
+        CombatNotificationBanner.Configure(_bannerText, 0.39f, _bannerGroup);
         if (_bannerText != null)
             _bannerText.text = hasCopy ? text : string.Empty;
 

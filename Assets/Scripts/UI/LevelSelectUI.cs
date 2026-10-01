@@ -85,6 +85,22 @@ public class LevelSelectUI : MonoBehaviour
         int pendingEraIndex = EraCompletionScreenUI.ConsumePendingEraIndex();
         if (pendingEraIndex >= 0 && pendingEraIndex < ResolveEras().Count)
             _currentEraIndex = pendingEraIndex;
+        else
+        {
+            int selectedLevel = ProgressManager.Instance != null
+                ? ProgressManager.Instance.GetSelectedLevelNumber()
+                : GameManager.CurrentLevelConfig != null ? GameManager.CurrentLevelConfig.levelNumber : -1;
+            List<EraConfigSO> eras = ResolveEras();
+            for (int i = 0; i < eras.Count; i++)
+            {
+                if (eras[i].levels != null && eras[i].levels.Exists(
+                        level => level != null && level.levelNumber == selectedLevel))
+                {
+                    _currentEraIndex = i;
+                    break;
+                }
+            }
+        }
 
         ShowEra(_currentEraIndex);
 

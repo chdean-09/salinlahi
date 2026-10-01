@@ -103,6 +103,7 @@ public class LevelRosterTests
             LevelConfigSO config = Config(new[] { abo });
             config.levelNumber = 1;
             config.stableId = "level.test.debut";
+            config.alwaysShowTutorial = true;
             config.activeClueCombatEnabled = true;
 
             var symbol = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
