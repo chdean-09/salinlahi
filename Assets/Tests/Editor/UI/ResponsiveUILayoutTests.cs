@@ -8,6 +8,202 @@ namespace Salinlahi.Tests.Editor.UI
     [TestFixture]
     public class ResponsiveUILayoutTests
     {
+        [TestCase(ChallengeMode.SentenceRestoration)]
+        [TestCase(ChallengeMode.ParagraphRestoration)]
+        [TestCase(ChallengeMode.TimedMemory)]
+        public void ChallengePrompt_FillsOnlyAcceptedWordsAndKeepsCompletedSentence(ChallengeMode mode)
+        {
+            using TestObjects objects = new();
+            ChallengeModeUI ui = CreateChallengeBoard(objects, 1080f, 1920f);
+            ChallengeSequenceSO sequence = ScriptableObject.CreateInstance<ChallengeSequenceSO>();
+            try
+            {
+                sequence.units = new[] { new ChallengeUnitDefinition
+                {
+                    unitId = "sentence", mode = mode,
+                    timerSeconds = mode == ChallengeMode.TimedMemory ? 10f : 0f,
+                    memoryRevealSeconds = 0f,
+                    prompt = "Ang mabuting ______ ay gumagawa ng ______.",
+                    tokens = new[]
+                    {
+                        new ChallengeTokenDefinition { occurrenceId = "bata", displayText = "BATA" },
+                        new ChallengeTokenDefinition { occurrenceId = "tama", displayText = "TAMA" },
+                        new ChallengeTokenDefinition { occurrenceId = "mata", displayText = "MATA" }
+                    },
+                    slots = new[]
+                    {
+                        new ChallengeSlotDefinition { slotId = "first", expectedOccurrenceId = "bata" },
+                        new ChallengeSlotDefinition { slotId = "second", expectedOccurrenceId = "tama" }
+                    },
+                    candidateOccurrenceIds = new[] { "bata", "tama", "mata" }
+                } };
+                ChallengeSession session = new(sequence);
+                session.Changed += ui.Render;
+                session.Enter();
+                TMP_Text prompt = ui.transform.Find("PromptViewport/Prompt").GetComponent<TMP_Text>();
+                TMP_Text status = ui.transform.Find("Status").GetComponent<TMP_Text>();
+                Assert.AreEqual(sequence.units[0].prompt, prompt.text);
+
+                session.SubmitPlacement("first", "bata");
+                Assert.AreEqual("Ang mabuting <b>BATA</b> ay gumagawa ng ______.", prompt.text);
+                StringAssert.Contains("Correct!", status.text);
+                Assert.IsFalse(ui.transform.Find("AnswerChoices/BATA").GetComponent<Button>().interactable);
+                session.Tick(0.1f);
+                StringAssert.Contains("Correct!", status.text, "Timer updates must keep answer feedback visible.");
+
+                session.SubmitPlacement("second", "mata");
+                StringAssert.DoesNotContain("MATA", prompt.text);
+                StringAssert.Contains("<b>BATA</b>", prompt.text);
+                StringAssert.Contains("Try again", status.text);
+
+                session.SubmitPlacement("second", "tama");
+                Assert.AreEqual(ChallengeSessionState.Completed, session.State);
+                Assert.AreEqual("Ang mabuting <b>BATA</b> ay gumagawa ng <b>TAMA</b>.", prompt.text);
+                StringAssert.Contains("Correct!", status.text);
+                Assert.IsFalse(ui.transform.Find("AnswerChoices").gameObject.activeSelf);
+            }
+            finally
+            {
+                Object.DestroyImmediate(sequence);
+            }
+        }
+
+        [TestCase(750f, 1334f)]
+        [TestCase(1080f, 1920f)]
+        [TestCase(1080f, 2400f)]
+        public void ChallengeBoard_UsesReadablePromptAndKeepsControlsInsidePaper(float width, float height)
+        {
+            using TestObjects objects = new();
+            ChallengeModeUI ui = CreateChallengeBoard(objects, width, height);
+            foreach (string name in new[] { "Progress", "Timer", "Status", "PromptViewport", "AnswerChoices", "ChallengeActions" })
+                AssertAnchorsInside(ui.transform.Find(name).GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
+            TMP_Text prompt = ui.transform.Find("PromptViewport/Prompt").GetComponent<TMP_Text>();
+            Assert.IsFalse(prompt.enableAutoSizing, "Long prompts should scroll instead of shrinking.");
+            Assert.GreaterOrEqual(prompt.fontSize, UITextScale.Body);
+            ScrollRect scroll = ui.transform.Find("PromptViewport").GetComponent<ScrollRect>();
+            Assert.AreSame(prompt.rectTransform, scroll.content);
+            Assert.IsNotNull(scroll.GetComponent<RectMask2D>());
+            Assert.IsFalse(scroll.horizontal);
+            RectTransform choices = ui.transform.Find("AnswerChoices").GetComponent<RectTransform>();
+            RectTransform actions = ui.transform.Find("ChallengeActions").GetComponent<RectTransform>();
+            Assert.Less(actions.anchorMax.y, choices.anchorMin.y);
+            LayoutRebuilder.ForceRebuildLayoutImmediate(actions);
+            RectTransform hint = actions.GetChild(0).GetComponent<RectTransform>();
+            Assert.GreaterOrEqual(hint.rect.yMin + hint.localPosition.y, actions.rect.yMin - 0.01f);
+            Assert.LessOrEqual(hint.rect.yMax + hint.localPosition.y, actions.rect.yMax + 0.01f);
+        }
+
+        private static ChallengeModeUI CreateChallengeBoard(TestObjects objects, float width, float height)
+        {
+            RectTransform canvasRect = objects.CreateRect("ChallengeTestCanvas");
+            Canvas canvas = canvasRect.gameObject.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.WorldSpace;
+            canvasRect.sizeDelta = new Vector2(1080f, height * 1080f / width);
+            RectTransform panel = objects.CreateRect("ChallengeBoard");
+            panel.SetParent(canvasRect, false);
+            ChallengeModeUI ui = panel.gameObject.AddComponent<ChallengeModeUI>();
+            ui.Bind(null);
+            return ui;
+        }
+
+        [TestCase(750f, 1334f)] // iPhone SE (2nd generation)
+        [TestCase(1080f, 1920f)]
+        [TestCase(1080f, 2400f)]
+        public void DialogueController_BaseIntroScroll_LeavesTheBottomBandVisible(float width, float height)
+        {
+            using TestObjects objects = new();
+            RectTransform viewport = objects.CreateRect("Viewport");
+            viewport.sizeDelta = new Vector2(width, height);
+            RectTransform panel = objects.CreateRect("DialoguePanel");
+            panel.SetParent(viewport, false);
+            TextMeshProUGUI speaker = objects.CreateText("Speaker", panel);
+            TextMeshProUGUI body = objects.CreateText("Body", panel);
+
+            DialogueController.ApplyResponsiveDialogueLayout(
+                panel, speaker, body, null, hasPortrait: false, presentAtTop: true);
+            panel.ForceUpdateRectTransforms();
+
+            float panelBottom = panel.localPosition.y + panel.rect.yMin;
+            float baseBandTop = viewport.rect.yMin + height * 0.30f;
+            Assert.Greater(panelBottom, baseBandTop,
+                "The base introduction must leave the lower gameplay area uncovered.");
+            Assert.AreEqual(height * 0.21f, panel.rect.height, 0.01f,
+                "The short base introduction uses a compact scroll.");
+            Assert.AreEqual(width * 0.72f, panel.rect.width, 0.01f,
+                "The base introduction scroll keeps generous side margins.");
+            Assert.Less(panel.anchorMax.y, 1f, "Keep the callout inset from the top edge.");
+            Assert.Greater(panel.anchorMin.x, 0f);
+            Assert.Less(panel.anchorMax.x, 1f);
+            AssertAnchorsInside(speaker.rectTransform, ScrollPanelArt.FullSafeArea);
+            AssertAnchorsInside(body.rectTransform, ScrollPanelArt.FullSafeArea);
+            Assert.AreEqual(TextAlignmentOptions.Center, body.alignment);
+            float travel = panel.rect.height + height * (1f - panel.anchorMax.y);
+            Assert.GreaterOrEqual(
+                panelBottom + DialogueController.SlideOffsetY(0f, travel, presentAtTop: true),
+                viewport.rect.yMax - 0.01f,
+                "The inset scroll must begin fully above the screen during its entrance.");
+
+            // The next dialogue uses the default placement again.
+            DialogueController.ApplyResponsiveDialogueLayout(panel, null, null, null, hasPortrait: false);
+            Assert.AreEqual(0f, panel.anchorMin.y, 0.001f);
+            Assert.AreEqual(0.30f, panel.anchorMax.y, 0.001f);
+        }
+
+        [Test]
+        public void DialogueController_BaseIntro_UsesBothRodsAndClearsPresentationAfterHiding()
+        {
+            using TestObjects objects = new();
+            RectTransform host = objects.CreateRect("DialogueController");
+            Image background = objects.CreateImage("Panel", host);
+            DialogueController controller = host.gameObject.AddComponent<DialogueController>();
+            controller.enabled = false;
+            SetDialogueField(controller, "_overlayPanel", background.gameObject);
+            SetDialogueField(controller, "_presentAtTop", true);
+            controller.enabled = true;
+
+            Assert.IsNotNull(ScrollPanelArt.Full, "The existing full parchment sprite must load.");
+            Assert.AreSame(ScrollPanelArt.Full, background.sprite);
+            Assert.Greater(background.sprite.border.y, 0f, "The bottom rod must be retained.");
+            Assert.Greater(background.sprite.border.w, 0f, "The top rod must be retained.");
+            Assert.IsTrue(controller.IsBaseIntroductionPresenting);
+
+            background.gameObject.SetActive(false);
+            Assert.IsFalse(controller.IsBaseIntroductionPresenting,
+                "Combat UI must no longer be suppressed after the callout disappears.");
+
+            controller.enabled = false;
+            SetDialogueField(controller, "_presentAtTop", false);
+            background.gameObject.SetActive(true);
+            controller.enabled = true;
+            Assert.AreSame(ScrollPanelArt.Top, background.sprite,
+                "Other dialogue must retain its existing parchment banner.");
+            Assert.AreEqual(1f, background.pixelsPerUnitMultiplier);
+            Assert.IsFalse(controller.IsBaseIntroductionPresenting);
+        }
+
+        private static void SetDialogueField(DialogueController controller, string name, object value)
+        {
+            System.Reflection.FieldInfo field = typeof(DialogueController).GetField(
+                name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            Assert.IsNotNull(field, name);
+            field.SetValue(controller, value);
+        }
+
+        [Test]
+        public void DialogueController_TopScroll_SlidesThroughTheTopEdge()
+        {
+            const float height = 400f;
+            Assert.AreEqual(height, DialogueController.SlideOffsetY(0f, height, presentAtTop: true));
+            Assert.AreEqual(0f, DialogueController.SlideOffsetY(1f, height, presentAtTop: true));
+            for (int step = 0; step <= 10; step++)
+            {
+                float offset = DialogueController.SlideOffsetY(step / 10f, height, presentAtTop: true);
+                Assert.GreaterOrEqual(offset, 0f,
+                    "A top scroll must not slide down through the highlighted base.");
+                Assert.LessOrEqual(offset, height);
+            }
+        }
+
         [Test]
         public void SafeAreaHandler_CalculateAnchors_CanIntersectSafeAreaWithPlayColumn()
         {
@@ -256,7 +452,7 @@ namespace Salinlahi.Tests.Editor.UI
                 ChallengeModeUI board = boardObject.AddComponent<ChallengeModeUI>();
                 board.ShowFeedback(string.Empty);
 
-                string[] rows = { "Progress", "Timer", "Prompt", "Status", "AnswerChoices", "ChallengeActions" };
+                string[] rows = { "Progress", "Timer", "PromptViewport", "Status", "AnswerChoices", "ChallengeActions" };
                 foreach (string row in rows)
                 {
                     RectTransform rect = boardObject.transform.Find(row) as RectTransform;
@@ -357,6 +553,8 @@ namespace Salinlahi.Tests.Editor.UI
             // Reading order down the paper, then the button row under everything.
             Assert.LessOrEqual(title.rectTransform.anchorMax.y, number.rectTransform.anchorMin.y);
             Assert.LessOrEqual(words.rectTransform.anchorMax.y, title.rectTransform.anchorMin.y);
+            Assert.GreaterOrEqual(words.rectTransform.anchorMin.y - glyphRow.anchorMax.y, 0.03f,
+                "Word meanings need a small breathing gap above the glyph row.");
             Assert.LessOrEqual(
                 flip.GetComponent<RectTransform>().anchorMax.y, glyphRow.anchorMin.y);
 

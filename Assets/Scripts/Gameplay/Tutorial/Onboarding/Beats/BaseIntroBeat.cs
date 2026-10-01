@@ -6,6 +6,9 @@ using UnityEngine;
 /// </summary>
 public sealed class BaseIntroBeat : OnboardingBeat
 {
+    [Tooltip("Real-time pause after the base-introduction scroll closes, before the next tutorial beat starts.")]
+    [SerializeField, Min(0f)] private float _postDialogueDelaySeconds = 0.75f;
+
     public override OnboardingBeatType BeatType => OnboardingBeatType.BaseIntro;
 
     public override IEnumerator Play(OnboardingContext ctx)
@@ -20,10 +23,15 @@ public sealed class BaseIntroBeat : OnboardingBeat
             ctx.Spotlight.Show(bounds, ctx.Sequence.baseSpotlightPadding);
         }
 
-        yield return OnboardingDialogueRunner.Play(ctx.Dialogue, ctx.Sequence.baseIntro);
+        // The base sits in the bottom band. Use the compact full-scroll callout above it.
+        yield return OnboardingDialogueRunner.Play(ctx.Dialogue, ctx.Sequence.baseIntro, presentAtTop: true);
 
         if (ctx.Spotlight != null)
             ctx.Spotlight.Hide();
+
+        // Give the player a moment to see the base before the enemy demonstration.
+        if (_postDialogueDelaySeconds > 0f)
+            yield return new WaitForSecondsRealtime(_postDialogueDelaySeconds);
     }
 
     private static Bounds ResolveBaseBounds(PlayerBase playerBase)

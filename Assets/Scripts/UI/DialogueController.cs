@@ -5,9 +5,10 @@ using UnityEngine.UI;
 
 public class DialogueController : MonoBehaviour
 {
-    // The story scroll fills the bottom 30% of the screen. This is not only a look: the rod
+    // The story scroll fills 30% of the screen, normally at the bottom. This is not only a look: the rod
     // below is a fixed-pixel slice border, so a short panel is what pushes the copy onto it.
     private const float DialoguePanelHeight = 0.30f;
+    private static readonly Rect BaseIntroductionArea = Rect.MinMaxRect(0.14f, 0.435f, 0.86f, 0.645f);
 
     // Fixed sizes rather than auto-fit: at half height every authored line fits, and the
     // speaker name is the title, so it outranks the body.
@@ -33,15 +34,15 @@ public class DialogueController : MonoBehaviour
         ScrollRodPixels / (DialoguePanelHeight * ReferenceScreenHeight);
 
     /// <summary>
-    /// The panel's vertical offset while it slides, from one full panel below the screen at
-    /// <paramref name="normalizedTime"/> 0 to flush with the bottom edge at 1.
+    /// The panel's vertical offset while it slides, from one full panel outside the screen at
+    /// <paramref name="normalizedTime"/> 0 to its seated position at 1. Top panels enter from above.
     /// </summary>
-    public static float SlideOffsetY(float normalizedTime, float panelHeight)
+    public static float SlideOffsetY(float normalizedTime, float panelHeight, bool presentAtTop = false)
     {
         float t = Mathf.Clamp01(normalizedTime);
         float inverse = 1f - t;
         float eased = 1f - (inverse * inverse * inverse);
-        return -panelHeight * (1f - eased);
+        return (presentAtTop ? panelHeight : -panelHeight) * (1f - eased);
     }
 
     [Header("UI References")]
@@ -66,6 +67,7 @@ public class DialogueController : MonoBehaviour
     private Coroutine _typewriterRoutine;
     private Coroutine _slideRoutine;
     private bool _onParchment;
+    private bool _presentAtTop;
 
     // A cutscene owns the same bottom band this scroll sits in, and both print
     // narration — live together they render as two lines over one strip. While a
@@ -80,6 +82,10 @@ public class DialogueController : MonoBehaviour
     /// standing combat instruction yields to it (ActiveCluePresenter polls this).
     /// </summary>
     public bool IsPresenting => _currentDialogue != null;
+
+    // Includes the closing animation so combat prompts return only after the scroll leaves.
+    public bool IsBaseIntroductionPresenting => isActiveAndEnabled && _presentAtTop
+        && _overlayPanel != null && _overlayPanel.activeInHierarchy;
 
     public static DialogueController CreateRuntime()
     {
@@ -315,10 +321,16 @@ public class DialogueController : MonoBehaviour
 
     public void Play(DialogueSO dialogue)
     {
+        Play(dialogue, presentAtTop: false);
+    }
+
+    /// <summary>Optionally uses the compact full-scroll presentation for the base introduction.</summary>
+    public void Play(DialogueSO dialogue, bool presentAtTop)
+    {
         if (!gameObject.activeInHierarchy)
         {
             DialogueController runtime = CreateRuntime();
-            runtime.Play(dialogue);
+            runtime.Play(dialogue, presentAtTop);
             return;
         }
 
@@ -332,6 +344,7 @@ public class DialogueController : MonoBehaviour
 
         _currentDialogue = dialogue;
         _lineIndex = 0;
+        _presentAtTop = presentAtTop;
 
         if (_overlayPanel != null)
         {
@@ -384,7 +397,7 @@ public class DialogueController : MonoBehaviour
     }
 
     /// <summary>
-    /// Drives the panel between parked-below-the-screen and seated, on UNSCALED time:
+    /// Drives the panel between parked outside its screen edge and seated, on UNSCALED time:
     /// EnterDialoguePause sets Time.timeScale to 0, so a scaled tween would never advance.
     /// </summary>
     private IEnumerator Slide(float from, float to, float duration)
@@ -394,19 +407,21 @@ public class DialogueController : MonoBehaviour
             yield break;
 
         float height = ResolvePanelHeightPixels(panel);
+        if (_presentAtTop && panel.parent is RectTransform parentRect)
+            height += parentRect.rect.height * (1f - panel.anchorMax.y);
         float elapsed = 0f;
 
-        SetPanelOffset(panel, SlideOffsetY(from, height));
+        SetPanelOffset(panel, SlideOffsetY(from, height, _presentAtTop));
 
         while (elapsed < duration)
         {
             elapsed += Time.unscaledDeltaTime;
             float t = Mathf.Clamp01(elapsed / duration);
-            SetPanelOffset(panel, SlideOffsetY(Mathf.Lerp(from, to, t), height));
+            SetPanelOffset(panel, SlideOffsetY(Mathf.Lerp(from, to, t), height, _presentAtTop));
             yield return null;
         }
 
-        SetPanelOffset(panel, SlideOffsetY(to, height));
+        SetPanelOffset(panel, SlideOffsetY(to, height, _presentAtTop));
     }
 
     private static void SetPanelOffset(RectTransform panel, float offsetY)
@@ -432,7 +447,7 @@ public class DialogueController : MonoBehaviour
         if (canvas != null && canvas.transform is RectTransform canvasRect
             && canvasRect.rect.height > 0f)
         {
-            return canvasRect.rect.height * DialoguePanelHeight;
+            return canvasRect.rect.height * (panel.anchorMax.y - panel.anchorMin.y);
         }
 
         return ReferenceScreenHeight * DialoguePanelHeight;
@@ -518,7 +533,7 @@ public class DialogueController : MonoBehaviour
     {
         RectTransform panel = ResolvePanelRect();
         _onParchment = ApplyDialogueFrame(panel);
-        ApplyResponsiveDialogueLayout(panel, _speakerText, _bodyText, _portraitImage, hasPortrait);
+        ApplyResponsiveDialogueLayout(panel, _speakerText, _bodyText, _portraitImage, hasPortrait, _presentAtTop);
         if (_onParchment)
         {
             ScrollPanelArt.Inkify(_speakerText);
@@ -526,9 +541,8 @@ public class DialogueController : MonoBehaviour
         }
     }
 
-    // The dialogue panel is a parchment scroll-top: rod along the top edge, parchment
-    // body below. Works for both the runtime overlay (Image on the root) and the
-    // serialized scene variant (Image on a child panel). The portrait is skipped.
+    // The base introduction uses both rods; other dialogue keeps the scroll-top banner.
+    // Supports backgrounds on the root or on an authored child. The portrait is skipped.
     private bool ApplyDialogueFrame(RectTransform panel)
     {
         if (panel == null)
@@ -546,7 +560,13 @@ public class DialogueController : MonoBehaviour
             }
         }
 
-        return ScrollPanelArt.ApplyTop(background);
+        bool applied = _presentAtTop ? ScrollPanelArt.ApplyFull(background) : ScrollPanelArt.ApplyTop(background);
+        if (applied)
+        {
+            // Two fixed slice borders need smaller rods in this compact callout.
+            background.pixelsPerUnitMultiplier = _presentAtTop ? 2f : 1f;
+        }
+        return applied;
     }
 
 
@@ -569,15 +589,16 @@ public class DialogueController : MonoBehaviour
         TMP_Text speakerText,
         TMP_Text bodyText,
         Image portraitImage,
-        bool hasPortrait)
+        bool hasPortrait,
+        bool presentAtTop = false)
     {
         if (panel != null)
         {
-            panel.anchorMin = new Vector2(0f, 0f);
-            panel.anchorMax = new Vector2(1f, DialoguePanelHeight);
+            panel.anchorMin = presentAtTop ? BaseIntroductionArea.min : Vector2.zero;
+            panel.anchorMax = presentAtTop ? BaseIntroductionArea.max : new Vector2(1f, DialoguePanelHeight);
             panel.offsetMin = Vector2.zero;
             panel.offsetMax = Vector2.zero;
-            panel.pivot = new Vector2(0.5f, 0f);
+            panel.pivot = new Vector2(0.5f, presentAtTop ? 1f : 0f);
         }
 
         float textMinX = hasPortrait ? DialogueTextWithPortraitMinX : DialogueSidePadding;
@@ -597,6 +618,14 @@ public class DialogueController : MonoBehaviour
             new Vector2(textMaxX, 0.58f),
             BodyFontSize,
             TextAlignmentOptions.Top);
+
+        if (presentAtTop)
+        {
+            ConfigureDialogueText(speakerText, new Vector2(textMinX, 0.68f),
+                new Vector2(textMaxX, 0.78f), SpeakerFontSize, TextAlignmentOptions.Center);
+            ConfigureDialogueText(bodyText, new Vector2(textMinX, 0.30f),
+                new Vector2(textMaxX, 0.66f), BodyFontSize, TextAlignmentOptions.Center);
+        }
 
         // At 30% panel height the fixed sizes overflow their bands (speaker ~58px
         // band vs ~86px line, body ~4 lines vs 6 needed). Auto-fit so long lines

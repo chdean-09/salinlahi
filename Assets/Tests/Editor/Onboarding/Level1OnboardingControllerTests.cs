@@ -7,6 +7,36 @@ namespace Salinlahi.Tests.Editor.Onboarding
     [TestFixture]
     public class Level1OnboardingControllerTests
     {
+        [Test]
+        public void BaseIntroBeat_WaitsAfterDialogueBeforeTheNextBeatCanStart()
+        {
+            GameObject host = new("BaseIntroBeatTest");
+            OnboardingSequenceSO sequence = ScriptableObject.CreateInstance<OnboardingSequenceSO>();
+            try
+            {
+                BaseIntroBeat beat = host.AddComponent<BaseIntroBeat>();
+                OnboardingContext context = new(
+                    sequence: sequence, levelNumber: 1, dialogue: null, spotlight: null,
+                    introPlayer: null, demoHearts: null, protagonist: null, waveSpawner: null,
+                    playerBase: null, guideUI: null, worldCamera: null,
+                    setBeatCompleted: null, skipRequested: null, markFirstManualSuccess: null);
+                System.Collections.IEnumerator routine = beat.Play(context);
+
+                Assert.IsTrue(routine.MoveNext());
+                Assert.IsInstanceOf<System.Collections.IEnumerator>(routine.Current,
+                    "The dialogue must finish before the breathing pause begins.");
+                Assert.IsTrue(routine.MoveNext());
+                Assert.IsInstanceOf<WaitForSecondsRealtime>(routine.Current);
+                Assert.AreEqual(0.75f, ((WaitForSecondsRealtime)routine.Current).waitTime);
+                Assert.IsFalse(routine.MoveNext(), "The next beat starts only after the pause.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(host);
+                Object.DestroyImmediate(sequence);
+            }
+        }
+
         [TearDown]
         public void TearDown()
         {

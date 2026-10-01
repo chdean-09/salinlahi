@@ -452,7 +452,7 @@ public sealed class MemoryCardUI : MonoBehaviour
 
         ScrollPanelArt.PlaceText(number, Band(0.72f, 0.785f), UITextScale.AutoSizeFloor, UITextScale.Secondary);
         ScrollPanelArt.PlaceText(title, Band(0.615f, 0.71f), UITextScale.Body, UITextScale.Title);
-        ScrollPanelArt.PlaceText(words, Band(0.43f, 0.60f), UITextScale.Caption, UITextScale.Title);
+        ScrollPanelArt.PlaceText(words, Band(0.455f, 0.60f), UITextScale.Caption, UITextScale.Title);
         ScrollPanelArt.PlaceText(lore, Band(0.33f, 0.785f), UITextScale.Caption, UITextScale.Title);
 
         ScrollPanelArt.SetAnchors(glyphRow, Band(0.33f, 0.42f));

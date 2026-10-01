@@ -13,7 +13,7 @@ public static class OnboardingDialogueRunner
     /// If <paramref name="copy"/>.dialogue is set, that DialogueSO is played as-is.
     /// Otherwise the fallback string is wrapped in a transient one-line DialogueSO.
     /// </summary>
-    public static IEnumerator Play(DialogueController dialogue, OnboardingBeatCopy copy)
+    public static IEnumerator Play(DialogueController dialogue, OnboardingBeatCopy copy, bool presentAtTop = false)
     {
         if (dialogue == null)
         {
@@ -41,7 +41,7 @@ public static class OnboardingDialogueRunner
 
         try
         {
-            dialogue.Play(toPlay);
+            dialogue.Play(toPlay, presentAtTop);
             yield return new WaitUntil(() => complete);
         }
         finally

@@ -466,6 +466,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private FocusWordPreviewController[] _focusWordPreviews;
     private SymbolLearningCardController[] _symbolCards;
     private DialogueController[] _dialogueControllers;
+    private SentenceHintController[] _sentenceHintControllers;
     private InstantWinPresenter[] _instantWinPresenters;
     private bool _suppressedByIntroModal;
     private bool _instructionSuppressedByCue;
@@ -1284,13 +1285,31 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
     /// <summary>
     /// Same gate as <see cref="IsAnyCutscenePlaying"/> for the intro modals (focus-word
-    /// preview, symbol learning card): while one is up, its dimmed overlay owns the screen
+    /// preview, symbol learning card, base introduction): while one is up, its overlay owns the screen
     /// and the rail's labels would ghost through the parchment. Both are queried live
     /// rather than tracked — a rail armed while a modal is already up never saw an open
     /// event, and empty caches are re-found because the controllers are created lazily.
     /// </summary>
     private bool IsAnyIntroModalPresenting()
     {
+        if (_sentenceHintControllers == null || _sentenceHintControllers.Length == 0)
+            _sentenceHintControllers = FindObjectsByType<SentenceHintController>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < _sentenceHintControllers.Length; i++)
+        {
+            if (_sentenceHintControllers[i] != null && _sentenceHintControllers[i].IsPresenting)
+                return true;
+        }
+
+        if (_dialogueControllers == null || _dialogueControllers.Length == 0)
+            _dialogueControllers = FindObjectsByType<DialogueController>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < _dialogueControllers.Length; i++)
+        {
+            if (_dialogueControllers[i] != null && _dialogueControllers[i].IsBaseIntroductionPresenting)
+                return true;
+        }
+
         if (_focusWordPreviews == null || _focusWordPreviews.Length == 0)
             _focusWordPreviews = FindObjectsByType<FocusWordPreviewController>(
                 FindObjectsInactive.Include, FindObjectsSortMode.None);
