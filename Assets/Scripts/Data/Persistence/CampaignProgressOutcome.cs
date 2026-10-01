@@ -90,6 +90,7 @@ public enum CampaignOutcomeCommitStatus
     PendingRetry,
     Rejected,
     Blocked,
+    DemoCompleted,
 }
 
 public sealed class CampaignOutcomeCommitResult
@@ -99,7 +100,15 @@ public sealed class CampaignOutcomeCommitResult
     public CampaignSaveFailureCode FailureCode { get; private set; }
     public string ReasonCode { get; private set; }
     public bool IsAccepted => Status == CampaignOutcomeCommitStatus.Committed ||
-        Status == CampaignOutcomeCommitStatus.AlreadyCommitted;
+        Status == CampaignOutcomeCommitStatus.AlreadyCommitted ||
+        Status == CampaignOutcomeCommitStatus.DemoCompleted;
+
+    /// <summary>
+    /// Allows a demo attempt to reach Results without claiming a durable save or granting progression.
+    /// </summary>
+    public static CampaignOutcomeCommitResult DemoCompleted() =>
+        Create(CampaignOutcomeCommitStatus.DemoCompleted, null,
+            CampaignSaveFailureCode.None, "demo-progress-not-saved");
 
     public static CampaignOutcomeCommitResult Committed(CampaignProgressOutcome outcome) =>
         Create(CampaignOutcomeCommitStatus.Committed, outcome,
