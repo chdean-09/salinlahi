@@ -37,8 +37,12 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
     - {fileID: 11400000, guid: d32d963289bb94a54ba971ec25be3bbf, type: 2}
     - {fileID: 11400000, guid: 3beab354ec73c4942a045607153e984b, type: 2}
-    - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
     - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
+    fillerSymbols: []
+    finaleSymbol: {fileID: 0}
+  - level: {fileID: 11400000, guid: 674cb26efbdf740b6988b1853504af81, type: 2}
+    introduces:
+    - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
     fillerSymbols: []
     finaleSymbol: {fileID: 0}
   - level: {fileID: 11400000, guid: bf5a3e06628e74c66b47faae9f1baa5e, type: 2}

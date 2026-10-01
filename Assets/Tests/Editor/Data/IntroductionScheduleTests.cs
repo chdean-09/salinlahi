@@ -88,6 +88,16 @@ namespace Salinlahi.Tests.Editor.Data
         }
 
         [Test]
+        public void Salungat_IsIntroducedOnLevelSeven()
+        {
+            IntroductionScheduleSO schedule = Campaign().introductionSchedule;
+            Assert.IsTrue(schedule.Introduces(Level(7), Enemy("Salungat")),
+                "The decoy lesson must use the same introduction card as other enemy types.");
+            Assert.IsFalse(schedule.Introduces(Level(6), Enemy("Salungat")),
+                "An earlier mixed-wave appearance must not consume Level 7's lesson.");
+        }
+
+        [Test]
         public void EveryWaveReachableType_IsIntroducedBySomeLevel()
         {
             IntroductionScheduleSO schedule = Campaign().introductionSchedule;

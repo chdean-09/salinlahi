@@ -16,8 +16,8 @@ using UnityEngine.UI;
 /// game via <c>GameManager.EnterDialoguePause</c> while the card's standing promise is that input
 /// stays live and no dialogue pause happens. The card system won (see
 /// docs/design/2026-09-14-level1-enemy-introduction-lesson-design.md); its presentation now
-/// suppresses this overlay's presentation on any spawn the beat has taken an interest in — one it
-/// claimed as an introduction, and equally one it deferred so a pending lesson could land first.
+/// owns presentation throughout campaigns with an authored introduction schedule. Without a
+/// schedule, this overlay also stays silent for any spawn the beat claimed or deferred.
 /// See <see cref="HandleEnemyDiscovered"/> for the guard. This class is not deleted, because its DATA
 /// write is still the only path that populates the Almanac — same split as
 /// <see cref="CharacterUnlockRevealController.RegisterUnlocksWithoutReveal"/>.
@@ -167,7 +167,11 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
         // Read from the enemy rather than any EnemyIntroductionBeat static: the outcome is resolved
         // in Enemy.Initialize before EventBus.OnEnemyDiscovered is raised (this handler) and before
         // BeginIntroduction is called, so it is never a timing race.
-        if (enemy.IntroductionOutcome != IntroductionOutcome.None)
+        // A configured campaign delegates all presentation to its authored introduction plan.
+        // A declined claim (already met, wrong level, or temporarily busy) must not bypass that
+        // plan through the legacy popup. Discovery still feeds the Almanac on every encounter.
+        if (IntroductionScheduleLookup.Resolve() != null
+            || enemy.IntroductionOutcome != IntroductionOutcome.None)
         {
             EnemyDiscoveryProgress.TryMarkDiscovered(data, out _);
             return;

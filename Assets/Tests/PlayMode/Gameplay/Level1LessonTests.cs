@@ -2644,6 +2644,54 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             yield return null;
         }
 
+        [UnityTest]
+        public IEnumerator ScheduledDecoy_GetsTheIntroductionCard_AndReplaysOncePerAttempt()
+        {
+            yield return null;
+            BaybayinCharacterSO character = MakeCharacter("SA", "symbol.test.decoy.sa");
+            EnemyDataSO data = CreateEnemyData("test_scheduled_salungat", "Salungat", character);
+            data.isDecoy = true;
+            LevelConfigSO level = CreateLevelConfig(
+                new List<EnemyDataSO> { data }, null, new List<FocusWordDefinition>());
+            level.levelNumber = 7;
+            _gameManager.SetLevel(level);
+            IntroductionScheduleLookup.ScheduleOverrideForTests = CreateSchedule(level, data);
+
+            Assert.IsTrue(EnemyIntroductionProgress.TryClaimIntroduction(data), "Simulate an earlier attempt.");
+            Enemy spawn = CreateEnemyShell("Salungat_ScheduledReplay");
+            Assert.IsTrue(spawn.Initialize(data));
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndSuppress, spawn.IntroductionOutcome,
+                "An authored decoy type needs the same card as other scheduled enemies.");
+
+            _beat.enabled = false;
+            _beat.enabled = true;
+            Enemy second = CreateEnemyShell("Salungat_SecondSpawn");
+            Assert.IsTrue(second.Initialize(data));
+            Assert.AreEqual(IntroductionOutcome.None, second.IntroductionOutcome,
+                "The card plays once per attempt, not once per decoy spawn.");
+            _beat.enabled = false;
+        }
+
+        [UnityTest]
+        public IEnumerator SuppressedMirrorCopy_CannotClaimTheScheduledTypesIntroduction()
+        {
+            yield return null;
+            BaybayinCharacterSO character = MakeCharacter("EI", "symbol.test.copy.ei");
+            EnemyDataSO data = CreateEnemyData("test_suppressed_copy", "Iligaw", character);
+            data.isDecoy = true;
+            data.suppressDiscovery = true;
+            LevelConfigSO level = CreateLevelConfig(
+                new List<EnemyDataSO> { data }, null, new List<FocusWordDefinition>());
+            _gameManager.SetLevel(level);
+            IntroductionScheduleLookup.ScheduleOverrideForTests = CreateSchedule(level, data);
+
+            Enemy spawn = CreateEnemyShell("Iligaw_MirrorCopy");
+            Assert.IsTrue(spawn.Initialize(data));
+            Assert.AreEqual(IntroductionOutcome.None, spawn.IntroductionOutcome);
+            Assert.IsFalse(EnemyIntroductionProgress.HasBeenIntroduced(data));
+            _beat.enabled = false;
+        }
+
         private IntroductionScheduleSO CreateSchedule(LevelConfigSO level, params EnemyDataSO[] introduces)
         {
             var schedule = ScriptableObject.CreateInstance<IntroductionScheduleSO>();
