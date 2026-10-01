@@ -468,9 +468,8 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// though the campaign-wide one-shot is spent. Two authorities, either suffices:
     /// <list type="bullet">
     /// <item>The level replays its tutorial and this is its authored lesson (the original rule).</item>
-    /// <item>The type DEBUTS on this level (<see cref="EnemyDebutLookup"/>). The level that
-    /// teaches a type introduces it every time; a type met on an earlier level is never
-    /// re-introduced, which keeps later levels from re-explaining what the player knows.</item>
+    /// <item>The schedule names this level as the type's teaching level. Without a schedule,
+    /// the type's debut level (<see cref="EnemyDebutLookup"/>) supplies that rule.</item>
     /// </list>
     /// Per attempt, not per spawn: the second spawn of the same type in one attempt is an
     /// ordinary enemy, held by <see cref="_introducedThisAttempt"/>.
@@ -479,6 +478,13 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     {
         if (lesson != null && LevelReplaysItsTutorial())
             return true;
+
+        // The authored teaching level can differ from the first mixed-wave appearance.
+        // This also gives scheduled decoy types a replay without adding false carriers to
+        // the clue-restoration roster that EnemyDebutLookup reads.
+        IntroductionScheduleSO schedule = IntroductionScheduleLookup.Resolve();
+        if (schedule != null)
+            return schedule.Introduces(GameManager.CurrentLevelConfig, data);
 
         return EnemyDebutLookup.DebutsOnCurrentCampaignLevel(GameManager.CurrentLevelConfig, data);
     }
@@ -553,7 +559,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// Whether a spawn is a genuine first meeting the player can be shown.
     ///
     /// <para>
-    /// The decoy and suppressed-discovery cases are not hypothetical: Iligaw's mirror copy is a
+    /// The suppressed-discovery case is not hypothetical: Iligaw's mirror copy is a
     /// runtime clone of Iligaw's own data and carries the same <c>enemyID</c>, so without this guard
     /// the false copy could claim and burn Iligaw's introduction — and the card would then be
     /// pointing at the shadow rather than the enemy.
@@ -567,8 +573,18 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// </summary>
     private static bool IsIntroducibleSpawn(Enemy enemy, EnemyDataSO data, EnemyLessonSO lesson)
     {
-        if (enemy.IsBoss || data.isDecoy || data.suppressDiscovery)
+        if (enemy.IsBoss || data.suppressDiscovery)
             return false;
+
+        // A named, authored decoy such as Salungat still needs its ability explained.
+        // Only explicitly scheduled decoy types qualify; generated mirror copies remain
+        // excluded by suppressDiscovery, so they cannot spend the real type's introduction.
+        if (data.isDecoy)
+        {
+            IntroductionScheduleSO schedule = IntroductionScheduleLookup.Resolve();
+            if (schedule == null || !schedule.Introduces(GameManager.CurrentLevelConfig, data))
+                return false;
+        }
 
         // Without a name there is nothing for step 2 to show, and a nameless card would halt the
         // field to display an ability line under a blank heading.

@@ -18,6 +18,12 @@ namespace Salinlahi.Tests.Editor.UI
         [SetUp]
         public void SetUp()
         {
+            IntroductionScheduleLookup.ScheduleOverrideForTests = null;
+            // Legacy-popup tests intentionally have no campaign schedule. Do not inherit the
+            // open gameplay scene's SaveManager and its authored presentation policy.
+            var campaign = ScriptableObject.CreateInstance<CampaignConfigSO>();
+            _objectsToDestroy.Add(campaign);
+            EnemyDebutLookup.CampaignOverrideForTests = campaign;
             TutorialRuntimeState.Clear();
             EnemyDiscoveryProgress.ResetForTests();
             Time.timeScale = 1f;
@@ -26,6 +32,8 @@ namespace Salinlahi.Tests.Editor.UI
         [TearDown]
         public void TearDown()
         {
+            IntroductionScheduleLookup.ScheduleOverrideForTests = null;
+            EnemyDebutLookup.CampaignOverrideForTests = null;
             TutorialRuntimeState.Clear();
             EnemyDiscoveryProgress.ResetForTests();
 
@@ -274,6 +282,26 @@ namespace Salinlahi.Tests.Editor.UI
                 "With no introduction beat owning the spawn the overlay is the only introduction "
                 + "there is, so suppressing it here would leave the enemy unexplained.");
             Object.DestroyImmediate(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator EnemyDiscovered_WithCampaignSchedule_WritesDataWithoutLegacyPopup()
+        {
+            EnemyDiscoveryOnboardingController controller = CreateController(out CanvasGroup group, out _, out _, out _);
+            var schedule = ScriptableObject.CreateInstance<IntroductionScheduleSO>();
+            _objectsToDestroy.Add(schedule);
+            IntroductionScheduleLookup.ScheduleOverrideForTests = schedule;
+            EnemyDataSO data = CreateEnemyData("salungat");
+            data.isDecoy = true;
+            Enemy enemy = CreateEnemy(data);
+            enemy.transform.position = new Vector3(0f, 1f, 0f);
+
+            EventBus.RaiseEnemyDiscovered(data, enemy);
+            yield return WaitFrames(6);
+
+            Assert.IsTrue(EnemyDiscoveryProgress.HasDiscovered(data), "The Almanac still records the encounter.");
+            Assert.AreEqual(0f, group.alpha,
+                "A declined scheduled card must not fall back to a popup that tells players to draw a decoy.");
         }
 
         [Test]
