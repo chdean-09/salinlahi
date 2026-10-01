@@ -42,10 +42,26 @@ namespace Salinlahi.Tests.Editor.UI
                 session.Enter();
                 TMP_Text prompt = ui.transform.Find("PromptViewport/Prompt").GetComponent<TMP_Text>();
                 TMP_Text status = ui.transform.Find("Status").GetComponent<TMP_Text>();
-                Assert.AreEqual(sequence.units[0].prompt, prompt.text);
+                Assert.AreEqual(sequence.units[0].prompt, ReadPrompt(prompt));
+                LayoutRebuilder.ForceRebuildLayoutImmediate(prompt.rectTransform);
+                prompt.ForceMeshUpdate();
+                int initialLineCount = prompt.textInfo.lineCount;
+                TMP_CharacterInfo lastCharacter = prompt.textInfo.characterInfo[prompt.textInfo.characterCount - 1];
+                Vector2 initialSentenceEnd = new(lastCharacter.origin, lastCharacter.baseLine);
+                Vector2 initialPanelMin = ((RectTransform)ui.transform).anchorMin;
+                Vector2 initialPanelMax = ((RectTransform)ui.transform).anchorMax;
 
                 session.SubmitPlacement("first", "bata");
-                Assert.AreEqual("Ang mabuting <b>BATA</b> ay gumagawa ng ______.", prompt.text);
+                Assert.AreEqual("Ang mabuting BATA ay gumagawa ng ______.", ReadPrompt(prompt));
+                LayoutRebuilder.ForceRebuildLayoutImmediate(prompt.rectTransform);
+                prompt.ForceMeshUpdate();
+                lastCharacter = prompt.textInfo.characterInfo[prompt.textInfo.characterCount - 1];
+                Assert.AreEqual(initialLineCount, prompt.textInfo.lineCount,
+                    "Filling a shorter answer must not change the sentence's line wrapping.");
+                Assert.AreEqual(initialSentenceEnd.x, lastCharacter.origin, 0.5f);
+                Assert.AreEqual(initialSentenceEnd.y, lastCharacter.baseLine, 0.5f);
+                Assert.AreEqual(initialPanelMin, ((RectTransform)ui.transform).anchorMin);
+                Assert.AreEqual(initialPanelMax, ((RectTransform)ui.transform).anchorMax);
                 StringAssert.Contains("Correct!", status.text);
                 Assert.IsFalse(ui.transform.Find("AnswerChoices/BATA").GetComponent<Button>().interactable);
                 session.Tick(0.1f);
@@ -58,7 +74,7 @@ namespace Salinlahi.Tests.Editor.UI
 
                 session.SubmitPlacement("second", "tama");
                 Assert.AreEqual(ChallengeSessionState.Completed, session.State);
-                Assert.AreEqual("Ang mabuting <b>BATA</b> ay gumagawa ng <b>TAMA</b>.", prompt.text);
+                Assert.AreEqual("Ang mabuting BATA ay gumagawa ng TAMA.", ReadPrompt(prompt));
                 StringAssert.Contains("Correct!", status.text);
                 Assert.IsFalse(ui.transform.Find("AnswerChoices").gameObject.activeSelf);
             }
@@ -79,7 +95,11 @@ namespace Salinlahi.Tests.Editor.UI
                 AssertAnchorsInside(ui.transform.Find(name).GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
             TMP_Text prompt = ui.transform.Find("PromptViewport/Prompt").GetComponent<TMP_Text>();
             Assert.IsFalse(prompt.enableAutoSizing, "Long prompts should scroll instead of shrinking.");
-            Assert.GreaterOrEqual(prompt.fontSize, UITextScale.Body);
+            Assert.GreaterOrEqual(prompt.fontSize, UITextScale.Title);
+            Assert.GreaterOrEqual(ui.transform.Find("Status").GetComponent<TMP_Text>().fontSizeMin, 48f);
+            TMP_Text buttonText = ui.transform.Find("ChallengeActions").GetComponentInChildren<TMP_Text>();
+            Assert.AreEqual(UITextScale.Body, buttonText.fontSizeMax,
+                "Only the text above the controls grows; button labels keep their size.");
             ScrollRect scroll = ui.transform.Find("PromptViewport").GetComponent<ScrollRect>();
             Assert.AreSame(prompt.rectTransform, scroll.content);
             Assert.IsNotNull(scroll.GetComponent<RectMask2D>());
@@ -91,6 +111,12 @@ namespace Salinlahi.Tests.Editor.UI
             RectTransform hint = actions.GetChild(0).GetComponent<RectTransform>();
             Assert.GreaterOrEqual(hint.rect.yMin + hint.localPosition.y, actions.rect.yMin - 0.01f);
             Assert.LessOrEqual(hint.rect.yMax + hint.localPosition.y, actions.rect.yMax + 0.01f);
+        }
+
+        private static string ReadPrompt(TMP_Text prompt)
+        {
+            string plain = System.Text.RegularExpressions.Regex.Replace(prompt.text, @"<[^>]+>", string.Empty);
+            return System.Text.RegularExpressions.Regex.Replace(plain.Replace('\u00a0', ' '), @" +", " ");
         }
 
         private static ChallengeModeUI CreateChallengeBoard(TestObjects objects, float width, float height)

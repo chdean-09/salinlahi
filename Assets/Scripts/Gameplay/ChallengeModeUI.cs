@@ -93,18 +93,18 @@ public class ChallengeModeUI : MonoBehaviour
         panelImage.raycastTarget = false;
         bool onParchment = ScrollPanelArt.ApplyFull(panelImage);
 
-        _progressText = CreateLabel("Progress", UITextScale.Secondary, new Vector2(0.18f, 0.74f), new Vector2(0.82f, 0.80f));
-        _progressText.textWrappingMode = TextWrappingModes.NoWrap;
-        _timerText = CreateLabel("Timer", UITextScale.Secondary, new Vector2(0.18f, 0.68f), new Vector2(0.82f, 0.73f));
+        _progressText = CreateLabel("Progress", UITextScale.Body, new Vector2(0.18f, 0.72f), new Vector2(0.82f, 0.80f));
+        _progressText.textWrappingMode = TextWrappingModes.Normal;
+        _timerText = CreateLabel("Timer", UITextScale.Body, new Vector2(0.18f, 0.67f), new Vector2(0.82f, 0.71f));
         _timerText.textWrappingMode = TextWrappingModes.NoWrap;
         GameObject viewport = new GameObject("PromptViewport", typeof(RectTransform), typeof(Image), typeof(RectMask2D), typeof(ScrollRect));
         viewport.transform.SetParent(transform, false);
         RectTransform viewportRect = viewport.GetComponent<RectTransform>();
-        viewportRect.anchorMin = new Vector2(0.18f, 0.43f);
-        viewportRect.anchorMax = new Vector2(0.82f, 0.67f);
+        viewportRect.anchorMin = new Vector2(0.18f, 0.44f);
+        viewportRect.anchorMax = new Vector2(0.82f, 0.66f);
         viewportRect.offsetMin = viewportRect.offsetMax = Vector2.zero;
         viewport.GetComponent<Image>().color = Color.clear;
-        _promptText = CreateLabel("Prompt", UITextScale.Body, Vector2.zero, Vector2.one);
+        _promptText = CreateLabel("Prompt", UITextScale.Title, Vector2.zero, Vector2.one);
         _promptText.transform.SetParent(viewport.transform, false);
         RectTransform promptRect = _promptText.rectTransform;
         promptRect.anchorMin = new Vector2(0f, 1f);
@@ -123,7 +123,7 @@ public class ChallengeModeUI : MonoBehaviour
         _promptScroll.content = promptRect;
         _promptScroll.horizontal = false;
         _promptScroll.movementType = ScrollRect.MovementType.Clamped;
-        _statusText = CreateLabel("Status", UITextScale.Body, new Vector2(0.18f, 0.34f), new Vector2(0.82f, 0.42f));
+        _statusText = CreateLabel("Status", 48f, new Vector2(0.18f, 0.34f), new Vector2(0.82f, 0.43f));
 
         GameObject choices = new GameObject("AnswerChoices", typeof(RectTransform), typeof(HorizontalLayoutGroup));
         choices.transform.SetParent(transform, false);
@@ -272,11 +272,19 @@ public class ChallengeModeUI : MonoBehaviour
             if (slotIndex >= slots.Length)
                 return match.Value;
             ChallengeSlotDefinition slot = slots[slotIndex++];
-            if (slot == null || (!ContainsOccurrence(session.CurrentProgress, slot.expectedOccurrenceId)
-                && !ContainsOccurrence(session.CommittedOccurrenceIds, slot.expectedOccurrenceId)))
+            if (slot == null)
                 return match.Value;
             ChallengeTokenDefinition token = FindToken(unit, slot.expectedOccurrenceId);
-            return token == null ? match.Value : $"<b>{token.displayText}</b>";
+            if (token == null || string.IsNullOrEmpty(token.displayText))
+                return match.Value;
+            bool placed = ContainsOccurrence(session.CurrentProgress, slot.expectedOccurrenceId)
+                || ContainsOccurrence(session.CommittedOccurrenceIds, slot.expectedOccurrenceId);
+            // Keep the blank and its answer in the same fixed-width, unbroken slot.
+            // Replacing six underscores with a short word must not reflow the sentence.
+            int width = System.Math.Max(match.Length, token.displayText.Length);
+            string value = placed ? $"<b>{token.displayText}</b>" : match.Value;
+            int padding = width - (placed ? token.displayText.Length : match.Length);
+            return $"<nobr><mspace=0.65em>{new string('\u00a0', padding)}{value}</mspace></nobr>";
         });
     }
 
@@ -295,7 +303,7 @@ public class ChallengeModeUI : MonoBehaviour
         string feedback = session.LastEvent switch
         {
             ChallengeSessionEvent.Entered => string.Empty,
-            ChallengeSessionEvent.PlacementAccepted => "Correct! Choose the next word.",
+            ChallengeSessionEvent.PlacementAccepted => "Correct! Next word.",
             ChallengeSessionEvent.TraceAccepted => "Correct! Continue tracing.",
             ChallengeSessionEvent.SupportiveRetry => "Try again. Correct progress is safe.",
             ChallengeSessionEvent.RetryOpened => "Try again with the current clues.",
