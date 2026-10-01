@@ -5,6 +5,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 namespace Salinlahi.Tests.PlayMode.Gameplay
 {
@@ -66,6 +67,56 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         private void CountAbort() => _abortRaises++;
         private void CountResume() => _resumeRaises++;
         private void CountPause() => _pauseRaises++;
+
+        [UnityTest]
+        public IEnumerator SentenceHints_CloseAndTapOutsideReceiveClicksAndReleaseThePause()
+        {
+            GameManager game = CreateGameManager();
+            game.StartGame();
+            GameObject canvasObject = new("HintInputTestCanvas", typeof(Canvas), typeof(CanvasScaler));
+            _objectsToDestroy.Add(canvasObject);
+            Canvas canvas = canvasObject.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 32760;
+            CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1080f, 1920f);
+            GameObject host = new("HintInputTestController");
+            host.transform.SetParent(canvasObject.transform, false);
+            SentenceHintController hints = host.AddComponent<SentenceHintController>();
+            LevelConfigSO level = ScriptableObject.CreateInstance<LevelConfigSO>();
+            _objectsToDestroy.Add(level);
+            level.focusWords = new List<FocusWordDefinition>
+            {
+                new() { latinSpelling = "INA", meaning = "mother", hintText = "ilaw ng tahanan" },
+            };
+            hints.ApplyLevel(level);
+            GameObject eventObject = new("HintInputTestEvents", typeof(EventSystem));
+            _objectsToDestroy.Add(eventObject);
+            EventSystem events = eventObject.GetComponent<EventSystem>();
+
+            foreach (bool tapOutside in new[] { false, true })
+            {
+                hints.Open();
+                yield return null;
+                Assert.IsTrue(hints.IsPresenting);
+                Assert.AreEqual(0f, Time.timeScale);
+                GameObject overlay = GetPrivateField<GameObject>(hints, "_overlayRoot");
+                RectTransform close = overlay.transform.Find("[Runtime] SentenceHintScroll/[Runtime] SentenceHintClose") as RectTransform;
+                Assert.IsNotNull(close);
+                Vector2 point = tapOutside ? new Vector2(2f, 2f)
+                    : RectTransformUtility.WorldToScreenPoint(null, close.TransformPoint(close.rect.center));
+                PointerEventData pointer = new(events) { position = point, button = PointerEventData.InputButton.Left };
+                List<RaycastResult> hits = new();
+                events.RaycastAll(pointer, hits);
+                Assert.IsNotEmpty(hits, "The visible modal must receive pointer input.");
+                Assert.AreEqual(tapOutside ? "[Runtime] SentenceHintDismiss" : "[Runtime] SentenceHintClose", hits[0].gameObject.name);
+                ExecuteEvents.Execute(hits[0].gameObject, pointer, ExecuteEvents.pointerClickHandler);
+                Assert.IsFalse(hints.IsPresenting);
+                Assert.AreEqual(GameState.Playing, game.CurrentState);
+                Assert.AreEqual(1f, Time.timeScale, "Dismissing the hints must resume gameplay.");
+            }
+        }
 
         // ------------------------------------------------------------------
         // AC-1 — combat, prompts, drawing input and gameplay timers stop together

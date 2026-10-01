@@ -28,6 +28,55 @@ namespace Salinlahi.Tests.Editor.UI
         }
 
         [Test]
+        public void Build_PrefersTheMatchedObjectiveClueWithoutRepeatingTheDialogue()
+        {
+            LevelConfigSO level = CreateLevel(FocusWord("father", "AMA", "father",
+                "AMA — ang haligi ng tahanan. Binubuo ito ng dalawang titik: A at MA."));
+            RestorationObjectiveUnit unit = ObjectiveUnit("ama", "ang haligi ng tahanan", Target("a"), Target("ma"));
+            unit.displayLabel = "AMA";
+            level.restorationObjective = new RestorationObjectiveDefinition
+            {
+                units = new List<RestorationObjectiveUnit> { unit },
+            };
+
+            List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(level);
+            Assert.AreEqual(1, entries.Count);
+            Assert.AreEqual("father", entries[0].Label);
+            Assert.AreEqual(new[] { "ang haligi ng tahanan" }, entries[0].Lines);
+        }
+
+        [Test]
+        public void Build_ExplicitHintKeepsTutorialInstructionOutOfTheScroll()
+        {
+            FocusWordDefinition word = FocusWord("child", "BATA", "child",
+                "BATA — nabakas mo na ito noon. Ngayon, gagamitin mo ito sa isang pangungusap.");
+            word.hintText = "ang musmos na sumisibol, ang simula ng bawat alaala.";
+            List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(CreateLevel(word));
+            Assert.AreEqual(new[] { word.hintText }, entries[0].Lines);
+        }
+
+        [TestCase(1)] [TestCase(2)] [TestCase(3)] [TestCase(4)] [TestCase(5)]
+        [TestCase(6)] [TestCase(7)] [TestCase(8)] [TestCase(9)] [TestCase(10)]
+        [TestCase(11)] [TestCase(12)] [TestCase(13)] [TestCase(14)] [TestCase(15)]
+        public void Build_AuthoredCampaignHasOneCluePerFocusWord(int levelNumber)
+        {
+            LevelConfigSO level = UnityEditor.AssetDatabase.LoadAssetAtPath<LevelConfigSO>(
+                $"Assets/ScriptableObjects/Levels/Level{levelNumber}_Config.asset");
+            Assert.IsNotNull(level);
+            List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(level);
+            int wordHints = 0;
+            foreach (SentenceHintContent.Entry entry in entries)
+            {
+                if (entry.Label == "Sentence context")
+                    continue;
+                wordHints++;
+                Assert.AreEqual(1, entry.Lines.Count);
+                StringAssert.DoesNotMatch(@"^_+\s*[—-]", entry.Lines[0]);
+            }
+            Assert.AreEqual(level.focusWords.Count, wordHints);
+        }
+
+        [Test]
         public void Build_EmptyLevel_ReturnsEmpty()
         {
             LevelConfigSO level = CreateLevel();
@@ -59,11 +108,11 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.AreEqual(2, entries.Count);
             Assert.AreEqual("compassion", entries[0].Label);
             Assert.AreEqual(
-                new[] { "______—malasakit na nadarama para sa kapwa." },
+                new[] { "malasakit na nadarama para sa kapwa." },
                 entries[0].Lines);
             Assert.AreEqual("action", entries[1].Label);
             Assert.AreEqual(
-                new[] { "______—ang malasakit na isinasakatuparan." },
+                new[] { "ang malasakit na isinasakatuparan." },
                 entries[1].Lines);
         }
 
@@ -84,7 +133,7 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.AreEqual(1, entries.Count);
             Assert.AreEqual("mother", entries[0].Label);
             Assert.AreEqual(
-                new[] { "______ — ang nagluwal at nag-aruga." },
+                new[] { "ang nagluwal at nag-aruga." },
                 entries[0].Lines);
         }
 
@@ -126,7 +175,7 @@ namespace Salinlahi.Tests.Editor.UI
             List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(level);
 
             Assert.AreEqual(
-                new[] { "______ — ang nagluwal at nag-aruga." },
+                new[] { "ang nagluwal at nag-aruga." },
                 entries[0].Lines);
         }
 
@@ -165,7 +214,7 @@ namespace Salinlahi.Tests.Editor.UI
             List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(level);
 
             Assert.AreEqual(1, entries.Count);
-            Assert.AreEqual(string.Empty, entries[0].Label);
+            Assert.AreEqual("Sentence context", entries[0].Label);
             Assert.AreEqual(new[] { "__ __ — ilaw ng tahanan" }, entries[0].Lines);
         }
 

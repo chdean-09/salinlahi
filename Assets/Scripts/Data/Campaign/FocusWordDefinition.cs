@@ -43,6 +43,9 @@ public sealed class FocusWordDefinition
              "against the SALIN-167/SALIN-188 matrix; the Meaning mastery dimension matches on this.")]
     public string meaning;
 
+    [Tooltip("Optional sentence-hint clue. Use when the tutorial dialogue is instruction rather than a definition.")]
+    public string hintText;
+
     public List<SymbolValueReference> decomposition = new();
     public ContentMediaReferences media = new();
 }

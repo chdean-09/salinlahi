@@ -23,6 +23,7 @@ MonoBehaviour:
     latinSpelling: BATA
     displayLabel: BATA
     meaning: child
+    hintText: ang musmos na sumisibol, ang simula ng bawat alaala.
     decomposition:
     - symbol: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
       spokenValueId: value.ba

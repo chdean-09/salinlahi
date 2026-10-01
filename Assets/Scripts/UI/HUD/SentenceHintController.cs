@@ -5,10 +5,11 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// The sentence-hint affordance on the combat HUD: a small scroll chip below the
-/// pause button that opens a parchment scroll of the level's sentence hints
-/// (the blanked restoration context plus each focus word's meaning and
-/// descriptor line with every answer withheld, assembled by
+/// The sentence-hint affordance on the combat HUD: a small dark chip below the
+/// pause button — the same flat translucent square the pause button wears,
+/// carrying the almanac "?" glyph — that opens a parchment scroll of the
+/// level's sentence hints (the blanked restoration context plus each focus
+/// word's meaning and descriptor line with every answer withheld, assembled by
 /// <see cref="SentenceHintContent"/>). Levels 6-15 carry no authored objective
 /// subtext above the restoration rail, so this scroll is how the player asks for
 /// the sentence context levels 1-5 print by default.
@@ -21,9 +22,9 @@ using UnityEngine.UI;
 public sealed class SentenceHintController : MonoBehaviour
 {
     [Header("Hint Chip")]
-    [Tooltip("Chip size in canvas units. Square, roughly 2x the authored 80x80 "
+    [Tooltip("Chip size in canvas units. Square, matching the authored 80x80 "
              + "pause button it parks under.")]
-    [SerializeField] private Vector2 _chipSize = new Vector2(160f, 160f);
+    [SerializeField] private Vector2 _chipSize = new Vector2(80f, 80f);
 
     [Tooltip("Gap between the pause button's bottom edge and the chip's top edge.")]
     [SerializeField, Min(0f)] private float _chipGapBelowPause = 12f;
@@ -34,15 +35,25 @@ public sealed class SentenceHintController : MonoBehaviour
     [SerializeField] private Vector2 _chipFallbackPosition = new Vector2(-20f, -112f);
 
     [Header("Copy")]
-    [Tooltip("Fallback chip text, used only when the parchment or hint icon art "
-             + "fails to load.")]
-    [SerializeField] private string _chipLabel = "Sentences";
+    [Tooltip("Fallback chip glyph, used only when the hint icon art fails to "
+             + "load — the same single-mark convention the pause button's \"||\" label uses.")]
+    [SerializeField] private string _chipLabel = "?";
     [SerializeField] private string _panelTitle = "Sentence Hints";
     [SerializeField] private string _closeLabel = "Close";
 
-    // The almanac's ink "?" glyph — a Resources copy of Assets/Art/UI/Almanac/
-    // Questionmark.png so the runtime-built chip can resolve it.
+    // The almanac's "?" glyph — a Resources copy of Assets/Art/UI/Almanac/
+    // Questionmark.png so the runtime-built chip can resolve it. The glyph is
+    // white line art on transparency, so it stays legible on the dark chip.
     private const string IconResourcePath = "Art/UI/Almanac/Questionmark";
+
+    // The authored pause button's background: a flat translucent black square
+    // with no sprite (Gameplay.unity PauseButton Image). The chip wears the same
+    // fill so the two controls read as one HUD family.
+    private static readonly Color PauseButtonFill = new Color(0f, 0f, 0f, 0.45f);
+
+    // Icon inset in canvas units: leaves the "?" breathing room inside the
+    // square, the same visual margin the pause button's "||" label keeps.
+    private const float IconPadding = 20f;
 
     private List<SentenceHintContent.Entry> _entries = new List<SentenceHintContent.Entry>();
     private string _bodyText = string.Empty;
@@ -50,6 +61,7 @@ public sealed class SentenceHintController : MonoBehaviour
     private GameObject _chipRoot;
     private GameObject _overlayRoot;
     private TextMeshProUGUI _bodyLabel;
+    private ScrollRect _hintScroll;
     private bool _pauseHeld;
 
     // Same suppression funnel the restoration rail polls: intro modals raise no
@@ -68,7 +80,10 @@ public sealed class SentenceHintController : MonoBehaviour
         _entries = SentenceHintContent.Build(level);
         _bodyText = ComposeBody(_entries);
         if (_bodyLabel != null)
+        {
             _bodyLabel.text = _bodyText;
+            ResetScrollPosition();
+        }
         if (_entries.Count == 0)
             Close();
     }
@@ -85,10 +100,13 @@ public sealed class SentenceHintController : MonoBehaviour
         if (ChallengeRuntimeState.IsActive || IsAnyCutscenePlaying() || IsAnyIntroModalPresenting())
             return;
 
-        game.EnterDialoguePause();
-        _pauseHeld = true;
+        // Finish building the dismissal controls before taking the pause. A UI
+        // setup failure must not strand gameplay in a pause owned by this panel.
         EnsureOverlay();
         _overlayRoot.SetActive(true);
+        ResetScrollPosition();
+        game.EnterDialoguePause();
+        _pauseHeld = true;
         IsPresenting = true;
     }
 
@@ -251,15 +269,18 @@ public sealed class SentenceHintController : MonoBehaviour
         chipRect.sizeDelta = _chipSize;
         chipRect.anchoredPosition = ChipPosition(parent);
 
+        // No scroll skin: just the pause button's flat translucent square, so
+        // the chip reads as the pause button's sibling instead of a miniature
+        // parchment that looked off against the flat HUD.
         Image background = _chipRoot.GetComponent<Image>();
-        background.color = ScrollPanelArt.FlatPanelColor;
-        bool onParchment = ScrollPanelArt.ApplyTop(background);
+        background.color = PauseButtonFill;
 
-        // The almanac "?" reads as the hint affordance in ink on the parchment;
-        // it only rides the scroll skin — on the dark flat fallback the glyph
-        // would be illegible, so that path keeps the text label.
+        Button chipButton = _chipRoot.GetComponent<Button>();
+        chipButton.transition = Selectable.Transition.ColorTint;
+        chipButton.targetGraphic = background;
+
         Sprite icon = LoadIconSprite();
-        if (onParchment && icon != null)
+        if (icon != null)
         {
             GameObject iconObject = new GameObject(
                 "[Runtime] SentenceHintChipIcon", typeof(RectTransform));
@@ -268,30 +289,33 @@ public sealed class SentenceHintController : MonoBehaviour
             iconImage.sprite = icon;
             iconImage.preserveAspect = true;
             iconImage.raycastTarget = false;
-            ScrollPanelArt.SetAnchors(iconImage.rectTransform, ScrollPanelArt.TopSafeArea);
+            RectTransform iconRect = iconImage.rectTransform;
+            iconRect.anchorMin = Vector2.zero;
+            iconRect.anchorMax = Vector2.one;
+            iconRect.offsetMin = new Vector2(IconPadding, IconPadding);
+            iconRect.offsetMax = new Vector2(-IconPadding, -IconPadding);
         }
         else
         {
+            // Missing art fallback: a white "?" label, the same convention the
+            // pause button's white "||" text uses.
             GameObject labelObject = new GameObject(
                 "[Runtime] SentenceHintChipLabel", typeof(RectTransform));
             labelObject.transform.SetParent(_chipRoot.transform, false);
             TextMeshProUGUI label = labelObject.AddComponent<TextMeshProUGUI>();
             label.text = _chipLabel;
-            label.fontSize = UITextScale.Caption;
+            label.fontSize = UITextScale.Body;
+            label.color = Color.white;
             label.alignment = TextAlignmentOptions.Center;
             label.raycastTarget = false;
             TutorialFontProvider.ApplyTo(label);
             RectTransform labelRect = label.rectTransform;
             labelRect.anchorMin = Vector2.zero;
             labelRect.anchorMax = Vector2.one;
-            labelRect.offsetMin = new Vector2(12f, 0f);
-            labelRect.offsetMax = new Vector2(-12f, -6f);
-
-            if (onParchment)
-                ScrollPanelArt.Inkify(label);
+            labelRect.offsetMin = labelRect.offsetMax = Vector2.zero;
         }
 
-        _chipRoot.GetComponent<Button>().onClick.AddListener(Open);
+        chipButton.onClick.AddListener(Open);
     }
 
     /// <summary>
@@ -381,6 +405,11 @@ public sealed class SentenceHintController : MonoBehaviour
             scaler.matchWidthOrHeight = 0.5f;
         }
 
+        // A reusable visual canvas may have no input raycaster. Without one the
+        // scroll renders but neither dismissal control can release its pause.
+        if (canvas.GetComponent<GraphicRaycaster>() == null)
+            canvas.gameObject.AddComponent<GraphicRaycaster>();
+
         _overlayRoot = ScrollPanelArt.CreateDimOverlay(
             canvas.transform, "[Runtime] SentenceHintOverlay");
 
@@ -398,6 +427,7 @@ public sealed class SentenceHintController : MonoBehaviour
         dismissImage.color = new Color(0f, 0f, 0f, 0f);
         dismissImage.raycastTarget = true;
         Button dismiss = dismissObject.AddComponent<Button>();
+        dismiss.targetGraphic = dismissImage;
         dismiss.transition = Selectable.Transition.None;
         dismiss.onClick.AddListener(Close);
 
@@ -411,23 +441,51 @@ public sealed class SentenceHintController : MonoBehaviour
         title.text = _panelTitle;
         title.raycastTarget = false;
         TutorialFontProvider.ApplyTo(title);
-        ScrollPanelArt.PlaceText(title, Rect.MinMaxRect(0.10f, 0.76f, 0.90f, 0.90f), UITextScale.AutoSizeFloor, UITextScale.Title);
+        ScrollPanelArt.PlaceText(title, Rect.MinMaxRect(0.17f, 0.70f, 0.83f, 0.80f), UITextScale.Body, UITextScale.Title);
+
+        GameObject viewportObject = new GameObject(
+            "[Runtime] SentenceHintViewport", typeof(RectTransform), typeof(Image),
+            typeof(RectMask2D), typeof(ScrollRect));
+        viewportObject.transform.SetParent(panelRect, false);
+        RectTransform viewport = viewportObject.GetComponent<RectTransform>();
+        ScrollPanelArt.SetAnchors(viewport, Rect.MinMaxRect(0.17f, 0.29f, 0.83f, 0.67f));
+        viewportObject.GetComponent<Image>().color = Color.clear;
+        _hintScroll = viewportObject.GetComponent<ScrollRect>();
+        _hintScroll.viewport = viewport;
+        _hintScroll.horizontal = false;
+        _hintScroll.vertical = true;
+        _hintScroll.movementType = ScrollRect.MovementType.Clamped;
 
         GameObject bodyObject = new GameObject("[Runtime] SentenceHintBody", typeof(RectTransform));
-        bodyObject.transform.SetParent(panelRect, false);
+        bodyObject.transform.SetParent(viewport, false);
         _bodyLabel = bodyObject.AddComponent<TextMeshProUGUI>();
         _bodyLabel.text = _bodyText;
         _bodyLabel.raycastTarget = false;
         TutorialFontProvider.ApplyTo(_bodyLabel);
-        // Secondary floor, not AutoSizeFloor: the scroll is trimmed to context +
-        // descriptor lines precisely so the body can hold reading size.
-        ScrollPanelArt.PlaceText(_bodyLabel, Rect.MinMaxRect(0.12f, 0.26f, 0.88f, 0.72f), UITextScale.Secondary, UITextScale.Body);
+        // Both clues share one reading area. Longer copy grows vertically instead
+        // of shrinking or escaping the parchment and covering Close.
+        _bodyLabel.alignment = TextAlignmentOptions.TopLeft;
+        _bodyLabel.enableAutoSizing = false;
+        _bodyLabel.fontSize = UITextScale.Body;
+        _bodyLabel.lineSpacing = 8f;
+        _bodyLabel.textWrappingMode = TextWrappingModes.Normal;
+        _bodyLabel.overflowMode = TextOverflowModes.Overflow;
+        RectTransform bodyRect = _bodyLabel.rectTransform;
+        bodyRect.anchorMin = new Vector2(0f, 1f);
+        bodyRect.anchorMax = Vector2.one;
+        bodyRect.pivot = new Vector2(0.5f, 1f);
+        bodyRect.sizeDelta = Vector2.zero;
+        bodyRect.anchoredPosition = Vector2.zero;
+        ContentSizeFitter fitter = bodyObject.AddComponent<ContentSizeFitter>();
+        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        _hintScroll.content = bodyRect;
 
         GameObject closeObject = new GameObject(
             "[Runtime] SentenceHintClose", typeof(RectTransform), typeof(Image));
         closeObject.transform.SetParent(panelRect, false);
         closeObject.GetComponent<Image>().color = new Color(0.85f, 0.72f, 0.35f, 1f);
         Button close = closeObject.AddComponent<Button>();
+        close.targetGraphic = closeObject.GetComponent<Image>();
         close.onClick.AddListener(Close);
 
         GameObject closeLabelObject = new GameObject("[Runtime] SentenceHintCloseLabel", typeof(RectTransform));
@@ -452,6 +510,15 @@ public sealed class SentenceHintController : MonoBehaviour
         }
 
         _overlayRoot.SetActive(false);
+    }
+
+    private void ResetScrollPosition()
+    {
+        if (_hintScroll == null)
+            return;
+        LayoutRebuilder.ForceRebuildLayoutImmediate(_hintScroll.content);
+        _hintScroll.StopMovement();
+        _hintScroll.verticalNormalizedPosition = 1f;
     }
 
     /// <summary>Composes the scroll body: bold meaning headings over their sentences.</summary>

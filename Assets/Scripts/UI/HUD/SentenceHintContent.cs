@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 
 /// <summary>
 /// Resolves the sentence hints a level offers during defense: the blanked
-/// restoration context, then each focus word's meaning and its descriptor line.
+/// restoration context, then one clue under each focus word's meaning.
 /// A hint points the player at the answer's context — it never names the word —
 /// so spelling recipes are stripped and every focus-word mention is blanked
 /// before display. Instruction lines and challenge prompts are excluded on
@@ -19,8 +19,7 @@ public static class SentenceHintContent
     /// <summary>One block in the hint scroll: an optional meaning heading plus its sentences.</summary>
     public sealed class Entry
     {
-        /// <summary>Plain-language meaning hint (focus.meaning). Empty for the
-        /// unlabeled restoration-context block.</summary>
+        /// <summary>Plain-language meaning hint, or the sentence-context heading.</summary>
         public string Label = string.Empty;
         public readonly List<string> Lines = new List<string>();
     }
@@ -42,8 +41,8 @@ public static class SentenceHintContent
 
     /// <summary>
     /// Builds hint entries for a level. First the restoration text with every
-    /// target blanked, then per focus word: its meaning as the heading over its
-    /// descriptor line — the dialogue's first surviving line after cleaning.
+    /// target blanked, then one clue per focus word: explicit hint, matching
+    /// word-objective clue, or the dialogue's first surviving descriptor.
     /// Later dialogue lines are drawing instructions ("Bakasin mo…"), and
     /// challenge prompts duplicate the board's working text, so neither is
     /// shown. Returns an empty list when the level has nothing to show, which
@@ -58,7 +57,11 @@ public static class SentenceHintContent
         Regex answers = BuildAnswerPattern(level.focusWords);
         var seen = new HashSet<string>();
 
-        AddObjectiveContext(entries, level.restorationObjective, answers, seen);
+        bool wordMode = level.restorationObjective != null
+            && (level.restorationObjective.displayMode == RestorationDisplayMode.GuidedWords
+                || level.restorationObjective.displayMode == RestorationDisplayMode.ClueOnlyWords);
+        if (!wordMode)
+            AddObjectiveContext(entries, level.restorationObjective, answers, seen);
 
         if (level.focusWords != null)
         {
@@ -73,8 +76,24 @@ public static class SentenceHintContent
                     // The meaning hints at the word without naming it; the word
                     // itself (displayLabel/latinSpelling) is the answer and never
                     // heads a hint block.
-                    Label = focus.meaning ?? string.Empty,
+                    Label = CleanHintLine(focus.meaning, answers),
                 };
+
+                AddLine(entry, focus.hintText, seen, answers);
+                if (entry.Lines.Count == 0 && wordMode && level.restorationObjective.units != null)
+                {
+                    foreach (RestorationObjectiveUnit unit in level.restorationObjective.units)
+                    {
+                        if (unit != null && !string.IsNullOrWhiteSpace(unit.displayLabel)
+                            && (string.Equals(unit.displayLabel, focus.latinSpelling, StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(unit.displayLabel, focus.displayLabel, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            AddLine(entry, unit.clue, seen, answers);
+                            if (entry.Lines.Count > 0)
+                                break;
+                        }
+                    }
+                }
 
                 DialogueSO dialogue = focus.media?.dialogue;
                 if (dialogue?.lines != null)
@@ -90,10 +109,14 @@ public static class SentenceHintContent
             }
         }
 
+        // Objective-only content still offers a hint when no word definitions exist.
+        if (entries.Count == 0 && wordMode)
+            AddObjectiveContext(entries, level.restorationObjective, answers, seen);
+
         return entries;
     }
 
-    /// <summary>Adds the leading unlabeled block: the level's restoration text
+    /// <summary>Adds a labeled context block: the level's restoration text
     /// with every target blanked. Word-mode objectives keep their clue beside the
     /// blanks ("__ __ — ilaw ng tahanan"); context-mode units concatenate into the
     /// sentence skeleton. Levels 6-15 author no objective units, so this block is
@@ -110,7 +133,7 @@ public static class SentenceHintContent
         bool wordMode = objective.displayMode == RestorationDisplayMode.GuidedWords
             || objective.displayMode == RestorationDisplayMode.ClueOnlyWords;
 
-        var context = new Entry();
+        var context = new Entry { Label = "Sentence context" };
         var continuous = new StringBuilder();
         for (int i = 0; i < objective.units.Count; i++)
         {
@@ -251,6 +274,10 @@ public static class SentenceHintContent
             cleaned = answers.Replace(cleaned, Blank);
 
         cleaned = cleaned.Trim().Replace('<', '‹').Replace('>', '›');
+
+        // The meaning heading identifies the clue. A blanked word followed by a
+        // dash adds noise and makes otherwise identical objective clues look different.
+        cleaned = Regex.Replace(cleaned, @"^_+\s*[—-]\s*", string.Empty);
 
         // A line that is only blanks and punctuation hints at nothing.
         string remainder = cleaned.Replace(Blank, string.Empty)

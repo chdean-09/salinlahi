@@ -210,6 +210,10 @@ public class ChallengeFlowController : MonoBehaviour
         while (!IsFinished)
             yield return null;
 
+        // Give the player time to see the filled sentence and success feedback.
+        if (Session.State == ChallengeSessionState.Completed)
+            yield return new WaitForSecondsRealtime(0.85f);
+
         LastPlayResult = Session.State == ChallengeSessionState.Completed
             ? ChallengePlayResult.Completed
             : Session.State == ChallengeSessionState.Exited
