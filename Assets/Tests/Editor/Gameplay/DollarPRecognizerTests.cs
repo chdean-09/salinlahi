@@ -140,6 +140,43 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 "A thin horizontal gesture should not match a square-aspect template even when stroke count agrees.");
         }
 
+        // A character's shape-best variant is not necessarily the one drawn with the player's stroke
+        // count. Disambiguation used to tax only the shape-best variant, so a correct two-stroke
+        // drawing lost to a slightly worse two-stroke competitor whenever the character's one-stroke
+        // variant happened to score first on shape. That is how real RA draws (three strokes, while
+        // every shipped RA template had two) and MA draws (narrower than their templates) lost to
+        // KA and PA. Every variant of a top-K character must get to compete on its own penalties.
+        [Test]
+        public void Recognize_DisambiguatesWithTheBestVariant_NotOnlyTheShapeBestVariant()
+        {
+            var recognizer = new DollarPRecognizer(32);
+            var templates = new Dictionary<string, List<List<List<Vector2>>>>
+            {
+                // Two variants with an identical point cloud. The one-stroke variant is listed first,
+                // so it wins the shape tie and becomes the shape-best variant.
+                ["SPLIT"] = new List<List<List<Vector2>>>
+                {
+                    CreateZigzag(0.1f, split: false),
+                    CreateZigzag(0.1f, split: true)
+                },
+                // A slightly different shape, drawn in two strokes: close enough to force Stage 3.
+                ["OTHER"] = new List<List<List<Vector2>>>
+                {
+                    CreateZigzag(0.12f, split: true)
+                }
+            };
+
+            recognizer.SetTemplateStrokeVariants(templates);
+
+            RecognitionResult result = recognizer.Recognize(CreateZigzag(0.1f, split: true));
+
+            Assert.AreEqual("SPLIT", result.characterID,
+                "A two-stroke drawing that exactly matches SPLIT's two-stroke variant must not lose to OTHER "
+                + $"because SPLIT's one-stroke variant was taxed instead (got {result.characterID} at {result.score:F3}).");
+            Assert.AreEqual(2, result.templateVariantIndex,
+                "The reported variant should be the one that won disambiguation.");
+        }
+
         // SALIN-217 (ruling Q2 / OQ-6): the RA draws expect RA again. RA_template_01..05 no longer
         // load under "DA", so an RA-shaped stroke resolves to the symbol.ra identity that now sits
         // in the campaign catalog.
@@ -234,6 +271,28 @@ namespace Salinlahi.Tests.Editor.Gameplay
             }
 
             return scaled;
+        }
+
+        // A flat W across x 0..1 with peaks of the given height; split puts a pen lift at the middle.
+        private static List<List<Vector2>> CreateZigzag(float amplitude, bool split)
+        {
+            var points = new List<Vector2>
+            {
+                new Vector2(0f, 0f),
+                new Vector2(0.25f, amplitude),
+                new Vector2(0.5f, 0f),
+                new Vector2(0.75f, amplitude),
+                new Vector2(1f, 0f)
+            };
+
+            if (!split)
+                return new List<List<Vector2>> { points };
+
+            return new List<List<Vector2>>
+            {
+                points.GetRange(0, 3),
+                points.GetRange(2, 3)
+            };
         }
 
         private static List<Vector2> CreateStroke(float x0, float y0, float x1, float y1)
