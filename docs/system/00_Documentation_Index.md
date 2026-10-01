@@ -49,8 +49,9 @@ This index is the single entry point for all Salinlahi system documentation. Eve
 5. Dated audits, plans, handoffs, and screenshots are historical evidence unless the current status
    document names a fresh test run. Static asset checks do not substitute for Unity compilation,
    Test Runner execution, or terminal gameplay.
-6. The current implementation contract records Level 10 as a non-boss mixed-wave level and Level
-   15 as the sole authored campaign boss. The live Level 6/7 challenge mode map is intentionally
+6. The current implementation contract records Levels 5, 10, and 15 as non-boss mixed-wave
+   paragraph-restoration levels. Levels 10 and 15 use cumulative enemy rosters from Eras 1–2
+   and Eras 1–3 respectively, following the 2026-10-01 product instruction. The live Level 6/7 challenge mode map is intentionally
    documented in the current status file until the product ruling is updated; older documents that
    describe the pre-revision boss topology remain historical and are not silently rewritten.
 
