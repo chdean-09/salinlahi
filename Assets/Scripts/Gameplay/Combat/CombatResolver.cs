@@ -199,6 +199,9 @@ public class CombatResolver : MonoBehaviour
         Enemy closestTarget = FindClosestEligibleMatch(matches);
         if (closestTarget == null)
         {
+            if (TryReportBlockedCarrier(characterID))
+                return;
+
             EventBus.RaiseDrawingMissed();
 
             // Same board-describing prompt the clue path gets. A miss is a statement about what is on
@@ -213,6 +216,36 @@ public class CombatResolver : MonoBehaviour
         }
 
         ResolveMatchedEnemy(closestTarget, characterID);
+    }
+
+    private bool TryReportBlockedCarrier(string characterID)
+    {
+        ActiveEnemyTracker tracker = ActiveEnemyTracker.Instance;
+        if (tracker == null)
+            return false;
+
+        List<Enemy> matches = tracker.FindAllWithCharacter(characterID);
+        _clueCandidateBuffer.Clear();
+        for (int i = 0; i < matches.Count; i++)
+        {
+            Enemy candidate = matches[i];
+            bool blocked = candidate != null && candidate.gameObject.activeInHierarchy && !candidate.IsDying
+                && candidate.Data != null && !candidate.IsBoss && candidate.IsResolutionBlocked
+                && (!candidate.Data.isPhaser || candidate.IsPhaserVisible);
+            _clueCandidateBuffer.Add(new ClueCandidate(
+                characterID,
+                candidate != null ? candidate.transform.position.y : float.MaxValue,
+                candidate != null ? candidate.SpawnSequence : long.MaxValue,
+                blocked));
+        }
+
+        int index = ActiveClueSelector.SelectIndex(_clueCandidateBuffer);
+        if (index < 0)
+            return false;
+
+        PublishTextRelation(DrawTextRelation.BlockedCarrier, characterID, -1, -1, null, matches[index]);
+        DebugLogger.Log($"CombatResolver: {characterID} is carried by a blocked enemy -- no damage");
+        return true;
     }
 
     /// <summary>
@@ -273,6 +306,9 @@ public class CombatResolver : MonoBehaviour
 
         if (!matchesClue)
         {
+            if (TryReportBlockedCarrier(characterID))
+                return;
+
             EventBus.RaiseDrawingMissed();
             PublishTextRelation(DrawTextRelation.NoCarrier, characterID, -1, -1, null);
 
@@ -429,16 +465,18 @@ public class CombatResolver : MonoBehaviour
         string characterID,
         int slotIndex,
         int cursorIndex,
-        Enemy resolvedTarget)
+        Enemy resolvedTarget,
+        Enemy blockedTarget = null)
     {
         DrawFeedbackSignals.RaiseTextRelationResolved(new DrawFeedbackReport
         {
             Relation = relation,
             DrawnCharacterId = characterID,
-            DrawnCharacter = ResolveDrawnCharacter(characterID, resolvedTarget),
+            DrawnCharacter = ResolveDrawnCharacter(characterID, resolvedTarget != null ? resolvedTarget : blockedTarget),
             SlotIndex = slotIndex,
             CursorSlotIndex = cursorIndex,
             ResolvedTarget = resolvedTarget,
+            BlockedTarget = blockedTarget,
         });
     }
 

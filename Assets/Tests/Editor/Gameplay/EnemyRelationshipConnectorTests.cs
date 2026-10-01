@@ -29,6 +29,12 @@ namespace Salinlahi.Tests.Editor.Gameplay
             ClearSingletonInstance<GameManager>();
             for (int i = _objectsToDestroy.Count - 1; i >= 0; i--)
             {
+                if (_objectsToDestroy[i] is GameObject go)
+                {
+                    var objective = go.GetComponent<RestorationObjectiveController>();
+                    if (objective != null)
+                        InvokePrivateVoid(objective, "OnDisable");
+                }
                 if (_objectsToDestroy[i] != null)
                     Object.DestroyImmediate(_objectsToDestroy[i]);
             }
@@ -38,6 +44,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
         [Test]
         public void GaposConnector_FollowsTheTwoBoundCandidatesAndHonorsIntroductionSuppression()
         {
+            ConfigureObjective("HA");
             Sprite[] art = CreateTestSprites();
             EnemyDataSO gaposData = CreateData("gapos", learningAbility: EnemyLearningAbility.BoundPair,
                 relationshipVisual: CreateVisual(art));
@@ -93,6 +100,107 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.IsNull(connector.SecondTarget);
             Assert.IsFalse(firstCandidate.IsResolutionBlocked);
             Assert.IsFalse(secondCandidate.IsResolutionBlocked);
+        }
+
+        [Test]
+        public void Gapos_DoesNotBindAnotherGapos_AndKeepsAResolvableCounter()
+        {
+            ConfigureObjective("HA");
+            Enemy first = CreateEnemy(CreateData("gapos", EnemyLearningAbility.BoundPair), "GA", 0f, 0f);
+            Enemy second = CreateEnemy(CreateData("gapos", EnemyLearningAbility.BoundPair), "GA", 1f, 0f);
+            Enemy target = CreateEnemy(CreateData("target"), "BA", 2f, 0f);
+
+            first.GetComponent<EnemyLearningAbilityController>().Tick(0f);
+            second.GetComponent<EnemyLearningAbilityController>().Tick(0f);
+
+            Assert.IsFalse(first.IsResolutionBlocked);
+            Assert.IsFalse(second.IsResolutionBlocked);
+            Assert.IsTrue(ActiveClueDirector.IsClueTargetable(first));
+            Assert.IsTrue(ActiveClueDirector.IsClueTargetable(second));
+            Assert.AreEqual(2, target.ResolutionBlockCount);
+
+            first.ResetForPool();
+            Assert.AreEqual(1, target.ResolutionBlockCount);
+            second.TakeDamage(1);
+            Assert.IsFalse(target.IsResolutionBlocked, "defeating the remaining binder releases the target");
+        }
+
+        [Test]
+        public void Gapos_WithNoObjective_DoesNotBlockTargets()
+        {
+            Enemy gapos = CreateEnemy(CreateData("gapos", EnemyLearningAbility.BoundPair), "GA", 0f, 0f);
+            Enemy target = CreateEnemy(CreateData("target"), "BA", 1f, 0f);
+            gapos.GetComponent<EnemyLearningAbilityController>().Tick(0f);
+            Assert.IsFalse(target.IsResolutionBlocked);
+        }
+
+        [Test]
+        public void Gapos_ReleasesTargets_WhenObjectiveCompletesOrIsRemoved()
+        {
+            RestorationObjectiveController objective = ConfigureObjective("HA");
+            Enemy gapos = CreateEnemy(CreateData("gapos", EnemyLearningAbility.BoundPair), "GA", 0f, 0f);
+            Enemy target = CreateEnemy(CreateData("target"), "BA", 1f, 0f);
+            EnemyLearningAbilityController ability = gapos.GetComponent<EnemyLearningAbilityController>();
+            ability.Tick(0f);
+            Assert.IsTrue(target.IsResolutionBlocked);
+
+            objective.TryRestore("ha");
+            Assert.IsTrue(objective.IsComplete);
+            ability.Tick(0f);
+            Assert.IsFalse(target.IsResolutionBlocked);
+
+            objective.ResetAttempt();
+            ability.Tick(0f);
+            Assert.IsTrue(target.IsResolutionBlocked);
+            objective.Configure(null);
+            ability.Tick(0f);
+            Assert.IsFalse(target.IsResolutionBlocked);
+        }
+
+        [Test]
+        public void Gapos_FollowsVisibleFallbackProgress_InsteadOfTheStaleObjectiveCursor()
+        {
+            RestorationObjectiveController objective = ConfigureObjective("HA");
+            var da = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            da.stableId = "da";
+            _objectsToDestroy.Add(da);
+            objective.Level.focusWords[0].decomposition.Add(new SymbolValueReference { symbol = da });
+            objective.Configure(objective.Level);
+            var go = new GameObject("Gapos_Fallback_Presenter");
+            _objectsToDestroy.Add(go);
+            var presenter = go.AddComponent<ActiveCluePresenter>();
+            presenter.SetRestorationObjectiveController(objective);
+            presenter.RestorationState.Configure(objective.Level.focusWords);
+            Enemy gapos = CreateEnemy(CreateData("gapos", EnemyLearningAbility.BoundPair), "GA", 0f, 0f);
+            Enemy first = CreateEnemy(CreateData("first"), "HA", 1f, 0f);
+            Enemy second = CreateEnemy(CreateData("second"), "DA", 2f, 0f);
+            var ability = gapos.GetComponent<EnemyLearningAbilityController>();
+            ability.Tick(0f);
+            Assert.IsFalse(first.IsResolutionBlocked);
+            Assert.IsTrue(second.IsResolutionBlocked);
+
+            presenter.RestorationState.Apply("ha");
+            Assert.AreEqual("ha", objective.State.NextTargetSymbolStableId, "the fallback objective cursor did not advance");
+            ability.Tick(0f);
+            Assert.IsTrue(first.IsResolutionBlocked);
+            Assert.IsFalse(second.IsResolutionBlocked, "the next visible symbol must now be open");
+
+            presenter.RestorationState.Apply("da");
+            ability.Tick(0f);
+            Assert.IsFalse(first.IsResolutionBlocked);
+            Assert.IsFalse(second.IsResolutionBlocked);
+        }
+
+        [Test]
+        public void Gapos_LeavesTheNextRequiredSymbolOpen()
+        {
+            ConfigureObjective("BA");
+            Enemy gapos = CreateEnemy(CreateData("gapos", EnemyLearningAbility.BoundPair), "GA", 0f, 0f);
+            Enemy next = CreateEnemy(CreateData("next"), "BA", 1f, 0f);
+            Enemy other = CreateEnemy(CreateData("other"), "DA", 2f, 0f);
+            gapos.GetComponent<EnemyLearningAbilityController>().Tick(0f);
+            Assert.IsFalse(next.IsResolutionBlocked);
+            Assert.IsTrue(other.IsResolutionBlocked);
         }
 
         [Test]
@@ -161,6 +269,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
             if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
                 Assert.Ignore("Camera rendering needs a graphics device; the other connector and asset checks remain headless-safe.");
 
+            ConfigureObjective("HA");
             EnemyDataSO gaposAsset = AssetDatabase.LoadAssetAtPath<EnemyDataSO>(
                 "Assets/ScriptableObjects/Enemies/EnemyData_Gapos.asset");
             EnemyDataSO kadenaAsset = AssetDatabase.LoadAssetAtPath<EnemyDataSO>(
@@ -383,6 +492,34 @@ namespace Salinlahi.Tests.Editor.Gameplay
             InvokePrivateVoid(enemy, "Awake");
             Assert.IsTrue(enemy.Initialize(data), "test enemy should initialize with authored data");
             return enemy;
+        }
+
+        private RestorationObjectiveController ConfigureObjective(string characterId)
+        {
+            var character = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            character.characterID = characterId;
+            character.stableId = characterId.ToLowerInvariant();
+            _objectsToDestroy.Add(character);
+            var level = ScriptableObject.CreateInstance<LevelConfigSO>();
+            _objectsToDestroy.Add(level);
+            level.focusWords = new List<FocusWordDefinition>
+            {
+                new FocusWordDefinition
+                {
+                    stableId = "word.test",
+                    latinSpelling = characterId,
+                    decomposition = new List<SymbolValueReference>
+                    {
+                        new SymbolValueReference { symbol = character }
+                    }
+                }
+            };
+            var go = new GameObject("Gapos_Test_Objective");
+            _objectsToDestroy.Add(go);
+            var objective = go.AddComponent<RestorationObjectiveController>();
+            InvokePrivateVoid(objective, "OnEnable");
+            objective.Configure(level);
+            return objective;
         }
 
         private static void SetSingletonInstance<T>(T instance) where T : MonoBehaviour

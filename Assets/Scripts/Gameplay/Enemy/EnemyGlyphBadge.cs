@@ -295,6 +295,14 @@ public class EnemyGlyphBadge : MonoBehaviour
         _failFlashRoutine = StartCoroutine(FailFlashRoutine());
     }
 
+    /// <summary>Highlights an ability block without marking the drawing as incorrect.</summary>
+    public void PlayBlockedFlash()
+    {
+        if (!isActiveAndEnabled || _config == null) return;
+        if (_failFlashRoutine != null) StopCoroutine(_failFlashRoutine);
+        _failFlashRoutine = StartCoroutine(FailFlashRoutine(Color.yellow));
+    }
+
     public void Show()
     {
         if (_renderer == null) return;
@@ -450,9 +458,9 @@ public class EnemyGlyphBadge : MonoBehaviour
         _decoyRejectRoutine = null;
     }
 
-    private IEnumerator FailFlashRoutine()
+    private IEnumerator FailFlashRoutine(Color? tint = null)
     {
-        SetFlashTint(_config.failFlashColor);
+        SetFlashTint(tint ?? _config.failFlashColor);
         yield return new WaitForSeconds(_config.failFlashDuration);
         SetFlashTint(null);
         _failFlashRoutine = null;

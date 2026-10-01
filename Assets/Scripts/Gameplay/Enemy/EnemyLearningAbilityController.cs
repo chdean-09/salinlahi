@@ -5,7 +5,7 @@ using UnityEngine;
 /// <summary>
 /// Small per-enemy adapter for retention-oriented abilities that are not already represented by a
 /// signature component. It deliberately owns no level flow or objective state: it only reads the
-/// active objective cursor, applies its own resolution blocks, and lets the existing recognizer and
+/// current restoration cursor, applies its own resolution blocks, and lets the existing recognizer and
 /// combat resolver do the actual work.
 /// </summary>
 [RequireComponent(typeof(Enemy))]
@@ -15,6 +15,7 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
 
     private Enemy _enemy;
     private ActiveClueDirector _director;
+    private ActiveCluePresenter _presenter;
     private readonly List<Enemy> _boundPair = new List<Enemy>(2);
     private readonly List<Enemy> _visualPair = new List<Enemy>(2);
     private bool _suppressedForIntroductionSpawn;
@@ -81,13 +82,16 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
         else
             UnsubscribeFromDirector();
 
-        if (_suppressedForIntroductionSpawn || Ability != EnemyLearningAbility.BoundPair)
+        string next = !_suppressedForIntroductionSpawn && Ability == EnemyLearningAbility.BoundPair
+            ? ResolveNextTargetSymbol() : null;
+        if (_suppressedForIntroductionSpawn || Ability != EnemyLearningAbility.BoundPair
+            || string.IsNullOrEmpty(next))
         {
             ReleaseBoundPair();
             return;
         }
 
-        RebuildBoundPair();
+        RebuildBoundPair(next);
     }
 
     /// <summary>
@@ -105,6 +109,14 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
     {
         ReleaseBoundPair();
         _reviewIndex = 0;
+    }
+
+    /// <summary>Ends ability effects before a death animation keeps the shell on screen.</summary>
+    public void NotifyDefeated()
+    {
+        _suppressedForIntroductionSpawn = true;
+        ReleaseBoundPair();
+        UnsubscribeFromDirector();
     }
 
     /// <summary>Releases all targets before a pooled enemy shell is reused.</summary>
@@ -169,7 +181,24 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
         }
     }
 
-    private void RebuildBoundPair()
+    private string ResolveNextTargetSymbol()
+    {
+        RestorationObjectiveController objective = RestorationObjectiveController.Active;
+        if (objective == null)
+            return null;
+
+        if (objective.UsesLegacyFallback)
+        {
+            if (_presenter == null)
+                _presenter = FindFirstObjectByType<ActiveCluePresenter>();
+            if (_presenter != null)
+                return _presenter.RestorationState.NextTargetSymbolStableId;
+        }
+
+        return objective.State.NextTargetSymbolStableId;
+    }
+
+    private void RebuildBoundPair(string next)
     {
         ActiveEnemyTracker tracker = ActiveEnemyTracker.Instance;
         if (tracker == null)
@@ -207,7 +236,7 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
         for (int i = 0; i < candidates.Count; i++)
         {
             Enemy candidate = candidates[i];
-            if (IsContextuallyOpen(candidate))
+            if (IsContextuallyOpen(candidate, next))
             {
                 candidate.RemoveResolutionBlock(this);
                 _boundPair.Remove(candidate);
@@ -225,14 +254,15 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
         return candidate != null
             && candidate != _enemy
             && candidate.Data != null
+            // A binder must remain a route out of its own ability, including overlapping Gapos.
+            && candidate.Data.learningAbility != EnemyLearningAbility.BoundPair
             && candidate.gameObject.activeInHierarchy
             && !candidate.IsBoss
             && !candidate.IsDying;
     }
 
-    private static bool IsContextuallyOpen(Enemy candidate)
+    private static bool IsContextuallyOpen(Enemy candidate, string next)
     {
-        string next = RestorationObjectiveController.Active?.State.NextTargetSymbolStableId;
         return !string.IsNullOrEmpty(next)
             && candidate.Character != null
             && string.Equals(candidate.Character.stableId, next, StringComparison.Ordinal);

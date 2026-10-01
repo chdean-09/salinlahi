@@ -74,7 +74,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 // correct draw of its own symbol.
                 Assert.AreEqual(1, shielded.CurrentHealth,
                     "an enemy behind a live Bakod must not be damaged by drawing its symbol");
-                Assert.IsTrue(missed, "the draw finds no eligible target, so it reads as a miss");
+                Assert.IsFalse(missed, "a matching protected carrier is blocked, not a wrong drawing");
             }
             finally
             {
@@ -82,6 +82,92 @@ namespace Salinlahi.Tests.Editor.Gameplay
             }
 
             void HandleMissed() => missed = true;
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void MatchingBlockedCarrier_ReportsProtectionWithoutMissOrDamage(bool activeCluePath)
+        {
+            BaybayinCharacterSO symbol = CreateCharacter("GA", "ga");
+            Enemy enemy = CreateEnemy(symbol, y: -1f);
+            enemy.AddResolutionBlock(this);
+            CombatResolver resolver = CreateResolver();
+            var presenterGo = new GameObject("BlockedFeedback_Test");
+            _objectsToDestroy.Add(presenterGo);
+            var presenter = presenterGo.AddComponent<DrawFeedbackPresenter>();
+            bool missed = false;
+            DrawFeedbackReport report = default;
+            int reports = 0;
+            void HandleMissed() => missed = true;
+            void HandleReport(DrawFeedbackReport value)
+            {
+                report = value;
+                reports++;
+                presenter.HandleTextRelationResolved(value);
+            }
+            EventBus.OnDrawingMissed += HandleMissed;
+            DrawFeedbackSignals.OnTextRelationResolved += HandleReport;
+            try
+            {
+                if (activeCluePath)
+                {
+                    var directorGo = new GameObject("BlockedClueDirector_Test");
+                    _objectsToDestroy.Add(directorGo);
+                    var director = directorGo.AddComponent<ActiveClueDirector>();
+                    InvokePrivate<object>(resolver, "ResolveActiveClueDraw", director, "GA");
+                }
+                else
+                    InvokePrivate<object>(resolver, "HandleCharacterRecognized", "GA");
+
+                Assert.AreEqual(1, enemy.CurrentHealth);
+                Assert.IsFalse(missed);
+                Assert.AreEqual(1, reports);
+                Assert.AreEqual(DrawTextRelation.BlockedCarrier, report.Relation);
+                Assert.AreSame(enemy, report.BlockedTarget);
+                Assert.AreSame(symbol, report.DrawnCharacter);
+                Assert.IsNull(report.ResolvedTarget, "a protected enemy was not resolved");
+                Assert.AreEqual("That symbol is blocked by an enemy ability.", presenter.LastMessage);
+                Assert.AreEqual(0, presenter.MissCueCount);
+            }
+            finally
+            {
+                EventBus.OnDrawingMissed -= HandleMissed;
+                DrawFeedbackSignals.OnTextRelationResolved -= HandleReport;
+            }
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void AbsentCharacter_StillReportsAnOrdinaryMiss(bool activeCluePath)
+        {
+            CreateEnemy(CreateCharacter("GA", "ga"), y: -1f).AddResolutionBlock(this);
+            CombatResolver resolver = CreateResolver();
+            bool missed = false;
+            DrawFeedbackReport report = default;
+            void HandleMissed() => missed = true;
+            void HandleReport(DrawFeedbackReport value) => report = value;
+            EventBus.OnDrawingMissed += HandleMissed;
+            DrawFeedbackSignals.OnTextRelationResolved += HandleReport;
+            try
+            {
+                if (activeCluePath)
+                {
+                    var directorGo = new GameObject("AbsentClueDirector_Test");
+                    _objectsToDestroy.Add(directorGo);
+                    var director = directorGo.AddComponent<ActiveClueDirector>();
+                    InvokePrivate<object>(resolver, "ResolveActiveClueDraw", director, "BA");
+                }
+                else
+                    InvokePrivate<object>(resolver, "HandleCharacterRecognized", "BA");
+                Assert.IsTrue(missed);
+                Assert.AreEqual(DrawTextRelation.NoCarrier, report.Relation);
+                Assert.IsNull(report.BlockedTarget);
+            }
+            finally
+            {
+                EventBus.OnDrawingMissed -= HandleMissed;
+                DrawFeedbackSignals.OnTextRelationResolved -= HandleReport;
+            }
         }
 
         [Test]

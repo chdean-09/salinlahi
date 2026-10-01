@@ -48,6 +48,9 @@ public static class DrawFeedbackVocabulary
     /// </remarks>
     public const string FalseCopyShattered = "That one was a copy — it fell, and the real one still walks.";
 
+    /// <summary>A recognized symbol has a carrier, but an ability prevents damage.</summary>
+    public const string BlockedCarrier = "That symbol is blocked by an enemy ability.";
+
     /// <summary>Wording for a drawing refused on accuracy. Names the shape, never the score.</summary>
     public const string SloppyRetry = "Draw it again — follow the shape.";
 
@@ -61,6 +64,8 @@ public static class DrawFeedbackVocabulary
     {
         switch (relation)
         {
+            case DrawTextRelation.BlockedCarrier:
+                return BlockedCarrier;
             case DrawTextRelation.LaterNeeded:
                 return LaterNeeded;
             case DrawTextRelation.AlreadyFilled:

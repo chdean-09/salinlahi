@@ -5181,6 +5181,28 @@ public sealed class ActiveClueRestorationState
 
     public int FocusWordCount => _words.Count;
 
+    /// <summary>The first unfinished symbol in the same order as the visible word rail.</summary>
+    public string NextTargetSymbolStableId
+    {
+        get
+        {
+            for (int wordIndex = 0; wordIndex < _words.Count; wordIndex++)
+            {
+                WordState state = _words[wordIndex];
+                if (state.Word?.decomposition == null)
+                    continue;
+                for (int slotIndex = 0; slotIndex < state.Word.decomposition.Count; slotIndex++)
+                {
+                    BaybayinCharacterSO symbol = state.Word.decomposition[slotIndex]?.symbol;
+                    if (symbol != null && !state.RestoredSlots[slotIndex]
+                        && !string.IsNullOrEmpty(symbol.stableId))
+                        return symbol.stableId;
+                }
+            }
+            return null;
+        }
+    }
+
     /// <summary>
     /// How many authored slots are restored, across every focus word. Counted rather than stored
     /// so it cannot drift from the slot flags themselves, and exposed because abilities gate on

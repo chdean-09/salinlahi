@@ -27,6 +27,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         public IEnumerator DefeatingGapos_HidesRootsAndReleasesBothBoundEnemies()
         {
             CreateTracker();
+            ConfigureObjective();
             Sprite[] art = CreateTestSprites();
             EnemyDataSO gaposData = CreateData("gapos", EnemyLearningAbility.BoundPair, false, art);
             EnemyDataSO firstData = CreateData("first", EnemyLearningAbility.None, false, null);
@@ -54,6 +55,29 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         [UnityTest]
+        public IEnumerator DefeatingGapos_ReleasesBindingsBeforeDeathAnimationFinishes()
+        {
+            CreateTracker();
+            ConfigureObjective();
+            Sprite[] art = CreateTestSprites();
+            EnemyDataSO data = CreateData("gapos", EnemyLearningAbility.BoundPair, false, art);
+            data.deathFrames = art;
+            data.deathAnimationFps = 1f;
+            Enemy gapos = CreateEnemy(data, "GA", 0f, 0f);
+            Enemy target = CreateEnemy(CreateData("target", EnemyLearningAbility.None, false, null), "BA", 1f, 0f);
+            var ability = gapos.GetComponent<EnemyLearningAbilityController>();
+            ability.Tick(0f);
+            Assert.IsTrue(target.IsResolutionBlocked);
+            gapos.Defeat();
+            Assert.IsTrue(gapos.IsDying);
+            Assert.IsTrue(gapos.gameObject.activeSelf);
+            Assert.IsFalse(target.IsResolutionBlocked);
+            ability.Tick(0f);
+            Assert.IsFalse(target.IsResolutionBlocked, "a dying binder must not reapply its block");
+            yield return null;
+        }
+
+        [UnityTest]
         public IEnumerator DefeatingKadena_HidesChainAndReleasesItsTarget()
         {
             CreateTracker();
@@ -77,6 +101,26 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Assert.IsFalse(connector.IsVisible);
             Assert.IsFalse(target.IsResolutionBlocked);
             yield return null;
+        }
+
+        private void ConfigureObjective()
+        {
+            var symbol = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            symbol.stableId = "ha";
+            _objectsToDestroy.Add(symbol);
+            var level = ScriptableObject.CreateInstance<LevelConfigSO>();
+            _objectsToDestroy.Add(level);
+            level.focusWords = new List<FocusWordDefinition>
+            {
+                new FocusWordDefinition
+                {
+                    stableId = "word.test",
+                    decomposition = new List<SymbolValueReference> { new SymbolValueReference { symbol = symbol } }
+                }
+            };
+            var go = new GameObject("Relationship_PlayMode_Objective");
+            _objectsToDestroy.Add(go);
+            go.AddComponent<RestorationObjectiveController>().Configure(level);
         }
 
         private ActiveEnemyTracker CreateTracker()

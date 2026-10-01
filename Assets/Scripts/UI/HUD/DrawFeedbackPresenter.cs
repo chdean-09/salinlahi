@@ -262,6 +262,10 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
                 StartCursorPulse(report.CursorSlotIndex);
                 break;
 
+            case DrawTextRelation.BlockedCarrier:
+                report.BlockedTarget?.GlyphBadge?.PlayBlockedFlash();
+                break;
+
             case DrawTextRelation.NoCarrier:
                 MissCueCount++;
                 PlayMissResponse(report.DrawnCharacter);

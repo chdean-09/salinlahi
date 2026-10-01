@@ -66,6 +66,9 @@ public enum DrawTextRelation
 
     /// <summary>No eligible on-screen enemy carried the syllable at all: a miss.</summary>
     NoCarrier,
+
+    /// <summary>A matching on-screen enemy exists, but an ability prevents damage.</summary>
+    BlockedCarrier,
 }
 
 /// <summary>One drawing's accuracy outcome, as handed to the feedback presenter.</summary>
@@ -103,6 +106,9 @@ public struct DrawFeedbackReport
 
     /// <summary>The enemy the draw killed. Null on a miss.</summary>
     public Enemy ResolvedTarget;
+
+    /// <summary>The matching carrier held by an ability. No damage or restoration was applied.</summary>
+    public Enemy BlockedTarget;
 }
 
 /// <summary>
