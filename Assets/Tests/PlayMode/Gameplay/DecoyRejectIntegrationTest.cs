@@ -58,7 +58,13 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
 
             Vector3 baseBadgePosition = badge.transform.localPosition;
             badge.TickDeception(2.52f);
-            Assert.IsFalse(badge.Renderer.flipX);
+            Assert.IsTrue(badge.Renderer.flipX,
+                "Salungat briefly mirrors the glyph without tinting or moving it.");
+            Assert.AreEqual(baseBadgePosition, badge.transform.localPosition,
+                "Salungat's glyph tell does not apply a positional glitch.");
+            badge.TickDeception(0.2f);
+            Assert.IsFalse(badge.Renderer.flipX,
+                "The glyph returns to its authored orientation after the deception window.");
             enemy.ApplyDecoyPenalty();
 
             yield return null;

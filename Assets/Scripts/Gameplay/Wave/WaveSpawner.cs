@@ -315,6 +315,7 @@ public class WaveSpawner : MonoBehaviour
             EnemyDataSO data = spawnOrder[i];
             BaybayinCharacterSO character;
             SpawnAssignment assignment = SpawnAssignment.None;
+            bool isFinalYaposAssignment = false;
 
             BaybayinCharacterSO guaranteedCharacter = GuaranteedCharacterForSpawn(wave, i);
             if (guaranteedCharacter != null)
@@ -331,9 +332,16 @@ public class WaveSpawner : MonoBehaviour
                 // contradicts the body beneath it. Needed slots additionally require a real
                 // carrier; a decoy-only match uses the real-carrier fallback instead.
                 assignment = AssignmentCoordinator.AssignNext(wave);
+                isFinalYaposAssignment = AssignmentCoordinator.IsFinalYaposAssignment(assignment);
                 EnemyDataSO assignedData = AssignmentCoordinator.ResolveEnemyData(assignment, wave);
                 if (assignment.Role == SpawnAssignmentRole.Needed && assignedData == null)
                 {
+                    yield break;
+                }
+                if (isFinalYaposAssignment
+                    && (assignedData == null || !string.Equals(assignedData.enemyID, "yapos-ng-dilim", StringComparison.Ordinal)))
+                {
+                    DebugLogger.LogError("WaveSpawner: Level 15's final YA slot must spawn Yapos ng Dilim.");
                     yield break;
                 }
                 data = assignedData ?? data;
@@ -347,6 +355,21 @@ public class WaveSpawner : MonoBehaviour
 
             // Keep the selected data and glyph together while capacity or a blocker rule delays
             // admission. The assignment is not requested again during this wait.
+            if (isFinalYaposAssignment)
+            {
+                WaveManager waveManager = FindFirstObjectByType<WaveManager>(FindObjectsInactive.Include);
+                if (waveManager == null)
+                {
+                    DebugLogger.LogError("WaveSpawner: cannot admit Level 15's final Yapos without WaveManager.");
+                    yield break;
+                }
+
+                // The YA slot is not merely the last required glyph: Yapos enters alone, after
+                // every earlier actor and generated spawn has cleared, then ends this spawn loop.
+                yield return waveManager.WaitForActiveEnemiesCleared();
+                if (!waveManager.CanContinueSpawning)
+                    yield break;
+            }
             yield return WaitForAuthoredSpawnOpportunity(data);
 
             Enemy enemy = SpawnEnemy(data);
@@ -361,6 +384,9 @@ public class WaveSpawner : MonoBehaviour
             // the player must read both rather than draw whatever is closest.
             if (assignment.StartsChoicePair)
                 yield return SpawnChoicePairDecoy(wave, assignment, onEnemySpawned);
+
+            if (isFinalYaposAssignment && enemy != null)
+                yield break;
 
             if (i < enemyCount - 1)
                 yield return new WaitForSeconds(interval);
