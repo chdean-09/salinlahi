@@ -55,11 +55,6 @@ public sealed class SentenceHintController : MonoBehaviour
     // square, the same visual margin the pause button's "||" label keeps.
     private const float IconPadding = 20f;
 
-    // VT323's lowercase glyphs occupy only part of the nominal font size.
-    // Use a larger reading size on this reference scroll; long clues scroll
-    // vertically instead of shrinking back to the general UI body floor.
-    private const float HintReadingSize = 64f;
-
     private List<SentenceHintContent.Entry> _entries = new List<SentenceHintContent.Entry>();
     private string _bodyText = string.Empty;
 
@@ -446,7 +441,7 @@ public sealed class SentenceHintController : MonoBehaviour
         title.text = _panelTitle;
         title.raycastTarget = false;
         TutorialFontProvider.ApplyTo(title);
-        ScrollPanelArt.PlaceText(title, Rect.MinMaxRect(0.17f, 0.70f, 0.83f, 0.80f), HintReadingSize, UITextScale.Display);
+        ScrollPanelArt.PlaceText(title, Rect.MinMaxRect(0.17f, 0.70f, 0.83f, 0.80f), UITextScale.Body, UITextScale.Title);
 
         GameObject viewportObject = new GameObject(
             "[Runtime] SentenceHintViewport", typeof(RectTransform), typeof(Image),
@@ -471,7 +466,7 @@ public sealed class SentenceHintController : MonoBehaviour
         // of shrinking or escaping the parchment and covering Close.
         _bodyLabel.alignment = TextAlignmentOptions.TopLeft;
         _bodyLabel.enableAutoSizing = false;
-        _bodyLabel.fontSize = HintReadingSize;
+        _bodyLabel.fontSize = UITextScale.Body;
         _bodyLabel.lineSpacing = 8f;
         _bodyLabel.textWrappingMode = TextWrappingModes.Normal;
         _bodyLabel.overflowMode = TextOverflowModes.Overflow;
@@ -505,10 +500,8 @@ public sealed class SentenceHintController : MonoBehaviour
         RectTransform closeRect = close.GetComponent<RectTransform>();
         closeRect.anchorMin = closeRect.anchorMax = new Vector2(0.5f, 0.18f);
         closeRect.pivot = new Vector2(0.5f, 0.5f);
-        closeRect.sizeDelta = new Vector2(320f, 104f);
+        closeRect.sizeDelta = new Vector2(280f, 88f);
         ScrollPanelArt.SizeButtonLabel(close);
-        closeLabel.enableAutoSizing = false;
-        closeLabel.fontSize = HintReadingSize;
 
         if (onParchment)
         {

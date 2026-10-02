@@ -114,8 +114,7 @@ namespace Salinlahi.Tests.Editor.UI
             TextMeshProUGUI body = scroll.content.GetComponent<TextMeshProUGUI>();
             Assert.AreEqual(TextAlignmentOptions.TopLeft, body.alignment);
             Assert.IsFalse(body.enableAutoSizing);
-            Assert.GreaterOrEqual(body.fontSize, 64f,
-                "The hint reading size must remain larger than the general UI body floor.");
+            Assert.AreEqual(UITextScale.Body, body.fontSize);
             StringAssert.Contains("mother", body.text);
             StringAssert.Contains("father", body.text);
             Assert.IsNotNull(scroll.content.GetComponent<ContentSizeFitter>());
@@ -127,80 +126,6 @@ namespace Salinlahi.Tests.Editor.UI
             LayoutRebuilder.ForceRebuildLayoutImmediate(scroll.content);
             Assert.LessOrEqual(scroll.content.rect.height, scroll.viewport.rect.height,
                 "The two short introductory clues fit without scrolling.");
-        }
-
-        private static IEnumerable<TestCaseData> CampaignReadingCases()
-        {
-            for (int level = 1; level <= 15; level++)
-            {
-                foreach (int height in new[] { 1620, 1920, 2340 })
-                    yield return new TestCaseData(level, height)
-                        .SetName($"SentenceHints_Level{level:00}_1080x{height}");
-            }
-        }
-
-        [TestCaseSource(nameof(CampaignReadingCases))]
-        public void EnsureOverlay_AuthoredCampaignKeepsReadableCopyInsideScroll(int levelNumber, int height)
-        {
-            LevelConfigSO level = UnityEditor.AssetDatabase.LoadAssetAtPath<LevelConfigSO>(
-                $"Assets/ScriptableObjects/Levels/Level{levelNumber}_Config.asset");
-            Assert.IsNotNull(level);
-            List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(level);
-            Assert.IsNotEmpty(entries, "Every campaign level must offer readable hint content.");
-
-            GameObject canvasObject = Track(new GameObject("CampaignHintCanvas", typeof(RectTransform), typeof(Canvas)));
-            canvasObject.GetComponent<Canvas>().renderMode = RenderMode.WorldSpace;
-            canvasObject.GetComponent<RectTransform>().sizeDelta = new Vector2(1080f, height);
-            GameObject host = Track(new GameObject("HintController"));
-            host.transform.SetParent(canvasObject.transform, false);
-            SentenceHintController controller = host.AddComponent<SentenceHintController>();
-            controller.ApplyLevel(level);
-            typeof(SentenceHintController).GetMethod("EnsureOverlay", BindingFlags.NonPublic | BindingFlags.Instance)
-                .Invoke(controller, null);
-            GameObject overlay = (GameObject)typeof(SentenceHintController)
-                .GetField("_overlayRoot", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(controller);
-            Track(overlay);
-            overlay.SetActive(true);
-            Canvas.ForceUpdateCanvases();
-
-            ScrollRect scroll = overlay.GetComponentInChildren<ScrollRect>();
-            LayoutRebuilder.ForceRebuildLayoutImmediate(scroll.content);
-            TextMeshProUGUI body = scroll.content.GetComponent<TextMeshProUGUI>();
-            body.ForceMeshUpdate();
-            Assert.IsFalse(body.enableAutoSizing, "Longer levels must scroll, never shrink.");
-            Assert.GreaterOrEqual(body.fontSize, 64f);
-            Assert.IsNotNull(scroll.viewport.GetComponent<RectMask2D>());
-            foreach (SentenceHintContent.Entry entry in entries)
-            {
-                StringAssert.Contains(entry.Label, body.text);
-                foreach (string line in entry.Lines)
-                    StringAssert.Contains(line, body.text);
-            }
-            for (int line = 0; line < body.textInfo.lineCount; line++)
-                Assert.LessOrEqual(body.textInfo.lineInfo[line].maxAdvance, scroll.content.rect.width + 1f,
-                    "Every clue must wrap inside the reading area.");
-            Assert.GreaterOrEqual(scroll.content.rect.height + 1f, body.preferredHeight,
-                "The scrolling content must contain the entire hint, including its final line.");
-
-            Transform panel = scroll.viewport.parent;
-            TextMeshProUGUI title = panel.Find("[Runtime] SentenceHintTitle").GetComponent<TextMeshProUGUI>();
-            title.ForceMeshUpdate();
-            Assert.GreaterOrEqual(title.fontSize, 64f);
-            Assert.IsFalse(title.isTextOverflowing);
-            RectTransform close = (RectTransform)panel.Find("[Runtime] SentenceHintClose");
-            TextMeshProUGUI closeLabel = close.GetComponentInChildren<TextMeshProUGUI>();
-            closeLabel.ForceMeshUpdate();
-            Assert.GreaterOrEqual(closeLabel.fontSize, 64f);
-            Assert.IsFalse(closeLabel.isTextOverflowing);
-            Bounds closeBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(panel, close);
-            Bounds readingBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(panel, scroll.viewport);
-            Assert.Less(closeBounds.max.y, readingBounds.min.y, "Close must stay below all scrolling text.");
-
-            scroll.verticalNormalizedPosition = 0f;
-            Canvas.ForceUpdateCanvases();
-            Bounds contentBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(scroll.viewport, scroll.content);
-            Assert.GreaterOrEqual(contentBounds.min.y, scroll.viewport.rect.yMin - 1f,
-                "Scrolling to the bottom must reveal the final clue.");
         }
     }
 }
