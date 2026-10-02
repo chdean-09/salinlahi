@@ -18,7 +18,7 @@ MonoBehaviour:
   description: Gapos grows from roots Paglimot wrapped around words that once belonged together. While on screen, it binds one enemy at a time and leaves enemies bound by another Gapos alone.
   abilityLine: While visible, it locks one enemy not bound by another Gapos. Defeat Gapos to release it; the next symbol in the current word stays open.
   moveSpeed: 1
-  maxHealth: 2
+  maxHealth: 1
   walkFrames:
   - {fileID: -805477529229012064, guid: c8abb17258e414f6783714e7680e6232, type: 3}
   - {fileID: -6978118142118565443, guid: c8abb17258e414f6783714e7680e6232, type: 3}

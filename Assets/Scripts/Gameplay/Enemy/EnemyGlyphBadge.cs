@@ -46,13 +46,13 @@ public class EnemyGlyphBadge : MonoBehaviour
     // Alpha the swap/fade/final-draw coroutines own. The false-glyph dim multiplies it instead of
     // overwriting it, so the two never fight. See GlyphStainCycle.ResolveBadgeAlpha.
     private float _routineAlpha = 1f;
+    private float _visibilityAlphaMultiplier = 1f;
     // Hue a flash routine (final draw / decoy reject / fail) has temporarily seized. Kept separate
     // from the composed colour so a flash still survives the release fade's SetAlpha calls, the way
     // it did when every routine wrote _renderer.color directly.
     private Color? _flashTint;
     private float _deceptionClock;
-    private Color? _deceptionTint;
-    private float _deceptionAlpha = 1f;
+    private bool _deceptionFlipped;
     private const float DeceptionNormalSeconds = 2.5f;
     private const float DeceptionBurstSeconds = 0.2f;
 
@@ -142,7 +142,7 @@ public class EnemyGlyphBadge : MonoBehaviour
     {
         if (_swapRoutine != null) return;
         if (_enemy == null) return;
-        SetCharacter(_enemy.VisualCharacter);
+        SetCharacter(_enemy.Character);
     }
 
     public void SetCharacter(BaybayinCharacterSO ch)
@@ -160,17 +160,19 @@ public class EnemyGlyphBadge : MonoBehaviour
         _renderer.sprite = sprite;
         _renderer.enabled = !_covered;
 
+        BaybayinCharacterSO visualCue = _enemy != null ? _enemy.VisualCharacter : null;
         _showingFalseGlyph = _enemy != null
                              && _enemy.HasVisualCharacterOverride
-                             && GlyphStainCycle.IsFalseGlyph(ch != null ? ch.characterID : null,
-                                                             _enemy.Character != null ? _enemy.Character.characterID : null);
+                             && GlyphStainCycle.IsFalseGlyph(
+                                 visualCue != null ? visualCue.characterID : null,
+                                 _enemy.Character != null ? _enemy.Character.characterID : null);
         ApplyBadgeColor();
 
         // Whether the fallback is in use depends on which sprite just resolved, so redo the layout.
         RecomputeBaseFromParentScale();
     }
 
-    /// <summary>Presentation-only Salungat tell; never substitutes or mirrors a glyph.</summary>
+    /// <summary>Salungat briefly mirrors its glyph, then restores the authored orientation.</summary>
     public void TickDeception(float deltaTime)
     {
         if (!isActiveAndEnabled || _enemy == null || _enemy.Data == null || _enemy.IsDying
@@ -184,28 +186,16 @@ public class EnemyGlyphBadge : MonoBehaviour
 
         _deceptionClock = (_deceptionClock + Mathf.Max(0f, deltaTime))
             % (DeceptionNormalSeconds + DeceptionBurstSeconds);
-        float burst = _deceptionClock - DeceptionNormalSeconds;
-        bool purple = burst >= 0f && burst < 0.075f;
-        bool green = burst >= 0.1f && burst < 0.175f;
-        _deceptionTint = purple ? new Color(0.8f, 0.35f, 1f)
-            : green ? new Color(0.4f, 1f, 0.55f) : (Color?)null;
-        _deceptionAlpha = _deceptionTint.HasValue ? 0.55f : 1f;
-        float invX = transform.parent != null ? InverseOrOne(transform.parent.lossyScale.x) : 1f;
-        transform.localPosition = _baseLocalPosition
-            + new Vector3((purple ? 0.08f : green ? -0.08f : 0f) * invX, 0f, 0f);
-        ApplyBadgeColor();
+        _deceptionFlipped = _deceptionClock >= DeceptionNormalSeconds;
+        _renderer.flipX = _deceptionFlipped ? !_baseFlipX : _baseFlipX;
     }
 
     private void ClearDeception()
     {
-        bool wasDistorted = _deceptionTint.HasValue;
         _deceptionClock = 0f;
-        _deceptionTint = null;
-        _deceptionAlpha = 1f;
-        if (!wasDistorted) return;
-        if (!IsSwapping && !IsPlayingFinalDraw && !IsPlayingDecoyReject)
-            transform.localPosition = _baseLocalPosition;
-        ApplyBadgeColor();
+        _deceptionFlipped = false;
+        if (_renderer != null)
+            _renderer.flipX = _baseFlipX;
     }
 
     public bool IsCovered => _covered;
@@ -324,7 +314,7 @@ public class EnemyGlyphBadge : MonoBehaviour
     {
         if (_renderer == null) return;
 
-        Color tint = _flashTint ?? _deceptionTint ?? _baseColor;
+        Color tint = _flashTint ?? _baseColor;
         if (_resolutionBlocked && !_flashTint.HasValue)
             tint = new Color(tint.r * BlockedTint.r, tint.g * BlockedTint.g, tint.b * BlockedTint.b, tint.a);
 
@@ -341,8 +331,19 @@ public class EnemyGlyphBadge : MonoBehaviour
         }
 
         tint.a = GlyphStainCycle.ResolveBadgeAlpha(_routineAlpha, _showingFalseGlyph, falseAlpha)
-            * (_flashTint.HasValue ? 1f : _deceptionAlpha);
+            * _visibilityAlphaMultiplier;
         _renderer.color = tint;
+    }
+
+    /// <summary>Composes the phaser's visibility with badge routines that also own badge alpha.</summary>
+    public void SetVisibilityAlphaMultiplier(float multiplier)
+    {
+        multiplier = Mathf.Clamp01(multiplier);
+        if (Mathf.Approximately(_visibilityAlphaMultiplier, multiplier))
+            return;
+
+        _visibilityAlphaMultiplier = multiplier;
+        ApplyBadgeColor();
     }
 
     public void PlaySwap(BaybayinCharacterSO next)
@@ -417,10 +418,10 @@ public class EnemyGlyphBadge : MonoBehaviour
         // Pool safety: a badge that left play wearing a false face must not come back wearing one.
         _showingFalseGlyph = false;
         _routineAlpha = 1f;
+        _visibilityAlphaMultiplier = 1f;
         _flashTint = null;
         _deceptionClock = 0f;
-        _deceptionTint = null;
-        _deceptionAlpha = 1f;
+        _deceptionFlipped = false;
         if (_renderer != null)
         {
             Color c = _baseColor; c.a = 1f; _renderer.color = c;

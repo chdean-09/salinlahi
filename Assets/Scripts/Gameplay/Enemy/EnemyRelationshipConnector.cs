@@ -94,6 +94,12 @@ public sealed class EnemyRelationshipConnector : MonoBehaviour
             return;
         }
 
+        if (!IsEndpointVisuallyPresent(first) || !IsEndpointVisuallyPresent(second))
+        {
+            Hide();
+            return;
+        }
+
         EnemyRelationshipVisualDefinition definition = _data.relationshipVisual;
         if (definition.firstEndpoint == null || definition.middle == null || definition.secondEndpoint == null)
         {
@@ -167,6 +173,15 @@ public sealed class EnemyRelationshipConnector : MonoBehaviour
     {
         return target != null && target != _owner && target.Data != null
             && target.gameObject.activeInHierarchy && !target.IsDying;
+    }
+
+    private static bool IsEndpointVisuallyPresent(Enemy enemy)
+    {
+        if (enemy == null)
+            return false;
+
+        PhaserEnemy phaser = enemy.GetComponent<PhaserEnemy>();
+        return phaser == null || !phaser.isActiveAndEnabled || phaser.CurrentVisibilityAlpha > 0.05f;
     }
 
     private Transform ResolveAnchor(Enemy enemy)

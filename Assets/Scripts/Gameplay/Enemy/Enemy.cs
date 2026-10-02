@@ -208,6 +208,33 @@ public class Enemy : MonoBehaviour
 
     public void AssignCharacter(BaybayinCharacterSO character)
     {
+        // Authored corruption types always retain their named glyph. A level assignment chooses
+        // which carrier to spawn; it does not rename the carrier after it has been selected.
+        if (_data != null)
+            character = _data.assignedCharacter;
+
+        SetRuntimeCharacter(character);
+    }
+
+    /// <summary>
+    /// Applies the deliberately misleading glyph to a runtime-generated MirrorDecoy copy. Authored
+    /// enemy assets cannot use this escape hatch: the pooled data must be the transient decoy clone.
+    /// </summary>
+    internal void AssignGeneratedDecoyCharacter(BaybayinCharacterSO character)
+    {
+        if (_data == null || !_data.isDecoy
+            || (_data.hideFlags & HideFlags.DontSave) != HideFlags.DontSave)
+        {
+            DebugLogger.LogError(
+                $"Enemy.AssignGeneratedDecoyCharacter: '{name}' is not backed by a generated decoy clone.");
+            return;
+        }
+
+        SetRuntimeCharacter(character);
+    }
+
+    private void SetRuntimeCharacter(BaybayinCharacterSO character)
+    {
         _runtimeCharacter = character;
         RefreshDebugLabels();
         _glyphBadge?.Refresh();
@@ -853,6 +880,8 @@ public class Enemy : MonoBehaviour
     {
         if (source == null || visualCharacter == null)
             return;
+        if (_data != null && _data.chainsNearestEnemy)
+            return;
 
         // Visual overrides are Enemy-instance-local only and must not be mirrored into HUD/boss icon UI.
         _labelOverrides[source] = visualCharacter;
@@ -1241,7 +1270,7 @@ public class Enemy : MonoBehaviour
 
     private string BuildBaybayinLabelText()
     {
-        BaybayinCharacterSO character = ResolveVisualCharacter();
+        BaybayinCharacterSO character = Character;
         if (character == null)
             return "Draw: (none)";
 

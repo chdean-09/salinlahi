@@ -27,7 +27,7 @@ MonoBehaviour:
   animatorController: {fileID: 0}
   portraitSprite: {fileID: 0}
   assignedCharacter: {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
-  isDecoy: 1
+  isDecoy: 0
   isPhaser: 0
   phaserInterval: 0.5
   phaserInitialVisibleDelayMin: 0

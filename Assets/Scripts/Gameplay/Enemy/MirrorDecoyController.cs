@@ -278,7 +278,7 @@ public sealed class MirrorDecoyController : MonoBehaviour, IIntroducibleAbility,
         if (decoy == null)
             return;
 
-        decoy.AssignCharacter(decoyCharacter);
+        decoy.AssignGeneratedDecoyCharacter(decoyCharacter);
         decoy.transform.position = decoyPosition;
         CompleteQueuedDecoy(decoy, _enemy, _enemy.SpawnSequence, data, decoyData);
     }

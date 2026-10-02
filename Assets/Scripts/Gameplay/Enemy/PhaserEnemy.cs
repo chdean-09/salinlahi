@@ -301,6 +301,7 @@ public class PhaserEnemy : MonoBehaviour
         if (_abilityVisualPresenter == null && _enemy != null)
             _abilityVisualPresenter = _enemy.AbilityVisuals;
         _abilityVisualPresenter?.SetVisibilityAlphaMultiplier(alpha);
+        _enemy?.GlyphBadge?.SetVisibilityAlphaMultiplier(alpha);
     }
 
     private void StopToggleRoutine()

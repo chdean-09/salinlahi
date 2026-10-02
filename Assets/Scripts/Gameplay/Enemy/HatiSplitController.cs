@@ -5,9 +5,9 @@ using UnityEngine;
 /// Hati's signature ability: "A masked creature that splits into two smaller enemies. It divides
 /// villagers and creates arguments between them." When the source is defeated it spawns
 /// <see cref="EnemyDataSO.splitCount"/> pieces of <see cref="EnemyDataSO.splitSpawnData"/> around
-/// its own position. When the active roster provides alternatives, each piece carries a different
-/// learned glyph; a one-symbol roster falls back to the source. The pieces are real enemies: they
-/// walk, deal contact damage, must be defeated for the wave to clear, and never split again.
+/// its own position. Each piece carries the glyph assigned to the source when it split. The pieces
+/// are real enemies: they walk, deal contact damage, must be defeated for the wave to clear, and
+/// never split again.
 /// Data-driven through <see cref="EnemyDataSO.splitsOnDefeat"/>; Enemy.Initialize attaches this
 /// component on the shared corruption shell and toggles it per spawn; Enemy.Defeat invokes it.
 /// </summary>
@@ -101,7 +101,6 @@ public sealed class HatiSplitController : MonoBehaviour
         BaybayinCharacterSO glyph = _enemy.Character;
         int count = Mathf.Max(1, data.splitCount);
         Vector3 sourcePosition = transform.position;
-        IReadOnlyList<BaybayinCharacterSO> allowedCharacters = WaveManager.CurrentAllowedCharacters;
         WaveManager waveManager = FindFirstObjectByType<WaveManager>();
 
         var pieceCharacters = new List<BaybayinCharacterSO>(count);
@@ -109,9 +108,7 @@ public sealed class HatiSplitController : MonoBehaviour
         for (int i = 0; i < count; i++)
         {
             piecePositions.Add(sourcePosition + SplitOffset(i, count, data.splitOffsetX));
-            pieceCharacters.Add(glyph != null
-                ? SelectReviewCharacter(glyph, i, count, allowedCharacters)
-                : null);
+            pieceCharacters.Add(glyph);
         }
 
         if (waveManager != null)
@@ -157,9 +154,8 @@ public sealed class HatiSplitController : MonoBehaviour
     }
 
     /// <summary>
-    /// Selects a different learned character for each split piece when the current wave has other
-    /// learned characters available. Falling back to the source keeps Hati safe in a one-symbol
-    /// roster and preserves the old split behavior for isolated tests or early content.
+    /// Hati fragments retain the source's actual glyph. The wave roster is intentionally irrelevant:
+    /// fragment identity is inherited from the defeated parent on both queued and immediate paths.
     /// </summary>
     public static BaybayinCharacterSO SelectReviewCharacter(
         BaybayinCharacterSO source,
@@ -167,26 +163,7 @@ public sealed class HatiSplitController : MonoBehaviour
         int pieceCount,
         IReadOnlyList<BaybayinCharacterSO> allowedCharacters)
     {
-        if (source == null || allowedCharacters == null || allowedCharacters.Count == 0)
-            return source;
-
-        var alternatives = new List<BaybayinCharacterSO>();
-        for (int i = 0; i < allowedCharacters.Count; i++)
-        {
-            BaybayinCharacterSO candidate = allowedCharacters[i];
-            if (candidate == null || candidate == source)
-                continue;
-            if (string.Equals(candidate.characterID, source.characterID, System.StringComparison.OrdinalIgnoreCase))
-                continue;
-            if (!alternatives.Contains(candidate))
-                alternatives.Add(candidate);
-        }
-
-        if (alternatives.Count == 0)
-            return source;
-
-        int index = Mathf.Abs(pieceIndex) % alternatives.Count;
-        return alternatives[index];
+        return source;
     }
 
     /// <summary>
