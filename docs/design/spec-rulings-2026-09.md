@@ -55,6 +55,13 @@ each of the remainder already owns downstream work.
 
 ---
 
+### Q6 product update — 2026-10-03
+
+The project owner explicitly removed Reset Journey from Settings. Settings now
+contains audio controls only, and Main Menu no longer enables the reset entry.
+This supersedes Q6's September placement ruling; the underlying reset service
+and confirmation component remain in the codebase.
+
 ## 2. Qualifiers — read these before implementing
 
 ### Q1 — the finale symbol is derived, not declared

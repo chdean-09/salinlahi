@@ -72,6 +72,7 @@ public class LevelFlowController : MonoBehaviour
 
     // SALIN-253. Same shape and same reason again. See ShowEraCompletionScreen.
     private EraCompletionScreenUI _eraCompletionScreen;
+    private CampaignEndingScreenUI _campaignEndingScreen;
 
     // SALIN-232. Built on demand; never scene-wired. See ShowWaveClearedScreen.
     private WaveClearedScreenUI _waveClearedScreen;
@@ -2159,7 +2160,7 @@ public class LevelFlowController : MonoBehaviour
                     if (nextEra != null)
                         EnterNextEra(nextEraIndex);
                     else
-                        ShowEraCompletionScreen(campaign, completedEra, true);
+                        ShowCampaignEndingScreen();
                 }
                 : null,
             nextEra != null ? EraCompletionCopy.EnterNextEraLabel : "Era Complete");
@@ -2173,7 +2174,23 @@ public class LevelFlowController : MonoBehaviour
         EventBus.RaiseResultsScreenShown();
 
         ShowMemoryCard();
-        ShowEraCompletionScreen(campaign, completedEra, isEraFinalLevel);
+        if (nextEra != null)
+            ShowEraCompletionScreen(campaign, completedEra, isEraFinalLevel);
+    }
+
+    private void ShowCampaignEndingScreen()
+    {
+        AudioManager.Instance?.PlayMenuButtonClick();
+        if (_eraCompletionScreen != null)
+            _eraCompletionScreen.Hide();
+
+        if (_campaignEndingScreen == null)
+        {
+            GameObject screenObject = new GameObject("[Runtime] CampaignEndingScreen", typeof(RectTransform));
+            _campaignEndingScreen = screenObject.AddComponent<CampaignEndingScreenUI>();
+        }
+
+        _campaignEndingScreen.Present();
     }
 
     /// <summary>

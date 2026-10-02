@@ -40,6 +40,15 @@ The loudness pass in `e41b864f` re-levelled BGM, pronunciation and UI/impact SFX
 
 Add a row per asset. Required: name, source, creator, licence, original URL, where used, modified.
 
+The credits track added on 2026-10-03 lives in `Assets/Resources/Audio/Credits/`
+for offline runtime loading. It is original procedural music, with no sampled
+recordings or third-party melodies. Its reproducible source is
+[`generate_credits_music.py`](../../scripts/audio/generate_credits_music.py).
+
+| File | Creator | Source | Licence | Original URL | Used for | Modified? |
+|---|---|---|---|---|---|---|
+| `Assets/Resources/Audio/Credits/credits-ambient.ogg` | Created for Salinlahi using the checked-in generator | Original procedural composition | Project-authored asset; no third-party licence | Not applicable | Final campaign credits | Generated as a quiet 64-second loop, encoded to Vorbis; additional 0.65 gain in-game |
+
 Added 2026-09-05 during the audit. All four verified **CC0** against their source pages.
 
 | File | Creator | Source | Licence | Original URL | Used for | Modified? |

@@ -46,6 +46,74 @@ namespace Salinlahi.Tests.Editor.Core
             instanceField?.SetValue(null, null);
         }
 
+        [TestCase(false, 0.3f)]
+        [TestCase(true, 0.8f)]
+        public void LoadSavedVolumes_DefaultsMusicToThirtyPercentAndPreservesSavedChoice(bool hasSavedVolume, float expected)
+        {
+            const string key = "salinlahi.audio.bgm_volume";
+            bool hadOriginal = PlayerPrefs.HasKey(key);
+            float original = PlayerPrefs.GetFloat(key);
+            try
+            {
+                if (hasSavedVolume)
+                    PlayerPrefs.SetFloat(key, expected);
+                else
+                    PlayerPrefs.DeleteKey(key);
+                InvokePrivateMethod(_audioManager, "LoadSavedVolumes");
+                Assert.That(_audioManager.BgmVolume, Is.EqualTo(expected).Within(0.0001f));
+            }
+            finally
+            {
+                if (hadOriginal)
+                    PlayerPrefs.SetFloat(key, original);
+                else
+                    PlayerPrefs.DeleteKey(key);
+                PlayerPrefs.Save();
+            }
+        }
+
+        [TestCase(false, 0.7f)]
+        [TestCase(true, 0.4f)]
+        public void LoadSavedVolumes_DefaultsSyllableSfxToSeventyPercentAndPreservesSavedChoice(bool hasSavedVolume, float expected)
+        {
+            const string key = "salinlahi.audio.sfx_volume";
+            bool hadOriginal = PlayerPrefs.HasKey(key);
+            float original = PlayerPrefs.GetFloat(key);
+            try
+            {
+                if (hasSavedVolume)
+                    PlayerPrefs.SetFloat(key, expected);
+                else
+                    PlayerPrefs.DeleteKey(key);
+                InvokePrivateMethod(_audioManager, "LoadSavedVolumes");
+                Assert.That(_audioManager.SfxVolume, Is.EqualTo(expected).Within(0.0001f));
+            }
+            finally
+            {
+                if (hadOriginal)
+                    PlayerPrefs.SetFloat(key, original);
+                else
+                    PlayerPrefs.DeleteKey(key);
+                PlayerPrefs.Save();
+            }
+        }
+
+        [TestCase(1f, 1f, 1f)]
+        [TestCase(0.5f, 0.5f, 0.25f)]
+        [TestCase(0f, 1f, 0f)]
+        [TestCase(1f, 0f, 0f)]
+        public void ApplyVolumes_PronunciationUsesMasterAndSfx(float master, float sfx, float expected)
+        {
+            AudioSource pronunciation = _managerGo.AddComponent<AudioSource>();
+            SetPrivateField(_audioManager, "_pronunciationSfxSource", pronunciation);
+            SetPrivateField(_audioManager, "_masterVolume", master);
+            SetPrivateField(_audioManager, "_sfxVolume", sfx);
+            SetPrivateField(_audioManager, "_bgmVolume", 0f);
+            InvokePrivateMethod(_audioManager, "ApplyVolumes");
+            Assert.That(pronunciation.volume, Is.EqualTo(expected).Within(0.0001f));
+            Assert.That(_sfxSource.volume, Is.EqualTo(expected).Within(0.0001f));
+        }
+
         [Test]
         public void PlayBaseHitSound_DoesNotMutatePrimarySfxSourcePitch()
         {
