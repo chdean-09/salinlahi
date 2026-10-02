@@ -193,6 +193,9 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
         {
             SpawnAssignmentPolicy objectivePolicy =
                 level.spawnAssignmentPolicy ?? new SpawnAssignmentPolicy();
+            RestorationWordPages pages = RestorationWordPages.IsEnabled(level.restorationObjective)
+                ? RestorationWordPages.Build(level.restorationObjective)
+                : null;
             int objectiveIndex = 0;
             for (int unitIndex = 0; unitIndex < level.restorationObjective.units.Count; unitIndex++)
             {
@@ -224,7 +227,8 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
                         unit.stableId,
                         tokenIndex,
                         objectivePolicy.GateTokenForSlot(objectiveIndex),
-                        token.occurrenceId));
+                        token.occurrenceId,
+                        pages != null ? pages.PageOf(token.occurrenceId) : RestorationWordPages.NoPage));
                     objectiveIndex++;
                 }
             }
@@ -306,9 +310,7 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
         if (target.IsGated)
             return;
 
-        _slots[gateIndex] = new SpawnSlot(
-            target.SymbolStableId, target.WordStableId, target.SlotIndexInWord,
-            SpawnGateRegistry.FinalWaveReached, target.OccurrenceId);
+        _slots[gateIndex] = target.WithGate(SpawnGateRegistry.FinalWaveReached);
     }
 
     /// <summary>
@@ -335,9 +337,7 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
             SpawnSlot target = _slots[index];
             if (!target.IsGated)
             {
-                _slots[index] = new SpawnSlot(
-                    target.SymbolStableId, target.WordStableId, target.SlotIndexInWord,
-                    SpawnGateRegistry.FinalWaveReached, target.OccurrenceId);
+                _slots[index] = target.WithGate(SpawnGateRegistry.FinalWaveReached);
             }
 
             return true;
@@ -370,6 +370,17 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
 
             if (!string.IsNullOrEmpty(slot.GateToken) && !_gates.IsOpen(slot.GateToken))
                 return false;
+
+            // One word at a time: a later word's box cannot be credited until the current word is
+            // finished, so killing its carrier early restores nothing.
+            if (slot.IsPaged)
+            {
+                IReadOnlyList<bool> restoredFlags = BuildRestoredFlags();
+                int currentPage = SpawnSlot.CurrentPage(
+                    _slots, slotIndex => slotIndex < restoredFlags.Count && restoredFlags[slotIndex]);
+                if (slot.IsBeyondPage(currentPage))
+                    return false;
+            }
 
             bool finale = slot.GateToken == SpawnGateRegistry.FinalWaveReached
                 || (_level?.spawnAssignmentPolicy?.gateFinalSlotToFinalWave == true

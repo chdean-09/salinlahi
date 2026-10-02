@@ -93,6 +93,32 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.AreEqual(new Vector2(1080f, 1920f), scaler.referenceResolution);
         }
 
+        /// <summary>
+        /// The glyph row is sized inside Present, in the same frame the canvas is created. The
+        /// scaler had applied its OnEnable defaults (ConstantPixelSize, factor 1) and would only
+        /// pick up ScaleWithScreenSize on its next Update, so the row was fitted to a canvas one
+        /// device pixel per unit wide and drew 1.31x too large on a 1284x2778 phone: Level 14's
+        /// eight symbols ran past both edges of the scroll. The scale must already be in force
+        /// when Present returns.
+        /// </summary>
+        [Test]
+        public void Present_OwnCanvas_AppliesTheScreenScaleBeforeTheGlyphsAreSized()
+        {
+            MemoryCardUI card = PresentAuthoredCard();
+
+            Canvas canvas = card.GetComponentInParent<Canvas>();
+            Assert.IsNotNull(canvas, "setup: the card builds its own canvas when it has none.");
+
+            // CanvasScaler.HandleScaleWithScreenSize for match 0.5, in log space.
+            float logWidth = Mathf.Log(Screen.width / 1080f, 2f);
+            float logHeight = Mathf.Log(Screen.height / 1920f, 2f);
+            float expected = Mathf.Pow(2f, Mathf.Lerp(logWidth, logHeight, 0.5f));
+
+            Assert.AreEqual(expected, canvas.scaleFactor, 0.001f,
+                "The card's canvas still carries the scaler's pre-configuration factor, so its "
+                + "glyph row is fitted to the wrong width.");
+        }
+
         [Test]
         public void Present_BuildsBothButtons()
         {

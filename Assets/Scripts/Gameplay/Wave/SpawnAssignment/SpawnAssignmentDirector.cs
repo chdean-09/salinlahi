@@ -177,14 +177,43 @@ public sealed class SpawnAssignmentDirector
 
     // ------------------------------------------------------------------ window and arming
 
+    /// <summary>
+    /// The slots a needed spawn may currently target. On a one-word-at-a-time objective the window
+    /// never reaches past the current word, so the next word's carriers only start arriving once
+    /// every box of this one is filled. Later words' symbols are deliberately NOT treated as
+    /// blocked (see <see cref="IsBlocked"/>): they stay legal filler, and a carrier of one dies
+    /// without filling anything, exactly like a carrier of an already-restored symbol.
+    /// </summary>
     private void BuildWindow(SpawnAssignmentRequest request)
     {
         _window.Clear();
+        int currentPage = CurrentPage(request);
         for (int i = 0; i < _slots.Count && _window.Count < _policy.activeSlotWindow; i++)
         {
-            if (!IsRestored(request, i) && FinalePrerequisitesMet(request, i))
+            if (!IsRestored(request, i)
+                && !_slots[i].IsBeyondPage(currentPage)
+                && FinalePrerequisitesMet(request, i))
                 _window.Add(i);
         }
+    }
+
+    /// <summary>
+    /// Mirrors <see cref="SpawnSlot.CurrentPage"/> without the predicate delegate, so a per-spawn
+    /// assignment still allocates nothing.
+    /// </summary>
+    private int CurrentPage(SpawnAssignmentRequest request)
+    {
+        int current = RestorationWordPages.NoPage;
+        for (int i = 0; i < _slots.Count; i++)
+        {
+            if (!_slots[i].IsPaged || IsRestored(request, i))
+                continue;
+
+            if (current == RestorationWordPages.NoPage || _slots[i].PageIndex < current)
+                current = _slots[i].PageIndex;
+        }
+
+        return current;
     }
 
     private bool FinalePrerequisitesMet(SpawnAssignmentRequest request, int slotIndex)

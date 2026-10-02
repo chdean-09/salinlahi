@@ -275,503 +275,195 @@ MonoBehaviour:
   suppressSymbolLearningCards: 1
   restorationObjective:
     displayMode: 3
+    oneWordAtATime: 1
     units:
     - stableId: level.pamana.05.paragraph.finale.01
-      displayLabel: DALA ni Juan ANG mga aRAl NA KAniYANG DAMA muLA sa PAmilYA at
-        PAMAYAnan.
-      clue: DALA ni Juan ANG mga aRAl NA KAniYANG DAMA muLA sa PAmilYA at PAMAYAnan.
+      displayLabel: DALA ni Juan ang mga aral na kaniyang DAMA mula sa pamilya at PAMAYAnan.
+      clue: DALA ni Juan ang mga aral na kaniyang DAMA mula sa pamilya at PAMAYAnan.
       tokens:
       - kind: 1
-        literalText: 
+        literalText:
         occurrenceId: level.pamana.05.paragraph.finale.01.da.00
         completionOrder: 0
         target:
           symbol: {fileID: 11400000, guid: 117f4d54439c640abaac6d80f841ee03, type: 2}
           spokenValueId: value.da
       - kind: 1
-        literalText: 
+        literalText:
         occurrenceId: level.pamana.05.paragraph.finale.01.la.01
         completionOrder: 1
         target:
           symbol: {fileID: 11400000, guid: 9aae464ed65b8416b9aa3ad6ee4ce2c4, type: 2}
           spokenValueId: value.la
       - kind: 0
-        literalText: ' ni Juan '
-        occurrenceId: 
+        literalText: ' ni Juan ang mga aral na kaniyang '
+        occurrenceId:
         completionOrder: -1
         target:
           symbol: {fileID: 0}
-          spokenValueId: 
+          spokenValueId:
       - kind: 1
-        literalText: 
-        occurrenceId: level.pamana.05.paragraph.finale.01.a.02
-        completionOrder: 2
-        target:
-          symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
-          spokenValueId: value.a
-      - kind: 1
-        literalText: 
-        occurrenceId: level.pamana.05.paragraph.finale.01.nga.03
-        completionOrder: 3
-        target:
-          symbol: {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
-          spokenValueId: value.nga
-      - kind: 0
-        literalText: ' mga a'
-        occurrenceId: 
-        completionOrder: -1
-        target:
-          symbol: {fileID: 0}
-          spokenValueId: 
-      - kind: 1
-        literalText: 
-        occurrenceId: level.pamana.05.paragraph.finale.01.ra.04
-        completionOrder: 4
-        target:
-          symbol: {fileID: 11400000, guid: 17e3fad969764564bf71a5ba85567115, type: 2}
-          spokenValueId: value.ra
-      - kind: 0
-        literalText: 'l '
-        occurrenceId: 
-        completionOrder: -1
-        target:
-          symbol: {fileID: 0}
-          spokenValueId: 
-      - kind: 1
-        literalText: 
-        occurrenceId: level.pamana.05.paragraph.finale.01.na.05
-        completionOrder: 5
-        target:
-          symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
-          spokenValueId: value.na
-      - kind: 0
-        literalText: ' '
-        occurrenceId: 
-        completionOrder: -1
-        target:
-          symbol: {fileID: 0}
-          spokenValueId: 
-      - kind: 1
-        literalText: 
-        occurrenceId: level.pamana.05.paragraph.finale.01.ka.06
-        completionOrder: 6
-        target:
-          symbol: {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
-          spokenValueId: value.ka
-      - kind: 0
-        literalText: ni
-        occurrenceId: 
-        completionOrder: -1
-        target:
-          symbol: {fileID: 0}
-          spokenValueId: 
-      - kind: 1
-        literalText: 
-        occurrenceId: level.pamana.05.paragraph.finale.01.ya.07
-        completionOrder: 7
-        target:
-          symbol: {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
-          spokenValueId: value.ya
-      - kind: 1
-        literalText: 
-        occurrenceId: level.pamana.05.paragraph.finale.01.nga.08
-        completionOrder: 8
-        target:
-          symbol: {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
-          spokenValueId: value.nga
-      - kind: 0
-        literalText: ' '
-        occurrenceId: 
-        completionOrder: -1
-        target:
-          symbol: {fileID: 0}
-          spokenValueId: 
-      - kind: 1
-        literalText: 
+        literalText:
         occurrenceId: level.pamana.05.paragraph.finale.01.da.09
-        completionOrder: 9
+        completionOrder: 2
         target:
           symbol: {fileID: 11400000, guid: 117f4d54439c640abaac6d80f841ee03, type: 2}
           spokenValueId: value.da
       - kind: 1
-        literalText: 
+        literalText:
         occurrenceId: level.pamana.05.paragraph.finale.01.ma.10
-        completionOrder: 10
+        completionOrder: 3
         target:
           symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
           spokenValueId: value.ma
       - kind: 0
-        literalText: ' mu'
-        occurrenceId: 
+        literalText: ' mula sa pamilya at '
+        occurrenceId:
         completionOrder: -1
         target:
           symbol: {fileID: 0}
-          spokenValueId: 
+          spokenValueId:
       - kind: 1
-        literalText: 
-        occurrenceId: level.pamana.05.paragraph.finale.01.la.11
-        completionOrder: 11
-        target:
-          symbol: {fileID: 11400000, guid: 9aae464ed65b8416b9aa3ad6ee4ce2c4, type: 2}
-          spokenValueId: value.la
-      - kind: 0
-        literalText: ' sa '
-        occurrenceId: 
-        completionOrder: -1
-        target:
-          symbol: {fileID: 0}
-          spokenValueId: 
-      - kind: 1
-        literalText: 
-        occurrenceId: level.pamana.05.paragraph.finale.01.pa.12
-        completionOrder: 12
-        target:
-          symbol: {fileID: 11400000, guid: 01bec631a12545f091f1348d9408ad47, type: 2}
-          spokenValueId: value.pa
-      - kind: 0
-        literalText: mil
-        occurrenceId: 
-        completionOrder: -1
-        target:
-          symbol: {fileID: 0}
-          spokenValueId: 
-      - kind: 1
-        literalText: 
-        occurrenceId: level.pamana.05.paragraph.finale.01.ya.13
-        completionOrder: 13
-        target:
-          symbol: {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
-          spokenValueId: value.ya
-      - kind: 0
-        literalText: ' at '
-        occurrenceId: 
-        completionOrder: -1
-        target:
-          symbol: {fileID: 0}
-          spokenValueId: 
-      - kind: 1
-        literalText: 
+        literalText:
         occurrenceId: level.pamana.05.paragraph.finale.01.pa.14
-        completionOrder: 14
+        completionOrder: 4
         target:
           symbol: {fileID: 11400000, guid: 01bec631a12545f091f1348d9408ad47, type: 2}
           spokenValueId: value.pa
       - kind: 1
-        literalText: 
+        literalText:
         occurrenceId: level.pamana.05.paragraph.finale.01.ma.15
-        completionOrder: 15
+        completionOrder: 5
         target:
           symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
           spokenValueId: value.ma
       - kind: 1
-        literalText: 
+        literalText:
         occurrenceId: level.pamana.05.paragraph.finale.01.ya.16
-        completionOrder: 16
+        completionOrder: 6
         target:
           symbol: {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
           spokenValueId: value.ya
       - kind: 0
         literalText: nan.
-        occurrenceId: 
+        occurrenceId:
         completionOrder: -1
         target:
           symbol: {fileID: 0}
-          spokenValueId: 
+          spokenValueId:
     - stableId: level.pamana.05.paragraph.finale.02
-      displayLabel: HANGA siya sa HALAGA NG mga TAong nag-iNGAt NG kulturRA.
-      clue: HANGA siya sa HALAGA NG mga TAong nag-iNGAt NG kulturRA.
+      displayLabel: HANGA siya sa HALAGA ng mga taong nag-ingat ng kultura.
+      clue: HANGA siya sa HALAGA ng mga taong nag-ingat ng kultura.
       tokens:
       - kind: 1
-        literalText: 
+        literalText:
         occurrenceId: level.pamana.05.paragraph.finale.02.ha.17
-        completionOrder: 17
+        completionOrder: 7
         target:
           symbol: {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
           spokenValueId: value.ha
       - kind: 1
-        literalText: 
+        literalText:
         occurrenceId: level.pamana.05.paragraph.finale.02.nga.18
-        completionOrder: 18
+        completionOrder: 8
         target:
           symbol: {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
           spokenValueId: value.nga
       - kind: 0
         literalText: ' siya sa '
-        occurrenceId: 
+        occurrenceId:
         completionOrder: -1
         target:
           symbol: {fileID: 0}
-          spokenValueId: 
+          spokenValueId:
       - kind: 1
-        literalText: 
+        literalText:
         occurrenceId: level.pamana.05.paragraph.finale.02.ha.19
-        completionOrder: 19
+        completionOrder: 9
         target:
           symbol: {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
           spokenValueId: value.ha
       - kind: 1
-        literalText: 
+        literalText:
         occurrenceId: level.pamana.05.paragraph.finale.02.la.20
-        completionOrder: 20
+        completionOrder: 10
         target:
           symbol: {fileID: 11400000, guid: 9aae464ed65b8416b9aa3ad6ee4ce2c4, type: 2}
           spokenValueId: value.la
       - kind: 1
-        literalText: 
+        literalText:
         occurrenceId: level.pamana.05.paragraph.finale.02.ga.21
-        completionOrder: 21
+        completionOrder: 11
         target:
           symbol: {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
           spokenValueId: value.ga
       - kind: 0
-        literalText: ' '
-        occurrenceId: 
+        literalText: ' ng mga taong nag-ingat ng kultura.'
+        occurrenceId:
         completionOrder: -1
         target:
           symbol: {fileID: 0}
-          spokenValueId: 
-      - kind: 1
-        literalText: 
-        occurrenceId: level.pamana.05.paragraph.finale.02.nga.22
-        completionOrder: 22
-        target:
-          symbol: {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
-          spokenValueId: value.nga
-      - kind: 0
-        literalText: ' mga '
-        occurrenceId: 
-        completionOrder: -1
-        target:
-          symbol: {fileID: 0}
-          spokenValueId: 
-      - kind: 1
-        literalText: 
-        occurrenceId: level.pamana.05.paragraph.finale.02.ta.23
-        completionOrder: 23
-        target:
-          symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
-          spokenValueId: value.ta
-      - kind: 0
-        literalText: ong nag-i
-        occurrenceId: 
-        completionOrder: -1
-        target:
-          symbol: {fileID: 0}
-          spokenValueId: 
-      - kind: 1
-        literalText: 
-        occurrenceId: level.pamana.05.paragraph.finale.02.nga.24
-        completionOrder: 24
-        target:
-          symbol: {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
-          spokenValueId: value.nga
-      - kind: 0
-        literalText: 't '
-        occurrenceId: 
-        completionOrder: -1
-        target:
-          symbol: {fileID: 0}
-          spokenValueId: 
-      - kind: 1
-        literalText: 
-        occurrenceId: level.pamana.05.paragraph.finale.02.nga.25
-        completionOrder: 25
-        target:
-          symbol: {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
-          spokenValueId: value.nga
-      - kind: 0
-        literalText: ' kultur'
-        occurrenceId: 
-        completionOrder: -1
-        target:
-          symbol: {fileID: 0}
-          spokenValueId: 
-      - kind: 1
-        literalText: 
-        occurrenceId: level.pamana.05.paragraph.finale.02.ra.26
-        completionOrder: 26
-        target:
-          symbol: {fileID: 11400000, guid: 17e3fad969764564bf71a5ba85567115, type: 2}
-          spokenValueId: value.ra
-      - kind: 0
-        literalText: .
-        occurrenceId: 
-        completionOrder: -1
-        target:
-          symbol: {fileID: 0}
-          spokenValueId: 
+          spokenValueId:
     - stableId: level.pamana.05.paragraph.finale.03
-      displayLabel: BAWAt SAlinLAhi ay SANGA NG NAKARAan at MAy SAriling HARAYA.
-      clue: BAWAt SAlinLAhi ay SANGA NG NAKARAan at MAy SAriling HARAYA.
+      displayLabel: Bawat salinlahi ay SANGA ng nakaraan at may sariling HARAYA.
+      clue: Bawat salinlahi ay SANGA ng nakaraan at may sariling HARAYA.
       tokens:
-      - kind: 1
-        literalText: 
-        occurrenceId: level.pamana.05.paragraph.finale.03.ba.27
-        completionOrder: 27
-        target:
-          symbol: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
-          spokenValueId: value.ba
-      - kind: 1
-        literalText: 
-        occurrenceId: level.pamana.05.paragraph.finale.03.wa.28
-        completionOrder: 28
-        target:
-          symbol: {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
-          spokenValueId: value.wa
       - kind: 0
-        literalText: 't '
-        occurrenceId: 
+        literalText: 'Bawat salinlahi ay '
+        occurrenceId:
         completionOrder: -1
         target:
           symbol: {fileID: 0}
-          spokenValueId: 
+          spokenValueId:
       - kind: 1
-        literalText: 
-        occurrenceId: level.pamana.05.paragraph.finale.03.sa.29
-        completionOrder: 29
-        target:
-          symbol: {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
-          spokenValueId: value.sa
-      - kind: 0
-        literalText: lin
-        occurrenceId: 
-        completionOrder: -1
-        target:
-          symbol: {fileID: 0}
-          spokenValueId: 
-      - kind: 1
-        literalText: 
-        occurrenceId: level.pamana.05.paragraph.finale.03.la.30
-        completionOrder: 30
-        target:
-          symbol: {fileID: 11400000, guid: 9aae464ed65b8416b9aa3ad6ee4ce2c4, type: 2}
-          spokenValueId: value.la
-      - kind: 0
-        literalText: 'hi ay '
-        occurrenceId: 
-        completionOrder: -1
-        target:
-          symbol: {fileID: 0}
-          spokenValueId: 
-      - kind: 1
-        literalText: 
+        literalText:
         occurrenceId: level.pamana.05.paragraph.finale.03.sa.31
-        completionOrder: 31
+        completionOrder: 12
         target:
           symbol: {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
           spokenValueId: value.sa
       - kind: 1
-        literalText: 
+        literalText:
         occurrenceId: level.pamana.05.paragraph.finale.03.nga.32
-        completionOrder: 32
+        completionOrder: 13
         target:
           symbol: {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
           spokenValueId: value.nga
       - kind: 0
-        literalText: ' '
-        occurrenceId: 
+        literalText: ' ng nakaraan at may sariling '
+        occurrenceId:
         completionOrder: -1
         target:
           symbol: {fileID: 0}
-          spokenValueId: 
+          spokenValueId:
       - kind: 1
-        literalText: 
-        occurrenceId: level.pamana.05.paragraph.finale.03.nga.33
-        completionOrder: 33
-        target:
-          symbol: {fileID: 11400000, guid: 7e4756d24c934028a6889a7bee4dc5ba, type: 2}
-          spokenValueId: value.nga
-      - kind: 0
-        literalText: ' '
-        occurrenceId: 
-        completionOrder: -1
-        target:
-          symbol: {fileID: 0}
-          spokenValueId: 
-      - kind: 1
-        literalText: 
-        occurrenceId: level.pamana.05.paragraph.finale.03.na.34
-        completionOrder: 34
-        target:
-          symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
-          spokenValueId: value.na
-      - kind: 1
-        literalText: 
-        occurrenceId: level.pamana.05.paragraph.finale.03.ka.35
-        completionOrder: 35
-        target:
-          symbol: {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
-          spokenValueId: value.ka
-      - kind: 1
-        literalText: 
-        occurrenceId: level.pamana.05.paragraph.finale.03.ra.36
-        completionOrder: 36
-        target:
-          symbol: {fileID: 11400000, guid: 17e3fad969764564bf71a5ba85567115, type: 2}
-          spokenValueId: value.ra
-      - kind: 0
-        literalText: 'an at '
-        occurrenceId: 
-        completionOrder: -1
-        target:
-          symbol: {fileID: 0}
-          spokenValueId: 
-      - kind: 1
-        literalText: 
-        occurrenceId: level.pamana.05.paragraph.finale.03.ma.37
-        completionOrder: 37
-        target:
-          symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
-          spokenValueId: value.ma
-      - kind: 0
-        literalText: 'y '
-        occurrenceId: 
-        completionOrder: -1
-        target:
-          symbol: {fileID: 0}
-          spokenValueId: 
-      - kind: 1
-        literalText: 
-        occurrenceId: level.pamana.05.paragraph.finale.03.sa.38
-        completionOrder: 38
-        target:
-          symbol: {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
-          spokenValueId: value.sa
-      - kind: 0
-        literalText: 'riling '
-        occurrenceId: 
-        completionOrder: -1
-        target:
-          symbol: {fileID: 0}
-          spokenValueId: 
-      - kind: 1
-        literalText: 
+        literalText:
         occurrenceId: level.pamana.05.paragraph.finale.03.ha.39
-        completionOrder: 39
+        completionOrder: 14
         target:
           symbol: {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
           spokenValueId: value.ha
       - kind: 1
-        literalText: 
+        literalText:
         occurrenceId: level.pamana.05.paragraph.finale.03.ra.40
-        completionOrder: 40
+        completionOrder: 15
         target:
           symbol: {fileID: 11400000, guid: 17e3fad969764564bf71a5ba85567115, type: 2}
           spokenValueId: value.ra
       - kind: 1
-        literalText: 
+        literalText:
         occurrenceId: level.pamana.05.paragraph.finale.03.ya.41
-        completionOrder: 41
+        completionOrder: 16
         target:
           symbol: {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
           spokenValueId: value.ya
       - kind: 0
         literalText: .
-        occurrenceId: 
+        occurrenceId:
         completionOrder: -1
         target:
           symbol: {fileID: 0}
-          spokenValueId: 
+          spokenValueId:
   activeClueCombatEnabled: 1
   activeClueRestorationEnabled: 1
   clueChannels: 17
@@ -952,7 +644,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 579d65d7846bc3a4ce1f0197ec37751a, type: 2}
     - {fileID: 11400000, guid: 3beab354ec73c4942a045607153e984b, type: 2}
     enemyCount: 8
-    spawnInterval: 2.2
+    spawnInterval: 3.45
     waveStartDelay: 1.2
   - isIntermissionWave: 0
     characters:
@@ -1001,7 +693,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 579d65d7846bc3a4ce1f0197ec37751a, type: 2}
     - {fileID: 11400000, guid: 3beab354ec73c4942a045607153e984b, type: 2}
     enemyCount: 9
-    spawnInterval: 2.05
+    spawnInterval: 2.85
     waveStartDelay: 1
   - isIntermissionWave: 0
     characters:
@@ -1050,7 +742,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 579d65d7846bc3a4ce1f0197ec37751a, type: 2}
     - {fileID: 11400000, guid: 3beab354ec73c4942a045607153e984b, type: 2}
     enemyCount: 10
-    spawnInterval: 2
+    spawnInterval: 2.85
     waveStartDelay: 1
   - isIntermissionWave: 0
     characters:
@@ -1093,7 +785,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 579d65d7846bc3a4ce1f0197ec37751a, type: 2}
     - {fileID: 11400000, guid: 3beab354ec73c4942a045607153e984b, type: 2}
     enemyCount: 11
-    spawnInterval: 2
+    spawnInterval: 2.85
     waveStartDelay: 1
   - isIntermissionWave: 0
     characters:
@@ -1136,7 +828,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 579d65d7846bc3a4ce1f0197ec37751a, type: 2}
     - {fileID: 11400000, guid: 3beab354ec73c4942a045607153e984b, type: 2}
     enemyCount: 12
-    spawnInterval: 2
+    spawnInterval: 2.85
     waveStartDelay: 1
   waveCurve: {fileID: 0}
   allowedCharacters:
