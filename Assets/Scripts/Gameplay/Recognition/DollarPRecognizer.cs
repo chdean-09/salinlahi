@@ -36,7 +36,8 @@ public class DollarPRecognizer
     //      by CLEAR_WIN_GAP or more, return it untaxed.
     //   2. Otherwise disambiguate among the top DISAMBIGUATION_TOP_K candidates by
     //      multiplying their shape scores by stroke-count and aspect-ratio penalties
-    //      that $P itself ignores.
+    //      that $P itself ignores. Every variant of a shortlisted character competes on
+    //      its own penalties; the character keeps its best composite.
     // Applying penalties only to close-call candidates avoids regressing characters
     // that are already unambiguous by shape alone.
     private const int DISAMBIGUATION_TOP_K = 3;
@@ -213,14 +214,18 @@ public class DollarPRecognizer
         if (candidatePerAxis.Count == 0)
             return new RecognitionResult("NONE", 0f, -1, "NONE", float.MinValue);
 
-        // Stage 1: pure shape scoring. For each character, keep its best-matching variant.
+        // Stage 1: pure shape scoring. For each character, keep its best-matching variant, and
+        // every variant's score for Stage 3.
         var shortlist = new List<CandidateMatch>(_templates.Count);
+        var variantShapes = new Dictionary<string, float[]>(_templates.Count);
         foreach (var kvp in _templates)
         {
             if (candidateCharacterIDs != null && !candidateCharacterIDs.Contains(kvp.Key))
                 continue;
 
             _templateUniformScaling.TryGetValue(kvp.Key, out List<bool> variantScaling);
+            float[] shapes = new float[kvp.Value.Count];
+            variantShapes[kvp.Key] = shapes;
             float bestShape = float.MinValue;
             int bestVariant = -1;
             for (int i = 0; i < kvp.Value.Count; i++)
@@ -231,6 +236,7 @@ public class DollarPRecognizer
                 List<Vector2> candidate = templateUsedUniform ? candidateUniform : candidatePerAxis;
                 float d = GreedyCloudMatch(candidate, kvp.Value[i]);
                 float shape = 1f - d / (0.5f * Mathf.Sqrt(2f));
+                shapes[i] = shape;
                 if (shape > bestShape)
                 {
                     bestShape = shape;
@@ -282,6 +288,10 @@ public class DollarPRecognizer
         }
 
         // Stage 3: close call — re-rank the top K by composite score (shape × stroke-count × aspect-ratio).
+        // Each character is scored by its best variant on that composite, not by the variant that
+        // happened to win on shape. Taxing only the shape-best variant penalised a character for a
+        // stroke count or proportion that a sibling variant matches: real three-stroke RA draws lost
+        // to KA because RA's shape-best variant had two strokes, and narrow MA draws lost to PA.
         int k = Mathf.Min(DISAMBIGUATION_TOP_K, shortlist.Count);
 
         CandidateMatch disambiguatedBest = new CandidateMatch
@@ -299,29 +309,35 @@ public class DollarPRecognizer
 
         for (int i = 0; i < k; i++)
         {
-            CandidateMatch candidateMatch = shortlist[i];
-            int templateStrokeCount = LookupTemplateStrokeCount(
-                candidateMatch.CharacterID, candidateMatch.VariantIndex, userStrokeCount);
-            float templateAspectRatio = LookupTemplateAspectRatio(
-                candidateMatch.CharacterID, candidateMatch.VariantIndex, userAspectRatio);
-
-            float composite = candidateMatch.Score
-                * StrokeCountPenalty(userStrokeCount, templateStrokeCount)
-                * AspectRatioPenalty(userAspectRatio, templateAspectRatio);
+            string characterID = shortlist[i].CharacterID;
+            float[] shapes = variantShapes[characterID];
+            List<int> strokeCounts = _templateStrokeCounts[characterID];
+            List<float> aspectRatios = _templateAspectRatios[characterID];
 
             CandidateMatch ranked = new CandidateMatch
             {
-                CharacterID = candidateMatch.CharacterID,
-                Score = composite,
-                VariantIndex = candidateMatch.VariantIndex
+                CharacterID = characterID,
+                Score = float.MinValue,
+                VariantIndex = -1
             };
+            for (int v = 0; v < shapes.Length; v++)
+            {
+                float variantComposite = shapes[v]
+                    * StrokeCountPenalty(userStrokeCount, strokeCounts[v])
+                    * AspectRatioPenalty(userAspectRatio, aspectRatios[v]);
+                if (variantComposite > ranked.Score)
+                {
+                    ranked.Score = variantComposite;
+                    ranked.VariantIndex = v + 1;
+                }
+            }
 
-            if (composite > disambiguatedBest.Score)
+            if (ranked.Score > disambiguatedBest.Score)
             {
                 disambiguatedSecond = disambiguatedBest;
                 disambiguatedBest = ranked;
             }
-            else if (composite > disambiguatedSecond.Score)
+            else if (ranked.Score > disambiguatedSecond.Score)
             {
                 disambiguatedSecond = ranked;
             }
@@ -330,16 +346,6 @@ public class DollarPRecognizer
         return new RecognitionResult(
             disambiguatedBest.CharacterID, disambiguatedBest.Score, disambiguatedBest.VariantIndex,
             disambiguatedSecond.CharacterID, disambiguatedSecond.Score);
-    }
-
-    private int LookupTemplateStrokeCount(string characterID, int variantOneBased, int fallback)
-    {
-        if (_templateStrokeCounts.TryGetValue(characterID, out List<int> list))
-        {
-            int idx = variantOneBased - 1;
-            if (idx >= 0 && idx < list.Count) return list[idx];
-        }
-        return fallback;
     }
 
     private float LookupTemplateAspectRatio(string characterID, int variantOneBased, float fallback)
