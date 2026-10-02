@@ -18,7 +18,8 @@ MonoBehaviour:
   description: Bakod is a wall built from broken tablets and forgotten boundaries.
     Paglimot places it between related words and their missing parts, teaching people
     to see separation where meaning once connected them.
-  abilityLine: It shields up to two enemies behind it, while leaving the currently needed character open.
+  abilityLine: It shields up to two enemies behind it, while leaving the currently
+    needed character open.
   moveSpeed: 0.85
   maxHealth: 1
   walkFrames:
@@ -55,7 +56,7 @@ MonoBehaviour:
     exitOpacity: 1
     material: {fileID: 0}
     localOffset: {x: 0, y: 0, z: 0}
-    localScale: {x: 1, y: 1, z: 1}
+    localScale: {x: 0.18, y: 0.18, z: 1}
     sortingOrderOffset: 1
   - id: 4
     anchor: 1
@@ -84,8 +85,17 @@ MonoBehaviour:
     exitOpacity: 1
     material: {fileID: 0}
     localOffset: {x: 0, y: 0, z: 0}
-    localScale: {x: 0.9, y: 0.9, z: 1}
+    localScale: {x: 0.08, y: 0.08, z: 1}
     sortingOrderOffset: 1
+  relationshipVisual:
+    firstEndpoint: {fileID: 0}
+    middle: {fileID: 0}
+    secondEndpoint: {fileID: 0}
+    bodyMode: 0
+    endpointLength: 0.45
+    endpointHeight: 0.4
+    bodyHeight: 0.24
+    sortingOrder: -1
   hudAbilityVisuals: []
   portraitSprite: {fileID: 0}
   assignedCharacter: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}

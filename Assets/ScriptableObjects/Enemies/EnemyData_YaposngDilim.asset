@@ -18,7 +18,7 @@ MonoBehaviour:
   description: Yapos ng Dilim is the embrace Paglimot uses to keep a word from reaching completion. Within its arms it traps the last sequence that would turn scattered syllables into a living word.
   abilityLine: It seals the final word behind an ordered chain of remembered characters.
   moveSpeed: 1.1
-  maxHealth: 2
+  maxHealth: 3
   walkFrames:
   - {fileID: 817186214586947369, guid: f59dd658772274ead811097a689a7845, type: 3}
   - {fileID: -4734520517766040561, guid: f59dd658772274ead811097a689a7845, type: 3}
@@ -70,6 +70,7 @@ MonoBehaviour:
   scrambleRadius: 3
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
+  spriteScale: 1.15
   corruptedMeaning: A final word can be trapped behind darkness.
   trueMeaning: Completion is a sequence, not repeated force.
   restoredLesson: Restore the final sequence in order.

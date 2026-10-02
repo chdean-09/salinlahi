@@ -18,7 +18,7 @@ MonoBehaviour:
   description: Uhaw is an empty vessel shaped from soil where old writing has dried away. Paglimot gives it an endless thirst for freshly restored characters, hoping each success will vanish as soon as it appears.
   abilityLine: It absorbs the last restored character and carries that memory inside itself.
   moveSpeed: 1.25
-  maxHealth: 2
+  maxHealth: 1
   walkFrames:
   - {fileID: -2418290129826604303, guid: e20bd411ac3454eff93e0ee2fc303e5a, type: 3}
   - {fileID: 5340328922013193927, guid: e20bd411ac3454eff93e0ee2fc303e5a, type: 3}

@@ -30,15 +30,15 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
-        public void HatiReviewSelection_UsesDifferentLearnedCharactersForEachPiece()
+        public void HatiReviewSelection_InheritsTheParentGlyphForEveryPiece()
         {
             BaybayinCharacterSO source = Character("HA");
             BaybayinCharacterSO ma = Character("MA");
             BaybayinCharacterSO na = Character("NA");
             var allowed = new List<BaybayinCharacterSO> { source, ma, na };
 
-            Assert.AreSame(ma, HatiSplitController.SelectReviewCharacter(source, 0, 2, allowed));
-            Assert.AreSame(na, HatiSplitController.SelectReviewCharacter(source, 1, 2, allowed));
+            Assert.AreSame(source, HatiSplitController.SelectReviewCharacter(source, 0, 2, allowed));
+            Assert.AreSame(source, HatiSplitController.SelectReviewCharacter(source, 1, 2, allowed));
         }
 
         [Test]

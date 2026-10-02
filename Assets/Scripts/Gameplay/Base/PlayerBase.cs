@@ -5,7 +5,6 @@ using UnityEngine;
 public class PlayerBase : MonoBehaviour
 {
     private HeartSystem _heartSystem;
-    private float _nextContactDamageTime;
 
     private void Awake()
     {
@@ -14,7 +13,6 @@ public class PlayerBase : MonoBehaviour
 
     private void OnEnable()
     {
-        _nextContactDamageTime = float.NegativeInfinity;
         EventBus.OnBaseHit += HandleBaseHit;
     }
 
@@ -41,12 +39,9 @@ public class PlayerBase : MonoBehaviour
             return;
         }
 
-        if (damage <= 0 || Time.time < _nextContactDamageTime)
+        if (damage <= 0)
             return;
 
-        int previousHearts = _heartSystem.GetCurrentHearts();
         _heartSystem.LoseHeart(damage);
-        if (_heartSystem.GetCurrentHearts() < previousHearts)
-            _nextContactDamageTime = Time.time + 1f;
     }
 }

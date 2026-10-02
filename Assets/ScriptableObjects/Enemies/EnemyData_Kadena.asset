@@ -18,7 +18,7 @@ MonoBehaviour:
   description: Kadena gathers characters Paglimot has torn from their words and locks them into forced order. Its chains insist that memory has only one path, but the links themselves still reveal the sequence they stole.
   abilityLine: It binds one other enemy until the first correct hit breaks its chain. It cannot chain again during that spawn.
   moveSpeed: 1.05
-  maxHealth: 2
+  maxHealth: 1
   walkFrames:
   - {fileID: -6997707494598969679, guid: 7cc5776d4b8e2494fa3c844b6f55b3e5, type: 3}
   - {fileID: -6794638092537650943, guid: 7cc5776d4b8e2494fa3c844b6f55b3e5, type: 3}

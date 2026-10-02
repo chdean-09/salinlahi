@@ -32,6 +32,8 @@ using UnityEngine;
 [RequireComponent(typeof(Enemy))]
 public sealed class KadenaChainController : MonoBehaviour
 {
+    [SerializeField, Min(0f)] private float _maxChainDistance = 3f;
+
     /// <summary>
     /// Shared scratch buffer for the tracker snapshot, mirroring
     /// <see cref="BakodShieldController"/>. Tick is never re-entrant and
@@ -184,6 +186,7 @@ public sealed class KadenaChainController : MonoBehaviour
         tracker.FillActiveEnemiesSnapshot(SnapshotBuffer);
 
         Vector3 own = transform.position;
+        float maxDistanceSqr = _maxChainDistance * _maxChainDistance;
         Enemy best = null;
         float bestSqr = float.MaxValue;
 
@@ -194,6 +197,9 @@ public sealed class KadenaChainController : MonoBehaviour
                 continue;
 
             float sqr = (candidate.transform.position - own).sqrMagnitude;
+            if (sqr > maxDistanceSqr)
+                continue;
+
             if (best == null || sqr < bestSqr - TieToleranceSqr)
             {
                 best = candidate;

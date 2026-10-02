@@ -215,7 +215,7 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
                     _reviewIndex++,
                     WaveManager.CurrentAllowedCharacters);
                 if (next != null)
-                    _enemy.AssignCharacter(next);
+                    _enemy.ApplyVisualCharacterOverride(this, next);
                 break;
         }
     }
