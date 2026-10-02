@@ -68,6 +68,13 @@ public sealed class EnemyIntroductionCardView : MonoBehaviour
     [Tooltip("Copy for the hold prompt.")]
     [SerializeField] private string _continuePromptMessage = "Tap to continue";
 
+    [Header("Card Fit")]
+    [Tooltip("Gap between the ability line's last row and the continue prompt, in canvas units.")]
+    [SerializeField] private float _continuePromptGap = 12f;
+
+    [Tooltip("Space kept under the continue prompt, inside the card, in canvas units.")]
+    [SerializeField] private float _cardBottomPadding = 24f;
+
     /// <summary>
     /// True when this view has enough wiring to show a card at all. The beat checks this
     /// <b>before</b> claiming a type's one-shot introduction: a claim consumed against an unwired
@@ -79,9 +86,24 @@ public sealed class EnemyIntroductionCardView : MonoBehaviour
     private Vector2 _cardRestAnchoredPosition;
     private bool _capturedRestPosition;
 
+    // Authored card and ability-line geometry, captured once so every card is fitted from the
+    // same baseline instead of growing on top of the previous enemy's fit.
+    private bool _capturedAuthoredLayout;
+    private Vector2 _authoredCardSizeDelta;
+    private float _authoredCardHeight;
+    private Vector2 _authoredAbilityOffsetMin;
+    private Vector2 _authoredAbilityOffsetMax;
+    private Vector2 _cardFitShift;
+    private bool _ownsContinuePrompt;
+    private bool _hasPromptRow;
+    private float _promptRowBottom;
+    private float _promptRowTop;
+    private float _fittedCardHeight;
+
     private void Awake()
     {
         CaptureRestPosition();
+        CaptureAuthoredLayout();
         ApplyPortraitScale();
         DisableRaycastsOnEveryGraphic();
         HideCardImmediate();
@@ -97,6 +119,7 @@ public sealed class EnemyIntroductionCardView : MonoBehaviour
     public void ShowContinuePrompt()
     {
         EnsureContinuePrompt();
+        LayoutOwnedContinuePrompt();
         SetTextOrHide(_continuePromptText, _continuePromptMessage);
     }
 
@@ -125,6 +148,7 @@ public sealed class EnemyIntroductionCardView : MonoBehaviour
         _continuePromptText.fontStyle = FontStyles.Italic;
         _continuePromptText.alignment = TextAlignmentOptions.Center;
         _continuePromptText.raycastTarget = false;
+        _ownsContinuePrompt = true;
 
         // Under the ability line, in the card's own layout space.
         if (_continuePromptText.rectTransform != null && _abilityText.rectTransform != null)
@@ -150,12 +174,15 @@ public sealed class EnemyIntroductionCardView : MonoBehaviour
     /// Loads the card with this enemy type's content and leaves it fully out of view, ready for
     /// <see cref="SetCardProgress"/> to bring it in. The ability line is withheld here even when
     /// authored: steps 2 and 3 of the beat are separate reads, and a card that arrives with both
-    /// lines already on it collapses them into one.
+    /// lines already on it collapses them into one. It is still measured here, though: the card is
+    /// sized to fit it before it slides in, so the box never resizes under the player's eyes.
     /// </summary>
-    public void PrepareCard(Sprite walkSprite, string displayName, string subtitle)
+    public void PrepareCard(Sprite walkSprite, string displayName, string subtitle, string abilityLine = null)
     {
         CaptureRestPosition();
+        CaptureAuthoredLayout();
         ApplyPortraitScale();
+        FitCardToAbilityLine(abilityLine);
 
         if (_portrait != null)
         {
@@ -194,10 +221,10 @@ public sealed class EnemyIntroductionCardView : MonoBehaviour
         }
 
         if (_cardRect != null)
-            _cardRect.anchoredPosition = Vector2.Lerp(
-                _cardRestAnchoredPosition + _cardSlideOffset,
-                _cardRestAnchoredPosition,
-                clamped);
+        {
+            Vector2 rest = _cardRestAnchoredPosition + _cardFitShift;
+            _cardRect.anchoredPosition = Vector2.Lerp(rest + _cardSlideOffset, rest, clamped);
+        }
     }
 
     /// <summary>
@@ -275,6 +302,102 @@ public sealed class EnemyIntroductionCardView : MonoBehaviour
 
         _cardRestAnchoredPosition = _cardRect.anchoredPosition;
         _capturedRestPosition = true;
+    }
+
+    /// <summary>
+    /// Records the authored card and ability-line rects. Fitting needs the ability line to be a
+    /// direct child of the card rect, because its edges are placed in the card's own space.
+    /// </summary>
+    private bool CaptureAuthoredLayout()
+    {
+        if (_capturedAuthoredLayout)
+            return true;
+
+        if (_cardRect == null || _abilityText == null || _abilityText.rectTransform.parent != _cardRect)
+            return false;
+
+        RectTransform ability = _abilityText.rectTransform;
+        _authoredCardSizeDelta = _cardRect.sizeDelta;
+        _authoredCardHeight = _cardRect.rect.height;
+        _authoredAbilityOffsetMin = ability.offsetMin;
+        _authoredAbilityOffsetMax = ability.offsetMax;
+        _capturedAuthoredLayout = true;
+        return true;
+    }
+
+    /// <summary>
+    /// Grows the card downward until the ability line and, under it, the continue prompt both fit
+    /// inside it. The top edge stays put so the name and subtitle never move; a short line keeps
+    /// the authored size. Long copy (Gapos runs six rows) used to spill past the card's bottom
+    /// edge, where the prompt was then drawn straight over its last rows.
+    /// </summary>
+    private void FitCardToAbilityLine(string abilityLine)
+    {
+        if (!CaptureAuthoredLayout())
+            return;
+
+        RectTransform ability = _abilityText.rectTransform;
+        _cardRect.sizeDelta = _authoredCardSizeDelta;
+        ability.offsetMin = _authoredAbilityOffsetMin;
+        ability.offsetMax = _authoredAbilityOffsetMax;
+        _cardFitShift = Vector2.zero;
+        _hasPromptRow = false;
+
+        float abilityTopInset = _authoredCardHeight
+            - (ability.anchorMax.y * _authoredCardHeight + _authoredAbilityOffsetMax.y);
+        float width = ability.rect.width;
+        if (width <= 0f)
+            return;
+
+        float textHeight = MeasureHeight(abilityLine, width);
+        float promptHeight = MeasureHeight(_continuePromptMessage, width);
+        float needed = abilityTopInset + textHeight + _continuePromptGap + promptHeight + _cardBottomPadding;
+        float extra = Mathf.Max(0f, needed - _authoredCardHeight);
+        float height = _authoredCardHeight + extra;
+
+        if (extra > 0f)
+        {
+            _cardRect.sizeDelta = _authoredCardSizeDelta + new Vector2(0f, extra);
+            _cardFitShift = new Vector2(0f, -(1f - _cardRect.pivot.y) * extra);
+        }
+
+        _promptRowBottom = _cardBottomPadding;
+        _promptRowTop = _promptRowBottom + promptHeight;
+        _fittedCardHeight = height;
+        _hasPromptRow = true;
+        SetVerticalEdges(ability, _promptRowTop + _continuePromptGap, height - abilityTopInset, height);
+        LayoutOwnedContinuePrompt();
+    }
+
+    /// <summary>
+    /// Puts the runtime-built prompt in the row the fit reserved for it, under the ability line.
+    /// The prompt itself is still built lazily at the hold; a scene-wired prompt keeps its layout.
+    /// </summary>
+    private void LayoutOwnedContinuePrompt()
+    {
+        if (!_hasPromptRow || !_ownsContinuePrompt || _continuePromptText == null)
+            return;
+
+        RectTransform ability = _abilityText.rectTransform;
+        RectTransform prompt = _continuePromptText.rectTransform;
+        prompt.anchorMin = ability.anchorMin;
+        prompt.anchorMax = ability.anchorMax;
+        prompt.pivot = ability.pivot;
+        prompt.offsetMin = new Vector2(ability.offsetMin.x, prompt.offsetMin.y);
+        prompt.offsetMax = new Vector2(ability.offsetMax.x, prompt.offsetMax.y);
+        SetVerticalEdges(prompt, _promptRowBottom, _promptRowTop, _fittedCardHeight);
+    }
+
+    private float MeasureHeight(string copy, float width)
+    {
+        return string.IsNullOrWhiteSpace(copy) ? 0f : _abilityText.GetPreferredValues(copy, width, 0f).y;
+    }
+
+    /// <summary>Places a child's bottom and top edges, measured up from its parent's bottom edge.</summary>
+    private static void SetVerticalEdges(RectTransform rect, float bottom, float top, float parentHeight)
+    {
+        rect.offsetMin = new Vector2(rect.offsetMin.x, bottom - rect.anchorMin.y * parentHeight);
+        rect.offsetMax = new Vector2(rect.offsetMax.x, top - rect.anchorMax.y * parentHeight);
     }
 
     private void ApplyPortraitScale()

@@ -1106,7 +1106,8 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         // two different enemies is the one thing the banner's "attached to the thing it describes"
         // rule cannot survive.
         StopBanner();
-        _card.PrepareCard(ResolveWalkSprite(data), data.displayName, data.discoverySubtitle);
+        _card.PrepareCard(ResolveWalkSprite(data), data.displayName, data.discoverySubtitle,
+            data.abilityLine);
 
         // Step 1 — Halt. The enemy stops where it stands, the vignette closes around it, and
         // time slows. The vignette is raised before the ramp rather than during it because its
@@ -1200,7 +1201,8 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     private IEnumerator PlayLesson(Enemy enemy, EnemyDataSO data, EnemyLessonSO lesson)
     {
         StopBanner();
-        _card.PrepareCard(ResolveWalkSprite(data), data.displayName, data.discoverySubtitle);
+        _card.PrepareCard(ResolveWalkSprite(data), data.displayName, data.discoverySubtitle,
+            data.abilityLine);
 
         // Beat 7 is a reveal, so the badge stays dark until then. PlayIntroduction now hides it
         // for every introduction spawn, so a lesson that does NOT defer its reveal has to put the
