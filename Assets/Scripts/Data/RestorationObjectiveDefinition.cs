@@ -23,6 +23,17 @@ public enum RestorationTokenKind
 public sealed class RestorationObjectiveDefinition
 {
     public RestorationDisplayMode displayMode = RestorationDisplayMode.GuidedWords;
+
+    /// <summary>
+    /// Shows and unlocks the target text one word at a time (see <see cref="RestorationWordPages"/>):
+    /// the rail carries only the current word's boxes, and a later word's occurrences cannot be
+    /// spawned for or restored until every box of the current word is filled. Opt-in per level;
+    /// only the Level 15 finale uses it, because its three-sentence passage shrank every box on
+    /// one line until it was unreadable.
+    /// </summary>
+    [Tooltip("Show and unlock the target text one word at a time. Level 15 only.")]
+    public bool oneWordAtATime;
+
     public List<RestorationObjectiveUnit> units = new();
 
     public bool HasTargets

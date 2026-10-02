@@ -230,7 +230,7 @@ namespace Salinlahi.Tests.Editor.Data
         }
 
         [TestCase(10, "A,EI,BA,MA,NA,TA,OU,KA,GA,SA,WA,YA", "value.a,value.wa,value.ga,value.sa,value.ma,value.ka,value.o,value.na")]
-        [TestCase(15, "A,EI,BA,MA,NA,TA,OU,KA,GA,SA,WA,YA,DA,HA,LA,NGA,RA,PA", "value.da,value.la,value.ma,value.sa,value.nga,value.ha,value.ya,value.ra")]
+        [TestCase(15, "A,EI,BA,MA,NA,TA,OU,KA,GA,SA,WA,YA,DA,HA,LA,NGA,RA,PA", "value.da,value.la,value.ma,value.pa,value.ya,value.ha,value.nga,value.ga,value.sa,value.ra")]
         public void EraFinales_RestoreTheirParagraphsWithCumulativeRegularEnemies(
             int levelNumber, string roster, string restorationValues)
         {

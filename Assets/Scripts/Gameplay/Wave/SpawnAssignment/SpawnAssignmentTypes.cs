@@ -25,21 +25,64 @@ public sealed class SpawnSlot
     /// </summary>
     public readonly string GateToken;
 
+    /// <summary>
+    /// The word this slot belongs to on a one-word-at-a-time objective
+    /// (<see cref="RestorationWordPages"/>), or <see cref="RestorationWordPages.NoPage"/> when the
+    /// level shows its whole target text at once. A paged slot is offered only while its word is
+    /// the current one.
+    /// </summary>
+    public readonly int PageIndex;
+
     public SpawnSlot(
         string symbolStableId,
         string wordStableId,
         int slotIndexInWord,
         string gateToken = null,
-        string occurrenceId = null)
+        string occurrenceId = null,
+        int pageIndex = RestorationWordPages.NoPage)
     {
         SymbolStableId = symbolStableId;
         WordStableId = wordStableId;
         SlotIndexInWord = slotIndexInWord;
         GateToken = gateToken;
         OccurrenceId = occurrenceId;
+        PageIndex = pageIndex;
     }
 
     public bool IsGated => !string.IsNullOrEmpty(GateToken);
+
+    public bool IsPaged => PageIndex != RestorationWordPages.NoPage;
+
+    /// <summary>A copy of this slot behind <paramref name="gateToken"/>, everything else kept.</summary>
+    public SpawnSlot WithGate(string gateToken) => new SpawnSlot(
+        SymbolStableId, WordStableId, SlotIndexInWord, gateToken, OccurrenceId, PageIndex);
+
+    /// <summary>
+    /// The word currently open on a paged objective: the lowest page that still has an unrestored
+    /// slot, or <see cref="RestorationWordPages.NoPage"/> when no slot is paged or all are restored.
+    /// </summary>
+    public static int CurrentPage(IReadOnlyList<SpawnSlot> slots, Func<int, bool> isRestored)
+    {
+        int current = RestorationWordPages.NoPage;
+        if (slots == null)
+            return current;
+
+        for (int index = 0; index < slots.Count; index++)
+        {
+            SpawnSlot slot = slots[index];
+            if (slot == null || !slot.IsPaged || (isRestored != null && isRestored(index)))
+                continue;
+
+            if (current == RestorationWordPages.NoPage || slot.PageIndex < current)
+                current = slot.PageIndex;
+        }
+
+        return current;
+    }
+
+    /// <summary>True when this slot belongs to a word after the current one.</summary>
+    public bool IsBeyondPage(int currentPage)
+        => IsPaged && currentPage != RestorationWordPages.NoPage && PageIndex > currentPage;
 }
 
 /// <summary>What a given spawn is for.</summary>
