@@ -644,7 +644,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 579d65d7846bc3a4ce1f0197ec37751a, type: 2}
     - {fileID: 11400000, guid: 3beab354ec73c4942a045607153e984b, type: 2}
     enemyCount: 8
-    spawnInterval: 2.2
+    spawnInterval: 3.45
     waveStartDelay: 1.2
   - isIntermissionWave: 0
     characters:
@@ -693,7 +693,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 579d65d7846bc3a4ce1f0197ec37751a, type: 2}
     - {fileID: 11400000, guid: 3beab354ec73c4942a045607153e984b, type: 2}
     enemyCount: 9
-    spawnInterval: 2.05
+    spawnInterval: 2.85
     waveStartDelay: 1
   - isIntermissionWave: 0
     characters:
@@ -742,7 +742,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 579d65d7846bc3a4ce1f0197ec37751a, type: 2}
     - {fileID: 11400000, guid: 3beab354ec73c4942a045607153e984b, type: 2}
     enemyCount: 10
-    spawnInterval: 2
+    spawnInterval: 2.85
     waveStartDelay: 1
   - isIntermissionWave: 0
     characters:
@@ -785,7 +785,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 579d65d7846bc3a4ce1f0197ec37751a, type: 2}
     - {fileID: 11400000, guid: 3beab354ec73c4942a045607153e984b, type: 2}
     enemyCount: 11
-    spawnInterval: 2
+    spawnInterval: 2.85
     waveStartDelay: 1
   - isIntermissionWave: 0
     characters:
@@ -828,7 +828,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 579d65d7846bc3a4ce1f0197ec37751a, type: 2}
     - {fileID: 11400000, guid: 3beab354ec73c4942a045607153e984b, type: 2}
     enemyCount: 12
-    spawnInterval: 2
+    spawnInterval: 2.85
     waveStartDelay: 1
   waveCurve: {fileID: 0}
   allowedCharacters:
