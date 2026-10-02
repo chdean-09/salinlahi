@@ -345,7 +345,6 @@ public class MainMenuUI : MonoBehaviour
         DebugLogger.Log("MainMenuUI: Settings pressed");
         if (_settingsPanel != null)
         {
-            _settingsPanel.EnableJourneyReset();
             _settingsPanel.Show();
         }
     }

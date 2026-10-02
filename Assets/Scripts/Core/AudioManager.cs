@@ -161,14 +161,20 @@ public class AudioManager : Singleton<AudioManager>
     private const string PrefKeySfxVolume = "salinlahi.audio.sfx_volume";
 
     private float _masterVolume = 1f;
-    private float _bgmVolume = 1f;
-    private float _sfxVolume = 1f;
+    private const float DefaultBgmVolume = 0.3f;
+    private float _bgmVolume = DefaultBgmVolume;
+    private const float DefaultSfxVolume = 0.7f;
+    private float _sfxVolume = DefaultSfxVolume;
 
     // Per-clip scale applied to the BGM source on top of master & bgm sliders.
     // Set by FadeInBGM; reused by ApplyVolumes and fade routines so live slider
     // changes during a track preserve the bank's authored level.
     private float _bgmScale = 1f;
     private Coroutine _bgmFadeRoutine;
+    private Coroutine _creditsTransition;
+    private AudioClip _preCreditsClip;
+    private float _preCreditsScale;
+    private bool _creditsMusicActive;
 
     // Ducking is deliberately a SEPARATE multiplier from _bgmScale. _bgmScale belongs to the
     // fade/crossfade system, which resets it to 1 at several points; folding the duck into it
@@ -220,6 +226,8 @@ public class AudioManager : Singleton<AudioManager>
 
     private void OnDisable()
     {
+        CancelCreditsTransition();
+        _creditsMusicActive = false;
         CancelPronunciationFade();
         SceneManager.sceneLoaded -= HandleSceneLoaded;
         EventBus.OnPronunciationRequested -= PlayPronunciationClip;
@@ -255,6 +263,7 @@ public class AudioManager : Singleton<AudioManager>
 
     private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        StopCreditsBgm();
         FadeOutPronunciation();
         // A syllable can be cut off mid-duck by a scene change (leaving a level during a
         // learning card, say). Without this the next scene's music would come up dipped.
@@ -298,6 +307,8 @@ public class AudioManager : Singleton<AudioManager>
     {
         if (_bgmSource == null || clip == null)
             return;
+
+        CancelCreditsTransition();
 
         if (_bgmSource.clip == clip && _bgmSource.isPlaying)
         {
@@ -781,6 +792,52 @@ public class AudioManager : Singleton<AudioManager>
         _bgmSource.Play();
     }
 
+    /// <summary>Quiet, transient credits music; keeps the player's volume preferences intact.</summary>
+    public void PlayCreditsBgm(AudioClip clip)
+    {
+        if (clip == null || _bgmSource == null || _creditsMusicActive)
+            return;
+
+        CancelCreditsTransition();
+        _preCreditsClip = _bgmSource.isPlaying ? _bgmSource.clip : null;
+        _preCreditsScale = _bgmScale;
+        _creditsMusicActive = true;
+        StopSting();
+        float outgoingVolume = _bgmSource.volume;
+        CancelBgmDuck();
+        // Clearing the victory-sting duck must not make the outgoing music jump louder.
+        _bgmSource.volume = outgoingVolume;
+        _creditsTransition = StartCoroutine(TransitionCreditsBgm(clip, 1.2f, 2f, 0.65f));
+    }
+
+    public void StopCreditsBgm()
+    {
+        if (!_creditsMusicActive)
+            return;
+
+        _creditsMusicActive = false;
+        CancelCreditsTransition();
+        AudioClip previous = _preCreditsClip;
+        _preCreditsClip = null;
+        _creditsTransition = StartCoroutine(TransitionCreditsBgm(previous, 0.6f, 0.6f, _preCreditsScale));
+    }
+
+    private IEnumerator TransitionCreditsBgm(AudioClip clip, float fadeOut, float fadeIn, float scale)
+    {
+        yield return FadeOutBGM(fadeOut);
+        if (clip != null)
+            FadeInBGM(clip, fadeIn, scale);
+        _creditsTransition = null;
+    }
+
+    private void CancelCreditsTransition()
+    {
+        if (_creditsTransition == null)
+            return;
+        StopCoroutine(_creditsTransition);
+        _creditsTransition = null;
+    }
+
     public void StopBGM()
     {
         if (_bgmSource == null)
@@ -922,8 +979,8 @@ public class AudioManager : Singleton<AudioManager>
     private void LoadSavedVolumes()
     {
         _masterVolume = PlayerPrefs.GetFloat(PrefKeyMasterVolume, 1f);
-        _bgmVolume = PlayerPrefs.GetFloat(PrefKeyBgmVolume, 1f);
-        _sfxVolume = PlayerPrefs.GetFloat(PrefKeySfxVolume, 1f);
+        _bgmVolume = PlayerPrefs.GetFloat(PrefKeyBgmVolume, DefaultBgmVolume);
+        _sfxVolume = PlayerPrefs.GetFloat(PrefKeySfxVolume, DefaultSfxVolume);
         ApplyVolumes();
         DebugLogger.Log($"AudioManager: Loaded volumes — Master={_masterVolume:F2}, BGM={_bgmVolume:F2}, SFX={_sfxVolume:F2}");
     }

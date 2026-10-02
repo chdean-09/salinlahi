@@ -24,33 +24,18 @@ public class SettingsPanel : MonoBehaviour
     [SerializeField] private Color _modalBackdropColor = new(0.02f, 0.03f, 0.06f, 0.94f);
     [SerializeField] private Sprite _sliderFallbackSprite;
 
-    [Header("Journey Reset")]
-    [SerializeField] private bool _allowJourneyReset = false;
-    [SerializeField] private Button _journeyResetButton;
-    [SerializeField] private ResetJourneyConfirmationPanel _resetConfirmationPanel;
-
-    private static readonly Color TrackColor = new(0.2f, 0.23f, 0.3f, 1f);
-    private static readonly Color FillColor = new(0.08f, 0.56f, 1f, 1f);
-    private static readonly Color HandleColor = new(0.95f, 0.98f, 1f, 1f);
+    private static readonly Color TrackColor = new(0.24f, 0.20f, 0.16f, 1f);
+    private static readonly Color FillColor = new(0.68f, 0.44f, 0.12f, 1f);
+    private static readonly Color HandleColor = new(0.95f, 0.83f, 0.52f, 1f);
     private static readonly Color LabelColor = new(1f, 1f, 1f, 1f);
     private static readonly Color CardColor = new(0.07f, 0.1f, 0.17f, 1f);
-    private static readonly Color JourneyResetButtonColor = new(0.72f, 0.18f, 0.15f, 1f);
-    private static readonly Color MainMenuButtonTextColor = new(0.7019608f, 0.5019608f, 0.07450981f, 1f);
-    private static readonly Color MainMenuTextShadowColor = new(0.06f, 0.035f, 0.01f, 1f);
-    private static readonly Vector2 MainMenuTextShadowOffset = new(5f, -5f);
-    private static readonly Vector2 CloseButtonMinSize = new(280f, 88f);
-    private const float CloseButtonMinFontSize = UITextScale.Body;
-    private static readonly string[] MainMenuButtonTemplateNames =
-    {
-        "SettingsButton",
-        "PlayButton",
-        "LevelSelectButton",
-        "TracingDojoButton"
-    };
+    private static readonly Vector2 CloseButtonMinSize = new(300f, 120f);
+    private const float CloseButtonMinFontSize = UITextScale.Title;
 
     private static Sprite s_runtimeWhiteSprite;
     private GameObject _modalBackdrop;
     private RectTransform _settingsCardRect;
+    private RectTransform _settingsScrollRect;
     private bool _onParchment;
     private readonly System.Collections.Generic.List<GameObject> _hiddenSiblingObjects = new();
     private readonly System.Collections.Generic.List<Graphic> _disabledSiblingRaycastGraphics = new();
@@ -64,21 +49,19 @@ public class SettingsPanel : MonoBehaviour
         EnsureTopInputLayer();
         EnsureSafeArea();
         EnsureModalBackdrop();
-        EnsureCloseButtonVisible();
         SetSiblingUiInputEnabled(false);
         ResolveLabelReferencesIfMissing();
         EnsureSliderVisuals();
         EnsureCardLayout();
-        EnsureJourneyResetButton();
+        EnsureCloseButtonVisible();
         SyncSlidersToAudioManager();
         UpdateVolumeLabels();
-        SetSlidersInteractable(true);
+        SetSlidersInteractable(AudioManager.Instance != null);
 
         if (_masterSlider != null) _masterSlider.onValueChanged.AddListener(OnMasterChanged);
         if (_bgmSlider != null) _bgmSlider.onValueChanged.AddListener(OnBgmChanged);
         if (_sfxSlider != null) _sfxSlider.onValueChanged.AddListener(OnSfxChanged);
         if (_closeButton != null) _closeButton.onClick.AddListener(Hide);
-        if (_journeyResetButton != null) _journeyResetButton.onClick.AddListener(OnJourneyResetPressed);
         Opened?.Invoke();
     }
 
@@ -90,7 +73,6 @@ public class SettingsPanel : MonoBehaviour
         if (_bgmSlider != null) _bgmSlider.onValueChanged.RemoveListener(OnBgmChanged);
         if (_sfxSlider != null) _sfxSlider.onValueChanged.RemoveListener(OnSfxChanged);
         if (_closeButton != null) _closeButton.onClick.RemoveListener(Hide);
-        if (_journeyResetButton != null) _journeyResetButton.onClick.RemoveListener(OnJourneyResetPressed);
         Closed?.Invoke();
     }
 
@@ -103,91 +85,6 @@ public class SettingsPanel : MonoBehaviour
     {
         AudioManager.Instance?.PlayMenuExitButtonClick();
         gameObject.SetActive(false);
-    }
-
-    /// <summary>
-    /// Called by the main-menu context before Show(). The pause-menu instance never
-    /// calls this, so Reset Journey stays unavailable mid-level (SALIN-142).
-    /// </summary>
-    public void EnableJourneyReset()
-    {
-        _allowJourneyReset = true;
-    }
-
-    private bool IsJourneyResetAvailable()
-    {
-        return _allowJourneyReset && SaveManager.Instance != null &&
-            ProgressManager.Instance != null && SceneLoader.Instance != null &&
-            ResetJourneyFlow.CanOfferReset(SaveManager.Instance.Mode);
-    }
-
-    private void EnsureJourneyResetButton()
-    {
-        if (!IsJourneyResetAvailable())
-        {
-            if (_journeyResetButton != null)
-                _journeyResetButton.gameObject.SetActive(false);
-            return;
-        }
-
-        if (_journeyResetButton == null)
-            _journeyResetButton = BuildJourneyResetButton();
-        _journeyResetButton.gameObject.SetActive(true);
-    }
-
-    private Button BuildJourneyResetButton()
-    {
-        GameObject buttonObject = new("JourneyResetButton_Runtime",
-            typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
-        buttonObject.transform.SetParent(transform, false);
-        Image image = buttonObject.GetComponent<Image>();
-        image.color = JourneyResetButtonColor;
-
-        RectTransform rect = buttonObject.GetComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0.2f, 0.17f);
-        rect.anchorMax = new Vector2(0.8f, 0.25f);
-        rect.offsetMin = Vector2.zero;
-        rect.offsetMax = Vector2.zero;
-
-        GameObject labelObject = new("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
-        labelObject.transform.SetParent(buttonObject.transform, false);
-        RectTransform labelRect = labelObject.GetComponent<RectTransform>();
-        labelRect.anchorMin = Vector2.zero;
-        labelRect.anchorMax = Vector2.one;
-        labelRect.offsetMin = Vector2.zero;
-        labelRect.offsetMax = Vector2.zero;
-        TextMeshProUGUI label = labelObject.GetComponent<TextMeshProUGUI>();
-        label.text = ResetJourneyFlow.ConfirmButtonLabel;
-        label.fontSize = CloseButtonMinFontSize;
-        label.alignment = TextAlignmentOptions.Center;
-        label.color = Color.white;
-        label.raycastTarget = false;
-        EnsureTextShadow(labelObject);
-
-        return buttonObject.GetComponent<Button>();
-    }
-
-    private void OnJourneyResetPressed()
-    {
-        AudioManager.Instance?.PlayMenuButtonClick();
-        EnsureResetConfirmationPanel();
-        _resetConfirmationPanel.Present(
-            ResetJourneyFlow.Execute,
-            () => SceneLoader.Instance?.LoadMainMenu());
-    }
-
-    private void EnsureResetConfirmationPanel()
-    {
-        if (_resetConfirmationPanel != null)
-            return;
-        GameObject panelObject = new("ResetJourneyConfirmationPanel", typeof(RectTransform));
-        panelObject.transform.SetParent(transform, false);
-        RectTransform rect = panelObject.GetComponent<RectTransform>();
-        rect.anchorMin = Vector2.zero;
-        rect.anchorMax = Vector2.one;
-        rect.offsetMin = Vector2.zero;
-        rect.offsetMax = Vector2.zero;
-        _resetConfirmationPanel = panelObject.AddComponent<ResetJourneyConfirmationPanel>();
     }
 
     private void SyncSlidersToAudioManager()
@@ -224,9 +121,9 @@ public class SettingsPanel : MonoBehaviour
 
     private void UpdateVolumeLabels()
     {
-        UpdateLabel(_masterLabel, "Master Volume", _masterSlider);
-        UpdateLabel(_bgmLabel, "BGM Volume", _bgmSlider);
-        UpdateLabel(_sfxLabel, "SFX Volume", _sfxSlider);
+        UpdateLabel(_masterLabel, "Master", _masterSlider);
+        UpdateLabel(_bgmLabel, "Music", _bgmSlider);
+        UpdateLabel(_sfxLabel, "Sound effects", _sfxSlider);
     }
 
     private void UpdateLabel(TMP_Text label, string prefix, Slider slider)
@@ -235,9 +132,13 @@ public class SettingsPanel : MonoBehaviour
             return;
 
         label.color = _onParchment ? ScrollPanelArt.InkColor : LabelColor;
-        label.fontSize = Mathf.Max(label.fontSize, UITextScale.Secondary);
+        label.fontSize = UITextScale.Title;
         int percent = Mathf.RoundToInt(slider.value * 100f);
-        label.text = $"{prefix}: {percent}%";
+        label.text = prefix;
+        TMP_Text valueLabel = _settingsScrollRect != null
+            ? _settingsScrollRect.Find(slider.name + "Value")?.GetComponent<TMP_Text>() : null;
+        if (valueLabel != null)
+            valueLabel.text = slider.value <= slider.minValue ? "Muted" : $"{percent}%";
     }
 
     private void SetSlidersInteractable(bool isInteractable)
@@ -259,6 +160,9 @@ public class SettingsPanel : MonoBehaviour
         if (slider == null)
             return;
 
+        slider.wholeNumbers = false;
+        slider.minValue = 0f;
+        slider.maxValue = 1f;
         EnsureSliderStructure(slider);
         Image background = slider.transform.Find("Background")?.GetComponent<Image>();
         Image fill = slider.fillRect != null ? slider.fillRect.GetComponent<Image>() : null;
@@ -273,9 +177,29 @@ public class SettingsPanel : MonoBehaviour
         {
             RectTransform handleRect = handle.GetComponent<RectTransform>();
             if (handleRect != null)
-                handleRect.sizeDelta = new Vector2(28f, 28f);
+            {
+                handleRect.anchorMin = new Vector2(handleRect.anchorMin.x, 0.5f);
+                handleRect.anchorMax = new Vector2(handleRect.anchorMax.x, 0.5f);
+                handleRect.sizeDelta = new Vector2(48f, 64f);
+            }
         }
 
+        if (handle != null)
+        {
+            handle.raycastTarget = true;
+            slider.targetGraphic = handle;
+            Outline outline = handle.GetComponent<Outline>();
+            if (outline == null)
+                outline = handle.gameObject.AddComponent<Outline>();
+            outline.effectColor = ScrollPanelArt.InkColor;
+            outline.effectDistance = new Vector2(3f, -3f);
+        }
+        ColorBlock colors = ColorBlock.defaultColorBlock;
+        colors.highlightedColor = new Color(1f, 0.94f, 0.78f);
+        colors.selectedColor = colors.highlightedColor;
+        colors.pressedColor = new Color(0.80f, 0.67f, 0.42f);
+        slider.colors = colors;
+        slider.transition = Selectable.Transition.ColorTint;
         slider.direction = Slider.Direction.LeftToRight;
     }
 
@@ -284,8 +208,9 @@ public class SettingsPanel : MonoBehaviour
         if (image == null)
             return;
 
-        if (image.sprite == null && fallback != null)
-            image.sprite = fallback;
+        image.overrideSprite = null;
+        image.sprite = fallback;
+        image.raycastTarget = false;
 
         image.enabled = true;
         image.color = color;
@@ -297,17 +222,6 @@ public class SettingsPanel : MonoBehaviour
     {
         if (_sliderFallbackSprite != null)
             return _sliderFallbackSprite;
-
-        Image[] images = GetComponentsInChildren<Image>(true);
-        for (int i = 0; i < images.Length; i++)
-        {
-            Image image = images[i];
-            if (image != null && image.sprite != null)
-            {
-                _sliderFallbackSprite = image.sprite;
-                return _sliderFallbackSprite;
-            }
-        }
 
         if (s_runtimeWhiteSprite == null)
         {
@@ -334,11 +248,26 @@ public class SettingsPanel : MonoBehaviour
 
     private void EnsureSafeArea()
     {
-        if (GetComponent<RectTransform>() == null)
+        RectTransform rect = GetComponent<RectTransform>();
+        if (rect == null)
             return;
 
-        if (GetComponent<SafeAreaHandler>() == null)
-            gameObject.AddComponent<SafeAreaHandler>();
+        // The page background covers the display; only its controls need notch padding.
+        SafeAreaHandler safeArea = GetComponent<SafeAreaHandler>();
+        if (safeArea != null)
+            safeArea.enabled = false;
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        Image pageFill = GetComponent<Image>();
+        if (pageFill == null)
+            pageFill = gameObject.AddComponent<Image>();
+        pageFill.sprite = null;
+        pageFill.overrideSprite = null;
+        pageFill.color = Color.clear;
+        pageFill.raycastTarget = false;
     }
 
     private void EnsureModalBackdrop()
@@ -368,10 +297,14 @@ public class SettingsPanel : MonoBehaviour
         }
 
         _modalBackdrop.transform.SetSiblingIndex(0);
+        ScrollPanelArt.SetAnchors(_modalBackdrop.GetComponent<RectTransform>(),
+            Rect.MinMaxRect(0f, 0f, 1f, 1f));
 
         Image backdrop = _modalBackdrop.GetComponent<Image>();
         if (backdrop != null)
         {
+            backdrop.sprite = null;
+            backdrop.overrideSprite = null;
             backdrop.color = _modalBackdropColor;
             // Eat clicks so underlying menu can't steal pointer input.
             backdrop.raycastTarget = true;
@@ -428,18 +361,17 @@ public class SettingsPanel : MonoBehaviour
         if (_closeButton == null)
             return;
 
-        StyleCloseButtonLikeMainMenu(_closeButton);
+        StyleCloseButton(_closeButton);
 
         RectTransform closeRect = _closeButton.GetComponent<RectTransform>();
         if (closeRect == null)
             return;
 
-        closeRect.anchorMin = new Vector2(0.5f, 1f);
-        closeRect.anchorMax = new Vector2(0.5f, 1f);
+        closeRect.SetParent(_settingsCardRect, false);
+        closeRect.anchorMin = new Vector2(0.08f, 0.96f);
+        closeRect.anchorMax = closeRect.anchorMin;
         closeRect.pivot = new Vector2(0f, 1f);
-        closeRect.anchorMin = new Vector2(0f, 1f);
-        closeRect.anchorMax = new Vector2(0f, 1f);
-        closeRect.anchoredPosition = new Vector2(24f, -24f);
+        closeRect.anchoredPosition = Vector2.zero;
         closeRect.sizeDelta = new Vector2(
             Mathf.Max(closeRect.sizeDelta.x, CloseButtonMinSize.x),
             Mathf.Max(closeRect.sizeDelta.y, CloseButtonMinSize.y));
@@ -448,86 +380,69 @@ public class SettingsPanel : MonoBehaviour
         if (closeLabel != null)
         {
             closeLabel.text = "Back";
-            closeLabel.fontSize = Mathf.Max(closeLabel.fontSize, CloseButtonMinFontSize);
+            TutorialFontProvider.ApplyTo(closeLabel);
+            closeLabel.enableAutoSizing = true;
+            closeLabel.fontSizeMin = UITextScale.Body;
+            closeLabel.fontSizeMax = CloseButtonMinFontSize;
+            closeLabel.fontSize = CloseButtonMinFontSize;
         }
     }
 
-    private void StyleCloseButtonLikeMainMenu(Button button)
+    private void StyleCloseButton(Button button)
     {
         if (button == null)
             return;
 
-        Image buttonImage = button.targetGraphic as Image;
-        if (buttonImage == null)
-            buttonImage = button.GetComponent<Image>();
-
-        Image templateImage = FindMainMenuButtonTemplateImage();
-        if (buttonImage != null)
+        Image image = button.targetGraphic as Image;
+        if (image == null)
+            image = button.GetComponent<Image>();
+        Image menuImage = transform.parent?.Find("SettingsButton")?.GetComponent<Image>();
+        if (image != null)
         {
-            if (templateImage != null)
+            Sprite sprite = menuImage != null ? menuImage.sprite : null;
+            if (sprite == null)
             {
-                buttonImage.sprite = templateImage.sprite;
-                buttonImage.type = templateImage.type;
-                buttonImage.pixelsPerUnitMultiplier = templateImage.pixelsPerUnitMultiplier;
+                foreach (Sprite candidate in Resources.LoadAll<Sprite>("Art/UI/Buttons/ui_button_generic"))
+                {
+                    if (candidate.name == "ui_button_generic_0")
+                    {
+                        sprite = candidate;
+                        break;
+                    }
+                }
             }
-
-            buttonImage.enabled = true;
-            buttonImage.color = Color.white;
-            buttonImage.raycastTarget = true;
-            button.targetGraphic = buttonImage;
+            image.overrideSprite = null;
+            image.sprite = sprite;
+            image.type = menuImage != null ? menuImage.type : Image.Type.Simple;
+            image.pixelsPerUnitMultiplier = menuImage != null ? menuImage.pixelsPerUnitMultiplier : 1f;
+            image.color = Color.white;
+            image.raycastTarget = true;
+            button.targetGraphic = image;
         }
-
-        TMP_Text tmpLabel = button.GetComponentInChildren<TMP_Text>(true);
-        if (tmpLabel != null)
+        button.transition = Selectable.Transition.ColorTint;
+        button.colors = ColorBlock.defaultColorBlock;
+        foreach (Graphic label in button.GetComponentsInChildren<Graphic>(true))
         {
-            tmpLabel.color = MainMenuButtonTextColor;
-            tmpLabel.alignment = TextAlignmentOptions.Center;
-            tmpLabel.raycastTarget = false;
-            EnsureTextShadow(tmpLabel.gameObject);
-        }
-
-        Text legacyLabel = button.GetComponentInChildren<Text>(true);
-        if (legacyLabel != null)
-        {
-            legacyLabel.color = MainMenuButtonTextColor;
-            legacyLabel.alignment = TextAnchor.MiddleCenter;
-            legacyLabel.fontSize = Mathf.Max(legacyLabel.fontSize, Mathf.RoundToInt(CloseButtonMinFontSize));
-            legacyLabel.raycastTarget = false;
-            EnsureTextShadow(legacyLabel.gameObject);
-        }
-    }
-
-    private Image FindMainMenuButtonTemplateImage()
-    {
-        if (transform.parent == null)
-            return null;
-
-        for (int i = 0; i < MainMenuButtonTemplateNames.Length; i++)
-        {
-            Transform template = transform.parent.Find(MainMenuButtonTemplateNames[i]);
-            if (template == null)
+            if (label is TMP_Text tmp)
+                tmp.alignment = TextAlignmentOptions.Center;
+            else if (label is Text text)
+            {
+                text.alignment = TextAnchor.MiddleCenter;
+                text.fontSize = Mathf.RoundToInt(CloseButtonMinFontSize);
+            }
+            else
                 continue;
 
-            Image image = template.GetComponent<Image>();
-            if (image != null)
-                return image;
+            label.color = new Color(0.7019608f, 0.5019608f, 0.07450981f, 1f);
+            label.raycastTarget = false;
+            Shadow shadow = label.GetComponent<Shadow>();
+            if (shadow == null)
+                shadow = label.gameObject.AddComponent<Shadow>();
+            shadow.enabled = true;
+            shadow.effectColor = new Color(0.06f, 0.035f, 0.01f, 1f);
+            shadow.effectDistance = new Vector2(5f, -5f);
+            shadow.useGraphicAlpha = true;
         }
-
-        return null;
-    }
-
-    private static void EnsureTextShadow(GameObject labelObject)
-    {
-        if (labelObject == null)
-            return;
-
-        Shadow shadow = labelObject.GetComponent<Shadow>();
-        if (shadow == null)
-            shadow = labelObject.AddComponent<Shadow>();
-
-        shadow.effectColor = MainMenuTextShadowColor;
-        shadow.effectDistance = MainMenuTextShadowOffset;
-        shadow.useGraphicAlpha = true;
     }
 
     private static void EnsureSliderStructure(Slider slider)
@@ -535,6 +450,13 @@ public class SettingsPanel : MonoBehaviour
         RectTransform sliderRect = slider.GetComponent<RectTransform>();
         if (sliderRect == null)
             return;
+
+        Image hitArea = slider.GetComponent<Image>();
+        if (hitArea == null)
+            hitArea = slider.gameObject.AddComponent<Image>();
+        hitArea.sprite = null;
+        hitArea.color = Color.clear;
+        hitArea.raycastTarget = true;
 
         Transform backgroundTransform = slider.transform.Find("Background");
         if (backgroundTransform == null)
@@ -550,8 +472,8 @@ public class SettingsPanel : MonoBehaviour
             backgroundRect.anchorMin = new Vector2(0f, 0.5f);
             backgroundRect.anchorMax = new Vector2(1f, 0.5f);
             backgroundRect.pivot = new Vector2(0.5f, 0.5f);
-            backgroundRect.offsetMin = new Vector2(0f, -6f);
-            backgroundRect.offsetMax = new Vector2(0f, 6f);
+            backgroundRect.offsetMin = new Vector2(24f, -8f);
+            backgroundRect.offsetMax = new Vector2(-24f, 8f);
         }
 
         Transform fillAreaTransform = slider.transform.Find("Fill Area");
@@ -568,8 +490,8 @@ public class SettingsPanel : MonoBehaviour
             fillAreaRect.anchorMin = new Vector2(0f, 0.5f);
             fillAreaRect.anchorMax = new Vector2(1f, 0.5f);
             fillAreaRect.pivot = new Vector2(0.5f, 0.5f);
-            fillAreaRect.offsetMin = new Vector2(0f, -6f);
-            fillAreaRect.offsetMax = new Vector2(0f, 6f);
+            fillAreaRect.offsetMin = new Vector2(24f, -8f);
+            fillAreaRect.offsetMax = new Vector2(-24f, 8f);
         }
 
         Transform fillTransform = fillAreaTransform.Find("Fill");
@@ -589,6 +511,12 @@ public class SettingsPanel : MonoBehaviour
             slider.fillRect = fillTransform.GetComponent<RectTransform>();
         }
 
+        if (slider.fillRect != null)
+        {
+            slider.fillRect.offsetMin = Vector2.zero;
+            slider.fillRect.offsetMax = Vector2.zero;
+        }
+
         Transform handleAreaTransform = slider.transform.Find("Handle Slide Area");
         if (handleAreaTransform == null)
         {
@@ -600,10 +528,12 @@ public class SettingsPanel : MonoBehaviour
         RectTransform handleAreaRect = handleAreaTransform.GetComponent<RectTransform>();
         if (handleAreaRect != null)
         {
-            handleAreaRect.anchorMin = Vector2.zero;
-            handleAreaRect.anchorMax = Vector2.one;
-            handleAreaRect.offsetMin = new Vector2(14f, 0f);
-            handleAreaRect.offsetMax = new Vector2(-14f, 0f);
+            // Slider drives both handle anchors; a zero-height travel area keeps
+            // the thumb's height fixed while its horizontal anchor follows the value.
+            handleAreaRect.anchorMin = new Vector2(0f, 0.5f);
+            handleAreaRect.anchorMax = new Vector2(1f, 0.5f);
+            handleAreaRect.offsetMin = new Vector2(24f, 0f);
+            handleAreaRect.offsetMax = new Vector2(-24f, 0f);
         }
 
         Transform handleTransform = handleAreaTransform.Find("Handle");
@@ -612,7 +542,9 @@ public class SettingsPanel : MonoBehaviour
             GameObject handleGo = new("Handle", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             handleGo.transform.SetParent(handleAreaTransform, false);
             RectTransform handleRect = handleGo.GetComponent<RectTransform>();
-            handleRect.sizeDelta = new Vector2(28f, 28f);
+            handleRect.anchorMin = new Vector2(0f, 0.5f);
+            handleRect.anchorMax = new Vector2(0f, 0.5f);
+            handleRect.sizeDelta = new Vector2(48f, 64f);
             slider.handleRect = handleRect;
             slider.targetGraphic = handleGo.GetComponent<Image>();
         }
@@ -678,44 +610,106 @@ public class SettingsPanel : MonoBehaviour
             cardImage.raycastTarget = false;
         }
 
-        _onParchment = ScrollPanelArt.ApplyFull(_settingsCardRect.GetComponent<Image>());
+        Image contentImage = _settingsCardRect.GetComponent<Image>();
+        contentImage.sprite = null;
+        contentImage.overrideSprite = null;
+        contentImage.color = Color.clear;
+        contentImage.raycastTarget = false;
         _settingsCardRect.SetSiblingIndex(1);
-        _settingsCardRect.anchorMin = new Vector2(0.07f, 0.28f);
-        _settingsCardRect.anchorMax = new Vector2(0.93f, 0.76f);
-        _settingsCardRect.offsetMin = Vector2.zero;
-        _settingsCardRect.offsetMax = Vector2.zero;
+        ScrollPanelArt.SetAnchors(_settingsCardRect, Rect.MinMaxRect(0f, 0f, 1f, 1f));
+        SafeAreaHandler safeArea = _settingsCardRect.GetComponent<SafeAreaHandler>();
+        if (safeArea == null)
+            safeArea = _settingsCardRect.gameObject.AddComponent<SafeAreaHandler>();
+        safeArea.Refresh();
 
-        LayoutVolumeRow(_masterLabel, _masterSlider, 0.72f);
-        LayoutVolumeRow(_bgmLabel, _bgmSlider, 0.46f);
-        LayoutVolumeRow(_sfxLabel, _sfxSlider, 0.2f);
+        if (_settingsScrollRect == null)
+        {
+            Transform existingScroll = _settingsCardRect.Find("SettingsScroll");
+            if (existingScroll != null)
+                _settingsScrollRect = existingScroll as RectTransform;
+        }
+        if (_settingsScrollRect == null)
+        {
+            GameObject scroll = new("SettingsScroll", typeof(RectTransform), typeof(Image));
+            scroll.transform.SetParent(_settingsCardRect, false);
+            _settingsScrollRect = scroll.GetComponent<RectTransform>();
+        }
+        Image scrollImage = _settingsScrollRect.GetComponent<Image>();
+        scrollImage.color = CardColor;
+        scrollImage.raycastTarget = false;
+        _onParchment = ScrollPanelArt.ApplyFull(scrollImage);
+        ScrollPanelArt.SetAnchors(_settingsScrollRect, Rect.MinMaxRect(0.04f, 0.17f, 0.96f, 0.83f));
+
+        TMP_Text title = transform.Find("Title")?.GetComponent<TMP_Text>();
+        title ??= _settingsScrollRect.Find("Title")?.GetComponent<TMP_Text>();
+        title ??= _settingsCardRect.Find("Title")?.GetComponent<TMP_Text>();
+        title ??= EnsureCardText("Title", "Settings");
+        title.rectTransform.SetParent(_settingsScrollRect, false);
+        StyleCardText(title, Rect.MinMaxRect(0.16f, 0.81f, 0.84f, 0.87f), UITextScale.Display);
+        title.alignment = TextAlignmentOptions.Center;
+        title.fontStyle = FontStyles.Bold;
+
+        LayoutVolumeRow(_masterLabel, _masterSlider, 0.68f, "All game audio");
+        LayoutVolumeRow(_bgmLabel, _bgmSlider, 0.48f, "Background music");
+        LayoutVolumeRow(_sfxLabel, _sfxSlider, 0.28f, "Effects and syllable pronunciations");
+        TMP_Text status = EnsureCardText("AudioStatus", !Application.isPlaying || AudioManager.Instance != null
+            ? "Changes save automatically" : "Sound controls unavailable");
+        StyleCardText(status, Rect.MinMaxRect(0.16f, 0.12f, 0.84f, 0.16f), UITextScale.Body);
+        status.alignment = TextAlignmentOptions.Center;
         DisableNonInteractiveRaycastTargets();
     }
 
-    private void LayoutVolumeRow(TMP_Text label, Slider slider, float rowYNormalized)
+    private void LayoutVolumeRow(TMP_Text label, Slider slider, float rowY, string description)
     {
         if (label == null || slider == null || _settingsCardRect == null)
             return;
 
-        RectTransform labelRect = label.GetComponent<RectTransform>();
-        RectTransform sliderRect = slider.GetComponent<RectTransform>();
-        if (labelRect == null || sliderRect == null)
-            return;
+        label.rectTransform.SetParent(_settingsScrollRect, false);
+        StyleCardText(label, Rect.MinMaxRect(0.16f, rowY + 0.045f, 0.68f, rowY + 0.095f), UITextScale.Title);
+        TMP_Text value = EnsureCardText(slider.name + "Value", "");
+        StyleCardText(value, Rect.MinMaxRect(0.68f, rowY + 0.045f, 0.84f, rowY + 0.095f), UITextScale.Title);
+        value.alignment = TextAlignmentOptions.MidlineRight;
+        TMP_Text hint = EnsureCardText(slider.name + "Hint", description);
+        StyleCardText(hint, Rect.MinMaxRect(0.16f, rowY, 0.84f, rowY + 0.045f), UITextScale.Body);
 
-        labelRect.SetParent(_settingsCardRect, false);
-        labelRect.anchorMin = new Vector2(0.08f, rowYNormalized + 0.06f);
-        labelRect.anchorMax = new Vector2(0.92f, rowYNormalized + 0.06f);
-        labelRect.pivot = new Vector2(0f, 0.5f);
-        labelRect.sizeDelta = new Vector2(0f, 44f);
-        labelRect.anchoredPosition = Vector2.zero;
+        RectTransform sliderRect = slider.GetComponent<RectTransform>();
+        sliderRect.SetParent(_settingsScrollRect, false);
+        sliderRect.anchorMin = new Vector2(0.16f, rowY - 0.055f);
+        sliderRect.anchorMax = new Vector2(0.84f, rowY - 0.055f);
+        sliderRect.pivot = new Vector2(0.5f, 0.5f);
+        sliderRect.sizeDelta = new Vector2(0f, 128f);
+        sliderRect.anchoredPosition = Vector2.zero;
+    }
+
+    private TMP_Text EnsureCardText(string name, string text)
+    {
+        TMP_Text label = _settingsScrollRect.Find(name)?.GetComponent<TMP_Text>();
+        label ??= _settingsCardRect.Find(name)?.GetComponent<TMP_Text>();
+        if (label == null)
+        {
+            GameObject go = new(name, typeof(RectTransform), typeof(TextMeshProUGUI));
+            go.transform.SetParent(_settingsScrollRect, false);
+            label = go.GetComponent<TMP_Text>();
+        }
+        label.rectTransform.SetParent(_settingsScrollRect, false);
+        label.text = text;
+        return label;
+    }
+
+    private void StyleCardText(TMP_Text label, Rect area, float fontSize)
+    {
+        TutorialFontProvider.ApplyTo(label);
+        if (_onParchment)
+            ScrollPanelArt.Inkify(label);
+        else
+            label.color = LabelColor;
+        ScrollPanelArt.SetAnchors(label.rectTransform, area);
+        label.enableAutoSizing = true;
+        label.fontSizeMin = Mathf.Min(fontSize, UITextScale.Body);
+        label.fontSizeMax = fontSize;
+        label.fontSize = fontSize;
         label.alignment = TextAlignmentOptions.MidlineLeft;
         label.raycastTarget = false;
-
-        sliderRect.SetParent(_settingsCardRect, false);
-        sliderRect.anchorMin = new Vector2(0.08f, rowYNormalized - 0.06f);
-        sliderRect.anchorMax = new Vector2(0.92f, rowYNormalized - 0.06f);
-        sliderRect.pivot = new Vector2(0.5f, 0.5f);
-        sliderRect.sizeDelta = new Vector2(0f, 44f);
-        sliderRect.anchoredPosition = Vector2.zero;
     }
 
     private void DisableNonInteractiveRaycastTargets()
