@@ -184,6 +184,38 @@ public sealed class ActiveCluePresenter : MonoBehaviour
              + "on purpose — it separates the groups without competing with them for attention.")]
     [SerializeField] private Color _wordSeparatorColor = new Color(1f, 0.84f, 0.29f, 0.55f);
 
+    [Header("Rail One-Word Paging")]
+    [Tooltip("On a one-word-at-a-time objective (Level 15), unscaled seconds a finished word stays "
+             + "on screen after its last glyph lands, so the completed word reads before it leaves.")]
+    [SerializeField, Min(0f)] private float _railPageHoldSeconds = 0.45f;
+
+    [Tooltip("Unscaled seconds for the finished word to slide out to the left, and again for the "
+             + "next word to slide in from the right.")]
+    [SerializeField, Min(0.01f)] private float _railPageSlideSeconds = 0.28f;
+
+    [Tooltip("Size of the words-completed progress bar shown under a one-word-at-a-time rail, in "
+             + "canvas units. It stays put while the words slide past above it.")]
+    [SerializeField] private Vector2 _railProgressBarSize = new Vector2(420f, 16f);
+
+    [Tooltip("Gap between the rail's label row and the progress bar, in canvas units. The rail is "
+             + "raised by the progress block's height so the bar never pushes it off screen.")]
+    [SerializeField, Min(0f)] private float _railProgressGapBelowRail = 14f;
+
+    [Tooltip("Gap between the progress bar and the words-completed count beneath it.")]
+    [SerializeField, Min(0f)] private float _railProgressTextGap = 6f;
+
+    [Tooltip("Font size of the words-completed count.")]
+    [SerializeField, Min(1f)] private float _railProgressFontSize = 46f;
+
+    [Tooltip("Words-completed count. {0} is the words finished, {1} the words in the passage.")]
+    [SerializeField] private string _railProgressFormat = "{0}/{1} words completed";
+
+    [SerializeField] private Color _railProgressTrackColor = new Color(0f, 0f, 0f, 0.45f);
+    [SerializeField] private Color _railProgressFillColor = new Color(1f, 0.84f, 0.29f, 1f);
+
+    [Tooltip("Unscaled seconds the bar takes to fill to a newly completed word.")]
+    [SerializeField, Min(0.01f)] private float _railProgressFillSeconds = 0.35f;
+
     [Header("Rail Slot Fill Pop")]
     [Tooltip("Peak scale of the brief pop played on the ONE slot that just filled. This is the beat "
              + "that teaches the lesson's whole point — the enemy fell and THAT box became a "
@@ -361,6 +393,12 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         public Image Frame;
         public Image Glyph;
 
+        /// <summary>
+        /// The word page this box belongs to on a one-word-at-a-time objective, or
+        /// <see cref="RestorationWordPages.NoPage"/> when the whole rail is shown at once.
+        /// </summary>
+        public int PageIndex = RestorationWordPages.NoPage;
+
         /// <summary>The romanised syllable printed under the box, and the label printing it.</summary>
         public TextMeshProUGUI Label;
         public string LatinLabel;
@@ -486,6 +524,23 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private CanvasGroup _railCanvasGroup;
     private Sprite _runtimeSlotFrameSprite;
     private Coroutine _railFlashRoutine;
+
+    // One-word-at-a-time paging (Level 15). Null when the rail shows its whole target text. Every
+    // page's boxes share the same rail-local positions and only the shown page is active, so slot
+    // anchors never move inside the rail: the slide is the rail itself travelling sideways, and
+    // everything that reads slot geometry (ash, Punit, Uhaw, glyph flights) keeps working.
+    private RestorationWordPages _railPages;
+    private int _railShownPage = RestorationWordPages.NoPage;
+    private Coroutine _railPageRoutine;
+
+    // The words-completed bar under a paged rail. A sibling of the rail, not a child, so it holds
+    // still while the rail slides between words; it mirrors the rail's visibility in LateUpdate.
+    private GameObject _railProgressRoot;
+    private CanvasGroup _railProgressCanvasGroup;
+    private RectTransform _railProgressFill;
+    private TextMeshProUGUI _railProgressLabel;
+    private float _railProgressShown;
+    private float _railProgressTarget;
 
     /// <summary>
     /// Last observed ash state, so the onset can be spotted. Without this the ash would only
@@ -798,6 +853,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
         _clueCrumbleRoutine = null;
         _railFlashRoutine = null;
+        SettleRailPage();
         HideAshCover();
 
         // Before anything is torn down. Disabling the component is one of the ways Unity kills a
@@ -1047,6 +1103,10 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         // intro modals are: a presenter that enables mid-dialogue or mid-challenge never
         // saw a Started event, and ChallengeRuntimeState raises none at all.
         UpdateClueInstructionVisibility();
+
+        // After the modal edge above, which can show or hide the rail this frame, so the
+        // words-completed bar appears and disappears in the same frame as the boxes.
+        TickRailProgress(Time.unscaledDeltaTime);
 
         if (_activeClueMark == null)
             return;
@@ -1740,16 +1800,37 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         railRect.pivot = new Vector2(0.5f, 0f);
         railRect.anchoredPosition = _railAnchoredPosition;
 
-        float totalWidth = 0f;
-        for (int wordIndex = 0; wordIndex < words.Count; wordIndex++)
-        {
-            int slotCount = CountEmittedSlots(words[wordIndex]);
-            if (slotCount == 0)
-                continue;
+        RestorationObjectiveDefinition pagedDefinition = UsesRestorationObjectiveDefinition
+            ? _restorationObjectiveController.State.Definition
+            : null;
+        _railPages = RestorationWordPages.IsEnabled(pagedDefinition)
+            ? RestorationWordPages.Build(pagedDefinition)
+            : null;
+        if (_railPages != null && _railPages.PageCount == 0)
+            _railPages = null;
+        _railShownPage = RestorationWordPages.NoPage;
 
-            if (totalWidth > 0f)
-                totalWidth += _wordGap;
-            totalWidth += slotCount * _slotSize.x + (slotCount - 1) * _slotSpacing;
+        float totalWidth = 0f;
+        if (_railPages != null)
+        {
+            // One word on screen at a time, so the rail is only as wide as the widest word and
+            // Level 15's boxes keep their authored size instead of shrinking the whole passage
+            // onto one line.
+            int widest = _railPages.MaxSlotCount;
+            totalWidth = widest * _slotSize.x + (widest - 1) * _slotSpacing;
+        }
+        else
+        {
+            for (int wordIndex = 0; wordIndex < words.Count; wordIndex++)
+            {
+                int slotCount = CountEmittedSlots(words[wordIndex]);
+                if (slotCount == 0)
+                    continue;
+
+                if (totalWidth > 0f)
+                    totalWidth += _wordGap;
+                totalWidth += slotCount * _slotSize.x + (slotCount - 1) * _slotSpacing;
+            }
         }
 
         // Slots occupy the TOP of the rail rect and their labels the row beneath. Start from the
@@ -1794,7 +1875,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             // it costs no width and cannot push the rail wider than the collision check measured.
             // Keyed off a word actually having been placed rather than off x > 0, because a first
             // word placed at x = 0 is indistinguishable from no word at all by position alone.
-            if (anyWordPlaced)
+            if (anyWordPlaced && _railPages == null)
             {
                 BuildWordSeparator(railRect, fontTemplate, wordIndex, x, slotRowTop);
                 x += _railLayoutWordGap;
@@ -1821,13 +1902,12 @@ public sealed class ActiveCluePresenter : MonoBehaviour
                 if (reference?.symbol == null)
                     continue;
 
-                float slotX = x + (emitted * (_railLayoutSlotSize.x + _railLayoutSlotSpacing));
-                RailSlot built = BuildSlot(
-                    railRect, word, reference, slotIndex, _railSlots.Count, slotX, slotRowTop);
+                string unitId = null;
+                string occurrenceId = null;
                 if (UsesRestorationObjectiveDefinition)
                 {
                     RestorationObjectiveUnit objectiveUnit = FindObjectiveUnit(word.stableId);
-                    built.UnitId = objectiveUnit?.stableId;
+                    unitId = objectiveUnit?.stableId;
                     int targetIndex = emitted;
                     if (objectiveUnit?.tokens != null)
                     {
@@ -1840,12 +1920,31 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
                             if (targetIndex-- == 0)
                             {
-                                built.OccurrenceId = target.occurrenceId;
+                                occurrenceId = target.occurrenceId;
                                 break;
                             }
                         }
                     }
                 }
+
+                float slotX = x + (emitted * (_railLayoutSlotSize.x + _railLayoutSlotSpacing));
+                int pageIndex = RestorationWordPages.NoPage;
+                if (_railPages != null)
+                {
+                    // Every page is centred in the same rail rect, so page N's first box sits
+                    // exactly where page N+1's will once the rail slides back in.
+                    pageIndex = _railPages.PageOf(occurrenceId);
+                    float pageWidth = WordWidth(Mathf.Max(1, _railPages.SlotCountOf(pageIndex)));
+                    slotX = ((railRect.sizeDelta.x - pageWidth) * 0.5f)
+                        + (Mathf.Max(0, _railPages.IndexInPage(occurrenceId))
+                            * (_railLayoutSlotSize.x + _railLayoutSlotSpacing));
+                }
+
+                RailSlot built = BuildSlot(
+                    railRect, word, reference, slotIndex, _railSlots.Count, slotX, slotRowTop);
+                built.UnitId = unitId;
+                built.OccurrenceId = occurrenceId;
+                built.PageIndex = pageIndex;
                 built.Label = BuildSlotLabel(
                     railRect, fontTemplate, _railSlots.Count, slotX, slotRowTop);
                 built.LatinLabel = UsesRestorationObjectiveDefinition
@@ -1858,6 +1957,16 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             }
 
             x += wordWidth;
+        }
+
+        // The words-completed bar takes the rail's old spot at the foot of the HUD and the rail
+        // rises above it. Done before the band and the instruction are measured, so both clear
+        // the rail where it actually ends up.
+        if (_railPages != null)
+        {
+            float progressHeight = BuildRailProgress(hudContainer, fontTemplate);
+            railRect.anchoredPosition = _railAnchoredPosition
+                + new Vector2(0f, progressHeight + _railProgressGapBelowRail);
         }
 
         ReservePlayFieldBandForRail(railRect);
@@ -3632,6 +3741,314 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             _railCanvasGroup.alpha = 1f;
 
         SyncNgatngatTextDamage();
+        SyncRailPage(forceRestored);
+    }
+
+    /// <summary>
+    /// Keeps a one-word-at-a-time rail on the word the player is working on. The first call (the
+    /// build) and any call while the rail cannot animate snap straight to it; otherwise a finished
+    /// word holds, slides out to the left, and the next slides in from the right. The completion
+    /// beat paints everything restored and must not page, so it leaves the shown word alone.
+    /// </summary>
+    private void SyncRailPage(bool forceRestored)
+    {
+        if (_railPages == null || _railRoot == null)
+            return;
+
+        UpdateRailProgress(forceRestored);
+
+        if (_railShownPage == RestorationWordPages.NoPage)
+        {
+            ShowRailPage(ResolveCurrentRailPage());
+            return;
+        }
+
+        if (forceRestored || _railPageRoutine != null)
+            return;
+
+        int target = ResolveCurrentRailPage();
+        if (target == _railShownPage)
+            return;
+
+        if (!isActiveAndEnabled || !_railRoot.activeInHierarchy)
+        {
+            ShowRailPage(target);
+            return;
+        }
+
+        _railPageRoutine = StartCoroutine(SlideRailToCurrentPage());
+    }
+
+    private int ResolveCurrentRailPage()
+    {
+        _isOccurrenceRestoredForPaging ??= IsOccurrenceRestoredForPaging;
+        return _railPages.CurrentPage(_isOccurrenceRestoredForPaging);
+    }
+
+    private System.Func<string, bool> _isOccurrenceRestoredForPaging;
+
+    private bool IsOccurrenceRestoredForPaging(string occurrenceId)
+        => _restorationObjectiveController != null
+            && _restorationObjectiveController.IsOccurrenceRestored(occurrenceId);
+
+    /// <summary>Activates exactly the boxes (and their labels) of <paramref name="page"/>.</summary>
+    private void ShowRailPage(int page)
+    {
+        _railShownPage = page;
+        for (int i = 0; i < _railSlots.Count; i++)
+        {
+            RailSlot slot = _railSlots[i];
+            if (slot?.Anchor == null)
+                continue;
+
+            bool visible = slot.PageIndex == RestorationWordPages.NoPage || slot.PageIndex == page;
+            if (slot.Anchor.gameObject.activeSelf != visible)
+                slot.Anchor.gameObject.SetActive(visible);
+            if (slot.Label != null && slot.Label.gameObject.activeSelf != visible)
+                slot.Label.gameObject.SetActive(visible);
+        }
+    }
+
+    private bool ShownRailPageHasFlightInProgress()
+    {
+        for (int i = 0; i < _railSlots.Count; i++)
+        {
+            RailSlot slot = _railSlots[i];
+            if (slot != null && slot.PageIndex == _railShownPage && slot.Flier != null)
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// The page turn. Unscaled, like every other rail beat, so a dipped time scale cannot stretch
+    /// it. The rail itself travels — the boxes never move inside it — so a glyph flight, the ash
+    /// cover or Punit's tear bound to a box stays aligned with it throughout.
+    /// </summary>
+    private IEnumerator SlideRailToCurrentPage()
+    {
+        // Hold while the last glyph is still flying into its box, then long enough for the whole
+        // word to read. The extra second is a watchdog only: a flight is retired by its own
+        // deadline well before then.
+        float held = 0f;
+        while (held < _railPageHoldSeconds
+               || (ShownRailPageHasFlightInProgress() && held < _railPageHoldSeconds + 1f))
+        {
+            held += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        if (_railRoot == null || _railRoot.transform is not RectTransform railRect)
+        {
+            _railPageRoutine = null;
+            yield break;
+        }
+
+        float baseX = _railAnchoredPosition.x;
+        float travel = ResolveRailSlideDistance(railRect);
+
+        yield return SlideRailX(railRect, baseX, baseX - travel, easeOut: false);
+        ShowRailPage(ResolveCurrentRailPage());
+        yield return SlideRailX(railRect, baseX + travel, baseX, easeOut: true);
+
+        _railPageRoutine = null;
+
+        // Progress made mid-slide (a one-box word filled while it was arriving) turns the next
+        // page straight away rather than waiting for an unrelated repaint.
+        SyncRailPage(forceRestored: false);
+    }
+
+    private IEnumerator SlideRailX(RectTransform railRect, float fromX, float toX, bool easeOut)
+    {
+        float duration = Mathf.Max(0.01f, _railPageSlideSeconds);
+        float elapsed = 0f;
+        while (elapsed < duration && railRect != null)
+        {
+            float t = Mathf.Clamp01(elapsed / duration);
+            float eased = easeOut ? 1f - ((1f - t) * (1f - t)) : t * t;
+            SetRailX(railRect, Mathf.LerpUnclamped(fromX, toX, eased));
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        if (railRect != null)
+            SetRailX(railRect, toX);
+    }
+
+    private static void SetRailX(RectTransform railRect, float x)
+    {
+        Vector2 position = railRect.anchoredPosition;
+        railRect.anchoredPosition = new Vector2(x, position.y);
+    }
+
+    /// <summary>Far enough that the rail's near edge clears the HUD's edge, in parent units.</summary>
+    private float ResolveRailSlideDistance(RectTransform railRect)
+    {
+        float available = ResolveRailAvailableWidth(
+            railRect.parent, railRect.GetComponentInParent<Canvas>());
+        float railWidth = railRect.rect.width * Mathf.Abs(railRect.localScale.x);
+        return (available + railWidth) * 0.5f + 32f;
+    }
+
+    /// <summary>
+    /// Builds the words-completed block — a bar with the "n/m words completed" count beneath it —
+    /// at the rail's authored spot, and returns its height so the rail can be raised clear of it.
+    /// </summary>
+    private float BuildRailProgress(Transform hudContainer, TextMeshProUGUI fontTemplate)
+    {
+        float textHeight = _railProgressFontSize * 1.3f;
+        float height = _railProgressBarSize.y + _railProgressTextGap + textHeight;
+
+        _railProgressRoot = new GameObject(
+            "[Runtime] ActiveClueWordProgress", typeof(RectTransform), typeof(CanvasGroup));
+        _railProgressRoot.transform.SetParent(hudContainer, false);
+        _railProgressCanvasGroup = _railProgressRoot.GetComponent<CanvasGroup>();
+        _railProgressCanvasGroup.blocksRaycasts = false;
+        _railProgressCanvasGroup.interactable = false;
+
+        var root = (RectTransform)_railProgressRoot.transform;
+        root.anchorMin = new Vector2(0.5f, 0f);
+        root.anchorMax = new Vector2(0.5f, 0f);
+        root.pivot = new Vector2(0.5f, 0f);
+        root.anchoredPosition = _railAnchoredPosition;
+        root.sizeDelta = new Vector2(_railProgressBarSize.x, height);
+
+        var trackObject = new GameObject(
+            "[Runtime] WordProgressTrack", typeof(RectTransform), typeof(Image));
+        trackObject.transform.SetParent(root, false);
+        var track = (RectTransform)trackObject.transform;
+        track.anchorMin = new Vector2(0f, 1f);
+        track.anchorMax = new Vector2(1f, 1f);
+        track.pivot = new Vector2(0.5f, 1f);
+        track.anchoredPosition = Vector2.zero;
+        track.sizeDelta = new Vector2(0f, _railProgressBarSize.y);
+        Image trackImage = trackObject.GetComponent<Image>();
+        trackImage.color = _railProgressTrackColor;
+        trackImage.raycastTarget = false;
+
+        var fillObject = new GameObject(
+            "[Runtime] WordProgressFill", typeof(RectTransform), typeof(Image));
+        fillObject.transform.SetParent(track, false);
+        _railProgressFill = (RectTransform)fillObject.transform;
+        _railProgressFill.anchorMin = Vector2.zero;
+        _railProgressFill.anchorMax = new Vector2(0f, 1f);
+        _railProgressFill.pivot = new Vector2(0f, 0.5f);
+        _railProgressFill.offsetMin = Vector2.zero;
+        _railProgressFill.offsetMax = Vector2.zero;
+        Image fillImage = fillObject.GetComponent<Image>();
+        fillImage.color = _railProgressFillColor;
+        fillImage.raycastTarget = false;
+
+        var labelObject = new GameObject("[Runtime] WordProgressLabel", typeof(RectTransform));
+        labelObject.transform.SetParent(root, false);
+        _railProgressLabel = labelObject.AddComponent<TextMeshProUGUI>();
+        CopyFont(fontTemplate, _railProgressLabel);
+        _railProgressLabel.fontSize = _railProgressFontSize;
+        _railProgressLabel.alignment = TextAlignmentOptions.Bottom;
+        _railProgressLabel.color = _latinWordLabelColor;
+        _railProgressLabel.raycastTarget = false;
+        _railProgressLabel.textWrappingMode = TextWrappingModes.NoWrap;
+        _railProgressLabel.overflowMode = TextOverflowModes.Overflow;
+        var label = (RectTransform)labelObject.transform;
+        label.anchorMin = Vector2.zero;
+        label.anchorMax = new Vector2(1f, 0f);
+        label.pivot = new Vector2(0.5f, 0f);
+        label.anchoredPosition = Vector2.zero;
+        label.sizeDelta = new Vector2(0f, textHeight);
+
+        _railProgressShown = 0f;
+        _railProgressTarget = 0f;
+        ApplyRailProgressFill(0f);
+        _railProgressRoot.SetActive(false);
+        return height;
+    }
+
+    /// <summary>
+    /// Points the bar at the words finished so far and rewrites the count. The completion beat
+    /// counts every word, matching the rail it paints fully restored.
+    /// </summary>
+    private void UpdateRailProgress(bool forceRestored)
+    {
+        if (_railProgressRoot == null)
+            return;
+
+        _isOccurrenceRestoredForPaging ??= IsOccurrenceRestoredForPaging;
+        int total = _railPages.PageCount;
+        int done = forceRestored
+            ? total
+            : _railPages.CompletedPageCount(_isOccurrenceRestoredForPaging);
+        _railProgressTarget = total > 0 ? Mathf.Clamp01(done / (float)total) : 0f;
+
+        if (_railProgressLabel != null)
+        {
+            string text;
+            try
+            {
+                text = string.Format(_railProgressFormat ?? string.Empty, done, total);
+            }
+            catch (System.FormatException)
+            {
+                text = done + "/" + total;
+            }
+
+            _railProgressLabel.text = text;
+        }
+
+        // Nothing can animate it outside play, so it lands at once rather than sitting stale.
+        if (!Application.isPlaying || !isActiveAndEnabled)
+        {
+            _railProgressShown = _railProgressTarget;
+            ApplyRailProgressFill(_railProgressShown);
+        }
+    }
+
+    /// <summary>
+    /// Keeps the bar on the rail's visibility and opacity, and eases its fill toward the target.
+    /// Unscaled, like the rest of the rail, so a dipped time scale cannot stall it.
+    /// </summary>
+    private void TickRailProgress(float deltaTime)
+    {
+        if (_railProgressRoot == null)
+            return;
+
+        bool visible = _railRoot != null && _railRoot.activeSelf;
+        if (_railProgressRoot.activeSelf != visible)
+            _railProgressRoot.SetActive(visible);
+        if (_railProgressCanvasGroup != null && _railCanvasGroup != null)
+            _railProgressCanvasGroup.alpha = _railCanvasGroup.alpha;
+
+        if (Mathf.Approximately(_railProgressShown, _railProgressTarget))
+            return;
+
+        // One completed word's share of the bar per fill duration, so every word fills alike.
+        float share = _railPages != null && _railPages.PageCount > 0 ? 1f / _railPages.PageCount : 1f;
+        float step = share * Mathf.Max(0f, deltaTime) / Mathf.Max(0.01f, _railProgressFillSeconds);
+        _railProgressShown = Mathf.MoveTowards(_railProgressShown, _railProgressTarget, step);
+        ApplyRailProgressFill(_railProgressShown);
+    }
+
+    private void ApplyRailProgressFill(float fraction)
+    {
+        if (_railProgressFill != null)
+            _railProgressFill.anchorMax = new Vector2(Mathf.Clamp01(fraction), 1f);
+    }
+
+    /// <summary>
+    /// Puts a rail interrupted mid-turn back at rest on the current word: a disable or teardown
+    /// kills the coroutine without running its tail.
+    /// </summary>
+    private void SettleRailPage()
+    {
+        _railProgressShown = _railProgressTarget;
+        ApplyRailProgressFill(_railProgressShown);
+        _railPageRoutine = null;
+        if (_railPages == null || _railRoot == null)
+            return;
+
+        if (_railRoot.transform is RectTransform railRect)
+            SetRailX(railRect, _railAnchoredPosition.x);
+        ShowRailPage(ResolveCurrentRailPage());
     }
 
     private bool IsObjectiveUnitComplete(string unitId)
@@ -4237,6 +4654,19 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         ResetUhawGlyphCaptures();
         HideAshCover();
         _railFlashRoutine = null;
+        if (_railPageRoutine != null)
+            StopCoroutine(_railPageRoutine);
+        _railPageRoutine = null;
+        _railPages = null;
+        _railShownPage = RestorationWordPages.NoPage;
+
+        DestroyOwnedObject(_railProgressRoot);
+        _railProgressRoot = null;
+        _railProgressCanvasGroup = null;
+        _railProgressFill = null;
+        _railProgressLabel = null;
+        _railProgressShown = 0f;
+        _railProgressTarget = 0f;
 
         // Drained before the slot list is cleared, so each flight still has a slot to rest. Fliers
         // are children of the rail root and would go with it anyway; this is about not leaving
