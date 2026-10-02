@@ -16,7 +16,6 @@ public sealed class EnemyRelationshipConnector : MonoBehaviour
     private EnemyDataSO _data;
     private GameObject _visualRoot;
     private LinkVisual _primaryLink;
-    private LinkVisual _secondaryLink;
 
     public bool IsVisible => _visualRoot != null && _visualRoot.activeSelf;
     public Enemy FirstTarget { get; private set; }
@@ -128,22 +127,6 @@ public sealed class EnemyRelationshipConnector : MonoBehaviour
             return;
         }
         _primaryLink.Root.SetActive(true);
-        if (_secondaryLink != null)
-        {
-            _secondaryLink.Root.SetActive(false);
-            var learning = _owner.GetComponent<EnemyLearningAbilityController>();
-            if (_data.learningAbility == EnemyLearningAbility.BoundPair
-                && learning != null && learning.VisualPair.Count > 1)
-            {
-                Enemy other = learning.VisualPair[1];
-                if (IsLiveTarget(other))
-                {
-                    Transform otherAnchor = ResolveAnchor(other);
-                    _secondaryLink.Root.SetActive(PositionBetween(_secondaryLink,
-                        firstAnchor.position, otherAnchor.position, definition));
-                }
-            }
-        }
         FirstTarget = first;
         SecondTarget = second;
         FirstAnchorWorldPosition = firstAnchor.position;
@@ -263,8 +246,6 @@ public sealed class EnemyRelationshipConnector : MonoBehaviour
             _visualRoot.SetActive(false);
             _primaryLink = CreateLink("FirstLink");
         }
-        if (_data.learningAbility == EnemyLearningAbility.BoundPair && _secondaryLink == null)
-            _secondaryLink = CreateLink("SecondLink");
     }
 
     private LinkVisual CreateLink(string name)
@@ -294,7 +275,6 @@ public sealed class EnemyRelationshipConnector : MonoBehaviour
     private void ApplySpritesAndSorting()
     {
         ApplySpritesAndSorting(_primaryLink);
-        if (_secondaryLink != null) ApplySpritesAndSorting(_secondaryLink);
     }
 
     private void ApplySpritesAndSorting(LinkVisual link)

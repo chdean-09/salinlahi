@@ -17,8 +17,8 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
     private ActiveClueDirector _director;
     private ActiveCluePresenter _presenter;
     private Camera _worldCamera;
-    private readonly List<Enemy> _boundPair = new List<Enemy>(2);
-    private readonly List<Enemy> _visualPair = new List<Enemy>(2);
+    private readonly List<Enemy> _boundPair = new List<Enemy>(1);
+    private readonly List<Enemy> _visualPair = new List<Enemy>(1);
     private bool _suppressedForIntroductionSpawn;
     private long _spawnSequence = -1;
     private int _reviewIndex;
@@ -222,45 +222,51 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
         }
 
         tracker.FillActiveEnemiesSnapshot(SnapshotBuffer);
-        var candidates = new List<Enemy>(2);
+        Enemy victim = _boundPair.Count > 0 ? _boundPair[0] : null;
+        if (!SnapshotBuffer.Contains(victim) || !IsAvailableBindingTarget(victim, next))
+        {
+            ReleaseBoundPair();
+            victim = null;
+            for (int i = 0; i < SnapshotBuffer.Count; i++)
+            {
+                Enemy candidate = SnapshotBuffer[i];
+                if (!IsAvailableBindingTarget(candidate, next))
+                    continue;
+
+                victim = candidate;
+                break;
+            }
+        }
+
+        if (victim == null)
+            return;
+
+        victim.AddResolutionBlock(this);
+        if (_boundPair.Count == 0)
+        {
+            _boundPair.Add(victim);
+            _visualPair.Add(victim);
+        }
+    }
+
+    private bool IsAvailableBindingTarget(Enemy candidate, string next)
+    {
+        if (!IsPairCandidate(candidate) || IsContextuallyOpen(candidate, next))
+            return false;
+
+        // Gapos owns one victim exclusively; other ability blocks remain independently owned.
         for (int i = 0; i < SnapshotBuffer.Count; i++)
         {
-            Enemy candidate = SnapshotBuffer[i];
-            if (!IsPairCandidate(candidate))
+            Enemy other = SnapshotBuffer[i];
+            if (other == null || other == _enemy || other.Data == null
+                || other.Data.learningAbility != EnemyLearningAbility.BoundPair)
                 continue;
 
-            candidates.Add(candidate);
-            if (candidates.Count == 2)
-                break;
+            var binder = other.GetComponent<EnemyLearningAbilityController>();
+            if (binder != null && binder.BoundPair.Count > 0 && binder.BoundPair[0] == candidate)
+                return false;
         }
-
-        _visualPair.Clear();
-        _visualPair.AddRange(candidates);
-
-        for (int i = _boundPair.Count - 1; i >= 0; i--)
-        {
-            Enemy held = _boundPair[i];
-            if (held == null || !candidates.Contains(held))
-            {
-                held?.RemoveResolutionBlock(this);
-                _boundPair.RemoveAt(i);
-            }
-        }
-
-        for (int i = 0; i < candidates.Count; i++)
-        {
-            Enemy candidate = candidates[i];
-            if (IsContextuallyOpen(candidate, next))
-            {
-                candidate.RemoveResolutionBlock(this);
-                _boundPair.Remove(candidate);
-                continue;
-            }
-
-            candidate.AddResolutionBlock(this);
-            if (!_boundPair.Contains(candidate))
-                _boundPair.Add(candidate);
-        }
+        return true;
     }
 
     private bool IsPairCandidate(Enemy candidate)

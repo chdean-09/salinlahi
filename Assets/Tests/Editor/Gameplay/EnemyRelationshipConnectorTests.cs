@@ -108,7 +108,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
-        public void GaposConnector_FollowsTheTwoBoundCandidatesAndHonorsIntroductionSuppression()
+        public void GaposConnector_FollowsOneVictimAndHonorsIntroductionSuppression()
         {
             ConfigureObjective("HA");
             Sprite[] art = CreateTestSprites();
@@ -138,17 +138,16 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Transform firstLink = visual.transform.Find("FirstLink");
             Transform secondLink = visual.transform.Find("SecondLink");
             Assert.IsTrue(firstLink.gameObject.activeInHierarchy);
-            Assert.IsTrue(secondLink.gameObject.activeInHierarchy);
+            Assert.IsNull(secondLink, "Gapos must create only one root.");
             Assert.AreEqual((gapos.transform.position + firstCandidate.transform.position) * 0.5f,
                 new Vector3(firstLink.position.x, firstLink.position.y, 0f));
-            Assert.AreEqual((gapos.transform.position + secondCandidate.transform.position) * 0.5f,
-                new Vector3(secondLink.position.x, secondLink.position.y, 0f));
+            Assert.AreEqual(1, ability.VisualPair.Count);
+            Assert.AreEqual(1, ability.BoundPair.Count);
             Assert.IsTrue(firstCandidate.IsResolutionBlocked);
-            Assert.IsTrue(secondCandidate.IsResolutionBlocked);
+            Assert.IsFalse(secondCandidate.IsResolutionBlocked);
 
-            // The contextual Gapos candidate remains part of the visual pair even when its
-            // resolution block is absent. Presentation follows the selected pair, not block state.
-            secondCandidate.RemoveResolutionBlock(ability);
+            // Reasserting the same binding must not acquire a second victim.
+            ability.Tick(0f);
             connector.Tick();
             Assert.IsTrue(connector.IsVisible);
             Assert.AreSame(firstCandidate, connector.SecondTarget);
@@ -170,7 +169,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
             connector.Tick();
             Assert.IsTrue(connector.IsVisible, "the connector returns when the bound-pair ability arms");
             Assert.IsTrue(firstCandidate.IsResolutionBlocked);
-            Assert.IsTrue(secondCandidate.IsResolutionBlocked);
+            Assert.IsFalse(secondCandidate.IsResolutionBlocked);
 
             gapos.ResetForPool();
             connector.Tick();
@@ -196,12 +195,46 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.IsFalse(second.IsResolutionBlocked);
             Assert.IsTrue(ActiveClueDirector.IsClueTargetable(first));
             Assert.IsTrue(ActiveClueDirector.IsClueTargetable(second));
-            Assert.AreEqual(2, target.ResolutionBlockCount);
+            Assert.AreEqual(1, target.ResolutionBlockCount);
+            Assert.AreEqual(1, first.GetComponent<EnemyLearningAbilityController>().BoundPair.Count);
+            Assert.IsEmpty(second.GetComponent<EnemyLearningAbilityController>().VisualPair);
 
             first.ResetForPool();
+            Assert.IsFalse(target.IsResolutionBlocked);
+            second.GetComponent<EnemyLearningAbilityController>().Tick(0f);
             Assert.AreEqual(1, target.ResolutionBlockCount);
             second.TakeDamage(1);
             Assert.IsFalse(target.IsResolutionBlocked, "defeating the remaining binder releases the target");
+        }
+
+        [Test]
+        public void Gapos_SkipOwnedVictims_KeepTheirOwnVictimAndRetargetWhenItDies()
+        {
+            ConfigureObjective("HA");
+            Enemy first = CreateEnemy(CreateData("gapos", EnemyLearningAbility.BoundPair), "GA", 0f, 0f);
+            Enemy second = CreateEnemy(CreateData("gapos", EnemyLearningAbility.BoundPair), "GA", 1f, 0f);
+            Enemy target = CreateEnemy(CreateData("firstTarget"), "BA", 2f, 0f);
+            Enemy alternative = CreateEnemy(CreateData("secondTarget"), "DA", 3f, 0f);
+            Enemy replacement = CreateEnemy(CreateData("replacement"), "MA", 4f, 0f);
+            var firstAbility = first.GetComponent<EnemyLearningAbilityController>();
+            var secondAbility = second.GetComponent<EnemyLearningAbilityController>();
+            firstAbility.Tick(0f);
+            secondAbility.Tick(0f);
+            firstAbility.Tick(0f);
+            secondAbility.Tick(0f);
+            CollectionAssert.AreEqual(new[] { target }, firstAbility.BoundPair);
+            CollectionAssert.AreEqual(new[] { alternative }, secondAbility.BoundPair);
+            Assert.AreEqual(1, target.ResolutionBlockCount);
+            Assert.AreEqual(1, alternative.ResolutionBlockCount);
+            Assert.IsFalse(replacement.IsResolutionBlocked);
+            firstAbility.SetSuppressedForIntroductionSpawn(true);
+            secondAbility.Tick(0f);
+            CollectionAssert.AreEqual(new[] { alternative }, secondAbility.BoundPair,
+                "Another Gapos releasing an earlier victim must not move an existing chain.");
+            alternative.TakeDamage(1);
+            secondAbility.Tick(0f);
+            CollectionAssert.AreEqual(new[] { target }, secondAbility.BoundPair);
+            Assert.IsFalse(replacement.IsResolutionBlocked);
         }
 
         [Test]
@@ -396,12 +429,11 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Color32[] shortPixels = shortGapCapture.GetPixels32();
             Assert.Greater(CountVisiblePixels(shortPixels, width, height, new Rect(-1.65f, 1.85f, 0.5f, 0.5f)),
                 10, "the first root should visibly connect Gapos to its first victim");
-            Assert.Greater(CountVisiblePixels(shortPixels, width, height, new Rect(-0.85f, 1.85f, 0.5f, 0.5f)),
-                10, "the second root should visibly connect Gapos to its second victim");
+            Assert.IsFalse(gaposSecond.IsResolutionBlocked, "Gapos must not bind a second victim.");
             Assert.Greater(CountVisiblePixels(shortPixels, width, height, new Rect(-0.25f, -2.25f, 0.5f, 0.5f)),
                 10, "the Kadena connector should render through a short gap");
 
-            gaposFirst.transform.position = new Vector3(-1.7f, 1.2f, 0f);
+            gaposFirst.transform.position = new Vector3(1.7f, 1.2f, 0f);
             gaposSecond.transform.position = new Vector3(1.7f, 1.2f, 0f);
             gapos.GetComponent<EnemyRelationshipConnector>().Tick();
             kadena.transform.position = new Vector3(-1.7f, -2f, 0f);

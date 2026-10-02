@@ -53,6 +53,16 @@ The 15 baseline failures comprise the Level 14 RA asset contract, a Kadena block
 - **OBSERVED:** full Edit Mode suite: 1,646 total, 1,631 passed, 15 failed. Full Play Mode suite: 264 total, 245 passed, 19 failed. Both sets of failing names exactly match their stored baselines.
 - **OBSERVED:** isolated live Level 12 check: off-screen Gapos left LA and BA unlocked with roots hidden; entering view locked both victims and showed two direct roots while GA stayed unlocked; leaving view cleared both victim lists and hid the roots. Simulation time was held for inspection. Temporary actors and captures were removed without saving scene changes.
 
+## Follow-up: one exclusive Gapos victim
+
+- Each visible Gapos now retains one eligible victim instead of selecting two. It skips victims owned by another active Gapos and keeps its own victim until that target becomes invalid, dies, or becomes the next required glyph. Only then does it select another eligible victim.
+- Gapos creates one direct root, and its introduction description/ability line now describe the single-victim rule. Camera gating, GA counterplay, contextual next-glyph safety, and source-owned death/pool cleanup remain intact. Other ability blocks remain independently owned.
+- **OBSERVED:** the revised regression checks failed before implementation: two victims were selected, two binders stacked blocks on one victim, and a second root existed.
+- **PASS:** fresh Unity compilation, all 18 focused Edit Mode connector tests, and all 5 Play Mode connector tests, including exclusive ownership across frames and releasing only the defeated owner's lock.
+- **OBSERVED:** full Edit Mode suite: 1,647 total, 1,632 passed, 15 failed. Full Play Mode suite: 265 total, 246 passed, 19 failed. Both sets of failing names exactly match the previous runs.
+- **REVIEW:** generated font and unrelated asset churn were restored. Existing public pair-named members and the serialized ability enum remain compatible; they now contain at most one victim. Ownership uses the active snapshot instead of introducing a separate registry.
+- **NOT RUN:** production player build and on-device human pacing evaluation.
+
 ## Remaining acceptance work
 
 Run the non-development player on supported phones. Play Levels 11–14 with imperfect short and multi-stroke drawings; verify warning/banner separation, readable blocked glyph locks, no repeated Ragasa/Daan-Lihis modal on ordinary retries, visible central lanes during damage, retained era after retreat/clear, smooth voice dismissal, and no stats overlay through combat taps. Record completion rates and frame-time/GC measurements before declaring the difficulty curve calibrated.

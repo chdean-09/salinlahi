@@ -66,7 +66,39 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         [UnityTest]
-        public IEnumerator DefeatingGapos_HidesRootsAndReleasesBothBoundEnemies()
+        public IEnumerator TwoGapos_BindDifferentVictims_AndReleaseOnlyTheirOwnLock()
+        {
+            CreateTracker();
+            ConfigureObjective();
+            var data = CreateData("gapos", EnemyLearningAbility.BoundPair, false, CreateTestSprites());
+            Enemy first = CreateEnemy(data, "GA", 0f, 0f);
+            Enemy second = CreateEnemy(data, "GA", 1f, 0f);
+            Enemy victim = CreateEnemy(CreateData("firstVictim", EnemyLearningAbility.None, false, null), "BA", 2f, 0f);
+            Enemy other = CreateEnemy(CreateData("secondVictim", EnemyLearningAbility.None, false, null), "DA", 3f, 0f);
+            var firstAbility = first.GetComponent<EnemyLearningAbilityController>();
+            var secondAbility = second.GetComponent<EnemyLearningAbilityController>();
+            firstAbility.Tick(0f);
+            secondAbility.Tick(0f);
+            yield return null;
+            firstAbility.Tick(0f);
+            secondAbility.Tick(0f);
+            first.GetComponent<EnemyRelationshipConnector>().Tick();
+            second.GetComponent<EnemyRelationshipConnector>().Tick();
+            CollectionAssert.AreEqual(new[] { victim }, firstAbility.BoundPair);
+            CollectionAssert.AreEqual(new[] { other }, secondAbility.BoundPair);
+            Assert.AreEqual(1, victim.ResolutionBlockCount);
+            Assert.AreEqual(1, other.ResolutionBlockCount);
+            Assert.AreSame(victim, first.GetComponent<EnemyRelationshipConnector>().SecondTarget);
+            Assert.AreSame(other, second.GetComponent<EnemyRelationshipConnector>().SecondTarget);
+            first.Defeat();
+            secondAbility.Tick(0f);
+            Assert.IsFalse(victim.IsResolutionBlocked);
+            Assert.IsTrue(other.IsResolutionBlocked);
+            Assert.AreSame(other, secondAbility.BoundPair[0]);
+        }
+
+        [UnityTest]
+        public IEnumerator DefeatingGapos_HidesItsRootAndReleasesItsSingleVictim()
         {
             CreateTracker();
             ConfigureObjective();
@@ -86,7 +118,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
 
             Assert.IsTrue(connector.IsVisible);
             Assert.IsTrue(first.IsResolutionBlocked);
-            Assert.IsTrue(second.IsResolutionBlocked);
+            Assert.IsFalse(second.IsResolutionBlocked);
 
             gapos.Defeat();
             Assert.IsFalse(gapos.gameObject.activeSelf);
