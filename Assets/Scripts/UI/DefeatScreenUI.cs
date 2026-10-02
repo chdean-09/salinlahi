@@ -85,7 +85,7 @@ public class DefeatScreenUI : MonoBehaviour
         // both actions below leave the scene, and the reload puts it back.
         ActiveCluePresenter cluePresenter = FindFirstObjectByType<ActiveCluePresenter>();
         if (cluePresenter != null)
-            cluePresenter.gameObject.SetActive(false);
+            EndScreenDim.HideCluePresenterKeepingFraming(cluePresenter);
 
         int hearts = GameManager.Instance != null ? GameManager.Instance.LastDefeatHearts : 0;
         HeartSystem heartSystem = FindFirstObjectByType<HeartSystem>();

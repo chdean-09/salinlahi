@@ -73,6 +73,28 @@ public static class EndScreenDim
             extra.enabled = false;
     }
 
+    /// <summary>
+    /// Takes the clue presenter down for an end screen without moving the frozen field
+    /// behind the dim. Deactivating the presenter tears its restoration rail down, and the
+    /// rail hands its reserved HUD band back to the play column — which snapped the camera
+    /// to its authored height and jumped the whole map up under the end screen, leaving the
+    /// void below the world showing at the foot of the screen. The band the rail held is
+    /// re-reserved so the field stays exactly where the player last saw it.
+    /// </summary>
+    public static void HideCluePresenterKeepingFraming(ActiveCluePresenter presenter)
+    {
+        if (presenter == null)
+            return;
+
+        AspectLockedCamera playColumn = AspectLockedCamera.Instance;
+        float reservedBand = playColumn != null ? playColumn.BottomBandPixels : 0f;
+
+        presenter.gameObject.SetActive(false);
+
+        if (playColumn != null)
+            playColumn.SetBottomBandPixels(reservedBand);
+    }
+
     private static Image CreateRuntimeDim(Transform parent)
     {
         var dimObject = new GameObject(RuntimeDimName, typeof(RectTransform), typeof(Image));

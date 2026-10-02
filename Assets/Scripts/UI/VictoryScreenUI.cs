@@ -155,7 +155,7 @@ public class VictoryScreenUI : MonoBehaviour
         // Same reload-owns-restore reasoning as the HUD takedown above.
         ActiveCluePresenter cluePresenter = FindFirstObjectByType<ActiveCluePresenter>();
         if (cluePresenter != null)
-            cluePresenter.gameObject.SetActive(false);
+            EndScreenDim.HideCluePresenterKeepingFraming(cluePresenter);
 
         EnsureRuntimeControls();
 
