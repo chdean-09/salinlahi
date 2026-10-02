@@ -40,13 +40,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         set => _showActiveClueMark = value;
     }
 
-    [Header("Word Restoration Cue")]
-    [Tooltip("Optional authored label for the at-accept word-restoration cue. "
-             + "A runtime label is built when empty.")]
-    [SerializeField] private TextMeshProUGUI _wordRestoredText;
-    [Tooltip("How long the restored word stays on screen, in unscaled seconds.")]
-    [SerializeField, Min(0f)] private float _wordRestoredDurationSeconds = 1.4f;
-
     [Header("Combat Restoration Progress")]
     [Tooltip("Optional authored label that used to print the restoration readout as text. It is "
              + "now only a font template for the runtime rail, and its own GameObject is switched "
@@ -304,8 +297,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private float _lastPronunciationTime = float.NegativeInfinity;
     private GameObject _activeClueMark;
     private Sprite _runtimeMarkSprite;
-    private GameObject _runtimeWordRestoredObject;
-    private Coroutine _wordRestoredRoutine;
     private Coroutine _clueCrumbleRoutine;
     private int _wordRestoredCueCount;
     private string _lastWordRestoredMessage;
@@ -469,7 +460,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private SentenceHintController[] _sentenceHintControllers;
     private InstantWinPresenter[] _instantWinPresenters;
     private bool _suppressedByIntroModal;
-    private bool _instructionSuppressedByCue;
     private bool _clueInstructionResolved;
 
 
@@ -538,14 +528,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     public GameObject ActiveClueMark => _activeClueMark;
 
     /// <summary>
-    /// The at-accept word-restoration label, or null until an accepted draw first needs one.
-    /// Authored wiring wins; otherwise a runtime label is built on the HUD canvas.
-    /// </summary>
-    public TextMeshProUGUI WordRestoredLabel => _wordRestoredText;
-
-    /// <summary>
     /// How many word-restoration cues this presenter has raised. Exists so a test can assert
-    /// "exactly once per accepted draw" without reaching into coroutine or canvas state.
+    /// "exactly once per accepted draw". The cue is recorded only; nothing is drawn for it.
     /// </summary>
     public int WordRestoredCueCount => _wordRestoredCueCount;
 
@@ -732,12 +716,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         if (_railRoot == null)
             return false;
 
-        // The completion beat's banner is the announcement now — the transient per-word
-        // cue parks in the same band and would print straight through it. Its coroutine
-        // still owns the instruction-suppression flag's cleanup.
-        if (_wordRestoredText != null)
-            _wordRestoredText.gameObject.SetActive(false);
-
         RepaintRail(forceRestored: true);
         _railRoot.SetActive(!IsAnyCutscenePlaying());
 
@@ -767,10 +745,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private void OnEnable()
     {
         Active = this;
-        // The cue's restore coroutine dies with a disable; a latched flag would keep the
-        // instruction hidden forever. Everything else in the funnel re-derives from live
-        // state each LateUpdate, so this is the only latch that needs clearing here.
-        _instructionSuppressedByCue = false;
         _ashWasActive = AshFirstSlotController.IsAnyActive();
         _punitTearTargetActive = false;
         _punitTearProgress = 0f;
@@ -821,7 +795,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         EventBus.OnCutsceneStarted -= HandleCutsceneTransitioned;
         EventBus.OnCutsceneComplete -= HandleCutsceneTransitioned;
         DestroyActiveClueMark();
-        DestroyRuntimeWordRestoredLabel();
 
         if (_subscribedDirector != null)
         {
@@ -1373,9 +1346,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
     /// <summary>
     /// The standing instruction's single visibility funnel: every surface that owns its
-    /// bottom band — the word-restored cue, the enemy introduction card, the instant-win
-    /// banner, cutscenes, dialogue, the intro modals and the challenge board — suppresses
-    /// it, and it comes back only once none of them does. The introduction gate reads
+    /// bottom band — the enemy introduction card, the instant-win banner, cutscenes,
+    /// dialogue, the intro modals and the challenge board — suppresses it, and it comes back only once none of them does. The introduction gate reads
     /// IsPlaying rather than the lifetime banner: the card sits on the instruction's
     /// band, but the banner outlives the lesson by up to a whole enemy lifetime, and
     /// standing down for all of it would erase the instruction from ordinary combat.
@@ -1384,8 +1356,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     /// </summary>
     private void UpdateClueInstructionVisibility()
     {
-        bool suppressed = _instructionSuppressedByCue
-            || _suppressedByIntroModal
+        bool suppressed = _suppressedByIntroModal
             || EnemyIntroductionBeat.IsPlaying
             || IsAnyCutscenePlaying()
             || IsAnyDialoguePresenting()
@@ -1524,190 +1495,15 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             : WordRestoredPrefix + string.Join(", ", labels);
     }
 
+    /// <summary>
+    /// Records which word an accepted draw restored. Nothing is drawn: the floating label this
+    /// used to raise (Level 4 printed "Ang INA at AMA" over the field on every fill) was removed
+    /// after the 2026-10-02 playtest. The rail filling in is the announcement.
+    /// </summary>
     private void ShowWordRestoredCue(string message)
     {
-        // Counted at the decision, not at the draw call: a HUD with no canvas to build on must
-        // still be provably raising one cue per accepted draw and not two.
         _wordRestoredCueCount++;
         _lastWordRestoredMessage = message;
-
-        EnsureWordRestoredLabel();
-        if (_wordRestoredText == null)
-            return;
-
-        _wordRestoredText.text = message;
-        _wordRestoredText.gameObject.SetActive(true);
-
-        // Beat 9 exists to teach ONE thing — killing the enemy fills the word — and the cue
-        // announcing it was printed straight across the slot rail that shows it happening, with
-        // "INA" sitting inside an empty slot box. The announcement moves; the rail does not, because
-        // the rail is the thing being taught.
-        MoveWordRestoredCueClearOfRail();
-
-        // One panel, one voice. The cue label and the standing "DRAW THE GLOWING SYMBOL TO DEFEND"
-        // instruction occupy overlapping bands of the same clue panel, so on a successful draw
-        // "Restored: INA" printed straight through "DEFEND" and neither could be read. The
-        // instruction is the one that has nothing to say at that moment — the player has just done
-        // the thing it asks for — so it stands down for the length of the cue and comes back with
-        // it. See HideWordRestoredCueAfterDelay.
-        _instructionSuppressedByCue = true;
-        UpdateClueInstructionVisibility();
-
-        // A disabled presenter cannot run a coroutine, so nothing would ever bring the instruction
-        // back. Restore it now and leave the cue up: OnDisable tears the runtime label down anyway.
-        if (!isActiveAndEnabled)
-        {
-            _instructionSuppressedByCue = false;
-            UpdateClueInstructionVisibility();
-            return;
-        }
-
-        if (_wordRestoredRoutine != null)
-            StopCoroutine(_wordRestoredRoutine);
-
-        _wordRestoredRoutine = StartCoroutine(HideWordRestoredCueAfterDelay());
-    }
-
-    /// <summary>
-    /// Unscaled so the cue still clears while the game is paused mid-flash, matching
-    /// DrawingFeedback's flash timing.
-    /// </summary>
-    private IEnumerator HideWordRestoredCueAfterDelay()
-    {
-        float duration = Mathf.Max(0f, _wordRestoredDurationSeconds);
-        float elapsed = 0f;
-        while (elapsed < duration)
-        {
-            elapsed += Time.unscaledDeltaTime;
-            yield return null;
-        }
-
-        if (_wordRestoredText != null)
-            _wordRestoredText.gameObject.SetActive(false);
-
-        _instructionSuppressedByCue = false;
-        UpdateClueInstructionVisibility();
-        _wordRestoredRoutine = null;
-    }
-
-    /// <summary>
-    /// Canvas units of clear air left between the restoration rail's bottom edge and the top of the
-    /// word-restoration cue.
-    /// </summary>
-    private const float WordRestoredCueRailGap = 34f;
-
-    /// <summary>
-    /// Slides the word-restoration cue clear of the restoration rail, and leaves it wherever it
-    /// already was if it is already clear.
-    ///
-    /// <para>
-    /// <b>Measured from the two live rects, not from authored constants.</b> The rail hangs off the
-    /// HUD container, which <c>SafeAreaHandler</c> insets at runtime, while the cue hangs off the
-    /// canvas, which is not inset — so the gap the two authored anchored positions imply is not the
-    /// gap on screen, and on the device the check ran the two landed in the same band. Comparing
-    /// world corners and converting the correction back through the cue's own parent is the only
-    /// form of this that is right on both.
-    /// </para>
-    ///
-    /// <para>
-    /// <b>The direction is chosen from where the rail actually is, and that is not cosmetic.</b>
-    /// This used to move the cue DOWN unconditionally, which was right while the rail hung from the
-    /// top of the HUD. The rail now sits in the bottom band, and "below the rail" there is off the
-    /// bottom of the screen — so an unconditional push down would silently throw the cue away, and
-    /// the cue is the line that names what the player just restored. The rail's own centre against
-    /// the canvas centre decides: a rail in the lower half pushes the cue UP above its top edge, a
-    /// rail in the upper half pushes it DOWN below its bottom edge as before. Either way the cue
-    /// ends up on the screen-centre side of the rail, which is the side with room on it.
-    /// </para>
-    /// </summary>
-    private void MoveWordRestoredCueClearOfRail()
-    {
-        if (_wordRestoredText == null || _railRoot == null)
-            return;
-
-        if (_wordRestoredText.rectTransform.parent is not RectTransform cueParent)
-            return;
-
-        if (_railRoot.transform is not RectTransform railRect)
-            return;
-
-        RectTransform cueRect = _wordRestoredText.rectTransform;
-
-        var railCorners = new Vector3[4];
-        railRect.GetWorldCorners(railCorners);
-        float railWorldBottom = Mathf.Min(
-            Mathf.Min(railCorners[0].y, railCorners[1].y),
-            Mathf.Min(railCorners[2].y, railCorners[3].y));
-        float railWorldTop = Mathf.Max(
-            Mathf.Max(railCorners[0].y, railCorners[1].y),
-            Mathf.Max(railCorners[2].y, railCorners[3].y));
-
-        var cueCorners = new Vector3[4];
-        cueRect.GetWorldCorners(cueCorners);
-        float cueWorldBottom = Mathf.Min(
-            Mathf.Min(cueCorners[0].y, cueCorners[1].y),
-            Mathf.Min(cueCorners[2].y, cueCorners[3].y));
-        float cueWorldTop = Mathf.Max(
-            Mathf.Max(cueCorners[0].y, cueCorners[1].y),
-            Mathf.Max(cueCorners[2].y, cueCorners[3].y));
-
-        float parentScale = Mathf.Abs(cueParent.lossyScale.y);
-        if (parentScale <= Mathf.Epsilon)
-            return;
-
-        float gapWorld = WordRestoredCueRailGap * parentScale;
-        float correctionLocal;
-
-        if (RailSitsInLowerHalf(railRect, railWorldBottom, railWorldTop))
-        {
-            // Rail along the bottom: the cue goes ABOVE it.
-            float desiredWorldBottom = railWorldTop + gapWorld;
-            if (cueWorldBottom >= desiredWorldBottom)
-                return;
-
-            correctionLocal = (desiredWorldBottom - cueWorldBottom) / parentScale;
-        }
-        else
-        {
-            // Rail along the top: the cue goes BELOW it, as it always did.
-            float desiredWorldTop = railWorldBottom - gapWorld;
-            if (cueWorldTop <= desiredWorldTop)
-                return;
-
-            correctionLocal = (desiredWorldTop - cueWorldTop) / parentScale;
-        }
-
-        cueRect.anchoredPosition += new Vector2(0f, correctionLocal);
-    }
-
-    /// <summary>
-    /// Whether the rail is sitting in the bottom half of the canvas it is drawn on, which decides
-    /// which side of it has room for the word-restoration cue. Falls back to the rail's anchor when
-    /// no canvas rect can be read, so a presenter built without a canvas in a test still answers.
-    /// </summary>
-    private static bool RailSitsInLowerHalf(
-        RectTransform railRect, float railWorldBottom, float railWorldTop)
-    {
-        Canvas canvas = railRect.GetComponentInParent<Canvas>();
-        if (canvas != null && canvas.transform is RectTransform canvasRect)
-        {
-            var canvasCorners = new Vector3[4];
-            canvasRect.GetWorldCorners(canvasCorners);
-            float canvasBottom = Mathf.Min(
-                Mathf.Min(canvasCorners[0].y, canvasCorners[1].y),
-                Mathf.Min(canvasCorners[2].y, canvasCorners[3].y));
-            float canvasTop = Mathf.Max(
-                Mathf.Max(canvasCorners[0].y, canvasCorners[1].y),
-                Mathf.Max(canvasCorners[2].y, canvasCorners[3].y));
-
-            if (canvasTop > canvasBottom)
-            {
-                float railCentre = (railWorldBottom + railWorldTop) * 0.5f;
-                return railCentre < (canvasBottom + canvasTop) * 0.5f;
-            }
-        }
-
-        return railRect.anchorMin.y < 0.5f;
     }
 
     /// <summary>
@@ -1795,7 +1591,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             TextMeshProUGUI candidate = candidates[i];
             if (candidate == null
                 || candidate == _clueText
-                || candidate == _wordRestoredText
                 || candidate == _restorationProgressText)
                 continue;
 
@@ -1813,45 +1608,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
     private TextMeshProUGUI _clueInstructionText;
 
-    /// <summary>
-    /// Built on demand so the cue also reaches an authored HUD that
-    /// predates this ticket and therefore has no serialized reference to wire.
-    /// </summary>
-    private void EnsureWordRestoredLabel()
-    {
-        if (_wordRestoredText != null)
-            return;
-
-        Canvas canvas = ResolveHudCanvas();
-        if (canvas == null)
-            return;
-
-        TextMeshProUGUI textTemplate = _clueText != null
-            ? _clueText
-            : FindFirstObjectByType<TextMeshProUGUI>();
-
-        _runtimeWordRestoredObject =
-            new GameObject("[Runtime] WordRestoredCue", typeof(RectTransform));
-        _runtimeWordRestoredObject.transform.SetParent(canvas.transform, false);
-
-        var label = _runtimeWordRestoredObject.AddComponent<TextMeshProUGUI>();
-        CopyFont(textTemplate, label);
-        label.fontSize = UITextScale.Body;
-        label.alignment = TextAlignmentOptions.Center;
-        label.color = new Color(1f, 0.84f, 0.29f, 1f);
-        label.raycastTarget = false;
-
-        RectTransform rect = _runtimeWordRestoredObject.GetComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0.5f, 1f);
-        rect.anchorMax = new Vector2(0.5f, 1f);
-        rect.pivot = new Vector2(0.5f, 1f);
-        rect.anchoredPosition = new Vector2(0f, -280f);
-        rect.sizeDelta = new Vector2(520f, 60f);
-
-        _runtimeWordRestoredObject.SetActive(false);
-        _wordRestoredText = label;
-    }
-
     /// <summary>The canvas every runtime-built HUD piece here hangs from, shared so they agree.</summary>
     private Canvas ResolveHudCanvas()
     {
@@ -1865,29 +1621,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             return canvas;
 
         return FindFirstObjectByType<Canvas>();
-    }
-
-    private void DestroyRuntimeWordRestoredLabel()
-    {
-        _wordRestoredRoutine = null;
-
-        if (_runtimeWordRestoredObject == null)
-        {
-            // An authored label is not ours to destroy; just stop showing the last cue.
-            if (_wordRestoredText != null)
-                _wordRestoredText.gameObject.SetActive(false);
-            return;
-        }
-
-        // Only the runtime label is presenter-owned, so only it is torn down.
-        if (_wordRestoredText != null
-            && _wordRestoredText.gameObject == _runtimeWordRestoredObject)
-        {
-            _wordRestoredText = null;
-        }
-
-        DestroyOwnedObject(_runtimeWordRestoredObject);
-        _runtimeWordRestoredObject = null;
     }
 
     /// <summary>
@@ -4846,7 +4579,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     /// nothing downstream of the rendered string ever sees an intermediate value.
     ///
     /// <para>
-    /// Unscaled time, like the word-restoration cue: the introduction cards run the level at a
+    /// Unscaled time: the introduction cards run the level at a
     /// fraction of normal time scale, and a crumble stretched across four seconds would read as a
     /// rendering fault rather than as ash.
     /// </para>
