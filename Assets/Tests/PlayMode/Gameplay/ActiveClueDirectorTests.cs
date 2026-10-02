@@ -38,15 +38,6 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 runtimeMark = GameObject.Find("[Runtime] ActiveClueMark");
             }
 
-            // The word-restoration label is built on the HUD canvas, which the presenter does
-            // not own, so a deferred Destroy could otherwise outlive this test.
-            GameObject restoredCue = GameObject.Find("[Runtime] WordRestoredCue");
-            while (restoredCue != null)
-            {
-                Object.DestroyImmediate(restoredCue);
-                restoredCue = GameObject.Find("[Runtime] WordRestoredCue");
-            }
-
             // InstantWinPresenter.EnsureOverlay builds this canvas when the beat has no
             // parent canvas, and the tap catcher is parented to it — destroying the beat
             // alone strands both, and the loose canvas can hijack a later test's
