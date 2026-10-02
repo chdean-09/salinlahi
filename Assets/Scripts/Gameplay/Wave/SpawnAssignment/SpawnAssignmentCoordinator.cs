@@ -408,6 +408,21 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
     }
 
     /// <summary>
+    /// Level 15's final YA slot is carried by Yapos ng Dilim. It is the last enemy admission of
+    /// the run, after which the wave must wait for that enemy's real defeat before completing.
+    /// </summary>
+    public bool IsFinalYaposAssignment(SpawnAssignment assignment) =>
+        _level != null
+        && string.Equals(_level.stableId, ContentIdentity.RevisedFinaleLevelId, StringComparison.Ordinal)
+        && assignment.Role == SpawnAssignmentRole.Needed
+        && assignment.SlotIndex == _slots.Count - 1
+        && _slots.Count > 0
+        && string.Equals(_slots[_slots.Count - 1].SymbolStableId,
+            ContentIdentity.RevisedFinaleSymbolId, StringComparison.Ordinal)
+        && string.Equals(assignment.SymbolStableId,
+            ContentIdentity.RevisedFinaleSymbolId, StringComparison.Ordinal);
+
+    /// <summary>
     /// A gate with no one to open it makes the level unwinnable, and the symptom - enemies keep
     /// spawning but the last slot never becomes available - looks like a content bug rather than a
     /// wiring bug. Say so once, loudly, naming the token nobody opened.
@@ -668,32 +683,13 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
         if (matching != null)
             return matching;
 
-        // Use a real-carrier fallback only when no real type owns this symbol.
-        // Never turn Salungat into a real enemy or change the penalty on a filler/choice copy.
-        EnemyDataSO fallback = FindRealCarrier(wave?.enemyTypes)
-            ?? FindRealCarrier(_level?.allowedEnemyTypes);
-        if (fallback != null && !_loggedEnemyRosterFallback)
-        {
-            _loggedEnemyRosterFallback = true;
-            DebugLogger.LogWarning("SpawnAssignmentCoordinator: required symbol '"
-                + assignment.SymbolStableId + "' has no matching real enemy; real carrier fallback: "
-                + fallback.name);
-        }
-        else if (fallback == null && !_loggedMissingRequiredCarrier)
+        if (!_loggedMissingRequiredCarrier)
         {
             _loggedMissingRequiredCarrier = true;
-            DebugLogger.LogError("SpawnAssignmentCoordinator: no real enemy can carry required symbol '"
-                + assignment.SymbolStableId + "'. Check the wave and level enemy rosters.");
+            DebugLogger.LogError("SpawnAssignmentCoordinator: no real enemy with the canonical glyph '"
+                + assignment.SymbolStableId + "' is available for a required slot. Check the wave "
+                + "and level enemy rosters.");
         }
-        return fallback;
-    }
-
-    private static EnemyDataSO FindRealCarrier(List<EnemyDataSO> candidates)
-    {
-        if (candidates == null) return null;
-        for (int i = 0; i < candidates.Count; i++)
-            if (candidates[i] != null && !candidates[i].isDecoy)
-                return candidates[i];
         return null;
     }
 

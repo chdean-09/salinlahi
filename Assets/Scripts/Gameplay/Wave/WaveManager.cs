@@ -83,6 +83,7 @@ public class WaveManager : MonoBehaviour
     public int CurrentWaveIndex => _currentWaveIndex;
     public int CurrentWaveSpawnedCount => _currentWaveSpawnedCount;
     public int PendingGeneratedSpawnCount => _pendingGeneratedSpawns.Count;
+    internal bool CanContinueSpawning => CanContinueRun();
 
     private void OnEnable()
     {
@@ -1252,7 +1253,7 @@ public class WaveManager : MonoBehaviour
         return Mathf.Min(safeWaveIndex + 1, waves.Count);
     }
 
-    private IEnumerator WaitForActiveEnemiesCleared()
+    internal IEnumerator WaitForActiveEnemiesCleared()
     {
         bool trackerMissingDuringWait = false;
         yield return new WaitUntil(() =>
