@@ -100,20 +100,60 @@ public sealed class HatiSplitController : MonoBehaviour
 
         BaybayinCharacterSO glyph = _enemy.Character;
         int count = Mathf.Max(1, data.splitCount);
+        Vector3 sourcePosition = transform.position;
+        IReadOnlyList<BaybayinCharacterSO> allowedCharacters = WaveManager.CurrentAllowedCharacters;
+        WaveManager waveManager = FindFirstObjectByType<WaveManager>();
+
+        var pieceCharacters = new List<BaybayinCharacterSO>(count);
+        var piecePositions = new List<Vector3>(count);
         for (int i = 0; i < count; i++)
         {
+            piecePositions.Add(sourcePosition + SplitOffset(i, count, data.splitOffsetX));
+            pieceCharacters.Add(glyph != null
+                ? SelectReviewCharacter(glyph, i, count, allowedCharacters)
+                : null);
+        }
+
+        if (waveManager != null)
+        {
+            // Sequence the pieces from actual admission, so the second one's scaled delay starts
+            // after the first fragment can enter the capped field.
+            QueueNextGeneratedPiece(waveManager, spawnData, pieceCharacters, piecePositions, 0);
+            return;
+        }
+
+        for (int i = 0; i < count; i++)
+        {
+            // Keep isolated scenes without a WaveManager usable; production uses the shared queue.
             Enemy piece = pool.Get(spawnData);
             if (piece == null)
                 continue;
 
-            piece.transform.position = transform.position + SplitOffset(i, count, data.splitOffsetX);
-            if (glyph != null)
-                piece.AssignCharacter(SelectReviewCharacter(
-                    glyph,
-                    i,
-                    count,
-                    WaveManager.CurrentAllowedCharacters));
+            piece.transform.position = piecePositions[i];
+            if (pieceCharacters[i] != null)
+                piece.AssignCharacter(pieceCharacters[i]);
+            piece.RestoreCurrentHealth(1);
         }
+    }
+
+    private static void QueueNextGeneratedPiece(
+        WaveManager waveManager,
+        EnemyDataSO spawnData,
+        IReadOnlyList<BaybayinCharacterSO> pieceCharacters,
+        IReadOnlyList<Vector3> piecePositions,
+        int pieceIndex)
+    {
+        if (waveManager == null || pieceIndex < 0 || pieceIndex >= piecePositions.Count)
+            return;
+
+        waveManager.QueueGeneratedEnemySpawn(
+            spawnData,
+            pieceCharacters[pieceIndex],
+            piecePositions[pieceIndex],
+            currentHealth: 1,
+            delaySeconds: pieceIndex == 0 ? 0f : 1f,
+            onSpawned: _ => QueueNextGeneratedPiece(
+                waveManager, spawnData, pieceCharacters, piecePositions, pieceIndex + 1));
     }
 
     /// <summary>

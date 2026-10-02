@@ -245,6 +245,7 @@ MonoBehaviour:
     slotGates: []
     slotFloors: []
   enemySpeedMultiplier: 1
+  maxActiveEnemies: 4
   overrideDrawingAccuracyThreshold: 0
   drawingAccuracyThresholdOverride: 0.6
   alwaysShowTutorial: 0

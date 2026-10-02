@@ -29,6 +29,9 @@ public sealed class MirrorDecoyController : MonoBehaviour, IIntroducibleAbility,
     private bool _spawnAttempted;
     // Lane offset the copy holds relative to its source, so the pair stays side by side.
     private float _decoyOffsetX;
+    private WaveManager _pendingWaveManager;
+    private long _pendingOwnerSpawnSequence;
+    private bool _hasPendingDecoySpawn;
 
     /// <summary>
     /// True while this spawn is the one that introduced its type, in which case no copy may be
@@ -162,6 +165,9 @@ public sealed class MirrorDecoyController : MonoBehaviour, IIntroducibleAbility,
         _spawnAttempted = false;
         _decoy = null;
         _decoyRenderer = null;
+        _pendingWaveManager = null;
+        _pendingOwnerSpawnSequence = 0L;
+        _hasPendingDecoySpawn = false;
         _decoySpawnedThisSpawn = false;
         // A pooled shell must not inherit the previous occupant's suppression.
         _suppressedForIntroductionSpawn = false;
@@ -173,6 +179,9 @@ public sealed class MirrorDecoyController : MonoBehaviour, IIntroducibleAbility,
 
     private void OnDisable()
     {
+        if (_hasPendingDecoySpawn && _pendingWaveManager != null && _enemy != null)
+            _pendingWaveManager.CancelGeneratedEnemySpawns(_enemy, _pendingOwnerSpawnSequence);
+
         ReleaseDecoy();
     }
 
@@ -227,16 +236,76 @@ public sealed class MirrorDecoyController : MonoBehaviour, IIntroducibleAbility,
         if (pool == null)
             return;
 
-        Enemy decoy = pool.Get(GetDecoyData(data));
-        if (decoy == null)
-            return;
-
-        decoy.AssignCharacter(PickDecoyCharacter(_enemy.Character, data));
-
+        EnemyDataSO decoyData = GetDecoyData(data);
+        BaybayinCharacterSO decoyCharacter = PickDecoyCharacter(_enemy.Character, data);
         // Mirror toward the emptier side of the lane so the pair reads as a reflection.
         float side = transform.position.x >= 0f ? -1f : 1f;
         _decoyOffsetX = side * data.mirrorDecoyOffsetX;
-        decoy.transform.position = transform.position + new Vector3(_decoyOffsetX, 0f, 0f);
+        Vector3 decoyPosition = transform.position + new Vector3(_decoyOffsetX, 0f, 0f);
+        WaveManager waveManager = FindFirstObjectByType<WaveManager>();
+        if (waveManager != null)
+        {
+            Enemy source = _enemy;
+            long spawnSequence = source.SpawnSequence;
+            _pendingWaveManager = waveManager;
+            _pendingOwnerSpawnSequence = spawnSequence;
+            _hasPendingDecoySpawn = true;
+            waveManager.QueueGeneratedEnemySpawn(
+                decoyData,
+                decoyCharacter,
+                decoyPosition,
+                decoyData.maxHealth,
+                owner: source,
+                ownerSpawnSequence: spawnSequence,
+                requiresLiveOwner: true,
+                onSpawned: copy =>
+                {
+                    _hasPendingDecoySpawn = false;
+                    _pendingWaveManager = null;
+                    CompleteQueuedDecoy(copy, source, spawnSequence, data, decoyData);
+                },
+                onCancelled: () =>
+                {
+                    _hasPendingDecoySpawn = false;
+                    _pendingWaveManager = null;
+                    CleanupUnspawnedDecoyData(data, decoyData, waveManager);
+                });
+            return;
+        }
+
+        // Keep a standalone scene without WaveManager usable; gameplay scenes use the cap-aware queue.
+        Enemy decoy = pool.Get(decoyData);
+        if (decoy == null)
+            return;
+
+        decoy.AssignCharacter(decoyCharacter);
+        decoy.transform.position = decoyPosition;
+        CompleteQueuedDecoy(decoy, _enemy, _enemy.SpawnSequence, data, decoyData);
+    }
+
+    private void CompleteQueuedDecoy(
+        Enemy decoy,
+        Enemy source,
+        long spawnSequence,
+        EnemyDataSO sourceData,
+        EnemyDataSO decoyData)
+    {
+        if (decoy == null)
+        {
+            CleanupUnspawnedDecoyData(sourceData, decoyData, FindFirstObjectByType<WaveManager>());
+            return;
+        }
+
+        EnemyPool pool = EnemyPool.Instance;
+        if (!isActiveAndEnabled || source == null || source != _enemy
+            || !source.gameObject.activeInHierarchy || source.IsDying || source.CurrentHealth <= 0
+            || source.SpawnSequence != spawnSequence || pool == null || !pool.IsCheckedOut(source))
+        {
+            decoy.ReturnToPool();
+            CleanupUnspawnedDecoyData(
+                sourceData, decoyData, FindFirstObjectByType<WaveManager>());
+            return;
+        }
 
         // Park the copy's own mover: its position is driven from the source from here on, so the
         // two cannot drift apart no matter what speed or zigzag either would have walked at.
@@ -262,6 +331,38 @@ public sealed class MirrorDecoyController : MonoBehaviour, IIntroducibleAbility,
 
         _decoy = decoy;
         _decoySpawnedThisSpawn = true;
+    }
+
+    private static void CleanupUnspawnedDecoyData(
+        EnemyDataSO sourceData, EnemyDataSO decoyData, WaveManager manager)
+    {
+        if (sourceData == null || decoyData == null
+            || (manager != null && manager.HasPendingGeneratedData(decoyData)))
+        {
+            return;
+        }
+
+        ActiveEnemyTracker tracker = ActiveEnemyTracker.Instance;
+        if (tracker != null)
+        {
+            List<Enemy> active = tracker.GetActiveEnemiesSnapshot();
+            for (int i = 0; i < active.Count; i++)
+            {
+                if (active[i] != null && active[i].Data == decoyData)
+                    return;
+            }
+        }
+
+        if (DecoyDataBySource.TryGetValue(sourceData, out EnemyDataSO cached)
+            && cached == decoyData)
+        {
+            DecoyDataBySource.Remove(sourceData);
+        }
+
+        if (Application.isPlaying)
+            Destroy(decoyData);
+        else
+            DestroyImmediate(decoyData);
     }
 
     /// <summary>Translucent, cooled-down version of a colour, so the copy reads as a shadow.</summary>

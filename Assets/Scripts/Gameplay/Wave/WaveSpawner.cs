@@ -50,6 +50,7 @@ public class WaveSpawner : MonoBehaviour
 
     // X of the previous spawn, or null before the first one this session.
     private float? _lastSpawnX;
+    private readonly List<Enemy> _activeEnemyBuffer = new List<Enemy>();
 
     // Schedules which symbol each spawn carries on active-clue levels. Null, or inactive, means
     // this level keeps the legacy random assignment below.
@@ -146,6 +147,80 @@ public class WaveSpawner : MonoBehaviour
         return enemy;
     }
 
+    /// <summary>Spawns a generated enemy at its snapshotted position and health.</summary>
+    internal Enemy SpawnGeneratedEnemy(
+        EnemyDataSO data,
+        BaybayinCharacterSO character,
+        Vector3 position,
+        int currentHealth)
+    {
+        EnemyDataSO finalData = ResolveEnemyData(data);
+        EnemyPool pool = EnemyPool.Instance;
+        if (finalData == null || pool == null)
+            return null;
+
+        Enemy enemy = pool.Get(finalData);
+        if (enemy == null)
+            return null;
+
+        enemy.transform.position = position;
+        if (character != null)
+            enemy.AssignCharacter(character);
+        enemy.RestoreCurrentHealth(currentHealth);
+        ApplyLevelSpeedMultiplier(enemy);
+        return enemy;
+    }
+
+    /// <summary>
+    /// Shared admission check for authored and generated enemies. The active count retains dying
+    /// enemies until their pool return, so their death animation cannot exceed the field cap.
+    /// </summary>
+    internal bool CanSpawnEnemyNow(EnemyDataSO data, LevelConfigSO level)
+    {
+        ActiveEnemyTracker tracker = ActiveEnemyTracker.Instance;
+        if (level != null && level.maxActiveEnemies > 0 && tracker != null
+            && tracker.ActiveCount >= level.maxActiveEnemies)
+        {
+            return false;
+        }
+
+        if (data == null || data.isDecoy || tracker == null)
+            return true;
+
+        bool incomingKadena = data.chainsNearestEnemy;
+        bool usesLevelBlockerLimit = level != null
+                                     && level.levelNumber >= 7
+                                     && level.levelNumber <= 15;
+        bool incomingBlocker = usesLevelBlockerLimit && IsBlockingSource(data);
+        if (!incomingKadena && !incomingBlocker)
+            return true;
+
+        tracker.FillActiveEnemiesSnapshot(_activeEnemyBuffer);
+        bool hasKadena = false;
+        bool hasBlocker = false;
+        for (int i = 0; i < _activeEnemyBuffer.Count; i++)
+        {
+            Enemy enemy = _activeEnemyBuffer[i];
+            EnemyDataSO activeData = enemy != null ? enemy.Data : null;
+            if (enemy == null || activeData == null || activeData.isDecoy)
+                continue;
+
+            hasKadena |= activeData.chainsNearestEnemy;
+            if (usesLevelBlockerLimit)
+                hasBlocker |= IsBlockingSource(activeData);
+        }
+
+        return (!incomingKadena || !hasKadena) && (!incomingBlocker || !hasBlocker);
+    }
+
+    private static bool IsBlockingSource(EnemyDataSO data)
+    {
+        return data != null
+            && (data.chainsNearestEnemy
+                || data.learningAbility == EnemyLearningAbility.BoundPair
+                || data.blocksEnemiesBehind);
+    }
+
     // Boss-specific entry point: spawns the enemy at the horizontal center
     // of the spawn bounds rather than a random X. Uses _bossSpawnPoint.y
     // when assigned so the boss appears within the visible play area even
@@ -234,6 +309,8 @@ public class WaveSpawner : MonoBehaviour
             // The schedule must not keep arriving underneath that. Held HERE, before the assignment
             // is consumed, so the paused wave resumes on the symbol it was going to spawn anyway.
             yield return WaitWhileIntroductionLessonHoldsSchedule();
+            // Do not advance the assignment schedule or consume a guarantee while the field is full.
+            yield return WaitForAuthoredSpawnOpportunity(null);
 
             EnemyDataSO data = spawnOrder[i];
             BaybayinCharacterSO character;
@@ -257,8 +334,6 @@ public class WaveSpawner : MonoBehaviour
                 EnemyDataSO assignedData = AssignmentCoordinator.ResolveEnemyData(assignment, wave);
                 if (assignment.Role == SpawnAssignmentRole.Needed && assignedData == null)
                 {
-                    DebugLogger.LogError("WaveSpawner: no real enemy can carry required symbol '"
-                        + assignment.SymbolStableId + "'. Check the wave and level enemy rosters.");
                     yield break;
                 }
                 data = assignedData ?? data;
@@ -269,6 +344,10 @@ public class WaveSpawner : MonoBehaviour
             {
                 character = SelectCharacterForSpawn(wave, data);
             }
+
+            // Keep the selected data and glyph together while capacity or a blocker rule delays
+            // admission. The assignment is not requested again during this wait.
+            yield return WaitForAuthoredSpawnOpportunity(data);
 
             Enemy enemy = SpawnEnemy(data);
             if (enemy != null)
@@ -395,6 +474,8 @@ public class WaveSpawner : MonoBehaviour
             coordinator.ResolveEnemyData(assignment.PairedDecoySymbolStableId, wave)
             ?? SelectEnemyDataForSpawn(wave);
 
+        yield return WaitForAuthoredSpawnOpportunity(decoyData);
+
         Enemy decoy = SpawnEnemy(decoyData);
         if (decoy == null)
             yield break;
@@ -465,6 +546,31 @@ public class WaveSpawner : MonoBehaviour
         }
 
         return ResolveEnemyData(selected);
+    }
+
+    private IEnumerator WaitForAuthoredSpawnOpportunity(EnemyDataSO data)
+    {
+        while (true)
+        {
+            WaveManager manager = FindFirstObjectByType<WaveManager>();
+            if (manager != null)
+            {
+                if (manager.CanSpawnAuthoredEnemy(data))
+                    yield break;
+            }
+            else if (CanSpawnEnemyNow(data, GameManager.CurrentLevelConfig))
+            {
+                GameManager gameManager = GameManager.Instance;
+                if (gameManager == null
+                    || gameManager.CurrentState == GameState.Playing
+                    || gameManager.CurrentState == GameState.Practicing)
+                {
+                    yield break;
+                }
+            }
+
+            yield return null;
+        }
     }
 
     /// <summary>

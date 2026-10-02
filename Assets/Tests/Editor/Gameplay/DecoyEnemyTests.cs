@@ -47,23 +47,29 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
-        public void CombatResolver_DecoyDraw_RaisesBaseHit_WithoutEnemyDefeated()
+        public void CombatResolver_FirstDecoyDraw_IsProtectedAndNotReportedAsMiss()
         {
             BaybayinCharacterSO assignedCharacter = CreateCharacter("BA", "ba");
             Enemy enemy = CreateEnemy(assignedCharacter, isDecoy: true, yPosition: -2f);
             CombatResolver resolver = CreateResolver();
             int baseHitCount = 0;
             int enemyDefeatedCount = 0;
+            bool drawingMissed = false;
+            DrawTextRelation relation = DrawTextRelation.Unknown;
 
             EventBus.OnBaseHit += HandleBaseHit;
             EventBus.OnEnemyDefeated += HandleEnemyDefeated;
+            EventBus.OnDrawingMissed += HandleDrawingMissed;
+            DrawFeedbackSignals.OnTextRelationResolved += HandleTextRelation;
 
             try
             {
                 InvokePrivate<object>(resolver, "HandleCharacterRecognized", assignedCharacter.characterID);
 
-                Assert.AreEqual(1, baseHitCount);
+                Assert.AreEqual(0, baseHitCount, "The first false-copy hit in an attempt is protected.");
                 Assert.AreEqual(0, enemyDefeatedCount);
+                Assert.IsFalse(drawingMissed, "A glyph carried by a copy is not a miss.");
+                Assert.AreEqual(DrawTextRelation.FalseCopyShattered, relation);
                 Assert.AreEqual(0, _tracker.ActiveCount);
                 Assert.IsFalse(enemy.gameObject.activeInHierarchy);
             }
@@ -71,10 +77,85 @@ namespace Salinlahi.Tests.Editor.Gameplay
             {
                 EventBus.OnBaseHit -= HandleBaseHit;
                 EventBus.OnEnemyDefeated -= HandleEnemyDefeated;
+                EventBus.OnDrawingMissed -= HandleDrawingMissed;
+                DrawFeedbackSignals.OnTextRelationResolved -= HandleTextRelation;
             }
 
             void HandleBaseHit(int damage) => baseHitCount += damage;
             void HandleEnemyDefeated(BaybayinCharacterSO _) => enemyDefeatedCount++;
+            void HandleDrawingMissed() => drawingMissed = true;
+            void HandleTextRelation(DrawFeedbackReport report) => relation = report.Relation;
+        }
+
+        [Test]
+        public void CombatResolver_LaterDecoyDrawRaisesBaseHitButNeverDrawingMissed()
+        {
+            BaybayinCharacterSO firstCharacter = CreateCharacter("BA", "ba");
+            BaybayinCharacterSO secondCharacter = CreateCharacter("KA", "ka");
+            CreateEnemy(firstCharacter, isDecoy: true, yPosition: -1f);
+            CreateEnemy(secondCharacter, isDecoy: true, yPosition: -2f);
+            CombatResolver resolver = CreateResolver();
+            int baseHitCount = 0;
+            int drawingMissCount = 0;
+            int falseCopyRelations = 0;
+
+            EventBus.OnBaseHit += HandleBaseHit;
+            EventBus.OnDrawingMissed += HandleDrawingMissed;
+            DrawFeedbackSignals.OnTextRelationResolved += HandleTextRelation;
+
+            try
+            {
+                InvokePrivate<object>(resolver, "HandleCharacterRecognized", firstCharacter.characterID);
+                InvokePrivate<object>(resolver, "HandleCharacterRecognized", secondCharacter.characterID);
+
+                Assert.AreEqual(1, baseHitCount, "Only the later false-copy hit costs health.");
+                Assert.AreEqual(0, drawingMissCount, "A false-copy hit is feedback, not a drawing miss.");
+                Assert.AreEqual(2, falseCopyRelations);
+            }
+            finally
+            {
+                EventBus.OnBaseHit -= HandleBaseHit;
+                EventBus.OnDrawingMissed -= HandleDrawingMissed;
+                DrawFeedbackSignals.OnTextRelationResolved -= HandleTextRelation;
+            }
+
+            void HandleBaseHit(int damage) => baseHitCount += damage;
+            void HandleDrawingMissed() => drawingMissCount++;
+            void HandleTextRelation(DrawFeedbackReport report)
+            {
+                if (report.Relation == DrawTextRelation.FalseCopyShattered)
+                    falseCopyRelations++;
+            }
+        }
+
+        [Test]
+        public void CombatResolver_DecoyFalseHitGraceResetsForANewLevelAttempt()
+        {
+            BaybayinCharacterSO firstCharacter = CreateCharacter("BA", "ba");
+            BaybayinCharacterSO retryCharacter = CreateCharacter("KA", "ka");
+            CreateEnemy(firstCharacter, isDecoy: true, yPosition: -1f);
+            CreateEnemy(retryCharacter, isDecoy: true, yPosition: -2f);
+            CombatResolver resolver = CreateResolver();
+            // Edit Mode does not dispatch OnEnable; exercise the real attempt event subscription.
+            InvokePrivate<object>(resolver, "OnEnable");
+            int baseHitCount = 0;
+
+            EventBus.OnBaseHit += HandleBaseHit;
+            try
+            {
+                InvokePrivate<object>(resolver, "HandleCharacterRecognized", firstCharacter.characterID);
+                EventBus.RaiseLevelAttemptAborted();
+                InvokePrivate<object>(resolver, "HandleCharacterRecognized", retryCharacter.characterID);
+
+                Assert.AreEqual(0, baseHitCount,
+                    "Each level attempt protects its first actual false-copy hit.");
+            }
+            finally
+            {
+                EventBus.OnBaseHit -= HandleBaseHit;
+            }
+
+            void HandleBaseHit(int damage) => baseHitCount += damage;
         }
 
         [Test]

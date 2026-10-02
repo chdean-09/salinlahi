@@ -267,7 +267,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
-        public void TryConsumeClue_WhenTheDrawStruckACloserFalseCopy_WithholdsTheCredit()
+        public void TryConsumeClue_WhenTheDrawHasACloserFalseCopy_RealCarrierStillGetsCredit()
         {
             BaybayinCharacterSO drawn = CreateSymbol(DrawnId, "symbol.a");
             Enemy copy = CreateEnemy(drawn, isDecoy: true, y: -2f);
@@ -283,20 +283,9 @@ namespace Salinlahi.Tests.Editor.Gameplay
 
             try
             {
-                Assert.IsFalse(_director.TryConsumeClue(real),
-                    "The copy was the closest carrier, so the copy is what fell. The word gains "
-                    + "nothing from a body that was never part of it.");
-                Assert.AreSame(copy, shattered,
-                    "The refusal must name the copy, so feedback can say the copy fell rather than "
-                    + "leaving silence the player can only read as a miss.");
-                Assert.AreEqual(0, resolvedCount,
-                    "The word-restoration cue must not fire for a shattered copy.");
-
-                // The slot is still owed: the real carrier is still walking, and the next draw of
-                // the same glyph must be able to claim the credit this one could not.
-                copy.ReturnToPool();
                 Assert.IsTrue(_director.TryConsumeClue(real),
-                    "With the copy gone the real carrier wins the draw and the slot fills.");
+                    "A matching real carrier outranks a closer copy, so the real glyph restores its slot.");
+                Assert.IsNull(shattered);
                 Assert.AreEqual(1, resolvedCount);
             }
             finally
@@ -339,12 +328,12 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
-        public void TryConsumeClue_TiedDistances_ResolveByTheSameSpawnSequenceRule()
+        public void TryConsumeClue_TiedDistances_RealCarrierOutranksEarlierCopy()
         {
             // The copy is pinned beside its source, so a copy and a real carrier genuinely can sit
             // at the same distance. This is the tie the deception beat cannot survive as a coin
             // flip, and it must break exactly the way every other draw target breaks: lowest spawn
-            // sequence. The copy is created first, so it holds the lower sequence and wins.
+            // sequence within a class. The real carrier wins even though the copy has the lower sequence.
             BaybayinCharacterSO drawn = CreateSymbol(DrawnId, "symbol.a");
             Enemy copy = CreateEnemy(drawn, isDecoy: true, y: -2f);
             Enemy real = CreateEnemy(drawn, isDecoy: false, y: -2f);
@@ -354,9 +343,8 @@ namespace Salinlahi.Tests.Editor.Gameplay
             _director.Reevaluate();
             Assert.AreSame(real, _director.CurrentClue, "Setup: the real carrier must hold the mark.");
 
-            Assert.IsFalse(_director.TryConsumeClue(real),
-                "One rule in one place: the tie breaks on spawn sequence for a copy exactly as it "
-                + "does for any other body, with no branch that reads 'if decoy'.");
+            Assert.IsTrue(_director.TryConsumeClue(real),
+                "Real-carrier priority precedes spawn-sequence ordering, so the copy cannot withhold credit.");
         }
 
         private sealed class AlwaysActiveObjectiveSource : IClueObjectiveSource

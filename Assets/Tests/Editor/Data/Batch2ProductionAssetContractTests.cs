@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using UnityEditor;
+using UnityEngine;
+using UnityEngine;
 
 namespace Salinlahi.Tests.Editor.Data
 {
@@ -166,6 +168,64 @@ namespace Salinlahi.Tests.Editor.Data
                             $"Level {levelNumber} wave {waveIndex + 1} must carry a natural enemy for {symbolId}.");
                     }
                 }
+            }
+        }
+
+        [Test]
+        public void EnemyCapAndPacing_AreScopedToLevels7Through15()
+        {
+            LevelConfigSO freshConfig = ScriptableObject.CreateInstance<LevelConfigSO>();
+            Assert.AreEqual(0, freshConfig.maxActiveEnemies,
+                "The serialized field default must preserve unlimited legacy spawning.");
+            Object.DestroyImmediate(freshConfig);
+
+            for (int levelNumber = 1; levelNumber <= 6; levelNumber++)
+                Assert.AreEqual(0, Load(levelNumber).maxActiveEnemies,
+                    $"Level {levelNumber} must keep the unlimited default.");
+
+            int[][] expectedEnemyCounts =
+            {
+                new[] { 5, 5, 6, 7 },
+                new[] { 5, 6, 6, 7, 8 },
+                new[] { 8, 9, 9, 10, 12 },
+                new[] { 6, 7, 8, 9, 10 },
+                new[] { 4, 5, 6, 7 },
+                new[] { 5, 5, 6, 6, 7 },
+                new[] { 5, 6, 6, 7, 8 },
+                new[] { 7, 8, 8, 9, 10 },
+                new[] { 8, 9, 10, 11, 12 },
+            };
+            float[][] expectedSpawnIntervals =
+            {
+                new[] { 2.2f, 2.1f, 2f, 2f },
+                new[] { 2f, 2f, 2f, 2f, 2f },
+                new[] { 2f, 2f, 2f, 2f, 2f },
+                new[] { 2.2f, 2.05f, 2f, 2f, 2f },
+                new[] { 3f, 2.8f, 2.5f, 2.2f },
+                new[] { 5.6f, 5f, 3f, 3f, 3f },
+                new[] { 5f, 4.6f, 3f, 3f, 3f },
+                new[] { 3.6f, 3f, 3f, 3f, 3f },
+                new[] { 2.2f, 2.05f, 2f, 2f, 2f },
+            };
+
+            for (int levelNumber = 7; levelNumber <= 15; levelNumber++)
+            {
+                LevelConfigSO level = Load(levelNumber);
+                Assert.AreEqual(4, level.maxActiveEnemies,
+                    $"Level {levelNumber} must opt into the four-enemy cap.");
+                if (levelNumber >= 12 && levelNumber <= 14)
+                    Assert.AreEqual(0.65f, level.enemySpeedMultiplier, 0.0001f,
+                        "Keep upstream Era Three movement pacing alongside the active cap.");
+                Assert.AreEqual(expectedEnemyCounts[levelNumber - 7].Length, level.waves.Count,
+                    $"Level {levelNumber} wave count must remain unchanged.");
+                CollectionAssert.AreEqual(expectedEnemyCounts[levelNumber - 7],
+                    level.waves.Select(wave => wave.enemyCount).ToArray(),
+                    $"Level {levelNumber} authored enemy counts must remain unchanged.");
+                CollectionAssert.AreEqual(expectedSpawnIntervals[levelNumber - 7],
+                    level.waves.Select(wave => wave.spawnInterval).ToArray(),
+                    $"Level {levelNumber} schedule must be preserved except for its 2-second floor.");
+                Assert.IsTrue(level.waves.All(wave => wave.spawnInterval >= 2f),
+                    $"Every Level {levelNumber} wave must respect the spawn interval floor.");
             }
         }
 

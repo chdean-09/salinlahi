@@ -161,6 +161,77 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 "Retry teardown must return its own checked-out enemies exactly once.");
         }
 
+        [UnityTest]
+        public IEnumerator HatiSplit_QueuesSecondPieceOneSecondAfterFirstAdmission()
+        {
+            EnemyPool pool = CreateEnemyPool(CreateEnemyPrefab());
+            WaveManager waveManager = CreateTerminalWaveManager("WaveManager_HatiQueue_Test");
+            LevelConfigSO level = GameManager.CurrentLevelConfig;
+            level.levelNumber = 7;
+            level.maxActiveEnemies = 2;
+            SetPrivateField(waveManager, "_levelConfig", level);
+            WaveSpawner spawner = waveManager.gameObject.AddComponent<WaveSpawner>();
+            SetPrivateField(waveManager, "_spawner", spawner);
+            GameManager.Instance.StartGame();
+
+            EnemyDataSO sourceData = CreateEnemyDataWithDeathAnimation();
+            EnemyDataSO pieceData = CreateEnemyDataWithoutDeathAnimation();
+            sourceData.splitsOnDefeat = true;
+            sourceData.splitCount = 2;
+            sourceData.splitSpawnData = pieceData;
+            sourceData.splitOffsetX = 1f;
+            Sprite holdFrame = sourceData.deathFrames[0];
+            sourceData.deathFrames = new[] { holdFrame, holdFrame, holdFrame };
+            sourceData.deathAnimationFps = 0.25f;
+
+            EnemyDataSO occupantData = CreateEnemyDataWithoutDeathAnimation();
+            Enemy occupant = pool.Get(occupantData);
+            Enemy source = pool.Get(sourceData);
+            source.transform.position = new Vector3(4f, 2f, 0f);
+            Assert.IsNotNull(occupant);
+            Assert.IsNotNull(source);
+            Assert.AreEqual(2, _tracker.ActiveCount);
+
+            source.Defeat();
+            Assert.IsTrue(source.IsDying);
+            Assert.AreEqual(1, waveManager.PendingGeneratedSpawnCount,
+                "The first piece waits while the dying source and another enemy fill the cap.");
+
+            yield return new WaitForSeconds(1.1f);
+            Assert.AreEqual(2, _tracker.ActiveCount,
+                "Dying enemies retain their slot until the pool returns them.");
+            Assert.AreEqual(1, waveManager.PendingGeneratedSpawnCount);
+
+            pool.Return(occupant);
+            waveManager.ProcessPendingGeneratedEnemySpawns();
+            Assert.AreEqual(2, _tracker.ActiveCount,
+                "Returning one slot admits the first Hati piece.");
+            Assert.AreEqual(1, waveManager.PendingGeneratedSpawnCount,
+                "The second piece is queued only after the first is actually admitted.");
+
+            yield return new WaitForSeconds(0.25f);
+            pool.Return(source);
+            waveManager.ProcessPendingGeneratedEnemySpawns();
+            Assert.AreEqual(1, waveManager.PendingGeneratedSpawnCount,
+                "Free capacity cannot bypass the one-scaled-second delay after first admission.");
+
+            yield return new WaitForSeconds(0.85f);
+            waveManager.ProcessPendingGeneratedEnemySpawns();
+            Assert.AreEqual(0, waveManager.PendingGeneratedSpawnCount);
+            var active = _tracker.GetActiveEnemiesSnapshot();
+            int pieces = 0;
+            for (int i = 0; i < active.Count; i++)
+            {
+                if (active[i] == null || active[i].Data != pieceData)
+                    continue;
+                pieces++;
+                Assert.AreEqual(1, active[i].CurrentHealth, "Every fragment is a one-hit enemy.");
+                Assert.IsFalse(active[i].Data.splitsOnDefeat, "Fragments must not split recursively.");
+            }
+            Assert.AreEqual(2, pieces);
+            pool.ReturnAllCheckedOut();
+        }
+
         private static IEnumerator ResumeAfterDelay(System.Action onResume)
         {
             yield return new WaitForSecondsRealtime(0.05f);

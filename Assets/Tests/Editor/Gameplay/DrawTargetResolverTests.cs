@@ -15,8 +15,8 @@ namespace Salinlahi.Tests.Editor.Gameplay
         private const int ChainThreshold = 3;
 
         private static ClueCandidate Candidate(
-            string id, float distance, long sequence, bool eligible = true)
-            => new ClueCandidate(id, distance, sequence, eligible);
+            string id, float distance, long sequence, bool eligible = true, bool isDecoy = false)
+            => new ClueCandidate(id, distance, sequence, eligible, isDecoy);
 
         private static List<int> Resolve(
             IReadOnlyList<ClueCandidate> candidates,
@@ -95,6 +95,42 @@ namespace Salinlahi.Tests.Editor.Gameplay
             };
 
             Assert.That(Show(Resolve(candidates, "ba")), Is.EqualTo("0"));
+        }
+
+        [Test]
+        public void SelectTargets_RealCarrierOutranksCloserFalseCopy()
+        {
+            var candidates = new List<ClueCandidate>
+            {
+                Candidate("ba", 1f, 1, isDecoy: true),
+                Candidate("ba", 5f, 2),
+            };
+
+            Assert.That(Show(Resolve(candidates, "ba")), Is.EqualTo("1"));
+        }
+
+        [Test]
+        public void SelectTargets_FalseCopyRemainsTargetableWhenItIsTheOnlyCarrier()
+        {
+            var candidates = new List<ClueCandidate>
+            {
+                Candidate("ba", 1f, 1, isDecoy: true),
+                Candidate("ka", 2f, 2),
+            };
+
+            Assert.That(Show(Resolve(candidates, "ba")), Is.EqualTo("0"));
+        }
+
+        [Test]
+        public void SelectTargets_IneligibleRealCarrierDoesNotSuppressMatchingCopy()
+        {
+            var candidates = new List<ClueCandidate>
+            {
+                Candidate("ba", 1f, 1, eligible: false),
+                Candidate("ba", 2f, 2, isDecoy: true),
+            };
+
+            Assert.That(Show(Resolve(candidates, "ba")), Is.EqualTo("1"));
         }
 
         [Test]
