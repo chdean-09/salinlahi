@@ -24,6 +24,8 @@ using UnityEngine;
 [RequireComponent(typeof(Enemy))]
 public sealed class BakodShieldController : MonoBehaviour
 {
+    private const int MaxBlockedEnemies = 2;
+
     /// <summary>
     /// Shared scratch buffer for the per-tick tracker snapshot. Tick is never re-entrant (single
     /// threaded, and the loop below completes before any other Tick can start), and
@@ -31,8 +33,10 @@ public sealed class BakodShieldController : MonoBehaviour
     /// keeps the ability allocation-free per frame.
     /// </summary>
     private static readonly List<Enemy> SnapshotBuffer = new List<Enemy>();
+    private static readonly List<Enemy> CandidateBuffer = new List<Enemy>();
 
     private Enemy _enemy;
+    private ActiveCluePresenter _presenter;
 
     /// <summary>Enemies this controller currently holds blocked, so it can release exactly its own.</summary>
     private readonly List<Enemy> _blocked = new List<Enemy>();
@@ -182,12 +186,26 @@ public sealed class BakodShieldController : MonoBehaviour
         }
 
         float ownY = transform.position.y;
+        string currentNeededSymbol = ResolveCurrentNeededSymbol();
+        CandidateBuffer.Clear();
+        tracker.FillActiveEnemiesSnapshot(SnapshotBuffer);
+        for (int i = 0; i < SnapshotBuffer.Count; i++)
+        {
+            Enemy candidate = SnapshotBuffer[i];
+            if (ShouldShield(candidate, ownY, currentNeededSymbol))
+                CandidateBuffer.Add(candidate);
+        }
 
-        // Release first, so an enemy that overtook Bakod is freed in the same tick it passes.
+        CandidateBuffer.Sort(CompareShieldPriority);
+        int selectedCount = Mathf.Min(MaxBlockedEnemies, CandidateBuffer.Count);
+
+        // Release first, so an enemy that overtook Bakod or became the needed glyph opens in the
+        // same tick. Recompute membership from the sorted top two so tracker registration order
+        // can never decide which enemies the shield keeps.
         for (int i = _blocked.Count - 1; i >= 0; i--)
         {
             Enemy held = _blocked[i];
-            if (held == null || !ShouldShield(held, ownY))
+            if (held == null || !IsSelected(held, selectedCount))
             {
                 if (held != null)
                     held.RemoveResolutionBlock(this);
@@ -195,21 +213,20 @@ public sealed class BakodShieldController : MonoBehaviour
             }
         }
 
-        tracker.FillActiveEnemiesSnapshot(SnapshotBuffer);
-        for (int i = 0; i < SnapshotBuffer.Count; i++)
+        for (int i = 0; i < selectedCount; i++)
         {
-            Enemy candidate = SnapshotBuffer[i];
-            if (!ShouldShield(candidate, ownY))
-                continue;
+            Enemy candidate = CandidateBuffer[i];
             if (_blocked.Contains(candidate))
                 continue;
 
             candidate.AddResolutionBlock(this);
             _blocked.Add(candidate);
         }
+
+        CandidateBuffer.Clear();
     }
 
-    private bool ShouldShield(Enemy candidate, float ownY)
+    private bool ShouldShield(Enemy candidate, float ownY, string currentNeededSymbol)
     {
         if (candidate == null || candidate == _enemy)
             return false;
@@ -227,19 +244,52 @@ public sealed class BakodShieldController : MonoBehaviour
         if (candidate.transform.position.y <= ownY)
             return false;
 
-        // Context Gate: a carrier matching the next objective occurrence remains an opening in the
-        // wall. The active objective is authoritative for the slot; no alternate recognizer or
-        // target-selection rule is introduced here.
-        if (_enemy.Data.learningAbility == EnemyLearningAbility.ContextGate)
-        {
-            string next = RestorationObjectiveController.Active?.State.NextTargetSymbolStableId;
-            if (!string.IsNullOrEmpty(next)
-                && candidate.Character != null
-                && string.Equals(candidate.Character.stableId, next, System.StringComparison.Ordinal))
-                return false;
-        }
+        // Leave an opening for a carrier that can advance the active restoration objective.
+        if (!string.IsNullOrEmpty(currentNeededSymbol)
+            && candidate.Character != null
+            && string.Equals(candidate.Character.stableId, currentNeededSymbol,
+                System.StringComparison.Ordinal))
+            return false;
 
         return true;
+    }
+
+    private string ResolveCurrentNeededSymbol()
+    {
+        RestorationObjectiveController objective = RestorationObjectiveController.Active;
+        if (objective != null && !objective.UsesLegacyFallback)
+            return objective.State?.NextTargetSymbolStableId;
+
+        if (_presenter == null || !_presenter.isActiveAndEnabled)
+            _presenter = ActiveCluePresenter.Active;
+
+        return _presenter != null
+            ? _presenter.RestorationState?.NextTargetSymbolStableId
+            : objective?.State?.NextTargetSymbolStableId;
+    }
+
+    private static bool IsSelected(Enemy enemy, int selectedCount)
+    {
+        for (int i = 0; i < selectedCount; i++)
+        {
+            if (CandidateBuffer[i] == enemy)
+                return true;
+        }
+
+        return false;
+    }
+
+    private static int CompareShieldPriority(Enemy left, Enemy right)
+    {
+        float leftY = left.transform.position.y;
+        float rightY = right.transform.position.y;
+        if (leftY < rightY)
+            return -1;
+        if (leftY > rightY)
+            return 1;
+
+        int spawnOrder = left.SpawnSequence.CompareTo(right.SpawnSequence);
+        return spawnOrder != 0 ? spawnOrder : left.GetInstanceID().CompareTo(right.GetInstanceID());
     }
 
     private void ReleaseAll()

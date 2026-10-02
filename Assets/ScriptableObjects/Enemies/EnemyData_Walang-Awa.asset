@@ -21,7 +21,7 @@ MonoBehaviour:
   abilityLine: Each broken armor layer reveals a different remembered character beneath
     it.
   moveSpeed: 0.95
-  maxHealth: 3
+  maxHealth: 2
   walkFrames:
   - {fileID: -319988499021158339, guid: 9006741a37bca40e3b552070e14632d2, type: 3}
   - {fileID: -5537871136483619671, guid: 9006741a37bca40e3b552070e14632d2, type: 3}

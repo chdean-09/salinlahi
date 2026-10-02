@@ -18,7 +18,7 @@ MonoBehaviour:
   description: Bakod is a wall built from broken tablets and forgotten boundaries.
     Paglimot places it between related words and their missing parts, teaching people
     to see separation where meaning once connected them.
-  abilityLine: It raises a wall that guards the characters walking behind it.
+  abilityLine: It shields up to two enemies behind it, while leaving the currently needed character open.
   moveSpeed: 0.85
   maxHealth: 1
   walkFrames:

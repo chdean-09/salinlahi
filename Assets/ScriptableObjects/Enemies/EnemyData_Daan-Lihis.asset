@@ -46,7 +46,7 @@ MonoBehaviour:
   glyphBadgeOffsetOverride: {x: 0, y: 1.5}
   overrideBadgeScale: 0
   glyphBadgeScaleOverride: 1
-  zigzagAmplitude: 1.2
+  zigzagAmplitude: 0.9
   zigzagFrequency: 0.5
   baseSpeedMultiplier: 1
   auraRadius: 0

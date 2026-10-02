@@ -11,6 +11,8 @@ using UnityEngine;
 [RequireComponent(typeof(Enemy))]
 public sealed class EnemyLearningAbilityController : MonoBehaviour
 {
+    private const float BorrowedGlyphOverrideSeconds = 1.5f;
+
     private static readonly List<Enemy> SnapshotBuffer = new List<Enemy>();
 
     private Enemy _enemy;
@@ -22,6 +24,8 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
     private bool _suppressedForIntroductionSpawn;
     private long _spawnSequence = -1;
     private int _reviewIndex;
+    private float _borrowedGlyphOverrideRemainingSeconds;
+    private bool _hasBorrowedGlyphOverride;
 
     public EnemyLearningAbility Ability => _enemy?.Data?.learningAbility ?? EnemyLearningAbility.None;
     public bool IsSuppressedForIntroductionSpawn => _suppressedForIntroductionSpawn;
@@ -64,6 +68,14 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
         if (_enemy == null)
             _enemy = GetComponent<Enemy>();
 
+        if (_hasBorrowedGlyphOverride)
+        {
+            if (Ability == EnemyLearningAbility.ForkedGlyph)
+                TickBorrowedGlyphOverride(deltaTime);
+            else
+                ClearBorrowedGlyphOverride();
+        }
+
         if (_enemy == null || _enemy.Data == null || Ability == EnemyLearningAbility.None)
         {
             ReleaseBoundPair();
@@ -74,11 +86,12 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
         if (_spawnSequence != _enemy.SpawnSequence)
         {
             ReleaseBoundPair();
+            ClearBorrowedGlyphOverride();
             _reviewIndex = 0;
             _spawnSequence = _enemy.SpawnSequence;
         }
 
-        if (Ability == EnemyLearningAbility.InkAbsorption)
+        if (ListensForResolvedGlyph())
             EnsureDirectorSubscription();
         else
             UnsubscribeFromDirector();
@@ -115,13 +128,17 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
     {
         _suppressedForIntroductionSpawn = suppressed;
         if (suppressed)
+        {
             ReleaseBoundPair();
+            ClearBorrowedGlyphOverride();
+        }
     }
 
     /// <summary>Resets attempt-local state when a pooled shell is reused for a new spawn.</summary>
     public void ResetForSpawn()
     {
         ReleaseBoundPair();
+        ClearBorrowedGlyphOverride();
         _reviewIndex = 0;
     }
 
@@ -131,6 +148,7 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
         _suppressedForIntroductionSpawn = true;
         ReleaseBoundPair();
         UnsubscribeFromDirector();
+        ClearBorrowedGlyphOverride();
     }
 
     /// <summary>Releases all targets before a pooled enemy shell is reused.</summary>
@@ -138,6 +156,7 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
     {
         ReleaseBoundPair();
         UnsubscribeFromDirector();
+        ClearBorrowedGlyphOverride();
         _spawnSequence = -1;
         _reviewIndex = 0;
         _suppressedForIntroductionSpawn = false;
@@ -177,7 +196,13 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
 
     private void HandleHealthChanged(Enemy enemy, int previousHealth, int currentHealth)
     {
-        if (enemy != _enemy || _suppressedForIntroductionSpawn || currentHealth >= previousHealth || currentHealth <= 0)
+        if (enemy != _enemy)
+            return;
+
+        if (currentHealth <= 0)
+            ClearBorrowedGlyphOverride();
+
+        if (_suppressedForIntroductionSpawn || currentHealth >= previousHealth || currentHealth <= 0)
             return;
 
         switch (Ability)
@@ -318,11 +343,52 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
 
     private void HandleActiveClueResolved(Enemy clue)
     {
-        if (Ability != EnemyLearningAbility.InkAbsorption || clue == null || clue == _enemy)
+        if (!ListensForResolvedGlyph() || _suppressedForIntroductionSpawn
+            || clue == null || clue == _enemy)
             return;
 
         BaybayinCharacterSO restored = clue.Character;
-        if (restored != null)
-            _enemy.ApplyVisualCharacterOverride(this, restored);
+        if (restored == null)
+            return;
+
+        _enemy.ApplyVisualCharacterOverride(this, restored);
+        if (Ability == EnemyLearningAbility.ForkedGlyph)
+        {
+            // Uhaw borrows the restored enemy glyph for a short badge tell; the HUD's captured
+            // rail proxy has its own lifetime and remains owned by ActiveCluePresenter.
+            _borrowedGlyphOverrideRemainingSeconds = BorrowedGlyphOverrideSeconds;
+            _hasBorrowedGlyphOverride = true;
+        }
+    }
+
+    private bool ListensForResolvedGlyph()
+    {
+        return Ability == EnemyLearningAbility.InkAbsorption
+            || Ability == EnemyLearningAbility.ForkedGlyph;
+    }
+
+    private void TickBorrowedGlyphOverride(float deltaTime)
+    {
+        if (!_hasBorrowedGlyphOverride)
+            return;
+
+        if (_enemy == null || _enemy.Data == null || _enemy.IsDying || _enemy.CurrentHealth <= 0)
+        {
+            ClearBorrowedGlyphOverride();
+            return;
+        }
+
+        _borrowedGlyphOverrideRemainingSeconds -= Mathf.Max(0f, deltaTime);
+        if (_borrowedGlyphOverrideRemainingSeconds <= 0f)
+            ClearBorrowedGlyphOverride();
+    }
+
+    private void ClearBorrowedGlyphOverride()
+    {
+        if (_hasBorrowedGlyphOverride)
+            _enemy?.ClearVisualCharacterOverride(this);
+
+        _borrowedGlyphOverrideRemainingSeconds = 0f;
+        _hasBorrowedGlyphOverride = false;
     }
 }

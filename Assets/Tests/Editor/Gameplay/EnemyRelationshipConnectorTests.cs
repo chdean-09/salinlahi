@@ -94,6 +94,39 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
+        public void Bakod_BlocksAtMostTwoBehindInStablePriorityOrderAndLeavesTheNeededGlyphOpen()
+        {
+            ConfigureObjective("HA");
+            EnemyDataSO bakodData = CreateData("bakod");
+            bakodData.blocksEnemiesBehind = true;
+            Enemy bakod = CreateEnemy(bakodData, "GA", 0f, 0f);
+
+            // The far target is registered first to ensure tracker order does not decide which two
+            // become blocked. At the same Y, the earlier spawn sequence is the stable tiebreak.
+            Enemy far = CreateEnemy(CreateData("far"), "PA", 0f, 4f);
+            Enemy firstAtPriorityY = CreateEnemy(CreateData("first"), "BA", 0f, 1f);
+            Enemy secondAtPriorityY = CreateEnemy(CreateData("second"), "DA", 0f, 1f);
+            Enemy laterRow = CreateEnemy(CreateData("later-row"), "MA", 0f, 2f);
+            Enemy needed = CreateEnemy(CreateData("needed"), "HA", 0f, 1f);
+
+            BakodShieldController shield = bakod.GetComponent<BakodShieldController>();
+            Assert.IsNotNull(shield);
+            shield.Tick(0f);
+
+            Assert.Less(firstAtPriorityY.SpawnSequence, secondAtPriorityY.SpawnSequence,
+                "precondition for the stable equal-position tiebreak");
+            Assert.AreEqual(2, shield.BlockedCount,
+                "Bakod's wall holds no more than two enemies at once");
+            Assert.IsTrue(shield.IsBlocking(firstAtPriorityY));
+            Assert.IsTrue(shield.IsBlocking(secondAtPriorityY));
+            Assert.IsFalse(far.IsResolutionBlocked,
+                "the wall prioritizes the two nearest behind it rather than tracker order");
+            Assert.IsFalse(laterRow.IsResolutionBlocked);
+            Assert.IsFalse(needed.IsResolutionBlocked,
+                "the current objective glyph remains an opening through Bakod's wall");
+        }
+
+        [Test]
         public void ConnectorVisual_IsDestroyedWithItsOwnerInEditMode()
         {
             var data = CreateData("gapos", relationshipVisual: CreateVisual(CreateTestSprites()));

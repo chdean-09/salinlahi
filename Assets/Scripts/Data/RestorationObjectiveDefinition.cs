@@ -195,6 +195,8 @@ public sealed class RestorationObjectiveState
     /// </summary>
     public string NextTargetSymbolStableId => ResolveNextTarget()?.SymbolStableId;
 
+    public string NextTargetOccurrenceId => ResolveNextTarget()?.occurrenceId;
+
     public string NextTargetSpokenValueId => ResolveNextTarget()?.SpokenValueId;
 
     public void Configure(RestorationObjectiveDefinition definition)

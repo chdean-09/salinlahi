@@ -93,14 +93,14 @@ public sealed class AshFirstSlotController : MonoBehaviour, IIntroducibleAbility
     [Header("Arming Trigger")]
     [Tooltip("Seconds this spawn must have been on screen before the ash may arm. Keeps the gust "
              + "from firing simultaneously with the Abo's own entrance, where the player would "
-             + "read the two as one event. 1.5 s per the Level 1 design. NOTE: accrued on SCALED "
-             + "time (see Tick), so under an introduction beat's 0.15 time scale this is about ten "
+             + "read the two as one event. 2.5 s per the approved ability pacing. NOTE: accrued on SCALED "
+             + "time (see Tick), so under an introduction beat's 0.15 time scale this is about 16.7 "
              + "wall-clock seconds. EnemyIntroductionBeat.PlayAbilityBeat waits on the armed flag "
              + "rather than on a duration precisely because of that. This only paces a lesson's "
              + "beat 2 if a lesson is ever authored on an ash-carrying enemy — Level 1's is on "
              + "Iligaw's mirror copy, which has no delay of its own — and if one is, raising this "
              + "raises how long beat 2 holds and must stay under _abilityBeatArmTimeoutSeconds.")]
-    [SerializeField, Min(0f)] private float _armDelaySeconds = 1.5f;
+    [SerializeField, Min(0f)] private float _armDelaySeconds = 2.5f;
 
     [Tooltip("How many target-text slots must already be filled before the ash may arm. At least "
              + "one: the clue has to have been used, and read unobscured, for its masking to "
@@ -315,12 +315,12 @@ public sealed class AshFirstSlotController : MonoBehaviour, IIntroducibleAbility
         if (IsLiveAbo(this))
         {
             // Scaled time on purpose: the introduction cards drop the level's time scale and the
-            // spawn schedule's own clock is scaled too, so "1.5 seconds on screen" means the same
-            // 1.5 seconds of gameplay the rest of the pacing system is measured in.
+            // spawn schedule's own clock is scaled too, so "2.5 seconds on screen" means the same
+            // 2.5 seconds of gameplay the rest of the pacing system is measured in.
             //
             // The cost of that choice is paid in EnemyIntroductionBeat.PlayAbilityBeat: every wait
             // in the lesson is REALTIME while this one is scaled, so at an introduction time scale
-            // of 0.15 (Level 1's) the 1.5 s below takes roughly ten wall-clock seconds to accrue.
+            // of 0.15 (Level 1's) the 2.5 s below takes roughly 16.7 wall-clock seconds to accrue.
             // That beat therefore waits on IsArmedThisSpawn instead of on a fixed hold. Do not
             // switch this to unscaled time to "fix" that — it would decouple the ash from the
             // pacing clock the rest of the spawn system shares.

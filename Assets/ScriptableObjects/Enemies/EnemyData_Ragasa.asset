@@ -71,9 +71,9 @@ MonoBehaviour:
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
   coversOwnGlyph: 1
-  glyphCoverInitialRevealSeconds: 0.8
+  glyphCoverInitialRevealSeconds: 2
   glyphCoverHiddenSeconds: 1.4
-  glyphCoverRevealSeconds: 0.35
+  glyphCoverRevealSeconds: 1.25
   corruptedMeaning: Speed can overwhelm meaning before a word is complete.
   trueMeaning: An unfinished word still points to its missing character.
   restoredLesson: Infer the missing character while choosing when to act.

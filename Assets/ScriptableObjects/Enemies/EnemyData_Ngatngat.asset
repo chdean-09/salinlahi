@@ -17,7 +17,7 @@ MonoBehaviour:
   discoverySubtitle: 
   description: Ngatngat is a swarm raised by Paglimot from the edges of neglected manuscripts. It eats context one syllable at a time until only the marks themselves remain.
   abilityLine: It eats away the written clue one syllable at a time.
-  moveSpeed: 1.9
+  moveSpeed: 1.6
   maxHealth: 1
   walkFrames:
   - {fileID: -2146378899329549479, guid: 1ba588477072b44b19bfc2474e23997a, type: 3}

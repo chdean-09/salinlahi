@@ -610,7 +610,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         /// <para>
         /// A mirror copy comes from <c>EnemyPool</c> and nowhere else. On a level with no pool the
         /// copy can never be placed, <c>HasFiredThisSpawn</c> can never turn true, and a beat that
-        /// simply waited would spend the whole <c>_abilityBeatArmTimeoutSeconds</c> — fifteen
+        /// simply waited would spend the whole <c>_abilityBeatArmTimeoutSeconds</c> — eighteen
         /// seconds of a halted field under a dimmed screen with no card up — before continuing
         /// anyway. Unlike an ability whose own trigger has not come round yet, a missing dependency
         /// cannot arrive mid-beat, so there is nothing to wait for: <c>CanFireThisSpawn</c> is asked
@@ -619,7 +619,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         ///
         /// <para>
         /// This is the ash's failure mode made worse by the retarget, so it is pinned here rather
-        /// than left to a reviewer's reading. The three-second deadline is far inside the fifteen:
+        /// than left to a reviewer's reading. The three-second deadline is far inside the eighteen:
         /// a beat that regressed to waiting would still be dark when it expires.
         /// </para>
         /// </summary>
@@ -677,7 +677,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
 
             Assert.IsTrue(cardAppeared,
                 "Beat 2 must drop to its fixed hold at once when the ability's dependency is "
-                + "missing. Waiting spends the full fifteen-second arm timeout behind a dimmed, "
+                + "missing. Waiting spends the full eighteen-second arm timeout behind a dimmed, "
                 + "halted screen for a copy that can never appear, and then continues anyway.");
         }
 
@@ -998,7 +998,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         /// The parked guard. When a lesson leaves <c>armAbilityOnIntroduction</c> false the standing
         /// suppression rule keeps the ability inert for the whole introduction spawn, so
         /// <c>HasFiredThisSpawn</c> can never become true. Waiting on it would spend the entire
-        /// <c>_abilityBeatArmTimeoutSeconds</c> (15 s by default) with the field halted, the screen
+        /// <c>_abilityBeatArmTimeoutSeconds</c> (18 s by default) with the field halted, the screen
         /// dimmed and no card up, and then continue anyway.
         /// </summary>
         [UnityTest]
@@ -1036,7 +1036,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Assert.IsTrue(ash.IsSuppressedForIntroductionSpawn,
                 "setup: the ash is inert for this spawn, so it can never report as fired.");
 
-            // Well inside the 15 s arm timeout and well outside the 0.05 s authored hold: a beat
+            // Well inside the 18 s arm timeout and well outside the 0.05 s authored hold: a beat
             // that waited on an ability that can never fire would still be dark here.
             bool cardAppeared = false;
             float deadline = Time.realtimeSinceStartup + 3f;
@@ -1049,7 +1049,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Assert.IsTrue(cardAppeared,
                 "Beat 2 must take the fixed hold when the lesson suppresses the ability. Waiting "
                 + "burns the full arm timeout behind a dimmed, halted screen and then proceeds "
-                + "regardless, which is fifteen seconds of nothing for the player.");
+                + "regardless, which is eighteen seconds of nothing for the player.");
         }
 
         // ------------------------------------------------------------------------------------
