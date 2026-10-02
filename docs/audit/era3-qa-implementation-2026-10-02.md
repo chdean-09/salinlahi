@@ -75,6 +75,15 @@ The 15 baseline failures comprise the Level 14 RA asset contract, a Kadena block
 - **REVIEW:** the exact first-wave roster was retained in the integration test after review. Generated fonts, unrelated asset serialization, test scenes, and captures are excluded from the commit. The Salungat ability line describes the new visual tell and unchanged penalty; no image references or GUIDs changed.
 - **NOT RUN:** production player build, on-device human pacing evaluation, and a complete live Level 13 victory. The recording's level remains tentative; the Level 13 content defect and required-SA advancement are independently verified.
 
+## Follow-up: restoration boxes overflowing smaller HUDs
+
+- **OBSERVED:** two real-geometry regression checks reproduced overflow. Reapplying a level on a narrow HUD reused already-scaled slot widths for the nominal budget, then built larger boxes against that smaller budget. Changing the HUD width after creation also left the rail at its previous width.
+- Rail construction now measures authored slot sizes and spacing. LateUpdate refits the existing root to the current HUD width; slot anchors, active flights, and ability references remain intact. Instruction positioning and the camera's reserved bottom band are refreshed after the scale changes.
+- **PASS:** fresh Unity compilation and all 11 focused Edit Mode rail checks, including repeated application and shrinking/growing the HUD without replacing anchors. The two added checks failed before the fix.
+- **OBSERVED:** full Edit Mode suite: 1,654 total, 1,639 passed, 15 failed; failing names match the previous 1,652-test baseline. Full Play Mode suite: 266 total, 247 passed, 19 failed; failing names exactly match the earlier 265-test/19-failure baseline. No new failures were observed.
+- **OBSERVED:** live Level 14 QA used eight boxes in a 750x1334 portrait viewport. Screen-space bounds were x=0 to x=750, within the visible screen. Reducing the HUD to 70% width kept all boxes inside its local bounds (-377.906 to 377.906). Reapplying the level and restoring the original width returned the rail to the visible x=0 to x=750 bounds. Captures were inspected; simulation time was held for measurement. No scene, prefab, sprite, or GUID changes were needed.
+- **REVIEW:** both standards and spec reviews found no actionable issues. Generated asset/font changes, QA reports, temporary test scenes, and captures were removed from the delivery diff. On-device hardware testing remains **NOT RUN**.
+
 ## Remaining acceptance work
 
 Run the non-development player on supported phones. Play Levels 11–14 with imperfect short and multi-stroke drawings; verify warning/banner separation, readable blocked glyph locks, no repeated Ragasa/Daan-Lihis modal on ordinary retries, visible central lanes during damage, retained era after retreat/clear, smooth voice dismissal, and no stats overlay through combat taps. Record completion rates and frame-time/GC measurements before declaring the difficulty curve calibrated.

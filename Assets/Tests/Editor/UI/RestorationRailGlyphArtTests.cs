@@ -209,6 +209,87 @@ namespace Salinlahi.Tests.Editor.UI
                 + "Texture2D. Reversing Unity's bottom-up texture rows turns every outline upside down.");
         }
 
+        [Test]
+        public void Rail_ReapplyingALevel_OnANarrowHud_KeepsEveryBoxInside()
+        {
+            var (presenter, hud, level) = CreateNarrowRail(360f);
+            AssertRailInside(presenter, hud);
+            presenter.ApplyLevel(level);
+            InvokePresenter(presenter, "EnsureRestorationRail");
+            AssertRailInside(presenter, hud);
+        }
+
+        [Test]
+        public void Rail_WhenHudShrinks_RefitsExistingBoxesWithoutLosingAnchors()
+        {
+            var (presenter, hud, _) = CreateNarrowRail(600f);
+            var anchors = new List<RectTransform>(presenter.RestorationSlotAnchors);
+            hud.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 280f);
+            InvokePresenter(presenter, "LateUpdate");
+            AssertRailInside(presenter, hud);
+            CollectionAssert.AreEqual(anchors, presenter.RestorationSlotAnchors,
+                "Resizing must preserve the anchors used by restoration flights and abilities.");
+            hud.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 600f);
+            InvokePresenter(presenter, "LateUpdate");
+            AssertRailInside(presenter, hud);
+        }
+
+        private (ActiveCluePresenter presenter, RectTransform hud, LevelConfigSO level)
+            CreateNarrowRail(float width)
+        {
+            var canvasObject = new GameObject("RailLayoutCanvas", typeof(RectTransform), typeof(Canvas));
+            _created.Add(canvasObject);
+            canvasObject.GetComponent<Canvas>().renderMode = RenderMode.WorldSpace;
+            canvasObject.GetComponent<RectTransform>().sizeDelta = new Vector2(width, 640f);
+            var hudObject = new GameObject("HUDLayer", typeof(RectTransform));
+            hudObject.transform.SetParent(canvasObject.transform, false);
+            var hud = hudObject.GetComponent<RectTransform>();
+            hud.sizeDelta = new Vector2(width, 640f);
+            var presenterObject = new GameObject("RailLayoutPresenter");
+            presenterObject.transform.SetParent(hud, false);
+            var presenter = presenterObject.AddComponent<ActiveCluePresenter>();
+            var level = ScriptableObject.CreateInstance<LevelConfigSO>();
+            _created.Add(level);
+            level.activeClueCombatEnabled = true;
+            level.activeClueRestorationEnabled = true;
+            var character = MakeCharacter(null, null, null);
+            var word = new FocusWordDefinition
+            {
+                stableId = "word.rail-layout", latinSpelling = "AAAAAAAA",
+                decomposition = new List<SymbolValueReference>()
+            };
+            for (int i = 0; i < 8; i++)
+                word.decomposition.Add(new SymbolValueReference { symbol = character });
+            level.focusWords.Add(word);
+            presenter.ApplyLevel(level);
+            InvokePresenter(presenter, "EnsureRestorationRail");
+            return (presenter, hud, level);
+        }
+
+        private static void AssertRailInside(ActiveCluePresenter presenter, RectTransform hud)
+        {
+            Assert.AreEqual(8, presenter.RestorationSlotAnchors.Count);
+            var corners = new Vector3[4];
+            foreach (RectTransform anchor in presenter.RestorationSlotAnchors)
+            {
+                anchor.GetWorldCorners(corners);
+                foreach (Vector3 corner in corners)
+                {
+                    float x = hud.InverseTransformPoint(corner).x;
+                    Assert.That(x, Is.InRange(hud.rect.xMin - 0.01f, hud.rect.xMax + 0.01f),
+                        "A restoration box extends outside the current HUD width.");
+                }
+            }
+        }
+
+        private static void InvokePresenter(ActiveCluePresenter presenter, string methodName)
+        {
+            var method = typeof(ActiveCluePresenter).GetMethod(
+                methodName, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(method);
+            method.Invoke(presenter, null);
+        }
+
         private static int CountInk(
             IReadOnlyList<Color32> pixels, int width, int firstRow, int rowLimit)
         {
