@@ -4,7 +4,7 @@ using UnityEngine;
 /// <summary>
 /// Kadena's signature ability: "It binds villagers." On spawn Kadena chains the nearest
 /// <i>other</i> enemy and holds it under a resolution block — it can be neither marked as the
-/// active clue nor damaged — until Kadena is defeated.
+/// active clue nor damaged — until Kadena takes its first non-lethal hit or is defeated.
 ///
 /// <para>
 /// The block itself lives on <see cref="Enemy.AddResolutionBlock"/>, keyed on this controller
@@ -48,6 +48,7 @@ public sealed class KadenaChainController : MonoBehaviour
 
     private Enemy _enemy;
     private Enemy _chained;
+    private bool _subscribedToDamageEvent;
 
     /// <summary>
     /// The <see cref="Enemy.SpawnSequence"/> this controller already chained for, or -1. Keyed on
@@ -73,12 +74,49 @@ public sealed class KadenaChainController : MonoBehaviour
         _enemy = GetComponent<Enemy>();
     }
 
+    private void OnEnable()
+    {
+        EnsureNonLethalDamageSubscription();
+    }
+
     private void OnDisable()
     {
+        UnsubscribeFromDamageEvent();
         // Pool safety, and the defect BakodShieldController.cs:49-55 names: a chain that outlives
         // its holder strands a permanently unresolvable enemy on screen — no exception, no failing
         // test, just a level the player cannot finish.
         ResetForPool();
+    }
+
+    private void EnsureNonLethalDamageSubscription()
+    {
+        if (_enemy == null)
+            _enemy = GetComponent<Enemy>();
+
+        if (_enemy == null || _subscribedToDamageEvent)
+            return;
+
+        _enemy.NonLethalDamageTaken += HandleNonLethalDamageTaken;
+        _subscribedToDamageEvent = true;
+    }
+
+    private void UnsubscribeFromDamageEvent()
+    {
+        if (_enemy != null && _subscribedToDamageEvent)
+            _enemy.NonLethalDamageTaken -= HandleNonLethalDamageTaken;
+
+        _subscribedToDamageEvent = false;
+    }
+
+    private void HandleNonLethalDamageTaken(Enemy enemy, int previousHealth, int currentHealth)
+    {
+        if (enemy != _enemy || currentHealth <= 0 || currentHealth >= previousHealth)
+            return;
+
+        // The first correct strike opens the chained enemy for the rest of this Kadena spawn.
+        // Spend the acquisition latch so another arrival cannot be chained in its place.
+        Release();
+        _acquiredForSpawn = _enemy.SpawnSequence;
     }
 
     private void Update()
@@ -101,6 +139,8 @@ public sealed class KadenaChainController : MonoBehaviour
     {
         if (_enemy == null)
             _enemy = GetComponent<Enemy>();
+
+        EnsureNonLethalDamageSubscription();
 
         EnemyDataSO data = _enemy != null ? _enemy.Data : null;
         if (data == null || !data.chainsNearestEnemy || _enemy.IsDying)

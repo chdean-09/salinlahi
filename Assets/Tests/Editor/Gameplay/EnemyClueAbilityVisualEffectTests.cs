@@ -61,6 +61,56 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
+        public void Ngatngat_LeavesTheCurrentlyRequiredGlyphReadable()
+        {
+            ActiveCluePresenter presenter = CreatePresenter(out RectTransform rail, out _);
+            var ba = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            ba.stableId = "symbol.ngat.required";
+            ba.syllable = "ba";
+            _created.Add(ba);
+            var ha = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            ha.stableId = "symbol.ngat.next";
+            ha.syllable = "ha";
+            _created.Add(ha);
+            var word = new FocusWordDefinition
+            {
+                stableId = "word.ngat",
+                decomposition = new List<SymbolValueReference>
+                {
+                    new SymbolValueReference { symbol = ba },
+                    new SymbolValueReference { symbol = ha },
+                },
+            };
+
+            TextMeshProUGUI requiredLabel = CreateLabel(rail, "BA");
+            TextMeshProUGUI nextLabel = CreateLabel(rail, "HA");
+            object requiredSlot = CreateRailSlot(presenter, requiredLabel, "BA", null);
+            object nextSlot = CreateRailSlot(presenter, nextLabel, "HA", null);
+            SetPrivateField(requiredSlot, "Word", word);
+            SetPrivateField(requiredSlot, "DecompositionIndex", 0);
+            SetPrivateField(nextSlot, "Word", word);
+            SetPrivateField(nextSlot, "DecompositionIndex", 1);
+            AddRailSlot(presenter, requiredSlot);
+            AddRailSlot(presenter, nextSlot);
+            presenter.RestorationState.Configure(new[] { word });
+
+            requiredLabel.ForceMeshUpdate(true, true);
+            nextLabel.ForceMeshUpdate(true, true);
+            Color32[][] requiredOriginal = CaptureVertexColors(requiredLabel);
+            Color32[][] nextOriginal = CaptureVertexColors(nextLabel);
+
+            InvokeRequired(presenter, "SetNgatngatVisualActive", true);
+            InvokeRequired(presenter, "RecordNgatngatRestoration");
+
+            Assert.AreEqual(1, GetPrivateField<int>(presenter, "_ngatngatDamageStage"),
+                "The existing first nibble stage must remain unchanged.");
+            AssertVertexColorsEqual(requiredOriginal, CaptureVertexColors(requiredLabel),
+                "The currently required glyph label remains fully readable.");
+            Assert.IsTrue(HasMoreTransparentVertices(nextOriginal, CaptureVertexColors(nextLabel)),
+                "The rest of the word can still receive Ngatngat's first nibble stage.");
+        }
+
+        [Test]
         public void Ngatngat_DamagesRenderedLatinVerticesProgressivelyAndRestoresThem()
         {
             ActiveCluePresenter presenter = CreatePresenter(out RectTransform rail, out _);

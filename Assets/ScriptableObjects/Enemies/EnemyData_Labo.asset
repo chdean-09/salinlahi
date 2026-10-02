@@ -30,12 +30,12 @@ MonoBehaviour:
   isDecoy: 0
   isPhaser: 1
   phaserInterval: 1
-  phaserInitialVisibleDelayMin: 0.6
-  phaserInitialVisibleDelayMax: 1.2
-  phaserVisibleHoldMin: 2.2
-  phaserVisibleHoldMax: 3.2
+  phaserInitialVisibleDelayMin: 3
+  phaserInitialVisibleDelayMax: 4
+  phaserVisibleHoldMin: 3
+  phaserVisibleHoldMax: 4
   phaserInvisibleHoldMin: 0.7
-  phaserInvisibleHoldMax: 1.2
+  phaserInvisibleHoldMax: 1
   phaserFadeOutDuration: 0.8
   phaserFadeInDuration: 0.12
   phaserFadeOutPulseCount: 1

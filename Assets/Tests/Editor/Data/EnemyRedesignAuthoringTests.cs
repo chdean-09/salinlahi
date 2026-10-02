@@ -69,6 +69,49 @@ namespace Salinlahi.Tests.Editor.Data
         }
 
         [Test]
+        public void ApprovedBalanceScalars_AreAuthoredOnEnemyData()
+        {
+            Assert.AreEqual(2, Load("EnemyData_YaposngDilim.asset").maxHealth);
+            Assert.AreEqual(2, Load("EnemyData_Walang-Awa.asset").maxHealth);
+
+            EnemyDataSO mantsa = Load("EnemyData_Mantsa.asset");
+            Assert.AreEqual(3, mantsa.scrambleFalseBurstCount);
+            Assert.AreEqual(2.5f, mantsa.scrambleRadius, 0.0001f);
+            Assert.AreEqual(3f, mantsa.scrambleTrueGlyphMinDwell, 0.0001f);
+            Assert.AreEqual(3.6f, mantsa.scrambleTrueGlyphMaxDwell, 0.0001f);
+
+            EnemyDataSO ragasa = Load("EnemyData_Ragasa.asset");
+            Assert.AreEqual(2f, ragasa.glyphCoverInitialRevealSeconds, 0.0001f);
+            Assert.AreEqual(1.25f, ragasa.glyphCoverRevealSeconds, 0.0001f);
+            Assert.AreEqual(1.4f, ragasa.glyphCoverHiddenSeconds, 0.0001f);
+
+            EnemyDataSO takip = Load("EnemyData_Takip.asset");
+            Assert.AreEqual(2f, takip.glyphCoverInitialRevealSeconds, 0.0001f);
+            Assert.AreEqual(1.5f, takip.glyphCoverRevealSeconds, 0.0001f);
+            Assert.AreEqual(2f, takip.glyphCoverHiddenSeconds, 0.0001f);
+
+            EnemyDataSO daanLihis = Load("EnemyData_Daan-Lihis.asset");
+            Assert.AreEqual(0.9f, daanLihis.zigzagAmplitude, 0.0001f);
+            Assert.AreEqual(0.5f, daanLihis.zigzagFrequency, 0.0001f);
+            Assert.AreEqual(1.5f, daanLihis.moveSpeed, 0.0001f);
+
+            Assert.AreEqual(1.6f, Load("EnemyData_Ngatngat.asset").moveSpeed, 0.0001f);
+
+            EnemyDataSO labo = Load("EnemyData_Labo.asset");
+            Assert.IsTrue(labo.isPhaser);
+            Assert.AreEqual(3f, labo.phaserVisibleHoldMin, 0.0001f);
+            Assert.AreEqual(4f, labo.phaserVisibleHoldMax, 0.0001f);
+            Assert.AreEqual(3f, labo.phaserInitialVisibleDelayMin, 0.0001f);
+            Assert.AreEqual(4f, labo.phaserInitialVisibleDelayMax, 0.0001f);
+            Assert.AreEqual(0.7f, labo.phaserInvisibleHoldMin, 0.0001f);
+            Assert.AreEqual(1f, labo.phaserInvisibleHoldMax, 0.0001f);
+
+            Assert.AreEqual(2, Load("EnemyData_Kadena.asset").maxHealth);
+            Assert.AreEqual(1, Load("EnemyData_Hati.asset").maxHealth);
+            Assert.AreEqual(1, Load("EnemyData_HatiMinion.asset").maxHealth);
+        }
+
+        [Test]
         public void DiscoveryCopy_ExposesCurriculumFields()
         {
             EnemyDataSO data = ScriptableObject.CreateInstance<EnemyDataSO>();

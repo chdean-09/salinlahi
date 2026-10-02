@@ -1,7 +1,9 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using NUnit.Framework;
 using TMPro;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -35,6 +37,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
     public class AbongSimulaAshTests
     {
         private const string AshMask = "__";
+        private const string GameplayScenePath = "Assets/_Scenes/Gameplay.unity";
 
         private readonly List<Object> _objectsToDestroy = new();
         private ActiveEnemyTracker _tracker;
@@ -99,6 +102,18 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 "while an Abo lives the word's first slot is ashed over as well as the target slot");
             Assert.AreNotEqual(withoutAbo, withAbo,
                 "the ability must change what is drawn — an inert ability fails here");
+        }
+
+        [Test]
+        public void GameplayScene_AuthorsExtendedAboIntroductionTimeout()
+        {
+            SceneAsset gameplay = AssetDatabase.LoadAssetAtPath<SceneAsset>(GameplayScenePath);
+            Assert.IsNotNull(gameplay, GameplayScenePath + " must remain an authored scene asset.");
+
+            string sceneText = File.ReadAllText(Path.Combine(
+                Application.dataPath, "_Scenes", "Gameplay.unity"));
+            StringAssert.Contains("_abilityBeatArmTimeoutSeconds: 18", sceneText,
+                "Gameplay.unity's serialized override must allow the 2.5-second scaled ash delay.");
         }
 
         [Test]
@@ -420,6 +435,14 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.AreEqual(AshMask + AshMask, ashed,
                 "the null slot is skipped, so BA is the first readable slot and takes the ash");
             Assert.AreNotEqual(readable, ashed, "an ash that bit nothing fails here");
+
+            int restoredBeforeRequiredGlyph = restoration.RestoredSlotCount;
+            string requiredFirstGlyph = BuildMaskedSpelling(
+                word, "symbol.ba", ashFirstSlot: true, restoration);
+            Assert.AreEqual("ba" + AshMask, requiredFirstGlyph,
+                "Ash must not cover the currently required glyph, even when it is the first slot.");
+            Assert.AreEqual(restoredBeforeRequiredGlyph, restoration.RestoredSlotCount,
+                "Ash is presentation-only and cannot change restoration progress.");
         }
 
         // ------------------------------------------------------- per-spawn arming
@@ -479,7 +502,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
             var ash = abo.GetComponent<AshFirstSlotController>();
             ash.ArmAsh();
             ash.SetSuppressedForIntroductionSpawn(true);
-            ash.Tick(2f);
+            ash.Tick(2.5f);
 
             // The pool boundary. EditMode fires no enable callbacks -- the same reason this
             // fixture calls Awake by hand -- so the boundary is driven explicitly here; in play
@@ -507,7 +530,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
             // there spends the level's one gust on a visibly inert event.
             Enemy abo = CreateAbo(y: -3f);
             var ash = abo.GetComponent<AshFirstSlotController>();
-            ash.Tick(2f);
+            ash.Tick(2.5f);
 
             Assert.IsFalse(ash.WantsToArm(filledSlots: 1, neededSlotPositionInWord: 1),
                 "the needed slot being its word's first symbol makes the ash a no-op");
@@ -527,7 +550,10 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.IsFalse(ash.WantsToArm(filledSlots: 1, neededSlotPositionInWord: 2),
                 "arming inside the entrance window would read as one event with the Abo's walk-on");
 
-            ash.Tick(2f);
+            ash.Tick(1.99f);
+            Assert.IsFalse(ash.WantsToArm(filledSlots: 1, neededSlotPositionInWord: 2),
+                "the default arm delay must not fire before 2.5 seconds on screen");
+            ash.Tick(0.01f);
             Assert.IsFalse(ash.WantsToArm(filledSlots: 0, neededSlotPositionInWord: 2),
                 "the clue has to have been read and used before masking it means anything");
             Assert.IsTrue(ash.WantsToArm(filledSlots: 1, neededSlotPositionInWord: 2));
@@ -539,14 +565,14 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Enemy first = CreateAbo(y: -3f);
             var introduction = first.GetComponent<AshFirstSlotController>();
             introduction.SetSuppressedForIntroductionSpawn(true);
-            introduction.Tick(2f);
+            introduction.Tick(2.5f);
 
             Assert.IsFalse(introduction.WantsToArm(filledSlots: 1, neededSlotPositionInWord: 2),
                 "the introduction spawn is always inert");
 
             Enemy second = CreateAbo(y: -4f);
             var later = second.GetComponent<AshFirstSlotController>();
-            later.Tick(2f);
+            later.Tick(2.5f);
             Assert.IsTrue(later.WantsToArm(filledSlots: 1, neededSlotPositionInWord: 2),
                 "precondition: a later spawn is eligible");
 
@@ -556,7 +582,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
 
             Enemy third = CreateAbo(y: -5f);
             var thirdAsh = third.GetComponent<AshFirstSlotController>();
-            thirdAsh.Tick(2f);
+            thirdAsh.Tick(2.5f);
             Assert.IsFalse(thirdAsh.WantsToArm(filledSlots: 1, neededSlotPositionInWord: 2),
                 "the ash is shown once per level, so no later Abo re-arms it");
         }
@@ -572,7 +598,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Enemy abo = CreateAbo(y: -3f);
             var ash = abo.GetComponent<AshFirstSlotController>();
 
-            ash.Tick(2f);
+            ash.Tick(2.5f);
             Assert.IsFalse(ash.IsArmedThisSpawn,
                 "nothing is filled yet, so the trigger must hold");
 

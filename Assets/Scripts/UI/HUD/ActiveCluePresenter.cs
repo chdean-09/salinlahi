@@ -313,6 +313,10 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private readonly List<TornRailFragment> _punitRailFragments =
         new List<TornRailFragment>();
     private RectTransform _punitTornBoundRail;
+    private string _punitBoundWordSpanIdentity;
+    private float _punitRailSplitLocalX;
+    private float _punitRailTopY;
+    private float _punitRailBottomY;
     private ProceduralClueTearGraphic _punitTearGraphic;
     private TMP_Text _punitTornTextSurface;
     private string _punitTextBaselineString;
@@ -2283,6 +2287,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private void SyncNgatngatTextDamage()
     {
         bool wantsDamage = _ngatngatVisualActive && _ngatngatDamageStage > 0;
+        RailSlot requiredSlot = GetCurrentRequiredRailSlot();
         _ngatngatLabelRemovalBuffer.Clear();
 
         if (wantsDamage)
@@ -2291,7 +2296,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             {
                 RailSlot slot = _railSlots[i];
                 TextMeshProUGUI label = slot?.Label;
-                if (label == null || string.IsNullOrEmpty(slot.LatinLabel)
+                if (slot == requiredSlot || label == null || string.IsNullOrEmpty(slot.LatinLabel)
                     || label.text != slot.LatinLabel)
                 {
                     continue;
@@ -2318,7 +2323,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
                  in _ngatngatLabelBindings)
         {
             TextMeshProUGUI label = pair.Key;
-            if (!wantsDamage || !IsVisibleLatinLabel(label))
+            if (!wantsDamage || !IsVisibleLatinLabel(label, requiredSlot))
                 _ngatngatLabelRemovalBuffer.Add(label);
         }
 
@@ -2326,12 +2331,49 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             UnbindNgatngatDamage(_ngatngatLabelRemovalBuffer[i]);
     }
 
-    private bool IsVisibleLatinLabel(TextMeshProUGUI label)
+    private RailSlot GetCurrentRequiredRailSlot()
+    {
+        if (UsesRestorationObjectiveDefinition)
+        {
+            RestorationObjectiveState state = _restorationObjectiveController.State;
+            string activeUnitId = state.ActiveUnitId;
+            string requiredOccurrenceId = state.NextTargetOccurrenceId;
+            if (string.IsNullOrEmpty(activeUnitId) || string.IsNullOrEmpty(requiredOccurrenceId))
+                return null;
+
+            // Completion order can differ from this rail's display order.
+            for (int i = 0; i < _railSlots.Count; i++)
+            {
+                RailSlot slot = _railSlots[i];
+                if (slot != null && slot.UnitId == activeUnitId
+                    && slot.OccurrenceId == requiredOccurrenceId)
+                {
+                    return slot;
+                }
+            }
+
+            return null;
+        }
+
+        for (int i = 0; i < _railSlots.Count; i++)
+        {
+            RailSlot slot = _railSlots[i];
+            if (slot?.Word != null
+                && !_restorationState.IsSlotRestored(slot.Word, slot.DecompositionIndex))
+            {
+                return slot;
+            }
+        }
+
+        return null;
+    }
+
+    private bool IsVisibleLatinLabel(TextMeshProUGUI label, RailSlot requiredSlot)
     {
         for (int i = 0; i < _railSlots.Count; i++)
         {
             RailSlot slot = _railSlots[i];
-            if (slot?.Label == label && !string.IsNullOrEmpty(slot.LatinLabel)
+            if (slot != requiredSlot && slot?.Label == label && !string.IsNullOrEmpty(slot.LatinLabel)
                 && label.text == slot.LatinLabel)
             {
                 return true;
@@ -2803,14 +2845,21 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         if (_railRoot != null)
         {
             RectTransform rail = _railRoot.GetComponent<RectTransform>();
-            if (_punitTornBoundRail != rail)
+            string currentWordSpanIdentity = ResolvePunitCurrentWordSpanIdentity();
+            if (_punitTornBoundRail != rail
+                || _punitBoundWordSpanIdentity != currentWordSpanIdentity)
             {
                 ResetPunitTornSurface();
-                BindPunitTornRail(rail);
+                BindPunitTornRail(rail, currentWordSpanIdentity);
             }
 
             return;
         }
+
+        // An objective paragraph may be visible while the runtime rail is unavailable. Do not
+        // fall back to tearing that whole paragraph; keep it readable instead.
+        if (UsesRestorationObjectiveDefinition)
+            return;
 
         if (_clueText == null || !_clueText.gameObject.activeInHierarchy)
             return;
@@ -2830,39 +2879,89 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         }
     }
 
-    private void BindPunitTornRail(RectTransform rail)
+    private string ResolvePunitCurrentWordSpanIdentity()
+    {
+        if (UsesRestorationObjectiveDefinition)
+        {
+            RailSlot requiredSlot = GetCurrentRequiredRailSlot();
+            return TryGetPunitObjectiveWordSpan(
+                    requiredSlot, out string unitId, out int firstToken, out int lastToken)
+                ? unitId + "|" + firstToken + "|" + lastToken
+                : null;
+        }
+
+        string currentSymbolId = _currentClue?.Character?.stableId;
+        return FindFocusWordContaining(currentSymbolId)?.stableId;
+    }
+
+    private void BindPunitTornRail(RectTransform rail, string wordSpanIdentity)
     {
         if (rail == null)
             return;
 
-        // Mark even a one-slot rail as bound: it has no two-fragment boundary, and repeatedly
-        // retrying its layout on every LateUpdate would do no useful work.
         _punitTornBoundRail = rail;
-        if (_railSlots.Count < 2)
+        _punitBoundWordSpanIdentity = wordSpanIdentity;
+        if (string.IsNullOrEmpty(wordSpanIdentity))
             return;
 
-        int splitSlot = _railSlots.Count / 2;
-        RailSlot left = _railSlots[splitSlot - 1];
-        RailSlot right = _railSlots[splitSlot];
-        float splitLocalX = FindPunitRailSplitLocalX(rail, left, right);
-
-        _punitRailFragments.Clear();
-        for (int i = 0; i < rail.childCount; i++)
+        var currentWordSlots = new List<RailSlot>();
+        if (UsesRestorationObjectiveDefinition)
         {
-            Transform child = rail.GetChild(i);
-            if (child is not RectTransform rect || !IsPunitRailFragment(child.name))
-                continue;
-
-            Vector3 rest = rect.localPosition;
-            float center = rail.InverseTransformPoint(
-                rect.TransformPoint(rect.rect.center)).x;
-            float direction = center < splitLocalX ? -1f : 1f;
-            _punitRailFragments.Add(new TornRailFragment
+            RailSlot requiredSlot = GetCurrentRequiredRailSlot();
+            if (!TryGetPunitObjectiveWordSpan(
+                    requiredSlot, out string unitId, out int firstToken, out int lastToken))
             {
-                Rect = rect,
-                RestPosition = rest,
-                Direction = direction,
-            });
+                return;
+            }
+
+            RestorationObjectiveUnit unit = FindObjectiveUnit(unitId);
+            for (int i = 0; i < _railSlots.Count; i++)
+            {
+                RailSlot slot = _railSlots[i];
+                if (slot?.UnitId != unitId || string.IsNullOrEmpty(slot.OccurrenceId))
+                    continue;
+
+                for (int tokenIndex = firstToken; tokenIndex <= lastToken; tokenIndex++)
+                {
+                    RestorationObjectiveToken token = unit.tokens[tokenIndex];
+                    if (token?.IsTarget == true && token.occurrenceId == slot.OccurrenceId)
+                    {
+                        currentWordSlots.Add(slot);
+                        break;
+                    }
+                }
+            }
+        }
+        else
+        {
+            for (int i = 0; i < _railSlots.Count; i++)
+            {
+                RailSlot slot = _railSlots[i];
+                if (slot != null
+                    && (slot.UnitId == wordSpanIdentity || slot.Word?.stableId == wordSpanIdentity))
+                {
+                    currentWordSlots.Add(slot);
+                }
+            }
+        }
+
+        // A single-slot word has no interior seam. Leave it and every neighbouring word intact.
+        if (currentWordSlots.Count < 2)
+            return;
+
+        int splitSlot = currentWordSlots.Count / 2;
+        RailSlot left = currentWordSlots[splitSlot - 1];
+        RailSlot right = currentWordSlots[splitSlot];
+        _punitRailSplitLocalX = FindPunitRailSplitLocalX(rail, left, right);
+        _punitRailTopY = float.NegativeInfinity;
+        _punitRailBottomY = float.PositiveInfinity;
+        _punitRailFragments.Clear();
+        for (int i = 0; i < currentWordSlots.Count; i++)
+        {
+            RailSlot slot = currentWordSlots[i];
+            AddPunitRailFragment(rail, slot.Anchor);
+            if (slot.Label != null)
+                AddPunitRailFragment(rail, slot.Label.rectTransform);
         }
 
         if (_punitRailFragments.Count == 0)
@@ -2874,11 +2973,87 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         ApplyPunitTearToRail();
     }
 
-    private static bool IsPunitRailFragment(string childName)
+    private bool TryGetPunitObjectiveWordSpan(
+        RailSlot requiredSlot,
+        out string unitId,
+        out int firstToken,
+        out int lastToken)
     {
-        return childName.StartsWith("[Runtime] RestorationSlot_", System.StringComparison.Ordinal)
-            || childName.StartsWith("[Runtime] RestorationSlotLabel_", System.StringComparison.Ordinal)
-            || childName.StartsWith("[Runtime] RestorationWordSeparator_", System.StringComparison.Ordinal);
+        unitId = requiredSlot?.UnitId;
+        firstToken = -1;
+        lastToken = -1;
+        if (requiredSlot == null || string.IsNullOrEmpty(unitId)
+            || string.IsNullOrEmpty(requiredSlot.OccurrenceId))
+        {
+            return false;
+        }
+
+        RestorationObjectiveUnit unit = FindObjectiveUnit(unitId);
+        if (unit?.tokens == null)
+            return false;
+
+        int requiredToken = -1;
+        for (int i = 0; i < unit.tokens.Count; i++)
+        {
+            RestorationObjectiveToken token = unit.tokens[i];
+            if (token?.IsTarget == true && token.occurrenceId == requiredSlot.OccurrenceId)
+            {
+                requiredToken = i;
+                break;
+            }
+        }
+
+        if (requiredToken < 0)
+            return false;
+
+        firstToken = requiredToken;
+        while (firstToken > 0 && !IsPunitWordBoundary(unit.tokens[firstToken - 1]))
+            firstToken--;
+
+        lastToken = requiredToken;
+        while (lastToken + 1 < unit.tokens.Count
+               && !IsPunitWordBoundary(unit.tokens[lastToken + 1]))
+        {
+            lastToken++;
+        }
+
+        return true;
+    }
+
+    private static bool IsPunitWordBoundary(RestorationObjectiveToken token)
+    {
+        if (token?.kind != RestorationTokenKind.Literal || string.IsNullOrEmpty(token.literalText))
+            return false;
+
+        for (int i = 0; i < token.literalText.Length; i++)
+        {
+            if (char.IsWhiteSpace(token.literalText[i]))
+                return true;
+        }
+
+        return false;
+    }
+
+    private void AddPunitRailFragment(RectTransform rail, RectTransform rect)
+    {
+        if (rail == null || rect == null)
+            return;
+
+        Vector3 rest = rect.localPosition;
+        float center = rail.InverseTransformPoint(rect.TransformPoint(rect.rect.center)).x;
+        _punitRailFragments.Add(new TornRailFragment
+        {
+            Rect = rect,
+            RestPosition = rest,
+            Direction = center < _punitRailSplitLocalX ? -1f : 1f,
+        });
+
+        Vector3 bottomLeft = rail.InverseTransformPoint(
+            rect.TransformPoint(new Vector3(rect.rect.xMin, rect.rect.yMin)));
+        Vector3 topRight = rail.InverseTransformPoint(
+            rect.TransformPoint(new Vector3(rect.rect.xMax, rect.rect.yMax)));
+        _punitRailTopY = Mathf.Max(_punitRailTopY, bottomLeft.y, topRight.y);
+        _punitRailBottomY = Mathf.Min(_punitRailBottomY, bottomLeft.y, topRight.y);
     }
 
     private void ApplyPunitTearToRail()
@@ -2905,13 +3080,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
     private float FindPunitRailSplitLocalX()
     {
-        if (_railSlots.Count < 2 || _punitTornBoundRail == null)
-            return 0f;
-
-        int splitSlot = _railSlots.Count / 2;
-        RailSlot left = _railSlots[splitSlot - 1];
-        RailSlot right = _railSlots[splitSlot];
-        return FindPunitRailSplitLocalX(_punitTornBoundRail, left, right);
+        return _punitRailSplitLocalX;
     }
 
     private static float FindPunitRailSplitLocalX(
@@ -2938,8 +3107,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         Rect graphicBounds = graphicRect.rect;
         _punitTearGraphic.SetTear(
             splitInGraphic,
-            graphicBounds.yMax,
-            graphicBounds.yMin,
+            Mathf.Min(graphicBounds.yMax, _punitRailTopY),
+            Mathf.Max(graphicBounds.yMin, _punitRailBottomY),
             _punitTearSeparation * 1.5f,
             _punitTearProgress);
     }
@@ -3152,6 +3321,10 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
         _punitRailFragments.Clear();
         _punitTornBoundRail = null;
+        _punitBoundWordSpanIdentity = null;
+        _punitRailSplitLocalX = 0f;
+        _punitRailTopY = 0f;
+        _punitRailBottomY = 0f;
 
         if (_punitTornTextSurface != null
             && _punitTextBaselineString != _punitTornTextSurface.text)
@@ -4522,18 +4695,32 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         if (_railSlots.Count == 0)
             return null;
 
-        if (!UsesRestorationObjectiveDefinition)
-            return _railSlots[0];
-
-        string activeUnitId = _restorationObjectiveController.State.ActiveUnitId;
-        if (string.IsNullOrEmpty(activeUnitId))
-            return null;
-
         for (int i = 0; i < _railSlots.Count; i++)
         {
             RailSlot slot = _railSlots[i];
-            if (slot.UnitId == activeUnitId && !string.IsNullOrEmpty(slot.OccurrenceId))
-                return slot;
+            if (slot == null)
+                continue;
+
+            if (UsesRestorationObjectiveDefinition)
+            {
+                string activeUnitId = _restorationObjectiveController.State.ActiveUnitId;
+                if (string.IsNullOrEmpty(activeUnitId)
+                    || slot.UnitId != activeUnitId
+                    || string.IsNullOrEmpty(slot.OccurrenceId)
+                    || !_restorationObjectiveController.IsOccurrenceRestored(slot.OccurrenceId))
+                {
+                    continue;
+                }
+            }
+            else if (slot.Word == null
+                     || !_restorationState.IsSlotRestored(slot.Word, slot.DecompositionIndex))
+            {
+                continue;
+            }
+
+            // Ash is an extra loss only: it can cover an earned slot, never the glyph the player
+            // still needs to restore in the active unit.
+            return slot;
         }
 
         return null;
@@ -5041,9 +5228,12 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             if (reference?.symbol == null)
                 continue;
 
-            bool isAshedSlot = ashFirstSlot && emittedSlots == 0;
             bool isRestoredSlot = restorationState != null
                 && restorationState.IsSlotRestored(word, i);
+            bool isCurrentRequiredGlyph = !string.IsNullOrEmpty(symbolStableId)
+                && reference.symbol.stableId == symbolStableId;
+            bool isAshedSlot = ashFirstSlot && emittedSlots == 0
+                && isRestoredSlot && !isCurrentRequiredGlyph;
             emittedSlots++;
 
             // A slot is readable ONLY once the player has RESTORED it. Previously only the slot
@@ -5053,9 +5243,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             // way on screen. INA now reads "____" at level start, "i__" once I is restored, and
             // "ina" once NA's carrier falls.
             //
-            // The ash is unchanged and still composes on top: Abo ng Simula masks the word's first
-            // slot whatever this rule says about it, including a slot already restored — which is
-            // now the only state in which the ash has anything to take away.
+            // Ash only takes away an already-restored first slot, and never the glyph currently
+            // carried by the clue. It is presentation-only; restoration state is never modified.
             //
             // isTargetSlot is no longer read here: "the slot you need" and "the slot you have not
             // earned" only ever differed for slots the player had not earned either, so the needed

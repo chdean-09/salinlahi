@@ -100,12 +100,12 @@ MonoBehaviour:
   chargeMultiplier: 2.5
   chargeTriggerYNormalized: 0.5
   pauseDuration: 0.35
-  scrambleRadius: 3
+  scrambleRadius: 2.5
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
-  scrambleTrueGlyphMinDwell: 2.6
+  scrambleTrueGlyphMinDwell: 3
   scrambleTrueGlyphMaxDwell: 3.6
-  scrambleFalseBurstCount: 4
+  scrambleFalseBurstCount: 3
   stainsNearbyGlyphs: 1
   coversOwnGlyph: 0
   glyphCoverInitialRevealSeconds: 1.2

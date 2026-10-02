@@ -139,11 +139,11 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     [Header("Lesson — Beat 2 (Ability)")]
     [Tooltip("Safety valve only. Seconds (wall-clock) beat 2 will wait for the introduced enemy's "
              + "ability to actually fire before giving up and continuing. Generous on purpose: "
-             + "AshFirstSlotController's 1.5 s arm delay accrues on SCALED time under this beat's "
-             + "0.15 time scale, so the ash legitimately needs around ten wall-clock seconds. "
+             + "AshFirstSlotController's 2.5 s arm delay accrues on SCALED time under this beat's "
+             + "0.15 time scale, so the ash can need around 16.7 wall-clock seconds. "
              + "Shortening this re-introduces the bug where the enemy is named before it has done "
              + "anything. See PlayAbilityBeat.")]
-    [SerializeField, Min(0f)] private float _abilityBeatArmTimeoutSeconds = 15f;
+    [SerializeField, Min(0f)] private float _abilityBeatArmTimeoutSeconds = 18f;
 
     [Header("Lesson — Beat 8 (Draw)")]
     [Tooltip("Seconds (wall-clock) the step's successText is held after a correct draw, before the "
