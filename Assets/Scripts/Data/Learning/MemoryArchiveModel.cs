@@ -109,6 +109,9 @@ public static class MemoryArchiveModel
     /// <summary>Separator between the joined cutscene panels on the card back.</summary>
     public const string LoreParagraphSeparator = "\n\n";
 
+    // previewAllMemories is a presentation-only demo override. It never grants rewards
+    // or changes the supplied save collection; normal callers retain saved unlock state.
+
     /// <summary>
     /// Builds every archive slot, ordered by era then by position within the era.
     ///
@@ -118,7 +121,8 @@ public static class MemoryArchiveModel
     /// </summary>
     public static IReadOnlyList<MemoryArchiveEntry> Build(
         CampaignConfigSO campaign,
-        IReadOnlyCollection<string> unlockedMemoryIds)
+        IReadOnlyCollection<string> unlockedMemoryIds,
+        bool previewAllMemories = false)
     {
         var entries = new List<MemoryArchiveEntry>();
         if (campaign == null || campaign.eras == null)
@@ -146,7 +150,7 @@ public static class MemoryArchiveModel
             levels = StableSortByEraLocalOrder(levels);
 
             foreach (LevelConfigSO level in levels)
-                entries.Add(BuildEntry(era, level, unlockedMemoryIds));
+                entries.Add(BuildEntry(era, level, unlockedMemoryIds, previewAllMemories));
         }
 
         return entries;
@@ -170,7 +174,8 @@ public static class MemoryArchiveModel
     /// </summary>
     public static IReadOnlyList<MemoryArchiveEntry> BuildForEra(
         EraConfigSO era,
-        IReadOnlyCollection<string> unlockedMemoryIds)
+        IReadOnlyCollection<string> unlockedMemoryIds,
+        bool previewAllMemories = false)
     {
         var entries = new List<MemoryArchiveEntry>();
         if (era == null || era.levels == null)
@@ -186,7 +191,7 @@ public static class MemoryArchiveModel
         levels = StableSortByEraLocalOrder(levels);
 
         foreach (LevelConfigSO level in levels)
-            entries.Add(BuildEntry(era, level, unlockedMemoryIds));
+            entries.Add(BuildEntry(era, level, unlockedMemoryIds, previewAllMemories));
 
         return entries;
     }
@@ -198,15 +203,16 @@ public static class MemoryArchiveModel
     public static MemoryArchiveEntry BuildEntry(
         EraConfigSO era,
         LevelConfigSO level,
-        IReadOnlyCollection<string> unlockedMemoryIds)
+        IReadOnlyCollection<string> unlockedMemoryIds,
+        bool previewAllMemories = false)
     {
         if (level == null)
             return null;
 
         string memoryId = ResolveMemoryId(level);
         bool isUnlocked = memoryId != null
-            && unlockedMemoryIds != null
-            && Contains(unlockedMemoryIds, memoryId);
+            && (previewAllMemories || (unlockedMemoryIds != null
+                && Contains(unlockedMemoryIds, memoryId)));
 
         return new MemoryArchiveEntry(
             era != null ? era.eraName : null,

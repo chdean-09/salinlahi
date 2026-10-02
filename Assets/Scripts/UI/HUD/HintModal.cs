@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// SALIN-231. The confirm-before-you-spend gate in front of ChallengeSession.RequestHint.
+/// SALIN-231. The confirmation gate in front of ChallengeSession.RequestHint.
 ///
 /// WHAT THIS REPLACES: the Hint button called RequestHint() directly
 /// (ChallengeModeUI.cs:102 before this ticket), which spent the hint with no cost shown,
@@ -30,9 +30,9 @@ public sealed class HintModal : MonoBehaviour
     public enum Mode
     {
         Closed,
-        /// <summary>Cost disclosed, confirm and cancel offered (AC-1, AC-2).</summary>
+        /// <summary>Remaining hints disclosed, confirm and cancel offered.</summary>
         Confirm,
-        /// <summary>Budget spent: explanation and Retry, no confirm (AC-4).</summary>
+        /// <summary>Budget spent: explanation and Close, no confirm or retry.</summary>
         Exhausted,
         /// <summary>The hint the player paid for (AC-5: one clue, never the answer).</summary>
         Revealed,
@@ -80,8 +80,8 @@ public sealed class HintModal : MonoBehaviour
     }
 
     /// <summary>
-    /// Opens the pre-confirm card (AC-1): the option, its cost stated BEFORE use, and the
-    /// remaining budget. Reads the session; spends nothing. When the budget is already gone
+    /// Opens the pre-confirm card: the option and remaining budget.
+    /// Reads the session; spends nothing. When the budget is already gone
     /// this opens the exhausted card instead of the confirm card (AC-4).
     /// </summary>
     /// <param name="session">Source of the effective policy. Never re-read a level asset's
@@ -90,7 +90,7 @@ public sealed class HintModal : MonoBehaviour
     /// <param name="meaning">FocusWordDefinition.meaning, e.g. "different". Empty when the
     /// unit has no focus word, which disables confirm rather than charging for nothing.</param>
     /// <param name="onConfirm">Invoked ONLY from Confirm(). Cancel never touches it.</param>
-    /// <param name="onRetry">Invoked from the exhausted card's Retry control.</param>
+    /// <param name="onRetry">Legacy callback for Retry(); no modal button invokes it.</param>
     public void Open(
         ChallengeSession session,
         string displayLabel,
@@ -122,11 +122,9 @@ public sealed class HintModal : MonoBehaviour
             ? HintModalCopy.MeaningOptionLabel
             : HintModalCopy.NoHintAvailableBody;
 
-        // Cost BEFORE use. On tiers 1-4 ForTier leaves the budget disabled, so the honest
-        // line is "no cost" rather than a hidden modal.
+        // Show the remaining metered budget on its own centered line.
         _costText.text = session.HintBudgetIsLimited
-            ? HintModalCopy.CostLine(HintModalCopy.ScorePointsFromFraction(session.EmergencyHintCostFraction))
-              + "  " + HintModalCopy.RemainingLine(session.EmergencyHintsRemaining)
+            ? HintModalCopy.RemainingLine(session.EmergencyHintsRemaining)
             : HintModalCopy.FreeLine;
 
         _confirmButton.gameObject.SetActive(true);
@@ -169,7 +167,7 @@ public sealed class HintModal : MonoBehaviour
         _cancelLabel.text = HintModalCopy.CloseLabel;
     }
 
-    /// <summary>Exhausted card's Retry control — stays inside the encounter, per D-004.</summary>
+    /// <summary>Legacy retry entry point retained for callers; the modal offers no retry control.</summary>
     public void Retry()
     {
         Action retry = _onRetry;
@@ -197,16 +195,15 @@ public sealed class HintModal : MonoBehaviour
 
     private void ShowExhausted()
     {
+        _onRetry = null;
         CurrentMode = Mode.Exhausted;
         gameObject.SetActive(true);
         _titleText.text = HintModalCopy.ExhaustedButtonLabel;
         _bodyText.text = HintModalCopy.ExhaustedBody;
         _costText.text = string.Empty;
-        // No confirm control at all: there is nothing left to buy, and an inert-but-present
-        // button is how the old silent no-op read to the player.
-        _confirmButton.gameObject.SetActive(true);
-        _confirmButton.interactable = true;
-        _confirmLabel.text = HintModalCopy.RetryLabel;
+        // Checkpoint retries do not replenish the level-attempt hint budget.
+        _confirmButton.gameObject.SetActive(false);
+        _confirmButton.interactable = false;
         _cancelLabel.text = HintModalCopy.CloseLabel;
     }
 
@@ -271,7 +268,7 @@ public sealed class HintModal : MonoBehaviour
         layout.childForceExpandHeight = true;
 
         _confirmButton = CreateButton(
-            HintModalCopy.ConfirmLabel, actions.transform, out _confirmLabel, HandleConfirmPressed,
+            HintModalCopy.ConfirmLabel, actions.transform, out _confirmLabel, Confirm,
             GoldButton, ScrollPanelArt.InkColor);
         _cancelButton = CreateButton(
             HintModalCopy.CancelLabel, actions.transform, out _cancelLabel, Cancel,
@@ -281,20 +278,9 @@ public sealed class HintModal : MonoBehaviour
             ScrollPanelArt.InkifyRecursive(_card);
     }
 
-    // The scroll-family button convention: gold is the forward action, dark slate the
-    // retreating one — the same pair LevelReadyScreenController ships.
+    // Fallback colors when the shared parchment button artwork is unavailable.
     private static readonly Color GoldButton = new Color(0.85f, 0.72f, 0.35f, 1f);
     private static readonly Color SlateButton = new Color(0.18f, 0.24f, 0.34f, 1f);
-
-    // One control serves confirm and retry: the exhausted card has nothing to confirm, so
-    // the same button carries the only forward action that state offers.
-    private void HandleConfirmPressed()
-    {
-        if (CurrentMode == Mode.Exhausted)
-            Retry();
-        else
-            Confirm();
-    }
 
     private TextMeshProUGUI CreateLabel(string name, float size, Vector2 min, Vector2 max)
     {
@@ -355,6 +341,7 @@ public sealed class HintModal : MonoBehaviour
         TutorialFontProvider.ApplyTo(labelText);
         if (labelColor == ScrollPanelArt.InkColor)
             ScrollPanelArt.Inkify(labelText);
+        ScrollPanelArt.ApplyButtonSkin(button, labelColor == ScrollPanelArt.InkColor, fill);
         return button;
     }
 }

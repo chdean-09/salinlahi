@@ -257,6 +257,8 @@ public sealed class ExitConfirmationPanel : MonoBehaviour
         labelText.raycastTarget = false;
         label = labelText;
 
-        return buttonObject.GetComponent<Button>();
+        Button button = buttonObject.GetComponent<Button>();
+        ScrollPanelArt.ApplyButtonSkin(button, primary: name == "ConfirmButton", fallbackFill: color);
+        return button;
     }
 }

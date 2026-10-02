@@ -21,6 +21,45 @@ namespace Salinlahi.Tests.Editor.UI
         private GameObject _screenObject;
         private GameObject _progressManagerObject;
 
+        [TestCase(5, "Enter Next Era")]
+        [TestCase(10, "Enter Next Era")]
+        [TestCase(15, "Era Complete")]
+        public void EraAction_ReusesNextLevelSlot_AndRestoresOrdinaryLevelLayout(int levelNumber, string eraLabel)
+        {
+            ProgressManager progress = CreateProgressManager();
+            progress.UnlockAllLevels();
+            Assert.IsTrue(progress.TrySetSelectedLevelNumber(levelNumber));
+            VictoryScreenUI screen = CreateScreen();
+            Button primary = AttachNextLevelButton(screen);
+            GameObject labelObject = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+            labelObject.transform.SetParent(primary.transform, false);
+            TMP_Text label = labelObject.GetComponent<TMP_Text>();
+            label.text = "Next Level";
+            screen.PresentResultsSummary(Data(stars: 3, heartsRemaining: 3, heartsMax: 3));
+            RectTransform rect = primary.GetComponent<RectTransform>();
+            Vector2 position = rect.anchoredPosition;
+            Vector2 size = rect.sizeDelta;
+            int eraClicks = 0;
+            screen.ConfigureEraCompletionAction(() => eraClicks++, eraLabel);
+            screen.PresentResults(Results(stars: 3), isEraFinalLevel: true);
+            Assert.IsTrue(primary.gameObject.activeSelf);
+            Assert.AreEqual(eraLabel, label.text);
+            Assert.AreEqual(position, rect.anchoredPosition);
+            Assert.AreEqual(size, rect.sizeDelta);
+            InvokePrivate(screen, "OnNextLevelPressed");
+            Assert.AreEqual(1, eraClicks);
+            Assert.AreEqual(levelNumber, progress.GetSelectedLevelNumber(),
+                "Era navigation must not invoke the ordinary next-level selection path.");
+
+            Assert.IsTrue(progress.TrySetSelectedLevelNumber(4));
+            screen.ConfigureEraCompletionAction(null, null);
+            screen.PresentResults(Results(stars: 3), isEraFinalLevel: false);
+            Assert.IsTrue(primary.gameObject.activeSelf);
+            Assert.AreEqual("Next Level", label.text);
+            Assert.AreEqual(position, rect.anchoredPosition);
+            Assert.AreEqual(size, rect.sizeDelta);
+        }
+
         [TearDown]
         public void TearDown()
         {
@@ -68,6 +107,10 @@ namespace Salinlahi.Tests.Editor.UI
                 control.GetComponent<RectTransform>(),
                 "'" + VictoryScreenUI.RuntimeReplayButtonName + "' has a plain Transform, not " +
                 "a RectTransform, so uGUI cannot lay it out or draw it.");
+            TMP_Text replayLabel = control.GetComponentInChildren<TMP_Text>(true);
+            Assert.IsNotNull(replayLabel);
+            Assert.AreEqual(FontStyles.Bold, replayLabel.fontStyle,
+                "Replay Level must match the bold Next Level and Level Select labels.");
         }
 
         [Test]

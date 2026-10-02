@@ -41,6 +41,8 @@ public sealed class LevelReadyScreenController : MonoBehaviour
             yield break;
 
         EnsurePanel();
+        ScrollPanelArt.StylePrimaryButton(_startButton);
+        ScrollPanelArt.StyleSecondaryButton(_backButton);
         RenderedText = BuildObjectiveText(config);
 
         if (_titleText != null)

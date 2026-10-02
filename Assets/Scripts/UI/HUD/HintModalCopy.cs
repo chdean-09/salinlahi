@@ -50,7 +50,7 @@ public static class HintModalCopy
     /// <summary>Default hint control label while a hint is still available.</summary>
     public const string AvailableButtonLabel = "Hint";
 
-    /// <summary>Retry control on the exhausted panel. Matches ChallengeModeUI's own "Retry".</summary>
+    /// <summary>Legacy retry label retained for callers; the exhausted panel offers Close only.</summary>
     public const string RetryLabel = "Retry";
 
     /// <summary>Dismiss control on a panel that has nothing to confirm.</summary>
@@ -73,8 +73,7 @@ public static class HintModalCopy
     public static string RemainingLine(int remaining) => "Hints left: " + remaining;
 
     /// <summary>
-    /// Exhausted panel body (AC-4). Every clause maps to shipped behaviour:
-    /// ChallengeSession.Retry -> ResetToCheckpoint restores the checkpoint with full clues.
+    /// Exhausted panel body. Checkpoint resets preserve the spent level-attempt hint budget.
     ///
     /// ⚠️ AC-4 also asks the exhausted state to offer REVIEW. That half is deliberately NOT
     /// built. Review has no in-encounter destination, and routing the player out to a
@@ -83,7 +82,7 @@ public static class HintModalCopy
     /// does not cover. Held and escalated rather than invented.
     /// </summary>
     public const string ExhaustedBody =
-        "You have used this level's hint. Retry the checkpoint to try again.";
+        "You have used this level's hint.";
 
     /// <summary>
     /// The revealed meaning, after the player confirms. Keeps the word beside its meaning

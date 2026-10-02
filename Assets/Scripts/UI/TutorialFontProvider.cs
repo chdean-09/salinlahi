@@ -15,7 +15,10 @@ public static class TutorialFontProvider
     private static readonly Color LegibilityUnderlayColor = new Color(0f, 0f, 0f, 0.85f);
     private const float LegibilityUnderlayOffsetX = 0.55f;
     private const float LegibilityUnderlayOffsetY = -0.55f;
-    private const float LegibilityUnderlayDilate = 0.55f;
+    // Expanding the shadow also expands its atlas sampling footprint. With this
+    // font's nine-pixel atlas padding, dilation bleeds adjacent glyphs into thin
+    // horizontal lines above/below the text. An offset silhouette needs no dilation.
+    private const float LegibilityUnderlayDilate = 0f;
     private const float LegibilityShadowAlpha = 0.6f;
     private static readonly Vector2 LegibilityShadowDistance = new Vector2(1.5f, -1.5f);
 
@@ -74,6 +77,7 @@ public static class TutorialFontProvider
             mat.SetFloat(Shader.PropertyToID("_UnderlayOffsetY"), LegibilityUnderlayOffsetY);
             mat.SetFloat(Shader.PropertyToID("_UnderlayDilate"), LegibilityUnderlayDilate);
             mat.SetFloat(Shader.PropertyToID("_UnderlaySoftness"), 0f);
+            tmp.UpdateMeshPadding();
             return;
         }
 
@@ -107,7 +111,10 @@ public static class TutorialFontProvider
         if (graphic is TMP_Text tmp)
         {
             if (Application.isPlaying && tmp.fontMaterial != null)
+            {
                 tmp.fontMaterial.DisableKeyword("UNDERLAY_ON");
+                tmp.UpdateMeshPadding();
+            }
             return;
         }
 

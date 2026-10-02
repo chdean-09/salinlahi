@@ -49,6 +49,7 @@ public class HintModalTests
         Assert.IsTrue(modal.ConfirmIsInteractable,
             "A hint is available, so the confirm control must be live — otherwise the "
             + "cancel test below would pass for the wrong reason.");
+        Assert.IsTrue(modal.ConfirmIsVisible);
     }
 
     [Test]
@@ -116,9 +117,15 @@ public class HintModalTests
         Assert.IsTrue(session.IsHintExhausted, "Setup: tier 5 allows exactly one.");
 
         HintModal modal = CreateModal();
-        modal.Open(session, "IBA", "different", () => session.RequestHint());
+        bool retried = false;
+        modal.Open(session, "IBA", "different", () => session.RequestHint(), () => retried = true);
 
         Assert.AreEqual(HintModal.Mode.Exhausted, modal.CurrentMode);
+        Assert.IsFalse(modal.ConfirmIsVisible, "Retry must be hidden when no hints remain.");
+        Assert.IsFalse(modal.ConfirmIsInteractable);
+        Assert.IsTrue(modal.CancelIsInteractable);
+        Assert.AreEqual(HintModalCopy.CloseLabel, modal.CancelLabelText);
+        StringAssert.DoesNotContain("Retry", modal.BodyText);
         Assert.AreEqual(HintModalCopy.ExhaustedButtonLabel, HintModal.HintControlLabel(session),
             "BTN-HINT's exhausted copy, verbatim.");
         Assert.AreEqual(HintModalCopy.ExhaustedBody, modal.BodyText,
@@ -128,41 +135,91 @@ public class HintModalTests
         modal.Confirm();
 
         Assert.AreEqual(1, session.HintsUsed,
-            "The exhausted card offers Retry, not a second purchase.");
+            "The exhausted card must not allow another purchase.");
         Assert.AreEqual(1, session.EmergencyHintsUsed);
+
+        Button close = modal.transform.Find("Card/Actions/Cancel").GetComponent<Button>();
+        close.onClick.Invoke();
+
+        Assert.IsFalse(modal.IsOpen);
+        Assert.IsFalse(retried, "Closing the exhausted card must not reset the checkpoint.");
+        Assert.IsTrue(session.IsHintExhausted);
+        Assert.AreEqual(1, session.HintsUsed);
     }
 
     [Test]
-    public void CostIsDisclosedBeforeUse_InScoreNotStars()
+    public void ExhaustedBudget_LegacyRetryCannotResetCheckpoint()
+    {
+        ChallengeSession session = CreateTierFiveSession();
+        session.RequestHint();
+        bool retried = false;
+        HintModal modal = CreateModal();
+        modal.Open(session, "IBA", "different", () => session.RequestHint(), () => retried = true);
+
+        modal.Retry();
+
+        Assert.IsFalse(retried);
+        Assert.IsTrue(session.IsHintExhausted);
+    }
+
+    [Test]
+    public void ReopeningWithAvailableHints_RestoresConfirmButton()
+    {
+        ChallengeSession exhausted = CreateTierFiveSession();
+        exhausted.RequestHint();
+        HintModal modal = CreateModal();
+        modal.Open(exhausted, "IBA", "different", () => exhausted.RequestHint());
+        modal.Cancel();
+
+        ChallengeSession available = CreateTierFiveSession();
+        modal.Open(available, "IBA", "different", () => available.RequestHint());
+
+        Assert.AreEqual(HintModal.Mode.Confirm, modal.CurrentMode);
+        Assert.IsTrue(modal.ConfirmIsVisible);
+        Assert.IsTrue(modal.ConfirmIsInteractable);
+        Assert.AreEqual(HintModalCopy.ConfirmLabel, modal.ConfirmLabelText);
+        modal.Confirm();
+        Assert.AreEqual(1, available.HintsUsed);
+    }
+
+    [Test]
+    public void RemainingHints_AreCenteredWithoutScoreCost()
     {
         ChallengeSession session = CreateTierFiveSession();
         HintModal modal = CreateModal();
 
         modal.Open(session, "IBA", "different", () => session.RequestHint());
 
-        StringAssert.Contains("10", modal.CostText,
-            "AC-1: the cost is stated before the hint is used, and it is the effective "
-            + "policy's 0.10 rendered as 10 points of the 0-100 score.");
-        StringAssert.DoesNotContain("star", modal.CostText.ToLowerInvariant(),
-            "docs/audit/BACKLOG.md:293 calls this a \"star cost\". The engine charges SCORE: "
-            + "LevelResultsCalculator derives stars from hearts and the accuracies alone and "
-            + "applies the penalty to metric.score only. Copy saying \"stars\" would lie.");
+        Assert.AreEqual("Hints left: 1", modal.CostText);
+        var remaining = modal.transform.Find("Card/Cost").GetComponent<TMPro.TextMeshProUGUI>();
+        Assert.AreEqual(TMPro.TextAlignmentOptions.Center, remaining.alignment);
         AssertNothingSpent(session);
     }
 
     /// <summary>
-    /// AC-3's copy half. The Results screen readout and the modal's pre-use disclosure must
-    /// agree on both the number and the unit, or the player is quoted one price and charged
-    /// another.
+    /// Hiding the cost disclosure must not change the score deduction shown in Results.
     /// </summary>
     [Test]
-    public void ResultsPenaltyReadout_MatchesTheDisclosedCostAndItsUnit()
+    public void ResultsPenaltyReadout_KeepsTheExistingScoreCost()
     {
         Assert.AreEqual("Hint cost -10", LevelResultsCopy.HintPenalty(10));
         StringAssert.DoesNotContain("star", LevelResultsCopy.HintPenaltyLabel.ToLowerInvariant());
         StringAssert.Contains(
             "10", HintModalCopy.CostLine(HintModalCopy.ScorePointsFromFraction(0.10f)),
-            "The modal quotes the same 10 the Results screen deducts.");
+            "The existing score-cost calculation remains unchanged.");
+    }
+
+    [Test]
+    public void MissingMeaning_CannotSpendAHint()
+    {
+        ChallengeSession session = CreateTierFiveSession();
+        HintModal modal = CreateModal();
+        modal.Open(session, string.Empty, string.Empty, () => session.RequestHint());
+
+        Assert.IsFalse(modal.ConfirmIsInteractable);
+        Assert.AreEqual(HintModalCopy.NoHintAvailableBody, modal.BodyText);
+        modal.Confirm();
+        AssertNothingSpent(session);
     }
 
     private static void AssertNothingSpent(ChallengeSession session)

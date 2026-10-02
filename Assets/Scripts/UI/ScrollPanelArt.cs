@@ -32,19 +32,22 @@ public static class ScrollPanelArt
     /// <summary>Flat panel fallback used until/unless the parchment sprite applies.</summary>
     public static readonly Color FlatPanelColor = new Color(0.025f, 0.035f, 0.08f, 0.98f);
 
-    /// <summary>The scroll-family button convention: gold carries the primary action,
-    /// dark slate the secondary — the same pair the ready screen ships.</summary>
+    /// <summary>Fallback fills when the parchment artwork cannot load.</summary>
     public static readonly Color GoldButtonFill = new Color(0.85f, 0.72f, 0.35f, 1f);
     public static readonly Color SlateButtonFill = new Color(0.18f, 0.24f, 0.34f, 1f);
 
     private static Sprite[] _sprites;
     private static bool _loaded;
+    private static Sprite _buttonSprite;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void DomainReloadInit()
     {
         _sprites = null;
         _loaded = false;
+        if (_buttonSprite != null)
+            Object.Destroy(_buttonSprite);
+        _buttonSprite = null;
     }
 
     /// <summary>The full scroll — rod at top and bottom — for tall panels.</summary>
@@ -121,7 +124,7 @@ public static class ScrollPanelArt
     }
 
     /// <summary>Seats a button inside the parchment. Companion to <see cref="PlaceText"/>.</summary>
-    public static void PlaceButton(Button button, Rect area)
+    public static void PlaceButton(Button button, Rect area, bool primary = true)
     {
         if (button == null)
             return;
@@ -132,7 +135,10 @@ public static class ScrollPanelArt
 
         SetAnchors(rect, area);
         rect.pivot = new Vector2(0.5f, 0.5f);
-        SizeButtonLabel(button);
+        if (primary)
+            StylePrimaryButton(button);
+        else
+            StyleSecondaryButton(button);
     }
 
     /// <summary>
@@ -152,55 +158,98 @@ public static class ScrollPanelArt
             RectTransform labelRect = label.rectTransform;
             labelRect.anchorMin = Vector2.zero;
             labelRect.anchorMax = Vector2.one;
-            labelRect.offsetMin = labelRect.offsetMax = Vector2.zero;
+            labelRect.offsetMin = new Vector2(12f, 6f);
+            labelRect.offsetMax = new Vector2(-12f, -6f);
             label.enableAutoSizing = true;
             label.fontSizeMin = UITextScale.Body;
             label.fontSizeMax = UITextScale.Title;
         }
     }
 
-    /// <summary>Primary-action skin: gold fill, ink label.</summary>
+    /// <summary>Primary action: a parchment tile with dark ink.</summary>
     public static void StylePrimaryButton(Button button)
     {
         StyleActionButton(button, GoldButtonFill, true);
     }
 
-    /// <summary>Secondary-action skin: slate fill, white label.</summary>
+    /// <summary>Secondary action: a quieter tint of the same parchment tile.</summary>
     public static void StyleSecondaryButton(Button button)
     {
         StyleActionButton(button, SlateButtonFill, false);
     }
 
     /// <summary>
-    /// Restyles a button — authored or runtime — to the shared flat convention: the
-    /// plaque sprite comes off (its unsealed edges read mismatched at different
-    /// aspect ratios), the flat fill goes on, press feedback falls back to color
-    /// tint so an authored SpriteSwap cannot flash the old skin, and the label
-    /// takes the shared font, role color, and autosized rect.
+    /// Restyles an authored or runtime action while preserving its events and layout.
     /// </summary>
     public static void StyleActionButton(Button button, Color fill, bool inkLabel)
     {
+        ApplyButtonSkin(button, inkLabel, fill);
+        SizeButtonLabel(button);
+    }
+
+    /// <summary>Shared artwork and interaction states, without changing label sizing.</summary>
+    public static void ApplyButtonSkin(Button button, bool primary = true, Color? fallbackFill = null)
+    {
         if (button == null)
             return;
-        Image image = button.GetComponent<Image>();
+        Sprite sprite = LoadButtonSprite();
+        Image image = button.targetGraphic as Image;
+        if (image == null)
+            image = button.GetComponent<Image>();
         if (image != null)
         {
-            image.sprite = null;
-            image.type = Image.Type.Simple;
-            image.color = fill;
+            image.sprite = sprite;
+            image.overrideSprite = null;
+            image.type = sprite != null ? Image.Type.Sliced : Image.Type.Simple;
+            image.pixelsPerUnitMultiplier = 1f;
+            image.color = sprite != null
+                ? (primary ? Color.white : new Color32(224, 208, 178, 255))
+                : (fallbackFill ?? (primary ? GoldButtonFill : SlateButtonFill));
             image.preserveAspect = false;
             button.targetGraphic = image;
         }
         button.transition = Selectable.Transition.ColorTint;
+        ColorBlock colors = ColorBlock.defaultColorBlock;
+        colors.highlightedColor = new Color32(255, 239, 196, 255);
+        colors.selectedColor = colors.highlightedColor;
+        colors.pressedColor = new Color32(222, 193, 147, 255);
+        colors.disabledColor = new Color32(160, 150, 130, 255);
+        colors.fadeDuration = 0.1f;
+        button.colors = colors;
         foreach (TMP_Text label in button.GetComponentsInChildren<TMP_Text>(true))
         {
             TutorialFontProvider.ApplyTo(label);
-            if (inkLabel)
+            if (sprite != null || primary)
                 Inkify(label);
             else
                 label.color = Color.white;
         }
-        SizeButtonLabel(button);
+        foreach (Text label in button.GetComponentsInChildren<Text>(true))
+        {
+            if (sprite != null || primary)
+                Inkify(label);
+            else
+                label.color = Color.white;
+        }
+    }
+
+    private static Sprite LoadButtonSprite()
+    {
+        if (_buttonSprite != null)
+            return _buttonSprite;
+        Sprite source = Full;
+        if (source == null)
+            return null;
+        // Use the paper and stepped inner frame of the existing full-scroll sprite,
+        // excluding its rods. These insets match PanelBackground_0's imported rect.
+        Rect paper = new Rect(source.rect.x + 68f, source.rect.y + 64f,
+            source.rect.width - 136f, source.rect.height - 119f);
+        _buttonSprite = Sprite.Create(source.texture, paper,
+            new Vector2(0.5f, 0.5f), source.pixelsPerUnit * 8f, 0,
+            SpriteMeshType.FullRect, new Vector4(100f, 100f, 100f, 100f), false);
+        _buttonSprite.name = "ScrollButtonParchment";
+        _buttonSprite.hideFlags = HideFlags.HideAndDontSave;
+        return _buttonSprite;
     }
 
     public static void SetAnchors(RectTransform rect, Rect area)

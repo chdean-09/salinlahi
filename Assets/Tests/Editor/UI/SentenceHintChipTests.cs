@@ -9,7 +9,7 @@ namespace Salinlahi.Tests.Editor.UI
 {
     /// <summary>
     /// The hint chip is a compact icon control matching the authored 80x80
-    /// pause button it parks under — the same flat translucent square —
+    /// pause button it parks under — the same parchment background —
     /// carrying the almanac "?" glyph when the icon art resolves.
     /// </summary>
     [TestFixture]
@@ -65,10 +65,12 @@ namespace Salinlahi.Tests.Editor.UI
                 "The chip stays a clickable button.");
 
             Image chipBackground = chip.GetComponent<Image>();
-            Assert.AreEqual(new Color(0f, 0f, 0f, 0.45f), chipBackground.color,
-                "The chip wears the pause button's flat translucent fill, not the scroll skin.");
-            Assert.IsNull(chipBackground.sprite,
-                "The chip keeps the pause button's sprite-free flat look.");
+            Assert.AreEqual(Color.white, chipBackground.color);
+            Assert.IsNotNull(chipBackground.sprite, "The parchment HUD background must resolve.");
+            Assert.AreEqual("PanelBackground", chipBackground.sprite.texture.name);
+            Assert.AreEqual(Image.Type.Sliced, chipBackground.type);
+            Assert.Greater(chipBackground.sprite.border.x, 0f,
+                "The background frame must preserve its corners.");
 
             Image icon = chip.transform.Find("[Runtime] SentenceHintChipIcon")?
                 .GetComponent<Image>();
@@ -77,6 +79,57 @@ namespace Salinlahi.Tests.Editor.UI
                 "Resources/Art/UI/Almanac/Questionmark should resolve to a sprite.");
             Assert.IsFalse(icon.raycastTarget,
                 "The icon must not swallow the chip button's taps.");
+            Assert.AreEqual(ScrollPanelArt.InkColor, icon.color);
+        }
+
+        [Test]
+        public void Hud_PauseUsesTheSameParchmentBackgroundAsTheHintChip()
+        {
+            GameObject hudRoot = Track(new GameObject("HudTest", typeof(RectTransform)));
+            hudRoot.SetActive(false);
+            Button pause = Track(new GameObject("PauseButton", typeof(RectTransform), typeof(Image), typeof(Button)))
+                .GetComponent<Button>();
+            pause.transform.SetParent(hudRoot.transform, false);
+            HUD hud = hudRoot.AddComponent<HUD>();
+            typeof(HUD).GetField("_pauseButton", BindingFlags.NonPublic | BindingFlags.Instance)
+                .SetValue(hud, pause);
+            hudRoot.SetActive(true);
+            typeof(HUD).GetMethod("OnEnable", BindingFlags.NonPublic | BindingFlags.Instance)
+                .Invoke(hud, null);
+            Assert.IsNotNull(pause.GetComponent<Image>().sprite);
+            Assert.AreEqual("PanelBackground", pause.GetComponent<Image>().sprite.texture.name);
+            Assert.AreEqual(Image.Type.Sliced, pause.GetComponent<Image>().type);
+        }
+
+        [Test]
+        public void ScrollActions_KeepClicksAndReadableLabels_WhenStyledAndInked()
+        {
+            Button button = Track(new GameObject("ScrollAction", typeof(RectTransform), typeof(Image), typeof(Button)))
+                .GetComponent<Button>();
+            GameObject labelObject = Track(new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI)));
+            labelObject.transform.SetParent(button.transform, false);
+            TextMeshProUGUI label = labelObject.GetComponent<TextMeshProUGUI>();
+            label.text = "Continue";
+            int clicks = 0;
+            button.onClick.AddListener(() => clicks++);
+            ScrollPanelArt.StylePrimaryButton(button);
+            Image image = button.GetComponent<Image>();
+            Assert.IsNotNull(image.sprite);
+            Assert.AreEqual("PanelBackground", image.sprite.texture.name,
+                "Scroll actions must not borrow the main menu artwork.");
+            Assert.AreEqual(Image.Type.Sliced, image.type);
+            Assert.AreSame(image, button.targetGraphic);
+            ScrollPanelArt.Inkify(label);
+            Assert.AreEqual(ScrollPanelArt.InkColor, label.color);
+            Assert.AreEqual(Selectable.Transition.ColorTint, button.transition);
+            Assert.AreNotEqual(button.colors.normalColor, button.colors.pressedColor);
+            Assert.AreNotEqual(button.colors.normalColor, button.colors.disabledColor);
+            button.onClick.Invoke();
+            Assert.AreEqual(1, clicks);
+            button.interactable = false;
+            ScrollPanelArt.StyleSecondaryButton(button);
+            Assert.IsFalse(button.interactable, "Styling must preserve gameplay gating.");
+            Assert.AreEqual(ScrollPanelArt.InkColor, label.color);
         }
 
         private T Track<T>(T created) where T : Object

@@ -23,6 +23,7 @@ MonoBehaviour:
     latinSpelling: INA
     displayLabel: INA
     meaning: mother
+    hintText: 
     decomposition:
     - symbol: {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
       spokenValueId: value.i
@@ -37,6 +38,7 @@ MonoBehaviour:
     latinSpelling: AMA
     displayLabel: AMA
     meaning: father
+    hintText: 
     decomposition:
     - symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
       spokenValueId: value.a
@@ -234,6 +236,7 @@ MonoBehaviour:
     slotGates: []
     slotFloors: []
   enemySpeedMultiplier: 1
+  maxActiveEnemies: 0
   overrideDrawingAccuracyThreshold: 1
   drawingAccuracyThresholdOverride: 0.45
   alwaysShowTutorial: 0

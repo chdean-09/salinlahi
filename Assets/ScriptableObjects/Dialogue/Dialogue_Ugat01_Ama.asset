@@ -15,8 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "AMA: ang haligi ng tahanan. Binubuo ito ng dalawang titik: A at
-      MA."
+    text: 'AMA: ang haligi ng tahanan. Binubuo ito ng dalawang titik: A at MA.'
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
     text: Bakasin mo ang bawat titik upang maibalik ang alaala ni Ama.

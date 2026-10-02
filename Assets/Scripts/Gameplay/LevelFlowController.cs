@@ -713,11 +713,9 @@ public class LevelFlowController : MonoBehaviour
             yield break;
         }
 
-        // SALIN-231. The hint modal explains the focus word this unit evidences, and the
-        // meaning lives here on the level config, not on the challenge sequence. Handed
-        // over immediately before every Play so no sequence is ever played against another
-        // level's words.
-        _challengeFlowController.SetLevelFocusWords(_levelConfig.focusWords);
+        // Resolve hints from the current blank using this and earlier lessons' meanings.
+        _challengeFlowController.SetLevelHintWords(
+            _levelConfig, SaveManager.Instance == null ? null : SaveManager.Instance.Campaign);
 
         yield return _challengeFlowController.Play(
             _levelConfig.challengeSequence,
@@ -1750,9 +1748,9 @@ public class LevelFlowController : MonoBehaviour
             yield break;
         }
 
-        // SALIN-231. See ExecuteContextChallenge: the legacy path sets the words too, so
-        // there is no Play call that could inherit a previous level's list.
-        _challengeFlowController.SetLevelFocusWords(_levelConfig.focusWords);
+        // The legacy path supplies the same hint vocabulary as the segmented path.
+        _challengeFlowController.SetLevelHintWords(
+            _levelConfig, SaveManager.Instance == null ? null : SaveManager.Instance.Campaign);
 
         yield return _challengeFlowController.Play(_levelConfig.challengeSequence, _levelConfig.levelNumber);
         if (_challengeFlowController.LastPlayResult == ChallengePlayResult.InvalidSequence)
@@ -2152,6 +2150,20 @@ public class LevelFlowController : MonoBehaviour
         EraConfigSO completedEra = FindEraForLevel(campaign, _levelConfig);
         bool isEraFinalLevel = EraBoundary.IsEraFinalLevel(completedEra, _levelConfig);
 
+        EraConfigSO nextEra = EraBoundary.NextEra(campaign, completedEra);
+        int nextEraIndex = EraBoundary.IndexOfEra(campaign, nextEra);
+        _victoryScreen.ConfigureEraCompletionAction(
+            isEraFinalLevel
+                ? () =>
+                {
+                    if (nextEra != null)
+                        EnterNextEra(nextEraIndex);
+                    else
+                        ShowEraCompletionScreen(campaign, completedEra, true);
+                }
+                : null,
+            nextEra != null ? EraCompletionCopy.EnterNextEraLabel : "Era Complete");
+
         // Null on the legacy path; VictoryScreenUI falls back to ProgressManager.GetStars there.
         _victoryScreen.PresentResults(LastResults, isEraFinalLevel);
 
@@ -2197,7 +2209,8 @@ public class LevelFlowController : MonoBehaviour
                 : null;
 
         IReadOnlyList<MemoryArchiveEntry> entries =
-            MemoryArchiveModel.BuildForEra(completedEra, unlockedMemoryIds);
+            MemoryArchiveModel.BuildForEra(completedEra, unlockedMemoryIds,
+                ProgressManager.Instance != null && ProgressManager.Instance.EnableAllLevelsForTesting);
 
         EraConfigSO nextEra = EraBoundary.NextEra(campaign, completedEra);
         int nextEraIndex = EraBoundary.IndexOfEra(campaign, nextEra);

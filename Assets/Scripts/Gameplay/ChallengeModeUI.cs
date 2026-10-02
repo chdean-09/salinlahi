@@ -18,6 +18,9 @@ public class ChallengeModeUI : MonoBehaviour
     private Button _hintButton;
     private TextMeshProUGUI _hintButtonLabel;
     private HintModal _hintModal;
+    private ChallengeSession _hintModalSession;
+    private ChallengeUnitDefinition _hintModalUnit;
+    private int _hintModalSlotIndex;
     private string _feedbackText = string.Empty;
     private ScrollRect _promptScroll;
     private string _renderedUnitId;
@@ -35,6 +38,15 @@ public class ChallengeModeUI : MonoBehaviour
 
         BuildIfNeeded();
         ChallengeUnitDefinition unit = session.CurrentUnitDefinition;
+        if (_hintModal != null && _hintModal.IsOpen
+            && (session != _hintModalSession || unit != _hintModalUnit
+                || session.State == ChallengeSessionState.Completed
+                || session.State == ChallengeSessionState.Exited
+                || session.State == ChallengeSessionState.Failed
+                || session.State == ChallengeSessionState.CheckpointReset
+                || (_hintModal.CurrentMode == HintModal.Mode.Confirm
+                    && session.CurrentSlotIndex != _hintModalSlotIndex)))
+            _hintModal.Cancel();
         if (unit != null)
         {
             _progressText.text = $"Challenge {session.CurrentUnitIndex + 1}  |  Errors {session.Errors}  |  Hearts {session.HeartsRemaining}";
@@ -250,7 +262,7 @@ public class ChallengeModeUI : MonoBehaviour
         return false;
     }
 
-    private static string BuildPrompt(ChallengeUnitDefinition unit, ChallengeSession session)
+    private string BuildPrompt(ChallengeUnitDefinition unit, ChallengeSession session)
     {
         if (unit == null)
             return string.Empty;
@@ -279,12 +291,20 @@ public class ChallengeModeUI : MonoBehaviour
                 return match.Value;
             bool placed = ContainsOccurrence(session.CurrentProgress, slot.expectedOccurrenceId)
                 || ContainsOccurrence(session.CommittedOccurrenceIds, slot.expectedOccurrenceId);
-            // Keep the blank and its answer in the same fixed-width, unbroken slot.
-            // Replacing six underscores with a short word must not reflow the sentence.
-            int width = System.Math.Max(match.Length, token.displayText.Length);
-            string value = placed ? $"<b>{token.displayText}</b>" : match.Value;
-            int padding = width - (placed ? token.displayText.Length : match.Length);
-            return $"<nobr><mspace=0.65em>{new string('\u00a0', padding)}{value}</mspace></nobr>";
+            string answer = $"<b>{token.displayText}</b>";
+            if (placed)
+                return $"<nobr>{answer}</nobr>";
+
+            // Match the blank to the answer's natural font width, without padding the
+            // filled word or spreading its letters. Both remain unbroken when wrapping.
+            // Include a following word in both measurements so TMP's last-glyph
+            // bearing is cancelled out and the slot uses the inline advance width.
+            const string suffix = " x";
+            float width = _promptText.GetPreferredValues(answer + suffix, Mathf.Infinity, Mathf.Infinity).x
+                - _promptText.GetPreferredValues(suffix, Mathf.Infinity, Mathf.Infinity).x;
+            string spacing = (width / token.displayText.Length).ToString(
+                "0.###", System.Globalization.CultureInfo.InvariantCulture);
+            return $"<nobr><mspace={spacing}>{new string('_', token.displayText.Length)}</mspace></nobr>";
         });
     }
 
@@ -347,7 +367,7 @@ public class ChallengeModeUI : MonoBehaviour
 
         FocusWordDefinition focus = _controller == null
             ? null
-            : _controller.ResolveFocusWord(session.CurrentUnitDefinition);
+            : _controller.ResolveHintWord(session.CurrentUnitDefinition, session.HintOccurrenceId);
 
         return focus != null && !string.IsNullOrEmpty(focus.meaning)
             ? HintModalCopy.HintStatusLine(focus.displayLabel, focus.meaning)
@@ -395,7 +415,7 @@ public class ChallengeModeUI : MonoBehaviour
     }
 
     /// <summary>
-    /// SALIN-231. Opens the cost-disclosure modal (AC-1). Reads the session; spends
+    /// SALIN-231. Opens the hint confirmation modal. Reads the session; spends
     /// nothing — only HintModal.Confirm reaches RequestHint. The Hint control stays
     /// interactable when the budget is spent so the exhausted card can explain itself
     /// (AC-4) instead of the button silently doing nothing.
@@ -409,13 +429,21 @@ public class ChallengeModeUI : MonoBehaviour
         if (_hintModal == null)
             _hintModal = HintModal.CreateRuntime(transform.parent == null ? transform : transform.parent);
 
-        FocusWordDefinition focus = _controller.ResolveFocusWord(session.CurrentUnitDefinition);
+        ChallengeUnitDefinition unit = session.CurrentUnitDefinition;
+        string occurrenceId = unit?.slots != null && session.CurrentSlotIndex < unit.slots.Length
+            ? unit.slots[session.CurrentSlotIndex]?.expectedOccurrenceId
+            : unit?.tokens != null && session.CurrentSlotIndex < unit.tokens.Length
+                ? unit.tokens[session.CurrentSlotIndex]?.occurrenceId
+                : null;
+        FocusWordDefinition focus = _controller.ResolveHintWord(unit, occurrenceId);
+        _hintModalSession = session;
+        _hintModalUnit = unit;
+        _hintModalSlotIndex = session.CurrentSlotIndex;
         _hintModal.Open(
             session,
             focus == null ? string.Empty : focus.displayLabel,
             focus == null ? string.Empty : focus.meaning,
-            () => _controller?.RequestHint(),
-            () => _controller?.Retry());
+            () => _controller?.RequestHint());
     }
 
     private void SetActionInteractivity(ChallengeSession session)
@@ -441,9 +469,7 @@ public class ChallengeModeUI : MonoBehaviour
         return button;
     }
 
-    // The scroll-family button convention, sourced from ScrollPanelArt so the board,
-    // the modals and the end screens cannot drift apart: gold carries the gameplay
-    // actions, dark slate the utilities — the pair the ready screen ships.
+    // Fallback colors when the shared parchment button artwork is unavailable.
     private static readonly Color GoldButtonFill = ScrollPanelArt.GoldButtonFill;
     private static readonly Color SlateButtonFill = ScrollPanelArt.SlateButtonFill;
 
@@ -483,6 +509,7 @@ public class ChallengeModeUI : MonoBehaviour
             ScrollPanelArt.Inkify(text);
         else
             text.color = labelColor;
+        ScrollPanelArt.ApplyButtonSkin(button, labelColor == ScrollPanelArt.InkColor, fill);
         return button;
     }
 }

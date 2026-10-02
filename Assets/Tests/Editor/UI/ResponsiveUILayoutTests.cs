@@ -8,6 +8,63 @@ namespace Salinlahi.Tests.Editor.UI
     [TestFixture]
     public class ResponsiveUILayoutTests
     {
+        [TestCase("is", 6)]
+        [TestCase("BATA", 6)]
+        [TestCase("PAMANA", 2)]
+        [TestCase("i", 12)]
+        [TestCase("WWW", 6)]
+        public void ChallengePrompt_BlankAndAnswerUseNaturalWordWidth(string answer, int blankLength)
+        {
+            using TestObjects objects = new();
+            ChallengeModeUI ui = CreateChallengeBoard(objects, 1080f, 1920f);
+            ChallengeSequenceSO sequence = ScriptableObject.CreateInstance<ChallengeSequenceSO>();
+            try
+            {
+                sequence.units = new[] { new ChallengeUnitDefinition
+                {
+                    unitId = "spacing", mode = ChallengeMode.SentenceRestoration,
+                    prompt = $"This {new string('_', blankLength)} a test",
+                    tokens = new[] { new ChallengeTokenDefinition { occurrenceId = "answer", displayText = answer } },
+                    slots = new[] { new ChallengeSlotDefinition { slotId = "blank", expectedOccurrenceId = "answer" } },
+                    candidateOccurrenceIds = new[] { "answer" }
+                } };
+                ChallengeSession session = new(sequence);
+                session.Changed += ui.Render;
+                session.Enter();
+                TMP_Text prompt = ui.transform.Find("PromptViewport/Prompt").GetComponent<TMP_Text>();
+                LayoutRebuilder.ForceRebuildLayoutImmediate(prompt.rectTransform);
+
+                // Compare against the actual font's natural answer, rather than a character count.
+                prompt.text = $"This <b>{answer}</b> a test";
+                prompt.ForceMeshUpdate();
+                TMP_CharacterInfo followingWord = prompt.textInfo.characterInfo[prompt.textInfo.characterCount - 6];
+                Vector2 naturalPosition = new(followingWord.origin, followingWord.baseLine);
+                int naturalLineCount = prompt.textInfo.lineCount;
+
+                ui.Render(session);
+                Assert.AreEqual($"This {new string('_', answer.Length)} a test", ReadPrompt(prompt));
+                AssertFollowingWordPosition(prompt, naturalPosition, naturalLineCount);
+
+                session.SubmitPlacement("blank", "answer");
+                Assert.AreEqual($"This {answer} a test", ReadPrompt(prompt));
+                AssertFollowingWordPosition(prompt, naturalPosition, naturalLineCount);
+            }
+            finally
+            {
+                Object.DestroyImmediate(sequence);
+            }
+        }
+
+        private static void AssertFollowingWordPosition(TMP_Text prompt, Vector2 expected, int lineCount)
+        {
+            prompt.ForceMeshUpdate();
+            TMP_CharacterInfo followingWord = prompt.textInfo.characterInfo[prompt.textInfo.characterCount - 6];
+            Assert.AreEqual(lineCount, prompt.textInfo.lineCount);
+            Assert.AreEqual(expected.x, followingWord.origin, 0.5f,
+                "The blank and filled answer must leave natural spacing before the next word.");
+            Assert.AreEqual(expected.y, followingWord.baseLine, 0.5f);
+        }
+
         [TestCase(ChallengeMode.SentenceRestoration)]
         [TestCase(ChallengeMode.ParagraphRestoration)]
         [TestCase(ChallengeMode.TimedMemory)]
@@ -42,7 +99,7 @@ namespace Salinlahi.Tests.Editor.UI
                 session.Enter();
                 TMP_Text prompt = ui.transform.Find("PromptViewport/Prompt").GetComponent<TMP_Text>();
                 TMP_Text status = ui.transform.Find("Status").GetComponent<TMP_Text>();
-                Assert.AreEqual(sequence.units[0].prompt, ReadPrompt(prompt));
+                Assert.AreEqual("Ang mabuting ____ ay gumagawa ng ____.", ReadPrompt(prompt));
                 LayoutRebuilder.ForceRebuildLayoutImmediate(prompt.rectTransform);
                 prompt.ForceMeshUpdate();
                 int initialLineCount = prompt.textInfo.lineCount;
@@ -52,7 +109,7 @@ namespace Salinlahi.Tests.Editor.UI
                 Vector2 initialPanelMax = ((RectTransform)ui.transform).anchorMax;
 
                 session.SubmitPlacement("first", "bata");
-                Assert.AreEqual("Ang mabuting BATA ay gumagawa ng ______.", ReadPrompt(prompt));
+                Assert.AreEqual("Ang mabuting BATA ay gumagawa ng ____.", ReadPrompt(prompt));
                 LayoutRebuilder.ForceRebuildLayoutImmediate(prompt.rectTransform);
                 prompt.ForceMeshUpdate();
                 lastCharacter = prompt.textInfo.characterInfo[prompt.textInfo.characterCount - 1];

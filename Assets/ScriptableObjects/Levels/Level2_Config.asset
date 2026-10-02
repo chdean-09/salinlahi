@@ -23,6 +23,7 @@ MonoBehaviour:
     latinSpelling: BATA
     displayLabel: BATA
     meaning: child
+    hintText: 
     decomposition:
     - symbol: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
       spokenValueId: value.ba
@@ -37,6 +38,7 @@ MonoBehaviour:
     latinSpelling: MATA
     displayLabel: MATA
     meaning: eye
+    hintText: 
     decomposition:
     - symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
       spokenValueId: value.ma
@@ -185,6 +187,7 @@ MonoBehaviour:
     slotGates: []
     slotFloors: []
   enemySpeedMultiplier: 1
+  maxActiveEnemies: 0
   overrideDrawingAccuracyThreshold: 1
   drawingAccuracyThresholdOverride: 0.45
   alwaysShowTutorial: 0

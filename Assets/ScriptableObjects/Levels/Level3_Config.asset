@@ -38,6 +38,7 @@ MonoBehaviour:
     latinSpelling: TAMA
     displayLabel: TAMA
     meaning: correct
+    hintText: 
     decomposition:
     - symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
       spokenValueId: value.ta
@@ -235,6 +236,7 @@ MonoBehaviour:
     slotGates: []
     slotFloors: []
   enemySpeedMultiplier: 1
+  maxActiveEnemies: 0
   overrideDrawingAccuracyThreshold: 1
   drawingAccuracyThresholdOverride: 0.45
   alwaysShowTutorial: 0

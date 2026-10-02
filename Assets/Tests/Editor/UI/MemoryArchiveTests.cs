@@ -349,6 +349,22 @@ namespace Salinlahi.Tests.Editor.UI
 
         // ----- fixtures -----------------------------------------------------------------
 
+        [Test]
+        public void DemoPreview_UnlocksAuthoredMemoriesWithoutChangingSavedIds()
+        {
+            LevelConfigSO authored = AuthoredLevel1();
+            LevelConfigSO unauthored = Level(2, 2, "No Memory");
+            EraConfigSO era = Era("Ugat", 1, authored, unauthored);
+            var savedIds = new List<string>();
+            IReadOnlyList<MemoryArchiveEntry> preview = MemoryArchiveModel.Build(
+                Campaign(era), savedIds, previewAllMemories: true);
+            Assert.IsTrue(preview[0].IsUnlocked);
+            Assert.IsFalse(preview[1].IsUnlocked, "Demo access must not invent a missing memory reward.");
+            Assert.IsEmpty(savedIds, "Previewing memories must not change saved reward state.");
+            Assert.IsFalse(MemoryArchiveModel.BuildForEra(era, savedIds)[0].IsUnlocked,
+                "Normal access must still respect saved locks after demo preview.");
+        }
+
         /// <summary>
         /// Shaped like the shipped Level 1: two focus words with meanings, each decomposing
         /// into two symbols, a memory reward id, and a three-panel memory cutscene.

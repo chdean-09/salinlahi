@@ -278,27 +278,89 @@ public class ChallengeFlowController : MonoBehaviour
     // "replayed audio" and "first symbol" have no BaybayinCharacterSO to read, and
     // media.contextImage is null on every focus word, so "image meaning" has no image.
     //
-    // The meaning lives on LevelConfigSO, which this controller never sees: Play
-    // receives (sequence, levelNumber, policy, evidence). Rather than widen three
-    // Play overloads into six-parameter signatures, LevelFlowController hands the
-    // list over immediately before each Play call. Both of its call sites do so, so
-    // no path plays a sequence against another level's words.
+    // LevelFlowController supplies this level and its campaign before each Play call.
+    // Evidence still joins this level's words by stableId; hints separately resolve
+    // each blank's word using meanings from the current and earlier lessons.
     // -------------------------------------------------------------------------
 
     private IReadOnlyList<FocusWordDefinition> _focusWords;
+    private IReadOnlyList<FocusWordDefinition> _hintWords;
 
     /// <summary>Supplies the level's focus words for hint resolution. Call before Play.</summary>
     public void SetLevelFocusWords(IReadOnlyList<FocusWordDefinition> focusWords)
     {
         _focusWords = focusWords;
+        _hintWords = focusWords;
+    }
+
+    /// <summary>Hints may recall meanings from this level and earlier campaign lessons.</summary>
+    public void SetLevelHintWords(LevelConfigSO level, CampaignConfigSO campaign)
+    {
+        SetLevelFocusWords(level == null ? null : level.focusWords);
+        if (level == null)
+            return;
+
+        var words = new List<FocusWordDefinition>();
+        if (level.focusWords != null)
+            words.AddRange(level.focusWords);
+        foreach (LevelConfigSO earlier in EnemyDebutLookup.FlattenInCampaignOrder(campaign))
+        {
+            if (earlier == level)
+                break;
+            if (earlier.levelNumber >= level.levelNumber)
+                continue;
+            if (earlier.focusWords != null)
+                words.AddRange(earlier.focusWords);
+        }
+        _hintWords = words;
+    }
+
+    /// <summary>
+    /// Resolve the meaning for a specific answer occurrence, independent of mastery evidence.
+    /// Partial-word exercises retain their authored whole-word meaning.
+    /// </summary>
+    public FocusWordDefinition ResolveHintWord(ChallengeUnitDefinition unit, string occurrenceId)
+    {
+        if (unit?.tokens == null || string.IsNullOrEmpty(occurrenceId) || _hintWords == null)
+            return null;
+
+        ChallengeTokenDefinition target = null;
+        foreach (ChallengeTokenDefinition token in unit.tokens)
+        {
+            if (token != null && string.Equals(token.occurrenceId, occurrenceId, System.StringComparison.Ordinal))
+            {
+                target = token;
+                break;
+            }
+        }
+        if (target == null || string.IsNullOrWhiteSpace(target.displayText))
+            return null;
+
+        string spelling = target.displayText.Trim();
+        FocusWordDefinition wholeWord = ResolveFocusWord(unit);
+        if ((unit.mode == ChallengeMode.WordPlacement || unit.mode == ChallengeMode.SentenceRestoration)
+            && wholeWord != null && !string.IsNullOrWhiteSpace(wholeWord.meaning)
+            && !string.IsNullOrEmpty(wholeWord.latinSpelling)
+            && wholeWord.latinSpelling.Length > spelling.Length
+            && (wholeWord.latinSpelling.StartsWith(spelling, System.StringComparison.OrdinalIgnoreCase)
+                || wholeWord.latinSpelling.EndsWith(spelling, System.StringComparison.OrdinalIgnoreCase)))
+            return wholeWord;
+
+        foreach (FocusWordDefinition word in _hintWords)
+        {
+            if (word != null && !string.IsNullOrWhiteSpace(word.meaning)
+                && string.Equals(word.latinSpelling, spelling, System.StringComparison.OrdinalIgnoreCase))
+                return word;
+        }
+        return null;
     }
 
     /// <summary>
     /// The focus word a unit evidences, joined on
     /// ChallengeUnitDefinition.evidenceContentId -> LevelConfigSO.focusWords[*].stableId
     /// (e.g. "level.ugat.05.focus.01"). Null when the unit evidences nothing, when no
-    /// words were supplied, or when the id does not join — all of which leave the modal
-    /// with nothing to sell, so it disables confirm rather than charging for nothing.
+    /// words were supplied, or when the id does not join. Hint resolution uses this
+    /// only to preserve the whole-word meaning of partial-word exercises.
     /// </summary>
     public FocusWordDefinition ResolveFocusWord(ChallengeUnitDefinition unit)
     {

@@ -23,6 +23,7 @@ MonoBehaviour:
     latinSpelling: AWA
     displayLabel: AWA
     meaning: compassion
+    hintText: 
     decomposition:
     - symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
       spokenValueId: value.a
@@ -37,6 +38,7 @@ MonoBehaviour:
     latinSpelling: GAWA
     displayLabel: GAWA
     meaning: action
+    hintText: 
     decomposition:
     - symbol: {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
       spokenValueId: value.ga
@@ -173,6 +175,7 @@ MonoBehaviour:
     slotGates: []
     slotFloors: []
   enemySpeedMultiplier: 1
+  maxActiveEnemies: 0
   overrideDrawingAccuracyThreshold: 0
   drawingAccuracyThresholdOverride: 0.6
   alwaysShowTutorial: 0
@@ -242,6 +245,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
     - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
     - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+    guaranteedCharacters: []
     enemyTypes:
     - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
     - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
@@ -261,6 +265,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
     - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
     - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+    guaranteedCharacters: []
     enemyTypes:
     - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
     - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
@@ -282,6 +287,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
     - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
     - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+    guaranteedCharacters: []
     enemyTypes:
     - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
     - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
@@ -306,6 +312,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
     - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
     - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+    guaranteedCharacters: []
     enemyTypes:
     - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
     - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
