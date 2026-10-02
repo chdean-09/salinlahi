@@ -50,6 +50,11 @@ public class EnemyGlyphBadge : MonoBehaviour
     // from the composed colour so a flash still survives the release fade's SetAlpha calls, the way
     // it did when every routine wrote _renderer.color directly.
     private Color? _flashTint;
+    private float _deceptionClock;
+    private Color? _deceptionTint;
+    private float _deceptionAlpha = 1f;
+    private const float DeceptionNormalSeconds = 2.5f;
+    private const float DeceptionBurstSeconds = 0.2f;
 
     public GlyphBadgeConfigSO Config => _config;
     public SpriteRenderer Renderer => _renderer;
@@ -126,6 +131,8 @@ public class EnemyGlyphBadge : MonoBehaviour
     private void LateUpdate()
     {
         if (_layoutApplied) RecomputeBaseFromParentScale();
+        TickDeception(GameManager.Instance == null || GameManager.Instance.CurrentState == GameState.Playing
+            ? Time.deltaTime : 0f);
         if (_resolutionLock != null)
             _resolutionLock.SetActive(_resolutionBlocked && _renderer != null
                 && _renderer.enabled && _renderer.color.a > 0.05f);
@@ -142,10 +149,7 @@ public class EnemyGlyphBadge : MonoBehaviour
     {
         if (_renderer == null) return;
 
-        bool isContradictingDecoy = _enemy != null
-                                    && _enemy.Data != null
-                                    && _enemy.Data.learningAbility == EnemyLearningAbility.ContradictingDecoy;
-        _renderer.flipX = _baseFlipX ^ isContradictingDecoy;
+        _renderer.flipX = _baseFlipX;
 
         Sprite sprite = ResolveSprite(ch);
         if (sprite == null)
@@ -164,6 +168,44 @@ public class EnemyGlyphBadge : MonoBehaviour
 
         // Whether the fallback is in use depends on which sprite just resolved, so redo the layout.
         RecomputeBaseFromParentScale();
+    }
+
+    /// <summary>Presentation-only Salungat tell; never substitutes or mirrors a glyph.</summary>
+    public void TickDeception(float deltaTime)
+    {
+        if (!isActiveAndEnabled || _enemy == null || _enemy.Data == null || _enemy.IsDying
+            || _enemy.Data.learningAbility != EnemyLearningAbility.ContradictingDecoy
+            || !IsVisible || _covered || IsSwapping || IsPlayingFinalDraw || IsPlayingDecoyReject
+            || _flashTint.HasValue)
+        {
+            ClearDeception();
+            return;
+        }
+
+        _deceptionClock = (_deceptionClock + Mathf.Max(0f, deltaTime))
+            % (DeceptionNormalSeconds + DeceptionBurstSeconds);
+        float burst = _deceptionClock - DeceptionNormalSeconds;
+        bool purple = burst >= 0f && burst < 0.075f;
+        bool green = burst >= 0.1f && burst < 0.175f;
+        _deceptionTint = purple ? new Color(0.8f, 0.35f, 1f)
+            : green ? new Color(0.4f, 1f, 0.55f) : (Color?)null;
+        _deceptionAlpha = _deceptionTint.HasValue ? 0.55f : 1f;
+        float invX = transform.parent != null ? InverseOrOne(transform.parent.lossyScale.x) : 1f;
+        transform.localPosition = _baseLocalPosition
+            + new Vector3((purple ? 0.08f : green ? -0.08f : 0f) * invX, 0f, 0f);
+        ApplyBadgeColor();
+    }
+
+    private void ClearDeception()
+    {
+        bool wasDistorted = _deceptionTint.HasValue;
+        _deceptionClock = 0f;
+        _deceptionTint = null;
+        _deceptionAlpha = 1f;
+        if (!wasDistorted) return;
+        if (!IsSwapping && !IsPlayingFinalDraw && !IsPlayingDecoyReject)
+            transform.localPosition = _baseLocalPosition;
+        ApplyBadgeColor();
     }
 
     public bool IsCovered => _covered;
@@ -282,7 +324,7 @@ public class EnemyGlyphBadge : MonoBehaviour
     {
         if (_renderer == null) return;
 
-        Color tint = _flashTint ?? _baseColor;
+        Color tint = _flashTint ?? _deceptionTint ?? _baseColor;
         if (_resolutionBlocked && !_flashTint.HasValue)
             tint = new Color(tint.r * BlockedTint.r, tint.g * BlockedTint.g, tint.b * BlockedTint.b, tint.a);
 
@@ -298,7 +340,8 @@ public class EnemyGlyphBadge : MonoBehaviour
             tint = new Color(tint.r * falseTint.r, tint.g * falseTint.g, tint.b * falseTint.b, tint.a);
         }
 
-        tint.a = GlyphStainCycle.ResolveBadgeAlpha(_routineAlpha, _showingFalseGlyph, falseAlpha);
+        tint.a = GlyphStainCycle.ResolveBadgeAlpha(_routineAlpha, _showingFalseGlyph, falseAlpha)
+            * (_flashTint.HasValue ? 1f : _deceptionAlpha);
         _renderer.color = tint;
     }
 
@@ -353,6 +396,7 @@ public class EnemyGlyphBadge : MonoBehaviour
     {
         if (_swapRoutine != null) { StopCoroutine(_swapRoutine); _swapRoutine = null; }
         if (_finalDrawRoutine != null) { StopCoroutine(_finalDrawRoutine); _finalDrawRoutine = null; }
+        ClearDeception();
         if (_renderer == null) return;
         _routineAlpha = 0f;
         ApplyBadgeColor();
@@ -374,6 +418,9 @@ public class EnemyGlyphBadge : MonoBehaviour
         _showingFalseGlyph = false;
         _routineAlpha = 1f;
         _flashTint = null;
+        _deceptionClock = 0f;
+        _deceptionTint = null;
+        _deceptionAlpha = 1f;
         if (_renderer != null)
         {
             Color c = _baseColor; c.a = 1f; _renderer.color = c;

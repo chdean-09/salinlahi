@@ -63,6 +63,18 @@ The 15 baseline failures comprise the Level 14 RA asset contract, a Kadena block
 - **REVIEW:** generated font and unrelated asset churn were restored. Existing public pair-named members and the serialized ability enum remain compatible; they now contain at most one victim. Ownership uses the active snapshot instead of introducing a separate registry.
 - **NOT RUN:** production player build and on-device human pacing evaluation.
 
+## Follow-up: Salungat readable tell and required SA carriers
+
+- Salungat now retains its authored glyph orientation. Its badge stays readable for 2.5 seconds, then makes two brief purple/green horizontal flickers in a 0.2-second burst before returning. The effect changes presentation only; decoy rejection and shrine penalties remain unchanged. Hide/pool reset clears distortion, and competing badge feedback takes priority.
+- **OBSERVED:** Level 13 focus words require SA, but its only matching SA enemy is the Salungat decoy. The old resolver supplied a decoy for that needed slot; rejecting a decoy cannot restore it. Needed assignments now prefer an exact real carrier and otherwise use a real carrier from the existing roster. Filler and choice decoys retain their existing resolution. The fallback can retain an archetype's other abilities; it does not create a neutral archetype.
+- **OBSERVED:** orientation checks and the Level 13 required-SA regression failed before the respective fixes.
+- **PASS:** fresh Unity compilation; all 14 Edit Mode badge tests, 6 resolver tests, and 2 Play Mode decoy rejection tests.
+- **PASS:** the added Play Mode integration uses Level 13's actual first-wave character/enemy rosters and focus words, with deterministic timing on a cloned level. Real WaveSpawner, pool, CombatResolver recognition, and presenter restoration advance required SA to NGA and produce NGA on the following spawn. It passed both in the full suite and again after narrowing its character roster to the exact authored wave.
+- **OBSERVED:** full Edit Mode suite: 1,652 total, 1,637 passed, 15 failed. Failing names exactly match the previous 1,647-test baseline. Full Play Mode suite: 266 total, 248 passed, 18 failed; no new failing names against the 265-test/19-failure baseline. The previously failing phaser pulse timing assertion passed this time; no phaser fix is claimed.
+- **OBSERVED:** isolated Level 13 gameplay preview rendered the imported `2-SA_0` badge with flipX false throughout normal, purple/right flicker, green/left flicker, and return. The return restored white/full alpha and the original position. Simulation time was held while stepping the effect; this is visual verification, not a complete human-paced level win.
+- **REVIEW:** the exact first-wave roster was retained in the integration test after review. Generated fonts, unrelated asset serialization, test scenes, and captures are excluded from the commit. The Salungat ability line describes the new visual tell and unchanged penalty; no image references or GUIDs changed.
+- **NOT RUN:** production player build, on-device human pacing evaluation, and a complete live Level 13 victory. The recording's level remains tentative; the Level 13 content defect and required-SA advancement are independently verified.
+
 ## Remaining acceptance work
 
 Run the non-development player on supported phones. Play Levels 11–14 with imperfect short and multi-stroke drawings; verify warning/banner separation, readable blocked glyph locks, no repeated Ragasa/Daan-Lihis modal on ordinary retries, visible central lanes during damage, retained era after retreat/clear, smooth voice dismissal, and no stats overlay through combat taps. Record completion rates and frame-time/GC measurements before declaring the difficulty curve calibrated.

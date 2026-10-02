@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Salungat
   discoverySubtitle: 
   description: Salungat speaks with two heads because Paglimot filled one with memory and the other with contradiction. It carries a character that does not belong to it, trusting haste to turn a familiar mark into a harmful choice.
-  abilityLine: It presents a false character that turns a careless drawing against the Living Scroll.
+  abilityLine: Its badge briefly glitches between readable pauses. Drawing this decoy still harms the Living Scroll.
   moveSpeed: 1.5
   maxHealth: 1
   walkFrames:

@@ -38,7 +38,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
-        public void SetCharacter_MirrorsBadge_ForSalungat()
+        public void SetCharacter_KeepsSalungatCorrectlyOriented()
         {
             BaybayinCharacterSO ch = CreateCharacter("SA", badge: CreateSprite(Color.green));
             (Enemy enemy, EnemyGlyphBadge badge, SpriteRenderer renderer) = CreateEnemyWithBadge(
@@ -47,9 +47,60 @@ namespace Salinlahi.Tests.Editor.Gameplay
 
             badge.Refresh();
 
-            Assert.IsTrue(renderer.flipX);
+            Assert.IsFalse(renderer.flipX);
             Assert.AreSame(ch.badgeSprite, renderer.sprite,
-                "The mirrored tell must keep using the assigned character's badge art.");
+                "The deception tell must keep using the assigned character's badge art.");
+        }
+
+        [Test]
+        public void Salungat_TwoBriefFlickers_RestoreTheSameGlyphColorAndPosition()
+        {
+            var ch = CreateCharacter("SA", badge: CreateSprite(Color.white));
+            var (enemy, badge, renderer) = CreateEnemyWithBadge(ch, EnemyLearningAbility.ContradictingDecoy, true);
+            Vector3 origin = badge.transform.localPosition;
+            badge.TickDeception(2.4f);
+            Assert.AreEqual(Color.white, renderer.color);
+            Assert.AreEqual(origin, badge.transform.localPosition);
+            badge.TickDeception(0.12f);
+            Assert.Greater(renderer.color.b, renderer.color.g, "First flicker is purple.");
+            Assert.Less(renderer.color.a, 1f);
+            Assert.Greater(badge.transform.localPosition.x, origin.x);
+            badge.TickDeception(0.06f);
+            Assert.AreEqual(Color.white, renderer.color, "There is a clean gap between flickers.");
+            Assert.AreEqual(origin, badge.transform.localPosition);
+            badge.TickDeception(0.04f);
+            Assert.Greater(renderer.color.g, renderer.color.b, "Second flicker is green.");
+            Assert.Less(badge.transform.localPosition.x, origin.x);
+            badge.TickDeception(0.09f);
+            Assert.AreEqual(Color.white, renderer.color);
+            Assert.AreEqual(origin, badge.transform.localPosition);
+            Assert.IsFalse(renderer.flipX);
+            Assert.AreEqual(Quaternion.identity, badge.transform.localRotation);
+            Assert.AreSame(ch.badgeSprite, renderer.sprite);
+            Assert.AreSame(ch, enemy.Character);
+            Assert.IsTrue(enemy.IsDecoy);
+            badge.TickDeception(2.39f);
+            Assert.AreEqual(Color.white, renderer.color, "A fresh normal interval follows every burst.");
+        }
+
+        [Test]
+        public void Salungat_PoolResetAndHide_ClearTheDistortion()
+        {
+            var ch = CreateCharacter("SA", badge: CreateSprite(Color.white));
+            var (enemy, badge, renderer) = CreateEnemyWithBadge(ch, EnemyLearningAbility.ContradictingDecoy, true);
+            Vector3 origin = badge.transform.localPosition;
+            badge.TickDeception(2.52f);
+            badge.Hide();
+            Assert.AreEqual(0f, renderer.color.a);
+            Assert.AreEqual(origin, badge.transform.localPosition);
+            badge.Show();
+            badge.TickDeception(2.52f);
+            badge.ResetForPool();
+            badge.Refresh();
+            Assert.AreEqual(Color.white, renderer.color);
+            Assert.AreEqual(origin, badge.transform.localPosition);
+            badge.TickDeception(2.4f);
+            Assert.AreEqual(Color.white, renderer.color);
         }
 
         [Test]
@@ -64,18 +115,18 @@ namespace Salinlahi.Tests.Editor.Gameplay
             badge.Refresh();
 
             Assert.IsFalse(renderer.flipX,
-                "Only Salungat's ContradictingDecoy ability mirrors the glyph badge.");
+                "Decoy glyphs retain their authored orientation.");
         }
 
         [Test]
-        public void ResetForPool_ClearsSalungatMirror_WhenShellIsReused()
+        public void ResetForPool_KeepsAuthoredOrientation_WhenSalungatShellIsReused()
         {
             BaybayinCharacterSO ch = CreateCharacter("SA", badge: CreateSprite(Color.green));
             (Enemy enemy, EnemyGlyphBadge badge, SpriteRenderer renderer) = CreateEnemyWithBadge(
                 ch,
                 EnemyLearningAbility.ContradictingDecoy);
             badge.Refresh();
-            Assert.IsTrue(renderer.flipX);
+            Assert.IsFalse(renderer.flipX);
 
             badge.ResetForPool();
 

@@ -187,6 +187,91 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             return waveManager;
         }
 
+#if UNITY_EDITOR
+        [UnityTest]
+        public IEnumerator Level13_NeededSaDraw_AdvancesRestorationAndTheNextSpawn()
+        {
+            var authored = UnityEditor.AssetDatabase.LoadAssetAtPath<LevelConfigSO>(
+                "Assets/ScriptableObjects/Levels/Level13_Config.asset");
+            Assert.IsNotNull(authored);
+            var level = Object.Instantiate(authored);
+            _objectsToDestroy.Add(level);
+            // Keep the real words and roster; remove pacing delays for a deterministic draw.
+            level.spawnAssignmentPolicy = new SpawnAssignmentPolicy
+            {
+                minSpawnsBeforeNeeded = 0,
+                neededWeight = 1f,
+                choiceMomentSlotIndex = -1,
+                activeSlotWindow = 1
+            };
+
+            var directorGo = new GameObject("Level13_ClueDirector_Test");
+            _objectsToDestroy.Add(directorGo);
+            var director = directorGo.AddComponent<ActiveClueDirector>();
+            director.SetObjectiveSource(new TestClueObjective());
+            var canvasGo = new GameObject("Level13_Hud_Test", typeof(Canvas));
+            _objectsToDestroy.Add(canvasGo);
+            var presenterGo = new GameObject("Level13_Presenter_Test");
+            presenterGo.transform.SetParent(canvasGo.transform);
+            var presenter = presenterGo.AddComponent<ActiveCluePresenter>();
+            presenter.ApplyLevel(level);
+            var mark = GameObject.Find("[Runtime] ActiveClueMark");
+            if (mark != null) _objectsToDestroy.Add(mark);
+
+            var coordinatorGo = new GameObject("Level13_Assignment_Test");
+            _objectsToDestroy.Add(coordinatorGo);
+            var coordinator = coordinatorGo.AddComponent<SpawnAssignmentCoordinator>();
+            coordinator.ApplyLevel(level, presenter);
+            var spawnerGo = new GameObject("Level13_Spawner_Test");
+            _objectsToDestroy.Add(spawnerGo);
+            var spawner = spawnerGo.AddComponent<WaveSpawner>();
+            SetPrivateField(spawner, "_spawnPoints", new[] { spawnerGo.transform, spawnerGo.transform });
+            SetPrivateField(spawner, "_assignmentCoordinator", coordinator);
+            var pool = CreateEnemyPool(CreateEnemyPrefab());
+            var resolverGo = new GameObject("Level13_CombatResolver_Test");
+            _objectsToDestroy.Add(resolverGo);
+            resolverGo.AddComponent<CombatResolver>();
+            yield return null;
+
+            var wave = new WaveDefinition
+            {
+                enemyCount = 1,
+                spawnInterval = 1f,
+                enemyTypes = authored.waves[0].enemyTypes,
+                characters = authored.waves[0].characters
+            };
+            yield return spawner.SpawnWave(wave);
+            var enemies = new List<Enemy>();
+            _tracker.FillActiveEnemiesSnapshot(enemies);
+            Assert.AreEqual(1, enemies.Count);
+            Enemy carrier = enemies[0];
+            Assert.AreEqual("SA", carrier.Character.characterID);
+            Assert.IsFalse(carrier.IsDecoy, "Needed SA must not resolve to Salungat.");
+            director.Reevaluate();
+            Assert.AreSame(carrier, director.CurrentClue);
+            int before = presenter.RestorationState.RestoredSlotCount;
+            EventBus.RaiseCharacterRecognized("SA");
+            yield return new WaitForSeconds(0.3f);
+            Assert.Greater(presenter.RestorationState.RestoredSlotCount, before,
+                "The actual accepted SA draw must restore its slot.");
+            Assert.AreEqual("symbol.nga", presenter.RestorationState.NextTargetSymbolStableId);
+
+            pool.ReturnAllCheckedOut();
+            yield return spawner.SpawnWave(wave);
+            _tracker.FillActiveEnemiesSnapshot(enemies);
+            Assert.AreEqual(1, enemies.Count);
+            Assert.AreEqual("NGA", enemies[0].Character.characterID,
+                "The scheduler must move past SA instead of repeating Salungat forever.");
+            pool.ReturnAllCheckedOut();
+        }
+
+        private sealed class TestClueObjective : IClueObjectiveSource
+        {
+            public bool IsClueCombatActive => true;
+            public IReadOnlyCollection<string> CurrentObjectiveContentIds => System.Array.Empty<string>();
+        }
+#endif
+
         private Enemy CreateEnemyPrefab()
         {
             var prefabGo = new GameObject("EnemyPrefab_Unregister_Test");

@@ -653,7 +653,44 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
         return fromLevel;
     }
 
-    private static EnemyDataSO FindEnemyData(List<EnemyDataSO> candidates, string symbolStableId)
+    /// <summary>Needed slots must have a real carrier; drawing a decoy cannot restore them.</summary>
+    public EnemyDataSO ResolveEnemyData(SpawnAssignment assignment, WaveDefinition wave)
+    {
+        if (assignment.Role != SpawnAssignmentRole.Needed)
+            return ResolveEnemyData(assignment.SymbolStableId, wave);
+        if (string.IsNullOrEmpty(assignment.SymbolStableId))
+            return null;
+
+        EnemyDataSO matching = FindEnemyData(wave?.enemyTypes, assignment.SymbolStableId, false)
+            ?? FindEnemyData(_level?.allowedEnemyTypes, assignment.SymbolStableId, false);
+        if (matching != null)
+            return matching;
+
+        // Use a real-carrier fallback only when no real type owns this symbol.
+        // Never turn Salungat into a real enemy or change the penalty on a filler/choice copy.
+        EnemyDataSO fallback = FindRealCarrier(wave?.enemyTypes)
+            ?? FindRealCarrier(_level?.allowedEnemyTypes);
+        if (!_loggedEnemyRosterFallback)
+        {
+            _loggedEnemyRosterFallback = true;
+            DebugLogger.LogWarning("SpawnAssignmentCoordinator: required symbol '"
+                + assignment.SymbolStableId + "' has no matching real enemy; real carrier fallback: "
+                + (fallback != null ? fallback.name : "none"));
+        }
+        return fallback;
+    }
+
+    private static EnemyDataSO FindRealCarrier(List<EnemyDataSO> candidates)
+    {
+        if (candidates == null) return null;
+        for (int i = 0; i < candidates.Count; i++)
+            if (candidates[i] != null && !candidates[i].isDecoy)
+                return candidates[i];
+        return null;
+    }
+
+    private static EnemyDataSO FindEnemyData(List<EnemyDataSO> candidates, string symbolStableId,
+        bool allowDecoys = true)
     {
         if (candidates == null)
             return null;
@@ -661,7 +698,8 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
         for (int i = 0; i < candidates.Count; i++)
         {
             EnemyDataSO data = candidates[i];
-            if (data?.assignedCharacter != null && data.assignedCharacter.stableId == symbolStableId)
+            if (data?.assignedCharacter != null && (allowDecoys || !data.isDecoy)
+                && data.assignedCharacter.stableId == symbolStableId)
                 return data;
         }
 
