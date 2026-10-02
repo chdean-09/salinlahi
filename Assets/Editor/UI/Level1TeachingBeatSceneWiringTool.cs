@@ -70,10 +70,7 @@ public static class Level1TeachingBeatSceneWiringTool
     private const string BannerTextName = "BannerText";
 
     private const string DrawFeedbackRootName = "DrawFeedback";
-    private const string DrawSiteAnchorName = "DrawSiteAnchor";
     private const string FlightGlyphName = "FlightGlyph";
-    private const string MissGlyphName = "MissGlyph";
-    private const string GhostStrokeOverlayName = "GhostStrokeOverlay";
     private const string DrawFeedbackMessageName = "DrawFeedbackMessage";
 
     private const string AshGustRootName = "[VFX] AshGust";
@@ -117,9 +114,6 @@ public static class Level1TeachingBeatSceneWiringTool
     private const float BannerBottomOffset = 290f;
     private static readonly Vector2 BannerSize = new Vector2(900f, 76f);
 
-    // The authored stroke guide (TraceHintGhost) sits here, so this rect IS the draw site.
-    private static readonly Vector2 DrawSitePosition = new Vector2(0f, -320f);
-    private static readonly Vector2 DrawSiteSize = new Vector2(320f, 320f);
     private static readonly Vector2 BadgeSize = new Vector2(140f, 140f);
 
     private sealed class Report
@@ -551,34 +545,10 @@ public static class Level1TeachingBeatSceneWiringTool
 
         var presenter = Ensure<DrawFeedbackPresenter>(root, report, $"{root.name}.DrawFeedbackPresenter");
 
-        // The draw site: where the player's stroke lands. TraceHintGhost is already authored at this
-        // rect as the stroke guide, so this IS the draw site, and copying it keeps the miss glyph
-        // flashing where the player was just looking.
-        GameObject drawSite = EnsureChild(root.transform, DrawSiteAnchorName, report);
-        RectTransform drawSiteRect = Ensure<RectTransform>(drawSite);
-        Centre(drawSiteRect, DrawSitePosition, DrawSiteSize);
-
         Image flightGlyph = EnsureOverlayImage(root.transform, FlightGlyphName, Vector2.zero, BadgeSize, report);
-        Image missGlyph = EnsureOverlayImage(root.transform, MissGlyphName, DrawSitePosition, BadgeSize, report);
-        Image ghost = EnsureOverlayImage(root.transform, GhostStrokeOverlayName, DrawSitePosition, DrawSiteSize, report);
 
-        // Filled, not Simple. The replay wipes the ideal form on by driving fillAmount from 0 to 1;
-        // the presenter checks the Image type and silently degrades to a plain alpha fade when it is
-        // anything else, so this one property is the difference between a stroke being replayed and
-        // a glyph just appearing.
-        if (ghost.type != Image.Type.Filled)
-        {
-            ghost.type = Image.Type.Filled;
-            report.Wired.Add($"{GhostStrokeOverlayName}.Image.type -> Filled");
-        }
-        else
-        {
-            report.AlreadyCorrect.Add($"{GhostStrokeOverlayName}.Image.type is Filled");
-        }
-
-        ghost.fillMethod = Image.FillMethod.Horizontal;
-        ghost.fillOrigin = (int)Image.OriginHorizontal.Left;
-        ghost.fillAmount = 0f;
+        // No miss glyph, ghost-stroke overlay or draw-site anchor: the presenter stopped drawing
+        // glyph outlines on the field after the 2026-10-02 playtest, so their fields are gone.
 
         // A SECOND message label, not DrawingFeedback's. A syllable needed later is still a kill, so
         // DrawingFeedback's defeat cue fires just after this presenter writes its line; on a shared
@@ -590,12 +560,7 @@ public static class Level1TeachingBeatSceneWiringTool
         ReportSlotAnchorSituation(clue, report);
 
         var so = new SerializedObject(presenter);
-        WireReference(so, "_canvas", hudCanvas, "Presenter._canvas", report);
-        WireReference(so, "_worldCamera", worldCamera, "Presenter._worldCamera", report);
-        WireReference(so, "_drawSiteAnchor", drawSiteRect, "Presenter._drawSiteAnchor", report);
         WireReference(so, "_flightGlyph", flightGlyph, "Presenter._flightGlyph", report);
-        WireReference(so, "_missGlyph", missGlyph, "Presenter._missGlyph", report);
-        WireReference(so, "_ghostStrokeOverlay", ghost, "Presenter._ghostStrokeOverlay", report);
         WireReference(so, "_messageLabel", message, "Presenter._messageLabel", report);
         so.ApplyModifiedPropertiesWithoutUndo();
 
@@ -608,7 +573,6 @@ public static class Level1TeachingBeatSceneWiringTool
             + "it is left empty; the refused-drawing ink fade stays inert until the ink gets a group.");
 
         report.Placed("draw-feedback message", message.rectTransform);
-        report.Placed("draw site / ghost overlay", drawSiteRect);
         report.Notes.Add(OverlapReport(message.rectTransform, "draw-feedback message"));
     }
 

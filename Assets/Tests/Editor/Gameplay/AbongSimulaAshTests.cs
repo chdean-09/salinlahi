@@ -319,7 +319,6 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 }
                 Assert.IsTrue(presenter.WordRestoredLabel == null || !presenter.WordRestoredLabel.gameObject.activeSelf,
                     $"Level {levelNumber}: the gold restoration announcement must never appear.");
-                Assert.IsFalse(GetPrivateField<bool>(presenter, "_instructionSuppressedByCue"));
             }
 
             Assert.IsTrue(presenter.UsesRestorationObjectiveDefinition

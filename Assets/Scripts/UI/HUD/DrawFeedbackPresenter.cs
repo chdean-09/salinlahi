@@ -1,7 +1,6 @@
 using System.Collections;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 /// <summary>
 /// Renders the drawing-feedback states that are neither a plain success nor a plain failure: a
@@ -12,13 +11,18 @@ using UnityEngine.UI;
 /// draw on a filler enemy — which the spawn schedule produces deliberately and often — is correct
 /// recall arriving out of order, and if it renders the same way a miss does, the schedule spends the
 /// level telling the player they were wrong for remembering. So a later-needed or already-restored
-/// draw is answered with a pulse on the slot still to fill, while a miss never
-/// leaves the draw site and dims in place.</para>
+/// draw is answered with a pulse on the slot still to fill, while a miss is only
+/// counted here and answered by DrawingFeedback.</para>
 ///
 /// <para>The later-needed and already-restored states used to fly the badge to their slot as well,
 /// settling as an outline or bouncing off. Removed after the 2026-09-29 playtest: a glyph landing
 /// on a box it did not fill read as a drawing that failed to register, and the only glyph that
 /// travels into a box now is the one that fills it (ActiveCluePresenter's slot flight).</para>
+///
+/// <para>A miss also used to flash the recognised glyph at the draw site and leave it dimmed until
+/// the next stroke, and a forgiven or refused drawing replayed the ideal form over an enemy. Both
+/// removed after the 2026-10-02 playtest: the white outline art read as stray handwriting appearing
+/// on the field at random, not as feedback on the drawing that caused it.</para>
 ///
 /// <para>Every scene reference below is optional. The HUD this belongs on does not carry any of them
 /// yet, and the state this component reports has to stay correct and assertable in the meantime
@@ -28,18 +32,6 @@ using UnityEngine.UI;
 [DisallowMultipleComponent]
 public sealed class DrawFeedbackPresenter : MonoBehaviour
 {
-    [Header("Canvas Wiring")]
-    [Tooltip("Canvas these overlays live under. Used to convert world positions into UI space. "
-             + "Resolved from this object's parents when left unassigned.")]
-    [SerializeField] private Canvas _canvas;
-
-    [Tooltip("Camera that renders the enemies. Falls back to Camera.main when unassigned.")]
-    [SerializeField] private Camera _worldCamera;
-
-    [Tooltip("Where the player's ink sits, so the miss glyph can flash at the draw site rather than "
-             + "somewhere on the HUD the player was not looking.")]
-    [SerializeField] private RectTransform _drawSiteAnchor;
-
     [Header("Target Text Slots")]
     [Tooltip("The target text's slots in reading order — word 0's syllables left to right, then "
              + "word 1's. Index-aligned with the flattened slot list the feedback reports, so the "
@@ -47,13 +39,6 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
     [SerializeField] private RectTransform[] _slotAnchors = new RectTransform[0];
 
     [Header("Overlays")]
-    [Tooltip("Glyph flashed at the draw site on a miss, then left dimmed in place.")]
-    [SerializeField] private Image _missGlyph;
-
-    [Tooltip("Overlay that replays the ideal form. Set its Image Type to Filled for the replay to "
-             + "wipe on as a stroke; any other type fades it in instead.")]
-    [SerializeField] private Image _ghostStrokeOverlay;
-
     [Tooltip("The player's own ink. Held, then faded, after a refused drawing.")]
     [SerializeField] private CanvasGroup _playerInk;
 
@@ -61,24 +46,11 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
     [SerializeField] private TMP_Text _messageLabel;
 
     [Header("Accuracy Response")]
-    [Tooltip("Seconds the ideal form replays for, on a badge, after either accuracy tier. "
-             + "Design value: 1.2.")]
-    [SerializeField, Min(0f)] private float _ghostStrokeReplaySeconds = 1.2f;
-
-    [Tooltip("Seconds a refused drawing's ink stays fully visible before fading. Design value: 0.5. "
-             + "The hold is what makes the replay legible as a correction OF something.")]
+    [Tooltip("Seconds a refused drawing's ink stays fully visible before fading. Design value: 0.5.")]
     [SerializeField, Min(0f)] private float _refusedInkHoldSeconds = 0.5f;
 
     [Tooltip("Seconds the refused ink takes to fade once the hold expires.")]
     [SerializeField, Min(0f)] private float _refusedInkFadeSeconds = 0.25f;
-
-    [Tooltip("Seconds to wait after a forgiven drawing before its silent correction plays. Must "
-             + "outlast CombatResolver's pronunciation lead and the death burst, or the correction "
-             + "lands on an enemy the player is still watching die and reads as part of the kill.")]
-    [SerializeField, Min(0f)] private float _silentCorrectionDelaySeconds = 0.6f;
-
-    [Tooltip("Alpha the replayed ideal form reaches over the badge. An outline, not an occupant.")]
-    [SerializeField, Range(0f, 1f)] private float _ghostOutlineAlpha = 0.45f;
 
     [Header("Cursor Pulse")]
     [Tooltip("How many times the cursor slot pulses after a non-advancing draw. Design value: 2.")]
@@ -89,13 +61,6 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
 
     [Tooltip("Peak scale of a cursor-slot pulse.")]
     [SerializeField, Min(1f)] private float _cursorPulseScale = 1.18f;
-
-    [Header("Miss Response")]
-    [Tooltip("Seconds the missed glyph is shown at full strength before dimming.")]
-    [SerializeField, Min(0f)] private float _missFlashSeconds = 0.35f;
-
-    [Tooltip("Alpha the missed glyph is left at. Design value: 0.30 — present but plainly inert.")]
-    [SerializeField, Range(0f, 1f)] private float _missDimAlpha = 0.3f;
 
     /// <summary>
     /// Diagnostic copy for the last cue. Combat text strips are no longer displayed.
@@ -115,32 +80,14 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
     /// <summary>Already-filled duplicate responses played.</summary>
     public int AlreadyFilledCueCount { get; private set; }
 
-    /// <summary>Miss responses played.</summary>
+    /// <summary>Misses (draws no enemy was carrying) that reached this presenter.</summary>
     public int MissCueCount { get; private set; }
 
-    /// <summary>Silent corrections played after a forgiven drawing.</summary>
-    public int SilentCorrectionCount { get; private set; }
-
-    /// <summary>Correct-form replays played after a refused drawing.</summary>
-    public int RefusedReplayCount { get; private set; }
-
-    // Set when a drawing was accepted below the global default, cleared when the correction it owes
-    // has been scheduled. Latched rather than acted on immediately because the correction belongs to
-    // the kill, and the kill is not known until the text relation arrives.
-    private bool _silentCorrectionPending;
-
-    private Coroutine _replayRoutine;
     private Coroutine _inkRoutine;
-    private Coroutine _missRoutine;
     private Coroutine _pulseRoutine;
 
     private void Awake()
     {
-        if (_canvas == null)
-            _canvas = GetComponentInParent<Canvas>();
-
-        HideOverlay(_missGlyph);
-        HideOverlay(_ghostStrokeOverlay);
         SetMessage(string.Empty);
     }
 
@@ -156,31 +103,20 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
         DrawFeedbackSignals.OnAccuracyResolved -= HandleAccuracyResolved;
         DrawFeedbackSignals.OnTextRelationResolved -= HandleTextRelationResolved;
         EventBus.OnDrawingStarted -= HandleDrawingStarted;
-
-        // A pending correction must not survive the component going away, or the next level's first
-        // clean drawing inherits a correction it never earned.
-        _silentCorrectionPending = false;
     }
 
     /// <summary>
     /// Takes the previous attempt's residue back down as a new stroke begins: the ink faded out by a
-    /// refusal is restored to full, and a dimmed miss glyph is cleared.
+    /// refusal is restored to full.
     /// </summary>
     /// <remarks>
-    /// Both of those are states this component deliberately LEAVES standing so the player can still
-    /// see them while reading the prompt. Something has to retract them, and the next stroke is the
-    /// only honest moment: a timer would take the correction away while it was still being read, and
-    /// leaving them permanently would mean the refusal that faded the ink to zero also made every
-    /// subsequent drawing on this level invisible.
+    /// The faded ink is a state this component deliberately LEAVES standing so the player can still
+    /// see it while reading the prompt. Something has to retract it, and the next stroke is the only
+    /// honest moment: leaving it permanently would mean the refusal that faded the ink to zero also
+    /// made every subsequent drawing on this level invisible.
     /// </remarks>
     public void HandleDrawingStarted()
     {
-        // Also the expiry of any uncollected correction. A forgiven drawing that never reached combat
-        // — consumed by the boss route, or submitted while a tutorial override holds combat — raises
-        // no text relation, so its latch would otherwise still be set when the NEXT drawing's kill
-        // arrives and would hand that kill a correction it did not earn.
-        _silentCorrectionPending = false;
-
         if (_inkRoutine != null)
         {
             StopCoroutine(_inkRoutine);
@@ -189,46 +125,22 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
 
         if (_playerInk != null)
             _playerInk.alpha = 1f;
-
-        if (_missRoutine != null)
-        {
-            StopCoroutine(_missRoutine);
-            _missRoutine = null;
-        }
-
-        HideOverlay(_missGlyph);
     }
 
     /// <summary>
-    /// Plays the response for one accuracy verdict: nothing for a clean drawing, a latched silent
-    /// correction for a forgiven one, and the ink-hold plus correct-form replay for a refused one.
+    /// Plays the response for one accuracy verdict: nothing for a clean or forgiven drawing, and the
+    /// retry prompt plus ink-hold for a refused one.
     /// </summary>
     public void HandleAccuracyResolved(DrawAccuracyReport report)
     {
         LastVerdict = report.Verdict;
 
-        switch (report.Verdict)
-        {
-            case DrawAccuracyVerdict.Accepted:
-                _silentCorrectionPending = false;
-                break;
-
-            case DrawAccuracyVerdict.AcceptedWithSilentCorrection:
-                // No prompt and no interruption. This drawing succeeded in full; the correction is
-                // the only thing owed, and it waits for the kill to finish.
-                _silentCorrectionPending = true;
-                break;
-
-            case DrawAccuracyVerdict.Rejected:
-                _silentCorrectionPending = false;
-                PlayRefusedResponse();
-                break;
-        }
+        if (report.Verdict == DrawAccuracyVerdict.Rejected)
+            PlayRefusedResponse();
     }
 
     /// <summary>
-    /// Plays the response for one draw's relationship to the target text, and settles any silent
-    /// correction the drawing that produced it had owing.
+    /// Plays the response for one draw's relationship to the target text.
     /// </summary>
     public void HandleTextRelationResolved(DrawFeedbackReport report)
     {
@@ -236,8 +148,8 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
 
         // One mapping from relation to copy, in the vocabulary, so the prompts stay readable side by
         // side. Keeping them inline here is how two of them drift into saying the same thing.
-        // NoCarrier deliberately maps to nothing: its line was removed, and the miss now answers
-        // through PlayMissResponse below rather than through the message band.
+        // NoCarrier deliberately maps to nothing: its line was removed, and the miss is answered by
+        // DrawingFeedback rather than through the message band.
         string prompt = DrawFeedbackVocabulary.ForRelation(report.Relation);
         if (!string.IsNullOrEmpty(prompt))
             SetMessage(prompt);
@@ -260,36 +172,8 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
 
             case DrawTextRelation.NoCarrier:
                 MissCueCount++;
-                PlayMissResponse(report.DrawnCharacter);
                 break;
         }
-
-        // Runs for every relation including a clean fill: a forgiven drawing that filled its slot is
-        // still owed its correction, and a forgiven drawing that missed is owed nothing because
-        // nothing died to correct on. ConsumeSilentCorrection settles both.
-        ConsumeSilentCorrection(report);
-    }
-
-    private void ConsumeSilentCorrection(DrawFeedbackReport report)
-    {
-        if (!_silentCorrectionPending)
-            return;
-
-        _silentCorrectionPending = false;
-
-        // The correction is replayed on the badge of the enemy that died, so a draw that killed
-        // nothing has no badge to play it on. Skipping it is right rather than relocating it: the
-        // player has already been told the board carried nothing, and a correct-form replay on top
-        // of that reads as a second, contradictory verdict on the same drawing.
-        if (report.ResolvedTarget == null)
-            return;
-
-        BaybayinCharacterSO form = report.DrawnCharacter;
-        if (form == null)
-            return;
-
-        SilentCorrectionCount++;
-        StartReplay(form, report.ResolvedTarget.transform.position, _silentCorrectionDelaySeconds);
     }
 
     private void PlayRefusedResponse()
@@ -299,17 +183,6 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
         if (_inkRoutine != null)
             StopCoroutine(_inkRoutine);
         _inkRoutine = StartCoroutine(HoldThenFadeInk());
-
-        // The form replayed is the one the player still needs, not the one the recognizer guessed:
-        // a refused stroke's best match is by definition a shape the recognizer did not believe, and
-        // replaying that would teach the miss back to them. The needed glyph comes from the clue
-        // mark, which is the only "this one, now" answer the game has.
-        Enemy clue = ActiveClueDirector.Instance != null ? ActiveClueDirector.Instance.CurrentClue : null;
-        if (clue == null || clue.Character == null)
-            return;
-
-        RefusedReplayCount++;
-        StartReplay(clue.Character, clue.transform.position, _refusedInkHoldSeconds);
     }
 
     private IEnumerator HoldThenFadeInk()
@@ -333,37 +206,6 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
 
         _playerInk.alpha = 0f;
         _inkRoutine = null;
-    }
-
-    private void PlayMissResponse(BaybayinCharacterSO drawnCharacter)
-    {
-        if (_missGlyph == null)
-            return;
-
-        Sprite sprite = ResolveFormSprite(drawnCharacter);
-        if (sprite == null)
-            return;
-
-        if (_missRoutine != null)
-            StopCoroutine(_missRoutine);
-        _missRoutine = StartCoroutine(FlashThenDimMiss(sprite));
-    }
-
-    private IEnumerator FlashThenDimMiss(Sprite sprite)
-    {
-        _missGlyph.sprite = sprite;
-        _missGlyph.enabled = true;
-        SetAlpha(_missGlyph, 1f);
-
-        if (_drawSiteAnchor != null)
-            PlaceAtLocalPointOf(_missGlyph.rectTransform, _drawSiteAnchor);
-
-        yield return WaitUnscaled(_missFlashSeconds);
-
-        // Left dimmed rather than removed. The glyph is a record of what the game understood, and
-        // taking it away would leave the player with a prompt about a syllable they can no longer see.
-        SetAlpha(_missGlyph, _missDimAlpha);
-        _missRoutine = null;
     }
 
     private void StartCursorPulse(int cursorSlotIndex)
@@ -399,77 +241,6 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
         _pulseRoutine = null;
     }
 
-    private void StartReplay(BaybayinCharacterSO form, Vector3 worldPoint, float delaySeconds)
-    {
-        if (_ghostStrokeOverlay == null)
-            return;
-
-        Sprite sprite = ResolveFormSprite(form);
-        if (sprite == null)
-            return;
-
-        if (_replayRoutine != null)
-        {
-            StopCoroutine(_replayRoutine);
-        }
-
-        _replayRoutine = StartCoroutine(ReplayForm(sprite, worldPoint, delaySeconds));
-    }
-
-    /// <summary>
-    /// Wipes the ideal form on over the badge, then clears it.
-    /// </summary>
-    /// <remarks>
-    /// A wipe rather than a true stroke-order animation. The recognition templates hold point clouds,
-    /// not ordered strokes with timing, so a faithful replay would need stroke data that does not
-    /// exist in the project yet. A directional reveal of <c>glyphOutlineSprite</c> — the same bare
-    /// outline the Tracing Dojo's guide and the trace hint already use — gives the form the sense of
-    /// being drawn rather than appearing, which is what the correction needs to carry, and needs no
-    /// new art. Set the overlay Image's Type to Filled to get the wipe; any other type fades instead.
-    /// </remarks>
-    private IEnumerator ReplayForm(Sprite sprite, Vector3 worldPoint, float delaySeconds)
-    {
-        yield return WaitUnscaled(delaySeconds);
-
-        _ghostStrokeOverlay.sprite = sprite;
-        _ghostStrokeOverlay.enabled = true;
-        TryPlaceOverWorldPoint(_ghostStrokeOverlay.rectTransform, worldPoint);
-
-        bool wipes = _ghostStrokeOverlay.type == Image.Type.Filled;
-        SetAlpha(_ghostStrokeOverlay, wipes ? _ghostOutlineAlpha : 0f);
-
-        float elapsed = 0f;
-        while (elapsed < _ghostStrokeReplaySeconds)
-        {
-            elapsed += Time.unscaledDeltaTime;
-            float t = Mathf.Clamp01(elapsed / _ghostStrokeReplaySeconds);
-
-            if (wipes)
-                _ghostStrokeOverlay.fillAmount = t;
-            else
-                SetAlpha(_ghostStrokeOverlay, _ghostOutlineAlpha * t);
-
-            yield return null;
-        }
-
-        HideOverlay(_ghostStrokeOverlay);
-        _replayRoutine = null;
-    }
-
-    /// <summary>
-    /// Prefers <c>glyphOutlineSprite</c>, the bare glyph generated from the recognition templates,
-    /// and falls back to <c>badgeSprite</c>. Never <c>displaySprite</c>: that is the learning card
-    /// with the romanised syllable printed on it, so using it here would answer in Latin script a
-    /// question the player is being asked in Baybayin.
-    /// </summary>
-    private static Sprite ResolveFormSprite(BaybayinCharacterSO character)
-    {
-        if (character == null)
-            return null;
-
-        return character.glyphOutlineSprite != null ? character.glyphOutlineSprite : character.badgeSprite;
-    }
-
     /// <summary>
     /// The rect a badge should fly to for one flattened target-text slot.
     ///
@@ -501,74 +272,6 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
             return null;
 
         return _slotAnchors[slotIndex];
-    }
-
-    /// <summary>
-    /// Moves <paramref name="target"/> so it sits over <paramref name="worldPoint"/>. False when the
-    /// conversion has no camera or no rect parent to resolve against.
-    /// </summary>
-    private bool TryPlaceOverWorldPoint(RectTransform target, Vector3 worldPoint)
-    {
-        Camera world = _worldCamera != null ? _worldCamera : Camera.main;
-        if (target == null || world == null)
-            return false;
-
-        if (!(target.parent is RectTransform parent))
-            return false;
-
-        Vector2 screenPoint = world.WorldToScreenPoint(worldPoint);
-        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                parent, screenPoint, UiCamera, out Vector2 local))
-            return false;
-
-        target.anchoredPosition = local;
-        return true;
-    }
-
-    private void PlaceAtLocalPointOf(RectTransform target, RectTransform reference)
-    {
-        if (target != null && reference != null)
-            target.anchoredPosition = LocalPointOf(target, reference);
-    }
-
-    /// <summary>
-    /// <paramref name="reference"/>'s position expressed in <paramref name="target"/>'s parent
-    /// space, so a UI overlay can be moved to another UI element regardless of their anchoring.
-    /// </summary>
-    private Vector2 LocalPointOf(RectTransform target, RectTransform reference)
-    {
-        if (!(target.parent is RectTransform parent))
-            return target.anchoredPosition;
-
-        Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(UiCamera, reference.position);
-        return RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            parent, screenPoint, UiCamera, out Vector2 local)
-            ? local
-            : target.anchoredPosition;
-    }
-
-    // Overlay canvases pass a null camera to the rect utilities; every other render mode needs the
-    // canvas's own camera or the screen point lands in the wrong space.
-    private Camera UiCamera =>
-        _canvas != null && _canvas.renderMode != RenderMode.ScreenSpaceOverlay ? _canvas.worldCamera : null;
-
-    private static void SetAlpha(Image image, float alpha)
-    {
-        if (image == null)
-            return;
-
-        Color color = image.color;
-        color.a = alpha;
-        image.color = color;
-    }
-
-    private static void HideOverlay(Image image)
-    {
-        if (image == null)
-            return;
-
-        image.enabled = false;
-        SetAlpha(image, 0f);
     }
 
     // Unscaled throughout: an enemy introduction runs the level at timeScale 0.15, and feedback the

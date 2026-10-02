@@ -284,18 +284,16 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
-        public void WordRestoredCue_HidesAuthoredLabelWithoutSuppressingInstruction()
+        public void WordRestoredCue_HidesAuthoredLabelAndRecordsRestoration()
         {
             ActiveCluePresenter presenter = CreatePresenter(out RectTransform rail, out _);
             TextMeshProUGUI label = CreateLabel(rail, "Restored: stale word");
             SetPrivateField(presenter, "_wordRestoredText", label);
-            SetPrivateField(presenter, "_instructionSuppressedByCue", true);
 
             InvokeRequired(presenter, "ShowWordRestoredCue", "Restored: DALA");
 
             Assert.IsFalse(label.gameObject.activeSelf);
-            Assert.IsFalse(GetPrivateField<bool>(presenter, "_instructionSuppressedByCue"));
-            Assert.IsNull(GetPrivateField<GameObject>(presenter, "_runtimeWordRestoredObject"));
+            Assert.AreEqual("Restored: DALA", presenter.LastWordRestoredMessage);
             Assert.AreEqual(1, presenter.WordRestoredCueCount);
         }
 
