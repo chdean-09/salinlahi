@@ -44,6 +44,15 @@ The 15 baseline failures comprise the Level 14 RA asset contract, a Kadena block
 - **OBSERVED:** full Edit Mode suite: 1,640 total, 1,625 passed, 15 failed. Failed names exactly match the stored 1,629-test baseline.
 - **OBSERVED:** live Level 12 replay submitted 160 touch events / 131 captured points across two LA strokes. Recognition returned LA at 0.978, with GA second at 0.738. Combat reported blocked LA with no damage; GA retained 2 HP and LA retained 1 HP. Fresh screen capture showed no orphan horizontal connectors. Simulation time was held for inspection; this does not establish on-device handwriting accuracy.
 
+## Follow-up: Gapos source visibility and direct roots
+
+- Gapos now waits until its body position enters the active gameplay camera's viewport before applying locks. Leaving view, moving behind the camera, or being excluded by the camera's culling mask releases its locks. Without an active gameplay camera, it does not bind.
+- Two independent root strips now connect Gapos's body to the selected victims' glyph badges. One victim also receives a direct root. Gapos's own GA badge stays unobstructed, and the next required glyph remains contextually open. Kadena retains its existing single chain.
+- Existing root sprites, sorting, scale compensation, and pooled ownership are reused; no authored sprite, scene, prefab, or ScriptableObject references changed.
+- **PASS:** fresh Unity compilation; 17 focused Edit Mode connector checks; 4 Play Mode connector checks, including view entry/exit and defeat cleanup. Before implementation, the off-screen gate and source-endpoint checks failed as expected.
+- **OBSERVED:** full Edit Mode suite: 1,646 total, 1,631 passed, 15 failed. Full Play Mode suite: 264 total, 245 passed, 19 failed. Both sets of failing names exactly match their stored baselines.
+- **OBSERVED:** isolated live Level 12 check: off-screen Gapos left LA and BA unlocked with roots hidden; entering view locked both victims and showed two direct roots while GA stayed unlocked; leaving view cleared both victim lists and hid the roots. Simulation time was held for inspection. Temporary actors and captures were removed without saving scene changes.
+
 ## Remaining acceptance work
 
 Run the non-development player on supported phones. Play Levels 11–14 with imperfect short and multi-stroke drawings; verify warning/banner separation, readable blocked glyph locks, no repeated Ragasa/Daan-Lihis modal on ordinary retries, visible central lanes during damage, retained era after retreat/clear, smooth voice dismissal, and no stats overlay through combat taps. Record completion rates and frame-time/GC measurements before declaring the difficulty curve calibrated.

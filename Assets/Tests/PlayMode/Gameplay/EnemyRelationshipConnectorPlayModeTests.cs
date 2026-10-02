@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -9,6 +10,19 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
     public class EnemyRelationshipConnectorPlayModeTests
     {
         private readonly List<Object> _objectsToDestroy = new();
+        private Camera _worldCamera;
+
+        [SetUp]
+        public void SetUp()
+        {
+            var cameraGo = new GameObject("GaposPlayModeVisibilityCamera");
+            _objectsToDestroy.Add(cameraGo);
+            _worldCamera = cameraGo.AddComponent<Camera>();
+            _worldCamera.orthographic = true;
+            _worldCamera.orthographicSize = 5f;
+            _worldCamera.aspect = 1f;
+            _worldCamera.transform.position = new Vector3(0f, 0f, -10f);
+        }
 
         [UnityTearDown]
         public IEnumerator TearDown()
@@ -20,6 +34,34 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             }
 
             _objectsToDestroy.Clear();
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator Gapos_EnteringAndLeavingView_ArmsAndReleasesItsTether()
+        {
+            CreateTracker();
+            ConfigureObjective();
+            Enemy gapos = CreateEnemy(CreateData("gapos", EnemyLearningAbility.BoundPair, false,
+                CreateTestSprites()), "GA", 0f, 7f);
+            Enemy target = CreateEnemy(CreateData("target", EnemyLearningAbility.None, false, null), "BA", 1f, 1f);
+            var ability = gapos.GetComponent<EnemyLearningAbilityController>();
+            var connector = gapos.GetComponent<EnemyRelationshipConnector>();
+            ability.Tick(0f);
+            connector.Tick();
+            Assert.IsFalse(target.IsResolutionBlocked);
+            Assert.IsFalse(connector.IsVisible);
+            gapos.transform.position = new Vector3(0f, 4f, 0f);
+            ability.Tick(0f);
+            connector.Tick();
+            Assert.IsTrue(target.IsResolutionBlocked);
+            Assert.AreSame(gapos, connector.FirstTarget);
+            Assert.AreSame(target, connector.SecondTarget);
+            gapos.transform.position = new Vector3(0f, 7f, 0f);
+            ability.Tick(0f);
+            connector.Tick();
+            Assert.IsFalse(target.IsResolutionBlocked);
+            Assert.IsFalse(connector.IsVisible);
             yield return null;
         }
 
@@ -195,6 +237,10 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Enemy enemy = enemyObject.AddComponent<Enemy>();
             enemyObject.AddComponent<EnemyHurtFeedback>();
             Assert.IsTrue(enemy.Initialize(data));
+            var ability = enemy.GetComponent<EnemyLearningAbilityController>();
+            if (ability != null)
+                typeof(EnemyLearningAbilityController).GetField("_worldCamera", BindingFlags.Instance | BindingFlags.NonPublic)
+                    .SetValue(ability, _worldCamera);
             return enemy;
         }
     }

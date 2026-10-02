@@ -4,12 +4,19 @@ using UnityEngine;
 [RequireComponent(typeof(Enemy))]
 public sealed class EnemyRelationshipConnector : MonoBehaviour
 {
+    private sealed class LinkVisual
+    {
+        public GameObject Root;
+        public SpriteRenderer FirstEndpoint;
+        public SpriteRenderer Middle;
+        public SpriteRenderer SecondEndpoint;
+    }
+
     private Enemy _owner;
     private EnemyDataSO _data;
     private GameObject _visualRoot;
-    private SpriteRenderer _firstEndpoint;
-    private SpriteRenderer _middle;
-    private SpriteRenderer _secondEndpoint;
+    private LinkVisual _primaryLink;
+    private LinkVisual _secondaryLink;
 
     public bool IsVisible => _visualRoot != null && _visualRoot.activeSelf;
     public Enemy FirstTarget { get; private set; }
@@ -105,10 +112,37 @@ public sealed class EnemyRelationshipConnector : MonoBehaviour
 
         EnsureRenderers();
         ApplySpritesAndSorting();
-        if (!PositionBetween(firstAnchor.position, secondAnchor.position, definition))
+        Vector3 ownerScale = transform.lossyScale;
+        if (Mathf.Approximately(ownerScale.x, 0f) || Mathf.Approximately(ownerScale.y, 0f)
+            || Mathf.Approximately(ownerScale.z, 0f))
         {
             Hide();
             return;
+        }
+        _visualRoot.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+        _visualRoot.transform.localScale = new Vector3(
+            1f / ownerScale.x, 1f / ownerScale.y, 1f / ownerScale.z);
+        if (!PositionBetween(_primaryLink, firstAnchor.position, secondAnchor.position, definition))
+        {
+            Hide();
+            return;
+        }
+        _primaryLink.Root.SetActive(true);
+        if (_secondaryLink != null)
+        {
+            _secondaryLink.Root.SetActive(false);
+            var learning = _owner.GetComponent<EnemyLearningAbilityController>();
+            if (_data.learningAbility == EnemyLearningAbility.BoundPair
+                && learning != null && learning.VisualPair.Count > 1)
+            {
+                Enemy other = learning.VisualPair[1];
+                if (IsLiveTarget(other))
+                {
+                    Transform otherAnchor = ResolveAnchor(other);
+                    _secondaryLink.Root.SetActive(PositionBetween(_secondaryLink,
+                        firstAnchor.position, otherAnchor.position, definition));
+                }
+            }
         }
         FirstTarget = first;
         SecondTarget = second;
@@ -138,12 +172,12 @@ public sealed class EnemyRelationshipConnector : MonoBehaviour
         if (learning == null || !learning.enabled
             || learning.Ability != EnemyLearningAbility.BoundPair
             || learning.IsSuppressedForIntroductionSpawn
-            || learning.VisualPair == null || learning.VisualPair.Count < 2)
+            || learning.VisualPair == null || learning.VisualPair.Count == 0)
             return false;
 
-        first = learning.VisualPair[0];
-        second = learning.VisualPair[1];
-        return IsLiveTarget(first) && IsLiveTarget(second) && first != second;
+        first = _owner;
+        second = learning.VisualPair[0];
+        return IsLiveTarget(second);
     }
 
     private bool IsLiveTarget(Enemy target)
@@ -152,16 +186,20 @@ public sealed class EnemyRelationshipConnector : MonoBehaviour
             && target.gameObject.activeInHierarchy && !target.IsDying;
     }
 
-    private static Transform ResolveAnchor(Enemy enemy)
+    private Transform ResolveAnchor(Enemy enemy)
     {
         if (enemy == null)
             return null;
+
+        // Gapos's body is the source; leave its own GA badge unobstructed as the counter.
+        if (enemy == _owner && _data.learningAbility == EnemyLearningAbility.BoundPair)
+            return enemy.transform;
 
         EnemyGlyphBadge badge = enemy.GlyphBadge;
         return badge != null && badge.isActiveAndEnabled ? badge.transform : enemy.transform;
     }
 
-    private bool PositionBetween(Vector3 first, Vector3 second, EnemyRelationshipVisualDefinition definition)
+    private bool PositionBetween(LinkVisual link, Vector3 first, Vector3 second, EnemyRelationshipVisualDefinition definition)
     {
         Vector3 delta = second - first;
         float distance = delta.magnitude;
@@ -171,38 +209,32 @@ public sealed class EnemyRelationshipConnector : MonoBehaviour
         float endpointLength = Mathf.Min(definition.endpointLength, distance * 0.45f);
         float middleLength = Mathf.Max(0f, distance - endpointLength * 2f);
         float angle = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
-        Vector3 ownerScale = transform.lossyScale;
-        if (Mathf.Approximately(ownerScale.x, 0f) || Mathf.Approximately(ownerScale.y, 0f)
-            || Mathf.Approximately(ownerScale.z, 0f))
-            return false;
-        _visualRoot.transform.SetPositionAndRotation(
+        link.Root.transform.SetPositionAndRotation(
             (first + second) * 0.5f,
             Quaternion.Euler(0f, 0f, angle));
-        _visualRoot.transform.localScale = new Vector3(
-            1f / ownerScale.x, 1f / ownerScale.y, 1f / ownerScale.z);
-        _visualRoot.transform.position = new Vector3(
-            _visualRoot.transform.position.x,
-            _visualRoot.transform.position.y,
+        link.Root.transform.position = new Vector3(
+            link.Root.transform.position.x,
+            link.Root.transform.position.y,
             Mathf.Min(first.z, second.z) - 0.01f);
 
-        PlaceEndpoint(_firstEndpoint, -distance * 0.5f + endpointLength * 0.5f,
+        PlaceEndpoint(link.FirstEndpoint, -distance * 0.5f + endpointLength * 0.5f,
             definition.firstEndpoint, endpointLength, definition.endpointHeight);
-        PlaceEndpoint(_secondEndpoint, distance * 0.5f - endpointLength * 0.5f,
+        PlaceEndpoint(link.SecondEndpoint, distance * 0.5f - endpointLength * 0.5f,
             definition.secondEndpoint, endpointLength, definition.endpointHeight);
 
-        _middle.transform.localPosition = new Vector3(0f, 0f, 0f);
+        link.Middle.transform.localPosition = Vector3.zero;
         if (definition.bodyMode == EnemyRelationshipBodyMode.Tile)
         {
-            _middle.drawMode = SpriteDrawMode.Tiled;
-            _middle.size = new Vector2(middleLength, definition.bodyHeight);
-            _middle.transform.localScale = Vector3.one;
+            link.Middle.drawMode = SpriteDrawMode.Tiled;
+            link.Middle.size = new Vector2(middleLength, definition.bodyHeight);
+            link.Middle.transform.localScale = Vector3.one;
         }
         else
         {
-            _middle.drawMode = SpriteDrawMode.Simple;
-            _middle.transform.localScale = new Vector3(
-                middleLength / Mathf.Max(0.001f, _middle.sprite.bounds.size.x),
-                definition.bodyHeight / Mathf.Max(0.001f, _middle.sprite.bounds.size.y),
+            link.Middle.drawMode = SpriteDrawMode.Simple;
+            link.Middle.transform.localScale = new Vector3(
+                middleLength / Mathf.Max(0.001f, link.Middle.sprite.bounds.size.x),
+                definition.bodyHeight / Mathf.Max(0.001f, link.Middle.sprite.bounds.size.y),
                 1f);
         }
 
@@ -220,44 +252,63 @@ public sealed class EnemyRelationshipConnector : MonoBehaviour
 
     private void EnsureRenderers()
     {
-        if (_visualRoot != null)
-            return;
-
-        _visualRoot = new GameObject($"{name}_RelationshipVisual")
+        if (_visualRoot == null)
         {
-            hideFlags = HideFlags.HideAndDontSave
-        };
-        // Edit Mode destruction does not invoke this component's OnDestroy. Hierarchy ownership
-        // also cleans up hidden visuals when a test enemy or its scene is destroyed.
-        _visualRoot.transform.SetParent(transform, true);
-        _firstEndpoint = CreateRenderer("FirstEndpoint");
-        _middle = CreateRenderer("Middle");
-        _secondEndpoint = CreateRenderer("SecondEndpoint");
-        _visualRoot.SetActive(false);
+            _visualRoot = new GameObject($"{name}_RelationshipVisual")
+            {
+                hideFlags = HideFlags.HideAndDontSave
+            };
+            // Hierarchy ownership cleans up hidden visuals in Edit Mode and on scene unload.
+            _visualRoot.transform.SetParent(transform, true);
+            _visualRoot.SetActive(false);
+            _primaryLink = CreateLink("FirstLink");
+        }
+        if (_data.learningAbility == EnemyLearningAbility.BoundPair && _secondaryLink == null)
+            _secondaryLink = CreateLink("SecondLink");
     }
 
-    private SpriteRenderer CreateRenderer(string childName)
+    private LinkVisual CreateLink(string name)
+    {
+        var root = new GameObject(name) { hideFlags = HideFlags.HideAndDontSave };
+        root.transform.SetParent(_visualRoot.transform, false);
+        root.SetActive(false);
+        return new LinkVisual
+        {
+            Root = root,
+            FirstEndpoint = CreateRenderer(root.transform, "FirstEndpoint"),
+            Middle = CreateRenderer(root.transform, "Middle"),
+            SecondEndpoint = CreateRenderer(root.transform, "SecondEndpoint")
+        };
+    }
+
+    private static SpriteRenderer CreateRenderer(Transform parent, string childName)
     {
         var child = new GameObject(childName)
         {
             hideFlags = HideFlags.HideAndDontSave
         };
-        child.transform.SetParent(_visualRoot.transform, false);
+        child.transform.SetParent(parent, false);
         return child.AddComponent<SpriteRenderer>();
     }
 
     private void ApplySpritesAndSorting()
     {
+        ApplySpritesAndSorting(_primaryLink);
+        if (_secondaryLink != null) ApplySpritesAndSorting(_secondaryLink);
+    }
+
+    private void ApplySpritesAndSorting(LinkVisual link)
+    {
         EnemyRelationshipVisualDefinition definition = _data.relationshipVisual;
-        _firstEndpoint.sprite = definition.firstEndpoint;
-        _middle.sprite = definition.middle;
-        _secondEndpoint.sprite = definition.secondEndpoint;
+        link.FirstEndpoint.sprite = definition.firstEndpoint;
+        link.Middle.sprite = definition.middle;
+        link.SecondEndpoint.sprite = definition.secondEndpoint;
 
         SpriteRenderer ownerRenderer = _owner.GetComponent<SpriteRenderer>();
         int layerId = ownerRenderer != null ? ownerRenderer.sortingLayerID : 0;
-        SetSorting(_firstEndpoint, layerId, definition.sortingOrder);
-        SetSorting(_middle, layerId, definition.sortingOrder);
-        SetSorting(_secondEndpoint, layerId, definition.sortingOrder);
+        SetSorting(link.FirstEndpoint, layerId, definition.sortingOrder);
+        SetSorting(link.Middle, layerId, definition.sortingOrder);
+        SetSorting(link.SecondEndpoint, layerId, definition.sortingOrder);
     }
 
     private static void SetSorting(SpriteRenderer renderer, int sortingLayerId, int sortingOrder)

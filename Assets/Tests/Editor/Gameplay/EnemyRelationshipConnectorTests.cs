@@ -12,6 +12,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
     {
         private readonly List<Object> _objectsToDestroy = new();
         private ActiveEnemyTracker _tracker;
+        private Camera _worldCamera;
 
         [SetUp]
         public void SetUp()
@@ -20,6 +21,13 @@ namespace Salinlahi.Tests.Editor.Gameplay
             _tracker = trackerGo.AddComponent<ActiveEnemyTracker>();
             _objectsToDestroy.Add(trackerGo);
             SetSingletonInstance(_tracker);
+            var cameraGo = new GameObject("GaposVisibilityTestCamera");
+            _objectsToDestroy.Add(cameraGo);
+            _worldCamera = cameraGo.AddComponent<Camera>();
+            _worldCamera.orthographic = true;
+            _worldCamera.orthographicSize = 5f;
+            _worldCamera.aspect = 1f;
+            _worldCamera.transform.position = new Vector3(0f, 0f, -10f);
         }
 
         [TearDown]
@@ -39,6 +47,50 @@ namespace Salinlahi.Tests.Editor.Gameplay
                     Object.DestroyImmediate(_objectsToDestroy[i]);
             }
             _objectsToDestroy.Clear();
+        }
+
+        [TestCase(0f, 6f, 0f)]
+        [TestCase(0f, -6f, 0f)]
+        [TestCase(6f, 0f, 0f)]
+        [TestCase(-6f, 0f, 0f)]
+        [TestCase(0f, 0f, -11f)]
+        public void Gapos_OnlyLocksTargetsWhileItsBodyIsInsideTheGameplayView(float x, float y, float z)
+        {
+            ConfigureObjective("HA");
+            var data = CreateData("gapos", EnemyLearningAbility.BoundPair,
+                relationshipVisual: CreateVisual(CreateTestSprites()));
+            Enemy gapos = CreateEnemy(data, "GA", x, y);
+            gapos.transform.position = new Vector3(x, y, z);
+            Enemy target = CreateEnemy(CreateData("target"), "BA", 0f, 1f);
+            var ability = gapos.GetComponent<EnemyLearningAbilityController>();
+            var connector = gapos.GetComponent<EnemyRelationshipConnector>();
+            ability.Tick(0f);
+            connector.Tick();
+            Assert.IsFalse(target.IsResolutionBlocked, "An off-screen Gapos must not lock a visible enemy.");
+            Assert.IsFalse(connector.IsVisible);
+            gapos.transform.position = new Vector3(1f, 4f, 0f);
+            ability.Tick(0f);
+            connector.Tick();
+            Assert.IsTrue(target.IsResolutionBlocked);
+            Assert.IsTrue(connector.IsVisible, "One victim should still have a direct tether from Gapos.");
+            Assert.AreSame(gapos, connector.FirstTarget);
+            Assert.AreSame(target, connector.SecondTarget);
+            gapos.transform.position = new Vector3(6f, 4f, 0f);
+            ability.Tick(0f);
+            connector.Tick();
+            Assert.IsFalse(target.IsResolutionBlocked, "Leaving the view must release the lock.");
+            Assert.IsFalse(connector.IsVisible);
+        }
+
+        [Test]
+        public void Gapos_DoesNotLockTargetsWhenTheGameplayCameraDoesNotRenderItsLayer()
+        {
+            ConfigureObjective("HA");
+            Enemy gapos = CreateEnemy(CreateData("gapos", EnemyLearningAbility.BoundPair), "GA", 0f, 0f);
+            Enemy target = CreateEnemy(CreateData("target"), "BA", 1f, 0f);
+            _worldCamera.cullingMask = 0;
+            gapos.GetComponent<EnemyLearningAbilityController>().Tick(0f);
+            Assert.IsFalse(target.IsResolutionBlocked);
         }
 
         [Test]
@@ -75,14 +127,22 @@ namespace Salinlahi.Tests.Editor.Gameplay
             connector.Tick();
 
             Assert.IsTrue(connector.IsVisible);
-            Assert.AreSame(firstCandidate, connector.FirstTarget);
-            Assert.AreSame(secondCandidate, connector.SecondTarget);
+            Assert.AreSame(gapos, connector.FirstTarget);
+            Assert.AreSame(firstCandidate, connector.SecondTarget);
             Assert.AreNotSame(thirdCandidate, connector.SecondTarget);
-            Assert.AreEqual(firstCandidate.transform.position, connector.FirstAnchorWorldPosition);
+            Assert.AreEqual(gapos.transform.position, connector.FirstAnchorWorldPosition);
             var visual = (GameObject)typeof(EnemyRelationshipConnector)
                 .GetField("_visualRoot", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(connector);
             Assert.AreEqual(Vector3.one, visual.transform.lossyScale,
                 "Ownership must preserve connector dimensions when the enemy shell is scaled.");
+            Transform firstLink = visual.transform.Find("FirstLink");
+            Transform secondLink = visual.transform.Find("SecondLink");
+            Assert.IsTrue(firstLink.gameObject.activeInHierarchy);
+            Assert.IsTrue(secondLink.gameObject.activeInHierarchy);
+            Assert.AreEqual((gapos.transform.position + firstCandidate.transform.position) * 0.5f,
+                new Vector3(firstLink.position.x, firstLink.position.y, 0f));
+            Assert.AreEqual((gapos.transform.position + secondCandidate.transform.position) * 0.5f,
+                new Vector3(secondLink.position.x, secondLink.position.y, 0f));
             Assert.IsTrue(firstCandidate.IsResolutionBlocked);
             Assert.IsTrue(secondCandidate.IsResolutionBlocked);
 
@@ -91,11 +151,11 @@ namespace Salinlahi.Tests.Editor.Gameplay
             secondCandidate.RemoveResolutionBlock(ability);
             connector.Tick();
             Assert.IsTrue(connector.IsVisible);
-            Assert.AreSame(secondCandidate, connector.SecondTarget);
+            Assert.AreSame(firstCandidate, connector.SecondTarget);
 
-            secondCandidate.transform.position = new Vector3(3f, 2f, 0f);
+            firstCandidate.transform.position = new Vector3(1f, 2f, 0f);
             connector.Tick();
-            Assert.AreEqual(secondCandidate.transform.position, connector.SecondAnchorWorldPosition);
+            Assert.AreEqual(firstCandidate.transform.position, connector.SecondAnchorWorldPosition);
 
             ability.SetSuppressedForIntroductionSpawn(true);
             ability.Tick(0f);
@@ -307,8 +367,8 @@ namespace Salinlahi.Tests.Editor.Gameplay
             gaposAbility.SetSuppressedForIntroductionSpawn(false);
             gaposAbility.Tick(0f);
             gapos.GetComponent<EnemyRelationshipConnector>().Tick();
-            Assert.AreSame(gaposFirst, gapos.GetComponent<EnemyRelationshipConnector>().FirstTarget);
-            Assert.AreSame(gaposSecond, gapos.GetComponent<EnemyRelationshipConnector>().SecondTarget);
+            Assert.AreSame(gapos, gapos.GetComponent<EnemyRelationshipConnector>().FirstTarget);
+            Assert.AreSame(gaposFirst, gapos.GetComponent<EnemyRelationshipConnector>().SecondTarget);
 
             EnemyDataSO kadenaData = Object.Instantiate(kadenaAsset);
             _objectsToDestroy.Add(kadenaData);
@@ -334,8 +394,10 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Texture2D shortGapCapture = RenderCamera(camera, width, height);
             _objectsToDestroy.Add(shortGapCapture);
             Color32[] shortPixels = shortGapCapture.GetPixels32();
-            Assert.Greater(CountVisiblePixels(shortPixels, width, height, new Rect(-0.25f, 0.95f, 0.5f, 0.5f)),
-                10, "the Gapos connector should render through a short gap");
+            Assert.Greater(CountVisiblePixels(shortPixels, width, height, new Rect(-1.65f, 1.85f, 0.5f, 0.5f)),
+                10, "the first root should visibly connect Gapos to its first victim");
+            Assert.Greater(CountVisiblePixels(shortPixels, width, height, new Rect(-0.85f, 1.85f, 0.5f, 0.5f)),
+                10, "the second root should visibly connect Gapos to its second victim");
             Assert.Greater(CountVisiblePixels(shortPixels, width, height, new Rect(-0.25f, -2.25f, 0.5f, 0.5f)),
                 10, "the Kadena connector should render through a short gap");
 
@@ -350,7 +412,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Texture2D wideGapCapture = RenderCamera(camera, width, height);
             _objectsToDestroy.Add(wideGapCapture);
             Color32[] widePixels = wideGapCapture.GetPixels32();
-            Assert.Greater(CountVisiblePixels(widePixels, width, height, new Rect(-0.4f, 0.95f, 0.8f, 0.5f)),
+            Assert.Greater(CountVisiblePixels(widePixels, width, height, new Rect(-0.55f, 1.85f, 0.8f, 0.5f)),
                 20, "mirrored Gapos root tiles should fill a wide gap without disappearing");
             Assert.Greater(CountVisiblePixels(widePixels, width, height, new Rect(-0.4f, -2.25f, 0.8f, 0.5f)),
                 20, "the stretched Kadena chain should remain visible across a wide gap");
@@ -510,6 +572,8 @@ namespace Salinlahi.Tests.Editor.Gameplay
             _objectsToDestroy.Add(go);
             InvokePrivateVoid(enemy, "Awake");
             Assert.IsTrue(enemy.Initialize(data), "test enemy should initialize with authored data");
+            var learning = enemy.GetComponent<EnemyLearningAbilityController>();
+            if (learning != null) SetPrivateField(learning, "_worldCamera", _worldCamera);
             return enemy;
         }
 

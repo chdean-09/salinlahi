@@ -16,6 +16,7 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
     private Enemy _enemy;
     private ActiveClueDirector _director;
     private ActiveCluePresenter _presenter;
+    private Camera _worldCamera;
     private readonly List<Enemy> _boundPair = new List<Enemy>(2);
     private readonly List<Enemy> _visualPair = new List<Enemy>(2);
     private bool _suppressedForIntroductionSpawn;
@@ -85,13 +86,26 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
         string next = !_suppressedForIntroductionSpawn && Ability == EnemyLearningAbility.BoundPair
             ? ResolveNextTargetSymbol() : null;
         if (_suppressedForIntroductionSpawn || Ability != EnemyLearningAbility.BoundPair
-            || string.IsNullOrEmpty(next))
+            || string.IsNullOrEmpty(next) || !IsInsideGameplayView())
         {
             ReleaseBoundPair();
             return;
         }
 
         RebuildBoundPair(next);
+    }
+
+    private bool IsInsideGameplayView()
+    {
+        if (_worldCamera == null || !_worldCamera.isActiveAndEnabled)
+            _worldCamera = Camera.main;
+        if (_worldCamera == null || !_worldCamera.isActiveAndEnabled
+            || (_worldCamera.cullingMask & (1 << gameObject.layer)) == 0)
+            return false;
+
+        Vector3 viewport = _worldCamera.WorldToViewportPoint(transform.position);
+        return viewport.z > 0f && viewport.x >= 0f && viewport.x <= 1f
+            && viewport.y >= 0f && viewport.y <= 1f;
     }
 
     /// <summary>
