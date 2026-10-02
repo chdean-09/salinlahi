@@ -6,9 +6,11 @@ public class RecognitionManager : Singleton<RecognitionManager>
     [Header("Configuration")]
     [SerializeField] private RecognitionConfigSO _config;
 
+    // Every drawing is matched against every character, never only the glyphs on screen. A
+    // drawing always resembles SOME on-screen glyph best, so narrowing the set let scribbles kill
+    // enemies and a DA drawn at a lone RA count as RA. Identity comes from the full set; combat then
+    // decides whether that identity has an eligible target.
     private DollarPRecognizer _recognizer;
-    private readonly HashSet<string> _combatCandidates = new(System.StringComparer.OrdinalIgnoreCase);
-    private readonly List<Enemy> _enemyBuffer = new();
 
     /// <summary>
     /// The campaign-wide accuracy floor, before any level override. Also the value a forgiven
@@ -75,7 +77,7 @@ public class RecognitionManager : Singleton<RecognitionManager>
             return;
         }
 
-        RecognitionResult result = _recognizer.Recognize(strokes, ResolveCombatCandidates());
+        RecognitionResult result = _recognizer.Recognize(strokes);
         bool passedThreshold = result.score >= threshold;
         EventBus.RaiseRecognitionResolved(
             result,
@@ -104,7 +106,7 @@ public class RecognitionManager : Singleton<RecognitionManager>
         float globalThreshold = GlobalThreshold;
         float levelThreshold = ActiveThreshold;
 
-        RecognitionResult result = _recognizer.Recognize(strokes, ResolveCombatCandidates());
+        RecognitionResult result = _recognizer.Recognize(strokes);
         DebugLogger.Log(
             $"Recognized: {result.characterID} "
             + $"Score: {result.score:F3} "
@@ -166,31 +168,6 @@ public class RecognitionManager : Singleton<RecognitionManager>
         return score < globalThreshold
             ? DrawAccuracyVerdict.AcceptedWithSilentCorrection
             : DrawAccuracyVerdict.Accepted;
-    }
-
-    private ISet<string> ResolveCombatCandidates()
-    {
-        LevelConfigSO level = GameManager.CurrentLevelConfig;
-        if (level == null || GameManager.Instance == null || GameManager.Instance.CurrentState != GameState.Playing
-            || !level.activeClueCombatEnabled || TutorialRuntimeState.IsCombatOverrideActive
-            || ChallengeRuntimeState.IsActive || GameManager.Instance.CurrentBoss != null)
-            return null;
-
-        _combatCandidates.Clear();
-        _enemyBuffer.Clear();
-        ActiveEnemyTracker.Instance?.FillActiveEnemiesSnapshot(_enemyBuffer);
-        for (int i = 0; i < _enemyBuffer.Count; i++)
-        {
-            Enemy enemy = _enemyBuffer[i];
-            // A shield blocks combat resolution, not the identity of the glyph the player drew.
-            // Removing locked carriers can force LA into GA when GA is the only open target.
-            if (!ActiveClueDirector.IsVisibleGlyphCarrier(enemy)) continue;
-            if (enemy.Character != null)
-                _combatCandidates.Add(enemy.Character.characterID);
-            if (enemy.VisualCharacter != null)
-                _combatCandidates.Add(enemy.VisualCharacter.characterID);
-        }
-        return _combatCandidates;
     }
 
     // Shape of the submitted candidate: stroke/point counts and bounding box.
