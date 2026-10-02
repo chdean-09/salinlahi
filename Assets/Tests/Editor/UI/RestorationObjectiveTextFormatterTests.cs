@@ -85,7 +85,7 @@ namespace Salinlahi.Tests.Editor.UI
             definition.units[0].clue = "meaning";
 
             Assert.AreEqual(
-                "MA — meaning",
+                "MA: meaning",
                 RestorationObjectiveTextFormatter.Render(definition));
         }
 

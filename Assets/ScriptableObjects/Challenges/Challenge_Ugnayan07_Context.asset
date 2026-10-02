@@ -56,7 +56,7 @@ MonoBehaviour:
   - unitId: ugnayan07-restore-kasama
     mode: 2
     cluePolicy: 0
-    prompt: "Sa KA + ______ nabubuo ang KASAMA\u2014ang taong kapiling sa gawain."
+    prompt: "Sa KA + ______ nabubuo ang KASAMA: ang taong kapiling sa gawain."
     tokens:
     - tokenId: ugnayan07-kasama-focus
       displayText: SAMA

@@ -28,7 +28,7 @@ public sealed class HeartLossDemoBeat : OnboardingBeat
 
     [Tooltip("Message shown when the base HP is intentionally restored for the tutorial, so the refill isn't a sudden unexplained snap-back.")]
     [TextArea(1, 3)]
-    [SerializeField] private string _restoreMessage = "Don't worry, anak — I'll restore our strength for this lesson.";
+    [SerializeField] private string _restoreMessage = "Don't worry, anak. I'll restore our strength for this lesson.";
 
     [Tooltip("Total seconds the restore message stays on screen. The restore pulse alone only holds ~0.6s — nowhere near enough to read the line.")]
     [SerializeField] private float _restoreMessageSeconds = 3.5f;

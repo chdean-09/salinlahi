@@ -29,6 +29,6 @@ MonoBehaviour:
   revealGlyphLate: 1
   drawStep: {fileID: 11400000, guid: 7a8d4f1c9e2b4a6d8f0c1e3b5a7d9f2c, type: 2}
   restorationLine:
-    fallbackText: 'Nabakas mo ang I. Isang titik, isang bahagi ng alaala — naibalik.
+    fallbackText: 'Nabakas mo ang I. Naibalik mo ang isang titik, isang bahagi ng alaala.
       Ganito mababawi ang INA: titik sa titik, hanggang buo muli.'
     dialogue: {fileID: 0}

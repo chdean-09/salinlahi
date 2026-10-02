@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "KAYA\u2014kakayahang harapin at tapusin ang gawain."
+    text: "KAYA: kakayahang harapin at tapusin ang gawain."
   - speakerName: Juan
     portrait: {fileID: 0}
     text: KA + YA. Sa pagsisikap at tulong, kaya natin.

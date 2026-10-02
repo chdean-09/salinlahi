@@ -194,7 +194,7 @@ public sealed class MemoryCardUI : MonoBehaviour
                     continue;
                 lines.Add(string.IsNullOrWhiteSpace(word.Meaning)
                     ? word.Label
-                    : word.Label + " — " + word.Meaning);
+                    : word.Label + ": " + word.Meaning);
             }
         }
         return string.Join("\n", lines);

@@ -3284,8 +3284,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Team Salinlahi\n\nLead Developer \u2014 Juan Dela Cruz\nGame Designer
-    \u2014 Maria Santos\nArtist \u2014 Andres Reyes\nSound Designer \u2014 Lina Gonzales\n\n(Replace
+  m_text: "Team Salinlahi\n\nLead Developer: Juan Dela Cruz\nGame Designer: Maria Santos\nArtist: Andres Reyes\nSound Designer: Lina Gonzales\n\n(Replace
     with actual team names)"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 0}

@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "SANGA\u2014bahaging tumutubo mula sa puno at umaabot sa bagong direksiyon."
+    text: "SANGA: bahaging tumutubo mula sa puno at umaabot sa bagong direksiyon."
   - speakerName: Juan
     portrait: {fileID: 0}
     text: SA + NGA. Ang sanga ay bago, ngunit nakakapit sa pinagmulan.

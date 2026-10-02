@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "SANA\u2014pag-asang hinihiling at pinipiling buhayin."
+    text: "SANA: pag-asang hinihiling at pinipiling buhayin."
   - speakerName: Juan
     portrait: {fileID: 0}
     text: SA + NA. Ang sana ay simula, hindi dahilan upang maghintay lamang.

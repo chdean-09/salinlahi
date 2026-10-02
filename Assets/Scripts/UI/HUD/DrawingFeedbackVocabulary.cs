@@ -9,7 +9,7 @@
 /// </summary>
 public static class DrawingFeedbackVocabulary
 {
-    public const string Accepted = "Nice — that's the one.";
+    public const string Accepted = "Nice, that's the one.";
 
     /// <summary>
     /// Shown in the verdict slot instead of a character name when the stroke did not clear

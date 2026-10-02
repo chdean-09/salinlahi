@@ -46,13 +46,13 @@ public static class DrawFeedbackVocabulary
     /// "check for the dot". Naming what fell and what is still walking describes the board; naming
     /// what to draw next would prescribe the answer, and the derivation is the lesson.
     /// </remarks>
-    public const string FalseCopyShattered = "That one was a copy — it fell, and the real one still walks.";
+    public const string FalseCopyShattered = "That one was a copy. It fell, and the real one still walks.";
 
     /// <summary>A recognized symbol has a carrier, but an ability prevents damage.</summary>
     public const string BlockedCarrier = "That symbol is blocked by an enemy ability.";
 
     /// <summary>Wording for a drawing refused on accuracy. Names the shape, never the score.</summary>
-    public const string SloppyRetry = "Draw it again — follow the shape.";
+    public const string SloppyRetry = "Draw it again and follow the shape.";
 
     /// <summary>The prompt for one text relation, or empty when that relation says nothing.</summary>
     /// <remarks>

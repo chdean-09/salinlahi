@@ -99,7 +99,7 @@ public static class RestorationObjectiveTextFormatter
         if (displayMode == RestorationDisplayMode.GuidedWords
             && !string.IsNullOrEmpty(unit.clue))
         {
-            builder.Append(" — ").Append(unit.clue);
+            builder.Append(": ").Append(unit.clue);
         }
 
         return builder.ToString();

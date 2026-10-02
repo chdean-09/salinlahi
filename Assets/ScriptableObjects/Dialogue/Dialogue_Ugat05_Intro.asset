@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "Sa dulo ng Ugat, hinarap ni Juan ang Paglimot \u2014 ang anino na kumain
+    text: "Sa dulo ng Ugat, hinarap ni Juan ang Paglimot, ang anino na kumain
       sa mga alaala ng kanyang pamilya."
   - speakerName: Juan
     portrait: {fileID: 0}

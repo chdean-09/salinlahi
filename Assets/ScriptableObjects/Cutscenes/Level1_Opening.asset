@@ -39,7 +39,7 @@ MonoBehaviour:
     transitionDuration: 0
     typewriterSpeed: 0
   - image: {fileID: -1878241172454444111, guid: 4db070788bebd06448efb41d80fcd204, type: 3}
-    text: "Juan reaches for the Scroll and it answers him \u2014 he is the Salinlahi,
+    text: "Juan reaches for the Scroll and it answers him. He is the Salinlahi,
       the one who inherits what the generations before him left behind.\nOne faint
       letter waits on the page for a hand to trace it.\nHe is the last person who
       can still draw them back."

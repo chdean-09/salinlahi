@@ -22,6 +22,35 @@ namespace Salinlahi.Tests.Editor.UI
         }
 
         [Test]
+        public void AuthoredGameText_ContainsNoEmDashes()
+        {
+            foreach (string path in UnityEditor.AssetDatabase.GetAllAssetPaths())
+            {
+                if (!path.StartsWith("Assets/", System.StringComparison.Ordinal)
+                    || path.StartsWith("Assets/TextMesh Pro/", System.StringComparison.Ordinal))
+                    continue;
+
+                string extension = System.IO.Path.GetExtension(path);
+                if (extension != ".asset" && extension != ".unity" && extension != ".prefab"
+                    && extension != ".txt" && extension != ".json")
+                    continue;
+
+                string text = System.IO.File.ReadAllText(path);
+                StringAssert.DoesNotContain("\u2014", text, path);
+                StringAssert.DoesNotMatch(@"\\u2014|&#(?:8212|x2014);|&mdash;", text, path);
+            }
+        }
+
+        [TestCase("AWA: malasakit na nadarama para sa kapwa.")]
+        [TestCase("AWA\u2014malasakit na nadarama para sa kapwa.")]
+        public void Build_DefinitionSeparatorDoesNotLeakIntoHint(string descriptor)
+        {
+            LevelConfigSO level = CreateLevel(FocusWord("awa", "AWA", "compassion", descriptor));
+            List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(level);
+            Assert.AreEqual(new[] { "malasakit na nadarama para sa kapwa." }, entries[0].Lines);
+        }
+
+        [Test]
         public void Build_NullLevel_ReturnsEmpty()
         {
             Assert.AreEqual(0, SentenceHintContent.Build(null).Count);
@@ -31,7 +60,7 @@ namespace Salinlahi.Tests.Editor.UI
         public void Build_PrefersTheMatchedObjectiveClueWithoutRepeatingTheDialogue()
         {
             LevelConfigSO level = CreateLevel(FocusWord("father", "AMA", "father",
-                "AMA — ang haligi ng tahanan. Binubuo ito ng dalawang titik: A at MA."));
+                "AMA: ang haligi ng tahanan. Binubuo ito ng dalawang titik: A at MA."));
             RestorationObjectiveUnit unit = ObjectiveUnit("ama", "ang haligi ng tahanan", Target("a"), Target("ma"));
             unit.displayLabel = "AMA";
             level.restorationObjective = new RestorationObjectiveDefinition
@@ -49,7 +78,7 @@ namespace Salinlahi.Tests.Editor.UI
         public void Build_ExplicitHintKeepsTutorialInstructionOutOfTheScroll()
         {
             FocusWordDefinition word = FocusWord("child", "BATA", "child",
-                "BATA — nabakas mo na ito noon. Ngayon, gagamitin mo ito sa isang pangungusap.");
+                "BATA: nabakas mo na ito noon. Ngayon, gagamitin mo ito sa isang pangungusap.");
             word.hintText = "ang musmos na sumisibol, ang simula ng bawat alaala.";
             List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(CreateLevel(word));
             Assert.AreEqual(new[] { word.hintText }, entries[0].Lines);
@@ -71,7 +100,7 @@ namespace Salinlahi.Tests.Editor.UI
                     continue;
                 wordHints++;
                 Assert.AreEqual(1, entry.Lines.Count);
-                StringAssert.DoesNotMatch(@"^_+\s*[—-]", entry.Lines[0]);
+                StringAssert.DoesNotMatch(@"^_+\s*[\u2014:-]", entry.Lines[0]);
             }
             Assert.AreEqual(level.focusWords.Count, wordHints);
         }
@@ -89,10 +118,10 @@ namespace Salinlahi.Tests.Editor.UI
         {
             LevelConfigSO level = CreateLevel(
                 FocusWord("level.ugnayan.01.focus.01", "AWA", "compassion",
-                    "AWA—malasakit na nadarama para sa kapwa.",
+                    "AWA: malasakit na nadarama para sa kapwa.",
                     "A + WA. Ang awa ang damdaming gumigising sa akin."),
                 FocusWord("level.ugnayan.01.focus.02", "GAWA", "action",
-                    "GAWA—ang malasakit na isinasakatuparan."));
+                    "GAWA: ang malasakit na isinasakatuparan."));
             level.challengeSequence = CreateSequence(
                 Unit(ChallengeMode.SentenceRestoration,
                     "Ang ______ ay malasakit na nadarama para sa kapwa.",
@@ -121,7 +150,7 @@ namespace Salinlahi.Tests.Editor.UI
         {
             LevelConfigSO level = CreateLevel(
                 FocusWord("level.ugat.01.focus.01", "INA", "mother",
-                    "INA — ang nagluwal at nag-aruga.",
+                    "INA: ang nagluwal at nag-aruga.",
                     "Bakasin mo ang bawat titik upang maibalik ang alaala ni Ina."));
             level.challengeSequence = CreateSequence(
                 Unit(ChallengeMode.GuidedTracing, "Draw E/I. Follow the guide.", ""),
@@ -170,7 +199,7 @@ namespace Salinlahi.Tests.Editor.UI
         {
             LevelConfigSO level = CreateLevel(
                 FocusWord("level.ugat.01.focus.01", "INA", "mother",
-                    "INA — ang nagluwal at nag-aruga. Binubuo ito ng dalawang titik: I at NA."));
+                    "INA: ang nagluwal at nag-aruga. Binubuo ito ng dalawang titik: I at NA."));
 
             List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(level);
 
@@ -184,9 +213,9 @@ namespace Salinlahi.Tests.Editor.UI
         {
             LevelConfigSO level = CreateLevel(
                 FocusWord("level.x.focus.01", "AWA", "compassion",
-                    "AWA—malasakit na nadarama para sa kapwa."),
+                    "AWA: malasakit na nadarama para sa kapwa."),
                 FocusWord("level.x.focus.02", "GAWA", "action",
-                    "AWA—malasakit na nadarama para sa kapwa."));
+                    "AWA: malasakit na nadarama para sa kapwa."));
 
             List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(level);
 
@@ -215,7 +244,7 @@ namespace Salinlahi.Tests.Editor.UI
 
             Assert.AreEqual(1, entries.Count);
             Assert.AreEqual("Sentence context", entries[0].Label);
-            Assert.AreEqual(new[] { "__ __ — ilaw ng tahanan" }, entries[0].Lines);
+            Assert.AreEqual(new[] { "__ __: ilaw ng tahanan" }, entries[0].Lines);
         }
 
         [Test]
@@ -252,7 +281,7 @@ namespace Salinlahi.Tests.Editor.UI
             LevelConfigSO level = CreateLevel(
                 FocusWord("level.x.focus.01", "EMPTY", null),
                 FocusWord("level.x.focus.02", "AWA", "compassion",
-                    "AWA—malasakit na nadarama para sa kapwa."));
+                    "AWA: malasakit na nadarama para sa kapwa."));
 
             List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(level);
 

@@ -15,8 +15,8 @@ MonoBehaviour:
   cutsceneId: cutscene.ugat.05.memory
   panels:
   - image: {fileID: 0}
-    text: "Ang mana ni Juan \u2014 hindi lupa, hindi ginto, kundi ang kakayahang
-      bumasa at sumulat ng Baybayin, ipinasa mula kina Ina at Ama."
+    text: "Ang mana ni Juan ay hindi lupa o ginto, kundi ang kakayahang
+      bumasa at sumulat ng Baybayin na ipinasa mula kina Ina at Ama."
     transitionIn: 1
     transitionDuration: 0
     typewriterSpeed: 0

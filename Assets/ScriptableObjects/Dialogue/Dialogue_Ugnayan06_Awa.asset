@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "AWA\u2014malasakit na nadarama para sa kapwa."
+    text: "AWA: malasakit na nadarama para sa kapwa."
   - speakerName: Juan
     portrait: {fileID: 0}
     text: A + WA. Ang awa ang damdaming gumigising sa akin.

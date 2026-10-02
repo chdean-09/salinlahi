@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "INA \u2014 ang nagluwal at nag-aruga. Binubuo ito ng dalawang titik: I
+    text: "INA: ang nagluwal at nag-aruga. Binubuo ito ng dalawang titik: I
       at NA."
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}

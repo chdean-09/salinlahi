@@ -15,7 +15,7 @@ MonoBehaviour:
   cutsceneId: cutscene.ugat.04.memory
   panels:
   - image: {fileID: 0}
-    text: "Ang mukha nina Ina at Ama, malinaw na sa isip ni Juan \u2014 hindi na
+    text: "Ang mukha nina Ina at Ama, malinaw na sa isip ni Juan: hindi na
       larawang hiniram, kundi alaalang tunay nang kanya."
     transitionIn: 1
     transitionDuration: 0

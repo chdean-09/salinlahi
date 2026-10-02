@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "HALAGA\u2014sukat ng saysay at kabuluhan."
+    text: "HALAGA: sukat ng saysay at kabuluhan."
   - speakerName: Juan
     portrait: {fileID: 0}
     text: HA + LA + GA. Ang halaga nito ay nasa kuwentong naipasa.
