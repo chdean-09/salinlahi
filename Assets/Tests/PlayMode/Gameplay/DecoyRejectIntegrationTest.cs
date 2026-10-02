@@ -44,6 +44,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             data.maxHealth = 1;
             data.assignedCharacter = character;
             data.isDecoy = true;
+            data.learningAbility = EnemyLearningAbility.ContradictingDecoy;
             _objectsToDestroy.Add(data);
 
             Enemy enemy = CreateMaestroShell();
@@ -56,6 +57,8 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             mover.SetSpeed(data.moveSpeed);
 
             Vector3 baseBadgePosition = badge.transform.localPosition;
+            badge.TickDeception(2.52f);
+            Assert.IsFalse(badge.Renderer.flipX);
             enemy.ApplyDecoyPenalty();
 
             yield return null;
@@ -100,6 +103,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             data.maxHealth = 1;
             data.assignedCharacter = character;
             data.isDecoy = true;
+            data.learningAbility = EnemyLearningAbility.ContradictingDecoy;
             _objectsToDestroy.Add(data);
 
             Enemy enemy = CreateMaestroShell();

@@ -475,6 +475,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
     // Runtime-only layout values. Serialized fields remain the nominal Level 1-4 layout; long
     // objectives derive a uniform scale here so the rail stays inside the safe-area viewport.
+    private float _railNominalWidth;
     private Vector2 _railLayoutSlotSize;
     private float _railLayoutSlotSpacing;
     private float _railLayoutWordGap;
@@ -1036,6 +1037,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     /// </summary>
     private void LateUpdate()
     {
+        RefitRestorationRail();
         WatchAshOnset();
         WatchPunitTornState(Time.unscaledDeltaTime);
         WatchAbilityHudEffects(Time.unscaledDeltaTime);
@@ -1997,12 +1999,13 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
             if (totalWidth > 0f)
                 totalWidth += _wordGap;
-            totalWidth += WordWidth(slotCount);
+            totalWidth += slotCount * _slotSize.x + (slotCount - 1) * _slotSpacing;
         }
 
         // Slots occupy the TOP of the rail rect and their labels the row beneath. Start from the
         // nominal values, then derive one uniform scale when the complete rail exceeds the
         // available safe-area width. Short Levels 1-4 retain their authored geometry exactly.
+        _railNominalWidth = totalWidth;
         float availableWidth = ResolveRailAvailableWidth(hudContainer, canvas);
         RestorationRailLayoutMetrics layout = RestorationRailLayoutPolicy.Calculate(
             totalWidth,
@@ -3313,6 +3316,30 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         return (slotCount * slotSize.x) + ((slotCount - 1) * spacing);
     }
 
+    private void RefitRestorationRail()
+    {
+        if (_railRoot == null || _railNominalWidth <= 0f)
+            return;
+
+        var railRect = (RectTransform)_railRoot.transform;
+        float builtWidth = railRect.rect.width;
+        Canvas canvas = railRect.GetComponentInParent<Canvas>();
+        float availableWidth = ResolveRailAvailableWidth(railRect.parent, canvas);
+        if (builtWidth <= 0f || availableWidth <= 0f)
+            return;
+
+        // Keep slot anchors and their live effects intact when safe-area/layout values settle
+        // or the screen resizes. The initial geometry is already scaled by the layout policy.
+        float scale = Mathf.Min(_railNominalWidth, availableWidth) / builtWidth;
+        Vector3 fittedScale = new Vector3(scale, scale, 1f);
+        if ((railRect.localScale - fittedScale).sqrMagnitude < 0.000001f)
+            return;
+
+        railRect.localScale = fittedScale;
+        ReservePlayFieldBandForRail(railRect);
+        PositionInstructionAboveRail(railRect);
+    }
+
     private float ResolveRailAvailableWidth(Transform hudContainer, Canvas canvas)
     {
         if (hudContainer is RectTransform rect && rect.rect.width > 0f)
@@ -4310,6 +4337,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
         _railRoot = null;
         _railCanvasGroup = null;
+        _railNominalWidth = 0f;
         _runtimeSlotFrameSprite = null;
 
         // Hand the band back with the rail. A level that tears its rail down and never builds
@@ -5180,6 +5208,28 @@ public sealed class ActiveClueRestorationState
     }
 
     public int FocusWordCount => _words.Count;
+
+    /// <summary>The first unfinished symbol in the same order as the visible word rail.</summary>
+    public string NextTargetSymbolStableId
+    {
+        get
+        {
+            for (int wordIndex = 0; wordIndex < _words.Count; wordIndex++)
+            {
+                WordState state = _words[wordIndex];
+                if (state.Word?.decomposition == null)
+                    continue;
+                for (int slotIndex = 0; slotIndex < state.Word.decomposition.Count; slotIndex++)
+                {
+                    BaybayinCharacterSO symbol = state.Word.decomposition[slotIndex]?.symbol;
+                    if (symbol != null && !state.RestoredSlots[slotIndex]
+                        && !string.IsNullOrEmpty(symbol.stableId))
+                        return symbol.stableId;
+                }
+            }
+            return null;
+        }
+    }
 
     /// <summary>
     /// How many authored slots are restored, across every focus word. Counted rather than stored

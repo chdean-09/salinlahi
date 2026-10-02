@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Reflection;
-using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -59,29 +58,29 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.IsTrue(pool.IsCheckedOut(enemy));
         }
 
-        /// <summary>
-        /// The demotion itself: the fallback notice must be a Log, not a Warning, because a full
-        /// Levels 1-5 run hits this path on every spawn of the shared shell and used to flood the
-        /// Console. If it ever becomes a Warning again the expectation goes unmet and this fails.
-        ///
-        /// ENABLE_SALINLAHI_LOG is declared for Standalone in ProjectSettings, which looks like it
-        /// would compile this out on an iOS target — it does not. EditMode tests run inside the
-        /// Editor, which uses the Standalone define set whatever -buildTarget says, and this test
-        /// was OBSERVED to execute and emit the log under both -buildTarget StandaloneOSX and the
-        /// default iOS target. The #else is kept only so the file still compiles if that changes.
-        /// </summary>
+        // Shared-shell spawning is normal and must not allocate an interpolated log per spawn.
         [Test]
-        public void Get_WithUnregisteredEnemyID_LogsTheFallbackWithoutWarning()
+        public void Get_WithUnregisteredEnemyID_DoesNotLogTheNormalSharedPoolPath()
         {
 #if ENABLE_SALINLAHI_LOG
             EnemyPool pool = CreateEnemyPool(CreateEnemyPrefab());
             EnemyDataSO data = CreateEnemyData("shared_shell_enemy_with_no_dedicated_pool");
 
-            // If the code ever logs this as a Warning again, the expectation goes unmet and the
-            // test fails. A full Levels 1-5 run hits this path on every spawn of the shared shell.
-            LogAssert.Expect(LogType.Log, new Regex("has no dedicated pool"));
-
-            Assert.IsNotNull(pool.Get(data));
+            int fallbackLogs = 0;
+            void CountFallback(string message, string stack, LogType type)
+            {
+                if (message.Contains("has no dedicated pool")) fallbackLogs++;
+            }
+            Application.logMessageReceived += CountFallback;
+            try
+            {
+                Assert.IsNotNull(pool.Get(data));
+                Assert.AreEqual(0, fallbackLogs);
+            }
+            finally
+            {
+                Application.logMessageReceived -= CountFallback;
+            }
 #else
             Assert.Ignore(
                 "Compiled out: ENABLE_SALINLAHI_LOG is Standalone-only. Run this suite with "

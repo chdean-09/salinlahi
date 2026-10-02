@@ -8,6 +8,9 @@ using UnityEngine;
 // WaveManager controls wave sequencing and calls SpawnWave()/SpawnEnemy().
 public class WaveSpawner : MonoBehaviour
 {
+    private const int MechanicRampFirstLevel = 12;
+    private const int MechanicRampLastLevel = 14;
+    private const float MechanicEntryGraceSeconds = 1.5f;
     [Header("Spawn Points")]
     [Tooltip("Top-of-screen positions where enemies appear. Add 3-5 evenly spaced.")]
     [SerializeField] private Transform[] _spawnPoints;
@@ -248,10 +251,17 @@ public class WaveSpawner : MonoBehaviour
             {
                 // The schedule picks the symbol, and on a level whose enemies each embody one
                 // symbol that also picks the enemy: choosing MA spawns Mantsa, so the badge never
-                // contradicts the body beneath it. Falls back to the rolled type when no enemy in
-                // this wave owns the chosen symbol.
+                // contradicts the body beneath it. Needed slots additionally require a real
+                // carrier; a decoy-only match uses the real-carrier fallback instead.
                 assignment = AssignmentCoordinator.AssignNext(wave);
-                data = AssignmentCoordinator.ResolveEnemyData(assignment.SymbolStableId, wave) ?? data;
+                EnemyDataSO assignedData = AssignmentCoordinator.ResolveEnemyData(assignment, wave);
+                if (assignment.Role == SpawnAssignmentRole.Needed && assignedData == null)
+                {
+                    DebugLogger.LogError("WaveSpawner: no real enemy can carry required symbol '"
+                        + assignment.SymbolStableId + "'. Check the wave and level enemy rosters.");
+                    yield break;
+                }
+                data = assignedData ?? data;
                 character = AssignmentCoordinator.ResolveCharacter(assignment.SymbolStableId, wave)
                     ?? SelectCharacterForSpawn(wave, data);
             }
@@ -467,6 +477,16 @@ public class WaveSpawner : MonoBehaviour
     {
         LevelConfigSO level = GameManager.Instance != null ? GameManager.Instance.CurrentLevel : null;
         if (level == null || enemy == null) return;
+        if (level.levelNumber >= MechanicRampFirstLevel && level.levelNumber <= MechanicRampLastLevel && enemy.Data != null
+            && (enemy.Data.learningAbility == EnemyLearningAbility.BoundPair
+                || enemy.Data.learningAbility == EnemyLearningAbility.ContextRush))
+        {
+            Camera camera = Camera.main;
+            float entryY = camera != null && camera.orthographic
+                ? camera.transform.position.y + camera.orthographicSize * 0.9f
+                : float.PositiveInfinity;
+            enemy.GetComponent<EnemyMover>()?.GiveEntryGrace(MechanicEntryGraceSeconds, entryY);
+        }
         if (Mathf.Approximately(level.enemySpeedMultiplier, 1f)) return;
 
         enemy.ApplySpeedBuff(level, level.enemySpeedMultiplier);

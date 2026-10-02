@@ -534,6 +534,16 @@ public class DialogueController : MonoBehaviour
         RectTransform panel = ResolvePanelRect();
         _onParchment = ApplyDialogueFrame(panel);
         ApplyResponsiveDialogueLayout(panel, _speakerText, _bodyText, _portraitImage, hasPortrait, _presentAtTop);
+        if (panel != null && !_presentAtTop && Screen.width > 0 && Screen.height > 0)
+        {
+            // The parchment and text share the device inset and bottom margin.
+            SafeAreaHandler.CalculateAnchors(Screen.safeArea, Screen.width, Screen.height, false,
+                new Rect(0f, 0f, Screen.width, Screen.height), out Vector2 safeMin, out Vector2 safeMax);
+            panel.anchorMin = safeMin;
+            panel.anchorMax = new Vector2(safeMax.x, safeMin.y + (safeMax.y - safeMin.y) * DialoguePanelHeight);
+            panel.offsetMin = new Vector2(12f, 12f);
+            panel.offsetMax = new Vector2(-12f, 0f);
+        }
         if (_onParchment)
         {
             ScrollPanelArt.Inkify(_speakerText);

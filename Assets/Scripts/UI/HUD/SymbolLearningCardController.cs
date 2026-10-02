@@ -127,6 +127,7 @@ public class SymbolLearningCardController : MonoBehaviour
     /// <summary>Advances past the active card; the last card ends the presentation.</summary>
     public void Continue()
     {
+        AudioManager.Instance?.FadeOutPronunciation();
         _continueRequested = true;
     }
 

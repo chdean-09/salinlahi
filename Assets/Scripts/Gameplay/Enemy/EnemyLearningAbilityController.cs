@@ -5,7 +5,7 @@ using UnityEngine;
 /// <summary>
 /// Small per-enemy adapter for retention-oriented abilities that are not already represented by a
 /// signature component. It deliberately owns no level flow or objective state: it only reads the
-/// active objective cursor, applies its own resolution blocks, and lets the existing recognizer and
+/// current restoration cursor, applies its own resolution blocks, and lets the existing recognizer and
 /// combat resolver do the actual work.
 /// </summary>
 [RequireComponent(typeof(Enemy))]
@@ -15,8 +15,10 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
 
     private Enemy _enemy;
     private ActiveClueDirector _director;
-    private readonly List<Enemy> _boundPair = new List<Enemy>(2);
-    private readonly List<Enemy> _visualPair = new List<Enemy>(2);
+    private ActiveCluePresenter _presenter;
+    private Camera _worldCamera;
+    private readonly List<Enemy> _boundPair = new List<Enemy>(1);
+    private readonly List<Enemy> _visualPair = new List<Enemy>(1);
     private bool _suppressedForIntroductionSpawn;
     private long _spawnSequence = -1;
     private int _reviewIndex;
@@ -81,13 +83,29 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
         else
             UnsubscribeFromDirector();
 
-        if (_suppressedForIntroductionSpawn || Ability != EnemyLearningAbility.BoundPair)
+        string next = !_suppressedForIntroductionSpawn && Ability == EnemyLearningAbility.BoundPair
+            ? ResolveNextTargetSymbol() : null;
+        if (_suppressedForIntroductionSpawn || Ability != EnemyLearningAbility.BoundPair
+            || string.IsNullOrEmpty(next) || !IsInsideGameplayView())
         {
             ReleaseBoundPair();
             return;
         }
 
-        RebuildBoundPair();
+        RebuildBoundPair(next);
+    }
+
+    private bool IsInsideGameplayView()
+    {
+        if (_worldCamera == null || !_worldCamera.isActiveAndEnabled)
+            _worldCamera = Camera.main;
+        if (_worldCamera == null || !_worldCamera.isActiveAndEnabled
+            || (_worldCamera.cullingMask & (1 << gameObject.layer)) == 0)
+            return false;
+
+        Vector3 viewport = _worldCamera.WorldToViewportPoint(transform.position);
+        return viewport.z > 0f && viewport.x >= 0f && viewport.x <= 1f
+            && viewport.y >= 0f && viewport.y <= 1f;
     }
 
     /// <summary>
@@ -105,6 +123,14 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
     {
         ReleaseBoundPair();
         _reviewIndex = 0;
+    }
+
+    /// <summary>Ends ability effects before a death animation keeps the shell on screen.</summary>
+    public void NotifyDefeated()
+    {
+        _suppressedForIntroductionSpawn = true;
+        ReleaseBoundPair();
+        UnsubscribeFromDirector();
     }
 
     /// <summary>Releases all targets before a pooled enemy shell is reused.</summary>
@@ -169,7 +195,24 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
         }
     }
 
-    private void RebuildBoundPair()
+    private string ResolveNextTargetSymbol()
+    {
+        RestorationObjectiveController objective = RestorationObjectiveController.Active;
+        if (objective == null)
+            return null;
+
+        if (objective.UsesLegacyFallback)
+        {
+            if (_presenter == null)
+                _presenter = FindFirstObjectByType<ActiveCluePresenter>();
+            if (_presenter != null)
+                return _presenter.RestorationState.NextTargetSymbolStableId;
+        }
+
+        return objective.State.NextTargetSymbolStableId;
+    }
+
+    private void RebuildBoundPair(string next)
     {
         ActiveEnemyTracker tracker = ActiveEnemyTracker.Instance;
         if (tracker == null)
@@ -179,45 +222,51 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
         }
 
         tracker.FillActiveEnemiesSnapshot(SnapshotBuffer);
-        var candidates = new List<Enemy>(2);
+        Enemy victim = _boundPair.Count > 0 ? _boundPair[0] : null;
+        if (!SnapshotBuffer.Contains(victim) || !IsAvailableBindingTarget(victim, next))
+        {
+            ReleaseBoundPair();
+            victim = null;
+            for (int i = 0; i < SnapshotBuffer.Count; i++)
+            {
+                Enemy candidate = SnapshotBuffer[i];
+                if (!IsAvailableBindingTarget(candidate, next))
+                    continue;
+
+                victim = candidate;
+                break;
+            }
+        }
+
+        if (victim == null)
+            return;
+
+        victim.AddResolutionBlock(this);
+        if (_boundPair.Count == 0)
+        {
+            _boundPair.Add(victim);
+            _visualPair.Add(victim);
+        }
+    }
+
+    private bool IsAvailableBindingTarget(Enemy candidate, string next)
+    {
+        if (!IsPairCandidate(candidate) || IsContextuallyOpen(candidate, next))
+            return false;
+
+        // Gapos owns one victim exclusively; other ability blocks remain independently owned.
         for (int i = 0; i < SnapshotBuffer.Count; i++)
         {
-            Enemy candidate = SnapshotBuffer[i];
-            if (!IsPairCandidate(candidate))
+            Enemy other = SnapshotBuffer[i];
+            if (other == null || other == _enemy || other.Data == null
+                || other.Data.learningAbility != EnemyLearningAbility.BoundPair)
                 continue;
 
-            candidates.Add(candidate);
-            if (candidates.Count == 2)
-                break;
+            var binder = other.GetComponent<EnemyLearningAbilityController>();
+            if (binder != null && binder.BoundPair.Count > 0 && binder.BoundPair[0] == candidate)
+                return false;
         }
-
-        _visualPair.Clear();
-        _visualPair.AddRange(candidates);
-
-        for (int i = _boundPair.Count - 1; i >= 0; i--)
-        {
-            Enemy held = _boundPair[i];
-            if (held == null || !candidates.Contains(held))
-            {
-                held?.RemoveResolutionBlock(this);
-                _boundPair.RemoveAt(i);
-            }
-        }
-
-        for (int i = 0; i < candidates.Count; i++)
-        {
-            Enemy candidate = candidates[i];
-            if (IsContextuallyOpen(candidate))
-            {
-                candidate.RemoveResolutionBlock(this);
-                _boundPair.Remove(candidate);
-                continue;
-            }
-
-            candidate.AddResolutionBlock(this);
-            if (!_boundPair.Contains(candidate))
-                _boundPair.Add(candidate);
-        }
+        return true;
     }
 
     private bool IsPairCandidate(Enemy candidate)
@@ -225,14 +274,15 @@ public sealed class EnemyLearningAbilityController : MonoBehaviour
         return candidate != null
             && candidate != _enemy
             && candidate.Data != null
+            // A binder must remain a route out of its own ability, including overlapping Gapos.
+            && candidate.Data.learningAbility != EnemyLearningAbility.BoundPair
             && candidate.gameObject.activeInHierarchy
             && !candidate.IsBoss
             && !candidate.IsDying;
     }
 
-    private static bool IsContextuallyOpen(Enemy candidate)
+    private static bool IsContextuallyOpen(Enemy candidate, string next)
     {
-        string next = RestorationObjectiveController.Active?.State.NextTargetSymbolStableId;
         return !string.IsNullOrEmpty(next)
             && candidate.Character != null
             && string.Equals(candidate.Character.stableId, next, StringComparison.Ordinal);

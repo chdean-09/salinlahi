@@ -18,5 +18,5 @@ MonoBehaviour:
   rawSampleMinDistancePixels: 2
   visualSampleSpacingPixels: 8
   maxVisualSamplesPerSegment: 24
-  minimumStrokePathLengthPixels: 40
-  minimumStrokeBoundsPixels: 12
+  minimumStrokePathLengthPixels: 20
+  minimumStrokeBoundsPixels: 6

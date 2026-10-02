@@ -262,6 +262,10 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
                 StartCursorPulse(report.CursorSlotIndex);
                 break;
 
+            case DrawTextRelation.BlockedCarrier:
+                report.BlockedTarget?.GlyphBadge?.PlayBlockedFlash();
+                break;
+
             case DrawTextRelation.NoCarrier:
                 MissCueCount++;
                 PlayMissResponse(report.DrawnCharacter);
@@ -590,6 +594,7 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
         if (_messageLabel == null)
             return;
 
+        CombatNotificationBanner.Configure(_messageLabel, 0.25f);
         _messageLabel.text = message;
 
         if (_clearMessageRoutine != null)

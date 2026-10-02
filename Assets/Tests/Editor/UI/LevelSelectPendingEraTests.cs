@@ -66,6 +66,33 @@ namespace Salinlahi.Tests.Editor.UI
         }
 
         [Test]
+        public void Start_WithNoPendingEra_ReturnsToSelectedLevelsEra()
+        {
+            EraConfigSO ugat = Era("Ugat", 1);
+            EraConfigSO pamana = Era("Pamana", 3);
+            var level = Track(ScriptableObject.CreateInstance<LevelConfigSO>());
+            level.levelNumber = 13;
+            pamana.levels.Add(level);
+            var managerObject = new GameObject("QA navigation manager");
+            try
+            {
+                GameManager manager = managerObject.AddComponent<GameManager>();
+                typeof(Singleton<GameManager>).GetProperty("Instance", BindingFlags.Public | BindingFlags.Static)
+                    .SetValue(null, manager);
+                typeof(GameManager).GetProperty("CurrentLevel").SetValue(manager, level);
+                LevelSelectUI levelSelect = CreateLevelSelect(ugat, pamana);
+                InvokePrivate(levelSelect, "Start");
+                Assert.AreEqual(1, CurrentEraIndex(levelSelect));
+            }
+            finally
+            {
+                typeof(Singleton<GameManager>).GetProperty("Instance", BindingFlags.Public | BindingFlags.Static)
+                    .SetValue(null, null);
+                Object.DestroyImmediate(managerObject);
+            }
+        }
+
+        [Test]
         public void Start_WithNoPendingEra_StillOpensOnTheFirstEra()
         {
             LevelSelectUI levelSelect = CreateLevelSelect(

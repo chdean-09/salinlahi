@@ -671,6 +671,7 @@ public class Enemy : MonoBehaviour
         // Punit's HUD effect ends at defeat, before any death presentation is allowed to keep the
         // pooled shell alive on screen.
         GetComponent<PunitTornController>()?.NotifyDefeated();
+        GetComponent<EnemyLearningAbilityController>()?.NotifyDefeated();
 
         // Bakod's barrier has a specific break one-shot. Keep that one layer through a badge-only
         // defeat, while all other persistent ability art clears before any death presentation.

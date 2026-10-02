@@ -282,7 +282,7 @@ MonoBehaviour:
     assignmentSeed: 0
     slotGates: []
     slotFloors: []
-  enemySpeedMultiplier: 1
+  enemySpeedMultiplier: 0.65
   overrideDrawingAccuracyThreshold: 0
   drawingAccuracyThresholdOverride: 0.6
   alwaysShowTutorial: 0
@@ -406,7 +406,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: d32d963289bb94a54ba971ec25be3bbf, type: 2}
     - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
     enemyCount: 5
-    spawnInterval: 2.5
+    spawnInterval: 5
     waveStartDelay: 2
   - isIntermissionWave: 0
     characters:
@@ -425,7 +425,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
     - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
     enemyCount: 6
-    spawnInterval: 2.3
+    spawnInterval: 4.6
     waveStartDelay: 1.5
   - isIntermissionWave: 0
     characters:
@@ -445,7 +445,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: c5f91a4c7515047cabd59ea63b9bfef6, type: 2}
     - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
     enemyCount: 6
-    spawnInterval: 2
+    spawnInterval: 3
     waveStartDelay: 1.5
   - isIntermissionWave: 0
     characters:
@@ -473,8 +473,8 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 579d65d7846bc3a4ce1f0197ec37751a, type: 2}
     - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
     enemyCount: 7
-    spawnInterval: 2
-    waveStartDelay: 1
+    spawnInterval: 3
+    waveStartDelay: 1.5
   - isIntermissionWave: 0
     characters:
     - {fileID: 11400000, guid: 17e3fad969764564bf71a5ba85567115, type: 2}
@@ -501,8 +501,8 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 579d65d7846bc3a4ce1f0197ec37751a, type: 2}
     - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
     enemyCount: 8
-    spawnInterval: 1.8
-    waveStartDelay: 1
+    spawnInterval: 3
+    waveStartDelay: 1.5
   waveCurve: {fileID: 0}
   allowedCharacters:
   - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}

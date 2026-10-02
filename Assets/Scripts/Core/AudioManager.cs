@@ -15,6 +15,9 @@ public class AudioManager : Singleton<AudioManager>
     [Header("Audio Sources")]
     [SerializeField] private AudioSource _bgmSource;
     [SerializeField] private AudioSource _sfxSource;
+    private Coroutine _pronunciationFadeRoutine;
+    private float _pronunciationFade = 1f;
+    private AudioClip _pendingPronunciationClip;
 
     [Header("SFX Clips")]
     [SerializeField] private AudioClip _chainLightningSfxClip;
@@ -217,6 +220,7 @@ public class AudioManager : Singleton<AudioManager>
 
     private void OnDisable()
     {
+        CancelPronunciationFade();
         SceneManager.sceneLoaded -= HandleSceneLoaded;
         EventBus.OnPronunciationRequested -= PlayPronunciationClip;
         EventBus.OnSpokenPronunciationRequested -= PlaySpokenPronunciationClip;
@@ -251,6 +255,7 @@ public class AudioManager : Singleton<AudioManager>
 
     private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        FadeOutPronunciation();
         // A syllable can be cut off mid-duck by a scene change (leaving a level during a
         // learning card, say). Without this the next scene's music would come up dipped.
         CancelBgmDuck();
@@ -342,6 +347,12 @@ public class AudioManager : Singleton<AudioManager>
         if (_pronunciationSfxSource == null)
             return;
 
+        if (_pronunciationFadeRoutine != null)
+        {
+            _pendingPronunciationClip = clip;
+            return;
+        }
+
         AudioClip prepared = PreparePronunciationClipForImmediateAttack(clip);
         if (prepared == null)
             return;
@@ -363,6 +374,50 @@ public class AudioManager : Singleton<AudioManager>
 
         // pitch is a playback-rate change, so the audible length is the clip divided by it.
         DuckBgmForPronunciation(prepared.length / Mathf.Max(0.01f, pitch));
+    }
+
+    /// <summary>Releases a spoken cue smoothly when its learning surface is skipped.</summary>
+    public void FadeOutPronunciation()
+    {
+        _pendingPronunciationClip = null;
+        if (_pronunciationSfxSource == null || !_pronunciationSfxSource.isPlaying)
+            return;
+        if (_pronunciationFadeRoutine == null)
+            _pronunciationFadeRoutine = StartCoroutine(FadePronunciationRoutine());
+    }
+
+    private IEnumerator FadePronunciationRoutine()
+    {
+        float elapsed = 0f;
+        while (elapsed < 0.1f)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            _pronunciationFade = 1f - Mathf.Clamp01(elapsed / 0.1f);
+            _pronunciationSfxSource.volume = (_sfxSource != null ? _sfxSource.volume : 1f) * _pronunciationFade;
+            yield return null;
+        }
+        _pronunciationSfxSource.Stop();
+        _pronunciationFadeRoutine = null;
+        _pronunciationFade = 1f;
+        _pronunciationSfxSource.volume = _sfxSource != null ? _sfxSource.volume : 1f;
+        CancelBgmDuck();
+        AudioClip pending = _pendingPronunciationClip;
+        _pendingPronunciationClip = null;
+        if (pending != null) PlayPronunciation(pending);
+    }
+
+    private void CancelPronunciationFade()
+    {
+        _pendingPronunciationClip = null;
+        if (_pronunciationFadeRoutine != null)
+        {
+            StopCoroutine(_pronunciationFadeRoutine);
+            _pronunciationSfxSource?.Stop();
+        }
+        _pronunciationFadeRoutine = null;
+        _pronunciationFade = 1f;
+        if (_pronunciationSfxSource != null)
+            _pronunciationSfxSource.volume = _sfxSource != null ? _sfxSource.volume : 1f;
     }
 
     /// <summary>
@@ -857,7 +912,7 @@ public class AudioManager : Singleton<AudioManager>
         if (_baseHitSfxSource != null)
             _baseHitSfxSource.volume = sfxVolume;
         if (_pronunciationSfxSource != null)
-            _pronunciationSfxSource.volume = sfxVolume;
+            _pronunciationSfxSource.volume = sfxVolume * _pronunciationFade;
         if (_enemyDeathSfxSource != null)
             _enemyDeathSfxSource.volume = sfxVolume;
         if (_stingSfxSource != null)

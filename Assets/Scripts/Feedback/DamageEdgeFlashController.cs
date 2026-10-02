@@ -67,7 +67,7 @@ public sealed class DamageEdgeFlashController : MonoBehaviour
                 continue;
 
             Color color = _flashColor;
-            color.a = alpha;
+            color.a = Mathf.Clamp(alpha, 0f, 0.4f);
             image.color = color;
         }
     }

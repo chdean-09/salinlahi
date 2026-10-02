@@ -93,6 +93,67 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
+        public void Level13_NeededSaHasARealCarrier_WhileSalungatRemainsADecoy()
+        {
+            var level = UnityEditor.AssetDatabase.LoadAssetAtPath<LevelConfigSO>(
+                "Assets/ScriptableObjects/Levels/Level13_Config.asset");
+            var sa = UnityEditor.AssetDatabase.LoadAssetAtPath<BaybayinCharacterSO>(
+                "Assets/ScriptableObjects/Characters/Char_SA.asset");
+            var go = new GameObject("NeededSalungatCarrierTest");
+            try
+            {
+                var coordinator = go.AddComponent<SpawnAssignmentCoordinator>();
+                coordinator.ApplyLevel(level, null);
+                var assignment = new SpawnAssignment { SymbolStableId = sa.stableId, Role = SpawnAssignmentRole.Needed };
+                var carrier = coordinator.ResolveEnemyData(assignment, level.waves[0]);
+                Assert.IsNotNull(carrier);
+                Assert.IsFalse(carrier.isDecoy,
+                    "A required SA slot cannot be offered only as Salungat: its penalty never restores a slot.");
+                var filler = coordinator.ResolveEnemyData(sa.stableId, level.waves[0]);
+                Assert.IsTrue(filler.isDecoy, "Salungat filler must retain the decoy penalty.");
+                var state = new RestorationObjectiveState();
+                state.ConfigureFromFocusWords(level.focusWords);
+                Assert.IsTrue(state.TryRestore(sa.stableId).Applied);
+            }
+            finally
+            {
+                Object.DestroyImmediate(go);
+            }
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void NeededCarrier_PrefersARealMatchingType_AndRejectsAnAllDecoyRoster(bool hasRealCarrier)
+        {
+            var go = new GameObject("NeededCarrierOwnershipTest");
+            var sa = Symbol("SA", "symbol.sa");
+            var decoy = Enemy("salungat", sa);
+            decoy.isDecoy = true;
+            var real = Enemy("real-sa", sa);
+            var level = ScriptableObject.CreateInstance<LevelConfigSO>();
+            try
+            {
+                level.allowedEnemyTypes = hasRealCarrier
+                    ? new List<EnemyDataSO> { decoy, real } : new List<EnemyDataSO> { decoy };
+                var wave = new WaveDefinition { enemyTypes = new List<EnemyDataSO> { decoy } };
+                var coordinator = go.AddComponent<SpawnAssignmentCoordinator>();
+                coordinator.ApplyLevel(level, null);
+                var needed = new SpawnAssignment { SymbolStableId = sa.stableId, Role = SpawnAssignmentRole.Needed };
+                Assert.AreSame(hasRealCarrier ? real : null, coordinator.ResolveEnemyData(needed, wave));
+                var filler = new SpawnAssignment { SymbolStableId = sa.stableId, Role = SpawnAssignmentRole.Filler };
+                Assert.AreSame(decoy, coordinator.ResolveEnemyData(filler, wave));
+            }
+            finally
+            {
+                Object.DestroyImmediate(go);
+                Object.DestroyImmediate(level);
+                Object.DestroyImmediate(decoy);
+                Object.DestroyImmediate(real);
+                Object.DestroyImmediate(sa);
+            }
+        }
+
+        [Test]
         public void ResolveEnemyData_ReturnsNullWhenNoEnemyOnTheLevelOwnsTheSymbol()
         {
             var go = new GameObject("SpawnAssignmentCoordinator");
