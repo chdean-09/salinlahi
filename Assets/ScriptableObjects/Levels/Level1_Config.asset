@@ -23,6 +23,7 @@ MonoBehaviour:
     latinSpelling: INA
     displayLabel: INA
     meaning: mother
+    hintText: 
     decomposition:
     - symbol: {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
       spokenValueId: value.i
@@ -37,6 +38,7 @@ MonoBehaviour:
     latinSpelling: AMA
     displayLabel: AMA
     meaning: father
+    hintText: 
     decomposition:
     - symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
       spokenValueId: value.a
@@ -165,6 +167,7 @@ MonoBehaviour:
     - slotIndex: 0
       minSpawnsBeforeNeeded: 1
   enemySpeedMultiplier: 0.6
+  maxActiveEnemies: 0
   overrideDrawingAccuracyThreshold: 1
   drawingAccuracyThresholdOverride: 0.45
   alwaysShowTutorial: 1
@@ -210,6 +213,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
     - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
     - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+    guaranteedCharacters: []
     enemyTypes:
     - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
     - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
@@ -224,6 +228,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
     - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
     - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+    guaranteedCharacters: []
     enemyTypes:
     - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
     - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
@@ -238,6 +243,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
     - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
     - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+    guaranteedCharacters: []
     enemyTypes:
     - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
     - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}

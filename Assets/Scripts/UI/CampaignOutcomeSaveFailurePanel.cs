@@ -231,6 +231,7 @@ public sealed class CampaignOutcomeSaveFailurePanel : MonoBehaviour
         labelRect.offsetMin = Vector2.zero;
         labelRect.offsetMax = Vector2.zero;
         label.color = Color.black;
+        ScrollPanelArt.StylePrimaryButton(button);
         return button;
     }
 }

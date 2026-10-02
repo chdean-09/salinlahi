@@ -460,7 +460,7 @@ public sealed class MemoryCardUI : MonoBehaviour
             glyphRow.pivot = new Vector2(0.5f, 0.5f);
 
         ScrollPanelArt.PlaceButton(flip, Rect.MinMaxRect(0.18f, 0.185f, 0.485f, 0.30f));
-        ScrollPanelArt.PlaceButton(close, Rect.MinMaxRect(0.515f, 0.185f, 0.82f, 0.30f));
+        ScrollPanelArt.PlaceButton(close, Rect.MinMaxRect(0.515f, 0.185f, 0.82f, 0.30f), primary: false);
     }
 
     /// <summary>A full-width band of the card's paper between two normalized heights.</summary>

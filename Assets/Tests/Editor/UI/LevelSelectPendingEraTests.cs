@@ -143,6 +143,70 @@ namespace Salinlahi.Tests.Editor.UI
 
         // ----- helpers -------------------------------------------------------------------
 
+        [Test]
+        public void DemoMap_ShowsEveryCompletionBadge_WithoutChangingSavedCompletion()
+        {
+            var eras = new EraConfigSO[3];
+            for (int eraIndex = 0; eraIndex < eras.Length; eraIndex++)
+            {
+                eras[eraIndex] = Era("Era " + eraIndex, eraIndex + 1);
+                for (int localLevel = 1; localLevel <= 5; localLevel++)
+                {
+                    LevelConfigSO level = Track(ScriptableObject.CreateInstance<LevelConfigSO>());
+                    level.levelNumber = eraIndex * 5 + localLevel;
+                    level.eraLocalOrder = localLevel;
+                    eras[eraIndex].levels.Add(level);
+                }
+            }
+            LevelSelectUI levelSelect = CreateLevelSelect(eras);
+            var buttons = new List<LevelButton>();
+            var badges = new List<GameObject>();
+            for (int i = 0; i < 5; i++)
+            {
+                GameObject buttonObject = new GameObject("Level " + i);
+                buttonObject.transform.SetParent(_levelSelectObject.transform, false);
+                LevelButton button = buttonObject.AddComponent<LevelButton>();
+                GameObject badge = new GameObject("CompletionCheck");
+                badge.transform.SetParent(buttonObject.transform, false);
+                SetPrivateField(button, "_completionBadge", badge);
+                buttons.Add(button);
+                badges.Add(badge);
+            }
+            SetPrivateField(levelSelect, "_levelButtons", buttons);
+            GameObject progressObject = new GameObject("Demo progress display test");
+            ProgressManager previous = ProgressManager.Instance;
+            PropertyInfo singleton = typeof(Singleton<ProgressManager>).GetProperty("Instance",
+                BindingFlags.Public | BindingFlags.Static);
+            try
+            {
+                ProgressManager progress = progressObject.AddComponent<ProgressManager>();
+                singleton.SetValue(null, progress);
+                var savedCompleted = new bool[15];
+                for (int i = 0; i < savedCompleted.Length; i++)
+                    savedCompleted[i] = progress.IsLevelCompleted(i + 1);
+                SetPrivateField(progress, "_enableAllLevelsForTesting", true);
+                for (int eraIndex = 0; eraIndex < eras.Length; eraIndex++)
+                {
+                    levelSelect.ShowEra(eraIndex);
+                    foreach (GameObject badge in badges)
+                        Assert.IsTrue(badge.activeSelf, "Every demo level needs its check.");
+                }
+                SetPrivateField(progress, "_enableAllLevelsForTesting", false);
+                for (int eraIndex = 0; eraIndex < eras.Length; eraIndex++)
+                {
+                    levelSelect.ShowEra(eraIndex);
+                    for (int i = 0; i < badges.Count; i++)
+                        Assert.AreEqual(savedCompleted[eraIndex * 5 + i], badges[i].activeSelf,
+                            "Disabling demo must restore the real completion badge.");
+                }
+            }
+            finally
+            {
+                singleton.SetValue(null, previous);
+                Object.DestroyImmediate(progressObject);
+            }
+        }
+
         private LevelSelectUI CreateLevelSelect(params EraConfigSO[] eras)
         {
             _levelSelectObject = new GameObject("LevelSelectUI_Test");

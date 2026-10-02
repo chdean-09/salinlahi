@@ -50,7 +50,7 @@ public class ProgressManager : Singleton<ProgressManager>
 
     [Header("Demo and Testing")]
     [SerializeField]
-    [Tooltip("Makes every campaign level selectable. Demo completions show Results without saving progression, stars, or rewards.")]
+    [Tooltip("Makes every campaign level selectable and previews every authored memory. Demo completions show Results without saving progression, stars, or rewards.")]
     private bool _enableAllLevelsForTesting;
 
     private LevelConfigSO _testingSelectedLevel;

@@ -2150,6 +2150,20 @@ public class LevelFlowController : MonoBehaviour
         EraConfigSO completedEra = FindEraForLevel(campaign, _levelConfig);
         bool isEraFinalLevel = EraBoundary.IsEraFinalLevel(completedEra, _levelConfig);
 
+        EraConfigSO nextEra = EraBoundary.NextEra(campaign, completedEra);
+        int nextEraIndex = EraBoundary.IndexOfEra(campaign, nextEra);
+        _victoryScreen.ConfigureEraCompletionAction(
+            isEraFinalLevel
+                ? () =>
+                {
+                    if (nextEra != null)
+                        EnterNextEra(nextEraIndex);
+                    else
+                        ShowEraCompletionScreen(campaign, completedEra, true);
+                }
+                : null,
+            nextEra != null ? EraCompletionCopy.EnterNextEraLabel : "Era Complete");
+
         // Null on the legacy path; VictoryScreenUI falls back to ProgressManager.GetStars there.
         _victoryScreen.PresentResults(LastResults, isEraFinalLevel);
 
@@ -2195,7 +2209,8 @@ public class LevelFlowController : MonoBehaviour
                 : null;
 
         IReadOnlyList<MemoryArchiveEntry> entries =
-            MemoryArchiveModel.BuildForEra(completedEra, unlockedMemoryIds);
+            MemoryArchiveModel.BuildForEra(completedEra, unlockedMemoryIds,
+                ProgressManager.Instance != null && ProgressManager.Instance.EnableAllLevelsForTesting);
 
         EraConfigSO nextEra = EraBoundary.NextEra(campaign, completedEra);
         int nextEraIndex = EraBoundary.IndexOfEra(campaign, nextEra);

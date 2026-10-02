@@ -262,7 +262,7 @@ public class ChallengeModeUI : MonoBehaviour
         return false;
     }
 
-    private static string BuildPrompt(ChallengeUnitDefinition unit, ChallengeSession session)
+    private string BuildPrompt(ChallengeUnitDefinition unit, ChallengeSession session)
     {
         if (unit == null)
             return string.Empty;
@@ -291,12 +291,20 @@ public class ChallengeModeUI : MonoBehaviour
                 return match.Value;
             bool placed = ContainsOccurrence(session.CurrentProgress, slot.expectedOccurrenceId)
                 || ContainsOccurrence(session.CommittedOccurrenceIds, slot.expectedOccurrenceId);
-            // Keep the blank and its answer in the same fixed-width, unbroken slot.
-            // Replacing six underscores with a short word must not reflow the sentence.
-            int width = System.Math.Max(match.Length, token.displayText.Length);
-            string value = placed ? $"<b>{token.displayText}</b>" : match.Value;
-            int padding = width - (placed ? token.displayText.Length : match.Length);
-            return $"<nobr><mspace=0.65em>{new string('\u00a0', padding)}{value}</mspace></nobr>";
+            string answer = $"<b>{token.displayText}</b>";
+            if (placed)
+                return $"<nobr>{answer}</nobr>";
+
+            // Match the blank to the answer's natural font width, without padding the
+            // filled word or spreading its letters. Both remain unbroken when wrapping.
+            // Include a following word in both measurements so TMP's last-glyph
+            // bearing is cancelled out and the slot uses the inline advance width.
+            const string suffix = " x";
+            float width = _promptText.GetPreferredValues(answer + suffix, Mathf.Infinity, Mathf.Infinity).x
+                - _promptText.GetPreferredValues(suffix, Mathf.Infinity, Mathf.Infinity).x;
+            string spacing = (width / token.displayText.Length).ToString(
+                "0.###", System.Globalization.CultureInfo.InvariantCulture);
+            return $"<nobr><mspace={spacing}>{new string('_', token.displayText.Length)}</mspace></nobr>";
         });
     }
 
@@ -461,9 +469,7 @@ public class ChallengeModeUI : MonoBehaviour
         return button;
     }
 
-    // The scroll-family button convention, sourced from ScrollPanelArt so the board,
-    // the modals and the end screens cannot drift apart: gold carries the gameplay
-    // actions, dark slate the utilities — the pair the ready screen ships.
+    // Fallback colors when the shared parchment button artwork is unavailable.
     private static readonly Color GoldButtonFill = ScrollPanelArt.GoldButtonFill;
     private static readonly Color SlateButtonFill = ScrollPanelArt.SlateButtonFill;
 
@@ -503,6 +509,7 @@ public class ChallengeModeUI : MonoBehaviour
             ScrollPanelArt.Inkify(text);
         else
             text.color = labelColor;
+        ScrollPanelArt.ApplyButtonSkin(button, labelColor == ScrollPanelArt.InkColor, fill);
         return button;
     }
 }

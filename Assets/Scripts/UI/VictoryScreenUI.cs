@@ -55,6 +55,16 @@ public class VictoryScreenUI : MonoBehaviour
     /// the data it needs.
     /// </summary>
     private bool _isEraFinalLevel;
+    private System.Action _eraCompletionAction;
+    private string _eraActionLabel;
+    private string _nextLevelLabel;
+
+    /// <summary>Reuses the primary results slot for the era boundary's navigation.</summary>
+    public void ConfigureEraCompletionAction(System.Action action, string label)
+    {
+        _eraCompletionAction = action;
+        _eraActionLabel = label;
+    }
 
     private bool _replayListenerBound;
     private bool _showRequested;
@@ -185,7 +195,17 @@ public class VictoryScreenUI : MonoBehaviour
         // gain one it did not have before.
         bool isLastLevel = _isEraFinalLevel || currentLevel >= 15;
         if (_nextLevelButton != null)
-            _nextLevelButton.gameObject.SetActive(!isLastLevel);
+        {
+            bool showEraAction = _isEraFinalLevel && _eraCompletionAction != null;
+            _nextLevelButton.gameObject.SetActive(!isLastLevel || showEraAction);
+            TMP_Text label = _nextLevelButton.GetComponentInChildren<TMP_Text>(true);
+            if (label != null)
+            {
+                if (_nextLevelLabel == null)
+                    _nextLevelLabel = label.text;
+                label.text = showEraAction ? _eraActionLabel : _nextLevelLabel;
+            }
+        }
 
         DebugLogger.Log($"VictoryScreenUI: Level {currentLevel} complete with {stars} stars.");
     }
@@ -654,6 +674,7 @@ public class VictoryScreenUI : MonoBehaviour
             labelRect.offsetMax = Vector2.zero;
             TextMeshProUGUI label = CreateOrGetLabel(labelObject, 42f);
             label.text = LevelResultsCopy.ReplayLevelLabel;
+            label.fontStyle = FontStyles.Bold;
             // Font, fill and label colour land in the shared convention pass at the
             // bottom of this method — nothing else to author here.
 
@@ -718,6 +739,11 @@ public class VictoryScreenUI : MonoBehaviour
 
     private void OnNextLevelPressed()
     {
+        if (_isEraFinalLevel)
+        {
+            _eraCompletionAction?.Invoke();
+            return;
+        }
         AudioManager.Instance?.PlayMenuButtonClick();
         int currentLevel = ProgressManager.Instance != null
             ? ProgressManager.Instance.GetSelectedLevelNumber() : 1;

@@ -119,7 +119,7 @@ public sealed class InstantWinPresenter : MonoBehaviour
 
     [Tooltip("Font size of the tap-to-continue prompt shown once the hold's arming pause "
              + "has passed. The beat's only on-screen words, so it reads at banner weight.")]
-    [Min(1f)] [SerializeField] private float _continuePromptFontSize = 40f;
+    [Min(1f)] [SerializeField] private float _continuePromptFontSize = UITextScale.Title;
 
     private GameObject _overlayRoot;
     private TMP_Text _bannerLabel;

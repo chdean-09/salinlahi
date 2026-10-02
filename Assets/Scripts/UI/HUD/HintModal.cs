@@ -278,8 +278,7 @@ public sealed class HintModal : MonoBehaviour
             ScrollPanelArt.InkifyRecursive(_card);
     }
 
-    // The scroll-family button convention: gold is the forward action, dark slate the
-    // retreating one — the same pair LevelReadyScreenController ships.
+    // Fallback colors when the shared parchment button artwork is unavailable.
     private static readonly Color GoldButton = new Color(0.85f, 0.72f, 0.35f, 1f);
     private static readonly Color SlateButton = new Color(0.18f, 0.24f, 0.34f, 1f);
 
@@ -342,6 +341,7 @@ public sealed class HintModal : MonoBehaviour
         TutorialFontProvider.ApplyTo(labelText);
         if (labelColor == ScrollPanelArt.InkColor)
             ScrollPanelArt.Inkify(labelText);
+        ScrollPanelArt.ApplyButtonSkin(button, labelColor == ScrollPanelArt.InkColor, fill);
         return button;
     }
 }

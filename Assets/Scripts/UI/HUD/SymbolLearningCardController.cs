@@ -410,7 +410,7 @@ public class SymbolLearningCardController : MonoBehaviour
         if (_replayAudioButton != null)
         {
             ScrollPanelArt.PlaceButton(
-                _replayAudioButton.GetComponent<Button>(), ReplayBand);
+                _replayAudioButton.GetComponent<Button>(), ReplayBand, primary: false);
         }
         ScrollPanelArt.PlaceButton(_continueButton, ContinueBand);
     }

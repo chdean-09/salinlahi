@@ -196,7 +196,9 @@ public class LevelSelectUI : MonoBehaviour
             if (pmAvailable)
             {
                 unlocked = ProgressManager.Instance.IsLevelUnlocked(levelConfig.levelNumber);
-                completed = ProgressManager.Instance.IsLevelCompleted(levelConfig.levelNumber);
+                // Demo badges preview the complete map without writing completion to the save.
+                completed = ProgressManager.Instance.EnableAllLevelsForTesting
+                    || ProgressManager.Instance.IsLevelCompleted(levelConfig.levelNumber);
             }
 
             button.gameObject.SetActive(true);

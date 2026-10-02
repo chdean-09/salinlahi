@@ -15,8 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "INA: ang nagluwal at nag-aruga. Binubuo ito ng dalawang titik: I
-      at NA."
+    text: 'INA: ang nagluwal at nag-aruga. Binubuo ito ng dalawang titik: I at NA.'
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
     text: Bakasin mo ang bawat titik upang maibalik ang alaala ni Ina.

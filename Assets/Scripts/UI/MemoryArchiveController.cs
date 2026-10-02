@@ -116,7 +116,8 @@ public sealed class MemoryArchiveController : MonoBehaviour
         IsPresented = true;
 
         _entries.Clear();
-        foreach (MemoryArchiveEntry entry in MemoryArchiveModel.Build(campaign, unlockedMemoryIds))
+        foreach (MemoryArchiveEntry entry in MemoryArchiveModel.Build(campaign, unlockedMemoryIds,
+            ProgressManager.Instance != null && ProgressManager.Instance.EnableAllLevelsForTesting))
             _entries.Add(entry);
 
         _titleText.text = MemoryCardCopy.ArchiveTitle;
