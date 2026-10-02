@@ -4,8 +4,7 @@ using UnityEngine.UI;
 
 /// <summary>
 /// The screen surface for the enemy introduction beat: the card that slides in beside a newly met
-/// enemy type (walk sprite, display name, optional subtitle, ability line) and the one-line banner
-/// that persists for that enemy's lifetime after the card leaves.
+/// enemy type (walk sprite, display name, optional subtitle, ability line).
 ///
 /// <para>
 /// <b>This view owns pixels; <see cref="EnemyIntroductionBeat"/> owns time.</b> Every animated state
@@ -25,10 +24,6 @@ using UnityEngine.UI;
 /// be retried.
 /// </para>
 ///
-/// <para>
-/// The card and the banner are independent surfaces: the banner outlives the card by design (it
-/// stays up for the introduced enemy's whole lifetime), so hiding the card must not touch it.
-/// </para>
 /// </summary>
 public sealed class EnemyIntroductionCardView : MonoBehaviour
 {
@@ -58,8 +53,8 @@ public sealed class EnemyIntroductionCardView : MonoBehaviour
     [Tooltip("EnemyDataSO.abilityLine. Hidden until the beat's ability step, so the name lands before the behaviour does.")]
     [SerializeField] private TMP_Text _abilityText;
 
-    [Header("Lifetime Banner")]
-    [Tooltip("Persists after the card leaves, for the introduced enemy's lifetime only. Optional: with no banner group the beat runs its four steps and skips the banner.")]
+    [Header("Retired Lifetime Banner")]
+    [Tooltip("Legacy scene reference retained so the removed reminder can be kept hidden.")]
     [SerializeField] private CanvasGroup _bannerGroup;
 
     [Tooltip("The banner's single line of copy.")]
@@ -239,7 +234,7 @@ public sealed class EnemyIntroductionCardView : MonoBehaviour
         UITextReveal.Complete(_abilityText);
     }
 
-    /// <summary>Drops the card out of view at once, without touching the banner.</summary>
+    /// <summary>Drops the card out of view at once.</summary>
     public void HideCardImmediate()
     {
         HideContinuePrompt();
@@ -249,23 +244,13 @@ public sealed class EnemyIntroductionCardView : MonoBehaviour
     }
 
     /// <summary>
-    /// Raises the persistent one-line banner. Blank copy leaves it hidden rather than showing an
-    /// empty bar for the enemy's whole lifetime.
+    /// Keeps the retired combat reminder hidden. Ability copy remains on the introduction card.
     /// </summary>
     public void ShowBanner(string text)
     {
-        if (_bannerGroup == null)
-            return;
-
-        bool hasCopy = !string.IsNullOrWhiteSpace(text);
-        CombatNotificationBanner.Configure(_bannerText, 0.39f, _bannerGroup);
         if (_bannerText != null)
-            _bannerText.text = hasCopy ? text : string.Empty;
-
-        _bannerGroup.alpha = hasCopy ? 1f : 0f;
-        _bannerGroup.blocksRaycasts = false;
-        _bannerGroup.interactable = false;
-        _bannerGroup.gameObject.SetActive(hasCopy);
+            _bannerText.text = string.Empty;
+        HideBanner();
     }
 
     /// <summary>Takes the banner down. Called when the introduced enemy leaves the field.</summary>

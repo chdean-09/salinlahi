@@ -12,7 +12,7 @@ using UnityEngine.UI;
 /// draw on a filler enemy — which the spawn schedule produces deliberately and often — is correct
 /// recall arriving out of order, and if it renders the same way a miss does, the schedule spends the
 /// level telling the player they were wrong for remembering. So a later-needed or already-restored
-/// draw is answered with its own line and a pulse on the slot still to fill, while a miss never
+/// draw is answered with a pulse on the slot still to fill, while a miss never
 /// leaves the draw site and dims in place.</para>
 ///
 /// <para>The later-needed and already-restored states used to fly the badge to their slot as well,
@@ -57,10 +57,7 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
     [Tooltip("The player's own ink. Held, then faded, after a refused drawing.")]
     [SerializeField] private CanvasGroup _playerInk;
 
-    [Tooltip("Label carrying the player-facing prompt. Safe to leave unwired. Must NOT be the same "
-             + "label DrawingFeedback writes to: a later-needed draw is a kill, so DrawingFeedback's "
-             + "OnEnemyDefeated cue fires for it too and lands AFTER this one — a shared label would "
-             + "end up reading 'Nice, that's the one' over a syllable that filled nothing.")]
+    [Tooltip("Legacy message label, kept hidden now that post-draw text strips are removed.")]
     [SerializeField] private TMP_Text _messageLabel;
 
     [Header("Accuracy Response")]
@@ -100,13 +97,8 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
     [Tooltip("Alpha the missed glyph is left at. Design value: 0.30 — present but plainly inert.")]
     [SerializeField, Range(0f, 1f)] private float _missDimAlpha = 0.3f;
 
-    [Tooltip("Seconds a prompt stays up before the label clears. 0 leaves it until the next prompt.")]
-    [SerializeField, Min(0f)] private float _messageHoldSeconds = 3f;
-
     /// <summary>
-    /// The wording last handed to the player. Held for the same reason
-    /// <see cref="DrawingFeedback.LastMessage"/> is: the label that renders it is an optional scene
-    /// reference, so this is the assertable record of what the player was actually told.
+    /// Diagnostic copy for the last cue. Combat text strips are no longer displayed.
     /// </summary>
     public string LastMessage { get; private set; } = string.Empty;
 
@@ -141,7 +133,6 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
     private Coroutine _inkRoutine;
     private Coroutine _missRoutine;
     private Coroutine _pulseRoutine;
-    private Coroutine _clearMessageRoutine;
 
     private void Awake()
     {
@@ -150,6 +141,7 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
 
         HideOverlay(_missGlyph);
         HideOverlay(_ghostStrokeOverlay);
+        SetMessage(string.Empty);
     }
 
     private void OnEnable()
@@ -587,37 +579,14 @@ public sealed class DrawFeedbackPresenter : MonoBehaviour
             yield return new WaitForSecondsRealtime(seconds);
     }
 
+    // Keep cue state and visual feedback, but do not display post-draw text strips.
     private void SetMessage(string message)
     {
         LastMessage = message;
-
-        if (_messageLabel == null)
-            return;
-
-        CombatNotificationBanner.Configure(_messageLabel, 0.25f);
-        _messageLabel.text = message;
-
-        if (_clearMessageRoutine != null)
-        {
-            StopCoroutine(_clearMessageRoutine);
-            _clearMessageRoutine = null;
-        }
-
-        // LastMessage is deliberately not cleared alongside the label: it is the assertable record of
-        // what the player was told, and a record that erases itself on a timer is not a record.
-        if (_messageHoldSeconds <= 0f || !isActiveAndEnabled)
-            return;
-
-        _clearMessageRoutine = StartCoroutine(ClearMessageAfterHold());
-    }
-
-    private IEnumerator ClearMessageAfterHold()
-    {
-        yield return WaitUnscaled(_messageHoldSeconds);
-
         if (_messageLabel != null)
+        {
             _messageLabel.text = string.Empty;
-
-        _clearMessageRoutine = null;
+            _messageLabel.gameObject.SetActive(false);
+        }
     }
 }
