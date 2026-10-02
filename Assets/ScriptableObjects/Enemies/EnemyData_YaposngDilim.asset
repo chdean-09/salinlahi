@@ -24,6 +24,19 @@ MonoBehaviour:
   - {fileID: -4734520517766040561, guid: f59dd658772274ead811097a689a7845, type: 3}
   - {fileID: 2150873182626429162, guid: f59dd658772274ead811097a689a7845, type: 3}
   - {fileID: 3935407279098691711, guid: f59dd658772274ead811097a689a7845, type: 3}
+  healthWalkFrames:
+  - health: 2
+    frames:
+    - {fileID: -1158253164873839831, guid: 962d770f736374d339d873ed70867623, type: 3}
+    - {fileID: 6139112790949445904, guid: 962d770f736374d339d873ed70867623, type: 3}
+    - {fileID: 4333355618808186825, guid: 962d770f736374d339d873ed70867623, type: 3}
+    - {fileID: 2805801104055317764, guid: 962d770f736374d339d873ed70867623, type: 3}
+  - health: 1
+    frames:
+    - {fileID: -5929679301323265618, guid: 2b1cc82f8a73147b5933aa67b1b83f7b, type: 3}
+    - {fileID: -1756946948621769088, guid: 2b1cc82f8a73147b5933aa67b1b83f7b, type: 3}
+    - {fileID: 3453387447816658072, guid: 2b1cc82f8a73147b5933aa67b1b83f7b, type: 3}
+    - {fileID: 6088402665864357543, guid: 2b1cc82f8a73147b5933aa67b1b83f7b, type: 3}
   animatorController: {fileID: 0}
   portraitSprite: {fileID: 0}
   assignedCharacter: {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
@@ -51,8 +64,17 @@ MonoBehaviour:
   baseSpeedMultiplier: 1
   auraRadius: 0
   auraSpeedMultiplier: 1.3
-  deathFrames: []
+  deathFrames:
+  - {fileID: 7716886937284101367, guid: 231654a89ab8240af87cfd50c454763b, type: 3}
+  - {fileID: -2427182139309216448, guid: 231654a89ab8240af87cfd50c454763b, type: 3}
+  - {fileID: -25995323073532414, guid: 231654a89ab8240af87cfd50c454763b, type: 3}
+  - {fileID: 6221401509891797220, guid: 231654a89ab8240af87cfd50c454763b, type: 3}
   deathAnimationFps: 8
+  victoryCelebrationFrames:
+  - {fileID: -9090720512636735450, guid: 231654a89ab8240af87cfd50c454763b, type: 3}
+  - {fileID: 1980229186369326669, guid: 231654a89ab8240af87cfd50c454763b, type: 3}
+  - {fileID: 2608239224702681003, guid: 231654a89ab8240af87cfd50c454763b, type: 3}
+  - {fileID: -6443179762762819553, guid: 231654a89ab8240af87cfd50c454763b, type: 3}
   useHurtFeedback: 1
   hurtPausesMovement: 1
   hurtPauseDuration: 0.25
