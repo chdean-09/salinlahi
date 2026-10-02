@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "BATA \u2014 ang musmos na sumisibol, ang simula ng bawat alaala. Binubuo
+    text: "BATA: ang musmos na sumisibol, ang simula ng bawat alaala. Binubuo
       ito ng dalawang titik: BA at TA."
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}

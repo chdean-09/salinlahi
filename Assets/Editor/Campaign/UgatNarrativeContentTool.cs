@@ -235,7 +235,7 @@ public static class UgatNarrativeContentTool
                     AssetName = "Dialogue_Ugat02_Bata",
                     Lines = new[]
                     {
-                        (Narrator, "BATA — ang musmos na sumisibol, ang simula ng bawat alaala. Binubuo ito ng dalawang titik: BA at TA."),
+                        (Narrator, "BATA: ang musmos na sumisibol, ang simula ng bawat alaala. Binubuo ito ng dalawang titik: BA at TA."),
                         (Narrator, "Bakasin mo ang bawat titik upang maibalik ang alaala ng batang si Juan."),
                     },
                 },
@@ -244,7 +244,7 @@ public static class UgatNarrativeContentTool
                     AssetName = "Dialogue_Ugat02_Mata",
                     Lines = new[]
                     {
-                        (Narrator, "MATA — ang nakakikita at nakaaalala. Binubuo ito ng dalawang titik: MA at TA."),
+                        (Narrator, "MATA: ang nakakikita at nakaaalala. Binubuo ito ng dalawang titik: MA at TA."),
                         (Narrator, "Bakasin mo ang bawat titik upang muling makita ang nakaraan."),
                     },
                 },
@@ -278,7 +278,7 @@ public static class UgatNarrativeContentTool
                     AssetName = "Dialogue_Ugat03_Intro",
                     Lines = new[]
                     {
-                        (Narrator, "Sa lilim ng punong mangga, may naririnig si Juan na tinig — ang tinig ng kanyang ama."),
+                        (Narrator, "Sa lilim ng punong mangga, naririnig ni Juan ang tinig ng kanyang ama."),
                         (Juan, "May sinasabi siya tungkol sa akin. Ngunit hindi ko na maalala ang buong pangungusap."),
                         (Narrator, "Hindi sapat ang isang salita ngayon. Buuin mo ang buong pangungusap: balikan ang BATA, at hanapin ang TAMA."),
                     },
@@ -288,8 +288,8 @@ public static class UgatNarrativeContentTool
                     AssetName = "Dialogue_Ugat03_Bata",
                     Lines = new[]
                     {
-                        (Narrator, "BATA — nabakas mo na ito noon. Ngayon, gagamitin mo ito sa loob ng isang buong pangungusap. Binubuo pa rin ito ng dalawang titik: BA at TA."),
-                        (Narrator, "Bakasin mo itong muli — hindi bilang bagong salita, kundi bilang bahagi ng isang buong diwa."),
+                        (Narrator, "BATA: nabakas mo na ito noon. Ngayon, gagamitin mo ito sa loob ng isang buong pangungusap. Binubuo pa rin ito ng dalawang titik: BA at TA."),
+                        (Narrator, "Bakasin mo itong muli, hindi bilang bagong salita, kundi bilang bahagi ng isang buong diwa."),
                     },
                 },
                 Slot2 = new Block
@@ -297,7 +297,7 @@ public static class UgatNarrativeContentTool
                     AssetName = "Dialogue_Ugat03_Tama",
                     Lines = new[]
                     {
-                        (Narrator, "TAMA — ang wasto, ang nararapat. Binubuo ito ng dalawang titik: TA at MA."),
+                        (Narrator, "TAMA: ang wasto, ang nararapat. Binubuo ito ng dalawang titik: TA at MA."),
                         (Narrator, "Bakasin mo ang bawat titik upang mabuo ang sinabi ni Ama."),
                     },
                 },
@@ -307,7 +307,7 @@ public static class UgatNarrativeContentTool
                     Lines = new[]
                     {
                         (Juan, "\"Tama ang bata.\" Iyon ang sinabi ni Ama sa akin."),
-                        (Narrator, "Hindi lamang salita ang naibalik mo, Juan. Isang buong pangungusap — at ang tiwala ng iyong ama."),
+                        (Narrator, "Hindi lamang salita ang naibalik mo, Juan. Isang buong pangungusap at ang tiwala ng iyong ama."),
                     },
                 },
             },
@@ -323,7 +323,7 @@ public static class UgatNarrativeContentTool
                     CutsceneId = "cutscene.ugat.04.memory",
                     Panels = new[]
                     {
-                        "Ang mukha nina Ina at Ama, malinaw na sa isip ni Juan — hindi na larawang hiniram, kundi alaalang tunay nang kanya.",
+                        "Ang mukha nina Ina at Ama, malinaw na sa isip ni Juan: hindi na larawang hiniram, kundi alaalang tunay nang kanya.",
                     },
                 },
                 Intro = new Block
@@ -341,7 +341,7 @@ public static class UgatNarrativeContentTool
                     AssetName = "Dialogue_Ugat04_Ina",
                     Lines = new[]
                     {
-                        (Narrator, "INA — ang nagluwal at nag-aruga. Binubuo ito ng dalawang titik: I at NA."),
+                        (Narrator, "INA: ang nagluwal at nag-aruga. Binubuo ito ng dalawang titik: I at NA."),
                         (Narrator, "Walang gabay sa pagkakataong ito. Bakasin mo mula sa alaala."),
                     },
                 },
@@ -350,7 +350,7 @@ public static class UgatNarrativeContentTool
                     AssetName = "Dialogue_Ugat04_Ama",
                     Lines = new[]
                     {
-                        (Narrator, "AMA — ang haligi ng tahanan. Binubuo ito ng dalawang titik: A at MA."),
+                        (Narrator, "AMA: ang haligi ng tahanan. Binubuo ito ng dalawang titik: A at MA."),
                         (Narrator, "Walang gabay sa pagkakataong ito. Bakasin mo mula sa alaala."),
                     },
                 },
@@ -376,7 +376,7 @@ public static class UgatNarrativeContentTool
                     CutsceneId = "cutscene.ugat.05.memory",
                     Panels = new[]
                     {
-                        "Ang mana ni Juan — hindi lupa, hindi ginto, kundi ang kakayahang bumasa at sumulat ng Baybayin, ipinasa mula kina Ina at Ama.",
+                        "Ang mana ni Juan ay hindi lupa o ginto, kundi ang kakayahang bumasa at sumulat ng Baybayin na ipinasa mula kina Ina at Ama.",
                     },
                 },
                 Intro = new Block
@@ -384,7 +384,7 @@ public static class UgatNarrativeContentTool
                     AssetName = "Dialogue_Ugat05_Intro",
                     Lines = new[]
                     {
-                        (Narrator, "Sa dulo ng Ugat, hinarap ni Juan ang Paglimot — ang anino na kumain sa mga alaala ng kanyang pamilya."),
+                        (Narrator, "Sa dulo ng Ugat, hinarap ni Juan ang Paglimot, ang anino na kumain sa mga alaala ng kanyang pamilya."),
                         (Juan, "Iba na ang panahon. Iba na ang mundo. Ngunit hindi ibig sabihin niyon ay wala na akong natira."),
                         (Narrator, "Tama ka, Juan. May mana kang hindi kayang kainin ng Paglimot. Bakasin mo ang IBA at ang MANA."),
                     },
@@ -394,7 +394,7 @@ public static class UgatNarrativeContentTool
                     AssetName = "Dialogue_Ugat05_Iba",
                     Lines = new[]
                     {
-                        (Narrator, "IBA — ang naiiba, ang hindi katulad ng dati. Binubuo ito ng dalawang titik: I at BA."),
+                        (Narrator, "IBA: ang naiiba, ang hindi katulad ng dati. Binubuo ito ng dalawang titik: I at BA."),
                         (Narrator, "Bakasin mo ito upang tanggapin na nagbabago ang panahon."),
                     },
                 },
@@ -403,7 +403,7 @@ public static class UgatNarrativeContentTool
                     AssetName = "Dialogue_Ugat05_Mana",
                     Lines = new[]
                     {
-                        (Narrator, "MANA — ang minana mula sa nauna, ang ipinapasa sa susunod. Binubuo ito ng dalawang titik: MA at NA."),
+                        (Narrator, "MANA: ang minana mula sa nauna, ang ipinapasa sa susunod. Binubuo ito ng dalawang titik: MA at NA."),
                         (Narrator, "Bakasin mo ito upang angkinin ang iyong pamana."),
                     },
                 },
@@ -413,9 +413,9 @@ public static class UgatNarrativeContentTool
                     AssetName = "Dialogue_Ugat05_Outro",
                     Lines = new[]
                     {
-                        (Juan, "Iba na nga ang panahon. Ngunit ang mana ko ay nasa akin pa rin — nasa mga titik na natutunan kong bakasin."),
+                        (Juan, "Iba na nga ang panahon. Ngunit ang mana ko ay nasa akin pa rin sa mga titik na natutunan kong bakasin."),
                         (Narrator, "Ito ang Ugat, Juan: ang pinanggalingan. Malalim na ang iyong ugat ngayon."),
-                        (Narrator, "Sa susunod na yugto, ang Ugnayan — kung paano nagkakaugnay-ugnay ang isa't isa."),
+                        (Narrator, "Sa susunod na yugto, matutuklasan ang Ugnayan: kung paano nagkakaugnay-ugnay ang isa't isa."),
                     },
                 },
             },

@@ -27,8 +27,8 @@ MonoBehaviour:
     transitionDuration: 0
     typewriterSpeed: 0
   - image: {fileID: 21300000, guid: d22d77eb664fd4c4fb9d2c5cda671e46, type: 3}
-    text: "Above the empty village, the Living Scroll opens in a wash of gold.\nFour
-      faces appear over its pages \u2014 neighbors whose lives were once bound together.\nTheir
+    text: "Above the empty village, the Living Scroll opens in a wash of gold.\nThe faces of four
+      neighbors whose lives were once bound together appear over its pages.\nTheir
       names are still there, but the ties between them are beginning to fade."
     transitionIn: 0
     transitionDuration: 0

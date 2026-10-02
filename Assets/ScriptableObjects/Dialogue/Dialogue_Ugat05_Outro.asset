@@ -15,12 +15,12 @@ MonoBehaviour:
   lines:
   - speakerName: Juan
     portrait: {fileID: 0}
-    text: "Iba na nga ang panahon. Ngunit ang mana ko ay nasa akin pa rin \u2014
-      nasa mga titik na natutunan kong bakasin."
+    text: "Iba na nga ang panahon. Ngunit ang mana ko ay nasa akin pa rin
+      sa mga titik na natutunan kong bakasin."
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
     text: 'Ito ang Ugat, Juan: ang pinanggalingan. Malalim na ang iyong ugat ngayon.'
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "Sa susunod na yugto, ang Ugnayan \u2014 kung paano nagkakaugnay-ugnay
+    text: "Sa susunod na yugto, matutuklasan ang Ugnayan: kung paano nagkakaugnay-ugnay
       ang isa't isa."

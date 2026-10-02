@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "KASAMA\u2014taong kapiling sa gawain at paglalakbay."
+    text: "KASAMA: taong kapiling sa gawain at paglalakbay."
   - speakerName: Juan
     portrait: {fileID: 0}
     text: KA + SA + MA. Ang kasama ay hindi iniiwan sa hirap.

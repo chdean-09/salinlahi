@@ -40,6 +40,10 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         set => _showActiveClueMark = value;
     }
 
+    [Header("Word Restoration Cue")]
+    [Tooltip("Legacy restoration announcement label, kept hidden during combat.")]
+    [SerializeField] private TextMeshProUGUI _wordRestoredText;
+
     [Header("Combat Restoration Progress")]
     [Tooltip("Optional authored label that used to print the restoration readout as text. It is "
              + "now only a font template for the runtime rail, and its own GameObject is switched "
@@ -528,6 +532,11 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     public GameObject ActiveClueMark => _activeClueMark;
 
     /// <summary>
+    /// The retired restoration announcement label, kept hidden when authored wiring exists.
+    /// </summary>
+    public TextMeshProUGUI WordRestoredLabel => _wordRestoredText;
+
+    /// <summary>
     /// How many word-restoration cues this presenter has raised. Exists so a test can assert
     /// "exactly once per accepted draw". The cue is recorded only; nothing is drawn for it.
     /// </summary>
@@ -745,6 +754,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private void OnEnable()
     {
         Active = this;
+        if (_wordRestoredText != null)
+            _wordRestoredText.gameObject.SetActive(false);
         _ashWasActive = AshFirstSlotController.IsAnyActive();
         _punitTearTargetActive = false;
         _punitTearProgress = 0f;
@@ -1504,6 +1515,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     {
         _wordRestoredCueCount++;
         _lastWordRestoredMessage = message;
+        if (_wordRestoredText != null)
+            _wordRestoredText.gameObject.SetActive(false);
     }
 
     /// <summary>
@@ -3374,20 +3387,22 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     /// </param>
     private void RepaintRail(bool forceRestored)
     {
-        // The clue mask is ability state, not artwork state. If an Abo definition is missing or
-        // its cover sprite cannot be presented, the restored glyph and label must still stay
-        // hidden while the ability is active (including while the rail itself is suppressed).
+        // Ash can obscure an unearned requirement, but never an already restored box.
+        // Retire its artwork immediately so even an exit animation cannot cover earned ink.
+        if (_ashCoverUsesRestorationRail && _ashCoverRailSlot != null
+            && IsRailSlotRestored(_ashCoverRailSlot))
+            HideAshCover();
         bool ashActive = AshFirstSlotController.IsAnyActive();
         RailSlot ashTargetSlot = ashActive ? GetAshCoverRailSlot() : null;
 
         for (int i = 0; i < _railSlots.Count; i++)
         {
             RailSlot slot = _railSlots[i];
-            bool ashCoveringSlot = ashActive && slot == ashTargetSlot;
             bool restored = forceRestored
                 || (UsesRestorationObjectiveDefinition
                     ? _restorationObjectiveController.IsOccurrenceRestored(slot.OccurrenceId)
                     : _restorationState.IsSlotRestored(slot.Word, slot.DecompositionIndex));
+            bool ashCoveringSlot = !restored && ashActive && slot == ashTargetSlot;
 
             slot.Frame.color = restored ? _filledSlotColor : _emptySlotColor;
 
@@ -3408,9 +3423,8 @@ public sealed class ActiveCluePresenter : MonoBehaviour
                 slot.Glyph.gameObject.SetActive(showGlyph);
 
             // The syllable under the box follows the same rule as the glyph inside it. The label
-            // row follows the authored display policy: guided and marked objectives intentionally
-            // teach the target label, while clue-only and hidden objectives keep it private until
-            // the relevant unit/occurrence is earned.
+            // row follows the authored display policy for unearned answers. Every restored
+            // occurrence reveals its own label immediately, even if its word is still incomplete.
             if (slot.Label != null)
             {
                 bool showLabel = restored;
@@ -3418,11 +3432,10 @@ public sealed class ActiveCluePresenter : MonoBehaviour
                 {
                     RestorationDisplayMode mode = _restorationObjectiveController
                         .State.Definition.displayMode;
-                    showLabel = mode == RestorationDisplayMode.GuidedWords
+                    showLabel = restored || mode == RestorationDisplayMode.GuidedWords
                         || mode == RestorationDisplayMode.MarkedContext
                         || (mode == RestorationDisplayMode.ClueOnlyWords
-                            && IsObjectiveUnitComplete(slot.UnitId))
-                        || (mode == RestorationDisplayMode.HiddenContext && restored);
+                            && IsObjectiveUnitComplete(slot.UnitId));
                 }
 
                 slot.Label.text = showLabel && !ashCoveringSlot
@@ -4204,9 +4217,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             UpdateCluePanel(_currentClue);
             _animateClueCrumble = false;
 
-            // Repaint the state-backed rail mask on the ability edge itself. The cover artwork
-            // may be absent, and BeginAshCoverActivation intentionally has no presentation work
-            // to do in that fallback, so it cannot be responsible for hiding a restored answer.
+            // Repaint unearned requirements on the ability edge even without cover artwork.
             if (_railSlots.Count > 0)
                 RepaintRail(forceRestored: false);
         }
@@ -4229,12 +4240,11 @@ public sealed class ActiveCluePresenter : MonoBehaviour
 
     private bool CanPresentAshCoverOnClue()
     {
-        // A hidden rail is still a valid visual target: intro modals and cutscenes temporarily
-        // deactivate it, but the ash state must remain latched so repainting the rail cannot show
-        // a restored answer for one frame when the HUD becomes visible again.
-        if (_railRoot != null && GetAshCoverRailSlot() != null)
+        // A temporarily hidden rail still tracks ash, but earned boxes are never cover targets.
+        if (_railRoot != null)
         {
-            return true;
+            RailSlot slot = GetAshCoverRailSlot();
+            return slot != null && !IsRailSlotRestored(slot);
         }
 
         return _clueText != null
@@ -4245,6 +4255,10 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             && _clueText.textInfo != null
             && !string.IsNullOrEmpty(_clueText.text);
     }
+
+    private bool IsRailSlotRestored(RailSlot slot) => UsesRestorationObjectiveDefinition
+        ? _restorationObjectiveController.IsOccurrenceRestored(slot.OccurrenceId)
+        : _restorationState.IsSlotRestored(slot.Word, slot.DecompositionIndex);
 
     /// <summary>
     /// Selects the first target slot in the active restoration unit. Older clue-only levels use

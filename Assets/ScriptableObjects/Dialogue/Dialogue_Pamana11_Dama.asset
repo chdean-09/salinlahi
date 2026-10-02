@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "DAMA\u2014ang pag-unawa sa pamamagitan ng pakiramdam."
+    text: "DAMA: ang pag-unawa sa pamamagitan ng pakiramdam."
   - speakerName: Juan
     portrait: {fileID: 0}
     text: DA + MA. Ang pamana ay hindi lamang binabasa; ito ay dinarama.

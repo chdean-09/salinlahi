@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "DALA\u2014ang bagay o aral na bitbit sa paglalakbay."
+    text: "DALA: ang bagay o aral na bitbit sa paglalakbay."
   - speakerName: Juan
     portrait: {fileID: 0}
     text: DA + LA. Dinadala ko ang naiwang kaalaman.

@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "SAYA\u2014galak na lumalago kapag ibinabahagi."
+    text: "SAYA: galak na lumalago kapag ibinabahagi."
   - speakerName: Juan
     portrait: {fileID: 0}
     text: SA + YA. Ang saya ng isa ay lumalawak sa pamayanan.

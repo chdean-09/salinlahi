@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "AMA \u2014 ang haligi ng tahanan. Binubuo ito ng dalawang titik: A at
+    text: "AMA: ang haligi ng tahanan. Binubuo ito ng dalawang titik: A at
       MA."
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}

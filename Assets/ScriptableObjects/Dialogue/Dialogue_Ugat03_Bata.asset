@@ -15,9 +15,9 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "BATA \u2014 nabakas mo na ito noon. Ngayon, gagamitin mo ito sa loob ng
+    text: "BATA: nabakas mo na ito noon. Ngayon, gagamitin mo ito sa loob ng
       isang buong pangungusap. Binubuo pa rin ito ng dalawang titik: BA at TA."
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "Bakasin mo itong muli \u2014 hindi bilang bagong salita, kundi bilang
+    text: "Bakasin mo itong muli, hindi bilang bagong salita, kundi bilang
       bahagi ng isang buong diwa."

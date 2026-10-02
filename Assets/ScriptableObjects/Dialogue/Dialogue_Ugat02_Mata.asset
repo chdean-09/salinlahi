@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "MATA \u2014 ang nakakikita at nakaaalala. Binubuo ito ng dalawang titik:
+    text: "MATA: ang nakakikita at nakaaalala. Binubuo ito ng dalawang titik:
       MA at TA."
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}

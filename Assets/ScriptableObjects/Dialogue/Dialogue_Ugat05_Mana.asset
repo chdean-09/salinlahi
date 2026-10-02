@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "MANA \u2014 ang minana mula sa nauna, ang ipinapasa sa susunod. Binubuo
+    text: "MANA: ang minana mula sa nauna, ang ipinapasa sa susunod. Binubuo
       ito ng dalawang titik: MA at NA."
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}

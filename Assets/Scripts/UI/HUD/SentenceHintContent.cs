@@ -145,7 +145,7 @@ public static class SentenceHintContent
             {
                 string line = RenderHiddenUnit(unit).Trim();
                 if (!string.IsNullOrWhiteSpace(unit.clue))
-                    line = line.Length > 0 ? line + " — " + unit.clue : unit.clue;
+                    line = line.Length > 0 ? line + ": " + unit.clue : unit.clue;
                 AddLine(context, line, seen, answers);
             }
             else
@@ -277,11 +277,11 @@ public static class SentenceHintContent
 
         // The meaning heading identifies the clue. A blanked word followed by a
         // dash adds noise and makes otherwise identical objective clues look different.
-        cleaned = Regex.Replace(cleaned, @"^_+\s*[—-]\s*", string.Empty);
+        cleaned = Regex.Replace(cleaned, @"^_+\s*[\u2014:-]\s*", string.Empty);
 
         // A line that is only blanks and punctuation hints at nothing.
         string remainder = cleaned.Replace(Blank, string.Empty)
-            .Trim(' ', '—', '-', '.', ',', ':', ';');
+            .Trim(' ', '\u2014', '-', '.', ',', ':', ';');
         return remainder.Length == 0 ? string.Empty : cleaned;
     }
 }

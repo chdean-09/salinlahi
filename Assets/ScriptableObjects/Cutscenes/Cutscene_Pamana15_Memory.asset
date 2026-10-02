@@ -15,7 +15,7 @@ MonoBehaviour:
   cutsceneId: memory.pamana.05
   panels:
   - image: {fileID: 0}
-    text: "Nagtipon ang mga salitang naibalik\u2014ugat, ugnayan, at pamana\u2014sa
+    text: "Nagtipon ang mga salitang naibalik mula sa ugat, ugnayan, at pamana sa
       iisang buhay na sulat."
     transitionIn: 1
     transitionDuration: 0.5

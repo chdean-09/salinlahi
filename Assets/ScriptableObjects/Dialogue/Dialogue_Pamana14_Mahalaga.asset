@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "MAHALAGA\u2014may malaking saysay at dapat ingatan."
+    text: "MAHALAGA: may malaking saysay at dapat ingatan."
   - speakerName: Juan
     portrait: {fileID: 0}
     text: MA + HA + LA + GA. Mahalaga ang alaala kapag nagbibigay ito ng direksiyon.

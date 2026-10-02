@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "SAMA\u2014ang paglapit at pakikiisa sa iba."
+    text: "SAMA: ang paglapit at pakikiisa sa iba."
   - speakerName: Juan
     portrait: {fileID: 0}
     text: SA + MA. Dito nagsisimula ang sama-samang kilos.

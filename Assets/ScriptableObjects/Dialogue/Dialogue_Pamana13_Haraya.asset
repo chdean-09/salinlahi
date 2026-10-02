@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "HARAYA\u2014malayang guniguni at larawang binubuo ng isip."
+    text: "HARAYA: malayang guniguni at larawang binubuo ng isip."
   - speakerName: Juan
     portrait: {fileID: 0}
     text: HA + RA + YA. Ang RA ay sariling tunog at anyo, hiwalay sa DA.

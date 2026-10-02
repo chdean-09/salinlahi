@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "GAWA\u2014kilos na isinasagawa, hindi lamang iniisip."
+    text: "GAWA: kilos na isinasagawa, hindi lamang iniisip."
   - speakerName: Juan
     portrait: {fileID: 0}
     text: GA + WA. Sa gawa nagiging tunay ang awa.

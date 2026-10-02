@@ -12,22 +12,22 @@ namespace Salinlahi.Tests.Editor.Gameplay
     /// word's first slot so its symbol cannot be read.
     ///
     /// <para>
-    /// The pair that matters is <c>SetClueText_AshesTheFirstSlot…</c> and
-    /// <c>CorrectDraw_StillResolves…</c>: together they assert the ability's actual contract — the
+    /// The pair that matters is <c>SetClueText_AshesTheFirstSlotâ€¦</c> and
+    /// <c>CorrectDraw_StillResolvesâ€¦</c>: together they assert the ability's actual contract â€” the
     /// <b>display</b> changes and the <b>fill/acceptance behaviour does not</b>. Asserting only the
     /// first would pass an ability that also broke combat; asserting only the second would pass an
     /// ability that did nothing at all.
     /// </para>
     ///
     /// <para><b>Narrowed (see PR):</b> the ticket's "drawing it correctly still fills the slot" also
-    /// presumes per-slot fill state, which does not exist in this codebase — no field anywhere
+    /// presumes per-slot fill state, which does not exist in this codebase â€” no field anywhere
     /// tracks "slot N is filled", and the auto-fill that would add it is drafted and unapproved.
     /// What is asserted here is the half that is real: obscuring the requirement display does not
     /// change whether a correct draw resolves.</para>
     ///
-    /// <para><b>Per-spawn arming (Level 1 design §1).</b> The ash is no longer on for every living
+    /// <para><b>Per-spawn arming (Level 1 design Â§1).</b> The ash is no longer on for every living
     /// Abo: a spawn is inert until it arms, and a type's introduction spawn never arms at all. The
-    /// display tests below therefore arm explicitly through <see cref="TickAsh"/> — the ability's
+    /// display tests below therefore arm explicitly through <see cref="TickAsh"/> â€” the ability's
     /// <i>contract</i> assertions are unchanged, only the state they need set up first. The
     /// arming rules themselves are asserted separately, further down.</para>
     /// </summary>
@@ -98,7 +98,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.AreEqual(AshMask + "ha" + AshMask, withAbo,
                 "while an Abo lives the word's first slot is ashed over as well as the target slot");
             Assert.AreNotEqual(withoutAbo, withAbo,
-                "the ability must change what is drawn — an inert ability fails here");
+                "the ability must change what is drawn â€” an inert ability fails here");
         }
 
         [Test]
@@ -169,172 +169,196 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.AreEqual(-8f, spokenBounds.yMin, 0.001f);
         }
 
-        [Test]
-        public void RestorationRailWithoutClueText_CoversAndRevealsFirstActiveUnitSlot()
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void RestorationRail_EarnedGlyphAndLabelStayVisibleDuringAsh(bool hasArt, bool suppressRail)
         {
-            BaybayinCharacterSO ba = CreateCharacter("BA", "ba", "symbol.ba");
-            BaybayinCharacterSO ha = CreateCharacter("HA", "ha", "symbol.ha");
-            ba.almanacSprite = CreateSprite();
-            ha.almanacSprite = CreateSprite();
-            ActiveCluePresenter presenter = CreateRestorationRailPresenter(ba, ha, out RestorationObjectiveController objective);
-            Assert.IsNull(GetPrivateField<TMP_Text>(presenter, "_clueText"),
-                "The Gameplay scene uses the restoration rail and intentionally has no legacy clue TMP renderer.");
-
-            objective.TryRestore("symbol.ba", null);
+            BaybayinCharacterSO ei = CreateCharacter("EI", "ei", "symbol.ei");
+            BaybayinCharacterSO na = CreateCharacter("NA", "na", "symbol.na");
+            ei.almanacSprite = CreateSprite();
+            na.almanacSprite = CreateSprite();
+            ActiveCluePresenter presenter = CreateRestorationRailPresenter(ei, na, out RestorationObjectiveController objective);
+            objective.TryRestore(ei.stableId, null);
             InvokePrivateVoid(presenter, "UpdateRestorationProgress");
-            TextMeshProUGUI firstLabel = presenter.RestorationRailRect
-                .Find("[Runtime] RestorationSlotLabel_0").GetComponent<TextMeshProUGUI>();
-            TextMeshProUGUI secondLabel = presenter.RestorationRailRect
-                .Find("[Runtime] RestorationSlotLabel_1").GetComponent<TextMeshProUGUI>();
-            Assert.AreEqual("BA", firstLabel.text, "Precondition: the earned first slot is readable.");
-            string adjacentLabelBeforeCover = secondLabel.text;
-            Assert.IsTrue(InvokePrivate<bool>(presenter, "CanPresentAshCoverOnClue"),
-                "A visible active restoration rail is a valid ash target even when _clueText is null.");
+            RectTransform rail = presenter.RestorationRailRect;
+            TextMeshProUGUI label = rail.Find("[Runtime] RestorationSlotLabel_0").GetComponent<TextMeshProUGUI>();
+            Image glyph = rail.Find("[Runtime] RestorationSlot_0/[Runtime] RestorationSlotGlyph_0").GetComponent<Image>();
 
             Enemy abo = CreateAbo(y: -3f);
-            Sprite ashSprite = CreateSprite();
             abo.Data.hudAbilityVisuals = new[]
             {
                 new EnemyHudAbilityVisualDefinition
                 {
                     id = EnemyHudAbilityVisualId.AshClueFirstSlot,
-                    activeSprite = ashSprite,
-                    activationOpacity = 1f,
-                    exitOpacity = 1f,
-                    slotSizeMultiplier = Vector2.one
+                    activeSprite = hasArt ? CreateSprite() : null
                 }
             };
             TickAsh(abo);
-            InvokePrivateVoid(presenter, "BeginAshCoverActivation");
+            InvokePrivateVoid(presenter, "WatchAshOnset");
+            if (suppressRail)
+            {
+                SetPrivateField(presenter, "_suppressedByIntroModal", true);
+                InvokePrivateVoid(presenter, "UpdateRestorationProgress");
+                Assert.IsFalse(rail.gameObject.activeSelf);
+                InvokePrivateVoid(presenter, "WatchAshOnset");
+                SetPrivateField(presenter, "_suppressedByIntroModal", false);
+            }
+            InvokePrivateVoid(presenter, "UpdateRestorationProgress");
 
+            Assert.IsTrue(AshFirstSlotController.IsAnyActive(), "The enemy ability is still active.");
+            Assert.IsTrue(rail.gameObject.activeSelf);
+            Assert.AreEqual("EI", label.text, "Ash must never erase an earned label from its box.");
+            Assert.IsTrue(glyph.gameObject.activeSelf, "The already drawn EI stays in its box.");
+            Assert.IsFalse(InvokePrivate<bool>(presenter, "CanPresentAshCoverOnClue"),
+                "An earned box is not an ash cover target.");
+            Image cover = GetPrivateField<Image>(presenter, "_ashCoverImage");
+            Assert.IsTrue(cover == null || !cover.gameObject.activeSelf,
+                "Cover artwork must not obscure the earned glyph either.");
+        }
+
+        [Test]
+        public void RestorationRail_RestoringCoveredSlot_RemovesCoverImmediately()
+        {
+            BaybayinCharacterSO ei = CreateCharacter("EI", "ei", "symbol.ei");
+            BaybayinCharacterSO na = CreateCharacter("NA", "na", "symbol.na");
+            ei.almanacSprite = CreateSprite();
+            na.almanacSprite = CreateSprite();
+            ActiveCluePresenter presenter = CreateRestorationRailPresenter(ei, na, out RestorationObjectiveController objective);
+            Enemy abo = CreateAbo(y: -3f);
+            Sprite ash = CreateSprite();
+            abo.Data.hudAbilityVisuals = new[]
+            {
+                new EnemyHudAbilityVisualDefinition
+                {
+                    id = EnemyHudAbilityVisualId.AshClueFirstSlot,
+                    activeSprite = ash,
+                    exitFrames = new[] { ash, ash }
+                }
+            };
+            TickAsh(abo);
+            InvokePrivateVoid(presenter, "WatchAshOnset");
             Image cover = GetPrivateField<Image>(presenter, "_ashCoverImage");
             Assert.IsNotNull(cover);
-            Assert.IsTrue(cover.gameObject.activeSelf);
-            Assert.AreSame(ashSprite, cover.sprite);
-            Assert.AreSame(presenter.RestorationRailRect, cover.transform.parent,
-                "Ash artwork must be drawn over the runtime rail slot, not attached to a missing TMP object.");
-            Assert.AreEqual(AshMask, firstLabel.text,
-                "A restored first slot becomes unreadable while its ash cover is active.");
-            Assert.AreEqual(adjacentLabelBeforeCover, secondLabel.text,
-                "Ash only changes the first slot; it leaves adjacent rail content alone.");
+            Assert.IsTrue(cover.gameObject.activeSelf, "An unearned first slot can still show ash.");
 
-            SetPrivateField(abo, "_isDying", true);
+            objective.TryRestore(ei.stableId, null);
+            InvokePrivateVoid(presenter, "UpdateRestorationProgress");
             InvokePrivateVoid(presenter, "WatchAshOnset");
-            Assert.IsFalse(cover.gameObject.activeSelf,
-                "With no exit frames, observing the cleared ability removes its art immediately.");
-            Assert.AreEqual("BA", firstLabel.text,
-                "The first slot becomes readable when the Abo ability state actually clears.");
+            RectTransform rail = presenter.RestorationRailRect;
+            TextMeshProUGUI label = rail.Find("[Runtime] RestorationSlotLabel_0").GetComponent<TextMeshProUGUI>();
+            Image glyph = rail.Find("[Runtime] RestorationSlot_0/[Runtime] RestorationSlotGlyph_0").GetComponent<Image>();
+            Assert.IsTrue(AshFirstSlotController.IsAnyActive());
+            Assert.AreEqual("EI", label.text);
+            Assert.IsTrue(glyph.gameObject.activeSelf);
+            Assert.IsFalse(cover.gameObject.activeSelf, "Even exit animation must not cover an earned box.");
         }
 
-        [Test]
-        public void AshCoverRemainsArmedWhileRestorationRailIsSuppressedAndReopened()
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(3)]
+        [TestCase(4)]
+        [TestCase(5)]
+        [TestCase(6)]
+        [TestCase(7)]
+        [TestCase(8)]
+        [TestCase(9)]
+        [TestCase(10)]
+        [TestCase(11)]
+        [TestCase(12)]
+        [TestCase(13)]
+        [TestCase(14)]
+        [TestCase(15)]
+        public void CampaignUiFixes_EveryAuthoredLevel_PreservesEarnedSlotsAndHidesAnnouncements(int levelNumber)
         {
-            BaybayinCharacterSO ba = CreateCharacter("BA", "ba", "symbol.ba");
-            BaybayinCharacterSO ha = CreateCharacter("HA", "ha", "symbol.ha");
-            ba.almanacSprite = CreateSprite();
-            ha.almanacSprite = CreateSprite();
-            ActiveCluePresenter presenter = CreateRestorationRailPresenter(ba, ha, out RestorationObjectiveController objective);
-            objective.TryRestore("symbol.ba", null);
-            InvokePrivateVoid(presenter, "UpdateRestorationProgress");
-
-            TextMeshProUGUI firstLabel = presenter.RestorationRailRect
-                .Find("[Runtime] RestorationSlotLabel_0").GetComponent<TextMeshProUGUI>();
-            Assert.AreEqual("BA", firstLabel.text, "Precondition: the restored first slot is readable.");
-
+            var level = UnityEditor.AssetDatabase.LoadAssetAtPath<LevelConfigSO>(
+                $"Assets/ScriptableObjects/Levels/Level{levelNumber}_Config.asset");
+            Assert.IsNotNull(level);
+            ActiveCluePresenter presenter = CreateRestorationRailPresenter(level, out RestorationObjectiveController objective);
+            var slots = GetPrivateField<System.Collections.IList>(presenter, "_railSlots");
+            Assert.Greater(slots.Count, 0, "The actual level must build its restoration boxes.");
             Enemy abo = CreateAbo(y: -3f);
-            Sprite ashSprite = CreateSprite();
             abo.Data.hudAbilityVisuals = new[]
             {
                 new EnemyHudAbilityVisualDefinition
                 {
                     id = EnemyHudAbilityVisualId.AshClueFirstSlot,
-                    activeSprite = ashSprite,
-                    activationOpacity = 1f,
-                    exitOpacity = 1f,
-                    slotSizeMultiplier = Vector2.one
+                    activeSprite = CreateSprite()
                 }
             };
             TickAsh(abo);
-            InvokePrivateVoid(presenter, "BeginAshCoverActivation");
-            Assert.AreEqual(AshMask, firstLabel.text, "Precondition: the ash covers the restored slot.");
-
-            SetPrivateField(presenter, "_suppressedByIntroModal", true);
-            InvokePrivateVoid(presenter, "UpdateRestorationProgress");
-            Assert.IsFalse(presenter.RestorationRailRect.gameObject.activeSelf,
-                "The intro modal temporarily hides the restoration rail.");
-
-            // LateUpdate polls the still-live ability while the rail is hidden. It must keep the
-            // cover state latched rather than treating temporary HUD suppression as an ability clear.
             InvokePrivateVoid(presenter, "WatchAshOnset");
-            Assert.IsTrue(GetPrivateField<bool>(presenter, "_ashCoverStateActive"),
-                "Hidden HUD state must not turn off an active ash cover.");
 
-            SetPrivateField(presenter, "_suppressedByIntroModal", false);
-            InvokePrivateVoid(presenter, "UpdateRestorationProgress");
-            Assert.IsTrue(presenter.RestorationRailRect.gameObject.activeSelf,
-                "Closing the modal reopens the rail.");
-            Assert.AreEqual(AshMask, firstLabel.text,
-                "The rail must be repainted with the answer masked before it becomes visible.");
-            Assert.IsTrue(GetPrivateField<Image>(presenter, "_ashCoverImage").gameObject.activeSelf,
-                "The cover art remains over the restored first slot after the rail reopens.");
-        }
-
-        [TestCase(false)]
-        [TestCase(true)]
-        public void AshMasksRestoredRailAcrossSuppressionWhenCoverArtIsUnavailable(bool hasDefinitionWithoutArt)
-        {
-            BaybayinCharacterSO ba = CreateCharacter("BA", "ba", "symbol.ba");
-            BaybayinCharacterSO ha = CreateCharacter("HA", "ha", "symbol.ha");
-            ba.almanacSprite = CreateSprite();
-            ha.almanacSprite = CreateSprite();
-            ActiveCluePresenter presenter = CreateRestorationRailPresenter(ba, ha, out RestorationObjectiveController objective);
-            objective.TryRestore("symbol.ba", null);
-            InvokePrivateVoid(presenter, "UpdateRestorationProgress");
-
-            RectTransform rail = presenter.RestorationRailRect;
-            TextMeshProUGUI firstLabel = rail
-                .Find("[Runtime] RestorationSlotLabel_0").GetComponent<TextMeshProUGUI>();
-            Image firstGlyph = rail
-                .Find("[Runtime] RestorationSlot_0/[Runtime] RestorationSlotGlyph_0").GetComponent<Image>();
-            Assert.AreEqual("BA", firstLabel.text, "Precondition: the restored first slot is readable.");
-            Assert.IsTrue(firstGlyph.gameObject.activeSelf, "Precondition: the restored glyph is visible.");
-
-            Enemy abo = CreateAbo(y: -3f);
-            if (hasDefinitionWithoutArt)
+            foreach (object slot in slots)
             {
-                abo.Data.hudAbilityVisuals = new[]
+                FocusWordDefinition word = GetPrivateField<FocusWordDefinition>(slot, "Word");
+                int index = GetPrivateField<int>(slot, "DecompositionIndex");
+                SymbolValueReference reference = word.decomposition[index];
+                if (presenter.UsesRestorationObjectiveDefinition)
+                    objective.State.TryRestore(reference.symbol.stableId, reference.spokenValueId);
+                else
+                    presenter.RestorationState.Apply(reference.symbol.stableId);
+                InvokePrivateVoid(presenter, "RepaintRail", false);
+                InvokePrivateVoid(presenter, "WatchAshOnset");
+                InvokePrivateVoid(presenter, "ShowWordRestoredCue", "Restored: " + word.displayLabel);
+
+                foreach (object earned in slots)
                 {
-                    new EnemyHudAbilityVisualDefinition
-                    {
-                        id = EnemyHudAbilityVisualId.AshClueFirstSlot,
-                        activeSprite = null
-                    }
-                };
+                    FocusWordDefinition earnedWord = GetPrivateField<FocusWordDefinition>(earned, "Word");
+                    int earnedIndex = GetPrivateField<int>(earned, "DecompositionIndex");
+                    bool restored = presenter.UsesRestorationObjectiveDefinition
+                        ? objective.IsOccurrenceRestored(GetPrivateField<string>(earned, "OccurrenceId"))
+                        : presenter.RestorationState.IsSlotRestored(earnedWord, earnedIndex);
+                    if (!restored) continue;
+                    Image glyph = GetPrivateField<Image>(earned, "Glyph");
+                    Assert.IsNotNull(glyph.sprite, $"Level {levelNumber}: restored glyph artwork must resolve.");
+                    Assert.IsTrue(glyph.gameObject.activeSelf, $"Level {levelNumber}: earned ink must stay visible under ash.");
+                    Assert.AreEqual(GetPrivateField<string>(earned, "LatinLabel"),
+                        GetPrivateField<TextMeshProUGUI>(earned, "Label").text);
+                }
+                Assert.IsTrue(presenter.WordRestoredLabel == null || !presenter.WordRestoredLabel.gameObject.activeSelf,
+                    $"Level {levelNumber}: the gold restoration announcement must never appear.");
             }
 
-            TickAsh(abo);
-            Assert.IsTrue(AshFirstSlotController.IsAnyActive(), "Precondition: the ash ability is active.");
-            InvokePrivateVoid(presenter, "WatchAshOnset");
-            Assert.IsFalse(GetPrivateField<bool>(presenter, "_ashCoverStateActive"),
-                "No drawable visual definition means there is no cover animation state.");
-            Assert.IsNull(GetPrivateField<Image>(presenter, "_ashCoverImage"),
-                "The fallback must not depend on a cover Image existing.");
-            Assert.AreEqual(AshMask, firstLabel.text,
-                "The rail is masked on the ash activation edge even without drawable cover art.");
-            Assert.IsFalse(firstGlyph.gameObject.activeSelf,
-                "The restored glyph is hidden immediately, before any modal or unrelated repaint.");
+            Assert.IsTrue(presenter.UsesRestorationObjectiveDefinition
+                ? objective.IsComplete : presenter.RestorationState.IsComplete,
+                $"Level {levelNumber}: verify every authored target, not just the first box.");
 
-            SetPrivateField(presenter, "_suppressedByIntroModal", true);
-            InvokePrivateVoid(presenter, "UpdateRestorationProgress");
-            Assert.IsFalse(rail.gameObject.activeSelf, "The intro modal temporarily hides the rail.");
+            Canvas canvas = presenter.GetComponentInParent<Canvas>();
+            var labelGo = new GameObject("CampaignUiFeedback", typeof(RectTransform), typeof(TextMeshProUGUI));
+            labelGo.transform.SetParent(canvas.transform, false);
+            _objectsToDestroy.Add(labelGo);
+            TextMeshProUGUI label = labelGo.GetComponent<TextMeshProUGUI>();
+            var feedbackGo = new GameObject("CampaignUiFeedbackPresenters");
+            _objectsToDestroy.Add(feedbackGo);
+            var feedback = feedbackGo.AddComponent<DrawFeedbackPresenter>();
+            SetPrivateField(feedback, "_messageLabel", label);
+            feedback.HandleTextRelationResolved(new DrawFeedbackReport
+                { Relation = DrawTextRelation.AlreadyFilled, CursorSlotIndex = -1 });
+            Assert.IsFalse(label.gameObject.activeSelf);
+            var drawing = feedbackGo.AddComponent<DrawingFeedback>();
+            SetPrivateField(drawing, "_messageLabel", label);
+            label.gameObject.SetActive(true);
+            InvokePrivateVoid(drawing, "ShowSuccessFeedback", new object[] { null });
+            Assert.IsFalse(label.gameObject.activeSelf);
+            var card = feedbackGo.AddComponent<EnemyIntroductionCardView>();
+            var bannerGo = new GameObject("CampaignUiBanner", typeof(RectTransform), typeof(CanvasGroup));
+            bannerGo.transform.SetParent(canvas.transform, false);
+            _objectsToDestroy.Add(bannerGo);
+            SetPrivateField(card, "_bannerGroup", bannerGo.GetComponent<CanvasGroup>());
+            card.ShowBanner("Enemy reminder");
+            Assert.IsFalse(bannerGo.activeSelf);
 
-            SetPrivateField(presenter, "_suppressedByIntroModal", false);
-            InvokePrivateVoid(presenter, "UpdateRestorationProgress");
-            Assert.IsTrue(rail.gameObject.activeSelf, "Closing the modal reopens the rail.");
-            Assert.AreEqual(AshMask, firstLabel.text,
-                "Ash ability state masks the restored label even if no overlay sprite can be drawn.");
-            Assert.IsFalse(firstGlyph.gameObject.activeSelf,
-                "The restored glyph also stays hidden without a drawable overlay.");
+            var panelGo = new GameObject("CampaignUiDialogue", typeof(RectTransform));
+            panelGo.transform.SetParent(canvas.transform, false);
+            _objectsToDestroy.Add(panelGo);
+            var dialogue = feedbackGo.AddComponent<DialogueController>();
+            SetPrivateField(dialogue, "_overlayPanel", panelGo);
+            InvokePrivateVoid(dialogue, "ConfigureResponsiveLayout", false);
+            RectTransform panel = panelGo.GetComponent<RectTransform>();
+            Assert.AreEqual(0f, panel.anchorMin.y, 0.001f);
+            Assert.AreEqual(0f, panel.offsetMin.y, 0.001f);
         }
 
         [Test]
@@ -406,7 +430,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
             // Restored deliberately, and this is the point of the retarget. Under the new rule an
             // unrestored slot is masked anyway, so asserting "____" against an empty restoration
             // state would pass whether the ash landed on BA, landed on the skipped null slot, or
-            // never landed at all — a filter that matches nothing looks like a pass. With BA
+            // never landed at all â€” a filter that matches nothing looks like a pass. With BA
             // earned and on screen, only an ash that actually falls on BA can take it away again.
             var restoration = new ActiveClueRestorationState();
             restoration.Configure(new List<FocusWordDefinition> { word });
@@ -676,7 +700,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
             // later symbol (Trigger_Arms_OnlyWhenTheNeededSlotIsItsWordsSecondSymbol), so by the
             // time any ash lands the earlier slots have been earned and are on screen. Restoring
             // the two leading slots reproduces that, and every expected string in this fixture is
-            // the same one it asserted before the rule changed — the target slot, YA, is left
+            // the same one it asserted before the rule changed â€” the target slot, YA, is left
             // unrestored and masked exactly as it always was.
             presenter.RestorationState.Configure(level.focusWords);
             presenter.RestorationState.Apply(first.stableId);
@@ -723,6 +747,12 @@ namespace Salinlahi.Tests.Editor.Gameplay
             };
             _objectsToDestroy.Add(level);
 
+            return CreateRestorationRailPresenter(level, out objective);
+        }
+
+        private ActiveCluePresenter CreateRestorationRailPresenter(
+            LevelConfigSO level, out RestorationObjectiveController objective)
+        {
             var canvasGo = new GameObject(
                 "AshRestorationRail_TestCanvas",
                 typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
@@ -743,6 +773,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
             _objectsToDestroy.Add(presenterGo);
             SetPrivateField(presenter, "_level", level);
             SetPrivateField(presenter, "_resolvedChannels", ClueChannels.IncompleteWord);
+            presenter.RestorationState.Configure(level.focusWords);
 
             var objectiveGo = new GameObject("RestorationObjectiveController_Ash_Test");
             objective = objectiveGo.AddComponent<RestorationObjectiveController>();
@@ -759,7 +790,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
         /// <summary>
         /// A presenter on Level 1's actual target text: <c>INA AMA</c> as two focus words of two
         /// symbols each. The arming trigger reads positions <i>within a word</i>, so a shape with
-        /// two words is the only one that exercises the cursor crossing a word boundary — which is
+        /// two words is the only one that exercises the cursor crossing a word boundary â€” which is
         /// exactly where the ash flips from meaningful to inert.
         /// </summary>
         private ActiveCluePresenter CreateLevel1ShapedPresenter()
@@ -918,7 +949,8 @@ namespace Salinlahi.Tests.Editor.Gameplay
         // These reflection helpers keep UI-state tests independent from scene serialization.
         private static T GetPrivateField<T>(object target, string fieldName)
         {
-            FieldInfo field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo field = target.GetType().GetField(fieldName,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             Assert.IsNotNull(field, $"Missing field '{fieldName}' on {target.GetType().Name}.");
             return (T)field.GetValue(target);
         }

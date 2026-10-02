@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "UNA\u2014nauuna sa pagkilos o pagkakasunod."
+    text: "UNA: nauuna sa pagkilos o pagkakasunod."
   - speakerName: Juan
     portrait: {fileID: 0}
     text: U + NA. Ang parehong O/U na anyo ay binabasa rito bilang U.

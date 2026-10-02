@@ -408,8 +408,9 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     }
 
     /// <summary>
-    /// Spends this type's introduction, or — on a level that replays its tutorial — grants the
-    /// authored lesson a replay the campaign-wide one-shot would otherwise refuse.
+    /// Spends this type's introduction, or — on the level that teaches the type, or a level that
+    /// replays its tutorial — grants a once-per-attempt replay the campaign-wide one-shot would
+    /// otherwise refuse. See <see cref="ReplaysOnThisLevel"/>.
     ///
     /// <para>
     /// <b>The defect this closes.</b> <c>Level1_Config.alwaysShowTutorial</c> makes Level 1's
@@ -423,13 +424,10 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// </para>
     ///
     /// <para>
-    /// <b>Scoped to lessons, deliberately.</b> A plain four-step card is campaign-wide discovery —
-    /// "you have never met this type" — and a type the player has known for hours must not be
-    /// re-introduced every time they revisit an early level. A LESSON is different: it is authored
-    /// on one specific level, it teaches that level's material, and it is that level's tutorial in
-    /// every sense the flag means. So <paramref name="lesson"/> being non-null is a precondition of
-    /// the replay, and a level without <c>alwaysShowTutorial</c> keeps spending its one-shot exactly
-    /// as before — the replay can never leak into "the lesson always plays everywhere".
+    /// <b>Only on the teaching level.</b> A type the player has known for hours must not be
+    /// re-introduced on every later level that spawns it, so off its teaching level the one-shot
+    /// stays final. The <c>alwaysShowTutorial</c> replay is likewise scoped to the level's own
+    /// lesson, so it can never leak into "the lesson always plays everywhere".
     /// </para>
     /// </summary>
     private bool ClaimIntroduction(EnemyDataSO data, EnemyLessonSO lesson)
@@ -453,7 +451,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
             return true;
         }
 
-        if (enemyID == null || !ReplaysOnThisLevel(lesson))
+        if (enemyID == null || !ReplaysOnThisLevel(data, lesson))
             return false;
 
         if (!_introducedThisAttempt.Add(enemyID))
@@ -464,10 +462,32 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     }
 
     /// <summary>
-    /// Replays an authored lesson only when its level explicitly opts into tutorial replay.
+    /// Whether this type's introduction plays again on every attempt of the current level, even
+    /// though the campaign-wide one-shot is spent. Two authorities, either suffices:
+    /// <list type="bullet">
+    /// <item>The level replays its tutorial and this is its authored lesson.</item>
+    /// <item>The schedule names this level as the type's teaching level. Without a schedule,
+    /// the type's debut level (<see cref="EnemyDebutLookup"/>) supplies that rule.</item>
+    /// </list>
+    /// Per attempt, not per spawn: the second spawn of the same type in one attempt is an
+    /// ordinary enemy, held by <see cref="_introducedThisAttempt"/>. Without this a replay, or a
+    /// level reached through level select, met a type the profile had already seen in silence on
+    /// the very level that teaches it. Later levels still keep the campaign-wide one-shot.
     /// </summary>
-    private static bool ReplaysOnThisLevel(EnemyLessonSO lesson) =>
-        lesson != null && LevelReplaysItsTutorial();
+    private static bool ReplaysOnThisLevel(EnemyDataSO data, EnemyLessonSO lesson)
+    {
+        if (lesson != null && LevelReplaysItsTutorial())
+            return true;
+
+        // The authored teaching level can differ from the first mixed-wave appearance. This also
+        // gives scheduled decoy types a replay without adding false carriers to the clue-restoration
+        // roster that EnemyDebutLookup reads.
+        IntroductionScheduleSO schedule = IntroductionScheduleLookup.Resolve();
+        if (schedule != null)
+            return schedule.Introduces(GameManager.CurrentLevelConfig, data);
+
+        return EnemyDebutLookup.DebutsOnCurrentCampaignLevel(GameManager.CurrentLevelConfig, data);
+    }
 
     /// <summary>
     /// Starts a new level attempt: forgets which types were introduced during the previous one, so
@@ -515,7 +535,7 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     /// </summary>
     private bool HasLessonHadItsRun(EnemyLessonSO lesson)
     {
-        if (!ReplaysOnThisLevel(lesson))
+        if (!ReplaysOnThisLevel(lesson.enemy, lesson))
             return EnemyIntroductionProgress.HasBeenIntroduced(lesson.enemy);
 
         string enemyID = EnemyDiscoveryProgress.NormalizeEnemyID(lesson.enemy);
@@ -1106,7 +1126,8 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
         // two different enemies is the one thing the banner's "attached to the thing it describes"
         // rule cannot survive.
         StopBanner();
-        _card.PrepareCard(ResolveWalkSprite(data), data.displayName, data.discoverySubtitle);
+        _card.PrepareCard(ResolveWalkSprite(data), data.displayName, data.discoverySubtitle,
+            data.abilityLine);
 
         // Step 1 — Halt. The enemy stops where it stands, the vignette closes around it, and
         // time slows. The vignette is raised before the ramp rather than during it because its
@@ -1200,7 +1221,8 @@ public sealed class EnemyIntroductionBeat : MonoBehaviour
     private IEnumerator PlayLesson(Enemy enemy, EnemyDataSO data, EnemyLessonSO lesson)
     {
         StopBanner();
-        _card.PrepareCard(ResolveWalkSprite(data), data.displayName, data.discoverySubtitle);
+        _card.PrepareCard(ResolveWalkSprite(data), data.displayName, data.discoverySubtitle,
+            data.abilityLine);
 
         // Beat 7 is a reveal, so the badge stays dark until then. PlayIntroduction now hides it
         // for every introduction spawn, so a lesson that does NOT defer its reveal has to put the

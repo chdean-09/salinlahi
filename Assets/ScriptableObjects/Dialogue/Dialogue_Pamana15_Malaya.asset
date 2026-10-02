@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "MALAYA\u2014may kakayahang pumili at kumilos nang hindi nakakulong."
+    text: "MALAYA: may kakayahang pumili at kumilos nang hindi nakakulong."
   - speakerName: Juan
     portrait: {fileID: 0}
     text: MA + LA + YA. Sa huling YA, mabubuo ang salitang MALAYA.

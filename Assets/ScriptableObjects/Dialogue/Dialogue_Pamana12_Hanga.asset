@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "HANGA\u2014pagkilala at paghanga sa mabuting ginawa ng iba."
+    text: "HANGA: pagkilala at paghanga sa mabuting ginawa ng iba."
   - speakerName: Juan
     portrait: {fileID: 0}
     text: HA + NGA. Hinahangaan ko ang mga nag-ingat.

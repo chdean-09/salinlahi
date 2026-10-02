@@ -19,13 +19,8 @@ public class DrawingFeedback : MonoBehaviour
     [Tooltip("Optional prompt inviting the player to see the stroke traced. Safe to leave unwired.")]
     [SerializeField] private GameObject _traceHintPrompt;
 
-    [Tooltip("Optional label carrying the player-facing message. Safe to leave unwired.")]
+    [Tooltip("Legacy message label, kept hidden now that post-draw text strips are removed.")]
     [SerializeField] private TMP_Text _messageLabel;
-
-    [Tooltip("Seconds a transient message stays on screen before the label clears. "
-        + "0 leaves it up until the next message. The help offer ignores this and stays.")]
-    [Min(0f)]
-    [SerializeField] private float _messageHoldSeconds = 3f;
 
     /// <summary>
     /// How many correction cues this HUD has been asked for. The flash itself lives on
@@ -44,13 +39,10 @@ public class DrawingFeedback : MonoBehaviour
     public bool HelpAvailable { get; private set; }
 
     /// <summary>
-    /// The wording last handed to the player. Held here for the same reason as
-    /// <see cref="RejectCueCount"/>: the label that renders it is a scene reference that may
-    /// not be wired, so this is the assertable record of what the player was actually told.
+    /// Diagnostic copy for the last cue. Retained alongside the visual feedback counters even
+    /// though combat text strips are no longer displayed.
     /// </summary>
     public string LastMessage { get; private set; } = string.Empty;
-
-    private Coroutine _clearRoutine;
 
     private void Awake()
     {
@@ -58,6 +50,7 @@ public class DrawingFeedback : MonoBehaviour
         if (_rejectXMark != null) _rejectXMark.SetActive(false);
         if (_successFlash != null) _successFlash.alpha = 0f;
         if (_traceHintPrompt != null) _traceHintPrompt.SetActive(false);
+        SetMessage(string.Empty);
     }
 
     private void OnEnable()
@@ -114,60 +107,15 @@ public class DrawingFeedback : MonoBehaviour
         StartCoroutine(FlashFeedback(_successFlash, null, _successDuration));
     }
 
-    /// <summary>
-    /// Records the wording and renders it if a label is wired. The label is optional on purpose:
-    /// no HUD in either scene carries one yet, and the state has to stay correct and assertable
-    /// in the meantime rather than depending on scene work that has not happened.
-    /// </summary>
+    // Keep cue state and visual feedback, but do not display post-draw text strips.
     private void SetMessage(string message)
     {
         LastMessage = message;
-
-        if (_messageLabel == null)
-            return;
-
-        CombatNotificationBanner.Configure(_messageLabel, 0.32f);
-        // One voice per draw. A tutorial step with authored wording is the more specific of the
-        // two, and its line is already on screen; printing the generic one underneath put
-        // "Nice — that's the one." straight across the clue the player had just changed. LastMessage
-        // above is deliberately still recorded, so what the player was told stays assertable even on
-        // the draws where this label stays quiet.
-        if (Level1TutorialGuideUI.IsShowingFeedback)
+        if (_messageLabel != null)
         {
             _messageLabel.text = string.Empty;
-            return;
+            _messageLabel.gameObject.SetActive(false);
         }
-
-        _messageLabel.text = message;
-
-        // Nothing used to take the text back down, so the label kept the last thing it was
-        // handed for the rest of the level: "Nice - that's the one." was still sitting over
-        // the play area several dialogue beats and an enemy breach later. LastMessage is
-        // deliberately NOT cleared -- it is the assertable record of what the player was told.
-        if (_clearRoutine != null)
-        {
-            StopCoroutine(_clearRoutine);
-            _clearRoutine = null;
-        }
-
-        // The help offer is not transient: AC2 keeps it standing for the rest of the run of
-        // failures, so it must outlive the hold that clears ordinary encouragement.
-        if (_messageHoldSeconds <= 0f || HelpAvailable || !isActiveAndEnabled)
-            return;
-
-        _clearRoutine = StartCoroutine(ClearMessageAfterHold());
-    }
-
-    private IEnumerator ClearMessageAfterHold()
-    {
-        // Unscaled: a message raised just before a pause must still time out behind it,
-        // matching how the flash coroutine above measures its own fade.
-        yield return new WaitForSecondsRealtime(_messageHoldSeconds);
-
-        if (_messageLabel != null && !HelpAvailable)
-            _messageLabel.text = string.Empty;
-
-        _clearRoutine = null;
     }
 
     private void SetHelpAvailable(bool available)

@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "GANA\u2014siglang nagtutulak upang magsimula at magpatuloy."
+    text: "GANA: siglang nagtutulak upang magsimula at magpatuloy."
   - speakerName: Juan
     portrait: {fileID: 0}
     text: GA + NA. Ang gana ang simula ng pagkilos.

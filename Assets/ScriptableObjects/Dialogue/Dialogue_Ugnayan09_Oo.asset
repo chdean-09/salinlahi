@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "OO\u2014pagsang-ayon at kusang pagtanggap."
+    text: "OO: pagsang-ayon at kusang pagtanggap."
   - speakerName: Juan
     portrait: {fileID: 0}
     text: O + O. Iisang O/U na anyo ang binabasa rito bilang O.

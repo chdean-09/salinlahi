@@ -90,7 +90,7 @@ public static class HintModalCopy
     /// the way FocusWordPreviewController.cs:72-73 and MemoryCardUI already render the pair.
     /// </summary>
     public static string MeaningReveal(string displayLabel, string meaning) =>
-        string.IsNullOrEmpty(displayLabel) ? meaning : displayLabel + " — " + meaning;
+        string.IsNullOrEmpty(displayLabel) ? meaning : displayLabel + ": " + meaning;
 
     /// <summary>Shown when the unit has no focus word to explain, so nothing was charged.</summary>
     public const string NoHintAvailableBody = "No hint is available for this step.";

@@ -18,5 +18,5 @@ MonoBehaviour:
     text: '"Tama ang bata." Iyon ang sinabi ni Ama sa akin.'
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "Hindi lamang salita ang naibalik mo, Juan. Isang buong pangungusap \u2014
+    text: "Hindi lamang salita ang naibalik mo, Juan. Isang buong pangungusap
       at ang tiwala ng iyong ama."

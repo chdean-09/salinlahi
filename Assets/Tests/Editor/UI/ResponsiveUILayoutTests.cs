@@ -339,6 +339,24 @@ namespace Salinlahi.Tests.Editor.UI
         }
 
         [Test]
+        public void DialogueController_RuntimeLayout_SeatsScrollAtBottomEdge()
+        {
+            using TestObjects objects = new();
+            RectTransform host = objects.CreateRect("DialogueController");
+            DialogueController controller = host.gameObject.AddComponent<DialogueController>();
+            RectTransform panel = objects.CreateRect("DialoguePanel");
+            SetDialogueField(controller, "_overlayPanel", panel.gameObject);
+
+            typeof(DialogueController).GetMethod("ConfigureResponsiveLayout",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                .Invoke(controller, new object[] { false });
+
+            Assert.AreEqual(0f, panel.anchorMin.y, 0.001f);
+            Assert.AreEqual(0f, panel.offsetMin.y, 0.001f,
+                "The parchment must meet the screen edge rather than float above a bottom margin.");
+        }
+
+        [Test]
         public void DialogueController_Title_ClearsTheFixedScrollRod()
         {
             using TestObjects objects = new();

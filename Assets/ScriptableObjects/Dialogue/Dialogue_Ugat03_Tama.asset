@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "TAMA \u2014 ang wasto, ang nararapat. Binubuo ito ng dalawang titik: TA
+    text: "TAMA: ang wasto, ang nararapat. Binubuo ito ng dalawang titik: TA
       at MA."
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}

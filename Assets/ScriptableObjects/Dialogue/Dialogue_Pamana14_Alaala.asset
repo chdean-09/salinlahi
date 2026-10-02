@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "ALAALA\u2014gunita sa tao, pangyayari, o aral na lumipas."
+    text: "ALAALA: gunita sa tao, pangyayari, o aral na lumipas."
   - speakerName: Juan
     portrait: {fileID: 0}
     text: A + LA + A + LA. Sa pag-uulit, nananatili ang gunita.

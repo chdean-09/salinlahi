@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "Sa lilim ng punong mangga, may naririnig si Juan na tinig \u2014 ang tinig
+    text: "Sa lilim ng punong mangga, naririnig ni Juan ang tinig
       ng kanyang ama."
   - speakerName: Juan
     portrait: {fileID: 0}

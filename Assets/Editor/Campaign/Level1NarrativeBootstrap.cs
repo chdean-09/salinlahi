@@ -25,11 +25,11 @@ public static class Level1NarrativeBootstrap
             Line(Narrator, "Sa bawat titik ng Baybayin na matututunan mo, isang alaala ang maibabalik. Simulan natin sa dalawang salitang pinakamalapit sa puso: INA at AMA."));
 
         DialogueSO ina = EnsureDialogue("Dialogue_Ugat01_Ina",
-            Line(Narrator, "INA — ang nagluwal at nag-aruga. Binubuo ito ng dalawang titik: I at NA."),
+            Line(Narrator, "INA: ang nagluwal at nag-aruga. Binubuo ito ng dalawang titik: I at NA."),
             Line(Narrator, "Bakasin mo ang bawat titik upang maibalik ang alaala ni Ina."));
 
         DialogueSO ama = EnsureDialogue("Dialogue_Ugat01_Ama",
-            Line(Narrator, "AMA — ang haligi ng tahanan. Binubuo ito ng dalawang titik: A at MA."),
+            Line(Narrator, "AMA: ang haligi ng tahanan. Binubuo ito ng dalawang titik: A at MA."),
             Line(Narrator, "Bakasin mo ang bawat titik upang maibalik ang alaala ni Ama."));
 
         DialogueSO outro = EnsureDialogue("Dialogue_Ugat01_Outro",

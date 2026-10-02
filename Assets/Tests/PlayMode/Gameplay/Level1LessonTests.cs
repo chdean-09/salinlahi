@@ -2452,33 +2452,56 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         // ------------------------------------------------------------------------------------
-        // Ordinary retries retain the profile's introduction record.
+        // The debut rule: a level always introduces the types that debut on it
 
+        /// <summary>
+        /// A type that makes its first campaign appearance on this level is introduced on every
+        /// attempt of it, lesson or no lesson, even when the campaign-wide one-shot is spent:
+        /// once per attempt, not per spawn, and again on the next attempt.
+        /// </summary>
         [UnityTest]
-        public IEnumerator DebutLevel_DoesNotReplayThePlainCard_ForAnAlreadyIntroducedType()
+        public IEnumerator DebutLevel_ReplaysThePlainCard_ForAnAlreadyIntroducedType_OncePerAttempt()
         {
             yield return null;
             SetPrivateField(_beat, "_onScreenWaitTimeoutSeconds", 0f);
 
             BaybayinCharacterSO naChar = MakeCharacter("NA", "symbol.test.debut.na");
-            EnemyDataSO data = CreateEnemyData("test_nawalang_debut", "Nawalang Mukha", naChar);
+            EnemyDataSO nawalangData = CreateEnemyData("test_nawalang_debut", "Nawalang Mukha", naChar);
             LevelConfigSO config = CreateLevelConfig(
-                new List<EnemyDataSO> { data }, null, new List<FocusWordDefinition>());
+                new List<EnemyDataSO> { nawalangData }, null, new List<FocusWordDefinition>());
             config.alwaysShowTutorial = false;
             _gameManager.SetLevel(config);
             EnemyDebutLookup.CampaignOverrideForTests = CreateCampaign(config);
-            Assert.IsTrue(EnemyIntroductionProgress.TryClaimIntroduction(data));
 
-            Enemy first = CreateEnemyShell("Nawalang_Retry");
-            Assert.IsTrue(first.Initialize(data));
-            Assert.AreEqual(IntroductionOutcome.None, first.IntroductionOutcome,
-                "A debut alone must not override the profile's persisted introduction.");
+            Assert.IsTrue(EnemyIntroductionProgress.TryClaimIntroduction(nawalangData),
+                "setup: the one-shot was spent on a previous attempt");
+
+            Enemy first = CreateEnemyShell("Nawalang_DebutReplay");
+            Assert.IsTrue(first.Initialize(nawalangData));
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndSuppress, first.IntroductionOutcome,
+                "The level Nawalang Mukha debuts on must introduce him again this attempt, "
+                + "one-shot or not: it is the level that teaches him.");
+
+            // Let the card run its course so the runner is free for the next claim.
+            yield return null;
+            _beat.enabled = false;
+            yield return null;
+            _beat.enabled = true;
+            yield return null;
+
+            Enemy second = CreateEnemyShell("Nawalang_SecondSpawnSameAttempt");
+            Assert.IsTrue(second.Initialize(nawalangData));
+            Assert.AreEqual(IntroductionOutcome.None, second.IntroductionOutcome,
+                "Once per attempt: the second spawn in the same play is an ordinary enemy.");
 
             EnemyIntroductionBeat.BeginAttempt();
-            Enemy retry = CreateEnemyShell("Nawalang_NextRetry");
-            Assert.IsTrue(retry.Initialize(data));
-            Assert.AreEqual(IntroductionOutcome.None, retry.IntroductionOutcome);
+            Enemy nextAttempt = CreateEnemyShell("Nawalang_NextAttempt");
+            Assert.IsTrue(nextAttempt.Initialize(nawalangData));
+            Assert.AreEqual(IntroductionOutcome.IntroduceAndSuppress, nextAttempt.IntroductionOutcome,
+                "A new attempt of the debut level introduces him again.");
+
             _beat.enabled = false;
+            yield return null;
         }
 
         /// <summary>
@@ -2622,7 +2645,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         }
 
         [UnityTest]
-        public IEnumerator ScheduledDecoy_GetsTheFirstIntroductionCard_AndDoesNotReplayOnRetry()
+        public IEnumerator ScheduledDecoy_GetsTheIntroductionCard_AndReplaysOncePerAttempt()
         {
             yield return null;
             BaybayinCharacterSO character = MakeCharacter("SA", "symbol.test.decoy.sa");
@@ -2634,6 +2657,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             _gameManager.SetLevel(level);
             IntroductionScheduleLookup.ScheduleOverrideForTests = CreateSchedule(level, data);
 
+            Assert.IsTrue(EnemyIntroductionProgress.TryClaimIntroduction(data), "Simulate an earlier attempt.");
             Enemy spawn = CreateEnemyShell("Salungat_ScheduledReplay");
             Assert.IsTrue(spawn.Initialize(data));
             Assert.AreEqual(IntroductionOutcome.IntroduceAndSuppress, spawn.IntroductionOutcome,
@@ -2644,12 +2668,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             Enemy second = CreateEnemyShell("Salungat_SecondSpawn");
             Assert.IsTrue(second.Initialize(data));
             Assert.AreEqual(IntroductionOutcome.None, second.IntroductionOutcome,
-                "The profile claim prevents another card in the same attempt.");
-            EnemyIntroductionBeat.BeginAttempt();
-            Enemy retry = CreateEnemyShell("Salungat_Retry");
-            Assert.IsTrue(retry.Initialize(data));
-            Assert.AreEqual(IntroductionOutcome.None, retry.IntroductionOutcome,
-                "The introduction schedule does not force a previously seen card on retry.");
+                "The card plays once per attempt, not once per decoy spawn.");
             _beat.enabled = false;
         }
 

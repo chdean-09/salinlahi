@@ -173,6 +173,130 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 "Pooling/reset must also discard a queued, not-yet-visible capture.");
         }
 
+        [TestCase(RestorationDisplayMode.ClueOnlyWords)]
+        [TestCase(RestorationDisplayMode.HiddenContext)]
+        public void RestoredSlot_RevealsItsOwnLabel_BeforeTheWordCompletes(RestorationDisplayMode mode)
+        {
+            ActiveCluePresenter presenter = CreatePresenter(out RectTransform rail, out _);
+            TextMeshProUGUI label = CreateLabel(rail, "__");
+            Image glyph = CreateGlyph(rail);
+            object slot = CreateRailSlot(presenter, label, "EI", glyph);
+            var first = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            var second = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            var level = ScriptableObject.CreateInstance<LevelConfigSO>();
+            _created.Add(first);
+            _created.Add(second);
+            _created.Add(level);
+            first.stableId = "test.ei";
+            second.stableId = "test.na";
+            level.restorationObjective = new RestorationObjectiveDefinition
+            {
+                displayMode = mode,
+                units = new List<RestorationObjectiveUnit>
+                {
+                    new RestorationObjectiveUnit
+                    {
+                        stableId = "test.ina",
+                        tokens = new List<RestorationObjectiveToken>
+                        {
+                            new RestorationObjectiveToken { kind = RestorationTokenKind.Target,
+                                occurrenceId = "test.ina.ei", target = new SymbolValueReference { symbol = first } },
+                            new RestorationObjectiveToken { kind = RestorationTokenKind.Target,
+                                occurrenceId = "test.ina.na", target = new SymbolValueReference { symbol = second } }
+                        }
+                    }
+                }
+            };
+            var objectiveObject = new GameObject("TestObjective");
+            _created.Add(objectiveObject);
+            var objective = objectiveObject.AddComponent<RestorationObjectiveController>();
+            objective.Configure(level);
+            presenter.SetRestorationObjectiveController(objective);
+            SetPrivateField(slot, "UnitId", "test.ina");
+            SetPrivateField(slot, "OccurrenceId", "test.ina.ei");
+            GetPrivateField<IList>(presenter, "_railSlots").Add(slot);
+
+            InvokeRequired(presenter, "RepaintRail", false);
+            Assert.AreEqual("__", label.text, "An unearned answer stays hidden.");
+            objective.TryRestore(first.stableId);
+            InvokeRequired(presenter, "RepaintRail", false);
+            Assert.IsFalse(objective.IsComplete, "NA is still owed.");
+            Assert.AreEqual("EI", label.text, "The earned syllable must appear with its glyph.");
+            Assert.IsTrue(glyph.gameObject.activeSelf);
+        }
+
+        [Test]
+        public void EnemyIntroduction_ReminderStrip_StaysHidden()
+        {
+            CreatePresenter(out RectTransform rail, out _);
+            var host = new GameObject("TestIntroductionCard");
+            _created.Add(host);
+            var card = host.AddComponent<EnemyIntroductionCardView>();
+            CanvasGroup group = rail.gameObject.AddComponent<CanvasGroup>();
+            TextMeshProUGUI label = CreateLabel(rail, "stale reminder");
+            SetPrivateField(card, "_bannerGroup", group);
+            SetPrivateField(card, "_bannerText", label);
+
+            card.ShowBanner("It steals written names.");
+
+            Assert.IsFalse(group.gameObject.activeSelf);
+            Assert.AreEqual(0f, group.alpha);
+            Assert.IsEmpty(label.text);
+            Assert.IsNull(label.GetComponentInParent<CombatNotificationBanner>());
+        }
+
+        [TestCase(DrawTextRelation.AlreadyFilled)]
+        [TestCase(DrawTextRelation.LaterNeeded)]
+        [TestCase(DrawTextRelation.BlockedCarrier)]
+        public void DrawRelationFeedback_DoesNotDisplayATextStrip(DrawTextRelation relation)
+        {
+            CreatePresenter(out RectTransform rail, out _);
+            TextMeshProUGUI label = CreateLabel(rail, "stale feedback");
+            var host = new GameObject("TestDrawFeedback");
+            _created.Add(host);
+            var feedback = host.AddComponent<DrawFeedbackPresenter>();
+            SetPrivateField(feedback, "_messageLabel", label);
+
+            feedback.HandleTextRelationResolved(new DrawFeedbackReport
+                { Relation = relation, CursorSlotIndex = -1 });
+
+            Assert.IsFalse(label.gameObject.activeSelf);
+            Assert.IsEmpty(label.text);
+            Assert.AreEqual(relation, feedback.LastRelation);
+            Assert.IsNull(label.GetComponentInParent<CombatNotificationBanner>());
+        }
+
+        [Test]
+        public void DrawingSuccess_DoesNotDisplayATextStrip()
+        {
+            CreatePresenter(out RectTransform rail, out _);
+            TextMeshProUGUI label = CreateLabel(rail, "stale feedback");
+            var host = new GameObject("TestDrawingFeedback");
+            _created.Add(host);
+            var feedback = host.AddComponent<DrawingFeedback>();
+            SetPrivateField(feedback, "_messageLabel", label);
+
+            InvokeRequired(feedback, "ShowSuccessFeedback", new object[] { null });
+
+            Assert.IsFalse(label.gameObject.activeSelf);
+            Assert.IsEmpty(label.text);
+            Assert.IsNull(label.GetComponentInParent<CombatNotificationBanner>());
+        }
+
+        [Test]
+        public void WordRestoredCue_HidesAuthoredLabelAndRecordsRestoration()
+        {
+            ActiveCluePresenter presenter = CreatePresenter(out RectTransform rail, out _);
+            TextMeshProUGUI label = CreateLabel(rail, "Restored: stale word");
+            SetPrivateField(presenter, "_wordRestoredText", label);
+
+            InvokeRequired(presenter, "ShowWordRestoredCue", "Restored: DALA");
+
+            Assert.IsFalse(label.gameObject.activeSelf);
+            Assert.AreEqual("Restored: DALA", presenter.LastWordRestoredMessage);
+            Assert.AreEqual(1, presenter.WordRestoredCueCount);
+        }
+
         private ActiveCluePresenter CreatePresenter(out RectTransform rail, out Canvas canvas)
         {
             var canvasObject = new GameObject("AbilityVisuals_TestCanvas",

@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: Tagapagsalaysay
     portrait: {fileID: 0}
-    text: "PAMANA\u2014kaalaman, alaala, at pagpapahalagang ipinapasa sa susunod."
+    text: "PAMANA: kaalaman, alaala, at pagpapahalagang ipinapasa sa susunod."
   - speakerName: Juan
     portrait: {fileID: 0}
     text: PA + MA + NA. Ang pamana ay nabubuhay lamang kapag ipinasa.
