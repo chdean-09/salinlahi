@@ -26,6 +26,7 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
     private SpawnAssignmentDirector _director;
     private LevelConfigSO _level;
     private bool _loggedEnemyRosterFallback;
+    private bool _loggedMissingRequiredCarrier;
     private ActiveCluePresenter _presenter;
     private RestorationObjectiveController _objective;
 
@@ -136,6 +137,7 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
     {
         _level = level;
         _loggedEnemyRosterFallback = false;
+        _loggedMissingRequiredCarrier = false;
         _presenter = presenter;
         _objective = RestorationObjectiveController.Active
             ?? FindFirstObjectByType<RestorationObjectiveController>(FindObjectsInactive.Include);
@@ -670,12 +672,18 @@ public sealed class SpawnAssignmentCoordinator : MonoBehaviour
         // Never turn Salungat into a real enemy or change the penalty on a filler/choice copy.
         EnemyDataSO fallback = FindRealCarrier(wave?.enemyTypes)
             ?? FindRealCarrier(_level?.allowedEnemyTypes);
-        if (!_loggedEnemyRosterFallback)
+        if (fallback != null && !_loggedEnemyRosterFallback)
         {
             _loggedEnemyRosterFallback = true;
             DebugLogger.LogWarning("SpawnAssignmentCoordinator: required symbol '"
                 + assignment.SymbolStableId + "' has no matching real enemy; real carrier fallback: "
-                + (fallback != null ? fallback.name : "none"));
+                + fallback.name);
+        }
+        else if (fallback == null && !_loggedMissingRequiredCarrier)
+        {
+            _loggedMissingRequiredCarrier = true;
+            DebugLogger.LogError("SpawnAssignmentCoordinator: no real enemy can carry required symbol '"
+                + assignment.SymbolStableId + "'. Check the wave and level enemy rosters.");
         }
         return fallback;
     }

@@ -400,6 +400,7 @@ MonoBehaviour:
     slotGates: []
     slotFloors: []
   enemySpeedMultiplier: 1
+  maxActiveEnemies: 4
   overrideDrawingAccuracyThreshold: 0
   drawingAccuracyThresholdOverride: 0.6
   alwaysShowTutorial: 0
@@ -582,7 +583,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
     - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
     enemyCount: 8
-    spawnInterval: 1.9000001
+    spawnInterval: 2
     waveStartDelay: 1
   - isIntermissionWave: 0
     characters:
@@ -613,7 +614,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
     - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
     enemyCount: 9
-    spawnInterval: 1.75
+    spawnInterval: 2
     waveStartDelay: 1
   - isIntermissionWave: 0
     characters:
@@ -644,7 +645,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
     - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
     enemyCount: 10
-    spawnInterval: 1.6
+    spawnInterval: 2
     waveStartDelay: 1
   waveCurve: {fileID: 0}
   allowedCharacters:

@@ -17,15 +17,12 @@ using System.Collections.Generic;
 /// decided by the caller and arrives as <see cref="ClueCandidate.IsEligible"/>; bosses, dying,
 /// phased-out and resolution-blocked enemies are already false by the time they get here.</para>
 ///
-/// <para><b>Iligaw's false copy is deliberately NOT among those exclusions.</b> A copy carries a
-/// glyph the player can plainly read on a body on screen, so drawing it resolves here like any
-/// other carrier and competes for the kill on the same closest-to-base terms. The single-target
-/// winner is chosen with no knowledge of whether it is a copy — the consequence of striking one is
-/// decided downstream by the director's credit checks, which withhold restoration so the copy
-/// falls and the text does not advance.</para>
+/// <para><b>Iligaw's false copy remains targetable.</b> A matching real carrier takes priority over
+/// a copy; when no eligible real carrier shares the drawn glyph, the copy remains the single
+/// target and retains its existing consequence downstream.</para>
 ///
-/// <para><b>The multi-kill chain is the one place that does ask.</b> A copy earns the kill when it is
-/// the closest carrier, but it is not a legitimate member of a set: counted toward the chain
+/// <para><b>The multi-kill chain is the one place that does ask.</b> A copy remains a single-target
+/// fallback when no eligible real carrier shares the glyph, but it is not a legitimate member of a set: counted toward the chain
 /// threshold it lets a board of two real carriers plus a copy arm a chain authored to need three, and
 /// admitted to the chain tail it hands the player a copy's death as part of a reward burst. Both read
 /// as progress the copy cannot deliver. This mirrors the rule CombatResolver's legacy burst path has
@@ -60,8 +57,8 @@ public static class DrawTargetResolver
 
     /// <summary>
     /// Index of the one carrier a non-chaining draw resolves against, or -1 when the draw is a
-    /// miss. Closest to the base wins, ties broken by spawn sequence — the same policy the clue
-    /// mark uses, reused rather than restated so the two can never drift apart.
+    /// miss. A matching real carrier wins over copies; within that class, closest to the base wins,
+    /// ties broken by spawn sequence. A copy remains targetable when it is the only matching carrier.
     /// </summary>
     public static int SelectSingleIndex(
         IReadOnlyList<ClueCandidate> candidates, string drawnCharacterId)
@@ -69,13 +66,25 @@ public static class DrawTargetResolver
         if (candidates == null || string.IsNullOrEmpty(drawnCharacterId))
             return -1;
 
-        // Narrow eligibility to "eligible AND carries the drawn glyph", then hand the set to the
-        // existing selector. Indices line up one-for-one with the caller's list.
+        bool hasEligibleRealCarrier = false;
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            ClueCandidate candidate = candidates[i];
+            if (IsCarrier(candidate, drawnCharacterId) && !candidate.IsDecoy)
+            {
+                hasEligibleRealCarrier = true;
+                break;
+            }
+        }
+
+        // Narrow eligibility to matching carriers. Real carriers have priority when any are
+        // eligible; copies remain selectable when they are the only matching carriers.
         var carriers = new List<ClueCandidate>(candidates.Count);
         for (int i = 0; i < candidates.Count; i++)
         {
             ClueCandidate candidate = candidates[i];
-            candidate.IsEligible = IsCarrier(candidate, drawnCharacterId);
+            candidate.IsEligible = IsCarrier(candidate, drawnCharacterId)
+                                   && (!hasEligibleRealCarrier || !candidate.IsDecoy);
             carriers.Add(candidate);
         }
 

@@ -50,6 +50,8 @@ public class CombatResolver : MonoBehaviour
 
     private string _lastRecognizedCharacterId;
     private float _lastRecognizedTime = float.NegativeInfinity;
+    private LevelConfigSO _decoyGraceLevel;
+    private bool _firstDecoyFalseHitConsumed;
 
     /// <summary>Cached so a correct hit does not trigger a scene-wide type scan.</summary>
     private ActiveCluePresenter _cachedPresenter;
@@ -82,12 +84,19 @@ public class CombatResolver : MonoBehaviour
     private void OnEnable()
     {
         EventBus.OnCharacterRecognized += HandleCharacterRecognized;
+        EventBus.OnLevelAttemptAborted += ResetDecoyFalseHitGrace;
+        EventBus.OnGameOver += ResetDecoyFalseHitGrace;
+        EventBus.OnLevelComplete += ResetDecoyFalseHitGrace;
+        ResetDecoyFalseHitGrace();
         EnsureBaseAnchor();
     }
 
     private void OnDisable()
     {
         EventBus.OnCharacterRecognized -= HandleCharacterRecognized;
+        EventBus.OnLevelAttemptAborted -= ResetDecoyFalseHitGrace;
+        EventBus.OnGameOver -= ResetDecoyFalseHitGrace;
+        EventBus.OnLevelComplete -= ResetDecoyFalseHitGrace;
     }
 
     private void OnDestroy()
@@ -196,7 +205,7 @@ public class CombatResolver : MonoBehaviour
             return;
         }
 
-        Enemy closestTarget = FindClosestEligibleMatch(matches);
+        Enemy closestTarget = FindClosestEligibleMatch(matches, characterID);
         if (closestTarget == null)
         {
             if (TryReportBlockedCarrier(characterID))
@@ -554,8 +563,8 @@ public class CombatResolver : MonoBehaviour
     }
 
     /// <summary>
-    /// The one carrier a non-chaining draw kills: the enemy closest to the base, ties broken by
-    /// spawn sequence.
+    /// The one carrier a non-chaining draw kills: real matching carriers take priority over copies;
+    /// within that class, the closest carrier wins, ties broken by spawn sequence.
     /// </summary>
     /// <remarks>
     /// This used to be a bare running minimum on Y with no tiebreak, which is not the same thing as
@@ -565,16 +574,14 @@ public class CombatResolver : MonoBehaviour
     /// the same glyph resolved differently between runs, and the deception beat where one of them is
     /// a decoy became a coin flip the player cannot read.
     ///
-    /// Rather than restate a tiebreak here, this now routes through <see cref="ActiveClueSelector"/>,
-    /// the same policy <see cref="DrawTargetResolver"/> gives the active-clue path. One rule, one
-    /// place: the two paths can no longer disagree about which enemy a draw kills, and the rule stays
-    /// covered by that type's EditMode tests instead of needing a scene to exercise.
+    /// Rather than restate target priority or a tiebreak here, this routes through
+    /// <see cref="DrawTargetResolver"/>, the same policy used by the active-clue path.
     ///
     /// No glyph filter is applied here because there is nothing left to filter — every entry arrives
     /// from <c>ActiveEnemyTracker.FindAllWithCharacter</c>, which already matched the drawn id
     /// exactly. Eligibility is the only remaining question.
     /// </remarks>
-    private static Enemy FindClosestEligibleMatch(List<Enemy> matches)
+    private static Enemy FindClosestEligibleMatch(List<Enemy> matches, string characterID)
     {
         if (matches == null || matches.Count == 0)
             return null;
@@ -584,11 +591,6 @@ public class CombatResolver : MonoBehaviour
         {
             Enemy candidate = matches[i];
 
-            // Populated even though this path selects a single target and never chains: the flag is
-            // part of describing the body, and a candidate that silently reports "not a copy" about
-            // an enemy whose copy-ness is known right here is a trap for whoever widens this path
-            // next. ActiveClueSelector does not read it — which carrier dies stays distance and spawn
-            // order, with no "if decoy" branch in the policy.
             candidates.Add(new ClueCandidate(
                 candidate != null && candidate.Character != null ? candidate.Character.characterID : null,
                 candidate != null ? candidate.transform.position.y : float.MaxValue,
@@ -597,7 +599,7 @@ public class CombatResolver : MonoBehaviour
                 candidate != null && candidate.IsDecoy));
         }
 
-        int index = ActiveClueSelector.SelectIndex(candidates);
+        int index = DrawTargetResolver.SelectSingleIndex(candidates, characterID);
         return index >= 0 ? matches[index] : null;
     }
 
@@ -632,22 +634,22 @@ public class CombatResolver : MonoBehaviour
     private static bool IsMultiKillChainEnabledForCurrentLevel()
         => GameManager.CurrentLevelConfig?.multiKillChainEnabled ?? true;
 
-    private static void ResolveMatchedEnemy(Enemy target, string characterID)
+    private void ResolveMatchedEnemy(Enemy target, string characterID)
     {
         if (target == null)
             return;
 
         if (target.IsDecoy)
         {
-            EventBus.RaiseBaseHit(1);
-            target.ApplyDecoyPenalty();
-
-            RecognitionLogger.LogOutcome(
-                outcome: "decoy_penalty",
-                recognizedCharacterID: characterID,
-                intendedCharacterID: TestSessionController.IntendedCharacterID);
-
-            DebugLogger.Log($"CombatResolver: Decoy penalty on {characterID}");
+            ClassifyAgainstTargetText(
+                characterID, out int relationSlotIndex, out int cursorSlotIndex);
+            PublishTextRelation(
+                DrawTextRelation.FalseCopyShattered,
+                characterID,
+                relationSlotIndex,
+                cursorSlotIndex,
+                target);
+            ApplyDecoyFalseHit(target, characterID);
         }
         else
         {
@@ -677,10 +679,58 @@ public class CombatResolver : MonoBehaviour
         if (!IsEligibleCombatTarget(target))
             yield break;
 
+        if (target.IsDecoy)
+        {
+            ApplyDecoyFalseHit(target, characterID);
+            yield break;
+        }
+
         EventBus.RaiseEnemyTargeted(target);
         EventBus.RaiseSingleAttackHit(target);
         target.TakeDamage(1);
         DebugLogger.Log($"CombatResolver: Hit {characterID}");
+    }
+
+    private void ApplyDecoyFalseHit(Enemy target, string characterID)
+    {
+        if (target == null || !target.IsDecoy)
+            return;
+
+        bool protectedByGrace = ConsumeFirstDecoyFalseHitGrace();
+        if (!protectedByGrace)
+            EventBus.RaiseBaseHit(1);
+
+        target.ApplyDecoyPenalty();
+        RecognitionLogger.LogOutcome(
+            outcome: "decoy_penalty",
+            recognizedCharacterID: characterID,
+            intendedCharacterID: TestSessionController.IntendedCharacterID);
+
+        DebugLogger.Log(protectedByGrace
+            ? $"CombatResolver: First decoy false hit protected for {characterID}"
+            : $"CombatResolver: Decoy penalty on {characterID}");
+    }
+
+    private bool ConsumeFirstDecoyFalseHitGrace()
+    {
+        LevelConfigSO currentLevel = GameManager.CurrentLevelConfig;
+        if (_decoyGraceLevel != currentLevel)
+        {
+            _decoyGraceLevel = currentLevel;
+            _firstDecoyFalseHitConsumed = false;
+        }
+
+        if (_firstDecoyFalseHitConsumed)
+            return false;
+
+        _firstDecoyFalseHitConsumed = true;
+        return true;
+    }
+
+    private void ResetDecoyFalseHitGrace()
+    {
+        _decoyGraceLevel = GameManager.CurrentLevelConfig;
+        _firstDecoyFalseHitConsumed = false;
     }
 
     private IEnumerator ApplyAoeDefeatAfterPronunciationLead(List<Enemy> targets)

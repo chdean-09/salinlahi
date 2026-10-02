@@ -288,11 +288,11 @@ public sealed class ActiveClueDirector : MonoBehaviour
     /// one keeps walking, and the player is supposed to learn that from the board rather than from
     /// a prompt.</para>
     ///
-    /// <para>Targetability is all this grants. Which carrier dies is still
-    /// <see cref="ActiveClueSelector"/>'s single rule — closest to the base, ties broken by spawn
-    /// sequence — so a copy competes for the kill on exactly the terms every other body does, with
-    /// no branch anywhere that reads "if decoy". Whether the word advances is decided separately,
-    /// in <see cref="TryConsumeClue"/>.</para>
+    /// <para>Targetability is all this grants. For a drawn glyph, an eligible real carrier takes
+    /// priority over a copy; within that class, <see cref="ActiveClueSelector"/> chooses closest
+    /// to the base, ties broken by spawn sequence. A copy remains the target when no eligible real
+    /// carrier shares the glyph. Whether the word advances is decided separately, in
+    /// <see cref="TryConsumeClue"/>.</para>
     /// </summary>
     public static bool IsClueTargetable(Enemy enemy)
     {
@@ -411,7 +411,8 @@ public sealed class ActiveClueDirector : MonoBehaviour
                 enemy != null && enemy.Character != null ? enemy.Character.characterID : null,
                 enemy != null ? enemy.transform.position.y : float.MaxValue,
                 enemy != null ? enemy.SpawnSequence : long.MaxValue,
-                isEligible(enemy)));
+                isEligible(enemy),
+                enemy != null && enemy.IsDecoy));
         }
     }
 

@@ -56,6 +56,9 @@ public class LevelConfigSO : ScriptableObject
              + "on the later levels it also appears in.")]
     [Min(0.1f)] public float enemySpeedMultiplier = 1f;
 
+    [Tooltip("Maximum ordinary, fragment and copy enemies active at once. Zero is unlimited.")]
+    [Min(0)] public int maxActiveEnemies = 0;
+
     [Header("Drawing Accuracy Override")]
     [Tooltip("If true, drawingAccuracyThresholdOverride replaces RecognitionConfigSO.minimumConfidence "
              + "for this level only. Follows the same shape as EnemyDataSO's badge overrides: an "

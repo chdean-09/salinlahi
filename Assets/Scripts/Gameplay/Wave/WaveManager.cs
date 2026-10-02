@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -12,6 +13,20 @@ using UnityEngine.Serialization;
 
 public class WaveManager : MonoBehaviour
 {
+    private sealed class PendingGeneratedSpawn
+    {
+        public EnemyDataSO Data;
+        public BaybayinCharacterSO Character;
+        public Vector3 Position;
+        public int CurrentHealth;
+        public float SpawnAfterTime;
+        public Enemy Owner;
+        public long OwnerSpawnSequence;
+        public bool RequiresLiveOwner;
+        public Action<Enemy> OnSpawned;
+        public Action OnCancelled;
+    }
+
     public static IReadOnlyList<BaybayinCharacterSO> CurrentAllowedCharacters { get; private set; }
     private static WaveManager _currentAllowedCharactersOwner;
 
@@ -51,6 +66,8 @@ public class WaveManager : MonoBehaviour
     private int _currentWaveSpawnedCount;
     private bool _running;
     private Coroutine _waveRoutine;
+    private readonly List<PendingGeneratedSpawn> _pendingGeneratedSpawns = new();
+    private bool _processingGeneratedSpawns;
 
     // The instant-win short-circuit. Once per RUN, not once per segment: a segmented level
     // re-enters Defense with the target text already whole, and re-firing the beat would
@@ -65,6 +82,7 @@ public class WaveManager : MonoBehaviour
 
     public int CurrentWaveIndex => _currentWaveIndex;
     public int CurrentWaveSpawnedCount => _currentWaveSpawnedCount;
+    public int PendingGeneratedSpawnCount => _pendingGeneratedSpawns.Count;
 
     private void OnEnable()
     {
@@ -85,6 +103,7 @@ public class WaveManager : MonoBehaviour
     {
         EventBus.OnGameOver -= HandleGameOver;
         EventBus.OnLevelAttemptAborted -= HandleLevelAttemptAborted;
+        ClearPendingGeneratedSpawns();
 
         if (_currentAllowedCharactersOwner == this)
         {
@@ -274,6 +293,7 @@ public class WaveManager : MonoBehaviour
 
     private void StartLevel(int selectedLevel)
     {
+        ClearPendingGeneratedSpawns();
         SetCurrentAllowedCharacters(null);
 
         // A fresh attempt re-arms the instant win. Deliberately NOT done in StartSegment: the
@@ -371,6 +391,7 @@ public class WaveManager : MonoBehaviour
     private void HandleGameOver()
     {
         _running = false;
+        ClearPendingGeneratedSpawns();
 
         // SpawnWave is started as a sibling coroutine, so stopping only the coordinator leaves a
         // live spawn loop behind. A terminal outcome owns every coroutine on this component.
@@ -411,6 +432,8 @@ public class WaveManager : MonoBehaviour
     /// </summary>
     private void Update()
     {
+        ProcessPendingGeneratedEnemySpawns();
+
         if (!_running || _instantWinTaken || _instantWinRoutine != null)
             return;
 
@@ -486,6 +509,7 @@ public class WaveManager : MonoBehaviour
     private void BeginInstantWin()
     {
         _instantWinTaken = true;
+        ClearPendingGeneratedSpawns();
         StopAllCoroutines();
         _waveRoutine = null;
 
@@ -947,6 +971,184 @@ public class WaveManager : MonoBehaviour
         _currentWaveSpawnedCount++;
     }
 
+    /// <summary>
+    /// Queues an ability-generated enemy so it follows the same active-enemy cap as wave spawns.
+    /// The request snapshots the values it needs because its source may return to the pool while
+    /// the generated enemy waits for capacity.
+    /// </summary>
+    public void QueueGeneratedEnemySpawn(
+        EnemyDataSO data,
+        BaybayinCharacterSO character,
+        Vector3 position,
+        int currentHealth,
+        float delaySeconds = 0f,
+        Enemy owner = null,
+        long ownerSpawnSequence = 0L,
+        bool requiresLiveOwner = false,
+        Action<Enemy> onSpawned = null,
+        Action onCancelled = null)
+    {
+        if (data == null)
+        {
+            onCancelled?.Invoke();
+            DebugLogger.LogError("WaveManager.QueueGeneratedEnemySpawn: Enemy data is required.");
+            return;
+        }
+
+        _pendingGeneratedSpawns.Add(new PendingGeneratedSpawn
+        {
+            Data = data,
+            Character = character,
+            Position = position,
+            CurrentHealth = Mathf.Max(1, currentHealth),
+            SpawnAfterTime = Time.time + Mathf.Max(0f, delaySeconds),
+            Owner = owner,
+            OwnerSpawnSequence = ownerSpawnSequence,
+            RequiresLiveOwner = requiresLiveOwner,
+            OnSpawned = onSpawned,
+            OnCancelled = onCancelled,
+        });
+
+        ProcessPendingGeneratedEnemySpawns();
+    }
+
+    /// <summary>Services due generated requests that fit the active cap and ability limits.</summary>
+    public void ProcessPendingGeneratedEnemySpawns()
+    {
+        if (_processingGeneratedSpawns || _pendingGeneratedSpawns.Count == 0 || _spawner == null)
+            return;
+
+        GameManager gameManager = GameManager.Instance;
+        if (gameManager != null
+            && gameManager.CurrentState != GameState.Playing
+            && gameManager.CurrentState != GameState.Practicing)
+        {
+            if (IsTerminalState(gameManager.CurrentState))
+                ClearPendingGeneratedSpawns();
+            return;
+        }
+
+        _processingGeneratedSpawns = true;
+        try
+        {
+            RemoveInvalidPendingGeneratedSpawns();
+
+            bool spawned;
+            do
+            {
+                spawned = false;
+                for (int i = 0; i < _pendingGeneratedSpawns.Count; i++)
+                {
+                    PendingGeneratedSpawn pending = _pendingGeneratedSpawns[i];
+                    if (pending.SpawnAfterTime > Time.time
+                        || !_spawner.CanSpawnEnemyNow(pending.Data, _levelConfig))
+                    {
+                        continue;
+                    }
+
+                    Enemy enemy = _spawner.SpawnGeneratedEnemy(
+                        pending.Data, pending.Character, pending.Position, pending.CurrentHealth);
+                    if (enemy == null)
+                        continue;
+
+                    _pendingGeneratedSpawns.RemoveAt(i);
+                    pending.OnSpawned?.Invoke(enemy);
+                    spawned = true;
+                    break;
+                }
+            }
+            while (spawned && _pendingGeneratedSpawns.Count > 0);
+        }
+        finally
+        {
+            _processingGeneratedSpawns = false;
+        }
+    }
+
+    /// <summary>Gives due generated requests priority before allowing an authored spawn.</summary>
+    internal bool CanSpawnAuthoredEnemy(EnemyDataSO data)
+    {
+        ProcessPendingGeneratedEnemySpawns();
+
+        GameManager gameManager = GameManager.Instance;
+        if (gameManager != null
+            && gameManager.CurrentState != GameState.Playing
+            && gameManager.CurrentState != GameState.Practicing)
+        {
+            return false;
+        }
+
+        return _spawner != null && _spawner.CanSpawnEnemyNow(data, _levelConfig);
+    }
+
+    internal bool HasPendingGeneratedData(EnemyDataSO data)
+    {
+        if (data == null)
+            return false;
+
+        for (int i = 0; i < _pendingGeneratedSpawns.Count; i++)
+        {
+            if (_pendingGeneratedSpawns[i].Data == data)
+                return true;
+        }
+
+        return false;
+    }
+
+    internal void CancelGeneratedEnemySpawns(Enemy owner, long ownerSpawnSequence)
+    {
+        if (owner == null)
+            return;
+
+        for (int i = _pendingGeneratedSpawns.Count - 1; i >= 0; i--)
+        {
+            PendingGeneratedSpawn pending = _pendingGeneratedSpawns[i];
+            if (pending.Owner != owner || pending.OwnerSpawnSequence != ownerSpawnSequence)
+                continue;
+
+            _pendingGeneratedSpawns.RemoveAt(i);
+            pending.OnCancelled?.Invoke();
+        }
+    }
+
+    private void RemoveInvalidPendingGeneratedSpawns()
+    {
+        for (int i = _pendingGeneratedSpawns.Count - 1; i >= 0; i--)
+        {
+            PendingGeneratedSpawn pending = _pendingGeneratedSpawns[i];
+            if (pending.RequiresLiveOwner && !IsPendingOwnerValid(pending))
+            {
+                _pendingGeneratedSpawns.RemoveAt(i);
+                pending.OnCancelled?.Invoke();
+            }
+        }
+    }
+
+    private static bool IsPendingOwnerValid(PendingGeneratedSpawn pending)
+    {
+        Enemy owner = pending.Owner;
+        if (owner == null || !owner.gameObject.activeInHierarchy || owner.IsDying
+            || owner.CurrentHealth <= 0
+            || owner.SpawnSequence != pending.OwnerSpawnSequence)
+        {
+            return false;
+        }
+
+        EnemyPool pool = EnemyPool.Instance;
+        return pool != null && pool.IsCheckedOut(owner);
+    }
+
+    private void ClearPendingGeneratedSpawns()
+    {
+        if (_pendingGeneratedSpawns.Count == 0)
+            return;
+
+        PendingGeneratedSpawn[] pending = _pendingGeneratedSpawns.ToArray();
+        _pendingGeneratedSpawns.Clear();
+        for (int i = 0; i < pending.Length; i++)
+            pending[i].OnCancelled?.Invoke();
+    }
+
     private IEnumerator RunBossEncounter(BossConfigSO bossConfig, int phaseIndex = -1)
     {
         if (bossConfig.bossEnemyData == null
@@ -1065,7 +1267,8 @@ public class WaveManager : MonoBehaviour
                 return true;
             }
 
-            return tracker.IsClear;
+            ProcessPendingGeneratedEnemySpawns();
+            return tracker.IsClear && _pendingGeneratedSpawns.Count == 0;
         });
 
         if (trackerMissingDuringWait)
@@ -1148,6 +1351,7 @@ public class WaveManager : MonoBehaviour
     private void CompleteRun()
     {
         _running = false;
+        ClearPendingGeneratedSpawns();
         _waveRoutine = null;
         RaiseLevelCompleted();
     }
@@ -1166,6 +1370,7 @@ public class WaveManager : MonoBehaviour
     private void AbortRun()
     {
         _running = false;
+        ClearPendingGeneratedSpawns();
 
         // AbortRun is also reached by dependency/encounter failures that happen before an
         // EventBus terminal notification. Treat it as terminal on this component as well: a
@@ -1180,6 +1385,7 @@ public class WaveManager : MonoBehaviour
 
     private void ResetRunState()
     {
+        ClearPendingGeneratedSpawns();
         _running = false;
         _waveRoutine = null;
         _currentWaveIndex = 0;

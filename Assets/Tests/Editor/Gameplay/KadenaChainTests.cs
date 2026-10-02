@@ -77,7 +77,8 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 // correct draw of its own symbol.
                 Assert.AreEqual(1, chained.CurrentHealth,
                     "an enemy chained by a live Kadena must not be damaged by drawing its symbol");
-                Assert.IsTrue(missed, "the draw finds no eligible target, so it reads as a miss");
+                Assert.IsFalse(missed,
+                    "a chain-blocked glyph receives its block feedback without emitting a miss");
             }
             finally
             {
@@ -236,6 +237,59 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
+        public void FirstNonLethalHitOnKadena_ReleasesOnlyItsOwnChainAndDoesNotRetargetThisSpawn()
+        {
+            Enemy kadena = CreateKadena(CreateCharacter("KA", "ka"), x: 0f, y: -5f);
+            Enemy chained = CreateEnemy(CreateCharacter("BA", "ba"), x: 0f, y: -4f);
+            KadenaChainController chain = TickChain(kadena);
+            Assert.AreSame(chained, chain.ChainedEnemy, "precondition");
+
+            object unrelatedOwner = new object();
+            chained.AddResolutionBlock(unrelatedOwner);
+
+            kadena.TakeDamage(1);
+
+            Assert.AreEqual(1, kadena.CurrentHealth, "Kadena's first of two hits is nonlethal");
+            Assert.IsNull(chain.ChainedEnemy, "the first nonlethal hit lifts Kadena's chain");
+            Assert.IsTrue(chained.IsResolutionBlocked,
+                "releasing Kadena's hold must preserve another ability's independent hold");
+            Assert.AreEqual(1, chained.ResolutionBlockCount);
+
+            Enemy laterArrival = CreateEnemy(CreateCharacter("DA", "da"), x: 0f, y: -3f);
+            chain.Tick(0.016f);
+
+            Assert.IsFalse(chain.IsChaining, "Kadena must not chain a replacement this spawn");
+            Assert.IsFalse(laterArrival.IsResolutionBlocked);
+            Assert.IsTrue(chained.IsResolutionBlocked, "the unrelated owner still holds its target");
+            chained.RemoveResolutionBlock(unrelatedOwner);
+        }
+
+        [Test]
+        public void PoolReset_ReleasesTheOldChainAndAllowsTheReusedKadenaToAcquireForItsNextSpawn()
+        {
+            BaybayinCharacterSO kadenaCharacter = CreateCharacter("KA", "ka");
+            Enemy kadena = CreateKadena(kadenaCharacter, x: 0f, y: -5f);
+            Enemy oldTarget = CreateEnemy(CreateCharacter("BA", "ba"), x: 0f, y: -4f);
+            KadenaChainController chain = TickChain(kadena);
+            Assert.AreSame(oldTarget, chain.ChainedEnemy, "precondition");
+
+            EnemyDataSO kadenaData = kadena.Data;
+            kadena.ResetForPool();
+            Assert.IsNull(chain.ChainedEnemy);
+            Assert.IsFalse(oldTarget.IsResolutionBlocked,
+                "returning Kadena to the pool releases its ownership token");
+
+            oldTarget.gameObject.SetActive(false);
+            Assert.IsTrue(kadena.Initialize(kadenaData), "reuse the same shell as a new Kadena spawn");
+            Enemy newTarget = CreateEnemy(CreateCharacter("DA", "da"), x: 0f, y: -4f);
+            chain.Tick(0.016f);
+
+            Assert.AreSame(newTarget, chain.ChainedEnemy,
+                "the next spawn gets one fresh chain acquisition");
+            Assert.IsTrue(newTarget.IsResolutionBlocked);
+        }
+
+        [Test]
         public void ChainedSalungat_CostsNoHeart_BecauseTheBlockPrecedesTheDecoyBranch()
         {
             // Emergent and reachable in play: Level7_Config.asset wave 1 lists Salungat and Kadena
@@ -262,8 +316,8 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 Assert.AreEqual(0, baseHits, "a chained decoy is inert in both directions");
                 Assert.IsFalse(decoy.IsDying, "the decoy penalty never ran");
 
-                // Control: the same draw against the same decoy once the chain lifts does cost a
-                // heart, so the assertion above is about the chain and not about a broken fixture.
+                // Control: after the chain lifts, the first false hit shatters the copy but is
+                // protected by the attempt's grace rather than costing a heart.
                 SetPrivateField(kadena, "_isDying", true);
                 chain.Tick(0.016f);
                 Assert.IsFalse(decoy.IsResolutionBlocked, "precondition for the control");
@@ -274,7 +328,9 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 CombatResolver controlResolver = CreateResolver();
                 SetPrivateField(controlResolver, "_pronunciationLeadSeconds", 0f);
                 InvokePrivate<object>(controlResolver, "HandleCharacterRecognized", decoySymbol.characterID);
-                Assert.AreEqual(1, baseHits, "an unchained decoy still costs a heart");
+                Assert.AreEqual(0, baseHits, "the first unchained decoy hit receives false-hit grace");
+                Assert.IsTrue(decoy.IsDying || !decoy.gameObject.activeSelf,
+                    "the unblocked false hit must still reject the copy");
             }
             finally
             {

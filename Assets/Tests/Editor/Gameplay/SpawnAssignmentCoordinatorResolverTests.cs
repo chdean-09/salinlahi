@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace Salinlahi.Tests.Editor.Gameplay
 {
@@ -139,6 +140,12 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 var coordinator = go.AddComponent<SpawnAssignmentCoordinator>();
                 coordinator.ApplyLevel(level, null);
                 var needed = new SpawnAssignment { SymbolStableId = sa.stableId, Role = SpawnAssignmentRole.Needed };
+                if (!hasRealCarrier)
+                {
+                    LogAssert.Expect(LogType.Error,
+                        "[Salinlahi] SpawnAssignmentCoordinator: no real enemy can carry required symbol "
+                        + "'symbol.sa'. Check the wave and level enemy rosters.");
+                }
                 Assert.AreSame(hasRealCarrier ? real : null, coordinator.ResolveEnemyData(needed, wave));
                 var filler = new SpawnAssignment { SymbolStableId = sa.stableId, Role = SpawnAssignmentRole.Filler };
                 Assert.AreSame(decoy, coordinator.ResolveEnemyData(filler, wave));
