@@ -76,8 +76,14 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.GreaterOrEqual(level.waves[0].spawnInterval, previousInterval * 2f);
         }
 
-        [Test]
-        public void RecognitionContext_PreservesBlockedGlyphIdentityAndExcludesDyingCarriers()
+        // Active-clue combat once matched a drawing only against the glyphs on screen. Every drawing
+        // then resembled SOME on-screen glyph best, so scribbles killed enemies and a DA drawn at a
+        // lone RA counted as RA. The drawing's identity has to come from every character; combat
+        // decides afterwards whether that identity has an eligible target.
+        [TestCase("DA", new[] { "RA" }, new string[0])]
+        [TestCase("LA", new[] { "GA" }, new[] { "LA" })]
+        public void ActiveClueCombat_ReportsTheDrawnGlyph_NotTheClosestOnScreenGlyph(
+            string drawn, string[] openCarriers, string[] blockedCarriers)
         {
             var root = new GameObject("QA recognition context");
             var manager = root.AddComponent<GameManager>();
@@ -85,14 +91,26 @@ namespace Salinlahi.Tests.Editor.Gameplay
             var recognition = root.AddComponent<RecognitionManager>();
             var managerInstance = typeof(Singleton<GameManager>).GetProperty("Instance");
             var trackerInstance = typeof(Singleton<ActiveEnemyTracker>).GetProperty("Instance");
+            var recognitionInstance = typeof(Singleton<RecognitionManager>).GetProperty("Instance");
             object previousManager = managerInstance.GetValue(null);
             object previousTracker = trackerInstance.GetValue(null);
+            object previousRecognition = recognitionInstance.GetValue(null);
+            bool previousLogging = RecognitionLogger.LoggingEnabled;
+            var recognized = new List<string>();
+            System.Action<string> onRecognized = recognized.Add;
             var assets = new List<Object>();
             var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
             try
             {
                 managerInstance.SetValue(null, manager);
                 trackerInstance.SetValue(null, tracker);
+                recognitionInstance.SetValue(null, null);
+                RecognitionLogger.LoggingEnabled = false;
+                typeof(RecognitionManager).GetField("_config", flags).SetValue(recognition,
+                    AssetDatabase.LoadAssetAtPath<RecognitionConfigSO>(
+                        "Assets/ScriptableObjects/RecognitionConfig_Default.asset"));
+                typeof(RecognitionManager).GetMethod("Awake", flags).Invoke(recognition, null);
+
                 var level = ScriptableObject.CreateInstance<LevelConfigSO>();
                 assets.Add(level);
                 level.activeClueCombatEnabled = true;
@@ -113,30 +131,24 @@ namespace Salinlahi.Tests.Editor.Gameplay
                     tracker.Register(enemy);
                     return enemy;
                 }
-                Carrier("GA");
-                var dying = Carrier("NA");
-                typeof(Enemy).GetField("_isDying", flags).SetValue(dying, true);
-                Carrier("LA").AddResolutionBlock(this);
-                level.focusWords = new List<FocusWordDefinition>
-                {
-                    new FocusWordDefinition { decomposition = new List<SymbolValueReference>
-                    { new SymbolValueReference { symbol = dying.Character } } }
-                };
-                var candidates = (ISet<string>)typeof(RecognitionManager)
-                    .GetMethod("ResolveCombatCandidates", flags).Invoke(recognition, null);
-                CollectionAssert.AreEquivalent(new[] { "GA", "LA" }, candidates);
-                var recognizer = new DollarPRecognizer();
-                recognizer.SetTemplateStrokeVariants(new TemplateLoader().LoadAll());
-                var strokes = StrokeTextParser.ParseStrokes(System.IO.File.ReadAllText(
-                    "Assets/Resources/Templates/LA_template_01.txt"));
-                Assert.AreEqual("LA", recognizer.Recognize(strokes, candidates).characterID,
-                    "A blocked LA must not be reclassified as the unblocked GA.");
+                foreach (string id in openCarriers) Carrier(id);
+                foreach (string id in blockedCarriers) Carrier(id).AddResolutionBlock(this);
+
+                EventBus.OnCharacterRecognized += onRecognized;
+                recognition.Recognize(StrokeTextParser.ParseStrokes(System.IO.File.ReadAllText(
+                    $"Assets/Resources/Templates/{drawn}_template_01.txt")));
+
+                CollectionAssert.AreEqual(new[] { drawn }, recognized,
+                    $"A drawn {drawn} must be reported as {drawn}, whichever glyphs are on screen.");
             }
             finally
             {
+                EventBus.OnCharacterRecognized -= onRecognized;
+                RecognitionLogger.LoggingEnabled = previousLogging;
                 Object.DestroyImmediate(root);
                 managerInstance.SetValue(null, previousManager);
                 trackerInstance.SetValue(null, previousTracker);
+                recognitionInstance.SetValue(null, previousRecognition);
                 foreach (Object asset in assets) Object.DestroyImmediate(asset);
             }
         }
