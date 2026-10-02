@@ -18,6 +18,9 @@ public class ChallengeModeUI : MonoBehaviour
     private Button _hintButton;
     private TextMeshProUGUI _hintButtonLabel;
     private HintModal _hintModal;
+    private ChallengeSession _hintModalSession;
+    private ChallengeUnitDefinition _hintModalUnit;
+    private int _hintModalSlotIndex;
     private string _feedbackText = string.Empty;
     private ScrollRect _promptScroll;
     private string _renderedUnitId;
@@ -35,6 +38,15 @@ public class ChallengeModeUI : MonoBehaviour
 
         BuildIfNeeded();
         ChallengeUnitDefinition unit = session.CurrentUnitDefinition;
+        if (_hintModal != null && _hintModal.IsOpen
+            && (session != _hintModalSession || unit != _hintModalUnit
+                || session.State == ChallengeSessionState.Completed
+                || session.State == ChallengeSessionState.Exited
+                || session.State == ChallengeSessionState.Failed
+                || session.State == ChallengeSessionState.CheckpointReset
+                || (_hintModal.CurrentMode == HintModal.Mode.Confirm
+                    && session.CurrentSlotIndex != _hintModalSlotIndex)))
+            _hintModal.Cancel();
         if (unit != null)
         {
             _progressText.text = $"Challenge {session.CurrentUnitIndex + 1}  |  Errors {session.Errors}  |  Hearts {session.HeartsRemaining}";
@@ -347,7 +359,7 @@ public class ChallengeModeUI : MonoBehaviour
 
         FocusWordDefinition focus = _controller == null
             ? null
-            : _controller.ResolveFocusWord(session.CurrentUnitDefinition);
+            : _controller.ResolveHintWord(session.CurrentUnitDefinition, session.HintOccurrenceId);
 
         return focus != null && !string.IsNullOrEmpty(focus.meaning)
             ? HintModalCopy.HintStatusLine(focus.displayLabel, focus.meaning)
@@ -395,7 +407,7 @@ public class ChallengeModeUI : MonoBehaviour
     }
 
     /// <summary>
-    /// SALIN-231. Opens the cost-disclosure modal (AC-1). Reads the session; spends
+    /// SALIN-231. Opens the hint confirmation modal. Reads the session; spends
     /// nothing — only HintModal.Confirm reaches RequestHint. The Hint control stays
     /// interactable when the budget is spent so the exhausted card can explain itself
     /// (AC-4) instead of the button silently doing nothing.
@@ -409,13 +421,21 @@ public class ChallengeModeUI : MonoBehaviour
         if (_hintModal == null)
             _hintModal = HintModal.CreateRuntime(transform.parent == null ? transform : transform.parent);
 
-        FocusWordDefinition focus = _controller.ResolveFocusWord(session.CurrentUnitDefinition);
+        ChallengeUnitDefinition unit = session.CurrentUnitDefinition;
+        string occurrenceId = unit?.slots != null && session.CurrentSlotIndex < unit.slots.Length
+            ? unit.slots[session.CurrentSlotIndex]?.expectedOccurrenceId
+            : unit?.tokens != null && session.CurrentSlotIndex < unit.tokens.Length
+                ? unit.tokens[session.CurrentSlotIndex]?.occurrenceId
+                : null;
+        FocusWordDefinition focus = _controller.ResolveHintWord(unit, occurrenceId);
+        _hintModalSession = session;
+        _hintModalUnit = unit;
+        _hintModalSlotIndex = session.CurrentSlotIndex;
         _hintModal.Open(
             session,
             focus == null ? string.Empty : focus.displayLabel,
             focus == null ? string.Empty : focus.meaning,
-            () => _controller?.RequestHint(),
-            () => _controller?.Retry());
+            () => _controller?.RequestHint());
     }
 
     private void SetActionInteractivity(ChallengeSession session)
