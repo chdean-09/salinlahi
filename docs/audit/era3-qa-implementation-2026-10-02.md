@@ -12,7 +12,7 @@ Implemented the supplied ISS-001–ISS-012 report against Unity 6000.3.9f1 using
 | ISS-004 | Blocked glyphs retain the existing dim tint and gain a gold outline padlock; pooled badges clear the lock. |
 | ISS-005 | Non-development players disable the SRP rendering debugger's runtime and persistent UI. The existing `Display Stats` panel is defined by the installed render-pipeline package, not an observed Graphy package. |
 | ISS-006 | Combat draw feedback, generic drawing feedback and mechanic reminders occupy distinct HUD bands with transparent input handling and a short fade. Mechanic banner visibility still follows its existing lifetime owner. |
-| ISS-007 | Active-clue combat recognition filters templates to resolvable enemies' real/visual glyphs. Dying, hidden and blocked carriers, and focus-word symbols without a targetable carrier, are excluded. Confidence floors remain unchanged. Tutorial practice, challenges and bosses keep their existing full recognition context. |
+| ISS-007 | Active-clue combat recognition filters templates to live enemies' real/visual glyphs, including blocked carriers so glyph identity remains independent of combat eligibility. Dying and hidden carriers, and focus-word symbols without a live carrier, are excluded. Confidence floors remain unchanged. Tutorial practice, challenges and bosses keep their existing full recognition context. |
 | ISS-008 | The default enemy pool already prewarms and reuses one shared prefab across these archetypes. Capacity increased from 10 to 24 (max 32), covering the largest authored 12-enemy wave plus 12 decoys. Removed per-spawn fallback string logging; missing-pool failure diagnostics remain. Creating a duplicate pool for every ID would multiply identical shell allocations. |
 | ISS-009 | Gameplay already uses four narrow damage edge strips at alpha 0.32. Added a 0.40 alpha cap; retained the clear center. |
 | ISS-010 | Stroke validation already measures path length and bounds rather than duration. Production thresholds reduced from 40/12 to 20/6 pixels; degenerate input checks remain. |
@@ -34,6 +34,15 @@ Implemented the supplied ISS-001–ISS-012 report against Unity 6000.3.9f1 using
 - **NOT RUN:** production player build, on-device audio/touch/performance evaluation, repeated human wins on Levels 12–14, and production stats-toggle exercise.
 
 The 15 baseline failures comprise the Level 14 RA asset contract, a Kadena blocked-draw expectation, eight discovery-overlay tests, four challenge-board layout assertions and one base-introduction parchment assertion. The 19 Play Mode baseline failures comprise two Level 1 end-to-end tests, fifteen completion-phase tests, one wave-clear flow test and one phaser visibility timing assertion. These baseline failures remain unresolved; the suite and release readiness are not clean.
+
+## Follow-up: floating connectors and LA recognized as GA
+
+- **OBSERVED:** remote `dev` recognition fixes and handwriting templates merged without conflicts at `67895d93`.
+- **OBSERVED:** the earlier combat filter removed locked LA, forcing its exact template to GA (0.744) after the remote merge. Keeping the blocked glyph in recognition candidates preserves LA identity; combat still refuses damage to the blocked carrier.
+- **OBSERVED:** hidden, unparented `EnemyRelationshipConnector` visual roots survived Edit Mode enemy destruction. Their endpoints appeared as stationary ornaments in subsequent gameplay. Visuals now belong to the enemy hierarchy and maintain world dimensions when enemy shells are scaled. Removed 21 already-orphaned test roots from this Editor session.
+- **PASS:** fresh Unity compilation, all 11 connector tests, all 7 QA regression tests, and all 6 Play Mode QA lifecycle tests. Both added regression checks reproduced their defects before the fixes.
+- **OBSERVED:** full Edit Mode suite: 1,640 total, 1,625 passed, 15 failed. Failed names exactly match the stored 1,629-test baseline.
+- **OBSERVED:** live Level 12 replay submitted 160 touch events / 131 captured points across two LA strokes. Recognition returned LA at 0.978, with GA second at 0.738. Combat reported blocked LA with no damage; GA retained 2 HP and LA retained 1 HP. Fresh screen capture showed no orphan horizontal connectors. Simulation time was held for inspection; this does not establish on-device handwriting accuracy.
 
 ## Remaining acceptance work
 

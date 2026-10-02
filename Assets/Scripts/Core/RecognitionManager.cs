@@ -182,7 +182,9 @@ public class RecognitionManager : Singleton<RecognitionManager>
         for (int i = 0; i < _enemyBuffer.Count; i++)
         {
             Enemy enemy = _enemyBuffer[i];
-            if (!ActiveClueDirector.IsClueTargetable(enemy)) continue;
+            // A shield blocks combat resolution, not the identity of the glyph the player drew.
+            // Removing locked carriers can force LA into GA when GA is the only open target.
+            if (!ActiveClueDirector.IsVisibleGlyphCarrier(enemy)) continue;
             if (enemy.Character != null)
                 _combatCandidates.Add(enemy.Character.characterID);
             if (enemy.VisualCharacter != null)

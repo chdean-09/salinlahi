@@ -171,9 +171,15 @@ public sealed class EnemyRelationshipConnector : MonoBehaviour
         float endpointLength = Mathf.Min(definition.endpointLength, distance * 0.45f);
         float middleLength = Mathf.Max(0f, distance - endpointLength * 2f);
         float angle = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
+        Vector3 ownerScale = transform.lossyScale;
+        if (Mathf.Approximately(ownerScale.x, 0f) || Mathf.Approximately(ownerScale.y, 0f)
+            || Mathf.Approximately(ownerScale.z, 0f))
+            return false;
         _visualRoot.transform.SetPositionAndRotation(
             (first + second) * 0.5f,
             Quaternion.Euler(0f, 0f, angle));
+        _visualRoot.transform.localScale = new Vector3(
+            1f / ownerScale.x, 1f / ownerScale.y, 1f / ownerScale.z);
         _visualRoot.transform.position = new Vector3(
             _visualRoot.transform.position.x,
             _visualRoot.transform.position.y,
@@ -221,6 +227,9 @@ public sealed class EnemyRelationshipConnector : MonoBehaviour
         {
             hideFlags = HideFlags.HideAndDontSave
         };
+        // Edit Mode destruction does not invoke this component's OnDestroy. Hierarchy ownership
+        // also cleans up hidden visuals when a test enemy or its scene is destroyed.
+        _visualRoot.transform.SetParent(transform, true);
         _firstEndpoint = CreateRenderer("FirstEndpoint");
         _middle = CreateRenderer("Middle");
         _secondEndpoint = CreateRenderer("SecondEndpoint");

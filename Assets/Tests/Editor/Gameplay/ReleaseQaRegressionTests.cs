@@ -77,7 +77,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
-        public void RecognitionContext_ExcludesDyingAndBlockedCarriersAndInactiveFocusGlyphs()
+        public void RecognitionContext_PreservesBlockedGlyphIdentityAndExcludesDyingCarriers()
         {
             var root = new GameObject("QA recognition context");
             var manager = root.AddComponent<GameManager>();
@@ -113,10 +113,10 @@ namespace Salinlahi.Tests.Editor.Gameplay
                     tracker.Register(enemy);
                     return enemy;
                 }
-                Carrier("NGA");
+                Carrier("GA");
                 var dying = Carrier("NA");
                 typeof(Enemy).GetField("_isDying", flags).SetValue(dying, true);
-                Carrier("BA").AddResolutionBlock(this);
+                Carrier("LA").AddResolutionBlock(this);
                 level.focusWords = new List<FocusWordDefinition>
                 {
                     new FocusWordDefinition { decomposition = new List<SymbolValueReference>
@@ -124,7 +124,13 @@ namespace Salinlahi.Tests.Editor.Gameplay
                 };
                 var candidates = (ISet<string>)typeof(RecognitionManager)
                     .GetMethod("ResolveCombatCandidates", flags).Invoke(recognition, null);
-                CollectionAssert.AreEquivalent(new[] { "NGA" }, candidates);
+                CollectionAssert.AreEquivalent(new[] { "GA", "LA" }, candidates);
+                var recognizer = new DollarPRecognizer();
+                recognizer.SetTemplateStrokeVariants(new TemplateLoader().LoadAll());
+                var strokes = StrokeTextParser.ParseStrokes(System.IO.File.ReadAllText(
+                    "Assets/Resources/Templates/LA_template_01.txt"));
+                Assert.AreEqual("LA", recognizer.Recognize(strokes, candidates).characterID,
+                    "A blocked LA must not be reclassified as the unblocked GA.");
             }
             finally
             {

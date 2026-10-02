@@ -42,6 +42,20 @@ namespace Salinlahi.Tests.Editor.Gameplay
         }
 
         [Test]
+        public void ConnectorVisual_IsDestroyedWithItsOwnerInEditMode()
+        {
+            var data = CreateData("gapos", relationshipVisual: CreateVisual(CreateTestSprites()));
+            var owner = CreateEnemy(data, "GA", 0f, 0f);
+            var connector = owner.GetComponent<EnemyRelationshipConnector>();
+            var visual = (GameObject)typeof(EnemyRelationshipConnector)
+                .GetField("_visualRoot", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(connector);
+            Assert.IsNotNull(visual);
+            _objectsToDestroy.Remove(owner.gameObject);
+            Object.DestroyImmediate(owner.gameObject);
+            Assert.IsTrue(visual == null, "Destroying an Edit Mode test enemy must not leave a floating connector.");
+        }
+
+        [Test]
         public void GaposConnector_FollowsTheTwoBoundCandidatesAndHonorsIntroductionSuppression()
         {
             ConfigureObjective("HA");
@@ -55,6 +69,7 @@ namespace Salinlahi.Tests.Editor.Gameplay
 
             EnemyLearningAbilityController ability = gapos.GetComponent<EnemyLearningAbilityController>();
             EnemyRelationshipConnector connector = gapos.GetComponent<EnemyRelationshipConnector>();
+            gapos.transform.localScale = new Vector3(0.3f, 0.5f, 1f);
             ability.SetSuppressedForIntroductionSpawn(false);
             ability.Tick(0f);
             connector.Tick();
@@ -64,6 +79,10 @@ namespace Salinlahi.Tests.Editor.Gameplay
             Assert.AreSame(secondCandidate, connector.SecondTarget);
             Assert.AreNotSame(thirdCandidate, connector.SecondTarget);
             Assert.AreEqual(firstCandidate.transform.position, connector.FirstAnchorWorldPosition);
+            var visual = (GameObject)typeof(EnemyRelationshipConnector)
+                .GetField("_visualRoot", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(connector);
+            Assert.AreEqual(Vector3.one, visual.transform.lossyScale,
+                "Ownership must preserve connector dimensions when the enemy shell is scaled.");
             Assert.IsTrue(firstCandidate.IsResolutionBlocked);
             Assert.IsTrue(secondCandidate.IsResolutionBlocked);
 
