@@ -137,7 +137,7 @@ public class Enemy : MonoBehaviour
 
     public int MaxHealth => _data != null ? _data.maxHealth : 0;
     public int CurrentWalkFrameIndex => _walkFrameIndex;
-    public int WalkFrameCount => _data != null && _data.walkFrames != null ? _data.walkFrames.Length : 0;
+    public int WalkFrameCount => GetCurrentWalkFrames().Length;
 
     public float EffectiveSpeed
     {
@@ -391,9 +391,10 @@ public class Enemy : MonoBehaviour
         _walkFrameTimer = 0f;
         if (_renderer != null)
         {
-            if (_data.walkFrames != null && _data.walkFrames.Length > 0)
+            Sprite[] walkFrames = GetCurrentWalkFrames();
+            if (walkFrames.Length > 0)
             {
-                _renderer.sprite = _data.walkFrames[0];
+                _renderer.sprite = walkFrames[0];
             }
 
             _renderer.color = _baseRendererColor;
@@ -611,6 +612,7 @@ public class Enemy : MonoBehaviour
 
         int previousHealth = _currentHealth;
         _currentHealth -= amount;
+        RefreshWalkForm(previousHealth);
         HealthChanged?.Invoke(this, previousHealth, _currentHealth);
         DebugLogger.Log(
             $"Enemy [{Character?.characterID}] took {amount} damage. "
@@ -645,6 +647,7 @@ public class Enemy : MonoBehaviour
 
         int previousHealth = _currentHealth;
         _currentHealth = Mathf.Clamp(currentHealth, 1, _data.maxHealth);
+        RefreshWalkForm(previousHealth);
         HealthChanged?.Invoke(this, previousHealth, _currentHealth);
 
         if (!HasArmorAbilityVisual())
@@ -710,6 +713,7 @@ public class Enemy : MonoBehaviour
             _abilityVisualPresenter?.StopAll();
 
         BaybayinCharacterSO capturedCharacter = Character;
+        EnemyDataSO capturedData = _data;
 
         // Hati splits the moment it falls, before its death visuals, so the pieces are on the
         // field while the source is still visibly breaking apart.
@@ -744,7 +748,7 @@ public class Enemy : MonoBehaviour
             // Clear any aura this enemy is projecting before the death animation starts,
             // so affected enemies drop the buff in the same frame as defeat.
             GetComponent<GeneralAura>()?.ClearAllAffected();
-            EventBus.RaiseEnemyDefeated(capturedCharacter);
+            RaiseDefeatEvents(capturedCharacter, capturedData);
             _deathRoutine = StartCoroutine(PlayDeathAnimationThenReturn());
         }
         else if (hasBadgeFinalDraw)
@@ -760,7 +764,7 @@ public class Enemy : MonoBehaviour
             _mover?.Stop();
             DisableContactCollider();
             GetComponent<GeneralAura>()?.ClearAllAffected();
-            EventBus.RaiseEnemyDefeated(capturedCharacter);
+            RaiseDefeatEvents(capturedCharacter, capturedData);
             _deathRoutine = StartCoroutine(PlayBadgeFinalDrawThenReturn());
         }
         else if (hasBakodBreak)
@@ -770,14 +774,20 @@ public class Enemy : MonoBehaviour
             _mover?.Stop();
             DisableContactCollider();
             GetComponent<GeneralAura>()?.ClearAllAffected();
-            EventBus.RaiseEnemyDefeated(capturedCharacter);
+            RaiseDefeatEvents(capturedCharacter, capturedData);
             _deathRoutine = StartCoroutine(PlayBakodBarrierBreakThenReturn());
         }
         else
         {
             ReturnToPool();
-            EventBus.RaiseEnemyDefeated(capturedCharacter);
+            RaiseDefeatEvents(capturedCharacter, capturedData);
         }
+    }
+
+    private static void RaiseDefeatEvents(BaybayinCharacterSO character, EnemyDataSO data)
+    {
+        EventBus.RaiseEnemyDefeated(character);
+        EventBus.RaiseEnemyDataDefeated(data);
     }
 
     private IEnumerator PlayDeathAnimationThenReturn()
@@ -1134,11 +1144,10 @@ public class Enemy : MonoBehaviour
     {
         _walkFrameIndex = 0;
         _walkFrameTimer = 0f;
-        if (_renderer != null && _data != null
-            && _data.walkFrames != null && _data.walkFrames.Length > 0
-            && _data.walkFrames[0] != null)
+        Sprite[] walkFrames = GetCurrentWalkFrames();
+        if (_renderer != null && walkFrames.Length > 0 && walkFrames[0] != null)
         {
-            _renderer.sprite = _data.walkFrames[0];
+            _renderer.sprite = walkFrames[0];
         }
 
         WalkFrameChanged?.Invoke(this, _walkFrameIndex);
@@ -1155,16 +1164,17 @@ public class Enemy : MonoBehaviour
         if (_summonTicker != null && _summonTicker.IsPlayingSummonAnimation)
             return;
 
-        if (_renderer == null || _data == null || _data.walkFrames == null)
+        if (_renderer == null || _data == null)
             return;
 
-        int frameCount = _data.walkFrames.Length;
+        Sprite[] walkFrames = GetCurrentWalkFrames();
+        int frameCount = walkFrames.Length;
         if (frameCount == 0)
             return;
 
         if (frameCount == 1)
         {
-            _renderer.sprite = _data.walkFrames[0];
+            _renderer.sprite = walkFrames[0];
             return;
         }
 
@@ -1181,9 +1191,45 @@ public class Enemy : MonoBehaviour
             _walkFrameIndex = (_walkFrameIndex + 1) % frameCount;
         }
 
-        _renderer.sprite = _data.walkFrames[_walkFrameIndex];
+        _renderer.sprite = walkFrames[_walkFrameIndex];
         if (previousFrame != _walkFrameIndex)
             WalkFrameChanged?.Invoke(this, _walkFrameIndex);
+    }
+
+    private Sprite[] GetCurrentWalkFrames()
+    {
+        if (_data == null)
+            return Array.Empty<Sprite>();
+
+        EnemyHealthWalkFrames[] healthFrames = _data.healthWalkFrames;
+        if (healthFrames != null)
+        {
+            for (int i = 0; i < healthFrames.Length; i++)
+            {
+                EnemyHealthWalkFrames form = healthFrames[i];
+                if (form != null && form.health == _currentHealth
+                    && form.frames != null && form.frames.Length > 0)
+                    return form.frames;
+            }
+        }
+
+        return _data.walkFrames ?? Array.Empty<Sprite>();
+    }
+
+    private void RefreshWalkForm(int previousHealth)
+    {
+        if (_data == null || previousHealth == _currentHealth)
+            return;
+
+        Sprite[] frames = GetCurrentWalkFrames();
+        if (frames.Length == 0)
+            return;
+
+        _walkFrameIndex = 0;
+        _walkFrameTimer = 0f;
+        if (_renderer != null && frames[0] != null)
+            _renderer.sprite = frames[0];
+        WalkFrameChanged?.Invoke(this, _walkFrameIndex);
     }
 
     private void ResetRendererState()

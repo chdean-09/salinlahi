@@ -68,6 +68,9 @@ public class VictoryScreenUI : MonoBehaviour
 
     private bool _replayListenerBound;
     private bool _showRequested;
+    private Sprite[] _yaposCelebrationFrames;
+    private Image _yaposCelebrationImage;
+    private Coroutine _yaposCelebrationRoutine;
 
     /// <summary>Gameplay HUD root, found by name at Show time — left unwired to keep
     /// the scene diffs out; null is a safe no-op in test scenes.</summary>
@@ -94,6 +97,7 @@ public class VictoryScreenUI : MonoBehaviour
         // would throw there. Show() activates the panel, which lands here.
         if (_starPopPending)
             StartStarPop();
+        StartYaposCelebration();
     }
 
     private void OnDisable()
@@ -103,6 +107,7 @@ public class VictoryScreenUI : MonoBehaviour
         if (_levelSelectButton != null)
             _levelSelectButton.onClick.RemoveListener(OnLevelSelectPressed);
         UnbindReplayListener();
+        StopYaposCelebration();
     }
 
     /// <summary>
@@ -137,6 +142,27 @@ public class VictoryScreenUI : MonoBehaviour
         _attemptResults = results;
         _isEraFinalLevel = isEraFinalLevel;
         Show();
+    }
+
+    public void SetYaposCelebration(Sprite[] frames)
+    {
+        _yaposCelebrationFrames = frames != null && frames.Length > 0 ? (Sprite[])frames.Clone() : null;
+        if (_yaposCelebrationFrames == null)
+        {
+            ClearYaposCelebration();
+            return;
+        }
+
+        EnsureYaposCelebrationImage();
+        StartYaposCelebration();
+    }
+
+    public void ClearYaposCelebration()
+    {
+        _yaposCelebrationFrames = null;
+        StopYaposCelebration();
+        if (_yaposCelebrationImage != null)
+            _yaposCelebrationImage.gameObject.SetActive(false);
     }
 
     public void Show()
@@ -208,6 +234,71 @@ public class VictoryScreenUI : MonoBehaviour
         }
 
         DebugLogger.Log($"VictoryScreenUI: Level {currentLevel} complete with {stars} stars.");
+    }
+
+    private void EnsureYaposCelebrationImage()
+    {
+        if (_yaposCelebrationImage != null || _panel == null)
+            return;
+
+        GameObject imageObject = new("[Runtime] YaposCelebration", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        imageObject.transform.SetParent(_panel.transform, false);
+        RectTransform rect = imageObject.GetComponent<RectTransform>();
+        rect.anchorMin = rect.anchorMax = new Vector2(1f, 0f);
+        rect.pivot = new Vector2(1f, 0f);
+        rect.anchoredPosition = new Vector2(-120f, 190f);
+        rect.sizeDelta = new Vector2(190f, 213f);
+
+        _yaposCelebrationImage = imageObject.GetComponent<Image>();
+        _yaposCelebrationImage.preserveAspect = true;
+        _yaposCelebrationImage.raycastTarget = false;
+        _yaposCelebrationImage.maskable = true;
+    }
+
+    private void StartYaposCelebration()
+    {
+        if (!isActiveAndEnabled || _yaposCelebrationFrames == null || _yaposCelebrationFrames.Length == 0)
+            return;
+
+        EnsureYaposCelebrationImage();
+        if (_yaposCelebrationImage == null)
+            return;
+
+        _yaposCelebrationImage.gameObject.SetActive(true);
+        if (_yaposCelebrationRoutine == null)
+            _yaposCelebrationRoutine = StartCoroutine(LoopYaposCelebration());
+    }
+
+    private IEnumerator LoopYaposCelebration()
+    {
+        const float frameDuration = 1f / 8f;
+        int frame = 0;
+        float elapsed = 0f;
+        while (_yaposCelebrationFrames != null && _yaposCelebrationFrames.Length > 0
+            && _yaposCelebrationImage != null)
+        {
+            Sprite sprite = _yaposCelebrationFrames[frame];
+            if (sprite != null)
+                _yaposCelebrationImage.sprite = sprite;
+
+            elapsed = 0f;
+            while (elapsed < frameDuration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+            frame = (frame + 1) % _yaposCelebrationFrames.Length;
+        }
+        _yaposCelebrationRoutine = null;
+    }
+
+    private void StopYaposCelebration()
+    {
+        if (_yaposCelebrationRoutine != null)
+        {
+            StopCoroutine(_yaposCelebrationRoutine);
+            _yaposCelebrationRoutine = null;
+        }
     }
 
     /// <summary>
@@ -739,6 +830,7 @@ public class VictoryScreenUI : MonoBehaviour
 
     private void OnNextLevelPressed()
     {
+        ClearYaposCelebration();
         if (_isEraFinalLevel)
         {
             _eraCompletionAction?.Invoke();
@@ -783,6 +875,7 @@ public class VictoryScreenUI : MonoBehaviour
     /// </summary>
     private void OnReplayPressed()
     {
+        ClearYaposCelebration();
         AudioManager.Instance?.PlayMenuButtonClick();
 
         int currentLevel = ProgressManager.Instance != null
@@ -800,6 +893,7 @@ public class VictoryScreenUI : MonoBehaviour
 
     private void OnLevelSelectPressed()
     {
+        ClearYaposCelebration();
         AudioManager.Instance?.PlayMenuButtonClick();
         DebugLogger.Log("VictoryScreenUI: Level Select pressed");
 

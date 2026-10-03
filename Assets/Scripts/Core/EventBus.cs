@@ -7,6 +7,7 @@ public static class EventBus
 {
     // -- Enemy Events --
     public static event Action<BaybayinCharacterSO> OnEnemyDefeated;
+    public static event Action<EnemyDataSO> OnEnemyDataDefeated;
     public static event Action<EnemyDataSO, Enemy> OnEnemyDiscovered;
     // Raised at the end of Enemy.Initialize, for both fresh and pooled spawns.
     public static event Action<Enemy> OnEnemySpawned;
@@ -106,6 +107,7 @@ public static class EventBus
 
     // -- Raisers --
     public static void RaiseEnemyDefeated(BaybayinCharacterSO c) => OnEnemyDefeated?.Invoke(c);
+    public static void RaiseEnemyDataDefeated(EnemyDataSO data) => OnEnemyDataDefeated?.Invoke(data);
     public static void RaiseEnemyDiscovered(EnemyDataSO data, Enemy enemy) => OnEnemyDiscovered?.Invoke(data, enemy);
     public static void RaiseEnemySpawned(Enemy enemy) => OnEnemySpawned?.Invoke(enemy);
     public static void RaiseBaseHit(int damage = 1) => OnBaseHit?.Invoke(damage);

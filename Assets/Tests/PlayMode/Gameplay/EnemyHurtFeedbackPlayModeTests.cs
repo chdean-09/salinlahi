@@ -4,6 +4,7 @@ using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine.UI;
 
 namespace Salinlahi.Tests.PlayMode.Gameplay
 {
@@ -199,6 +200,135 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 fieldName,
                 BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.IsNotNull(field, $"Missing field '{fieldName}' on {target.GetType().Name}.");
+            field.SetValue(target, value);
+        }
+    }
+
+    public class YaposVictoryCelebrationPlayModeTests
+    {
+        private readonly List<Object> _objectsToDestroy = new();
+        private float _originalTimeScale;
+
+        [UnitySetUp]
+        public IEnumerator SetUp()
+        {
+            _originalTimeScale = Time.timeScale;
+            yield return null;
+        }
+
+        [UnityTearDown]
+        public IEnumerator TearDown()
+        {
+            Time.timeScale = _originalTimeScale;
+            for (int i = _objectsToDestroy.Count - 1; i >= 0; i--)
+                if (_objectsToDestroy[i] != null)
+                    Object.Destroy(_objectsToDestroy[i]);
+            _objectsToDestroy.Clear();
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator CelebrationLoopsWhileGameTimeIsPausedAndClearStopsIt()
+        {
+            GameObject canvasObject = new GameObject("YaposVictoryCanvas_Test", typeof(RectTransform), typeof(Canvas));
+            canvasObject.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
+            _objectsToDestroy.Add(canvasObject);
+
+            GameObject panel = new GameObject("VictoryPanel_Test", typeof(RectTransform));
+            panel.transform.SetParent(canvasObject.transform, false);
+            VictoryScreenUI screen = panel.AddComponent<VictoryScreenUI>();
+            SetPrivateField(screen, "_panel", panel);
+
+            Sprite first = CreateSprite(Color.white);
+            Sprite second = CreateSprite(Color.yellow);
+            Sprite third = CreateSprite(Color.red);
+            Sprite fourth = CreateSprite(Color.blue);
+            screen.SetYaposCelebration(new[] { first, second, third, fourth });
+            Image image = panel.transform.Find("[Runtime] YaposCelebration").GetComponent<Image>();
+            Assert.AreSame(first, image.sprite);
+
+            Time.timeScale = 0f;
+            float elapsed = 0f;
+            while (elapsed < 0.6f && image.sprite == first)
+            {
+                yield return null;
+                elapsed += Time.unscaledDeltaTime;
+            }
+            Assert.AreNotSame(first, image.sprite,
+                "The victory celebration must keep animating while the game is paused.");
+
+            screen.ClearYaposCelebration();
+            Assert.IsFalse(image.gameObject.activeSelf);
+        }
+
+        [UnityTest]
+        public IEnumerator HealthFormStaysVisibleThroughoutHurtPauseAndWalkResumesOnThatForm()
+        {
+            Sprite baseFrame = CreateSprite(Color.white);
+            Sprite twoHealthFrame = CreateSprite(Color.yellow);
+            Sprite alternateTwoHealthFrame = CreateSprite(Color.green);
+            BaybayinCharacterSO character = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            character.characterID = "YA";
+            character.syllable = "ya";
+            _objectsToDestroy.Add(character);
+
+            EnemyDataSO data = ScriptableObject.CreateInstance<EnemyDataSO>();
+            data.enemyID = "yapos-ng-dilim";
+            data.assignedCharacter = character;
+            data.maxHealth = 3;
+            data.moveSpeed = 1f;
+            data.useHurtFeedback = true;
+            data.hurtPausesMovement = true;
+            data.hurtPauseDuration = 0.2f;
+            data.hurtShakesSprite = false;
+            data.walkFrames = new[] { baseFrame };
+            data.healthWalkFrames = new[]
+            {
+                new EnemyHealthWalkFrames { health = 2, frames = new[] { twoHealthFrame, alternateTwoHealthFrame } },
+            };
+            _objectsToDestroy.Add(data);
+
+            GameObject enemyObject = new GameObject("YaposHurtForm_Test");
+            enemyObject.SetActive(false);
+            SpriteRenderer renderer = enemyObject.AddComponent<SpriteRenderer>();
+            enemyObject.AddComponent<BoxCollider2D>();
+            EnemyMover mover = enemyObject.AddComponent<EnemyMover>();
+            Enemy enemy = enemyObject.AddComponent<Enemy>();
+            enemyObject.AddComponent<EnemyHurtFeedback>();
+            enemyObject.SetActive(true);
+            _objectsToDestroy.Add(enemyObject);
+
+            Assert.IsTrue(enemy.Initialize(data));
+            enemy.TakeDamage(1);
+            Assert.AreSame(twoHealthFrame, renderer.sprite);
+            Assert.IsFalse(mover.IsMoving, "Hurt feedback should hold movement during the damage pause.");
+
+            yield return new WaitForSecondsRealtime(0.08f);
+            Assert.AreSame(twoHealthFrame, renderer.sprite,
+                "Hurt feedback must not replace the selected health form during its pause.");
+
+            yield return new WaitForSecondsRealtime(0.2f);
+            Assert.IsTrue(mover.IsMoving, "Movement should resume when the hurt pause ends.");
+            Assert.Contains(renderer.sprite, new[] { twoHealthFrame, alternateTwoHealthFrame },
+                "The resumed walk cycle must continue on the two-HP form.");
+        }
+
+        private Sprite CreateSprite(Color color)
+        {
+            Texture2D texture = new Texture2D(2, 2);
+            texture.SetPixels(new[] { color, color, color, color });
+            texture.Apply();
+            _objectsToDestroy.Add(texture);
+            Sprite sprite = Sprite.Create(texture, new Rect(0f, 0f, 2f, 2f), new Vector2(0.5f, 0.5f));
+            _objectsToDestroy.Add(sprite);
+            return sprite;
+        }
+
+        private static void SetPrivateField(object target, string fieldName, object value)
+        {
+            FieldInfo field = target.GetType().GetField(fieldName,
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(field);
             field.SetValue(target, value);
         }
     }

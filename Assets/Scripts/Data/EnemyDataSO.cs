@@ -51,6 +51,8 @@ public class EnemyDataSO : ScriptableObject
 
     [Header("Visuals")]
     public Sprite[] walkFrames;
+    [Tooltip("Optional walk cycles selected at these health values. Unmatched health uses walkFrames.")]
+    public EnemyHealthWalkFrames[] healthWalkFrames = Array.Empty<EnemyHealthWalkFrames>();
     public RuntimeAnimatorController animatorController;
 
     [Tooltip("Ability-driven sprite layers synchronized to the Enemy walk-frame index. Definitions share pooled presenter layers and may anchor to the body or glyph badge.")]
@@ -142,6 +144,9 @@ public class EnemyDataSO : ScriptableObject
     public Sprite[] deathFrames;
     [Tooltip("Playback FPS for deathFrames. 0 falls back to the walk animation FPS on Enemy.cs (default 8).")]
     public float deathAnimationFps = 8f;
+
+    [Tooltip("Optional looping frames shown on the victory screen after this enemy is defeated.")]
+    public Sprite[] victoryCelebrationFrames = Array.Empty<Sprite>();
 
     [Header("Hurt Feedback (multi-HP enemies)")]
     [Tooltip("Master toggle. If false, no hurt feedback runs even if EnemyHurtFeedback is on the prefab. HP=1 enemies never trigger hurt feedback regardless of this value (they die on the first hit).")]
@@ -295,6 +300,13 @@ public class EnemyDataSO : ScriptableObject
     [HideInInspector]
     [Tooltip("Runtime-only: set on generated decoy copies so they never raise their own discovery event.")]
     public bool suppressDiscovery;
+}
+
+[Serializable]
+public sealed class EnemyHealthWalkFrames
+{
+    [Min(1)] public int health;
+    public Sprite[] frames = Array.Empty<Sprite>();
 }
 
 public enum Era

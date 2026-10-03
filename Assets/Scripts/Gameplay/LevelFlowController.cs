@@ -90,6 +90,7 @@ public class LevelFlowController : MonoBehaviour
     // signal and read only by HandleDefenseComplete, to keep the Wave Cleared screen out of the
     // way of the instant-win beat — see that method.
     private bool _instantWinEarned;
+    private Sprite[] _yaposVictoryCelebrationFrames;
 
     // The controller currently driving a live LF-CONTRACT-v2 machine, if any.
     // WaveManager/BossController consult this to decide whether their completion
@@ -196,6 +197,7 @@ public class LevelFlowController : MonoBehaviour
         EventBus.OnGamePaused += HandleGamePaused;
         EventBus.OnGameResumed += HandleGameResumed;
         EventBus.OnLevelAttemptAborted += HandleLevelAttemptAborted;
+        EventBus.OnEnemyDataDefeated += HandleEnemyDataDefeated;
     }
 
     private void OnDisable()
@@ -210,6 +212,7 @@ public class LevelFlowController : MonoBehaviour
         EventBus.OnGamePaused -= HandleGamePaused;
         EventBus.OnGameResumed -= HandleGameResumed;
         EventBus.OnLevelAttemptAborted -= HandleLevelAttemptAborted;
+        EventBus.OnEnemyDataDefeated -= HandleEnemyDataDefeated;
 
         if (s_activeFlow == this)
             s_activeFlow = null;
@@ -270,6 +273,8 @@ public class LevelFlowController : MonoBehaviour
     /// </summary>
     private IEnumerator RunLevelFlow()
     {
+        _yaposVictoryCelebrationFrames = null;
+        _victoryScreen?.ClearYaposCelebration();
         if (_levelConfig == null)
         {
             DebugLogger.LogError("LevelFlowController: No LevelConfigSO resolved. Aborting flow.");
@@ -2015,6 +2020,8 @@ public class LevelFlowController : MonoBehaviour
     /// </summary>
     private void HandleLevelAttemptAborted()
     {
+        _yaposVictoryCelebrationFrames = null;
+        _victoryScreen?.ClearYaposCelebration();
         _machine?.RequestExit();
 
         // Also latches the machine-less legacy path (bare controllers, sandbox
@@ -2077,6 +2084,8 @@ public class LevelFlowController : MonoBehaviour
     // AC-4: Game over → defeat screen directly (no outro)
     private void HandleGameOver()
     {
+        _yaposVictoryCelebrationFrames = null;
+        _victoryScreen?.ClearYaposCelebration();
         // Once the outcome is owned — AtomicSave entered on the machine path, or
         // the legacy path already routed — a late game over can never reopen defeat
         // on top of a saved level.
@@ -2138,6 +2147,8 @@ public class LevelFlowController : MonoBehaviour
     {
         if (_victoryScreen == null)
             return;
+
+        _victoryScreen.SetYaposCelebration(_yaposVictoryCelebrationFrames);
 
         if (LastResults != null)
             _victoryScreen.PresentResultsSummary(BuildResultsViewData());
@@ -2284,6 +2295,12 @@ public class LevelFlowController : MonoBehaviour
     /// D-015, which carry rewardIds: []) — and the Results screen simply stands alone, which
     /// is exactly the behaviour that shipped before this ticket.
     /// </summary>
+    private void HandleEnemyDataDefeated(EnemyDataSO data)
+    {
+        if (data != null && string.Equals(data.enemyID, "yapos-ng-dilim", System.StringComparison.Ordinal))
+            _yaposVictoryCelebrationFrames = data.victoryCelebrationFrames;
+    }
+
     private void ShowMemoryCard()
     {
         if (LastRewardGrant == null
