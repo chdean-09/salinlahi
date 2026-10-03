@@ -25,7 +25,7 @@ MonoBehaviour:
   idleHint: Draw the glowing symbol.
   strongHint: Follow the shape from top to bottom.
   assistText: Watch this once.
-  wrongCharacterFeedback: Draw the shown syllable.
+  wrongCharacterFeedback:
   directionMismatchFeedback: Follow the guide.
   tooShortFeedback: Draw the full shape.
   recognitionFailedFeedback: Try that shape again.
