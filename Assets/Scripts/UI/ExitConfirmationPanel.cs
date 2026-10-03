@@ -1,6 +1,8 @@
 using System;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// <summary>
@@ -23,11 +25,6 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class ExitConfirmationPanel : MonoBehaviour
 {
-    private static readonly Color BackdropColor = new(0.02f, 0.03f, 0.06f, 0.94f);
-    private static readonly Color CardColor = new(0.07f, 0.1f, 0.17f, 1f);
-    private static readonly Color ConfirmButtonColor = new(0.72f, 0.18f, 0.15f, 1f);
-    private static readonly Color NeutralButtonColor = new(0.2f, 0.23f, 0.3f, 1f);
-
     /// <summary>
     /// The quit seam. Defaults to the real Application.Quit; a test swaps it, asserts the
     /// confirm path fired, and restores it. See the class header for why this is not inlined.
@@ -45,6 +42,10 @@ public sealed class ExitConfirmationPanel : MonoBehaviour
     private Action _onConfirm;
     private Action _onCancel;
     private bool _listenersAttached;
+    private bool _quitRequested;
+    private GameObject _previousSelection;
+    private EventTrigger.Entry _confirmCancelEntry;
+    private EventTrigger.Entry _cancelCancelEntry;
 
     public bool HasRequiredReferences => _overlayRoot != null && _titleText != null &&
         _bodyText != null && _confirmButton != null && _cancelButton != null;
@@ -63,6 +64,13 @@ public sealed class ExitConfirmationPanel : MonoBehaviour
         DetachListeners();
     }
 
+    private void Update()
+    {
+        if (IsShowing && !_quitRequested && Keyboard.current != null
+            && Keyboard.current.escapeKey.wasPressedThisFrame)
+            HandleCancelPressed();
+    }
+
     /// <summary>
     /// Builds the modal if needed and shows it. Both callbacks are optional: the panel quits
     /// and hides on its own, and the callbacks exist so the caller can observe the choice.
@@ -72,6 +80,9 @@ public sealed class ExitConfirmationPanel : MonoBehaviour
     /// MainMenuUI.cs:193-194.</returns>
     public bool Present(Action onConfirm = null, Action onCancel = null)
     {
+        if (IsShowing)
+            return true;
+
         EnsureBuilt();
         if (!HasRequiredReferences)
             return false;
@@ -79,13 +90,20 @@ public sealed class ExitConfirmationPanel : MonoBehaviour
         AttachListeners();
         _onConfirm = onConfirm;
         _onCancel = onCancel;
+        _quitRequested = false;
 
         _titleText.text = MainMenuProgressCopy.ExitConfirmTitle;
         _bodyText.text = MainMenuProgressCopy.ExitConfirmBody;
+        _bodyText.alignment = TextAlignmentOptions.Center;
         SetLabel(_confirmLabel, MainMenuProgressCopy.ExitConfirmButtonLabel);
         SetLabel(_cancelLabel, MainMenuProgressCopy.ExitCancelButtonLabel);
 
+        _confirmButton.interactable = true;
+        _cancelButton.interactable = true;
+        _previousSelection = EventSystem.current != null
+            ? EventSystem.current.currentSelectedGameObject : null;
         _overlayRoot.SetActive(true);
+        EventSystem.current?.SetSelectedGameObject(_cancelButton.gameObject);
         return true;
     }
 
@@ -93,17 +111,29 @@ public sealed class ExitConfirmationPanel : MonoBehaviour
     {
         if (_overlayRoot != null)
             _overlayRoot.SetActive(false);
+        if (_previousSelection != null && _previousSelection.activeInHierarchy)
+            EventSystem.current?.SetSelectedGameObject(_previousSelection);
+        _previousSelection = null;
     }
 
     private void HandleConfirmPressed()
     {
+        if (!IsShowing || _quitRequested)
+            return;
+        _quitRequested = true;
+        _confirmButton.interactable = false;
+        _cancelButton.interactable = false;
+        AudioManager.Instance?.PlayMenuExitButtonClick();
         _onConfirm?.Invoke();
+        Hide();
         // Invoked through the seam, never as a direct Application.Quit call. See the header.
         QuitAction?.Invoke();
     }
 
     private void HandleCancelPressed()
     {
+        if (!IsShowing || _quitRequested)
+            return;
         AudioManager.Instance?.PlayMenuExitButtonClick();
         Hide();
         _onCancel?.Invoke();
@@ -120,10 +150,31 @@ public sealed class ExitConfirmationPanel : MonoBehaviour
         if (_listenersAttached)
             return;
         if (_confirmButton != null)
+        {
             _confirmButton.onClick.AddListener(HandleConfirmPressed);
+            _confirmCancelEntry = AttachCancelHandler(_confirmButton);
+        }
         if (_cancelButton != null)
+        {
             _cancelButton.onClick.AddListener(HandleCancelPressed);
+            _cancelCancelEntry = AttachCancelHandler(_cancelButton);
+        }
         _listenersAttached = _confirmButton != null && _cancelButton != null;
+    }
+
+    private EventTrigger.Entry AttachCancelHandler(Button button)
+    {
+        EventTrigger trigger = button.GetComponent<EventTrigger>();
+        if (trigger == null)
+            trigger = button.gameObject.AddComponent<EventTrigger>();
+        EventTrigger.Entry entry = new EventTrigger.Entry { eventID = EventTriggerType.Cancel };
+        entry.callback.AddListener(eventData =>
+        {
+            HandleCancelPressed();
+            eventData.Use();
+        });
+        trigger.triggers.Add(entry);
+        return entry;
     }
 
     private void DetachListeners()
@@ -131,9 +182,15 @@ public sealed class ExitConfirmationPanel : MonoBehaviour
         if (!_listenersAttached)
             return;
         if (_confirmButton != null)
+        {
             _confirmButton.onClick.RemoveListener(HandleConfirmPressed);
+            _confirmButton.GetComponent<EventTrigger>()?.triggers.Remove(_confirmCancelEntry);
+        }
         if (_cancelButton != null)
+        {
             _cancelButton.onClick.RemoveListener(HandleCancelPressed);
+            _cancelButton.GetComponent<EventTrigger>()?.triggers.Remove(_cancelCancelEntry);
+        }
         _listenersAttached = false;
     }
 
@@ -151,7 +208,14 @@ public sealed class ExitConfirmationPanel : MonoBehaviour
         if (canvas == null)
             canvas = gameObject.AddComponent<Canvas>();
         canvas.overrideSorting = true;
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         canvas.sortingOrder = 300;
+        CanvasScaler scaler = GetComponent<CanvasScaler>();
+        if (scaler == null)
+            scaler = gameObject.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1080f, 1920f);
+        scaler.matchWidthOrHeight = 0.5f;
         if (GetComponent<GraphicRaycaster>() == null)
             gameObject.AddComponent<GraphicRaycaster>();
 
@@ -162,7 +226,7 @@ public sealed class ExitConfirmationPanel : MonoBehaviour
             _overlayRoot.transform.SetParent(transform, false);
             Stretch(_overlayRoot.GetComponent<RectTransform>());
             Image backdrop = _overlayRoot.GetComponent<Image>();
-            backdrop.color = BackdropColor;
+            backdrop.color = ScrollPanelArt.DimOverlayColor;
             backdrop.raycastTarget = true;
         }
 
@@ -171,30 +235,37 @@ public sealed class ExitConfirmationPanel : MonoBehaviour
         card.transform.SetParent(_overlayRoot.transform, false);
         RectTransform cardRect = card.GetComponent<RectTransform>();
         cardRect.anchorMin = new Vector2(0.08f, 0.32f);
-        cardRect.anchorMax = new Vector2(0.92f, 0.72f);
+        cardRect.anchorMax = new Vector2(0.92f, 0.68f);
         cardRect.offsetMin = Vector2.zero;
         cardRect.offsetMax = Vector2.zero;
         Image cardImage = card.GetComponent<Image>();
-        cardImage.color = CardColor;
+        cardImage.color = ScrollPanelArt.FlatPanelColor;
         cardImage.raycastTarget = false;
         bool onParchment = ScrollPanelArt.ApplyFull(cardImage);
 
         if (_titleText == null)
             _titleText = BuildText("Title", cardRect,
-                new Vector2(0.06f, 0.74f), new Vector2(0.94f, 0.94f),
-                40f, TextAlignmentOptions.Center);
+                new Vector2(0.16f, 0.65f), new Vector2(0.84f, 0.80f),
+                UITextScale.Title, TextAlignmentOptions.Center);
         if (_bodyText == null)
             _bodyText = BuildText("Body", cardRect,
-                new Vector2(0.08f, 0.3f), new Vector2(0.92f, 0.72f),
-                30f, TextAlignmentOptions.TopLeft);
+                new Vector2(0.16f, 0.40f), new Vector2(0.84f, 0.62f),
+                UITextScale.Body, TextAlignmentOptions.Center);
         if (_cancelButton == null)
             _cancelButton = BuildButton("CancelButton", cardRect,
-                new Vector2(0.08f, 0.06f), new Vector2(0.48f, 0.24f),
-                NeutralButtonColor, out _cancelLabel);
+                new Vector2(0.16f, 0.16f), new Vector2(0.48f, 0.34f),
+                ScrollPanelArt.SlateButtonFill, out _cancelLabel);
         if (_confirmButton == null)
             _confirmButton = BuildButton("ConfirmButton", cardRect,
-                new Vector2(0.52f, 0.06f), new Vector2(0.92f, 0.24f),
-                ConfirmButtonColor, out _confirmLabel);
+                new Vector2(0.52f, 0.16f), new Vector2(0.84f, 0.34f),
+                ScrollPanelArt.GoldButtonFill, out _confirmLabel);
+
+        Navigation cancelNavigation = new Navigation { mode = Navigation.Mode.Explicit };
+        cancelNavigation.selectOnRight = _confirmButton;
+        _cancelButton.navigation = cancelNavigation;
+        Navigation confirmNavigation = new Navigation { mode = Navigation.Mode.Explicit };
+        confirmNavigation.selectOnLeft = _cancelButton;
+        _confirmButton.navigation = confirmNavigation;
 
         if (onParchment)
             ScrollPanelArt.InkifyRecursive(card.transform);
@@ -226,6 +297,9 @@ public sealed class ExitConfirmationPanel : MonoBehaviour
         text.alignment = alignment;
         text.color = Color.white;
         text.raycastTarget = false;
+        TutorialFontProvider.ApplyTo(text);
+        ScrollPanelArt.PlaceText(text, Rect.MinMaxRect(
+            anchorMin.x, anchorMin.y, anchorMax.x, anchorMax.y), fontSize, fontSize);
         return text;
     }
 
@@ -259,6 +333,7 @@ public sealed class ExitConfirmationPanel : MonoBehaviour
 
         Button button = buttonObject.GetComponent<Button>();
         ScrollPanelArt.ApplyButtonSkin(button, primary: name == "ConfirmButton", fallbackFill: color);
+        ScrollPanelArt.SizeButtonLabel(button);
         return button;
     }
 }

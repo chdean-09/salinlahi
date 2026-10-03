@@ -17,9 +17,7 @@ public static class MainMenuProgressCopy
 {
     public const string ExitConfirmTitle = "Exit Salinlahi?";
 
-    public const string ExitConfirmBody =
-        "Your progress is saved as you play, so you can pick your journey back up "
-        + "the next time you open Salinlahi.";
+    public const string ExitConfirmBody = "Are you sure you want to close the game?";
 
     public const string ExitConfirmButtonLabel = "Exit";
 
