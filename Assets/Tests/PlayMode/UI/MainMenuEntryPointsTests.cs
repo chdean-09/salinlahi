@@ -1,9 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using TMPro;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace Salinlahi.Tests.PlayMode.UI
@@ -21,15 +24,23 @@ namespace Salinlahi.Tests.PlayMode.UI
     /// The two are deliberately not merged; a second scene fixture would only re-assert what
     /// MemoryArchiveSceneWiringTests already covers.
     ///
-    /// The hierarchy below is a STUB, not MainMenu.unity — the precedent is
-    /// PauseLifecycleTests.cs:377-403, which builds a host with named Button children the same
-    /// way. Using a stub keeps this test independent of scene authoring while still exercising
-    /// the real MainMenuUI.Start().
+    /// Construction tests use a stub hierarchy to exercise MainMenuUI.Start(). The authored
+    /// scene regression also loads MainMenu.unity, because stub buttons cannot reproduce
+    /// the persistent Settings callback saved on the real Exit button.
     /// </summary>
     [TestFixture]
     public sealed class MainMenuEntryPointsTests
     {
         private readonly List<GameObject> _objectsToDestroy = new();
+        private Scene _loadedMainMenu;
+
+        [UnityTearDown]
+        public IEnumerator UnloadMainMenu()
+        {
+            if (_loadedMainMenu.IsValid() && _loadedMainMenu.isLoaded)
+                yield return SceneManager.UnloadSceneAsync(_loadedMainMenu);
+            _loadedMainMenu = default;
+        }
 
         [SetUp]
         public void SetUp()
@@ -53,6 +64,103 @@ namespace Salinlahi.Tests.PlayMode.UI
             // The manager is a static singleton; leaving it set would hand a destroyed object to
             // the next fixture, which is the exact leak Level1EndToEndTests guards against.
             ClearSingletonInstance<ProgressManager>();
+        }
+
+        [UnityTest]
+        public IEnumerator AuthoredExitButton_ShowsOnlyConfirmation_AndSettingsStillWorks()
+        {
+            yield return SceneManager.LoadSceneAsync("MainMenu", LoadSceneMode.Additive);
+            _loadedMainMenu = SceneManager.GetSceneByName("MainMenu");
+            yield return null;
+
+            MainMenuUI menu = null;
+            foreach (GameObject root in _loadedMainMenu.GetRootGameObjects())
+            {
+                menu = root.GetComponentInChildren<MainMenuUI>(true);
+                if (menu != null)
+                    break;
+            }
+            Assert.IsNotNull(menu);
+            SettingsPanel settings = (SettingsPanel)typeof(MainMenuUI)
+                .GetField("_settingsPanel", BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetValue(menu);
+            Assert.IsNotNull(settings);
+            Assert.IsFalse(settings.gameObject.activeSelf);
+
+            Button exit = menu.transform.Find(MainMenuUI.ExitButtonName).GetComponent<Button>();
+            exit.onClick.Invoke();
+            ExitConfirmationPanel panel = Object.FindFirstObjectByType<ExitConfirmationPanel>(
+                FindObjectsInactive.Include);
+            Assert.IsNotNull(panel);
+            _objectsToDestroy.Add(panel.gameObject);
+            Assert.IsTrue(panel.IsShowing);
+            Assert.IsFalse(settings.gameObject.activeSelf,
+                "Exit must not invoke the Settings callback saved on the authored button.");
+
+            FindChildButton(panel.transform, "CancelButton").onClick.Invoke();
+            Assert.IsFalse(panel.IsShowing);
+            Assert.IsFalse(settings.gameObject.activeSelf);
+            menu.transform.Find(MainMenuUI.ArchiveButtonTemplateName)
+                .GetComponent<Button>().onClick.Invoke();
+            Assert.IsTrue(settings.gameObject.activeSelf, "Settings must remain reachable.");
+            settings.Hide();
+        }
+
+        [UnityTest]
+        public IEnumerator Dialog_CentersCopy_AndCancelActionsRestoreSelection()
+        {
+            EventSystem previousEventSystem = EventSystem.current;
+            GameObject eventHost = new GameObject("EventSystem", typeof(EventSystem));
+            _objectsToDestroy.Add(eventHost);
+            EventSystem events = eventHost.GetComponent<EventSystem>();
+            GameObject previousSelection = new GameObject("ExitSelection");
+            _objectsToDestroy.Add(previousSelection);
+            EventSystem.current = events;
+            try
+            {
+                events.SetSelectedGameObject(previousSelection);
+                GameObject host = new GameObject("ExitConfirmationPanel");
+                _objectsToDestroy.Add(host);
+                ExitConfirmationPanel panel = host.AddComponent<ExitConfirmationPanel>();
+                yield return null;
+                Assert.IsTrue(panel.Present());
+
+                TMP_Text body = host.transform.Find("Overlay/Card/Body").GetComponent<TMP_Text>();
+                Assert.AreEqual("Are you sure you want to close the game?", body.text);
+                Assert.AreEqual(TextAlignmentOptions.Center, body.alignment);
+                Button cancel = FindChildButton(host.transform, "CancelButton");
+                Button confirm = FindChildButton(host.transform, "ConfirmButton");
+                Assert.AreEqual(cancel.gameObject, events.currentSelectedGameObject);
+                Assert.AreEqual(confirm, cancel.navigation.selectOnRight);
+                Assert.AreEqual(cancel, confirm.navigation.selectOnLeft);
+                Assert.IsTrue(panel.Present(), "Repeated Exit presses must not replace return focus.");
+                cancel.onClick.Invoke();
+                Assert.IsFalse(panel.IsShowing);
+                Assert.AreEqual(previousSelection, events.currentSelectedGameObject);
+
+                // InputSystemUIInputModule delivers controller B/Circle to the selected
+                // object's cancel handler, so both dialog buttons must receive it.
+                foreach (Button selected in new[] { cancel, confirm })
+                {
+                    int cancelCalls = 0;
+                    int confirmCalls = 0;
+                    Assert.IsTrue(panel.Present(() => confirmCalls++, () => cancelCalls++));
+                    events.SetSelectedGameObject(selected.gameObject);
+                    BaseEventData cancelEvent = new BaseEventData(events);
+                    Assert.IsTrue(ExecuteEvents.Execute(selected.gameObject, cancelEvent,
+                        ExecuteEvents.cancelHandler));
+                    Assert.IsTrue(cancelEvent.used);
+                    Assert.IsFalse(panel.IsShowing);
+                    Assert.AreEqual(1, cancelCalls);
+                    Assert.AreEqual(0, confirmCalls, "Controller Cancel must never confirm Exit.");
+                    Assert.AreEqual(previousSelection, events.currentSelectedGameObject);
+                }
+            }
+            finally
+            {
+                if (previousEventSystem != null && previousEventSystem.isActiveAndEnabled)
+                    EventSystem.current = previousEventSystem;
+            }
         }
 
         [UnityTest]
@@ -130,6 +238,7 @@ namespace Salinlahi.Tests.PlayMode.UI
                 Assert.IsFalse(panel.IsShowing, "Cancelling must dismiss the modal.");
 
                 Assert.IsTrue(panel.Present(), "The modal must be re-presentable after a cancel.");
+                FindChildButton(host.transform, "ConfirmButton").onClick.Invoke();
                 FindChildButton(host.transform, "ConfirmButton").onClick.Invoke();
                 Assert.AreEqual(
                     1, quitCalls, "Confirming the Exit dialog must reach the quit call exactly once.");

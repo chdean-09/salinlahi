@@ -333,7 +333,9 @@ public class MainMenuUI : MonoBehaviour
         if (legacyLabel != null)
             legacyLabel.text = MainMenuProgressCopy.ExitConfirmButtonLabel;
 
-        button.onClick.RemoveAllListeners();
+        // RemoveAllListeners leaves Inspector callbacks intact. The authored button (or
+        // Settings clone) can still carry OnSettingsPressed, so Exit owns a fresh event.
+        button.onClick = new Button.ButtonClickedEvent();
         button.onClick.AddListener(OnExitPressed);
         button.interactable = true;
         button.gameObject.SetActive(true);
