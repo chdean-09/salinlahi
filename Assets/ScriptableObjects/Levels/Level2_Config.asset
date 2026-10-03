@@ -12,15 +12,265 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 98c3e4f7bd9686740a8cd775acf3cbef, type: 3}
   m_Name: Level2_Config
   m_EditorClassIdentifier: Assembly-CSharp::LevelConfigSO
-  levelName: Level 2
+  levelName: Mga Mata ng Bata
   levelNumber: 2
-  waves:
-  - {fileID: 11400000, guid: 5cd9769311864743b03967b695d56b84, type: 2}
-  - {fileID: 11400000, guid: 3f5f494698c247ba9cf2805d9f2ed6d7, type: 2}
-  - {fileID: 11400000, guid: 9dafc675b31e46e6836c461d474a0069, type: 2}
+  chapterNumber: 1
+  chapterName: Ugat
+  stableId: level.ugat.02
+  eraLocalOrder: 2
+  focusWords:
+  - stableId: level.ugat.02.focus.01
+    latinSpelling: BATA
+    displayLabel: BATA
+    meaning: child
+    hintText: 
+    decomposition:
+    - symbol: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+      spokenValueId: value.ba
+    - symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+      spokenValueId: value.ta
+    media:
+      contextImage: {fileID: 0}
+      narrationClip: {fileID: 0}
+      dialogue: {fileID: 11400000, guid: fd06e09a6d05f4ff0b4717f0cad28a76, type: 2}
+      cutscene: {fileID: 11400000, guid: afd0be47131cc402faca01ba5012255c, type: 2}
+  - stableId: level.ugat.02.focus.02
+    latinSpelling: MATA
+    displayLabel: MATA
+    meaning: eye
+    hintText: 
+    decomposition:
+    - symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+      spokenValueId: value.ma
+    - symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+      spokenValueId: value.ta
+    media:
+      contextImage: {fileID: 0}
+      narrationClip: {fileID: 0}
+      dialogue: {fileID: 11400000, guid: 8c38e41d2b08a4e97b5432bdcb990d51, type: 2}
+      cutscene: {fileID: 11400000, guid: afd0be47131cc402faca01ba5012255c, type: 2}
+  cumulativeSymbolPool:
+  - symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+    spokenValueId: value.a
+  - symbol: {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+    spokenValueId: value.ei
+  - symbol: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+    spokenValueId: value.ba
+  - symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+    spokenValueId: value.ma
+  - symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+    spokenValueId: value.na
+  - symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+    spokenValueId: value.ta
+  learningRequirements:
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+      spokenValueId: value.a
+    requiredSuccesses: 1
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+      spokenValueId: value.ei
+    requiredSuccesses: 1
+  - kind: 0
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+      spokenValueId: value.ba
+    requiredSuccesses: 1
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+      spokenValueId: value.ma
+    requiredSuccesses: 1
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+      spokenValueId: value.na
+    requiredSuccesses: 1
+  - kind: 0
+    symbolValue:
+      symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+      spokenValueId: value.ta
+    requiredSuccesses: 1
+  practiceRequirements:
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+      spokenValueId: value.a
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+      spokenValueId: value.ei
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+      spokenValueId: value.ba
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+      spokenValueId: value.ma
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+      spokenValueId: value.na
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+      spokenValueId: value.ta
+    requiredSuccesses: 2
+  suppressSymbolLearningCards: 1
+  restorationObjective:
+    displayMode: 1
+    units:
+    - stableId: level.ugat.02.objective.bata
+      displayLabel: BATA
+      clue: bunga ng pagmamahalan
+      tokens:
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.02.bata.ba
+        completionOrder: 1
+        target:
+          symbol: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+          spokenValueId: value.ba
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.02.bata.ta
+        completionOrder: 0
+        target:
+          symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+          spokenValueId: value.ta
+    - stableId: level.ugat.02.objective.mata
+      displayLabel: MATA
+      clue: dungawan ng kaluluwa
+      tokens:
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.02.mata.ma
+        completionOrder: 2
+        target:
+          symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+          spokenValueId: value.ma
+      - kind: 1
+        literalText: 
+        occurrenceId: level.ugat.02.mata.ta
+        completionOrder: 3
+        target:
+          symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+          spokenValueId: value.ta
+  activeClueCombatEnabled: 1
+  activeClueRestorationEnabled: 1
+  clueChannels: 19
+  audioVisualFallback: 4
+  spawnAssignmentPolicy:
+    minSpawnsBeforeNeeded: 1
+    neededWeight: 0.5
+    starvationTimeout: 30
+    hardStarvationTimeout: 50
+    minFillerVariety: 2
+    offTargetFillerWeight: 0.2
+    activeSlotWindow: 1
+    choiceMomentSlotIndex: 1
+    choicePairWindow: 1.5
+    maxConcurrentEnemies: 8
+    openingSpawnSpokenValueId: value.ta
+    allowFinalWaveOverflow: 1
+    gateFinalSlotToFinalWave: 1
+    maxOverflowBatches: 0
+    assignmentSeed: 0
+    slotGates: []
+    slotFloors: []
+  enemySpeedMultiplier: 1
+  maxActiveEnemies: 0
+  overrideDrawingAccuracyThreshold: 1
+  drawingAccuracyThresholdOverride: 0.45
+  alwaysShowTutorial: 0
+  defenseRules:
+    shrineHearts: 3
+  contextMedia:
+    contextImage: {fileID: 0}
+    narrationClip: {fileID: 0}
+    dialogue: {fileID: 11400000, guid: 31133c6cddb634deb8d121f896e4266c, type: 2}
+    cutscene: {fileID: 11400000, guid: afd0be47131cc402faca01ba5012255c, type: 2}
+  finalRestorationValue:
+    symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+    spokenValueId: value.ta
+  rewardIds:
+  - memory.ugat.02
+  masteryRequirements:
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+      spokenValueId: value.a
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+      spokenValueId: value.ei
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+      spokenValueId: value.ba
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+      spokenValueId: value.ma
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+      spokenValueId: value.na
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+      spokenValueId: value.ta
+    requiredSuccesses: 1
+  eraTheme: {fileID: 11400000, guid: 4a3f16684c91d284eafb13ac69eecbfc, type: 2}
+  numberSprite: {fileID: 187839122118532240, guid: 04da23af290d613448e27c47ec8f91c0, type: 3}
+  _authoredWaves: []
+  waveCurve: {fileID: 11400000, guid: e171d9110e754285a9a609c1d0d697b5, type: 2}
   allowedCharacters:
+  - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+  - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
   - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
-  - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
-  - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
-  - {fileID: 11400000, guid: 9aae464ed65b8416b9aa3ad6ee4ce2c4, type: 2}
+  - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+  - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+  - {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+  allowedEnemyTypes:
+  - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
+  - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
+  - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
+  - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
+  - {fileID: 11400000, guid: 248a744bb07b94448a8546227c6f549e, type: 2}
+  - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+  bossConfig: {fileID: 0}
   isAvailableInLite: 1
+  multiKillChainEnabled: 0
+  tutorialSequence: {fileID: 0}
+  onboardingSequence: {fileID: 0}
+  enemyLessons: []
+  challengePrototypeEnabled: 0
+  challengeSequence: {fileID: 11400000, guid: 075735be0cfab4031bc150b6f0bc65cc, type: 2}
+  challengePolicy:
+    tier: 2
+    heartPenaltiesEnabled: 1
+    errorsPerPenalty: 3
+    checkpointResetOnPenalty: 1
+    emergencyHintEnabled: 0
+    emergencyHintsPerAttempt: 1
+    emergencyHintScorePenalty: 0.1
+  flowSegments: []
+  introDialogue: {fileID: 11400000, guid: 31133c6cddb634deb8d121f896e4266c, type: 2}
+  outroDialogue: {fileID: 11400000, guid: 171ca6cdf664b4e75a5d146c9901cdaf, type: 2}
+  bgmClip: {fileID: 0}
+  hasProtagonist: 1
+  protagonistWalksIn: 0

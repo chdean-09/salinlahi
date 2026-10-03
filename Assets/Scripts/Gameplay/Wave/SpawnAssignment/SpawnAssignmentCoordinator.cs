@@ -1,0 +1,723 @@
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+/// <summary>
+/// Unity-side host for <see cref="SpawnAssignmentDirector"/>: builds the flattened slot list from
+/// the level's focus words, keeps the pause-aware clock, reads restoration state back from
+/// <see cref="ActiveCluePresenter"/>, and resolves a chosen symbol to the enemy that embodies it.
+///
+/// All decision logic lives in the director, which is free of UnityEngine types. This class is the
+/// wiring only, so what it can get wrong is limited to lookups and lifecycle.
+///
+/// Design source: docs/design/spawn-assignment-system.md.
+/// </summary>
+[DisallowMultipleComponent]
+public sealed class SpawnAssignmentCoordinator : MonoBehaviour
+{
+    private readonly SpawnGateRegistry _gates = new SpawnGateRegistry();
+    private readonly List<SpawnSlot> _slots = new List<SpawnSlot>();
+    private readonly List<bool> _restoredBuffer = new List<bool>();
+    private readonly List<string> _waveSymbolBuffer = new List<string>();
+    private readonly List<string> _offTargetBuffer = new List<string>();
+    private readonly List<string> _liveCarrierBuffer = new List<string>();
+    private readonly List<Enemy> _enemyBuffer = new List<Enemy>();
+
+    private SpawnAssignmentDirector _director;
+    private LevelConfigSO _level;
+    private bool _loggedEnemyRosterFallback;
+    private bool _loggedMissingRequiredCarrier;
+    private ActiveCluePresenter _presenter;
+    private RestorationObjectiveController _objective;
+
+    /// <summary>
+    /// Pause-aware seconds since the level's spawning began. Advanced in Update and frozen while
+    /// paused or in dialogue: a starvation timer that runs while nothing can spawn fires the
+    /// instant gameplay resumes, which is the opposite of what gating a beat is for.
+    /// </summary>
+    private float _clock;
+
+    private bool _clockFrozen;
+
+    // Consecutive spawns spent with every remaining slot gated.
+    private int _heldForGateSpawns;
+
+    private const int GateStuckSpawnThreshold = 12;
+
+    public SpawnGateRegistry Gates => _gates;
+    internal LevelConfigSO Level => _level;
+
+    /// <summary>The flattened target slots, exposed read-only so gating is testable without reflection.</summary>
+    public IReadOnlyList<SpawnSlot> Slots => _slots;
+
+    /// <summary>Seconds between the two members of a choice pair.</summary>
+    public float ChoicePairWindow =>
+        _level?.spawnAssignmentPolicy != null ? _level.spawnAssignmentPolicy.choicePairWindow : 0f;
+
+    /// <summary>
+    /// True when every slot of every focus word has been restored, i.e. the target text is finished
+    /// and the level has nothing left to teach.
+    /// </summary>
+    public bool IsTargetComplete
+    {
+        get
+        {
+            if (_slots.Count == 0)
+                return false;
+
+            if (_objective != null && !_objective.UsesLegacyFallback)
+                return _objective.IsComplete;
+
+            ActiveClueRestorationState state = _presenter != null ? _presenter.RestorationState : null;
+            if (state == null)
+                return false;
+
+            for (int i = 0; i < _slots.Count; i++)
+            {
+                if (!state.IsTargetComplete(_slots[i].WordStableId, _slots[i].SymbolStableId))
+                    return false;
+            }
+
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// True when the authored wave budget has been spent but the words are not finished, so the
+    /// defense must keep going.
+    ///
+    /// Without this the level hits RefuseCompletionForMissingContent ("combat ended before
+    /// restoring focus word slots") and dead-ends: the player cannot finish and cannot retry into a
+    /// different outcome, because the wave budget, not their skill, ran out.
+    /// </summary>
+    public bool WantsOverflow =>
+        IsActive
+        && _level.spawnAssignmentPolicy != null
+        && _level.spawnAssignmentPolicy.allowFinalWaveOverflow
+        && !IsTargetComplete;
+
+    /// <summary>True when this level routes spawns through the director rather than legacy random.</summary>
+    public bool IsActive =>
+        _director != null
+        && _level != null
+        && _level.activeClueCombatEnabled
+        && _slots.Count > 0;
+
+    private void OnEnable()
+    {
+        EventBus.OnGamePaused += FreezeClock;
+        EventBus.OnGameResumed += ResumeClock;
+        EventBus.OnDialogueStarted += FreezeClock;
+        EventBus.OnDialogueComplete += ResumeClock;
+    }
+
+    private void OnDisable()
+    {
+        EventBus.OnGamePaused -= FreezeClock;
+        EventBus.OnGameResumed -= ResumeClock;
+        EventBus.OnDialogueStarted -= FreezeClock;
+        EventBus.OnDialogueComplete -= ResumeClock;
+    }
+
+    private void Update()
+    {
+        if (!_clockFrozen)
+            _clock += Time.deltaTime;
+    }
+
+    private void FreezeClock() => _clockFrozen = true;
+
+    private void ResumeClock() => _clockFrozen = false;
+
+    /// <summary>
+    /// Rebuilds the schedule for a level. Safe to call on a retry: the gate registry resets, so a
+    /// beat the player already saw last attempt does not start open.
+    /// </summary>
+    public void ApplyLevel(LevelConfigSO level, ActiveCluePresenter presenter)
+    {
+        _level = level;
+        _loggedEnemyRosterFallback = false;
+        _loggedMissingRequiredCarrier = false;
+        _presenter = presenter;
+        _objective = RestorationObjectiveController.Active
+            ?? FindFirstObjectByType<RestorationObjectiveController>(FindObjectsInactive.Include);
+        _clock = 0f;
+        _clockFrozen = false;
+        _gates.Reset();
+        _slots.Clear();
+        _director = null;
+
+        if (level == null || !level.activeClueCombatEnabled)
+            return;
+
+        BuildSlots(level);
+        if (_slots.Count == 0)
+        {
+            DebugLogger.LogWarning(
+                "SpawnAssignmentCoordinator: activeClueCombatEnabled but the level's focus words "
+                + "decompose to no symbols. Falling back to legacy random assignment.");
+            return;
+        }
+
+        SpawnAssignmentPolicy policy = level.spawnAssignmentPolicy ?? new SpawnAssignmentPolicy();
+        _director = new SpawnAssignmentDirector(_slots, policy);
+
+        OpenRosterGateIfAlreadyMet(level);
+    }
+
+    /// <summary>
+    /// Re-evaluates the roster gate for this attempt, because <see cref="SpawnGateRegistry.Reset"/>
+    /// above just closed every token while enemy introductions are campaign-wide PlayerPrefs that
+    /// survive the retry.
+    ///
+    /// <para>
+    /// Without this a second run of a level whose types the player has already met never plays an
+    /// introduction, so the post-introduction evaluation in <c>EnemyIntroductionBeat</c> never
+    /// fires, so the gated final slot is withheld forever and the level cannot be completed. Both
+    /// evaluations are needed: this one covers the already-met start, that one covers the roster
+    /// being completed mid-level. <see cref="OpenGate"/> is idempotent, so they may both fire.
+    /// </para>
+    /// </summary>
+    private void OpenRosterGateIfAlreadyMet(LevelConfigSO level)
+    {
+        // On the attempt's clock, not the campaign's: a type that debuts on this level replays
+        // its card every attempt, so the gate must not open at level start on its account.
+        LevelRoster.TryOpenRosterGate(
+            level, data => EnemyIntroductionBeat.CountsAsIntroducedThisAttempt(level, data), OpenGate);
+    }
+
+    /// <summary>Flattens the active objective, or legacy focus words, into ordered spawn slots.</summary>
+    private void BuildSlots(LevelConfigSO level)
+    {
+        if (level.restorationObjective != null && level.restorationObjective.HasTargets)
+        {
+            SpawnAssignmentPolicy objectivePolicy =
+                level.spawnAssignmentPolicy ?? new SpawnAssignmentPolicy();
+            RestorationWordPages pages = RestorationWordPages.IsEnabled(level.restorationObjective)
+                ? RestorationWordPages.Build(level.restorationObjective)
+                : null;
+            int objectiveIndex = 0;
+            for (int unitIndex = 0; unitIndex < level.restorationObjective.units.Count; unitIndex++)
+            {
+                RestorationObjectiveUnit unit = level.restorationObjective.units[unitIndex];
+                if (unit?.tokens == null)
+                    continue;
+
+                var targets = new List<RestorationObjectiveToken>();
+                for (int tokenIndex = 0; tokenIndex < unit.tokens.Count; tokenIndex++)
+                {
+                    RestorationObjectiveToken token = unit.tokens[tokenIndex];
+                    if (token?.IsTarget != true)
+                        continue;
+
+                    targets.Add(token);
+                }
+
+                targets.Sort((left, right) =>
+                    left.EffectiveCompletionOrder(unit.tokens.IndexOf(left))
+                        .CompareTo(right.EffectiveCompletionOrder(unit.tokens.IndexOf(right))));
+
+                for (int targetIndex = 0; targetIndex < targets.Count; targetIndex++)
+                {
+                    RestorationObjectiveToken token = targets[targetIndex];
+                    int tokenIndex = unit.tokens.IndexOf(token);
+
+                    _slots.Add(new SpawnSlot(
+                        token.SymbolStableId,
+                        unit.stableId,
+                        tokenIndex,
+                        objectivePolicy.GateTokenForSlot(objectiveIndex),
+                        token.occurrenceId,
+                        pages != null ? pages.PageOf(token.occurrenceId) : RestorationWordPages.NoPage));
+                    objectiveIndex++;
+                }
+            }
+
+            ApplyDerivedFinalSlotGate(objectivePolicy);
+            return;
+        }
+
+        if (level.focusWords == null)
+            return;
+
+        SpawnAssignmentPolicy policy = level.spawnAssignmentPolicy ?? new SpawnAssignmentPolicy();
+
+        for (int wordIndex = 0; wordIndex < level.focusWords.Count; wordIndex++)
+        {
+            FocusWordDefinition word = level.focusWords[wordIndex];
+            if (word?.decomposition == null)
+                continue;
+
+            for (int slotIndex = 0; slotIndex < word.decomposition.Count; slotIndex++)
+            {
+                SymbolValueReference reference = word.decomposition[slotIndex];
+                if (reference?.symbol == null || string.IsNullOrEmpty(reference.symbol.stableId))
+                    continue;
+
+                _slots.Add(new SpawnSlot(
+                    reference.symbol.stableId,
+                    word.stableId,
+                    slotIndex,
+                    policy.GateTokenForSlot(_slots.Count),
+                    word.stableId + ".slot." + slotIndex.ToString("00")));
+            }
+        }
+
+        ApplyDerivedFinalSlotGate(policy);
+    }
+
+    /// <summary>
+    /// Withholds the level's finale slot on <see cref="SpawnGateRegistry.FinalWaveReached"/> when
+    /// the level opts in. Derived rather than authored so content edits cannot move the gate off
+    /// the finale; skipped for a single-slot level, which would otherwise withhold its own win
+    /// condition. <see cref="SpawnSlot.GateToken"/> is readonly, so the entry is replaced, not
+    /// mutated, and an authored gate on the chosen slot always wins.
+    ///
+    /// <para>
+    /// The chosen slot is simply the last one. It used to have to be the last slot whose symbol
+    /// occurred exactly once, because restoration was by symbol and a duplicate filled the gated
+    /// slot for free; one carrier now restores one slot, so the last slot is always withholdable.
+    /// See <see cref="DerivedFinaleGate"/> for that history.
+    /// </para>
+    /// </summary>
+    private void ApplyDerivedFinalSlotGate(SpawnAssignmentPolicy policy)
+    {
+        if (policy == null || !policy.gateFinalSlotToFinalWave || _slots.Count < 2)
+            return;
+
+        var symbols = new List<string>(_slots.Count);
+        for (int index = 0; index < _slots.Count; index++)
+            symbols.Add(_slots[index].SymbolStableId);
+
+        // An authored finale wins: the level names the syllable it ends on, in the campaign's
+        // IntroductionSchedule. It gates ONE slot -- the last one carrying that symbol -- exactly
+        // like the derived rule, because one carrier now restores one slot.
+        //
+        // This gated every slot carrying the symbol until 2026-09-17, which was a workaround for
+        // symbol-wide restoration: a carrier spawned for an ungated duplicate would have filled the
+        // gated slot for free, so the only way to withhold a repeated symbol was to withhold all of
+        // its slots. Per-slot restoration removed the need, and the workaround was worse than the
+        // thing it replaced -- withholding every TA meant Level 2's first phrase could not use TA
+        // at all.
+        if (ApplyAuthoredFinaleGate(symbols))
+            return;
+
+        int gateIndex = DerivedFinaleGate.LastSlotIndex(symbols);
+        if (gateIndex == DerivedFinaleGate.NoSlot)
+            return;
+
+        SpawnSlot target = _slots[gateIndex];
+        if (target.IsGated)
+            return;
+
+        _slots[gateIndex] = target.WithGate(SpawnGateRegistry.FinalWaveReached);
+    }
+
+    /// <summary>
+    /// Gates the last slot carrying this level's authored finale symbol. Returns whether a finale
+    /// was authored and applied, so the caller knows to skip the derived rule.
+    /// </summary>
+    /// <remarks>
+    /// The LAST match, so an authored symbol that also appears earlier still ends the level rather
+    /// than gating a slot the player reaches mid-way. Level 2 names TA and has two TA slots; the
+    /// gate lands on TAMA's, leaving BATA's TA playable during the level.
+    /// </remarks>
+    private bool ApplyAuthoredFinaleGate(List<string> symbols)
+    {
+        IntroductionScheduleSO schedule = IntroductionScheduleLookup.Resolve();
+        string authored = schedule != null ? schedule.ResolveFinaleSymbolId(_level) : null;
+        if (string.IsNullOrEmpty(authored))
+            return false;
+
+        for (int index = symbols.Count - 1; index >= 0; index--)
+        {
+            if (!string.Equals(symbols[index], authored, System.StringComparison.Ordinal))
+                continue;
+
+            SpawnSlot target = _slots[index];
+            if (!target.IsGated)
+            {
+                _slots[index] = target.WithGate(SpawnGateRegistry.FinalWaveReached);
+            }
+
+            return true;
+        }
+
+        DebugLogger.LogWarning(
+            $"SpawnAssignmentCoordinator: the schedule names '{authored}' as this level's finale, "
+            + "but no focus-word slot carries it, so the derived finale is used instead.");
+        return false;
+    }
+
+    /// <summary>Marks a beat resolved, ungating any slot that was waiting on it.</summary>
+    public void OpenGate(string token)
+    {
+        if (_gates.Open(token))
+            DebugLogger.Log($"SpawnAssignmentCoordinator: gate '{token}' resolved.");
+    }
+
+    /// <summary>Uses the same slot gates for draw credit as for spawn assignment.</summary>
+    public bool CanRestoreOccurrence(string occurrenceId)
+    {
+        if (string.IsNullOrEmpty(occurrenceId))
+            return false;
+
+        for (int index = 0; index < _slots.Count; index++)
+        {
+            SpawnSlot slot = _slots[index];
+            if (slot.OccurrenceId != occurrenceId)
+                continue;
+
+            if (!string.IsNullOrEmpty(slot.GateToken) && !_gates.IsOpen(slot.GateToken))
+                return false;
+
+            // One word at a time: a later word's box cannot be credited until the current word is
+            // finished, so killing its carrier early restores nothing.
+            if (slot.IsPaged)
+            {
+                IReadOnlyList<bool> restoredFlags = BuildRestoredFlags();
+                int currentPage = SpawnSlot.CurrentPage(
+                    _slots, slotIndex => slotIndex < restoredFlags.Count && restoredFlags[slotIndex]);
+                if (slot.IsBeyondPage(currentPage))
+                    return false;
+            }
+
+            bool finale = slot.GateToken == SpawnGateRegistry.FinalWaveReached
+                || (_level?.spawnAssignmentPolicy?.gateFinalSlotToFinalWave == true
+                    && index == _slots.Count - 1);
+            if (finale)
+            {
+                if (!_gates.IsOpen(SpawnGateRegistry.FinalWaveReached))
+                    return false;
+
+                IReadOnlyList<bool> restored = BuildRestoredFlags();
+                for (int other = 0; other < restored.Count; other++)
+                {
+                    if (other != index && !restored[other])
+                        return false;
+                }
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// The director's decision for the next spawn, or <see cref="SpawnAssignment.None"/> when this
+    /// level does not use the schedule.
+    /// </summary>
+    public SpawnAssignment AssignNext(WaveDefinition wave)
+    {
+        if (!IsActive)
+            return SpawnAssignment.None;
+
+        SpawnAssignment assignment = _director.AssignNext(BuildRequest(wave));
+        WarnIfGateStuck(assignment);
+        return assignment;
+    }
+
+    /// <summary>
+    /// Level 15's final YA slot is carried by Yapos ng Dilim. It is the last enemy admission of
+    /// the run, after which the wave must wait for that enemy's real defeat before completing.
+    /// </summary>
+    public bool IsFinalYaposAssignment(SpawnAssignment assignment) =>
+        _level != null
+        && string.Equals(_level.stableId, ContentIdentity.RevisedFinaleLevelId, StringComparison.Ordinal)
+        && assignment.Role == SpawnAssignmentRole.Needed
+        && assignment.SlotIndex == _slots.Count - 1
+        && _slots.Count > 0
+        && string.Equals(_slots[_slots.Count - 1].SymbolStableId,
+            ContentIdentity.RevisedFinaleSymbolId, StringComparison.Ordinal)
+        && string.Equals(assignment.SymbolStableId,
+            ContentIdentity.RevisedFinaleSymbolId, StringComparison.Ordinal);
+
+    /// <summary>
+    /// A gate with no one to open it makes the level unwinnable, and the symptom - enemies keep
+    /// spawning but the last slot never becomes available - looks like a content bug rather than a
+    /// wiring bug. Say so once, loudly, naming the token nobody opened.
+    /// </summary>
+    private void WarnIfGateStuck(SpawnAssignment assignment)
+    {
+        if (assignment.Role != SpawnAssignmentRole.HoldForGate)
+        {
+            _heldForGateSpawns = 0;
+            return;
+        }
+
+        _heldForGateSpawns++;
+        if (_heldForGateSpawns != GateStuckSpawnThreshold)
+            return;
+
+        DebugLogger.LogError(
+            $"SpawnAssignmentCoordinator: every remaining slot has been gated for "
+            + $"{GateStuckSpawnThreshold} spawns, so this level cannot be completed. Waiting on: "
+            + $"{DescribeClosedGates()}. Something must call OpenGate for that token.");
+    }
+
+    private string DescribeClosedGates()
+    {
+        var tokens = new List<string>();
+        for (int i = 0; i < _slots.Count; i++)
+        {
+            string token = _slots[i].GateToken;
+            if (string.IsNullOrEmpty(token) || _gates.IsOpen(token) || tokens.Contains(token))
+                continue;
+
+            tokens.Add(token);
+        }
+
+        return tokens.Count == 0 ? "(none)" : string.Join(", ", tokens);
+    }
+
+    private SpawnAssignmentRequest BuildRequest(WaveDefinition wave)
+    {
+        return new SpawnAssignmentRequest
+        {
+            RestoredSlots = BuildRestoredFlags(),
+            OpenGateTokens = _gates.OpenTokens,
+            Now = _clock,
+            ActiveEnemyCount = ActiveEnemyTracker.Instance != null
+                ? ActiveEnemyTracker.Instance.ActiveCount
+                : 0,
+            WaveSymbolWhitelist = BuildWaveSymbols(wave),
+            OffTargetSymbols = BuildOffTargetSymbols(),
+            LiveCarrierSymbols = BuildLiveCarrierSymbols(),
+        };
+    }
+
+    /// <summary>
+    /// What the real enemies on the field carry. Decoys are left out because killing a copy is its
+    /// own outcome and never restores a slot, and dying enemies because their kill already counted.
+    /// </summary>
+    private IReadOnlyList<string> BuildLiveCarrierSymbols()
+    {
+        _liveCarrierBuffer.Clear();
+        if (ActiveEnemyTracker.Instance == null)
+            return _liveCarrierBuffer;
+
+        ActiveEnemyTracker.Instance.FillActiveEnemiesSnapshot(_enemyBuffer);
+        for (int i = 0; i < _enemyBuffer.Count; i++)
+        {
+            Enemy enemy = _enemyBuffer[i];
+            if (enemy == null || enemy.IsDecoy || enemy.IsDying)
+                continue;
+
+            string symbolId = enemy.Character != null ? enemy.Character.stableId : null;
+            if (!string.IsNullOrEmpty(symbolId))
+                _liveCarrierBuffer.Add(symbolId);
+        }
+
+        _enemyBuffer.Clear();
+        return _liveCarrierBuffer;
+    }
+
+    /// <summary>
+    /// Re-reads restoration state every spawn rather than tracking it here, because
+    /// accepted clue resolution advances one occurrence and can activate the next objective unit;
+    /// a private cursor would drift out of step (the legacy focus-word fallback remains supported).
+    /// </summary>
+    private IReadOnlyList<bool> BuildRestoredFlags()
+    {
+        _restoredBuffer.Clear();
+        ActiveClueRestorationState state = _presenter != null ? _presenter.RestorationState : null;
+        RestorationObjectiveState objectiveState = _objective != null
+            && !_objective.UsesLegacyFallback
+            ? _objective.State
+            : null;
+
+        for (int i = 0; i < _slots.Count; i++)
+        {
+            if (objectiveState != null)
+            {
+                _restoredBuffer.Add(objectiveState.IsOccurrenceRestored(_slots[i].OccurrenceId));
+                continue;
+            }
+
+            if (state == null)
+            {
+                _restoredBuffer.Add(false);
+                continue;
+            }
+
+            _restoredBuffer.Add(state.IsTargetComplete(_slots[i].WordStableId, _slots[i].SymbolStableId));
+        }
+
+        return _restoredBuffer;
+    }
+
+    private IReadOnlyList<string> BuildWaveSymbols(WaveDefinition wave)
+    {
+        _waveSymbolBuffer.Clear();
+        if (wave?.characters == null)
+            return _waveSymbolBuffer;
+
+        for (int i = 0; i < wave.characters.Count; i++)
+        {
+            BaybayinCharacterSO character = wave.characters[i];
+            if (character != null && !string.IsNullOrEmpty(character.stableId))
+                _waveSymbolBuffer.Add(character.stableId);
+        }
+
+        return _waveSymbolBuffer;
+    }
+
+    /// <summary>
+    /// Level pool minus the target's own symbols. Read from cumulativeSymbolPool, which is derived
+    /// from each symbol's first-introduction level, rather than a hand-authored parallel list.
+    /// </summary>
+    private IReadOnlyList<string> BuildOffTargetSymbols()
+    {
+        _offTargetBuffer.Clear();
+
+        // Authored fillers win. Without them this derives "everything the player already knows
+        // that this level is not asking for", which is a reasonable default and grows with the
+        // cumulative pool — by Pamana it is every syllable in the game. A level that wants
+        // specific padding names it in the campaign's IntroductionSchedule.
+        IntroductionScheduleSO schedule = IntroductionScheduleLookup.Resolve();
+        List<string> authored = schedule != null ? schedule.ResolveFillerSymbolIds(_level) : null;
+        if (authored != null)
+        {
+            for (int i = 0; i < authored.Count; i++)
+            {
+                // A filler the level is also asking for is not padding, it is the answer.
+                if (!IsTargetSymbol(authored[i]) && !_offTargetBuffer.Contains(authored[i]))
+                    _offTargetBuffer.Add(authored[i]);
+            }
+
+            return _offTargetBuffer;
+        }
+
+        if (_level?.cumulativeSymbolPool == null)
+            return _offTargetBuffer;
+
+        for (int i = 0; i < _level.cumulativeSymbolPool.Count; i++)
+        {
+            SymbolValueReference reference = _level.cumulativeSymbolPool[i];
+            if (reference?.symbol == null || string.IsNullOrEmpty(reference.symbol.stableId))
+                continue;
+
+            if (IsTargetSymbol(reference.symbol.stableId))
+                continue;
+
+            if (!_offTargetBuffer.Contains(reference.symbol.stableId))
+                _offTargetBuffer.Add(reference.symbol.stableId);
+        }
+
+        return _offTargetBuffer;
+    }
+
+    private bool IsTargetSymbol(string symbolStableId)
+    {
+        for (int i = 0; i < _slots.Count; i++)
+        {
+            if (_slots[i].SymbolStableId == symbolStableId)
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>Resolves a scheduled symbol to the character asset carrying it.</summary>
+    public BaybayinCharacterSO ResolveCharacter(string symbolStableId, WaveDefinition wave)
+    {
+        if (string.IsNullOrEmpty(symbolStableId))
+            return null;
+
+        BaybayinCharacterSO fromWave = FindCharacter(wave?.characters, symbolStableId);
+        if (fromWave != null)
+            return fromWave;
+
+        return FindCharacter(_level != null ? _level.allowedCharacters : null, symbolStableId);
+    }
+
+    private static BaybayinCharacterSO FindCharacter(
+        List<BaybayinCharacterSO> candidates, string symbolStableId)
+    {
+        if (candidates == null)
+            return null;
+
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            if (candidates[i] != null && candidates[i].stableId == symbolStableId)
+                return candidates[i];
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The enemy that embodies a symbol. Level 1 is a clean bijection - Iligaw is E/I, Nawalang
+    /// Mukha is NA, Abo ng Simula is A, Mantsa is MA - so choosing the symbol chooses the enemy,
+    /// and the identity the glyph badge asserts stays true. When the wave's own list does not
+    /// carry the symbol we fall back to the level roster, exactly as ResolveCharacter does: a wave
+    /// that narrows its enemyTypes must not be able to put a needed symbol on a body that
+    /// contradicts its badge. Returns null only when no enemy on the level owns the symbol, and
+    /// the caller then keeps its own type roll.
+    /// </summary>
+    public EnemyDataSO ResolveEnemyData(string symbolStableId, WaveDefinition wave)
+    {
+        if (string.IsNullOrEmpty(symbolStableId))
+            return null;
+
+        EnemyDataSO fromWave = FindEnemyData(wave?.enemyTypes, symbolStableId);
+        if (fromWave != null)
+            return fromWave;
+
+        EnemyDataSO fromLevel = FindEnemyData(
+            _level != null ? _level.allowedEnemyTypes : null, symbolStableId);
+        if (fromLevel != null && !_loggedEnemyRosterFallback)
+        {
+            // Once per level: a narrowed wave is authoring drift, and the validator's
+            // WAVE_ROSTER_NARROWS_RESTORATION check should have caught it before it shipped.
+            _loggedEnemyRosterFallback = true;
+            DebugLogger.LogWarning(
+                "SpawnAssignmentCoordinator: wave enemyTypes did not carry '" + symbolStableId
+                + "'; fell back to the level roster (" + fromLevel.name + "). The wave narrows the "
+                + "level's enemy roster - see WAVE_ROSTER_NARROWS_RESTORATION.");
+        }
+
+        return fromLevel;
+    }
+
+    /// <summary>Needed slots must have a real carrier; drawing a decoy cannot restore them.</summary>
+    public EnemyDataSO ResolveEnemyData(SpawnAssignment assignment, WaveDefinition wave)
+    {
+        if (assignment.Role != SpawnAssignmentRole.Needed)
+            return ResolveEnemyData(assignment.SymbolStableId, wave);
+        if (string.IsNullOrEmpty(assignment.SymbolStableId))
+            return null;
+
+        EnemyDataSO matching = FindEnemyData(wave?.enemyTypes, assignment.SymbolStableId, false)
+            ?? FindEnemyData(_level?.allowedEnemyTypes, assignment.SymbolStableId, false);
+        if (matching != null)
+            return matching;
+
+        if (!_loggedMissingRequiredCarrier)
+        {
+            _loggedMissingRequiredCarrier = true;
+            DebugLogger.LogError("SpawnAssignmentCoordinator: no real enemy with the canonical glyph '"
+                + assignment.SymbolStableId + "' is available for a required slot. Check the wave "
+                + "and level enemy rosters.");
+        }
+        return null;
+    }
+
+    private static EnemyDataSO FindEnemyData(List<EnemyDataSO> candidates, string symbolStableId,
+        bool allowDecoys = true)
+    {
+        if (candidates == null)
+            return null;
+
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            EnemyDataSO data = candidates[i];
+            if (data?.assignedCharacter != null && (allowDecoys || !data.isDecoy)
+                && data.assignedCharacter.stableId == symbolStableId)
+                return data;
+        }
+
+        return null;
+    }
+}

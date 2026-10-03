@@ -14,6 +14,24 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: EI
   syllable: e/i
-  displaySprite: {fileID: 0}
-  pronunciationClip: {fileID: 0}
-  templateFileName: EI_template
+  stableId: symbol.ei
+  legacyAliases: []
+  spokenValues:
+  - stableId: value.ei
+    displayValue: e/i
+    pronunciationClip: {fileID: 8300000, guid: 3da6791accb64028bedbee9665c2d0b9, type: 3}
+  - stableId: value.e
+    displayValue: e
+    pronunciationClip: {fileID: 8300000, guid: 3da6791accb64028bedbee9665c2d0b9, type: 3}
+  - stableId: value.i
+    displayValue: i
+    pronunciationClip: {fileID: 8300000, guid: 3da6791accb64028bedbee9665c2d0b9, type: 3}
+  firstIntroductionLevelId: level.ugat.01
+  description: 
+  displaySprite: {fileID: -2869617533910908798, guid: 3b7c4fb0744a29e4a991dd555bae27f9, type: 3}
+  almanacSprite: {fileID: 21300000, guid: 25dc7ac6be7944c08f3c860cf5dd3355, type: 3}
+  badgeSprite: {fileID: 21300000, guid: 165e81b169dd42dfbd42c9ddea390c74, type: 3}
+  scrambledBadgeSprite: {fileID: 0}
+  glyphOutlineSprite: {fileID: 21300000, guid: 4ba2ec8d9436746ddbcc50fcc4aa0978, type: 3}
+  pronunciationClip: {fileID: 8300000, guid: 3da6791accb64028bedbee9665c2d0b9, type: 3}
+  templateFileName: EI_template_01

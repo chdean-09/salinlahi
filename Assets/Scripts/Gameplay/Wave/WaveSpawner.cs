@@ -1,34 +1,739 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 // Placed in Gameplay scene. Assign spawn point Transforms in the Inspector.
-// WaveManager calls SpawnEnemy() with the data it wants.
-
+// WaveManager controls wave sequencing and calls SpawnWave()/SpawnEnemy().
 public class WaveSpawner : MonoBehaviour
 {
+    private const int MechanicRampFirstLevel = 12;
+    private const int MechanicRampLastLevel = 14;
+    private const float MechanicEntryGraceSeconds = 1.5f;
     [Header("Spawn Points")]
     [Tooltip("Top-of-screen positions where enemies appear. Add 3-5 evenly spaced.")]
     [SerializeField] private Transform[] _spawnPoints;
 
+    [Tooltip("World units an enemy may start ABOVE the camera's visible top. The authored spawn "
+             + "points are capped to this, never raised to it. About 1.5s of walking at a typical "
+             + "1.1 units/second, so an enemy reads as walking in rather than popping in — and its "
+             + "introduction card is not spent waiting for it to arrive.")]
+    [SerializeField, Min(0f)] private float _spawnLeadAboveViewWorld = 1.6f;
+
+    [Tooltip("Where the boss appears at encounter start. Y is used instead of the enemy spawn-point Y so the boss enters within the visible play area even when enemy spawn points are above the screen.")]
+    [SerializeField] private Transform _bossSpawnPoint;
+
+    [Header("Fallback")]
+    [Tooltip("Used when a wave spawn chooses no valid enemy type.")]
+    [SerializeField] private EnemyDataSO _fallbackEnemyData;
+
+    [Header("Spawn Spread")]
+    [Tooltip("Minimum world-X distance a spawn tries to keep from the previous one. A wave mixes " +
+             "moveSpeeds (Level 6 spans 0.85-1.9), so a fast enemy catches a slow one and the pair " +
+             "stacks; keeping them apart horizontally keeps both readable. 0 disables. Raising this " +
+             "past roughly half the spawn band is counter-productive: spawns ping-pong between the " +
+             "two edges and every second pair lines up again. Tuned to ~40% of the band width, so " +
+             "it moves with the band: 1.5 for the +/-1.83 band the 0.80 corrupted scale needs.")]
+    [SerializeField] private float _minLateralSpawnSeparation = 1.5f;
+
+    [Tooltip("How many times a spawn re-rolls its X looking for one that clears the separation. " +
+             "Bounded so a band narrower than the separation cannot stall the spawn.")]
+    [SerializeField] private int _lateralSeparationAttempts = 8;
+
+    [Tooltip("Order a wave's enemies fastest-first instead of spawning them in the order they were " +
+             "rolled. A later spawn is then never faster than the one ahead of it, so the gap " +
+             "between them only grows and no enemy can catch and stack on another. Trade-off: every " +
+             "wave's speed profile becomes fast-to-slow, a consistent rhythm rather than a random " +
+             "one. Turn off to restore the rolled order.")]
+    [SerializeField] private bool _spawnFastestFirst = true;
+
+    // X of the previous spawn, or null before the first one this session.
+    private float? _lastSpawnX;
+    private readonly List<Enemy> _activeEnemyBuffer = new List<Enemy>();
+
+    // Schedules which symbol each spawn carries on active-clue levels. Null, or inactive, means
+    // this level keeps the legacy random assignment below.
+    private SpawnAssignmentCoordinator _assignmentCoordinator;
+    private bool _searchedForAssignmentCoordinator;
+
+    private SpawnAssignmentCoordinator AssignmentCoordinator
+    {
+        get
+        {
+            if (_assignmentCoordinator == null && !_searchedForAssignmentCoordinator)
+            {
+                _searchedForAssignmentCoordinator = true;
+                _assignmentCoordinator =
+                    FindFirstObjectByType<SpawnAssignmentCoordinator>(FindObjectsInactive.Include);
+            }
+
+            return _assignmentCoordinator;
+        }
+    }
+
+    private bool UsesScheduledAssignment =>
+        AssignmentCoordinator != null && AssignmentCoordinator.IsActive;
+
+    public void SetFallbackEnemyDataIfMissing(EnemyDataSO fallbackData)
+    {
+        if (_fallbackEnemyData != null || fallbackData == null)
+            return;
+
+        _fallbackEnemyData = fallbackData;
+        DebugLogger.Log($"WaveSpawner: Applied migrated fallback enemy data '{fallbackData.name}'.");
+    }
+
     // Spawn points define horizontal bounds (left/right edges).
     // X position is randomized between bounds for natural spawn spread.
-    public Enemy SpawnEnemy(EnemyDataSO data)
+    public virtual Enemy SpawnEnemy(EnemyDataSO data)
     {
-        if (_spawnPoints == null || _spawnPoints.Length < 2)
+        EnemyDataSO finalData = ResolveEnemyData(data);
+        if (finalData == null)
         {
-            DebugLogger.LogError("WaveSpawner: Need at least 2 spawn points for min/max X!");
+            DebugLogger.LogError("WaveSpawner.SpawnEnemy: No enemy data resolved (input and fallback are null).");
             return null;
         }
 
-        Enemy enemy = EnemyPool.Instance.Get(data);
+        EnemyPool pool = EnemyPool.Instance;
+        if (pool == null)
+        {
+            DebugLogger.LogError("WaveSpawner.SpawnEnemy: EnemyPool.Instance is missing.");
+            return null;
+        }
 
-        // Use first and last spawn points as left/right bounds
-        float minX = _spawnPoints[0].position.x;
-        float maxX = _spawnPoints[_spawnPoints.Length - 1].position.x;
-        float spawnY = _spawnPoints[0].position.y;
+        if (!TryGetSpawnBounds(out float minX, out float maxX, out float spawnY))
+        {
+            DebugLogger.LogError("WaveSpawner.SpawnEnemy: Invalid spawn points. Need valid first/last entries.");
+            return null;
+        }
 
-        float randomX = Random.Range(minX, maxX);
-        enemy.transform.position = new Vector3(randomX, spawnY, 0f);
+        Enemy enemy = pool.Get(finalData);
+        if (enemy == null)
+            return null;
+
+        float spawnX = PickSpawnX(minX, maxX);
+        _lastSpawnX = spawnX;
+        enemy.transform.position = new Vector3(spawnX, spawnY, 0f);
+        return enemy;
+    }
+
+    // Random X across the band, re-rolled a bounded number of times to land clear of the previous
+    // spawn. Falls back to the last roll rather than looping, so a band narrower than the
+    // separation still spawns.
+    private float PickSpawnX(float minX, float maxX)
+    {
+        float x = UnityEngine.Random.Range(minX, maxX);
+        if (_minLateralSpawnSeparation <= 0f || !_lastSpawnX.HasValue)
+            return x;
+
+        for (int attempt = 0; attempt < _lateralSeparationAttempts; attempt++)
+        {
+            if (Mathf.Abs(x - _lastSpawnX.Value) >= _minLateralSpawnSeparation)
+                break;
+
+            x = UnityEngine.Random.Range(minX, maxX);
+        }
+
+        return x;
+    }
+
+    public Enemy SpawnEnemy(EnemyDataSO data, BaybayinCharacterSO character)
+    {
+        Enemy enemy = SpawnEnemy(data);
+        if (enemy != null)
+            enemy.AssignCharacter(character);
 
         return enemy;
+    }
+
+    /// <summary>Spawns a generated enemy at its snapshotted position and health.</summary>
+    internal Enemy SpawnGeneratedEnemy(
+        EnemyDataSO data,
+        BaybayinCharacterSO character,
+        Vector3 position,
+        int currentHealth)
+    {
+        EnemyDataSO finalData = ResolveEnemyData(data);
+        EnemyPool pool = EnemyPool.Instance;
+        if (finalData == null || pool == null)
+            return null;
+
+        Enemy enemy = pool.Get(finalData);
+        if (enemy == null)
+            return null;
+
+        enemy.transform.position = position;
+        if (character != null)
+            enemy.AssignCharacter(character);
+        enemy.RestoreCurrentHealth(currentHealth);
+        ApplyLevelSpeedMultiplier(enemy);
+        return enemy;
+    }
+
+    /// <summary>
+    /// Shared admission check for authored and generated enemies. The active count retains dying
+    /// enemies until their pool return, so their death animation cannot exceed the field cap.
+    /// </summary>
+    internal bool CanSpawnEnemyNow(EnemyDataSO data, LevelConfigSO level)
+    {
+        ActiveEnemyTracker tracker = ActiveEnemyTracker.Instance;
+        if (level != null && level.maxActiveEnemies > 0 && tracker != null
+            && tracker.ActiveCount >= level.maxActiveEnemies)
+        {
+            return false;
+        }
+
+        if (data == null || data.isDecoy || tracker == null)
+            return true;
+
+        bool incomingKadena = data.chainsNearestEnemy;
+        bool usesLevelBlockerLimit = level != null
+                                     && level.levelNumber >= 7
+                                     && level.levelNumber <= 15;
+        bool incomingBlocker = usesLevelBlockerLimit && IsBlockingSource(data);
+        if (!incomingKadena && !incomingBlocker)
+            return true;
+
+        tracker.FillActiveEnemiesSnapshot(_activeEnemyBuffer);
+        bool hasKadena = false;
+        bool hasBlocker = false;
+        for (int i = 0; i < _activeEnemyBuffer.Count; i++)
+        {
+            Enemy enemy = _activeEnemyBuffer[i];
+            EnemyDataSO activeData = enemy != null ? enemy.Data : null;
+            if (enemy == null || activeData == null || activeData.isDecoy)
+                continue;
+
+            hasKadena |= activeData.chainsNearestEnemy;
+            if (usesLevelBlockerLimit)
+                hasBlocker |= IsBlockingSource(activeData);
+        }
+
+        return (!incomingKadena || !hasKadena) && (!incomingBlocker || !hasBlocker);
+    }
+
+    private static bool IsBlockingSource(EnemyDataSO data)
+    {
+        return data != null
+            && (data.chainsNearestEnemy
+                || data.learningAbility == EnemyLearningAbility.BoundPair
+                || data.blocksEnemiesBehind);
+    }
+
+    // Boss-specific entry point: spawns the enemy at the horizontal center
+    // of the spawn bounds rather than a random X. Uses _bossSpawnPoint.y
+    // when assigned so the boss appears within the visible play area even
+    // when enemy _spawnPoints are positioned above the screen.
+    public Enemy SpawnBossEnemy(EnemyDataSO data)
+    {
+        Enemy enemy = SpawnEnemy(data);
+        if (enemy == null)
+            return null;
+
+        if (TryGetSpawnBounds(out float minX, out float maxX, out float spawnY))
+        {
+            float centerX = (minX + maxX) * 0.5f;
+            float bossY = _bossSpawnPoint != null ? _bossSpawnPoint.position.y : spawnY;
+            enemy.transform.position = new Vector3(centerX, bossY, 0f);
+            // SpawnEnemy recorded the random X it rolled; the boss overrides it, so correct the
+            // separation anchor to where the boss actually is.
+            _lastSpawnX = centerX;
+        }
+
+        return enemy;
+    }
+
+    public Enemy RestoreEnemy(
+        EnemyDataSO data,
+        BaybayinCharacterSO character,
+        Vector3 position,
+        int currentHealth)
+    {
+        EnemyDataSO finalData = ResolveEnemyData(data);
+        if (finalData == null)
+        {
+            DebugLogger.LogError("WaveSpawner.RestoreEnemy: No enemy data resolved.");
+            return null;
+        }
+
+        EnemyPool pool = EnemyPool.Instance;
+        if (pool == null)
+        {
+            DebugLogger.LogError("WaveSpawner.RestoreEnemy: EnemyPool.Instance is missing.");
+            return null;
+        }
+
+        Enemy enemy = pool.Get(finalData);
+        if (enemy == null)
+            return null;
+
+        enemy.transform.position = position;
+        enemy.AssignCharacter(character);
+        enemy.RestoreCurrentHealth(currentHealth);
+        return enemy;
+    }
+
+    public virtual IEnumerator SpawnWave(WaveDefinition wave, Action onEnemySpawned = null, int spawnOffset = 0)
+    {
+        if (wave == null)
+        {
+            DebugLogger.LogWarning("WaveSpawner.SpawnWave: Wave is null. Skipping.");
+            yield break;
+        }
+
+        if (!TryGetSpawnBounds(out _, out _, out _))
+        {
+            DebugLogger.LogError("WaveSpawner.SpawnWave: Invalid spawn points. Wave spawn aborted.");
+            yield break;
+        }
+
+        int enemyCount = wave.enemyCount;
+        if (enemyCount <= 0)
+        {
+            DebugLogger.LogWarning("WaveSpawner.SpawnWave: enemyCount <= 0 for a wave. Spawning zero enemies.");
+            yield break;
+        }
+
+        int firstSpawnIndex = Mathf.Clamp(spawnOffset, 0, enemyCount);
+        if (firstSpawnIndex >= enemyCount)
+            yield break;
+
+        float interval = GetClampedSpawnInterval(wave);
+        List<EnemyDataSO> spawnOrder = BuildSpawnOrder(wave, enemyCount);
+
+        for (int i = firstSpawnIndex; i < enemyCount; i++)
+        {
+            // The enemy lesson owns the screen for the length of its beats and hands time and
+            // movement back part-way through, on purpose, so the draw it asks for is real combat.
+            // The schedule must not keep arriving underneath that. Held HERE, before the assignment
+            // is consumed, so the paused wave resumes on the symbol it was going to spawn anyway.
+            yield return WaitWhileIntroductionLessonHoldsSchedule();
+            // Do not advance the assignment schedule or consume a guarantee while the field is full.
+            yield return WaitForAuthoredSpawnOpportunity(null);
+
+            EnemyDataSO data = spawnOrder[i];
+            BaybayinCharacterSO character;
+            SpawnAssignment assignment = SpawnAssignment.None;
+            bool isFinalYaposAssignment = false;
+
+            BaybayinCharacterSO guaranteedCharacter = GuaranteedCharacterForSpawn(wave, i);
+            if (guaranteedCharacter != null)
+            {
+                // Authored guaranteed spawns carry their declared glyph even when that glyph
+                // is not a target slot in this level (for example, a review symbol).
+                character = guaranteedCharacter;
+                data = FindEnemyDataForCharacter(wave, guaranteedCharacter) ?? data;
+            }
+            else if (UsesScheduledAssignment)
+            {
+                // The schedule picks the symbol, and on a level whose enemies each embody one
+                // symbol that also picks the enemy: choosing MA spawns Mantsa, so the badge never
+                // contradicts the body beneath it. Needed slots additionally require a real
+                // carrier; a decoy-only match uses the real-carrier fallback instead.
+                assignment = AssignmentCoordinator.AssignNext(wave);
+                isFinalYaposAssignment = AssignmentCoordinator.IsFinalYaposAssignment(assignment);
+                EnemyDataSO assignedData = AssignmentCoordinator.ResolveEnemyData(assignment, wave);
+                if (assignment.Role == SpawnAssignmentRole.Needed && assignedData == null)
+                {
+                    yield break;
+                }
+                if (isFinalYaposAssignment
+                    && (assignedData == null || !string.Equals(assignedData.enemyID, "yapos-ng-dilim", StringComparison.Ordinal)))
+                {
+                    DebugLogger.LogError("WaveSpawner: Level 15's final YA slot must spawn Yapos ng Dilim.");
+                    yield break;
+                }
+                data = assignedData ?? data;
+                character = AssignmentCoordinator.ResolveCharacter(assignment.SymbolStableId, wave)
+                    ?? SelectCharacterForSpawn(wave, data);
+            }
+            else
+            {
+                character = SelectCharacterForSpawn(wave, data);
+            }
+
+            // Keep the selected data and glyph together while capacity or a blocker rule delays
+            // admission. The assignment is not requested again during this wait.
+            if (isFinalYaposAssignment)
+            {
+                WaveManager waveManager = FindFirstObjectByType<WaveManager>(FindObjectsInactive.Include);
+                if (waveManager == null)
+                {
+                    DebugLogger.LogError("WaveSpawner: cannot admit Level 15's final Yapos without WaveManager.");
+                    yield break;
+                }
+
+                // The YA slot is not merely the last required glyph: Yapos enters alone, after
+                // every earlier actor and generated spawn has cleared, then ends this spawn loop.
+                yield return waveManager.WaitForActiveEnemiesCleared();
+                if (!waveManager.CanContinueSpawning)
+                    yield break;
+            }
+            yield return WaitForAuthoredSpawnOpportunity(data);
+
+            Enemy enemy = SpawnEnemy(data);
+            if (enemy != null)
+            {
+                enemy.AssignCharacter(character);
+                ApplyLevelSpeedMultiplier(enemy);
+                onEnemySpawned?.Invoke();
+            }
+
+            // The guaranteed choice moment: a second enemy carrying a different target symbol, so
+            // the player must read both rather than draw whatever is closest.
+            if (assignment.StartsChoicePair)
+                yield return SpawnChoicePairDecoy(wave, assignment, onEnemySpawned);
+
+            if (isFinalYaposAssignment && enemy != null)
+                yield break;
+
+            if (i < enemyCount - 1)
+                yield return new WaitForSeconds(interval);
+        }
+    }
+
+    internal static BaybayinCharacterSO GuaranteedCharacterForSpawn(WaveDefinition wave, int spawnIndex)
+    {
+        if (wave?.guaranteedCharacters == null
+            || spawnIndex < 0
+            || spawnIndex >= wave.guaranteedCharacters.Count)
+        {
+            return null;
+        }
+
+        return wave.guaranteedCharacters[spawnIndex];
+    }
+
+    private EnemyDataSO FindEnemyDataForCharacter(WaveDefinition wave, BaybayinCharacterSO character)
+    {
+        if (character == null)
+            return null;
+
+        EnemyDataSO match = FindEnemyDataForCharacter(wave?.enemyTypes, character);
+        if (match != null)
+            return match;
+
+        LevelConfigSO level = GameManager.Instance != null ? GameManager.Instance.CurrentLevel : null;
+        return FindEnemyDataForCharacter(level?.allowedEnemyTypes, character);
+    }
+
+    private static EnemyDataSO FindEnemyDataForCharacter(
+        List<EnemyDataSO> candidates, BaybayinCharacterSO character)
+    {
+        if (candidates == null || character == null)
+            return null;
+
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            EnemyDataSO candidate = candidates[i];
+            if (candidate != null && candidate.assignedCharacter == character)
+                return candidate;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Holds the wave's spawn schedule while an enemy-introduction lesson is on screen.
+    ///
+    /// <para>
+    /// <b>Why this exists.</b> Level 1's lesson ends by asking a first-time player to draw a glyph
+    /// they have never drawn, at normal speed, with the field live — measured at seventeen seconds
+    /// from prompt to defeat, five runs out of five. The player was not losing to the enemy the
+    /// lesson had halted in front of them; they were losing to the ones the spawn clock kept
+    /// delivering while they read. Pausing the clock removes the escalation without removing the
+    /// stakes: everything already on the field keeps walking and can still reach the shrine, and
+    /// player input is never touched, which is the beat's own standing promise.
+    /// </para>
+    ///
+    /// <para>
+    /// Unscaled, so the hold behaves the same whether the lesson has time slowed or handed back.
+    /// The wait is bounded by the beat, which clears its flag on every exit path including an abort
+    /// — there is no path here that can outlive it.
+    /// </para>
+    /// </summary>
+    private static IEnumerator WaitWhileIntroductionLessonHoldsSchedule()
+    {
+        while (EnemyIntroductionBeat.IsHoldingSpawnSchedule)
+            yield return null;
+    }
+
+    /// <summary>
+    /// Spawns the non-advancing half of a choice pair shortly after its partner.
+    ///
+    /// The caller must also stand the active clue down for this window: ActiveClueSelector always
+    /// marks the closest eligible enemy, so a clue mark landing on the advancing member answers the
+    /// question for the player and makes the choice cosmetic.
+    /// </summary>
+    private IEnumerator SpawnChoicePairDecoy(
+        WaveDefinition wave, SpawnAssignment assignment, Action onEnemySpawned)
+    {
+        SpawnAssignmentCoordinator coordinator = AssignmentCoordinator;
+        if (coordinator == null)
+            yield break;
+
+        BaybayinCharacterSO decoyCharacter =
+            coordinator.ResolveCharacter(assignment.PairedDecoySymbolStableId, wave);
+
+        if (decoyCharacter == null)
+        {
+            DebugLogger.LogWarning(
+                "WaveSpawner: choice pair requested decoy symbol "
+                + $"'{assignment.PairedDecoySymbolStableId}' but no character asset carries it.");
+            yield break;
+        }
+
+        float delay = coordinator.ChoicePairWindow;
+        if (delay > 0f)
+            yield return new WaitForSeconds(delay);
+
+        // The pair's second half is a spawn like any other and must respect the same hold as the
+        // loop above. Without this it was the one enemy that could walk on DURING an introduction:
+        // the beat refuses to claim while a run is in flight, so the decoy's type arrived with no
+        // card and no explanation, and — a refused claim does not spend the one-shot — introduced
+        // itself on some arbitrary later spawn instead. Waited AFTER the pair window rather than
+        // before it, so the pair still reads as a pair once the schedule resumes.
+        yield return WaitWhileIntroductionLessonHoldsSchedule();
+
+        EnemyDataSO decoyData =
+            coordinator.ResolveEnemyData(assignment.PairedDecoySymbolStableId, wave)
+            ?? SelectEnemyDataForSpawn(wave);
+
+        yield return WaitForAuthoredSpawnOpportunity(decoyData);
+
+        Enemy decoy = SpawnEnemy(decoyData);
+        if (decoy == null)
+            yield break;
+
+        decoy.AssignCharacter(decoyCharacter);
+        ApplyLevelSpeedMultiplier(decoy);
+        onEnemySpawned?.Invoke();
+    }
+
+    // Rolls the whole wave's types up front so they can be ordered before the first spawn.
+    //
+    // A wave rolls each type independently and its roster mixes moveSpeed (Level 6 spans 0.85-1.9),
+    // so a fast enemy rolled late catches the slow one ahead and the two stack into one unreadable
+    // silhouette. Spawning fastest-first removes that: a later spawn is never faster than the one
+    // ahead, so their gap only grows, and by the time the follower descends into view it has already
+    // separated.
+    //
+    // The sort is stable (LINQ OrderByDescending), so equal-speed enemies keep the order they were
+    // rolled in and waves do not collapse into a fixed sequence.
+    private List<EnemyDataSO> BuildSpawnOrder(WaveDefinition wave, int enemyCount)
+    {
+        List<EnemyDataSO> order = new(enemyCount);
+        for (int i = 0; i < enemyCount; i++)
+            order.Add(SelectEnemyDataForSpawn(wave));
+
+        if (!_spawnFastestFirst)
+            return order;
+
+        // On a scheduled level the symbol chooses the enemy, so sorting the rolled types by speed
+        // would reorder the content schedule the director just built. The schedule wins; the
+        // anti-stacking job falls to _minLateralSpawnSeparation alone. Level 1's roster spans
+        // moveSpeed 1.15-1.60, a far narrower spread than the 0.85-1.90 case this sort was added
+        // for, so the pair most at risk of stacking is not present here.
+        if (UsesScheduledAssignment)
+            return order;
+
+        // Null data can only come from an unresolvable roll; sort it last so SpawnEnemy's existing
+        // error path is reached at the end of the wave rather than displacing a real enemy.
+        return order.OrderByDescending(d => d != null ? d.moveSpeed : float.NegativeInfinity).ToList();
+    }
+
+    private EnemyDataSO ResolveEnemyData(EnemyDataSO candidate)
+    {
+        if (candidate != null)
+            return candidate;
+
+        return _fallbackEnemyData;
+    }
+
+    private EnemyDataSO SelectEnemyDataForSpawn(WaveDefinition wave)
+    {
+        EnemyDataSO selected = null;
+
+        if (wave.enemyTypes != null && wave.enemyTypes.Count > 0)
+        {
+            List<EnemyDataSO> validTypes = new List<EnemyDataSO>();
+            for (int i = 0; i < wave.enemyTypes.Count; i++)
+            {
+                if (wave.enemyTypes[i] != null)
+                    validTypes.Add(wave.enemyTypes[i]);
+            }
+
+            if (validTypes.Count > 0)
+            {
+                int index = UnityEngine.Random.Range(0, validTypes.Count);
+                selected = validTypes[index];
+            }
+        }
+
+        return ResolveEnemyData(selected);
+    }
+
+    private IEnumerator WaitForAuthoredSpawnOpportunity(EnemyDataSO data)
+    {
+        while (true)
+        {
+            WaveManager manager = FindFirstObjectByType<WaveManager>();
+            if (manager != null)
+            {
+                if (manager.CanSpawnAuthoredEnemy(data))
+                    yield break;
+            }
+            else if (CanSpawnEnemyNow(data, GameManager.CurrentLevelConfig))
+            {
+                GameManager gameManager = GameManager.Instance;
+                if (gameManager == null
+                    || gameManager.CurrentState == GameState.Playing
+                    || gameManager.CurrentState == GameState.Practicing)
+                {
+                    yield break;
+                }
+            }
+
+            yield return null;
+        }
+    }
+
+    /// <summary>
+    /// Scales a freshly spawned enemy's walk speed by the current level's multiplier, so an early
+    /// level can give the player more reaction time without slowing the same enemy on the later
+    /// levels it also appears in. Routed through the existing speed-buff channel, keyed on the level
+    /// config, so it composes with ability buffs instead of overwriting them.
+    /// </summary>
+    private void ApplyLevelSpeedMultiplier(Enemy enemy)
+    {
+        LevelConfigSO level = GameManager.Instance != null ? GameManager.Instance.CurrentLevel : null;
+        if (level == null || enemy == null) return;
+        if (level.levelNumber >= MechanicRampFirstLevel && level.levelNumber <= MechanicRampLastLevel && enemy.Data != null
+            && (enemy.Data.learningAbility == EnemyLearningAbility.BoundPair
+                || enemy.Data.learningAbility == EnemyLearningAbility.ContextRush))
+        {
+            Camera camera = Camera.main;
+            float entryY = camera != null && camera.orthographic
+                ? camera.transform.position.y + camera.orthographicSize * 0.9f
+                : float.PositiveInfinity;
+            enemy.GetComponent<EnemyMover>()?.GiveEntryGrace(MechanicEntryGraceSeconds, entryY);
+        }
+        if (Mathf.Approximately(level.enemySpeedMultiplier, 1f)) return;
+
+        enemy.ApplySpeedBuff(level, level.enemySpeedMultiplier);
+    }
+
+    private BaybayinCharacterSO SelectCharacterForSpawn(WaveDefinition wave, EnemyDataSO selectedEnemyData)
+    {
+        if (wave.characters != null && wave.characters.Count > 0)
+        {
+            List<BaybayinCharacterSO> validCharacters = new List<BaybayinCharacterSO>();
+            for (int i = 0; i < wave.characters.Count; i++)
+            {
+                if (wave.characters[i] != null)
+                    validCharacters.Add(wave.characters[i]);
+            }
+
+            if (validCharacters.Count > 0)
+            {
+                // Each corrupted enemy embodies one symbol (Iligaw is E/I, Mantsa is MA, Abo ng
+                // Simula is A, Nawalang Mukha is NA - see CorruptionEnemyBootstrap). Picking purely
+                // at random handed Mantsa an E/I or an A, so the enemy on screen contradicted the
+                // glyph above it. Prefer the spawned enemy's own character whenever this wave
+                // teaches it; the wave list still decides which symbols may appear at all.
+                BaybayinCharacterSO owned = selectedEnemyData != null
+                    ? selectedEnemyData.assignedCharacter
+                    : null;
+
+                if (owned != null && validCharacters.Contains(owned))
+                    return owned;
+
+                // No owned symbol, or this wave does not teach it: fall back to the authored list.
+                int index = UnityEngine.Random.Range(0, validCharacters.Count);
+                return validCharacters[index];
+            }
+        }
+
+        BaybayinCharacterSO fallbackCharacter = selectedEnemyData != null
+            ? selectedEnemyData.assignedCharacter
+            : null;
+
+        if (fallbackCharacter == null)
+            DebugLogger.LogWarning("WaveSpawner.SpawnWave: Spawned enemy with null character assignment.");
+
+        return fallbackCharacter;
+    }
+
+    private float GetClampedSpawnInterval(WaveDefinition wave)
+    {
+        float interval = wave.spawnInterval;
+        if (interval <= 0f)
+        {
+            DebugLogger.LogWarning("WaveSpawner.SpawnWave: spawnInterval <= 0 for a wave. Using 0.");
+            return 0f;
+        }
+
+        return interval;
+    }
+
+    private bool TryGetSpawnBounds(out float minX, out float maxX, out float spawnY)
+    {
+        minX = 0f;
+        maxX = 0f;
+        spawnY = 0f;
+
+        if (_spawnPoints == null || _spawnPoints.Length < 2)
+            return false;
+
+        Transform first = _spawnPoints[0];
+        Transform last = _spawnPoints[_spawnPoints.Length - 1];
+        if (first == null || last == null)
+            return false;
+
+        minX = Mathf.Min(first.position.x, last.position.x);
+        maxX = Mathf.Max(first.position.x, last.position.x);
+        spawnY = ClampSpawnYToCamera(first.position.y);
+        return true;
+    }
+
+    /// <summary>
+    /// Caps the authored spawn height at <see cref="_spawnLeadAboveViewWorld"/> above the camera's
+    /// visible top, so an enemy is never released further off-screen than it needs to be.
+    /// </summary>
+    /// <remarks>
+    /// Playtest 2026-09-17. The authored spawn points sit at y≈11.4 while the RUNTIME view tops out
+    /// at 7.82 on a phone aspect — measured, not guessed — so Takip walked for about 5.8 seconds
+    /// before it was visible at all, and its introduction card could not land until after that. The
+    /// points were authored against the scene-time camera, whose view is -10..10; the runtime one is
+    /// -16.52..7.82. A serialized world y cannot be right for both, which is why this is clamped
+    /// against the live camera rather than retuned in the scene.
+    ///
+    /// <para>
+    /// A cap, never a lift: an authored point already lower than the cap is left exactly where it
+    /// is, so a level that deliberately spawns close never has its enemies pushed further out.
+    /// </para>
+    /// </remarks>
+    private float ClampSpawnYToCamera(float authoredSpawnY)
+    {
+        Camera camera = Camera.main;
+        if (camera == null || !camera.orthographic)
+            return authoredSpawnY;
+
+        return ClampSpawnY(
+            authoredSpawnY,
+            camera.transform.position.y + camera.orthographicSize,
+            _spawnLeadAboveViewWorld);
+    }
+
+    /// <summary>
+    /// The rule on its own, so it can be asserted without standing up a camera: the authored height
+    /// or <paramref name="leadAboveViewWorld"/> above <paramref name="viewTopWorldY"/>, whichever is
+    /// lower. A negative lead is treated as zero rather than pulling the spawn into view.
+    /// </summary>
+    public static float ClampSpawnY(
+        float authoredSpawnY, float viewTopWorldY, float leadAboveViewWorld)
+    {
+        return Mathf.Min(authoredSpawnY, viewTopWorldY + Mathf.Max(0f, leadAboveViewWorld));
     }
 }

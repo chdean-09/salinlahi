@@ -1,0 +1,51 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c86bf60ce9e76ac48a6fd0fb868e5585, type: 3}
+  m_Name: BossTutorial_ElInquisidor
+  m_EditorClassIdentifier: Salinlahi.Runtime::BossTutorialSO
+  pages:
+  - title: El Inquisidor
+    body: A corrupted high-ranking friar who ordered the burning of Baybayin manuscripts
+      during the Spanish era. He wants to erase the script and the memory of the
+      people.
+    frames:
+    - {fileID: 95172164111334305, guid: f6ede119ad3b6824b9652c0513057a7c, type: 3}
+    animationFps: 0
+    effect: 0
+  - title: Summoning
+    body: It paces and summons enemies in waves. Clear them to wear the boss down.
+    frames:
+    - {fileID: -5875916747654802628, guid: f5e3baeb6ac82454599eb01b299d517e, type: 3}
+    - {fileID: -6719877106280894156, guid: f5e3baeb6ac82454599eb01b299d517e, type: 3}
+    - {fileID: -5344868401632300688, guid: f5e3baeb6ac82454599eb01b299d517e, type: 3}
+    - {fileID: -3263074623129762138, guid: f5e3baeb6ac82454599eb01b299d517e, type: 3}
+    animationFps: 1.8
+    effect: 0
+  - title: Vulnerability
+    body: When exhausted, the boss collapses. Draw the shown characters before the
+      timer runs out to damage the boss!
+    frames:
+    - {fileID: -2325852028376257296, guid: 4a477721e5dc6db48beb514d094a8ccc, type: 3}
+    animationFps: 0
+    effect: 0
+  - title: Teleportation
+    body: Once low on health, the boss grows desperate. It starts teleporting to
+      summon minions from anywhere on the field.
+    frames:
+    - {fileID: 95172164111334305, guid: f6ede119ad3b6824b9652c0513057a7c, type: 3}
+    - {fileID: -5963209368729282853, guid: f6ede119ad3b6824b9652c0513057a7c, type: 3}
+    - {fileID: 2359858629302205889, guid: f6ede119ad3b6824b9652c0513057a7c, type: 3}
+    - {fileID: 4081961212881063280, guid: f6ede119ad3b6824b9652c0513057a7c, type: 3}
+    - {fileID: 5473186506728689580, guid: f6ede119ad3b6824b9652c0513057a7c, type: 3}
+    - {fileID: -2617582732730828147, guid: f6ede119ad3b6824b9652c0513057a7c, type: 3}
+    animationFps: 8
+    effect: 3

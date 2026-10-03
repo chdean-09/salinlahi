@@ -1,7 +1,7 @@
 # 06 — UI/UX and Player Flow
 **Project:** Salinlahi
-**Version:** 1.2
-**Date:** 2026-03-25
+**Version:** 1.7
+**Date:** 2026-08-27
 **Owner:** Jeff Andre Millan (UI/UX Developer)
 
 ---
@@ -12,20 +12,23 @@
 |--------|-------|--------|-----------------------|
 | Bootstrap (invisible) | `Bootstrap.unity` | `BootstrapLoader.cs` | Implemented |
 | Main Menu | `MainMenu.unity` | `MainMenuUI.cs` | Partial (stub) |
-| Level Select | (NOT FOUND — no scene) | `LevelSelect.cs` (PLANNED) | NOT FOUND |
-| Gameplay HUD | `Gameplay.unity` | `HUD.cs` (PLANNED) | NOT FOUND |
-| Pause Menu | (overlay) | `PauseMenu.cs` (PLANNED) | NOT FOUND |
-| Level Complete | (NOT FOUND — no scene) | (PLANNED) | NOT FOUND |
-| Game Over | `GameOver.unity` | `GameOverUI.cs` | Partial (stub) |
-| Tracing Dojo | (NOT FOUND — no scene) | (PLANNED) | NOT FOUND |
-| Settings | (NOT FOUND — no scene) | (PLANNED) | NOT FOUND |
-| Dialogue Panel (Type A) | (overlay in Gameplay) | `DialogueController.cs` (PLANNED) | NOT FOUND |
-| In-Wave Popup (Type B) | (overlay in Gameplay) | `InWavePopupController.cs` (PLANNED) | NOT FOUND |
-| Level Complete | (overlay or separate scene) | (PLANNED) | NOT FOUND |
-| Endless Mode | (shares Gameplay scene) | (PLANNED) | NOT FOUND |
-| SUS/GEQ-S Questionnaire | (overlay or separate scene) | `QuestionnaireController.cs` (PLANNED) | NOT FOUND |
+| Level Select | `LevelSelect.unity` | `LevelSelectUI.cs` | Implemented |
+| Gameplay HUD | `Gameplay.unity` | `HUD.cs` | Implemented |
+| Pause Menu | (overlay) | `PauseMenuUI.cs` | Implemented |
+| Level Complete | (overlay or separate scene) | `VictoryScreenUI.cs` | Implemented |
+| Game Over | `GameOver.unity` | `GameOverUI.cs` / `DefeatScreenUI.cs` | Deprecated — replaced by `DefeatScreenUI` overlay in Gameplay scene (SALIN-58) |
+| Tracing Dojo | `TracingDojo.unity` | `TracingDojoController.cs` (+ `CharacterDropdown`, `CharacterListPopulator`, `CharacterListRow`, `DojoNavigator`, `FeedbackToast`, `GhostStrokeRenderer`) | Implemented |
+| Template Recorder (editor-only) | `TemplateRecorder.unity` | `TemplateRecorder.cs` | Editor tooling |
+| Settings | (overlay) | `SettingsPanel.cs` | Implemented |
+| Credits | (overlay) | `CreditsPanel.cs` | Implemented |
+| Dialogue Panel (Type A) | (overlay in Gameplay) | `DialogueController.cs` | Implemented |
+| In-Wave Popup (Type B) | (overlay in Gameplay) | `InWavePopupController.cs` (PLANNED) | PLANNED |
+| Endless Mode | (shares Gameplay scene) | (PLANNED) | PLANNED |
+| SUS/GEQ-S Questionnaire | (overlay or separate scene) | `QuestionnaireController.cs` (PLANNED) | PLANNED |
 
-[EVIDENCE: Assets/_Scenes/ — only Bootstrap, MainMenu, Gameplay, GameOver scenes exist]
+[EVIDENCE: Assets/_Scenes/ — Bootstrap, MainMenu, LevelSelect, TracingDojo, Gameplay, GameOver, TemplateRecorder scenes confirmed]
+[EVIDENCE: Assets/Scripts/UI/TracingDojo/ — TracingDojoController.cs and supporting scripts]
+[EVIDENCE: Assets/Scripts/UI/DefeatScreenUI.cs; Assets/Scripts/Core/SceneLoader.cs — `LoadGameOver()` marked `[System.Obsolete]`]
 [EVIDENCE: docs/capstone/GDD.md, §5.1 Player Journey]
 
 ---
@@ -36,7 +39,7 @@
 App Launch
   └─ Bootstrap (invisible)
         └─ Auto → Main Menu
-              ├─ [Play] → Level Select (PLANNED)
+              ├─ [Play] → Level Select
               │     └─ [Select Level] → Gameplay Scene
               │           ├─ Type A Intro Dialogue (if configured) → draws from DialogueSequence SO
               │           ├─ Waves begin after dialogue ends
@@ -46,11 +49,11 @@ App Launch
               │           ├─ Win → Level Complete (PLANNED)
               │           │     └─ [Next Level] → Gameplay (next level)
               │           │     └─ [Menu] → Main Menu
-              │           └─ Lose → Game Over Scene
+              │           └─ Lose → Defeat Overlay (in Gameplay) — `DefeatScreenUI`
               │                 ├─ [Retry] → Gameplay (same level)
               │                 └─ [Menu] → Main Menu
               ├─ [Endless Mode] → Gameplay Scene (endless config) (PLANNED)
-              ├─ [Tracing Dojo] → Tracing Dojo Scene (PLANNED)
+              ├─ [Tracing Dojo] → Tracing Dojo Scene (Implemented)
               └─ [Settings] → Settings Screen (PLANNED)
 ```
 
@@ -69,24 +72,23 @@ App Launch
 
 | Menu Item | Expected Action | Status |
 |-----------|----------------|--------|
-| Play (Story Mode) | Navigate to Level Select | NOT FOUND (currently goes directly to Gameplay) |
-| Endless Mode | Navigate to Endless Gameplay | NOT FOUND |
-| Tracing Dojo | Navigate to Tracing Dojo scene | NOT FOUND |
-| Settings | Open Settings screen | NOT FOUND |
-| Credits | Display credits screen | NOT FOUND |
+| Play (Story Mode) | Navigate to Level Select | Partial (navigates to Gameplay directly; LevelSelect wiring unverified) |
+| Endless Mode | Navigate to Endless Gameplay | PLANNED |
+| Tracing Dojo | Navigate to Tracing Dojo scene | PLANNED |
+| Settings | Open Settings screen | Partial (`SettingsPanel.cs` exists; menu wiring unverified) |
+| Credits | Display credits screen | Partial (`CreditsPanel.cs` exists; menu wiring unverified) |
 
 [EVIDENCE: docs/capstone/GDD.md, §5.3 — "Play, Endless Mode, Tracing Dojo, Settings, Credits"]
 
 ---
 
-## 4. Gameplay HUD (PLANNED)
+## 4. Gameplay HUD — `HUD.cs`
 
-The HUD is specified in the GDD and TDD but **has no implementation file**. All items below are from source documents only.
+The HUD is implemented in `Assets/Scripts/UI/HUD.cs`. Elements below reflect current implementation and GDD specification.
 
 | HUD Element | Description | EventBus Trigger |
 |-------------|-------------|-----------------|
 | Heart display | Shows current heart count (0–3 icons) | `OnHeartsChanged(int)` |
-| Wave indicator | Shows "Wave X of Y" | `OnWaveStarted(int)` |
 | Combo counter | Shows current streak count; appears only when active, fades when streak breaks | `OnComboChanged(int)` |
 | Pause button | Top corner; opens Pause Menu overlay | (UI tap) |
 | Drawing canvas | Full-screen transparent touch surface for drawing | `OnDrawingStarted`, `OnDrawingFailed` |
@@ -98,28 +100,80 @@ The HUD is specified in the GDD and TDD but **has no implementation file**. All 
 [EVIDENCE: docs/capstone/GDD.md, §2.2 Controls Summary; §5.4 Accessibility]
 [EVIDENCE: docs/capstone/TDD.md, §7.4 — HUD.cs]
 
+### 4.1 Boss HUD Elements
+
+The Gameplay scene wires three boss-only UI elements alongside the regular HUD. Each is a separate `MonoBehaviour` on the gameplay Canvas and is active only during a boss encounter.
+
+| UI Element | Script | Behavior |
+|------------|--------|----------|
+| Boss health bar | `Assets/Scripts/UI/BossHealthBar.cs` | Filled Image type. Fills at `HPRemaining / phases.Count` and tweens via `Mathf.Lerp` on `OnBossDamaged`. Subscribes to `OnBossStarted` (acquires `GameManager.CurrentBoss`), `OnBossDamaged`, `OnBossDefeated`. Follows the boss world-space position with `_bossWorldOffset` via `WorldToScreenPoint` then `ScreenPointToWorldPointInRectangle`. Fades via unscaled time. |
+| Boss draw counter | `Assets/Scripts/UI/BossDrawCounterUI.cs` | Shows an `X / N` progress counter anchored below the boss's world-space `EnemyGlyphBadge` during the Vulnerable window. Subscribes to `OnBossStarted`, `OnBossVulnerabilityWindowActive` (shown only after the collapse animation finishes), `OnBossDamaged`, `OnBossVulnerabilityExpired`, `OnBossDefeated`. Listens to `BossController.OnDrawnThisPhaseChanged` to refresh the counter. Fail-flash and glyph display moved to `BossGlyphVisibilityBinder` / `EnemyGlyphBadge`. Replaces `BossGlyphQueueUI`. |
+| Boss vulnerability timer | `Assets/Scripts/UI/BossVulnerabilityTimerBar.cs` | Countdown bar under the boss that drains during the Vulnerable window. Driven by `OnBossVulnerabilityWindowActive` (countdown starts after collapse finishes so the on-screen time matches the actual targetable window) / `OnBossVulnerabilityExpired` / `OnBossDamaged`. |
+
+[EVIDENCE: Assets/Scripts/UI/BossHealthBar.cs]
+[EVIDENCE: Assets/Scripts/UI/BossDrawCounterUI.cs]
+[EVIDENCE: Assets/Scripts/UI/BossVulnerabilityTimerBar.cs]
+[EVIDENCE: Assets/Scripts/Gameplay/Boss/BossController.cs — `OnDrawnThisPhaseChanged`]
+
+### 4.2 PlayAreaContainer / AspectLockedCamera
+
+The Gameplay HUD now lives under a `PlayAreaContainer` RectTransform that sizes itself to `AspectLockedCamera.PlayColumnScreenRect`. This keeps HUD corner anchors pinned to the 9:16 play column on tablets and ultra-wide phones, instead of the device viewport. `PlayAreaContainer` subscribes to `AspectLockedCamera.OnPlayAreaChanged` to re-anchor whenever the device aspect changes (e.g., editor Game-view aspect switch).
+
+[EVIDENCE: Assets/Scripts/UI/PlayAreaContainer.cs]
+[EVIDENCE: Assets/Scripts/Gameplay/Camera/AspectLockedCamera.cs — `PlayColumnScreenRect`, `OnPlayAreaChanged`]
+
+## 3.5 Level Select — `LevelSelectUI.cs`
+
+The Level Select screen is driven by a serialized `List<EraConfigSO>` on the `LevelSelectUI` component. It displays up to five level scroll buttons at a time (one per slot), sourced from the active era's `EraConfigSO.levels` list.
+
+### Era Navigation
+
+- Prev / Next arrow buttons remain **always visible** at era edges; they are toggled **non-interactable** (Unity's `Button.interactable = false`) rather than hidden, so the Button's `ColorBlock.disabledColor` tints them grey in place.
+- With only one era authored, both Prev and Next arrows appear greyed at startup.
+
+### Per-Era Visuals
+
+| Element | Source |
+|---------|--------|
+| Background sprite | `EraConfigSO.backgroundSprite` → assigned to `Image _eraBackgroundImage.sprite` |
+| Banner sprite | `EraConfigSO.bannerSprite` → assigned to `Image _eraBannerImage.sprite` |
+| Level scroll sprites | `LevelConfigSO.numberSprite` → assigned to each `LevelButton._scrollImage.sprite` |
+
+TMP text overlays (era title, level number) were removed; all text is baked into the sprites.
+
+### Level Button Reuse
+
+Five `LevelButton` scene instances are reused across all eras. On era change, each button is configured via `LevelButton.Setup(config, unlocked, completed)` from the incoming `EraConfigSO.levels` list. Buttons beyond the era's level count are hidden (`SetActive(false)`).
+
+[EVIDENCE: Assets/Scripts/UI/LevelSelectUI.cs]
+[EVIDENCE: Assets/Scripts/UI/LevelButton.cs]
+[EVIDENCE: Assets/Scripts/Data/EraConfigSO.cs]
+
 ---
 
-## 5. Game Over Screen — `GameOverUI.cs`
+## 5. Defeat Screen — `DefeatScreenUI.cs`
 
 ### 5.1 Implemented Behavior
-`GameOverUI` contains wired button handlers. Implementation is a stub with button calls to `SceneLoader.Instance.LoadGameplay()` (Retry) and `SceneLoader.Instance.LoadMainMenu()` (Menu).
 
-[EVIDENCE: Assets/Scripts/UI/GameOverUI.cs]
+The standalone `GameOver` scene is **deprecated**. The current defeat flow runs entirely inside the Gameplay scene via `DefeatScreenUI`, a `CanvasGroup` overlay. `GameManager.HandleGameOver` no longer calls `SceneLoader.LoadGameOver` (the loader method itself is marked `[System.Obsolete]`); it instead snapshots `GameManager.LastDefeatHearts` (the hearts count at the moment of defeat, which the overlay reads to render its summary) and toggles the overlay's `CanvasGroup`.
+
+[EVIDENCE: Assets/Scripts/UI/DefeatScreenUI.cs]
+[EVIDENCE: Assets/Scripts/Core/GameManager.cs — `HandleGameOver`, `LastDefeatHearts`]
+[EVIDENCE: Assets/Scripts/Core/SceneLoader.cs — `LoadGameOver()` carries `[System.Obsolete]`]
 
 ### 5.2 Required Content (from GDD — partially not implemented)
 
 | Element | Description | Status |
 |---------|-------------|--------|
-| Final stats display | Waves survived, enemies defeated, accuracy % | NOT FOUND |
-| Retry button | Reloads current level gameplay scene | Implemented (LoadGameplay stub) |
+| Final stats display | Waves survived, enemies defeated, accuracy % | Partial (`LastDefeatHearts` snapshot wired; full stats NOT FOUND) |
+| Retry button | Reloads current level gameplay scene | Implemented (overlay calls `SceneLoader.LoadGameplay`) |
 | Return to Level Select | Returns to level select | Partial (returns to MainMenu currently) |
 
 [EVIDENCE: docs/capstone/GDD.md, §5.1 — "Game Over: Shows final stats. Retry button. Return to Level Select button."]
 
 ---
 
-## 5.5 Dialogue System (PLANNED)
+## 5.5 Dialogue System — `DialogueController.cs`
 
 ### Type A — Gated Story Panels
 
@@ -165,17 +219,24 @@ No scene or script for Level Complete currently exists. Required content per GDD
 
 ---
 
-## 7. Tracing Dojo (PLANNED)
+## 7. Tracing Dojo — Implemented
 
-No scene or script currently exists. Required behavior per GDD:
+Scene: `Assets/_Scenes/TracingDojo.unity`. Script suite: `Assets/Scripts/UI/TracingDojo/` (`TracingDojoController.cs`, `CharacterDropdown.cs`, `CharacterListPopulator.cs`, `CharacterListRow.cs`, `DojoNavigator.cs`, `FeedbackToast.cs`, `GhostStrokeRenderer.cs`).
+
+User-facing behavior per GDD:
 
 - Accessible from Main Menu at any time.
-- Shows all 17 Baybayin characters in a practice grid.
+- Shows the taught character set in a practice grid (**17**).
+- The grid is built at runtime from the taught set. On the revised save path it comes from the campaign
+  catalog; in Legacy mode it falls back to `CharacterRegistry_Default.asset`. Both now hold **17**
+  (SALIN-212 removed the vestigial `Char_RA` entry on 2026-09-01).
 - Player can select any character and trace it freely.
 - No enemies, no timer, no penalty for incorrect strokes.
-- Provides visual guide overlay for each character's expected shape.
-- Runs recognition system in passive mode to show confidence score as visual feedback.
+- Provides visual guide overlay for each character's expected shape (`GhostStrokeRenderer`).
+- Runs recognition system in passive mode to show confidence score as visual feedback (`FeedbackToast`).
 
+[EVIDENCE: Assets/_Scenes/TracingDojo.unity]
+[EVIDENCE: Assets/Scripts/UI/TracingDojo/TracingDojoController.cs and supporting scripts]
 [EVIDENCE: docs/capstone/GDD.md, §2.4 Game Modes — "Tracing Dojo (Tutorial)"]
 
 ---
@@ -186,8 +247,8 @@ No scene or script currently exists. Required behavior per GDD:
 |-------------|----------------------|--------|
 | Full-screen drawing area — no precision targeting required | Drawing canvas = entire screen | GDD §5.4 |
 | Audio pronunciation on every correct defeat | `AudioManager.PlayPronunciationClip()` | GDD §5.4; AudioManager.cs |
-| Visual rejection feedback (red flash + X mark) on failed stroke | `HUD.cs` (PLANNED) | GDD §5.4 |
-| Tracing Dojo zero-pressure practice space | Tracing Dojo scene (PLANNED) | GDD §5.4 |
+| Visual rejection feedback (red flash + X mark) on failed stroke | `HUD.cs` | GDD §5.4 |
+| Tracing Dojo zero-pressure practice space | `TracingDojo.unity` (Implemented) | GDD §5.4 |
 | Portrait-mode one-handed play design | Unity Player Settings: portrait lock | GDD §5.4 |
 | No text-heavy tutorials — first level teaches via play | Level 1 design constraint | GDD §5.4 |
 
@@ -206,3 +267,39 @@ No scene or script currently exists. Required behavior per GDD:
 **Constraint:** No virtual joystick, no attack buttons, no gesture shortcuts. Drawing is the only combat input.
 
 [EVIDENCE: docs/capstone/GDD.md, §2.2 Controls Summary]
+
+---
+
+## 10. Revised-Campaign Surfaces — Implemented vs Player-Reachable (SALIN-186)
+
+**Read this section before treating any surface below as shipped.** Several are code-complete and
+covered by passing tests while being *invisible to the player*, because the scene reference they
+render through is unwired or the asset they display does not exist. Code coverage is not reach.
+
+State recorded against `dev` @ `1a4f28a`.
+
+| Surface | Ticket | Code | Player-reachable? |
+|---|---|---|---|
+| Journey entry routing (Continue) | SALIN-136 | ✅ `JourneyEntryResolver`, 4 outcomes | ✅ yes |
+| Level lock states and prerequisites | SALIN-137 | ✅ `LevelLockResolver`, `LevelLockStatus` incl. cross-era requirements | ⚠ partly — see below |
+| Level-select completion badge | SALIN-137 | ✅ `_completionBadge` field exists | ❌ **no** — `_completionBadge` appears **0 times** in `LevelSelect.unity`; unwired on every `LevelButton` |
+| Lock notice | SALIN-137 | ✅ resolver supplies the reason | ⚠ runtime-built placeholder; no authored surface |
+| Pause / restart / leave | SALIN-141 | ✅ `AbortCurrentLevelAttempt`, 9 subscribers (doc 03 §8) | ❌ **no Restart button** — `_restartButton` is absent from `Gameplay.unity` |
+| Restart confirmation | SALIN-141 | ✅ | ⚠ runtime-built placeholder |
+| Per-card symbol learning | SALIN-157 | ✅ `SymbolLearningCardController`, `SpokenValueResolver` | ✅ visual path yes |
+| Syllable audio at learning time | SALIN-157 | ✅ resolver + fallback | ❌ **no** for Level 1 — `value.a`, `value.ei`, `value.na`, `value.ma` have no clips; **21 of 30** `pronunciationClip` fields are unassigned. The visual-only fallback is what ships |
+| Focus-word preview | SALIN-138 | ✅ | ✅ yes |
+| Level number art, eras 2–3 | SALIN-176 | n/a (content) | ❌ **no** — `numberSprite` is assigned for Levels **1–5 only**; **Levels 6–15 are all missing**, so those scrolls render blank |
+
+### Why this table exists
+
+A reader comparing the ticket list to the game would otherwise conclude that SALIN-137 and SALIN-141
+shipped nothing, when in fact both landed complete logic with passing tests and are waiting only on
+Editor wiring. The opposite error is worse: presenting a runtime-built placeholder as a finished
+feature would misrepresent readiness to the capstone review.
+
+**In flight at time of writing:** PRs #126 (completion badge + era list) and #127 (Restart button) wire
+the two ❌ rows above. They are not merged, so the table records `dev`, not those branches. Re-verify
+this table after they land rather than assuming it.
+
+[EVIDENCE: Assets/_Scenes/LevelSelect.unity; Assets/_Scenes/Gameplay.unity; Assets/ScriptableObjects/Levels/Level*_Config.asset (numberSprite); Assets/Tests/Editor/Data/Level1AssetReadinessTests.cs]

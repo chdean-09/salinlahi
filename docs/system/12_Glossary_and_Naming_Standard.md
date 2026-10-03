@@ -1,7 +1,7 @@
 # 12 — Glossary and Naming Standard
 **Project:** Salinlahi
-**Version:** 1.2
-**Date:** 2026-03-25
+**Version:** 1.8
+**Date:** 2026-05-27
 **Owner:** Jon Wayne Cabusbusan
 
 ---
@@ -12,20 +12,24 @@
 |------|-----------|--------|
 | **Baybayin** | The pre-colonial Filipino abugida writing system. Each character represents a consonant-vowel syllabic unit. The game uses 17 consonant base characters. **Correct spelling: Baybayin.** Not "Alibata." | Salinlahi.md §1; expert consultation |
 | **Abugida** | A writing system in which each character represents a complete consonant-vowel syllabic unit (not individual phonemes). Baybayin is an abugida. | Salinlahi.md §2.1.3 |
-| **$P Algorithm** | The $P Point-Cloud Gesture Recognizer. A 2D gesture recognition algorithm that treats a drawing as an unordered cloud of points, ignoring stroke number, order, and direction. The chosen recognition algorithm for Salinlahi. Also written as "Dollar P" in prose. | Salinlahi.md §1.7.4; §3.3.3 |
-| **Template** | A pre-stored reference point cloud for one Baybayin character used by the $P algorithm to match player drawings. Stored as `.txt` files in `Assets/Resources/Templates/`. | Salinlahi.md §3.3.3 |
-| **Confidence Score** | A value between 0 and 1 output by the $P algorithm indicating how closely a player's drawing matches the nearest template. A score ≥ 0.60 is accepted as a valid match. | RecognitionConfigSO.cs; Salinlahi.md §3.3.3 |
+| **Aspect-Locked Play Column** | A fixed 9:16 world-space rectangle enforced by `AspectLockedCamera`. The play column is the same world width on every device; tablets see pillars on the sides, ultra-tall phones see the column extend vertically. All gameplay UI lives under `PlayAreaContainer` so HUD anchors resolve to the column's corners, not the device viewport. | `AspectLockedCamera.cs` |
+| **$P Algorithm** | The $P Point-Cloud Gesture Recognizer. A 2D gesture recognition algorithm that treats a drawing as an unordered cloud of points, ignoring stroke order and direction. Salinlahi runs $P in a two-stage flow: pure shape scoring picks a leader, and only if the leader's margin over the runner-up is small does a top-K disambiguator re-rank the close candidates using stroke-count and aspect-ratio penalties. Also written as "Dollar P" in prose. | Salinlahi.md §1.7.4; §3.3.3 |
+| **Template** | A pre-stored reference point cloud for one Baybayin character used by the $P algorithm to match player drawings. Stored as `.txt` files in `Assets/Resources/Templates/`. Blank lines in the file separate strokes; the recognizer records the per-variant stroke count and raw bounding-box aspect ratio for use by the top-K disambiguator. | Salinlahi.md §3.3.3 |
+| **Confidence Score** | A value between 0 and 1 output by the $P recognition pipeline. When the shape leader's margin over the runner-up is `≥ 0.08`, the leader's pure $P shape score is returned. Otherwise the top three candidates are re-ranked by `shapeScore × strokeCountPenalty × aspectRatioPenalty` and the new leader's composite score is returned. `strokeCountPenalty` is `1.0` on match, decreasing by `0.15` per unit of difference (floor `0.6`). `aspectRatioPenalty` is `1.0` on match, decreasing by `0.4 × |log10(userRatio / templateRatio)|` (floor `0.6`); aspect ratio is `longer / shorter` of the raw bounding box. A score ≥ 0.60 is accepted as a valid match. | RecognitionConfigSO.cs; Salinlahi.md §3.3.3; `DollarPRecognizer.cs` |
 | **Shrine** | The player's base structure that enemies march toward. Losing all 3 Shrine hearts ends the game. | GDD §2.3 |
+| **Phase (Boss)** | One unit of boss HP. The boss has as many phases as `BossConfigSO.phases.Count`; there is no separate maxHealth field. One full Summoning → WindingDown → Vulnerable → Damaged loop = one HP point. | `BossConfigSO.cs`; `BossController.cs` |
 | **PlayerBase** | The Unity `GameObject` representing the Shrine's collision boundary. Must have Unity tag `"PlayerBase"`. Enemies use `OnTriggerEnter2D` with this tag. | EnemyMover.cs |
 | **Heart** | One unit of the Shrine's health. The Shrine has 3 hearts by default. Each enemy base hit costs 1 heart. 0 hearts = Game Over. | GDD §2.3 |
-| **Wave** | A single spawn sequence within a level, defined by `WaveConfigSO`. A wave has a fixed enemy count, spawn interval, and character pool. | WaveConfigSO.cs; GDD §2.4 |
-| **Spawn Interval** | Seconds between consecutive enemy spawns within a wave. Defined in `WaveConfigSO.spawnInterval` (default: 3s). | WaveConfigSO.cs |
+| **Wave** | A single spawn sequence within a level, defined by an embedded `WaveDefinition` value type inside `LevelConfigSO.waves`. A wave has a fixed enemy count, spawn interval, and character pool. | WaveDefinition.cs; GDD §2.4 |
+| **Spawn Interval** | Seconds between consecutive enemy spawns within a wave. Defined in `WaveDefinition.spawnInterval` (default: 3s). | WaveDefinition.cs |
+| **Summoning Phase** | The boss sub-state during which the boss is invulnerable and `BossSummonTicker` streams 2–3 minions per summon act on `delayBetweenMinions` cadence (default 0.6s). Acts repeat every `delayBetweenSummons`. Ends after `summonPhaseDuration` (no new acts may start after that gate; an in-progress act always runs to completion), followed by WindingDown. | `BossController.RunSummoningPhase` |
 | **Bootstrap Scene** | The first scene loaded on app launch. It initializes all manager singletons and immediately transitions to MainMenu. It is never returned to after the initial load. | BootstrapLoader.cs; GDD §5.1 |
+| **Boss Movement Pattern** | The per-phase movement mode (`Hover`, `Pace`, `Teleport`) driven imperatively by `PhaseBasedMovement` based on `BossPhase.movementPattern`. | `BossPhase.cs`; `PhaseBasedMovement.cs` |
 | **Manager** | A persistent `MonoBehaviour` Singleton that survives all scene loads. All managers are instantiated in the Bootstrap scene. | Singleton.cs; 02_Architecture |
-| **EventBus** | The static C# event hub used for all cross-system communication. No direct inter-manager references except through `Instance` accessor and EventBus. | EventBus.cs |
+| **EventBus** | The static C# event hub used for cross-system signals. Flow orchestration and selected singleton lookups are direct coupling and must be inspected alongside EventBus subscriptions. | EventBus.cs; LevelFlowController.cs |
 | **Lite Build** | The free version of Salinlahi. Includes Story Mode levels 1–3 only. Endless Mode disabled. Separate app identifier. | TDD §7.2; Salinlahi.md §3.4 |
 | **Full Build** | The premium version of Salinlahi (PHP 149). All 15 story levels, Endless Mode, all boss encounters. | TDD §7.2; Salinlahi.md §3.4 |
-| **Tracing Dojo** | A pressure-free practice mode where players trace all 17 Baybayin characters with no enemies, no timer, and no penalty. | GDD §2.4 |
+| **Tracing Dojo** | A pressure-free practice mode where players trace the taught character set (17) with no enemies, no timer, and no penalty. | GDD §2.4; doc 10 REQ-32 |
 | **Intrinsic Integration** | A game design principle where the educational content (Baybayin drawing) is inseparable from the core gameplay mechanic (attacking enemies). The opposite of "chocolate-covered broccoli." | Salinlahi.md §2.1.2 |
 | **Drawing Effect** | The cognitive science finding that drawing information to be learned produces superior memory retention compared to writing, visualizing, or viewing. The theoretical basis for Baybayin-as-attack-input. | Salinlahi.md §1.7.2; Fernandes et al., 2018 |
 | **Multi-stroke Window** | The 1.5-second timer that begins after a finger lifts, during which additional strokes are accepted as part of the same drawing before recognition is submitted. | RecognitionConfigSO.cs |
@@ -36,7 +40,9 @@
 | **Era** | One of three historical periods represented in the game's chapters: Spanish Colonization (Chapter 1), American Occupation (Chapter 2), Japanese Occupation (Chapter 3). Each era has 4 unique enemy types, a unique shrine design, and a unique tileset. | GDD §4.1 |
 | **Combo Streak** | A counter tracking consecutive correct drawings without a miss. At 5 consecutive successes, a combo reward triggers: all on-screen enemies slow down for 3 seconds. Resets on any miss or base hit. | GDD §3.2; Team README §9 |
 | **Daily Streak** | A counter tracking consecutive days the player opens the game. Stored in PlayerPrefs on the device. Displayed on the main menu. Resets if the player misses a day. The system is offline-only and vulnerable to device clock manipulation (acknowledged limitation in Salinlahi.md §1.5.2). | Salinlahi.md §1.5.1; Sprint Timeline Sprint 3 |
+| **Defeat Overlay** | `DefeatScreenUI` CanvasGroup inside the Gameplay scene that handles the game-over UI. Replaces the deprecated `GameOver` scene as of SALIN-58. | `DefeatScreenUI.cs` |
 | **Questionnaire (SUS / GEQ-S)** | In-game survey screens administered after gameplay during User Acceptance Testing. The System Usability Scale (SUS) measures input usability (benchmark: 68+). The Game Experience Questionnaire Short (GEQ-S) measures player engagement. Both save responses to CSV on the device. Must-ship for academic evaluation. | Salinlahi.md §3.5.1, §3.5.2; Sprint Timeline Sprint 4 |
+| **Vulnerability Window** | The boss state during which the player can damage the boss by drawing `BossPhase.requiredCharacterCount` random allowed-level glyphs within `BossPhase.vulnerabilityTimer` seconds. Each successful draw fires `BossController.OnDrawnThisPhaseChanged`. Failure to complete the window in time raises `OnBossVulnerabilityExpired` and repeats the phase without HP loss. | `BossController.RunVulnerable` |
 
 ---
 
@@ -52,6 +58,7 @@
 | Player character (generic) | Protagonist / Salinlahi | Use 'protagonist' or the era-specific name (Kuya, Laban, Manong) when referring to the on-screen character. The protagonist IS visible during gameplay as a 32×32 sprite. |
 | Drawing attack | Character drawing / stroke | Prefer "draw the Baybayin character" over "attack" in user-facing copy. |
 | Dollar sign P | $P algorithm | Use `$P` in technical documents; spell out "Dollar-P" only in prose for non-technical readers. |
+| Game Over scene | Defeat Overlay | The `GameOver` scene is deprecated; defeat is handled by `DefeatScreenUI` inside Gameplay. |
 
 [EVIDENCE: GDD §4.2 — protagonist is visible as 32×32 sprite during gameplay]
 [EVIDENCE: Expert consultation noted in Salinlahi.md — Alibata is not the correct term]
@@ -98,7 +105,7 @@
 | `BaybayinCharacterSO` assets | `Char_[ID]` | `Char_BA`, `Char_KA` |
 | `EnemyDataSO` assets | `Enemy_[Type]` | `Enemy_Standard` |
 | `LevelConfigSO` assets | `Level_[##]` (zero-padded) | `Level_01`, `Level_10` |
-| `WaveConfigSO` assets | `L[level]_W[wave]` | `L1_W1`, `L10_W3` |
+| `WaveDefinition` entries | embedded in `LevelConfigSO.waves` list | (no standalone asset file) |
 
 ### 3.4 Scenes
 
@@ -134,6 +141,17 @@
 | Enemy animations | `enemy_[type]_[state].anim` | `enemy_standard_walk.anim`, `enemy_standard_death.anim` |
 | Boss animations | `boss_[chapter]_[phase].anim` | `boss_chapter1_phase1.anim` |
 | UI animations | `ui_[element]_[state].anim` | `ui_heart_break.anim` |
+
+### 3.8 Active Campaign Identifiers
+
+| Campaign | Levels / encounters | Usage |
+|----------|---------------------|-------|
+| `Ugat` | Levels 1–5 | First active story campaign |
+| `Ugnayan` | Levels 6–10 | Second active story campaign |
+| `Pamana` | Levels 11–15 | Third active story campaign |
+| `Paglimot` | Three mastery encounters | Post-story mastery content; not a five-level campaign |
+
+`Liwanag`, `Paglaban`, and `Pagbalik` remain historical names in capstone and Jira evidence. They are not revised active campaign labels.
 
 ---
 

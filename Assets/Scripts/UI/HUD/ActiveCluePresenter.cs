@@ -1,0 +1,5820 @@
+using System.Collections;
+using System.Collections.Generic;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+/// <summary>
+/// Renders the active clue across its configured channels and reports whether the answer was
+/// visible, which separates recognition from recall in learning evidence.
+/// </summary>
+[DisallowMultipleComponent]
+public sealed class ActiveCluePresenter : MonoBehaviour
+{
+    [Header("HUD Clue Panel")]
+    [SerializeField] private GameObject _cluePanelRoot;
+    [SerializeField] private TextMeshProUGUI _clueText;
+    [SerializeField] private Image _clueImage;
+    [SerializeField] private GameObject _replayAudioButton;
+
+    [Header("Active Clue Mark")]
+    [Tooltip("Optional authored marker for the active enemy. A procedural ring is built when empty.")]
+    [SerializeField] private GameObject _activeClueMarkPrefab;
+    [SerializeField] private Vector2 _activeClueMarkOffset = Vector2.zero;
+    [SerializeField] private float _activeClueMarkScale = 1.9f;
+
+    // Off by default: the gold ring read as noise around the enemy art rather than as a marker.
+    // The scroll badge above the enemy carries the "this is your target" job on levels that reveal
+    // the glyph. Levels that do NOT reveal it have no other active-enemy marker, so the ring stays
+    // switchable rather than deleted.
+    [SerializeField] private bool _showActiveClueMark;
+
+    [Tooltip("Enemies within this many world units of the active clue hide their glyph, so two "
+             + "scrolls never overlap. Everything further away keeps its glyph.")]
+    [SerializeField, Min(0f)] private float _badgeCrowdRadius = 2.5f;
+
+    /// <summary>Whether the ring marking the active enemy is drawn. Off by default.</summary>
+    public bool ShowActiveClueMark
+    {
+        get => _showActiveClueMark;
+        set => _showActiveClueMark = value;
+    }
+
+    [Header("Word Restoration Cue")]
+    [Tooltip("Legacy restoration announcement label, kept hidden during combat.")]
+    [SerializeField] private TextMeshProUGUI _wordRestoredText;
+
+    [Header("Combat Restoration Progress")]
+    [Tooltip("Optional authored label that used to print the restoration readout as text. It is "
+             + "now only a font template for the runtime rail, and its own GameObject is switched "
+             + "off: the printed readout named each focus word in Latin, which is exactly the "
+             + "reading crutch Abo ng Simula's ash exists to take away.")]
+    [SerializeField] private TextMeshProUGUI _restorationProgressText;
+
+    [Header("Restoration Slot Rail")]
+    [Tooltip("Where the rail sits under the HUD container, anchored to the BOTTOM centre. y is "
+             + "measured UP from the bottom edge to the rail's own bottom edge, so a larger y "
+             + "lifts the rail further off the foot of the screen.\n\n"
+             + "The rail used to hang from the top centre at y=-120, above the clue panel. It was "
+             + "moved to the bottom band on request: the top of the screen is where the enemies "
+             + "walk in and where the clue panel and wave text already sit, and the target text "
+             + "the player is filling reads better as the player's own row along the foot of the "
+             + "field, under the base and under Juan.\n\n"
+             + "y no longer has to dodge the fence. Every earlier value here was an attempt to "
+             + "thread the rail into the gap between the fence's foot and the bottom of the screen, "
+             + "and there was never enough room: the rail is about 190 units tall and the gap is "
+             + "about 145, so the rail sat ON the planks whatever y it was given. The rail now asks "
+             + "the play column to reserve a band for it and the play field is raised clear, so y is "
+             + "just the breathing room under the labels and wants to be SMALL — a large value here "
+             + "no longer lifts the rail off anything, it only makes the reserved band taller and "
+             + "eats the play field.\n\n"
+             + "The safe area needs no arithmetic here: the rail parents to HUDLayer, a full-rect "
+             + "child of HUDRoot, and HUDRoot carries SafeAreaHandler — so y=0 is the bottom of "
+             + "the SAFE area and the home indicator's inset is already taken out underneath it.")]
+    [SerializeField] private Vector2 _railAnchoredPosition = new Vector2(0f, 24f);
+
+    [Tooltip("Clearance in canvas units left between the top of the restoration rail and the "
+             + "bottom of the authored 'draw the glowing symbol' instruction.")]
+    [SerializeField, Min(0f)] private float _instructionGapAboveRail = 40f;
+
+    private readonly Vector3[] _railCornerBuffer = new Vector3[4];
+    private readonly Vector3[] _instructionCornerBuffer = new Vector3[4];
+
+    [Tooltip("Clearance in canvas units left between the top of the rail and the foot of the play "
+             + "field, added to the band the rail asks the play column to reserve. Keeps the fence's "
+             + "bottom plank and Juan's feet from ending exactly on the rail's top edge, which reads "
+             + "as an overlap even when it is not one.")]
+    [SerializeField, Min(0f)] private float _railPlayFieldClearance = 28f;
+
+    [Tooltip("Size of one target-text slot in canvas units. Slots are square by authoring "
+             + "convention but the two axes are separate so a wide glyph can be given room.")]
+    [SerializeField] private Vector2 _slotSize = new Vector2(124f, 124f);
+
+    [Tooltip("Gap between two slots inside the same focus word, in canvas units. Small: slots of "
+             + "one word have to read as one text rather than as separate collectables.")]
+    [SerializeField, Min(0f)] private float _slotSpacing = 16f;
+
+    [Tooltip("Gap between two focus words' slot groups, in canvas units. Must be clearly wider "
+             + "than the slot spacing — the grouping is what tells the player INA AMA is two "
+             + "words and not one run of four symbols.")]
+    [SerializeField, Min(0f)] private float _wordGap = 80f;
+
+    [Tooltip("Share of the slot's box the glyph's INK should span, leaving the rest as an even "
+             + "margin inside the gold frame.\n\n"
+             + "Expressed as a share of the box rather than as an inset in canvas units because the "
+             + "rail grew and the glyphs did not follow: an inset is absolute, so the same 10 units "
+             + "that left a sensible margin on a small box leaves a huge one on a large box.")]
+    [SerializeField, Range(0.3f, 1f)] private float _slotGlyphFill = 0.84f;
+
+    [Tooltip("Fallback ink share for almanac art that has no measured value in GlyphInkMetrics.\n\n"
+             + "The almanac PNGs are authored on a 320x320 canvas with the glyph drawn small and "
+             + "centred, and the inked share differs per glyph (roughly 40-72% of the frame — "
+             + "GlyphInkMetrics carries the measured values). Fitting that sprite to the box "
+             + "fills the box with mostly-transparent art, so the glyph rect is scaled up by "
+             + "fill/ink and it is the INK, not the PNG's empty margin, that meets the frame. "
+             + "Applies only to almanac art; the badge fallback is drawn tight and is fitted to "
+             + "the box directly.")]
+    [SerializeField, Range(0.1f, 1f)] private float _almanacGlyphInkFraction = 0.44f;
+
+    [Tooltip("Frame colour of a slot that is still waiting for its symbol.")]
+    [SerializeField] private Color _emptySlotColor = new Color(1f, 1f, 1f, 0.22f);
+
+    [Tooltip("Frame colour of a slot whose symbol has been restored.")]
+    [SerializeField] private Color _filledSlotColor = new Color(1f, 0.84f, 0.29f, 0.85f);
+
+    [Tooltip("Tint applied to the restored slot's glyph. WHITE, i.e. no tint, and that is the "
+             + "point.\n\n"
+             + "The slot used to show glyphOutlineSprite, which is a flat white silhouette that "
+             + "only looked like a glyph because this field tinted it dark gold. The slot now "
+             + "shows almanacSprite instead: the same bare glyph the almanac prints, already "
+             + "self-coloured as a near-white fill inside a dark brown outline. Multiplying gold "
+             + "over that would muddy the fill and flatten the outline that makes it legible, so "
+             + "an Image tint here must stay white. The gold stays on the slot FRAME "
+             + "(_filledSlotColor), which is where it was doing useful work.")]
+    [SerializeField] private Color _filledGlyphColor = Color.white;
+
+    // The navy backing plates that used to be declared here — one inside every restored slot, one
+    // continuous strip behind the whole label row — are gone, and deliberately not replaced.
+    //
+    // They were both answers to the same accident: the rail was drawn ON TOP of the wooden fence,
+    // because it is taller than the gap between the fence's foot and the bottom of the screen. A
+    // near-white glyph and gold text on brown planks needed a plate to survive. The rail now has a
+    // reserved band of its own beneath the play field (AspectLockedCamera.SetBottomBandPixels), so
+    // it is read against the flat dark ground below the fence and there is nothing left to plate
+    // against. A plate here now would be a dark rectangle in the middle of a dark band.
+
+    [Tooltip("Thickness of a slot frame's border as a fraction of the slot, used to generate the "
+             + "hollow frame sprite. The frame is generated rather than authored because there is "
+             + "no slot art in the project and an empty slot must not read as a filled block.")]
+    [SerializeField, Range(0.02f, 0.4f)] private float _slotFrameBorderFraction = 0.09f;
+
+    [Header("Rail Latin Labels")]
+    // These are now PER-SLOT labels printed UNDER each box, and they are always shown. That is a
+    // deliberate reversal, requested directly, of the policy that used to live here: one Latin label
+    // per WORD, beside the slots, default OFF, refused outright on any level whose roster can mask
+    // the clue — because a rail printing "INA" next to an ash-masked clue handed back the exact
+    // reading Abo ng Simula's ability had just taken away.
+    //
+    // The reversal is narrower than it looks but it is not free, and it is worth stating plainly:
+    // naming every syllable of the target text under its own box for the whole level does reduce
+    // what the ash can still hide to the ORDER of the syllables rather than their identity. It was
+    // asked for on the same pass that removed the first-draw trace guide from the field, which
+    // leaves these labels as the only standing cue for which box wants which symbol.
+
+    [Tooltip("Font size of a slot's romanised label on the rail.")]
+    [SerializeField, Min(1f)] private float _latinWordLabelFontSize = 46f;
+
+    [Tooltip("Colour of a slot's romanised label on the rail.")]
+    [SerializeField] private Color _latinWordLabelColor = new Color(1f, 0.84f, 0.29f, 1f);
+
+    [Tooltip("Height reserved BELOW the slots for the romanised labels, in canvas units. The row is "
+             + "reserved whether or not a label fills it, so the slots sit at a fixed height for "
+             + "the whole level: DrawFeedbackPresenter flies a badge to a slot rect that must not "
+             + "travel while the badge is in the air.")]
+    [SerializeField, Min(0f)] private float _latinWordLabelRowHeight = 56f;
+
+    [Tooltip("Gap between the slots and the romanised label row beneath them, in canvas units.")]
+    [SerializeField, Min(0f)] private float _latinWordLabelGap = 10f;
+
+    [Tooltip("Font size of the divider drawn between two focus words' slot groups. Larger than the "
+             + "slot labels: it is a piece of punctuation between groups, not a reading.")]
+    [SerializeField, Min(1f)] private float _wordSeparatorFontSize = 64f;
+
+    [Tooltip("Colour of the divider between two focus words' slot groups. Dimmer than the labels "
+             + "on purpose — it separates the groups without competing with them for attention.")]
+    [SerializeField] private Color _wordSeparatorColor = new Color(1f, 0.84f, 0.29f, 0.55f);
+
+    [Header("Rail One-Word Paging")]
+    [Tooltip("On a one-word-at-a-time objective (Level 15), unscaled seconds a finished word stays "
+             + "on screen after its last glyph lands, so the completed word reads before it leaves.")]
+    [SerializeField, Min(0f)] private float _railPageHoldSeconds = 0.45f;
+
+    [Tooltip("Unscaled seconds for the finished word to slide out to the left, and again for the "
+             + "next word to slide in from the right.")]
+    [SerializeField, Min(0.01f)] private float _railPageSlideSeconds = 0.28f;
+
+    [Tooltip("Size of the words-completed progress bar shown under a one-word-at-a-time rail, in "
+             + "canvas units. It stays put while the words slide past above it.")]
+    [SerializeField] private Vector2 _railProgressBarSize = new Vector2(420f, 16f);
+
+    [Tooltip("Gap between the rail's label row and the progress bar, in canvas units. The rail is "
+             + "raised by the progress block's height so the bar never pushes it off screen.")]
+    [SerializeField, Min(0f)] private float _railProgressGapBelowRail = 14f;
+
+    [Tooltip("Gap between the progress bar and the words-completed count beneath it.")]
+    [SerializeField, Min(0f)] private float _railProgressTextGap = 6f;
+
+    [Tooltip("Font size of the words-completed count.")]
+    [SerializeField, Min(1f)] private float _railProgressFontSize = 46f;
+
+    [Tooltip("Words-completed count. {0} is the words finished, {1} the words in the passage.")]
+    [SerializeField] private string _railProgressFormat = "{0}/{1} words completed";
+
+    [SerializeField] private Color _railProgressTrackColor = new Color(0f, 0f, 0f, 0.45f);
+    [SerializeField] private Color _railProgressFillColor = new Color(1f, 0.84f, 0.29f, 1f);
+
+    [Tooltip("Unscaled seconds the bar takes to fill to a newly completed word.")]
+    [SerializeField, Min(0.01f)] private float _railProgressFillSeconds = 0.35f;
+
+    [Header("Rail Slot Fill Pop")]
+    [Tooltip("Peak scale of the brief pop played on the ONE slot that just filled. This is the beat "
+             + "that teaches the lesson's whole point — the enemy fell and THAT box became a "
+             + "letter — so the box has to visibly do something at the moment it fills rather than "
+             + "just quietly change colour. 1 disables the pop.")]
+    [SerializeField, Min(1f)] private float _slotFillPopScale = 1.28f;
+
+    [Tooltip("Seconds for the fill pop's full out-and-back. Short on purpose: a flourish here "
+             + "competes with the restoration line being read.")]
+    [SerializeField, Min(0f)] private float _slotFillPopSeconds = 0.42f;
+
+    [Header("Rail Slot Glyph Flight")]
+    // The claim this beat has to make is spatial: you took THAT syllable off THAT enemy and put it
+    // in THAT box. A fade-in says "a box changed"; a glyph that leaves the enemy, arcs down and
+    // lands in the box says where it came from. Everything below runs on UNSCALED time — beat 1 of
+    // the enemy introduction holds Time.timeScale at 0.15 and a kill can land mid-lesson, which
+    // would stretch a 0.7s flourish into most of five seconds.
+
+    [Tooltip("Whether a filled slot's glyph flies in from the defeated enemy. Off falls back to "
+             + "the immediate fill, which is the same end state.")]
+    [SerializeField] private bool _slotGlyphFlightEnabled = true;
+
+    [Tooltip("Seconds the glyph spends travelling from the enemy to its box, on an ease-out arc.")]
+    [SerializeField, Min(0.01f)] private float _slotGlyphFlightSeconds = 0.40f;
+
+    [Tooltip("Scale the glyph leaves the enemy at, relative to its resting size in the box. "
+             + "Larger at the source so it reads as coming toward the player's readout.")]
+    [SerializeField, Min(0.1f)] private float _slotGlyphFlightStartScale = 1.4f;
+
+    [Tooltip("Scale the glyph overshoots to on arrival before settling back to 1.")]
+    [SerializeField, Min(1f)] private float _slotGlyphArrivalScale = 1.25f;
+
+    [Tooltip("Seconds for the back-eased settle from the arrival overshoot down to resting size.")]
+    [SerializeField, Min(0.01f)] private float _slotGlyphSettleSeconds = 0.18f;
+
+    [Tooltip("Seconds for the small trailing bounce after the settle. The whole flight is meant "
+             + "to be over inside about 0.70s so it never outlives the line explaining it.")]
+    [SerializeField, Min(0f)] private float _slotGlyphBounceSeconds = 0.12f;
+
+    [Tooltip("Height of the trailing bounce as a fraction of resting size.")]
+    [SerializeField, Range(0f, 0.25f)] private float _slotGlyphBounceAmount = 0.03f;
+
+    [Tooltip("How far the travel arc bows upward, as a fraction of the straight-line distance. "
+             + "A straight slide reads as a UI tween; a bow reads as something thrown.")]
+    [SerializeField, Range(0f, 1f)] private float _slotGlyphArcHeightFraction = 0.28f;
+
+    [Header("Rail Completion Flash")]
+    [Tooltip("How many times the whole rail flashes when the target text completes. Zero shows "
+             + "the finished rail without a flash.")]
+    [SerializeField, Min(0)] private int _railFlashCount = 3;
+
+    [Tooltip("Seconds of one half cycle of the completion flash, in unscaled time. The instant-win "
+             + "beat dips the time scale, so a scaled flash would crawl.")]
+    [SerializeField, Min(0f)] private float _railFlashHalfCycleSeconds = 0.12f;
+
+    [Tooltip("Alpha the rail dips to at the bottom of a completion flash. Above zero so the "
+             + "finished text never fully disappears at the moment it is being celebrated.")]
+    [SerializeField, Range(0f, 1f)] private float _railFlashDipAlpha = 0.3f;
+
+    [Header("Ash Crumble")]
+    [Tooltip("Seconds the clue stays fully readable after an Abo's ash arms, covering the gust's "
+             + "travel. The clue must be readable right up to the frame the ash lands, or the "
+             + "gust stops being the reason the letters went away. Lead plus duration below "
+             + "should equal AshGustController's gust duration (0.6 s).")]
+    [SerializeField, Min(0f)] private float _clueCrumbleLeadSeconds = 0.35f;
+
+    [Tooltip("Seconds the readable characters take to crumble into their mask. Zero renders the "
+             + "masked string immediately, which is also what a non-playing context does.")]
+    [SerializeField, Min(0f)] private float _clueCrumbleDurationSeconds = 0.25f;
+
+    [Tooltip("Fraction of the crumble spent fading the doomed characters out before the mask "
+             + "fades in. Below one the two overlap, so the slot is never blank.")]
+    [SerializeField, Range(0.1f, 1f)] private float _clueCrumbleHandoff = 0.6f;
+
+    [Tooltip("Fraction of the crumble that each character lags behind the one to its left, so "
+             + "the run comes apart left to right instead of dissolving as one block.")]
+    [SerializeField, Range(0f, 0.9f)] private float _clueCrumbleCharacterStagger = 0.2f;
+
+    [Tooltip("How far a crumbling character sinks as it fades, in em of the clue's font size. "
+             + "Ash falls; the offset is what makes the fade read as crumbling rather than as a "
+             + "dimmed label.")]
+    [SerializeField] private float _clueCrumbleDropEm = 0.5f;
+
+    [Tooltip("How far each mask character rises into place as it fades in, in em. Small: the "
+             + "mask is settling ash, not an arriving object.")]
+    [SerializeField] private float _clueCrumbleMaskRiseEm = 0.22f;
+
+    [Header("Punit Torn Clue")]
+    [Tooltip("How long Punit's clue fragments take to separate or reconnect, in unscaled seconds.")]
+    [SerializeField, Min(0.01f)] private float _punitTearTransitionSeconds = 0.28f;
+
+    [Tooltip("Distance each side of the clue moves away from its torn seam, in canvas units.")]
+    [SerializeField, Min(1f)] private float _punitTearSeparation = 15f;
+
+    [Header("Uhaw Restoration Capture")]
+    [Tooltip("Unscaled seconds a restored glyph takes to travel into Uhaw or return to its slot.")]
+    [SerializeField, Min(0.01f)] private float _uhawGlyphTransferSeconds = 0.42f;
+    [Tooltip("Scale of a captured glyph while it is held over Uhaw.")]
+    [SerializeField, Range(0.1f, 1f)] private float _uhawCapturedGlyphScale = 0.48f;
+
+    /// <summary>
+    /// Suppresses a clue announcement that lands on top of one CombatResolver just made.
+    /// AudioManager uses PlayOneShot, so pronunciation clips overlap rather than interrupt.
+    /// </summary>
+    private const float PronunciationDebounceSeconds = 0.5f;
+
+    /// <summary>Prefix on the at-accept cue, matching the victory summary's "Restored:" surface.</summary>
+    private const string WordRestoredPrefix = "Restored: ";
+
+    private ClueChannels _resolvedChannels = ClueChannels.Glyph;
+    private Enemy _currentClue;
+    private LevelConfigSO _level;
+    private ActiveClueDirector _subscribedDirector;
+    private Button _replayAudioButtonComponent;
+    private float _lastPronunciationTime = float.NegativeInfinity;
+    private GameObject _activeClueMark;
+    private Sprite _runtimeMarkSprite;
+    private Coroutine _clueCrumbleRoutine;
+    private int _wordRestoredCueCount;
+    private string _lastWordRestoredMessage;
+
+    private readonly List<TornRailFragment> _punitRailFragments =
+        new List<TornRailFragment>();
+    private RectTransform _punitTornBoundRail;
+    private string _punitBoundWordSpanIdentity;
+    private float _punitRailSplitLocalX;
+    private float _punitRailTopY;
+    private float _punitRailBottomY;
+    private ProceduralClueTearGraphic _punitTearGraphic;
+    private TMP_Text _punitTornTextSurface;
+    private string _punitTextBaselineString;
+    private Vector3[][] _punitTextBaselineVertices;
+    private float _punitTextSplitX;
+    private float _punitTextTopY;
+    private float _punitTextBottomY;
+    private bool _punitTextCanSplit;
+    private float _punitTearProgress;
+    private bool _punitTearTargetActive;
+
+    // EnemyData_Uhaw currently carries ForkedGlyph as its gameplay enum value. Use its stable
+    // enemy identity for this visual so we do not change or reinterpret that serialized mechanic.
+    private const string UhawEnemyId = "uhaw";
+    private int _ngatngatDamageStage;
+    private bool _ngatngatVisualActive;
+    private readonly Dictionary<TextMeshProUGUI, NgatngatLabelBinding> _ngatngatLabelBindings =
+        new Dictionary<TextMeshProUGUI, NgatngatLabelBinding>();
+    private readonly List<TextMeshProUGUI> _ngatngatLabelRemovalBuffer =
+        new List<TextMeshProUGUI>();
+    private readonly List<Enemy> _abilityVisualEnemyBuffer = new List<Enemy>();
+    private readonly List<UhawGlyphCapture> _uhawGlyphCaptures = new List<UhawGlyphCapture>();
+    private Enemy _activeUhaw;
+    private RailSlot _pendingUhawGlyphSlot;
+    private Enemy _pendingUhawGlyphTarget;
+    private long _pendingUhawGlyphTargetSpawnSequence;
+
+    /// <summary>
+    /// One built slot on the target-text rail. Holds the authored slot it stands for, so the rail
+    /// can be repainted from restoration state without rebuilding, and both of its graphics, so a
+    /// repaint touches no component lookups.
+    /// </summary>
+    /// <summary>
+    /// The mark drawn between two focus words' slot groups. A colon rather than a slash or a bullet:
+    /// it is the divider the requested shape asks for, it is present in every font the HUD can fall
+    /// back to, and it carries no reading of its own that could be mistaken for a syllable.
+    /// </summary>
+    private const string WordSeparatorText = ":";
+
+    private sealed class RailSlot
+    {
+        public FocusWordDefinition Word;
+        public int DecompositionIndex;
+        public string OccurrenceId;
+        public string UnitId;
+        public RectTransform Anchor;
+        public Image Frame;
+        public Image Glyph;
+
+        /// <summary>
+        /// The word page this box belongs to on a one-word-at-a-time objective, or
+        /// <see cref="RestorationWordPages.NoPage"/> when the whole rail is shown at once.
+        /// </summary>
+        public int PageIndex = RestorationWordPages.NoPage;
+
+        /// <summary>The romanised syllable printed under the box, and the label printing it.</summary>
+        public TextMeshProUGUI Label;
+        public string LatinLabel;
+
+        /// <summary>
+        /// The in-flight glyph currently heading for this box, if any. Held per slot rather than in
+        /// one global list so a second fill on the SAME box can retire the first rather than let
+        /// two fliers race each other into the same place. Fills on DIFFERENT boxes are genuinely
+        /// independent and run side by side.
+        /// </summary>
+        public GameObject Flier;
+        public Coroutine FlightRoutine;
+
+        /// <summary>
+        /// Unscaled time by which this flight must have finished on its own. Past it, the watchdog
+        /// finishes it regardless.
+        ///
+        /// <para>
+        /// This is what covers the kills the flier itself cannot see: <c>StopAllCoroutines</c>, or
+        /// anything else that drops the routine while the presenter, the rail and the flier all
+        /// stay perfectly alive. In that case there is nothing structurally wrong for the watchdog
+        /// to notice — only a glyph that stopped moving — so the deadline is the only signal left.
+        /// </para>
+        /// </summary>
+        public float FlightDeadline;
+
+        /// <summary>True while Uhaw's one UI proxy stands in for this restored glyph.</summary>
+        public bool IsUhawCaptured;
+    }
+
+    private sealed class NgatngatLabelBinding
+    {
+        public TextMeshProUGUI Label;
+        public int Stage;
+        public System.Action<TMP_TextInfo> PreRenderCallback;
+    }
+
+    private enum UhawGlyphCaptureState
+    {
+        Capturing,
+        Captured,
+        Returning,
+    }
+
+    private sealed class UhawGlyphCapture
+    {
+        public RailSlot Slot;
+        public Enemy Target;
+        public long TargetSpawnSequence;
+        public GameObject Proxy;
+        public RectTransform ProxyRect;
+        public UhawGlyphCaptureState State;
+        public Vector2 TravelStart;
+        public Vector2 ReturnStart;
+        public float Elapsed;
+        public float StartScale;
+        public float EndScale;
+    }
+
+    private sealed class TornRailFragment
+    {
+        public RectTransform Rect;
+        public Vector3 RestPosition;
+        public float Direction;
+    }
+
+    /// <summary>
+    /// Every slot with a flight in progress. Walked by <see cref="ReconcileSlotFlights"/> once a
+    /// frame as a watchdog, and drained outright on teardown.
+    ///
+    /// <para>
+    /// This list, and not a <c>finally</c> in the flight coroutine, is what guarantees the rail
+    /// cannot be left half-animated. Unity does NOT run a coroutine's <c>finally</c> when it stops
+    /// the coroutine — <c>StopAllCoroutines</c>, disabling the component, destroying the object and
+    /// unloading the scene all kill the routine dead where it stands. A flight that parked the real
+    /// glyph hidden and relied on its own tail to unhide it would strand an invisible glyph in a
+    /// slot the state says is restored. So the rest state is instead re-established from outside
+    /// the coroutine, by <see cref="FinishSlotFlight"/>, which is idempotent and is called from the
+    /// watchdog, from <see cref="OnDisable"/> and from <see cref="DestroyRestorationRail"/>.
+    /// </para>
+    /// </summary>
+    private readonly List<RailSlot> _slotsInFlight = new List<RailSlot>();
+
+    private readonly List<RailSlot> _railSlots = new List<RailSlot>();
+    private readonly List<FocusWordDefinition> _runtimeObjectiveWords =
+        new List<FocusWordDefinition>();
+
+    /// <summary>
+    /// The rail's slot rects in flattened reading order, handed out through
+    /// <see cref="RestorationSlotAnchors"/>. Held as its own list rather than projected on demand
+    /// so a caller polling it every frame allocates nothing.
+    /// </summary>
+    private readonly List<RectTransform> _railSlotAnchors = new List<RectTransform>();
+
+    private GameObject _railRoot;
+
+    // Cached players for the cutscene check the rail's visibility funnel runs. The rail
+    // lives in the same bottom band as the cutscene caption and its scrim, and it cannot
+    // change while gameplay is dialogue-paused — so while any CutscenePlayer is playing
+    // the rail stays hidden rather than fighting the caption for the strip.
+    private CutscenePlayer[] _cutscenePlayers;
+    private FocusWordPreviewController[] _focusWordPreviews;
+    private SymbolLearningCardController[] _symbolCards;
+    private DialogueController[] _dialogueControllers;
+    private SentenceHintController[] _sentenceHintControllers;
+    private InstantWinPresenter[] _instantWinPresenters;
+    private bool _suppressedByIntroModal;
+    private bool _clueInstructionResolved;
+
+
+    // Runtime-only layout values. Serialized fields remain the nominal Level 1-4 layout; long
+    // objectives derive a uniform scale here so the rail stays inside the safe-area viewport.
+    private float _railNominalWidth;
+    private Vector2 _railLayoutSlotSize;
+    private float _railLayoutSlotSpacing;
+    private float _railLayoutWordGap;
+    private float _railLayoutLabelFontSize;
+    private float _railLayoutLabelRowHeight;
+    private float _railLayoutLabelGap;
+    private float _railLayoutSeparatorFontSize;
+    private System.Action _bandRefreshHandler;
+    private AspectLockedCamera _bandRefreshColumn;
+    private CanvasGroup _railCanvasGroup;
+    private Sprite _runtimeSlotFrameSprite;
+    private Coroutine _railFlashRoutine;
+
+    // One-word-at-a-time paging (Level 15). Null when the rail shows its whole target text. Every
+    // page's boxes share the same rail-local positions and only the shown page is active, so slot
+    // anchors never move inside the rail: the slide is the rail itself travelling sideways, and
+    // everything that reads slot geometry (ash, Punit, Uhaw, glyph flights) keeps working.
+    private RestorationWordPages _railPages;
+    private int _railShownPage = RestorationWordPages.NoPage;
+    private Coroutine _railPageRoutine;
+
+    // The words-completed bar under a paged rail. A sibling of the rail, not a child, so it holds
+    // still while the rail slides between words; it mirrors the rail's visibility in LateUpdate.
+    private GameObject _railProgressRoot;
+    private CanvasGroup _railProgressCanvasGroup;
+    private RectTransform _railProgressFill;
+    private TextMeshProUGUI _railProgressLabel;
+    private float _railProgressShown;
+    private float _railProgressTarget;
+
+    /// <summary>
+    /// Last observed ash state, so the onset can be spotted. Without this the ash would only
+    /// appear on the next clue change: the ability arms while an Abo walks, which raises no clue
+    /// event, and the panel would keep showing the readable spelling until something else moved.
+    /// </summary>
+    private bool _ashWasActive;
+    private Image _ashCoverImage;
+    private RectTransform _ashCoverRect;
+    private EnemyHudAbilityVisualDefinition _ashCoverDefinition;
+    private Sprite[] _ashCoverSequence;
+    private int _ashCoverFrameIndex;
+    private float _ashCoverFrameTimer;
+    private bool _ashCoverExiting;
+    private bool _ashCoverStateActive;
+    private bool _ashCoverUsesRestorationRail;
+    private RailSlot _ashCoverRailSlot;
+
+    /// <summary>
+    /// Set only for the refresh raised by the ash onset, so the crumble animates exactly there
+    /// and every other path through SetClueText stays an immediate assignment.
+    /// </summary>
+    private bool _animateClueCrumble;
+    private readonly ActiveClueRestorationState _restorationState =
+        new ActiveClueRestorationState();
+    private RestorationObjectiveController _restorationObjectiveController;
+
+    /// <summary>Reused by HandleActiveClueChanged so badge sweeps do not allocate per clue.</summary>
+    private readonly System.Collections.Generic.List<Enemy> _badgeSweepBuffer =
+        new System.Collections.Generic.List<Enemy>();
+
+    /// <summary>
+    /// True only when this level actually arms clue combat. Guards every presentation side
+    /// effect, so a legacy level's glyph badges are never touched.
+    /// </summary>
+    private bool IsClueCombatArmed => _level != null && _level.activeClueCombatEnabled;
+
+    public ClueChannels ResolvedChannels => _resolvedChannels;
+
+    /// <summary>True when the glyph itself is on screen, making the attempt recognition.</summary>
+    public bool AnswerWasVisible =>
+        (_resolvedChannels & ClueChannels.Glyph) != ClueChannels.None;
+
+    /// <summary>
+    /// The channel-independent mark riding on the active enemy, or null while nothing is
+    /// marked. Only ever created for a level that arms clue combat.
+    /// </summary>
+    public GameObject ActiveClueMark => _activeClueMark;
+
+    /// <summary>
+    /// The retired restoration announcement label, kept hidden when authored wiring exists.
+    /// </summary>
+    public TextMeshProUGUI WordRestoredLabel => _wordRestoredText;
+
+    /// <summary>
+    /// How many word-restoration cues this presenter has raised. Exists so a test can assert
+    /// "exactly once per accepted draw". The cue is recorded only; nothing is drawn for it.
+    /// </summary>
+    public int WordRestoredCueCount => _wordRestoredCueCount;
+
+    /// <summary>The text of the most recent word-restoration cue, or null before the first.</summary>
+    public string LastWordRestoredMessage => _lastWordRestoredMessage;
+
+    /// <summary>The legacy focus-word projection used by existing HUD/ability callers.</summary>
+    public ActiveClueRestorationState RestorationState => _restorationState;
+
+    /// <summary>The scene-scoped objective owner when the level uses the new definition.</summary>
+    public RestorationObjectiveController RestorationObjective => _restorationObjectiveController;
+
+    public bool UsesRestorationObjectiveDefinition =>
+        _restorationObjectiveController != null
+        && _restorationObjectiveController.IsConfigured
+        && !_restorationObjectiveController.UsesLegacyFallback;
+
+    /// <summary>Assigns the scene-scoped objective before the level is applied.</summary>
+    public void SetRestorationObjectiveController(RestorationObjectiveController controller)
+    {
+        _restorationObjectiveController = controller;
+    }
+
+    /// <summary>
+    /// The clue panel's own rect, or null on a HUD with no panel wired.
+    ///
+    /// <para>
+    /// Exposed for code that has to know which band of the screen the HUD covers — the enemy
+    /// introduction beat halts its subject BELOW this rect, because the panel is drawn in front of
+    /// the lane and an enemy parked behind it is on camera and still invisible.
+    /// </para>
+    /// </summary>
+    public RectTransform CluePanelRect =>
+        _cluePanelRoot != null ? _cluePanelRoot.transform as RectTransform : null;
+
+    /// <summary>The restoration rail's own rect, or null before the rail is built.</summary>
+    public RectTransform RestorationRailRect =>
+        _railRoot != null ? _railRoot.transform as RectTransform : null;
+
+    /// <summary>
+    /// The enabled presenter, for ability code that must read target-text progress without owning
+    /// a reference to the HUD. A plain static handle rather than a singleton base class: an
+    /// ability lives on a pooled enemy shell and has to cope with there being no presenter at all
+    /// on a level that never arms clue combat.
+    /// </summary>
+    public static ActiveCluePresenter Active { get; private set; }
+
+    /// <summary>Test seam: stand in for the OnEnable that EditMode never runs.</summary>
+    internal static void SetActiveForTests(ActiveCluePresenter presenter) => Active = presenter;
+
+    /// <summary>How many target-text slots the player has already restored.</summary>
+    public int RestoredSlotCount => UsesRestorationObjectiveDefinition
+        ? _restorationObjectiveController.State.RestoredTargetCount
+        : _restorationState.RestoredSlotCount;
+
+    /// <summary>
+    /// The 1-based position, inside its own focus word, of the slot the target text needs next —
+    /// or zero when every slot is filled or the level has no focus words.
+    ///
+    /// <para>
+    /// "Needed next" is the leftmost unrestored slot over the focus words in authored order, which
+    /// is the same flattening <see cref="SpawnAssignmentCoordinator"/> builds its slot list from
+    /// and, at Level 1's <c>activeSlotWindow</c> of one, the same slot its director calls the
+    /// cursor. Exposed as a position within the word rather than as a global index because that is
+    /// the fact abilities care about: Abo ng Simula's ash masks a word's first slot, so it only
+    /// changes anything while the needed slot is <b>not</b> its word's first.
+    /// </para>
+    /// </summary>
+    public int NeededSlotPositionInWord
+    {
+        get
+        {
+            if (UsesRestorationObjectiveDefinition)
+            {
+                int activeUnit = _restorationObjectiveController.State.ActiveUnitIndex;
+                RestorationObjectiveUnit unit = activeUnit >= 0
+                    && _restorationObjectiveController.State.Definition?.units != null
+                    && activeUnit < _restorationObjectiveController.State.Definition.units.Count
+                    ? _restorationObjectiveController.State.Definition.units[activeUnit]
+                    : null;
+                if (unit?.tokens != null)
+                {
+                    int position = 0;
+                    for (int tokenIndex = 0; tokenIndex < unit.tokens.Count; tokenIndex++)
+                    {
+                        RestorationObjectiveToken token = unit.tokens[tokenIndex];
+                        if (token?.IsTarget != true)
+                            continue;
+
+                        position++;
+                        if (!_restorationObjectiveController.IsOccurrenceRestored(token.occurrenceId))
+                            return position;
+                    }
+                }
+
+                return 0;
+            }
+
+            if (_level?.focusWords == null)
+                return 0;
+
+            for (int wordIndex = 0; wordIndex < _level.focusWords.Count; wordIndex++)
+            {
+                FocusWordDefinition word = _level.focusWords[wordIndex];
+                if (word?.decomposition == null)
+                    continue;
+
+                // Counts emitted slots, not raw list indices: a decomposition may carry a null
+                // symbol, and the spawn schedule skips those too.
+                int position = 0;
+                for (int slotIndex = 0; slotIndex < word.decomposition.Count; slotIndex++)
+                {
+                    SymbolValueReference reference = word.decomposition[slotIndex];
+                    if (reference?.symbol == null || string.IsNullOrEmpty(reference.symbol.stableId))
+                        continue;
+
+                    position++;
+                    if (!_restorationState.IsSlotRestored(word, slotIndex))
+                        return position;
+                }
+            }
+
+            return 0;
+        }
+    }
+
+    /// <summary>True when the level has authored at least one focus word to restore.</summary>
+    public bool HasRestorationWords => UsesRestorationObjectiveDefinition
+        ? _restorationObjectiveController.State.TargetCount > 0
+        : _restorationState.FocusWordCount > 0;
+
+    /// <summary>Checks whether the requested focus words have all filled their slots.</summary>
+    public bool AreRestorationWordsComplete(IReadOnlyList<string> stableIds)
+        => _restorationState.AreWordsComplete(stableIds);
+
+    /// <summary>Checks the exact word or syllable targets required by the current flow segment.</summary>
+    public bool AreRestorationTargetsComplete(IReadOnlyList<ActiveClueRestorationTarget> targets)
+        => _restorationState.AreTargetsComplete(targets);
+
+    /// <summary>
+    /// The rail's slot rects in flattened reading order — focus word 0's emitted syllables left to
+    /// right, then focus word 1's — which is the same flattening
+    /// <see cref="SpawnAssignmentCoordinator"/> and the draw-feedback report number their slots by.
+    /// Empty until the rail is built, which only happens in play mode on a level that arms the
+    /// shared restoration path.
+    ///
+    /// <para>
+    /// The list is live: the rail is rebuilt on a level change, so a caller holding the returned
+    /// reference keeps seeing the current slots, but an index captured across a rebuild is not
+    /// guaranteed to name the same rect. Read it, fly to it, drop it.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<RectTransform> RestorationSlotAnchors => _railSlotAnchors;
+
+    /// <summary>
+    /// One rail slot's rect by flattened slot index, or null when the index is outside the target
+    /// text or the rail does not exist. Null rather than an exception because the callers are HUD
+    /// presenters reacting to a combat report: a slot index they cannot resolve means "do not fly
+    /// the badge", never "fail the draw".
+    /// </summary>
+    public RectTransform GetRestorationSlotAnchor(int flattenedSlotIndex)
+    {
+        if (flattenedSlotIndex < 0 || flattenedSlotIndex >= _railSlotAnchors.Count)
+            return null;
+
+        return _railSlotAnchors[flattenedSlotIndex];
+    }
+
+    /// <summary>
+    /// Shows the whole rail as one finished text and flashes it — §2 B10 step 1, the beat that
+    /// turns four separately filled slots into the word the player just restored. Every slot is
+    /// painted restored and every focus word's Latin label is revealed, so the join reads whole
+    /// even on the frame the last fill arrives, and the completed word is readable because a
+    /// complete word has no remaining answer to leak.
+    ///
+    /// <para>
+    /// Returns false when there is no rail to celebrate — a level that never armed the restoration
+    /// path, or a non-playing context. Callers use that to fall back to their own presentation
+    /// rather than to hold on an empty screen.
+    /// </para>
+    /// </summary>
+    public bool CelebrateRestorationComplete()
+    {
+        if (_railRoot == null)
+            return false;
+
+        RepaintRail(forceRestored: true);
+        _railRoot.SetActive(!IsAnyCutscenePlaying());
+
+        if (_railFlashRoutine != null)
+        {
+            StopCoroutine(_railFlashRoutine);
+            _railFlashRoutine = null;
+        }
+
+        // A disabled presenter cannot run the flash. Showing the finished rail is the useful half
+        // of this call, so it still counts as celebrated rather than reporting failure.
+        if (!isActiveAndEnabled || _railCanvasGroup == null)
+            return true;
+
+        _railFlashRoutine = StartCoroutine(FlashRail());
+        return true;
+    }
+
+    /// <summary>
+    /// Unscaled seconds <see cref="CelebrateRestorationComplete"/> spends flashing, so a caller
+    /// sequencing a win beat can hold for exactly as long as the rail is still moving instead of
+    /// guessing at a duration that would drift the moment the flash is retuned.
+    /// </summary>
+    public float RestorationCelebrationDurationSeconds =>
+        Mathf.Max(0, _railFlashCount) * Mathf.Max(0f, _railFlashHalfCycleSeconds) * 2f;
+
+    private void OnEnable()
+    {
+        Active = this;
+        if (_wordRestoredText != null)
+            _wordRestoredText.gameObject.SetActive(false);
+        _ashWasActive = AshFirstSlotController.IsAnyActive();
+        _punitTearTargetActive = false;
+        _punitTearProgress = 0f;
+        _ngatngatVisualActive = false;
+        _ngatngatDamageStage = 0;
+        _activeUhaw = null;
+        SubscribeToDirector();
+        BindReplayAudioButton();
+        EventBus.OnPronunciationRequested += HandlePronunciationRequested;
+        EventBus.OnEnemySpawned += HandleEnemySpawned;
+        EventBus.OnCutsceneStarted += HandleCutsceneTransitioned;
+        EventBus.OnCutsceneComplete += HandleCutsceneTransitioned;
+    }
+
+    private void Start()
+    {
+        SubscribeToDirector();
+
+        if (_level == null && GameManager.Instance != null)
+            ApplyLevel(GameManager.Instance.CurrentLevel);
+
+        if (_subscribedDirector != null)
+            HandleActiveClueChanged(null, _subscribedDirector.CurrentClue);
+    }
+
+    private void OnDisable()
+    {
+        // Only clear the handle if it still points at us, so a scene bringing up a replacement
+        // presenter is not left with a null one when the old presenter tears down after it.
+        if (Active == this)
+            Active = null;
+
+        ResetPunitTornEffect();
+        ResetNgatngatTextDamage();
+        ResetUhawGlyphCaptures();
+
+        _clueCrumbleRoutine = null;
+        _railFlashRoutine = null;
+        SettleRailPage();
+        HideAshCover();
+
+        // Before anything is torn down. Disabling the component is one of the ways Unity kills a
+        // coroutine without running its tail, so the slots are put back at rest here, by hand,
+        // while the rail still exists to be put back.
+        FinishAllSlotFlights();
+
+        EventBus.OnPronunciationRequested -= HandlePronunciationRequested;
+        EventBus.OnEnemySpawned -= HandleEnemySpawned;
+        EventBus.OnCutsceneStarted -= HandleCutsceneTransitioned;
+        EventBus.OnCutsceneComplete -= HandleCutsceneTransitioned;
+        DestroyActiveClueMark();
+
+        if (_subscribedDirector != null)
+        {
+            _subscribedDirector.OnActiveClueChanged -= HandleActiveClueChanged;
+            _subscribedDirector.OnActiveClueResolved -= HandleActiveClueResolved;
+        }
+        _subscribedDirector = null;
+
+        if (_replayAudioButtonComponent != null)
+            _replayAudioButtonComponent.onClick.RemoveListener(ReplayAudio);
+        _replayAudioButtonComponent = null;
+
+        DestroyRestorationRail();
+    }
+
+    /// <summary>Resolves this level's channels, including the visual audio fallback.</summary>
+    public void ApplyLevel(LevelConfigSO level)
+    {
+        ResetPunitTornEffect();
+        _level = level;
+        _restorationState.Configure(level?.focusWords);
+
+        if (_restorationObjectiveController == null)
+            _restorationObjectiveController = FindFirstObjectByType<RestorationObjectiveController>(
+                FindObjectsInactive.Include);
+
+        _restorationObjectiveController?.Configure(level);
+
+        // A new level means a new target text, so the rail is rebuilt from the incoming focus
+        // words rather than repainted over the previous level's slots.
+        DestroyRestorationRail();
+
+        _resolvedChannels = level == null
+            ? ClueChannels.Glyph
+            : ClueChannelResolver.Resolve(level.clueChannels, level.audioVisualFallback);
+
+        // An Inspector-wired presenter runs OnEnable and Start before LevelFlowController
+        // creates the director, so both earlier attempts found Instance null. Without this
+        // the authored HUD path would silently never present a clue.
+        SubscribeToDirector();
+
+        // No runtime clue panel is built any more. The fallback used to drop a dark plate across
+        // the top of the play field carrying a masked "----" readout and a Replay button, on every
+        // level that armed clue combat without an authored panel — which is every level. The
+        // restoration rail along the foot of the screen already shows the target text as slots,
+        // and the authored DrawGlowingSymbolInstruction already carries the standing instruction,
+        // so the plate was a second, unplaced copy of both, drawn in front of the lane the enemies
+        // walk down. An authored panel wired in the Inspector still works exactly as before.
+
+        // Built here rather than on the first fill: §2 B1 requires the target text to be standing
+        // on screen as empty slots before the first enemy walks on, because the player's opening
+        // mental model has to be "fill this", not "kill those".
+        if (Application.isPlaying && level != null && level.activeClueRestorationEnabled)
+            EnsureRestorationRail();
+        BindReplayAudioButton();
+
+        if (_subscribedDirector != null)
+            HandleActiveClueChanged(null, _subscribedDirector.CurrentClue);
+        UpdateRestorationProgress();
+    }
+
+    private void SubscribeToDirector()
+    {
+        ActiveClueDirector director = ActiveClueDirector.Instance;
+        if (director == null || _subscribedDirector == director)
+            return;
+
+        if (_subscribedDirector != null)
+        {
+            _subscribedDirector.OnActiveClueChanged -= HandleActiveClueChanged;
+            _subscribedDirector.OnActiveClueResolved -= HandleActiveClueResolved;
+        }
+
+        _subscribedDirector = director;
+        _subscribedDirector.OnActiveClueChanged += HandleActiveClueChanged;
+        _subscribedDirector.OnActiveClueResolved += HandleActiveClueResolved;
+    }
+
+    private static void CopyFont(TextMeshProUGUI source, TextMeshProUGUI target)
+    {
+        if (source == null || target == null || source.font == null)
+            return;
+
+        target.font = source.font;
+        target.fontSharedMaterial = source.fontSharedMaterial;
+    }
+
+    /// <summary>
+    /// Keeps the runtime clue inside the safe gameplay HUD instead of placing it directly on
+    /// the canvas. Authored scenes use HUDLayer; the canvas fallback preserves bootstrapped
+    /// levels and tests that do not include the full HUD hierarchy.
+    /// </summary>
+    private static Transform ResolveHudContainer(Canvas canvas)
+    {
+        GameObject hudLayer = GameObject.Find("HUDLayer");
+        if (hudLayer != null)
+            return hudLayer.transform;
+
+        GameObject hudRoot = GameObject.Find("HUDRoot");
+        if (hudRoot != null)
+            return hudRoot.transform;
+
+        return canvas != null ? canvas.transform : null;
+    }
+
+    private void BindReplayAudioButton()
+    {
+        Button nextButton = _replayAudioButton != null
+            ? _replayAudioButton.GetComponent<Button>()
+            : null;
+        if (_replayAudioButtonComponent == nextButton)
+            return;
+
+        if (_replayAudioButtonComponent != null)
+            _replayAudioButtonComponent.onClick.RemoveListener(ReplayAudio);
+
+        _replayAudioButtonComponent = nextButton;
+        if (_replayAudioButtonComponent != null)
+            _replayAudioButtonComponent.onClick.AddListener(ReplayAudio);
+    }
+
+    private void ReplayAudio()
+    {
+        if (_currentClue != null && _currentClue.Character != null)
+            EventBus.RaisePronunciationRequested(_currentClue.Character);
+    }
+
+    private void HandleActiveClueChanged(Enemy previous, Enemy current)
+    {
+        _currentClue = current;
+
+        // Legacy levels keep every badge visible. Without this guard a (null, null) change --
+        // raised from ApplyLevel and Start -- would sweep Hide() across every on-screen
+        // enemy on a level that never armed clue combat.
+        if (!IsClueCombatArmed)
+            return;
+
+        // Hide every non-active badge. EnemyGlyphBadge is normally visible for legacy combat,
+        // so hiding only the previous clue would leak answers when the subsystem is enabled.
+        bool showGlyph = (_resolvedChannels & ClueChannels.Glyph) != ClueChannels.None;
+        ActiveEnemyTracker tracker = ActiveEnemyTracker.Instance;
+        if (tracker != null)
+        {
+            tracker.FillActiveEnemiesSnapshot(_badgeSweepBuffer);
+            for (int i = 0; i < _badgeSweepBuffer.Count; i++)
+                ApplyBadgePolicy(_badgeSweepBuffer[i], current, showGlyph);
+        }
+
+        if (previous != null && previous != current && previous.GlyphBadge != null)
+            previous.GlyphBadge.Hide();
+
+        if (current != null && current.GlyphBadge != null)
+        {
+            if (showGlyph)
+                current.GlyphBadge.Show();
+            else
+                current.GlyphBadge.Hide();
+        }
+
+        UpdateActiveClueMark(current);
+        UpdateCluePanel(current);
+        UpdateRestorationProgress();
+    }
+
+    /// <summary>One enemy's badge state under the current clue: the mark shows, everyone hides.</summary>
+    private void ApplyBadgePolicy(Enemy enemy, Enemy clue, bool showGlyph)
+    {
+        if (enemy == null || enemy.GlyphBadge == null)
+            return;
+
+        if (!showGlyph)
+        {
+            enemy.GlyphBadge.Hide();
+            return;
+        }
+
+        if (enemy == clue)
+        {
+            enemy.GlyphBadge.Show();
+            return;
+        }
+
+        // Previously every enemy but the clue was hidden, so the field showed exactly one scroll and
+        // the player could not read what was coming. The reason to hide any of them is overlap: a
+        // scroll sitting right on top of the clue's makes both unreadable. So hide only the crowd
+        // within _badgeCrowdRadius of the clue and let everything further up the field keep its glyph.
+        bool crowdsTheClue = clue != null
+            && Vector2.Distance(enemy.transform.position, clue.transform.position) <= _badgeCrowdRadius;
+
+        if (crowdsTheClue)
+            enemy.GlyphBadge.Hide();
+        else
+            enemy.GlyphBadge.Show();
+    }
+
+    /// <summary>
+    /// The mark latches, so an enemy that spawns mid-latch raises no clue change and the sweep
+    /// in HandleActiveClueChanged never reaches it. Without this it walks on screen still
+    /// showing its glyph answer.
+    /// </summary>
+    private void HandleEnemySpawned(Enemy enemy)
+    {
+        if (!IsClueCombatArmed)
+            return;
+
+        ApplyBadgePolicy(
+            enemy, _currentClue, (_resolvedChannels & ClueChannels.Glyph) != ClueChannels.None);
+    }
+
+    /// <summary>
+    /// Keeps the mark on the marked enemy as it advances. Inert until a mark exists, which only
+    /// happens on a level that arms clue combat.
+    /// </summary>
+    private void LateUpdate()
+    {
+        RefitRestorationRail();
+        WatchAshOnset();
+        WatchPunitTornState(Time.unscaledDeltaTime);
+        WatchAbilityHudEffects(Time.unscaledDeltaTime);
+        TickAshCover(Time.unscaledDeltaTime);
+        PositionAshCoverOverFirstSlot();
+        ReconcileSlotFlights();
+
+        // Intro modals raise no events, so the rail polls their IsPresenting and reruns
+        // the visibility funnel on the edge — cheap because the flag only changes once
+        // per modal open/close, and the presenter arrays are tiny.
+        bool modalPresenting = IsAnyIntroModalPresenting();
+        if (modalPresenting != _suppressedByIntroModal)
+        {
+            _suppressedByIntroModal = modalPresenting;
+            UpdateRestorationProgress();
+        }
+
+        // The instruction's gate is polled rather than evented for the same reason the
+        // intro modals are: a presenter that enables mid-dialogue or mid-challenge never
+        // saw a Started event, and ChallengeRuntimeState raises none at all.
+        UpdateClueInstructionVisibility();
+
+        // After the modal edge above, which can show or hide the rail this frame, so the
+        // words-completed bar appears and disappears in the same frame as the boxes.
+        TickRailProgress(Time.unscaledDeltaTime);
+
+        if (_activeClueMark == null)
+            return;
+
+        if (!IsClueCombatArmed || _currentClue == null)
+        {
+            if (_activeClueMark.activeSelf)
+                _activeClueMark.SetActive(false);
+            return;
+        }
+
+        _activeClueMark.transform.position =
+            _currentClue.transform.position + (Vector3)_activeClueMarkOffset;
+    }
+
+    /// <summary>
+    /// Spec section 3.5: the mark is a marker treatment on the active enemy driven independently
+    /// of channel, so a sound-only or text-only level still shows which enemy is the clue.
+    /// </summary>
+    private void UpdateActiveClueMark(Enemy clue)
+    {
+        if (!_showActiveClueMark)
+        {
+            if (_activeClueMark != null)
+                _activeClueMark.SetActive(false);
+            return;
+        }
+
+        if (clue == null)
+        {
+            if (_activeClueMark != null)
+                _activeClueMark.SetActive(false);
+            return;
+        }
+
+        EnsureActiveClueMark();
+        if (_activeClueMark == null)
+            return;
+
+        _activeClueMark.transform.position =
+            clue.transform.position + (Vector3)_activeClueMarkOffset;
+        _activeClueMark.SetActive(true);
+    }
+
+    /// <summary>
+    /// An authored prefab wins. The procedural ring is the no-art fallback, generated rather
+    /// than taken from builtin resources so it also renders in a player build.
+    /// </summary>
+    private void EnsureActiveClueMark()
+    {
+        if (_activeClueMark != null)
+            return;
+
+        if (_activeClueMarkPrefab != null)
+        {
+            _activeClueMark = Instantiate(_activeClueMarkPrefab);
+            _activeClueMark.name = "[Runtime] ActiveClueMark";
+            _activeClueMark.SetActive(false);
+            return;
+        }
+
+        _runtimeMarkSprite = CreateRingSprite();
+
+        _activeClueMark = new GameObject("[Runtime] ActiveClueMark", typeof(SpriteRenderer));
+        SpriteRenderer markRenderer = _activeClueMark.GetComponent<SpriteRenderer>();
+        markRenderer.sprite = _runtimeMarkSprite;
+        markRenderer.color = new Color(1f, 0.84f, 0.29f, 1f);
+        markRenderer.sortingOrder = RenderOrder.ActiveClueMark;
+        _activeClueMark.transform.localScale =
+            new Vector3(_activeClueMarkScale, _activeClueMarkScale, 1f);
+        _activeClueMark.SetActive(false);
+    }
+
+    /// <summary>A one world unit hollow ring, so the mark frames the enemy without hiding it.</summary>
+    private static Sprite CreateRingSprite()
+    {
+        const int size = 128;
+        const float outerRadius = 0.5f;
+        const float innerRadius = 0.41f;
+
+        var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+        {
+            filterMode = FilterMode.Bilinear,
+            wrapMode = TextureWrapMode.Clamp
+        };
+
+        var pixels = new Color32[size * size];
+        var opaque = new Color32(255, 255, 255, 255);
+        var clear = new Color32(255, 255, 255, 0);
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float dx = ((x + 0.5f) / size) - 0.5f;
+                float dy = ((y + 0.5f) / size) - 0.5f;
+                float distance = Mathf.Sqrt((dx * dx) + (dy * dy));
+                pixels[(y * size) + x] =
+                    distance <= outerRadius && distance >= innerRadius ? opaque : clear;
+            }
+        }
+
+        texture.SetPixels32(pixels);
+        texture.Apply();
+
+        return Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f), size);
+    }
+
+    private void DestroyActiveClueMark()
+    {
+        Texture2D generatedTexture =
+            _runtimeMarkSprite != null ? _runtimeMarkSprite.texture : null;
+
+        DestroyOwnedObject(_activeClueMark);
+        DestroyOwnedObject(_runtimeMarkSprite);
+        DestroyOwnedObject(generatedTexture);
+
+        _activeClueMark = null;
+        _runtimeMarkSprite = null;
+    }
+
+    private static void DestroyOwnedObject(UnityEngine.Object owned)
+    {
+        if (owned == null)
+            return;
+
+        if (Application.isPlaying)
+            Destroy(owned);
+        else
+            DestroyImmediate(owned);
+    }
+
+    private void UpdateCluePanel(Enemy clue)
+    {
+        if (_cluePanelRoot != null)
+            _cluePanelRoot.SetActive(clue != null);
+
+        if (_clueText != null)
+        {
+            bool showText = clue != null
+                && (_resolvedChannels
+                    & (ClueChannels.LatinText | ClueChannels.IncompleteWord)) != ClueChannels.None;
+            _clueText.gameObject.SetActive(showText);
+            if (showText)
+                SetClueText(clue);
+            else
+                _clueText.text = string.Empty;
+        }
+
+        if (_clueImage != null)
+        {
+            // Resolve the sprite only when the channel is actually on, so a level that never
+            // uses context images does no focus-word lookup and leaves the Image untouched.
+            bool showImage = clue != null
+                && (_resolvedChannels & ClueChannels.ContextImage) != ClueChannels.None;
+
+            if (showImage)
+            {
+                FocusWordDefinition word = FindFocusWordContaining(clue.Character?.stableId);
+                _clueImage.sprite = ResolveContextImage(word);
+                showImage = _clueImage.sprite != null;
+            }
+
+            _clueImage.gameObject.SetActive(showImage);
+        }
+
+        if (_replayAudioButton != null)
+        {
+            _replayAudioButton.SetActive(
+                clue != null
+                && (_resolvedChannels & ClueChannels.SpokenAudio) != ClueChannels.None);
+        }
+
+        // Announce the new clue only if nothing else just did. When a hit resolves,
+        // CombatResolver announces the character the player drew and the mark then moves,
+        // which would stack a second overlapping clip -- AudioManager uses PlayOneShot.
+        if (clue != null
+            && (_resolvedChannels & ClueChannels.SpokenAudio) != ClueChannels.None
+            && clue.Character != null
+            && Time.unscaledTime - _lastPronunciationTime > PronunciationDebounceSeconds)
+        {
+            EventBus.RaisePronunciationRequested(clue.Character);
+        }
+    }
+
+    /// <summary>
+    /// Stamps every pronunciation on the bus, whoever raised it, so the presenter can tell
+    /// when its own announcement would collide with one already playing.
+    /// </summary>
+    private void HandlePronunciationRequested(BaybayinCharacterSO character)
+    {
+        _lastPronunciationTime = Time.unscaledTime;
+    }
+
+    /// <summary>
+    /// A cutscene takes the bottom of the screen for its narration band, which is the rail's
+    /// band — the caption landed on the slot labels and neither line survived the collision.
+    /// Both events just re-run the visibility funnel: the gate reads the players' live
+    /// IsPlaying state, so overlapping plays and a missed Started event cannot leave the
+    /// flag stale in either direction.
+    /// </summary>
+    private void HandleCutsceneTransitioned()
+    {
+        UpdateRestorationProgress();
+        UpdateClueInstructionVisibility();
+    }
+
+    /// <summary>
+    /// True while any CutscenePlayer in the scene is playing. Inactive objects are included
+    /// and the lookup is retried while the cache is empty: the cutscene canvas can still be
+    /// switched off the first time the rail's visibility is evaluated, and an empty cache
+    /// frozen from that moment would leave the gate permanently open.
+    /// </summary>
+    private bool IsAnyCutscenePlaying()
+    {
+        if (_cutscenePlayers == null || _cutscenePlayers.Length == 0)
+            _cutscenePlayers = FindObjectsByType<CutscenePlayer>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+        for (int i = 0; i < _cutscenePlayers.Length; i++)
+        {
+            if (_cutscenePlayers[i] != null && _cutscenePlayers[i].IsPlaying)
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Same gate as <see cref="IsAnyCutscenePlaying"/> for the intro modals (focus-word
+    /// preview, symbol learning card, base introduction): while one is up, its overlay owns the screen
+    /// and the rail's labels would ghost through the parchment. Both are queried live
+    /// rather than tracked — a rail armed while a modal is already up never saw an open
+    /// event, and empty caches are re-found because the controllers are created lazily.
+    /// </summary>
+    private bool IsAnyIntroModalPresenting()
+    {
+        if (_sentenceHintControllers == null || _sentenceHintControllers.Length == 0)
+            _sentenceHintControllers = FindObjectsByType<SentenceHintController>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < _sentenceHintControllers.Length; i++)
+        {
+            if (_sentenceHintControllers[i] != null && _sentenceHintControllers[i].IsPresenting)
+                return true;
+        }
+
+        if (_dialogueControllers == null || _dialogueControllers.Length == 0)
+            _dialogueControllers = FindObjectsByType<DialogueController>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < _dialogueControllers.Length; i++)
+        {
+            if (_dialogueControllers[i] != null && _dialogueControllers[i].IsBaseIntroductionPresenting)
+                return true;
+        }
+
+        if (_focusWordPreviews == null || _focusWordPreviews.Length == 0)
+            _focusWordPreviews = FindObjectsByType<FocusWordPreviewController>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < _focusWordPreviews.Length; i++)
+        {
+            if (_focusWordPreviews[i] != null && _focusWordPreviews[i].IsPresenting)
+                return true;
+        }
+
+        if (_symbolCards == null || _symbolCards.Length == 0)
+            _symbolCards = FindObjectsByType<SymbolLearningCardController>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < _symbolCards.Length; i++)
+        {
+            if (_symbolCards[i] != null && _symbolCards[i].IsPresenting)
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Same gate as <see cref="IsAnyIntroModalPresenting"/> for the story scroll: a live
+    /// dialogue owns the bottom band the standing instruction sits in, so the instruction
+    /// yields for its duration. Live-polled rather than evented — a presenter enabled
+    /// mid-dialogue never saw OnDialogueStarted, and a runtime-built controller can
+    /// appear after the first evaluation, so the empty cache retries.
+    /// </summary>
+    private bool IsAnyDialoguePresenting()
+    {
+        if (_dialogueControllers == null || _dialogueControllers.Length == 0)
+            _dialogueControllers = FindObjectsByType<DialogueController>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < _dialogueControllers.Length; i++)
+        {
+            if (_dialogueControllers[i] != null && _dialogueControllers[i].IsPresenting)
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Same gate for the instant-win beat: its banner parks on the rail's top edge, which is
+    /// the standing instruction's band, and "DRAW THE GLOWING SYMBOL TO DEFEND" has nothing
+    /// left to ask for once the text is whole. Live-polled like the others because the
+    /// presenter is runtime-built and can appear after the first evaluation.
+    /// </summary>
+    private bool IsAnyInstantWinPresenting()
+    {
+        if (_instantWinPresenters == null || _instantWinPresenters.Length == 0)
+            _instantWinPresenters = FindObjectsByType<InstantWinPresenter>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < _instantWinPresenters.Length; i++)
+        {
+            if (_instantWinPresenters[i] != null && _instantWinPresenters[i].IsPresenting)
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// The standing instruction's single visibility funnel: every surface that owns its
+    /// bottom band — the enemy introduction card, the instant-win banner, cutscenes,
+    /// dialogue, the intro modals and the challenge board — suppresses it, and it comes back only once none of them does. The introduction gate reads
+    /// IsPlaying rather than the lifetime banner: the card sits on the instruction's
+    /// band, but the banner outlives the lesson by up to a whole enemy lifetime, and
+    /// standing down for all of it would erase the instruction from ordinary combat.
+    /// Idempotent: SetClueInstructionVisible already early-outs on an unchanged state,
+    /// so this is cheap enough to re-evaluate every LateUpdate.
+    /// </summary>
+    private void UpdateClueInstructionVisibility()
+    {
+        bool suppressed = _suppressedByIntroModal
+            || EnemyIntroductionBeat.IsPlaying
+            || IsAnyCutscenePlaying()
+            || IsAnyDialoguePresenting()
+            || IsAnyInstantWinPresenting()
+            || ChallengeRuntimeState.IsActive;
+        SetClueInstructionVisible(!suppressed);
+    }
+
+    /// <summary>
+    /// AC1's word-restoration half (SALIN-135). An accepted draw earns two answers: the combat
+    /// response the enemy plays, and a language response saying which word just got its symbol
+    /// back. Before this the only "Restored:" surface was the end-of-level summary, so a player
+    /// mid-defense never saw the point of the symbol they had just drawn.
+    ///
+    /// Fired by the director's marked or unmarked consume path, so it is already once per
+    /// real carrier and an echoed recognition cannot double it.
+    /// </summary>
+    private void HandleActiveClueResolved(Enemy clue)
+    {
+        if (!IsClueCombatArmed || clue == null || clue.Character == null)
+            return;
+
+        if (UsesRestorationObjectiveDefinition)
+        {
+            RestorationProgressResult result =
+                _restorationObjectiveController.TryRestore(clue.Character.stableId);
+            if (!result.Applied)
+                return;
+
+            SetNgatngatVisualActive(FindActiveEnemyWithAbility(
+                EnemyLearningAbility.ProgressiveNibble, null) != null);
+            RecordNgatngatRestoration();
+            UpdateCluePanel(_currentClue);
+            UpdateRestorationProgress();
+            PopSlotForOccurrence(result.OccurrenceId);
+            _activeUhaw = FindActiveUhaw();
+            RailSlot restoredSlot = FindRailSlotForOccurrence(result.OccurrenceId);
+            bool objectiveGlyphCaptured = _activeUhaw != null
+                && CaptureOrQueueUhawGlyph(restoredSlot, _activeUhaw);
+            if (!objectiveGlyphCaptured)
+            {
+                LaunchSlotGlyphFlightForOccurrence(
+                    result.OccurrenceId, clue.transform.position);
+            }
+
+            RestorationObjectiveUnit unit = result.UnitIndex >= 0
+                && _restorationObjectiveController.State.Definition?.units != null
+                && result.UnitIndex < _restorationObjectiveController.State.Definition.units.Count
+                ? _restorationObjectiveController.State.Definition.units[result.UnitIndex]
+                : null;
+            ShowWordRestoredCue(unit?.displayLabel ?? unit?.clue ?? result.UnitId);
+            return;
+        }
+
+        // The at-accept cue predates the shared restoration gate and remains useful on
+        // Level 1, which still owns its authored post-wave challenge. Do not let that legacy
+        // presentation path mutate the new slot state or unmask its combat clue text.
+        if (_level == null || !_level.activeClueRestorationEnabled)
+        {
+            FocusWordDefinition legacyWord = FindFocusWordContaining(clue.Character.stableId);
+            string legacyMessage = BuildRestoredWordLabel(
+                legacyWord == null
+                    ? null
+                    : new[] { legacyWord });
+            if (!string.IsNullOrEmpty(legacyMessage))
+                ShowWordRestoredCue(legacyMessage);
+            return;
+        }
+
+        // Legacy content and any symbol outside this level's focus words have nothing to
+        // restore; staying silent beats announcing an empty word. The state marks every
+        // matching slot, so a symbol shared by both focus words fills both target texts.
+        IReadOnlyList<FocusWordDefinition> changedWords =
+            _restorationState.Apply(clue.Character.stableId);
+        if (changedWords.Count == 0)
+            return;
+
+        string restored = BuildRestoredWordLabel(changedWords);
+        if (string.IsNullOrEmpty(restored))
+            return;
+
+        SetNgatngatVisualActive(FindActiveEnemyWithAbility(
+            EnemyLearningAbility.ProgressiveNibble, null) != null);
+        RecordNgatngatRestoration();
+
+        // The clue stays latched through the pronunciation lead. Refreshing the panel here
+        // makes the accepted syllable appear in the target text before the enemy leaves.
+        UpdateCluePanel(_currentClue);
+        UpdateRestorationProgress();
+
+        // Fired between the repaint and the cue, so the box has already become a letter by the time
+        // it pops and the pop lands on the same frame as the line that explains it.
+        PopSlotsForSymbol(clue.Character.stableId);
+
+        // And AFTER the repaint for the same reason plus one more: the repaint is what leaves every
+        // slot in its finished state, so if the flight below never starts, never finishes, or is
+        // killed halfway, the rail is already correct. The flight only borrows the glyph.
+        _activeUhaw = FindActiveUhaw();
+        RailSlot uhawSlot = _activeUhaw != null
+            ? FindLastRestoredSlotForSymbol(clue.Character.stableId)
+            : null;
+        bool capturedByUhaw = uhawSlot != null
+            && CaptureOrQueueUhawGlyph(uhawSlot, _activeUhaw);
+        LaunchSlotGlyphFlightsInternal(
+            clue.Character.stableId, null, clue.transform.position,
+            capturedByUhaw ? uhawSlot : null);
+
+        ShowWordRestoredCue(restored);
+    }
+
+    /// <summary>
+    /// Prefers the authored display label, falling back to the Latin spelling that the masked
+    /// IncompleteWord channel was hiding.
+    /// </summary>
+    private static string BuildRestoredWordLabel(IReadOnlyList<FocusWordDefinition> words)
+    {
+        if (words == null || words.Count == 0)
+            return null;
+
+        var labels = new List<string>(words.Count);
+        for (int i = 0; i < words.Count; i++)
+        {
+            FocusWordDefinition word = words[i];
+            if (word == null)
+                continue;
+
+            string spelling = !string.IsNullOrEmpty(word.displayLabel)
+                ? word.displayLabel
+                : word.latinSpelling;
+            if (!string.IsNullOrEmpty(spelling))
+                labels.Add(spelling);
+        }
+
+        return labels.Count == 0
+            ? null
+            : WordRestoredPrefix + string.Join(", ", labels);
+    }
+
+    /// <summary>
+    /// Records which word an accepted draw restored. Nothing is drawn: the floating label this
+    /// used to raise (Level 4 printed "Ang INA at AMA" over the field on every fill) was removed
+    /// after the 2026-10-02 playtest. The rail filling in is the announcement.
+    /// </summary>
+    private void ShowWordRestoredCue(string message)
+    {
+        _wordRestoredCueCount++;
+        _lastWordRestoredMessage = message;
+        if (_wordRestoredText != null)
+            _wordRestoredText.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Shows or hides the standing instruction line — Gameplay authors it as
+    /// <c>DrawGlowingSymbolInstruction</c>. Matched on "Instruction" in the name rather than on a
+    /// serialized reference, so this works on a HUD authored before the cue existed and needs
+    /// nobody to rewire a scene. A HUD with no such label is simply left alone.
+    /// </summary>
+    private void SetClueInstructionVisible(bool visible)
+    {
+        TextMeshProUGUI instruction = ResolveClueInstruction();
+        if (instruction != null && instruction.gameObject.activeSelf != visible)
+            instruction.gameObject.SetActive(visible);
+    }
+
+    private TextMeshProUGUI ResolveClueInstruction()
+    {
+        // Resolved means resolved, including "this HUD has no instruction": the visibility
+        // funnel re-evaluates every LateUpdate, and a HUD without the line (the tutorial
+        // scene) would otherwise canvas-scan every frame forever. The line is scene-authored,
+        // so it exists — or never will — by the time the first evaluation runs.
+        if (_clueInstructionResolved)
+            return _clueInstructionText;
+        _clueInstructionResolved = true;
+
+        // Authored first: on a HUD that stands its own instruction line — every HUD, now that no
+        // panel is built at runtime — that line is the one the player sees.
+        _clueInstructionText = ResolveAuthoredClueInstruction();
+        if (_clueInstructionText != null)
+            return _clueInstructionText;
+
+        // An Inspector-wired panel may still carry its own instruction child.
+        if (_cluePanelRoot == null)
+            return null;
+
+        TextMeshProUGUI[] candidates =
+            _cluePanelRoot.GetComponentsInChildren<TextMeshProUGUI>(includeInactive: true);
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            if (candidates[i] == null || candidates[i] == _clueText)
+                continue;
+
+            if (candidates[i].name.IndexOf("Instruction", System.StringComparison.OrdinalIgnoreCase) < 0)
+                continue;
+
+            _clueInstructionText = candidates[i];
+            return _clueInstructionText;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Finds the instruction line the SCENE authored — Gameplay's <c>DrawGlowingSymbolInstruction</c>
+    /// — looking under this presenter first, where the authored line sits as a sibling of the
+    /// restoration readout, and then across the HUD canvas for a HUD that parents it elsewhere.
+    /// Matched on "Instruction" in the name, the same loose match the panel scan uses, because no
+    /// serialized reference for this line exists on a HUD authored before the cue did.
+    /// <para>
+    /// Labels this presenter builds itself are skipped by their <c>[Runtime]</c> prefix, so this
+    /// only ever answers with something a human placed.
+    /// </para>
+    /// </summary>
+    private TextMeshProUGUI ResolveAuthoredClueInstruction()
+    {
+        TextMeshProUGUI found =
+            FindAuthoredInstruction(GetComponentsInChildren<TextMeshProUGUI>(includeInactive: true));
+        if (found != null)
+            return found;
+
+        Canvas canvas = ResolveHudCanvas();
+        return canvas == null
+            ? null
+            : FindAuthoredInstruction(
+                canvas.GetComponentsInChildren<TextMeshProUGUI>(includeInactive: true));
+    }
+
+    private TextMeshProUGUI FindAuthoredInstruction(TextMeshProUGUI[] candidates)
+    {
+        if (candidates == null)
+            return null;
+
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            TextMeshProUGUI candidate = candidates[i];
+            if (candidate == null
+                || candidate == _clueText
+                || candidate == _restorationProgressText)
+                continue;
+
+            if (candidate.name.StartsWith("[Runtime]", System.StringComparison.Ordinal))
+                continue;
+
+            if (candidate.name.IndexOf("Instruction", System.StringComparison.OrdinalIgnoreCase) < 0)
+                continue;
+
+            return candidate;
+        }
+
+        return null;
+    }
+
+    private TextMeshProUGUI _clueInstructionText;
+
+    /// <summary>The canvas every runtime-built HUD piece here hangs from, shared so they agree.</summary>
+    private Canvas ResolveHudCanvas()
+    {
+        Canvas canvas = GetComponentInParent<Canvas>();
+        if (canvas != null)
+            return canvas;
+
+        GameObject hudCanvas = GameObject.Find("HUDCanvas");
+        canvas = hudCanvas != null ? hudCanvas.GetComponent<Canvas>() : null;
+        if (canvas != null)
+            return canvas;
+
+        return FindFirstObjectByType<Canvas>();
+    }
+
+    /// <summary>
+    /// Builds the persistent target-text rail used by the shared combat-restoration path: one
+    /// visual slot per flattened target slot, grouped per focus word, so INA AMA stands on screen
+    /// as [ ][ ] [ ][ ] before anything has been drawn.
+    ///
+    /// <para>
+    /// Built from the level's focus words rather than from authored children. Every level plays in
+    /// the one Gameplay scene, so hand-authored slots would have to be a fixed count that happened
+    /// to match whichever level was loaded; generating them means the rail is correct for a
+    /// two-slot level and a nine-slot one with no scene work at all.
+    /// </para>
+    /// </summary>
+    private IReadOnlyList<FocusWordDefinition> GetRestorationRailWords()
+    {
+        if (!UsesRestorationObjectiveDefinition)
+            return _restorationState.FocusWords;
+
+        _runtimeObjectiveWords.Clear();
+        RestorationObjectiveDefinition definition = _restorationObjectiveController.State.Definition;
+        if (definition?.units == null)
+            return _runtimeObjectiveWords;
+
+        for (int unitIndex = 0; unitIndex < definition.units.Count; unitIndex++)
+        {
+            RestorationObjectiveUnit unit = definition.units[unitIndex];
+            if (unit?.tokens == null)
+                continue;
+
+            var word = new FocusWordDefinition
+            {
+                stableId = unit.stableId,
+                displayLabel = unit.displayLabel,
+                latinSpelling = unit.displayLabel,
+                meaning = unit.clue,
+                decomposition = new List<SymbolValueReference>(),
+            };
+
+            for (int tokenIndex = 0; tokenIndex < unit.tokens.Count; tokenIndex++)
+            {
+                RestorationObjectiveToken token = unit.tokens[tokenIndex];
+                if (token?.IsTarget == true)
+                    word.decomposition.Add(token.target);
+            }
+
+            if (word.decomposition.Count > 0)
+                _runtimeObjectiveWords.Add(word);
+        }
+
+        return _runtimeObjectiveWords;
+    }
+
+    private void EnsureRestorationRail()
+    {
+        if (_railRoot != null)
+            return;
+
+        IReadOnlyList<FocusWordDefinition> words = GetRestorationRailWords();
+        if (words.Count == 0)
+            return;
+
+        Canvas canvas = ResolveHudCanvas();
+        Transform hudContainer = ResolveHudContainer(canvas);
+        if (hudContainer == null)
+            return;
+
+        // The old printed readout is the font template and nothing else. Switching its own object
+        // off is deliberate: an authored HUD may still carry it, and left alive it would keep
+        // showing whatever string it last held beside a rail that has replaced it.
+        TextMeshProUGUI fontTemplate = _restorationProgressText != null
+            ? _restorationProgressText
+            : _clueText;
+        if (fontTemplate == null)
+            fontTemplate = FindFirstObjectByType<TextMeshProUGUI>();
+        if (_restorationProgressText != null)
+            _restorationProgressText.gameObject.SetActive(false);
+
+        _runtimeSlotFrameSprite = CreateSlotFrameSprite(_slotFrameBorderFraction);
+
+        _railRoot = new GameObject(
+            "[Runtime] ActiveClueRestorationRail", typeof(RectTransform), typeof(CanvasGroup));
+        _railRoot.transform.SetParent(hudContainer, false);
+        _railCanvasGroup = _railRoot.GetComponent<CanvasGroup>();
+        _railCanvasGroup.blocksRaycasts = false;
+        _railCanvasGroup.interactable = false;
+
+        // Bottom-centre. The rail used to hang from the top of the HUD; it now sits in the band
+        // under the player's base and Juan, so the top of the screen is the enemies' and the bottom
+        // band is the player's own readout.
+        //
+        // The safe area is already handled by where this is parented, not by arithmetic here:
+        // ResolveHudContainer returns HUDLayer, which is a full-rect child of HUDRoot, and HUDRoot
+        // carries SafeAreaHandler. So y=0 for this rect is the bottom of the SAFE area, not the
+        // bottom of the glass, and the home indicator's inset has already been taken out before
+        // _railAnchoredPosition is applied on top of it.
+        RectTransform railRect = _railRoot.GetComponent<RectTransform>();
+        railRect.anchorMin = new Vector2(0.5f, 0f);
+        railRect.anchorMax = new Vector2(0.5f, 0f);
+        railRect.pivot = new Vector2(0.5f, 0f);
+        railRect.anchoredPosition = _railAnchoredPosition;
+
+        RestorationObjectiveDefinition pagedDefinition = UsesRestorationObjectiveDefinition
+            ? _restorationObjectiveController.State.Definition
+            : null;
+        _railPages = RestorationWordPages.IsEnabled(pagedDefinition)
+            ? RestorationWordPages.Build(pagedDefinition)
+            : null;
+        if (_railPages != null && _railPages.PageCount == 0)
+            _railPages = null;
+        _railShownPage = RestorationWordPages.NoPage;
+
+        float totalWidth = 0f;
+        if (_railPages != null)
+        {
+            // One word on screen at a time, so the rail is only as wide as the widest word and
+            // Level 15's boxes keep their authored size instead of shrinking the whole passage
+            // onto one line.
+            int widest = _railPages.MaxSlotCount;
+            totalWidth = widest * _slotSize.x + (widest - 1) * _slotSpacing;
+        }
+        else
+        {
+            for (int wordIndex = 0; wordIndex < words.Count; wordIndex++)
+            {
+                int slotCount = CountEmittedSlots(words[wordIndex]);
+                if (slotCount == 0)
+                    continue;
+
+                if (totalWidth > 0f)
+                    totalWidth += _wordGap;
+                totalWidth += slotCount * _slotSize.x + (slotCount - 1) * _slotSpacing;
+            }
+        }
+
+        // Slots occupy the TOP of the rail rect and their labels the row beneath. Start from the
+        // nominal values, then derive one uniform scale when the complete rail exceeds the
+        // available safe-area width. Short Levels 1-4 retain their authored geometry exactly.
+        _railNominalWidth = totalWidth;
+        float availableWidth = ResolveRailAvailableWidth(hudContainer, canvas);
+        RestorationRailLayoutMetrics layout = RestorationRailLayoutPolicy.Calculate(
+            totalWidth,
+            availableWidth,
+            _slotSize,
+            _slotSpacing,
+            _wordGap,
+            _latinWordLabelFontSize,
+            _latinWordLabelRowHeight,
+            _latinWordLabelGap,
+            _wordSeparatorFontSize);
+        _railLayoutSlotSize = layout.SlotSize;
+        _railLayoutSlotSpacing = layout.SlotSpacing;
+        _railLayoutWordGap = layout.WordGap;
+        _railLayoutLabelFontSize = layout.LabelFontSize;
+        _railLayoutLabelRowHeight = layout.LabelRowHeight;
+        _railLayoutLabelGap = layout.LabelGap;
+        _railLayoutSeparatorFontSize = layout.SeparatorFontSize;
+
+        float labelRow = _railLayoutLabelRowHeight + _railLayoutLabelGap;
+        railRect.sizeDelta = new Vector2(
+            totalWidth * layout.Scale,
+            labelRow + _railLayoutSlotSize.y);
+        float slotRowTop = 0f;
+
+        float x = 0f;
+        bool anyWordPlaced = false;
+        for (int wordIndex = 0; wordIndex < words.Count; wordIndex++)
+        {
+            FocusWordDefinition word = words[wordIndex];
+            int slotCount = CountEmittedSlots(word);
+            if (slotCount == 0)
+                continue;
+
+            // The divider goes in the gap that was already being opened between two word groups, so
+            // it costs no width and cannot push the rail wider than the collision check measured.
+            // Keyed off a word actually having been placed rather than off x > 0, because a first
+            // word placed at x = 0 is indistinguishable from no word at all by position alone.
+            if (anyWordPlaced && _railPages == null)
+            {
+                BuildWordSeparator(railRect, fontTemplate, wordIndex, x, slotRowTop);
+                x += _railLayoutWordGap;
+            }
+
+            anyWordPlaced = true;
+            float wordWidth = WordWidth(slotCount);
+
+            // Mirrors TargetTextSlotMap.Build's flattening exactly — every reference with a symbol,
+            // in authored order — because the draw-feedback report's SlotIndex is produced by that
+            // type, and this list has to be index-aligned with it or a badge flies to the wrong
+            // slot. A reference with no symbol is skipped by both and occupies no slot here.
+            //
+            // The per-slot label is built from this same walk, so a label belongs to exactly one box
+            // and the grouping falls out of the authored decomposition rather than out of a
+            // hardcoded 2+2. Level 1 is INA + AMA; a level whose words are 3+1 or 1+1+2 groups
+            // itself correctly here with no change.
+            int emitted = 0;
+            for (int slotIndex = 0;
+                 word.decomposition != null && slotIndex < word.decomposition.Count;
+                 slotIndex++)
+            {
+                SymbolValueReference reference = word.decomposition[slotIndex];
+                if (reference?.symbol == null)
+                    continue;
+
+                string unitId = null;
+                string occurrenceId = null;
+                if (UsesRestorationObjectiveDefinition)
+                {
+                    RestorationObjectiveUnit objectiveUnit = FindObjectiveUnit(word.stableId);
+                    unitId = objectiveUnit?.stableId;
+                    int targetIndex = emitted;
+                    if (objectiveUnit?.tokens != null)
+                    {
+                        for (int targetTokenIndex = 0; targetTokenIndex < objectiveUnit.tokens.Count;
+                             targetTokenIndex++)
+                        {
+                            RestorationObjectiveToken target = objectiveUnit.tokens[targetTokenIndex];
+                            if (target?.IsTarget != true)
+                                continue;
+
+                            if (targetIndex-- == 0)
+                            {
+                                occurrenceId = target.occurrenceId;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                float slotX = x + (emitted * (_railLayoutSlotSize.x + _railLayoutSlotSpacing));
+                int pageIndex = RestorationWordPages.NoPage;
+                if (_railPages != null)
+                {
+                    // Every page is centred in the same rail rect, so page N's first box sits
+                    // exactly where page N+1's will once the rail slides back in.
+                    pageIndex = _railPages.PageOf(occurrenceId);
+                    float pageWidth = WordWidth(Mathf.Max(1, _railPages.SlotCountOf(pageIndex)));
+                    slotX = ((railRect.sizeDelta.x - pageWidth) * 0.5f)
+                        + (Mathf.Max(0, _railPages.IndexInPage(occurrenceId))
+                            * (_railLayoutSlotSize.x + _railLayoutSlotSpacing));
+                }
+
+                RailSlot built = BuildSlot(
+                    railRect, word, reference, slotIndex, _railSlots.Count, slotX, slotRowTop);
+                built.UnitId = unitId;
+                built.OccurrenceId = occurrenceId;
+                built.PageIndex = pageIndex;
+                built.Label = BuildSlotLabel(
+                    railRect, fontTemplate, _railSlots.Count, slotX, slotRowTop);
+                built.LatinLabel = UsesRestorationObjectiveDefinition
+                    ? SpokenValueResolver.ResolveLabel(reference.symbol, reference.spokenValueId)
+                        .ToUpperInvariant()
+                    : ResolveSlotLatinLabel(reference.symbol);
+                _railSlots.Add(built);
+                _railSlotAnchors.Add(built.Anchor);
+                emitted++;
+            }
+
+            x += wordWidth;
+        }
+
+        // The words-completed bar takes the rail's old spot at the foot of the HUD and the rail
+        // rises above it. Done before the band and the instruction are measured, so both clear
+        // the rail where it actually ends up.
+        if (_railPages != null)
+        {
+            float progressHeight = BuildRailProgress(hudContainer, fontTemplate);
+            railRect.anchoredPosition = _railAnchoredPosition
+                + new Vector2(0f, progressHeight + _railProgressGapBelowRail);
+        }
+
+        ReservePlayFieldBandForRail(railRect);
+        PositionInstructionAboveRail(railRect);
+
+        // The band is measured in screen pixels, so it goes stale the moment the screen changes
+        // size — a rotation, or a Game view resized while playing. Re-measured from the rail's own
+        // corners each time the play area recomputes. This settles in one extra pass: the second
+        // request carries the same number and SetBottomBandPixels returns without recomputing.
+        _bandRefreshHandler ??= () =>
+        {
+            if (_railRoot != null && _railRoot.transform is RectTransform live)
+            {
+                ReservePlayFieldBandForRail(live);
+                PositionInstructionAboveRail(live);
+            }
+        };
+        if (AspectLockedCamera.Instance != null)
+        {
+            AspectLockedCamera.Instance.OnPlayAreaChanged -= _bandRefreshHandler;
+            AspectLockedCamera.Instance.OnPlayAreaChanged += _bandRefreshHandler;
+            _bandRefreshColumn = AspectLockedCamera.Instance;
+        }
+
+        _railRoot.SetActive(false);
+        RepaintRail(forceRestored: false);
+    }
+
+    /// <summary>
+    /// Tracks Punit's live ability state and animates the visible target text. The current Gameplay
+    /// scene uses the slot rail; older authored HUDs can still use the TMP clue line, whose glyph
+    /// meshes are displaced directly so existing font, colour and rich-text formatting stays
+    /// intact.
+    /// </summary>
+    private void WatchPunitTornState(float deltaTime)
+    {
+        _punitTearTargetActive = PunitTornController.IsAnyActive();
+        if (_punitTearTargetActive || _punitTearProgress > 0f)
+            EnsurePunitTornSurface();
+
+        float duration = Mathf.Max(0.01f, _punitTearTransitionSeconds);
+        float step = Mathf.Max(0f, deltaTime) / duration;
+        _punitTearProgress = Mathf.MoveTowards(
+            _punitTearProgress, _punitTearTargetActive ? 1f : 0f, step);
+
+        if (_punitTornBoundRail != null)
+            ApplyPunitTearToRail();
+        else if (_punitTornTextSurface != null)
+            ApplyPunitTearToText();
+    }
+
+    private void WatchAbilityHudEffects(float deltaTime)
+    {
+        SetNgatngatVisualActive(FindActiveEnemyWithAbility(
+            EnemyLearningAbility.ProgressiveNibble, null) != null);
+
+        _activeUhaw = FindActiveUhaw();
+        if (_railRoot == null)
+        {
+            ResetUhawGlyphCaptures();
+            return;
+        }
+
+        if (_pendingUhawGlyphSlot != null
+            && (_pendingUhawGlyphTarget != _activeUhaw
+                || !IsUhawTargetUsable(_pendingUhawGlyphTarget)
+                || _pendingUhawGlyphTargetSpawnSequence
+                    != _pendingUhawGlyphTarget.SpawnSequence
+                || !_railSlots.Contains(_pendingUhawGlyphSlot)))
+        {
+            ClearPendingUhawGlyphCapture();
+        }
+
+        if (_railRoot.activeInHierarchy && _pendingUhawGlyphSlot != null)
+        {
+            RailSlot slot = _pendingUhawGlyphSlot;
+            Enemy target = _pendingUhawGlyphTarget;
+            ClearPendingUhawGlyphCapture();
+            BeginUhawGlyphCapture(slot, target);
+        }
+
+        // A hidden rail keeps its visual state intact. When it is shown again the captured proxy
+        // resumes following Uhaw; destroying/rebuilding the rail and disabling this presenter
+        // instead drain the proxies and reveal their source glyphs.
+        if (!_railRoot.activeInHierarchy)
+        {
+            for (int i = 0; i < _uhawGlyphCaptures.Count; i++)
+            {
+                UhawGlyphCapture capture = _uhawGlyphCaptures[i];
+                if (capture.State != UhawGlyphCaptureState.Returning
+                    && (capture.Target != _activeUhaw
+                        || !IsUhawTargetUsable(capture.Target)
+                        || capture.TargetSpawnSequence != capture.Target.SpawnSequence))
+                {
+                    ResetUhawGlyphCaptures();
+                    break;
+                }
+            }
+            return;
+        }
+
+        for (int i = _uhawGlyphCaptures.Count - 1; i >= 0; i--)
+        {
+            UhawGlyphCapture capture = _uhawGlyphCaptures[i];
+            if (capture.State != UhawGlyphCaptureState.Returning
+                && (capture.Target != _activeUhaw
+                    || !IsUhawTargetUsable(capture.Target)
+                    || capture.TargetSpawnSequence != capture.Target.SpawnSequence))
+            {
+                BeginUhawGlyphReturn(capture);
+            }
+        }
+
+        TickUhawGlyphCaptures(deltaTime);
+    }
+
+    private Enemy FindActiveEnemyWithAbility(EnemyLearningAbility ability, string enemyId)
+    {
+        ActiveEnemyTracker tracker = ActiveEnemyTracker.Instance;
+        if (tracker == null)
+            return null;
+
+        tracker.FillActiveEnemiesSnapshot(_abilityVisualEnemyBuffer);
+        for (int i = 0; i < _abilityVisualEnemyBuffer.Count; i++)
+        {
+            Enemy enemy = _abilityVisualEnemyBuffer[i];
+            if (enemy == null || enemy.Data == null || enemy.IsDying
+                || !enemy.gameObject.activeInHierarchy || enemy.CurrentHealth <= 0)
+            {
+                continue;
+            }
+
+            EnemyLearningAbilityController abilityController =
+                enemy.GetComponent<EnemyLearningAbilityController>();
+            if (abilityController == null || !abilityController.isActiveAndEnabled
+                || abilityController.IsSuppressedForIntroductionSpawn)
+            {
+                continue;
+            }
+
+            bool matches = enemyId != null
+                ? string.Equals(enemy.Data.enemyID, enemyId,
+                    System.StringComparison.OrdinalIgnoreCase)
+                : enemy.Data.learningAbility == ability;
+            if (matches)
+                return enemy;
+        }
+
+        return null;
+    }
+
+    private void SetNgatngatVisualActive(bool active)
+    {
+        if (_ngatngatVisualActive == active)
+            return;
+
+        _ngatngatVisualActive = active;
+        _ngatngatDamageStage = 0;
+        SyncNgatngatTextDamage();
+    }
+
+    private void RecordNgatngatRestoration()
+    {
+        // ProgressiveNibble has no separate runtime counter; each accepted restoration while
+        // the live, unsuppressed Ngatngat is present advances its visual damage by one stage.
+        if (!_ngatngatVisualActive || _ngatngatDamageStage >= 2)
+            return;
+
+        _ngatngatDamageStage++;
+        SyncNgatngatTextDamage();
+    }
+
+    private void SyncNgatngatTextDamage()
+    {
+        bool wantsDamage = _ngatngatVisualActive && _ngatngatDamageStage > 0;
+        RailSlot requiredSlot = GetCurrentRequiredRailSlot();
+        _ngatngatLabelRemovalBuffer.Clear();
+
+        if (wantsDamage)
+        {
+            for (int i = 0; i < _railSlots.Count; i++)
+            {
+                RailSlot slot = _railSlots[i];
+                TextMeshProUGUI label = slot?.Label;
+                if (slot == requiredSlot || label == null || string.IsNullOrEmpty(slot.LatinLabel)
+                    || label.text != slot.LatinLabel)
+                {
+                    continue;
+                }
+
+                if (_ngatngatLabelBindings.TryGetValue(label, out NgatngatLabelBinding binding))
+                {
+                    if (binding.Stage != _ngatngatDamageStage)
+                    {
+                        binding.Stage = _ngatngatDamageStage;
+                        label.ForceMeshUpdate(true, false);
+                        ApplyNgatngatDamage(binding, label.textInfo);
+                        label.UpdateVertexData(TMP_VertexDataUpdateFlags.Colors32);
+                    }
+                }
+                else
+                {
+                    BindNgatngatDamage(label, _ngatngatDamageStage);
+                }
+            }
+        }
+
+        foreach (KeyValuePair<TextMeshProUGUI, NgatngatLabelBinding> pair
+                 in _ngatngatLabelBindings)
+        {
+            TextMeshProUGUI label = pair.Key;
+            if (!wantsDamage || !IsVisibleLatinLabel(label, requiredSlot))
+                _ngatngatLabelRemovalBuffer.Add(label);
+        }
+
+        for (int i = 0; i < _ngatngatLabelRemovalBuffer.Count; i++)
+            UnbindNgatngatDamage(_ngatngatLabelRemovalBuffer[i]);
+    }
+
+    private RailSlot GetCurrentRequiredRailSlot()
+    {
+        if (UsesRestorationObjectiveDefinition)
+        {
+            RestorationObjectiveState state = _restorationObjectiveController.State;
+            string activeUnitId = state.ActiveUnitId;
+            string requiredOccurrenceId = state.NextTargetOccurrenceId;
+            if (string.IsNullOrEmpty(activeUnitId) || string.IsNullOrEmpty(requiredOccurrenceId))
+                return null;
+
+            // Completion order can differ from this rail's display order.
+            for (int i = 0; i < _railSlots.Count; i++)
+            {
+                RailSlot slot = _railSlots[i];
+                if (slot != null && slot.UnitId == activeUnitId
+                    && slot.OccurrenceId == requiredOccurrenceId)
+                {
+                    return slot;
+                }
+            }
+
+            return null;
+        }
+
+        for (int i = 0; i < _railSlots.Count; i++)
+        {
+            RailSlot slot = _railSlots[i];
+            if (slot?.Word != null
+                && !_restorationState.IsSlotRestored(slot.Word, slot.DecompositionIndex))
+            {
+                return slot;
+            }
+        }
+
+        return null;
+    }
+
+    private bool IsVisibleLatinLabel(TextMeshProUGUI label, RailSlot requiredSlot)
+    {
+        for (int i = 0; i < _railSlots.Count; i++)
+        {
+            RailSlot slot = _railSlots[i];
+            if (slot != requiredSlot && slot?.Label == label && !string.IsNullOrEmpty(slot.LatinLabel)
+                && label.text == slot.LatinLabel)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void BindNgatngatDamage(TextMeshProUGUI label, int stage)
+    {
+        if (label == null)
+            return;
+
+        var binding = new NgatngatLabelBinding { Label = label, Stage = stage };
+        binding.PreRenderCallback = textInfo => ApplyNgatngatDamage(binding, textInfo);
+        _ngatngatLabelBindings.Add(label, binding);
+        label.OnPreRenderText += binding.PreRenderCallback;
+        label.ForceMeshUpdate(true, false);
+        ApplyNgatngatDamage(binding, label.textInfo);
+        label.UpdateVertexData(TMP_VertexDataUpdateFlags.Colors32);
+    }
+
+    private static void ApplyNgatngatDamage(
+        NgatngatLabelBinding binding, TMP_TextInfo textInfo)
+    {
+        if (binding?.Label == null || textInfo == null || binding.Stage <= 0)
+            return;
+
+        int lastVisible = -1;
+        int previousVisible = -1;
+        for (int i = 0; i < textInfo.characterCount; i++)
+        {
+            TMP_CharacterInfo character = textInfo.characterInfo[i];
+            if (!character.isVisible || char.IsWhiteSpace(character.character))
+                continue;
+
+            previousVisible = lastVisible;
+            lastVisible = i;
+        }
+
+        if (lastVisible < 0)
+            return;
+
+        if (binding.Stage == 1)
+        {
+            EraseRightHalf(textInfo, textInfo.characterInfo[lastVisible]);
+            return;
+        }
+
+        EraseCharacter(textInfo, textInfo.characterInfo[lastVisible]);
+        if (previousVisible >= 0)
+            EraseRightHalf(textInfo, textInfo.characterInfo[previousVisible]);
+    }
+
+    private static void EraseRightHalf(TMP_TextInfo textInfo, TMP_CharacterInfo character)
+    {
+        int materialIndex = character.materialReferenceIndex;
+        int firstVertex = character.vertexIndex;
+        if (materialIndex < 0 || materialIndex >= textInfo.meshInfo.Length
+            || firstVertex < 0)
+        {
+            return;
+        }
+
+        TMP_MeshInfo mesh = textInfo.meshInfo[materialIndex];
+        if (firstVertex + 3 >= mesh.colors32.Length || firstVertex + 3 >= mesh.vertices.Length)
+            return;
+
+        float minX = Mathf.Min(mesh.vertices[firstVertex].x, mesh.vertices[firstVertex + 1].x,
+            mesh.vertices[firstVertex + 2].x, mesh.vertices[firstVertex + 3].x);
+        float maxX = Mathf.Max(mesh.vertices[firstVertex].x, mesh.vertices[firstVertex + 1].x,
+            mesh.vertices[firstVertex + 2].x, mesh.vertices[firstVertex + 3].x);
+        float splitX = (minX + maxX) * 0.5f;
+        for (int vertex = firstVertex; vertex < firstVertex + 4; vertex++)
+        {
+            if (mesh.vertices[vertex].x < splitX)
+                continue;
+
+            Color32 color = mesh.colors32[vertex];
+            color.a = 0;
+            mesh.colors32[vertex] = color;
+        }
+    }
+
+    private static void EraseCharacter(TMP_TextInfo textInfo, TMP_CharacterInfo character)
+    {
+        int materialIndex = character.materialReferenceIndex;
+        int firstVertex = character.vertexIndex;
+        if (materialIndex < 0 || materialIndex >= textInfo.meshInfo.Length
+            || firstVertex < 0)
+        {
+            return;
+        }
+
+        Color32[] colors = textInfo.meshInfo[materialIndex].colors32;
+        if (firstVertex + 3 >= colors.Length)
+            return;
+
+        for (int vertex = firstVertex; vertex < firstVertex + 4; vertex++)
+        {
+            Color32 color = colors[vertex];
+            color.a = 0;
+            colors[vertex] = color;
+        }
+    }
+
+    private void UnbindNgatngatDamage(TextMeshProUGUI label)
+    {
+        if (object.ReferenceEquals(label, null) || !_ngatngatLabelBindings.TryGetValue(
+                label, out NgatngatLabelBinding binding))
+        {
+            return;
+        }
+
+        if (binding.Label != null)
+            binding.Label.OnPreRenderText -= binding.PreRenderCallback;
+        _ngatngatLabelBindings.Remove(label);
+        if (binding.Label != null)
+            binding.Label.ForceMeshUpdate(true, false);
+    }
+
+    private Enemy FindActiveUhaw()
+        => FindActiveEnemyWithAbility(EnemyLearningAbility.None, UhawEnemyId);
+
+    private bool CaptureOrQueueUhawGlyph(RailSlot slot, Enemy target)
+    {
+        if (slot?.Glyph == null || slot.Glyph.sprite == null || !IsUhawTargetUsable(target))
+            return false;
+
+        if (BeginUhawGlyphCapture(slot, target))
+            return true;
+
+        if (_railRoot != null && !_railRoot.activeInHierarchy)
+        {
+            _pendingUhawGlyphSlot = slot;
+            _pendingUhawGlyphTarget = target;
+            _pendingUhawGlyphTargetSpawnSequence = target.SpawnSequence;
+            return true;
+        }
+
+        return false;
+    }
+
+    private void ClearPendingUhawGlyphCapture()
+    {
+        _pendingUhawGlyphSlot = null;
+        _pendingUhawGlyphTarget = null;
+        _pendingUhawGlyphTargetSpawnSequence = 0;
+    }
+
+    private RailSlot FindRailSlotForOccurrence(string occurrenceId)
+    {
+        if (string.IsNullOrEmpty(occurrenceId))
+            return null;
+
+        for (int i = 0; i < _railSlots.Count; i++)
+        {
+            RailSlot slot = _railSlots[i];
+            if (slot != null && string.Equals(slot.OccurrenceId, occurrenceId,
+                    System.StringComparison.Ordinal))
+            {
+                return slot;
+            }
+        }
+
+        return null;
+    }
+
+    private RailSlot FindLastRestoredSlotForSymbol(string symbolStableId)
+    {
+        if (string.IsNullOrEmpty(symbolStableId))
+            return null;
+
+        for (int i = _railSlots.Count - 1; i >= 0; i--)
+        {
+            RailSlot slot = _railSlots[i];
+            if (slot == null || !SlotCarriesSymbol(slot, symbolStableId))
+                continue;
+
+            bool restored = UsesRestorationObjectiveDefinition
+                ? _restorationObjectiveController.IsOccurrenceRestored(slot.OccurrenceId)
+                : _restorationState.IsSlotRestored(slot.Word, slot.DecompositionIndex);
+            if (restored)
+                return slot;
+        }
+
+        return null;
+    }
+
+    private bool BeginUhawGlyphCapture(RailSlot slot, Enemy target)
+    {
+        if (slot?.Glyph == null || slot.Glyph.sprite == null || target == null
+            || _railRoot == null || !_railRoot.activeInHierarchy
+            || !( _railRoot.transform is RectTransform railRect))
+        {
+            return false;
+        }
+
+        if (slot.Flier != null || slot.FlightRoutine != null)
+            FinishSlotFlight(slot);
+
+        if (!slot.Glyph.gameObject.activeSelf)
+            return false;
+
+        Canvas canvas = railRect.GetComponentInParent<Canvas>();
+        if (canvas == null || !TryGetUhawTargetLocalPosition(target, railRect, canvas,
+                out Vector2 destination))
+        {
+            return false;
+        }
+
+        // If this exact occurrence is being recaptured, return its old proxy immediately before
+        // creating the replacement. Other held characters get a normal return animation.
+        for (int i = _uhawGlyphCaptures.Count - 1; i >= 0; i--)
+        {
+            UhawGlyphCapture previous = _uhawGlyphCaptures[i];
+            if (previous.Slot == slot)
+                CompleteUhawGlyphCapture(previous);
+            else
+                BeginUhawGlyphReturn(previous);
+        }
+
+        RectTransform glyphRect = slot.Glyph.transform as RectTransform;
+        if (glyphRect == null)
+            return false;
+
+        var proxyObject = new GameObject(
+            "[Runtime] UhawCapturedRestorationGlyph", typeof(RectTransform), typeof(Image));
+        proxyObject.transform.SetParent(railRect, false);
+        proxyObject.transform.SetAsLastSibling();
+
+        Image proxy = proxyObject.GetComponent<Image>();
+        proxy.sprite = slot.Glyph.sprite;
+        proxy.color = slot.Glyph.color;
+        proxy.preserveAspect = true;
+        proxy.raycastTarget = false;
+
+        RectTransform proxyRect = (RectTransform)proxyObject.transform;
+        proxyRect.anchorMin = new Vector2(0.5f, 0.5f);
+        proxyRect.anchorMax = new Vector2(0.5f, 0.5f);
+        proxyRect.pivot = new Vector2(0.5f, 0.5f);
+        proxyRect.sizeDelta = glyphRect.rect.size;
+        proxyRect.anchoredPosition = railRect.InverseTransformPoint(glyphRect.position);
+
+        slot.IsUhawCaptured = true;
+        slot.Glyph.gameObject.SetActive(false);
+        _uhawGlyphCaptures.Add(new UhawGlyphCapture
+        {
+            Slot = slot,
+            Target = target,
+            TargetSpawnSequence = target.SpawnSequence,
+            Proxy = proxyObject,
+            ProxyRect = proxyRect,
+            State = UhawGlyphCaptureState.Capturing,
+            TravelStart = proxyRect.anchoredPosition,
+            StartScale = 1f,
+            EndScale = _uhawCapturedGlyphScale,
+        });
+
+        return true;
+    }
+
+    private void TickUhawGlyphCaptures(float deltaTime)
+    {
+        if (_railRoot == null || !(_railRoot.transform is RectTransform railRect))
+        {
+            ResetUhawGlyphCaptures();
+            return;
+        }
+
+        if (!_railRoot.activeInHierarchy)
+            return;
+
+        Canvas canvas = railRect.GetComponentInParent<Canvas>();
+        for (int i = _uhawGlyphCaptures.Count - 1; i >= 0; i--)
+        {
+            UhawGlyphCapture capture = _uhawGlyphCaptures[i];
+            if (capture == null || capture.Slot?.Glyph == null
+                || !_railSlots.Contains(capture.Slot))
+            {
+                CompleteUhawGlyphCapture(capture);
+                continue;
+            }
+
+            if (capture.Proxy == null || capture.ProxyRect == null || canvas == null)
+            {
+                CompleteUhawGlyphCapture(capture);
+                continue;
+            }
+
+            if (capture.State != UhawGlyphCaptureState.Returning
+                && (!IsUhawTargetUsable(capture.Target)
+                    || capture.TargetSpawnSequence != capture.Target.SpawnSequence))
+            {
+                BeginUhawGlyphReturn(capture);
+            }
+
+            if (capture.State == UhawGlyphCaptureState.Capturing
+                || capture.State == UhawGlyphCaptureState.Captured)
+            {
+                if (!TryGetUhawTargetLocalPosition(capture.Target, railRect, canvas,
+                        out Vector2 targetPosition))
+                {
+                    BeginUhawGlyphReturn(capture);
+                }
+                else if (capture.State == UhawGlyphCaptureState.Captured)
+                {
+                    capture.ProxyRect.anchoredPosition = targetPosition;
+                }
+                else
+                {
+                    capture.Elapsed += Mathf.Max(0f, deltaTime);
+                    float t = Mathf.Clamp01(capture.Elapsed
+                        / Mathf.Max(0.01f, _uhawGlyphTransferSeconds));
+                    float eased = t * t * (3f - (2f * t));
+                    capture.ProxyRect.anchoredPosition = Vector2.LerpUnclamped(
+                        capture.TravelStart, targetPosition, eased);
+                    float scale = Mathf.Lerp(capture.StartScale, capture.EndScale, eased);
+                    capture.ProxyRect.localScale = Vector3.one * scale;
+
+                    if (t >= 1f)
+                    {
+                        capture.State = UhawGlyphCaptureState.Captured;
+                        capture.ProxyRect.anchoredPosition = targetPosition;
+                        capture.ProxyRect.localScale = Vector3.one * _uhawCapturedGlyphScale;
+                    }
+                }
+            }
+
+            if (capture.State == UhawGlyphCaptureState.Returning)
+            {
+                capture.Elapsed += Mathf.Max(0f, deltaTime);
+                float t = Mathf.Clamp01(capture.Elapsed
+                    / Mathf.Max(0.01f, _uhawGlyphTransferSeconds));
+                float eased = t * t * (3f - (2f * t));
+                Vector2 slotPosition = railRect.InverseTransformPoint(
+                    capture.Slot.Glyph.rectTransform.position);
+                capture.ProxyRect.anchoredPosition = Vector2.LerpUnclamped(
+                    capture.ReturnStart, slotPosition, eased);
+                float scale = Mathf.Lerp(capture.StartScale, 1f, eased);
+                capture.ProxyRect.localScale = Vector3.one * scale;
+
+                if (t >= 1f)
+                    CompleteUhawGlyphCapture(capture);
+            }
+        }
+    }
+
+    private void BeginUhawGlyphReturn(UhawGlyphCapture capture)
+    {
+        if (capture == null || capture.State == UhawGlyphCaptureState.Returning)
+            return;
+
+        if (capture.ProxyRect == null || capture.Slot?.Glyph == null)
+        {
+            CompleteUhawGlyphCapture(capture);
+            return;
+        }
+
+        capture.State = UhawGlyphCaptureState.Returning;
+        capture.Elapsed = 0f;
+        capture.ReturnStart = capture.ProxyRect.anchoredPosition;
+        capture.StartScale = capture.ProxyRect.localScale.x;
+    }
+
+    private void ReleaseUhawGlyphCaptures(bool immediate)
+    {
+        if (immediate)
+        {
+            ResetUhawGlyphCaptures();
+            return;
+        }
+
+        for (int i = _uhawGlyphCaptures.Count - 1; i >= 0; i--)
+            BeginUhawGlyphReturn(_uhawGlyphCaptures[i]);
+    }
+
+    private void ResetUhawGlyphCaptures()
+    {
+        ClearPendingUhawGlyphCapture();
+
+        for (int i = _uhawGlyphCaptures.Count - 1; i >= 0; i--)
+        {
+            UhawGlyphCapture capture = _uhawGlyphCaptures[i];
+            if (capture?.Slot != null)
+                capture.Slot.IsUhawCaptured = false;
+            if (capture?.Proxy != null)
+            {
+                capture.Proxy.SetActive(false);
+                DestroyOwnedObject(capture.Proxy);
+            }
+        }
+
+        _uhawGlyphCaptures.Clear();
+        for (int i = 0; i < _railSlots.Count; i++)
+            _railSlots[i].IsUhawCaptured = false;
+
+        if (_railRoot != null && _railSlots.Count > 0)
+            RepaintRail(forceRestored: false);
+    }
+
+    private void CompleteUhawGlyphCapture(UhawGlyphCapture capture)
+    {
+        if (capture == null)
+            return;
+
+        _uhawGlyphCaptures.Remove(capture);
+        if (capture.Proxy != null)
+        {
+            capture.Proxy.SetActive(false);
+            DestroyOwnedObject(capture.Proxy);
+        }
+
+        if (capture.Slot != null)
+            capture.Slot.IsUhawCaptured = false;
+
+        if (capture.Slot != null && _railSlots.Contains(capture.Slot)
+            && _railRoot != null)
+        {
+            RepaintRail(forceRestored: false);
+        }
+    }
+
+    private static bool IsUhawTargetUsable(Enemy target) =>
+        target != null && target.gameObject.activeInHierarchy && !target.IsDying;
+
+    private static bool TryGetUhawTargetLocalPosition(
+        Enemy target, RectTransform railRect, Canvas canvas, out Vector2 localPosition)
+    {
+        localPosition = default;
+        if (!IsUhawTargetUsable(target) || railRect == null || canvas == null)
+            return false;
+
+        Camera worldCamera = Camera.main;
+        if (worldCamera == null)
+            return false;
+
+        Vector3 screenPosition = worldCamera.WorldToScreenPoint(
+            target.transform.position + Vector3.up * 0.35f);
+        if (screenPosition.z <= 0f)
+            return false;
+
+        Camera uiCamera = canvas.renderMode == RenderMode.ScreenSpaceOverlay
+            ? null
+            : canvas.worldCamera;
+        return RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            railRect, screenPosition, uiCamera, out localPosition);
+    }
+
+    private void ResetNgatngatTextDamage()
+    {
+        _ngatngatLabelRemovalBuffer.Clear();
+        foreach (KeyValuePair<TextMeshProUGUI, NgatngatLabelBinding> pair
+                 in _ngatngatLabelBindings)
+        {
+            _ngatngatLabelRemovalBuffer.Add(pair.Key);
+        }
+
+        for (int i = 0; i < _ngatngatLabelRemovalBuffer.Count; i++)
+            UnbindNgatngatDamage(_ngatngatLabelRemovalBuffer[i]);
+
+        _ngatngatDamageStage = 0;
+        _ngatngatVisualActive = false;
+    }
+
+    private void EnsurePunitTornSurface()
+    {
+        if (_railRoot != null)
+        {
+            RectTransform rail = _railRoot.GetComponent<RectTransform>();
+            string currentWordSpanIdentity = ResolvePunitCurrentWordSpanIdentity();
+            if (_punitTornBoundRail != rail
+                || _punitBoundWordSpanIdentity != currentWordSpanIdentity)
+            {
+                ResetPunitTornSurface();
+                BindPunitTornRail(rail, currentWordSpanIdentity);
+            }
+
+            return;
+        }
+
+        // An objective paragraph may be visible while the runtime rail is unavailable. Do not
+        // fall back to tearing that whole paragraph; keep it readable instead.
+        if (UsesRestorationObjectiveDefinition)
+            return;
+
+        if (_clueText == null || !_clueText.gameObject.activeInHierarchy)
+            return;
+
+        if (_punitTornTextSurface != _clueText)
+        {
+            ResetPunitTornSurface();
+            BindPunitTornText(_clueText);
+        }
+        else if (_punitTextBaselineString != _clueText.text)
+        {
+            CapturePunitTornTextGeometry();
+            if (_punitTearGraphic != null)
+                DestroyOwnedObject(_punitTearGraphic.gameObject);
+            _punitTearGraphic = null;
+            ConfigurePunitTextTearGraphic();
+        }
+    }
+
+    private string ResolvePunitCurrentWordSpanIdentity()
+    {
+        if (UsesRestorationObjectiveDefinition)
+        {
+            RailSlot requiredSlot = GetCurrentRequiredRailSlot();
+            return TryGetPunitObjectiveWordSpan(
+                    requiredSlot, out string unitId, out int firstToken, out int lastToken)
+                ? unitId + "|" + firstToken + "|" + lastToken
+                : null;
+        }
+
+        string currentSymbolId = _currentClue?.Character?.stableId;
+        return FindFocusWordContaining(currentSymbolId)?.stableId;
+    }
+
+    private void BindPunitTornRail(RectTransform rail, string wordSpanIdentity)
+    {
+        if (rail == null)
+            return;
+
+        _punitTornBoundRail = rail;
+        _punitBoundWordSpanIdentity = wordSpanIdentity;
+        if (string.IsNullOrEmpty(wordSpanIdentity))
+            return;
+
+        var currentWordSlots = new List<RailSlot>();
+        if (UsesRestorationObjectiveDefinition)
+        {
+            RailSlot requiredSlot = GetCurrentRequiredRailSlot();
+            if (!TryGetPunitObjectiveWordSpan(
+                    requiredSlot, out string unitId, out int firstToken, out int lastToken))
+            {
+                return;
+            }
+
+            RestorationObjectiveUnit unit = FindObjectiveUnit(unitId);
+            for (int i = 0; i < _railSlots.Count; i++)
+            {
+                RailSlot slot = _railSlots[i];
+                if (slot?.UnitId != unitId || string.IsNullOrEmpty(slot.OccurrenceId))
+                    continue;
+
+                for (int tokenIndex = firstToken; tokenIndex <= lastToken; tokenIndex++)
+                {
+                    RestorationObjectiveToken token = unit.tokens[tokenIndex];
+                    if (token?.IsTarget == true && token.occurrenceId == slot.OccurrenceId)
+                    {
+                        currentWordSlots.Add(slot);
+                        break;
+                    }
+                }
+            }
+        }
+        else
+        {
+            for (int i = 0; i < _railSlots.Count; i++)
+            {
+                RailSlot slot = _railSlots[i];
+                if (slot != null
+                    && (slot.UnitId == wordSpanIdentity || slot.Word?.stableId == wordSpanIdentity))
+                {
+                    currentWordSlots.Add(slot);
+                }
+            }
+        }
+
+        // A single-slot word has no interior seam. Leave it and every neighbouring word intact.
+        if (currentWordSlots.Count < 2)
+            return;
+
+        int splitSlot = currentWordSlots.Count / 2;
+        RailSlot left = currentWordSlots[splitSlot - 1];
+        RailSlot right = currentWordSlots[splitSlot];
+        _punitRailSplitLocalX = FindPunitRailSplitLocalX(rail, left, right);
+        _punitRailTopY = float.NegativeInfinity;
+        _punitRailBottomY = float.PositiveInfinity;
+        _punitRailFragments.Clear();
+        for (int i = 0; i < currentWordSlots.Count; i++)
+        {
+            RailSlot slot = currentWordSlots[i];
+            AddPunitRailFragment(rail, slot.Anchor);
+            if (slot.Label != null)
+                AddPunitRailFragment(rail, slot.Label.rectTransform);
+        }
+
+        if (_punitRailFragments.Count == 0)
+            return;
+
+        _punitTearGraphic = CreatePunitTearGraphic(rail, matchParentRect: true);
+        _punitTearGraphic.transform.SetAsLastSibling();
+        ApplyPunitRailTearGraphic();
+        ApplyPunitTearToRail();
+    }
+
+    private bool TryGetPunitObjectiveWordSpan(
+        RailSlot requiredSlot,
+        out string unitId,
+        out int firstToken,
+        out int lastToken)
+    {
+        unitId = requiredSlot?.UnitId;
+        firstToken = -1;
+        lastToken = -1;
+        if (requiredSlot == null || string.IsNullOrEmpty(unitId)
+            || string.IsNullOrEmpty(requiredSlot.OccurrenceId))
+        {
+            return false;
+        }
+
+        RestorationObjectiveUnit unit = FindObjectiveUnit(unitId);
+        if (unit?.tokens == null)
+            return false;
+
+        int requiredToken = -1;
+        for (int i = 0; i < unit.tokens.Count; i++)
+        {
+            RestorationObjectiveToken token = unit.tokens[i];
+            if (token?.IsTarget == true && token.occurrenceId == requiredSlot.OccurrenceId)
+            {
+                requiredToken = i;
+                break;
+            }
+        }
+
+        if (requiredToken < 0)
+            return false;
+
+        firstToken = requiredToken;
+        while (firstToken > 0 && !IsPunitWordBoundary(unit.tokens[firstToken - 1]))
+            firstToken--;
+
+        lastToken = requiredToken;
+        while (lastToken + 1 < unit.tokens.Count
+               && !IsPunitWordBoundary(unit.tokens[lastToken + 1]))
+        {
+            lastToken++;
+        }
+
+        return true;
+    }
+
+    private static bool IsPunitWordBoundary(RestorationObjectiveToken token)
+    {
+        if (token?.kind != RestorationTokenKind.Literal || string.IsNullOrEmpty(token.literalText))
+            return false;
+
+        for (int i = 0; i < token.literalText.Length; i++)
+        {
+            if (char.IsWhiteSpace(token.literalText[i]))
+                return true;
+        }
+
+        return false;
+    }
+
+    private void AddPunitRailFragment(RectTransform rail, RectTransform rect)
+    {
+        if (rail == null || rect == null)
+            return;
+
+        Vector3 rest = rect.localPosition;
+        float center = rail.InverseTransformPoint(rect.TransformPoint(rect.rect.center)).x;
+        _punitRailFragments.Add(new TornRailFragment
+        {
+            Rect = rect,
+            RestPosition = rest,
+            Direction = center < _punitRailSplitLocalX ? -1f : 1f,
+        });
+
+        Vector3 bottomLeft = rail.InverseTransformPoint(
+            rect.TransformPoint(new Vector3(rect.rect.xMin, rect.rect.yMin)));
+        Vector3 topRight = rail.InverseTransformPoint(
+            rect.TransformPoint(new Vector3(rect.rect.xMax, rect.rect.yMax)));
+        _punitRailTopY = Mathf.Max(_punitRailTopY, bottomLeft.y, topRight.y);
+        _punitRailBottomY = Mathf.Min(_punitRailBottomY, bottomLeft.y, topRight.y);
+    }
+
+    private void ApplyPunitTearToRail()
+    {
+        if (_punitTornBoundRail == null)
+            return;
+
+        float separation = _punitTearSeparation * _punitTearProgress;
+        for (int i = 0; i < _punitRailFragments.Count; i++)
+        {
+            TornRailFragment fragment = _punitRailFragments[i];
+            if (fragment.Rect == null)
+                continue;
+
+            Vector3 position = fragment.RestPosition;
+            position.x += fragment.Direction * separation;
+            position.y += fragment.Direction * separation * 0.12f;
+            fragment.Rect.localPosition = position;
+        }
+
+        if (_punitTearGraphic != null)
+            ApplyPunitRailTearGraphic();
+    }
+
+    private float FindPunitRailSplitLocalX()
+    {
+        return _punitRailSplitLocalX;
+    }
+
+    private static float FindPunitRailSplitLocalX(
+        RectTransform rail,
+        RailSlot left,
+        RailSlot right)
+    {
+        float leftCenter = rail.InverseTransformPoint(
+            left.Anchor.TransformPoint(left.Anchor.rect.center)).x;
+        float rightCenter = rail.InverseTransformPoint(
+            right.Anchor.TransformPoint(right.Anchor.rect.center)).x;
+        return (leftCenter + rightCenter) * 0.5f;
+    }
+
+    private void ApplyPunitRailTearGraphic()
+    {
+        if (_punitTearGraphic == null || _punitTornBoundRail == null)
+            return;
+
+        RectTransform graphicRect = _punitTearGraphic.rectTransform;
+        Vector3 seamInRail = new Vector3(FindPunitRailSplitLocalX(), 0f, 0f);
+        float splitInGraphic = graphicRect.InverseTransformPoint(
+            _punitTornBoundRail.TransformPoint(seamInRail)).x;
+        Rect graphicBounds = graphicRect.rect;
+        _punitTearGraphic.SetTear(
+            splitInGraphic,
+            Mathf.Min(graphicBounds.yMax, _punitRailTopY),
+            Mathf.Max(graphicBounds.yMin, _punitRailBottomY),
+            _punitTearSeparation * 1.5f,
+            _punitTearProgress);
+    }
+
+    private void BindPunitTornText(TMP_Text text)
+    {
+        if (text == null)
+            return;
+
+        _punitTornTextSurface = text;
+        CapturePunitTornTextGeometry();
+        ConfigurePunitTextTearGraphic();
+    }
+
+    private void CapturePunitTornTextGeometry()
+    {
+        if (_punitTornTextSurface == null)
+            return;
+
+        _punitTornTextSurface.ForceMeshUpdate(true, true);
+        TMP_TextInfo info = _punitTornTextSurface.textInfo;
+        _punitTextBaselineString = _punitTornTextSurface.text;
+        _punitTextCanSplit = false;
+        _punitTextBaselineVertices = null;
+
+        if (info == null || info.characterCount < 2 || info.meshInfo == null)
+            return;
+
+        _punitTextBaselineVertices = new Vector3[info.meshInfo.Length][];
+        for (int i = 0; i < info.meshInfo.Length; i++)
+        {
+            Vector3[] vertices = info.meshInfo[i].vertices;
+            _punitTextBaselineVertices[i] = vertices != null
+                ? (Vector3[])vertices.Clone()
+                : System.Array.Empty<Vector3>();
+        }
+
+        int visibleCount = 0;
+        for (int i = 0; i < info.characterCount; i++)
+        {
+            if (info.characterInfo[i].isVisible)
+                visibleCount++;
+        }
+
+        int leftTarget = visibleCount / 2;
+        if (leftTarget < 1 || leftTarget >= visibleCount)
+            return;
+
+        TMP_CharacterInfo leftChar = default;
+        TMP_CharacterInfo rightChar = default;
+        int visibleIndex = 0;
+        for (int i = 0; i < info.characterCount; i++)
+        {
+            TMP_CharacterInfo character = info.characterInfo[i];
+            if (!character.isVisible)
+                continue;
+
+            if (visibleIndex == leftTarget - 1)
+                leftChar = character;
+            else if (visibleIndex == leftTarget)
+                rightChar = character;
+
+            visibleIndex++;
+        }
+
+        _punitTextSplitX = (leftChar.topRight.x + rightChar.bottomLeft.x) * 0.5f;
+        int splitLine = rightChar.lineNumber;
+        _punitTextTopY = float.NegativeInfinity;
+        _punitTextBottomY = float.PositiveInfinity;
+        for (int i = 0; i < info.characterCount; i++)
+        {
+            TMP_CharacterInfo character = info.characterInfo[i];
+            if (!character.isVisible || character.lineNumber != splitLine)
+                continue;
+
+            _punitTextTopY = Mathf.Max(_punitTextTopY, character.ascender);
+            _punitTextBottomY = Mathf.Min(_punitTextBottomY, character.descender);
+        }
+
+        _punitTextCanSplit = _punitTextTopY > _punitTextBottomY;
+    }
+
+    private void ConfigurePunitTextTearGraphic()
+    {
+        if (_punitTornTextSurface == null || !_punitTextCanSplit)
+            return;
+
+        RectTransform textRect = _punitTornTextSurface.rectTransform;
+        _punitTearGraphic = CreatePunitTearGraphic(textRect, matchParentRect: false);
+        _punitTearGraphic.transform.SetAsLastSibling();
+        _punitTearGraphic.SetTear(
+            _punitTextSplitX,
+            _punitTextTopY,
+            _punitTextBottomY,
+            _punitTearSeparation * 1.5f,
+            _punitTearProgress);
+    }
+
+    private ProceduralClueTearGraphic CreatePunitTearGraphic(
+        RectTransform parent,
+        bool matchParentRect)
+    {
+        var graphicObject = new GameObject(
+            "[Runtime] PunitTornClueEdge", typeof(RectTransform));
+        graphicObject.transform.SetParent(parent, false);
+        RectTransform rect = graphicObject.GetComponent<RectTransform>();
+        if (matchParentRect)
+        {
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+        }
+        else
+        {
+            rect.anchorMin = parent.pivot;
+            rect.anchorMax = parent.pivot;
+            rect.pivot = parent.pivot;
+            rect.sizeDelta = parent.rect.size;
+            rect.anchoredPosition = Vector2.zero;
+        }
+
+        ProceduralClueTearGraphic graphic = graphicObject.AddComponent<ProceduralClueTearGraphic>();
+        graphic.raycastTarget = false;
+        return graphic;
+    }
+
+    private void ApplyPunitTearToText()
+    {
+        if (_punitTornTextSurface == null)
+            return;
+
+        if (_punitTextBaselineString != _punitTornTextSurface.text)
+        {
+            CapturePunitTornTextGeometry();
+            if (_punitTearGraphic != null)
+                DestroyOwnedObject(_punitTearGraphic.gameObject);
+            _punitTearGraphic = null;
+            ConfigurePunitTextTearGraphic();
+        }
+
+        TMP_TextInfo info = _punitTornTextSurface.textInfo;
+        if (info == null || _punitTextBaselineVertices == null
+            || _punitTextBaselineVertices.Length != info.meshInfo.Length)
+            return;
+
+        for (int meshIndex = 0; meshIndex < info.meshInfo.Length; meshIndex++)
+        {
+            Vector3[] vertices = info.meshInfo[meshIndex].vertices;
+            Vector3[] baseline = _punitTextBaselineVertices[meshIndex];
+            System.Array.Copy(baseline, vertices, Mathf.Min(vertices.Length, baseline.Length));
+        }
+
+        int visibleCount = 0;
+        for (int i = 0; i < info.characterCount; i++)
+        {
+            if (info.characterInfo[i].isVisible)
+                visibleCount++;
+        }
+
+        int splitIndex = visibleCount / 2;
+        int visibleIndex = 0;
+        float separation = _punitTearSeparation * _punitTearProgress;
+        for (int i = 0; i < info.characterCount; i++)
+        {
+            TMP_CharacterInfo character = info.characterInfo[i];
+            if (!character.isVisible)
+                continue;
+
+            float direction = visibleIndex < splitIndex ? -1f : 1f;
+            visibleIndex++;
+            int materialIndex = character.materialReferenceIndex;
+            int vertexIndex = character.vertexIndex;
+            if (materialIndex < 0 || materialIndex >= _punitTextBaselineVertices.Length)
+                continue;
+
+            Vector3[] baseline = _punitTextBaselineVertices[materialIndex];
+            Vector3[] vertices = info.meshInfo[materialIndex].vertices;
+            if (vertexIndex < 0 || vertexIndex + 3 >= baseline.Length
+                || vertexIndex + 3 >= vertices.Length)
+                continue;
+
+            Vector3 offset = new Vector3(
+                direction * separation, direction * separation * 0.08f, 0f);
+            for (int corner = 0; corner < 4; corner++)
+                vertices[vertexIndex + corner] = baseline[vertexIndex + corner] + offset;
+        }
+
+        _punitTornTextSurface.UpdateVertexData(TMP_VertexDataUpdateFlags.Vertices);
+        if (_punitTearGraphic != null)
+        {
+            _punitTearGraphic.SetTear(
+                _punitTextSplitX,
+                _punitTextTopY,
+                _punitTextBottomY,
+                _punitTearSeparation * 1.5f,
+                _punitTearProgress);
+        }
+    }
+
+    private void ResetPunitTornSurface()
+    {
+        for (int i = 0; i < _punitRailFragments.Count; i++)
+        {
+            TornRailFragment fragment = _punitRailFragments[i];
+            if (fragment.Rect != null)
+                fragment.Rect.localPosition = fragment.RestPosition;
+        }
+
+        _punitRailFragments.Clear();
+        _punitTornBoundRail = null;
+        _punitBoundWordSpanIdentity = null;
+        _punitRailSplitLocalX = 0f;
+        _punitRailTopY = 0f;
+        _punitRailBottomY = 0f;
+
+        if (_punitTornTextSurface != null
+            && _punitTextBaselineString != _punitTornTextSurface.text)
+        {
+            // A clue may have changed while its effect was active. Rebuild from the unchanged TMP
+            // source string instead of copying an older mesh snapshot onto the new sentence.
+            _punitTornTextSurface.ForceMeshUpdate(true, true);
+        }
+        else if (_punitTornTextSurface != null && _punitTextBaselineVertices != null)
+        {
+            TMP_TextInfo info = _punitTornTextSurface.textInfo;
+            if (info != null && info.meshInfo != null)
+            {
+                int meshCount = Mathf.Min(info.meshInfo.Length, _punitTextBaselineVertices.Length);
+                for (int meshIndex = 0; meshIndex < meshCount; meshIndex++)
+                {
+                    Vector3[] vertices = info.meshInfo[meshIndex].vertices;
+                    Vector3[] baseline = _punitTextBaselineVertices[meshIndex];
+                    System.Array.Copy(baseline, vertices, Mathf.Min(vertices.Length, baseline.Length));
+                }
+
+                _punitTornTextSurface.UpdateVertexData(TMP_VertexDataUpdateFlags.Vertices);
+            }
+        }
+
+        _punitTornTextSurface = null;
+        _punitTextBaselineString = null;
+        _punitTextBaselineVertices = null;
+        _punitTextCanSplit = false;
+
+        if (_punitTearGraphic != null)
+            DestroyOwnedObject(_punitTearGraphic.gameObject);
+        _punitTearGraphic = null;
+    }
+
+    private void ResetPunitTornEffect()
+    {
+        ResetPunitTornSurface();
+        _punitTearProgress = 0f;
+        _punitTearTargetActive = false;
+    }
+
+    private RestorationObjectiveUnit FindObjectiveUnit(string stableId)
+    {
+        IReadOnlyList<RestorationObjectiveUnit> units =
+            _restorationObjectiveController?.State?.Definition?.units;
+        if (units == null)
+            return null;
+
+        for (int index = 0; index < units.Count; index++)
+        {
+            if (units[index] != null && units[index].stableId == stableId)
+                return units[index];
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Ugat QA 2026-09-16, second pass. Keeps the authored instruction clear of the rail.
+    ///
+    /// <para>
+    /// The two rects are measured from DIFFERENT origins, which is what made the first attempt at
+    /// this fail. The instruction is authored under this presenter, a SIBLING of HUDRoot, so its
+    /// anchored Y is measured from the bottom of the glass. The rail is parented to HUDLayer INSIDE
+    /// HUDRoot, and HUDRoot carries SafeAreaHandler — so the rail's y=0 is the bottom of the SAFE
+    /// AREA. On any device with a home-indicator inset the rail therefore rides higher than its
+    /// anchored Y suggests, by exactly that inset. Anchoring the instruction to a number computed
+    /// from the rail's anchored Y read as a 24-unit gap and rendered as an overlap, with
+    /// "SYMBOL TO DEFEND" sitting on the slot frames.
+    /// </para>
+    ///
+    /// <para>
+    /// Measuring in world space removes the mismatch entirely: whatever either parent does to its
+    /// children, the instruction ends up a fixed distance above the rail's ACTUAL top edge. Re-run
+    /// whenever the play area changes, for the same reason the band is.
+    /// </para>
+    /// </summary>
+    private void PositionInstructionAboveRail(RectTransform railRect)
+    {
+        if (railRect == null)
+            return;
+
+        TextMeshProUGUI instruction = ResolveClueInstruction();
+        if (instruction == null || instruction.transform is not RectTransform instructionRect)
+            return;
+
+        float scale = instructionRect.lossyScale.y;
+        if (Mathf.Approximately(scale, 0f))
+            return;
+
+        railRect.GetWorldCorners(_railCornerBuffer);
+        instructionRect.GetWorldCorners(_instructionCornerBuffer);
+
+        // corners[1] is top-left, corners[0] bottom-left.
+        float railTopWorld = _railCornerBuffer[1].y;
+        float instructionBottomWorld = _instructionCornerBuffer[0].y;
+
+        float shift = (railTopWorld - instructionBottomWorld) / scale + _instructionGapAboveRail;
+        if (Mathf.Approximately(shift, 0f))
+            return;
+
+        instructionRect.anchoredPosition += new Vector2(0f, shift);
+    }
+
+    /// <summary>
+    /// Asks the play column to reserve the screen the rail occupies, so the play field — the fence,
+    /// the shrine and Juan, who stands below both — is raised clear of it.
+    ///
+    /// <para>
+    /// This is the fix for the rail being drawn ON the fence. The rail is about 190 canvas units
+    /// tall and the gap between the fence's foot and the bottom of the screen is about 145, so no
+    /// anchoring could have fitted it: the room has to be made, not found. Made by lowering the
+    /// camera, which moves nothing in the world — the shrine's hit line and the enemy path are
+    /// authored world positions and are untouched.
+    /// </para>
+    ///
+    /// <para>
+    /// Measured from the rail's own live corners rather than computed from the layout fields, so a
+    /// taller rail reserves a taller band on its own and the two can never drift apart. Screen
+    /// pixels, not canvas units, because the band is compared against the screen: the canvas
+    /// scaler's own factor and the safe-area inset the rail is parented inside are both already
+    /// baked into where those corners land.
+    /// </para>
+    /// </summary>
+    private void ReservePlayFieldBandForRail(RectTransform railRect)
+    {
+        AspectLockedCamera playColumn = AspectLockedCamera.Instance;
+        if (playColumn == null || railRect == null)
+            return;
+
+        Canvas canvas = railRect.GetComponentInParent<Canvas>();
+        if (canvas == null)
+            return;
+
+        Camera uiCamera = canvas.renderMode != RenderMode.ScreenSpaceOverlay
+            ? canvas.worldCamera
+            : null;
+
+        Vector3[] corners = new Vector3[4];
+        railRect.GetWorldCorners(corners);
+
+        float topScreenY = float.NegativeInfinity;
+        for (int i = 0; i < corners.Length; i++)
+        {
+            float screenY = RectTransformUtility.WorldToScreenPoint(uiCamera, corners[i]).y;
+            if (screenY > topScreenY)
+                topScreenY = screenY;
+        }
+
+        if (float.IsInfinity(topScreenY) || float.IsNaN(topScreenY))
+            return;
+
+        playColumn.SetBottomBandPixels(
+            topScreenY + (_railPlayFieldClearance * Mathf.Max(0.01f, canvas.scaleFactor)));
+    }
+
+    private float WordWidth(int slotCount)
+    {
+        Vector2 slotSize = _railLayoutSlotSize == Vector2.zero ? _slotSize : _railLayoutSlotSize;
+        float spacing = _railLayoutSlotSize == Vector2.zero ? _slotSpacing : _railLayoutSlotSpacing;
+        return (slotCount * slotSize.x) + ((slotCount - 1) * spacing);
+    }
+
+    private void RefitRestorationRail()
+    {
+        if (_railRoot == null || _railNominalWidth <= 0f)
+            return;
+
+        var railRect = (RectTransform)_railRoot.transform;
+        float builtWidth = railRect.rect.width;
+        Canvas canvas = railRect.GetComponentInParent<Canvas>();
+        float availableWidth = ResolveRailAvailableWidth(railRect.parent, canvas);
+        if (builtWidth <= 0f || availableWidth <= 0f)
+            return;
+
+        // Keep slot anchors and their live effects intact when safe-area/layout values settle
+        // or the screen resizes. The initial geometry is already scaled by the layout policy.
+        float scale = Mathf.Min(_railNominalWidth, availableWidth) / builtWidth;
+        Vector3 fittedScale = new Vector3(scale, scale, 1f);
+        if ((railRect.localScale - fittedScale).sqrMagnitude < 0.000001f)
+            return;
+
+        railRect.localScale = fittedScale;
+        ReservePlayFieldBandForRail(railRect);
+        PositionInstructionAboveRail(railRect);
+    }
+
+    private float ResolveRailAvailableWidth(Transform hudContainer, Canvas canvas)
+    {
+        if (hudContainer is RectTransform rect && rect.rect.width > 0f)
+            return rect.rect.width;
+
+        if (canvas != null && canvas.scaleFactor > 0f)
+            return Screen.width / canvas.scaleFactor;
+
+        return Screen.width;
+    }
+
+    internal static float CalculateRailScale(float nominalWidth, float availableWidth)
+    {
+        if (nominalWidth <= 0f || availableWidth <= 0f)
+            return 1f;
+
+        return Mathf.Min(1f, availableWidth / nominalWidth);
+    }
+
+    /// <summary>Slots this word contributes to the rail, under TargetTextSlotMap's skip rule.</summary>
+    private static int CountEmittedSlots(FocusWordDefinition word)
+    {
+        if (word?.decomposition == null)
+            return 0;
+
+        int count = 0;
+        for (int i = 0; i < word.decomposition.Count; i++)
+        {
+            if (word.decomposition[i]?.symbol != null)
+                count++;
+        }
+
+        return count;
+    }
+
+    /// <summary>
+    /// The romanised syllable printed directly beneath one slot's box, centred on it.
+    ///
+    /// <para>
+    /// One label per BOX rather than one per word: the player is being asked which symbol goes in
+    /// which box, and a word spelled out beside the group leaves them to divide it up themselves.
+    /// The label row sits below the slot row so the box and its reading are adjacent, and the rail
+    /// reads as [box][box] : [box][box] with the syllables underneath.
+    /// </para>
+    ///
+    /// <para>
+    /// The text is the symbol's own <c>syllable</c> — the same romanisation the rest of the HUD
+    /// names a glyph by — uppercased, so the row reads as labels rather than as prose. It is
+    /// withheld behind the same mask as the box's glyph until that slot is restored; see
+    /// <see cref="RepaintRail"/>.
+    /// </para>
+    /// </summary>
+    private TextMeshProUGUI BuildSlotLabel(
+        RectTransform railRect,
+        TextMeshProUGUI fontTemplate,
+        int flattenedIndex,
+        float slotX,
+        float slotRowTop)
+    {
+        var labelObject = new GameObject(
+            $"[Runtime] RestorationSlotLabel_{flattenedIndex}", typeof(RectTransform));
+        labelObject.transform.SetParent(railRect, false);
+
+        TextMeshProUGUI label = labelObject.AddComponent<TextMeshProUGUI>();
+        CopyFont(fontTemplate, label);
+        label.fontSize = _railLayoutLabelFontSize == 0f
+            ? _latinWordLabelFontSize
+            : _railLayoutLabelFontSize;
+        label.alignment = TextAlignmentOptions.Top;
+        label.color = _latinWordLabelColor;
+        label.raycastTarget = false;
+        label.textWrappingMode = TextWrappingModes.NoWrap;
+        label.overflowMode = TextOverflowModes.Overflow;
+        // Starts masked and is repainted by RepaintRail. The syllable printed under a box is as
+        // much of the answer as the box's own glyph is — leaving "NA" readable under an empty box
+        // would hand back exactly the reading the clue panel now withholds.
+        label.text = UnreadableSlotMask;
+
+        // Exactly the slot's own width, at the slot's own x, so "centred under its own box" is a
+        // property of the rect rather than of a measured string.
+        RectTransform rect = labelObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0f, 1f);
+        rect.anchorMax = new Vector2(0f, 1f);
+        rect.pivot = new Vector2(0f, 1f);
+        rect.anchoredPosition =
+            new Vector2(slotX, slotRowTop - _railLayoutSlotSize.y - _railLayoutLabelGap);
+        rect.sizeDelta = new Vector2(_railLayoutSlotSize.x, _railLayoutLabelRowHeight);
+        return label;
+    }
+
+    /// <summary>
+    /// The divider drawn between two focus words' slot groups, vertically centred on the slot row.
+    ///
+    /// <para>
+    /// The gap alone already separated the groups; the mark makes the separation something the
+    /// player can point at rather than something they have to measure. It is drawn in the gap the
+    /// layout was opening anyway, so it adds no width.
+    /// </para>
+    /// </summary>
+    private void BuildWordSeparator(
+        RectTransform railRect,
+        TextMeshProUGUI fontTemplate,
+        int wordIndex,
+        float gapX,
+        float slotRowTop)
+    {
+        var separatorObject = new GameObject(
+            $"[Runtime] RestorationWordSeparator_{wordIndex}", typeof(RectTransform));
+        separatorObject.transform.SetParent(railRect, false);
+
+        TextMeshProUGUI separator = separatorObject.AddComponent<TextMeshProUGUI>();
+        CopyFont(fontTemplate, separator);
+        separator.fontSize = _railLayoutSeparatorFontSize == 0f
+            ? _wordSeparatorFontSize
+            : _railLayoutSeparatorFontSize;
+        separator.alignment = TextAlignmentOptions.Center;
+        separator.color = _wordSeparatorColor;
+        separator.raycastTarget = false;
+        separator.textWrappingMode = TextWrappingModes.NoWrap;
+        separator.overflowMode = TextOverflowModes.Overflow;
+        separator.text = WordSeparatorText;
+
+        RectTransform rect = separatorObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0f, 1f);
+        rect.anchorMax = new Vector2(0f, 1f);
+        rect.pivot = new Vector2(0f, 1f);
+        rect.anchoredPosition = new Vector2(gapX, slotRowTop);
+        rect.sizeDelta = new Vector2(_railLayoutWordGap, _railLayoutSlotSize.y);
+    }
+
+    /// <summary>
+    /// How one slot's symbol is named under its box: its authored romanised syllable, uppercased,
+    /// falling back to the combat id so a symbol with no romanisation still labels its box rather
+    /// than leaving a silent blank the player reads as a rendering fault.
+    /// </summary>
+    private static string ResolveSlotLatinLabel(BaybayinCharacterSO symbol)
+    {
+        if (symbol == null)
+            return string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(symbol.syllable))
+            return symbol.syllable.ToUpperInvariant();
+
+        return !string.IsNullOrWhiteSpace(symbol.characterID)
+            ? symbol.characterID.ToUpperInvariant()
+            : string.Empty;
+    }
+
+    private RailSlot BuildSlot(
+        RectTransform railRect,
+        FocusWordDefinition word,
+        SymbolValueReference reference,
+        int decompositionIndex,
+        int flattenedIndex,
+        float x,
+        float y)
+    {
+        var slotObject = new GameObject(
+            $"[Runtime] RestorationSlot_{flattenedIndex}", typeof(RectTransform), typeof(Image));
+        slotObject.transform.SetParent(railRect, false);
+
+        Image frame = slotObject.GetComponent<Image>();
+        frame.sprite = _runtimeSlotFrameSprite;
+        // Sliced so the generated frame's border stays one thickness at any authored slot size; a
+        // Simple fill would scale the border with the slot and thicken it on a larger rail.
+        frame.type = Image.Type.Sliced;
+        frame.raycastTarget = false;
+
+        RectTransform rect = slotObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0f, 1f);
+        rect.anchorMax = new Vector2(0f, 1f);
+        rect.pivot = new Vector2(0f, 1f);
+        rect.anchoredPosition = new Vector2(x, y);
+        rect.sizeDelta = _railLayoutSlotSize == Vector2.zero ? _slotSize : _railLayoutSlotSize;
+
+        var glyphObject = new GameObject(
+            $"[Runtime] RestorationSlotGlyph_{flattenedIndex}", typeof(RectTransform), typeof(Image));
+        glyphObject.transform.SetParent(slotObject.transform, false);
+
+        Sprite glyphSprite = ResolveSlotGlyph(reference.symbol);
+        Image glyph = glyphObject.GetComponent<Image>();
+        glyph.sprite = glyphSprite;
+        glyph.color = _filledGlyphColor;
+        glyph.preserveAspect = true;
+        glyph.raycastTarget = false;
+        ApplyGlyphSize(glyphObject.GetComponent<RectTransform>(), reference.symbol, glyphSprite);
+        glyphObject.SetActive(false);
+
+        return new RailSlot
+        {
+            Word = word,
+            DecompositionIndex = decompositionIndex,
+            Anchor = rect,
+            Frame = frame,
+            Glyph = glyph,
+        };
+    }
+
+    /// <summary>
+    /// Sizes a slot's glyph so its INK, rather than its PNG, fills the box.
+    ///
+    /// <para>
+    /// The rect is centred on the slot and sized to <see cref="_slotGlyphFill"/> of it, then divided
+    /// by the art's ink fraction when the art is almanac art, which is drawn small inside a large
+    /// transparent square. Without that division the box is filled with the sprite's empty margin
+    /// and the glyph reads at about 40% of its frame — the complaint this answers. The overshoot is
+    /// transparent, so a rect that runs past the gold frame draws nothing there; what meets the
+    /// frame is the glyph itself, with an even margin left by <see cref="_slotGlyphFill"/>.
+    /// </para>
+    /// </summary>
+    private void ApplyGlyphSize(RectTransform glyphRect, BaybayinCharacterSO symbol, Sprite sprite)
+    {
+        if (glyphRect == null)
+            return;
+
+        bool isAlmanacArt = symbol != null && sprite != null && sprite == symbol.almanacSprite;
+        bool isOutlineArt = !isAlmanacArt && symbol != null && sprite == symbol.glyphOutlineSprite;
+        float inkFraction = isAlmanacArt
+            ? GlyphInkMetrics.ForAlmanac(symbol, Mathf.Max(0.01f, _almanacGlyphInkFraction))
+            : isOutlineArt ? GlyphInkMetrics.OutlineFraction : 1f;
+        float scale = Mathf.Max(0.01f, _slotGlyphFill) / inkFraction;
+
+        // Centred, sized as a share of the slot, rather than stretched with an absolute inset: the
+        // inset was the reason the boxes could grow and the glyphs could not follow.
+        glyphRect.anchorMin = new Vector2(0.5f, 0.5f);
+        glyphRect.anchorMax = new Vector2(0.5f, 0.5f);
+        glyphRect.pivot = new Vector2(0.5f, 0.5f);
+        glyphRect.anchoredPosition = Vector2.zero;
+        Vector2 slotSize = _railLayoutSlotSize == Vector2.zero ? _slotSize : _railLayoutSlotSize;
+        glyphRect.sizeDelta = new Vector2(slotSize.x * scale, slotSize.y * scale);
+    }
+
+    /// <summary>
+    /// The art a filled slot shows: the almanac glyph first, the bare outline second, the framed
+    /// badge third — never <c>displaySprite</c>, which is a learning card carrying the romanised
+    /// syllable printed on it. A rail built out of learning cards would print the Latin reading in
+    /// picture form and defeat the ash exactly as the old text readout did.
+    ///
+    /// <para>
+    /// The almanac art leads because it is the only one of the three that is a finished glyph.
+    /// <c>glyphOutlineSprite</c> is a flat white silhouette; it read as a symbol at all only
+    /// because the slot tinted it dark gold, and the same character then looked like two different
+    /// things in the rail and in the almanac. <c>almanacSprite</c> is self-coloured — a near-white
+    /// fill inside a dark brown outline, no card or scroll behind it — so the box now shows the
+    /// player the same mark the almanac will show them later. The two fallbacks stay so a character
+    /// authored without almanac art still renders something rather than nothing.
+    /// </para>
+    /// </summary>
+    private static Sprite ResolveSlotGlyph(BaybayinCharacterSO symbol)
+    {
+        if (symbol == null)
+            return null;
+
+        if (symbol.almanacSprite != null)
+            return symbol.almanacSprite;
+
+        return symbol.glyphOutlineSprite != null ? symbol.glyphOutlineSprite : symbol.badgeSprite;
+    }
+
+    private void UpdateRestorationProgress()
+    {
+        bool shouldShow = IsClueCombatArmed
+            && _level != null
+            && _level.activeClueRestorationEnabled
+            && HasRestorationWords
+            && !IsAnyCutscenePlaying()
+            && !_suppressedByIntroModal;
+
+        if (!shouldShow)
+        {
+            if (_railRoot != null)
+                _railRoot.SetActive(false);
+
+            // Also covers an authored readout on a level that never builds a rail: whatever string
+            // it was left holding is not this level's progress, and it named its words in Latin.
+            if (_restorationProgressText != null)
+                _restorationProgressText.gameObject.SetActive(false);
+            return;
+        }
+
+        EnsureRestorationRail();
+        if (_railRoot == null)
+            return;
+
+        RepaintRail(forceRestored: false);
+        _railRoot.SetActive(true);
+    }
+
+    /// <summary>
+    /// Paints every slot from restoration state: a restored slot shows its Baybayin glyph in the
+    /// filled frame colour, an unrestored one stays a bare empty frame. The frame carries the state
+    /// as well as the glyph, so a symbol with no glyph art still reads as filled rather than as
+    /// silently unfinished.
+    /// </summary>
+    /// <param name="forceRestored">
+    /// Paints every slot restored regardless of state, for the completion beat. It changes nothing
+    /// about restoration state itself — the win was already decided on that state — so a caller
+    /// cannot use this to fake progress the player has not made.
+    /// </param>
+    private void RepaintRail(bool forceRestored)
+    {
+        // Ash can obscure an unearned requirement, but never an already restored box.
+        // Retire its artwork immediately so even an exit animation cannot cover earned ink.
+        if (_ashCoverUsesRestorationRail && _ashCoverRailSlot != null
+            && IsRailSlotRestored(_ashCoverRailSlot))
+            HideAshCover();
+        bool ashActive = AshFirstSlotController.IsAnyActive();
+        RailSlot ashTargetSlot = ashActive ? GetAshCoverRailSlot() : null;
+
+        for (int i = 0; i < _railSlots.Count; i++)
+        {
+            RailSlot slot = _railSlots[i];
+            bool restored = forceRestored
+                || (UsesRestorationObjectiveDefinition
+                    ? _restorationObjectiveController.IsOccurrenceRestored(slot.OccurrenceId)
+                    : _restorationState.IsSlotRestored(slot.Word, slot.DecompositionIndex));
+            bool ashCoveringSlot = !restored && ashActive && slot == ashTargetSlot;
+
+            slot.Frame.color = restored ? _filledSlotColor : _emptySlotColor;
+
+            // A symbol with no glyph art leaves the child off rather than showing it: an Image with
+            // no sprite draws a solid quad, which would fill the slot with a block instead of a
+            // glyph. The frame colour still reports the slot as restored.
+            bool showGlyph = restored && slot.Glyph.sprite != null
+                && !ashCoveringSlot && !slot.IsUhawCaptured;
+
+            // A slot with a glyph in the air is the one case where the resting glyph stays hidden
+            // while the state says restored: the flier is standing in for it. This is the ONLY
+            // place the two can disagree, and FinishSlotFlight closes the gap from outside the
+            // coroutine so a killed flight cannot leave it open.
+            if (showGlyph && slot.Flier != null)
+                showGlyph = false;
+
+            if (slot.Glyph.gameObject.activeSelf != showGlyph)
+                slot.Glyph.gameObject.SetActive(showGlyph);
+
+            // The syllable under the box follows the same rule as the glyph inside it. The label
+            // row follows the authored display policy for unearned answers. Every restored
+            // occurrence reveals its own label immediately, even if its word is still incomplete.
+            if (slot.Label != null)
+            {
+                bool showLabel = restored;
+                if (UsesRestorationObjectiveDefinition)
+                {
+                    RestorationDisplayMode mode = _restorationObjectiveController
+                        .State.Definition.displayMode;
+                    showLabel = restored || mode == RestorationDisplayMode.GuidedWords
+                        || mode == RestorationDisplayMode.MarkedContext
+                        || (mode == RestorationDisplayMode.ClueOnlyWords
+                            && IsObjectiveUnitComplete(slot.UnitId));
+                }
+
+                slot.Label.text = showLabel && !ashCoveringSlot
+                    ? slot.LatinLabel
+                    : UnreadableSlotMask;
+
+                // Colour is restored here too, so a repaint landing after a killed flight puts the
+                // label back to full brightness even though the routine that was dimming it never
+                // got to finish. Only a live flight is allowed to leave it dim.
+                if (slot.Flier == null)
+                    slot.Label.color = _latinWordLabelColor;
+            }
+        }
+
+        // Word dividers are set once at build and never repainted: the boundary between two words
+        // is a fact about the target text, not about how much of it the player has restored.
+
+        // Left alone while the completion flash owns the alpha, so a repaint landing mid-beat
+        // cannot snap the rail back to full opacity halfway through a dip.
+        if (_railCanvasGroup != null && _railFlashRoutine == null)
+            _railCanvasGroup.alpha = 1f;
+
+        SyncNgatngatTextDamage();
+        SyncRailPage(forceRestored);
+    }
+
+    /// <summary>
+    /// Keeps a one-word-at-a-time rail on the word the player is working on. The first call (the
+    /// build) and any call while the rail cannot animate snap straight to it; otherwise a finished
+    /// word holds, slides out to the left, and the next slides in from the right. The completion
+    /// beat paints everything restored and must not page, so it leaves the shown word alone.
+    /// </summary>
+    private void SyncRailPage(bool forceRestored)
+    {
+        if (_railPages == null || _railRoot == null)
+            return;
+
+        UpdateRailProgress(forceRestored);
+
+        if (_railShownPage == RestorationWordPages.NoPage)
+        {
+            ShowRailPage(ResolveCurrentRailPage());
+            return;
+        }
+
+        if (forceRestored || _railPageRoutine != null)
+            return;
+
+        int target = ResolveCurrentRailPage();
+        if (target == _railShownPage)
+            return;
+
+        if (!isActiveAndEnabled || !_railRoot.activeInHierarchy)
+        {
+            ShowRailPage(target);
+            return;
+        }
+
+        _railPageRoutine = StartCoroutine(SlideRailToCurrentPage());
+    }
+
+    private int ResolveCurrentRailPage()
+    {
+        _isOccurrenceRestoredForPaging ??= IsOccurrenceRestoredForPaging;
+        return _railPages.CurrentPage(_isOccurrenceRestoredForPaging);
+    }
+
+    private System.Func<string, bool> _isOccurrenceRestoredForPaging;
+
+    private bool IsOccurrenceRestoredForPaging(string occurrenceId)
+        => _restorationObjectiveController != null
+            && _restorationObjectiveController.IsOccurrenceRestored(occurrenceId);
+
+    /// <summary>Activates exactly the boxes (and their labels) of <paramref name="page"/>.</summary>
+    private void ShowRailPage(int page)
+    {
+        _railShownPage = page;
+        for (int i = 0; i < _railSlots.Count; i++)
+        {
+            RailSlot slot = _railSlots[i];
+            if (slot?.Anchor == null)
+                continue;
+
+            bool visible = slot.PageIndex == RestorationWordPages.NoPage || slot.PageIndex == page;
+            if (slot.Anchor.gameObject.activeSelf != visible)
+                slot.Anchor.gameObject.SetActive(visible);
+            if (slot.Label != null && slot.Label.gameObject.activeSelf != visible)
+                slot.Label.gameObject.SetActive(visible);
+        }
+    }
+
+    private bool ShownRailPageHasFlightInProgress()
+    {
+        for (int i = 0; i < _railSlots.Count; i++)
+        {
+            RailSlot slot = _railSlots[i];
+            if (slot != null && slot.PageIndex == _railShownPage && slot.Flier != null)
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// The page turn. Unscaled, like every other rail beat, so a dipped time scale cannot stretch
+    /// it. The rail itself travels — the boxes never move inside it — so a glyph flight, the ash
+    /// cover or Punit's tear bound to a box stays aligned with it throughout.
+    /// </summary>
+    private IEnumerator SlideRailToCurrentPage()
+    {
+        // Hold while the last glyph is still flying into its box, then long enough for the whole
+        // word to read. The extra second is a watchdog only: a flight is retired by its own
+        // deadline well before then.
+        float held = 0f;
+        while (held < _railPageHoldSeconds
+               || (ShownRailPageHasFlightInProgress() && held < _railPageHoldSeconds + 1f))
+        {
+            held += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        if (_railRoot == null || _railRoot.transform is not RectTransform railRect)
+        {
+            _railPageRoutine = null;
+            yield break;
+        }
+
+        float baseX = _railAnchoredPosition.x;
+        float travel = ResolveRailSlideDistance(railRect);
+
+        yield return SlideRailX(railRect, baseX, baseX - travel, easeOut: false);
+        ShowRailPage(ResolveCurrentRailPage());
+        yield return SlideRailX(railRect, baseX + travel, baseX, easeOut: true);
+
+        _railPageRoutine = null;
+
+        // Progress made mid-slide (a one-box word filled while it was arriving) turns the next
+        // page straight away rather than waiting for an unrelated repaint.
+        SyncRailPage(forceRestored: false);
+    }
+
+    private IEnumerator SlideRailX(RectTransform railRect, float fromX, float toX, bool easeOut)
+    {
+        float duration = Mathf.Max(0.01f, _railPageSlideSeconds);
+        float elapsed = 0f;
+        while (elapsed < duration && railRect != null)
+        {
+            float t = Mathf.Clamp01(elapsed / duration);
+            float eased = easeOut ? 1f - ((1f - t) * (1f - t)) : t * t;
+            SetRailX(railRect, Mathf.LerpUnclamped(fromX, toX, eased));
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        if (railRect != null)
+            SetRailX(railRect, toX);
+    }
+
+    private static void SetRailX(RectTransform railRect, float x)
+    {
+        Vector2 position = railRect.anchoredPosition;
+        railRect.anchoredPosition = new Vector2(x, position.y);
+    }
+
+    /// <summary>Far enough that the rail's near edge clears the HUD's edge, in parent units.</summary>
+    private float ResolveRailSlideDistance(RectTransform railRect)
+    {
+        float available = ResolveRailAvailableWidth(
+            railRect.parent, railRect.GetComponentInParent<Canvas>());
+        float railWidth = railRect.rect.width * Mathf.Abs(railRect.localScale.x);
+        return (available + railWidth) * 0.5f + 32f;
+    }
+
+    /// <summary>
+    /// Builds the words-completed block — a bar with the "n/m words completed" count beneath it —
+    /// at the rail's authored spot, and returns its height so the rail can be raised clear of it.
+    /// </summary>
+    private float BuildRailProgress(Transform hudContainer, TextMeshProUGUI fontTemplate)
+    {
+        float textHeight = _railProgressFontSize * 1.3f;
+        float height = _railProgressBarSize.y + _railProgressTextGap + textHeight;
+
+        _railProgressRoot = new GameObject(
+            "[Runtime] ActiveClueWordProgress", typeof(RectTransform), typeof(CanvasGroup));
+        _railProgressRoot.transform.SetParent(hudContainer, false);
+        _railProgressCanvasGroup = _railProgressRoot.GetComponent<CanvasGroup>();
+        _railProgressCanvasGroup.blocksRaycasts = false;
+        _railProgressCanvasGroup.interactable = false;
+
+        var root = (RectTransform)_railProgressRoot.transform;
+        root.anchorMin = new Vector2(0.5f, 0f);
+        root.anchorMax = new Vector2(0.5f, 0f);
+        root.pivot = new Vector2(0.5f, 0f);
+        root.anchoredPosition = _railAnchoredPosition;
+        root.sizeDelta = new Vector2(_railProgressBarSize.x, height);
+
+        var trackObject = new GameObject(
+            "[Runtime] WordProgressTrack", typeof(RectTransform), typeof(Image));
+        trackObject.transform.SetParent(root, false);
+        var track = (RectTransform)trackObject.transform;
+        track.anchorMin = new Vector2(0f, 1f);
+        track.anchorMax = new Vector2(1f, 1f);
+        track.pivot = new Vector2(0.5f, 1f);
+        track.anchoredPosition = Vector2.zero;
+        track.sizeDelta = new Vector2(0f, _railProgressBarSize.y);
+        Image trackImage = trackObject.GetComponent<Image>();
+        trackImage.color = _railProgressTrackColor;
+        trackImage.raycastTarget = false;
+
+        var fillObject = new GameObject(
+            "[Runtime] WordProgressFill", typeof(RectTransform), typeof(Image));
+        fillObject.transform.SetParent(track, false);
+        _railProgressFill = (RectTransform)fillObject.transform;
+        _railProgressFill.anchorMin = Vector2.zero;
+        _railProgressFill.anchorMax = new Vector2(0f, 1f);
+        _railProgressFill.pivot = new Vector2(0f, 0.5f);
+        _railProgressFill.offsetMin = Vector2.zero;
+        _railProgressFill.offsetMax = Vector2.zero;
+        Image fillImage = fillObject.GetComponent<Image>();
+        fillImage.color = _railProgressFillColor;
+        fillImage.raycastTarget = false;
+
+        var labelObject = new GameObject("[Runtime] WordProgressLabel", typeof(RectTransform));
+        labelObject.transform.SetParent(root, false);
+        _railProgressLabel = labelObject.AddComponent<TextMeshProUGUI>();
+        CopyFont(fontTemplate, _railProgressLabel);
+        _railProgressLabel.fontSize = _railProgressFontSize;
+        _railProgressLabel.alignment = TextAlignmentOptions.Bottom;
+        _railProgressLabel.color = _latinWordLabelColor;
+        _railProgressLabel.raycastTarget = false;
+        _railProgressLabel.textWrappingMode = TextWrappingModes.NoWrap;
+        _railProgressLabel.overflowMode = TextOverflowModes.Overflow;
+        var label = (RectTransform)labelObject.transform;
+        label.anchorMin = Vector2.zero;
+        label.anchorMax = new Vector2(1f, 0f);
+        label.pivot = new Vector2(0.5f, 0f);
+        label.anchoredPosition = Vector2.zero;
+        label.sizeDelta = new Vector2(0f, textHeight);
+
+        _railProgressShown = 0f;
+        _railProgressTarget = 0f;
+        ApplyRailProgressFill(0f);
+        _railProgressRoot.SetActive(false);
+        return height;
+    }
+
+    /// <summary>
+    /// Points the bar at the words finished so far and rewrites the count. The completion beat
+    /// counts every word, matching the rail it paints fully restored.
+    /// </summary>
+    private void UpdateRailProgress(bool forceRestored)
+    {
+        if (_railProgressRoot == null)
+            return;
+
+        _isOccurrenceRestoredForPaging ??= IsOccurrenceRestoredForPaging;
+        int total = _railPages.PageCount;
+        int done = forceRestored
+            ? total
+            : _railPages.CompletedPageCount(_isOccurrenceRestoredForPaging);
+        _railProgressTarget = total > 0 ? Mathf.Clamp01(done / (float)total) : 0f;
+
+        if (_railProgressLabel != null)
+        {
+            string text;
+            try
+            {
+                text = string.Format(_railProgressFormat ?? string.Empty, done, total);
+            }
+            catch (System.FormatException)
+            {
+                text = done + "/" + total;
+            }
+
+            _railProgressLabel.text = text;
+        }
+
+        // Nothing can animate it outside play, so it lands at once rather than sitting stale.
+        if (!Application.isPlaying || !isActiveAndEnabled)
+        {
+            _railProgressShown = _railProgressTarget;
+            ApplyRailProgressFill(_railProgressShown);
+        }
+    }
+
+    /// <summary>
+    /// Keeps the bar on the rail's visibility and opacity, and eases its fill toward the target.
+    /// Unscaled, like the rest of the rail, so a dipped time scale cannot stall it.
+    /// </summary>
+    private void TickRailProgress(float deltaTime)
+    {
+        if (_railProgressRoot == null)
+            return;
+
+        bool visible = _railRoot != null && _railRoot.activeSelf;
+        if (_railProgressRoot.activeSelf != visible)
+            _railProgressRoot.SetActive(visible);
+        if (_railProgressCanvasGroup != null && _railCanvasGroup != null)
+            _railProgressCanvasGroup.alpha = _railCanvasGroup.alpha;
+
+        if (Mathf.Approximately(_railProgressShown, _railProgressTarget))
+            return;
+
+        // One completed word's share of the bar per fill duration, so every word fills alike.
+        float share = _railPages != null && _railPages.PageCount > 0 ? 1f / _railPages.PageCount : 1f;
+        float step = share * Mathf.Max(0f, deltaTime) / Mathf.Max(0.01f, _railProgressFillSeconds);
+        _railProgressShown = Mathf.MoveTowards(_railProgressShown, _railProgressTarget, step);
+        ApplyRailProgressFill(_railProgressShown);
+    }
+
+    private void ApplyRailProgressFill(float fraction)
+    {
+        if (_railProgressFill != null)
+            _railProgressFill.anchorMax = new Vector2(Mathf.Clamp01(fraction), 1f);
+    }
+
+    /// <summary>
+    /// Puts a rail interrupted mid-turn back at rest on the current word: a disable or teardown
+    /// kills the coroutine without running its tail.
+    /// </summary>
+    private void SettleRailPage()
+    {
+        _railProgressShown = _railProgressTarget;
+        ApplyRailProgressFill(_railProgressShown);
+        _railPageRoutine = null;
+        if (_railPages == null || _railRoot == null)
+            return;
+
+        if (_railRoot.transform is RectTransform railRect)
+            SetRailX(railRect, _railAnchoredPosition.x);
+        ShowRailPage(ResolveCurrentRailPage());
+    }
+
+    private bool IsObjectiveUnitComplete(string unitId)
+    {
+        if (string.IsNullOrEmpty(unitId))
+            return false;
+
+        RestorationObjectiveState state = _restorationObjectiveController?.State;
+        RestorationObjectiveDefinition definition = state?.Definition;
+        if (definition?.units == null)
+            return false;
+
+        for (int unitIndex = 0; unitIndex < definition.units.Count; unitIndex++)
+        {
+            RestorationObjectiveUnit unit = definition.units[unitIndex];
+            if (unit == null || unit.stableId != unitId)
+                continue;
+
+            if (unit.tokens == null)
+                return false;
+
+            for (int tokenIndex = 0; tokenIndex < unit.tokens.Count; tokenIndex++)
+            {
+                RestorationObjectiveToken token = unit.tokens[tokenIndex];
+                if (token?.IsTarget == true
+                    && !state.IsOccurrenceRestored(token.occurrenceId))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Pops the slot (or slots) that the just-restored symbol fills.
+    ///
+    /// <para>
+    /// Scoped to the symbol rather than to the whole rail on purpose. The lesson's claim is that
+    /// beating THAT enemy filled THAT box; flashing every slot would say "something changed
+    /// somewhere", which is the reading the player already had and did not learn from. A symbol
+    /// that appears in both focus words legitimately pops twice, because it genuinely filled two
+    /// boxes.
+    /// </para>
+    ///
+    /// <para>
+    /// Runs on the slot's own scale and on unscaled time. Beat 1 pulls <c>Time.timeScale</c> down to
+    /// 0.15 for the lesson, and a pop on scaled time would stretch a 0.42s flourish into nearly
+    /// three seconds sitting on top of the line the player is trying to read.
+    /// </para>
+    /// </summary>
+    private void PopSlotsForSymbol(string symbolStableId)
+    {
+        if (string.IsNullOrEmpty(symbolStableId) || _slotFillPopScale <= 1f
+            || _slotFillPopSeconds <= 0f || !isActiveAndEnabled)
+        {
+            return;
+        }
+
+        for (int i = 0; i < _railSlots.Count; i++)
+        {
+            RailSlot slot = _railSlots[i];
+            if (slot?.Anchor == null)
+                continue;
+
+            if (!SlotCarriesSymbol(slot, symbolStableId))
+                continue;
+
+            if (!_restorationState.IsSlotRestored(slot.Word, slot.DecompositionIndex))
+                continue;
+
+            StartCoroutine(PopSlot(slot.Anchor));
+        }
+    }
+
+    private void PopSlotForOccurrence(string occurrenceId)
+    {
+        if (string.IsNullOrEmpty(occurrenceId) || _slotFillPopScale <= 1f
+            || _slotFillPopSeconds <= 0f || !isActiveAndEnabled)
+        {
+            return;
+        }
+
+        for (int i = 0; i < _railSlots.Count; i++)
+        {
+            RailSlot slot = _railSlots[i];
+            if (slot?.Anchor == null || slot.OccurrenceId != occurrenceId)
+                continue;
+
+            if (!_restorationObjectiveController.IsOccurrenceRestored(occurrenceId))
+                continue;
+
+            StartCoroutine(PopSlot(slot.Anchor));
+            return;
+        }
+    }
+
+    /// <summary>Whether this rail slot's authored reference is the given symbol.</summary>
+    private static bool SlotCarriesSymbol(RailSlot slot, string symbolStableId)
+    {
+        if (slot?.Word?.decomposition == null)
+            return false;
+
+        if (slot.DecompositionIndex < 0
+            || slot.DecompositionIndex >= slot.Word.decomposition.Count)
+        {
+            return false;
+        }
+
+        BaybayinCharacterSO symbol = slot.Word.decomposition[slot.DecompositionIndex]?.symbol;
+        return symbol != null && symbol.stableId == symbolStableId;
+    }
+
+    private IEnumerator PopSlot(RectTransform slotRect)
+    {
+        Vector3 baseScale = slotRect.localScale;
+        float half = _slotFillPopSeconds * 0.5f;
+        float elapsed = 0f;
+
+        while (elapsed < _slotFillPopSeconds)
+        {
+            if (slotRect == null)
+                yield break;
+
+            // Out for the first half, back for the second, so the box ends exactly where it began
+            // even if the routine is interrupted near the end by a rail teardown.
+            float t = elapsed < half
+                ? elapsed / half
+                : 1f - ((elapsed - half) / half);
+            float scale = Mathf.Lerp(1f, _slotFillPopScale, Mathf.SmoothStep(0f, 1f, t));
+            slotRect.localScale = baseScale * scale;
+
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        if (slotRect != null)
+            slotRect.localScale = baseScale;
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Slot glyph flight
+    //
+    // The rule the whole section is built around: the RESTING state is never owned by a coroutine.
+    // RepaintRail has already put every slot in its finished state before a single flier exists,
+    // and FinishSlotFlight — a plain method, callable at any time, safe to call twice — is the only
+    // thing that takes a slot out of the flying state. The coroutine merely calls it on the way out.
+    // Kill the coroutine at any instant and the watchdog, OnDisable or the teardown will call the
+    // same method with the same result, which is why the end state after an animation is byte for
+    // byte the end state of an immediate fill.
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Sends a glyph flying from the defeated enemy into every box that symbol just filled.
+    /// </summary>
+    /// <param name="symbolStableId">The symbol whose boxes just filled.</param>
+    /// <param name="sourceWorldPosition">Where the enemy died, in world space.</param>
+    private void LaunchSlotGlyphFlights(string symbolStableId, Vector3 sourceWorldPosition)
+        => LaunchSlotGlyphFlightsInternal(symbolStableId, null, sourceWorldPosition);
+
+    private void LaunchSlotGlyphFlightForOccurrence(
+        string occurrenceId, Vector3 sourceWorldPosition)
+        => LaunchSlotGlyphFlightsInternal(null, occurrenceId, sourceWorldPosition);
+
+    private void LaunchSlotGlyphFlightsInternal(
+        string symbolStableId, string occurrenceId, Vector3 sourceWorldPosition,
+        RailSlot excludedSlot = null)
+    {
+        if (!_slotGlyphFlightEnabled
+            || (string.IsNullOrEmpty(symbolStableId) && string.IsNullOrEmpty(occurrenceId))
+            || !isActiveAndEnabled)
+            return;
+
+        if (_railRoot == null || !_railRoot.activeInHierarchy)
+            return;
+
+        if (_railRoot.transform is not RectTransform railRect)
+            return;
+
+        Canvas canvas = railRect.GetComponentInParent<Canvas>();
+        if (canvas == null)
+            return;
+
+        Camera uiCamera = canvas.renderMode == RenderMode.ScreenSpaceOverlay
+            ? null
+            : canvas.worldCamera;
+        Camera worldCamera = Camera.main != null ? Camera.main : uiCamera;
+        if (worldCamera == null)
+            return;
+
+        Vector3 sourceScreen = worldCamera.WorldToScreenPoint(sourceWorldPosition);
+
+        // Behind the camera. WorldToScreenPoint mirrors the point through the origin rather than
+        // failing, so an unchecked negative z would launch the glyph from the wrong side of the
+        // screen. Fall through to the immediate fill instead.
+        if (sourceScreen.z < 0f)
+            return;
+
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                railRect, sourceScreen, uiCamera, out Vector2 startLocal))
+        {
+            return;
+        }
+
+        for (int i = 0; i < _railSlots.Count; i++)
+        {
+            RailSlot slot = _railSlots[i];
+            if (slot == excludedSlot || slot?.Glyph == null || slot.Glyph.sprite == null)
+                continue;
+
+            if (!string.IsNullOrEmpty(occurrenceId))
+            {
+                if (slot.OccurrenceId != occurrenceId)
+                    continue;
+            }
+            else if (!SlotCarriesSymbol(slot, symbolStableId))
+            {
+                continue;
+            }
+
+            bool restored = UsesRestorationObjectiveDefinition
+                ? _restorationObjectiveController.IsOccurrenceRestored(slot.OccurrenceId)
+                : _restorationState.IsSlotRestored(slot.Word, slot.DecompositionIndex);
+            if (!restored)
+                continue;
+
+            TryBeginSlotFlight(slot, railRect, uiCamera, startLocal);
+        }
+    }
+
+    private void TryBeginSlotFlight(
+        RailSlot slot, RectTransform railRect, Camera uiCamera, Vector2 startLocal)
+    {
+        // Two fills in quick succession on the SAME box: retire the one already in the air rather
+        // than let a second flier race it. FinishSlotFlight snaps the first one home, so the box is
+        // momentarily correct and then takes off again — never two gliding glyphs for one slot, and
+        // never a stranded one. Fills on different boxes never reach this branch and fly in
+        // parallel, which is what a symbol appearing in both focus words should look like.
+        if (slot.Flier != null || slot.FlightRoutine != null)
+            FinishSlotFlight(slot);
+
+        if (slot.Glyph == null)
+            return;
+
+        var glyphRect = slot.Glyph.transform as RectTransform;
+        if (glyphRect == null)
+            return;
+
+        Vector3 targetScreen = RectTransformUtility.WorldToScreenPoint(uiCamera, glyphRect.position);
+
+        // The box is off-screen — a rail pushed out of the safe area, or a canvas mid-resize. There
+        // is nowhere to fly to that the player can see, so take the immediate fill and leave the
+        // slot in its finished state.
+        if (targetScreen.x < 0f || targetScreen.y < 0f
+            || targetScreen.x > Screen.width || targetScreen.y > Screen.height)
+        {
+            return;
+        }
+
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                railRect, targetScreen, uiCamera, out Vector2 endLocal))
+        {
+            return;
+        }
+
+        Rect glyphBounds = glyphRect.rect;
+        if (glyphBounds.width <= 0f || glyphBounds.height <= 0f)
+            return;
+
+        var flierObject = new GameObject(
+            "[Runtime] RestorationSlotGlyphFlier", typeof(RectTransform), typeof(Image));
+        flierObject.transform.SetParent(railRect, false);
+        // Last sibling so the glyph in the air passes OVER the other boxes rather than sliding
+        // behind them.
+        flierObject.transform.SetAsLastSibling();
+
+        Image flier = flierObject.GetComponent<Image>();
+        flier.sprite = slot.Glyph.sprite;
+        flier.color = slot.Glyph.color;
+        flier.preserveAspect = true;
+        flier.raycastTarget = false;
+
+        var flierRect = (RectTransform)flierObject.transform;
+        flierRect.anchorMin = new Vector2(0.5f, 0.5f);
+        flierRect.anchorMax = new Vector2(0.5f, 0.5f);
+        flierRect.pivot = new Vector2(0.5f, 0.5f);
+        flierRect.sizeDelta = glyphBounds.size;
+        flierRect.anchoredPosition = startLocal;
+        flierRect.localScale = Vector3.one * _slotGlyphFlightStartScale;
+
+        slot.Flier = flierObject;
+        // Half a second of slack on top of the scripted length, so a frame hitch or a long editor
+        // stall never trips the watchdog on a flight that is merely slow.
+        slot.FlightDeadline = Time.unscaledTime
+            + _slotGlyphFlightSeconds + _slotGlyphSettleSeconds + _slotGlyphBounceSeconds + 0.5f;
+
+        if (!_slotsInFlight.Contains(slot))
+            _slotsInFlight.Add(slot);
+
+        // The resting glyph steps aside for the flier. RepaintRail knows about this and will not
+        // undo it while Flier is non-null; FinishSlotFlight puts it back.
+        slot.Glyph.gameObject.SetActive(false);
+
+        if (slot.Label != null)
+            slot.Label.color = DimmedLabelColor(_latinWordLabelColor);
+
+        slot.FlightRoutine = StartCoroutine(RunSlotFlight(slot, startLocal, endLocal));
+    }
+
+    /// <summary>
+    /// The label under a box waiting for its glyph to land. Not the mask — the text is already the
+    /// real syllable by now — just held back a beat so the brightening reads as the glyph arriving.
+    /// </summary>
+    private static Color DimmedLabelColor(Color rested) =>
+        new Color(rested.r * 0.45f, rested.g * 0.45f, rested.b * 0.45f, rested.a * 0.55f);
+
+    private IEnumerator RunSlotFlight(RailSlot slot, Vector2 startLocal, Vector2 endLocal)
+    {
+        var flierRect = slot.Flier != null ? slot.Flier.transform as RectTransform : null;
+        if (flierRect == null)
+        {
+            FinishSlotFlight(slot);
+            yield break;
+        }
+
+        // The control point of a quadratic bezier, lifted along +Y. A straight slide reads as a UI
+        // tween; a bow reads as something thrown from the enemy into the word.
+        Vector2 mid = (startLocal + endLocal) * 0.5f;
+        Vector2 control = mid + (Vector2.up * (Vector2.Distance(startLocal, endLocal)
+            * _slotGlyphArcHeightFraction));
+
+        Color restedLabel = _latinWordLabelColor;
+        Color dimLabel = DimmedLabelColor(restedLabel);
+
+        // --- Travel -------------------------------------------------------------------------
+        float elapsed = 0f;
+        while (elapsed < _slotGlyphFlightSeconds)
+        {
+            if (slot.Flier == null || flierRect == null || !isActiveAndEnabled)
+            {
+                FinishSlotFlight(slot);
+                yield break;
+            }
+
+            float t = Mathf.Clamp01(elapsed / _slotGlyphFlightSeconds);
+            float eased = 1f - Mathf.Pow(1f - t, 3f); // ease-out cubic
+
+            float inv = 1f - eased;
+            flierRect.anchoredPosition =
+                (inv * inv * startLocal) + (2f * inv * eased * control) + (eased * eased * endLocal);
+
+            float scale = Mathf.Lerp(
+                _slotGlyphFlightStartScale, _slotGlyphArrivalScale, eased);
+            flierRect.localScale = new Vector3(scale, scale, 1f);
+
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        if (slot.Flier == null || flierRect == null || !isActiveAndEnabled)
+        {
+            FinishSlotFlight(slot);
+            yield break;
+        }
+
+        flierRect.anchoredPosition = endLocal;
+
+        // --- Arrival: back-eased settle, squash, and the frame's impact pulse ----------------
+        elapsed = 0f;
+        while (elapsed < _slotGlyphSettleSeconds)
+        {
+            if (slot.Flier == null || flierRect == null || !isActiveAndEnabled)
+            {
+                FinishSlotFlight(slot);
+                yield break;
+            }
+
+            float u = Mathf.Clamp01(elapsed / _slotGlyphSettleSeconds);
+            float eased = 1f - Mathf.Pow(1f - u, 3f);
+            float scale = Mathf.Lerp(_slotGlyphArrivalScale, 1f, eased);
+
+            // A short squash across the first half of the settle: wider than tall on contact,
+            // recovering as it seats. Small — this is a glyph landing in a box, not a rubber ball.
+            float squash = Mathf.Sin(u * Mathf.PI) * 0.10f;
+            flierRect.localScale = new Vector3(scale * (1f + squash), scale * (1f - squash), 1f);
+
+            if (slot.Frame != null)
+            {
+                slot.Frame.color = Color.Lerp(
+                    _filledSlotColor, Color.white, Mathf.Sin(u * Mathf.PI) * 0.6f);
+            }
+
+            if (slot.Label != null)
+                slot.Label.color = Color.Lerp(dimLabel, restedLabel, eased);
+
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        // --- Trailing bounce ----------------------------------------------------------------
+        elapsed = 0f;
+        while (elapsed < _slotGlyphBounceSeconds && _slotGlyphBounceAmount > 0f)
+        {
+            if (slot.Flier == null || flierRect == null || !isActiveAndEnabled)
+            {
+                FinishSlotFlight(slot);
+                yield break;
+            }
+
+            float u = Mathf.Clamp01(elapsed / _slotGlyphBounceSeconds);
+            float bounce = 1f + (Mathf.Sin(u * Mathf.PI) * _slotGlyphBounceAmount);
+            flierRect.localScale = new Vector3(bounce, bounce, 1f);
+
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        FinishSlotFlight(slot);
+    }
+
+    /// <summary>
+    /// Puts one slot back into its resting, restored state and forgets the flight.
+    ///
+    /// <para>
+    /// Deliberately a plain method rather than the tail of the coroutine, and deliberately safe to
+    /// call on a slot that is not flying, twice in a row, or after the flier has already been
+    /// destroyed by something else. Unity will not run a stopped coroutine's <c>finally</c>, so this
+    /// is the only thing standing between an interrupted flight and a permanently blank box.
+    /// </para>
+    /// </summary>
+    private void FinishSlotFlight(RailSlot slot)
+    {
+        if (slot == null)
+            return;
+
+        if (slot.FlightRoutine != null)
+        {
+            // Safe on a routine that has already completed, and it is what makes "retire the flight
+            // already in the air" work when a second fill lands on the same box.
+            StopCoroutine(slot.FlightRoutine);
+            slot.FlightRoutine = null;
+        }
+
+        if (slot.Flier != null)
+        {
+            DestroyOwnedObject(slot.Flier);
+            slot.Flier = null;
+        }
+
+        _slotsInFlight.Remove(slot);
+
+        bool restored = UsesRestorationObjectiveDefinition
+            ? _restorationObjectiveController.IsOccurrenceRestored(slot.OccurrenceId)
+            : _restorationState.IsSlotRestored(slot.Word, slot.DecompositionIndex);
+
+        if (slot.Glyph != null)
+        {
+            var glyphRect = slot.Glyph.transform as RectTransform;
+            if (glyphRect != null)
+                glyphRect.localScale = Vector3.one;
+
+            bool showGlyph = restored && slot.Glyph.sprite != null;
+            if (slot.Glyph.gameObject.activeSelf != showGlyph)
+                slot.Glyph.gameObject.SetActive(showGlyph);
+        }
+
+        if (slot.Frame != null)
+            slot.Frame.color = restored ? _filledSlotColor : _emptySlotColor;
+
+        if (slot.Label != null)
+            slot.Label.color = _latinWordLabelColor;
+    }
+
+    /// <summary>Drains every flight, leaving each slot at rest. Used on teardown and disable.</summary>
+    private void FinishAllSlotFlights()
+    {
+        // Walked backwards over a copy of the count because FinishSlotFlight removes from the list.
+        for (int i = _slotsInFlight.Count - 1; i >= 0; i--)
+        {
+            if (i < _slotsInFlight.Count)
+                FinishSlotFlight(_slotsInFlight[i]);
+        }
+
+        _slotsInFlight.Clear();
+    }
+
+    /// <summary>
+    /// Once-a-frame watchdog. Catches the cases the coroutine cannot catch itself: the flier being
+    /// destroyed out from under it, the rail being switched off mid-flight, or the slot list having
+    /// been rebuilt under a flight that is still notionally running.
+    /// </summary>
+    private void ReconcileSlotFlights()
+    {
+        if (_slotsInFlight.Count == 0)
+            return;
+
+        bool railUsable = _railRoot != null && _railRoot.activeInHierarchy;
+
+        for (int i = _slotsInFlight.Count - 1; i >= 0; i--)
+        {
+            if (i >= _slotsInFlight.Count)
+                continue;
+
+            RailSlot slot = _slotsInFlight[i];
+            if (slot == null)
+            {
+                _slotsInFlight.RemoveAt(i);
+                continue;
+            }
+
+            bool overdue = Time.unscaledTime > slot.FlightDeadline;
+            if (!railUsable || overdue || slot.Flier == null || !_railSlots.Contains(slot))
+                FinishSlotFlight(slot);
+        }
+    }
+
+    /// <summary>
+    /// Flashes the whole rail as one object. Deliberately the rail's group alpha rather than a
+    /// per-slot animation: the beat's content is that four slots have become one restored text, so
+    /// they have to move as one thing.
+    /// </summary>
+    private IEnumerator FlashRail()
+    {
+        for (int i = 0; i < _railFlashCount; i++)
+        {
+            _railCanvasGroup.alpha = _railFlashDipAlpha;
+            yield return WaitUnscaled(_railFlashHalfCycleSeconds);
+            _railCanvasGroup.alpha = 1f;
+            yield return WaitUnscaled(_railFlashHalfCycleSeconds);
+        }
+
+        _railCanvasGroup.alpha = 1f;
+        _railFlashRoutine = null;
+    }
+
+    /// <summary>
+    /// Unscaled wait, like the crumble and the word cue: the instant-win beat holds the game at a
+    /// dipped time scale, and a scaled flash would stretch past the beat that asked for it.
+    /// </summary>
+    private static IEnumerator WaitUnscaled(float seconds)
+    {
+        float elapsed = 0f;
+        while (elapsed < seconds)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+    }
+
+    /// <summary>
+    /// A hollow square: an empty slot has to read as a waiting outline, and a null
+    /// sprite renders a filled quad, which reads as an already-occupied block. Generated rather
+    /// than authored because the project has no slot art, and generated in code rather than taken
+    /// from builtin resources so it also renders in a player build — the same reasoning as
+    /// <see cref="CreateRingSprite"/>.
+    /// </summary>
+    private static Sprite CreateSlotFrameSprite(float borderFraction)
+    {
+        const int size = 64;
+        int border = Mathf.Max(1, Mathf.RoundToInt(size * borderFraction));
+
+        var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+        {
+            filterMode = FilterMode.Bilinear,
+            wrapMode = TextureWrapMode.Clamp
+        };
+
+        var pixels = new Color32[size * size];
+        var opaque = new Color32(255, 255, 255, 255);
+        var clear = new Color32(255, 255, 255, 0);
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                bool onBorder = x < border || y < border
+                    || x >= size - border || y >= size - border;
+                pixels[(y * size) + x] = onBorder ? opaque : clear;
+            }
+        }
+
+        texture.SetPixels32(pixels);
+        texture.Apply();
+
+        // Sliced with a border matching the drawn frame, so a non-square slot size stretches the
+        // frame's edges instead of its corners.
+        return Sprite.Create(
+            texture,
+            new Rect(0f, 0f, size, size),
+            new Vector2(0.5f, 0.5f),
+            size,
+            0,
+            SpriteMeshType.FullRect,
+            new Vector4(border, border, border, border));
+    }
+
+    private void DestroyRestorationRail()
+    {
+        ResetPunitTornSurface();
+        ResetNgatngatTextDamage();
+        ResetUhawGlyphCaptures();
+        HideAshCover();
+        _railFlashRoutine = null;
+        if (_railPageRoutine != null)
+            StopCoroutine(_railPageRoutine);
+        _railPageRoutine = null;
+        _railPages = null;
+        _railShownPage = RestorationWordPages.NoPage;
+
+        DestroyOwnedObject(_railProgressRoot);
+        _railProgressRoot = null;
+        _railProgressCanvasGroup = null;
+        _railProgressFill = null;
+        _railProgressLabel = null;
+        _railProgressShown = 0f;
+        _railProgressTarget = 0f;
+
+        // Drained before the slot list is cleared, so each flight still has a slot to rest. Fliers
+        // are children of the rail root and would go with it anyway; this is about not leaving
+        // _slotsInFlight holding slots that no longer belong to a rail.
+        FinishAllSlotFlights();
+
+        _railSlots.Clear();
+        _railSlotAnchors.Clear();
+        _runtimeObjectiveWords.Clear();
+
+        Texture2D frameTexture =
+            _runtimeSlotFrameSprite != null ? _runtimeSlotFrameSprite.texture : null;
+
+        DestroyOwnedObject(_railRoot);
+        DestroyOwnedObject(_runtimeSlotFrameSprite);
+        DestroyOwnedObject(frameTexture);
+
+        _railRoot = null;
+        _railCanvasGroup = null;
+        _railNominalWidth = 0f;
+        _runtimeSlotFrameSprite = null;
+
+        // Hand the band back with the rail. A level that tears its rail down and never builds
+        // another must frame exactly as a level that never had one.
+        if (_bandRefreshColumn != null && _bandRefreshHandler != null)
+            _bandRefreshColumn.OnPlayAreaChanged -= _bandRefreshHandler;
+        _bandRefreshColumn = null;
+
+        if (AspectLockedCamera.Instance != null)
+            AspectLockedCamera.Instance.SetBottomBandPixels(0f);
+    }
+
+    /// <summary>
+    /// Word-specific image first, level-wide context image second. The level-wide image is a
+    /// deliberately weaker cue -- it sets the scene rather than naming the word -- so it is
+    /// only ever a fallback. Keeping it means a level authored with ContextImage but no
+    /// per-word art still presents something rather than passing validation and showing
+    /// nothing; SALIN-184 is expected to supply per-word art and retire the fallback.
+    /// </summary>
+    private Sprite ResolveContextImage(FocusWordDefinition word)
+    {
+        if (word?.media?.contextImage != null)
+            return word.media.contextImage;
+
+        return _level?.contextMedia?.contextImage;
+    }
+
+    private void SetClueText(Enemy clue)
+    {
+        if (_clueText == null || clue == null || clue.Character == null)
+            return;
+
+        if (UsesRestorationObjectiveDefinition)
+        {
+            _clueText.text = BuildObjectivePanelText();
+            StopClueCrumble();
+            return;
+        }
+
+        FocusWordDefinition word = FindFocusWordContaining(clue.Character.stableId);
+        if (word == null)
+        {
+            _clueText.text = string.Empty;
+            return;
+        }
+
+        // IncompleteWord masks the target symbol's position; LatinText shows the whole word.
+        bool masked = (_resolvedChannels & ClueChannels.IncompleteWord) != ClueChannels.None
+                      && (_resolvedChannels & ClueChannels.LatinText) == ClueChannels.None;
+
+        // SALIN-284: Abo ng Simula ashes the word's first slot on top of the target mask. Read
+        // here and passed down rather than consulted inside BuildMaskedSpelling, so that method
+        // stays a pure function of its arguments and can be tested without a live enemy.
+        bool ashActive = AshFirstSlotController.IsAnyActive();
+        string finalText = masked
+            ? BuildMaskedSpellingWithRestoration(
+                word, clue.Character.stableId, ashActive, _restorationState)
+            : word.latinSpelling;
+
+        // A crumble in flight is always abandoned rather than blended: whatever raised this call
+        // is newer information than the animation is carrying.
+        StopClueCrumble();
+
+        if (masked && ashActive && _animateClueCrumble && CanAnimateClueCrumble)
+        {
+            string readableText = BuildMaskedSpellingWithRestoration(
+                word, clue.Character.stableId, false, _restorationState);
+
+            // Equal strings mean the ash bit nothing — the needed slot already was the word's
+            // first. Nothing to crumble, and animating would show motion with no consequence.
+            if (readableText != finalText)
+            {
+                _clueCrumbleRoutine = StartCoroutine(CrumbleClueText(readableText, finalText));
+                return;
+            }
+        }
+
+        _clueText.text = finalText;
+    }
+
+    private string BuildObjectivePanelText()
+    {
+        RestorationObjectiveDefinition definition = _restorationObjectiveController?.State?.Definition;
+        return RestorationObjectiveTextFormatter.Render(
+            definition,
+            _restorationObjectiveController?.State);
+    }
+
+    /// <summary>
+    /// True only where a coroutine can actually run and has time to run in. EditMode and a
+    /// disabled presenter fall through to the immediate assignment, which is also what keeps the
+    /// masked string byte-identical for the tests that read it back synchronously.
+    /// </summary>
+    private bool CanAnimateClueCrumble =>
+        Application.isPlaying && isActiveAndEnabled && _clueCrumbleDurationSeconds > 0f;
+
+    private void StopClueCrumble()
+    {
+        if (_clueCrumbleRoutine == null)
+            return;
+
+        StopCoroutine(_clueCrumbleRoutine);
+        _clueCrumbleRoutine = null;
+    }
+
+    /// <summary>
+    /// Spots the frame an Abo's ash arms or lifts and refreshes the panel, because neither event
+    /// raises a clue change of its own.
+    ///
+    /// <para>
+    /// Only the readable-to-masked direction animates. The lift is the player's reward for
+    /// working out the counter and wants to read as instant relief, not as another six-tenths of
+    /// a second of motion before they can read their clue again.
+    /// </para>
+    /// </summary>
+    private void WatchAshOnset()
+    {
+        if (!IsClueCombatArmed)
+        {
+            if (_ashCoverStateActive)
+                BeginAshCoverExit();
+            return;
+        }
+
+        bool ashActive = AshFirstSlotController.IsAnyActive();
+        bool stateChanged = ashActive != _ashWasActive;
+        if (stateChanged)
+        {
+            _ashWasActive = ashActive;
+            _animateClueCrumble = ashActive;
+            UpdateCluePanel(_currentClue);
+            _animateClueCrumble = false;
+
+            // Repaint unearned requirements on the ability edge even without cover artwork.
+            if (_railSlots.Count > 0)
+                RepaintRail(forceRestored: false);
+        }
+
+        bool wantsCoverArt = ashActive && CanPresentAshCoverOnClue();
+        if (wantsCoverArt && !_ashCoverStateActive)
+            BeginAshCoverActivation();
+        else if (!wantsCoverArt && _ashCoverStateActive)
+            BeginAshCoverExit();
+        else if (wantsCoverArt && _ashCoverStateActive && _ashCoverUsesRestorationRail)
+        {
+            RailSlot currentTarget = GetAshCoverRailSlot();
+            if (currentTarget != _ashCoverRailSlot)
+            {
+                _ashCoverRailSlot = currentTarget;
+                RepaintRail(forceRestored: false);
+            }
+        }
+    }
+
+    private bool CanPresentAshCoverOnClue()
+    {
+        // A temporarily hidden rail still tracks ash, but earned boxes are never cover targets.
+        if (_railRoot != null)
+        {
+            RailSlot slot = GetAshCoverRailSlot();
+            return slot != null && !IsRailSlotRestored(slot);
+        }
+
+        return _clueText != null
+            && _clueText.gameObject.activeInHierarchy
+            && _currentClue != null
+            && (_resolvedChannels & ClueChannels.IncompleteWord) != ClueChannels.None
+            && (_resolvedChannels & ClueChannels.LatinText) == ClueChannels.None
+            && _clueText.textInfo != null
+            && !string.IsNullOrEmpty(_clueText.text);
+    }
+
+    private bool IsRailSlotRestored(RailSlot slot) => UsesRestorationObjectiveDefinition
+        ? _restorationObjectiveController.IsOccurrenceRestored(slot.OccurrenceId)
+        : _restorationState.IsSlotRestored(slot.Word, slot.DecompositionIndex);
+
+    /// <summary>
+    /// Selects the first target slot in the active restoration unit. Older clue-only levels use
+    /// their first built rail slot; the legacy TMP path remains separate and unchanged.
+    /// </summary>
+    private RailSlot GetAshCoverRailSlot()
+    {
+        if (_railSlots.Count == 0)
+            return null;
+
+        for (int i = 0; i < _railSlots.Count; i++)
+        {
+            RailSlot slot = _railSlots[i];
+            if (slot == null)
+                continue;
+
+            if (UsesRestorationObjectiveDefinition)
+            {
+                string activeUnitId = _restorationObjectiveController.State.ActiveUnitId;
+                if (string.IsNullOrEmpty(activeUnitId)
+                    || slot.UnitId != activeUnitId
+                    || string.IsNullOrEmpty(slot.OccurrenceId)
+                    || !_restorationObjectiveController.IsOccurrenceRestored(slot.OccurrenceId))
+                {
+                    continue;
+                }
+            }
+            else if (slot.Word == null
+                     || !_restorationState.IsSlotRestored(slot.Word, slot.DecompositionIndex))
+            {
+                continue;
+            }
+
+            // Ash is an extra loss only: it can cover an earned slot, never the glyph the player
+            // still needs to restore in the active unit.
+            return slot;
+        }
+
+        return null;
+    }
+
+    private void BeginAshCoverActivation()
+    {
+        EnemyHudAbilityVisualDefinition definition = AshFirstSlotController.GetActiveHudVisualDefinition(
+            EnemyHudAbilityVisualId.AshClueFirstSlot);
+        if (definition == null || definition.activeSprite == null)
+            return;
+
+        EnsureAshCoverImage();
+        if (_ashCoverImage == null)
+            return;
+
+        _ashCoverDefinition = definition;
+        _ashCoverStateActive = true;
+        _ashCoverExiting = false;
+        _ashCoverSequence = definition.activationFrames;
+        _ashCoverFrameIndex = 0;
+        _ashCoverFrameTimer = 0f;
+        _ashCoverImage.gameObject.SetActive(true);
+        if (_ashCoverUsesRestorationRail)
+            RepaintRail(forceRestored: false);
+
+        if (_ashCoverSequence != null && _ashCoverSequence.Length > 0)
+            DrawAshCoverFrame(_ashCoverSequence[0], definition.activationOpacity);
+        else
+            DrawAshCoverFrame(definition.activeSprite, 1f);
+    }
+
+    private void BeginAshCoverExit()
+    {
+        _ashCoverStateActive = false;
+        if (_ashCoverUsesRestorationRail)
+            RepaintRail(forceRestored: false);
+        if (_ashCoverImage == null || _ashCoverDefinition == null)
+        {
+            HideAshCover();
+            return;
+        }
+
+        _ashCoverSequence = _ashCoverDefinition.exitFrames;
+        _ashCoverFrameIndex = 0;
+        _ashCoverFrameTimer = 0f;
+        _ashCoverExiting = _ashCoverSequence != null && _ashCoverSequence.Length > 0;
+        if (!_ashCoverExiting)
+        {
+            HideAshCover();
+            return;
+        }
+
+        _ashCoverImage.gameObject.SetActive(true);
+        DrawAshCoverFrame(_ashCoverSequence[0], _ashCoverDefinition.exitOpacity);
+    }
+
+    private void EnsureAshCoverImage()
+    {
+        _ashCoverRailSlot = _railRoot != null ? GetAshCoverRailSlot() : null;
+        _ashCoverUsesRestorationRail = _ashCoverRailSlot != null && _railRoot != null;
+
+        Transform parent = _ashCoverUsesRestorationRail
+            ? _railRoot.transform
+            : _clueText != null ? _clueText.transform : null;
+        if (parent == null)
+            return;
+
+        GameObject coverObject = _ashCoverImage != null
+            ? _ashCoverImage.gameObject
+            : new GameObject("AshClueFirstSlotCover", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        coverObject.transform.SetParent(parent, false);
+        coverObject.transform.SetAsLastSibling();
+        _ashCoverImage = coverObject.GetComponent<Image>();
+        _ashCoverImage.raycastTarget = false;
+        _ashCoverImage.preserveAspect = true;
+        _ashCoverRect = coverObject.GetComponent<RectTransform>();
+        _ashCoverRect.anchorMin = new Vector2(0.5f, 0.5f);
+        _ashCoverRect.anchorMax = new Vector2(0.5f, 0.5f);
+        _ashCoverRect.pivot = new Vector2(0.5f, 0.5f);
+        _ashCoverRect.localScale = Vector3.one;
+        coverObject.SetActive(false);
+    }
+
+    private void TickAshCover(float deltaTime)
+    {
+        if (_ashCoverImage == null || _ashCoverSequence == null || _ashCoverSequence.Length == 0)
+            return;
+
+        float fps = _ashCoverExiting
+            ? _ashCoverDefinition.exitFramesPerSecond
+            : _ashCoverDefinition.activationFramesPerSecond;
+        float opacity = _ashCoverExiting
+            ? _ashCoverDefinition.exitOpacity
+            : _ashCoverDefinition.activationOpacity;
+        float duration = 1f / (fps > 0f ? fps : 8f);
+        _ashCoverFrameTimer += Mathf.Max(0f, deltaTime);
+        while (_ashCoverFrameTimer >= duration)
+        {
+            _ashCoverFrameTimer -= duration;
+            _ashCoverFrameIndex++;
+            if (_ashCoverFrameIndex >= _ashCoverSequence.Length)
+            {
+                if (_ashCoverExiting)
+                {
+                    HideAshCover();
+                    return;
+                }
+
+                _ashCoverSequence = null;
+                _ashCoverExiting = false;
+                DrawAshCoverFrame(_ashCoverDefinition.activeSprite, 1f);
+                return;
+            }
+
+            DrawAshCoverFrame(_ashCoverSequence[_ashCoverFrameIndex], opacity);
+        }
+    }
+
+    private void PositionAshCoverOverFirstSlot()
+    {
+        if (_ashCoverImage == null || !_ashCoverImage.gameObject.activeSelf
+            || _ashCoverDefinition == null)
+            return;
+
+        if (_ashCoverUsesRestorationRail)
+        {
+            if (_ashCoverRailSlot == null || _ashCoverRailSlot.Anchor == null)
+                return;
+
+            RectTransform slotRect = _ashCoverRailSlot.Anchor;
+            float width = slotRect.rect.width;
+            float height = slotRect.rect.height + _railLayoutLabelGap + _railLayoutLabelRowHeight;
+            _ashCoverRect.anchorMin = new Vector2(0f, 1f);
+            _ashCoverRect.anchorMax = new Vector2(0f, 1f);
+            _ashCoverRect.pivot = new Vector2(0.5f, 0.5f);
+            _ashCoverRect.anchoredPosition = slotRect.anchoredPosition
+                + new Vector2(width * 0.5f, -height * 0.5f);
+            _ashCoverRect.sizeDelta = new Vector2(width, height);
+            return;
+        }
+
+        if (_clueText == null)
+            return;
+
+        _clueText.ForceMeshUpdate();
+        TMP_TextInfo info = _clueText.textInfo;
+        if (!TryCalculateFirstSlotBounds(info, GetAshCoverSlotCharacterCount(), out Rect slotBounds))
+            return;
+
+        Vector2 multiplier = _ashCoverDefinition.slotSizeMultiplier;
+        _ashCoverRect.anchoredPosition = slotBounds.center + _ashCoverDefinition.localOffset;
+        _ashCoverRect.sizeDelta = new Vector2(
+            Mathf.Max(1f, slotBounds.width * Mathf.Max(0.1f, multiplier.x)),
+            Mathf.Max(1f, slotBounds.height * Mathf.Max(0.1f, multiplier.y)));
+    }
+
+    private int GetAshCoverSlotCharacterCount()
+    {
+        bool ashActive = AshFirstSlotController.IsAnyActive();
+        string firstSlotLabel = null;
+        if (!ashActive && _currentClue?.Character != null)
+        {
+            FocusWordDefinition word = FindFocusWordContaining(_currentClue.Character.stableId);
+            if (word?.decomposition != null)
+            {
+                for (int i = 0; i < word.decomposition.Count; i++)
+                {
+                    SymbolValueReference reference = word.decomposition[i];
+                    if (reference?.symbol == null)
+                        continue;
+
+                    firstSlotLabel = SpokenValueResolver.ResolveLabel(
+                        reference.symbol,
+                        reference.spokenValueId);
+                    break;
+                }
+            }
+        }
+
+        return GetAshCoverSlotCharacterCount(ashActive, firstSlotLabel);
+    }
+
+    /// <summary>Returns the rendered span of the first slot: its mask while ashed, its full label while revealing.</summary>
+    internal static int GetAshCoverSlotCharacterCount(bool ashActive, string firstSlotLabel)
+    {
+        if (ashActive)
+            return UnreadableSlotMask.Length;
+
+        return string.IsNullOrEmpty(firstSlotLabel)
+            ? UnreadableSlotMask.Length
+            : firstSlotLabel.Length;
+    }
+
+    /// <summary>
+    /// Measures the requested leading TMP characters using their text advances and line metrics.
+    /// The advance bounds cover the full logical slot (including thin glyphs such as underscores),
+    /// while the line metrics keep the cover centered over the clue row rather than the glyph ink.
+    /// </summary>
+    internal static bool TryCalculateFirstSlotBounds(
+        TMP_TextInfo info,
+        int slotCharacterCount,
+        out Rect bounds)
+    {
+        bounds = default;
+        if (info == null || info.characterInfo == null || info.characterCount <= 0)
+            return false;
+
+        int characterCount = Mathf.Min(info.characterCount, info.characterInfo.Length);
+        int firstIndex = -1;
+        for (int i = 0; i < characterCount; i++)
+        {
+            TMP_CharacterInfo candidate = info.characterInfo[i];
+            if (!candidate.isVisible || char.IsWhiteSpace(candidate.character))
+                continue;
+
+            firstIndex = i;
+            break;
+        }
+
+        if (firstIndex < 0)
+            return false;
+
+        TMP_CharacterInfo first = info.characterInfo[firstIndex];
+        float minX = float.PositiveInfinity;
+        float maxX = float.NegativeInfinity;
+        float minY = float.PositiveInfinity;
+        float maxY = float.NegativeInfinity;
+        int wanted = Mathf.Max(1, slotCharacterCount);
+        int collected = 0;
+
+        for (int i = firstIndex; i < characterCount && collected < wanted; i++)
+        {
+            TMP_CharacterInfo candidate = info.characterInfo[i];
+            if (char.IsWhiteSpace(candidate.character) || candidate.character == '\n')
+                break;
+
+            minX = Mathf.Min(minX, Mathf.Min(candidate.origin, candidate.xAdvance));
+            maxX = Mathf.Max(maxX, Mathf.Max(candidate.origin, candidate.xAdvance));
+
+            int lineIndex = candidate.lineNumber;
+            if (info.lineInfo != null && lineIndex >= 0 && lineIndex < info.lineCount
+                && lineIndex < info.lineInfo.Length)
+            {
+                TMP_LineInfo line = info.lineInfo[lineIndex];
+                minY = Mathf.Min(minY, line.descender);
+                maxY = Mathf.Max(maxY, line.ascender);
+            }
+            else
+            {
+                minY = Mathf.Min(minY, candidate.bottomLeft.y);
+                maxY = Mathf.Max(maxY, candidate.topRight.y);
+            }
+
+            collected++;
+        }
+
+        if (collected == 0)
+            return false;
+
+        if (maxX <= minX)
+        {
+            minX = first.bottomLeft.x;
+            maxX = first.topRight.x;
+        }
+        if (maxY <= minY)
+        {
+            minY = first.bottomLeft.y;
+            maxY = first.topRight.y;
+        }
+
+        if (maxX <= minX || maxY <= minY)
+            return false;
+
+        bounds = Rect.MinMaxRect(minX, minY, maxX, maxY);
+        return true;
+    }
+
+    private void DrawAshCoverFrame(Sprite sprite, float opacity)
+    {
+        if (_ashCoverImage == null || sprite == null)
+            return;
+
+        _ashCoverImage.sprite = sprite;
+        _ashCoverImage.color = new Color(1f, 1f, 1f, Mathf.Clamp01(opacity));
+        _ashCoverImage.enabled = true;
+    }
+
+    private void HideAshCover()
+    {
+        _ashCoverStateActive = false;
+        _ashCoverExiting = false;
+        _ashCoverUsesRestorationRail = false;
+        _ashCoverRailSlot = null;
+        _ashCoverSequence = null;
+        _ashCoverFrameIndex = 0;
+        _ashCoverFrameTimer = 0f;
+        if (_ashCoverImage != null)
+        {
+            _ashCoverImage.sprite = null;
+            _ashCoverImage.enabled = false;
+            _ashCoverImage.gameObject.SetActive(false);
+        }
+    }
+
+    /// <summary>
+    /// Animates the readable spelling into its masked form: the doomed characters sink and fade,
+    /// the mask fades in behind them, and the final frame assigns the masked string exactly as
+    /// <see cref="BuildMaskedSpellingWithRestoration"/> produced it — a transition only, so
+    /// nothing downstream of the rendered string ever sees an intermediate value.
+    ///
+    /// <para>
+    /// Unscaled time: the introduction cards run the level at a
+    /// fraction of normal time scale, and a crumble stretched across four seconds would read as a
+    /// rendering fault rather than as ash.
+    /// </para>
+    /// </summary>
+    private IEnumerator CrumbleClueText(string readableText, string maskedText)
+    {
+        // The clue is readable right up to the frame the gust lands.
+        _clueText.text = readableText;
+
+        float lead = Mathf.Max(0f, _clueCrumbleLeadSeconds);
+        float elapsed = 0f;
+        while (elapsed < lead)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        // The two strings share a head and a tail; only the slot the ash covers differs. Deriving
+        // the changed run rather than assuming it starts at index zero keeps this correct for a
+        // word whose first slot is itself already restored or masked.
+        int prefixLength = CommonPrefixLength(readableText, maskedText);
+        int suffixLength = CommonSuffixLength(readableText, maskedText, prefixLength);
+
+        float duration = Mathf.Max(0.01f, _clueCrumbleDurationSeconds);
+        elapsed = 0f;
+        while (elapsed < duration)
+        {
+            float progress = Mathf.Clamp01(elapsed / duration);
+
+            if (progress < _clueCrumbleHandoff)
+            {
+                float local = Mathf.Clamp01(progress / Mathf.Max(0.01f, _clueCrumbleHandoff));
+                _clueText.text = BuildCrumbleFrame(
+                    readableText, prefixLength, suffixLength, local, fadingOut: true);
+            }
+            else
+            {
+                float local = Mathf.Clamp01(
+                    (progress - _clueCrumbleHandoff)
+                    / Mathf.Max(0.01f, 1f - _clueCrumbleHandoff));
+                _clueText.text = BuildCrumbleFrame(
+                    maskedText, prefixLength, suffixLength, local, fadingOut: false);
+            }
+
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        _clueText.text = maskedText;
+        _clueCrumbleRoutine = null;
+    }
+
+    /// <summary>
+    /// One frame of the crumble: the unchanged head and tail are written plain, and every
+    /// character of the changed run carries its own alpha and vertical offset so the run comes
+    /// apart character by character rather than as a block.
+    /// </summary>
+    private string BuildCrumbleFrame(
+        string text,
+        int prefixLength,
+        int suffixLength,
+        float progress,
+        bool fadingOut)
+    {
+        int changedStart = prefixLength;
+        int changedEnd = text.Length - suffixLength;
+        var builder = new System.Text.StringBuilder(text.Length * 6);
+
+        builder.Append(text, 0, changedStart);
+
+        int changedCount = Mathf.Max(1, changedEnd - changedStart);
+        for (int i = changedStart; i < changedEnd; i++)
+        {
+            // Each character starts its own motion a little after the one to its left, so the
+            // stagger is a fraction of the whole rather than a per-character duration to retune.
+            float delay = _clueCrumbleCharacterStagger * ((i - changedStart) / (float)changedCount);
+            float local = Mathf.Clamp01((progress - delay) / Mathf.Max(0.01f, 1f - delay));
+
+            float alpha = fadingOut ? 1f - local : local;
+            float offsetEm = fadingOut
+                ? -_clueCrumbleDropEm * local
+                : _clueCrumbleMaskRiseEm * (1f - local);
+
+            builder.Append("<alpha=#")
+                .Append(Mathf.RoundToInt(Mathf.Clamp01(alpha) * 255f).ToString("X2"))
+                .Append("><voffset=")
+                .Append(offsetEm.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture))
+                .Append("em>")
+                .Append(text[i])
+                .Append("</voffset>");
+        }
+
+        // Restore full opacity before the tail: alpha tags persist to the end of the string.
+        builder.Append("<alpha=#FF>");
+        builder.Append(text, changedEnd, suffixLength);
+        return builder.ToString();
+    }
+
+    private static int CommonPrefixLength(string first, string second)
+    {
+        int limit = Mathf.Min(first.Length, second.Length);
+        int index = 0;
+        while (index < limit && first[index] == second[index])
+            index++;
+
+        return index;
+    }
+
+    /// <summary>
+    /// Matching tail length, never allowed to overlap the shared head — otherwise two strings that
+    /// differ only in a repeated character could claim the same characters twice and the frame
+    /// would be built from a negative-length run.
+    /// </summary>
+    private static int CommonSuffixLength(string first, string second, int prefixLength)
+    {
+        int limit = Mathf.Min(first.Length, second.Length) - prefixLength;
+        int index = 0;
+        while (index < limit
+               && first[first.Length - 1 - index] == second[second.Length - 1 - index])
+        {
+            index++;
+        }
+
+        return index;
+    }
+
+    private FocusWordDefinition FindFocusWordContaining(string symbolStableId)
+    {
+        if (_level == null || _level.focusWords == null || string.IsNullOrEmpty(symbolStableId))
+            return null;
+
+        for (int i = 0; i < _level.focusWords.Count; i++)
+        {
+            FocusWordDefinition word = _level.focusWords[i];
+            if (word?.decomposition == null)
+                continue;
+
+            for (int j = 0; j < word.decomposition.Count; j++)
+            {
+                SymbolValueReference reference = word.decomposition[j];
+                if (reference?.symbol != null && reference.symbol.stableId == symbolStableId)
+                    return word;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The run that stands in for a slot the player may not read. Slot 0 under Abo ng Simula
+    /// deliberately reuses the target slot's own mask rather than introducing a second, invented
+    /// ash glyph: AUDIT.md:464 specifies the ability as "the clue's incomplete-word text masks the
+    /// <b>first</b> syllable as well as the target one", which is exactly this.
+    /// </summary>
+    private const string UnreadableSlotMask = "__";
+
+    /// <summary>
+    /// Replaces every syllable the player has not yet restored with an underscore run, so the word
+    /// is retrieved rather than read. <paramref name="symbolStableId"/> is kept on the signature
+    /// because callers and tests identify the clue by it, but the mask no longer turns on it: the
+    /// needed slot is unrestored by definition and is masked by the restoration rule.
+    /// <para>
+    /// SALIN-284: when <paramref name="ashFirstSlot"/> is set, the word's first slot is masked too
+    /// — Abo ng Simula covers the opening symbol with ash. Presentation only; nothing downstream of
+    /// this string decides whether a draw is accepted.
+    /// </para>
+    /// </summary>
+    private static string BuildMaskedSpelling(
+        FocusWordDefinition word,
+        string symbolStableId,
+        bool ashFirstSlot)
+    {
+        return BuildMaskedSpellingWithRestoration(word, symbolStableId, ashFirstSlot, null);
+    }
+
+    private static string BuildMaskedSpellingWithRestoration(
+        FocusWordDefinition word,
+        string symbolStableId,
+        bool ashFirstSlot,
+        ActiveClueRestorationState restorationState)
+    {
+        if (word?.decomposition == null)
+            return word?.latinSpelling;
+
+        var builder = new System.Text.StringBuilder();
+        // Counts slots actually emitted, not raw list indices: a decomposition may carry a null
+        // symbol, and the ash belongs on the first slot the player can see.
+        int emittedSlots = 0;
+        for (int i = 0; i < word.decomposition.Count; i++)
+        {
+            SymbolValueReference reference = word.decomposition[i];
+            if (reference?.symbol == null)
+                continue;
+
+            bool isRestoredSlot = restorationState != null
+                && restorationState.IsSlotRestored(word, i);
+            bool isCurrentRequiredGlyph = !string.IsNullOrEmpty(symbolStableId)
+                && reference.symbol.stableId == symbolStableId;
+            bool isAshedSlot = ashFirstSlot && emittedSlots == 0
+                && isRestoredSlot && !isCurrentRequiredGlyph;
+            emittedSlots++;
+
+            // A slot is readable ONLY once the player has RESTORED it. Previously only the slot
+            // currently needed was masked, so INA opened as "__na": the player could read NA off
+            // the panel before ever drawing it, and the Iligaw lesson's "one character, one piece
+            // of the memory — restored" was being said over a word that was already most of the
+            // way on screen. INA now reads "____" at level start, "i__" once I is restored, and
+            // "ina" once NA's carrier falls.
+            //
+            // Ash only takes away an already-restored first slot, and never the glyph currently
+            // carried by the clue. It is presentation-only; restoration state is never modified.
+            //
+            // isTargetSlot is no longer read here: "the slot you need" and "the slot you have not
+            // earned" only ever differed for slots the player had not earned either, so the needed
+            // slot is covered by the restoration rule itself.
+            builder.Append(!isRestoredSlot || isAshedSlot
+                ? UnreadableSlotMask
+                : SpokenValueResolver.ResolveLabel(reference.symbol, reference.spokenValueId));
+        }
+
+        return builder.Length > 0 ? builder.ToString() : word.latinSpelling;
+    }
+}
+
+/// <summary>
+/// Pure restoration-rail geometry policy. ActiveCluePresenter owns GameObjects and lifecycle;
+/// this helper owns the scaled values that make a complete rail fit the available safe-area width.
+/// </summary>
+internal static class RestorationRailLayoutPolicy
+{
+    internal static RestorationRailLayoutMetrics Calculate(
+        float nominalWidth,
+        float availableWidth,
+        Vector2 slotSize,
+        float slotSpacing,
+        float wordGap,
+        float labelFontSize,
+        float labelRowHeight,
+        float labelGap,
+        float separatorFontSize)
+    {
+        float scale = ActiveCluePresenter.CalculateRailScale(nominalWidth, availableWidth);
+        return new RestorationRailLayoutMetrics(
+            scale,
+            slotSize * scale,
+            slotSpacing * scale,
+            wordGap * scale,
+            labelFontSize * scale,
+            labelRowHeight * scale,
+            labelGap * scale,
+            separatorFontSize * scale);
+    }
+}
+
+internal sealed class RestorationRailLayoutMetrics
+{
+    internal RestorationRailLayoutMetrics(
+        float scale,
+        Vector2 slotSize,
+        float slotSpacing,
+        float wordGap,
+        float labelFontSize,
+        float labelRowHeight,
+        float labelGap,
+        float separatorFontSize)
+    {
+        Scale = scale;
+        SlotSize = slotSize;
+        SlotSpacing = slotSpacing;
+        WordGap = wordGap;
+        LabelFontSize = labelFontSize;
+        LabelRowHeight = labelRowHeight;
+        LabelGap = labelGap;
+        SeparatorFontSize = separatorFontSize;
+    }
+
+    internal float Scale { get; }
+    internal Vector2 SlotSize { get; }
+    internal float SlotSpacing { get; }
+    internal float WordGap { get; }
+    internal float LabelFontSize { get; }
+    internal float LabelRowHeight { get; }
+    internal float LabelGap { get; }
+    internal float SeparatorFontSize { get; }
+}
+
+/// <summary>One authored focus-word target for the shared combat-restoration gate.</summary>
+public sealed class ActiveClueRestorationTarget
+{
+    public ActiveClueRestorationTarget(string wordStableId, string symbolStableId = null)
+    {
+        WordStableId = wordStableId;
+        SymbolStableId = symbolStableId;
+    }
+
+    public string WordStableId { get; }
+    public string SymbolStableId { get; }
+}
+
+/// <summary>
+/// Tracks the focus-word syllables restored by accepted active clues.
+///
+/// The combat system only reports a canonical symbol stable id, so a restored slot is
+/// deliberately keyed by that id rather than by a challenge-board occurrence. This keeps
+/// the state shared by every active-clue level and makes it independent of the retired
+/// post-wave restoration board.
+/// </summary>
+public sealed class ActiveClueRestorationState
+{
+    private sealed class WordState
+    {
+        public readonly FocusWordDefinition Word;
+        public readonly bool[] RestoredSlots;
+
+        public WordState(FocusWordDefinition word)
+        {
+            Word = word;
+            RestoredSlots = word?.decomposition == null
+                ? new bool[0]
+                : new bool[word.decomposition.Count];
+        }
+
+        public bool IsComplete
+        {
+            get
+            {
+                if (Word == null || Word.decomposition == null || Word.decomposition.Count == 0)
+                    return false;
+
+                bool hasSlot = false;
+                for (int i = 0; i < Word.decomposition.Count; i++)
+                {
+                    SymbolValueReference reference = Word.decomposition[i];
+                    if (reference?.symbol == null)
+                        continue;
+
+                    hasSlot = true;
+                    if (!RestoredSlots[i])
+                        return false;
+                }
+
+                return hasSlot;
+            }
+        }
+    }
+
+    private readonly List<WordState> _words = new List<WordState>();
+    private readonly List<FocusWordDefinition> _changedWords =
+        new List<FocusWordDefinition>();
+
+    /// <summary>All focus words in authored order.</summary>
+    public IReadOnlyList<FocusWordDefinition> FocusWords
+    {
+        get
+        {
+            var words = new List<FocusWordDefinition>(_words.Count);
+            for (int i = 0; i < _words.Count; i++)
+                words.Add(_words[i].Word);
+            return words;
+        }
+    }
+
+    public int FocusWordCount => _words.Count;
+
+    /// <summary>The first unfinished symbol in the same order as the visible word rail.</summary>
+    public string NextTargetSymbolStableId
+    {
+        get
+        {
+            for (int wordIndex = 0; wordIndex < _words.Count; wordIndex++)
+            {
+                WordState state = _words[wordIndex];
+                if (state.Word?.decomposition == null)
+                    continue;
+                for (int slotIndex = 0; slotIndex < state.Word.decomposition.Count; slotIndex++)
+                {
+                    BaybayinCharacterSO symbol = state.Word.decomposition[slotIndex]?.symbol;
+                    if (symbol != null && !state.RestoredSlots[slotIndex]
+                        && !string.IsNullOrEmpty(symbol.stableId))
+                        return symbol.stableId;
+                }
+            }
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// How many authored slots are restored, across every focus word. Counted rather than stored
+    /// so it cannot drift from the slot flags themselves, and exposed because abilities gate on
+    /// "the player has used the clue at least once" — Abo ng Simula's ash must not arm before the
+    /// player has ever read the clue and acted on it.
+    /// </summary>
+    public int RestoredSlotCount
+    {
+        get
+        {
+            int restored = 0;
+            for (int wordIndex = 0; wordIndex < _words.Count; wordIndex++)
+            {
+                WordState state = _words[wordIndex];
+                if (state.Word?.decomposition == null)
+                    continue;
+
+                for (int slotIndex = 0; slotIndex < state.Word.decomposition.Count; slotIndex++)
+                {
+                    SymbolValueReference reference = state.Word.decomposition[slotIndex];
+                    if (reference?.symbol != null && state.RestoredSlots[slotIndex])
+                        restored++;
+                }
+            }
+
+            return restored;
+        }
+    }
+
+    /// <summary>True only when at least one word exists and every authored slot is restored.</summary>
+    public bool IsComplete
+    {
+        get
+        {
+            if (_words.Count == 0)
+                return false;
+
+            for (int i = 0; i < _words.Count; i++)
+            {
+                if (!_words[i].IsComplete)
+                    return false;
+            }
+
+            return true;
+        }
+    }
+
+    /// <summary>Starts a fresh restoration run for the supplied level's focus words.</summary>
+    public void Configure(IReadOnlyList<FocusWordDefinition> focusWords)
+    {
+        _words.Clear();
+        _changedWords.Clear();
+
+        if (focusWords == null)
+            return;
+
+        for (int i = 0; i < focusWords.Count; i++)
+        {
+            FocusWordDefinition word = focusWords[i];
+            if (word != null)
+                _words.Add(new WordState(word));
+        }
+    }
+
+    /// <summary>
+    /// Restores ONE slot — the first unrestored slot carrying this symbol, in reading order — and
+    /// returns the single word changed by it, or nothing when the text does not owe this symbol.
+    /// The returned list is reused on the next call and is intended for immediate use.
+    /// </summary>
+    /// <remarks>
+    /// <b>One carrier, one slot.</b> This used to fill EVERY slot matching the symbol, across every
+    /// focus word, from a single kill. Level 3 is the shape that exposes it: "Ang MAbuting BATA ay
+    /// guMAgawa ng TAMA" needs two separate MA slots and two separate TA slots earned separately,
+    /// and under the old rule one MA carrier filled both.
+    ///
+    /// <para>
+    /// It also silently defeated withholding. Restoration by symbol meant a gate on a repeated
+    /// symbol withheld nothing — a carrier spawned for an ungated duplicate filled the gated slot
+    /// for free — and four separate mechanisms existed to route around that: DerivedFinaleGate's
+    /// "last symbol occurring exactly once", the GatedFinaleUnwinnable validator rule, Level 2's
+    /// finale landing on MA rather than its last slot, and the authored finale gating every slot
+    /// carrying its symbol. With one kill filling one slot, the last slot is always withholdable
+    /// and none of those are needed.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Reading order, not word order alone.</b> The first unrestored match wins, scanning words
+    /// in authored order and slots left to right — the same order the clue rail renders and the
+    /// player is following. A level whose symbols are all distinct behaves exactly as before, which
+    /// is every level shipped before Level 3 and why nothing caught this.
+    /// </para>
+    /// </remarks>
+    public IReadOnlyList<FocusWordDefinition> Apply(string symbolStableId)
+    {
+        _changedWords.Clear();
+        if (string.IsNullOrEmpty(symbolStableId))
+            return _changedWords;
+
+        for (int wordIndex = 0; wordIndex < _words.Count; wordIndex++)
+        {
+            WordState state = _words[wordIndex];
+            if (state.Word.decomposition == null)
+                continue;
+
+            for (int slotIndex = 0; slotIndex < state.Word.decomposition.Count; slotIndex++)
+            {
+                SymbolValueReference reference = state.Word.decomposition[slotIndex];
+                if (reference?.symbol == null
+                    || reference.symbol.stableId != symbolStableId
+                    || state.RestoredSlots[slotIndex])
+                {
+                    continue;
+                }
+
+                state.RestoredSlots[slotIndex] = true;
+                _changedWords.Add(state.Word);
+                return _changedWords;
+            }
+        }
+
+        return _changedWords;
+    }
+
+    public bool IsWordComplete(string stableId)
+    {
+        WordState state = FindWord(stableId);
+        return state != null && state.IsComplete;
+    }
+
+    /// <summary>
+    /// Checks a segment's required word ids. An unknown id is incomplete rather than silently
+    /// satisfied, so a bad segment mapping cannot unlock the next phase.
+    /// </summary>
+    public bool AreWordsComplete(IReadOnlyList<string> stableIds)
+    {
+        if (stableIds == null || stableIds.Count == 0)
+            return false;
+
+        for (int i = 0; i < stableIds.Count; i++)
+        {
+            if (!IsWordComplete(stableIds[i]))
+                return false;
+        }
+
+        return true;
+    }
+
+    public bool AreTargetsComplete(IReadOnlyList<ActiveClueRestorationTarget> targets)
+    {
+        if (targets == null || targets.Count == 0)
+            return false;
+
+        for (int i = 0; i < targets.Count; i++)
+        {
+            ActiveClueRestorationTarget target = targets[i];
+            if (target == null || !IsTargetComplete(target.WordStableId, target.SymbolStableId))
+                return false;
+        }
+
+        return true;
+    }
+
+    public bool IsTargetComplete(string wordStableId, string symbolStableId)
+    {
+        if (string.IsNullOrEmpty(symbolStableId))
+            return IsWordComplete(wordStableId);
+
+        WordState state = FindWord(wordStableId);
+        if (state == null || state.Word.decomposition == null)
+            return false;
+
+        for (int i = 0; i < state.Word.decomposition.Count; i++)
+        {
+            SymbolValueReference reference = state.Word.decomposition[i];
+            if (reference?.symbol != null
+                && reference.symbol.stableId == symbolStableId)
+            {
+                return state.RestoredSlots[i];
+            }
+        }
+
+        return false;
+    }
+
+    public bool IsSlotRestored(FocusWordDefinition word, int slotIndex)
+    {
+        WordState state = FindWord(word);
+        return state != null
+            && slotIndex >= 0
+            && slotIndex < state.RestoredSlots.Length
+            && state.RestoredSlots[slotIndex];
+    }
+
+    private WordState FindWord(string stableId)
+    {
+        if (string.IsNullOrEmpty(stableId))
+            return null;
+
+        for (int i = 0; i < _words.Count; i++)
+        {
+            if (_words[i].Word != null && _words[i].Word.stableId == stableId)
+                return _words[i];
+        }
+
+        return null;
+    }
+
+    private WordState FindWord(FocusWordDefinition word)
+    {
+        if (word == null)
+            return null;
+
+        for (int i = 0; i < _words.Count; i++)
+        {
+            if (ReferenceEquals(_words[i].Word, word))
+                return _words[i];
+        }
+
+        return null;
+    }
+}

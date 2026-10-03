@@ -5,16 +5,9 @@ using UnityEngine;
     menuName = "Salinlahi/Game Config")]
 public class GameConfigSO : ScriptableObject
 {
-    [Header("Combo Settings")]
-    [Tooltip("Consecutive correct draws needed to trigger Focus Mode")]
-    public int focusModeThreshold = 5;
-
-    [Header("Focus Mode Settings")]
-    [Tooltip("How long Focus Mode lasts in seconds")]
-    public float focusModeDuration = 5f;
-
-    [Tooltip("Enemy speed multiplier during Focus Mode. "
-        + "0.5 = half speed.")]
-    [Range(0.1f, 1f)]
-    public float focusModeSpeedMultiplier = 0.5f;
+    [Header("Correction Window (SALIN-182)")]
+    [Tooltip("Seconds after a recognition during which an identical repeat is treated as an echo "
+        + "rather than a new attempt. Shorter windows make correction stricter. Default 0.15.")]
+    [Min(0f)]
+    public float echoedRecognitionSeconds = 0.15f;
 }

@@ -1,0 +1,750 @@
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+public sealed class Level1TutorialGuideUI : MonoBehaviour
+{
+    private const float PromptMinY = 0.895f;
+    private const float PromptMaxY = 0.965f;
+    private const float FeedbackMinY = 0.805f;
+    private const float FeedbackMaxY = 0.875f;
+    private const float TextMinX = 0.06f;
+    private const float TextMaxX = 0.94f;
+
+    [Header("Panel")]
+    [SerializeField] private GameObject _root;
+    [SerializeField] private TMP_Text _promptText;
+    [SerializeField] private TMP_Text _feedbackText;
+    [SerializeField] private Button _skipButton;
+
+    [Header("Layout")]
+    [Tooltip("Keeps runtime-created guide UI responsive. Leave off for an authored hierarchy so its RectTransforms and font sizes remain Inspector-editable.")]
+    [SerializeField] private bool _useRuntimeResponsiveLayout;
+
+    [Header("Guide Visuals")]
+    [Tooltip("LineRenderer or similar to draw the guide path.")]
+    [SerializeField] private LineRenderer _guidePathRenderer;
+    [Tooltip("Optional UI image that shows the syllable glyph being copied.")]
+    [SerializeField] private Image _guideSpriteImage;
+    [Tooltip("Transform of the start dot (will be pulsed).")]
+    [SerializeField] private Transform _startDot;
+    [Tooltip("Transform of the direction arrow.")]
+    [SerializeField] private Transform _directionArrow;
+    [Tooltip("Parent for assist animation instances.")]
+    [SerializeField] private Transform _assistAnimationParent;
+
+    /// <summary>
+    /// True between a show call and the matching <see cref="Hide"/>.
+    ///
+    /// <para>
+    /// <b>This is what makes the panel able to appear at all.</b> In Gameplay.unity <c>_root</c> is
+    /// this component's OWN GameObject and it is authored INACTIVE, which is deliberate — the guide
+    /// text is positioned in the scene and must not be on screen until a beat asks for it. But a
+    /// component on an inactive GameObject has never run <see cref="Awake"/>: Unity runs it
+    /// synchronously, re-entrantly, from inside the first <c>SetActive(true)</c>. So
+    /// <c>ShowMessage</c>'s <c>SetActive(true)</c> ran Awake, and Awake's own defensive
+    /// <c>SetActive(false)</c> immediately undid the show. The prompt string landed on the text
+    /// (which is a child of the same inactive root) and not one frame of it ever reached the
+    /// screen. Awake now defers to a show already in flight.
+    /// </para>
+    /// </summary>
+    private bool _showRequested;
+
+    private System.Action _skipRequested;
+    private Coroutine _pulseCoroutine;
+    private Coroutine _animatePathCoroutine;
+    private Coroutine _heartbeatCoroutine;
+    private Vector3[] _originalGuidePathPoints;
+
+    private void Awake()
+    {
+        TutorialFontProvider.ApplyTo(_promptText);
+        TutorialFontProvider.ApplyTo(_feedbackText);
+        ApplyConfiguredLayout();
+        EnsureGuideVisuals();
+
+        // Authored guide text is useful to position in the scene, but must not be
+        // visible until a tutorial beat explicitly calls ShowPrompt or ShowMessage.
+        // _showRequested guards the case where this Awake is running re-entrantly from
+        // inside that very call — see the field's remarks.
+        if (_root != null && !_showRequested)
+            _root.SetActive(false);
+
+        if (_skipButton != null)
+        {
+            TMP_Text skipLabel = _skipButton.GetComponentInChildren<TMP_Text>(true);
+            TutorialFontProvider.ApplyTo(skipLabel);
+
+            // Authored state is not trusted as the starting state: a scene that ships this button
+            // active would show "Skip" the instant the first beat raises the panel, before any beat
+            // has said whether it may be skipped. Every ShowPrompt/ShowMessage sets it explicitly
+            // from here on; this is only the value it holds before the first one.
+            _skipButton.gameObject.SetActive(false);
+        }
+    }
+
+    public static Level1TutorialGuideUI CreateRuntime()
+    {
+        Canvas canvas = FindFirstObjectByType<Canvas>();
+        if (canvas == null)
+        {
+            GameObject canvasObject = new("TutorialCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            canvas = canvasObject.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1080f, 1920f);
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 0.5f;
+        }
+
+        GameObject root = new("Level1TutorialGuideUI", typeof(RectTransform));
+        root.transform.SetParent(canvas.transform, false);
+        RectTransform rootRect = root.GetComponent<RectTransform>();
+        rootRect.anchorMin = Vector2.zero;
+        rootRect.anchorMax = Vector2.one;
+        rootRect.offsetMin = Vector2.zero;
+        rootRect.offsetMax = Vector2.zero;
+
+        Level1TutorialGuideUI guide = root.AddComponent<Level1TutorialGuideUI>();
+        guide._root = root;
+        guide._promptText = CreateText(root.transform, "PromptText", new Vector2(0.5f, 0.88f), 42, TextAlignmentOptions.Center);
+        guide._feedbackText = CreateText(root.transform, "FeedbackText", new Vector2(0.5f, 0.76f), UITextScale.Caption, TextAlignmentOptions.Center);
+        guide._useRuntimeResponsiveLayout = true;
+        guide.ApplyConfiguredLayout();
+        guide._skipButton = CreateSkipButton(root.transform);
+        guide.EnsureGuideVisuals();
+        root.SetActive(false);
+        return guide;
+    }
+
+    private static TextMeshProUGUI CreateText(
+        Transform parent,
+        string name,
+        Vector2 anchor,
+        float fontSize,
+        TextAlignmentOptions alignment)
+    {
+        GameObject textObject = new(name, typeof(RectTransform), typeof(TextMeshProUGUI));
+        textObject.transform.SetParent(parent, false);
+
+        RectTransform rect = textObject.GetComponent<RectTransform>();
+        rect.anchorMin = anchor;
+        rect.anchorMax = anchor;
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = new Vector2(900f, 120f);
+
+        TextMeshProUGUI text = textObject.GetComponent<TextMeshProUGUI>();
+        text.fontSize = fontSize;
+        text.alignment = alignment;
+        text.color = Color.white;
+        text.textWrappingMode = TextWrappingModes.Normal;
+        text.overflowMode = TextOverflowModes.Overflow;
+        text.raycastTarget = false;
+        TutorialFontProvider.ApplyTo(text);
+        return text;
+    }
+
+    public static void ApplyResponsiveTextLayout(TMP_Text promptText, TMP_Text feedbackText)
+    {
+        ConfigureTextBand(promptText, PromptMinY, PromptMaxY, UITextScale.Body, 56f);
+        ConfigureTextBand(feedbackText, FeedbackMinY, FeedbackMaxY, UITextScale.Secondary, 46f);
+    }
+
+    private void ApplyConfiguredLayout()
+    {
+        if (_useRuntimeResponsiveLayout)
+            ApplyResponsiveTextLayout(_promptText, _feedbackText);
+    }
+
+    private static void ConfigureTextBand(TMP_Text text, float minY, float maxY, float minFontSize, float maxFontSize)
+    {
+        if (text == null)
+            return;
+
+        RectTransform rect = text.rectTransform;
+        rect.anchorMin = new Vector2(TextMinX, minY);
+        rect.anchorMax = new Vector2(TextMaxX, maxY);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = Vector2.zero;
+
+        text.alignment = TextAlignmentOptions.Center;
+        text.textWrappingMode = TextWrappingModes.Normal;
+        text.overflowMode = TextOverflowModes.Overflow;
+        text.enableAutoSizing = true;
+        text.fontSizeMin = minFontSize;
+        text.fontSizeMax = maxFontSize;
+        text.fontSize = maxFontSize;
+        text.raycastTarget = false;
+        TutorialFontProvider.ApplyTo(text);
+    }
+
+    private static Button CreateSkipButton(Transform parent)
+    {
+        GameObject buttonObject = new("SkipButton", typeof(RectTransform), typeof(Image), typeof(Button));
+        buttonObject.transform.SetParent(parent, false);
+
+        RectTransform rect = buttonObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(1f, 1f);
+        rect.anchorMax = new Vector2(1f, 1f);
+        rect.pivot = new Vector2(1f, 1f);
+        rect.anchoredPosition = new Vector2(-48f, -96f);
+        rect.sizeDelta = new Vector2(120f, 56f);
+
+        Image image = buttonObject.GetComponent<Image>();
+        image.color = new Color(0f, 0f, 0f, 0.45f);
+
+        TextMeshProUGUI label = CreateText(buttonObject.transform, "Label", new Vector2(0.5f, 0.5f), UITextScale.Caption, TextAlignmentOptions.Center);
+        RectTransform labelRect = label.GetComponent<RectTransform>();
+        labelRect.sizeDelta = rect.sizeDelta;
+        label.text = "Skip";
+
+        buttonObject.SetActive(false);
+        return buttonObject.GetComponent<Button>();
+    }
+
+    public void Initialize(System.Action skipRequested)
+    {
+        EnsureRuntimeCanvas();
+        ApplyConfiguredLayout();
+        _skipRequested = skipRequested;
+        if (_skipButton != null)
+            _skipButton.onClick.AddListener(HandleSkipClicked);
+    }
+
+    private void EnsureRuntimeCanvas()
+    {
+        Canvas currentCanvas = GetComponentInParent<Canvas>();
+        if (currentCanvas != null
+            && currentCanvas.transform.localScale != Vector3.zero
+            && currentCanvas.name == "TutorialCanvas")
+        {
+            return;
+        }
+
+        Canvas tutorialCanvas = FindTutorialCanvas();
+        if (tutorialCanvas == null)
+        {
+            GameObject canvasObject = new("TutorialCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            tutorialCanvas = canvasObject.GetComponent<Canvas>();
+            tutorialCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+
+            CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1080f, 1920f);
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 0.5f;
+        }
+
+        tutorialCanvas.sortingOrder = 110;
+        tutorialCanvas.transform.localScale = Vector3.one;
+        transform.SetParent(tutorialCanvas.transform, false);
+        transform.SetAsLastSibling();
+    }
+
+    private static Canvas FindTutorialCanvas()
+    {
+        Canvas[] canvases = FindObjectsByType<Canvas>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+
+        for (int i = 0; i < canvases.Length; i++)
+        {
+            Canvas canvas = canvases[i];
+            if (canvas != null && canvas.name == "TutorialCanvas")
+                return canvas;
+        }
+
+        return null;
+    }
+
+    public void PrepareForChallenge()
+    {
+        EnsureRuntimeCanvas();
+        EnsureGuideVisuals();
+    }
+
+    private void OnDestroy()
+    {
+        if (_skipButton != null)
+            _skipButton.onClick.RemoveListener(HandleSkipClicked);
+    }
+
+    public void ShowPrompt(Level1TutorialStepSO step, bool canSkip)
+    {
+        EnsureGuideVisuals();
+
+        // Decided BEFORE the panel comes up, never after. Set below ShowRoot this used to raise the
+        // surface carrying whatever skip state the previous beat left, then correct it — which is
+        // the "it loads and then a Skip pops in" glitch the player reported. A beat either offers
+        // the affordance from its first frame or never shows it at all.
+        SetSkipAffordanceVisible(canSkip);
+
+        ShowRoot();
+
+        ApplyConfiguredLayout();
+        transform.SetAsLastSibling();
+
+        if (_promptText != null)
+            _promptText.text = step != null ? step.promptText : string.Empty;
+
+        if (_feedbackText != null)
+            _feedbackText.text = string.Empty;
+
+        // A fresh prompt or message replaces the guide's last word, so it stops owning it.
+        IsShowingFeedback = false;
+
+        ShowGuideSprite(step);
+
+        if (_heartbeatCoroutine != null)
+            StopCoroutine(_heartbeatCoroutine);
+        _heartbeatCoroutine = StartCoroutine(HeartbeatCoroutine());
+
+        // Set up guide visuals if available
+        if (_guidePathRenderer != null && step != null && step.templatePoints != null && step.templatePoints.Length > 1)
+        {
+            _guidePathRenderer.positionCount = step.templatePoints.Length;
+            _originalGuidePathPoints = new Vector3[step.templatePoints.Length];
+            for (int i = 0; i < step.templatePoints.Length; i++)
+            {
+                Vector3 pos = step.templatePoints[i];
+                _guidePathRenderer.SetPosition(i, pos);
+                _originalGuidePathPoints[i] = pos;
+            }
+            _guidePathRenderer.enabled = true;
+            _guidePathRenderer.gameObject.SetActive(true);
+        }
+
+        if (_startDot != null)
+        {
+            if (step != null && step.templatePoints != null && step.templatePoints.Length > 0)
+            {
+                SetGuidePosition(_startDot, step.templatePoints[0]);
+                _startDot.gameObject.SetActive(true);
+            }
+            else
+            {
+                _startDot.gameObject.SetActive(false);
+            }
+        }
+
+        if (_directionArrow != null)
+        {
+            if (step != null && step.templatePoints != null && step.templatePoints.Length > 1)
+            {
+                Vector2 first = step.templatePoints[0];
+                Vector2 second = step.templatePoints[1];
+                Vector2 dir = (second - first).normalized;
+                SetGuidePosition(_directionArrow, first + dir * 0.5f);
+                float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
+                _directionArrow.localRotation = Quaternion.Euler(0, 0, angle);
+                _directionArrow.gameObject.SetActive(true);
+            }
+            else
+            {
+                _directionArrow.gameObject.SetActive(false);
+            }
+        }
+    }
+
+    public void ShowMessage(string message, bool canSkip)
+    {
+        // Before ShowRoot, for the reason given in ShowPrompt: the skip affordance must never
+        // arrive a frame after the surface it belongs to.
+        SetSkipAffordanceVisible(canSkip);
+
+        ShowRoot();
+
+        ApplyConfiguredLayout();
+        transform.SetAsLastSibling();
+
+        if (_promptText != null)
+            _promptText.text = message ?? string.Empty;
+
+        if (_feedbackText != null)
+            _feedbackText.text = string.Empty;
+
+        // A fresh prompt or message replaces the guide's last word, so it stops owning it.
+        IsShowingFeedback = false;
+
+        if (_guideSpriteImage != null)
+            _guideSpriteImage.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// True while this guide is displaying its own feedback line, and therefore owns the last word
+    /// on the player's draw.
+    ///
+    /// <para>
+    /// <b>Why anything needs to know.</b> A successful draw during the enemy lesson put four
+    /// strings on screen at once and two of them said the same thing twice: the guide's authored
+    /// <c>successText</c> ("Great job. Drawing protects the base.") and the HUD's generic
+    /// <c>DrawingFeedbackVocabulary.Accepted</c> ("Nice — that's the one."), which lands in a band
+    /// the clue panel already occupies. A tutorial step that has authored its own wording is the
+    /// more specific voice, so while it is speaking the generic one stays quiet. See
+    /// <c>DrawingFeedback.SetMessage</c> — which still RECORDS every message it was handed, so
+    /// nothing about what the player was told stops being assertable.
+    /// </para>
+    /// </summary>
+    public static bool IsShowingFeedback { get; private set; }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetOwnershipOnDomainReload() => IsShowingFeedback = false;
+
+    /// <summary>
+    /// Blanks the standing prompt without closing the panel, so a step that has been satisfied can
+    /// stop asking for it while its own success line is still being read.
+    ///
+    /// <para>
+    /// Deliberately not folded into <see cref="ShowFeedback"/>: feedback is also how a WRONG draw
+    /// is corrected, and the prompt is exactly what the player needs to still be looking at then.
+    /// </para>
+    /// </summary>
+    /// <summary>
+    /// The one place the skip affordance's visibility is decided.
+    ///
+    /// <para>
+    /// <b>No caller currently asks for it.</b> Every live call site — the enemy-introduction draw
+    /// step, the heart-loss demo, the challenge flow — passes <c>canSkip: false</c>, so the button
+    /// is authored inactive in both gameplay scenes and stays that way. It is kept rather than
+    /// deleted because <see cref="Level1OnboardingController.RequestSkip"/> and
+    /// <c>OnboardingContext.SkipRequested</c> are still wired to it; what is fixed here is the
+    /// TIMING, which is what the player actually saw. Anything that does start passing true must
+    /// pass it on the call that raises the surface, not on a later one.
+    /// </para>
+    /// </summary>
+    private void SetSkipAffordanceVisible(bool visible)
+    {
+        if (_skipButton != null)
+            _skipButton.gameObject.SetActive(visible);
+    }
+
+    public void ClearPrompt()
+    {
+        if (_promptText != null)
+            _promptText.text = string.Empty;
+    }
+
+    public void ShowFeedback(string message)
+    {
+        ApplyConfiguredLayout();
+        transform.SetAsLastSibling();
+
+        if (_feedbackText != null)
+            _feedbackText.text = message ?? string.Empty;
+
+        IsShowingFeedback = !string.IsNullOrWhiteSpace(message);
+    }
+
+    /// <summary>
+    /// Brings the panel up and keeps it up. <see cref="_showRequested"/> is set BEFORE the
+    /// <c>SetActive</c>, because that call is what runs <see cref="Awake"/> on a root authored
+    /// inactive, and Awake reads the flag. The second check covers the same re-entrancy for any
+    /// other <c>Awake</c>/<c>OnEnable</c> on the root that hides itself on wake.
+    /// </summary>
+    private void ShowRoot()
+    {
+        _showRequested = true;
+        if (_root == null)
+            return;
+
+        _root.SetActive(true);
+        if (!_root.activeSelf)
+            _root.SetActive(true);
+    }
+
+    public void Hide()
+    {
+        _showRequested = false;
+        IsShowingFeedback = false;
+
+        // Cleared with the panel, so the next beat cannot inherit the last one's skip state for the
+        // frame between ShowRoot and its own decision.
+        SetSkipAffordanceVisible(false);
+
+        if (_root != null)
+            _root.SetActive(false);
+
+        if (_guidePathRenderer != null)
+        {
+            _guidePathRenderer.enabled = false;
+            _guidePathRenderer.gameObject.SetActive(false);
+        }
+
+        if (_startDot != null)
+            _startDot.gameObject.SetActive(false);
+
+        if (_directionArrow != null)
+            _directionArrow.gameObject.SetActive(false);
+
+        if (_guideSpriteImage != null)
+            _guideSpriteImage.gameObject.SetActive(false);
+
+        StopEffects();
+    }
+
+    public void PulseStartDot()
+    {
+        if (_startDot == null)
+            return;
+
+        if (_pulseCoroutine != null)
+            StopCoroutine(_pulseCoroutine);
+
+        _pulseCoroutine = StartCoroutine(PulseCoroutine());
+    }
+
+    public void AnimateGuidePath()
+    {
+        if (_guidePathRenderer == null || _guidePathRenderer.positionCount < 2)
+            return;
+
+        if (_animatePathCoroutine != null)
+            StopCoroutine(_animatePathCoroutine);
+
+        _animatePathCoroutine = StartCoroutine(AnimatePathCoroutine());
+    }
+
+    public void PlayAssistAnimation(GameObject prefab)
+    {
+        if (prefab == null || _assistAnimationParent == null)
+            return;
+
+        GameObject instance = Instantiate(prefab, _assistAnimationParent);
+        Destroy(instance, 3f); // Clean up after animation
+    }
+
+    private void ShowGuideSprite(Level1TutorialStepSO step)
+    {
+        if (step == null || step.guideSprite == null)
+        {
+            if (_guideSpriteImage != null)
+                _guideSpriteImage.gameObject.SetActive(false);
+            return;
+        }
+
+        Image image = EnsureGuideSpriteImage();
+        if (image == null)
+            return;
+
+        image.sprite = step.guideSprite;
+        image.preserveAspect = true;
+        image.gameObject.SetActive(true);
+    }
+
+    private Image EnsureGuideSpriteImage()
+    {
+        if (_guideSpriteImage != null)
+            return _guideSpriteImage;
+
+        Transform parent = _root != null ? _root.transform : transform;
+        Transform existing = parent.Find("GuideSpriteImage");
+        if (existing != null)
+        {
+            _guideSpriteImage = existing.GetComponent<Image>();
+            if (_guideSpriteImage != null)
+                return _guideSpriteImage;
+        }
+
+        GameObject imageObject = new("GuideSpriteImage", typeof(RectTransform), typeof(Image));
+        imageObject.transform.SetParent(parent, false);
+        RectTransform rect = imageObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = new Vector2(0f, 120f);
+        rect.sizeDelta = new Vector2(260f, 260f);
+
+        _guideSpriteImage = imageObject.GetComponent<Image>();
+        _guideSpriteImage.raycastTarget = false;
+        _guideSpriteImage.color = new Color(1f, 1f, 1f, 0.55f);
+        imageObject.SetActive(false);
+        return _guideSpriteImage;
+    }
+
+    private void EnsureGuideVisuals()
+    {
+        Transform parent = _root != null ? _root.transform : transform;
+
+        if (_guidePathRenderer == null)
+        {
+            Transform existing = parent.Find("GuidePathRenderer");
+            if (existing != null)
+                _guidePathRenderer = existing.GetComponent<LineRenderer>();
+        }
+        if (_guidePathRenderer == null)
+        {
+            GameObject pathObject = new GameObject("GuidePathRenderer");
+            pathObject.transform.SetParent(parent, false);
+            _guidePathRenderer = pathObject.AddComponent<LineRenderer>();
+            _guidePathRenderer.useWorldSpace = false;
+            _guidePathRenderer.widthMultiplier = 5f;
+            _guidePathRenderer.startColor = new Color(0.1f, 0.95f, 0.45f, 0.9f);
+            _guidePathRenderer.endColor = new Color(0.1f, 0.95f, 0.45f, 0.9f);
+            Shader shader = Shader.Find("Sprites/Default");
+            if (shader != null)
+                _guidePathRenderer.material = new Material(shader);
+        }
+        _guidePathRenderer.gameObject.SetActive(false);
+
+        if (_startDot == null)
+        {
+            Transform existing = parent.Find("StartDot");
+            if (existing != null)
+                _startDot = existing;
+        }
+        if (_startDot == null)
+        {
+            GameObject dotObject = new GameObject("StartDot", typeof(RectTransform), typeof(Image));
+            dotObject.transform.SetParent(parent, false);
+            RectTransform dotRect = dotObject.GetComponent<RectTransform>();
+            dotRect.anchorMin = new Vector2(0.5f, 0.5f);
+            dotRect.anchorMax = new Vector2(0.5f, 0.5f);
+            dotRect.sizeDelta = new Vector2(26f, 26f);
+            Image dotImage = dotObject.GetComponent<Image>();
+            dotImage.color = new Color(0.1f, 1f, 0.2f, 1f);
+            dotImage.raycastTarget = false;
+            _startDot = dotObject.transform;
+        }
+        _startDot.gameObject.SetActive(false);
+
+        if (_directionArrow == null)
+        {
+            Transform existing = parent.Find("DirectionArrow");
+            if (existing != null)
+                _directionArrow = existing;
+        }
+        if (_directionArrow == null)
+        {
+            GameObject arrowObject = new GameObject("DirectionArrow", typeof(RectTransform), typeof(TextMeshProUGUI));
+            arrowObject.transform.SetParent(parent, false);
+            RectTransform arrowRect = arrowObject.GetComponent<RectTransform>();
+            arrowRect.anchorMin = new Vector2(0.5f, 0.5f);
+            arrowRect.anchorMax = new Vector2(0.5f, 0.5f);
+            arrowRect.sizeDelta = new Vector2(72f, 48f);
+            TextMeshProUGUI arrowText = arrowObject.GetComponent<TextMeshProUGUI>();
+            arrowText.text = "➜";
+            arrowText.fontSize = 44f;
+            arrowText.alignment = TextAlignmentOptions.Center;
+            arrowText.color = new Color(0.1f, 1f, 0.2f, 1f);
+            arrowText.raycastTarget = false;
+            TutorialFontProvider.ApplyTo(arrowText);
+            _directionArrow = arrowObject.transform;
+        }
+        _directionArrow.gameObject.SetActive(false);
+
+        if (_assistAnimationParent == null)
+            _assistAnimationParent = parent;
+    }
+
+    private static void SetGuidePosition(Transform target, Vector3 position)
+    {
+        if (target == null)
+            return;
+
+        RectTransform rect = target as RectTransform;
+        if (rect != null)
+            rect.anchoredPosition = position;
+        else
+            target.localPosition = position;
+    }
+
+    private void StopEffects()
+    {
+        if (_pulseCoroutine != null)
+        {
+            StopCoroutine(_pulseCoroutine);
+            _pulseCoroutine = null;
+        }
+        if (_animatePathCoroutine != null)
+        {
+            StopCoroutine(_animatePathCoroutine);
+            _animatePathCoroutine = null;
+            RestoreGuidePath();
+        }
+        if (_heartbeatCoroutine != null)
+        {
+            StopCoroutine(_heartbeatCoroutine);
+            _heartbeatCoroutine = null;
+        }
+    }
+
+    private System.Collections.IEnumerator PulseCoroutine()
+    {
+        if (_startDot == null)
+            yield break;
+
+        Vector3 baseScale = _startDot.localScale;
+        float duration = 0.6f;
+        while (_startDot != null)
+        {
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                if (_startDot == null)
+                    yield break;
+                float t = Mathf.PingPong(elapsed / duration, 1f);
+                float scale = Mathf.Lerp(1f, 1.3f, t);
+                _startDot.localScale = baseScale * scale;
+                yield return null;
+            }
+        }
+    }
+
+    private System.Collections.IEnumerator AnimatePathCoroutine()
+    {
+        if (_guidePathRenderer == null)
+            yield break;
+
+        int totalPoints = _guidePathRenderer.positionCount;
+        float duration = 1.5f;
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            int visiblePoints = Mathf.Max(2, Mathf.CeilToInt(t * totalPoints));
+            _guidePathRenderer.positionCount = visiblePoints;
+            yield return null;
+        }
+
+        RestoreGuidePath();
+    }
+
+    private void RestoreGuidePath()
+    {
+        if (_guidePathRenderer == null || _originalGuidePathPoints == null)
+            return;
+
+        _guidePathRenderer.positionCount = _originalGuidePathPoints.Length;
+        for (int i = 0; i < _originalGuidePathPoints.Length; i++)
+            _guidePathRenderer.SetPosition(i, _originalGuidePathPoints[i]);
+    }
+
+    private System.Collections.IEnumerator HeartbeatCoroutine()
+    {
+        float cycleDuration = 1.2f;
+        while (true)
+        {
+            float elapsed = 0f;
+            while (elapsed < cycleDuration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.PingPong(elapsed / cycleDuration, 1f);
+                float alpha = Mathf.Lerp(0.35f, 0.75f, t);
+                if (_guideSpriteImage != null)
+                    _guideSpriteImage.color = new Color(1f, 1f, 1f, alpha);
+                yield return null;
+            }
+        }
+    }
+
+    private void HandleSkipClicked()
+    {
+        _skipRequested?.Invoke();
+    }
+}

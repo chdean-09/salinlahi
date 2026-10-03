@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 32ca911e1db334783bc5c2baf9804ec4, type: 3}
+  m_Name: Level1TutorialSequence
+  m_EditorClassIdentifier: Assembly-CSharp::Level1TutorialSequenceSO
+  steps:
+  - {fileID: 11400000, guid: 7a8d4f1c9e2b4a6d8f0c1e3b5a7d9f2c, type: 2}
+  - {fileID: 11400000, guid: 8b9e5f2d0c1a4b6e8f3d7c9a1e5b2f4d, type: 2}
+  - {fileID: 11400000, guid: 9c0e6a3d1b5f4e7a8c2d9f0b6a1e3c5d, type: 2}
+  - {fileID: 11400000, guid: ad1f7b3e5c9a4d2f8b6e0c1a3f5d7e9b, type: 2}
+  baseIntroText: This is the base.
+  baseDefenseText: Keep enemies away from it.
+  drawPurposeText: Draw its syllable to defeat it.
+  baseDamageText: The base took damage. Draw before enemies reach it.
+  finalReleaseText: You are ready. Defend the base.
+  messageSeconds: 1.25
+  idleHintSeconds: 5
+  strongHintSeconds: 12
+  failuresBeforeAssist: 3
+  protagonistWalkSeconds: 1.75

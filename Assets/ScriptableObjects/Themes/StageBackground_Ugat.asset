@@ -1,0 +1,104 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 043a234f99c274fedabd99a2eb915b62, type: 3}
+  m_Name: StageBackground_Ugat
+  m_EditorClassIdentifier: Salinlahi.Runtime::StageBackgroundSO
+  groundTiles:
+  - {fileID: 21300000, guid: 7b2f78741ae54bad8005d45573fd1f59, type: 3}
+  - {fileID: 21300000, guid: 88059c06332f44e282021b7275b649e2, type: 3}
+  - {fileID: 21300000, guid: 6fb56b7d0c0c4278bc9cadd010f4de5e, type: 3}
+  - {fileID: 21300000, guid: 57462aa84baf45eea06b80f8dd5afebf, type: 3}
+  - {fileID: 21300000, guid: 1c9e7d66562d44eea11886ce901d4aff, type: 3}
+  - {fileID: 21300000, guid: d2ea66a02c8b4e7d803280012f276b54, type: 3}
+  - {fileID: 21300000, guid: 02d5b5015ef640b1b3c27840698e2ad0, type: 3}
+  - {fileID: 21300000, guid: ff3485cf39a2404d9de0fc75bcadc91b, type: 3}
+  wornTiles:
+  - {fileID: 21300000, guid: 574acb9e75ac4360be935991bf5986a0, type: 3}
+  - {fileID: 21300000, guid: 8f32106242824264b46e6608371fe715, type: 3}
+  wornChance: 0.65
+  scatter:
+  - sprite: {fileID: 21300000, guid: 85fda06d8aff429980513f062b30cc72, type: 3}
+    weight: 3.5
+    flippable: 1
+  - sprite: {fileID: 21300000, guid: b5fdbb8014f4457185f07562d7087d21, type: 3}
+    weight: 3.5
+    flippable: 1
+  - sprite: {fileID: 21300000, guid: edaf08a1b122404984918c95b2a69c4f, type: 3}
+    weight: 3.5
+    flippable: 1
+  - sprite: {fileID: 21300000, guid: 97e3d726f9d746248d873c6d4dbecef4, type: 3}
+    weight: 3.5
+    flippable: 1
+  - sprite: {fileID: 21300000, guid: ae5b23152ec44ac18a425d553ff38d73, type: 3}
+    weight: 4
+    flippable: 0
+  - sprite: {fileID: 21300000, guid: 4cb8222eed3f4f63b45b1de416770944, type: 3}
+    weight: 4
+    flippable: 0
+  - sprite: {fileID: 21300000, guid: 55c37da9236c48f4b88984a8f7189b64, type: 3}
+    weight: 4
+    flippable: 0
+  - sprite: {fileID: 21300000, guid: d02319b98a3d425e8087c382dc413177, type: 3}
+    weight: 4
+    flippable: 0
+  - sprite: {fileID: 21300000, guid: 9def9dc7d4e94cf0a77cfd796d8f334f, type: 3}
+    weight: 4
+    flippable: 1
+  - sprite: {fileID: 21300000, guid: cdd95f4a5eaa42bdab2a906c42e51ced, type: 3}
+    weight: 4
+    flippable: 1
+  - sprite: {fileID: 21300000, guid: 51f6f1bff8e649f6a337b84fce2a21de, type: 3}
+    weight: 3
+    flippable: 1
+  - sprite: {fileID: 21300000, guid: b88be1becdfe4b74847cf4bcc832e2af, type: 3}
+    weight: 3
+    flippable: 1
+  - sprite: {fileID: 21300000, guid: 438ed7af6da0445e85492a087ebb7fe5, type: 3}
+    weight: 3
+    flippable: 0
+  - sprite: {fileID: 21300000, guid: e61793e2b0f9487894e8fc0c68c97feb, type: 3}
+    weight: 3
+    flippable: 0
+  - sprite: {fileID: 21300000, guid: cb3d04ba9fbf4c65b97f89d43eabe277, type: 3}
+    weight: 3
+    flippable: 0
+  - sprite: {fileID: 21300000, guid: 76181d56bb6148dcbc24578f9e6026f3, type: 3}
+    weight: 3
+    flippable: 0
+  - sprite: {fileID: 21300000, guid: acba88ad8d7d4cc1a4cf25a2584e4953, type: 3}
+    weight: 5
+    flippable: 0
+  - sprite: {fileID: 21300000, guid: c52316d9c0f940a7babff4b387af01e4, type: 3}
+    weight: 4
+    flippable: 1
+  - sprite: {fileID: 21300000, guid: 4b94136104c0458bbec2c92ac809a8ea, type: 3}
+    weight: 3
+    flippable: 0
+  - sprite: {fileID: 21300000, guid: 4830299f4abb4381afeb09e21731c188, type: 3}
+    weight: 3
+    flippable: 0
+  - sprite: {fileID: 21300000, guid: b156d880623342feb44a35270ccafc47, type: 3}
+    weight: 2
+    flippable: 0
+  - sprite: {fileID: 21300000, guid: a2665c57961547c5a61f9abf9a998c15, type: 3}
+    weight: 1.5
+    flippable: 0
+  scatterPerTile: 5
+  scatterMinDistancePx: 6
+  marginLeft:
+  - {fileID: 21300000, guid: 20e9f73d360e46eda1798c8e3d22f207, type: 3}
+  - {fileID: 21300000, guid: b8c2a6e089f34029a39f41148a66eef0, type: 3}
+  - {fileID: 21300000, guid: fec68c2105c04ebebf903847dcfda259, type: 3}
+  marginRight:
+  - {fileID: 21300000, guid: a890131ce3544ba385dd09ec3311677c, type: 3}
+  - {fileID: 21300000, guid: a6d8507f09454a32b36f14cf32d9b5a9, type: 3}
+  - {fileID: 21300000, guid: c24eedb3bc5f425a825c29f4a34df3be, type: 3}

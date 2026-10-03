@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afa504fdc5cbc5e4a9a0a8d300bb6183, type: 3}
+  m_Name: Char_RA
+  m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
+  characterID: RA
+  syllable: ra
+  stableId: symbol.ra
+  legacyAliases: []
+  spokenValues:
+  - stableId: value.ra
+    displayValue: ra
+    pronunciationClip: {fileID: 8300000, guid: e99b63cf0dc9406392c96c29ba7417dd, type: 3}
+  firstIntroductionLevelId: level.pamana.03
+  description: 
+  displaySprite: {fileID: -4082948466674284124, guid: 6fe326552750eee4fb1e4ddedf481626, type: 3}
+  almanacSprite: {fileID: 21300000, guid: f628672ab6714cf794765ee23c95f506, type: 3}
+  badgeSprite: {fileID: 21300000, guid: 3ce5924989434aa395b98c47daed28a3, type: 3}
+  scrambledBadgeSprite: {fileID: 0}
+  glyphOutlineSprite: {fileID: 21300000, guid: b2602bad396e640408ec400313a9701a, type: 3}
+  pronunciationClip: {fileID: 8300000, guid: e99b63cf0dc9406392c96c29ba7417dd, type: 3}
+  templateFileName: RA_template_01

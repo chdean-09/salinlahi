@@ -14,6 +14,26 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaybayinCharacterSO
   characterID: OU
   syllable: o/u
-  displaySprite: {fileID: 0}
-  pronunciationClip: {fileID: 0}
-  templateFileName: OU_template
+  stableId: symbol.ou
+  legacyAliases: []
+  spokenValues:
+  - stableId: value.ou
+    displayValue: o/u
+    pronunciationClip: {fileID: 8300000, guid: b6d2c0be985c4db9be8d833d430fa9c8, type: 3}
+  - stableId: value.o
+    displayValue: o
+    pronunciationClip: {fileID: 8300000, guid: b6d2c0be985c4db9be8d833d430fa9c8, type: 3}
+  - stableId: value.u
+    displayValue: u
+    pronunciationClip: {fileID: 0}
+  firstIntroductionLevelId: level.ugnayan.04
+  description: "O is carved in wood, stone, and tools used by early communities.
+    Juan learns it represents how Filipinos once wrote their own life.\n\r\n\u201CO
+    holds the shape of who you are."
+  displaySprite: {fileID: 8544560402322239208, guid: 86136cc8d6bbba249b05d453f42fdd73, type: 3}
+  almanacSprite: {fileID: 21300000, guid: 3062a7588b57c374292c27f23d2bba94, type: 3}
+  badgeSprite: {fileID: -5378085687522739872, guid: 390e5ce5ec3cdd741a3772288f739c1c, type: 3}
+  scrambledBadgeSprite: {fileID: 0}
+  glyphOutlineSprite: {fileID: 21300000, guid: 168b5bdd3becb4e26b1c362ea955b75e, type: 3}
+  pronunciationClip: {fileID: 8300000, guid: b6d2c0be985c4db9be8d833d430fa9c8, type: 3}
+  templateFileName: OU_template_01

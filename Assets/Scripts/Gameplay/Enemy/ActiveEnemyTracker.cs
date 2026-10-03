@@ -7,32 +7,90 @@ public class ActiveEnemyTracker : Singleton<ActiveEnemyTracker>
 {
     private readonly List<Enemy> _activeEnemies = new List<Enemy>();
 
+    /// <summary>
+    /// Reusable buffer for FindAllWithCharacter. Callers must NOT cache the returned list.
+    /// </summary>
+    private readonly List<Enemy> _characterMatchBuffer = new List<Enemy>();
+
+    public int ActiveCount
+    {
+        get
+        {
+            CleanupStaleEntries();
+            return _activeEnemies.Count;
+        }
+    }
+
+    public bool IsClear => ActiveCount == 0;
+
+    // True if any non-boss enemy is alive on screen. Boss encounters use this
+    // to gate the AdsAlive -> Vulnerable transition: the boss itself registers
+    // in _activeEnemies, so plain IsClear would never resolve while the boss
+    // is alive.
+    public bool HasActiveNonBossEnemies
+    {
+        get
+        {
+            CleanupStaleEntries();
+            for (int i = 0; i < _activeEnemies.Count; i++)
+            {
+                Enemy e = _activeEnemies[i];
+                if (e == null) continue;
+                if (e.IsBoss) continue;
+                return true;
+            }
+            return false;
+        }
+    }
+
     public void Register(Enemy enemy)
     {
+        if (enemy == null)
+            return;
+
+        CleanupStaleEntries();
         if (!_activeEnemies.Contains(enemy))
             _activeEnemies.Add(enemy);
     }
 
     public void Unregister(Enemy enemy)
     {
+        if (enemy == null)
+            return;
+
         _activeEnemies.Remove(enemy);
     }
 
+    public List<Enemy> GetActiveEnemiesSnapshot()
+    {
+        CleanupStaleEntries();
+        return new List<Enemy>(_activeEnemies);
+    }
+
+    public void FillActiveEnemiesSnapshot(List<Enemy> buffer)
+    {
+        if (buffer == null)
+            return;
+
+        CleanupStaleEntries();
+        buffer.Clear();
+        buffer.AddRange(_activeEnemies);
+    }
+
     /// Returns the active enemy closest to the base (lowest Y)
-    /// that carries the given characterID. Returns null if none.
+    /// whose real combat character matches the given characterID. Returns null if none.
     public Enemy FindClosestToBase(string characterID)
     {
+        CleanupStaleEntries();
+
         Enemy closest = null;
         float lowestY = float.MaxValue;
 
-        for (int i = _activeEnemies.Count - 1; i >= 0; i--)
+        for (int i = 0; i < _activeEnemies.Count; i++)
         {
             Enemy e = _activeEnemies[i];
-            if (e == null || !e.gameObject.activeInHierarchy)
-            {
-                _activeEnemies.RemoveAt(i);
-                continue;
-            }
+            if (e.IsBoss) continue;
+            if (e.IsDying) continue;
             if (e.Character == null) continue;
             if (e.Character.characterID != characterID) continue;
 
@@ -43,44 +101,44 @@ public class ActiveEnemyTracker : Singleton<ActiveEnemyTracker>
                 closest = e;
             }
         }
+
         return closest;
     }
 
-    /// Returns all active enemies carrying the given characterID.
-    /// Used later for AOE resolution in Sprint 3.
+    /// <summary>
+    /// Returns all active enemies whose real combat character matches the given characterID.
+    /// Used later for AOE resolution so decoy display labels do not affect the match set.
+    /// <para><b>Do NOT cache the returned list</b> — it is reused across calls.</para>
+    /// </summary>
     public List<Enemy> FindAllWithCharacter(string characterID)
     {
-        List<Enemy> matches = new List<Enemy>();
-        for (int i = _activeEnemies.Count - 1; i >= 0; i--)
+        CleanupStaleEntries();
+        _characterMatchBuffer.Clear();
+        for (int i = 0; i < _activeEnemies.Count; i++)
         {
             Enemy e = _activeEnemies[i];
-            if (e == null || !e.gameObject.activeInHierarchy)
-            {
-                _activeEnemies.RemoveAt(i);
-                continue;
-            }
             if (e.Character != null
                 && e.Character.characterID == characterID)
-                matches.Add(e);
+            {
+                _characterMatchBuffer.Add(e);
+            }
         }
-        return matches;
+
+        return _characterMatchBuffer;
     }
 
     /// No-argument overload: returns the enemy closest to base,
     /// regardless of character. Used by PromptUpdater for the HUD.
     public Enemy FindClosestToBase()
     {
+        CleanupStaleEntries();
+
         Enemy closest = null;
         float lowestY = float.MaxValue;
 
-        for (int i = _activeEnemies.Count - 1; i >= 0; i--)
+        for (int i = 0; i < _activeEnemies.Count; i++)
         {
             Enemy e = _activeEnemies[i];
-            if (e == null || !e.gameObject.activeInHierarchy)
-            {
-                _activeEnemies.RemoveAt(i);
-                continue;
-            }
             float y = e.transform.position.y;
             if (y < lowestY)
             {
@@ -88,6 +146,17 @@ public class ActiveEnemyTracker : Singleton<ActiveEnemyTracker>
                 closest = e;
             }
         }
+
         return closest;
+    }
+
+    private void CleanupStaleEntries()
+    {
+        for (int i = _activeEnemies.Count - 1; i >= 0; i--)
+        {
+            Enemy enemy = _activeEnemies[i];
+            if (enemy == null || !enemy.gameObject.activeInHierarchy)
+                _activeEnemies.RemoveAt(i);
+        }
     }
 }

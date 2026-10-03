@@ -1,14 +1,33 @@
 # 09 — Test Strategy and Acceptance Criteria
 **Project:** Salinlahi
-**Version:** 1.2
-**Date:** 2026-03-25
+**Version:** 2.2
+**Date:** 2026-09-24
 **Owner:** Whole Team (QA responsibility shared)
+
+### 1.0.1 Current verification status
+
+The historical measured totals below are retained as historical evidence. After syncing the current
+`dev` changes in merge `f6f4690f`, Unity 6000.3.9f1 Test Runner completed the full Edit Mode suite:
+1,491/1,491 passed. The latest full Play Mode run was `FAILED` at 228/231. Two pause lifecycle
+tests hit Unity Input System's `Already added touchscreen` assertion, and
+`Salin69AcceptanceTests.PhaseFailure_TimerExpires_NoHPLossRepeatsSamePhase` observed
+`OnBossVulnerabilityEnabled` twice instead of once. An isolated rerun of those three tests passed
+3/3, but that does not clear the full-suite failures. The structured victory-panel assertions were
+updated for `StatsPanel/StatsText` after `dev` replaced the legacy results-summary object.
+
+The post-test Console snapshot showed 586 logs, 98 warnings, and 13 errors; those error entries were
+not fully classified. A separate Play Mode run of the authored Bootstrap scene, which transitioned
+to MainMenu, showed 131 logs, one warning (`Account API did not become accessible within 30 seconds`),
+and zero errors. The manual Level 1–15/device acceptance matrix remains `NOT RUN`. The current
+complete Play Mode suite is not green; the subsequent merge was explicitly authorized despite these
+unresolved checks and must not be read as a passing verification result.
 
 ---
 
 ## 1. Testing Philosophy
 
-Salinlahi has no automated unit test suite in its current implementation. All testing is manual, device-based, and sprint-end structured. Testing prioritizes:
+Salinlahi uses Unity Test Framework EditMode tests for deterministic data and gameplay
+contracts, complemented by manual device-based and sprint-end testing. Testing prioritizes:
 
 1. **Core loop integrity** — draw → defeat → win/lose must be unbreakable.
 2. **Recognition accuracy** — $P must pass the 60% confidence threshold for correctly shaped characters.
@@ -16,6 +35,114 @@ Salinlahi has no automated unit test suite in its current implementation. All te
 4. **Offline guarantee** — no network calls at any point.
 
 ---
+
+### 1.1 SALIN-170 frozen-core acceptance
+
+The Editor data suite covers the revised campaign contract without authoring production
+campaign assets:
+
+| Acceptance ID | Coverage | Evidence |
+|---|---|---|
+| DATA-170-01 | Frozen manifest values, version compatibility, and canonical ID syntax | `CampaignIdentityManifestTests` |
+| DATA-170-02 | Three-era/15-level topology, fixed membership, local/global order, and duplicate IDs | `CampaignConfigValidatorTests` |
+| DATA-170-03 | Stable lookup independent of display text, asset name, and list order | `CampaignLookupTests` |
+| DATA-170-04 | One visual symbol with contextual spoken values, including DA/RA on `symbol.dara` | `CampaignSymbolValueTests` |
+| DATA-170-05 | Two inline focus slots, decomposition validity, no-kudlit rule, canonical first-introduction metadata, exact cumulative pools, and introduced-symbol membership for focus/requirement references | `CampaignConfigValidatorTests` |
+| DATA-170-06 | Final restoration value, ordered PA instruction before later exposure, required media, and required references | `CampaignConfigValidatorTests` |
+| DATA-170-07 | Pure validation does not mutate the campaign or referenced objects | `CampaignConfigValidatorTests` |
+| DATA-170-08 | Editor menu adapter delegates to the pure validator without changing selection | `CampaignConfigValidationMenuTests` |
+| DATA-170-09 | Existing EraConfigSO, LevelConfigSO, and BaybayinCharacterSO assets deserialize with legacy fields intact | `CampaignSerializationCompatibilityTests` and `LevelConfigCascadeTests` |
+| DATA-170-10 | Disabled revised levels ignore dormant challenge data; enabled levels require a sequence and adapt every SALIN-168 validation error in deterministic order without mutation | `CampaignConfigValidatorTests` and `ChallengeSequenceValidatorTests` |
+
+SALIN-170 does not migrate saves, implement learning/challenge behavior, or author the
+production revised campaign. Those boundaries remain SALIN-171, SALIN-168, and SALIN-172
+respectively.
+
+### 1.2 SALIN-171 persistence acceptance
+
+The persistence suite covers deterministic serializer round trips and tamper rejection,
+campaign-aware validation, flushed four-role storage with fault injection, the exact 46-key typed
+legacy archive, primary/temporary/backup recovery precedence, atomic commit rollback behavior,
+fresh-journey migration and safe-reset recovery, repository idempotency, SaveManager activation
+modes, and one-time notice acknowledgement. Higher schemas, wrong campaign identity, invalid
+campaign content, and storage I/O failures are blocking and must not write or reset data.
+
+Legacy-mode smoke coverage verifies that a null campaign root leaves selected-level and existing
+progress PlayerPrefs behavior unchanged, creates no revised files, and preserves audio values.
+Revised-mode integration verifies stable IDs are shared by level selection, victory completion,
+heart setup, wave setup, discovery, and tutorial consumers. Scene coverage verifies the Main Menu
+notice has assigned root/title/body/button references and that SaveManager survives the Bootstrap
+to Main Menu transition as one singleton.
+
+### 1.3 SALIN-143 resume-safety acceptance
+
+`CampaignSaveResumeSafetyTests` verifies the returning-player flow end to end over
+in-memory storage with one-shot fault injection; `LegacyArchiveServiceTests` covers
+archive idempotency and capture fidelity at the unit seam.
+
+| Acceptance criterion | Coverage | Evidence |
+|---|---|---|
+| AC1 — historical save evaluated and archived before revised progress is used | Archive exists with all 46 typed records and its checksum is referenced by the committed migration receipt | `Initialize_WithHistoricalPlayerPrefs_ArchivesThenStartsCleanJourneyAtLevelOne` |
+| AC2 — revised journey starts at Level 1 with one migration notice | Clean Level-1 state, `Migration` notice pending until acknowledged, acknowledgment persists across relaunch | `AcknowledgedMigrationNotice_DoesNotReturnAfterRelaunch` |
+| AC3 — audio preferences preserved | Audio values captured into the archive; `ILegacyProgressSource` is read-only, so migration cannot mutate PlayerPrefs. Accessibility preferences do not exist yet (vacuously satisfied) | `Initialize_WithHistoricalPlayerPrefs_CapturesAudioPreferencesAndLeavesSourceReadable` |
+| AC4 — interrupted migration resumes or safely repeats | Archive-write failure blocks without writing and retries cleanly; interrupted initial commit resumes byte-identically; relaunch after success is `Ready`; stale-generation journals are quarantined, never applied; corrupt archives rebuild or safe-reset with a recovery notice | `Initialize_WhenArchiveWriteFails_BlocksWithoutWritingThenRetrySucceeds`, `Initialize_WhenInitialCommitInterrupted_RelaunchReusesArchiveByteIdentically`, `Initialize_RelaunchAfterSuccessfulMigration_IsReadyAndDoesNotTouchArchive`, `ReplayPendingOnStartup_WithStaleGenerationJournal_DoesNotApplyOutcome`, `Initialize_WithCorruptArchiveAndLegacyDataPresent_QuarantinesAndRebuilds`, `Initialize_WithCorruptArchiveAndNoLegacyData_SafeResetsWithRecoveryNotice`, `Initialize_WithCorruptRevisedSaveAndValidArchive_QuarantinesAndRemigrates` |
+
+### 1.4 SALIN-174 atomic outcome acceptance
+
+The atomic outcome suite covers schema-v2 migration, checksummed journal serialization, pure
+outcome validation, temporary/published interruption recovery, campaign rollback, exact duplicate
+replay, monotonic unions, reset-generation invalidation, and explicit Victory gating.
+
+| Test area | Required interruption or invariant | Test class |
+|-----------|------------------------------------|------------|
+| Schema and migration | v1 upgrades to schema v2; higher schema remains unchanged and blocked | `CampaignSaveMigrationTests`, `CampaignSaveValidatorTests` |
+| Journal integrity | Round-trip checksum succeeds; tamper, wrong generation, unknown level, invalid stars, duplicate IDs, and higher journal schema are rejected | `CampaignOutcomeSerializerTests`, `CampaignOutcomeValidatorTests` |
+| Journal recovery | Temporary write failure, temporary-only promotion, identical published/temp cleanup, different published/temp block, corrupt quarantine, and clear | `CampaignOutcomeJournalTests` |
+| One transaction | Completion, max stars, next level/Endless, symbols, memory, rewards, and one receipt publish together | `CampaignOutcomeCoordinatorTests` |
+| Replay and duplicate | Startup/retry reads the durable payload; duplicate receipt does not increment revision | `CampaignOutcomeCoordinatorTests` |
+| Campaign publication | Published read-back failure restores the validated backup; rollback failure is surfaced | `CampaignSaveCommitterTests`, `CampaignSaveServiceTests` |
+| UI gate | Victory appears only for accepted typed results; pending/rejected/blocked results show retry panel | `LevelFlowControllerOutcomeTests`, `CampaignOutcomeSaveFailurePanelTests` |
+
+The manual acceptance matrix also arms the Editor-only SALIN-174 one-shot promotion fault, verifies
+retry and Main Menu preservation, confirms startup replay clears the journal exactly once, and
+confirms Reset Journey changes generation while preserving settings outside campaign progress.
+
+### 1.5 Verification reality — measured, not aspirational (SALIN-186)
+
+Everything below this line describes tests that *should* pass. This subsection records what the suite
+actually does today, so that no reader mistakes the matrix for a green build.
+
+**Measured on `dev` @ `1a4f28a`, Unity 6000.3.9f1 batchmode:**
+
+| Platform | Total | Passed | **Failed** |
+|---|---|---|---|
+| Edit Mode | 782 | 713 | **69** |
+| Play Mode | 132 | 117 | **14** |
+
+These 83 failures are **pre-existing and long-standing**, not a regression from recent work. Every
+ticket merged in Sprints 5–7 was gated on *not increasing* these counts, which is the standard in
+force. They concentrate in boss and enemy visual-feedback fixtures rather than being spread evenly:
+
+- Edit Mode, 69 across 21 fixtures — `BossGlyphVisibilityBinderTests` (10), `BossControllerTests` (8),
+  `EnemyGlyphBadgeTests` (8), `EnemyHurtFeedbackTests` (8), `Salin169AcceptanceTests` (7),
+  `LevelFlowControllerTests` (6); the rest are 1–4 each.
+- Play Mode, 14 across 9 fixtures — `CutscenePlayerTests` (5), `SpanishVariantSpawnIntegrationTests` (2),
+  and seven single-failure integration fixtures.
+
+**Fixing them is not owned by any current ticket.** Recording that here is the point: an unowned,
+uncharacterised failure baseline is how a real regression gets mistaken for pre-existing noise.
+
+### 1.6 What CI does and does not do
+
+The repository has exactly one workflow, `.github/workflows/git-conventions.yml`, whose own header
+line reads *"Validates Git naming conventions only. Unity compilation and tests run elsewhere."*
+
+**There is no "elsewhere."** No workflow compiles the Unity project or runs either test suite. A green
+check on a pull request means the branch name, PR title and commit subjects parse — nothing more. It
+is not evidence of compilation, and it is not evidence of tests.
+
+Test evidence therefore comes from a local batchmode run, quoted with both the branch result and the
+`dev` baseline it is compared against. A PR that cites a green check as test coverage is misreporting.
 
 ## 2. Test Matrix by System Area
 
@@ -27,8 +154,21 @@ Salinlahi has no automated unit test suite in its current implementation. All te
 | CS-02 | SceneLoader resets Time.timeScale before every scene load | Pause game (timeScale=0), trigger GameOver | Next scene runs at normal speed (1f) | P0 |
 | CS-03 | EventBus subscriptions do not leak across scenes | Play Gameplay, go to GameOver, return to Gameplay | No duplicate event handler errors; `OnGameOver` fires exactly once per game-over event | P0 |
 | CS-04 | BootstrapLoader auto-navigates to MainMenu after one frame | Launch app | MainMenu scene loads within 2 seconds of cold start | P0 |
-| CS-05 | AudioManager plays pronunciation clip on enemy defeat | Defeat an enemy with correct drawing | Device audio emits pronunciation clip within 50ms of defeat | P1 |
+| CS-05 ⛔ **BLOCKED** | AudioManager plays pronunciation clip on enemy defeat | Defeat an enemy with correct drawing | Device audio emits pronunciation clip within 50ms of defeat | P1 |
 | CS-06 | DebugLogger produces zero output in release build | Install release APK; monitor logcat | No `[Salinlahi]` or DebugLogger output in logcat | P1 |
+
+> **CS-05 is blocked on content, not code (SALIN-186).** The criterion cannot pass as written because
+> the clips do not exist: **21 of the 30 `pronunciationClip` fields** across the character and
+> spoken-value assets are `{fileID: 0}` — unassigned. Level 1's own required values (`value.a`,
+> `value.ei`, `value.na`, `value.ma`) are among the missing, and `Level1AssetReadinessTests` records
+> them as manifest MISSING rows.
+>
+> What ships today is the **audio-unavailable fallback**, which is deliberately tested:
+> `Level1AssetReadinessTests.ClueChannels_StayReadableWithoutPronunciationAudio` asserts a clue stays
+> readable with no pronunciation audio at all. CS-05 should be read as *pending clip production*
+> (SALIN-176 territory), and must not be counted toward the readiness gate in §4.1 until clips are
+> authored. Re-scope it to the eight characters that do have clips, or leave it blocked — but do not
+> leave it looking passable.
 
 ### 2.2 Enemy System
 
@@ -40,13 +180,13 @@ Salinlahi has no automated unit test suite in its current implementation. All te
 | EN-04 | EnemyMover stops on `OnDisable` | Force-deactivate an active enemy | `_active = false`; no further `transform.Translate` calls | P1 |
 | EN-05 | EnemyPool uses lazy creation with no pre-warmed enemies | Inspect pool immediately after Bootstrap; then trigger first wave | Pool enemy count == 0 after Bootstrap; first `EnemyPool.Get()` call triggers `CreateEnemy()` and returns a valid enemy; `defaultCapacity` (10) only sets internal list allocation size, not pre-instantiated object count | P2 |
 | EN-06 | `Enemy.Initialize` sets correct speed and sprite | Spawn Soldado with known EnemyDataSO | Enemy speed matches `EnemyDataSO.moveSpeed`; sprite matches `walkFrames[0]` | P1 |
-| EN-07 | Fraile phaser label fades in/out on timer | Spawn Fraile enemy; observe 10 seconds | Baybayin label alternates between visible and hidden at `phaserInterval` rate | P1 |
+| EN-07 | Fraile phaser label fades in/out on timer (PLANNED — Fraile enemy and phaser mechanic not yet implemented; `isPhaser`/`phaserInterval` are not present on `EnemyDataSO`) | Spawn Fraile enemy; observe 10 seconds | Baybayin label alternates between visible and hidden | P1 |
 | EN-08 | Maestro decoy penalizes player when drawn | Spawn Maestro; draw its displayed character | Player loses 1 heart; Maestro remains active | P1 |
 | EN-09 | General commander aura buffs nearby American enemies | Spawn General with 3 Soldiers nearby | Soldiers move at 1.3× speed while General alive; normal speed after General defeated | P1 |
 | EN-10 | Kempei censor scrambles nearby labels | Spawn Kempei with 3 enemies nearby | Nearby enemy labels show wrong characters while Kempei alive; correct labels restored after Kempei defeated | P1 |
 | EN-11 | Capitan/Shokan require 2 hits to defeat | Spawn Capitan; draw correct character once | Capitan shows armor break but remains active; second correct draw defeats it | P1 |
 
-### 2.3 Recognition System (PLANNED — verify in Sprint 2)
+### 2.3 Recognition System
 
 | Test ID | Requirement | Test Procedure | Pass Criterion | Priority |
 |---------|-------------|---------------|---------------|----------|
@@ -58,13 +198,13 @@ Salinlahi has no automated unit test suite in its current implementation. All te
 | RC-06 | Minimum point count 8 filters out taps | Tap screen (no drag) | No recognition attempt; `OnDrawingFailed` fires or tap is silently ignored | P1 |
 | RC-07 | All 17 templates load without error at startup | Launch app with all template files present | No `NullReferenceException` in logcat; `TemplateLoader` reports 17 loaded | P0 |
 
-### 2.4 Wave System (PLANNED — verify in Sprint 2/3)
+### 2.4 Wave System
 
 | Test ID | Requirement | Test Procedure | Pass Criterion | Priority |
 |---------|-------------|---------------|---------------|----------|
 | WV-01 | Waves play in order from LevelConfigSO | Play Level 1 to completion | Waves fire in index order 0→N; `OnWaveStarted` fires with correct index | P0 |
 | WV-02 | waveStartDelay respected | Observe first enemy spawn time after wave start | First enemy spawns exactly `waveStartDelay` seconds after `OnWaveStarted` | P1 |
-| WV-03 | spawnInterval respected between enemies | Time consecutive enemy spawns | Interval between spawns matches `WaveConfigSO.spawnInterval` ± 100ms | P1 |
+| WV-03 | spawnInterval respected between enemies | Time consecutive enemy spawns | Interval between spawns matches `WaveDefinition.spawnInterval` ± 100ms | P1 |
 | WV-04 | Level completes after all waves and enemies cleared | Clear all enemies in all waves | `OnLevelComplete` fires; `GameState.LevelComplete` set | P0 |
 | WV-05 | Hearts decrement on base hit | Allow 1 enemy to reach base | `OnHeartsChanged(2)` fires; HUD shows 2 hearts | P0 |
 | WV-06 | 3 base hits trigger GameOver | Allow 3 enemies to reach base | `OnGameOver` fires; `GameState.GameOver`; GameOver scene loads | P0 |
@@ -78,14 +218,19 @@ Salinlahi has no automated unit test suite in its current implementation. All te
 | PF-03 | APK size < 100 MB | Check final build size | APK ≤ 100 MB | P1 |
 | PF-04 | Zero runtime Instantiate/Destroy in game loop | Profile wave gameplay | Unity Profiler shows 0 `Instantiate`/`Destroy` calls during active wave | P0 |
 
-### 2.7 Boss System (PLANNED — verify in Sprint 3)
+### 2.7 Boss System
 
 | Test ID | Requirement | Test Procedure | Pass Criterion | Priority |
 |---------|-------------|---------------|---------------|----------|
-| BS-01 | Boss spawns at boss level (5, 10, 15) | Play Level 5 to final wave completion | Boss encounter activates after waves; `OnBossSpawned` fires | P0 |
-| BS-02 | Boss phase transitions work | Defeat boss phase 1 requirement | `OnBossPhaseCleared` fires; boss transitions to phase 2 | P0 |
+| BS-01 | Boss spawns at boss level (5, 10, 15) | Play Level 5 to final wave completion | Boss encounter activates after waves; `OnBossStarted(BossConfigSO)` fires | P0 |
+| BS-02 | Boss phase transitions work | During the `Vulnerable` window, player draws `phase.requiredCharacterCount` correct random glyphs within `phase.vulnerabilityTimer` seconds | `OnBossDamaged(phaseIndex, hpRemaining)` fires; boss advances to next phase (or `Outro` on the final phase) | P0 |
 | BS-03 | Boss defeat triggers level complete | Clear all boss phases | `OnBossDefeated` fires; `OnLevelComplete` fires | P0 |
 | BS-04 | Kadiliman requires all 17 characters | Play Level 15 boss | Player must draw all 17 characters to defeat Kadiliman | P1 |
+| BS-05 | Vulnerability timer expiry repeats the phase without HP loss | Enter `Vulnerable` window; do not satisfy `requiredCharacterCount` before `vulnerabilityTimer` elapses | `OnBossVulnerabilityExpired(phaseIndex)` fires; `HPRemaining` unchanged after window expires with `CorrectDrawsThisWindow < requiredCharacterCount`; phase loop repeats | P0 |
+| BS-06 | Boss minion summons appear at boss position with horizontal clamp | Allow `BossSummonTicker` to fire a summon tick on a phase that moves (Pace/Teleport) | Spawned minion X is within `summonSpawnRange.x` of boss X AND inside `BossConfigSO.summonHorizontalBounds` when configured | P1 |
+
+[EVIDENCE: Assets/Scripts/Gameplay/Boss/BossController.cs]
+[EVIDENCE: Assets/Scripts/Gameplay/Boss/BossSummonTicker.cs]
 
 ### 2.8 Dialogue System (PLANNED — verify in Sprint 3)
 
@@ -104,6 +249,33 @@ Salinlahi has no automated unit test suite in its current implementation. All te
 | PL-03 | Zero crashes in 15-level playthrough | UAT participant plays all 15 levels | 0 crash reports via Play Store/TestFlight | P0 |
 | PL-04 | Keystore-signed Android build installs | Install release APK on physical device | App installs and launches without error | P1 |
 
+### 2.7 Learning, Practice, and Mastery Data (SALIN-175)
+
+| Test ID | Requirement | Test Procedure | Pass Criterion | Priority |
+|---------|-------------|---------------|---------------|----------|
+| LM-01 | Symbols carry three dimensions, words four | `MasteryDimensions.For` for each kind | Symbol excludes `Meaning`; word includes it | P0 |
+| LM-02 | Immediate successes cannot exceed Practiced | Evaluate evidence with only immediate successes | State caps at `Practiced` | P0 |
+| LM-03 | Mastery never regresses | Evaluate weaker evidence after a high-water state | `highWaterState` is retained | P0 |
+| LM-04 | Mastered needs distinct sessions | One session with many delayed successes | State stops below `Mastered` | P0 |
+| LM-05 | Aggregate is the weakest applicable dimension | Mixed per-dimension states | Aggregate equals the lowest | P1 |
+| LM-06 | Evidence alone never creates a record | Apply a batch with entries but no instructed IDs | No mastery record is created | P0 |
+| LM-07 | Instruction seeds all dimensions at Introduced | Apply an instruction-only batch | Every applicable dimension exists at `Introduced`, zero attempts | P0 |
+| LM-08 | Visible answers cannot reach Recalled | Delayed success with `retrievalSuccessCount = 0` | State stays `Practiced`; session count unchanged | P0 |
+| LM-09 | Records are deterministically sorted | Instruct out of order | Records sorted ordinally by content ID | P1 |
+| LM-10 | Review schedule respects era boundaries | Build a schedule near an era end | Era-ending and later-era checkpoints resolve correctly | P1 |
+| LM-11 | Save schema v2 upgrades rather than being discarded | `TryUpgradeToCurrent` on a v2 source | Succeeds at schema 3 | P0 |
+| LM-12 | Newer-than-current saves are rejected | `TryUpgradeToCurrent` on a v4 source | Fails with `UnsupportedSchema` | P0 |
+| LM-13 | v1 outcome journals survive upgrade | `UpgradeToCurrent` then validate | Valid, `LevelAttempt`, non-null evidence | P0 |
+| LM-14 | Practice may not change progression | Practice outcome carrying stars or unlocks | Rejected | P0 |
+| LM-15 | Evidence identity and counts are validated | Meaning-on-symbol, duplicate pair, counts over attempts, unknown ID, locked symbol | Each rejected | P0 |
+| LM-16 | Practice leaves level progress byte-identical | Commit a practice outcome | Serialized `levelProgress` unchanged | P0 |
+| LM-17 | Level outcomes apply progression and evidence | Commit a level outcome with evidence | Level completed and mastery records written | P0 |
+| LM-18 | Receipt pruning never evicts the newest | Commit 40 practice outcomes | All level receipts kept, 32 non-level kept, newest present | P0 |
+| LM-19 | Blocked mode yields empty learning state | Query `LearningState` outside `RevisedReady` | Empty collections, no exception | P1 |
+| LM-20 | Recorder folds attempts into count shape | Repeated attempts on one content/dimension | One entry with summed counts, deterministic order | P0 |
+| LM-21 | Unlock resolves by stable ID | Revised-mode asset with blank legacy `characterID` | Reported unlocked | P1 |
+| LM-22 | Dojo records Form only | Resolve a matching trace | `Form` dimension, success and retrieval both 1 | P0 |
+
 ---
 
 ## 3. Regression Checklist (Run Before Each Sprint Sign-Off)
@@ -114,7 +286,7 @@ Salinlahi has no automated unit test suite in its current implementation. All te
 - [ ] Enemy returns to pool on defeat (not destroyed)
 - [ ] Enemy returns to pool on base hit
 - [ ] GameOver fires when hearts reach 0
-- [ ] GameOver scene loads after game over state
+- [ ] Defeat overlay (`DefeatScreenUI`) appears in Gameplay scene after game over state
 - [ ] Retry button reloads Gameplay
 - [ ] Menu button returns to MainMenu
 - [ ] No duplicate Singleton warnings in console
@@ -141,7 +313,7 @@ All the following must be true before UAT begins:
 | Levels 1–10 are playable end-to-end | Verified by internal playthrough |
 | Recognition accuracy ≥ 80% for correctly shaped draws on device | Measured across 10 players × 5 characters each |
 | 0 crashes in 2-hour internal session | Logged via Unity Cloud Diagnostics or manual log review |
-| Audio plays on all 17 character defeats | All `pronunciationClip` fields assigned |
+| Audio plays on all 17 taught character defeats | ⛔ **BLOCKED** — 7 of 17 `pronunciationClip` fields assigned; **10 missing** (DEP-03, doc 11). `Char_RA` also has no clip, but it carries no spoken value and no level teaches it, so it is not counted. |
 | HUD shows correct heart count and wave number | Functional HUD with EventBus integration |
 | Game Over screen shows stats | Final stats display implemented |
 

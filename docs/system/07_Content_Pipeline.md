@@ -1,7 +1,7 @@
 # 07 — Content Pipeline
 **Project:** Salinlahi
-**Version:** 1.2
-**Date:** 2026-03-25
+**Version:** 1.6
+**Date:** 2026-08-31
 **Owner:** Chad Andrada (Product Owner / Designer)
 
 ---
@@ -10,10 +10,25 @@
 
 ### 1.1 Character Set Scope
 
-The game covers **17 Baybayin characters: 14 consonants (BA, KA, DA, GA, HA, LA, MA, NA, NGA, PA, SA, TA, WA, YA) and 3 vowels (A, E/I, O/U)**. Diacritical marks (kudlit) are explicitly out of MVP scope (Should Ship, may be deferred post-launch).
+The shipped game **teaches 17 visual identities**: 14 consonants (BA, GA, HA, KA, LA, MA, NA, NGA, PA, SA, TA, WA, YA, and DA — which carries both the `da` and `ra` readings) and 3 vowels (A, E/I, O/U). The **recognizer separately distinguishes 18 glyph shapes**, because `RA` has its own templates and art. Diacritical marks (kudlit) are explicitly out of MVP scope (Should Ship, may be deferred post-launch).
 
-[EVIDENCE: docs/capstone/Salinlahi.md, §1.5.1 Scope — "17 Baybayin consonant characters"; §3.3.3]
-[EVIDENCE: Assets/Scripts/Data/RecognitionConfigSO.cs — context implies 17 templates]
+> **Corrected 2026-09-01: the taught set is 17, and "the set" means two things.** A 2026-08-31 ruling
+> that `RA` is its own glyph was read as making every count 18. That is reverted.
+>
+> | Scope | Count | Evidence |
+> |---|---:|---|
+> | **Taught / curriculum** | **17** | `CampaignConfig_RevisedV1.symbols` holds 17 and excludes `RA`; `Char_DA` carries both `value.da` and `value.ra`; spoken values total 18 across those 17 symbols |
+> | **Recognised glyph shapes** | **18** | `RA` has its own 5 templates and its own art; the `$P` recognizer tells the shapes apart |
+> | **`Char_*.asset` files on disk** | **18** | Includes the vestigial `Char_RA.asset` |
+>
+> `Char_RA` has no spoken value, no `firstIntroductionLevelId`, and is referenced by exactly one
+> thing in the project — the legacy `CharacterRegistry_Default.asset`. Nothing else reads it.
+> Reconciling the registry with the campaign catalog is tracked as SALIN-212. Tracked as REQ-42 in
+> doc 10.
+
+[EVIDENCE: `Assets/ScriptableObjects/Characters/` — 18 `Char_*.asset` files]
+[EVIDENCE: docs/system/10_Requirements_Traceability_Matrix.md, REQ-12 and REQ-42]
+[EVIDENCE: docs/capstone/Salinlahi.md, §1.5.1 Scope — "17 Baybayin consonant characters" (superseded by the authored set)]
 
 ### 1.2 Each character requires these assets
 
@@ -22,14 +37,23 @@ The game covers **17 Baybayin characters: 14 consonants (BA, KA, DA, GA, HA, LA,
 | `BaybayinCharacterSO` asset | `.asset` | `Assets/ScriptableObjects/Characters/Char_[ID].asset` | All gameplay systems |
 | Display sprite (glyph) | `.png` | `Assets/Art/UI/` or `Assets/Art/Characters/` | Enemy renderer; Tracing Dojo |
 | Pronunciation audio clip | `.wav` / `.mp3` | `Assets/Audio/` | AudioManager |
-| Recognition template file | `.txt` (point coordinates) | `Assets/Resources/Templates/[ID]_template.txt` | DollarPRecognizer (PLANNED) |
+| Recognition template file(s) | `.txt` (point coordinates) | `Assets/Resources/Templates/[ID]_template_[NN].txt` — **multiple numbered variants per character**, not one file | `DollarPRecognizer.cs` via `TemplateLoader.cs` |
 
 ### 1.3 Current Status
 
-As of Sprint 1: **placeholder assets only**. No BaybayinCharacterSO assets have been confirmed in `Assets/ScriptableObjects/Characters/`. No template `.txt` files have been confirmed in `Assets/Resources/Templates/`.
+**Superseded — the Sprint 1 "placeholder assets only" note no longer holds.** Verified state on `dev` as of 2026-08-31:
 
-[EVIDENCE: Assets/Art/Characters/ — placeholder sprites only confirmed]
-[EVIDENCE: Assets/ScriptableObjects/Characters/ — folder exists, asset contents unverified]
+| Asset class | Status | Detail |
+|-------------|--------|--------|
+| `BaybayinCharacterSO` assets | ✅ Complete | 18 `Char_*.asset` files, plus `CharacterRegistry_Default.asset` |
+| Recognition templates | ✅ Complete | **121 `.txt` files** across all 18 characters (~6–7 variants each; HA carries 15, authored while resolving its recognition failure) |
+| Display sprites | ✅ Present | Assigned on the character SOs |
+| Pronunciation clips | ⚠️ **Partial — 7 of 18 assigned; 11 missing** | `BaybayinCharacterSO.pronunciationClip`. Recognition audio feedback is silent for the 11 unassigned characters. Tracked as DEP-03 in doc 11. |
+
+Template variant counts are deliberately uneven: characters that proved harder to recognize received more authored variants. Adding templates is the first, cheapest lever for a character that recognizes poorly — before touching `minimumConfidence`, which is global and affects every character.
+
+[EVIDENCE: `Assets/ScriptableObjects/Characters/`; `Assets/Resources/Templates/`]
+[EVIDENCE: Assets/Scripts/Data/BaybayinCharacterSO.cs — `pronunciationClip`]
 
 ---
 
@@ -39,20 +63,58 @@ As of Sprint 1: **placeholder assets only**. No BaybayinCharacterSO assets have 
 
 | Enemy Type | `enemyID` | Era | Tier | First Appears | Priority | Prefab | Status |
 |------------|-----------|-----|------|--------------|----------|--------|--------|
-| Soldado | `"soldado"` | Spanish | Regular (32×32) | Level 1 | Must Ship | `Enemy_Standard.prefab` | Prefab exists; SO unverified |
-| Fraile | `"fraile"` | Spanish | Variant (32×32) | Level 2 | Must Ship | (PLANNED) | NOT FOUND |
-| Guardia | `"guardia"` | Spanish | Variant (32×32) | Level 3 | Must Ship | (PLANNED) | NOT FOUND |
-| Capitan | `"capitan"` | Spanish | Elite (48×48) | Level 4 | Must Ship | (PLANNED) | NOT FOUND |
-| Soldier | `"soldier"` | American | Regular (32×32) | Level 6 | Must Ship | (PLANNED) | NOT FOUND |
-| Maestro | `"maestro"` | American | Variant (32×32) | Level 7 | Should Ship | (PLANNED) | NOT FOUND |
-| Pensionado | `"pensionado"` | American | Variant (32×32) | Level 8 | Should Ship | (PLANNED) | NOT FOUND |
-| General | `"general"` | American | Elite (48×48) | Level 9 | Should Ship | (PLANNED) | NOT FOUND |
-| Heitai | `"heitai"` | Japanese | Regular (32×32) | Level 11 | Must Ship | (PLANNED) | NOT FOUND |
-| Kisha | `"kisha"` | Japanese | Variant (32×32) | Level 12 | Should Ship | (PLANNED) | NOT FOUND |
-| Kempei | `"kempei"` | Japanese | Variant (32×32) | Level 13 | Should Ship | (PLANNED) | NOT FOUND |
-| Shokan | `"shokan"` | Japanese | Elite (48×48) | Level 14 | Should Ship | (PLANNED) | NOT FOUND |
+| Soldado | `"soldado"` | Spanish | Regular (32×32) | Level 1 | Must Ship | `[Enemy] Soldado.prefab` | Implemented (`[Enemy] Soldado.prefab` + `EnemyData_Soldado.asset`) |
+| Fraile | `"fraile"` | Spanish | Variant (32×32) | Level 2 | Must Ship | `[Enemy] Fraile.prefab` | Implemented (`[Enemy] Fraile.prefab` + `EnemyData_Fraile.asset`) |
+| Guardia | `"guardia"` | Spanish | Variant (32×32) | Level 3 | Must Ship | `[Enemy] Guardia.prefab` | Implemented (`[Enemy] Guardia.prefab` + `EnemyData_Guardia.asset`) |
+| Capitan | `"capitan"` | Spanish | Elite (48×48) | Level 4 | Must Ship | `[Enemy] Capitan.prefab` | Implemented (`[Enemy] Capitan.prefab` + `EnemyData_Capitan.asset`) |
+| Soldier | `"soldier"` | American | Regular (32×32) | Level 6 | Must Ship | `[Enemy] Soldier.prefab` | Implemented (`[Enemy] Soldier.prefab` + `EnemyData_Soldier.asset`) |
+| Maestro | `"maestro"` | American | Variant (32×32) | Level 7 | Should Ship | `[Enemy] Maestro.prefab` | Implemented (`[Enemy] Maestro.prefab` + `EnemyData_Maestro.asset`) |
+| Pensionado | `"pensionado"` | American | Variant (32×32) | Level 8 | Should Ship | `[Enemy] Pensionado.prefab` | Implemented (`[Enemy] Pensionado.prefab` + `EnemyData_Pensionado.asset`) |
+| General | `"general"` | American | Elite (48×48) | Level 9 | Should Ship | `[Enemy] General.prefab` | Implemented (`[Enemy] General.prefab` + `EnemyData_General.asset`) |
+| Heitai | `"heitai"` | Japanese | Regular (32×32) | Level 11 | Must Ship | `[Enemy] Heitai.prefab` | Implemented (`[Enemy] Heitai.prefab` + `EnemyData_Heitai.asset`) |
+| Kisha | `"kisha"` | Japanese | Variant (32×32) | Level 12 | Should Ship | `[Enemy] Kisha.prefab` | Implemented (`[Enemy] Kisha.prefab` + `EnemyData_Kisha.asset`) |
+| Kempei | `"kempei"` | Japanese | Variant (32×32) | Level 13 | Should Ship | `[Enemy] Kempei.prefab` | Implemented (`[Enemy] Kempei.prefab` + `EnemyData_Kempei.asset`) |
+| Shokan | `"shokan"` | Japanese | Elite (48×48) | Level 14 | Should Ship | `[Enemy] Shokan.prefab` | Implemented (`[Enemy] Shokan.prefab` + `EnemyData_Shokan.asset`) |
 
-[EVIDENCE: Assets/Prefabs/Enemies/[Enemy] Standard.prefab — confirmed]
+**Note:** `[Enemy] Shielded.prefab` and `[Enemy] Sprinter.prefab` were removed from the repo. The matching `EnemyData_Shielded.asset` / `EnemyData_Sprinter.asset` SOs may still exist as legacy placeholders and are not referenced by any current `LevelConfigSO` or its embedded `WaveDefinition` waves.
+
+### 2.2 Corrupted-Enemy Roster (in transition)
+
+The era-themed roster in §2.1 is **being superseded** by a corrupted-enemy roster in which each enemy is bound to the specific Baybayin syllable that defeats it, via `EnemyDataSO.assignedCharacter`.
+
+| Aspect | State on `dev` |
+|--------|----------------|
+| Enemy data assets | 32 `EnemyData_*.asset` total |
+| With `assignedCharacter` set | **17** (AbongSimula, Bakod, Daan-Lihis, Gapos, Hati, Iligaw, Kadena, Labo, Mantsa, NawalangMukha, Ngatngat, Punit, Salungat, Takip, Uhaw, Walang-Awa, YaposngDilim) |
+| Per-enemy stats and abilities | ✅ **On `dev`** — landed via PR #144 |
+| `[Enemy] Labo` / `[Enemy] Daan-Lihis` prefab variants | ✅ **On `dev`** — landed via PR #144, registered on the EnemyPool prefab *and* its scene instances |
+
+**Shipped stats** (`maxHealth` / `moveSpeed`, read from the assets on `dev`):
+
+| Enemy | HP | Speed | Enemy | HP | Speed |
+|-------|----|-------|-------|----|-------|
+| Abo ng Simula | 1 | 1.60 | Ngatngat | 1 | 1.90 |
+| Bakod | 1 | 0.85 | Punit | 1 | 1.70 |
+| Daan-Lihis | 1 | 1.50 | Salungat | 1 | 1.50 |
+| Gapos | 2 | 1.00 | Takip | 1 | 1.30 |
+| Hati | 1 | 1.40 | Uhaw | 2 | 1.25 |
+| Iligaw | 1 | 1.50 | Walang-Awa | 3 | 0.95 |
+| Kadena | 2 | 1.05 | Yapos ng Dilim | 3 | 1.10 |
+| Labo | 1 | 1.35 | Mantsa | 1 | 1.15 |
+
+Health is deliberately concentrated at 1 HP. Only Gapos, Kadena and Uhaw take 2, and only Walang-Awa and Yapos ng Dilim take 3. **Bakod is 1 HP on purpose:** an earlier draft gave it 2, which doubled the required draws in the Level 2 waves it dominates (6 → 12) and broke the draw-to-kill feedback loop in what is still a teaching level. Raising any early-level enemy's HP has this multiplying effect and should be checked against the wave composition, not judged per-enemy.
+
+Two consequences worth stating plainly, because both have already cost debugging time:
+
+1. **The two rosters currently coexist.** The era-themed enemies (Soldado, Maestro, …) and the corrupted enemies are both live, which is why the sandbox catalog lists both. Retiring the era-themed roster is a **product decision that has not been made** — do not delete those assets on the assumption that the corruption roster replaced them. PR #144 did free the contested BA pins: `Fraile` and `Maestro` no longer carry an `assignedCharacter`, so each assigned syllable now maps to exactly one corrupted enemy. That is why this count is 17 and not the 19 recorded before #144.
+2. **Registering a new enemy prefab takes two steps, not one.** Adding the prefab to the `[Manager] EnemyPool` prefab's `_registeredEnemyPrefabs` is not sufficient: **scene instances of the pool override the array**, including its size. A prefab registered only at the prefab level fails at runtime with `EnemyPool: Unknown enemyID '<id>'. Falling back to default pool.` The scene instances in `Bootstrap`, `Gameplay`, and `Level_01_Tutorial` must be updated too.
+
+[EVIDENCE: Assets/Scripts/Data/EnemyDataSO.cs — `assignedCharacter`]
+[EVIDENCE: `Assets/ScriptableObjects/Enemies/` — 32 assets, 17 with `assignedCharacter`]
+[EVIDENCE: Assets/Prefabs/Managers/[Manager] EnemyPool.prefab — `_registeredEnemyPrefabs`]
+
+[EVIDENCE: Assets/Prefabs/Enemies/ — Soldado, Soldier, Heitai, Maestro, Pensionado, General, Kisha, Kempei, Shokan, Boss_ElInquisidor prefabs confirmed]
+[EVIDENCE: Assets/ScriptableObjects/ — matching `EnemyData_*.asset` files confirmed]
 [EVIDENCE: docs/capstone/GDD.md, §4.3 Enemies — full roster with priority]
 [EVIDENCE: Team README §9 — Enemy Type Roster with introduction levels]
 
@@ -80,17 +142,30 @@ As of Sprint 1: **placeholder assets only**. No BaybayinCharacterSO assets have 
 [EVIDENCE: docs/capstone/GDD.md, §4.2 Characters; §4.3 Enemies]
 [EVIDENCE: Team README §6 — Technical Specifications for pixel artist]
 
+### 2.4 Bosses
+
+| Boss | Asset | Status |
+|------|-------|--------|
+| El Inquisidor (Spanish) | `[Enemy] Boss_ElInquisidor.prefab` + `BossConfig_ElInquisidor.asset` | Implemented |
+| The Superintendent (American) | — | PLANNED |
+| Kadiliman (Final) | — | PLANNED |
+
+[EVIDENCE: Assets/Prefabs/Enemies/[Enemy] Boss_ElInquisidor.prefab]
+[EVIDENCE: Assets/ScriptableObjects/BossConfig_ElInquisidor.asset]
+
 ---
 
 ## 3. Levels and Waves
 
 ### 3.1 Level Structure
 
-| Chapter | Name | Levels | Era | Gameplay Theme | Boss Level |
-|---------|------|--------|-----|---------------|------------|
-| Chapter 1 | Liwanag (Light) | 1–5 | Spanish Colonization | Drawing mastery | Level 5 |
-| Chapter 2 | Paglaban (Resistance) | 6–10 | American Occupation | Tactical thinking | Level 10 |
-| Chapter 3 | Pagbalik (Reclamation) | 11–15 | Japanese Occupation | Mastery and chaos | Level 15 |
+| Campaign | Levels | Historical Era | Gameplay Theme | Boss Level |
+|----------|--------|----------------|-----------------|------------|
+| Ugat | 1–5 | Spanish Colonization | Drawing mastery | Level 5 |
+| Ugnayan | 6–10 | American Occupation | Tactical thinking | Level 10 |
+| Pamana | 11–15 | Japanese Occupation | Mastery and chaos | Level 15 |
+
+Paglimot is a separate set of three mastery encounters after the story campaigns, not a fourth five-level campaign. The historical campaign names in the capstone and Jira evidence remain unchanged.
 
 [EVIDENCE: docs/capstone/GDD.md, §4.1 Levels/Maps — chapter names and historical eras]
 [EVIDENCE: Team README §9 — chapter gameplay themes]
@@ -100,11 +175,12 @@ As of Sprint 1: **placeholder assets only**. No BaybayinCharacterSO assets have 
 | Asset | Pattern | Example |
 |-------|---------|---------|
 | `LevelConfigSO` | `Level_[##]` | `Level_01.asset`, `Level_10.asset` |
-| `WaveConfigSO` | `L[level]_W[wave]` | `L1_W1.asset`, `L3_W2.asset` |
 
-**Current status:** `Assets/ScriptableObjects/Levels/` and `Assets/ScriptableObjects/Waves/` folders exist. Asset population is NOT verified beyond folder existence.
+**Note:** Authored on-disk pattern is `Level[N]_Config.asset` (e.g. `Level1_Config.asset`); the doc's `Level_##` example is the planned convention. Levels 1–3 are populated; the remaining 12 are PLANNED. Wave data is now embedded inside each `LevelConfigSO` as `List<WaveDefinition>` — there are no separate wave `.asset` files.
 
-[EVIDENCE: Assets/ScriptableObjects/Levels/ and Waves/ — folders confirmed]
+**Current status:** `Assets/ScriptableObjects/Levels/` contains `Level1_Config.asset` through `Level15_Config.asset`; all active assets use the campaign mapping above.
+
+[EVIDENCE: Assets/ScriptableObjects/Levels/Level1_Config.asset, Level2_Config.asset, Level3_Config.asset]
 
 ### 3.3 Build Flag
 
@@ -123,7 +199,7 @@ As of Sprint 1: **placeholder assets only**. No BaybayinCharacterSO assets have 
 
 `Assets/Resources/Templates/`
 
-Templates are loaded via `Resources.Load<TextAsset>` at startup by `TemplateLoader.cs` (PLANNED). Each file represents one Baybayin character's point-cloud template.
+Templates are loaded via `Resources.Load<TextAsset>` at startup by `TemplateLoader.cs`. Each file represents one Baybayin character's point-cloud template.
 
 ### 4.2 File Naming
 
@@ -137,7 +213,7 @@ The `characterID` must match `BaybayinCharacterSO.characterID` exactly (case-sen
 
 ### 4.3 File Content Format
 
-Plain text coordinate pairs. Format determined by `TemplateLoader.cs` implementation (NOT FOUND). Expected format based on $P algorithm:
+Plain text coordinate pairs. Format per `TemplateLoader.cs` implementation. Format based on $P algorithm:
 ```
 x1,y1
 x2,y2
@@ -185,6 +261,48 @@ All gameplay sprites must use:
 
 [EVIDENCE: git commit `d718060` — "art(placeholders): import placeholder sprites with correct PPU and filter settings"]
 
+### 5.2.1 Enemy Ability Visual Layers
+
+Enemy ability sprites are authored on `EnemyDataSO.abilityVisuals` and rendered as child
+`SpriteRenderer` layers synchronized to `Enemy.CurrentWalkFrameIndex`. Each definition selects a body
+or glyph-badge anchor, a full-loop/single-frame/inclusive-range gate, active and exit opacity/tint,
+optional activation/exit sequences, material, local transform, and sorting offset. Mantsa's source
+definition can be presented on an affected enemy's badge; aggregate stain-source transitions avoid
+restarting or prematurely clearing its overlay. HUD-targeted definitions live separately on
+`EnemyDataSO.hudAbilityVisuals`, allowing clue-slot art to follow TMP layout without entering the
+enemy walk-frame clock. An invalid enemy-frame gate stays hidden and reports a warning rather than
+wrapping to another base frame.
+
+The supplied armor-break archive confidently maps to Walang-Awa. Only its eight individual PNGs are
+imported under `Assets/Art/VFX/EnemyAbilities/WalangAwaArmor/`; the ZIP, GIF, APNG, and contact sheet
+are not runtime assets. The first sprite is the intact layer on base walk frame index 0 at 0.45
+opacity, and frames 01–08 are its one-shot break animation at 8 fps and 0.85 opacity. Point filtering,
+alpha transparency, centered pivot, 96 PPU, mipmaps off, and uncompressed texture data preserve the
+supplied pixel art and alignment.
+
+The same import pass wires the other supplied packs from numbered PNGs only. Bakod shows frame 01 on
+its body while its shield is active and on a blocked target's glyph badge; the eight-frame break plays
+when the target is released or Bakod falls. Mantsa's four-frame splash settles into frame 04 on each
+affected badge at partial opacity, then frames 05–07 clear it when the last stain source lifts. Abo
+ng Simula uses ash frames 01–04 to settle over the first character box of the active incomplete-word
+clue and frames 05–08 to scatter on reveal. The underlying clue masking remains authoritative and
+display-only. These sprites use Point filtering, alpha transparency, centered pivot, 96 PPU, mipmaps
+off, and uncompressed texture data.
+
+| Supplied art | Ability/content owner | Integration status |
+|---|---|---|
+| `cracking-barrier-break` | Bakod barrier and blocked-target badge | Confident match; imported and wired |
+| `splash-paint-clear` | Mantsa ink/stain on affected glyph badges | Confident match; imported and wired |
+| `ash-settle-cover` | Abo ng Simula's separate clue/HUD first-slot flow | Confident match; imported and wired to the HUD |
+| `cover-reveal-glyph` | Takip glyph cover | Confident match; eight frames imported and wired |
+
+Takip's eight individual frames are imported under
+`Assets/Art/VFX/EnemyAbilities/TakipGlyphCover/`; the APNG and contact sheet are references, not runtime
+assets. Frame 01 is the opaque closed state, frames 05–08 play the closing animation, and frames 01–04
+play the opening animation, both at 8 fps. The cover sits above the still-rendered glyph badge and is
+removed by its opening animation. Point filtering, alpha transparency, centered pivot, 96 PPU, mipmaps
+off, and uncompressed texture data preserve the supplied pixel art.
+
 ### 5.3 Asset Status Summary
 
 | Category | Status |
@@ -219,7 +337,6 @@ Each era has its own shrine/base structure at 64×96 px with 4 visual damage sta
 | Baybayin Character SO | `Char_[ID]` | ID uppercase, 2 chars: BA, KA, GA |
 | Enemy Data SO | `Enemy_[Type]` | Type title-case: Standard, Fast |
 | Level Config SO | `Level_[##]` | Zero-padded number: 01, 10 |
-| Wave Config SO | `L[level]_W[wave]` | No padding: L1_W1, L10_W3 |
 | Enemy prefab | `[Enemy] [Type]` | Brackets denote prefab: `[Enemy] Standard` |
 | Manager prefab | `[Manager] [Name]` | Brackets: `[Manager] GameManager` |
 | Recognition template | `[ID]_template.txt` | Lowercase ID: `ba_template.txt` OR uppercase per SO |
@@ -234,14 +351,27 @@ Each era has its own shrine/base structure at 64×96 px with 4 visual damage sta
 
 ```
 LevelConfigSO
-  └─ List<WaveConfigSO>
-        └─ List<BaybayinCharacterSO>
-              ├─ displaySprite (Sprite)
-              ├─ pronunciationClip (AudioClip)
-              └─ templateFileName → Resources/Templates/[file].txt
+  └─ List<WaveDefinition> (embedded, no asset files)
+        ├─ List<BaybayinCharacterSO> (characters — subset of level allowedCharacters)
+        │     ├─ displaySprite (Sprite)
+        │     ├─ pronunciationClip (AudioClip)
+        │     └─ templateFileName → Resources/Templates/[file].txt
+        └─ List<EnemyDataSO> (enemyTypes — subset of level allowedEnemyTypes)
 
 LevelConfigSO
   └─ List<BaybayinCharacterSO> (allowedCharacters)
+
+LevelConfigSO
+  └─ List<EnemyDataSO> (allowedEnemyTypes)
+
+LevelConfigSO
+  └─ bossConfig (optional) → BossConfigSO
+                               ├─ bossEnemyData → EnemyDataSO (assignedCharacter MUST be null)
+                               ├─ phases (List<BossPhase>) — each phase may reference summonEnemyTypes → EnemyDataSO
+                               └─ fallbackEnemyTypes → List<EnemyDataSO>
+
+LevelConfigSO
+  └─ eraTheme → EraThemeSO
 
 EnemyDataSO
   ├─ walkFrames (Sprite[])
@@ -263,8 +393,14 @@ EnemyPool
 | `pronunciationClip == null` | Silent defeat (no audio error, `AudioManager` is null-safe) | Low |
 | `walkFrames` empty | Enemy spawns with no visible sprite (invisible) | Medium |
 | `assignedCharacter == null` | Enemy cannot be recognized or defeated; gameplay blocks | High |
-| Template file missing | `TemplateLoader` will throw `NullReferenceException` (PLANNED implementation) | Critical |
+| Template file missing | `TemplateLoader` will throw `NullReferenceException` | Critical |
 | `LevelConfigSO.waves` empty | Immediate level-complete, no gameplay | High |
+| `BossConfigSO.phases` empty | `BossController.StartBoss` logs an error and aborts the encounter | Critical |
+| `BossConfigSO.bossEnemyData.assignedCharacter` non-null | Boss enters `CombatResolver.FindClosestToBase` results, breaking the boss damage gate | High |
+| `BossPhase.summonEnemyTypes` empty AND `BossConfigSO.fallbackEnemyTypes` empty | `BossSummonTicker` skips spawns with a warning; vulnerability windows still resolve normally | Medium |
 
 [EVIDENCE: Assets/Scripts/Core/AudioManager.cs — null check on pronunciationClip]
 [EVIDENCE: Assets/Scripts/Gameplay/Enemy/Enemy.cs — null checks on walkFrames]
+[EVIDENCE: Assets/Scripts/Gameplay/Boss/BossController.cs — `StartBoss` phase guard]
+[EVIDENCE: Assets/Scripts/Gameplay/Combat/CombatResolver.cs — `FindClosestToBase`]
+[EVIDENCE: Assets/Scripts/Gameplay/Boss/BossSummonTicker.cs — summon-type fallback]

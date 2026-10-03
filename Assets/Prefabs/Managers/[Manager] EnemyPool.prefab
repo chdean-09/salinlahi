@@ -44,19 +44,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d06216064284b3c4490b72010f4b975b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyPool
-  _enemyPrefab: {fileID: 8037671833055544141, guid: 7d0626488d0ea194db35b08de3fba50b, type: 3}
-  _defaultCapacity: 10
-  _maxSize: 20
+  _enemyPrefab: {fileID: 8037671833055544141, guid: 0c7f1c7fcc7504023bcabfe7367b6193, type: 3}
+  _defaultCapacity: 24
+  _maxSize: 32
   _registeredEnemyPrefabs:
-  - enemyID: soldado
-    prefab: {fileID: 8037671833055544141, guid: 7d0626488d0ea194db35b08de3fba50b, type: 3}
-    defaultCapacity: 10
-    maxSize: 20
-  - enemyID: sprinter
-    prefab: {fileID: 8037671833055544141, guid: 43217bd7f21c474ea553c2206be5e444, type: 3}
-    defaultCapacity: 10
-    maxSize: 20
-  - enemyID: shielded
-    prefab: {fileID: 8037671833055544141, guid: c4eac3d9938a4d6ea54c26e243d40211, type: 3}
-    defaultCapacity: 10
-    maxSize: 20
+  - enemyID: elinquisidor
+    prefab: {fileID: 8774765201253825161, guid: 3162ad5b896c54746a794736dc9371e4, type: 3}
+    defaultCapacity: 1
+    maxSize: 1

@@ -1,168 +1,422 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Level Select UI with lock/unlock and completion states.
-/// Reads progress from ProgressManager. Completion check shown when IsLevelCompleted returns true;
-/// the 3-star visual is intentionally deferred to SALIN-66 polish pass.
+/// Level Select UI driven by a serialized list of EraConfigSO entries.
+/// Shows the era's LevelButtons, swapping the background sprite,
+/// banner sprite, and the level scrolls when the player navigates eras.
+/// Prev/Next arrow buttons remain visible at era edges; their interactable
+/// flag is toggled and Unity's Button ColorBlock disabled-color tints them grey.
+///
+/// Era arrows allow browsing configured campaign eras. Progression locks remain enforced
+/// per level by ProgressManager and LevelButton.
 /// </summary>
 public class LevelSelectUI : MonoBehaviour
 {
-    [Header("Level Configs")]
-    [SerializeField] private LevelConfigSO _level1Config;
-    [SerializeField] private LevelConfigSO _level2Config;
-    [SerializeField] private LevelConfigSO _level3Config;
-    [SerializeField] private LevelConfigSO _level4Config;
-    [SerializeField] private LevelConfigSO _level5Config;
+    // ---------------------------------------------------------------
+    // Inspector
+    // ---------------------------------------------------------------
 
-    [Header("Level Buttons")]
-    [SerializeField] private Button _level1Button;
-    [SerializeField] private Button _level2Button;
-    [SerializeField] private Button _level3Button;
-    [SerializeField] private Button _level4Button;
-    [SerializeField] private Button _level5Button;
+    [Header("Era Data")]
+    [SerializeField] private List<EraConfigSO> _eras = new();
 
-    [Header("Lock Overlays")]
-    [SerializeField] private GameObject _level1LockOverlay;
-    [SerializeField] private GameObject _level2LockOverlay;
-    [SerializeField] private GameObject _level3LockOverlay;
-    [SerializeField] private GameObject _level4LockOverlay;
-    [SerializeField] private GameObject _level5LockOverlay;
-
-    [Header("Completion Checkmarks (hidden until level is beaten)")]
-    [SerializeField] private GameObject _level1CompletionCheck;
-    [SerializeField] private GameObject _level2CompletionCheck;
-    [SerializeField] private GameObject _level3CompletionCheck;
-    [SerializeField] private GameObject _level4CompletionCheck;
-    [SerializeField] private GameObject _level5CompletionCheck;
+    [Header("Scene Refs")]
+    [SerializeField] private Image _eraBackgroundImage;
+    [SerializeField] private Image _eraBannerImage;
+    [Tooltip("The five LevelButton instances in the scene, in display order (slot 1..slot 5).")]
+    [SerializeField] private List<LevelButton> _levelButtons = new();
 
     [Header("Navigation")]
+    [SerializeField] private Button _prevEraButton;
+    [SerializeField] private Button _nextEraButton;
+
+    /// <summary>
+    /// Enables browsing configured campaign eras. Both arrows stay within the first and
+    /// last era, while LevelButton enforces each level's progression lock.
+    /// </summary>
+    private const bool EraNavigationEnabled = true;
+
+    [Header("Back")]
     [SerializeField] private Button _backButton;
 
-    private Button[] _levelButtons;
-    private GameObject[] _lockOverlays;
-    private GameObject[] _completionChecks;
-    private LevelConfigSO[] _levelConfigs;
+    [Header("Lock Notice")]
+    [Tooltip("SALIN-137 AC2 surface. Optional — resolved or built at runtime when unwired.")]
+    [SerializeField] private LevelLockNoticePanel _lockNoticePanel;
 
-    private void Awake()
-    {
-        _levelConfigs = new[] { _level1Config, _level2Config, _level3Config, _level4Config, _level5Config };
-        _levelButtons = new[] { _level1Button, _level2Button, _level3Button, _level4Button, _level5Button };
-        _lockOverlays = new[] { _level1LockOverlay, _level2LockOverlay, _level3LockOverlay, _level4LockOverlay, _level5LockOverlay };
-        _completionChecks = new[] { _level1CompletionCheck, _level2CompletionCheck, _level3CompletionCheck, _level4CompletionCheck, _level5CompletionCheck };
-    }
+    // ---------------------------------------------------------------
+    // State
+    // ---------------------------------------------------------------
+
+    private int _currentEraIndex = 0;
+    private List<EraConfigSO> _resolvedEras;
+
+    // ---------------------------------------------------------------
+    // Lifecycle
+    // ---------------------------------------------------------------
 
     private void Start()
     {
-        RefreshLevelButtons();
+        if (_prevEraButton != null)
+            _prevEraButton.onClick.AddListener(OnPrevEra);
 
-        for (int i = 0; i < _levelButtons.Length; i++)
-        {
-            int levelNumber = i + 1; // capture for closure
-            if (_levelButtons[i] != null)
-                _levelButtons[i].onClick.AddListener(() => OnLevelSelected(levelNumber));
-        }
+        if (_nextEraButton != null)
+            _nextEraButton.onClick.AddListener(OnNextEra);
 
         if (_backButton != null)
             _backButton.onClick.AddListener(OnBackPressed);
+
+        // ShowEra early-returns on an empty era list, which would leave the arrows on
+        // whatever interactable value the scene serialized, so force the state here too.
+        // Listeners stay attached: a non-interactable Button never raises onClick.
+        UpdateNavigationButtons();
+
+        // SALIN-253 (AC-4). "Enter Next Era" is pressed in the Gameplay scene, so it cannot
+        // call ShowEra directly — this screen does not exist yet at that moment. It leaves the
+        // era index behind instead, and this is where the request is collected.
+        //
+        // Consumed exactly once (ConsumePendingEraIndex resets it), so a request can never be
+        // honoured twice: a value left set would pin Level Select to Ugnayan for the rest of
+        // the session, and nothing in the project would report it.
+        //
+        // An out-of-range or NoPendingEra value is deliberately ignored rather than clamped.
+        // Clamping a stale index would silently drop the player on the LAST era; ignoring it
+        // leaves the screen opening exactly where it does today.
+        int pendingEraIndex = EraCompletionScreenUI.ConsumePendingEraIndex();
+        if (pendingEraIndex >= 0 && pendingEraIndex < ResolveEras().Count)
+            _currentEraIndex = pendingEraIndex;
+        else
+        {
+            int selectedLevel = ProgressManager.Instance != null
+                ? ProgressManager.Instance.GetSelectedLevelNumber()
+                : GameManager.CurrentLevelConfig != null ? GameManager.CurrentLevelConfig.levelNumber : -1;
+            List<EraConfigSO> eras = ResolveEras();
+            for (int i = 0; i < eras.Count; i++)
+            {
+                if (eras[i].levels != null && eras[i].levels.Exists(
+                        level => level != null && level.levelNumber == selectedLevel))
+                {
+                    _currentEraIndex = i;
+                    break;
+                }
+            }
+        }
+
+        ShowEra(_currentEraIndex);
 
         DebugLogger.Log("LevelSelectUI: Initialized");
     }
 
     private void OnDestroy()
     {
-        if (_levelButtons != null)
-        {
-            foreach (var button in _levelButtons)
-            {
-                if (button != null)
-                    button.onClick.RemoveAllListeners();
-            }
-        }
+        if (_prevEraButton != null)
+            _prevEraButton.onClick.RemoveAllListeners();
+
+        if (_nextEraButton != null)
+            _nextEraButton.onClick.RemoveAllListeners();
 
         if (_backButton != null)
             _backButton.onClick.RemoveAllListeners();
     }
 
+    // ---------------------------------------------------------------
+    // Public API
+    // ---------------------------------------------------------------
+
     /// <summary>
-    /// Refreshes all level buttons based on current progress.
-    /// Public so other systems can trigger a refresh after progress changes.
+    /// Shows the given era's background, banner, and level buttons,
+    /// then refreshes the prev/next arrow interactable state.
+    ///
+    /// SALIN-137 AC3: this IS the refresh path. Level Select is a separate scene, so the
+    /// lock/unlock/completed state is re-read from <see cref="ProgressManager"/> every
+    /// time the screen is entered (<c>Start</c> -> <c>ShowEra</c>) and every time the era
+    /// arrows move. There is deliberately no in-scene "refresh" hook, because progress
+    /// can only change while the player is in Gameplay — i.e. while this scene is gone.
     /// </summary>
-    public void RefreshLevelButtons()
+    public void ShowEra(int eraIndex)
     {
-        for (int i = 0; i < _levelButtons.Length; i++)
+        List<EraConfigSO> eras = ResolveEras();
+        if (eras.Count == 0)
         {
-            UpdateLevelButtonState(i + 1);
-        }
-    }
-
-    private void UpdateLevelButtonState(int levelNumber)
-    {
-        int index = levelNumber - 1;
-        if (index < 0 || index >= _levelButtons.Length)
+            DebugLogger.LogError("LevelSelectUI: _eras list is empty.");
             return;
-
-        Button button = _levelButtons[index];
-        if (button == null)
-            return;
-
-        GameObject lockOverlay = index < _lockOverlays.Length ? _lockOverlays[index] : null;
-        GameObject completionCheck = index < _completionChecks.Length ? _completionChecks[index] : null;
-
-        bool unlocked = true;
-        bool completed = false;
-
-        if (ProgressManager.Instance != null)
-        {
-            unlocked = ProgressManager.Instance.IsLevelUnlocked(levelNumber);
-            completed = ProgressManager.Instance.IsLevelCompleted(levelNumber);
         }
-        else
+
+        // SALIN-137: era navigation resets any prerequisite explanation still on screen.
+        // Only a panel that already exists needs hiding — calling ResolveLockNoticePanel()
+        // here would build the runtime fallback hierarchy on every Level Select entry even
+        // when no locked scroll is ever pressed. An authored panel hides itself in Awake.
+        _lockNoticePanel?.Hide();
+
+        _currentEraIndex = Mathf.Clamp(eraIndex, 0, eras.Count - 1);
+        EraConfigSO era  = eras[_currentEraIndex];
+
+        if (_eraBackgroundImage != null && era.backgroundSprite != null)
+            _eraBackgroundImage.sprite = era.backgroundSprite;
+
+        if (_eraBannerImage != null)
         {
+            // Do not carry the previous era's title into an era whose banner art has not
+            // been authored yet. Assigning the future banner asset is enough to restore it.
+            _eraBannerImage.sprite = era.bannerSprite;
+            _eraBannerImage.enabled = era.bannerSprite != null;
+        }
+
+        bool pmAvailable = ProgressManager.Instance != null;
+        if (!pmAvailable)
             DebugLogger.LogWarning("LevelSelectUI: ProgressManager not available. Defaulting all levels to unlocked.");
+
+        // SALIN-136: identify the journey's next meaningful level so the player can
+        // clearly see where to continue (no highlight once the journey is complete).
+        int nextLevelNumber = -1;
+        if (pmAvailable)
+        {
+            JourneyEntryKind entryKind = ProgressManager.Instance.GetJourneyEntryPoint(out int entryLevel);
+            if (entryKind == JourneyEntryKind.NewJourney || entryKind == JourneyEntryKind.ContinueLevel)
+                nextLevelNumber = entryLevel;
         }
 
-        button.interactable = unlocked;
+        for (int i = 0; i < _levelButtons.Count; i++)
+        {
+            LevelButton button = _levelButtons[i];
+            if (button == null) continue;
 
-        if (lockOverlay != null)
-            lockOverlay.SetActive(!unlocked);
+            bool hasLevel = (i < era.levels.Count && era.levels[i] != null);
+            if (!hasLevel)
+            {
+                button.gameObject.SetActive(false);
+                continue;
+            }
 
-        if (completionCheck != null)
-            completionCheck.SetActive(unlocked && completed);
+            LevelConfigSO levelConfig = era.levels[i];
+
+            bool unlocked = true;
+            bool completed = false;
+
+            if (pmAvailable)
+            {
+                unlocked = ProgressManager.Instance.IsLevelUnlocked(levelConfig.levelNumber);
+                // Demo badges preview the complete map without writing completion to the save.
+                completed = ProgressManager.Instance.EnableAllLevelsForTesting
+                    || ProgressManager.Instance.IsLevelCompleted(levelConfig.levelNumber);
+            }
+
+            button.gameObject.SetActive(true);
+            // SALIN-137 AC2: the handler is attached unconditionally but only fires on a
+            // press of a *locked* scroll, so the prerequisite is resolved lazily — on
+            // press, never once per button per era render.
+            button.SetLockedPressHandler(HandleLockedLevelPressed);
+            button.Setup(levelConfig, unlocked, completed);
+            button.SetHighlighted(unlocked && levelConfig.levelNumber == nextLevelNumber);
+        }
+
+        UpdateNavigationButtons();
+
+        DebugLogger.Log($"LevelSelectUI: Showing era {_currentEraIndex} — {era.eraName}");
     }
 
-    private void OnLevelSelected(int levelNumber)
+    // SALIN-137: a `RefreshLevelButtons()` wrapper used to live here. It had zero callers
+    // in C#, .unity, or .prefab, and its doc comment ("call this after any progress
+    // change") promised a refresh mechanism that does not exist. Removed rather than left
+    // implying behaviour: see ShowEra above for the real AC3 refresh path (scene re-entry).
+
+    // ---------------------------------------------------------------
+    // Private helpers
+    // ---------------------------------------------------------------
+
+    private void UpdateNavigationButtons()
     {
-        // Defensive check: guard against stale button state (e.g. mid-refresh).
-        if (ProgressManager.Instance != null && !ProgressManager.Instance.IsLevelUnlocked(levelNumber))
+        int eraCount = ResolveEras().Count;
+
+        if (_prevEraButton != null)
+            _prevEraButton.interactable = EraNavigationEnabled && _currentEraIndex > 0;
+
+        if (_nextEraButton != null)
+            _nextEraButton.interactable = EraNavigationEnabled && _currentEraIndex < eraCount - 1;
+    }
+
+    /// <summary>
+    /// SALIN-137 AC3: resolves which eras this screen can show.
+    ///
+    /// The LevelSelect scene assigns <c>Era_01</c>, <c>Era_02</c>, and <c>Era_03</c>.
+    /// If the campaign configures more eras than the scene authored, the campaign's order
+    /// wins. That matches <see cref="CampaignSaveValidator.GetConfiguredLevelIds"/> and the
+    /// progression rule, so the screen and unlock order stay aligned.
+    ///
+    /// The fallback is KEPT rather than gated to fully-authored eras. Later eras reuse the
+    /// five era-local number sprites from Ugat until dedicated art is authored, while
+    /// <see cref="LevelButton.Setup"/> clears a missing sprite defensively instead of
+    /// leaving the previous era's numbered scroll behind.
+    ///
+    /// OWED ART: dedicated Era 2 and Era 3 banners and backgrounds.
+    /// </summary>
+    private List<EraConfigSO> ResolveEras()
+    {
+        if (_resolvedEras != null)
+            return _resolvedEras;
+
+        List<EraConfigSO> authored = CompactEras(_eras);
+        bool campaignAvailable = SaveManager.Instance != null && SaveManager.Instance.Campaign != null;
+        List<EraConfigSO> configured = CompactEras(
+            campaignAvailable ? SaveManager.Instance.Campaign.eras : null);
+
+        List<EraConfigSO> resolved = authored;
+        if (configured.Count > authored.Count)
         {
-            DebugLogger.Log($"LevelSelectUI: Level {levelNumber} is locked. Ignoring click.");
+            DebugLogger.LogWarning(
+                $"LevelSelectUI: scene _eras lists {authored.Count} era(s) but the campaign configures " +
+                $"{configured.Count}. Falling back to the campaign era order. " +
+                "Assign the missing eras in LevelSelect.unity.");
+            resolved = configured;
+        }
+
+        // Cache only once the campaign has actually been consulted. SaveManager may still
+        // be initializing on the first render; caching a campaign-less answer would pin
+        // the screen to the short scene list for the rest of its lifetime.
+        if (campaignAvailable)
+            _resolvedEras = resolved;
+
+        return resolved;
+    }
+
+    private static List<EraConfigSO> CompactEras(List<EraConfigSO> source)
+    {
+        var result = new List<EraConfigSO>();
+        if (source == null)
+            return result;
+        for (int i = 0; i < source.Count; i++)
+            if (source[i] != null)
+                result.Add(source[i]);
+        return result;
+    }
+
+    /// <summary>
+    /// SALIN-137 AC2: a locked scroll was pressed. The game stays on Level Select and
+    /// the single immediately preceding requirement is explained.
+    /// </summary>
+    private void HandleLockedLevelPressed(LevelConfigSO config)
+    {
+        LevelLockNoticePanel panel = ResolveLockNoticePanel();
+        if (panel == null || config == null)
+            return;
+
+        if (ProgressManager.Instance == null)
+        {
+            panel.Hide();
             return;
         }
 
-        DebugLogger.Log($"LevelSelectUI: Level {levelNumber} selected");
+        LevelLockState state = ProgressManager.Instance.GetLevelLockState(
+            config.levelNumber, out int requiredLevelNumber, out bool crossesEra,
+            out string missingObjectiveId);
 
-        PlayerPrefs.SetInt("SelectedLevel", levelNumber);
-        PlayerPrefs.Save();
-
-        int index = levelNumber - 1;
-        if (GameManager.Instance != null && index >= 0 && index < _levelConfigs.Length && _levelConfigs[index] != null)
+        // Nothing to explain when the level is actually reachable, or when the save is
+        // blocked/unclassifiable — CampaignSaveNoticePanel already owns that story, and
+        // naming a prerequisite there would blame the wrong cause.
+        if (state != LevelLockState.Locked || requiredLevelNumber < 1)
         {
-            GameManager.Instance.SetLevel(_levelConfigs[index]);
-        }
-        else
-        {
-            DebugLogger.LogWarning($"LevelSelectUI: Could not set GameManager level for level {levelNumber} — config missing or GameManager unavailable.");
+            panel.Hide();
+            return;
         }
 
-        if (SceneLoader.Instance != null)
-            SceneLoader.Instance.LoadGameplay();
-        else
-            DebugLogger.LogError("LevelSelectUI: SceneLoader not available. Cannot load Gameplay.");
+        // SALIN-220 AC6: when the predecessor is finished but still owes an objective, naming
+        // the objective is the only honest message -- "complete Level N first" reads as a bug
+        // to a player who already completed it.
+        // SALIN-258: ProgressManager hands back a GLOBAL 1-15 id, which is identity and must
+        // stay global -- it gates saves and unlocks. The conversion to the player-facing
+        // era-relative label happens HERE, at the UI boundary, and nowhere deeper.
+        FindEraForLevel(requiredLevelNumber, out string requiredEraName, out int requiredEraLocalOrder);
+        string requiredLevelLabel = CampaignLevelLabel.Format(
+            requiredEraName, requiredEraLocalOrder, requiredLevelNumber);
+
+        if (missingObjectiveId != null)
+        {
+            panel.PresentMissingObjective(missingObjectiveId, requiredLevelLabel);
+            return;
+        }
+
+        panel.PresentPrerequisite(requiredLevelLabel, crossesEra, requiredEraName);
+    }
+
+    /// <summary>
+    /// SALIN-258. Resolves the era identity of a global level number: the era's display name
+    /// AND the level's authored order within that era. Both are needed to render "Ugat Level 5";
+    /// the previous version returned only the name, because only the era-crossing sentence
+    /// needed it.
+    ///
+    /// The era name comes from <see cref="EraConfigSO.eraName"/> and the order from the authored
+    /// <see cref="LevelConfigSO.eraLocalOrder"/> -- NOT from LevelConfigSO.chapterName, which
+    /// looks like the era axis but has no production readers, and NOT recomputed as
+    /// ((n - 1) % 5 + 1), which would bypass the levelNumber/eraLocalOrder invariant that
+    /// CampaignConfigValidator enforces and would break the moment an era is not five levels.
+    ///
+    /// Yields a null name and order 0 when the level is not in the campaign -- the legacy
+    /// progress path. Callers degrade to the plain level-number wording there.
+    /// </summary>
+    private void FindEraForLevel(int levelNumber, out string eraName, out int eraLocalOrder)
+    {
+        List<EraConfigSO> eras = ResolveEras();
+        for (int i = 0; i < eras.Count; i++)
+        {
+            List<LevelConfigSO> levels = eras[i].levels;
+            if (levels == null) continue;
+            for (int j = 0; j < levels.Count; j++)
+            {
+                if (levels[j] == null || levels[j].levelNumber != levelNumber)
+                    continue;
+
+                eraName = eras[i].eraName;
+                eraLocalOrder = levels[j].eraLocalOrder;
+                return;
+            }
+        }
+
+        eraName = null;
+        eraLocalOrder = 0;
+    }
+
+    /// <summary>
+    /// SALIN-137: finds the notice panel, or creates one. The Level Select scene authors
+    /// no notice surface today, so without this AC2 has nowhere to render. Assigning
+    /// <c>_lockNoticePanel</c> in the Inspector makes the runtime creation inert.
+    ///
+    /// Called ONLY from <see cref="HandleLockedLevelPressed"/>, so the fallback hierarchy
+    /// is built lazily on the first locked press rather than on every Level Select entry.
+    /// </summary>
+    private LevelLockNoticePanel ResolveLockNoticePanel()
+    {
+        if (_lockNoticePanel != null)
+            return _lockNoticePanel;
+
+        _lockNoticePanel = FindFirstObjectByType<LevelLockNoticePanel>(FindObjectsInactive.Include);
+        if (_lockNoticePanel != null)
+            return _lockNoticePanel;
+
+        var host = new GameObject("[Runtime] LevelLockNoticePanel");
+        host.transform.SetParent(transform, worldPositionStays: false);
+        _lockNoticePanel = host.AddComponent<LevelLockNoticePanel>();
+        return _lockNoticePanel;
+    }
+
+    // ---------------------------------------------------------------
+    // Button callbacks
+    // ---------------------------------------------------------------
+
+    private void OnPrevEra()
+    {
+        if (_currentEraIndex <= 0) return;
+        ShowEra(_currentEraIndex - 1);
+    }
+
+    private void OnNextEra()
+    {
+        if (_currentEraIndex >= ResolveEras().Count - 1) return;
+        ShowEra(_currentEraIndex + 1);
     }
 
     private void OnBackPressed()
     {
+        AudioManager.Instance?.PlayMenuExitButtonClick();
         DebugLogger.Log("LevelSelectUI: Back to main menu");
 
         if (SceneLoader.Instance != null)

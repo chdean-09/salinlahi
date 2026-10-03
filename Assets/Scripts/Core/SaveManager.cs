@@ -1,0 +1,160 @@
+using UnityEngine;
+
+public enum SaveManagerMode
+{
+    Uninitialized,
+    Legacy,
+    RevisedReady,
+    RevisedBlocked,
+}
+
+public sealed class SaveManager : Singleton<SaveManager>
+{
+    [SerializeField] private CampaignConfigSO _campaign;
+
+    private LearningProgressRepository _learningRepository;
+
+    public SaveManagerMode Mode { get; private set; } = SaveManagerMode.Uninitialized;
+    public CampaignProgressRepository Repository { get; private set; }
+
+    /// <summary>
+    /// Read-only learning projection. Outside RevisedReady this is a snapshot over empty progress
+    /// rather than null, so consumers get empty collections instead of a NullReferenceException.
+    /// </summary>
+    public LearningStateSnapshot LearningState =>
+        _learningRepository?.Snapshot ?? new LearningStateSnapshot(new CampaignProgressData(), _campaign);
+    public CampaignSaveNotice PendingNotice { get; private set; } = new CampaignSaveNotice();
+    public CampaignSaveInitializationResult InitializationResult { get; private set; }
+    public CampaignOutcomeCoordinator OutcomeCoordinator { get; private set; }
+    public CampaignOutcomeCommitResult LastOutcomeResult { get; private set; }
+    public CampaignConfigSO Campaign => _campaign;
+
+    public void Initialize()
+    {
+        if (_campaign == null)
+        {
+            Mode = SaveManagerMode.Legacy;
+            Repository = null;
+            _learningRepository = null;
+            OutcomeCoordinator = null;
+            LastOutcomeResult = null;
+            PendingNotice = new CampaignSaveNotice();
+            return;
+        }
+
+        ICampaignSaveStorage storage;
+        ILegacyProgressSource legacySource;
+#if UNITY_EDITOR
+        // QA sessions exercise the real save coordinator against a disposable store so
+        // boot-time migrations, pending-outcome recovery, or test completions cannot alter
+        // the player's campaign files. The migration source is isolated too: reading legacy
+        // PlayerPrefs here would import the player's history and present a migration notice
+        // during a supposedly fresh QA run.
+        bool qaSession = QaSessionContext.IsActive;
+        storage = qaSession
+            ? (ICampaignSaveStorage)new InMemoryCampaignSaveStorage()
+            : new CampaignSaveFileStorage();
+        legacySource = qaSession
+            ? (ILegacyProgressSource)EmptyLegacyProgressSource.Instance
+            : new PlayerPrefsLegacyProgressSource();
+#else
+        storage = new CampaignSaveFileStorage();
+        legacySource = new PlayerPrefsLegacyProgressSource();
+#endif
+        Initialize(new CampaignSaveService(storage, legacySource));
+    }
+
+    public void Initialize(CampaignSaveService service)
+    {
+        if (_campaign == null)
+        {
+            Mode = SaveManagerMode.Legacy;
+            Repository = null;
+            _learningRepository = null;
+            OutcomeCoordinator = null;
+            LastOutcomeResult = null;
+            PendingNotice = new CampaignSaveNotice();
+            return;
+        }
+
+        InitializationResult = service.Initialize(_campaign);
+        if (InitializationResult.Document == null)
+        {
+            Mode = SaveManagerMode.RevisedBlocked;
+            Repository = null;
+            _learningRepository = null;
+            OutcomeCoordinator = null;
+            PendingNotice = new CampaignSaveNotice(
+                CampaignSaveNoticeKind.Blocking,
+                InitializationResult.ReasonCode ?? InitializationResult.FailureCode.ToString());
+            return;
+        }
+
+        OutcomeCoordinator = new CampaignOutcomeCoordinator(
+            service,
+            new CampaignOutcomeJournal(service.Storage, _campaign, service.Metadata),
+            _campaign,
+            service.Metadata);
+        LastOutcomeResult = OutcomeCoordinator.ReplayPendingOnStartup();
+        if (LastOutcomeResult.Status == CampaignOutcomeCommitStatus.Blocked)
+        {
+            Mode = SaveManagerMode.RevisedBlocked;
+            Repository = null;
+            _learningRepository = null;
+            PendingNotice = new CampaignSaveNotice(
+                CampaignSaveNoticeKind.Blocking,
+                LastOutcomeResult.ReasonCode ?? LastOutcomeResult.FailureCode.ToString());
+            return;
+        }
+
+        Mode = SaveManagerMode.RevisedReady;
+        Repository = new CampaignProgressRepository(service, _campaign);
+        _learningRepository = new LearningProgressRepository(service, _campaign);
+        PendingNotice = Repository.GetPendingNotice();
+        if (LastOutcomeResult.Status == CampaignOutcomeCommitStatus.PendingRetry)
+            PendingNotice = new CampaignSaveNotice(
+                CampaignSaveNoticeKind.Recovery, "outcome-replay-pending");
+    }
+
+    internal void SetCampaignForTests(CampaignConfigSO campaign)
+    {
+        _campaign = campaign;
+    }
+
+    internal void SetServiceForTests(CampaignSaveService service)
+    {
+        Initialize(service);
+    }
+
+    public void RetryInitialization()
+    {
+        if (_campaign == null || InitializationResult == null)
+            return;
+        Initialize();
+    }
+
+    public void RefreshPendingNotice()
+    {
+        if (Repository != null)
+            PendingNotice = Repository.GetPendingNotice();
+    }
+
+    public CampaignOutcomeCommitResult RetryPendingOutcome()
+    {
+        if (OutcomeCoordinator == null)
+            return CampaignOutcomeCommitResult.Blocked(
+                null, CampaignSaveFailureCode.InvalidStructure, "outcome-coordinator-missing");
+        LastOutcomeResult = OutcomeCoordinator.RetryPending();
+        return LastOutcomeResult;
+    }
+
+    public CampaignOutcomeCommitResult ResetJourneyAtomically()
+    {
+        if (OutcomeCoordinator == null)
+            return CampaignOutcomeCommitResult.Blocked(
+                null, CampaignSaveFailureCode.InvalidStructure, "outcome-coordinator-missing");
+        LastOutcomeResult = OutcomeCoordinator.TryResetJourney();
+        RefreshPendingNotice();
+        return LastOutcomeResult;
+    }
+}

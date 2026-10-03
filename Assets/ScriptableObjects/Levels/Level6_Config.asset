@@ -1,0 +1,378 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 98c3e4f7bd9686740a8cd775acf3cbef, type: 3}
+  m_Name: Level6_Config
+  m_EditorClassIdentifier: Salinlahi.Runtime::LevelConfigSO
+  levelName: Mula Awa sa Gawa
+  levelNumber: 6
+  chapterNumber: 2
+  chapterName: Ugnayan
+  stableId: level.ugnayan.01
+  eraLocalOrder: 1
+  focusWords:
+  - stableId: level.ugnayan.01.focus.01
+    latinSpelling: AWA
+    displayLabel: AWA
+    meaning: compassion
+    hintText: 
+    decomposition:
+    - symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+      spokenValueId: value.a
+    - symbol: {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+      spokenValueId: value.wa
+    media:
+      contextImage: {fileID: 0}
+      narrationClip: {fileID: 0}
+      dialogue: {fileID: 11400000, guid: 5239072ed27fdc544be3f55185aa2963, type: 2}
+      cutscene: {fileID: 11400000, guid: b5918e64274228742884df92e03eddb7, type: 2}
+  - stableId: level.ugnayan.01.focus.02
+    latinSpelling: GAWA
+    displayLabel: GAWA
+    meaning: action
+    hintText: 
+    decomposition:
+    - symbol: {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+      spokenValueId: value.ga
+    - symbol: {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+      spokenValueId: value.wa
+    media:
+      contextImage: {fileID: 0}
+      narrationClip: {fileID: 0}
+      dialogue: {fileID: 11400000, guid: 588d0d80362bb814e9bd1027db779b30, type: 2}
+      cutscene: {fileID: 11400000, guid: b5918e64274228742884df92e03eddb7, type: 2}
+  cumulativeSymbolPool:
+  - symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+    spokenValueId: value.a
+  - symbol: {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+    spokenValueId: value.ei
+  - symbol: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+    spokenValueId: value.ba
+  - symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+    spokenValueId: value.ma
+  - symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+    spokenValueId: value.na
+  - symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+    spokenValueId: value.ta
+  - symbol: {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+    spokenValueId: value.ga
+  - symbol: {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+    spokenValueId: value.wa
+  learningRequirements:
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+      spokenValueId: value.a
+    requiredSuccesses: 1
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+      spokenValueId: value.ei
+    requiredSuccesses: 1
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+      spokenValueId: value.ba
+    requiredSuccesses: 1
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+      spokenValueId: value.ma
+    requiredSuccesses: 1
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+      spokenValueId: value.na
+    requiredSuccesses: 1
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+      spokenValueId: value.ta
+    requiredSuccesses: 1
+  - kind: 0
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+      spokenValueId: value.ga
+    requiredSuccesses: 1
+  - kind: 0
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+      spokenValueId: value.wa
+    requiredSuccesses: 1
+  practiceRequirements:
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+      spokenValueId: value.a
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+      spokenValueId: value.ei
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+      spokenValueId: value.ba
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+      spokenValueId: value.ma
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+      spokenValueId: value.na
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+      spokenValueId: value.ta
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+      spokenValueId: value.ga
+    requiredSuccesses: 2
+  - kind: 1
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+      spokenValueId: value.wa
+    requiredSuccesses: 2
+  suppressSymbolLearningCards: 0
+  restorationObjective:
+    displayMode: 0
+    units: []
+  activeClueCombatEnabled: 1
+  activeClueRestorationEnabled: 1
+  clueChannels: 19
+  audioVisualFallback: 4
+  spawnAssignmentPolicy:
+    minSpawnsBeforeNeeded: 4
+    neededWeight: 0.5
+    starvationTimeout: 30
+    hardStarvationTimeout: 50
+    minFillerVariety: 2
+    offTargetFillerWeight: 0
+    activeSlotWindow: 1
+    choiceMomentSlotIndex: 1
+    choicePairWindow: 1.5
+    maxConcurrentEnemies: 8
+    openingSpawnSpokenValueId: 
+    allowFinalWaveOverflow: 1
+    gateFinalSlotToFinalWave: 0
+    maxOverflowBatches: 12
+    assignmentSeed: 0
+    slotGates: []
+    slotFloors: []
+  enemySpeedMultiplier: 1
+  maxActiveEnemies: 0
+  overrideDrawingAccuracyThreshold: 0
+  drawingAccuracyThresholdOverride: 0.6
+  alwaysShowTutorial: 0
+  defenseRules:
+    shrineHearts: 3
+  contextMedia:
+    contextImage: {fileID: 0}
+    narrationClip: {fileID: 0}
+    dialogue: {fileID: 11400000, guid: d5f7b6c8f12ef1645867db47ac611cef, type: 2}
+    cutscene: {fileID: 11400000, guid: b5918e64274228742884df92e03eddb7, type: 2}
+  finalRestorationValue:
+    symbol: {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+    spokenValueId: value.wa
+  rewardIds:
+  - memory.ugnayan.01
+  masteryRequirements:
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+      spokenValueId: value.a
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+      spokenValueId: value.ei
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+      spokenValueId: value.ba
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+      spokenValueId: value.ma
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+      spokenValueId: value.na
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+      spokenValueId: value.ta
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+      spokenValueId: value.ga
+    requiredSuccesses: 1
+  - kind: 3
+    symbolValue:
+      symbol: {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+      spokenValueId: value.wa
+    requiredSuccesses: 1
+  eraTheme: {fileID: 11400000, guid: 80a50c4bceb3cc946a8586e47777bb12, type: 2}
+  numberSprite: {fileID: -8255703752285137255, guid: 1f48d5c864048764490aef7ead1b86fc, type: 3}
+  _authoredWaves:
+  - isIntermissionWave: 0
+    characters:
+    - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+    - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+    - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+    - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+    - {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+    - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+    - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+    guaranteedCharacters: []
+    enemyTypes:
+    - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
+    - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
+    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
+    - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
+    - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
+    enemyCount: 3
+    spawnInterval: 2.8
+    waveStartDelay: 1.5
+  - isIntermissionWave: 0
+    characters:
+    - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+    - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+    - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+    - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+    - {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+    - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+    - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+    guaranteedCharacters: []
+    enemyTypes:
+    - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
+    - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
+    - {fileID: 11400000, guid: e89a049d218824eb18439081351d8c5e, type: 2}
+    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
+    - {fileID: 11400000, guid: c5f91a4c7515047cabd59ea63b9bfef6, type: 2}
+    - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
+    - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
+    enemyCount: 4
+    spawnInterval: 2.5
+    waveStartDelay: 1.2
+  - isIntermissionWave: 0
+    characters:
+    - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+    - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+    - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+    - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+    - {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+    - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+    - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+    guaranteedCharacters: []
+    enemyTypes:
+    - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
+    - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
+    - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
+    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
+    - {fileID: 11400000, guid: c5f91a4c7515047cabd59ea63b9bfef6, type: 2}
+    - {fileID: 11400000, guid: e89a049d218824eb18439081351d8c5e, type: 2}
+    - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+    - {fileID: 11400000, guid: d32d963289bb94a54ba971ec25be3bbf, type: 2}
+    - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
+    - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
+    enemyCount: 5
+    spawnInterval: 2.3
+    waveStartDelay: 1.2
+  - isIntermissionWave: 0
+    characters:
+    - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+    - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+    - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+    - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+    - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+    - {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+    - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+    - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+    guaranteedCharacters: []
+    enemyTypes:
+    - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
+    - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
+    - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
+    - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
+    - {fileID: 11400000, guid: c5f91a4c7515047cabd59ea63b9bfef6, type: 2}
+    - {fileID: 11400000, guid: e89a049d218824eb18439081351d8c5e, type: 2}
+    - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+    - {fileID: 11400000, guid: d32d963289bb94a54ba971ec25be3bbf, type: 2}
+    - {fileID: 11400000, guid: 3beab354ec73c4942a045607153e984b, type: 2}
+    - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
+    - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
+    - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
+    - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
+    enemyCount: 6
+    spawnInterval: 2.1
+    waveStartDelay: 1
+  waveCurve: {fileID: 0}
+  allowedCharacters:
+  - {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
+  - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+  - {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+  - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+  - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+  - {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
+  - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
+  - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+  allowedEnemyTypes:
+  - {fileID: 11400000, guid: 46fb56915b3244229ac2729e1bbde5e0, type: 2}
+  - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
+  - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
+  - {fileID: 11400000, guid: 767cf44b0defe466ebf1a5118fd62821, type: 2}
+  - {fileID: 11400000, guid: c5f91a4c7515047cabd59ea63b9bfef6, type: 2}
+  - {fileID: 11400000, guid: e89a049d218824eb18439081351d8c5e, type: 2}
+  - {fileID: 11400000, guid: 564a3f24c5dd64976a0bba6aaed13312, type: 2}
+  - {fileID: 11400000, guid: d32d963289bb94a54ba971ec25be3bbf, type: 2}
+  - {fileID: 11400000, guid: 3beab354ec73c4942a045607153e984b, type: 2}
+  - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
+  - {fileID: 11400000, guid: 50998add29c784fc6b843e35b5dcb1e7, type: 2}
+  - {fileID: 11400000, guid: 1cc113923583a4412803e1a3693f1a67, type: 2}
+  - {fileID: 11400000, guid: 98300a139eb114bae8a2ca38df07b4f7, type: 2}
+  bossConfig: {fileID: 0}
+  isAvailableInLite: 0
+  multiKillChainEnabled: 1
+  tutorialSequence: {fileID: 0}
+  onboardingSequence: {fileID: 0}
+  enemyLessons: []
+  challengePrototypeEnabled: 0
+  challengeSequence: {fileID: 11400000, guid: 3d2b42ed7155c4a44b5ffacba2917301, type: 2}
+  challengePolicy:
+    tier: 1
+    heartPenaltiesEnabled: 1
+    errorsPerPenalty: 3
+    checkpointResetOnPenalty: 1
+    emergencyHintEnabled: 0
+    emergencyHintsPerAttempt: 1
+    emergencyHintScorePenalty: 0.1
+  flowSegments: []
+  introDialogue: {fileID: 11400000, guid: d5f7b6c8f12ef1645867db47ac611cef, type: 2}
+  outroDialogue: {fileID: 11400000, guid: a3bb1ea298e0d0b42a5ef94fe322b86e, type: 2}
+  bgmClip: {fileID: 0}
+  hasProtagonist: 1
+  protagonistWalksIn: 0

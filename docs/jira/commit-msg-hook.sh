@@ -1,35 +1,24 @@
-#!/bin/bash
-# Git commit message hook for Jira integration
-# Validates that commit messages include a SALIN-XX ticket key
-#
-# To install:
-#   cp docs/jira/commit-msg-hook.sh .git/hooks/commit-msg
-#   chmod +x .git/hooks/commit-msg
+#!/usr/bin/env bash
 
-commit_msg_file=$1
-commit_msg=$(head -n1 "$commit_msg_file")
+# Delegates commit-subject validation to the repository's shared validator.
 
-# Pattern matches: feat(scope): SALIN-11 description
-# Or: SALIN-11: description
-jira_pattern="^(([a-z]+(\([a-z-]+\))?: )?SALIN-[0-9]+ .+|SALIN-[0-9]+: .+)"
+set -u
 
-if ! echo "$commit_msg" | grep -qiE "$jira_pattern"; then
-    echo ""
-    echo "❌ Commit message rejected!"
-    echo ""
-    echo "Commit message must include a Jira ticket key (SALIN-XX)."
-    echo ""
-    echo "Valid formats:"
-    echo "  feat(scene-loader): SALIN-11 add async loading"
-    echo "  fix(ui): SALIN-102 resolve null reference"
-    echo "  SALIN-11: Implement scene loader"
-    echo ""
-    echo "Your message: $commit_msg"
-    echo ""
-    echo "See docs/jira/TEAM-HANDBOOK.md for details."
-    echo ""
-    exit 1
+if (( $# != 1 )) || [[ ! -f "$1" ]]; then
+  printf 'commit-msg hook requires a commit-message file\n' >&2
+  exit 2
 fi
 
-echo "✅ Commit message includes Jira ticket key"
-exit 0
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
+  printf 'commit-msg hook could not resolve the repository root\n' >&2
+  exit 2
+}
+
+validator="$repo_root/docs/jira/validate-git-conventions.sh"
+if [[ ! -x "$validator" ]]; then
+  printf 'commit-msg validator is missing or not executable: %s\n' "$validator" >&2
+  exit 2
+fi
+
+subject="$(sed -n '1p' "$1")"
+exec "$validator" commit "$subject"

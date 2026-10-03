@@ -1,0 +1,93 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b7c9d9cf2f34d9c9e1a0d437f2f6e90, type: 3}
+  m_Name: Challenge_Ugnayan06_Context
+  m_EditorClassIdentifier: Salinlahi.Runtime::ChallengeSequenceSO
+  sequenceId: challenge.ugnayan.06
+  displayName: Mula Awa sa Gawa
+  units:
+  - unitId: ugnayan06-restore-awa
+    mode: 2
+    cluePolicy: 0
+    prompt: Ang ______ ay malasakit na nadarama para sa kapwa.
+    tokens:
+    - tokenId: ugnayan06-awa-focus
+      displayText: AWA
+      occurrenceId: ugnayan06-awa-focus-occ
+      role: 1
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugnayan06-awa-decoy-01
+      displayText: SAMA
+      occurrenceId: ugnayan06-awa-decoy-01-occ
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugnayan06-awa-decoy-02
+      displayText: SAYA
+      occurrenceId: ugnayan06-awa-decoy-02-occ
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    slots:
+    - slotId: ugnayan06-awa-slot
+      expectedOccurrenceId: ugnayan06-awa-focus-occ
+    candidateOccurrenceIds:
+    - ugnayan06-awa-focus-occ
+    - ugnayan06-awa-decoy-01-occ
+    - ugnayan06-awa-decoy-02-occ
+    guidedStep: {fileID: 0}
+    timerSeconds: 0
+    allowHint: 1
+    checkpointOnSuccess: 1
+    memoryRevealSeconds: 1
+    maxErrors: 3
+    heartPenalty: 1
+    evidenceContentId: level.ugnayan.01.focus.01
+  - unitId: ugnayan06-restore-gawa
+    mode: 2
+    cluePolicy: 0
+    prompt: Sa ______ naipapakita kung tunay ang malasakit.
+    tokens:
+    - tokenId: ugnayan06-gawa-focus
+      displayText: GAWA
+      occurrenceId: ugnayan06-gawa-focus-occ
+      role: 1
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugnayan06-gawa-decoy-01
+      displayText: GANA
+      occurrenceId: ugnayan06-gawa-decoy-01-occ
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    - tokenId: ugnayan06-gawa-decoy-02
+      displayText: KAYA
+      occurrenceId: ugnayan06-gawa-decoy-02-occ
+      role: 0
+      targetCharacter: {fileID: 0}
+      evidenceContentId: 
+    slots:
+    - slotId: ugnayan06-gawa-slot
+      expectedOccurrenceId: ugnayan06-gawa-focus-occ
+    candidateOccurrenceIds:
+    - ugnayan06-gawa-focus-occ
+    - ugnayan06-gawa-decoy-01-occ
+    - ugnayan06-gawa-decoy-02-occ
+    guidedStep: {fileID: 0}
+    timerSeconds: 0
+    allowHint: 1
+    checkpointOnSuccess: 1
+    memoryRevealSeconds: 1
+    maxErrors: 3
+    heartPenalty: 1
+    evidenceContentId: level.ugnayan.01.focus.02

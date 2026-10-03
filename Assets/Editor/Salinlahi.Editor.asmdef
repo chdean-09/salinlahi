@@ -1,0 +1,21 @@
+{
+    "name": "Salinlahi.Editor",
+    "rootNamespace": "",
+    "references": [
+        "Salinlahi.Runtime",
+        "Salinlahi.DevTools.Editor",
+        "Unity.InputSystem",
+        "Unity.TextMeshPro",
+        "UnityEditor.UI"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineSymbols": [],
+    "versionDefines": [],
+    "noEngineUpdate": false
+}

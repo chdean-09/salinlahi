@@ -1,0 +1,97 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bb4cd3e37d015f4f8d9baa6e4cc1ac5, type: 3}
+  m_Name: EnemyData_Iligaw
+  m_EditorClassIdentifier: Salinlahi.Runtime::EnemyDataSO
+  enemyID: iligaw
+  displayName: Iligaw
+  discoverySubtitle: 
+  description: Iligaw is a reflection torn from the Living Scroll and taught to lie. Paglimot gives it a second face so that a familiar character appears almost right, yet leads memory in the wrong direction.
+  abilityLine: It makes a false copy carrying a misleading character.
+  moveSpeed: 1.5
+  maxHealth: 1
+  walkFrames:
+  - {fileID: -8941303968387219654, guid: b8fb579c146c14021bc17917ccda2c20, type: 3}
+  - {fileID: -3788269523198208974, guid: b8fb579c146c14021bc17917ccda2c20, type: 3}
+  - {fileID: -2979314565833581676, guid: b8fb579c146c14021bc17917ccda2c20, type: 3}
+  - {fileID: -3211054023771524972, guid: b8fb579c146c14021bc17917ccda2c20, type: 3}
+  animatorController: {fileID: 0}
+  portraitSprite: {fileID: 0}
+  assignedCharacter: {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+  isDecoy: 0
+  isPhaser: 0
+  phaserInterval: 0.5
+  phaserInitialVisibleDelayMin: 0
+  phaserInitialVisibleDelayMax: 0
+  phaserVisibleHoldMin: 0
+  phaserVisibleHoldMax: 0
+  phaserInvisibleHoldMin: 0
+  phaserInvisibleHoldMax: 0
+  phaserFadeOutDuration: 0.3
+  phaserFadeInDuration: 0.2
+  phaserFadeOutPulseCount: 3
+  phaserFadeOutPulseAmplitude: 0.2
+  dealsContactDamage: 1
+  era: 0
+  overrideBadgeOffset: 1
+  glyphBadgeOffsetOverride: {x: 0, y: 1.5}
+  overrideBadgeScale: 0
+  glyphBadgeScaleOverride: 1
+  zigzagAmplitude: 1.1
+  zigzagFrequency: 0.45
+  baseSpeedMultiplier: 1
+  auraRadius: 0
+  auraSpeedMultiplier: 1.3
+  deathFrames: []
+  deathAnimationFps: 8
+  useHurtFeedback: 1
+  hurtPausesMovement: 1
+  hurtPauseDuration: 0.25
+  hurtShakesSprite: 1
+  hurtShakeMagnitude: 0.08
+  hurtShakeDuration: 0.2
+  hurtShakeFrequency: 30
+  hurtSwapsCharacter: 0
+  postHurtCharacter: {fileID: 0}
+  hurtFrames: []
+  hurtAnimationFps: 12
+  chargeMultiplier: 2.5
+  chargeTriggerYNormalized: 0.5
+  pauseDuration: 0.35
+  scrambleRadius: 3
+  scrambleMinGlitchInterval: 0.18
+  scrambleMaxGlitchInterval: 0.36
+  scrambleTrueGlyphMinDwell: 2.6
+  scrambleTrueGlyphMaxDwell: 3.6
+  scrambleFalseBurstCount: 4
+  stainsNearbyGlyphs: 0
+  coversOwnGlyph: 0
+  glyphCoverInitialRevealSeconds: 1.2
+  glyphCoverHiddenSeconds: 2.4
+  glyphCoverRevealSeconds: 0.8
+  spawnsMirrorDecoy: 1
+  mirrorDecoyOffsetX: 1.4
+  mirrorDecoyConfusionPairs: {fileID: 11400000, guid: 8e7477a0b5b784268b447c6b405618d0, type: 2}
+  blocksEnemiesBehind: 0
+  ashesFirstSlot: 0
+  removesNames: 0
+  chainsNearestEnemy: 0
+  splitsOnDefeat: 0
+  splitSpawnData: {fileID: 0}
+  splitCount: 2
+  splitOffsetX: 0.9
+  spriteScale: 1
+  corruptedMeaning: A near copy can make a true glyph look doubtful.
+  trueMeaning: Small marks distinguish related characters.
+  restoredLesson: Compare glyphs before committing a drawing.
+  learningAbility: 2
+  suppressDiscovery: 0

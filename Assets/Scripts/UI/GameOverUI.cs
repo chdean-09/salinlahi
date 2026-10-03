@@ -1,15 +1,11 @@
 using UnityEngine;
 
-public class GameOverUI : MonoBehaviour
+[System.Obsolete("GameOverUI is deprecated. Use DefeatScreenUI in Gameplay scene.")]
+public sealed class GameOverUI : MonoBehaviour
 {
-    public void OnRetryPressed()
+    private void Awake()
     {
-        DebugLogger.Log("GameOverUI: Retry pressed (stub)");
-        SceneLoader.Instance.LoadGameplay();
-    }
-
-    public void OnMainMenuPressed()
-    {
-        SceneLoader.Instance.LoadMainMenu();
+        // Legacy placeholder retained for backward compatibility with older scene references.
+        gameObject.SetActive(false);
     }
 }

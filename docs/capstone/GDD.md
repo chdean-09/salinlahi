@@ -6,7 +6,8 @@ A 2D Pixel Art Defense Game
 
 **GAME DESIGN DOCUMENT**
 
-Version 1.0
+Version 1.4
+Date: September 22, 2026
 
 March 2026
 
@@ -19,6 +20,16 @@ Jon Wayne (Core Systems)
 Jeff Andre (UI/UX)
 
 Ian Clyde (Audio / Polish / Build)
+
+## Current implementation reconciliation (2026-09-22)
+
+The original design history below remains preserved. For the current campaign implementation, the
+demo contract is fifteen authored levels with Level 10 as a mixed-wave, non-boss level and Level 15
+as the sole campaign boss. Combat resolution selects the closest eligible carrier for a recognized
+glyph; restoration occurrences are credited one at a time; and terminal victory is gated through
+the authored final wave and the restoration objective. See
+`docs/audit/IMPLEMENTATION_STATUS-2026-09-22.md` for evidence status. Manual Unity verification is
+not inferred from these design statements.
 
 # 1. Overview
 
@@ -100,7 +111,7 @@ There are no virtual joysticks, no attack buttons, and no gesture shortcuts. Dra
 | --- | --- |
 | Story Mode (15 levels) | Three chapters of 5 levels each. Each chapter covers a different era of Philippine history. New characters and enemy types are introduced progressively. Levels 5, 10, and 15 end with boss encounters. |
 | Endless Mode | Unlocked after completing the Story Mode or defeating the final boss. Random Baybayin characters, progressively faster enemies, no level cap. High score tracking. |
-| Tracing Dojo (Tutorial) | A pressure-free practice mode accessible from the main menu. Players can trace all 17 Baybayin characters at their own pace with no enemies, no timer, and no penalties. |
+| Tracing Dojo (Tutorial) | A pressure-free practice mode accessible from the main menu. Players can trace all 17 taught characters at their own pace with no enemies, no timer, and no penalties. |
 
 # 3. Systems (Rules)
 
@@ -133,6 +144,8 @@ Combat is entirely drawing-based. The player sees the Baybayin character on an e
 
 - **Audio Feedback: **On every successful kill, a voice pronunciation clip of the Baybayin syllable plays immediately. This pairs the positive reward (enemy defeated) with the phonetic identity of the character. This is the core learning mechanism.
 
+- **Glyph Badge: **Every enemy displays its required Baybayin character in a scroll badge above its head. The badge reacts visually to correct draws (swap animation when the enemy demands a follow-up character; final-draw animation when the enemy is defeated), to drawing a decoy's character (reject shake with red flash), and to Kempei scramble effects (glitched variant when authored).
+
 ## 3.3 Progression
 
 Character introduction follows a strict scaffolding system. The player never encounters a character they have not been introduced to in a previous level.
@@ -142,6 +155,39 @@ Character introduction follows a strict scaffolding system. The player never enc
 | Chapter 1: Liwanag (Light) | 1 to 5 | BA, KA, DA, GA, HA, LA, MA, NA (8 characters). Start with 3, add 1 per level. |
 | Chapter 2: Paglaban (Resistance) | 6 to 10 | NGA, PA, SA, TA, WA, YA (6 characters) plus the Kudlit modifier system (post-launch). |
 | Chapter 3: Pagbalik (Reclamation) | 11 to 15 | All 17 characters active simultaneously. No new characters, but enemy speeds and spawn rates reach maximum. Complex combinations appear. |
+
+> **Character set: 17 taught identities (ruled 2026-08-31, corrected 2026-09-01).** An earlier reading
+> of this ruling set every count in this document to 18. That was wrong, and it is reverted here.
+>
+> The confusion is that **"the character set" means two different things**, and this document had been
+> conflating them:
+>
+> | Scope | Count | What it is |
+> |---|---:|---|
+> | **Taught / curriculum** | **17** | What the campaign teaches and the Almanac reveals. `CampaignConfig_RevisedV1.symbols` holds exactly 17, and `Char_DA` carries **both** spoken values, `value.da` and `value.ra` — one glyph, two readings, as in classic Baybayin. |
+> | **Recognised glyph shapes** | **18** | What the `$P` recognizer can tell apart. `Char_RA` has its own 5 templates and its own art, so the recognizer distinguishes the shape. |
+>
+> **Every count in this document is the taught set: 17.** Boss requirements, Almanac cells,
+> scaffolding and pronunciation clips are all curriculum. Recognition-scope claims live in
+> [doc 01](../system/01_System_Overview.md) and stay at 18; they are not in conflict.
+>
+> **This resolves the scaffolding table above rather than leaving a gap.** The two chapters introduce
+> 8 + 6 = **14** consonants, plus the three vowels (`A`, `E/I`, `O/U`) = **17**. That is the whole
+> taught set, exactly. Under the 18 reading the table was short by one and `RA` had nowhere to enter —
+> which was the tell that 18 was wrong. `Char_RA` has no `firstIntroductionLevelId` and appears in no
+> level, so no level ever taught it.
+>
+> **Registry aligned 2026-09-01 (SALIN-212).** `CharacterRegistry_Default.asset` previously held 18
+> entries including `RA`, so registry-driven surfaces presented a cell the curriculum never teaches.
+> It now holds 17. This was a live bug, not tidiness: the Almanac renders "Learned *n* / *registry
+> count*", and enemies carry only 17 distinct characters with none carrying `RA` — so at 18 the
+> counter could never reach 100%. `Char_RA.asset` itself is kept for its recognition templates and
+> art. Tracked as REQ-42 in [doc 10](../system/10_Requirements_Traceability_Matrix.md).
+>
+> **Note the manuscript disagrees.** `Salinlahi.md` scopes the study to "18 base Baybayin characters"
+> and its pre/post-test uses 18 items. That predates this ruling and is a research-instrument
+> question, not a design one — see SALIN-191.
+
 
 After each level, a short trivia card appears showing one fact about Baybayin or pre-colonial Philippine history. It is brief, visual, and never interrupts gameplay.
 
@@ -155,13 +201,13 @@ The Lite/Full split is the only monetization boundary. Lite gives you 3 levels f
 
 Enemy behavior is data-driven, not adaptive. Enemies do not react to the player's drawing. Their behavior is fully defined by ScriptableObject configurations:
 
-- **WaveConfigSO: **Defines which enemies spawn, how many, spawn delay, and spawn positions for each wave.
+- **LevelConfigSO: **Defines the sequence of waves per level, background theme, chapter assignment, and the allowed character and enemy-type rosters.
+
+- **WaveDefinition: **Embedded value type inside LevelConfigSO.waves. Defines which enemies spawn, how many, spawn interval, and the allowed character pool for one wave.
 
 - **EnemyDataSO: **Defines movement speed, movement pattern, health (for shielded enemies), and the assigned Baybayin character.
 
-- **LevelConfigSO: **Defines the sequence of waves per level, background theme, and chapter assignment.
-
-- **BossConfigSO: **Defines boss behavior phases, health pools, and mini-game sequences for boss encounters at Levels 5, 10, and 15.
+- **BossConfigSO: **Defines boss behavior phases, health pools, and mini-game sequences for an authored boss encounter. The current campaign references one boss at Level 15; legacy Level 5/10 boss assets remain historical content.
 
 There is no machine learning, no difficulty adaptation, and no procedural generation. All content is hand-authored for precise pacing control.
 
@@ -188,7 +234,7 @@ The game has 15 story mode levels divided into 3 chapters of 5 levels each. Each
 | 2: Paglaban | American Occupation | 6 to 10 | A new system replaces the old tongue with a foreign language. You battle to preserve what was nearly lost. Map: top-down cold grey cobblestone street with colonial buildings, lamp posts, American flags. |
 | 3: Pagbalik | Japanese Occupation | 11 to 15 | Another wave of occupation and cultural disruption. You make your final stand as the last guardian. Map: top-down bombed cobblestone (Map 2 destroyed), bombed buildings, fires in rubble, ash particles, rising sun flags. |
 
-Boss encounters happen at Level 5 (El Inquisidor), Level 10 (The Superintendent), and Level 15 (Kadiliman). The final boss is Kadiliman (Darkness itself), the embodiment of cultural erasure. Defeating Kadiliman requires the player to draw all 17 Baybayin characters in a timed sequence.
+The current campaign has one authored boss encounter at Level 15 (Kadiliman, Darkness itself), while Levels 5 and 10 are mixed-wave restoration levels without a boss reference. Defeating Kadiliman requires the player to draw the authored phase sequence; the live asset currently carries 17 required draws across four phases.
 
 Each era has its own shrine/base structure at 64x96: Baybayin Altar (Spanish), Ancestral Door (American), Scroll Shrine (Japanese). Each shrine has 4 visual damage states (full, crack 1, crack 2, destroyed).
 
@@ -264,7 +310,7 @@ The flow from app launch to gameplay is designed to have as few screens as possi
 
 - **Bootstrap Scene **(invisible) loads all manager singletons, then auto-transitions to Main Menu.
 
-- **Main Menu: **Play (Story Mode), Endless Mode, Tracing Dojo, Settings. Clean and minimal.
+- **Main Menu: **Play (Story Mode), Endless Mode, Tracing Dojo, Almanac, Settings. Clean and minimal.
 
 - **Level Select: **Shows all 15 levels with chapter groupings. Locked levels are grayed out. Progress is saved locally.
 
@@ -292,14 +338,81 @@ No score display during gameplay. Score is shown only on the Level Complete or G
 
 | **Screen** | **Contents** |
 | --- | --- |
-| Main Menu | Play, Endless Mode, Tracing Dojo, Settings, Credits. Simple pixel art background. |
+| Main Menu | Play, Endless Mode, Tracing Dojo, Almanac, Settings, Credits. Simple pixel art background. |
 | Level Select | 15 level buttons grouped by chapter. Stars or checkmarks for completed levels. Locked levels grayed out. |
 | Settings | Audio volume (BGM, SFX, Voice), recognition sensitivity display (fixed at 0.60, shown for transparency). |
 | Pause Menu | Resume, Restart Level, Return to Level Select, Settings. |
 | Game Over | Waves survived, enemies defeated, accuracy %. Retry, Level Select buttons. |
 | Level Complete | Same stats as Game Over plus Trivia Card and Next Level button. |
 
-## 5.4 Accessibility
+## 5.4 Almanac
+
+The Almanac is a persistent encyclopaedia accessible from the Main Menu via the **ALMANAC** button. It records every Baybayin character the player has learned and every enemy type they have encountered.
+
+### Entry Point
+
+Tapping **ALMANAC** on the Main Menu transitions to the dedicated Almanac scene. A back button returns to the Main Menu.
+
+### Tabs
+
+| Tab | Contents |
+| --- | --- |
+| **BAYBAYIN** | One cell per Baybayin character (17 total). Cells unlock as the player defeats enemies that carry that character. |
+| **ENEMIES** | One cell per enemy and boss type. Cells are revealed as the player encounters each enemy in gameplay. |
+
+### Cell States
+
+| State | Visual | Interaction |
+| --- | --- | --- |
+| Locked | Dimmed silhouette with a `?` overlay | Non-interactable |
+| Revealed (regular) | Full artwork portrait | Tappable |
+| Revealed (boss) | Full artwork portrait with a decorative boss border | Tappable |
+
+### Detail Panel
+
+Tapping a revealed cell opens an animated detail scroll overlay. The overlay displays:
+- Portrait sprite (full art)
+- Name (character syllable / enemy display name)
+- Description (short lore or educational note)
+
+The overlay dismisses when the player taps outside it or presses the close button.
+
+### Progress Counters
+
+Two counters are displayed at the top of each tab:
+- **BAYBAYIN tab:** "Learned x/y" — x unlocked characters out of y total.
+- **ENEMIES tab:** "Discovered x/y" — x encountered enemy types out of y total.
+
+### "New Character Unlocked!" Reveal (SALIN-120)
+
+At the start of each level, any Baybayin characters newly introduced by that level are revealed to the player one at a time before waves begin. Each reveal shows:
+
+- The Baybayin glyph (portrait sprite)
+- The character's name (syllable / `characterID`)
+- A short lore or educational description
+
+The player dismisses each card by pressing ✕. Once dismissed, the character is registered in the Almanac and will appear in the Characters tab on the next visit. Drawing input is locked while any reveal card is open so enemies cannot spawn and be missed.
+
+On replay, no reveal cards appear — characters already registered are filtered out, so the level starts immediately.
+
+### Persistence
+
+- Character unlock progress is saved in `PlayerPrefs` under key `salinlahi.almanac.character_ids`. It persists across sessions and survives scene transitions.
+- Enemy discovery progress is tracked separately by the enemy discovery system (see `AlmanacEnemyDiscovery` seam in `03_Core_Systems.md`).
+- A full progress reset (via the debug/settings flow) clears all Almanac unlock state.
+
+When revised campaign content is enabled, the journey starts at Ugat Level 1 and progression is
+stored by stable content IDs. Existing journeys receive a one-time migration notice after their
+legacy evidence is archived; audio preferences are preserved. If local save candidates cannot be
+recovered, the game creates a clean journey, retains failed files for diagnostics, and shows a
+one-time recovery notice. A newer or incompatible save blocks the journey without resetting it.
+
+When a level completion cannot be saved, Victory and Next remain unavailable until the player
+successfully retries. The player may retry immediately or return to the Main Menu; a valid pending
+completion remains queued for the next launch. If the completion could not be made valid for
+recovery, the player is told that replaying the level may be necessary.
+
+## 5.5 Accessibility
 
 - Full-screen drawing area means no precision targeting. The player draws anywhere, not inside a small box.
 
@@ -307,7 +420,9 @@ No score display during gameplay. Score is shown only on the Level Complete or G
 
 - Failed strokes show a clear visual rejection (red flash, X mark) so the player always knows the outcome.
 
-- Tracing Dojo provides a zero-pressure practice space for players who want to learn characters before entering combat.
+- Tracing Dojo provides a zero-pressure practice space for players who want to learn characters before entering combat. Time spent there counts: the Dojo only offers characters the player has already been taught, and tracing one contributes recall evidence toward that character's mastery. It can never advance, unlock, or re-score a Story Mode level.
+
+- Every character and focus word the player learns carries a mastery state that Results and review screens surface: **Introduced** (taught), **Practiced** (drawn correctly with the shape in view), **Recalled** (drawn correctly from memory in a later session), and **Mastered** (recalled from memory across separate sessions). Progress here never goes backwards -- a bad run cannot demote a character the player has already mastered. Reaching Recalled and Mastered deliberately requires returning on a *later* session, so mastery reflects durable memory rather than one lucky streak.
 
 - Portrait-mode, one-handed play. The game is designed to be held and played with one hand.
 
@@ -375,7 +490,7 @@ No existing product combines all three elements: real Baybayin characters as the
 | **Product** | **Details** |
 | --- | --- |
 | Salinlahi Lite (Free) | Free download on Google Play Store and Apple App Store. Gives access to the first 3 story mode levels. No ads. No in-app purchases. No subscription. Exists to let players experience the core loop before deciding to buy. |
-| Salinlahi Full (PHP 149) | One-time purchase. Unlocks all 15 story mode levels, all 3 boss encounters, Endless Mode, all cosmetic content, and all future content updates within the same app version. |
+| Salinlahi Full (PHP 149) | One-time purchase. Unlocks all 15 story mode levels, the authored Level 15 boss encounter, Endless Mode, all cosmetic content, and all future content updates within the same app version. |
 
 Both versions are distributed as separate app store listings built from the same Unity codebase using a build configuration flag. No ads are shown in either version. No data is collected beyond what the app stores require. The game is fully offline.
 
@@ -384,5 +499,10 @@ Both versions are distributed as separate app store listings built from the same
 | **Version** | **Changes** |
 | --- | --- |
 | v1.0 (March 2026) | Initial GDD. Covers full game vision including MVP scope and post-launch features. Chapter structure finalized at 3 chapters, 15 levels. Boss encounters at Levels 5, 10, 15. Endless Mode confirmed as Must Ship. Lite/Full business model confirmed. |
+| v1.1 (June 2026) | Added §5.4 Almanac. Documents the Baybayin and Enemies encyclopaedia feature (SALIN-118): Main Menu entry point, two tabs, cell states, detail scroll overlay, progress counters, and PlayerPrefs persistence model. Updated §5.1 and §5.3 to include ALMANAC button in Main Menu flow and menus table. |
+| v1.2 (June 2026) | Added "New Character Unlocked!" reveal subsection in §5.4 (SALIN-120). Documents level-start character reveal cards: per-character scroll overlay, ✕ dismissal, Almanac registration, and replay behaviour. |
+| v1.3 (August 17, 2026) | Clarifies that unsaved level completion blocks Victory/Next, offers Retry or Main Menu, and preserves recoverable completion for the next launch. |
+| v1.4 (August 18, 2026) | Adds player-facing mastery states (Introduced, Practiced, Recalled, Mastered) surfaced in Results and review, and documents that Tracing Dojo practice contributes recall evidence but can never alter Story Mode level progression. |
+| v1.5 (September 22, 2026) | Reconciles the current authored topology: Level 10 is non-boss, Level 15 is the sole campaign boss, and the current combat/restoration terminal contract is evidence-gated. |
 
 *This document is a living reference. Update it as design decisions change. Track every change in the changelog above.*

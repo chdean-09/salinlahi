@@ -1,0 +1,231 @@
+using System.Reflection;
+using NUnit.Framework;
+using UnityEngine;
+
+namespace Salinlahi.Tests.Editor.Gameplay
+{
+    public sealed class LevelFlowControllerOutcomeTests
+    {
+        private GameObject _controllerObject;
+        private GameObject _victoryObject;
+        private GameObject _failureObject;
+
+        [TearDown]
+        public void TearDown()
+        {
+            // CreateController drove OnEnable by hand (EditMode runs no lifecycle),
+            // so the matching OnDisable must run too or the EventBus subscription
+            // leaks into the next test.
+            if (_controllerObject != null)
+            {
+                var controller = _controllerObject.GetComponent<TestLevelFlowController>();
+                if (controller != null)
+                    InvokeLifecycle(controller, "OnDisable");
+            }
+
+            if (_controllerObject != null) Object.DestroyImmediate(_controllerObject);
+            if (_victoryObject != null) Object.DestroyImmediate(_victoryObject);
+            if (_failureObject != null) Object.DestroyImmediate(_failureObject);
+        }
+
+        [Test]
+        public void AcceptedCompletion_ShowsVictoryAfterOutro()
+        {
+            VictoryScreenUI victory = CreateVictory(out _victoryObject);
+            TestLevelFlowController controller = CreateController(out _controllerObject);
+            controller.NextResult = CampaignOutcomeCommitResult.Committed(null);
+            SetPrivateField(controller, "_victoryScreen", victory);
+
+            EventBus.RaiseLevelComplete();
+
+            Assert.That(controller.CommitCalls, Is.EqualTo(1));
+            Assert.That(GetPrivateField<GameObject>(victory, "_panel").activeSelf, Is.True);
+        }
+
+        [Test]
+        public void PendingCompletion_KeepsVictoryHiddenAndShowsFailurePanel()
+        {
+            VictoryScreenUI victory = CreateVictory(out _victoryObject);
+            CampaignOutcomeSaveFailurePanel panel = CreateFailurePanel(out _failureObject);
+            TestLevelFlowController controller = CreateController(out _controllerObject);
+            controller.NextResult = CampaignOutcomeCommitResult.PendingRetry(
+                null, CampaignSaveFailureCode.IoFailure, "journal-pending");
+            SetPrivateField(controller, "_victoryScreen", victory);
+            SetPrivateField(controller, "_saveFailurePanel", panel);
+
+            EventBus.RaiseLevelComplete();
+
+            Assert.That(GetPrivateField<GameObject>(victory, "_panel").activeSelf, Is.False);
+            Assert.That(GetPrivateField<GameObject>(panel, "_overlayRoot").activeSelf, Is.True);
+        }
+
+        [TestCase(CampaignOutcomeCommitStatus.Rejected)]
+        [TestCase(CampaignOutcomeCommitStatus.Blocked)]
+        public void NonAcceptedCompletion_DoesNotShowVictory(CampaignOutcomeCommitStatus status)
+        {
+            VictoryScreenUI victory = CreateVictory(out _victoryObject);
+            CampaignOutcomeSaveFailurePanel panel = CreateFailurePanel(out _failureObject);
+            TestLevelFlowController controller = CreateController(out _controllerObject);
+            controller.NextResult = status == CampaignOutcomeCommitStatus.Rejected
+                ? CampaignOutcomeCommitResult.Rejected(null, CampaignSaveFailureCode.InvalidStructure, "rejected")
+                : CampaignOutcomeCommitResult.Blocked(null, CampaignSaveFailureCode.InvalidStructure, "blocked");
+            SetPrivateField(controller, "_victoryScreen", victory);
+            SetPrivateField(controller, "_saveFailurePanel", panel);
+
+            EventBus.RaiseLevelComplete();
+
+            Assert.That(GetPrivateField<GameObject>(victory, "_panel").activeSelf, Is.False);
+            Assert.That(GetPrivateField<GameObject>(panel, "_overlayRoot").activeSelf, Is.True);
+        }
+
+        /// <summary>
+        /// The victory sting keys off this event, so it must fire exactly when the Results screen
+        /// appears — never at the save, and never when the save failed and no Results is shown.
+        /// </summary>
+        [Test]
+        public void AcceptedCompletion_AnnouncesTheResultsScreenOnce()
+        {
+            VictoryScreenUI victory = CreateVictory(out _victoryObject);
+            TestLevelFlowController controller = CreateController(out _controllerObject);
+            controller.NextResult = CampaignOutcomeCommitResult.Committed(null);
+            SetPrivateField(controller, "_victoryScreen", victory);
+
+            int shown = 0;
+            System.Action onShown = () => shown++;
+            EventBus.OnResultsScreenShown += onShown;
+            try
+            {
+                EventBus.RaiseLevelComplete();
+            }
+            finally
+            {
+                EventBus.OnResultsScreenShown -= onShown;
+            }
+
+            Assert.That(shown, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void PendingCompletion_DoesNotAnnounceTheResultsScreen()
+        {
+            VictoryScreenUI victory = CreateVictory(out _victoryObject);
+            CampaignOutcomeSaveFailurePanel panel = CreateFailurePanel(out _failureObject);
+            TestLevelFlowController controller = CreateController(out _controllerObject);
+            controller.NextResult = CampaignOutcomeCommitResult.PendingRetry(
+                null, CampaignSaveFailureCode.IoFailure, "journal-pending");
+            SetPrivateField(controller, "_victoryScreen", victory);
+            SetPrivateField(controller, "_saveFailurePanel", panel);
+
+            int shown = 0;
+            System.Action onShown = () => shown++;
+            EventBus.OnResultsScreenShown += onShown;
+            try
+            {
+                EventBus.RaiseLevelComplete();
+            }
+            finally
+            {
+                EventBus.OnResultsScreenShown -= onShown;
+            }
+
+            Assert.That(shown, Is.EqualTo(0),
+                "A save that was not accepted shows the failure panel, not a win to celebrate.");
+        }
+
+        [Test]
+        public void DuplicateLevelComplete_DoesNotCommitTwice()
+        {
+            TestLevelFlowController controller = CreateController(out _controllerObject);
+            controller.NextResult = CampaignOutcomeCommitResult.Committed(null);
+
+            EventBus.RaiseLevelComplete();
+            EventBus.RaiseLevelComplete();
+
+            Assert.That(controller.CommitCalls, Is.EqualTo(1));
+        }
+
+        private TestLevelFlowController CreateController(out GameObject owner)
+        {
+            owner = new GameObject("LevelFlowController");
+            TestLevelFlowController controller = owner.AddComponent<TestLevelFlowController>();
+            // EditMode never runs OnEnable on AddComponent, and the controller
+            // subscribes to EventBus.OnLevelComplete there — drive it by hand.
+            InvokeLifecycle(controller, "OnEnable");
+            return controller;
+        }
+
+        private static void InvokeLifecycle(MonoBehaviour target, string methodName)
+        {
+            MethodInfo method = null;
+            for (var type = target.GetType(); type != null && method == null; type = type.BaseType)
+                method = type.GetMethod(
+                    methodName, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(method, Is.Not.Null,
+                $"Missing lifecycle method '{methodName}' on {target.GetType().Name}.");
+            method.Invoke(target, null);
+        }
+
+        private VictoryScreenUI CreateVictory(out GameObject owner)
+        {
+            owner = new GameObject("Victory");
+            GameObject panel = new GameObject("VictoryPanel");
+            panel.transform.SetParent(owner.transform);
+            panel.SetActive(false);
+            VictoryScreenUI victory = owner.AddComponent<VictoryScreenUI>();
+            SetPrivateField(victory, "_panel", panel);
+            return victory;
+        }
+
+        private CampaignOutcomeSaveFailurePanel CreateFailurePanel(out GameObject owner)
+        {
+            owner = new GameObject("Failure");
+            GameObject overlay = new GameObject("Overlay");
+            overlay.transform.SetParent(owner.transform);
+            GameObject titleObject = new GameObject("Title");
+            titleObject.transform.SetParent(overlay.transform);
+            GameObject bodyObject = new GameObject("Body");
+            bodyObject.transform.SetParent(overlay.transform);
+            GameObject retryObject = new GameObject("Retry");
+            retryObject.transform.SetParent(overlay.transform);
+            GameObject menuObject = new GameObject("Menu");
+            menuObject.transform.SetParent(overlay.transform);
+            CampaignOutcomeSaveFailurePanel panel = owner.AddComponent<CampaignOutcomeSaveFailurePanel>();
+            SetPrivateField(panel, "_overlayRoot", overlay);
+            SetPrivateField(panel, "_titleText", titleObject.AddComponent<TMPro.TextMeshProUGUI>());
+            SetPrivateField(panel, "_bodyText", bodyObject.AddComponent<TMPro.TextMeshProUGUI>());
+            SetPrivateField(panel, "_retryButton", retryObject.AddComponent<UnityEngine.UI.Button>());
+            SetPrivateField(panel, "_mainMenuButton", menuObject.AddComponent<UnityEngine.UI.Button>());
+            return panel;
+        }
+
+        private static void SetPrivateField(object target, string name, object value)
+        {
+            FieldInfo field = target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic);
+            if (field == null)
+                field = typeof(LevelFlowController).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(field, Is.Not.Null, name);
+            field.SetValue(target, value);
+        }
+
+        private static T GetPrivateField<T>(object target, string name)
+        {
+            FieldInfo field = target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? typeof(VictoryScreenUI).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? typeof(CampaignOutcomeSaveFailurePanel).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(field, Is.Not.Null, name);
+            return (T)field.GetValue(target);
+        }
+
+        private sealed class TestLevelFlowController : LevelFlowController
+        {
+            public CampaignOutcomeCommitResult NextResult;
+            public int CommitCalls { get; private set; }
+
+            protected override CampaignOutcomeCommitResult CommitCompletion()
+            {
+                CommitCalls++;
+                return NextResult;
+            }
+        }
+    }
+}

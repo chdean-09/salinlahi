@@ -1,0 +1,169 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bb4cd3e37d015f4f8d9baa6e4cc1ac5, type: 3}
+  m_Name: EnemyData_Bakod
+  m_EditorClassIdentifier: Salinlahi.Runtime::EnemyDataSO
+  enemyID: bakod
+  displayName: Bakod
+  discoverySubtitle: 
+  description: Bakod is a wall built from broken tablets and forgotten boundaries.
+    Paglimot places it between related words and their missing parts, teaching people
+    to see separation where meaning once connected them.
+  abilityLine: It shields up to two enemies behind it, while leaving the currently
+    needed character open.
+  moveSpeed: 0.85
+  maxHealth: 1
+  walkFrames:
+  - {fileID: -1482015613377898020, guid: 039e07690bd594bc49fee6226b8f5847, type: 3}
+  - {fileID: 6680222527540671204, guid: 039e07690bd594bc49fee6226b8f5847, type: 3}
+  - {fileID: -5268742417072764580, guid: 039e07690bd594bc49fee6226b8f5847, type: 3}
+  - {fileID: 8783759873441989083, guid: 039e07690bd594bc49fee6226b8f5847, type: 3}
+  animatorController: {fileID: 0}
+  abilityVisuals:
+  - id: 2
+    anchor: 0
+    frameMode: 0
+    singleFrameIndex: 0
+    frameRangeStartIndex: 0
+    frameRangeEndIndex: 0
+    activeSprite: {fileID: 21300000, guid: 92e96d2e4a76848b2af41eaeaea86e52, type: 3}
+    activeTint: {r: 1, g: 1, b: 1, a: 1}
+    activeOpacity: 1
+    activationFrames: []
+    activationFramesPerSecond: 8
+    activationTint: {r: 1, g: 1, b: 1, a: 1}
+    activationOpacity: 1
+    exitFrames:
+    - {fileID: 21300000, guid: 92e96d2e4a76848b2af41eaeaea86e52, type: 3}
+    - {fileID: 21300000, guid: e630d9bf210304d34bc74ac01034b8b8, type: 3}
+    - {fileID: 21300000, guid: a8351abc536b646db845b37f5d35a357, type: 3}
+    - {fileID: 21300000, guid: ee3ff75dd267546fa99a03855700442a, type: 3}
+    - {fileID: 21300000, guid: 3aae288fc3ffa4fdfa6f6ca38acb25b6, type: 3}
+    - {fileID: 21300000, guid: eb7fca76806234edca942b322f30cc2c, type: 3}
+    - {fileID: 21300000, guid: 3eb526a9c1cee4ca296ab6ad46c30944, type: 3}
+    - {fileID: 21300000, guid: 15e5bf9294cd54b3bbf409c154ac743a, type: 3}
+    exitFramesPerSecond: 8
+    exitTint: {r: 1, g: 1, b: 1, a: 1}
+    exitOpacity: 1
+    material: {fileID: 0}
+    localOffset: {x: 0, y: 0, z: 0}
+    localScale: {x: 0.18, y: 0.18, z: 1}
+    sortingOrderOffset: 1
+  - id: 4
+    anchor: 1
+    frameMode: 0
+    singleFrameIndex: 0
+    frameRangeStartIndex: 0
+    frameRangeEndIndex: 0
+    activeSprite: {fileID: 21300000, guid: 92e96d2e4a76848b2af41eaeaea86e52, type: 3}
+    activeTint: {r: 1, g: 1, b: 1, a: 1}
+    activeOpacity: 0.95
+    activationFrames: []
+    activationFramesPerSecond: 8
+    activationTint: {r: 1, g: 1, b: 1, a: 1}
+    activationOpacity: 1
+    exitFrames:
+    - {fileID: 21300000, guid: 92e96d2e4a76848b2af41eaeaea86e52, type: 3}
+    - {fileID: 21300000, guid: e630d9bf210304d34bc74ac01034b8b8, type: 3}
+    - {fileID: 21300000, guid: a8351abc536b646db845b37f5d35a357, type: 3}
+    - {fileID: 21300000, guid: ee3ff75dd267546fa99a03855700442a, type: 3}
+    - {fileID: 21300000, guid: 3aae288fc3ffa4fdfa6f6ca38acb25b6, type: 3}
+    - {fileID: 21300000, guid: eb7fca76806234edca942b322f30cc2c, type: 3}
+    - {fileID: 21300000, guid: 3eb526a9c1cee4ca296ab6ad46c30944, type: 3}
+    - {fileID: 21300000, guid: 15e5bf9294cd54b3bbf409c154ac743a, type: 3}
+    exitFramesPerSecond: 8
+    exitTint: {r: 1, g: 1, b: 1, a: 1}
+    exitOpacity: 1
+    material: {fileID: 0}
+    localOffset: {x: 0, y: 0, z: 0}
+    localScale: {x: 0.08, y: 0.08, z: 1}
+    sortingOrderOffset: 1
+  relationshipVisual:
+    firstEndpoint: {fileID: 0}
+    middle: {fileID: 0}
+    secondEndpoint: {fileID: 0}
+    bodyMode: 0
+    endpointLength: 0.45
+    endpointHeight: 0.4
+    bodyHeight: 0.24
+    sortingOrder: -1
+  hudAbilityVisuals: []
+  portraitSprite: {fileID: 0}
+  assignedCharacter: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
+  isDecoy: 0
+  isPhaser: 0
+  phaserInterval: 0.5
+  phaserInitialVisibleDelayMin: 0
+  phaserInitialVisibleDelayMax: 0
+  phaserVisibleHoldMin: 0
+  phaserVisibleHoldMax: 0
+  phaserInvisibleHoldMin: 0
+  phaserInvisibleHoldMax: 0
+  phaserFadeOutDuration: 0.3
+  phaserFadeInDuration: 0.2
+  phaserFadeOutPulseCount: 3
+  phaserFadeOutPulseAmplitude: 0.2
+  dealsContactDamage: 1
+  era: 0
+  overrideBadgeOffset: 1
+  glyphBadgeOffsetOverride: {x: 0, y: 1.5}
+  overrideBadgeScale: 0
+  glyphBadgeScaleOverride: 1
+  zigzagAmplitude: 0
+  zigzagFrequency: 0
+  baseSpeedMultiplier: 1
+  auraRadius: 0
+  auraSpeedMultiplier: 1.3
+  deathFrames: []
+  deathAnimationFps: 8
+  useHurtFeedback: 1
+  hurtPausesMovement: 1
+  hurtPauseDuration: 0.25
+  hurtShakesSprite: 1
+  hurtShakeMagnitude: 0.08
+  hurtShakeDuration: 0.2
+  hurtShakeFrequency: 30
+  hurtSwapsCharacter: 0
+  postHurtCharacter: {fileID: 0}
+  hurtFrames: []
+  hurtAnimationFps: 12
+  chargeMultiplier: 2.5
+  chargeTriggerYNormalized: 0.5
+  pauseDuration: 0.35
+  scrambleRadius: 3
+  scrambleMinGlitchInterval: 0.18
+  scrambleMaxGlitchInterval: 0.36
+  scrambleTrueGlyphMinDwell: 2.6
+  scrambleTrueGlyphMaxDwell: 3.6
+  scrambleFalseBurstCount: 4
+  stainsNearbyGlyphs: 0
+  coversOwnGlyph: 0
+  glyphCoverInitialRevealSeconds: 1.2
+  glyphCoverHiddenSeconds: 2.4
+  glyphCoverRevealSeconds: 0.8
+  spawnsMirrorDecoy: 0
+  mirrorDecoyOffsetX: 1.4
+  mirrorDecoyConfusionPairs: {fileID: 0}
+  blocksEnemiesBehind: 1
+  ashesFirstSlot: 0
+  removesNames: 0
+  chainsNearestEnemy: 0
+  splitsOnDefeat: 0
+  splitSpawnData: {fileID: 0}
+  splitCount: 2
+  splitOffsetX: 0.9
+  spriteScale: 1
+  corruptedMeaning: Separation replaces connection between related syllables.
+  trueMeaning: Context connects syllables into meaningful words.
+  restoredLesson: Use the current word to decide which character matters.
+  learningAbility: 5
+  suppressDiscovery: 0

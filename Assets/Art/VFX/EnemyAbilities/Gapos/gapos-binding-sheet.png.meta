@@ -1,0 +1,286 @@
+fileFormatVersion: 2
+guid: 9856e399101b84453bf40126e8e5afc8
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -385008863883903501
+    second: gapos-binding-sheet_0
+  - first:
+      213: -4276862542365171440
+    second: gapos-binding-sheet_1
+  - first:
+      213: 3629366723021058696
+    second: gapos-binding-sheet_2
+  - first:
+      213: -5791162158272083231
+    second: gapos-binding-sheet_3
+  - first:
+      213: 5233480692186310581
+    second: gapos-binding-sheet_4
+  - first:
+      213: 8418201803782941838
+    second: gapos-binding-sheet_5
+  - first:
+      213: 4042350360023344082
+    second: gapos-binding-sheet_6
+  - first:
+      213: 5842952829913363712
+    second: gapos-binding-sheet_7
+  - first:
+      213: 2576761374465129957
+    second: gapos-binding-sheet_8
+  - first:
+      213: -3108520221318048999
+    second: gapos-binding-sheet_9
+  - first:
+      213: -2995309173271464814
+    second: gapos-binding-sheet_10
+  - first:
+      213: 6432868000827753428
+    second: gapos-binding-sheet_11
+  - first:
+      213: -6092360722501730709
+    second: gapos-binding-sheet_12
+  - first:
+      213: 7275628053680850237
+    second: gapos-binding-sheet_13
+  - first:
+      213: 5934972761375461850
+    second: gapos-binding-sheet_14
+  - first:
+      213: 986417692060346820
+    second: gapos-binding-sheet_15
+  - first:
+      213: 1586189453258958142
+    second: gapos-binding-sheet_16
+  - first:
+      213: 6213168733676875843
+    second: gapos-binding-sheet_17
+  - first:
+      213: -7811575360604119569
+    second: gapos-binding-sheet_18
+  - first:
+      213: -4180356077236184573
+    second: gapos-binding-sheet_19
+  - first:
+      213: 8376648639972559721
+    second: gapos-binding-sheet_20
+  - first:
+      213: 7520727383404160985
+    second: gapos-binding-sheet_21
+  - first:
+      213: -5692209966221161514
+    second: gapos-binding-sheet_22
+  - first:
+      213: 9191876473505396469
+    second: gapos-binding-sheet_23
+  - first:
+      213: 4470307688413671831
+    second: gapos-binding-sheet_24
+  - first:
+      213: 5513601786191557414
+    second: gapos-binding-sheet_25
+  - first:
+      213: 3360963304738590017
+    second: Gapos_LeftLoop
+  - first:
+      213: -7567973249026537653
+    second: Gapos_RightLoop
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 0
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 512
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: iOS
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Gapos_LeftLoop
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 149
+        width: 500
+        height: 400
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 14d011a815a84ae20800000000000000
+      internalID: 3360963304738590017
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Gapos_RightLoop
+      rect:
+        serializedVersion: 2
+        x: 1608
+        y: 149
+        width: 500
+        height: 400
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b474d164d6829f690800000000000000
+      internalID: -7567973249026537653
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    outline: []
+    customData:
+    physicsShape: []
+    bones: []
+    spriteID:
+    internalID: 0
+    vertices: []
+    indices:
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Gapos_LeftLoop: 3360963304738590017
+      Gapos_RightLoop: -7567973249026537653
+      gapos-binding-sheet_0: -385008863883903501
+      gapos-binding-sheet_1: -4276862542365171440
+      gapos-binding-sheet_10: -2995309173271464814
+      gapos-binding-sheet_11: 6432868000827753428
+      gapos-binding-sheet_12: -6092360722501730709
+      gapos-binding-sheet_13: 7275628053680850237
+      gapos-binding-sheet_14: 5934972761375461850
+      gapos-binding-sheet_15: 986417692060346820
+      gapos-binding-sheet_16: 1586189453258958142
+      gapos-binding-sheet_17: 6213168733676875843
+      gapos-binding-sheet_18: -7811575360604119569
+      gapos-binding-sheet_19: -4180356077236184573
+      gapos-binding-sheet_2: 3629366723021058696
+      gapos-binding-sheet_20: 8376648639972559721
+      gapos-binding-sheet_21: 7520727383404160985
+      gapos-binding-sheet_22: -5692209966221161514
+      gapos-binding-sheet_23: 9191876473505396469
+      gapos-binding-sheet_24: 4470307688413671831
+      gapos-binding-sheet_25: 5513601786191557414
+      gapos-binding-sheet_3: -5791162158272083231
+      gapos-binding-sheet_4: 5233480692186310581
+      gapos-binding-sheet_5: 8418201803782941838
+      gapos-binding-sheet_6: 4042350360023344082
+      gapos-binding-sheet_7: 5842952829913363712
+      gapos-binding-sheet_8: 2576761374465129957
+      gapos-binding-sheet_9: -3108520221318048999
+  mipmapLimitGroupName:
+  pSDRemoveMatte: 0
+  userData:
+  assetBundleName:
+  assetBundleVariant:

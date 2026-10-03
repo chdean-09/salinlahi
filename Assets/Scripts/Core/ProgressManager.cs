@@ -1,26 +1,86 @@
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+using Salinlahi.Debug.Sandbox;
+#endif
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// Singleton that persists per-level completion state and star ratings (0-3) to PlayerPrefs.
+/// Singleton that persists per-level completion state and star ratings (0-3) to ProgressPrefs.
 /// Unlocks the next level when a level is completed.
 /// Survives app restarts on Android/iOS.
 /// </summary>
 public class ProgressManager : Singleton<ProgressManager>
 {
+    public const string SelectedLevelKey = "SelectedLevel";
+    // SALIN-225 removed Endless Mode. The key is KEPT so ClearAllProgress still deletes it from
+    // legacy saves that carry it, and so LegacyProgressKeyCatalog's historical v0 shape is intact.
+    public const string EndlessModeKey = "salinlahi.progress.endless_unlocked";
+    public const int Level1FtueTutorialLevelNumber = 1;
+    public const string Level1FtueSeenKey = "salinlahi.tutorial.level1_ftue_seen";
+    public const string Level1FtueBeatIndexKey = "salinlahi.tutorial.level1_ftue_beat_index";
+    public const int Level2AdvancedTutorialLevelNumber = 2;
+    public const string Level2AdvancedSeenKey = "salinlahi.tutorial.level2_advanced_focus_chain_v3_seen";
+    public const string Level2AdvancedBeatIndexKey = "salinlahi.tutorial.level2_advanced_focus_chain_v3_beat_index";
+    private const string LegacyLevel2AdvancedSeenKey = "salinlahi.tutorial.level2_advanced_seen";
+    private const string LegacyLevel2AdvancedBeatIndexKey = "salinlahi.tutorial.level2_advanced_beat_index";
+    private const string LegacyLevel2AdvancedFocusV2SeenKey = "salinlahi.tutorial.level2_advanced_focus_v2_seen";
+    private const string LegacyLevel2AdvancedFocusV2BeatIndexKey = "salinlahi.tutorial.level2_advanced_focus_v2_beat_index";
+
     private const string KeyPrefix = "salinlahi.progress.";
     private const int MaxStars = 3;
-    private const int TotalLevels = 5;
-    private const string EndlessModeKey = "salinlahi.progress.endless_unlocked";
-
+    // SALIN-256: public so the main-menu progress line reads this one number as its
+    // denominator instead of hard-coding a second 15 that could silently drift from it.
+    // Widened rather than wrapped in a new property on purpose — this adds no declaration to
+    // any field block, so it cannot collide with a converging ticket's edit to this file.
+    public const int TotalLevels = 15;
     // Track which level we've processed to handle restarts properly
     private int _lastProcessedLevelId = -1;
 
-    // Cached HeartSystem reference for performance
+    // Cached HeartSystem reference — set via RegisterHeartSystem
     private HeartSystem _cachedHeartSystem;
 
     // Track current level being played for validation
     private int _currentPlayingLevelId = -1;
+    private CampaignProgressOutcome _cachedLevelOutcome;
+    private LearningEvidenceRecorder _levelEvidence;
+    private LevelResults _pendingLevelResults;
+    private LevelObjectiveFlags _pendingObjectiveFlags;
+
+    [Header("Demo and Testing")]
+    [SerializeField]
+    [Tooltip("Makes every campaign level selectable and previews every authored memory. Demo completions show Results without saving progression, stars, or rewards.")]
+    private bool _enableAllLevelsForTesting;
+
+    private LevelConfigSO _testingSelectedLevel;
+
+    /// <summary>
+    /// Demo/testing access override used for manually exercising authored levels in Editor and builds.
+    /// It never writes unlock flags to the active save.
+    /// Demo completions are accepted for display without persisting their progress.
+    /// </summary>
+    public bool EnableAllLevelsForTesting => _enableAllLevelsForTesting;
+
+    /// <summary>
+    /// SALIN-202: the level flow computes LevelResults before committing; the
+    /// star calculation consults them so revised outcomes reflect learning
+    /// accuracy, not hearts alone. Cleared on scene change with the outcome cache.
+    /// </summary>
+    public void SetPendingLevelResults(LevelResults results)
+    {
+        _pendingLevelResults = results;
+    }
+
+    /// <summary>
+    /// SALIN-220: the level flow derives the five per-objective flags before committing, from the
+    /// phases the run actually finished. Cleared on scene change and on abort with the rest of the
+    /// attempt-scoped state.
+    /// </summary>
+    public void SetPendingObjectiveFlags(LevelObjectiveFlags flags)
+    {
+        _pendingObjectiveFlags = flags;
+    }
 
     protected override void Awake()
     {
@@ -28,10 +88,261 @@ public class ProgressManager : Singleton<ProgressManager>
         DebugLogger.Log("ProgressManager: Initialized");
     }
 
+    private bool UsesRevisedProgress => SaveManager.Instance != null &&
+        SaveManager.Instance.Mode == SaveManagerMode.RevisedReady &&
+        SaveManager.Instance.Repository != null && SaveManager.Instance.OutcomeCoordinator != null;
+
+    private bool IsRevisedBlocked => SaveManager.Instance != null &&
+        SaveManager.Instance.Mode == SaveManagerMode.RevisedBlocked;
+
+    public int GetSelectedLevelNumber()
+    {
+        if (TryGetTestingSelectedLevel(out LevelConfigSO testingLevel))
+            return testingLevel.levelNumber;
+
+        if (UsesRevisedProgress)
+        {
+            string selectedId = SaveManager.Instance.Repository.ActiveLevelId;
+            if (SaveManager.Instance.Campaign.TryGetLevel(selectedId, out LevelConfigSO selected))
+                return selected.levelNumber;
+            return 1;
+        }
+        return ProgressPrefs.GetInt(SelectedLevelKey, 1);
+    }
+
+    public string GetSelectedLevelId()
+    {
+        if (TryGetTestingSelectedLevel(out LevelConfigSO testingLevel))
+            return testingLevel.stableId;
+
+        if (UsesRevisedProgress)
+            return SaveManager.Instance.Repository.ActiveLevelId;
+        return ResolveLegacyLevelId(ProgressPrefs.GetInt(SelectedLevelKey, 1));
+    }
+
+    public bool TrySetSelectedLevel(LevelConfigSO level)
+    {
+        if (level == null) return false;
+
+#if UNITY_EDITOR
+        if (QaSessionContext.IsActive)
+            return level.levelNumber >= 1 && level.levelNumber <= TotalLevels;
+#endif
+
+        if (_enableAllLevelsForTesting)
+        {
+            if (level.levelNumber < 1 || level.levelNumber > TotalLevels)
+                return false;
+
+            _testingSelectedLevel = level;
+            DebugLogger.Log(
+                $"ProgressManager: Testing override selected Level {level.levelNumber} ({level.stableId}) without changing saved unlock state.");
+            return true;
+        }
+
+        if (UsesRevisedProgress)
+            return SaveManager.Instance.Repository.TrySetActiveLevel(level.stableId);
+        if (IsRevisedBlocked) return false;
+        ProgressPrefs.SetInt(SelectedLevelKey, level.levelNumber);
+        ProgressPrefs.Save();
+        return true;
+    }
+
+    public bool TrySetSelectedLevelNumber(int levelNumber)
+    {
+        if (EnableAllLevelsForTesting)
+        {
+            if (!TryResolveRevisedLevel(levelNumber, out LevelConfigSO testingLevel)) return false;
+            return TrySetSelectedLevel(testingLevel);
+        }
+
+        if (UsesRevisedProgress)
+        {
+            if (!TryResolveRevisedLevel(levelNumber, out LevelConfigSO level)) return false;
+            return TrySetSelectedLevel(level);
+        }
+        if (IsRevisedBlocked || levelNumber < 1 || levelNumber > TotalLevels) return false;
+        ProgressPrefs.SetInt(SelectedLevelKey, levelNumber);
+        ProgressPrefs.Save();
+        return true;
+    }
+
+    /// <summary>
+    /// SALIN-136: classifies where Play should route — a new journey at Level 1, the
+    /// next incomplete unlocked level, the completed-journey review state, or Blocked
+    /// while a blocking save notice is pending. <paramref name="levelNumber"/> is the
+    /// routable target for <see cref="JourneyEntryKind.NewJourney"/> and
+    /// <see cref="JourneyEntryKind.ContinueLevel"/> (1 otherwise). Read-only: the
+    /// routed selection is committed separately via <see cref="TrySetSelectedLevelNumber"/>.
+    /// </summary>
+    public JourneyEntryKind GetJourneyEntryPoint(out int levelNumber)
+    {
+        levelNumber = 1;
+        if (UsesRevisedProgress)
+        {
+            JourneyEntryPoint entry = SaveManager.Instance.Repository.ResolveJourneyEntryPoint();
+            if ((entry.Kind == JourneyEntryKind.NewJourney || entry.Kind == JourneyEntryKind.ContinueLevel)
+                && SaveManager.Instance.Campaign.TryGetLevel(entry.LevelId, out LevelConfigSO level))
+                levelNumber = level.levelNumber;
+            return entry.Kind;
+        }
+        if (IsRevisedBlocked)
+            return JourneyEntryKind.Blocked;
+        return ResolveLegacyJourneyEntry(out levelNumber);
+    }
+
+    private JourneyEntryKind ResolveLegacyJourneyEntry(out int levelNumber)
+    {
+        levelNumber = 1;
+        bool anyCompleted = false;
+        bool allCompleted = true;
+        int firstUnlockedIncomplete = -1;
+        int firstIncomplete = -1;
+
+        for (int i = 1; i <= TotalLevels; i++)
+        {
+            if (IsLevelCompleted(i))
+            {
+                anyCompleted = true;
+                continue;
+            }
+            allCompleted = false;
+            if (firstIncomplete < 0)
+                firstIncomplete = i;
+            if (firstUnlockedIncomplete < 0 && IsLevelUnlocked(i))
+                firstUnlockedIncomplete = i;
+        }
+
+        if (allCompleted)
+            return JourneyEntryKind.CompletedJourney;
+        if (!anyCompleted)
+            return JourneyEntryKind.NewJourney;
+
+        levelNumber = firstUnlockedIncomplete > 0 ? firstUnlockedIncomplete : firstIncomplete;
+        return JourneyEntryKind.ContinueLevel;
+    }
+
+    /// <summary>
+    /// SALIN-137: classifies one level as locked / unlocked / completed and names the
+    /// single preceding level that would unlock it. Read-only — this restates the
+    /// authored rule in <see cref="CampaignOutcomeCoordinator.ApplyLevelProgression"/>
+    /// for display and never unlocks anything.
+    /// <paramref name="requiredLevelNumber"/> is 0 when there is nothing to explain
+    /// (the level is reachable, is the first level, or the state is
+    /// <see cref="LevelLockState.Unknown"/>).
+    /// A blocked save resolves to <see cref="LevelLockState.Unknown"/> so callers stay
+    /// silent instead of blaming a prerequisite — <see cref="CampaignSaveNoticePanel"/>
+    /// already owns that story.
+    /// </summary>
+    public LevelLockState GetLevelLockState(
+        int levelNumber, out int requiredLevelNumber, out bool requirementCrossesEra)
+    {
+        return GetLevelLockState(
+            levelNumber, out requiredLevelNumber, out requirementCrossesEra, out _);
+    }
+
+    /// <summary>
+    /// SALIN-220 AC6 overload. Also reports which completion objective the prerequisite still
+    /// owes, or <c>null</c> for the ordinary "not played yet" lock. Only the revised progress
+    /// path can populate it; the legacy path keeps no objective record and always reports null.
+    /// </summary>
+    public LevelLockState GetLevelLockState(
+        int levelNumber,
+        out int requiredLevelNumber,
+        out bool requirementCrossesEra,
+        out string missingObjectiveId)
+    {
+        requiredLevelNumber = 0;
+        requirementCrossesEra = false;
+        missingObjectiveId = null;
+
+        if (levelNumber < 1 || levelNumber > TotalLevels)
+            return LevelLockState.Unknown;
+
+#if UNITY_EDITOR
+        if (QaSessionContext.IsActive)
+            return LevelLockState.Unlocked;
+#endif
+
+        if (EnableAllLevelsForTesting)
+            return IsLevelCompleted(levelNumber) ? LevelLockState.Completed : LevelLockState.Unlocked;
+
+        if (UsesRevisedProgress)
+        {
+            LevelLockStatus status =
+                SaveManager.Instance.Repository.ResolveLevelLock(GetRevisedLevelId(levelNumber));
+            if (status.HasRequirement)
+            {
+                requiredLevelNumber =
+                    SaveManager.Instance.Campaign != null &&
+                    SaveManager.Instance.Campaign.TryGetLevel(status.RequiredLevelId, out LevelConfigSO required)
+                        ? required.levelNumber
+                        : status.RequiredLevelOrder;
+                requirementCrossesEra = status.RequirementCrossesEra;
+            }
+            missingObjectiveId = status.MissingObjectiveId;
+            return status.State;
+        }
+
+        if (IsRevisedBlocked)
+            return LevelLockState.Unknown;
+
+        return ResolveLegacyLevelLock(levelNumber, out requiredLevelNumber);
+    }
+
+    /// <summary>
+    /// Legacy PlayerPrefs mirror of <see cref="GetLevelLockState"/>. The legacy path
+    /// unlocks <c>levelID + 1</c> on completion, which matches the revised rule, but it
+    /// has no era concept — era-crossing phrasing degrades to the plain "complete the
+    /// previous level" form there.
+    /// </summary>
+    private LevelLockState ResolveLegacyLevelLock(int levelNumber, out int requiredLevelNumber)
+    {
+        requiredLevelNumber = 0;
+        if (IsLevelCompleted(levelNumber))
+            return LevelLockState.Completed;
+        if (IsLevelUnlocked(levelNumber))
+            return LevelLockState.Unlocked;
+        if (levelNumber > 1)
+            requiredLevelNumber = levelNumber - 1;
+        return LevelLockState.Locked;
+    }
+
+    public bool TryGetSelectedLevel(out LevelConfigSO level)
+    {
+        if (TryGetTestingSelectedLevel(out level))
+            return true;
+
+        level = null;
+        if (UsesRevisedProgress)
+            return SaveManager.Instance.Campaign.TryGetLevel(GetSelectedLevelId(), out level);
+        return false;
+    }
+
+    private bool TryGetTestingSelectedLevel(out LevelConfigSO level)
+    {
+#if UNITY_EDITOR
+        if (QaSessionContext.TryGetSelectedLevel(out level))
+            return true;
+#endif
+
+        if (_enableAllLevelsForTesting && _testingSelectedLevel != null)
+        {
+            level = _testingSelectedLevel;
+            return true;
+        }
+
+        level = null;
+        return false;
+    }
+
     private void OnEnable()
     {
         EventBus.OnLevelComplete += HandleLevelComplete;
         EventBus.OnWaveStarted += HandleWaveStarted;
+        EventBus.OnPronunciationRequested += HandlePronunciationRequested;
+        EventBus.OnLevelAttemptAborted += HandleLevelAttemptAborted;
+        EventBus.OnSpokenPronunciationRequested += HandleSpokenPronunciationRequested;
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
@@ -39,28 +350,119 @@ public class ProgressManager : Singleton<ProgressManager>
     {
         EventBus.OnLevelComplete -= HandleLevelComplete;
         EventBus.OnWaveStarted -= HandleWaveStarted;
+        EventBus.OnPronunciationRequested -= HandlePronunciationRequested;
+        EventBus.OnLevelAttemptAborted -= HandleLevelAttemptAborted;
+        EventBus.OnSpokenPronunciationRequested -= HandleSpokenPronunciationRequested;
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
     /// <summary>
-    /// Called when a new scene is loaded. Cache HeartSystem reference if in gameplay.
+    /// SALIN-141. Discards the ATTEMPT-scoped caches for a level the player restarted or
+    /// left. Committed progress is untouched: no PlayerPrefs key is written or deleted,
+    /// and no SaveManager repository state is disturbed. In particular the outcome
+    /// coordinator is not driven from here — a pending outcome belonging to a previously
+    /// completed level must survive an abort of the level after it.
+    /// </summary>
+    private void HandleLevelAttemptAborted()
+    {
+        _cachedLevelOutcome = null;
+        _levelEvidence = null;
+        _pendingLevelResults = null;
+        _pendingObjectiveFlags = null;
+        _cachedHeartSystem = null;
+        _lastProcessedLevelId = -1;
+
+        DebugLogger.Log("ProgressManager: Level attempt aborted. Uncommitted attempt state discarded.");
+    }
+
+    /// <summary>
+    /// SALIN-202: Sound-dimension evidence flows through this defined event — an
+    /// audible pronunciation records one exposure on the symbol. Exposure is not
+    /// recall, so the answer counts as visible.
+    /// </summary>
+    private void HandlePronunciationRequested(BaybayinCharacterSO character)
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        if (SandboxMode.IsActive)
+            return;
+#endif
+        if (character == null || character.pronunciationClip == null ||
+            string.IsNullOrEmpty(character.stableId))
+            return;
+
+        LevelEvidence.RecordAttempt(
+            character.stableId,
+            LearningContentKind.Symbol,
+            MasteryDimension.Sound,
+            success: true,
+            answerWasVisible: true);
+    }
+
+    /// <summary>
+    /// SALIN-157: the spoken-value-aware pronunciation event records the same
+    /// Sound-dimension exposure, guarded on the resolved clip — mirroring the
+    /// legacy guard above — so a clipless learning card records nothing.
+    /// </summary>
+    private void HandleSpokenPronunciationRequested(BaybayinCharacterSO character, string spokenValueId)
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        if (SandboxMode.IsActive)
+            return;
+#endif
+        if (character == null || string.IsNullOrEmpty(character.stableId) ||
+            SpokenValueResolver.ResolveClip(character, spokenValueId) == null)
+            return;
+
+        LevelEvidence.RecordAttempt(
+            character.stableId,
+            LearningContentKind.Symbol,
+            MasteryDimension.Sound,
+            success: true,
+            answerWasVisible: true);
+    }
+
+    /// <summary>
+    /// Called by HeartSystem.OnEnable() to register itself.
+    /// Replaces FindFirstObjectByType scene search.
+    /// </summary>
+    public void RegisterHeartSystem(HeartSystem heartSystem)
+    {
+        _cachedHeartSystem = heartSystem;
+        DebugLogger.Log("ProgressManager: HeartSystem registered.");
+    }
+
+    /// <summary>
+    /// Called by HeartSystem.OnDisable() to deregister.
+    /// </summary>
+    public void DeregisterHeartSystem(HeartSystem heartSystem)
+    {
+        if (_cachedHeartSystem == heartSystem)
+        {
+            _cachedHeartSystem = null;
+            DebugLogger.Log("ProgressManager: HeartSystem deregistered.");
+        }
+    }
+
+    /// <summary>
+    /// Called when a new scene is loaded.
     /// </summary>
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        // Clear cached HeartSystem when entering a new scene
-        _cachedHeartSystem = null;
+        // The HeartSystem of the scene being loaded has ALREADY registered by the time this
+        // runs: Unity raises sceneLoaded after the new scene's Awake/OnEnable pass. Clearing
+        // the cache here therefore discarded the live registration rather than a stale one,
+        // and every level start logged "HeartSystem not registered at wave 0 start".
+        // Lifetime is handled by DeregisterHeartSystem, whose identity check already refuses
+        // to unseat a newer HeartSystem when the outgoing scene's copy tears down late.
+        _cachedLevelOutcome = null;
+        _levelEvidence = null;
+        _pendingLevelResults = null;
+        _pendingObjectiveFlags = null;
 
-        // Try to find HeartSystem if we're in the gameplay scene
         if (scene.name.Contains("Gameplay") || scene.name.Contains("Game"))
         {
-            _cachedHeartSystem = FindObjectOfType<HeartSystem>();
-            if (_cachedHeartSystem != null)
-            {
-                DebugLogger.Log("ProgressManager: Cached HeartSystem reference.");
-            }
-
             // Read the selected level when entering gameplay
-            _currentPlayingLevelId = PlayerPrefs.GetInt("SelectedLevel", 1);
+            _currentPlayingLevelId = GetSelectedLevelNumber();
             DebugLogger.Log($"ProgressManager: Starting Level {_currentPlayingLevelId}");
         }
         else
@@ -72,20 +474,26 @@ public class ProgressManager : Singleton<ProgressManager>
 
     private void HandleWaveStarted(int waveIndex)
     {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        if (SandboxMode.IsActive)
+            return;
+#endif
+
         // Wave 0 indicates start of a new level attempt
         if (waveIndex == 0)
         {
-            // Refresh HeartSystem cache at level start
+            // HeartSystem should have already registered via OnEnable
             if (_cachedHeartSystem == null)
             {
-                _cachedHeartSystem = FindObjectOfType<HeartSystem>();
+                DebugLogger.LogWarning("ProgressManager: HeartSystem not registered at wave 0 start.");
             }
 
             // Update current level ID from PlayerPrefs (in case it changed)
-            int levelId = PlayerPrefs.GetInt("SelectedLevel", 1);
+            int levelId = GetSelectedLevelNumber();
             if (levelId != _currentPlayingLevelId)
             {
                 _currentPlayingLevelId = levelId;
+                _cachedLevelOutcome = null;
                 DebugLogger.Log($"ProgressManager: Level changed to {_currentPlayingLevelId}");
             }
 
@@ -95,8 +503,35 @@ public class ProgressManager : Singleton<ProgressManager>
 
     private void HandleLevelComplete()
     {
+#if UNITY_EDITOR
+        if (QaSessionContext.IsActive)
+        {
+            QaSessionContext.Record("outcome", "level-complete; campaign progress commit suppressed");
+            return;
+        }
+#endif
+
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        if (SandboxMode.IsActive)
+        {
+            DebugLogger.Log("ProgressManager: Ignored LevelComplete while sandbox mode is active.");
+            return;
+        }
+#endif
+
+        // SALIN-141: an attempt being torn down can never write stars or unlock the
+        // next level, however late the completion event arrives.
+        if (GameManager.Instance != null && GameManager.Instance.IsAttemptAbortInProgress)
+        {
+            DebugLogger.Log("ProgressManager: Ignored LevelComplete for an aborted level attempt.");
+            return;
+        }
+
+        if (UsesRevisedProgress)
+            return;
+
         // Get current level ID from tracking or PlayerPrefs
-        int currentLevelId = _currentPlayingLevelId > 0 ? _currentPlayingLevelId : PlayerPrefs.GetInt("SelectedLevel", 1);
+        int currentLevelId = _currentPlayingLevelId > 0 ? _currentPlayingLevelId : GetSelectedLevelNumber();
 
         // Validate level ID
         if (currentLevelId < 1 || currentLevelId > TotalLevels)
@@ -116,7 +551,7 @@ public class ProgressManager : Singleton<ProgressManager>
         // Calculate stars based on remaining hearts BEFORE any scene transition
         int stars = CalculateStars();
 
-        // Mark level complete (this also unlocks next level and calls PlayerPrefs.Save())
+        // Mark level complete (this also unlocks next level and calls ProgressPrefs.Save())
         MarkLevelComplete(currentLevelId, stars);
 
         // Track that we've processed this level
@@ -131,18 +566,19 @@ public class ProgressManager : Singleton<ProgressManager>
     /// </summary>
     private int CalculateStars()
     {
-        // Use cached HeartSystem if available, otherwise find it
+        // SALIN-202: on revised saves the documented accuracy-aware formula wins
+        // when the flow computed results for this completion; the legacy
+        // PlayerPrefs path stays hearts-only.
+        if (UsesRevisedProgress && _pendingLevelResults != null)
+            return Mathf.Clamp(_pendingLevelResults.Stars, 1, MaxStars);
+
+        // HeartSystem should have already registered via OnEnable
         HeartSystem heartSystem = _cachedHeartSystem;
-        if (heartSystem == null)
-        {
-            heartSystem = FindObjectOfType<HeartSystem>();
-            _cachedHeartSystem = heartSystem;
-        }
 
         if (heartSystem == null)
         {
-            DebugLogger.LogWarning("ProgressManager: HeartSystem not found, defaulting to 1 star.");
-            return 1; // Default to 1 star if we can't determine hearts
+            DebugLogger.LogWarning("ProgressManager: HeartSystem not registered, defaulting to 1 star.");
+            return 1;
         }
 
         int currentHearts = heartSystem.GetCurrentHearts();
@@ -169,6 +605,30 @@ public class ProgressManager : Singleton<ProgressManager>
     /// <param name="stars">Star count (0-3), will be clamped</param>
     public void MarkLevelComplete(int levelID, int stars)
     {
+#if UNITY_EDITOR
+        if (QaSessionContext.IsActive)
+        {
+            QaSessionContext.Record("outcome", $"mark-level-complete level={levelID} stars={stars}; suppressed");
+            return;
+        }
+#endif
+
+        if (EnableAllLevelsForTesting)
+            return;
+
+        if (UsesRevisedProgress)
+        {
+            if (TryResolveRevisedLevel(levelID, out LevelConfigSO revisedLevel))
+            {
+                _cachedLevelOutcome = BuildOutcome(
+                    revisedLevel, Mathf.Clamp(stars, 1, MaxStars), null, null, null);
+                SaveManager.Instance.OutcomeCoordinator.TryCommit(_cachedLevelOutcome);
+            }
+            return;
+        }
+        if (IsRevisedBlocked)
+            return;
+
         // Validate level ID
         if (levelID < 1 || levelID > TotalLevels)
         {
@@ -183,28 +643,23 @@ public class ProgressManager : Singleton<ProgressManager>
         int existingStars = GetStars(levelID);
         if (stars > existingStars)
         {
-            PlayerPrefs.SetInt(StarsKey(levelID), stars);
+            ProgressPrefs.SetInt(StarsKey(levelID), stars);
             DebugLogger.Log($"ProgressManager: Updated Level {levelID} stars: {existingStars} -> {stars}");
         }
 
         // Mark this level as completed (unlock key)
-        PlayerPrefs.SetInt(UnlockedKey(levelID), 1);
+        ProgressPrefs.SetInt(UnlockedKey(levelID), 1);
 
         // Unlock next level (if not the last one)
         int nextLevelID = levelID + 1;
         if (nextLevelID <= TotalLevels)
         {
-            PlayerPrefs.SetInt(UnlockedKey(nextLevelID), 1);
+            ProgressPrefs.SetInt(UnlockedKey(nextLevelID), 1);
             DebugLogger.Log($"ProgressManager: Unlocked Level {nextLevelID}");
-        }
-        else if (levelID == TotalLevels)
-        {
-            // All levels completed - unlock endless mode
-            UnlockEndlessMode();
         }
 
         // Save immediately to ensure persistence before any scene transition
-        PlayerPrefs.Save();
+        ProgressPrefs.Save();
     }
 
     /// <summary>
@@ -221,6 +676,18 @@ public class ProgressManager : Singleton<ProgressManager>
             return false;
         }
 
+#if UNITY_EDITOR
+        if (QaSessionContext.IsActive)
+            return true;
+#endif
+
+        if (EnableAllLevelsForTesting)
+            return true;
+
+        if (UsesRevisedProgress)
+            return SaveManager.Instance.Repository.IsLevelUnlocked(GetRevisedLevelId(levelID));
+        if (IsRevisedBlocked) return false;
+
         // Level 1 is always unlocked by default
         if (levelID == 1)
         {
@@ -228,7 +695,7 @@ public class ProgressManager : Singleton<ProgressManager>
         }
 
         // Check if the level has been unlocked
-        return PlayerPrefs.GetInt(UnlockedKey(levelID), 0) == 1;
+        return ProgressPrefs.GetInt(UnlockedKey(levelID), 0) == 1;
     }
 
     /// <summary>
@@ -251,7 +718,10 @@ public class ProgressManager : Singleton<ProgressManager>
             return 0;
         }
 
-        return PlayerPrefs.GetInt(StarsKey(levelID), 0);
+        if (UsesRevisedProgress)
+            return SaveManager.Instance.Repository.GetBestStars(GetRevisedLevelId(levelID));
+        if (IsRevisedBlocked) return 0;
+        return ProgressPrefs.GetInt(StarsKey(levelID), 0);
     }
 
     /// <summary>
@@ -268,60 +738,276 @@ public class ProgressManager : Singleton<ProgressManager>
     }
 
     /// <summary>
-    /// Returns true if endless mode is unlocked.
-    /// Endless mode unlocks when all levels are completed.
-    /// </summary>
-    public bool IsEndlessModeUnlocked()
-    {
-        return PlayerPrefs.GetInt(EndlessModeKey, 0) == 1;
-    }
-
-    /// <summary>
-    /// Unlocks endless mode.
-    /// </summary>
-    public void UnlockEndlessMode()
-    {
-        if (!IsEndlessModeUnlocked())
-        {
-            PlayerPrefs.SetInt(EndlessModeKey, 1);
-            DebugLogger.Log("ProgressManager: Endless mode unlocked!");
-        }
-    }
-
-    /// <summary>
     /// Clears all progress data (only removes namespaced keys).
     /// Other PlayerPrefs (audio volume, etc.) are untouched.
     /// </summary>
     public void ClearAllProgress()
     {
+        if (UsesRevisedProgress)
+        {
+            CampaignOutcomeCommitResult resetResult = SaveManager.Instance.ResetJourneyAtomically();
+            if (resetResult.IsAccepted)
+            {
+                CharacterUnlockProgress.ClearAllUnlocked();
+                EnemyDiscoveryProgress.ClearAllDiscovered();
+                BossDiscoveryProgress.ClearAllDiscovered();
+                EnemyIntroductionProgress.ClearAllIntroduced();
+                ProgressPrefs.Save();
+            }
+            _lastProcessedLevelId = -1;
+            _currentPlayingLevelId = -1;
+            _cachedLevelOutcome = null;
+            return;
+        }
+        if (IsRevisedBlocked) return;
         for (int i = 1; i <= TotalLevels; i++)
         {
-            PlayerPrefs.DeleteKey(UnlockedKey(i));
-            PlayerPrefs.DeleteKey(StarsKey(i));
+            ProgressPrefs.DeleteKey(UnlockedKey(i));
+            ProgressPrefs.DeleteKey(StarsKey(i));
         }
-        PlayerPrefs.DeleteKey(EndlessModeKey);
+        ProgressPrefs.DeleteKey(EndlessModeKey);
+        ProgressPrefs.DeleteKey(Level1FtueSeenKey);
+        ProgressPrefs.DeleteKey(Level1FtueBeatIndexKey);
+        ProgressPrefs.DeleteKey(Level2AdvancedSeenKey);
+        ProgressPrefs.DeleteKey(Level2AdvancedBeatIndexKey);
+        ProgressPrefs.DeleteKey(LegacyLevel2AdvancedSeenKey);
+        ProgressPrefs.DeleteKey(LegacyLevel2AdvancedBeatIndexKey);
+        ProgressPrefs.DeleteKey(LegacyLevel2AdvancedFocusV2SeenKey);
+        ProgressPrefs.DeleteKey(LegacyLevel2AdvancedFocusV2BeatIndexKey);
+        CharacterUnlockProgress.ClearAllUnlocked();
+        EnemyDiscoveryProgress.ClearAllDiscovered();
+        BossDiscoveryProgress.ClearAllDiscovered();
+        EnemyIntroductionProgress.ClearAllIntroduced();
 
         // Reset tracking
         _lastProcessedLevelId = -1;
         _currentPlayingLevelId = -1;
 
-        PlayerPrefs.Save();
+        ProgressPrefs.Save();
         DebugLogger.Log("ProgressManager: All progress cleared.");
     }
 
+    public CampaignOutcomeCommitResult CommitCurrentLevelOutcome(
+        IReadOnlyList<string> unlockedSymbolIds = null,
+        IReadOnlyList<string> unlockedMemoryIds = null,
+        IReadOnlyList<string> claimedRewardIds = null)
+    {
+#if UNITY_EDITOR
+        if (QaSessionContext.IsActive)
+            return CampaignOutcomeCommitResult.Rejected(
+                null, CampaignSaveFailureCode.InvalidStructure, "qa-session-progress-isolated");
+#endif
+
+        // SALIN-141: the commit choke point for both save paths. An attempt the player
+        // restarted or left must never write stars, unlocks, or a campaign outcome.
+        if (GameManager.Instance != null && GameManager.Instance.IsAttemptAbortInProgress)
+        {
+            DebugLogger.Log("ProgressManager: Refused to commit an aborted level attempt.");
+            return CampaignOutcomeCommitResult.Rejected(
+                null, CampaignSaveFailureCode.InvalidStructure, "level-attempt-aborted");
+        }
+
+        // Campaign saves require sequential progression. Demo selection intentionally bypasses
+        // those locks, so accept the attempt for Results without producing an invalid journal
+        // or pretending that completion was persisted. Blocking save states still fail below.
+        if (EnableAllLevelsForTesting && !IsRevisedBlocked)
+        {
+            if (!TryGetSelectedLevel(out LevelConfigSO demoLevel) ||
+                demoLevel.levelNumber < 1 || demoLevel.levelNumber > TotalLevels ||
+                (UsesRevisedProgress &&
+                 (!SaveManager.Instance.Campaign.TryGetLevel(demoLevel.stableId, out LevelConfigSO configuredLevel) ||
+                  configuredLevel.levelNumber != demoLevel.levelNumber)))
+                return CampaignOutcomeCommitResult.Rejected(
+                    null, CampaignSaveFailureCode.InvalidStructure, "demo-level-invalid");
+
+            return CampaignOutcomeCommitResult.DemoCompleted();
+        }
+
+        if (UsesRevisedProgress)
+        {
+            if (_cachedLevelOutcome == null)
+            {
+                if (!TryGetSelectedLevel(out LevelConfigSO level))
+                    return CampaignOutcomeCommitResult.Rejected(
+                        null, CampaignSaveFailureCode.InvalidStructure, "active-level-missing");
+                _cachedLevelOutcome = BuildOutcome(
+                    level, CalculateStars(), unlockedSymbolIds, unlockedMemoryIds, claimedRewardIds);
+            }
+            return SaveManager.Instance.OutcomeCoordinator.TryCommit(_cachedLevelOutcome);
+        }
+
+        if (IsRevisedBlocked)
+            return CampaignOutcomeCommitResult.Blocked(
+                null, CampaignSaveFailureCode.InvalidStructure, "revised-save-blocked");
+
+        int currentLevelId = _currentPlayingLevelId > 0 ? _currentPlayingLevelId : GetSelectedLevelNumber();
+        if (currentLevelId < 1 || currentLevelId > TotalLevels)
+            currentLevelId = 1;
+        MarkLevelComplete(currentLevelId, CalculateStars());
+        return CampaignOutcomeCommitResult.Committed(null);
+    }
+
+    public CampaignOutcomeCommitResult RetryPendingLevelOutcome()
+    {
+        if (SaveManager.Instance == null)
+            return CampaignOutcomeCommitResult.Blocked(
+                null, CampaignSaveFailureCode.InvalidStructure, "save-manager-missing");
+        return SaveManager.Instance.RetryPendingOutcome();
+    }
+
+    private CampaignProgressOutcome BuildOutcome(
+        LevelConfigSO level,
+        int stars,
+        IReadOnlyList<string> unlockedSymbolIds,
+        IReadOnlyList<string> unlockedMemoryIds,
+        IReadOnlyList<string> claimedRewardIds)
+    {
+        CampaignProgressOutcome outcome = new CampaignProgressOutcome
+        {
+            outcomeSchemaVersion = CampaignProgressOutcome.CurrentOutcomeSchemaVersion,
+            outcomeId = "outcome." + Guid.NewGuid().ToString("N"),
+            journeyGenerationId = SaveManager.Instance.Repository.CurrentJourneyGenerationId,
+            campaignId = SaveManager.Instance.Campaign.manifest.campaignId,
+            contentSchemaVersion = SaveManager.Instance.Campaign.manifest.contentSchemaVersion,
+            levelId = level.stableId,
+            stars = Mathf.Clamp(stars, 1, MaxStars),
+            metrics = BuildMetrics(_pendingLevelResults),
+            unlockedSymbolIds = CopyAndSort(unlockedSymbolIds),
+            unlockedMemoryIds = CopyAndSort(unlockedMemoryIds),
+            claimedRewardIds = CopyAndSort(claimedRewardIds),
+            completedAtUtc = DateTime.UtcNow.ToString("O"),
+            sessionKind = LearningSessionKind.LevelAttempt,
+            evidence = _levelEvidence?.Build() ?? new LearningEvidenceBatch
+            {
+                levelId = level.stableId,
+                sessionKind = LearningSessionKind.LevelAttempt,
+            },
+        };
+
+        // SALIN-220. A null pending set means this commit path never ran the level flow, so no
+        // objective detail was recorded. That is the same situation as a pre-SALIN-220 journal and
+        // gets the same answer: all five satisfied. Writing false there would withhold an unlock
+        // on the strength of information nobody ever collected.
+        LevelObjectiveGate.CopyTo(_pendingObjectiveFlags, outcome);
+        return outcome;
+    }
+
+    /// <summary>
+    /// SALIN-140. Carries the computed results into the outcome so they commit with it. Before this,
+    /// only <c>Stars</c> was read off the pending results and every other metric — including
+    /// <c>metric.score</c> — was discarded once the Results screen closed.
+    /// </summary>
+    /// <remarks>
+    /// Sorted by metric ID: the journal's integrity hash covers the serialized document, so a
+    /// dictionary's arbitrary enumeration order would checksum identical data differently.
+    /// </remarks>
+    private static List<LevelMetricRecord> BuildMetrics(LevelResults results)
+    {
+        var records = new List<LevelMetricRecord>();
+        if (results?.Metrics == null)
+            return records;
+
+        foreach (KeyValuePair<string, float> metric in results.Metrics)
+        {
+            if (string.IsNullOrEmpty(metric.Key) ||
+                float.IsNaN(metric.Value) || float.IsInfinity(metric.Value))
+                continue;
+            records.Add(new LevelMetricRecord(metric.Key, metric.Value));
+        }
+
+        records.Sort((left, right) => string.CompareOrdinal(left.metricId, right.metricId));
+        return records;
+    }
+
+    /// <summary>
+    /// Session-scoped evidence recorder for the level currently being played. Created on demand so
+    /// callers never have to null-check, and discarded in OnSceneLoaded when the level is left.
+    /// </summary>
+    public LearningEvidenceRecorder LevelEvidence
+    {
+        get
+        {
+            if (_levelEvidence == null)
+                _levelEvidence = new LearningEvidenceRecorder(
+                    GetSelectedLevelId(), LearningSessionKind.LevelAttempt);
+            return _levelEvidence;
+        }
+    }
+
+    /// <summary>
+    /// Commits a free-practice or scheduled-review batch. The result is returned rather than
+    /// surfaced: per spec 11 a practice commit failure must not raise the blocking save panel.
+    /// </summary>
+    public CampaignOutcomeCommitResult CommitPracticeSession(LearningEvidenceBatch batch)
+    {
+#if UNITY_EDITOR
+        if (QaSessionContext.IsActive)
+            return CampaignOutcomeCommitResult.Rejected(
+                null, CampaignSaveFailureCode.InvalidStructure, "qa-session-progress-isolated");
+#endif
+
+        if (batch == null)
+            return CampaignOutcomeCommitResult.Rejected(
+                null, CampaignSaveFailureCode.InvalidStructure, "evidence-batch-missing");
+        if (!UsesRevisedProgress)
+            return CampaignOutcomeCommitResult.Rejected(
+                null, CampaignSaveFailureCode.InvalidStructure, "revised-progress-unavailable");
+        if (!TryGetSelectedLevel(out LevelConfigSO level))
+            return CampaignOutcomeCommitResult.Rejected(
+                null, CampaignSaveFailureCode.InvalidStructure, "active-level-missing");
+
+        batch.levelId = level.stableId;
+        CampaignProgressOutcome outcome = new CampaignProgressOutcome
+        {
+            outcomeSchemaVersion = CampaignProgressOutcome.CurrentOutcomeSchemaVersion,
+            outcomeId = "outcome." + Guid.NewGuid().ToString("N"),
+            journeyGenerationId = SaveManager.Instance.Repository.CurrentJourneyGenerationId,
+            campaignId = SaveManager.Instance.Campaign.manifest.campaignId,
+            contentSchemaVersion = SaveManager.Instance.Campaign.manifest.contentSchemaVersion,
+            levelId = level.stableId,
+            stars = 0,
+            unlockedSymbolIds = new List<string>(),
+            unlockedMemoryIds = new List<string>(),
+            claimedRewardIds = new List<string>(),
+            completedAtUtc = DateTime.UtcNow.ToString("O"),
+            sessionKind = batch.sessionKind == LearningSessionKind.LevelAttempt
+                ? LearningSessionKind.FreePractice
+                : batch.sessionKind,
+            evidence = batch,
+        };
+
+        return SaveManager.Instance.OutcomeCoordinator.TryCommit(outcome);
+    }
+
+    private static List<string> CopyAndSort(IReadOnlyList<string> values)
+    {
+        List<string> copy = new List<string>();
+        if (values != null)
+            for (int i = 0; i < values.Count; i++)
+                copy.Add(values[i]);
+        copy.Sort(StringComparer.Ordinal);
+        return copy;
+    }
+
+#if SALINLAHI_DEV || UNITY_EDITOR
     /// <summary>
     /// Unlocks all levels (dev/debug utility).
+    /// Compiled only under UNITY_EDITOR or SALINLAHI_DEV — never in a release build.
+    /// See docs/release/RELEASE-PROFILE.md §6.
     /// </summary>
     public void UnlockAllLevels()
     {
+        if (UsesRevisedProgress || IsRevisedBlocked)
+            return;
         for (int i = 1; i <= TotalLevels; i++)
         {
-            PlayerPrefs.SetInt(UnlockedKey(i), 1);
+            ProgressPrefs.SetInt(UnlockedKey(i), 1);
         }
 
-        PlayerPrefs.Save();
+        ProgressPrefs.Save();
         DebugLogger.Log("ProgressManager: All levels unlocked.");
     }
+#endif
 
     /// <summary>
     /// Gets the currently playing level ID (if in gameplay scene, -1 otherwise).
@@ -332,6 +1018,29 @@ public class ProgressManager : Singleton<ProgressManager>
 
     private static string UnlockedKey(int id) => $"{KeyPrefix}unlocked.{id}";
     private static string StarsKey(int id) => $"{KeyPrefix}stars.{id}";
+
+    private string GetRevisedLevelId(int levelNumber)
+    {
+        return TryResolveRevisedLevel(levelNumber, out LevelConfigSO level) ? level.stableId : string.Empty;
+    }
+
+    private bool TryResolveRevisedLevel(int levelNumber, out LevelConfigSO level)
+    {
+        level = null;
+        if (SaveManager.Instance?.Campaign == null)
+            return false;
+        IReadOnlyList<string> levelIds = ContentIdentity.RevisedLevelIds;
+        if (levelNumber < 1 || levelNumber > levelIds.Count)
+            return false;
+        return SaveManager.Instance.Campaign.TryGetLevel(levelIds[levelNumber - 1], out level);
+    }
+
+    private string ResolveLegacyLevelId(int levelNumber)
+    {
+        if (levelNumber < 1 || levelNumber > ContentIdentity.RevisedLevelIds.Count)
+            return ContentIdentity.RevisedLevelIds[0];
+        return ContentIdentity.RevisedLevelIds[levelNumber - 1];
+    }
 
     #endregion
 }

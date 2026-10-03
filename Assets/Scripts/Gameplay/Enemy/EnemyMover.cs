@@ -1,4 +1,7 @@
 using UnityEngine;
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+using Salinlahi.Debug.Sandbox;
+#endif
 
 // Handles enemy movement. Fires RaiseBaseHit when colliding with PlayerBase trigger.
 [RequireComponent(typeof(Collider2D))]
@@ -6,60 +9,149 @@ public class EnemyMover : MonoBehaviour
 {
     private float _speed;
     private bool _active;
-    private float _focusSpeedMultiplier = 1f;
+    private bool _externallyMoving;
+    private float _entryGraceUntil = float.NegativeInfinity;
+    private float _entryGraceSeconds;
+    private float _entryGraceStartY;
+    private bool _entryGracePending;
+    public bool IsMoving => _externallyMoving || (_active && GetFinalSpeed() > Mathf.Epsilon);
 
-    public void SetSpeed(float speed)
+    // For movers that drive the transform externally (e.g. PhaseBasedMovement
+    // on the boss). Lets IsMoving report true so visuals coupled to it — like
+    // Enemy.AdvanceWalkAnimation — run while the external system is active,
+    // even when this component's own speed is zero.
+    public void SetExternallyMoving(bool moving) => _externallyMoving = moving;
+
+    public virtual void SetSpeed(float speed)
     {
-        _speed = speed;
+        _entryGraceUntil = float.NegativeInfinity;
+        _entryGracePending = false;
+        _speed = speed * GetCorridorNormalizationScale();
         _active = true;
     }
 
-    private void OnEnable()
+    // Updates the stored speed without changing the active state. Used for
+    // recalculations that must not unintentionally resume a paused mover —
+    // e.g. GeneralAura applying its buff every tick while the enemy is in a
+    // hurt-pause window.
+    public virtual void UpdateSpeedValue(float speed)
     {
-        EventBus.OnFocusModeActivated += HandleFocusOn;
-        EventBus.OnFocusModeDeactivated += HandleFocusOff;
+        _speed = speed * GetCorridorNormalizationScale();
+    }
 
-        // If Focus Mode is already active when this enemy spawns,
-        // apply the slowdown immediately.
-        if (ComboManager.Instance != null
-            && ComboManager.Instance.IsFocusModeActive)
-        {
-            HandleFocusOn();
-        }
+    private static float GetCorridorNormalizationScale()
+    {
+        var cam = AspectLockedCamera.Instance;
+        return cam != null ? cam.CorridorSpeedNormalizationScale : 1f;
+    }
+
+    // SALIN-225 removed Focus Mode, which was this base class's only enable/disable work.
+    // The hooks stay because KishaMover and BossEnemy chain to them via base.OnEnable()
+    // and base.OnDisable(); deleting them would break those overrides.
+    protected virtual void OnEnable()
+    {
     }
 
     public void Stop() => _active = false;
 
-    private void Update()
+    public void GiveEntryGrace(float seconds, float startBelowWorldY = float.PositiveInfinity)
+    {
+        _entryGraceSeconds = Mathf.Max(0f, seconds);
+        _entryGraceStartY = startBelowWorldY;
+        _entryGracePending = true;
+    }
+
+    protected virtual void Update()
     {
         if (!_active) return;
-        // Portrait orientation: enemies move from top to bottom (negative Y direction)
-        float finalSpeed = _speed * _focusSpeedMultiplier;
+        float finalSpeed = GetFinalSpeed();
         transform.Translate(Vector2.down * finalSpeed * Time.deltaTime, Space.World);
     }
 
     private void OnTriggerEnter2D(Collider2D other)
     {
-        if (!other.CompareTag("PlayerBase")) return;
-        // Enemy reached the base. Fire event and return to pool.
-        EventBus.RaiseBaseHit();
-        GetComponent<Enemy>()?.ReturnToPool();
+        if (!other.CompareTag("PlayerBase"))
+            return;
+
+        Enemy enemy = GetComponent<Enemy>();
+        if (enemy == null)
+        {
+            DebugLogger.LogError($"EnemyMover: Missing Enemy component on '{name}'. Base hit ignored.");
+            return;
+        }
+
+        EnemyPool pool = EnemyPool.Instance;
+        if (pool == null)
+        {
+            DebugLogger.LogError("EnemyMover: EnemyPool is missing in this scene. Base hit ignored.");
+            return;
+        }
+
+        if (!pool.IsCheckedOut(enemy))
+            return;
+
+        EnemyDataSO data = enemy.Data;
+        pool.Return(enemy);
+        bool dealsContactDamage = data == null || data.dealsContactDamage;
+        if (dealsContactDamage)
+        {
+            EventBus.RaiseBaseHit(1);
+        }
+        else if (data != null && data.isDecoy)
+        {
+            RecognitionLogger.LogOutcome(
+                outcome: "decoy_ignored",
+                recognizedCharacterID: data.assignedCharacter != null ? data.assignedCharacter.characterID : "");
+        }
     }
 
-    private void OnDisable()
+    protected virtual void OnDisable()
     {
-        EventBus.OnFocusModeActivated -= HandleFocusOn;
-        EventBus.OnFocusModeDeactivated -= HandleFocusOff;
-        _focusSpeedMultiplier = 1f;
+        _entryGraceUntil = float.NegativeInfinity;
+        _entryGracePending = false;
     }
 
-    private void HandleFocusOn()
+    protected float GetFinalSpeed()
     {
-        _focusSpeedMultiplier = ComboManager.Instance.FocusSpeedMultiplier;
+        if (_entryGracePending && transform.position.y <= _entryGraceStartY)
+        {
+            _entryGracePending = false;
+            _entryGraceUntil = Time.time + _entryGraceSeconds;
+        }
+        if (Time.time < _entryGraceUntil) return 0f;
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        if (SandboxMode.IsQaProtectionEnabled)
+            return 0f;
+#endif
+
+        if (IsSandboxMovementPaused())
+            return 0f;
+
+        return _speed * GetSandboxMovementSpeedScale();
     }
 
-    private void HandleFocusOff()
+    private static bool IsSandboxMovementPaused()
     {
-        _focusSpeedMultiplier = 1f;
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        return SandboxMode.IsMovementPaused;
+#else
+        return false;
+#endif
     }
+
+    private static float GetSandboxMovementSpeedScale()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        return SandboxMode.MovementSpeedScale;
+#else
+        return 1f;
+#endif
+    }
+
+#if UNITY_INCLUDE_TESTS
+    public float GetFinalSpeedForTests()
+    {
+        return GetFinalSpeed();
+    }
+#endif
 }

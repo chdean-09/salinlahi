@@ -14,5 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RecognitionConfigSO
   resamplePointCount: 32
   minimumConfidence: 0.6
-  multiStrokeWindowSeconds: 1.5
-  minimumPointCount: 8
+  multiStrokeWindowSeconds: 0.6
+  rawSampleMinDistancePixels: 2
+  visualSampleSpacingPixels: 8
+  maxVisualSamplesPerSegment: 24
+  minimumStrokePathLengthPixels: 20
+  minimumStrokeBoundsPixels: 6

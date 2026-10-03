@@ -26,7 +26,7 @@ All targets defined in `TDD.md §7.3` and `Salinlahi.md §3.3.3`.
 
 > "Do not call Instantiate or Destroy in game loop code. Always get from pool, always return to pool."
 
-[EVIDENCE: Assets/Scripts/Utilities/ObjectPool.cs — code comment, lines 4–6]
+[EVIDENCE: Assets/Scripts/Gameplay/Enemy/EnemyPool.cs — pool lifecycle and allocation rule]
 
 ### 2.2 Enemy Pool Implementation
 
@@ -63,7 +63,7 @@ Additional pools required for:
 - Projectiles (if any are added for boss phases)
 - UI elements (if pooled score popups are implemented)
 
-Each new pool must follow the `PooledObject<T>` / `ObjectPool<T>` pattern.
+Each new pool must use Unity's `UnityEngine.Pool.ObjectPool<T>` lifecycle directly, with explicit create, get, release, and destroy callbacks appropriate to the pooled type.
 
 [EVIDENCE: Assets/Prefabs/FX/ folder exists but is empty]
 

@@ -1,6 +1,8 @@
 // TemplateRecorder.cs -- temporary debug tool, DELETE before Sprint 2
 // Desktop-friendly version using mouse input
+#if UNITY_EDITOR
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -23,7 +25,10 @@ public class TemplateRecorder : MonoBehaviour
     [SerializeField] private bool _autoIncrementDrawNumber = true;
     [SerializeField] private Material _lineMaterial;
     [SerializeField] private float _lineWidth = 0.02f;
+    [SerializeField] private float _minimumPointDistancePixels = 1f;
     [SerializeField] private int _minimumStrokePointCount = 3;
+    [SerializeField] private float _minimumStrokePathLength = 12f;
+    [SerializeField] private bool _preserveAspectRatioOnSave = true;
     [SerializeField] private bool _clearAfterSave = true;
     [SerializeField] private bool _showOverlayButtons = true;
 
@@ -76,13 +81,17 @@ public class TemplateRecorder : MonoBehaviour
 
         if (mouse.leftButton.wasPressedThisFrame)
         {
+            if (IsMouseOverOverlayButtons(mouse.position.ReadValue()))
+                return;
+
             BeginStroke();
         }
 
         if (_drawing && mouse.leftButton.isPressed)
         {
-            _activeStrokePoints.Add(mouse.position.ReadValue());
-            UpdateLineRenderer(_activeStrokePoints, GetRendererForStrokeIndex(_strokes.Count - 1));
+            Vector2 point = mouse.position.ReadValue();
+            if (TryAppendPoint(_activeStrokePoints, point))
+                UpdateLineRenderer(_activeStrokePoints, GetRendererForStrokeIndex(_strokes.Count - 1));
         }
 
         if (_drawing && mouse.leftButton.wasReleasedThisFrame)
@@ -181,7 +190,8 @@ public class TemplateRecorder : MonoBehaviour
         _drawing = false;
         if (_activeStrokePoints == null) return;
 
-        if (_activeStrokePoints.Count < _minimumStrokePointCount)
+        float strokeLength = ComputeStrokePathLength(_activeStrokePoints);
+        if (_activeStrokePoints.Count < _minimumStrokePointCount || strokeLength < _minimumStrokePathLength)
         {
             int lastIndex = _strokes.Count - 1;
             if (lastIndex >= 0)
@@ -193,6 +203,24 @@ public class TemplateRecorder : MonoBehaviour
         }
 
         _activeStrokePoints = null;
+    }
+
+    private bool TryAppendPoint(List<Vector2> strokePoints, Vector2 point)
+    {
+        if (strokePoints == null) return false;
+        if (strokePoints.Count == 0)
+        {
+            strokePoints.Add(point);
+            return true;
+        }
+
+        float minDistance = Mathf.Max(0f, _minimumPointDistancePixels);
+        Vector2 lastPoint = strokePoints[strokePoints.Count - 1];
+        if (Vector2.Distance(lastPoint, point) < minDistance)
+            return false;
+
+        strokePoints.Add(point);
+        return true;
     }
 
     private void UpdateLineRenderer(List<Vector2> strokePoints, LineRenderer targetRenderer)
@@ -234,32 +262,79 @@ public class TemplateRecorder : MonoBehaviour
 
     private void SaveTemplate()
     {
-        List<Vector2> allPoints = FlattenPoints();
-        if (allPoints.Count < 5)
+        List<List<Vector2>> validStrokes = new List<List<Vector2>>();
+        for (int i = 0; i < _strokes.Count; i++)
         {
-            Debug.LogWarning("TemplateRecorder: Not enough points to save.");
+            List<Vector2> stroke = _strokes[i];
+            if (stroke == null || stroke.Count == 0) continue;
+            validStrokes.Add(stroke);
+        }
+
+        int totalPointCount = 0;
+        for (int i = 0; i < validStrokes.Count; i++)
+            totalPointCount += validStrokes[i].Count;
+
+        if (totalPointCount < 5)
+        {
+            Debug.LogWarning("TemplateRecorder: Not enough points to save."
+                + $" Strokes={validStrokes.Count}, Points={totalPointCount}");
             return;
         }
 
         float minX = float.MaxValue, minY = float.MaxValue;
         float maxX = float.MinValue, maxY = float.MinValue;
 
-        foreach (var p in allPoints)
+        for (int i = 0; i < validStrokes.Count; i++)
         {
-            if (p.x < minX) minX = p.x;
-            if (p.x > maxX) maxX = p.x;
-            if (p.y < minY) minY = p.y;
-            if (p.y > maxY) maxY = p.y;
+            List<Vector2> stroke = validStrokes[i];
+            for (int j = 0; j < stroke.Count; j++)
+            {
+                Vector2 p = stroke[j];
+                if (p.x < minX) minX = p.x;
+                if (p.x > maxX) maxX = p.x;
+                if (p.y < minY) minY = p.y;
+                if (p.y > maxY) maxY = p.y;
+            }
         }
 
         float w = maxX - minX;
         float h = maxY - minY;
 
-        if (w < 1f || h < 1f) return; // drawing too small
+        if (w < 1f || h < 1f)
+        {
+            Debug.LogWarning("TemplateRecorder: Drawing too small to save."
+                + $" Width={w:F4}, Height={h:F4}");
+            return;
+        }
 
         var sb = new System.Text.StringBuilder();
-        foreach (var p in allPoints)
-            sb.AppendLine($"{(p.x - minX) / w:F4}, {(p.y - minY) / h:F4}");
+        float scale = _preserveAspectRatioOnSave ? Mathf.Max(w, h) : 0f;
+        float xOffset = _preserveAspectRatioOnSave ? (scale - w) * 0.5f : 0f;
+        float yOffset = _preserveAspectRatioOnSave ? (scale - h) * 0.5f : 0f;
+        for (int i = 0; i < validStrokes.Count; i++)
+        {
+            List<Vector2> stroke = validStrokes[i];
+            for (int j = 0; j < stroke.Count; j++)
+            {
+                Vector2 p = stroke[j];
+                float nx;
+                float ny;
+                if (_preserveAspectRatioOnSave)
+                {
+                    nx = ((p.x - minX) + xOffset) / scale;
+                    ny = ((p.y - minY) + yOffset) / scale;
+                }
+                else
+                {
+                    nx = (p.x - minX) / w;
+                    ny = (p.y - minY) / h;
+                }
+                sb.AppendLine($"{nx.ToString("F4", CultureInfo.InvariantCulture)}, {ny.ToString("F4", CultureInfo.InvariantCulture)}");
+            }
+
+            if (i < validStrokes.Count - 1)
+                sb.AppendLine();
+        }
 
         string dir = BuildOutputDirectory();
         if (!Directory.Exists(dir))
@@ -268,7 +343,8 @@ public class TemplateRecorder : MonoBehaviour
         string path = Path.Combine(dir, BuildFileName());
         File.WriteAllText(path, sb.ToString());
 
-        Debug.Log($"Saved template: {path} ({_strokes.Count} strokes, {allPoints.Count} points)");
+        Debug.Log($"TemplateRecorder: Saved '{path}' with {validStrokes.Count} strokes and {totalPointCount} points."
+            + $" PreserveAspect={_preserveAspectRatioOnSave}");
 
         if (_saveMode == SaveMode.Template)
         {
@@ -302,11 +378,13 @@ public class TemplateRecorder : MonoBehaviour
 
     private string BuildOutputDirectory()
     {
-        string resourcesDir = Path.Combine(Application.dataPath, "Resources");
+        // SALIN-185: recorded test draws go to Assets/Tests/Fixtures, not Resources -- anything
+        // under Resources is built into the player, and these are fixtures. Templates stay put:
+        // TemplateLoader reads them at runtime through Resources.LoadAll.
         if (_saveMode == SaveMode.TestDraw)
-            return Path.Combine(resourcesDir, "TestDraws");
+            return Path.Combine(Application.dataPath, "Tests", "Fixtures", "TestDraws");
 
-        return Path.Combine(resourcesDir, "Templates");
+        return Path.Combine(Application.dataPath, "Resources", "Templates");
     }
 
     private void ConfigureLineRenderer(LineRenderer renderer)
@@ -385,6 +463,26 @@ public class TemplateRecorder : MonoBehaviour
         SetGuideSpriteFromCharacterID(_guideResourcesPath);
     }
 
+    private bool IsMouseOverOverlayButtons(Vector2 mouseScreenPos)
+    {
+        if (!_showOverlayButtons) return false;
+
+        Vector2 guiPoint = new Vector2(mouseScreenPos.x, Screen.height - mouseScreenPos.y);
+        Rect overlayRect = new Rect(12f, 12f, 220f, 120f);
+        return overlayRect.Contains(guiPoint);
+    }
+
+    private float ComputeStrokePathLength(List<Vector2> points)
+    {
+        if (points == null || points.Count < 2) return 0f;
+
+        float total = 0f;
+        for (int i = 1; i < points.Count; i++)
+            total += Vector2.Distance(points[i - 1], points[i]);
+
+        return total;
+    }
+
     private List<Vector2> FlattenPoints()
     {
         var allPoints = new List<Vector2>();
@@ -409,3 +507,4 @@ public class TemplateRecorder : MonoBehaviour
         GUILayout.EndArea();
     }
 }
+#endif

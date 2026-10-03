@@ -1,0 +1,141 @@
+{
+  "stage": "ugat",
+  "ground": [
+    "tile_ground_a.png",
+    "tile_ground_b.png",
+    "tile_ground_c.png",
+    "tile_ground_d.png",
+    "tile_ground_e.png",
+    "tile_ground_f.png",
+    "tile_ground_g.png",
+    "tile_ground_h.png"
+  ],
+  "worn": [
+    "tile_ground_worn_a.png",
+    "tile_ground_worn_b.png"
+  ],
+  "scatter": [
+    {
+      "file": "Scatter/scatter_grit_0.png",
+      "weight": 3.5,
+      "flippable": true
+    },
+    {
+      "file": "Scatter/scatter_grit_1.png",
+      "weight": 3.5,
+      "flippable": true
+    },
+    {
+      "file": "Scatter/scatter_grit_2.png",
+      "weight": 3.5,
+      "flippable": true
+    },
+    {
+      "file": "Scatter/scatter_grit_3.png",
+      "weight": 3.5,
+      "flippable": true
+    },
+    {
+      "file": "Scatter/scatter_pebbles_0.png",
+      "weight": 4.0,
+      "flippable": false
+    },
+    {
+      "file": "Scatter/scatter_pebbles_1.png",
+      "weight": 4.0,
+      "flippable": false
+    },
+    {
+      "file": "Scatter/scatter_stone_sm_0.png",
+      "weight": 4.0,
+      "flippable": false
+    },
+    {
+      "file": "Scatter/scatter_stone_sm_1.png",
+      "weight": 4.0,
+      "flippable": false
+    },
+    {
+      "file": "Scatter/scatter_leaf_0.png",
+      "weight": 4.0,
+      "flippable": true
+    },
+    {
+      "file": "Scatter/scatter_leaf_1.png",
+      "weight": 4.0,
+      "flippable": true
+    },
+    {
+      "file": "Scatter/scatter_crack_0.png",
+      "weight": 3.0,
+      "flippable": true
+    },
+    {
+      "file": "Scatter/scatter_crack_1.png",
+      "weight": 3.0,
+      "flippable": true
+    },
+    {
+      "file": "Scatter/scatter_moss_0.png",
+      "weight": 3.0,
+      "flippable": false
+    },
+    {
+      "file": "Scatter/scatter_moss_1.png",
+      "weight": 3.0,
+      "flippable": false
+    },
+    {
+      "file": "Scatter/scatter_grass_sm_0.png",
+      "weight": 3.0,
+      "flippable": false
+    },
+    {
+      "file": "Scatter/scatter_grass_sm_1.png",
+      "weight": 3.0,
+      "flippable": false
+    },
+    {
+      "file": "Scatter/scatter_stone_md_0.png",
+      "weight": 5.0,
+      "flippable": false
+    },
+    {
+      "file": "Scatter/scatter_twig_0.png",
+      "weight": 4.0,
+      "flippable": true
+    },
+    {
+      "file": "Scatter/scatter_grass_lg_0.png",
+      "weight": 3.0,
+      "flippable": false
+    },
+    {
+      "file": "Scatter/scatter_root_0.png",
+      "weight": 3.0,
+      "flippable": false
+    },
+    {
+      "file": "Scatter/scatter_stone_lg_0.png",
+      "weight": 2.0,
+      "flippable": false
+    },
+    {
+      "file": "Scatter/scatter_puddle_0.png",
+      "weight": 1.5,
+      "flippable": false
+    }
+  ],
+  "marginLeft": [
+    "Margin/margin_l_a.png",
+    "Margin/margin_l_b.png",
+    "Margin/margin_l_c.png"
+  ],
+  "marginRight": [
+    "Margin/margin_r_a.png",
+    "Margin/margin_r_b.png",
+    "Margin/margin_r_c.png"
+  ],
+  "scatterPerTile": 5.0,
+  "scatterMinDistancePx": 6
+}

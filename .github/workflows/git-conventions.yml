@@ -1,0 +1,41 @@
+# Validates Git naming conventions only. Unity compilation and tests run elsewhere.
+
+name: Git Convention Validation
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  validate-conventions:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate branch and pull-request title
+        shell: bash
+        env:
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+          docs/jira/validate-git-conventions.sh branch "$HEAD_BRANCH"
+          docs/jira/validate-git-conventions.sh pr "$PR_TITLE"
+
+      - name: Validate every commit subject in the pull request
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          git log -z --format=%s "$BASE_SHA..$HEAD_SHA" |
+            while IFS= read -r -d '' subject; do
+              docs/jira/validate-git-conventions.sh commit "$subject"
+            done

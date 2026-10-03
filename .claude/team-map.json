@@ -1,0 +1,35 @@
+{
+  "_policy": "Team-approved override (2026-08-23): commits for a ticket are authored with the assigned developer's git identity, applied per-commit via `git -c user.name -c user.email` or per-worktree `git config`. Pushes always use the workstation's own authenticated credentials; never request another developer's keys, passwords, or tokens. This intentionally deviates from the generic no-impersonation default and applies only inside this repository's parallel-ticket workflow.",
+  "jiraCloudId": "4b895a89-9e37-44f7-b69a-0b0a0bdee4b1",
+  "jiraSite": "jnwync.atlassian.net",
+  "jiraProject": "SALIN",
+  "github": { "repo": "chdean-09/salinlahi", "baseBranch": "dev", "releaseBranch": "main", "mergeMethod": "merge" },
+  "developers": [
+    {
+      "jiraDisplayName": "Jon Wayne Cabusbusan",
+      "jiraAccountId": "712020:28fbc50f-23c4-45cc-812c-ac671f63db1e",
+      "github": "jnwync",
+      "git": { "name": "Jon Wayne Cabusbusan", "email": "jonwayne.cabusbusan@gmail.com" }
+    },
+    {
+      "jiraDisplayName": "Ian Clyde E. TEJADA",
+      "jiraAccountId": "712020:33776197-3d41-4df6-ab26-3f383e0b3472",
+      "github": "ClydeTeia",
+      "git": { "name": "Ian Clyde E. Tejada", "email": "tejadaianc@gmail.com" }
+    },
+    {
+      "jiraDisplayName": "Chad Denard Andrada",
+      "jiraAccountId": "712020:7c4fef10-687c-4381-9af6-df58f0681ca7",
+      "github": "chdean-09",
+      "git": { "name": "Chad Denard Andrada", "email": "chadandrada20@gmail.com" }
+    },
+    {
+      "jiraDisplayName": "Jeff Andre Millan",
+      "jiraAccountId": "712020:9f1b98f2-f72c-4146-86a4-943ee2c0df24",
+      "github": "aandremillan10",
+      "git": { "name": "Jeff Andre Millan", "email": "jeffandremillan@gmail.com" }
+    }
+  ],
+  "workerLimit": 4,
+  "worktreeRoot": "../salinlahi-worktrees"
+}

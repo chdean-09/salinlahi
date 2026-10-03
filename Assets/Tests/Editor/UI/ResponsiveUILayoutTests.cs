@@ -1,0 +1,825 @@
+using NUnit.Framework;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Salinlahi.Tests.Editor.UI
+{
+    [TestFixture]
+    public class ResponsiveUILayoutTests
+    {
+        [TestCase("is", 6)]
+        [TestCase("BATA", 6)]
+        [TestCase("PAMANA", 2)]
+        [TestCase("i", 12)]
+        [TestCase("WWW", 6)]
+        public void ChallengePrompt_BlankAndAnswerUseNaturalWordWidth(string answer, int blankLength)
+        {
+            using TestObjects objects = new();
+            ChallengeModeUI ui = CreateChallengeBoard(objects, 1080f, 1920f);
+            ChallengeSequenceSO sequence = ScriptableObject.CreateInstance<ChallengeSequenceSO>();
+            try
+            {
+                sequence.units = new[] { new ChallengeUnitDefinition
+                {
+                    unitId = "spacing", mode = ChallengeMode.SentenceRestoration,
+                    prompt = $"This {new string('_', blankLength)} a test",
+                    tokens = new[] { new ChallengeTokenDefinition { occurrenceId = "answer", displayText = answer } },
+                    slots = new[] { new ChallengeSlotDefinition { slotId = "blank", expectedOccurrenceId = "answer" } },
+                    candidateOccurrenceIds = new[] { "answer" }
+                } };
+                ChallengeSession session = new(sequence);
+                session.Changed += ui.Render;
+                session.Enter();
+                TMP_Text prompt = ui.transform.Find("PromptViewport/Prompt").GetComponent<TMP_Text>();
+                LayoutRebuilder.ForceRebuildLayoutImmediate(prompt.rectTransform);
+
+                // Compare against the actual font's natural answer, rather than a character count.
+                prompt.text = $"This <b>{answer}</b> a test";
+                prompt.ForceMeshUpdate();
+                TMP_CharacterInfo followingWord = prompt.textInfo.characterInfo[prompt.textInfo.characterCount - 6];
+                Vector2 naturalPosition = new(followingWord.origin, followingWord.baseLine);
+                int naturalLineCount = prompt.textInfo.lineCount;
+
+                ui.Render(session);
+                Assert.AreEqual($"This {new string('_', answer.Length)} a test", ReadPrompt(prompt));
+                AssertFollowingWordPosition(prompt, naturalPosition, naturalLineCount);
+
+                session.SubmitPlacement("blank", "answer");
+                Assert.AreEqual($"This {answer} a test", ReadPrompt(prompt));
+                AssertFollowingWordPosition(prompt, naturalPosition, naturalLineCount);
+            }
+            finally
+            {
+                Object.DestroyImmediate(sequence);
+            }
+        }
+
+        private static void AssertFollowingWordPosition(TMP_Text prompt, Vector2 expected, int lineCount)
+        {
+            prompt.ForceMeshUpdate();
+            TMP_CharacterInfo followingWord = prompt.textInfo.characterInfo[prompt.textInfo.characterCount - 6];
+            Assert.AreEqual(lineCount, prompt.textInfo.lineCount);
+            Assert.AreEqual(expected.x, followingWord.origin, 0.5f,
+                "The blank and filled answer must leave natural spacing before the next word.");
+            Assert.AreEqual(expected.y, followingWord.baseLine, 0.5f);
+        }
+
+        [TestCase(ChallengeMode.SentenceRestoration)]
+        [TestCase(ChallengeMode.ParagraphRestoration)]
+        [TestCase(ChallengeMode.TimedMemory)]
+        public void ChallengePrompt_FillsOnlyAcceptedWordsAndKeepsCompletedSentence(ChallengeMode mode)
+        {
+            using TestObjects objects = new();
+            ChallengeModeUI ui = CreateChallengeBoard(objects, 1080f, 1920f);
+            ChallengeSequenceSO sequence = ScriptableObject.CreateInstance<ChallengeSequenceSO>();
+            try
+            {
+                sequence.units = new[] { new ChallengeUnitDefinition
+                {
+                    unitId = "sentence", mode = mode,
+                    timerSeconds = mode == ChallengeMode.TimedMemory ? 10f : 0f,
+                    memoryRevealSeconds = 0f,
+                    prompt = "Ang mabuting ______ ay gumagawa ng ______.",
+                    tokens = new[]
+                    {
+                        new ChallengeTokenDefinition { occurrenceId = "bata", displayText = "BATA" },
+                        new ChallengeTokenDefinition { occurrenceId = "tama", displayText = "TAMA" },
+                        new ChallengeTokenDefinition { occurrenceId = "mata", displayText = "MATA" }
+                    },
+                    slots = new[]
+                    {
+                        new ChallengeSlotDefinition { slotId = "first", expectedOccurrenceId = "bata" },
+                        new ChallengeSlotDefinition { slotId = "second", expectedOccurrenceId = "tama" }
+                    },
+                    candidateOccurrenceIds = new[] { "bata", "tama", "mata" }
+                } };
+                ChallengeSession session = new(sequence);
+                session.Changed += ui.Render;
+                session.Enter();
+                TMP_Text prompt = ui.transform.Find("PromptViewport/Prompt").GetComponent<TMP_Text>();
+                TMP_Text status = ui.transform.Find("Status").GetComponent<TMP_Text>();
+                Assert.AreEqual("Ang mabuting ____ ay gumagawa ng ____.", ReadPrompt(prompt));
+                LayoutRebuilder.ForceRebuildLayoutImmediate(prompt.rectTransform);
+                prompt.ForceMeshUpdate();
+                int initialLineCount = prompt.textInfo.lineCount;
+                TMP_CharacterInfo lastCharacter = prompt.textInfo.characterInfo[prompt.textInfo.characterCount - 1];
+                Vector2 initialSentenceEnd = new(lastCharacter.origin, lastCharacter.baseLine);
+                Vector2 initialPanelMin = ((RectTransform)ui.transform).anchorMin;
+                Vector2 initialPanelMax = ((RectTransform)ui.transform).anchorMax;
+
+                session.SubmitPlacement("first", "bata");
+                Assert.AreEqual("Ang mabuting BATA ay gumagawa ng ____.", ReadPrompt(prompt));
+                LayoutRebuilder.ForceRebuildLayoutImmediate(prompt.rectTransform);
+                prompt.ForceMeshUpdate();
+                lastCharacter = prompt.textInfo.characterInfo[prompt.textInfo.characterCount - 1];
+                Assert.AreEqual(initialLineCount, prompt.textInfo.lineCount,
+                    "Filling a shorter answer must not change the sentence's line wrapping.");
+                Assert.AreEqual(initialSentenceEnd.x, lastCharacter.origin, 0.5f);
+                Assert.AreEqual(initialSentenceEnd.y, lastCharacter.baseLine, 0.5f);
+                Assert.AreEqual(initialPanelMin, ((RectTransform)ui.transform).anchorMin);
+                Assert.AreEqual(initialPanelMax, ((RectTransform)ui.transform).anchorMax);
+                StringAssert.Contains("Correct!", status.text);
+                Assert.IsFalse(ui.transform.Find("AnswerChoices/BATA").GetComponent<Button>().interactable);
+                session.Tick(0.1f);
+                StringAssert.Contains("Correct!", status.text, "Timer updates must keep answer feedback visible.");
+
+                session.SubmitPlacement("second", "mata");
+                StringAssert.DoesNotContain("MATA", prompt.text);
+                StringAssert.Contains("<b>BATA</b>", prompt.text);
+                StringAssert.Contains("Try again", status.text);
+
+                session.SubmitPlacement("second", "tama");
+                Assert.AreEqual(ChallengeSessionState.Completed, session.State);
+                Assert.AreEqual("Ang mabuting BATA ay gumagawa ng TAMA.", ReadPrompt(prompt));
+                StringAssert.Contains("Correct!", status.text);
+                Assert.IsFalse(ui.transform.Find("AnswerChoices").gameObject.activeSelf);
+            }
+            finally
+            {
+                Object.DestroyImmediate(sequence);
+            }
+        }
+
+        [TestCase(750f, 1334f)]
+        [TestCase(1080f, 1920f)]
+        [TestCase(1080f, 2400f)]
+        public void ChallengeBoard_UsesReadablePromptAndKeepsControlsInsidePaper(float width, float height)
+        {
+            using TestObjects objects = new();
+            ChallengeModeUI ui = CreateChallengeBoard(objects, width, height);
+            foreach (string name in new[] { "Progress", "Timer", "Status", "PromptViewport", "AnswerChoices", "ChallengeActions" })
+                AssertAnchorsInside(ui.transform.Find(name).GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
+            TMP_Text prompt = ui.transform.Find("PromptViewport/Prompt").GetComponent<TMP_Text>();
+            Assert.IsFalse(prompt.enableAutoSizing, "Long prompts should scroll instead of shrinking.");
+            Assert.GreaterOrEqual(prompt.fontSize, UITextScale.Title);
+            Assert.GreaterOrEqual(ui.transform.Find("Status").GetComponent<TMP_Text>().fontSizeMin, 48f);
+            TMP_Text buttonText = ui.transform.Find("ChallengeActions").GetComponentInChildren<TMP_Text>();
+            Assert.AreEqual(UITextScale.Body, buttonText.fontSizeMax,
+                "Only the text above the controls grows; button labels keep their size.");
+            ScrollRect scroll = ui.transform.Find("PromptViewport").GetComponent<ScrollRect>();
+            Assert.AreSame(prompt.rectTransform, scroll.content);
+            Assert.IsNotNull(scroll.GetComponent<RectMask2D>());
+            Assert.IsFalse(scroll.horizontal);
+            RectTransform choices = ui.transform.Find("AnswerChoices").GetComponent<RectTransform>();
+            RectTransform actions = ui.transform.Find("ChallengeActions").GetComponent<RectTransform>();
+            Assert.Less(actions.anchorMax.y, choices.anchorMin.y);
+            LayoutRebuilder.ForceRebuildLayoutImmediate(actions);
+            RectTransform hint = actions.GetChild(0).GetComponent<RectTransform>();
+            Assert.GreaterOrEqual(hint.rect.yMin + hint.localPosition.y, actions.rect.yMin - 0.01f);
+            Assert.LessOrEqual(hint.rect.yMax + hint.localPosition.y, actions.rect.yMax + 0.01f);
+        }
+
+        private static string ReadPrompt(TMP_Text prompt)
+        {
+            string plain = System.Text.RegularExpressions.Regex.Replace(prompt.text, @"<[^>]+>", string.Empty);
+            return System.Text.RegularExpressions.Regex.Replace(plain.Replace('\u00a0', ' '), @" +", " ");
+        }
+
+        private static ChallengeModeUI CreateChallengeBoard(TestObjects objects, float width, float height)
+        {
+            RectTransform canvasRect = objects.CreateRect("ChallengeTestCanvas");
+            Canvas canvas = canvasRect.gameObject.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.WorldSpace;
+            canvasRect.sizeDelta = new Vector2(1080f, height * 1080f / width);
+            RectTransform panel = objects.CreateRect("ChallengeBoard");
+            panel.SetParent(canvasRect, false);
+            ChallengeModeUI ui = panel.gameObject.AddComponent<ChallengeModeUI>();
+            ui.Bind(null);
+            return ui;
+        }
+
+        [TestCase(750f, 1334f)] // iPhone SE (2nd generation)
+        [TestCase(1080f, 1920f)]
+        [TestCase(1080f, 2400f)]
+        public void DialogueController_BaseIntroScroll_LeavesTheBottomBandVisible(float width, float height)
+        {
+            using TestObjects objects = new();
+            RectTransform viewport = objects.CreateRect("Viewport");
+            viewport.sizeDelta = new Vector2(width, height);
+            RectTransform panel = objects.CreateRect("DialoguePanel");
+            panel.SetParent(viewport, false);
+            TextMeshProUGUI speaker = objects.CreateText("Speaker", panel);
+            TextMeshProUGUI body = objects.CreateText("Body", panel);
+
+            DialogueController.ApplyResponsiveDialogueLayout(
+                panel, speaker, body, null, hasPortrait: false, presentAtTop: true);
+            panel.ForceUpdateRectTransforms();
+
+            float panelBottom = panel.localPosition.y + panel.rect.yMin;
+            float baseBandTop = viewport.rect.yMin + height * 0.30f;
+            Assert.Greater(panelBottom, baseBandTop,
+                "The base introduction must leave the lower gameplay area uncovered.");
+            Assert.AreEqual(height * 0.21f, panel.rect.height, 0.01f,
+                "The short base introduction uses a compact scroll.");
+            Assert.AreEqual(width * 0.72f, panel.rect.width, 0.01f,
+                "The base introduction scroll keeps generous side margins.");
+            Assert.Less(panel.anchorMax.y, 1f, "Keep the callout inset from the top edge.");
+            Assert.Greater(panel.anchorMin.x, 0f);
+            Assert.Less(panel.anchorMax.x, 1f);
+            AssertAnchorsInside(speaker.rectTransform, ScrollPanelArt.FullSafeArea);
+            AssertAnchorsInside(body.rectTransform, ScrollPanelArt.FullSafeArea);
+            Assert.AreEqual(TextAlignmentOptions.Center, body.alignment);
+            float travel = panel.rect.height + height * (1f - panel.anchorMax.y);
+            Assert.GreaterOrEqual(
+                panelBottom + DialogueController.SlideOffsetY(0f, travel, presentAtTop: true),
+                viewport.rect.yMax - 0.01f,
+                "The inset scroll must begin fully above the screen during its entrance.");
+
+            // The next dialogue uses the default placement again.
+            DialogueController.ApplyResponsiveDialogueLayout(panel, null, null, null, hasPortrait: false);
+            Assert.AreEqual(0f, panel.anchorMin.y, 0.001f);
+            Assert.AreEqual(0.30f, panel.anchorMax.y, 0.001f);
+        }
+
+        [Test]
+        public void DialogueController_BaseIntro_UsesBothRodsAndClearsPresentationAfterHiding()
+        {
+            using TestObjects objects = new();
+            RectTransform host = objects.CreateRect("DialogueController");
+            Image background = objects.CreateImage("Panel", host);
+            DialogueController controller = host.gameObject.AddComponent<DialogueController>();
+            controller.enabled = false;
+            SetDialogueField(controller, "_overlayPanel", background.gameObject);
+            SetDialogueField(controller, "_presentAtTop", true);
+            controller.enabled = true;
+
+            Assert.IsNotNull(ScrollPanelArt.Full, "The existing full parchment sprite must load.");
+            Assert.AreSame(ScrollPanelArt.Full, background.sprite);
+            Assert.Greater(background.sprite.border.y, 0f, "The bottom rod must be retained.");
+            Assert.Greater(background.sprite.border.w, 0f, "The top rod must be retained.");
+            Assert.IsTrue(controller.IsBaseIntroductionPresenting);
+
+            background.gameObject.SetActive(false);
+            Assert.IsFalse(controller.IsBaseIntroductionPresenting,
+                "Combat UI must no longer be suppressed after the callout disappears.");
+
+            controller.enabled = false;
+            SetDialogueField(controller, "_presentAtTop", false);
+            background.gameObject.SetActive(true);
+            controller.enabled = true;
+            Assert.AreSame(ScrollPanelArt.Top, background.sprite,
+                "Other dialogue must retain its existing parchment banner.");
+            Assert.AreEqual(1f, background.pixelsPerUnitMultiplier);
+            Assert.IsFalse(controller.IsBaseIntroductionPresenting);
+        }
+
+        private static void SetDialogueField(DialogueController controller, string name, object value)
+        {
+            System.Reflection.FieldInfo field = typeof(DialogueController).GetField(
+                name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            Assert.IsNotNull(field, name);
+            field.SetValue(controller, value);
+        }
+
+        [Test]
+        public void DialogueController_TopScroll_SlidesThroughTheTopEdge()
+        {
+            const float height = 400f;
+            Assert.AreEqual(height, DialogueController.SlideOffsetY(0f, height, presentAtTop: true));
+            Assert.AreEqual(0f, DialogueController.SlideOffsetY(1f, height, presentAtTop: true));
+            for (int step = 0; step <= 10; step++)
+            {
+                float offset = DialogueController.SlideOffsetY(step / 10f, height, presentAtTop: true);
+                Assert.GreaterOrEqual(offset, 0f,
+                    "A top scroll must not slide down through the highlighted base.");
+                Assert.LessOrEqual(offset, height);
+            }
+        }
+
+        [Test]
+        public void SafeAreaHandler_CalculateAnchors_CanIntersectSafeAreaWithPlayColumn()
+        {
+            Rect safeArea = new(0f, 24f, 1000f, 676f);
+            Rect playColumn = new(220f, 0f, 560f, 700f);
+
+            SafeAreaHandler.CalculateAnchors(
+                safeArea,
+                screenWidth: 1000,
+                screenHeight: 700,
+                includePlayColumn: true,
+                playColumnRect: playColumn,
+                out Vector2 anchorMin,
+                out Vector2 anchorMax);
+
+            Assert.AreEqual(0.22f, anchorMin.x, 0.001f);
+            Assert.AreEqual(24f / 700f, anchorMin.y, 0.001f);
+            Assert.AreEqual(0.78f, anchorMax.x, 0.001f);
+            Assert.AreEqual(1f, anchorMax.y, 0.001f);
+        }
+
+        [Test]
+        public void SafeAreaHandler_CalculateAnchors_CanUseFullSafeAreaForCutscenePrompt()
+        {
+            Rect safeArea = new(0f, 24f, 1000f, 676f);
+            Rect playColumn = new(220f, 0f, 560f, 700f);
+
+            SafeAreaHandler.CalculateAnchors(
+                safeArea,
+                screenWidth: 1000,
+                screenHeight: 700,
+                includePlayColumn: false,
+                playColumnRect: playColumn,
+                out Vector2 anchorMin,
+                out Vector2 anchorMax);
+
+            Assert.AreEqual(0f, anchorMin.x, 0.001f);
+            Assert.AreEqual(24f / 700f, anchorMin.y, 0.001f);
+            Assert.AreEqual(1f, anchorMax.x, 0.001f);
+            Assert.AreEqual(1f, anchorMax.y, 0.001f);
+        }
+
+        [Test]
+        public void TutorialGuide_ResponsiveTextLayout_KeepsInstructionsAboveGifPreviewBand()
+        {
+            using TestObjects objects = new();
+            TextMeshProUGUI prompt = objects.CreateText("PromptText");
+            TextMeshProUGUI feedback = objects.CreateText("FeedbackText");
+
+            Level1TutorialGuideUI.ApplyResponsiveTextLayout(prompt, feedback);
+
+            RectTransform promptRect = prompt.rectTransform;
+            RectTransform feedbackRect = feedback.rectTransform;
+
+            Assert.GreaterOrEqual(promptRect.anchorMin.y, 0.84f);
+            Assert.GreaterOrEqual(feedbackRect.anchorMin.y, 0.75f);
+            Assert.Greater(feedbackRect.anchorMin.y, 0.42f, "Feedback must sit above the bottom-centered GIF preview band.");
+            Assert.AreEqual(0.06f, promptRect.anchorMin.x, 0.001f);
+            Assert.AreEqual(0.94f, promptRect.anchorMax.x, 0.001f);
+            Assert.IsTrue(prompt.enableAutoSizing);
+            Assert.IsTrue(feedback.enableAutoSizing);
+            Assert.GreaterOrEqual(feedback.fontSizeMax, 42f);
+            Assert.GreaterOrEqual(prompt.fontSizeMin, UITextScale.Body,
+                "Tutorial prompts must not auto-shrink below body text.");
+            Assert.GreaterOrEqual(feedback.fontSizeMin, UITextScale.Secondary,
+                "Tutorial feedback must not auto-shrink below secondary text.");
+        }
+
+        [Test]
+        public void DialogueController_ResponsiveLayout_ExpandsPanelAndReadableBodyText()
+        {
+            using TestObjects objects = new();
+            RectTransform panel = objects.CreateRect("DialoguePanel");
+            TextMeshProUGUI speaker = objects.CreateText("SpeakerText", panel);
+            TextMeshProUGUI body = objects.CreateText("BodyText", panel);
+            Image portrait = objects.CreateImage("PortraitImage", panel);
+
+            DialogueController.ApplyResponsiveDialogueLayout(panel, speaker, body, portrait, hasPortrait: true);
+
+            Assert.AreEqual(0f, panel.anchorMin.y, 0.001f);
+            Assert.AreEqual(0.30f, panel.anchorMax.y, 0.001f, "The story scroll uses the authored 30% dialogue band.");
+
+            // The compact panel uses TMP autosizing with floors so multiline dialogue remains
+            // readable without overlapping the safe area.
+            Assert.IsTrue(body.enableAutoSizing);
+            Assert.IsTrue(speaker.enableAutoSizing);
+            // Long multiline dialogue is allowed to autosize to the shared readability
+            // floor; the layout contract is the 30% panel plus non-overlap/safe-area bounds,
+            // not a fixed 40-unit minimum that the compact panel cannot always satisfy.
+            Assert.GreaterOrEqual(body.fontSizeMin, UITextScale.AutoSizeFloor);
+            Assert.GreaterOrEqual(speaker.fontSizeMin, UITextScale.Secondary);
+            Assert.Greater(speaker.fontSize, body.fontSize, "The speaker name is the title.");
+
+            Assert.Less(body.rectTransform.anchorMin.x, body.rectTransform.anchorMax.x);
+            Assert.Greater(body.rectTransform.anchorMax.y, body.rectTransform.anchorMin.y);
+            Assert.LessOrEqual(body.rectTransform.anchorMax.y, speaker.rectTransform.anchorMin.y);
+            AssertAnchorsInside(speaker.rectTransform, ScrollPanelArt.TopSafeArea);
+            AssertAnchorsInside(body.rectTransform, ScrollPanelArt.TopSafeArea);
+
+            // The body hangs from just under the title and grows downward. Centering it in
+            // the tall half-screen panel leaves it adrift in the middle of the paper with a
+            // gap under the title, so it is top-aligned and its band starts near the title.
+            Assert.AreEqual(TextAlignmentOptions.Top, body.alignment);
+            Assert.Less(
+                speaker.rectTransform.anchorMin.y - body.rectTransform.anchorMax.y, 0.04f,
+                "The body should start just under the title, not float below a gap.");
+        }
+
+        [Test]
+        public void DialogueController_RuntimeLayout_SeatsScrollAtBottomEdge()
+        {
+            using TestObjects objects = new();
+            RectTransform host = objects.CreateRect("DialogueController");
+            DialogueController controller = host.gameObject.AddComponent<DialogueController>();
+            RectTransform panel = objects.CreateRect("DialoguePanel");
+            SetDialogueField(controller, "_overlayPanel", panel.gameObject);
+
+            typeof(DialogueController).GetMethod("ConfigureResponsiveLayout",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                .Invoke(controller, new object[] { false });
+
+            Assert.AreEqual(0f, panel.anchorMin.y, 0.001f);
+            Assert.AreEqual(0f, panel.offsetMin.y, 0.001f,
+                "The parchment must meet the screen edge rather than float above a bottom margin.");
+        }
+
+        [Test]
+        public void DialogueController_Title_ClearsTheFixedScrollRod()
+        {
+            using TestObjects objects = new();
+            RectTransform panel = objects.CreateRect("DialoguePanel");
+            TextMeshProUGUI speaker = objects.CreateText("SpeakerText", panel);
+            TextMeshProUGUI body = objects.CreateText("BodyText", panel);
+
+            DialogueController.ApplyResponsiveDialogueLayout(
+                panel, speaker, body, null, hasPortrait: false);
+
+            // The scroll's rod is a 9-slice border: a fixed pixel height that does not shrink
+            // with the panel. Shrinking the panel is what used to push the speaker name onto
+            // the rod, so the guard is stated against the rod's real share of the panel.
+            float rodTop = 1f - DialogueController.ScrollRodFraction;
+            Assert.Greater(DialogueController.ScrollRodFraction, 0f);
+            Assert.Less(DialogueController.ScrollRodFraction, 0.30f,
+                "The fixed rod must remain a minority of the compact dialogue panel.");
+            Assert.Less(speaker.rectTransform.anchorMax.y, rodTop,
+                "The speaker name must sit below the rod, not on it.");
+            Assert.Less(body.rectTransform.anchorMax.y, rodTop);
+        }
+
+        [Test]
+        public void DialogueController_SlideOffset_RisesFromBelowTheScreenToRest()
+        {
+            const float height = 960f;
+
+            Assert.AreEqual(-height, DialogueController.SlideOffsetY(0f, height), 0.01f,
+                "At rest the scroll is parked one full panel below the screen.");
+            Assert.AreEqual(0f, DialogueController.SlideOffsetY(1f, height), 0.01f,
+                "It settles flush with the bottom of the screen.");
+
+            // Eased out: most of the travel happens early, so it is already past halfway.
+            Assert.Greater(DialogueController.SlideOffsetY(0.5f, height), -height * 0.5f);
+
+            // Monotonic — it never dips back down on the way up.
+            float previous = DialogueController.SlideOffsetY(0f, height);
+            for (int step = 1; step <= 10; step++)
+            {
+                float current = DialogueController.SlideOffsetY(step / 10f, height);
+                Assert.GreaterOrEqual(current, previous);
+                previous = current;
+            }
+        }
+
+        [Test]
+        public void ScrollPanelArt_SafeAreas_StayInsideNormalizedPanelBounds()
+        {
+            Assert.Greater(ScrollPanelArt.FullSafeArea.xMin, 0f);
+            Assert.Greater(ScrollPanelArt.FullSafeArea.yMin, 0f);
+            Assert.Less(ScrollPanelArt.FullSafeArea.xMax, 1f);
+            Assert.Less(ScrollPanelArt.FullSafeArea.yMax, 1f);
+            Assert.Greater(ScrollPanelArt.TopSafeArea.xMin, 0f);
+            Assert.Greater(ScrollPanelArt.TopSafeArea.yMin, 0f);
+            Assert.Less(ScrollPanelArt.TopSafeArea.xMax, 1f);
+            Assert.Less(ScrollPanelArt.TopSafeArea.yMax, 1f);
+        }
+
+        [Test]
+        public void PauseMenu_ParchmentLayout_KeepsPromptAndButtonsInsidePaper()
+        {
+            using TestObjects objects = new();
+            RectTransform card = objects.CreateRect("PauseCard");
+            TMP_Text prompt = objects.CreateText("Prompt", card);
+            Button confirm = objects.CreateButton("Confirm", card);
+            Button cancel = objects.CreateButton("Cancel", card);
+
+            PauseMenuUI.ApplyParchmentConfirmationLayout(card, prompt, confirm, cancel);
+
+            Assert.AreEqual(new Vector2(760f, 680f), card.sizeDelta);
+            AssertAnchorsInside(prompt.rectTransform, ScrollPanelArt.FullSafeArea);
+            AssertAnchorsInside(confirm.GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
+            AssertAnchorsInside(cancel.GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
+            Assert.GreaterOrEqual(prompt.fontSizeMin, UITextScale.AutoSizeFloor);
+            Assert.GreaterOrEqual(prompt.fontSizeMax, UITextScale.Body);
+            Assert.LessOrEqual(cancel.GetComponent<RectTransform>().anchorMax.y,
+                confirm.GetComponent<RectTransform>().anchorMin.y);
+        }
+
+        [Test]
+        public void FocusWordPreview_ParchmentLayout_KeepsCopyAndButtonInsidePaper()
+        {
+            using TestObjects objects = new();
+            RectTransform panel = objects.CreateRect("FocusWordPanel");
+            TMP_Text preview = objects.CreateText("Preview", panel);
+            Button continueButton = objects.CreateButton("Continue", panel);
+
+            FocusWordPreviewController.ApplyParchmentLayout(panel, preview, continueButton);
+
+            Assert.AreEqual(ScrollPanelArt.ScrollArea.min, panel.anchorMin);
+            Assert.AreEqual(ScrollPanelArt.ScrollArea.max, panel.anchorMax);
+            AssertAnchorsInside(preview.rectTransform, ScrollPanelArt.FullSafeArea);
+            AssertAnchorsInside(continueButton.GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
+            Assert.GreaterOrEqual(preview.fontSizeMin, UITextScale.AutoSizeFloor);
+            Assert.GreaterOrEqual(preview.fontSizeMax, UITextScale.Body);
+            Assert.LessOrEqual(continueButton.GetComponent<RectTransform>().anchorMax.y,
+                preview.rectTransform.anchorMin.y);
+        }
+
+        [Test]
+        public void WaveCleared_ParchmentLayout_KeepsBannerHeartsAndButtonInsidePaper()
+        {
+            using TestObjects objects = new();
+            RectTransform card = objects.CreateRect("BannerCard");
+            TMP_Text banner = objects.CreateText("BannerText", card);
+            TMP_Text hearts = objects.CreateText("HeartsText", card);
+            Button continueButton = objects.CreateButton("ContinueButton", card);
+            AsBuiltText(banner);
+            AsBuiltText(hearts);
+            AsBuiltButton(continueButton);
+
+            WaveClearedScreenUI.ApplyParchmentLayout(card, banner, hearts, continueButton);
+
+            AssertAnchorsInside(banner.rectTransform, ScrollPanelArt.FullSafeArea);
+            AssertAnchorsInside(hearts.rectTransform, ScrollPanelArt.FullSafeArea);
+            AssertAnchorsInside(
+                continueButton.GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
+            Assert.GreaterOrEqual(banner.fontSizeMin, UITextScale.Body);
+            Assert.GreaterOrEqual(hearts.fontSizeMin, UITextScale.Caption);
+            Assert.GreaterOrEqual(hearts.fontSizeMax, UITextScale.Body);
+            Assert.LessOrEqual(hearts.rectTransform.anchorMax.y, banner.rectTransform.anchorMin.y);
+            Assert.LessOrEqual(
+                continueButton.GetComponent<RectTransform>().anchorMax.y,
+                hearts.rectTransform.anchorMin.y);
+        }
+
+        /// <summary>
+        /// Playtest 2026-09-29, Level 3: the challenge board's Hint button was drawn over the
+        /// scroll's bottom rod. Its row was anchored from y 0.025, below the paper.
+        /// </summary>
+        [Test]
+        public void ChallengeBoard_KeepsEveryRow_IncludingTheHintButton_InsidePaper()
+        {
+            GameObject boardObject = new("ChallengeBoard_Test", typeof(RectTransform));
+            try
+            {
+                ChallengeModeUI board = boardObject.AddComponent<ChallengeModeUI>();
+                board.ShowFeedback(string.Empty);
+
+                string[] rows = { "Progress", "Timer", "PromptViewport", "Status", "AnswerChoices", "ChallengeActions" };
+                foreach (string row in rows)
+                {
+                    RectTransform rect = boardObject.transform.Find(row) as RectTransform;
+                    Assert.IsNotNull(rect, row + " was not built.");
+                    AssertAnchorsInside(rect, ScrollPanelArt.FullSafeArea);
+                }
+
+                RectTransform actions = (RectTransform)boardObject.transform.Find("ChallengeActions");
+                RectTransform choices = (RectTransform)boardObject.transform.Find("AnswerChoices");
+                Assert.LessOrEqual(actions.anchorMax.y, choices.anchorMin.y,
+                    "The Hint row sits under the answers, not on top of them.");
+            }
+            finally
+            {
+                // The board reparents itself under a canvas it builds; destroy that too.
+                Object.DestroyImmediate(boardObject.transform.root.gameObject);
+            }
+        }
+
+        [Test]
+        public void MemoryClaim_ParchmentLayout_StacksButtonsInsidePaper()
+        {
+            using TestObjects objects = new();
+            RectTransform card = objects.CreateRect("ClaimCard");
+            TMP_Text body = objects.CreateText("BodyText", card);
+            Button claim = objects.CreateButton("ClaimButton", card);
+            Button dismiss = objects.CreateButton("DismissButton", card);
+            AsBuiltText(body);
+            AsBuiltButton(claim);
+            AsBuiltButton(dismiss);
+
+            MemoryClaimPanel.ApplyParchmentLayout(card, body, claim, dismiss);
+
+            AssertAnchorsInside(body.rectTransform, ScrollPanelArt.FullSafeArea);
+            AssertAnchorsInside(claim.GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
+            AssertAnchorsInside(dismiss.GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
+            Assert.GreaterOrEqual(body.fontSizeMin, UITextScale.AutoSizeFloor);
+            Assert.GreaterOrEqual(body.fontSizeMax, UITextScale.Body);
+            Assert.LessOrEqual(
+                claim.GetComponent<RectTransform>().anchorMax.y, body.rectTransform.anchorMin.y);
+            Assert.LessOrEqual(
+                dismiss.GetComponent<RectTransform>().anchorMax.y,
+                claim.GetComponent<RectTransform>().anchorMin.y);
+        }
+
+        [Test]
+        public void MemoryCard_ParchmentLayout_KeepsFaceContentAndButtonsInsidePaper()
+        {
+            using TestObjects objects = new();
+            RectTransform card = objects.CreateRect("MemoryCard");
+            RectTransform frontFace = objects.CreateRect("FrontFace");
+            RectTransform backFace = objects.CreateRect("BackFace");
+            frontFace.SetParent(card, false);
+            backFace.SetParent(card, false);
+            TMP_Text number = objects.CreateText("NumberText", frontFace);
+            TMP_Text title = objects.CreateText("TitleText", frontFace);
+            TMP_Text words = objects.CreateText("WordsText", frontFace);
+            RectTransform glyphRow = objects.CreateRect("GlyphRow");
+            glyphRow.SetParent(frontFace, false);
+            TMP_Text lore = objects.CreateText("LoreText", backFace);
+            Button flip = objects.CreateButton("FlipButton", card);
+            Button close = objects.CreateButton("CloseButton", card);
+            frontFace.offsetMin = new Vector2(0f, 120f);
+            backFace.offsetMin = new Vector2(0f, 120f);
+            AsBuiltText(number);
+            AsBuiltText(title);
+            AsBuiltText(words);
+            AsBuiltRow(glyphRow);
+            AsBuiltText(lore);
+            AsBuiltButton(flip);
+            AsBuiltButton(close);
+
+            MemoryCardUI.ApplyParchmentLayout(
+                card, frontFace, backFace, number, title, words, glyphRow, lore, flip, close);
+
+            // Both faces stretch edge to edge, so their children's anchors read against the
+            // card itself rather than a box inset above the old outside-the-paper button row.
+            Assert.AreEqual(Vector2.zero, frontFace.offsetMin);
+            Assert.AreEqual(Vector2.zero, frontFace.offsetMax);
+            Assert.AreEqual(Vector2.zero, backFace.offsetMin);
+            Assert.AreEqual(Vector2.zero, backFace.offsetMax);
+
+            AssertAnchorsInside(number.rectTransform, ScrollPanelArt.FullSafeArea);
+            AssertAnchorsInside(title.rectTransform, ScrollPanelArt.FullSafeArea);
+            AssertAnchorsInside(words.rectTransform, ScrollPanelArt.FullSafeArea);
+            AssertAnchorsInside(glyphRow, ScrollPanelArt.FullSafeArea);
+            AssertAnchorsInside(lore.rectTransform, ScrollPanelArt.FullSafeArea);
+            AssertAnchorsInside(flip.GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
+            AssertAnchorsInside(close.GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
+
+            // The card faces auto-size inside their parchment bands; the bands must not
+            // permit shrinking into unreadable caption range.
+            Assert.GreaterOrEqual(number.fontSizeMin, UITextScale.AutoSizeFloor);
+            Assert.GreaterOrEqual(title.fontSizeMax, UITextScale.Title);
+            Assert.GreaterOrEqual(words.fontSizeMin, UITextScale.Caption);
+            Assert.GreaterOrEqual(lore.fontSizeMin, UITextScale.Caption);
+
+            // Reading order down the paper, then the button row under everything.
+            Assert.LessOrEqual(title.rectTransform.anchorMax.y, number.rectTransform.anchorMin.y);
+            Assert.LessOrEqual(words.rectTransform.anchorMax.y, title.rectTransform.anchorMin.y);
+            Assert.GreaterOrEqual(words.rectTransform.anchorMin.y - glyphRow.anchorMax.y, 0.03f,
+                "Word meanings need a small breathing gap above the glyph row.");
+            Assert.LessOrEqual(
+                flip.GetComponent<RectTransform>().anchorMax.y, glyphRow.anchorMin.y);
+
+            // The two buttons sit side by side without overlapping.
+            Assert.LessOrEqual(
+                flip.GetComponent<RectTransform>().anchorMax.x,
+                close.GetComponent<RectTransform>().anchorMin.x);
+        }
+
+        [Test]
+        public void MemoryCard_GlyphSize_ShrinksSoAFullRowFitsThePaper()
+        {
+            // Five glyphs is the real worst case in Ugat (Level 5: IBA + MANA).
+            float rowWidth = 820f * (0.83f - 0.17f);
+
+            float five = MemoryCardUI.ResolveGlyphSize(5, rowWidth);
+            float rowSpan = (five * 5) + (MemoryCardUI.GlyphGap * 4);
+
+            // Tolerance is for float rounding only — the bug this guards against overflows
+            // by 3px (five glyphs at the authored 96 plus gaps is 544 against 541).
+            Assert.LessOrEqual(rowSpan, rowWidth + 0.01f);
+            Assert.Greater(five, 0f);
+
+            // A short row is not blown up past the authored size.
+            Assert.AreEqual(
+                MemoryCardUI.MaxGlyphSize, MemoryCardUI.ResolveGlyphSize(2, rowWidth), 0.01f);
+        }
+
+        [Test]
+        public void MemoryCard_GlyphRow_StillFitsWhenTheCardHasNotLaidOutYet()
+        {
+            // Present() renders the glyphs before it activates the overlay root, and Hide()
+            // leaves that root inactive, so from the second card on the row measures zero.
+            // The fit has to come from the card's own width, not from a layout pass.
+            // A tall phone's canvas (1284x2778 is ~979 units wide under the 1080x1920
+            // scaler), not the live Screen, which is whatever the editor's view happens to be.
+            float unmeasured = MemoryCardUI.ResolveGlyphRowWidth(0f, canvasWidth: 979f);
+            Assert.Greater(unmeasured, 0f);
+
+            float size = MemoryCardUI.ResolveGlyphSize(5, unmeasured);
+            Assert.LessOrEqual(
+                (size * 5) + (MemoryCardUI.GlyphGap * 4), unmeasured + 0.01f);
+            Assert.Less(size, MemoryCardUI.MaxGlyphSize);
+
+            // A real measurement still wins when there is one.
+            Assert.AreEqual(500f, MemoryCardUI.ResolveGlyphRowWidth(500f), 0.01f);
+        }
+
+        /// <summary>
+        /// The card's canvas now scales with the screen, so its glyph sizes are canvas units, not
+        /// screen pixels. The unmeasured-row fallback must size off the canvas width it is given:
+        /// a 1284px phone is only ~979 units wide under the 1080x1920 scaler, and sizing off the
+        /// pixel width would let five glyphs overflow the paper.
+        /// </summary>
+        [Test]
+        public void MemoryCard_GlyphRow_FallbackMeasuresInCanvasUnits()
+        {
+            const float canvasWidth = 979f;
+            float row = MemoryCardUI.ResolveGlyphRowWidth(0f, canvasWidth);
+
+            Assert.AreEqual(
+                canvasWidth * ScrollPanelArt.ScrollArea.width * (0.83f - 0.17f), row, 0.01f);
+
+            float size = MemoryCardUI.ResolveGlyphSize(5, row);
+            Assert.LessOrEqual((size * 5) + (MemoryCardUI.GlyphGap * 4), row + 0.01f);
+        }
+
+        [Test]
+        public void CutscenePlayer_ContinuePromptLayout_UsesCenteredTopSafeAreaBand()
+        {
+            using TestObjects objects = new();
+            TextMeshProUGUI prompt = objects.CreateText("ContinuePromptText");
+
+            CutscenePlayer.ApplyContinuePromptLayout(prompt, topPadding: 52f);
+
+            RectTransform rect = prompt.rectTransform;
+            Assert.AreEqual(0.04f, rect.anchorMin.x, 0.001f);
+            Assert.AreEqual(0.96f, rect.anchorMax.x, 0.001f);
+            Assert.AreEqual(1f, rect.anchorMin.y, 0.001f);
+            Assert.AreEqual(1f, rect.anchorMax.y, 0.001f);
+            Assert.AreEqual(new Vector2(0.5f, 1f), rect.pivot);
+            Assert.AreEqual(0f, rect.anchoredPosition.x, 0.001f);
+            Assert.Less(rect.anchoredPosition.y, 0f);
+            Assert.IsTrue(prompt.enableAutoSizing);
+            Assert.GreaterOrEqual(prompt.fontSizeMax, 54f);
+            Assert.GreaterOrEqual(prompt.fontSizeMin, UITextScale.AutoSizeFloor);
+        }
+
+        /// <summary>
+        /// The anchors the runtime builders leave behind: text pinned across the full card
+        /// width at the top edge, buttons pinned to the bottom edge. Both sit outside the
+        /// parchment safe area, which is the defect these layout helpers exist to correct —
+        /// seeding them here keeps the assertions from passing against a default RectTransform.
+        /// </summary>
+        private static RectTransform AsBuiltText(TMP_Text text)
+        {
+            RectTransform rect = text.rectTransform;
+            rect.anchorMin = new Vector2(0f, 1f);
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(0.5f, 1f);
+            return rect;
+        }
+
+        private static RectTransform AsBuiltButton(Button button)
+        {
+            RectTransform rect = button.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 0f);
+            rect.anchorMax = new Vector2(0.5f, 0f);
+            rect.pivot = new Vector2(0.5f, 0f);
+            return rect;
+        }
+
+        private static RectTransform AsBuiltRow(RectTransform rect)
+        {
+            rect.anchorMin = new Vector2(0f, 1f);
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(0.5f, 1f);
+            return rect;
+        }
+
+        private static void AssertAnchorsInside(RectTransform rect, Rect area)
+        {
+            Assert.GreaterOrEqual(rect.anchorMin.x, area.xMin);
+            Assert.GreaterOrEqual(rect.anchorMin.y, area.yMin);
+            Assert.LessOrEqual(rect.anchorMax.x, area.xMax);
+            Assert.LessOrEqual(rect.anchorMax.y, area.yMax);
+        }
+
+        private sealed class TestObjects : System.IDisposable
+        {
+            private readonly GameObject _root = new("ResponsiveUILayoutTests_Root", typeof(RectTransform));
+
+            public RectTransform CreateRect(string name)
+            {
+                GameObject go = new(name, typeof(RectTransform));
+                go.transform.SetParent(_root.transform, false);
+                return go.GetComponent<RectTransform>();
+            }
+
+            public TextMeshProUGUI CreateText(string name, RectTransform parent = null)
+            {
+                GameObject go = new(name, typeof(RectTransform), typeof(TextMeshProUGUI));
+                go.transform.SetParent(parent != null ? parent : _root.transform, false);
+                return go.GetComponent<TextMeshProUGUI>();
+            }
+
+            public Image CreateImage(string name, RectTransform parent = null)
+            {
+                GameObject go = new(name, typeof(RectTransform), typeof(Image));
+                go.transform.SetParent(parent != null ? parent : _root.transform, false);
+                return go.GetComponent<Image>();
+            }
+
+            public Button CreateButton(string name, RectTransform parent = null)
+            {
+                GameObject go = new(name, typeof(RectTransform), typeof(Image), typeof(Button));
+                go.transform.SetParent(parent != null ? parent : _root.transform, false);
+                return go.GetComponent<Button>();
+            }
+
+            public void Dispose()
+            {
+                Object.DestroyImmediate(_root);
+            }
+        }
+    }
+}

@@ -8,7 +8,8 @@ using UnityEngine;
 
 public static class BaybayinRecognitionEvaluator
 {
-    private const string TestDrawsFolder = "Assets/Resources/TestDraws";
+    // SALIN-185: fixtures live outside Resources so they are not built into the player.
+    private const string TestDrawsFolder = "Assets/Tests/Fixtures/TestDraws";
     private static readonly string[] ExpectedCharacterIDs =
     {
         "A", "BA", "DA", "EI", "GA", "HA", "KA", "LA", "MA", "NA", "NGA", "OU", "PA", "RA", "SA", "TA", "WA", "YA"
@@ -25,118 +26,150 @@ public static class BaybayinRecognitionEvaluator
     [MenuItem("Salinlahi/Validation/Evaluate Baybayin Recognition")]
     public static void EvaluateRecognition()
     {
-        if (!Directory.Exists(TestDrawsFolder))
+        Debug.Log("[BaybayinEval] Evaluation started.");
+
+        try
         {
-            Debug.LogError($"[BaybayinEval] Missing test draws folder: {TestDrawsFolder}");
-            Debug.Log("[BaybayinEval] Add test draw files named like BA_draw_01.txt under Assets/Resources/TestDraws/");
-            return;
+            if (!Directory.Exists(TestDrawsFolder))
+            {
+                Debug.LogError($"[BaybayinEval] Missing test draws folder: {TestDrawsFolder}");
+                Debug.Log("[BaybayinEval] Add test draw files named like BA_draw_01.txt under Assets/Tests/Fixtures/TestDraws/");
+                EditorUtility.DisplayDialog(
+                    "Baybayin Recognition Evaluation",
+                    $"Missing test draws folder:\n{TestDrawsFolder}\n\nCheck the Console for details.",
+                    "OK");
+                return;
+            }
+
+            RecognitionConfigSO config = FindRecognitionConfig();
+            int resampleCount = config != null ? config.resamplePointCount : 32;
+
+            var loader = new TemplateLoader();
+            Dictionary<string, List<List<List<Vector2>>>> templates = loader.LoadAll();
+
+            var recognizer = new DollarPRecognizer(resampleCount);
+            recognizer.SetTemplateStrokeVariants(templates);
+
+            string[] drawFiles = Directory.GetFiles(TestDrawsFolder, "*.txt", SearchOption.TopDirectoryOnly);
+            if (drawFiles.Length == 0)
+            {
+                Debug.LogError("[BaybayinEval] No draw sample files found.");
+                EditorUtility.DisplayDialog(
+                    "Baybayin Recognition Evaluation",
+                    "No draw sample files were found in Assets/Tests/Fixtures/TestDraws.\n\nCheck the Console for details.",
+                    "OK");
+                return;
+            }
+
+            int total = 0;
+            int correct = 0;
+            var perCharacter = CreateCharacterStatsDictionary();
+            var confusion = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var perCharacterPredictedVariant = new Dictionary<string, Dictionary<int, AccuracyStats>>(StringComparer.OrdinalIgnoreCase);
+            var expectedVariantStats = new Dictionary<string, Dictionary<int, AccuracyStats>>(StringComparer.OrdinalIgnoreCase);
+            int drawsWithExpectedVariant = 0;
+
+            foreach (string drawFile in drawFiles)
+            {
+                string fileNameNoExt = Path.GetFileNameWithoutExtension(drawFile).ToUpperInvariant();
+                string expectedID = ExtractExpectedID(fileNameNoExt);
+                if (string.IsNullOrEmpty(expectedID))
+                {
+                    Debug.LogWarning($"[BaybayinEval] Skipping sample '{fileNameNoExt}' due to invalid name. Expected ID_draw_01 format.");
+                    continue;
+                }
+
+                List<List<Vector2>> strokes = StrokeTextParser.ParseStrokes(File.ReadAllText(drawFile));
+                List<Vector2> points = StrokeTextParser.FlattenStrokes(strokes);
+                if (points.Count < 8)
+                {
+                    Debug.LogWarning($"[BaybayinEval] Skipping sample '{fileNameNoExt}' with too few points ({points.Count}).");
+                    continue;
+                }
+
+                RecognitionResult result = recognizer.Recognize(strokes);
+                total++;
+
+                bool isCorrect = string.Equals(expectedID, result.characterID, StringComparison.OrdinalIgnoreCase);
+                if (isCorrect) correct++;
+
+                AccuracyStats charStats = GetOrCreateStats(perCharacter, expectedID);
+                charStats.Total++;
+                if (isCorrect) charStats.Correct++;
+
+                var perVariantForCharacter = GetOrCreateNestedStats(perCharacterPredictedVariant, expectedID);
+                AccuracyStats predictedVariantStats = GetOrCreateStats(perVariantForCharacter, result.templateVariantIndex);
+                predictedVariantStats.Total++;
+                if (isCorrect) predictedVariantStats.Correct++;
+
+                if (TryExtractExpectedTemplateVariant(fileNameNoExt, out int expectedTemplateVariant))
+                {
+                    drawsWithExpectedVariant++;
+                    var expectedVariantForCharacter = GetOrCreateNestedStats(expectedVariantStats, expectedID);
+                    AccuracyStats expectedStats = GetOrCreateStats(expectedVariantForCharacter, expectedTemplateVariant);
+                    expectedStats.Total++;
+                    if (isCorrect) expectedStats.Correct++;
+                }
+
+                string predictedID = CanonicalizeID(result.characterID);
+                if (!string.Equals(expectedID, predictedID, StringComparison.OrdinalIgnoreCase))
+                {
+                    string confusionKey = $"{expectedID}->{predictedID}";
+                    confusion[confusionKey] = confusion.TryGetValue(confusionKey, out int existing) ? existing + 1 : 1;
+                }
+
+                if (!isCorrect)
+                {
+                    Debug.LogWarning(
+                        $"[BaybayinEval] Miss: expected={expectedID} predicted={result.characterID} predictedVariant={result.templateVariantIndex} score={result.score:F3} sample={fileNameNoExt}");
+                }
+            }
+
+            if (total == 0)
+            {
+                Debug.LogError("[BaybayinEval] No valid samples were evaluated.");
+                EditorUtility.DisplayDialog(
+                    "Baybayin Recognition Evaluation",
+                    "No valid samples were evaluated.\n\nCheck the Console for skipped-file reasons.",
+                    "OK");
+                return;
+            }
+
+            float accuracy = (float)correct / total * 100f;
+            Debug.Log($"[BaybayinEval] Top-1 accuracy: {accuracy:F2}% ({correct}/{total})");
+
+            PrintPerCharacterReport(perCharacter, templates);
+            PrintPerCharacterTemplateVariantReport(perCharacterPredictedVariant, templates);
+
+            if (drawsWithExpectedVariant > 0)
+                PrintExpectedTemplateVariantReport(expectedVariantStats, templates, drawsWithExpectedVariant);
+            else
+                Debug.Log("[BaybayinEval] Expected-template variant report skipped. Add sample names like BA_template_03_draw_01.txt to enable it.");
+
+            PrintTopConfusions(confusion, 10);
+
+            if (total != 90)
+                Debug.LogWarning($"[BaybayinEval] Evaluated {total} samples. AC-4 expects 90 (5 draws x 18 characters).");
+
+            bool pass = accuracy >= 80f;
+            if (pass)
+                Debug.Log("[BaybayinEval] PASS: Accuracy meets AC-4 (>= 80%).");
+            else
+                Debug.LogError("[BaybayinEval] FAIL: Accuracy below AC-4 target (>= 80%).");
+
+            EditorUtility.DisplayDialog(
+                "Baybayin Recognition Evaluation",
+                $"Done.\n\nAccuracy: {accuracy:F2}% ({correct}/{total})\nResult: {(pass ? "PASS" : "FAIL")}\n\nSee Console for full report.",
+                "OK");
         }
-
-        RecognitionConfigSO config = FindRecognitionConfig();
-        int resampleCount = config != null ? config.resamplePointCount : 32;
-
-        var loader = new TemplateLoader();
-        Dictionary<string, List<List<Vector2>>> templates = loader.LoadAll();
-
-        var recognizer = new DollarPRecognizer(resampleCount);
-        recognizer.SetTemplateVariants(templates);
-
-        string[] drawFiles = Directory.GetFiles(TestDrawsFolder, "*.txt", SearchOption.TopDirectoryOnly);
-        if (drawFiles.Length == 0)
+        catch (Exception ex)
         {
-            Debug.LogError("[BaybayinEval] No draw sample files found.");
-            return;
+            Debug.LogException(ex);
+            EditorUtility.DisplayDialog(
+                "Baybayin Recognition Evaluation",
+                "Evaluation crashed. See Console for exception details.",
+                "OK");
         }
-
-        int total = 0;
-        int correct = 0;
-        var perCharacter = CreateCharacterStatsDictionary();
-        var confusion = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        var perCharacterPredictedVariant = new Dictionary<string, Dictionary<int, AccuracyStats>>(StringComparer.OrdinalIgnoreCase);
-        var expectedVariantStats = new Dictionary<string, Dictionary<int, AccuracyStats>>(StringComparer.OrdinalIgnoreCase);
-        int drawsWithExpectedVariant = 0;
-
-        foreach (string drawFile in drawFiles)
-        {
-            string fileNameNoExt = Path.GetFileNameWithoutExtension(drawFile).ToUpperInvariant();
-            string expectedID = ExtractExpectedID(fileNameNoExt);
-            if (string.IsNullOrEmpty(expectedID))
-            {
-                Debug.LogWarning($"[BaybayinEval] Skipping sample '{fileNameNoExt}' due to invalid name. Expected ID_draw_01 format.");
-                continue;
-            }
-
-            List<Vector2> points = ParsePoints(File.ReadAllText(drawFile));
-            if (points.Count < 8)
-            {
-                Debug.LogWarning($"[BaybayinEval] Skipping sample '{fileNameNoExt}' with too few points ({points.Count}).");
-                continue;
-            }
-
-            RecognitionResult result = recognizer.Recognize(points);
-            total++;
-
-            bool isCorrect = string.Equals(expectedID, result.characterID, StringComparison.OrdinalIgnoreCase);
-            if (isCorrect) correct++;
-
-            AccuracyStats charStats = GetOrCreateStats(perCharacter, expectedID);
-            charStats.Total++;
-            if (isCorrect) charStats.Correct++;
-
-            var perVariantForCharacter = GetOrCreateNestedStats(perCharacterPredictedVariant, expectedID);
-            AccuracyStats predictedVariantStats = GetOrCreateStats(perVariantForCharacter, result.templateVariantIndex);
-            predictedVariantStats.Total++;
-            if (isCorrect) predictedVariantStats.Correct++;
-
-            if (TryExtractExpectedTemplateVariant(fileNameNoExt, out int expectedTemplateVariant))
-            {
-                drawsWithExpectedVariant++;
-                var expectedVariantForCharacter = GetOrCreateNestedStats(expectedVariantStats, expectedID);
-                AccuracyStats expectedStats = GetOrCreateStats(expectedVariantForCharacter, expectedTemplateVariant);
-                expectedStats.Total++;
-                if (isCorrect) expectedStats.Correct++;
-            }
-
-            string predictedID = CanonicalizeID(result.characterID);
-            if (!string.Equals(expectedID, predictedID, StringComparison.OrdinalIgnoreCase))
-            {
-                string confusionKey = $"{expectedID}->{predictedID}";
-                confusion[confusionKey] = confusion.TryGetValue(confusionKey, out int existing) ? existing + 1 : 1;
-            }
-
-            if (!isCorrect)
-            {
-                Debug.LogWarning(
-                    $"[BaybayinEval] Miss: expected={expectedID} predicted={result.characterID} predictedVariant={result.templateVariantIndex} score={result.score:F3} sample={fileNameNoExt}");
-            }
-        }
-
-        if (total == 0)
-        {
-            Debug.LogError("[BaybayinEval] No valid samples were evaluated.");
-            return;
-        }
-
-        float accuracy = (float)correct / total * 100f;
-        Debug.Log($"[BaybayinEval] Top-1 accuracy: {accuracy:F2}% ({correct}/{total})");
-
-        PrintPerCharacterReport(perCharacter, templates);
-        PrintPerCharacterTemplateVariantReport(perCharacterPredictedVariant, templates);
-
-        if (drawsWithExpectedVariant > 0)
-            PrintExpectedTemplateVariantReport(expectedVariantStats, templates, drawsWithExpectedVariant);
-        else
-            Debug.Log("[BaybayinEval] Expected-template variant report skipped. Add sample names like BA_template_03_draw_01.txt to enable it.");
-
-        PrintTopConfusions(confusion, 10);
-
-        if (total != 90)
-            Debug.LogWarning($"[BaybayinEval] Evaluated {total} samples. AC-4 expects 90 (5 draws x 18 characters).");
-
-        if (accuracy >= 80f)
-            Debug.Log("[BaybayinEval] PASS: Accuracy meets AC-4 (>= 80%).");
-        else
-            Debug.LogError("[BaybayinEval] FAIL: Accuracy below AC-4 target (>= 80%).");
     }
 
     private static RecognitionConfigSO FindRecognitionConfig()
@@ -227,27 +260,27 @@ public static class BaybayinRecognitionEvaluator
 
     private static void PrintPerCharacterReport(
         Dictionary<string, AccuracyStats> perCharacter,
-        Dictionary<string, List<List<Vector2>>> templates)
+        Dictionary<string, List<List<List<Vector2>>>> templates)
     {
         Debug.Log("[BaybayinEval] Per-character accuracy (expectedID -> accuracy, evaluated draws, loaded template count):");
 
         foreach (string id in ExpectedCharacterIDs)
         {
             AccuracyStats stats = GetOrCreateStats(perCharacter, id);
-            int templateCount = templates.TryGetValue(id, out List<List<Vector2>> variants) ? variants.Count : 0;
+            int templateCount = templates.TryGetValue(id, out List<List<List<Vector2>>> variants) ? variants.Count : 0;
             Debug.Log($"[BaybayinEval] {id}: {stats.AccuracyPercent:F2}% ({stats.Correct}/{stats.Total}) templates={templateCount}");
         }
     }
 
     private static void PrintPerCharacterTemplateVariantReport(
         Dictionary<string, Dictionary<int, AccuracyStats>> perCharacterPredictedVariant,
-        Dictionary<string, List<List<Vector2>>> templates)
+        Dictionary<string, List<List<List<Vector2>>>> templates)
     {
         Debug.Log("[BaybayinEval] Per-character predicted template-variant accuracy (winner variant index):");
 
         foreach (string id in ExpectedCharacterIDs)
         {
-            int templateCount = templates.TryGetValue(id, out List<List<Vector2>> variants) ? variants.Count : 0;
+            int templateCount = templates.TryGetValue(id, out List<List<List<Vector2>>> variants) ? variants.Count : 0;
             Debug.Log($"[BaybayinEval] {id}: loadedVariants={templateCount}");
 
             if (!perCharacterPredictedVariant.TryGetValue(id, out Dictionary<int, AccuracyStats> byVariant) || byVariant.Count == 0)
@@ -266,14 +299,14 @@ public static class BaybayinRecognitionEvaluator
 
     private static void PrintExpectedTemplateVariantReport(
         Dictionary<string, Dictionary<int, AccuracyStats>> expectedVariantStats,
-        Dictionary<string, List<List<Vector2>>> templates,
+        Dictionary<string, List<List<List<Vector2>>>> templates,
         int drawsWithExpectedVariant)
     {
         Debug.Log($"[BaybayinEval] Expected-template variant accuracy for {drawsWithExpectedVariant} labeled draw(s):");
 
         foreach (string id in ExpectedCharacterIDs)
         {
-            int templateCount = templates.TryGetValue(id, out List<List<Vector2>> variants) ? variants.Count : 0;
+            int templateCount = templates.TryGetValue(id, out List<List<List<Vector2>>> variants) ? variants.Count : 0;
             Debug.Log($"[BaybayinEval] {id}: loadedVariants={templateCount}");
 
             if (!expectedVariantStats.TryGetValue(id, out Dictionary<int, AccuracyStats> byVariant) || byVariant.Count == 0)
@@ -303,24 +336,4 @@ public static class BaybayinRecognitionEvaluator
             Debug.Log($"[BaybayinEval]   {kvp.Key}: {kvp.Value}");
     }
 
-    private static List<Vector2> ParsePoints(string text)
-    {
-        var points = new List<Vector2>();
-        string[] lines = text.Split('\n');
-        foreach (string raw in lines)
-        {
-            string line = raw.Trim();
-            if (string.IsNullOrEmpty(line)) continue;
-
-            string[] parts = line.Split(',');
-            if (parts.Length != 2) continue;
-
-            bool parsedX = float.TryParse(parts[0].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float x);
-            bool parsedY = float.TryParse(parts[1].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float y);
-            if (parsedX && parsedY)
-                points.Add(new Vector2(x, y));
-        }
-
-        return points;
-    }
 }

@@ -1,8 +1,15 @@
 # 02 — Architecture and Runtime Flow
 **Project:** Salinlahi
-**Version:** 1.2
-**Date:** 2026-03-25
+**Version:** 2.4
+**Date:** 2026-09-22
 **Owner:** Jon Wayne Cabusbusan
+
+> **Current implementation note (2026-09-22):** The enabled build has seven scene entries (plus
+> one disabled sample), with `Gameplay` shared by the authored campaign. `LevelFlowController`
+> owns terminal routing and creates several result/HUD surfaces at runtime; EventBus remains a
+> shared signal boundary but is not the only coupling mechanism. Level 10 is non-boss and Level 15
+> is the sole authored campaign boss. Historical flow descriptions below are retained where they
+> document earlier product intent; live code and serialized assets are authoritative.
 
 ---
 
@@ -12,13 +19,15 @@
 |------------|------|------|
 | Bootstrap | `Assets/_Scenes/Bootstrap.unity` | Instantiates all manager singletons; auto-transitions to MainMenu |
 | MainMenu | `Assets/_Scenes/MainMenu.unity` | Entry point for user: Play, Endless, Tracing Dojo, Settings |
-| LevelSelect | `Assets/_Scenes/LevelSelect.unity` | 15 level buttons grouped by chapter; unlock progression; 3 shrines per era |
+| LevelSelect | `Assets/_Scenes/LevelSelect.unity` | Live; level grid with unlock progression and per-era shrine grouping |
+| TracingDojo | `Assets/_Scenes/TracingDojo.unity` | Live; practice mode for tracing Baybayin glyphs |
 | Gameplay | `Assets/_Scenes/Gameplay.unity` | Core defense loop: enemies, drawing canvas, HUD |
-| GameOver | `Assets/_Scenes/GameOver.unity` | Post-defeat stats; Retry and Return-to-Menu actions |
+| GameOver | `Assets/_Scenes/GameOver.unity` | Deprecated — replaced by DefeatScreenUI overlay in Gameplay scene (SALIN-58) |
+| Almanac | `Assets/_Scenes/Almanac.unity` | Displays the Baybayin character and enemy encyclopaedia; accessible from Main Menu via ALMANAC button |
 
 [EVIDENCE: Assets/_Scenes/ directory listing]
 [EVIDENCE: docs/capstone/GDD.md, §5.1 Player Journey]
-[EVIDENCE: docs/capstone/TDD.md, §1.1 — five scenes specified]
+[EVIDENCE: ProjectSettings/EditorBuildSettings.asset — seven enabled scene entries]
 
 ---
 
@@ -37,35 +46,48 @@ Cold Start
 │           └─ SceneLoader.LoadMainMenu()
 │
 ├─ MainMenu.unity loads
-│     └─ MainMenuUI.cs wires Play button → SceneLoader.LoadGameplay()
+│     ├─ MainMenuUI.cs wires Play button → SceneLoader.LoadGameplay()
+│     └─ MainMenuUI.cs wires Almanac button → SceneLoader.LoadAlmanac()
 │
-├─ Gameplay.unity loads
-│     └─ GameManager.StartGame() called → GameState.Playing
-│     └─ LevelFlowController plays optional Type A intro dialogue
-│     └─ WaveManager drives waves (all levels, including boss levels)
-│     └─ [All waves cleared]
-│           └─ LevelFlowController checks LevelConfigSO.isBossLevel
-│                 ├─ false → EventBus.RaiseLevelComplete()
-│                 └─ true → BossController activates boss encounter
-│                       └─ [All boss phases cleared] → EventBus.RaiseBossDefeated()
-│                             └─ EventBus.RaiseLevelComplete()
-│     └─ WaveManager (PLANNED) loads LevelConfigSO → drives WaveSpawner
-│     └─ EnemyPool.Get(data) → enemy active in scene
-│     └─ [Player draws] → RecognitionManager (PLANNED) → EventBus.RaiseCharacterRecognized()
-│     └─ Enemy.Defeat() → EventBus.RaiseEnemyDefeated()
-│     └─ [Enemy reaches base] → EventBus.RaiseBaseHit() → HeartSystem (PLANNED)
-│     └─ [Hearts == 0] → EventBus.RaiseGameOver()
-│           └─ GameManager.HandleGameOver() → GameState.GameOver
-│                 └─ SceneLoader.LoadGameOver()
+├─ Almanac.unity loads  (two-way navigation from MainMenu)
+│     └─ AlmanacController.cs builds Characters + Enemies grids
+│     └─ Back button → SceneLoader.LoadMainMenu()
 │
-└─ GameOver.unity loads
-      └─ GameOverUI.cs wires Retry → SceneLoader.LoadGameplay()
-      └─ GameOverUI.cs wires Menu  → SceneLoader.LoadMainMenu()
+└─ Gameplay.unity loads
+      └─ LevelFlowController.RunLevelFlow() coroutine:
+            ├─ intro dialogue (DialogueController)
+            ├─ GameManager.StartGame() → GameState.Playing
+            ├─ [RevealTiming.BeforeTutorial] CharacterUnlockRevealController.Play(queue)
+            │     └─ SuppressDrawingInput(true); show each new character in AlmanacDetailScroll;
+            │        wait for ✕ press; TryMarkUnlocked + RaiseCharacterUnlocked; SuppressDrawingInput(false)
+            ├─ PlayLevelTutorialIfNeeded() (no-op on non-tutorial levels)
+            ├─ [RevealTiming.AfterTutorial] CharacterUnlockRevealController.Play(queue)  ← default
+            └─ PlayBossTutorialIfNeeded() (no-op when bossConfig.tutorial == null)
+                  └─ SuppressDrawingInput(true); show paged BossTutorialScroll;
+                     wait for red X; SuppressDrawingInput(false)
+      └─ WaveManager drives waves (all levels, including boss levels)
+      └─ [All waves cleared]
+            └─ WaveManager checks LevelConfigSO.bossConfig != null
+                  ├─ null → EventBus.RaiseLevelComplete()
+                  └─ non-null → WaveSpawner.SpawnBossEnemy(bossConfig)
+                              → BossController.StartBoss(config, spawner)
+                                    └─ [Final phase cleared] → RunOutro coroutine
+                                          → EventBus.RaiseBossDefeated()
+                                          → EventBus.RaiseLevelComplete()
+      └─ EnemyPool.Get(data) → enemy active in scene
+      └─ [Player draws] → RecognitionManager → EventBus.RaiseCharacterRecognized()
+      └─ Enemy.Defeat() → EventBus.RaiseEnemyDefeated()
+      └─ [Enemy reaches base] → EventBus.RaiseBaseHit() → HeartSystem
+      └─ [Hearts == 0] → EventBus.RaiseGameOver()
+            └─ GameManager.HandleGameOver() → GameState.GameOver
+                  └─ DefeatScreenUI overlay handles UI (Retry / Menu actions in-scene)
 ```
 
 [EVIDENCE: Assets/Scripts/Core/BootstrapLoader.cs, Start()]
 [EVIDENCE: Assets/Scripts/Core/SceneLoader.cs, LoadRoutine()]
 [EVIDENCE: Assets/Scripts/Core/GameManager.cs, HandleGameOver()]
+[EVIDENCE: Assets/Scripts/Gameplay/Waves/WaveManager.cs, boss dispatch]
+[EVIDENCE: Assets/Scripts/Gameplay/Boss/BossController.cs, StartBoss() / RunOutro()]
 [EVIDENCE: docs/capstone/GDD.md, §5.1 Player Journey]
 
 ---
@@ -101,10 +123,11 @@ protected virtual void Awake()
 | `[Manager] SceneLoader.prefab` | `SceneLoader.cs` | Bootstrap scene |
 | `[Manager] AudioManager.prefab` | `AudioManager.cs` | Bootstrap scene |
 | `[Manager] EnemyPool.prefab` | `EnemyPool.cs` | Bootstrap scene |
-| `[Manager] RecognitionManager.prefab` | `RecognitionManager.cs` | Bootstrap scene (PLANNED) |
-| `[Manager] StreakManager.prefab` | `StreakManager.cs` | Bootstrap scene (PLANNED) |
-| `[Manager] WaveManager.prefab` | `WaveManager.cs` | Bootstrap scene (PLANNED) |
-| `[Manager] ComboManager.prefab` | `ComboManager.cs` | Bootstrap scene (PLANNED) |
+| `[Manager] RecognitionManager.prefab` | `RecognitionManager.cs` | Bootstrap scene |
+| `[Manager] ComboManager.prefab` | `ComboManager.cs` | Bootstrap scene |
+| `[Manager] ActiveEnemyTracker.prefab` | `ActiveEnemyTracker.cs` | Bootstrap scene |
+| `[Manager] CombatResolver.prefab` | `CombatResolver.cs` | Bootstrap scene |
+| `[Manager] ProgressManager.prefab` | `ProgressManager.cs` | Bootstrap scene |
 
 [EVIDENCE: Assets/Prefabs/Managers/ directory]
 
@@ -112,21 +135,45 @@ protected virtual void Awake()
 
 ## 4. Event-Driven Interactions
 
-All cross-system communication uses `EventBus.cs`. No direct manager-to-manager method calls occur except via `Instance` for single-frame operations (e.g., `SceneLoader.Instance.LoadGameOver()`).
+All cross-system communication uses `EventBus.cs`. No direct manager-to-manager method calls occur except via `Instance` for single-frame operations (e.g., `SceneLoader.Instance.LoadGameplay()`).
 
 ### 4.1 EventBus Contract Table
 
-| Event | Raised By | Subscriber(s) | Payload |
-|-------|-----------|---------------|---------|
-| `OnEnemyDefeated` | `Enemy.Defeat()` | `AudioManager` | `BaybayinCharacterSO` |
-| `OnBaseHit` | `EnemyMover.OnTriggerEnter2D()` | `HeartSystem` (PLANNED) | none |
-| `OnGameOver` | `HeartSystem` (PLANNED) | `GameManager` | none |
-| `OnLevelComplete` | `WaveManager` (PLANNED) | `GameManager` | none |
-| `OnWaveStarted` | `WaveManager` (PLANNED) | `HUD` (PLANNED) | `int waveIndex` |
-| `OnCharacterRecognized` | `RecognitionManager` (PLANNED) | `WaveManager` (PLANNED) | `string characterID` |
-| `OnDrawingFailed` | `RecognitionManager` (PLANNED) | `HUD` (PLANNED) | none |
-| `OnDrawingStarted` | `StrokeCapture` (PLANNED) | `HUD` (PLANNED) | none |
-| `OnHeartsChanged` | `HeartSystem` (PLANNED) | `HUD` (PLANNED) | `int currentHearts` |
+| Event | Payload | Raise Method |
+|-------|---------|-------------|
+| `OnEnemyDefeated` | `BaybayinCharacterSO` | `RaiseEnemyDefeated(BaybayinCharacterSO)` |
+| `OnBaseHit` | `int` (damage) | `RaiseBaseHit(int)` |
+| `OnGameOver` | none | `RaiseGameOver()` |
+| `OnLevelComplete` | none | `RaiseLevelComplete()` |
+| `OnWaveStarted` | `int` (wave index) | `RaiseWaveStarted(int)` |
+| `OnWaveCleared` | `int` (wave index) | `RaiseWaveCleared(int)` |
+| `OnCharacterRecognized` | `string` (characterID) | `RaiseCharacterRecognized(string)` |
+| `OnRecognitionResolved` | `RecognitionResult, bool, float` | `RaiseRecognitionResolved(RecognitionResult, bool, float)` |
+| `OnDrawingFailed` | none | `RaiseDrawingFailed()` |
+| `OnDrawingStarted` | none | `RaiseDrawingStarted()` |
+| `OnHeartsChanged` | `int` (current hearts) | `RaiseHeartsChanged(int)` |
+| `OnEnemyTargeted` | `Enemy` | `RaiseEnemyTargeted(Enemy)` |
+| `OnDrawingMissed` | none | `RaiseDrawingMissed()` |
+| `OnAOETriggered` | `int` (defeated count) | `RaiseAOETriggered(int)` |
+| `OnComboChanged` | `int` (current streak) | `RaiseComboChanged(int)` |
+| `OnFocusModeActivated` | none | `RaiseFocusModeActivated()` |
+| `OnFocusModeDeactivated` | none | `RaiseFocusModeDeactivated()` |
+| `OnGamePaused` | none | `RaiseGamePaused()` |
+| `OnGameResumed` | none | `RaiseGameResumed()` |
+| `OnBossStarted` | `BossConfigSO` | `RaiseBossStarted(BossConfigSO)` |
+| `OnBossPhaseStarted` | `int` (phaseIndex) | `RaiseBossPhaseStarted(int)` |
+| `OnBossExhausted` | `int` (phaseIndex) | `RaiseBossExhausted(int)` |
+| `OnBossVulnerable` | `int` (phaseIndex) | `RaiseBossVulnerable(int)` |
+| `OnBossVulnerabilityWindowActive` | `int` (phaseIndex) | `RaiseBossVulnerabilityWindowActive(int)` |
+| `OnBossVulnerabilityExpired` | `int` (phaseIndex) | `RaiseBossVulnerabilityExpired(int)` |
+| `OnBossDamaged` | `int phaseIndex, int hpRemaining` | `RaiseBossDamaged(int, int)` |
+| `OnBossDefeated` | none | `RaiseBossDefeated()` |
+| `OnBossSummonTick` | none | `RaiseBossSummonTick()` — raised by `BossSummonTicker.PlayTickAndSpawn` at each summon tick |
+| `OnBossDrawHit` | none | `RaiseBossDrawHit()` — raised by `BossController.TryRouteDraw` on `BossRouteResult.Hit` |
+| `OnBossTeleport` | none | `RaiseBossTeleport()` — raised by `PhaseBasedMovement.TeleportNow` on each Teleport-pattern snap |
+| `OnDialogueStarted` | none | `RaiseDialogueStarted()` |
+| `OnDialogueComplete` | none | `RaiseDialogueComplete()` |
+| `OnCharacterUnlocked` | `BaybayinCharacterSO` | `RaiseCharacterUnlocked(BaybayinCharacterSO)` — raised by `CharacterUnlockRevealController` after the player acknowledges a reveal (per-character, after `TryMarkUnlocked`); `AlmanacController` subscribes to rebuild the Characters grid |
 
 [EVIDENCE: Assets/Scripts/Core/EventBus.cs]
 
@@ -144,17 +191,17 @@ All cross-system communication uses `EventBus.cs`. No direct manager-to-manager 
 
 ```
 Player lifts finger
-  → StrokeCapture (PLANNED) captures point cloud
-    → RecognitionManager (PLANNED) runs $P algorithm
+  → StrokeCapture captures point cloud
+    → RecognitionManager runs $P algorithm
       → confidence ≥ 0.60?
           YES → EventBus.RaiseCharacterRecognized(characterID)
-                  → WaveManager (PLANNED) finds matching enemy
+                  → WaveManager finds matching enemy
                     → Enemy.Defeat()
                         → EventBus.RaiseEnemyDefeated(character)
                             → AudioManager.PlayPronunciationClip(character)
                         → Enemy.ReturnToPool()
           NO  → EventBus.RaiseDrawingFailed()
-                  → HUD (PLANNED) shows red flash / X mark
+                  → HUD shows red flash / X mark
 ```
 
 [EVIDENCE: docs/capstone/TDD.md, §3.3 Combat Resolution]
@@ -166,15 +213,15 @@ Player lifts finger
 ```
 EnemyMover.OnTriggerEnter2D(PlayerBase tag)
   → EventBus.RaiseBaseHit()
-    → HeartSystem (PLANNED) decrements hearts
+    → HeartSystem decrements hearts
       → EventBus.RaiseHeartsChanged(currentHearts)
-        → HUD (PLANNED) updates heart display
+        → HUD updates heart display
   → Enemy.ReturnToPool()
   → hearts == 0?
       YES → EventBus.RaiseGameOver()
               → GameManager.HandleGameOver()
                   → GameState = GameOver
-                  → SceneLoader.LoadGameOver()
+                  → DefeatScreenUI overlay handles in-scene UI (SALIN-58)
 ```
 
 [EVIDENCE: Assets/Scripts/Gameplay/Enemy/EnemyMover.cs, OnTriggerEnter2D()]
@@ -217,3 +264,122 @@ SceneLoader.LoadXxx()
 ```
 
 [EVIDENCE: Assets/Scripts/Core/GameManager.cs, enum GameState; SetState()]
+
+### 6.1 Level Phase Flow — LF-CONTRACT-v2 (SALIN-178)
+
+`GameState` above is the **app-level** state (is a level running, is it paused). It does not describe
+*where inside a level* the player is. That is `LevelFlowMachine`, a pure-C# state machine introduced by
+SALIN-178 and depended on by SALIN-135, 136, 137, 141 and 157. It is the single choke point for
+level-flow state, and it holds no Unity references.
+
+The nine playable phases, in contract order:
+
+```
+NotStarted
+   │ Begin()
+   ▼
+Story → FocusWords → SymbolLearning → RequiredPractice → Defense
+                                                            │
+        Results ◄── AtomicSave ◄── MemoryReward ◄── ContextChallenge
+           │            ▲   │
+           │            └───┘ save rejected: hold for retry
+           ▼
+       Completed                    ReportDefeat() → Defeated   (from any non-terminal phase)
+                                    RequestExit()  → Exited     (from any non-terminal phase)
+```
+
+**Some phases are planned, not fixed.** `LevelPhasePlan.FromConfig()` inspects the `LevelConfigSO` once
+and marks `FocusWords`, `SymbolLearning` and `RequiredPractice` as planned only when the corresponding
+content exists. An unplanned phase is skipped by the machine with no executor involvement.
+
+**`ContextChallenge` and `MemoryReward` are always planned (SALIN-223).** They used to follow the same
+content-conditional rule, which meant a level with neither authored traversed
+`Story → Defense → AtomicSave → Results` and **completed on wave clear alone** — the two phases
+disappeared silently rather than failing. They are now planned on every level, including for a null
+config, and missing content is surfaced instead of skipped: `LevelPhasePlan` exposes
+`ContextChallengeContentMissing` (no `challengeSequence`) and `MemoryRewardContentMissing` (empty
+`rewardIds` **or** no `contextMedia.cutscene` — both keys are required, because the plan and the
+executor historically keyed this phase differently and a half-authored level must not read as
+complete). When either is true the executor shows a content-missing panel and **refuses to complete
+the phase**, holding until the machine goes terminal. The flow therefore never reaches `AtomicSave`,
+never raises `LevelComplete`, and the next level cannot unlock. `Story`, `Defense`, `AtomicSave` and
+`Results` remain always planned.
+
+The one case where `ContextChallenge` is legitimately unplanned is `challengePrototypeEnabled`, where
+the sequence runs as a pre-wave beat inside the `Defense` executor instead.
+
+**The guarantees the machine exists to enforce**, each of which rejects without a state change:
+
+| Rule | Effect |
+|---|---|
+| A completion report for a phase other than the current one | rejected |
+| A duplicate report for a phase already left | rejected |
+| Any report after a terminal state | rejected |
+| `ReportPhaseComplete(AtomicSave)` | **rejected** — `AtomicSave` advances only through `ReportSaveResult(true)`, so Results cannot open without a committed save |
+| Defense systems calling anything but `ReportDefenseComplete()` | not expressible — defense can never mark the level complete or write campaign rewards |
+| `ReportSaveResult(false)` | holds the machine in `AtomicSave` for the retry loop rather than failing the level |
+
+Terminal states are `Completed`, `Defeated` and `Exited`; `IsTerminal` covers all three, and a terminal
+transition clears `IsPaused`. Every state change raises `PhaseChanged(previous, next)`.
+
+[EVIDENCE: Assets/Scripts/Gameplay/Flow/LevelFlowMachine.cs; LevelPhase.cs; LevelPhasePlan.cs, PhaseOrder and FromConfig()]
+
+## 7. Campaign Save Activation, Outcomes, and Recovery
+
+BootstrapLoader initializes SaveManager after manager singletons awaken and before the Main Menu
+transition. A null CampaignConfigSO is an intentional compatibility gate: the runtime remains in
+Legacy mode and no revised JSON or outcome journal file is read or written. An assigned campaign
+must pass CampaignConfigValidator; otherwise the manager enters RevisedBlocked and never falls back
+to legacy campaign keys.
+
+Revised initialization is ordered: recover the campaign candidate, migrate older saves to the current schema,
+initialize the CampaignOutcomeCoordinator, recover the outcome journal, replay one pending outcome,
+then expose `RevisedReady`. Higher save or journal schemas, identity mismatches, and unresolved I/O
+leave the data in place and enter `RevisedBlocked`.
+
+Save schema v2 adds `journeyGenerationId` and a lifetime `AppliedOutcomeReceipt` ledger. Save schema v3
+adds `progress.symbolMastery`, `progress.wordMastery`, and a `sessionKind` on each receipt. A session-end
+`CampaignProgressOutcome` is first written to `campaign-outcome.pending.tmp`, read back and
+checksummed, then promoted to `campaign-outcome.pending.json`. The coordinator merges it
+monotonically into a cloned campaign document, which is published through the existing
+`campaign-save.tmp` → validated backup → `campaign-save.json` boundary. Only after post-publication
+verification is the receipt recorded and the outcome journal cleared. SHA-256 is lowercase hex over
+the UTF-8 JSON with its integrity field empty.
+
+The typed result is `Committed`, `AlreadyCommitted`, `PendingRetry`, `Rejected`, or `Blocked`.
+Victory and Next are available only for the first two statuses. `LevelFlowController` calls the
+coordinator synchronously at `OnLevelComplete` and gates the Victory screen on that result; the
+failure panel exposes retry and Main Menu without deleting a valid pending journal. Replay never
+lowers stars, relocks levels, removes IDs, or duplicates a receipt.
+
+Reset creates a new `journeyGenerationId`, clears level, symbol, memory, reward, endless, and receipt
+progress, preserves approved migration/recovery metadata and settings outside the campaign document,
+then clears pending outcomes. A journal from an older generation is quarantined as stale and cannot
+be applied to the new journey. Audio preference keys remain in PlayerPrefs.
+
+### 7.1 Learning evidence flow and session-kind dispatch (SALIN-175)
+
+Every session — level attempt, free practice, or scheduled review — accumulates evidence in a
+session-scoped `LearningEvidenceRecorder`, which folds per-attempt `answerWasVisible` booleans into
+the persisted count shape. `Build()` emits a `LearningEvidenceBatch` with entries sorted by
+`contentId` then `dimension`, and instructed IDs sorted ordinally; deterministic ordering matters
+because the journal's `SameOutcome` compares serialized JSON.
+
+The batch rides inside `CampaignProgressOutcome.evidence` and therefore crosses the *same* atomic
+boundary as level progression — journal write, read-back, publication, verification, receipt. There
+is no second write path for learning data.
+
+`CampaignOutcomeCoordinator.ApplyOutcome` dispatches on `sessionKind`:
+
+- `LevelAttempt` → `ApplyLevelProgression` (completion, unlocks, stars, endless) **and** evidence.
+- `FreePractice` / `ScheduledReview` → evidence only.
+
+This is what makes practice **structurally unable** to alter level completion: the validator rejects
+a non-level outcome carrying stars or unlocks, and the coordinator never calls the progression path
+for one. `VerifyPublishedOutcome` asserts evidence application for every kind and level assertions
+only for `LevelAttempt`.
+
+Instruction is the only thing that creates a mastery record, and it seeds every applicable dimension
+at `Introduced` without recording an attempt. Evidence for content instructed in the same batch
+counts as **immediate**; evidence for content with a pre-existing record counts as **delayed**, and
+only delayed retrieval successes advance a dimension past `Practiced`.

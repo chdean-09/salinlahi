@@ -1,0 +1,39 @@
+// Centralized sortingOrder values so depth contracts live in one place.
+// SpriteRenderer.sortingOrder and Canvas.sortingOrder share this namespace
+// only when canvases are Screen Space - Overlay (separate from world sprites);
+// keeping them in distinct numeric bands makes the intent legible at a glance.
+public static class RenderOrder
+{
+    // World-space sprites (Default sorting layer)
+    // The baked stage background (tiles + scatter + margins), and the legacy full-screen
+    // background renderer the scene already places at this order. One background layer,
+    // one constant: the previous Background = -2000 was referenced by nothing.
+    public const int StageBackground = -20;
+    // Behind every world sprite. Pillar fill on wider-than-target devices.
+    public const int PillarFill      = -1000;
+    public const int EnemyDefault    = 0;
+    public const int Boss            = 10;
+    public const int BossSummon      = 15;
+    public const int Protagonist     = 50;
+    // Channel-independent mark on the active clue. Above the enemy sprite, below its badge.
+    public const int ActiveClueMark  = 150;
+    public const int EnemyGlyphBadge = 200;
+    public const int EnemyDebugLabel = 500;
+
+    // Tutorial spotlight dim. Rendered via a Screen Space - Camera canvas on the Default
+    // sorting layer so it sits ABOVE all gameplay sprites (which get dimmed) but BELOW the
+    // drawing strokes (which must stay fully visible while the player draws).
+    public const int SpotlightDim    = 900;
+
+    // World-space player input. MUST stay above SpotlightDim so strokes render over the dim.
+    public const int DrawingStroke   = 1000;
+
+    // Screen Space - Overlay canvases (separate axis from world sprites,
+    // but kept in a high band so the numeric ordering still reads top-to-bottom)
+    public const int CutsceneCanvas  = 8500;
+    // Pause-menu restart / leave-level confirmation. Above the pause panel and every
+    // gameplay surface, below the loading canvas so a committed transition covers it.
+    public const int PauseConfirmation = 8900;
+    public const int LoadingCanvas   = 9000;
+    public const int SandboxOverlay  = 9500;
+}

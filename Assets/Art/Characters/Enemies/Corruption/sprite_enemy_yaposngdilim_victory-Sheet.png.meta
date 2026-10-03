@@ -1,0 +1,662 @@
+fileFormatVersion: 2
+guid: 231654a89ab8240af87cfd50c454763b
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 220770445200263111
+    second: sprite_enemy_yaposngdilim_victory-Sheet_0
+  - first:
+      213: -4033729333242021260
+    second: sprite_enemy_yaposngdilim_victory-Sheet_1
+  - first:
+      213: 7546017870279339574
+    second: sprite_enemy_yaposngdilim_victory-Sheet_2
+  - first:
+      213: -4692316784859859502
+    second: sprite_enemy_yaposngdilim_victory-Sheet_3
+  - first:
+      213: -6300835317187601907
+    second: sprite_enemy_yaposngdilim_victory-Sheet_4
+  - first:
+      213: 3244197770501671832
+    second: sprite_enemy_yaposngdilim_victory-Sheet_5
+  - first:
+      213: 5956823158040833727
+    second: sprite_enemy_yaposngdilim_victory-Sheet_6
+  - first:
+      213: -42484110832801892
+    second: sprite_enemy_yaposngdilim_victory-Sheet_7
+  - first:
+      213: 4897356466946777904
+    second: sprite_enemy_yaposngdilim_victory-Sheet_8
+  - first:
+      213: -8947675897089226006
+    second: sprite_enemy_yaposngdilim_victory-Sheet_9
+  - first:
+      213: -1532648871711133456
+    second: sprite_enemy_yaposngdilim_victory-Sheet_10
+  - first:
+      213: -3283886018406271553
+    second: sprite_enemy_yaposngdilim_victory-Sheet_11
+  - first:
+      213: -6519403622348029312
+    second: sprite_enemy_yaposngdilim_victory-Sheet_12
+  - first:
+      213: 6757984703279742689
+    second: sprite_enemy_yaposngdilim_victory-Sheet_13
+  - first:
+      213: -1579062115327076708
+    second: sprite_enemy_yaposngdilim_victory-Sheet_14
+  - first:
+      213: 2019623680340288406
+    second: sprite_enemy_yaposngdilim_victory-Sheet_15
+  - first:
+      213: -4373468547504840576
+    second: sprite_enemy_yaposngdilim_victory-Sheet_16
+  - first:
+      213: -839271865935122652
+    second: sprite_enemy_yaposngdilim_victory-Sheet_17
+  - first:
+      213: -6443576688796839565
+    second: sprite_enemy_yaposngdilim_victory-Sheet_18
+  - first:
+      213: -2417035951575298291
+    second: sprite_enemy_yaposngdilim_victory-Sheet_19
+  - first:
+      213: 9038126916071958727
+    second: sprite_enemy_yaposngdilim_victory-Sheet_20
+  - first:
+      213: 1329753058936313021
+    second: sprite_enemy_yaposngdilim_victory-Sheet_21
+  - first:
+      213: -792659942495836316
+    second: sprite_enemy_yaposngdilim_victory-Sheet_22
+  - first:
+      213: -1902599496065910961
+    second: sprite_enemy_yaposngdilim_victory-Sheet_23
+  - first:
+      213: -4305114632297092539
+    second: sprite_enemy_yaposngdilim_victory-Sheet_24
+  - first:
+      213: 5830461581308071057
+    second: sprite_enemy_yaposngdilim_victory-Sheet_25
+  - first:
+      213: -292514484762694909
+    second: sprite_enemy_yaposngdilim_victory-Sheet_26
+  - first:
+      213: -4171388657862064990
+    second: sprite_enemy_yaposngdilim_victory-Sheet_27
+  - first:
+      213: -2296981047923270298
+    second: sprite_enemy_yaposngdilim_victory-Sheet_28
+  - first:
+      213: 6580145199688187998
+    second: sprite_enemy_yaposngdilim_victory-Sheet_29
+  - first:
+      213: 6362337669328844728
+    second: sprite_enemy_yaposngdilim_victory-Sheet_30
+  - first:
+      213: -663180742226023987
+    second: sprite_enemy_yaposngdilim_victory-Sheet_31
+  - first:
+      213: -1204804824269581696
+    second: sprite_enemy_yaposngdilim_victory-Sheet_32
+  - first:
+      213: -6249912640856893565
+    second: sprite_enemy_yaposngdilim_victory-Sheet_33
+  - first:
+      213: 3639502494137674552
+    second: sprite_enemy_yaposngdilim_victory-Sheet_34
+  - first:
+      213: -5347410859983451131
+    second: sprite_enemy_yaposngdilim_victory-Sheet_35
+  - first:
+      213: -1341868731652040911
+    second: sprite_enemy_yaposngdilim_victory-Sheet_36
+  - first:
+      213: -2336112979333976047
+    second: sprite_enemy_yaposngdilim_victory-Sheet_37
+  - first:
+      213: -2430147189311088120
+    second: sprite_enemy_yaposngdilim_victory-Sheet_38
+  - first:
+      213: -8567411453566990686
+    second: sprite_enemy_yaposngdilim_victory-Sheet_39
+  - first:
+      213: -6699406528129076692
+    second: sprite_enemy_yaposngdilim_victory-Sheet_40
+  - first:
+      213: -8904122561765273560
+    second: sprite_enemy_yaposngdilim_victory-Sheet_41
+  - first:
+      213: 6849326208608770866
+    second: sprite_enemy_yaposngdilim_victory-Sheet_42
+  - first:
+      213: -1433983185080019417
+    second: sprite_enemy_yaposngdilim_victory-Sheet_43
+  - first:
+      213: -7646518718229044918
+    second: sprite_enemy_yaposngdilim_victory-Sheet_44
+  - first:
+      213: 1697734915947383320
+    second: sprite_enemy_yaposngdilim_victory-Sheet_45
+  - first:
+      213: 4812054931936595910
+    second: sprite_enemy_yaposngdilim_victory-Sheet_46
+  - first:
+      213: 2367026024491322925
+    second: sprite_enemy_yaposngdilim_victory-Sheet_47
+  - first:
+      213: 3367362420089152539
+    second: sprite_enemy_yaposngdilim_victory-Sheet_48
+  - first:
+      213: 5935775344218409553
+    second: sprite_enemy_yaposngdilim_victory-Sheet_49
+  - first:
+      213: -7581746162066460822
+    second: sprite_enemy_yaposngdilim_victory-Sheet_50
+  - first:
+      213: -1536014577701525089
+    second: sprite_enemy_yaposngdilim_victory-Sheet_51
+  - first:
+      213: -6683223650283692782
+    second: sprite_enemy_yaposngdilim_victory-Sheet_52
+  - first:
+      213: 4174560174410439852
+    second: sprite_enemy_yaposngdilim_victory-Sheet_53
+  - first:
+      213: 6681760133813990023
+    second: sprite_enemy_yaposngdilim_victory-Sheet_54
+  - first:
+      213: 8151458196066819824
+    second: sprite_enemy_yaposngdilim_victory-Sheet_55
+  - first:
+      213: 6523064405859192557
+    second: sprite_enemy_yaposngdilim_victory-Sheet_56
+  - first:
+      213: 7426812512281337436
+    second: sprite_enemy_yaposngdilim_victory-Sheet_57
+  - first:
+      213: -6736711571286027428
+    second: sprite_enemy_yaposngdilim_victory-Sheet_58
+  - first:
+      213: -2542667737830615087
+    second: sprite_enemy_yaposngdilim_victory-Sheet_59
+  - first:
+      213: -5088057657757573175
+    second: sprite_enemy_yaposngdilim_victory-Sheet_60
+  - first:
+      213: -5571007089330365388
+    second: sprite_enemy_yaposngdilim_victory-Sheet_61
+  - first:
+      213: 2135655765679589538
+    second: sprite_enemy_yaposngdilim_victory-Sheet_62
+  - first:
+      213: 7062743078736992603
+    second: sprite_enemy_yaposngdilim_victory-Sheet_63
+  - first:
+      213: 2018916642990940134
+    second: sprite_enemy_yaposngdilim_victory-Sheet_64
+  - first:
+      213: -3763856005392268254
+    second: sprite_enemy_yaposngdilim_victory-Sheet_65
+  - first:
+      213: -7659213359767948403
+    second: sprite_enemy_yaposngdilim_victory-Sheet_66
+  - first:
+      213: -4953788815345976279
+    second: sprite_enemy_yaposngdilim_victory-Sheet_67
+  - first:
+      213: -7963606235657812784
+    second: sprite_enemy_yaposngdilim_victory-Sheet_68
+  - first:
+      213: -7865161079562191328
+    second: sprite_enemy_yaposngdilim_victory-Sheet_69
+  - first:
+      213: -8119360771476951738
+    second: sprite_enemy_yaposngdilim_victory-Sheet_70
+  - first:
+      213: 7158906813326704254
+    second: sprite_enemy_yaposngdilim_victory-Sheet_71
+  - first:
+      213: 6977459479843896463
+    second: sprite_enemy_yaposngdilim_victory-Sheet_72
+  - first:
+      213: -6023356703909279865
+    second: sprite_enemy_yaposngdilim_victory-Sheet_73
+  - first:
+      213: -5128092353093279213
+    second: sprite_enemy_yaposngdilim_victory-Sheet_74
+  - first:
+      213: -1442109953276152246
+    second: sprite_enemy_yaposngdilim_victory-Sheet_75
+  - first:
+      213: 7335099669746084554
+    second: sprite_enemy_yaposngdilim_victory-Sheet_76
+  - first:
+      213: 4234781630036111246
+    second: sprite_enemy_yaposngdilim_victory-Sheet_77
+  - first:
+      213: -8508752824415675840
+    second: sprite_enemy_yaposngdilim_victory-Sheet_78
+  - first:
+      213: -1528413766135355394
+    second: sprite_enemy_yaposngdilim_victory-Sheet_79
+  - first:
+      213: -3181872631326584272
+    second: sprite_enemy_yaposngdilim_victory-Sheet_80
+  - first:
+      213: 7716886937284101367
+    second: yaposngdilim_victory_01
+  - first:
+      213: -2427182139309216448
+    second: yaposngdilim_victory_02
+  - first:
+      213: -25995323073532414
+    second: yaposngdilim_victory_03
+  - first:
+      213: 6221401509891797220
+    second: yaposngdilim_victory_04
+  - first:
+      213: -9090720512636735450
+    second: yaposngdilim_victory_05
+  - first:
+      213: 1980229186369326669
+    second: yaposngdilim_victory_06
+  - first:
+      213: 2608239224702681003
+    second: yaposngdilim_victory_07
+  - first:
+      213: -6443179762762819553
+    second: yaposngdilim_victory_08
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 144
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 4096
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: iOS
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: yaposngdilim_victory_01
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 768
+        width: 684
+        height: 768
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7f4cbac98c3e71b60800000000000000
+      internalID: 7716886937284101367
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yaposngdilim_victory_02
+      rect:
+        serializedVersion: 2
+        x: 684
+        y: 768
+        width: 684
+        height: 768
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 04d2d4d34bae05ed0800000000000000
+      internalID: -2427182139309216448
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yaposngdilim_victory_03
+      rect:
+        serializedVersion: 2
+        x: 1368
+        y: 768
+        width: 684
+        height: 768
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 20e61623465a3aff0800000000000000
+      internalID: -25995323073532414
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yaposngdilim_victory_04
+      rect:
+        serializedVersion: 2
+        x: 2052
+        y: 768
+        width: 684
+        height: 768
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4e0fd2af5bbd65650800000000000000
+      internalID: 6221401509891797220
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yaposngdilim_victory_05
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 684
+        height: 768
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6203ee3cbd547d180800000000000000
+      internalID: -9090720512636735450
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yaposngdilim_victory_06
+      rect:
+        serializedVersion: 2
+        x: 684
+        y: 0
+        width: 684
+        height: 768
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d4e876b04ff2b7b10800000000000000
+      internalID: 1980229186369326669
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yaposngdilim_victory_07
+      rect:
+        serializedVersion: 2
+        x: 1368
+        y: 0
+        width: 684
+        height: 768
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bafb4ad71c3523420800000000000000
+      internalID: 2608239224702681003
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yaposngdilim_victory_08
+      rect:
+        serializedVersion: 2
+        x: 2052
+        y: 0
+        width: 684
+        height: 768
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f185988a42a3596a0800000000000000
+      internalID: -6443179762762819553
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    outline: []
+    customData:
+    physicsShape: []
+    bones: []
+    spriteID:
+    internalID: 0
+    vertices: []
+    indices:
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      sprite_enemy_yaposngdilim_victory-Sheet_0: 220770445200263111
+      sprite_enemy_yaposngdilim_victory-Sheet_1: -4033729333242021260
+      sprite_enemy_yaposngdilim_victory-Sheet_10: -1532648871711133456
+      sprite_enemy_yaposngdilim_victory-Sheet_11: -3283886018406271553
+      sprite_enemy_yaposngdilim_victory-Sheet_12: -6519403622348029312
+      sprite_enemy_yaposngdilim_victory-Sheet_13: 6757984703279742689
+      sprite_enemy_yaposngdilim_victory-Sheet_14: -1579062115327076708
+      sprite_enemy_yaposngdilim_victory-Sheet_15: 2019623680340288406
+      sprite_enemy_yaposngdilim_victory-Sheet_16: -4373468547504840576
+      sprite_enemy_yaposngdilim_victory-Sheet_17: -839271865935122652
+      sprite_enemy_yaposngdilim_victory-Sheet_18: -6443576688796839565
+      sprite_enemy_yaposngdilim_victory-Sheet_19: -2417035951575298291
+      sprite_enemy_yaposngdilim_victory-Sheet_2: 7546017870279339574
+      sprite_enemy_yaposngdilim_victory-Sheet_20: 9038126916071958727
+      sprite_enemy_yaposngdilim_victory-Sheet_21: 1329753058936313021
+      sprite_enemy_yaposngdilim_victory-Sheet_22: -792659942495836316
+      sprite_enemy_yaposngdilim_victory-Sheet_23: -1902599496065910961
+      sprite_enemy_yaposngdilim_victory-Sheet_24: -4305114632297092539
+      sprite_enemy_yaposngdilim_victory-Sheet_25: 5830461581308071057
+      sprite_enemy_yaposngdilim_victory-Sheet_26: -292514484762694909
+      sprite_enemy_yaposngdilim_victory-Sheet_27: -4171388657862064990
+      sprite_enemy_yaposngdilim_victory-Sheet_28: -2296981047923270298
+      sprite_enemy_yaposngdilim_victory-Sheet_29: 6580145199688187998
+      sprite_enemy_yaposngdilim_victory-Sheet_3: -4692316784859859502
+      sprite_enemy_yaposngdilim_victory-Sheet_30: 6362337669328844728
+      sprite_enemy_yaposngdilim_victory-Sheet_31: -663180742226023987
+      sprite_enemy_yaposngdilim_victory-Sheet_32: -1204804824269581696
+      sprite_enemy_yaposngdilim_victory-Sheet_33: -6249912640856893565
+      sprite_enemy_yaposngdilim_victory-Sheet_34: 3639502494137674552
+      sprite_enemy_yaposngdilim_victory-Sheet_35: -5347410859983451131
+      sprite_enemy_yaposngdilim_victory-Sheet_36: -1341868731652040911
+      sprite_enemy_yaposngdilim_victory-Sheet_37: -2336112979333976047
+      sprite_enemy_yaposngdilim_victory-Sheet_38: -2430147189311088120
+      sprite_enemy_yaposngdilim_victory-Sheet_39: -8567411453566990686
+      sprite_enemy_yaposngdilim_victory-Sheet_4: -6300835317187601907
+      sprite_enemy_yaposngdilim_victory-Sheet_40: -6699406528129076692
+      sprite_enemy_yaposngdilim_victory-Sheet_41: -8904122561765273560
+      sprite_enemy_yaposngdilim_victory-Sheet_42: 6849326208608770866
+      sprite_enemy_yaposngdilim_victory-Sheet_43: -1433983185080019417
+      sprite_enemy_yaposngdilim_victory-Sheet_44: -7646518718229044918
+      sprite_enemy_yaposngdilim_victory-Sheet_45: 1697734915947383320
+      sprite_enemy_yaposngdilim_victory-Sheet_46: 4812054931936595910
+      sprite_enemy_yaposngdilim_victory-Sheet_47: 2367026024491322925
+      sprite_enemy_yaposngdilim_victory-Sheet_48: 3367362420089152539
+      sprite_enemy_yaposngdilim_victory-Sheet_49: 5935775344218409553
+      sprite_enemy_yaposngdilim_victory-Sheet_5: 3244197770501671832
+      sprite_enemy_yaposngdilim_victory-Sheet_50: -7581746162066460822
+      sprite_enemy_yaposngdilim_victory-Sheet_51: -1536014577701525089
+      sprite_enemy_yaposngdilim_victory-Sheet_52: -6683223650283692782
+      sprite_enemy_yaposngdilim_victory-Sheet_53: 4174560174410439852
+      sprite_enemy_yaposngdilim_victory-Sheet_54: 6681760133813990023
+      sprite_enemy_yaposngdilim_victory-Sheet_55: 8151458196066819824
+      sprite_enemy_yaposngdilim_victory-Sheet_56: 6523064405859192557
+      sprite_enemy_yaposngdilim_victory-Sheet_57: 7426812512281337436
+      sprite_enemy_yaposngdilim_victory-Sheet_58: -6736711571286027428
+      sprite_enemy_yaposngdilim_victory-Sheet_59: -2542667737830615087
+      sprite_enemy_yaposngdilim_victory-Sheet_6: 5956823158040833727
+      sprite_enemy_yaposngdilim_victory-Sheet_60: -5088057657757573175
+      sprite_enemy_yaposngdilim_victory-Sheet_61: -5571007089330365388
+      sprite_enemy_yaposngdilim_victory-Sheet_62: 2135655765679589538
+      sprite_enemy_yaposngdilim_victory-Sheet_63: 7062743078736992603
+      sprite_enemy_yaposngdilim_victory-Sheet_64: 2018916642990940134
+      sprite_enemy_yaposngdilim_victory-Sheet_65: -3763856005392268254
+      sprite_enemy_yaposngdilim_victory-Sheet_66: -7659213359767948403
+      sprite_enemy_yaposngdilim_victory-Sheet_67: -4953788815345976279
+      sprite_enemy_yaposngdilim_victory-Sheet_68: -7963606235657812784
+      sprite_enemy_yaposngdilim_victory-Sheet_69: -7865161079562191328
+      sprite_enemy_yaposngdilim_victory-Sheet_7: -42484110832801892
+      sprite_enemy_yaposngdilim_victory-Sheet_70: -8119360771476951738
+      sprite_enemy_yaposngdilim_victory-Sheet_71: 7158906813326704254
+      sprite_enemy_yaposngdilim_victory-Sheet_72: 6977459479843896463
+      sprite_enemy_yaposngdilim_victory-Sheet_73: -6023356703909279865
+      sprite_enemy_yaposngdilim_victory-Sheet_74: -5128092353093279213
+      sprite_enemy_yaposngdilim_victory-Sheet_75: -1442109953276152246
+      sprite_enemy_yaposngdilim_victory-Sheet_76: 7335099669746084554
+      sprite_enemy_yaposngdilim_victory-Sheet_77: 4234781630036111246
+      sprite_enemy_yaposngdilim_victory-Sheet_78: -8508752824415675840
+      sprite_enemy_yaposngdilim_victory-Sheet_79: -1528413766135355394
+      sprite_enemy_yaposngdilim_victory-Sheet_8: 4897356466946777904
+      sprite_enemy_yaposngdilim_victory-Sheet_80: -3181872631326584272
+      sprite_enemy_yaposngdilim_victory-Sheet_9: -8947675897089226006
+      yaposngdilim_victory_01: 7716886937284101367
+      yaposngdilim_victory_02: -2427182139309216448
+      yaposngdilim_victory_03: -25995323073532414
+      yaposngdilim_victory_04: 6221401509891797220
+      yaposngdilim_victory_05: -9090720512636735450
+      yaposngdilim_victory_06: 1980229186369326669
+      yaposngdilim_victory_07: 2608239224702681003
+      yaposngdilim_victory_08: -6443179762762819553
+  mipmapLimitGroupName:
+  pSDRemoveMatte: 0
+  userData:
+  assetBundleName:
+  assetBundleVariant:

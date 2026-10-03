@@ -1,0 +1,269 @@
+fileFormatVersion: 2
+guid: 3750cd06f0c7642ae95848b3743bc981
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 1077392319968134343
+    second: sprite_enemy_labo_walk-Sheet_0
+  - first:
+      213: 3731849507922204542
+    second: sprite_enemy_labo_walk-Sheet_1
+  - first:
+      213: 3351798009522555917
+    second: sprite_enemy_labo_walk-Sheet_2
+  - first:
+      213: 4186328568938956044
+    second: sprite_enemy_labo_walk-Sheet_3
+  - first:
+      213: -7677642753704864085
+    second: sprite_enemy_labo_walk-Sheet_4
+  - first:
+      213: 3746112490543193909
+    second: sprite_enemy_labo_walk-Sheet_5
+  - first:
+      213: -6810838494428317446
+    second: sprite_enemy_labo_walk-Sheet_6
+  - first:
+      213: -685312051144501470
+    second: sprite_enemy_labo_walk-Sheet_7
+  - first:
+      213: 2369577325119627957
+    second: sprite_enemy_labo_walk-Sheet_8
+  - first:
+      213: 2700619672679236067
+    second: sprite_enemy_labo_walk-Sheet_9
+  - first:
+      213: -8963905231002343400
+    second: sprite_enemy_labo_walk-Sheet_10
+  - first:
+      213: 1081687439370213420
+    second: sprite_enemy_labo_walk-Sheet_11
+  - first:
+      213: -2915414647358796944
+    second: labo_walk_01
+  - first:
+      213: 5553944931529839649
+    second: labo_walk_02
+  - first:
+      213: 3031223807269303859
+    second: labo_walk_03
+  - first:
+      213: -2813770851357817210
+    second: labo_walk_04
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 192
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: labo_walk_01
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1024
+        width: 1024
+        height: 1024
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 07b453323dd5a87d0800000000000000
+      internalID: -2915414647358796944
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: labo_walk_02
+      rect:
+        serializedVersion: 2
+        x: 1024
+        y: 1024
+        width: 1024
+        height: 1024
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 124dae93d73931d40800000000000000
+      internalID: 5553944931529839649
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: labo_walk_03
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 1024
+        height: 1024
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3367efa1ef1111a20800000000000000
+      internalID: 3031223807269303859
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: labo_walk_04
+      rect:
+        serializedVersion: 2
+        x: 1024
+        y: 0
+        width: 1024
+        height: 1024
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6860875915a73f8d0800000000000000
+      internalID: -2813770851357817210
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      labo_walk_01: -2915414647358796944
+      labo_walk_02: 5553944931529839649
+      labo_walk_03: 3031223807269303859
+      labo_walk_04: -2813770851357817210
+      sprite_enemy_labo_walk-Sheet_0: 1077392319968134343
+      sprite_enemy_labo_walk-Sheet_1: 3731849507922204542
+      sprite_enemy_labo_walk-Sheet_10: -8963905231002343400
+      sprite_enemy_labo_walk-Sheet_11: 1081687439370213420
+      sprite_enemy_labo_walk-Sheet_2: 3351798009522555917
+      sprite_enemy_labo_walk-Sheet_3: 4186328568938956044
+      sprite_enemy_labo_walk-Sheet_4: -7677642753704864085
+      sprite_enemy_labo_walk-Sheet_5: 3746112490543193909
+      sprite_enemy_labo_walk-Sheet_6: -6810838494428317446
+      sprite_enemy_labo_walk-Sheet_7: -685312051144501470
+      sprite_enemy_labo_walk-Sheet_8: 2369577325119627957
+      sprite_enemy_labo_walk-Sheet_9: 2700619672679236067
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

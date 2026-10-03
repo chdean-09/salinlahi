@@ -1,0 +1,80 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 043a234f99c274fedabd99a2eb915b62, type: 3}
+  m_Name: StageBackground_Pamana
+  m_EditorClassIdentifier: Salinlahi.Runtime::StageBackgroundSO
+  groundTiles:
+  - {fileID: 21300000, guid: f18b0cfbfed94170bdad30c7d6f0ad32, type: 3}
+  - {fileID: 21300000, guid: e67f520dc56742bcacef291438c7a68b, type: 3}
+  - {fileID: 21300000, guid: 60f1fae9c80349738d0cc73e24ade8c4, type: 3}
+  - {fileID: 21300000, guid: cc706927489943dd988e9a669e1ea0dd, type: 3}
+  - {fileID: 21300000, guid: ff48e878290747d98a0258f6132e5421, type: 3}
+  - {fileID: 21300000, guid: 9482c0a24c4042ac86e1cd34b2ac4292, type: 3}
+  - {fileID: 21300000, guid: cdf36e09c3aa45639d8cd99660c473d4, type: 3}
+  - {fileID: 21300000, guid: 64e28de242914fbebb7201eb1bcc57a2, type: 3}
+  wornTiles:
+  - {fileID: 21300000, guid: af32e06661974747b6104d0a1453b6d4, type: 3}
+  - {fileID: 21300000, guid: 742f8ea8fbf546b0815a06e22fd09d42, type: 3}
+  wornChance: 0.65
+  scatter:
+  - sprite: {fileID: 21300000, guid: a306b3686bea454a80417f1d2c0e7880, type: 3}
+    weight: 4
+    flippable: 1
+  - sprite: {fileID: 21300000, guid: f0fbdb4687d24388b0b8038b19954c8e, type: 3}
+    weight: 4
+    flippable: 1
+  - sprite: {fileID: 21300000, guid: 3d1450735547405da15faea48ed657a0, type: 3}
+    weight: 4
+    flippable: 1
+  - sprite: {fileID: 21300000, guid: 20e27f1bc67549f4a825839df6d3a7f8, type: 3}
+    weight: 5
+    flippable: 0
+  - sprite: {fileID: 21300000, guid: 2b3a4faaffa34e8fa5c4ad3ffbaa69a8, type: 3}
+    weight: 5
+    flippable: 0
+  - sprite: {fileID: 21300000, guid: e7cf58681f304d02ad87c3be93a0a3e4, type: 3}
+    weight: 4
+    flippable: 1
+  - sprite: {fileID: 21300000, guid: 59d12cd909034d1b90cc0faea7f9aced, type: 3}
+    weight: 4
+    flippable: 1
+  - sprite: {fileID: 21300000, guid: 49622050440645609bac2f2fdf43faa9, type: 3}
+    weight: 4
+    flippable: 1
+  - sprite: {fileID: 21300000, guid: 9afad58e2ce649c8ac2634fab1b2c407, type: 3}
+    weight: 4
+    flippable: 1
+  - sprite: {fileID: 21300000, guid: e29094d64ce34715afb882bfb54e0938, type: 3}
+    weight: 4
+    flippable: 1
+  - sprite: {fileID: 21300000, guid: 50545502d08e4b7fad59a7c72f13e4f5, type: 3}
+    weight: 4
+    flippable: 1
+  - sprite: {fileID: 21300000, guid: 87bedc7443dd434cb69b6037686e2652, type: 3}
+    weight: 4
+    flippable: 0
+  - sprite: {fileID: 21300000, guid: 57ac57f7ed6b46449b86eba40b5b1200, type: 3}
+    weight: 3
+    flippable: 0
+  - sprite: {fileID: 21300000, guid: 122768e33df842bc93368dfba96d2950, type: 3}
+    weight: 2
+    flippable: 1
+  scatterPerTile: 5
+  scatterMinDistancePx: 6
+  marginLeft:
+  - {fileID: 21300000, guid: bc1cb3c33b964c8b82d7cf3d9a59d6ef, type: 3}
+  - {fileID: 21300000, guid: cf9321191dbd4f53b93b4a8aaf59aeb8, type: 3}
+  - {fileID: 21300000, guid: d84e185f1ea7476591bfd439ac23e3d0, type: 3}
+  marginRight:
+  - {fileID: 21300000, guid: 38f3df7829a4479c9df83ec540f8c59d, type: 3}
+  - {fileID: 21300000, guid: 1f8fa890de70478d94d502f45d803326, type: 3}
+  - {fileID: 21300000, guid: 6753410bdd534d09acea19f69cfbef9b, type: 3}

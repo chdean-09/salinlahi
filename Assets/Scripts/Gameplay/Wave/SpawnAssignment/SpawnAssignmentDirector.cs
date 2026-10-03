@@ -1,0 +1,761 @@
+using System.Collections.Generic;
+
+/// <summary>
+/// Decides which symbol each spawning enemy carries.
+///
+/// Completing the target text wins the level immediately, so this sequence is the level's length
+/// control and its content-delivery schedule at the same time. Uniform random assignment supplies
+/// neither: a lucky Level 1 run fills all four slots in four draws and ends before Iligaw has
+/// appeared, while an unlucky one withholds the needed symbol long enough to read as broken.
+///
+/// The replacement makes the needed symbol a scheduled resource with a floor (an anti-rush spawn
+/// count) and a ceiling (two starvation timers), with deliberate filler in between.
+///
+/// Deliberately free of UnityEngine types so every criterion is an EditMode test without a scene,
+/// matching <see cref="ActiveClueSelector"/>. Unity wiring lives in the calling spawner.
+///
+/// Design source: docs/design/spawn-assignment-system.md.
+/// </summary>
+public sealed class SpawnAssignmentDirector
+{
+    private readonly List<SpawnSlot> _slots = new List<SpawnSlot>();
+    private readonly SpawnAssignmentPolicy _policy;
+    private readonly ISpawnRandom _random;
+
+    // Monotonic counter used as the "recently seen" clock for both filler and needed selection.
+    private int _sequence;
+
+    // Symbol -> _sequence when it was last emitted as filler / last offered as needed.
+    private readonly Dictionary<string, int> _lastFillerSequence = new Dictionary<string, int>();
+    private readonly Dictionary<string, int> _lastNeededSequence = new Dictionary<string, int>();
+
+    // Identity of the currently armed eligible set. When this changes - a slot filled, or a gate
+    // opened - the slot re-arms: the floor applies again and both starvation flags clear.
+    private string _armedWindowKey;
+    private float _armedAt;
+    private int _spawnsSinceArmed;
+    private bool _softForced;
+    private bool _hardForced;
+
+    private bool _choiceConsumed;
+    private bool _choiceArmed;
+
+    // Whether the policy's opening directive has been spent. Held here rather than on the policy
+    // because the policy is a serialized asset: consuming a one-shot must not be a write to disk,
+    // and a retry must find the directive armed again.
+    private bool _openingDirectiveConsumed;
+
+    // Scratch buffers reused every call so a per-spawn assignment allocates nothing.
+    private readonly List<int> _window = new List<int>();
+    private readonly List<int> _eligible = new List<int>();
+    private readonly List<string> _pool = new List<string>();
+    private readonly HashSet<string> _excluded = new HashSet<string>();
+
+    public SpawnAssignmentDirector(
+        IReadOnlyList<SpawnSlot> slots,
+        SpawnAssignmentPolicy policy,
+        ISpawnRandom random = null)
+    {
+        if (slots != null)
+        {
+            for (int i = 0; i < slots.Count; i++)
+            {
+                if (slots[i] != null)
+                    _slots.Add(slots[i]);
+            }
+        }
+
+        _policy = policy ?? new SpawnAssignmentPolicy();
+        _policy.Sanitize();
+        _random = random ?? new SystemSpawnRandom(_policy.assignmentSeed);
+    }
+
+    public IReadOnlyList<SpawnSlot> Slots => _slots;
+
+    /// <summary>True once hard starvation has fired and until the starved slot is restored.</summary>
+    public bool IsClueEscalated => _hardForced;
+
+    /// <summary>True while the guaranteed choice moment is still owed.</summary>
+    public bool IsChoiceMomentPending =>
+        _policy.choiceMomentSlotIndex >= 0 && !_choiceConsumed;
+
+    /// <summary>True while the policy's opening directive is authored and still unspent.</summary>
+    public bool IsOpeningDirectivePending =>
+        !_openingDirectiveConsumed && !string.IsNullOrEmpty(_policy.openingSpawnSpokenValueId);
+
+    /// <summary>
+    /// Re-arms every one-shot and every pacing counter for a fresh attempt at the same level: the
+    /// floor, both starvation flags, the choice directive and the opening directive.
+    ///
+    /// The production retry path rebuilds the director in SpawnAssignmentCoordinator.ApplyLevel,
+    /// which has the same effect; this is the in-place equivalent for a retry that keeps the slot
+    /// list it already built. Either way a replayed level opens on its authored first enemy again,
+    /// which is only true because the spent flags live on the director and not on the serialized
+    /// policy.
+    /// </summary>
+    public void Reset()
+    {
+        _sequence = 0;
+        _lastFillerSequence.Clear();
+        _lastNeededSequence.Clear();
+        _armedWindowKey = null;
+        _armedAt = 0f;
+        _spawnsSinceArmed = 0;
+        _softForced = false;
+        _hardForced = false;
+        _choiceConsumed = false;
+        _choiceArmed = false;
+        _openingDirectiveConsumed = false;
+    }
+
+    /// <summary>
+    /// Picks the symbol for one spawn. Pure with respect to everything except this director's own
+    /// pacing state, so the same request twice can legitimately differ.
+    /// </summary>
+    public SpawnAssignment AssignNext(SpawnAssignmentRequest request)
+    {
+        _sequence++;
+
+        if (_slots.Count == 0)
+            return SpawnAssignment.None;
+
+        BuildWindow(request);
+        if (_window.Count == 0)
+            return SpawnAssignment.None; // every slot restored - the level is over
+
+        BuildEligible(request);
+        ArmIfWindowChanged(request.Now);
+
+        // Gating lives here, in the construction of the eligible set, rather than inside the draw.
+        // That is what keeps a gated symbol out of FILLER as well as out of the needed slot, and
+        // what makes the level structurally unable to complete while a gate is shut.
+        if (_eligible.Count == 0)
+        {
+            return new SpawnAssignment
+            {
+                SymbolStableId = PickFiller(request),
+                Role = SpawnAssignmentRole.HoldForGate,
+                SlotIndex = -1,
+            };
+        }
+
+        // The opening directive sits ahead of both ceilings and the floor because it names the
+        // first enemy of the level, which is a narrative beat rather than a pacing decision. It
+        // still consumes one spawn against the floor below, exactly as any other spawn does.
+        if (TryOpeningDirective(request, out SpawnAssignment opening))
+            return opening;
+
+        float elapsed = request.Now - _armedAt;
+
+        // Ceiling. The hard timer is sticky: once the player has demonstrated they cannot read the
+        // glyph, every spawn carries it until the slot fills.
+        if (_hardForced || elapsed >= _policy.hardStarvationTimeout)
+        {
+            _hardForced = true;
+            return Needed(request, forced: true);
+        }
+
+        if (!_softForced && elapsed >= _policy.starvationTimeout)
+        {
+            _softForced = true;
+            return Needed(request, forced: true);
+        }
+
+        // Floor. A spawn count, not a timer: what is rationed is opportunities, not seconds.
+        if (_spawnsSinceArmed < CurrentFloor(request))
+        {
+            _spawnsSinceArmed++;
+            return Filler(request);
+        }
+
+        _spawnsSinceArmed++;
+        if (_random.NextDouble() < _policy.neededWeight)
+            return Needed(request, forced: false);
+
+        return Filler(request);
+    }
+
+    // ------------------------------------------------------------------ window and arming
+
+    /// <summary>
+    /// The slots a needed spawn may currently target. On a one-word-at-a-time objective the window
+    /// never reaches past the current word, so the next word's carriers only start arriving once
+    /// every box of this one is filled. Later words' symbols are deliberately NOT treated as
+    /// blocked (see <see cref="IsBlocked"/>): they stay legal filler, and a carrier of one dies
+    /// without filling anything, exactly like a carrier of an already-restored symbol.
+    /// </summary>
+    private void BuildWindow(SpawnAssignmentRequest request)
+    {
+        _window.Clear();
+        int currentPage = CurrentPage(request);
+        for (int i = 0; i < _slots.Count && _window.Count < _policy.activeSlotWindow; i++)
+        {
+            if (!IsRestored(request, i)
+                && !_slots[i].IsBeyondPage(currentPage)
+                && FinalePrerequisitesMet(request, i))
+                _window.Add(i);
+        }
+    }
+
+    /// <summary>
+    /// Mirrors <see cref="SpawnSlot.CurrentPage"/> without the predicate delegate, so a per-spawn
+    /// assignment still allocates nothing.
+    /// </summary>
+    private int CurrentPage(SpawnAssignmentRequest request)
+    {
+        int current = RestorationWordPages.NoPage;
+        for (int i = 0; i < _slots.Count; i++)
+        {
+            if (!_slots[i].IsPaged || IsRestored(request, i))
+                continue;
+
+            if (current == RestorationWordPages.NoPage || _slots[i].PageIndex < current)
+                current = _slots[i].PageIndex;
+        }
+
+        return current;
+    }
+
+    private bool FinalePrerequisitesMet(SpawnAssignmentRequest request, int slotIndex)
+    {
+        if (_slots[slotIndex].GateToken != SpawnGateRegistry.FinalWaveReached
+            && !IsFinaleSlot(slotIndex))
+            return true;
+
+        for (int i = 0; i < _slots.Count; i++)
+        {
+            if (i != slotIndex && !IsRestored(request, i))
+                return false;
+        }
+
+        return true;
+    }
+
+    private bool IsFinaleSlot(int slotIndex) =>
+        _policy.gateFinalSlotToFinalWave && slotIndex == _slots.Count - 1;
+
+    private void BuildEligible(SpawnAssignmentRequest request)
+    {
+        _eligible.Clear();
+        for (int i = 0; i < _window.Count; i++)
+        {
+            SpawnSlot slot = _slots[_window[i]];
+            if (IsGateOpen(request, slot.GateToken)
+                && (!IsFinaleSlot(_window[i])
+                    || IsGateOpen(request, SpawnGateRegistry.FinalWaveReached))
+                && IsSymbolAllowedByWave(request, slot.SymbolStableId))
+                _eligible.Add(_window[i]);
+        }
+    }
+
+    /// <summary>
+    /// Re-arms when the eligible set changes. One mechanism covers both "a slot was filled" and
+    /// "a gate opened", which is why the starvation clock for a gated slot cannot start early and
+    /// bank a forced-spawn debt against the beat.
+    /// </summary>
+    private void ArmIfWindowChanged(float now)
+    {
+        string key = BuildWindowKey();
+        if (key == _armedWindowKey)
+            return;
+
+        _armedWindowKey = key;
+        _armedAt = now;
+        _spawnsSinceArmed = 0;
+        _softForced = false;
+        _hardForced = false;
+    }
+
+    /// <summary>
+    /// The floor in force for this spawn: the one authored for the slot the director would offer
+    /// next, falling back to the level-wide scalar when that slot has no override. Reading it
+    /// per-slot rather than per-level is what lets Level 1 lower only its opening slot, and taking
+    /// it from the slot that is about to be offered keeps the override meaning what it says once
+    /// activeSlotWindow makes several slots fillable at once.
+    /// </summary>
+    private int CurrentFloor(SpawnAssignmentRequest request) =>
+        _policy.MinSpawnsBeforeNeededForSlot(PickNeededSlot(request, skipStranding: false));
+
+    private string BuildWindowKey()
+    {
+        if (_eligible.Count == 0)
+            return "gated";
+
+        string key = "";
+        for (int i = 0; i < _eligible.Count; i++)
+            key += _eligible[i] + ",";
+
+        return key;
+    }
+
+    // ------------------------------------------------------------------ needed
+
+    private SpawnAssignment Needed(SpawnAssignmentRequest request, bool forced)
+    {
+        // Every fillable symbol whose last box is locked already has a carrier on the field for
+        // each of its unlocked boxes. Another one could only die into the locked box and fill
+        // nothing, so this spawn is filler; the carriers already walking are the offer.
+        int slotIndex = PickNeededSlot(request, skipStranding: true);
+        if (slotIndex < 0)
+            return Filler(request);
+
+        SpawnSlot slot = _slots[slotIndex];
+        _lastNeededSequence[slot.SymbolStableId] = _sequence;
+
+        var assignment = new SpawnAssignment
+        {
+            SymbolStableId = slot.SymbolStableId,
+            Role = SpawnAssignmentRole.Needed,
+            SlotIndex = slotIndex,
+            EscalateClueChannel = _hardForced,
+            WasForced = forced,
+        };
+
+        if (!ShouldIssueChoicePair(request, slotIndex))
+            return assignment;
+
+        string decoy = PickChoiceDecoy(request, slot.SymbolStableId);
+        if (decoy == null)
+        {
+            // No legal second member. The directive carries forward rather than being spent, so
+            // the choice moment stays a guarantee.
+            return Filler(request);
+        }
+
+        _choiceConsumed = true;
+        assignment.StartsChoicePair = true;
+        assignment.PairedDecoySymbolStableId = decoy;
+        return assignment;
+    }
+
+    /// <summary>
+    /// With a window of one this is simply the cursor. With a wider window it is the least recently
+    /// offered slot, so a sentence-length target cycles its working set instead of hammering the
+    /// leftmost unfilled slot. With <paramref name="skipStranding"/>, a slot whose symbol
+    /// <see cref="WouldStrandCarrier"/> is passed over, and -1 means every eligible slot was.
+    /// </summary>
+    private int PickNeededSlot(SpawnAssignmentRequest request, bool skipStranding)
+    {
+        int best = -1;
+        int bestSequence = int.MaxValue;
+
+        for (int i = 0; i < _eligible.Count; i++)
+        {
+            int candidate = _eligible[i];
+            string symbolId = _slots[candidate].SymbolStableId;
+            if (skipStranding && WouldStrandCarrier(request, symbolId))
+                continue;
+
+            int sequence = LastNeededSequence(symbolId);
+            if (sequence < bestSequence)
+            {
+                best = candidate;
+                bestSequence = sequence;
+            }
+        }
+
+        return best;
+    }
+
+    private int LastNeededSequence(string symbolId) =>
+        _lastNeededSequence.TryGetValue(symbolId, out int sequence) ? sequence : -1;
+
+    // ------------------------------------------------------------------ opening directive
+
+    /// <summary>
+    /// Spends the policy's opening directive if it is armed and can be honoured on this spawn.
+    ///
+    /// One-shot by design: the level's first enemy is a scripted introduction, and a second enemy
+    /// of the same type arriving under the same guarantee would flatten the schedule into a fixed
+    /// order. When it cannot be honoured yet - the named symbol is behind a closed gate, or outside
+    /// this wave's authored character list - it carries forward rather than being dropped, matching
+    /// the choice directive, so a wave whose roster excludes the opening enemy delays the beat
+    /// instead of cancelling it.
+    /// </summary>
+    private bool TryOpeningDirective(SpawnAssignmentRequest request, out SpawnAssignment assignment)
+    {
+        assignment = SpawnAssignment.None;
+
+        if (!IsOpeningDirectivePending)
+            return false;
+
+        string symbolId = ResolveOpeningDirectiveSymbol(request);
+        if (symbolId == null)
+            return false;
+
+        _openingDirectiveConsumed = true;
+
+        // Counts against the floor like any other spawn. Level 1 now authors a floor of 0 on slot
+        // 0, so the directive itself is the needed E/I carrier and lands on spawn 1; the increment
+        // still matters for any level whose floor is non-zero.
+        _spawnsSinceArmed++;
+
+        // Role is reported honestly. If the authored symbol happens to be one a fillable slot
+        // wants, this spawn really does advance the level and the caller's clue marking has to know
+        // that. Level 1 is exactly that case since the enemy-introduction lesson inverted its
+        // opening: openingSpawnSpokenValueId is value.ei, which IS the cursor, so spawn 1 is a
+        // Needed E/I carrier whose kill restores slot 0 and gives Abo's ash something to take. The
+        // other branch below - a directive naming a symbol no eligible slot wants, which becomes
+        // deliberate filler - is what Level 1 used to do when it authored value.a, and is still
+        // reachable for any level that authors a later-needed symbol. The floor is untouched
+        // either way; it governs every spawn after this one.
+        int eligibleSlot = FindEligibleSlotForSymbol(symbolId);
+        if (eligibleSlot >= 0)
+        {
+            _lastNeededSequence[symbolId] = _sequence;
+            assignment = new SpawnAssignment
+            {
+                SymbolStableId = symbolId,
+                Role = SpawnAssignmentRole.Needed,
+                SlotIndex = eligibleSlot,
+                IsOpeningDirective = true,
+            };
+
+            return true;
+        }
+
+        // Deliberately not recorded in the filler recency map: the directive is an override, not a
+        // filler draw, so every schedule decision after it is identical to a run without one.
+        assignment = new SpawnAssignment
+        {
+            SymbolStableId = symbolId,
+            Role = SpawnAssignmentRole.Filler,
+            SlotIndex = -1,
+            IsOpeningDirective = true,
+        };
+
+        return true;
+    }
+
+    /// <summary>
+    /// The target symbol the directive names, or null when no slot carries it or it cannot legally
+    /// spawn yet.
+    ///
+    /// Matching goes through <see cref="ContentIdentity.IsApprovedSpokenValue"/> rather than a
+    /// "value." to "symbol." string swap, because the two are not interchangeable: E/I, O/U and
+    /// DA/RA each emit several spoken values from one visual symbol, so "value.e" names symbol.ei
+    /// and a naive swap would look for a symbol.e that does not exist.
+    /// </summary>
+    private string ResolveOpeningDirectiveSymbol(SpawnAssignmentRequest request)
+    {
+        for (int i = 0; i < _slots.Count; i++)
+        {
+            string symbolId = _slots[i].SymbolStableId;
+            if (!ContentIdentity.IsApprovedSpokenValue(symbolId, _policy.openingSpawnSpokenValueId))
+                continue;
+
+            // A gated symbol must never reach the board as needed OR as filler. Forcing one here
+            // would punch a hole straight through the gate the level's structure depends on, so the
+            // directive waits instead.
+            if (IsSymbolGated(request, symbolId))
+                continue;
+
+            // The wave's authored character list still decides what may appear at all.
+            if (request.WaveSymbolWhitelist != null
+                && request.WaveSymbolWhitelist.Count > 0
+                && !Contains(request.WaveSymbolWhitelist, symbolId))
+            {
+                continue;
+            }
+
+            return symbolId;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Whether any unrestored slot carrying this symbol is still behind a closed gate. Asked across
+    /// every slot rather than one, so a symbol that appears twice in the target cannot be let
+    /// through by its ungated occurrence while its gated one is still withheld.
+    /// </summary>
+    private bool IsSymbolGated(SpawnAssignmentRequest request, string symbolId)
+    {
+        for (int i = 0; i < _slots.Count; i++)
+        {
+            if (IsRestored(request, i) || _slots[i].SymbolStableId != symbolId)
+                continue;
+
+            if (!IsGateOpen(request, _slots[i].GateToken))
+                return true;
+        }
+
+        return false;
+    }
+
+    private int FindEligibleSlotForSymbol(string symbolId)
+    {
+        for (int i = 0; i < _eligible.Count; i++)
+        {
+            if (_slots[_eligible[i]].SymbolStableId == symbolId)
+                return _eligible[i];
+        }
+
+        return -1;
+    }
+
+    // ------------------------------------------------------------------ choice moment
+
+    private bool ShouldIssueChoicePair(SpawnAssignmentRequest request, int slotIndex)
+    {
+        if (_choiceConsumed || _policy.choiceMomentSlotIndex < 0)
+            return false;
+
+        // The directive arms when the level REACHES the designated slot and stays armed until it is
+        // spent. Binding it to that one slot instead lost the guarantee outright: in simulation the
+        // budget was full for both of the designated slot's needed spawns, the player filled the
+        // slot anyway, and the choice moment silently never happened.
+        if (slotIndex >= _policy.choiceMomentSlotIndex)
+            _choiceArmed = true;
+
+        if (!_choiceArmed)
+            return false;
+
+        // Budget precondition. Failing it must not consume the directive.
+        return request.ActiveEnemyCount + 2 <= _policy.maxConcurrentEnemies;
+    }
+
+    /// <summary>
+    /// The pair's non-advancing member: a real target symbol the player must actively reject.
+    /// Never the needed symbol, and never a gated one.
+    /// </summary>
+    private string PickChoiceDecoy(SpawnAssignmentRequest request, string neededSymbolId)
+    {
+        BuildFillerPool(request);
+        for (int i = 0; i < _pool.Count; i++)
+        {
+            if (_pool[i] != neededSymbolId)
+                return _pool[i];
+        }
+
+        return null;
+    }
+
+    // ------------------------------------------------------------------ filler
+
+    private SpawnAssignment Filler(SpawnAssignmentRequest request)
+    {
+        return new SpawnAssignment
+        {
+            SymbolStableId = PickFiller(request),
+            Role = SpawnAssignmentRole.Filler,
+            SlotIndex = -1,
+            EscalateClueChannel = _hardForced,
+        };
+    }
+
+    private string PickFiller(SpawnAssignmentRequest request)
+    {
+        BuildFillerPool(request);
+        if (_pool.Count == 0)
+            return null;
+
+        // Least recently seen, so the fallback duplicates still rotate instead of repeating one
+        // glyph while a slot is stuck.
+        string best = _pool[0];
+        int bestSequence = LastFillerSequence(best);
+        for (int i = 1; i < _pool.Count; i++)
+        {
+            int sequence = LastFillerSequence(_pool[i]);
+            if (sequence < bestSequence)
+            {
+                best = _pool[i];
+                bestSequence = sequence;
+            }
+        }
+
+        _lastFillerSequence[best] = _sequence;
+        return best;
+    }
+
+    private int LastFillerSequence(string symbolId) =>
+        _lastFillerSequence.TryGetValue(symbolId, out int sequence) ? sequence : -1;
+
+    /// <summary>
+    /// Filler pool, in the priority order the design fixes: later-needed first, restored duplicates
+    /// only as a variety fallback, off-target only when explicitly weighted.
+    /// </summary>
+    private void BuildFillerPool(SpawnAssignmentRequest request)
+    {
+        _pool.Clear();
+        BuildExclusions(request);
+
+        // 1. Later-needed: unrestored, ungated, outside the current window.
+        for (int i = 0; i < _slots.Count; i++)
+        {
+            if (IsRestored(request, i) || _window.Contains(i))
+                continue;
+
+            if (!IsGateOpen(request, _slots[i].GateToken))
+                continue;
+
+            AddCandidate(request, _slots[i].SymbolStableId);
+        }
+
+        // 2. Variety fallback. Load-bearing in Level 1: while NA is the cursor the only ungated
+        // later-needed symbol is A, so without this every filler for ~20 seconds is A.
+        if (_pool.Count < _policy.minFillerVariety)
+        {
+            for (int i = 0; i < _slots.Count; i++)
+            {
+                if (IsRestored(request, i))
+                    AddCandidate(request, _slots[i].SymbolStableId);
+            }
+        }
+
+        // 3. Off-target. Zero for Level 1, whose pool is exactly its target.
+        if (_policy.offTargetFillerWeight > 0f
+            && request.OffTargetSymbols != null
+            && request.OffTargetSymbols.Count > 0
+            && _random.NextDouble() < _policy.offTargetFillerWeight)
+        {
+            _pool.Clear();
+            for (int i = 0; i < request.OffTargetSymbols.Count; i++)
+                AddCandidate(request, request.OffTargetSymbols[i]);
+        }
+
+        if (_pool.Count > 0)
+            return;
+
+        // Last resort: any restored symbol the exclusions still permit, so a spawn is never
+        // silently dropped.
+        for (int i = 0; i < _slots.Count; i++)
+        {
+            if (IsRestored(request, i))
+                AddCandidate(request, _slots[i].SymbolStableId);
+        }
+    }
+
+    /// <summary>
+    /// Symbols filler may never carry: anything that would advance a fillable slot, and anything
+    /// whose next carrier could only die into a locked slot (<see cref="WouldStrandCarrier"/>).
+    /// </summary>
+    private void BuildExclusions(SpawnAssignmentRequest request)
+    {
+        _excluded.Clear();
+
+        for (int i = 0; i < _eligible.Count; i++)
+            _excluded.Add(_slots[_eligible[i]].SymbolStableId);
+
+        for (int i = 0; i < _slots.Count; i++)
+        {
+            if (IsRestored(request, i) || !IsBlocked(request, i))
+                continue;
+
+            if (WouldStrandCarrier(request, _slots[i].SymbolStableId))
+                _excluded.Add(_slots[i].SymbolStableId);
+        }
+    }
+
+    /// <summary>
+    /// True when one more carrier of this symbol could only be killed into a locked slot. That
+    /// happens when the symbol still has an unrestored occurrence behind a closed gate (Level 3's
+    /// last MA waits for the final wave) and the carriers already on the field cover every
+    /// occurrence that can fill: the surplus one dies, restores nothing, and reads to the player
+    /// as a correct drawing that did not register.
+    ///
+    /// <para>A symbol with no locked occurrence is never stranded here. A surplus carrier of it
+    /// dies into an already-restored slot, which is the one kill-without-fill the design accepts.</para>
+    /// </summary>
+    private bool WouldStrandCarrier(SpawnAssignmentRequest request, string symbolId)
+    {
+        bool hasLockedOccurrence = false;
+        int unlockedOccurrences = 0;
+        for (int i = 0; i < _slots.Count; i++)
+        {
+            if (IsRestored(request, i) || _slots[i].SymbolStableId != symbolId)
+                continue;
+
+            if (IsBlocked(request, i))
+                hasLockedOccurrence = true;
+            else
+                unlockedOccurrences++;
+        }
+
+        return hasLockedOccurrence && CountLiveCarriers(request, symbolId) >= unlockedOccurrences;
+    }
+
+    /// <summary>
+    /// True when a kill of this unrestored slot's symbol could not restore it right now. Mirrors
+    /// <c>SpawnAssignmentCoordinator.CanRestoreOccurrence</c>, which makes that call for the draw.
+    /// </summary>
+    private bool IsBlocked(SpawnAssignmentRequest request, int slotIndex) =>
+        !IsGateOpen(request, _slots[slotIndex].GateToken)
+        || (IsFinaleSlot(slotIndex) && !IsGateOpen(request, SpawnGateRegistry.FinalWaveReached))
+        || !FinalePrerequisitesMet(request, slotIndex);
+
+    private static int CountLiveCarriers(SpawnAssignmentRequest request, string symbolId)
+    {
+        if (request.LiveCarrierSymbols == null)
+            return 0;
+
+        int count = 0;
+        for (int i = 0; i < request.LiveCarrierSymbols.Count; i++)
+        {
+            if (request.LiveCarrierSymbols[i] == symbolId)
+                count++;
+        }
+
+        return count;
+    }
+
+    private void AddCandidate(SpawnAssignmentRequest request, string symbolId)
+    {
+        if (string.IsNullOrEmpty(symbolId) || _excluded.Contains(symbolId) || _pool.Contains(symbolId))
+            return;
+
+        // The wave's authored character list still decides what may appear at all.
+        if (request.WaveSymbolWhitelist != null
+            && request.WaveSymbolWhitelist.Count > 0
+            && !Contains(request.WaveSymbolWhitelist, symbolId))
+        {
+            return;
+        }
+
+        _pool.Add(symbolId);
+    }
+
+    // ------------------------------------------------------------------ helpers
+
+    private static bool IsRestored(SpawnAssignmentRequest request, int slotIndex) =>
+        request.RestoredSlots != null
+        && slotIndex < request.RestoredSlots.Count
+        && request.RestoredSlots[slotIndex];
+
+    private static bool IsGateOpen(SpawnAssignmentRequest request, string gateToken)
+    {
+        if (string.IsNullOrEmpty(gateToken))
+            return true;
+
+        if (request.OpenGateTokens == null)
+            return false;
+
+        foreach (string token in request.OpenGateTokens)
+        {
+            if (token == gateToken)
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool IsSymbolAllowedByWave(
+        SpawnAssignmentRequest request, string symbolStableId)
+    {
+        if (request.WaveSymbolWhitelist == null || request.WaveSymbolWhitelist.Count == 0)
+            return true;
+
+        return Contains(request.WaveSymbolWhitelist, symbolStableId);
+    }
+
+    private static bool Contains(IReadOnlyList<string> list, string value)
+    {
+        for (int i = 0; i < list.Count; i++)
+        {
+            if (list[i] == value)
+                return true;
+        }
+
+        return false;
+    }
+}

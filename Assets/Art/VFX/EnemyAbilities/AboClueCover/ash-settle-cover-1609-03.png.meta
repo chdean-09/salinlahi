@@ -1,0 +1,572 @@
+fileFormatVersion: 2
+guid: 1a46637efbce741d9a1dcb0dd90a0e72
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 7212980440092750885
+    second: ash-settle-cover-1609-03_0
+  - first:
+      213: 5792648613770104457
+    second: ash-settle-cover-1609-03_1
+  - first:
+      213: 1036400466639397561
+    second: ash-settle-cover-1609-03_2
+  - first:
+      213: 986870846825665822
+    second: ash-settle-cover-1609-03_3
+  - first:
+      213: 8370430833956376630
+    second: ash-settle-cover-1609-03_4
+  - first:
+      213: -1470959923980074391
+    second: ash-settle-cover-1609-03_5
+  - first:
+      213: -8274868784705333449
+    second: ash-settle-cover-1609-03_6
+  - first:
+      213: 9182344733678060035
+    second: ash-settle-cover-1609-03_7
+  - first:
+      213: -2867552987839956872
+    second: ash-settle-cover-1609-03_8
+  - first:
+      213: -696146154110280308
+    second: ash-settle-cover-1609-03_9
+  - first:
+      213: 6878858161293894557
+    second: ash-settle-cover-1609-03_10
+  - first:
+      213: 5006030027212586638
+    second: ash-settle-cover-1609-03_11
+  - first:
+      213: 4977340508220657425
+    second: ash-settle-cover-1609-03_12
+  - first:
+      213: -4858169494522836712
+    second: ash-settle-cover-1609-03_13
+  - first:
+      213: -39352999945406706
+    second: ash-settle-cover-1609-03_14
+  - first:
+      213: -8576958220170408910
+    second: ash-settle-cover-1609-03_15
+  - first:
+      213: -3716876872243635121
+    second: ash-settle-cover-1609-03_16
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 96
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: iOS
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: ash-settle-cover-1609-03_0
+      rect:
+        serializedVersion: 2
+        x: 265
+        y: 440
+        width: 33
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 524b1978e77a91460800000000000000
+      internalID: 7212980440092750885
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ash-settle-cover-1609-03_1
+      rect:
+        serializedVersion: 2
+        x: 329
+        y: 419
+        width: 23
+        height: 25
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 98e0d64393f936050800000000000000
+      internalID: 5792648613770104457
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ash-settle-cover-1609-03_2
+      rect:
+        serializedVersion: 2
+        x: 367
+        y: 436
+        width: 13
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9b2271bbbb8026e00800000000000000
+      internalID: 1036400466639397561
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ash-settle-cover-1609-03_3
+      rect:
+        serializedVersion: 2
+        x: 118
+        y: 47
+        width: 281
+        height: 388
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e159b387ec112bd00800000000000000
+      internalID: 986870846825665822
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ash-settle-cover-1609-03_4
+      rect:
+        serializedVersion: 2
+        x: 379
+        y: 432
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 63052fabe7eb92470800000000000000
+      internalID: 8370430833956376630
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ash-settle-cover-1609-03_5
+      rect:
+        serializedVersion: 2
+        x: 114
+        y: 121
+        width: 14
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 962055c1eb9169be0800000000000000
+      internalID: -1470959923980074391
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ash-settle-cover-1609-03_6
+      rect:
+        serializedVersion: 2
+        x: 368
+        y: 126
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7379ba4bea2c92d80800000000000000
+      internalID: -8274868784705333449
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ash-settle-cover-1609-03_7
+      rect:
+        serializedVersion: 2
+        x: 374
+        y: 126
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3024f0892ed3e6f70800000000000000
+      internalID: 9182344733678060035
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ash-settle-cover-1609-03_8
+      rect:
+        serializedVersion: 2
+        x: 383
+        y: 126
+        width: 9
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 878703120c76438d0800000000000000
+      internalID: -2867552987839956872
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ash-settle-cover-1609-03_9
+      rect:
+        serializedVersion: 2
+        x: 391
+        y: 135
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c8d908cd2cac656f0800000000000000
+      internalID: -696146154110280308
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ash-settle-cover-1609-03_10
+      rect:
+        serializedVersion: 2
+        x: 245
+        y: 120
+        width: 16
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d93283c4d0d967f50800000000000000
+      internalID: 6878858161293894557
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ash-settle-cover-1609-03_11
+      rect:
+        serializedVersion: 2
+        x: 217
+        y: 92
+        width: 25
+        height: 25
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e8ef1f269cdf87540800000000000000
+      internalID: 5006030027212586638
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ash-settle-cover-1609-03_12
+      rect:
+        serializedVersion: 2
+        x: 241
+        y: 89
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 11f87a632d0131540800000000000000
+      internalID: 4977340508220657425
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ash-settle-cover-1609-03_13
+      rect:
+        serializedVersion: 2
+        x: 299
+        y: 83
+        width: 13
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 819c35c9590549cb0800000000000000
+      internalID: -4858169494522836712
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ash-settle-cover-1609-03_14
+      rect:
+        serializedVersion: 2
+        x: 307
+        y: 52
+        width: 28
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e077861b7a0347ff0800000000000000
+      internalID: -39352999945406706
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ash-settle-cover-1609-03_15
+      rect:
+        serializedVersion: 2
+        x: 333
+        y: 50
+        width: 35
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 23c406101f588f880800000000000000
+      internalID: -8576958220170408910
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ash-settle-cover-1609-03_16
+      rect:
+        serializedVersion: 2
+        x: 357
+        y: 65
+        width: 15
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f4c9d047d200b6cc0800000000000000
+      internalID: -3716876872243635121
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    outline: []
+    customData:
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices:
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      ash-settle-cover-1609-03_0: 7212980440092750885
+      ash-settle-cover-1609-03_1: 5792648613770104457
+      ash-settle-cover-1609-03_10: 6878858161293894557
+      ash-settle-cover-1609-03_11: 5006030027212586638
+      ash-settle-cover-1609-03_12: 4977340508220657425
+      ash-settle-cover-1609-03_13: -4858169494522836712
+      ash-settle-cover-1609-03_14: -39352999945406706
+      ash-settle-cover-1609-03_15: -8576958220170408910
+      ash-settle-cover-1609-03_16: -3716876872243635121
+      ash-settle-cover-1609-03_2: 1036400466639397561
+      ash-settle-cover-1609-03_3: 986870846825665822
+      ash-settle-cover-1609-03_4: 8370430833956376630
+      ash-settle-cover-1609-03_5: -1470959923980074391
+      ash-settle-cover-1609-03_6: -8274868784705333449
+      ash-settle-cover-1609-03_7: 9182344733678060035
+      ash-settle-cover-1609-03_8: -2867552987839956872
+      ash-settle-cover-1609-03_9: -696146154110280308
+  mipmapLimitGroupName:
+  pSDRemoveMatte: 0
+  userData:
+  assetBundleName:
+  assetBundleVariant:

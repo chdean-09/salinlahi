@@ -4,7 +4,9 @@ A 2D Pixel Art Defense Game
 
 **TECHNICAL DESIGN DOCUMENT**
 
-Version 1.0 | March 2026
+Version 1.6 | September 22, 2026
+
+Updated: 2026-09-22
 
 **Engine: **Unity 6 LTS | URP 2D | C#
 
@@ -18,6 +20,26 @@ Chad (Product Owner / Designer) | Jon Wayne (Core Systems)
 
 Jeff Andre (UI/UX) | Ian Clyde (Audio / Polish / Build)
 
+## Current implementation reconciliation (2026-09-22)
+
+The historical architecture description below is retained for provenance. The current Unity
+implementation is the authority for runtime ownership: `WaveManager` owns coroutine execution and
+spawning while `WaveTerminalPolicy` owns pure finale/terminal/overflow predicates; the
+`ActiveCluePresenter` owns Unity presentation while `RestorationRailLayoutPolicy` owns pure rail
+geometry; and `LevelResultsCalculator` / `LevelResultsCopy` own result math and player-facing result
+copy. Correct drawings resolve against the closest eligible carrier, and pooled enemies are
+returned during defeat, abort, and retry teardown.
+
+The current authored campaign has fifteen levels, no boss reference on Level 10, and the sole
+campaign boss on Level 15. Levels 6–14 carry explicit natural carriers for every focus symbol in
+each authored non-intermission wave. These statements are covered by current asset contracts;
+Unity compile, Test Runner, and terminal gameplay verification are recorded separately in
+`docs/audit/IMPLEMENTATION_STATUS-2026-09-22.md` and are not implied by this document alone.
+The current build-settings file contains eight scene entries, seven enabled for builds; gameplay
+uses the shared `Gameplay` scene plus the Bootstrap, menu, level-select, tutorial, dojo, and
+almanac scenes. Runtime-created HUD and result surfaces remain part of the live flow and are not
+represented as additional build scenes.
+
 # 1. Architecture Overview
 
 Salinlahi is a single-codebase Unity 6 LTS project targeting Android and iOS in portrait orientation. The rendering pipeline is Universal Render Pipeline (URP) configured for 2D. The camera is top-down / bird's eye orthographic at 32 PPU. No 3D geometry exists anywhere in the project. The entire game runs offline with zero network calls. Maps use top-down tilesets (not parallax layers). The protagonist is visible on screen during gameplay as a 32x32 sprite with era-specific designs (Kuya, Laban, Manong). Enemy sprites are 32x32 (regular/variant), 48x48 (elite), and 64x64 (boss).
@@ -26,13 +48,20 @@ The architecture follows three core principles:
 
 - **Singleton Managers: **Core systems (GameManager, AudioManager, RecognitionManager) are singletons instantiated once in the Bootstrap scene and persist across all scene loads.
 
-- **Event-Driven Communication: **Managers never reference each other directly. All inter-system communication flows through a static EventBus. This keeps systems testable in isolation and prevents circular dependencies.
+- **Event-Driven Communication: **EventBus is the shared signal boundary, but lifecycle orchestration
+  and a few singleton lookups are intentionally direct. `LevelFlowController`, `WaveManager`, and
+  runtime-created UI therefore must be audited through lifecycle and serialized references, not
+  treated as EventBus-only coupling.
 
 - **Data-Driven Content: **All level pacing, enemy stats, wave composition, and recognition thresholds are defined in ScriptableObject assets editable in the Unity Inspector. Designers can tune the entire game without touching compiled scripts.
 
 ## 1.1 Scene Structure
 
-The game uses five scenes loaded asynchronously through a SceneLoader utility. Bootstrap is the entry point, loads all manager prefabs, then auto-transitions to MainMenu. From there, the player navigates to LevelSelect (for story mode), TracingDojo, or EndlessMode. The Gameplay scene is shared by both story levels and endless mode, configured at load time by the LevelConfigSO or an endless-mode flag.
+The game uses the enabled scenes recorded in `ProjectSettings/EditorBuildSettings.asset`, loaded
+asynchronously through `SceneLoader`. Bootstrap is the entry point and auto-transitions to MainMenu;
+the shared Gameplay scene is configured at load time by the selected `LevelConfigSO`. TracingDojo,
+Almanac, LevelSelect, and the Level 1 tutorial are separate enabled scenes; the old EndlessMode
+description is historical and is not a current build-scene entry.
 
 *Figure 1. Scene navigation flow*
 
@@ -92,9 +121,12 @@ Enemies are managed through Unity's built-in ObjectPool<T> class. At scene load,
 
 ## 3.2 Wave Management
 
-WaveManager reads a LevelConfigSO at level load, which defines the sequence of WaveConfigSO assets for that level. Each WaveConfigSO specifies the enemy types, spawn count, spawn delay, and spawn positions for one wave. WaveManager triggers WaveSpawner per wave and fires OnWaveStarted and OnWaveCleared events so the HUD and GameManager can track progress.
+WaveManager reads a LevelConfigSO at level load, which embeds an ordered list of WaveDefinition values for that level. Each WaveDefinition specifies the enemy types, spawn count, spawn interval, and allowed character pool for one wave. WaveManager triggers WaveSpawner per wave and fires OnWaveStarted and OnWaveCleared events so the HUD and GameManager can track progress.
 
-For boss levels (5, 10, 15), a BossConfigSO defines the boss encounter. Boss enemies are 64x64 sprites: El Inquisidor (Spanish, summons Soldados), The Superintendent (American, decree-scrambles labels), and Kadiliman (Final, summons enemies from all eras). Bosses use a phase-based system with distinct mechanics per phase.
+When a level carries a `BossConfigSO`, it runs the phase-based boss encounter. The current
+campaign assigns that reference only to Level 15 (Kadiliman, which summons enemies from all eras);
+the El Inquisidor and Superintendent configs remain legacy assets. Bosses use 64x64 sprites and
+distinct mechanics per phase.
 
 ## 3.3 Combat Resolution
 
@@ -110,17 +142,67 @@ The EventBus is a static class that acts as the central messaging hub. No manage
 
 # 5. Data Layer
 
-All game content is defined in ScriptableObject assets. This means that level designers (in this case, Chad) can create new levels, adjust enemy speeds, change wave compositions, and tune difficulty entirely through the Unity Inspector without writing code or recompiling.
+All game content is defined in ScriptableObject assets. The revised frozen core adds a
+`CampaignConfigSO` root with a versioned `CampaignIdentityManifest`, campaign tuning,
+stable canonical IDs, ordered `EraConfigSO` and `LevelConfigSO` references, inline
+focus-word records, and one visual `BaybayinCharacterSO` identity with contextual
+spoken-value definitions. `levelNumber` remains presentation order only. Consumers
+resolve content through duplicate-safe stable-ID lookup rather than filenames, display
+text, or numeric gameplay branches.
+
+`CampaignConfigValidator` is a pure, non-mutating traversal used by an editor-only
+validation menu. It validates the 3-era/15-level/30-focus/17-symbol/18-spoken-value
+shape, canonical symbol-introduction level metadata, exact cumulative pools, focus and
+requirement membership in the introduced pool, PA sequencing, required media, and
+compatibility metadata. Opted-in revised levels also require a SALIN-168-valid
+`ChallengeSequenceSO`; disabled levels ignore dormant sequence authoring. Symbol-value references must point to the campaign catalog's
+canonical symbol asset; a separate same-ID asset is invalid. Existing serialized fields
+remain in place so legacy assets continue to deserialize. The schema exposes save
+compatibility metadata but does not implement save migration; that is SALIN-171 work.
+Production campaign authoring remains SALIN-172 work.
+
+SALIN-174 adds the completion transaction boundary: the `LevelFlowController` asks
+`ProgressManager` for one immutable outcome, `CampaignOutcomeCoordinator` journals and validates
+it, and the existing campaign publisher commits the monotonic merge with backup rollback. Save
+schema v2 carries a journey generation and receipt ledger. Startup recovers and replays pending
+outcomes before `RevisedReady`; Victory is gated on `Committed` or `AlreadyCommitted`, while the
+retry/Main Menu panel preserves a valid pending journal.
+
+SALIN-175 makes learning evidence first-class save data on that same boundary. Save schema v3 adds
+per-dimension mastery records for symbols and words, and `CampaignSaveMigrator.TryUpgradeToCurrent`
+replaces the single-step v1 upgrade with a range-guarded chain so every save the shipped build has
+written upgrades rather than being discarded. Outcome schema v2 adds a `sessionKind` and an evidence
+batch to `CampaignProgressOutcome`, so a practice or review session commits through the identical
+journal, publication, and verification path a level completion uses -- there is no second write path
+for learning data.
+
+The coordinator dispatches on `sessionKind`: only a `LevelAttempt` reaches level progression, while
+evidence is applied for every kind. Combined with a validator that rejects any non-level outcome
+carrying stars or unlocks, practice is *structurally* unable to alter level completion rather than
+merely conventionally discouraged. Mastery rules live in pure functions -- `MasteryEvaluator`,
+`ReviewScheduler`, `PracticePriority` -- with no Unity, I/O, or EventBus dependency, and persistence
+access is confined to `LearningProgressRepository`, whose `LearningStateSnapshot` is the read-only
+surface consumers query.
 
 *Figure 6. ScriptableObject data architecture*
 
 | **Asset Type** | **Defines** |
 | --- | --- |
-| LevelConfigSO | Chapter assignment, background theme, ordered list of WaveConfigSO references for that level. |
-| WaveConfigSO | Enemy types to spawn, count per type, spawn delay between enemies, spawn position columns. |
+| CampaignConfigSO | Revised campaign root: manifest, tuning, learning tuning, canonical symbols, and ordered eras. |
+| LearningTuningSO | Mastery thresholds, review offsets, and suggested-practice priority weights. Required on the revised path. |
+| CampaignIdentityManifest | `campaign.revised-v1`, content/save schema versions, supported source schemas, migration metadata, readable save range, and starting level ID. |
+| EraConfigSO | Legacy presentation fields plus stable era ID/order, story/memory references, and five ordered levels. |
+| LevelConfigSO | Legacy wave/roster data plus stable ID, era-local order, two inline focus words, cumulative symbol pool, requirements, clue/defense rules, media, rewards, mastery, final restoration value, and optional `challengePrototypeEnabled` / `challengeSequence` authoring-validation references. |
+| FocusWordDefinition | Inline focus-slot ID, Latin/display labels, ordered `SymbolValueReference` decomposition, and required media. |
+| SpokenValueDefinition | Contextual spoken-value ID, display value, and pronunciation clip. |
+| SymbolValueReference | A canonical `BaybayinCharacterSO` reference plus a spoken-value ID supported by that symbol. |
+| LevelConfigSO (legacy contract) | Chapter assignment, background theme, ordered list of embedded WaveDefinition entries, allowed character and enemy-type rosters. |
+| WaveDefinition | Enemy types to spawn, count, spawn interval, wave start delay, and allowed character pool — stored as a serialized value type inside LevelConfigSO.waves. |
 | EnemyDataSO | Era assignment, movement speed, movement pattern (straight, fast, glide, zigzag, sprinter/charge, commander aura, censor), health / hits required (for shielded types like Capitan and Shokan), isDecoy flag (for Maestro), isPhaser flag and interval (for Fraile), corruption veil flag (for Shokan), reference to a BaybayinCharacterSO. |
-| BaybayinCharacterSO | Character ID string, display name, template file references, AudioClip for pronunciation. |
-| BossConfigSO | Boss name (El Inquisidor, The Superintendent, Kadiliman), boss health pool, number of phases, required characters per phase, timing windows, summon ability configuration, special ability (decree scramble for Superintendent). |
+| BaybayinCharacterSO | Legacy character/template fields plus stable visual ID, explicit legacy aliases, contextual spoken values, and first-introduction level metadata. |
+| GlyphBadgeConfigSO | Global badge layout and animation tuning: default offset/scale, swap slide/durations, final-draw charge/release, decoy-reject flash/shake, boss fail-flash colors/durations. Single shared asset (`GlyphBadgeConfig_Default`). |
+| EnemyDataSO (glyph badge) | Optional per-enemy overrides: `overrideBadgeOffset`, `glyphBadgeOffsetOverride`, `overrideBadgeScale`, `glyphBadgeScaleOverride`. |
+| BossConfigSO | Boss name, boss health pool, number of phases, required characters per phase, timing windows, summon ability configuration, and optional special ability. The current campaign references only the Level 15 boss; older Level 5/10 boss configs are retained as legacy assets. |
 | RecognitionConfigSO | Confidence threshold (0.60), resample point count (32), scale square size (250), idle timer duration (1.5s). |
 
 # 6. Audio Feedback System
@@ -161,7 +243,7 @@ Both Salinlahi Lite and Salinlahi Full are built from the same Unity codebase. A
 | Assets/Scripts/Gameplay/ | Enemy.cs, EnemyMover.cs, EnemyPool.cs, WaveSpawner.cs, WaveManager.cs, PlayerBase.cs, HeartSystem.cs |
 | Assets/Scripts/UI/ | HUD.cs, MainMenu.cs, LevelSelect.cs, PauseMenu.cs |
 | Assets/Scripts/Audio/ | AudioManager.cs |
-| Assets/Data/ | All ScriptableObject assets (LevelConfigSO, WaveConfigSO, etc.) |
+| Assets/ScriptableObjects/ | All ScriptableObject assets (LevelConfigSO with embedded WaveDefinitions, EnemyDataSO, BaybayinCharacterSO, etc.) |
 | Assets/Resources/Templates/ | Baybayin character template .txt coordinate files |
 | Assets/Prefabs/Managers/ | All manager prefabs instantiated by Bootstrap |
 | Assets/Art/ | Sprite sheets, backgrounds, UI elements |
@@ -172,5 +254,13 @@ Both Salinlahi Lite and Salinlahi Full are built from the same Unity codebase. A
 | **Version** | **Changes** |
 | --- | --- |
 | v1.0 (March 2026) | Initial TDD. Covers system architecture, recognition pipeline, combat system, EventBus pattern, data layer, audio system, build configuration, and folder structure. Six architecture diagrams included. |
+| v1.1 (Updated 2026-08-11) | Adds the SALIN-170 frozen revised campaign data root, stable identity/value references, compatibility boundary, and pure validation contract. |
+| v1.2 (Updated 2026-08-13) | Makes SALIN-170 introduction and cumulative-pool validation data-driven, enforces introduced-symbol references and ordered PA instruction, and clarifies canonical catalog-asset references. |
+| v1.3 (Updated 2026-08-13) | Integrates SALIN-168 challenge-sequence authoring into SALIN-170 campaign validation through an opt-in, non-mutating delegation boundary. |
+
+| v1.4 (Updated 2026-08-13) | Adds SALIN-171 validated atomic campaign JSON persistence, immutable legacy archive migration, recovery precedence, and SaveManager activation modes. |
+| v1.5 (Updated 2026-08-17) | Adds SALIN-174 checksummed outcome journaling, schema-v2 migration, monotonic receipt replay, rollback verification, reset-generation invalidation, and the explicit Victory/save-failure gate. |
+| v1.6 (Updated 2026-08-18) | Adds SALIN-175 unified learning data: save schema v3 mastery records, outcome schema v2 with session kind and evidence batch, chained save migration, session-kind dispatch that keeps practice out of level progression, the pure mastery/review/priority layer, and the read-only LearningState snapshot surface. |
+| v1.7 (Updated 2026-09-22) | Reconciles current runtime ownership, pooled teardown, closest-carrier combat, Level 10/15 boss topology, and the evidence-gated status of Unity verification. |
 
 *This document is a living reference. Update it whenever a system**'**s design changes. Track every change in the changelog above.*

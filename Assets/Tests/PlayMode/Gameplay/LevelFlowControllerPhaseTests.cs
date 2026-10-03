@@ -1,0 +1,2012 @@
+using System.Collections;
+using System.Collections.Generic;
+using System.Reflection;
+using System.Text.RegularExpressions;
+using NUnit.Framework;
+using Salinlahi.Debug.Sandbox;
+using UnityEngine;
+using UnityEngine.TestTools;
+
+namespace Salinlahi.Tests.PlayMode.Gameplay
+{
+    /// <summary>
+    /// PlayMode coverage for the LevelFlowController coroutine host driving the
+    /// LF-CONTRACT-v2 machine (SALIN-178). Exhaustive transition legality lives in
+    /// the EditMode LevelFlowMachineTests; this fixture covers the representative
+    /// host behaviors: event routing, the atomic-save gate, defeat cleanup, and
+    /// stub-phase auto-advance.
+    /// </summary>
+    [TestFixture]
+    public sealed class LevelFlowControllerPhaseTests
+    {
+        private const string MissingWaveManagerError =
+            "[Salinlahi] LevelFlowController: WaveManager reference missing.";
+
+        private readonly List<Object> _objectsToDestroy = new();
+
+        [SetUp]
+        public void SetUp()
+        {
+            SandboxMode.Deactivate();
+            LevelFlowController.SetSkipReadyScreenForTests(true);
+            LevelTutorialProgress.ResetLevel1TutorialForTests();
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            LogAssert.ignoreFailingMessages = false;
+            SandboxMode.Deactivate();
+            LevelFlowController.SetSkipReadyScreenForTests(false);
+            if (_spokenPronunciationProbe != null)
+            {
+                EventBus.OnSpokenPronunciationRequested -= _spokenPronunciationProbe;
+                _spokenPronunciationProbe = null;
+            }
+
+            ClearSingletonInstance<GameManager>();
+            LevelTutorialProgress.ResetLevel1TutorialForTests();
+            Time.timeScale = 1f;
+
+            for (int i = _objectsToDestroy.Count - 1; i >= 0; i--)
+            {
+                if (_objectsToDestroy[i] != null)
+                    Object.DestroyImmediate(_objectsToDestroy[i]);
+            }
+
+            _objectsToDestroy.Clear();
+
+            GameObject runtimePanel = GameObject.Find("[Runtime] ActiveCluePanel");
+            while (runtimePanel != null)
+            {
+                Object.DestroyImmediate(runtimePanel);
+                runtimePanel = GameObject.Find("[Runtime] ActiveCluePanel");
+            }
+
+            // SALIN-223: the content-missing panel builds its own GameObject and canvas at
+            // runtime, neither of which the fixture owns, so they outlive the test unless
+            // they are cleared here.
+            foreach (LevelContentMissingPanel panel in Object.FindObjectsByType<LevelContentMissingPanel>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (panel != null)
+                    Object.DestroyImmediate(panel.gameObject);
+            }
+
+            GameObject missingCanvas = GameObject.Find("[Runtime] ContentMissingCanvas");
+            while (missingCanvas != null)
+            {
+                Object.DestroyImmediate(missingCanvas);
+                missingCanvas = GameObject.Find("[Runtime] ContentMissingCanvas");
+            }
+
+            // SALIN-232: same reason — the Wave Cleared screen builds its own GameObject
+            // and canvas at runtime, neither of which the fixture owns.
+            foreach (WaveClearedScreenUI screen in Object.FindObjectsByType<WaveClearedScreenUI>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (screen != null)
+                    Object.DestroyImmediate(screen.gameObject);
+            }
+
+            GameObject waveClearedCanvas = GameObject.Find("[Runtime] WaveClearedCanvas");
+            while (waveClearedCanvas != null)
+            {
+                Object.DestroyImmediate(waveClearedCanvas);
+                waveClearedCanvas = GameObject.Find("[Runtime] WaveClearedCanvas");
+            }
+
+            ChallengeRuntimeState.Clear();
+            TutorialRuntimeState.Clear();
+            foreach (Level1TutorialGuideUI guide in Object.FindObjectsByType<Level1TutorialGuideUI>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (guide != null)
+                    Object.DestroyImmediate(guide.gameObject);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator LegacyFlow_ReachesDefenseAndWaitsForDefenseCompletion()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapLegacyFlow(out _, out _);
+
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "With no defense-completion report the flow must hold in Defense.");
+            Assert.AreEqual(0, controller.CommitCalls);
+        }
+
+        [UnityTest]
+        public IEnumerator DefenseComplete_CommitsOnceAndShowsVictory()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapLegacyFlow(
+                out GameObject victoryPanel, out _);
+
+            yield return WaitFrames(10);
+            yield return CompleteDefense();
+            yield return ClearContextChallenge(controller);
+
+            Assert.AreEqual(1, controller.CommitCalls);
+            Assert.IsTrue(victoryPanel.activeSelf, "Accepted save must open Results (victory).");
+            Assert.AreEqual(LevelPhase.Completed, MachineOf(controller).Phase);
+        }
+
+        [UnityTest]
+        public IEnumerator DuplicateDefenseComplete_DoesNotDoubleCommit()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapLegacyFlow(out _, out _);
+
+            yield return WaitFrames(10);
+            // SALIN-232: all three raises land while the Wave Cleared screen is up (the
+            // first puts it there). The gate's re-entrancy guard must make the second and
+            // third inert — not re-present the screen, and not register a second continue
+            // callback that would report defense completion twice.
+            EventBus.RaiseDefenseComplete();
+            EventBus.RaiseDefenseComplete();
+            yield return WaitFrames(10);
+            EventBus.RaiseDefenseComplete();
+            yield return WaitFrames(5);
+            Assert.AreEqual(1, WaveClearedScreenCount(),
+                "Duplicate raises must not stack a second Wave Cleared screen.");
+            yield return TapWaveCleared();
+            yield return ClearContextChallenge(controller);
+
+            Assert.AreEqual(1, controller.CommitCalls,
+                "Duplicate defense-completion events must be inert.");
+        }
+
+        [UnityTest]
+        public IEnumerator RogueLevelCompleteEvent_IsIgnoredByTheRunningFlow()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapLegacyFlow(
+                out GameObject victoryPanel, out _);
+
+            yield return WaitFrames(10);
+            EventBus.RaiseLevelComplete();
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(0, controller.CommitCalls,
+                "A rogue OnLevelComplete must not commit while the machine holds Defense.");
+            Assert.IsFalse(victoryPanel.activeSelf);
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase);
+        }
+
+        [UnityTest]
+        public IEnumerator SaveNotAccepted_ShowsFailurePanelAndWithholdsVictory()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapLegacyFlow(
+                out GameObject victoryPanel, out GameObject failureOverlay);
+            controller.NextResult = CampaignOutcomeCommitResult.Blocked(
+                null, CampaignSaveFailureCode.InvalidStructure, "blocked");
+
+            yield return WaitFrames(10);
+            yield return CompleteDefense();
+            yield return ClearContextChallenge(controller);
+
+            Assert.IsFalse(victoryPanel.activeSelf, "Results must be withheld without an accepted save.");
+            Assert.IsTrue(failureOverlay.activeSelf);
+            Assert.AreEqual(LevelPhase.AtomicSave, MachineOf(controller).Phase);
+        }
+
+        [UnityTest]
+        public IEnumerator SaveRetryAccepted_ThenVictoryShows()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapLegacyFlow(
+                out GameObject victoryPanel, out GameObject failureOverlay);
+            controller.NextResult = CampaignOutcomeCommitResult.PendingRetry(
+                null, CampaignSaveFailureCode.IoFailure, "journal-pending");
+            controller.RetryResult = CampaignOutcomeCommitResult.Committed(null);
+
+            yield return WaitFrames(10);
+            yield return CompleteDefense();
+            yield return ClearContextChallenge(controller);
+            Assert.IsTrue(failureOverlay.activeSelf, "Setup: failure panel must be up before retry.");
+
+            ClickRetryButton(failureOverlay);
+            yield return WaitFrames(10);
+
+            Assert.IsTrue(victoryPanel.activeSelf, "An accepted retry must release Results.");
+            Assert.AreEqual(LevelPhase.Completed, MachineOf(controller).Phase);
+        }
+
+        [UnityTest]
+        public IEnumerator GameOver_DuringStoryDialogue_ShowsDefeatAndNeverCommits()
+        {
+            DialogueController dialogue = CreateComponent<DialogueController>("DialogueController");
+            SetPrivateField(dialogue, "_overlayPanel", CreatePanel("DialogueOverlay"));
+
+            TestPhaseFlowController controller = BootstrapFlow(
+                ConfigureIntroDialogue, out GameObject victoryPanel, out _,
+                out GameObject defeatPanel, dialogue);
+
+            yield return WaitFrames(5);
+            Assert.AreEqual(LevelPhase.Story, MachineOf(controller).Phase,
+                "Setup: the flow must be waiting inside the Story phase.");
+
+            EventBus.RaiseGameOver();
+            yield return WaitFrames(2);
+            EventBus.RaiseDialogueComplete();
+            yield return WaitFrames(5);
+
+            Assert.IsTrue(defeatPanel.activeSelf);
+            Assert.IsFalse(victoryPanel.activeSelf);
+            Assert.AreEqual(0, controller.CommitCalls);
+            Assert.AreEqual(LevelPhase.Defeated, MachineOf(controller).Phase);
+        }
+
+        [UnityTest]
+        public IEnumerator GameOver_DuringDefense_ShowsDefeat_AndLateDefenseCompleteIsIgnored()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapLegacyFlow(
+                out GameObject victoryPanel, out _, out GameObject defeatPanel);
+
+            yield return WaitFrames(10);
+            EventBus.RaiseGameOver();
+            yield return WaitFrames(2);
+            EventBus.RaiseDefenseComplete();
+            yield return WaitFrames(5);
+
+            Assert.IsTrue(defeatPanel.activeSelf);
+            Assert.IsFalse(victoryPanel.activeSelf);
+            Assert.AreEqual(0, controller.CommitCalls,
+                "A defense completion after defeat must be inert.");
+            Assert.AreEqual(LevelPhase.Defeated, MachineOf(controller).Phase);
+        }
+
+        [UnityTest]
+        public IEnumerator GameOver_DuringBlockedSave_IsIgnoredAndRetryStillCompletes()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapLegacyFlow(
+                out GameObject victoryPanel, out GameObject failureOverlay, out GameObject defeatPanel);
+            controller.NextResult = CampaignOutcomeCommitResult.PendingRetry(
+                null, CampaignSaveFailureCode.IoFailure, "journal-pending");
+            controller.RetryResult = CampaignOutcomeCommitResult.Committed(null);
+
+            yield return WaitFrames(10);
+            yield return CompleteDefense();
+            yield return ClearContextChallenge(controller);
+            Assert.AreEqual(LevelPhase.AtomicSave, MachineOf(controller).Phase,
+                "Setup: the flow must be holding the atomic-save retry gate.");
+
+            EventBus.RaiseGameOver();
+            yield return WaitFrames(5);
+
+            Assert.IsFalse(defeatPanel.activeSelf,
+                "A game over raised at the save gate must not open the defeat screen.");
+            Assert.AreEqual(LevelPhase.AtomicSave, MachineOf(controller).Phase);
+
+            ClickRetryButton(failureOverlay);
+            yield return WaitFrames(10);
+
+            Assert.IsTrue(victoryPanel.activeSelf,
+                "The level must still complete after the ignored defeat.");
+            Assert.IsFalse(defeatPanel.activeSelf);
+            Assert.AreEqual(LevelPhase.Completed, MachineOf(controller).Phase);
+        }
+
+        [UnityTest]
+        public IEnumerator GameOver_DuringOutro_IsIgnoredAndVictoryStillShows()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            DialogueController dialogue = CreateComponent<DialogueController>("DialogueController");
+            SetPrivateField(dialogue, "_overlayPanel", CreatePanel("DialogueOverlay"));
+
+            TestPhaseFlowController controller = BootstrapFlow(
+                ConfigureOutroDialogue, out GameObject victoryPanel, out _,
+                out GameObject defeatPanel, dialogue);
+
+            yield return WaitFrames(10);
+            yield return CompleteDefense();
+            yield return ClearContextChallenge(controller);
+            Assert.AreEqual(LevelPhase.Results, MachineOf(controller).Phase,
+                "Setup: the flow must be waiting on the outro inside Results.");
+
+            EventBus.RaiseGameOver();
+            yield return WaitFrames(5);
+
+            Assert.IsFalse(defeatPanel.activeSelf,
+                "A straggler kill during the outro must not open the defeat screen on a saved level.");
+            Assert.IsFalse(victoryPanel.activeSelf,
+                "The ignored defeat must not release the outro wait early either.");
+            Assert.AreEqual(LevelPhase.Results, MachineOf(controller).Phase);
+
+            EventBus.RaiseDialogueComplete();
+            yield return WaitFrames(5);
+
+            Assert.IsTrue(victoryPanel.activeSelf);
+            Assert.IsFalse(defeatPanel.activeSelf,
+                "Victory and defeat panels must never be up together.");
+            Assert.AreEqual(1, controller.CommitCalls);
+            Assert.AreEqual(LevelPhase.Completed, MachineOf(controller).Phase);
+        }
+
+        [UnityTest]
+        public IEnumerator StubLearningPhases_AutoCompleteToDefense()
+        {
+            // FocusWords (SALIN-138) and SymbolLearning (SALIN-157) hold for their
+            // surfaces; RequiredPractice remains an auto-completing stub until its
+            // campaign gate lands. A learning requirement with no symbol authored
+            // is not presentable, so SymbolLearning must also fall through here
+            // rather than deadlock on an empty card deck.
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapFlow(
+                config =>
+                {
+                    config.learningRequirements.Add(new ContentRequirement());
+                    config.practiceRequirements.Add(new ContentRequirement());
+                },
+                out _, out _, out _, dialogueController: null);
+
+            yield return WaitFrames(20);
+
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "The RequiredPractice stub and a card-less SymbolLearning phase must auto-complete.");
+        }
+
+        [UnityTest]
+        public IEnumerator SymbolLearning_HoldsPerCard_AndLabelsFollowTheSpokenValueContext()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            DialogueController dialogue = CreateComponent<DialogueController>("DialogueController");
+            SetPrivateField(dialogue, "_overlayPanel", CreatePanel("DialogueOverlay"));
+            TestPhaseFlowController controller = BootstrapFlow(
+                config => ConfigureSymbolLearningLevel(config, withClips: false),
+                out _, out _, out _, dialogue);
+
+            yield return WaitFrames(5);
+            // Only a Playing GameManager lets AcceptsDrawingInput report the
+            // suppression flag rather than the dialogue pause (see
+            // TeardownMidPreview_ReleasesDrawingSuppression for the full rationale).
+            GameManager.Instance.ExitDialoguePause();
+            EventBus.RaiseDialogueComplete();
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.SymbolLearning, MachineOf(controller).Phase,
+                "The flow must hold in SymbolLearning while a card is up.");
+            Assert.AreEqual(GameState.Playing, GameManager.Instance.CurrentState,
+                "Setup: the suppression assertions below need a Playing GameManager.");
+            Assert.IsFalse(GameManager.Instance.AcceptsDrawingInput,
+                "Every card must be readable before drawing begins — this level has no "
+                + "focus words, so the SymbolLearning executor must take suppression itself.");
+
+            SymbolLearningCardController cards =
+                Object.FindFirstObjectByType<SymbolLearningCardController>();
+            Assert.IsNotNull(cards, "The flow must provide the syllable learning card surface.");
+            Assert.IsTrue(cards.IsPresenting);
+            Assert.AreEqual(2, cards.CardCount,
+                "One card per Instruction-kind learning requirement.");
+            Assert.AreEqual(0, cards.CurrentCardIndex);
+            Assert.AreEqual("ra", cards.CurrentLabel,
+                "The DA/RA card's label must follow the requirement's spokenValueId (level "
+                + "context), not the glyph's default syllable.");
+            Assert.IsFalse(cards.IsReplayAvailable,
+                "A clipless card must stay visual-only with the replay control hidden.");
+
+            cards.Continue();
+            yield return WaitFrames(3);
+
+            Assert.AreEqual(LevelPhase.SymbolLearning, MachineOf(controller).Phase,
+                "Advancing past card 1 of 2 must hold the phase on card 2.");
+            Assert.AreEqual(1, cards.CurrentCardIndex);
+            Assert.AreEqual("e/i", cards.CurrentLabel,
+                "The E/I card must show the approved level-context label.");
+            Assert.IsFalse(cards.IsReplayAvailable);
+
+            cards.Continue();
+            yield return WaitFrames(15);
+
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "Advancing past the last card must carry the flow into Defense.");
+            Assert.IsFalse(cards.IsPresenting);
+            Assert.IsTrue(GameManager.Instance.AcceptsDrawingInput,
+                "The Defense executor must release the suppression the card phase took.");
+        }
+
+        [UnityTest]
+        public IEnumerator SymbolLearning_ActiveCardAnnouncesOnce_AndReplayReRaisesOnDemand()
+        {
+            // No MissingWaveManagerError expectation here: unlike its sibling above,
+            // this case deliberately ends while card 2 of 2 is still up, so the flow
+            // never enters Defense and never reaches the WaveManager handoff that
+            // logs it. The closing phase assertion pins that down.
+            DialogueController dialogue = CreateComponent<DialogueController>("DialogueController");
+            SetPrivateField(dialogue, "_overlayPanel", CreatePanel("DialogueOverlay"));
+            TestPhaseFlowController controller = BootstrapFlow(
+                config => ConfigureSymbolLearningLevel(config, withClips: true),
+                out _, out _, out _, dialogue);
+
+            int spokenRaises = 0;
+            BaybayinCharacterSO lastSymbol = null;
+            string lastSpokenValueId = null;
+            _spokenPronunciationProbe = (symbol, spokenValueId) =>
+            {
+                spokenRaises++;
+                lastSymbol = symbol;
+                lastSpokenValueId = spokenValueId;
+            };
+            EventBus.OnSpokenPronunciationRequested += _spokenPronunciationProbe;
+
+            yield return WaitFrames(5);
+            EventBus.RaiseDialogueComplete();
+            yield return WaitFrames(10);
+            Assert.AreEqual(LevelPhase.SymbolLearning, MachineOf(controller).Phase,
+                "Setup: the card phase must be open.");
+
+            SymbolLearningCardController cards =
+                Object.FindFirstObjectByType<SymbolLearningCardController>();
+            Assert.IsNotNull(cards);
+            Assert.IsTrue(cards.IsReplayAvailable,
+                "A card whose spoken value resolves a clip must offer replay.");
+            Assert.AreEqual(1, spokenRaises,
+                "The card becoming active must announce its pronunciation exactly once.");
+            Assert.AreEqual("value.test-ra", lastSpokenValueId,
+                "The announcement must carry the requirement's spoken value, not the "
+                + "character default, so DA/RA follows the level context.");
+
+            cards.Continue();
+            yield return WaitFrames(3);
+
+            // Card 2 activates inside the 0.5s debounce window stamped by card 1's
+            // announcement, so it must stay silent rather than stack an overlapping
+            // clip. (Frame-paced: 3 frames are far inside the window.)
+            Assert.AreEqual(1, cards.CurrentCardIndex, "Setup: card 2 must be active.");
+            Assert.AreEqual(1, spokenRaises,
+                "A card activating while another pronunciation is within the debounce "
+                + "window must not stack an overlapping clip.");
+            Assert.IsTrue(cards.IsReplayAvailable,
+                "The debounced card must still offer its audio on demand.");
+
+            cards.ReplayAudio();
+
+            Assert.AreEqual(2, spokenRaises, "Replay must re-raise on demand.");
+            Assert.AreEqual("value.test-ei", lastSpokenValueId);
+            Assert.IsNotNull(lastSymbol);
+            Assert.AreEqual("symbol.test-ei", lastSymbol.stableId);
+
+            yield return WaitFrames(3);
+
+            Assert.AreEqual(1, cards.CurrentCardIndex,
+                "Replaying audio must not advance the deck.");
+            Assert.AreEqual(2, spokenRaises,
+                "Replay must announce once per press, not re-announce on later frames.");
+            Assert.AreEqual(LevelPhase.SymbolLearning, MachineOf(controller).Phase,
+                "The flow must still be holding on card 2 — it never reaches Defense, "
+                + "which is why no WaveManager-missing error is expected here.");
+        }
+
+        private System.Action<BaybayinCharacterSO, string> _spokenPronunciationProbe;
+
+        private void ConfigureSymbolLearningLevel(LevelConfigSO config, bool withClips)
+        {
+            ConfigureIntroDialogue(config);
+
+            BaybayinCharacterSO dara = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            dara.characterID = "DARA";
+            dara.syllable = "da";
+            dara.stableId = "symbol.test-dara";
+            dara.spokenValues = new System.Collections.Generic.List<SpokenValueDefinition>
+            {
+                new SpokenValueDefinition { stableId = "value.test-da", displayValue = "da" },
+                new SpokenValueDefinition
+                {
+                    stableId = "value.test-ra",
+                    displayValue = "ra",
+                    pronunciationClip = withClips ? CreateRuntimeClip("test-ra-clip") : null,
+                },
+            };
+            _objectsToDestroy.Add(dara);
+
+            BaybayinCharacterSO ei = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            ei.characterID = "EI";
+            ei.syllable = "e";
+            ei.stableId = "symbol.test-ei";
+            ei.spokenValues = new System.Collections.Generic.List<SpokenValueDefinition>
+            {
+                new SpokenValueDefinition
+                {
+                    stableId = "value.test-ei",
+                    displayValue = "e/i",
+                    pronunciationClip = withClips ? CreateRuntimeClip("test-ei-clip") : null,
+                },
+            };
+            _objectsToDestroy.Add(ei);
+
+            config.learningRequirements.Add(new ContentRequirement
+            {
+                kind = ContentRequirementKind.Instruction,
+                symbolValue = new SymbolValueReference { symbol = dara, spokenValueId = "value.test-ra" },
+            });
+            config.learningRequirements.Add(new ContentRequirement
+            {
+                kind = ContentRequirementKind.Instruction,
+                symbolValue = new SymbolValueReference { symbol = ei, spokenValueId = "value.test-ei" },
+            });
+        }
+
+        private AudioClip CreateRuntimeClip(string name)
+        {
+            AudioClip clip = AudioClip.Create(name, 441, 1, 44100, false);
+            _objectsToDestroy.Add(clip);
+            return clip;
+        }
+
+        [UnityTest]
+        public IEnumerator Pause_DuringDefense_SetsMachinePausedAndResumeClears()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapLegacyFlow(out _, out _);
+
+            yield return WaitFrames(10);
+            EventBus.RaiseGamePaused();
+            Assert.IsTrue(MachineOf(controller).IsPaused);
+
+            EventBus.RaiseGameResumed();
+            Assert.IsFalse(MachineOf(controller).IsPaused);
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase);
+        }
+
+        // SALIN-141 AC-1/AC-2. The test above drives the EventBus directly, which proves the
+        // subscription but not the route the pause button actually takes. This one goes
+        // through GameManager, so a pause that fails to reach the flow machine -- leaving it
+        // accepting phase reports behind the pause menu -- is caught.
+        [UnityTest]
+        public IEnumerator PauseGame_DuringDefense_ReachesTheFlowMachineAndResumeRestoresIt()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapLegacyFlow(out _, out _);
+
+            yield return WaitFrames(10);
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "Setup: the flow must be live in Defense before the pause.");
+
+            // PauseGame only acts from Playing; the bootstrap leaves GameManager wherever the
+            // flow put it, so state the precondition rather than assuming it.
+            GameManager.Instance.StartGame();
+            GameManager.Instance.PauseGame();
+            yield return null;
+
+            Assert.AreEqual(GameState.Paused, GameManager.Instance.CurrentState);
+            Assert.AreEqual(0f, Time.timeScale, "AC-1: gameplay timers ride Time.timeScale.");
+            Assert.IsTrue(MachineOf(controller).IsPaused,
+                "AC-1: the flow machine must pause with the rest of the level.");
+
+            GameManager.Instance.ResumeGame();
+            yield return null;
+
+            Assert.AreEqual(GameState.Playing, GameManager.Instance.CurrentState);
+            Assert.AreEqual(1f, Time.timeScale);
+            Assert.IsFalse(MachineOf(controller).IsPaused,
+                "AC-2: resume must hand the same attempt back, not a paused one.");
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "AC-2: the attempt continues in the phase it was paused in.");
+        }
+
+        [UnityTest]
+        public IEnumerator WaveManagerCompletion_RoutesThroughDefenseCompleteToVictory()
+        {
+            // WaveManager logs config-resolution errors from both Start() and
+            // StartLevel() in a bare test scene; the exact count is not the subject
+            // under test (the routing is), so suppress log failures for this test.
+            LogAssert.ignoreFailingMessages = true;
+            WaveManager waveManager = CreateComponent<WaveManager>("WaveManager");
+            TestPhaseFlowController controller = BootstrapFlow(
+                _ => { }, out GameObject victoryPanel, out _, out _,
+                dialogueController: null, waveManager: waveManager);
+
+            yield return WaitFrames(10);
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase);
+
+            InvokePrivate(waveManager, "CompleteRun");
+            yield return WaitFrames(10);
+            // SALIN-232: WaveManager's completion raises the same OnDefenseComplete, so it
+            // reaches the same gate. Tapping here keeps the subject of this test the ROUTE
+            // rather than the gate.
+            yield return TapWaveCleared();
+            yield return ClearContextChallenge(controller);
+
+            Assert.AreEqual(1, controller.CommitCalls,
+                "WaveManager completion must route through DefenseComplete into the atomic save.");
+            Assert.IsTrue(victoryPanel.activeSelf);
+        }
+
+        [UnityTest]
+        public IEnumerator NoRunningMachine_WaveManagerCompletion_KeepsTheLegacyLevelCompleteRaise()
+        {
+            // Same bare-scene config-resolution noise as the routed case above; the
+            // branch taken, not the log count, is the subject under test.
+            LogAssert.ignoreFailingMessages = true;
+            GameManager gameManager = CreateComponent<GameManager>("GameManager");
+            SetSingletonInstance(gameManager);
+
+            VictoryScreenUI victory = CreateComponent<VictoryScreenUI>("VictoryScreen");
+            GameObject victoryPanel = CreatePanel("VictoryPanel");
+            SetPrivateField(victory, "_panel", victoryPanel);
+
+            TestPhaseFlowController controller =
+                CreateComponent<TestPhaseFlowController>("LevelFlowController");
+            SetPrivateField(controller, "_victoryScreen", victory);
+
+            WaveManager waveManager = CreateComponent<WaveManager>("WaveManager");
+            yield return WaitFrames(5);
+            Assert.IsFalse(LevelFlowController.RoutesDefenseCompletion,
+                "Setup: a controller with no running flow must not claim defense routing.");
+
+            InvokePrivate(waveManager, "CompleteRun");
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(1, controller.CommitCalls,
+                "With no machine the legacy OnLevelComplete path still owns completion.");
+            Assert.IsTrue(victoryPanel.activeSelf);
+        }
+
+        [UnityTest]
+        public IEnumerator ContextChallenge_RunsAfterDefense_AndCompletionCommits()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapFlow(
+                ConfigureContextChallenge, out GameObject victoryPanel, out _, out _,
+                dialogueController: null);
+
+            yield return WaitFrames(10);
+            yield return CompleteDefense();
+
+            Assert.AreEqual(LevelPhase.ContextChallenge, MachineOf(controller).Phase,
+                "The context challenge must run as phase 6, after Defense.");
+            Assert.AreEqual(0, controller.CommitCalls,
+                "No campaign progress may commit while the challenge is open.");
+
+            ChallengeFlowController challenge =
+                GetPrivateField<ChallengeFlowController>(controller, "_challengeFlowController");
+            Assert.IsNotNull(challenge, "The flow must provide a ChallengeFlowController for phase 6.");
+            challenge.SubmitPlacement("w-1");
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(1, controller.CommitCalls);
+            Assert.IsTrue(victoryPanel.activeSelf);
+            Assert.AreEqual(LevelPhase.Completed, MachineOf(controller).Phase);
+        }
+
+        [UnityTest]
+        public IEnumerator ContextChallenge_ExitDoesNotCommitProgress()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapFlow(
+                ConfigureContextChallenge, out GameObject victoryPanel, out _, out _,
+                dialogueController: null);
+
+            yield return WaitFrames(10);
+            yield return CompleteDefense();
+            Assert.AreEqual(LevelPhase.ContextChallenge, MachineOf(controller).Phase,
+                "Setup: the challenge phase must be open.");
+
+            ChallengeFlowController challenge =
+                GetPrivateField<ChallengeFlowController>(controller, "_challengeFlowController");
+            challenge.Exit();
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(0, controller.CommitCalls,
+                "Exiting the challenge must never commit partial campaign progress.");
+            Assert.IsFalse(victoryPanel.activeSelf);
+            Assert.AreEqual(LevelPhase.Exited, MachineOf(controller).Phase);
+        }
+
+        // ---------------------------------------------------------------------
+        // SALIN-223: a planned phase with no authored content refuses to complete.
+        // These two are the runtime proof of AC-3 and AC-4 — the level does not
+        // finish, the save never commits, so the next level cannot unlock.
+        // ---------------------------------------------------------------------
+
+        [UnityTest]
+        public IEnumerator MissingChallengeSequence_ShowsContentMissingPanel_AndNeverCommits()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            LogAssert.Expect(LogType.Error, new Regex("ContextChallenge cannot run because"));
+            TestPhaseFlowController controller = BootstrapFlow(
+                config => config.challengeSequence = null,
+                out GameObject victoryPanel, out _, out _, dialogueController: null);
+
+            yield return WaitFrames(10);
+            yield return CompleteDefense();
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.ContextChallenge, MachineOf(controller).Phase,
+                "A level with no authored challenge must hold in phase 6, not fall through it. "
+                + "Falling through is how clearing the wave used to complete the level.");
+            Assert.IsFalse(MachineOf(controller).IsTerminal,
+                "The refusal must hold the flow, not quietly terminate it.");
+            Assert.AreEqual(0, controller.CommitCalls,
+                "AC-4: the atomic save must never run, so the next level cannot unlock.");
+            Assert.IsFalse(victoryPanel.activeSelf, "The level must not present as won.");
+
+            LevelContentMissingPanel panel =
+                Object.FindFirstObjectByType<LevelContentMissingPanel>(FindObjectsInactive.Include);
+            Assert.IsNotNull(panel, "AC-3: a content-missing panel must be shown.");
+            Assert.IsTrue(panel.IsPresented);
+            Assert.AreEqual(LevelPhase.ContextChallenge, panel.PresentedPhase);
+        }
+
+        [UnityTest]
+        public IEnumerator MissingRewardContent_ShowsContentMissingPanel_AndNeverCommits()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            LogAssert.Expect(LogType.Error, new Regex("MemoryReward cannot run because"));
+            TestPhaseFlowController controller = BootstrapFlow(
+                config =>
+                {
+                    // Half-authored on purpose: reward ids present, memory cutscene absent.
+                    // The plan requires BOTH keys, so this must still block. Keying the
+                    // phase on rewardIds alone would let this level through.
+                    config.contextMedia.cutscene = null;
+                },
+                out GameObject victoryPanel, out _, out _, dialogueController: null);
+
+            yield return WaitFrames(10);
+            yield return CompleteDefense();
+            yield return ClearContextChallenge(controller);
+
+            Assert.AreEqual(LevelPhase.MemoryReward, MachineOf(controller).Phase,
+                "A level with no authored memory must hold in phase 7.");
+            Assert.AreEqual(0, controller.CommitCalls,
+                "AC-4: the atomic save must never run, so the next level cannot unlock.");
+            Assert.IsFalse(victoryPanel.activeSelf);
+
+            LevelContentMissingPanel panel =
+                Object.FindFirstObjectByType<LevelContentMissingPanel>(FindObjectsInactive.Include);
+            Assert.IsNotNull(panel, "AC-3: a content-missing panel must be shown.");
+            Assert.IsTrue(panel.IsPresented);
+            Assert.AreEqual(LevelPhase.MemoryReward, panel.PresentedPhase);
+        }
+
+        // Negative control for the two tests above. It proves the gate is a real
+        // content check rather than a blanket block: the SAME fixture, with content
+        // authored, must still reach Completed. Without this, "refuses correctly" and
+        // "refuses everything" look identical.
+        [UnityTest]
+        public IEnumerator AuthoredChallengeAndMemory_StillCompleteTheLevel()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapFlow(
+                _ => { }, out GameObject victoryPanel, out _, out _, dialogueController: null);
+
+            yield return WaitFrames(10);
+            yield return CompleteDefense();
+            yield return ClearContextChallenge(controller);
+
+            Assert.AreEqual(LevelPhase.Completed, MachineOf(controller).Phase);
+            Assert.AreEqual(1, controller.CommitCalls);
+            Assert.IsTrue(victoryPanel.activeSelf);
+            Assert.IsNull(Object.FindFirstObjectByType<LevelContentMissingPanel>(FindObjectsInactive.Include),
+                "A fully authored level must never build a content-missing panel.");
+        }
+
+        // ---------------------------------------------------------------------
+        // D1 — the challenge board after a combat-restoration pass
+        // ---------------------------------------------------------------------
+
+        /// <summary>
+        /// Ruling D1 (docs/design/spec-rulings-2026-09.md). ExecuteContextChallenge used to call
+        /// ExecuteCombatRestoration and then yield break nine lines in, before the board was
+        /// reached, so no level on the shared combat-restoration path had ever shown its authored
+        /// challenge. The board is restored for SentenceRestoration and ParagraphRestoration units.
+        ///
+        /// These two tests are the first in the suite to set BOTH activeClue flags, which is what
+        /// UsesCombatRestorationPath requires. Before them that whole branch was unexecuted by any
+        /// test, so re-introducing the yield break would have left the suite completely green.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CombatRestoration_WithASentenceUnit_StillOpensTheBoard_AndCompletesOnce()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+
+            BaybayinCharacterSO symbol = RestorationSymbol("symbol.d1-na", "NA", "na");
+            LevelConfigSO captured = null;
+            TestPhaseFlowController controller = BootstrapFlow(
+                config =>
+                {
+                    captured = config;
+                    config.activeClueCombatEnabled = true;
+                    config.activeClueRestorationEnabled = true;
+                    ConfigureD1FocusWord(config, symbol);
+                    ConfigureCombatRestorationChallenge(config, ChallengeMode.SentenceRestoration);
+                },
+                out GameObject victoryPanel, out _, out _, dialogueController: null);
+
+            yield return WaitFrames(10);
+            yield return AdvancePastFocusWordPreview(controller);
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "Fixture: the flow must be holding Defense before combat restoration is stood in "
+                + "for, or the phase under test is not the one being reached.");
+
+            RestoreFocusWordInCombat(controller, captured, symbol);
+            yield return CompleteDefense();
+
+            // The assertion D1 exists for. Under the old routing the combat pass reported the
+            // phase complete and yield broke, so the machine has already left ContextChallenge.
+            Assert.AreEqual(LevelPhase.ContextChallenge, MachineOf(controller).Phase,
+                "After the combat-restoration pass a SentenceRestoration unit must still open the "
+                + "authored board. If the machine has already left ContextChallenge, the level "
+                + "completed on wave clear and the authored challenge never ran — the defect D1 "
+                + "ruled on.");
+
+            yield return ClearContextChallenge(controller);
+
+            Assert.AreEqual(LevelPhase.Completed, MachineOf(controller).Phase);
+            Assert.AreEqual(1, controller.CommitCalls,
+                "The phase is reported by the board when a board follows and by the combat pass "
+                + "when none does. A second commit here means both legs claimed it.");
+            Assert.IsTrue(victoryPanel.activeSelf);
+            Assert.IsNull(Object.FindFirstObjectByType<LevelContentMissingPanel>(FindObjectsInactive.Include),
+                "A fully authored combat-restoration level must never build a content-missing panel.");
+        }
+
+        /// <summary>
+        /// The other half of D1. Levels 1 and 2 ship WordPlacement units on this same path, and
+        /// those stay retired because slot-fill during Defense already assembled the word. The
+        /// combat pass must therefore complete the phase by itself and open no board, or the
+        /// player is asked to do the same work twice.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CombatRestoration_WithOnlyWordPlacementUnits_CompletesWithoutABoard()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+
+            BaybayinCharacterSO symbol = RestorationSymbol("symbol.d1-na", "NA", "na");
+            LevelConfigSO captured = null;
+            TestPhaseFlowController controller = BootstrapFlow(
+                config =>
+                {
+                    captured = config;
+                    config.activeClueCombatEnabled = true;
+                    config.activeClueRestorationEnabled = true;
+                    ConfigureD1FocusWord(config, symbol);
+                    ConfigureCombatRestorationChallenge(config, ChallengeMode.WordPlacement);
+                },
+                out GameObject victoryPanel, out _, out _, dialogueController: null);
+
+            yield return WaitFrames(10);
+            yield return AdvancePastFocusWordPreview(controller);
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "Fixture: the flow must be holding Defense before combat restoration is stood in "
+                + "for, or the phase under test is not the one being reached.");
+
+            RestoreFocusWordInCombat(controller, captured, symbol);
+            yield return CompleteDefense();
+
+            Assert.AreEqual(LevelPhase.Completed, MachineOf(controller).Phase,
+                "A WordPlacement unit must not open a board after combat restoration. Holding at "
+                + "ContextChallenge here means the retired path came back and the player is being "
+                + "asked to assemble a word they already restored during Defense.");
+            Assert.AreEqual(1, controller.CommitCalls);
+            Assert.IsTrue(victoryPanel.activeSelf);
+        }
+
+        // SALIN-135 AC3/AC4. TutorialRuntimeState is static, so it outlives the scene. A defeat
+        // landing mid-beat skips the beat's own unwind, and the retried attempt would inherit a
+        // combat override or an input lock -- combat or drawing dead on arrival, with no way for
+        // the player to tell why. Only a tutorial that actually replays would self-heal, and a
+        // resumed or completed sequence does not replay.
+        [UnityTest]
+        public IEnumerator GameOver_WithTutorialStateOpen_ClearsTheTutorialRuntimeStatics()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapLegacyFlow(
+                out _, out _, out GameObject defeatPanel);
+
+            yield return WaitFrames(10);
+
+            // Stand in for a defeat arriving in the middle of a teaching beat.
+            TutorialRuntimeState.Begin(1);
+            TutorialRuntimeState.SetCombatOverrideActive(true);
+            TutorialRuntimeState.SetDrawingInputLocked(true);
+            Assert.IsTrue(TutorialRuntimeState.IsCombatOverrideActive,
+                "Setup: the beat must actually hold the override for this test to bite.");
+
+            EventBus.RaiseGameOver();
+            yield return WaitFrames(5);
+
+            Assert.AreEqual(LevelPhase.Defeated, MachineOf(controller).Phase);
+            Assert.IsTrue(defeatPanel.activeSelf);
+            Assert.AreEqual(0, controller.CommitCalls,
+                "A defeat must never commit campaign progress.");
+            Assert.IsFalse(TutorialRuntimeState.IsActive,
+                "Terminal cleanup must close the tutorial statics.");
+            Assert.IsFalse(TutorialRuntimeState.IsCombatOverrideActive,
+                "A retried attempt must start with combat live.");
+            Assert.IsFalse(TutorialRuntimeState.IsDrawingInputLocked,
+                "A retried attempt must start with drawing unlocked.");
+        }
+
+        [UnityTest]
+        public IEnumerator Exit_WithTutorialStateOpen_ClearsTheTutorialRuntimeStatics()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapFlow(
+                ConfigureContextChallenge, out _, out _, out _, dialogueController: null);
+
+            yield return WaitFrames(10);
+            yield return CompleteDefense();
+            Assert.AreEqual(LevelPhase.ContextChallenge, MachineOf(controller).Phase,
+                "Setup: the challenge phase must be open.");
+
+            TutorialRuntimeState.Begin(1);
+            TutorialRuntimeState.SetDrawingInputLocked(true);
+
+            ChallengeFlowController challenge =
+                GetPrivateField<ChallengeFlowController>(controller, "_challengeFlowController");
+            challenge.Exit();
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.Exited, MachineOf(controller).Phase);
+            Assert.AreEqual(0, controller.CommitCalls,
+                "Exiting must never commit partial campaign progress.");
+            Assert.IsFalse(TutorialRuntimeState.IsDrawingInputLocked,
+                "Exiting mid-beat must not strand the input lock for the next attempt.");
+            Assert.IsFalse(TutorialRuntimeState.IsActive);
+        }
+
+        // SALIN-141 AC-3/AC-4. The abort must be routed THROUGH the machine. Stopping the
+        // coroutines instead would leave the machine non-terminal, keep
+        // RoutesDefenseCompletion true, and skip the terminal cleanup entirely -- which is
+        // exactly how a discarded attempt leaks a combat override or an input lock into
+        // the next one.
+        [UnityTest]
+        public IEnumerator LevelAttemptAborted_DuringDefense_ExitsTheMachineWithoutCommitting()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapLegacyFlow(
+                out GameObject victoryPanel, out _, out GameObject defeatPanel);
+
+            yield return WaitFrames(10);
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "Setup: the flow must be live in Defense before the abort.");
+            Assert.IsTrue(LevelFlowController.RoutesDefenseCompletion,
+                "Setup: a live flow must be routing defense completion.");
+
+            GameManager.Instance.AbortCurrentLevelAttempt();
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.Exited, MachineOf(controller).Phase,
+                "The abort must drive the machine to a terminal phase, not around it.");
+            Assert.IsFalse(LevelFlowController.RoutesDefenseCompletion,
+                "An exited attempt must stop routing defense completion.");
+            Assert.AreEqual(0, controller.CommitCalls,
+                "AC-4: an abandoned attempt must never commit campaign progress.");
+            Assert.IsFalse(victoryPanel.activeSelf);
+            Assert.IsFalse(defeatPanel.activeSelf,
+                "Leaving a level is not a defeat.");
+        }
+
+        [UnityTest]
+        public IEnumerator LevelAttemptAborted_MidTutorialBeat_ClearsTheRuntimeStatics()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapLegacyFlow(out _, out _);
+
+            yield return WaitFrames(10);
+
+            // Stand in for a restart landing in the middle of a teaching beat.
+            TutorialRuntimeState.Begin(1);
+            TutorialRuntimeState.SetCombatOverrideActive(true);
+            TutorialRuntimeState.SetDrawingInputLocked(true);
+            GameManager.Instance.SuppressDrawingInput(true);
+
+            GameManager.Instance.AbortCurrentLevelAttempt();
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.Exited, MachineOf(controller).Phase);
+            Assert.IsFalse(TutorialRuntimeState.IsActive,
+                "SALIN-135 terminal cleanup must run on an abort, exactly as on a defeat.");
+            Assert.IsFalse(TutorialRuntimeState.IsCombatOverrideActive);
+            Assert.IsFalse(TutorialRuntimeState.IsDrawingInputLocked);
+
+            GameManager.Instance.StartGame();
+            Assert.IsTrue(GameManager.Instance.AcceptsDrawingInput,
+                "The restarted attempt must start with drawing live.");
+        }
+
+        [UnityTest]
+        public IEnumerator LevelAttemptAborted_ThenLateCompletionEvents_StillCommitNothing()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            TestPhaseFlowController controller = BootstrapLegacyFlow(
+                out GameObject victoryPanel, out _, out GameObject defeatPanel);
+
+            yield return WaitFrames(10);
+            GameManager.Instance.AbortCurrentLevelAttempt();
+            yield return WaitFrames(5);
+
+            // Stragglers from the discarded attempt: a last enemy resolving, a wave
+            // completing, a heart draining.
+            EventBus.RaiseDefenseComplete();
+            EventBus.RaiseLevelComplete();
+            EventBus.RaiseGameOver();
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.Exited, MachineOf(controller).Phase,
+                "A terminal machine must reject every late report.");
+            Assert.AreEqual(0, controller.CommitCalls,
+                "AC-4: no incomplete completion may be committed after leaving.");
+            Assert.IsFalse(victoryPanel.activeSelf);
+            Assert.IsFalse(defeatPanel.activeSelf);
+        }
+
+        [UnityTest]
+        public IEnumerator FocusWordPreview_RendersConfigCopyWhileDrawingStaysDisabled()
+        {
+            DialogueController dialogue = CreateComponent<DialogueController>("DialogueController");
+            SetPrivateField(dialogue, "_overlayPanel", CreatePanel("DialogueOverlay"));
+            TestPhaseFlowController controller = BootstrapFlow(
+                ConfigureFocusWordLevel, out _, out _, out _, dialogue);
+
+            yield return WaitFrames(5);
+            EventBus.RaiseDialogueComplete();
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.FocusWords, MachineOf(controller).Phase,
+                "The flow must hold in FocusWords while the preview is up.");
+            Assert.IsFalse(GameManager.Instance.AcceptsDrawingInput,
+                "Both words and decompositions must be readable BEFORE drawing begins.");
+
+            FocusWordPreviewController preview =
+                Object.FindFirstObjectByType<FocusWordPreviewController>();
+            Assert.IsNotNull(preview, "The flow must provide the focus-word preview surface.");
+            Assert.IsTrue(preview.IsPresenting);
+            StringAssert.Contains("LUNA", preview.RenderedText);
+            StringAssert.Contains("TALA", preview.RenderedText);
+            StringAssert.Contains("lu", preview.RenderedText);
+            StringAssert.Contains("ta", preview.RenderedText);
+
+            // Ugat QA 2026-09-16: this used to assert the MEANINGS were rendered too
+            // ("test-moon", "test-star"). They no longer are, and that is the point of the change
+            // rather than a regression — the meaning is English, this card is story-facing, and
+            // Q16 keeps English to UI copy. Playing Level 5 showed the shipped card reading
+            // "IBA — different" / "MANA — inheritance". The meaning stays authored because the
+            // Meaning mastery dimension matches on it; it is simply not printed beside the word.
+            Assert.That(preview.RenderedText, Does.Not.Contain("test-moon"),
+                "the preview printed a focus word's English meaning: " + preview.RenderedText);
+            Assert.That(preview.RenderedText, Does.Not.Contain("test-star"),
+                "the preview printed a focus word's English meaning: " + preview.RenderedText);
+        }
+
+        [UnityTest]
+        public IEnumerator FocusWordPreview_ContinueEnablesDrawingExactlyOnceAtDefense()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            DialogueController dialogue = CreateComponent<DialogueController>("DialogueController");
+            SetPrivateField(dialogue, "_overlayPanel", CreatePanel("DialogueOverlay"));
+            TestPhaseFlowController controller = BootstrapFlow(
+                ConfigureFocusWordLevel, out _, out _, out _, dialogue);
+
+            yield return WaitFrames(5);
+            EventBus.RaiseDialogueComplete();
+            yield return WaitFrames(10);
+            Assert.AreEqual(LevelPhase.FocusWords, MachineOf(controller).Phase,
+                "Setup: the preview must be open before Continue.");
+
+            FocusWordPreviewController preview =
+                Object.FindFirstObjectByType<FocusWordPreviewController>();
+            Assert.IsNotNull(preview);
+
+            int enableTransitions = 0;
+            bool previous = GameManager.Instance.AcceptsDrawingInput;
+            Assert.IsFalse(previous, "Setup: drawing must be disabled while the preview is up.");
+
+            preview.Continue();
+            for (int frame = 0; frame < 30; frame++)
+            {
+                yield return null;
+                bool current = GameManager.Instance.AcceptsDrawingInput;
+                if (current && !previous)
+                    enableTransitions++;
+                previous = current;
+            }
+
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "Continue must carry the flow into Defense.");
+            Assert.AreEqual(1, enableTransitions,
+                "Drawing input must be enabled exactly once, when the defense sequence begins.");
+            Assert.IsTrue(GameManager.Instance.AcceptsDrawingInput);
+        }
+
+        private void ConfigureFocusWordLevel(LevelConfigSO config)
+        {
+            ConfigureIntroDialogue(config);
+
+            BaybayinCharacterSO lu = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            lu.characterID = "LU";
+            lu.syllable = "lu";
+            lu.stableId = "symbol.test-lu";
+            _objectsToDestroy.Add(lu);
+            BaybayinCharacterSO ta = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            ta.characterID = "TA2";
+            ta.syllable = "ta";
+            ta.stableId = "symbol.test-ta";
+            _objectsToDestroy.Add(ta);
+
+            config.focusWords.Add(new FocusWordDefinition
+            {
+                stableId = "level.test.focus.01",
+                latinSpelling = "LUNA",
+                displayLabel = "LUNA",
+                meaning = "test-moon",
+                decomposition = new System.Collections.Generic.List<SymbolValueReference>
+                {
+                    new SymbolValueReference { symbol = lu, spokenValueId = "value.test-lu" },
+                },
+            });
+            config.focusWords.Add(new FocusWordDefinition
+            {
+                stableId = "level.test.focus.02",
+                latinSpelling = "TALA",
+                displayLabel = "TALA",
+                meaning = "test-star",
+                decomposition = new System.Collections.Generic.List<SymbolValueReference>
+                {
+                    new SymbolValueReference { symbol = ta, spokenValueId = "value.test-ta" },
+                },
+            });
+        }
+
+        [UnityTest]
+        public IEnumerator FocusWordPreview_ReleasesDrawingBeforeThePreWaveBeats()
+        {
+            TestPhaseFlowController controller = BootstrapPreWaveBeatFlow();
+
+            yield return WaitFrames(5);
+            EventBus.RaiseDialogueComplete();
+            yield return WaitFrames(10);
+            Assert.AreEqual(LevelPhase.FocusWords, MachineOf(controller).Phase,
+                "Setup: the preview must be open before Continue.");
+            Assert.IsFalse(GameManager.Instance.AcceptsDrawingInput,
+                "Setup: drawing must be suppressed while the preview is up.");
+
+            FocusWordPreviewController preview =
+                Object.FindFirstObjectByType<FocusWordPreviewController>();
+            Assert.IsNotNull(preview, "Setup: the flow must provide the preview surface.");
+            preview.Continue();
+            yield return WaitFrames(15);
+
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "Setup: Continue must carry the flow into Defense.");
+            Assert.IsFalse(PreWaveBeatOf(controller).IsFinished,
+                "Setup: the pre-wave beat must still be holding the Defense executor.");
+            Assert.IsTrue(GameManager.Instance.AcceptsDrawingInput,
+                "Suppression must be released ahead of the pre-wave beats — a beat's "
+                + "StartGame() remedy cannot clear it, so a late release hard-locks the level.");
+        }
+
+        [UnityTest]
+        public IEnumerator AbortedPreWaveBeat_ReleasesDrawingSuppression()
+        {
+            TestPhaseFlowController controller = BootstrapPreWaveBeatFlow();
+
+            yield return WaitFrames(5);
+            EventBus.RaiseDialogueComplete();
+            yield return WaitFrames(10);
+            Assert.IsFalse(GameManager.Instance.AcceptsDrawingInput,
+                "Setup: drawing must be suppressed while the preview is up.");
+
+            FocusWordPreviewController preview =
+                Object.FindFirstObjectByType<FocusWordPreviewController>();
+            Assert.IsNotNull(preview, "Setup: the flow must provide the preview surface.");
+            preview.Continue();
+            yield return WaitFrames(15);
+            Assert.IsFalse(PreWaveBeatOf(controller).IsFinished,
+                "Setup: the pre-wave beat must be open before the exit.");
+
+            PreWaveBeatOf(controller).Exit();
+            yield return WaitFrames(15);
+
+            Assert.IsFalse(MachineOf(controller).IsTerminal,
+                "Setup: an aborted flow leaves the machine non-terminal, so terminal "
+                + "cleanup cannot be the thing that releases suppression.");
+            Assert.IsTrue(GameManager.Instance.AcceptsDrawingInput,
+                "An aborted flow must not strand drawing suppression on the persistent "
+                + "GameManager — it survives scene loads and kills drawing everywhere.");
+        }
+
+        [UnityTest]
+        public IEnumerator TeardownMidPreview_ReleasesDrawingSuppression()
+        {
+            DialogueController dialogue = CreateComponent<DialogueController>("DialogueController");
+            SetPrivateField(dialogue, "_overlayPanel", CreatePanel("DialogueOverlay"));
+            TestPhaseFlowController controller = BootstrapFlow(
+                ConfigureFocusWordLevel, out _, out _, out _, dialogue);
+
+            yield return WaitFrames(5);
+            // The intro dialogue parks GameManager in Paused, and the real controller
+            // lifts that pause itself before it raises the event (DialogueController:
+            // ExitDialoguePause then RaiseDialogueComplete). Faking only the event
+            // strands the fixture in Paused, where AcceptsDrawingInput is false whatever
+            // the suppression flag holds — every assertion below would then pass on the
+            // pause alone. The other release tests reach Defense, whose StartGame()
+            // restores Playing for them; this one is torn down before Defense opens.
+            GameManager.Instance.ExitDialoguePause();
+            EventBus.RaiseDialogueComplete();
+            yield return WaitFrames(10);
+            Assert.AreEqual(GameState.Playing, GameManager.Instance.CurrentState,
+                "Setup: only a Playing GameManager lets AcceptsDrawingInput report "
+                + "the suppression flag rather than the pause.");
+            Assert.AreEqual(LevelPhase.FocusWords, MachineOf(controller).Phase,
+                "Setup: the preview must be open.");
+            Assert.IsFalse(GameManager.Instance.AcceptsDrawingInput,
+                "Setup: drawing must be suppressed while the preview is up.");
+
+            Object.DestroyImmediate(controller.gameObject);
+            yield return WaitFrames(2);
+
+            Assert.IsTrue(GameManager.Instance.AcceptsDrawingInput,
+                "A scene unload mid-preview must release suppression: coroutines never "
+                + "run their finally blocks when the host is destroyed.");
+        }
+
+        private TestPhaseFlowController BootstrapPreWaveBeatFlow()
+        {
+            DialogueController dialogue = CreateComponent<DialogueController>("DialogueController");
+            SetPrivateField(dialogue, "_overlayPanel", CreatePanel("DialogueOverlay"));
+            return BootstrapFlow(
+                config =>
+                {
+                    ConfigureFocusWordLevel(config);
+                    ConfigureContextChallenge(config);
+                    // The prototype path runs the sequence as a pre-wave beat inside
+                    // the Defense executor instead of planning it as phase 6.
+                    config.challengePrototypeEnabled = true;
+                },
+                out _, out _, out _, dialogue);
+        }
+
+        private static ChallengeFlowController PreWaveBeatOf(LevelFlowController controller)
+        {
+            return GetPrivateField<ChallengeFlowController>(controller, "_challengeFlowController")
+                ?? throw new AssertionException("The flow has no pre-wave beat controller.");
+        }
+
+        [UnityTest]
+        public IEnumerator AcceptedSave_PopulatesResultsAndRewardGrant()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            BaybayinCharacterSO introduced = null;
+            TestPhaseFlowController controller = BootstrapFlow(
+                config =>
+                {
+                    config.stableId = "level.test.01";
+                    config.rewardIds.Add("memory.test");
+                    config.rewardIds.Add("title.test");
+                    introduced = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+                    introduced.stableId = "symbol.test";
+                    introduced.firstIntroductionLevelId = "level.test.01";
+                    _objectsToDestroy.Add(introduced);
+                    config.cumulativeSymbolPool.Add(new SymbolValueReference
+                    {
+                        symbol = introduced,
+                        spokenValueId = "value.test",
+                    });
+                },
+                out GameObject victoryPanel, out _, out _, dialogueController: null);
+
+            yield return WaitFrames(10);
+            yield return CompleteDefense();
+            yield return ClearContextChallenge(controller);
+
+            Assert.AreEqual(1, controller.CommitCalls);
+            Assert.IsTrue(victoryPanel.activeSelf);
+
+            Assert.IsNotNull(controller.LastResults,
+                "AtomicSave must compute the level results before committing.");
+            Assert.GreaterOrEqual(controller.LastResults.Stars, 1);
+            Assert.IsNotNull(controller.LastRewardGrant,
+                "AtomicSave must resolve the reward grant before committing.");
+            CollectionAssert.AreEqual(new[] { "symbol.test" }, controller.LastRewardGrant.UnlockedSymbolIds);
+            CollectionAssert.AreEqual(new[] { "memory.test" }, controller.LastRewardGrant.UnlockedMemoryIds);
+
+            GameObject statsPanel = GameObject.Find(VictoryScreenUI.RuntimeStatsPanelName);
+            Assert.IsNotNull(statsPanel,
+                "Results must present the structured learning outcome stats panel.");
+            Transform statsText = statsPanel.transform.Find("StatsText");
+            Assert.IsNotNull(statsText,
+                "The stats panel must include its learning outcome copy.");
+            Assert.IsFalse(string.IsNullOrWhiteSpace(
+                statsText.GetComponent<TMPro.TextMeshProUGUI>().text));
+        }
+
+        // ---------------------------------------------------------------------
+        // SALIN-226: alternating defense and restoration segments.
+        //
+        // Runs on a SYNTHETIC three-wave / two-segment config, not on Level 5.
+        // Level 5 has an empty waves list and is still a boss encounter, so the
+        // literal AC-5/AC-6 demo belongs to SALIN-247, which authors those waves.
+        // These two prove AC-1, AC-2 and AC-3 on the engine this ticket ships.
+        // ---------------------------------------------------------------------
+
+        [UnityTest]
+        public IEnumerator Segments_AlternateDefenseAndRestoration_CommittingOnlyAfterTheLast_SALIN226()
+        {
+            // Defense is entered once per segment, and this fixture has no WaveManager.
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+
+            TestPhaseFlowController controller = BootstrapFlow(
+                ConfigureTwoSegments, out GameObject victoryPanel, out _, out _,
+                dialogueController: null);
+
+            Assert.AreEqual(2, controller.SegmentCount, "AC-1: the config expresses two segments.");
+
+            yield return WaitFrames(10);
+            yield return CompleteDefense();
+
+            Assert.AreEqual(LevelPhase.ContextChallenge, MachineOf(controller).Phase);
+            Assert.AreEqual(0, controller.CurrentSegmentIndex);
+
+            ChallengeFlowController challenge =
+                GetPrivateField<ChallengeFlowController>(controller, "_challengeFlowController");
+            Assert.IsNotNull(challenge);
+            challenge.SubmitPlacement("w-1");
+            yield return WaitFrames(10);
+
+            // AC-2: the restoration hands control back to a defense leg.
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "AC-2: clearing segment 1's restoration must resume the next wave group, "
+                + "not advance to the memory reward.");
+            Assert.AreEqual(1, controller.CurrentSegmentIndex,
+                "AC-4: the segment boundary is observable for SALIN-235/236.");
+
+            // AC-3: the terminal phases are not part of the loop.
+            Assert.AreEqual(0, controller.CommitCalls,
+                "AC-3: no atomic save may run until the last segment completes.");
+            Assert.IsFalse(victoryPanel.activeSelf);
+
+            yield return CompleteDefense();
+            Assert.AreEqual(LevelPhase.ContextChallenge, MachineOf(controller).Phase);
+
+            challenge.SubmitPlacement("w-3");
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.Completed, MachineOf(controller).Phase);
+            Assert.AreEqual(1, controller.CommitCalls,
+                "AC-3: exactly one atomic save, after the final segment.");
+            Assert.IsTrue(victoryPanel.activeSelf);
+        }
+
+        /// <summary>
+        /// SALIN-226 step 7 / negative control NC-5. A segmented level plays one
+        /// ChallengeSession per segment and each replaces the last, so reading
+        /// ChallengeFlowController.Session in ComputeCompletionResults would report only the
+        /// FINAL segment's hints into the star and score calculation. Nothing would throw,
+        /// no other test would fail, and the player would silently get the wrong result.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Segments_HintsAcrossEverySegment_ReachTheCompletionMetrics_SALIN226()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+
+            TestPhaseFlowController controller = BootstrapFlow(
+                ConfigureTwoSegments, out _, out _, out _, dialogueController: null);
+
+            yield return WaitFrames(10);
+            yield return CompleteDefense();
+
+            ChallengeFlowController challenge =
+                GetPrivateField<ChallengeFlowController>(controller, "_challengeFlowController");
+            challenge.RequestHint();
+            challenge.SubmitPlacement("w-1");
+            yield return WaitFrames(10);
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "Setup: the run must be in its second segment.");
+
+            yield return CompleteDefense();
+            challenge.RequestHint();
+            challenge.SubmitPlacement("w-3");
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.Completed, MachineOf(controller).Phase);
+            Assert.AreEqual(2, challenge.LevelHintsUsed,
+                "Both segments' hints must accumulate across the level.");
+            Assert.IsNotNull(controller.LastResults);
+            Assert.AreEqual(
+                2f,
+                controller.LastResults.Metrics[LevelResultsCalculator.HintsUsedMetricId],
+                0.001f,
+                "The completion metrics must see BOTH segments' hints. A value of 1 means "
+                + "ComputeCompletionResults read only the final segment's session.");
+        }
+
+        [UnityTest]
+        public IEnumerator Segments_OncePerLevelBeats_RunOnlyForTheFirstSegment_SALIN226()
+        {
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+            LogAssert.Expect(LogType.Error, MissingWaveManagerError);
+
+            TestPhaseFlowController controller = BootstrapFlow(
+                ConfigureTwoSegments, out _, out _, out _, dialogueController: null);
+
+            yield return WaitFrames(10);
+            Assert.AreEqual(1, controller.OncePerLevelBeatCalls,
+                "Setup: the first Defense leg plays the pre-wave beats.");
+
+            yield return CompleteDefense();
+            ChallengeFlowController challenge =
+                GetPrivateField<ChallengeFlowController>(controller, "_challengeFlowController");
+            challenge.SubmitPlacement("w-1");
+            yield return WaitFrames(10);
+
+            Assert.AreEqual(LevelPhase.Defense, MachineOf(controller).Phase,
+                "Setup: the run must have re-entered Defense for segment 2.");
+            Assert.AreEqual(1, controller.OncePerLevelBeatCalls,
+                "The reveals, tutorial, boss tutorial and BGM start are once per LEVEL. "
+                + "Re-running them on a segment re-entry replays the onboarding mid-level.");
+        }
+
+        /// <summary>
+        /// SALIN-226 negative control NC-6. A mid-level segment start must not consult the
+        /// leave-and-return snapshot: that path rewinds to the saved wave index, so segment
+        /// 2 would restart at a wave saved in a previous session.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator StartSegment_StartsAtItsOwnWave_IgnoringThePausedRunSnapshot_SALIN226()
+        {
+            // A deliberately minimal WaveManager: Awake cannot resolve a level config before
+            // the fixture assigns one, and the run then aborts on the absent spawner. Both
+            // are fixture noise; the subject is which wave the segment starts at.
+            LogAssert.ignoreFailingMessages = true;
+
+            GameManager gameManager = CreateComponent<GameManager>("GameManager");
+            SetSingletonInstance(gameManager);
+
+            LevelConfigSO config = ScriptableObject.CreateInstance<LevelConfigSO>();
+            _objectsToDestroy.Add(config);
+            config.levelNumber = 1;
+            for (int i = 0; i < 3; i++)
+                config.waves.Add(new WaveDefinition());
+
+            // A snapshot from an earlier, abandoned run of this level, parked at wave 0.
+            gameManager.CachePausedRunSnapshot(
+                levelId: 1, currentHearts: 3, currentWaveIndex: 0, currentWaveSpawnedCount: 0);
+
+            WaveManager waveManager = CreateComponent<WaveManager>("WaveManager");
+            // Without this, WaveManager.Start auto-runs StartLevel a frame later and resets
+            // the wave cursor, masking what the test is measuring.
+            SetPrivateField(waveManager, "_waitForExternalStart", true);
+            SetPrivateField(waveManager, "_levelConfig", config);
+
+            waveManager.StartSegment(2, 3);
+            yield return WaitFrames(5);
+
+            Assert.AreEqual(2, waveManager.CurrentWaveIndex,
+                "Segment 2 must start at its own wave. A value of 0 means StartSegment "
+                + "consulted the paused-run snapshot and rewound the level.");
+        }
+
+        /// <summary>
+        /// SALIN-226. Three waves grouped as two segments: waves 0-1 then the restoration
+        /// unit 'place-1', then wave 2 then 'place-2'. Both units carry their own tokens,
+        /// slots and occurrence ids because the challenge validator's uniqueness sets are
+        /// sequence-global.
+        /// </summary>
+        private void ConfigureTwoSegments(LevelConfigSO config)
+        {
+            ChallengeSequenceSO sequence = ScriptableObject.CreateInstance<ChallengeSequenceSO>();
+            _objectsToDestroy.Add(sequence);
+            sequence.sequenceId = "salin226-two-segments";
+            sequence.units = new[]
+            {
+                new ChallengeUnitDefinition
+                {
+                    unitId = "place-1",
+                    mode = ChallengeMode.WordPlacement,
+                    tokens = new[]
+                    {
+                        new ChallengeTokenDefinition { tokenId = "t1", displayText = "t1", occurrenceId = "w-1" },
+                        new ChallengeTokenDefinition { tokenId = "t2", displayText = "t2", occurrenceId = "w-2" },
+                    },
+                    slots = new[]
+                    {
+                        new ChallengeSlotDefinition { slotId = "s1", expectedOccurrenceId = "w-1" },
+                    },
+                    candidateOccurrenceIds = new[] { "w-1", "w-2" },
+                    maxErrors = 3,
+                    heartPenalty = 1,
+                },
+                new ChallengeUnitDefinition
+                {
+                    unitId = "place-2",
+                    mode = ChallengeMode.WordPlacement,
+                    tokens = new[]
+                    {
+                        new ChallengeTokenDefinition { tokenId = "t3", displayText = "t3", occurrenceId = "w-3" },
+                        new ChallengeTokenDefinition { tokenId = "t4", displayText = "t4", occurrenceId = "w-4" },
+                    },
+                    slots = new[]
+                    {
+                        new ChallengeSlotDefinition { slotId = "s2", expectedOccurrenceId = "w-3" },
+                    },
+                    candidateOccurrenceIds = new[] { "w-3", "w-4" },
+                    maxErrors = 3,
+                    heartPenalty = 1,
+                },
+            };
+            config.challengeSequence = sequence;
+
+            for (int i = 0; i < 3; i++)
+                config.waves.Add(new WaveDefinition());
+
+            config.flowSegments.Add(new LevelFlowSegment
+            {
+                waveCount = 2,
+                challengeUnitIds = new[] { "place-1" },
+            });
+            config.flowSegments.Add(new LevelFlowSegment
+            {
+                waveCount = 1,
+                challengeUnitIds = new[] { "place-2" },
+            });
+        }
+
+        private void ConfigureContextChallenge(LevelConfigSO config)
+        {
+            ChallengeSequenceSO sequence = ScriptableObject.CreateInstance<ChallengeSequenceSO>();
+            _objectsToDestroy.Add(sequence);
+            sequence.sequenceId = "phase6-test";
+            sequence.units = new[]
+            {
+                new ChallengeUnitDefinition
+                {
+                    unitId = "place-1",
+                    mode = ChallengeMode.WordPlacement,
+                    tokens = new[]
+                    {
+                        new ChallengeTokenDefinition { tokenId = "t1", displayText = "t1", occurrenceId = "w-1" },
+                        new ChallengeTokenDefinition { tokenId = "t2", displayText = "t2", occurrenceId = "w-2" },
+                    },
+                    slots = new[]
+                    {
+                        new ChallengeSlotDefinition { slotId = "s1", expectedOccurrenceId = "w-1" },
+                    },
+                    candidateOccurrenceIds = new[] { "w-1", "w-2" },
+                    maxErrors = 3,
+                    heartPenalty = 1,
+                },
+            };
+            config.challengeSequence = sequence;
+        }
+
+        private const string D1FocusWordId = "level.d1.focus.01";
+
+        private BaybayinCharacterSO RestorationSymbol(
+            string stableId, string characterId, string syllable)
+        {
+            var symbol = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
+            symbol.characterID = characterId;
+            symbol.syllable = syllable;
+            symbol.stableId = stableId;
+            _objectsToDestroy.Add(symbol);
+            return symbol;
+        }
+
+        /// <summary>
+        /// One focus word of one symbol. ExecuteCombatRestoration refuses outright when the level
+        /// has no focus words, so without this the D1 tests would assert the refusal rather than
+        /// the routing.
+        /// </summary>
+        private void ConfigureD1FocusWord(LevelConfigSO config, BaybayinCharacterSO symbol)
+        {
+            config.focusWords.Add(new FocusWordDefinition
+            {
+                stableId = D1FocusWordId,
+                latinSpelling = "NA",
+                displayLabel = "NA",
+                meaning = "test",
+                decomposition = new List<SymbolValueReference>
+                {
+                    new SymbolValueReference { symbol = symbol, spokenValueId = "value.d1-na" },
+                },
+            });
+        }
+
+        /// <summary>
+        /// A one-unit sequence in <paramref name="mode"/>. The evidence id maps the unit to the
+        /// fixture's focus word — TryBuildRestorationTarget refuses a unit without one — and the
+        /// occurrence id matches what <see cref="ClearContextChallenge"/> submits, so a board that
+        /// does open can actually be cleared.
+        /// </summary>
+        private void ConfigureCombatRestorationChallenge(LevelConfigSO config, ChallengeMode mode)
+        {
+            ChallengeSequenceSO sequence = ScriptableObject.CreateInstance<ChallengeSequenceSO>();
+            _objectsToDestroy.Add(sequence);
+            sequence.sequenceId = "d1-" + mode;
+            sequence.units = new[]
+            {
+                new ChallengeUnitDefinition
+                {
+                    unitId = "d1-unit-1",
+                    mode = mode,
+                    evidenceContentId = D1FocusWordId,
+                    tokens = new[]
+                    {
+                        new ChallengeTokenDefinition
+                        {
+                            tokenId = "t1", displayText = "NA", occurrenceId = "w-1",
+                            role = ChallengeTokenRole.Focus,
+                        },
+                        new ChallengeTokenDefinition
+                        {
+                            tokenId = "t2", displayText = "BA", occurrenceId = "w-2",
+                        },
+                    },
+                    slots = new[]
+                    {
+                        new ChallengeSlotDefinition { slotId = "s1", expectedOccurrenceId = "w-1" },
+                    },
+                    candidateOccurrenceIds = new[] { "w-1", "w-2" },
+                    maxErrors = 3,
+                    heartPenalty = 1,
+                },
+            };
+            config.challengeSequence = sequence;
+        }
+
+        /// <summary>
+        /// Authoring focus words plans the FocusWords phase, which holds a preview until the
+        /// player continues. The D1 tests need focus words (combat restoration refuses without
+        /// them), so they have to pass that gate the way the player does before Defense exists.
+        /// </summary>
+        private static IEnumerator AdvancePastFocusWordPreview(LevelFlowController controller)
+        {
+            if (MachineOf(controller).Phase != LevelPhase.FocusWords)
+                yield break;
+
+            FocusWordPreviewController preview =
+                Object.FindFirstObjectByType<FocusWordPreviewController>();
+            Assert.IsNotNull(preview,
+                "Fixture: the FocusWords phase must present a preview to continue from.");
+
+            preview.Continue();
+            yield return WaitFrames(10);
+        }
+
+        /// <summary>
+        /// Stands in for Defense: the clue was read and the focus word's slots filled. Asserted
+        /// rather than assumed, because an incomplete word makes ExecuteCombatRestoration refuse
+        /// and the D1 tests would then pass or fail on the refusal instead of on the routing.
+        /// </summary>
+        private static void RestoreFocusWordInCombat(
+            LevelFlowController controller, LevelConfigSO config, BaybayinCharacterSO symbol)
+        {
+            ActiveCluePresenter presenter =
+                GetPrivateField<ActiveCluePresenter>(controller, "_activeCluePresenter");
+            Assert.IsNotNull(presenter,
+                "Fixture: the combat-restoration path reads the presenter, so one must exist.");
+
+            presenter.ApplyLevel(config);
+            Assert.IsTrue(presenter.HasRestorationWords,
+                "Fixture: the presenter must carry the level's focus words before they can be "
+                + "restored.");
+
+            presenter.RestorationState.Apply(symbol.stableId);
+            Assert.IsTrue(presenter.RestorationState.IsComplete,
+                "Fixture: combat must have restored every authored slot.");
+        }
+
+        /// <summary>
+        /// SALIN-223. Authors both memory-reward keys. The plan requires BOTH a non-empty
+        /// rewardIds and a contextMedia.cutscene, so authoring only one leaves the phase
+        /// blocking — which is deliberate, and is asserted by
+        /// <see cref="MissingRewardContent_ShowsContentMissingPanel_AndNeverCommits"/>.
+        /// The reward id avoids the "memory." prefix so it does not disturb fixtures that
+        /// assert on RewardGrant.UnlockedMemoryIds.
+        /// </summary>
+        private void ConfigureMemoryReward(LevelConfigSO config)
+        {
+            CutsceneSO memory = ScriptableObject.CreateInstance<CutsceneSO>();
+            _objectsToDestroy.Add(memory);
+            config.contextMedia.cutscene = memory;
+            if (config.rewardIds.Count == 0)
+                config.rewardIds.Add("reward.fixture.content");
+        }
+
+        /// <summary>
+        /// SALIN-223 fixture repair. Clears the context challenge the way a player would,
+        /// so a test whose subject is a later phase can reach it. Deliberately a real
+        /// submission through ChallengeFlowController rather than a machine poke: a test
+        /// that reported the phase complete directly would pass even if the executor had
+        /// stopped gating, and would not distinguish "refuses correctly" from
+        /// "stopped looking".
+        /// </summary>
+        private IEnumerator ClearContextChallenge(LevelFlowController controller)
+        {
+            Assert.AreEqual(LevelPhase.ContextChallenge, MachineOf(controller).Phase,
+                "Fixture: the flow must be holding the context challenge before it is cleared.");
+            ChallengeFlowController challenge =
+                GetPrivateField<ChallengeFlowController>(controller, "_challengeFlowController");
+            Assert.IsNotNull(challenge, "Fixture: phase 6 must have a ChallengeFlowController.");
+            challenge.SubmitPlacement("w-1");
+            yield return WaitFrames(10);
+        }
+
+        // ---------------------------------------------------------------------
+        // Bootstrap helpers
+        // ---------------------------------------------------------------------
+
+        private TestPhaseFlowController BootstrapLegacyFlow(
+            out GameObject victoryPanel, out GameObject failureOverlay)
+        {
+            return BootstrapFlow(_ => { }, out victoryPanel, out failureOverlay, out _, null);
+        }
+
+        private TestPhaseFlowController BootstrapLegacyFlow(
+            out GameObject victoryPanel, out GameObject failureOverlay, out GameObject defeatPanel)
+        {
+            return BootstrapFlow(_ => { }, out victoryPanel, out failureOverlay, out defeatPanel, null);
+        }
+
+        private TestPhaseFlowController BootstrapFlow(
+            System.Action<LevelConfigSO> configure,
+            out GameObject victoryPanel,
+            out GameObject failureOverlay,
+            out GameObject defeatPanel,
+            DialogueController dialogueController,
+            WaveManager waveManager = null)
+        {
+            GameManager gameManager = CreateComponent<GameManager>("GameManager");
+            SetSingletonInstance(gameManager);
+
+            LevelConfigSO config = ScriptableObject.CreateInstance<LevelConfigSO>();
+            _objectsToDestroy.Add(config);
+
+            // SALIN-223 fixture repair. ContextChallenge and MemoryReward are planned on
+            // every level now, so a config with no content authored refuses to complete —
+            // which is the whole point of the ticket. Every test whose subject is NOT the
+            // content gate therefore needs a level that actually has content, exactly as a
+            // real authored level would. Authored BEFORE configure() so a test that IS
+            // about the gate can hollow the config back out in its own lambda.
+            ConfigureContextChallenge(config);
+            ConfigureMemoryReward(config);
+
+            configure(config);
+
+            VictoryScreenUI victory = CreateComponent<VictoryScreenUI>("VictoryScreen");
+            victoryPanel = CreatePanel("VictoryPanel");
+            SetPrivateField(victory, "_panel", victoryPanel);
+
+            DefeatScreenUI defeat = CreateComponent<DefeatScreenUI>("DefeatScreen");
+            defeatPanel = CreatePanel("DefeatPanel");
+            SetPrivateField(defeat, "_panel", defeatPanel);
+
+            CampaignOutcomeSaveFailurePanel failurePanel = CreateFailurePanel(out failureOverlay);
+
+            TestPhaseFlowController controller =
+                CreateComponent<TestPhaseFlowController>("LevelFlowController");
+            SetPrivateField(controller, "_victoryScreen", victory);
+            SetPrivateField(controller, "_defeatScreen", defeat);
+            SetPrivateField(controller, "_saveFailurePanel", failurePanel);
+            if (dialogueController != null)
+                SetPrivateField(controller, "_dialogueController", dialogueController);
+
+            InvokePrivate(controller, "BootstrapRuntimeFlow",
+                new object[] { config, waveManager, null, null });
+            return controller;
+        }
+
+        private void ConfigureIntroDialogue(LevelConfigSO config)
+        {
+            DialogueSO dialogue = ScriptableObject.CreateInstance<DialogueSO>();
+            dialogue.lines = new[] { new DialogueLine { speakerName = "Test", text = "Line" } };
+            _objectsToDestroy.Add(dialogue);
+            config.introDialogue = dialogue;
+        }
+
+        private void ConfigureOutroDialogue(LevelConfigSO config)
+        {
+            DialogueSO dialogue = ScriptableObject.CreateInstance<DialogueSO>();
+            dialogue.lines = new[] { new DialogueLine { speakerName = "Test", text = "Line" } };
+            _objectsToDestroy.Add(dialogue);
+            config.outroDialogue = dialogue;
+        }
+
+        private CampaignOutcomeSaveFailurePanel CreateFailurePanel(out GameObject overlay)
+        {
+            GameObject owner = new GameObject("FailurePanelOwner");
+            _objectsToDestroy.Add(owner);
+            overlay = new GameObject("Overlay");
+            overlay.transform.SetParent(owner.transform);
+            GameObject titleObject = new GameObject("Title");
+            titleObject.transform.SetParent(overlay.transform);
+            GameObject bodyObject = new GameObject("Body");
+            bodyObject.transform.SetParent(overlay.transform);
+            GameObject retryObject = new GameObject("Retry");
+            retryObject.transform.SetParent(overlay.transform);
+            GameObject menuObject = new GameObject("Menu");
+            menuObject.transform.SetParent(overlay.transform);
+            CampaignOutcomeSaveFailurePanel panel = owner.AddComponent<CampaignOutcomeSaveFailurePanel>();
+            SetPrivateField(panel, "_overlayRoot", overlay);
+            SetPrivateField(panel, "_titleText", titleObject.AddComponent<TMPro.TextMeshProUGUI>());
+            SetPrivateField(panel, "_bodyText", bodyObject.AddComponent<TMPro.TextMeshProUGUI>());
+            SetPrivateField(panel, "_retryButton", retryObject.AddComponent<UnityEngine.UI.Button>());
+            SetPrivateField(panel, "_mainMenuButton", menuObject.AddComponent<UnityEngine.UI.Button>());
+            return panel;
+        }
+
+        private static void ClickRetryButton(GameObject failureOverlay)
+        {
+            UnityEngine.UI.Button retry = failureOverlay.transform.Find("Retry")
+                .GetComponent<UnityEngine.UI.Button>();
+            retry.onClick.Invoke();
+        }
+
+        private static LevelFlowMachine MachineOf(LevelFlowController controller)
+        {
+            return GetPrivateField<LevelFlowMachine>(controller, "_machine")
+                ?? throw new AssertionException("The flow has no running machine.");
+        }
+
+        private static IEnumerator WaitFrames(int frames)
+        {
+            for (int i = 0; i < frames; i++)
+                yield return null;
+        }
+
+        // ---------------------------------------------------------------------
+        // SALIN-232. Defense completion no longer advances the flow on its own: it puts up
+        // the Wave Cleared screen and holds in Defense until the continue button is tapped
+        // (AC-5, AC-7). Every fixture whose SUBJECT is a later phase therefore has to clear
+        // that screen the way a player would, exactly as ClearContextChallenge already
+        // clears phase 6.
+        //
+        // Deliberately NOT a test-only opt-out on the gate. A flag that let these fixtures
+        // bypass the hold is the SALIN-272 failure class: a fully green suite over a screen
+        // the game never actually shows. The tests move; the production gate does not weaken.
+        // ---------------------------------------------------------------------
+
+        private static IEnumerator CompleteDefense()
+        {
+            EventBus.RaiseDefenseComplete();
+            yield return WaitFrames(10);
+            yield return TapWaveCleared();
+        }
+
+        /// <summary>
+        /// Taps the presented Wave Cleared screen through its own continue seam. Asserts the
+        /// screen is actually up first: if the gate ever stops holding, these fixtures must
+        /// fail here rather than sail past a screen that never appeared.
+        /// </summary>
+        private static IEnumerator TapWaveCleared()
+        {
+            WaveClearedScreenUI screen =
+                Object.FindFirstObjectByType<WaveClearedScreenUI>(FindObjectsInactive.Include);
+            Assert.IsNotNull(screen,
+                "SALIN-232: defense completion must present the Wave Cleared screen.");
+            Assert.IsTrue(screen.IsPresented,
+                "SALIN-232: the Wave Cleared screen must be holding the flow at this point.");
+            screen.Continue();
+            yield return WaitFrames(10);
+        }
+
+        private static int WaveClearedScreenCount()
+        {
+            return Object.FindObjectsByType<WaveClearedScreenUI>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None).Length;
+        }
+
+        private GameObject CreatePanel(string name)
+        {
+            GameObject panel = new GameObject(name);
+            panel.SetActive(false);
+            _objectsToDestroy.Add(panel);
+            return panel;
+        }
+
+        private T CreateComponent<T>(string name) where T : Component
+        {
+            GameObject gameObject = new GameObject(name);
+            T component = gameObject.AddComponent<T>();
+            _objectsToDestroy.Add(gameObject);
+            return component;
+        }
+
+        // ---------------------------------------------------------------------
+        // Reflection helpers
+        // ---------------------------------------------------------------------
+
+        private static void SetPrivateField(object target, string fieldName, object value)
+        {
+            FieldInfo field = FindField(target.GetType(), fieldName);
+            Assert.IsNotNull(field, $"{target.GetType().Name}.{fieldName} field not found.");
+            field.SetValue(target, value);
+        }
+
+        private static T GetPrivateField<T>(object target, string fieldName)
+        {
+            FieldInfo field = FindField(target.GetType(), fieldName);
+            Assert.IsNotNull(field, $"{target.GetType().Name}.{fieldName} field not found.");
+            return (T)field.GetValue(target);
+        }
+
+        private static FieldInfo FindField(System.Type type, string fieldName)
+        {
+            while (type != null)
+            {
+                FieldInfo field = type.GetField(
+                    fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+                if (field != null)
+                    return field;
+                type = type.BaseType;
+            }
+
+            return null;
+        }
+
+        private static void InvokePrivate(object target, string methodName, object[] args = null)
+        {
+            System.Type type = target.GetType();
+            MethodInfo method = null;
+            while (type != null && method == null)
+            {
+                method = type.GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
+                type = type.BaseType;
+            }
+
+            Assert.IsNotNull(method, $"{target.GetType().Name}.{methodName} method not found.");
+            method.Invoke(target, args ?? new object[0]);
+        }
+
+        private static void SetSingletonInstance<T>(T instance) where T : MonoBehaviour
+        {
+            PropertyInfo property = typeof(Singleton<T>).GetProperty(
+                "Instance", BindingFlags.Static | BindingFlags.Public);
+            MethodInfo setter = property?.GetSetMethod(nonPublic: true);
+            Assert.IsNotNull(setter);
+            setter.Invoke(null, new object[] { instance });
+        }
+
+        private static void ClearSingletonInstance<T>() where T : MonoBehaviour
+        {
+            PropertyInfo property = typeof(Singleton<T>).GetProperty(
+                "Instance", BindingFlags.Static | BindingFlags.Public);
+            MethodInfo setter = property?.GetSetMethod(nonPublic: true);
+            Assert.IsNotNull(setter);
+            setter.Invoke(null, new object[] { null });
+        }
+
+        /// <summary>
+        /// Deterministic commit seams, mirroring the pattern used by
+        /// LevelFlowControllerOutcomeTests.
+        /// </summary>
+        private sealed class TestPhaseFlowController : LevelFlowController
+        {
+            public CampaignOutcomeCommitResult NextResult = CampaignOutcomeCommitResult.Committed(null);
+            public CampaignOutcomeCommitResult RetryResult = CampaignOutcomeCommitResult.Committed(null);
+            public int CommitCalls { get; private set; }
+
+            /// <summary>SALIN-226 NC-4: how many times the once-per-level beats ran.</summary>
+            public int OncePerLevelBeatCalls { get; private set; }
+
+            protected override System.Collections.IEnumerator PlayOncePerLevelBeats()
+            {
+                OncePerLevelBeatCalls++;
+                yield return base.PlayOncePerLevelBeats();
+            }
+
+            protected override CampaignOutcomeCommitResult CommitCompletion()
+            {
+                CommitCalls++;
+                return NextResult;
+            }
+
+            protected override CampaignOutcomeCommitResult RetryCompletion()
+            {
+                return RetryResult;
+            }
+        }
+    }
+}

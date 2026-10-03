@@ -1,309 +1,202 @@
-# Salin Lahi — Developer Workflow Handbook
-**Jira × GitHub Integration Guide**
+# Git and Optional Jira Team Handbook
 
-| Jira Project | GitHub Repo | Main Branch |
-|--------------|-------------|-------------|
-| `SALIN` | `salinlahi` | `main` |
+This handbook defines Salinlahi's repository-side delivery conventions. It applies whether or not a task has a Jira ticket.
 
----
+## Source of Truth
 
-## The Golden Rule
+`docs/jira/validate-git-conventions.sh` is the single executable source of truth. It is called by:
 
-> **Every branch, every commit, and every pull request must reference a Jira issue key.**
+- `docs/jira/commit-msg-hook.sh` for local commit subjects;
+- `.github/workflows/git-conventions.yml` for PR branch names, PR titles, and every commit subject in the PR range.
 
-No code should exist in GitHub that cannot be traced back to a Jira ticket. This enables automatic linking, keeps metrics accurate, and gives everyone full visibility into what changed and why.
-
----
-
-## Quick Start (30-Second Checklist)
-
-```
-[ ] My branch name contains SALIN-XX
-[ ] Every commit message contains SALIN-XX
-[ ] My PR title starts with SALIN-XX:
-[ ] The PR description template is filled in
-[ ] CI is passing
-```
-
----
-
-## 1. Day-to-Day Workflow
-
-### Before Writing Code
-
-1. Check that a Jira issue exists (e.g., `SALIN-1`, `SALIN-11`)
-2. Note the issue key
-3. Ensure the issue is assigned to you with clear acceptance criteria
-4. Verify story points are estimated
-
-### Starting Work
+The interface is:
 
 ```bash
-# Pull latest main
-git checkout main && git pull
-
-# Create your branch
-git checkout -b feature/SALIN-11-implement-scene-loader
-
-# Jira will auto-detect the branch and show it in the Development panel
-# Ticket auto-transitions to "In Progress" (if Automation is configured)
+docs/jira/validate-git-conventions.sh <branch|commit|pr> <value>
 ```
 
-### During Development
+Exit `0` means valid, `1` means the value violates a convention, and `2` means the invocation is invalid. Update the shared validator before changing examples or enforcement; do not copy its regexes elsewhere.
+
+## Branch Names
+
+Accepted forms:
+
+```text
+type/description
+type/SALIN-123-description
+```
+
+Rules:
+
+- Allowed types: `feature`, `bugfix`, `hotfix`, `chore`, `refactor`, `docs`, `test`, `spike`.
+- The description is lowercase kebab-case with 2–5 words.
+- The complete branch name is at most 60 characters.
+- `dev` and `main` are exempt long-lived branches.
+- A Jira key is optional. A Jira-looking prefix must be uppercase `SALIN-<number>`; lowercase or malformed variants are rejected.
+
+Examples:
+
+```text
+feature/add-save-recovery
+bugfix/SALIN-123-fix-menu-focus
+docs/improve-ai-workflow
+```
+
+## Commit Subjects
+
+Accepted forms:
+
+```text
+type: description
+type(scope): description
+type: SALIN-123 description
+type(scope): SALIN-123 description
+```
+
+Allowed types are `feat`, `fix`, `chore`, `refactor`, `docs`, `test`, `style`, `perf`, `ci`, and `revert`. Scope is optional and uses lowercase letters, numbers, or hyphens. The description must not be empty.
+
+Examples:
+
+```text
+feat: add save recovery
+docs(ai): improve delivery workflow
+fix(ui): SALIN-123 resolve null reference
+```
+
+Git-generated `Merge ...` and `Revert "..."` subjects are accepted. A conventional `revert(scope): description` subject is also accepted.
+
+## Pull-Request Titles
+
+Accepted forms:
+
+```text
+Improve AI delivery workflow
+SALIN-123: Improve AI delivery workflow
+```
+
+The descriptive title starts with an uppercase letter or number. A Jira prefix is optional; when supplied, it must be uppercase `SALIN-<number>: ` followed by the title.
+
+Pull requests target `dev` by default. Use another base only when the task explicitly requires it.
+
+## Delivery Sequence
+
+Use this order for every change:
+
+1. **Verify** — run the checks relevant to the changed code and Unity state.
+2. **Review** — inspect the complete diff and confirm only task-owned files are intended.
+3. **Commit** — stage only task-owned files and use a validated subject.
+4. **Push** — push the typed task branch. A Jira ticket is not a prerequisite.
+5. **Pull request** — open against `dev`, fill out the template, and stop before merge.
+
+If work is still on `dev` or `main`, create a compliant task branch before committing. Do not mix unrelated dirty-worktree changes into the delivery commit.
+
+### Ready versus draft
+
+Create a ready pull request only when all required checks are `PASS` or `NOT APPLICABLE`. Create a draft when any relevant check is:
+
+- `FAIL` — the check ran and failed;
+- `NOT RUN` — the check was not executed;
+- `BLOCKED` — the environment prevented execution.
+
+List every unresolved check in the PR. A draft is not permission to hide known failures.
+
+### `ship this` contract for Codex
+
+The exact instruction `ship this` authorizes Codex to verify, review, create a branch when needed, stage only task-owned files, commit, push, and open a pull request to `dev`. It never authorizes Codex to:
+
+- merge the pull request;
+- force-push or rewrite published history;
+- bypass the shared validator or required checks;
+- stage unrelated or pre-existing worktree changes;
+- call a draft ready while relevant checks remain unresolved.
+
+## Unity Verification and Impact Reporting
+
+The PR template requires explicit status for:
+
+- Unity compilation;
+- Unity Console review;
+- Edit Mode tests under `Assets/Tests/Editor/`;
+- Play Mode tests under `Assets/Tests/PlayMode/`;
+- relevant manual regression from `docs/system/09_Test_Strategy_and_Acceptance_Criteria.md`.
+
+Use only `PASS`, `FAIL`, `NOT RUN`, `BLOCKED`, or `NOT APPLICABLE`. Never write “tests pass” unless the named suite actually ran and passed. No repository-owned command-line Unity test or build command has been verified; do not invent one.
+
+Review and report whether the PR changes:
+
+- `.meta` files or GUID relationships;
+- scenes (`.unity`);
+- prefabs (`.prefab`);
+- ScriptableObjects or other `.asset` files;
+- `Packages/manifest.json` or `Packages/packages-lock.json`;
+- anything in `ProjectSettings/`.
+
+Serialized content requires Unity-aware review. Static C# references cannot reveal all Inspector assignments, UnityEvents, animation events, Resources paths, or asset references.
+
+## Optional Jira Linkage
+
+Jira keys are optional in branches, commits, and pull-request titles. No Jira issue is required before pushing a branch or opening a PR.
+
+When a valid key is present, external Jira/GitHub integration may link development activity and run configured status transitions. Jira-dependent automation must run only for work carrying a valid optional key. Ticketless work does not link to a Jira issue and does not trigger Jira transitions.
+
+The repository does not prove the current external Jira automation or GitHub branch-protection settings; both are `NOT VERIFIED`. If the team requires the convention workflow before merge, configure `Git Convention Validation` as a required GitHub check outside the repository.
+
+## Local Hook
+
+Install the tracked hook source into the current checkout:
 
 ```bash
-# Make atomic commits — one logical change per commit
-git commit -m "feat(scene-loader): SALIN-11 add async scene loading"
-git commit -m "test(scene-loader): SALIN-11 add unit tests for LoadScene"
-
-# Push regularly — at least daily
-git push origin feature/SALIN-11-implement-scene-loader
+cp docs/jira/commit-msg-hook.sh .git/hooks/commit-msg
+chmod +x .git/hooks/commit-msg
 ```
 
-### Opening a Pull Request
+The installed `.git/hooks/commit-msg` file is local and is not committed. The tracked hook resolves the repository root, reads the first subject line, and delegates to `docs/jira/validate-git-conventions.sh`.
 
-**Title format:** `SALIN-XX: Imperative description`
+If a hook already exists, inspect and integrate it deliberately; do not overwrite it blindly.
 
-```
-SALIN-11: Implement SceneLoader with async loading and fade stub
-```
+## CI Scope
 
-**Jira will auto-transition to "In Review"**
+`.github/workflows/git-conventions.yml` runs for pull-request open, edit, synchronize, and reopen events. It checks:
 
----
+- the head branch (`dev` and `main` are exempt long-lived names);
+- the pull-request title, passed through an environment variable;
+- every commit subject in the base-to-head range.
 
-## 2. Branch Naming
+The workflow validates naming only. It does **not** compile Unity, inspect the Console, run Edit Mode or Play Mode tests, validate builds, or prove scene/prefab/asset integrity.
 
-### Pattern
+## Review Checklist
 
-```
-{type}/{SALIN-XX}-{short-description}
-```
+Before requesting review, confirm:
 
-### Branch Types
+- the branch, commit subjects, and PR title pass the centralized validator;
+- any Jira key is valid and consistently placed, or Jira is marked `NOT APPLICABLE`;
+- the PR targets `dev` unless another base was explicitly required;
+- verification statuses and evidence are complete;
+- Unity serialized/configuration impact is stated explicitly;
+- unrelated files and local credentials/configuration are absent;
+- the PR is draft when relevant checks are unresolved;
+- no automatic merge is requested or performed.
 
-| Type | When to Use | Example |
-|------|-------------|---------|
-| `feature/` | New functionality | `feature/SALIN-11-implement-scene-loader` |
-| `bugfix/` | Non-urgent bug fix | `bugfix/SALIN-102-fix-null-reference` |
-| `hotfix/` | Critical production fix | `hotfix/SALIN-99-payment-timeout` |
-| `chore/` | Deps, config, build | `chore/SALIN-78-upgrade-unity-version` |
-| `refactor/` | Code restructuring | `refactor/SALIN-61-extract-auth-service` |
-| `docs/` | Documentation only | `docs/SALIN-55-api-reference-guide` |
-| `test/` | Test additions | `test/SALIN-88-unit-tests-player` |
-| `spike/` | Research/exploration | `spike/SALIN-34-evaluate-shader-graph` |
+## Troubleshooting
 
-### Rules
+### A ticketless name fails
 
-- **Lowercase only** — no uppercase letters in the branch name itself
-- **Hyphens only** — no underscores, no spaces
-- **Issue key is ALWAYS UPPERCASE** (`SALIN-11`, not `salin-11`)
-- **Description:** 2–5 words, imperative, kebab-case
-- **Max 60 characters** total
+Jira is optional, but the surrounding convention is not. Check the allowed branch/commit type, branch word count and length, commit colon/spacing, and PR title capitalization.
 
-```
-❌  main/SALIN-11
-❌  SALIN11-feature
-❌  feature/salin-11
-❌  feature/SALIN-11_scene_loader
+### A Jira-prefixed name fails
 
-✅  feature/SALIN-11-implement-scene-loader
-```
+Use uppercase `SALIN-<number>` and the exact separator for the item:
 
----
+- branch: `SALIN-123-`;
+- commit: `SALIN-123 `;
+- PR: `SALIN-123: `.
 
-## 3. Commit Messages
+Lowercase keys and malformed prefixes are intentionally rejected rather than treated as ordinary description text.
 
-### Pattern
+### Local and CI validation disagree
 
-```
-{type}({scope}): {SALIN-XX} {description}
-```
+Confirm the checkout contains the current `docs/jira/validate-git-conventions.sh`, then reinstall the tracked hook source. The hook and workflow must delegate to the validator; neither should contain an independent convention regex.
 
-### Commit Types
+### A convention workflow passes but Unity is broken
 
-| Type | Meaning |
-|------|---------|
-| `feat` | New feature or functionality |
-| `fix` | Bug fix |
-| `chore` | Build process, tooling, deps — no prod code change |
-| `refactor` | Code restructuring — no behavior change |
-| `docs` | Documentation changes only |
-| `test` | Adding or correcting tests |
-| `style` | Formatting, missing semicolons — no logic change |
-| `perf` | Performance improvement |
-| `ci` | CI/CD configuration changes |
-| `revert` | Reverts a previous commit |
-
-### Valid Examples (SALIN)
-
-```
-feat(scene-loader): SALIN-11 add async scene loading with LoadSceneAsync
-fix(ui): SALIN-102 resolve null reference in MainMenuController
-chore(deps): SALIN-78 upgrade Unity to 2022.3 LTS
-refactor(core): SALIN-61 extract audio logic into AudioManager
-docs(readme): SALIN-55 add build instructions for Android
-test(scene-loader): SALIN-11 add unit tests for LoadScene method
-```
-
-### Atomic Commit Principle
-
-Each commit = one logical change. A reviewer should understand the change entirely from commit message + diff.
-
-```
-❌  "work in progress"
-❌  "more fixes"
-❌  "stuff"
-
-✅  "fix(ui): SALIN-102 resolve null reference on button click"
-```
-
----
-
-## 4. Pull Requests
-
-### Title Format
-
-```
-{SALIN-XX}: {imperative short description}
-```
-
-### Examples
-
-```
-SALIN-11: Implement SceneLoader with async loading and fade stub
-SALIN-102: Fix null reference exception in UI controller
-SALIN-78: Upgrade Unity to 2022.3 LTS
-```
-
-### PR Checklist (Author + Reviewer)
-
-- [ ] PR title starts with a Jira issue key (`SALIN-XX:`)
-- [ ] Branch name follows the naming convention
-- [ ] All commits reference the issue key
-- [ ] PR description is fully filled in (use template)
-- [ ] Jira Development panel shows the linked branch and PR
-- [ ] Tests pass and coverage is not reduced
-- [ ] No commented-out code, no debug logs left in
-- [ ] Author has self-reviewed their own diff
-
-### Scope and Size
-
-- **One PR per Jira issue**
-- Aim for **under 400 lines** changed per PR
-- Anything **over 800 lines** should be split
-
----
-
-## 5. Jira Ticket Structure
-
-### Issue Type Hierarchy
-
-| Level | Type | Scope |
-|-------|------|-------|
-| 1 | Epic | Major feature area or milestone |
-| 2 | Story | Deliverable unit of user value. One branch + one PR |
-| 3 | Task | Concrete technical step |
-| 3 | Bug | Defect. Always gets `bugfix/` or `hotfix/` branch |
-| 4 | Subtask | Granular work inside a Story or Task |
-
-### Required Fields
-
-| Field | Requirement |
-|-------|-------------|
-| Summary | Imperative verb phrase, max 60 chars |
-| Description | Context, background, acceptance criteria |
-| Acceptance Criteria | Bulleted testable conditions (required for Stories/Bugs) |
-| Story Points | Fibonacci: 1/2/3/5/8/13 only |
-| Assignee | Set when moved to In Progress |
-| Epic Link | Required for all Stories and Tasks |
-| Priority | Blocker / Critical / High / Medium / Low |
-
-### Example: SALIN-11
-
-```
-Summary: Implement SceneLoader.cs with Async Loading and Fade Stub
-
-Description:
-SceneLoader.cs Singleton that loads scenes asynchronously via LoadSceneAsync. 
-Exposes LoadScene(string sceneName) as core internal method, with convenience 
-wrappers as public API. Includes fade-in/fade-out canvas group stub.
-
-Acceptance Criteria:
-- SceneLoader inherits Singleton<T> and persists via DontDestroyOnLoad
-- LoadScene(string sceneName) internally, plus convenience wrappers (LoadMainMenu, etc.)
-- Async loading via LoadSceneAsync, no main thread freeze
-- Concurrent load calls are no-ops with logged warning
-- CanvasGroup fade stub exists (alpha 0→1 on load, 1→0 on complete)
-- LevelSelect.unity created and added to Build Settings
-```
-
----
-
-## 6. Workflow Status Transitions
-
-| Status | Trigger | Developer Action |
-|--------|---------|------------------|
-| To Do | Issue created/groomed | No branch yet |
-| In Progress | Branch created with issue key | `feature/SALIN-XX-...` pushed |
-| In Review | PR opened with issue key | PR title starts with `SALIN-XX:` |
-| QA / Testing | PR approved | Merged to staging/test env |
-| Done | PR merged to main | Automated via Jira Automation |
-| Blocked | Manual | Add comment explaining blocker |
-
-### Automation Rules (Jira)
-
-Configure in **Project Settings → Automation**:
-
-1. Branch created with issue key → **Transition to In Progress**
-2. Pull request opened with issue key → **Transition to In Review**
-3. Pull request merged to `main` → **Transition to Done**
-4. Issue transitioned to Done → **Post comment with merged PR link**
-
----
-
-## 7. Metrics
-
-| Metric | Measures | Shows 0 When... |
-|--------|----------|-----------------|
-| PR Cycle Time | PR open → merged | No PRs linked to issues |
-| Lead Time | First commit → deploy | No GitHub deployment events |
-| Deploy Frequency | Deployments per day/week | CI/CD not emitting events |
-| Work Item Age | Ticket open → Done | No issue keys in commits/PRs |
-
-**Note:** Metrics are never backfilled — they build from integration forward.
-
----
-
-## Quick Reference Card
-
-| Task | Correct Convention |
-|------|-------------------|
-| Feature branch | `feature/SALIN-XX-short-description` |
-| Bug branch | `bugfix/SALIN-XX-short-description` |
-| Hotfix branch | `hotfix/SALIN-XX-short-description` |
-| Feature commit | `feat(scope): SALIN-XX description` |
-| Fix commit | `fix(scope): SALIN-XX description` |
-| PR title | `SALIN-XX: Imperative description` |
-| Jira summary | Imperative verb + outcome, max 60 chars |
-
----
-
-## FAQ
-
-**Q: What if I'm working on something small that doesn't need a ticket?**
-A: Create a ticket anyway. Every code change needs traceability. Use `chore/` type for small tasks.
-
-**Q: Can I have multiple tickets in one branch?**
-A: No. One branch = one ticket. Split the work if needed.
-
-**Q: What if I forgot to include the ticket key in my commit?**
-A: For unpushed commits: `git commit --amend -m "feat(ui): SALIN-11 add button"`
-For pushed commits: Leave it, but ensure future commits include it.
-
-**Q: The ticket is SALIN-1, but my branch is `feature/salin-1-...`. Is that ok?**
-A: No — always uppercase. Use `feature/SALIN-1-...`. Jira keys are case-sensitive.
-
----
-
-*Team Workflow Handbook v1.0 — Jira × GitHub Integration*
+That is outside this workflow's scope. Inspect Unity compilation and the Console, run the relevant Edit Mode/Play Mode tests, and report the result separately in the PR template.

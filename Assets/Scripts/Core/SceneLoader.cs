@@ -1,4 +1,7 @@
 using System.Collections;
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+using Salinlahi.Debug.Sandbox;
+#endif
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -9,15 +12,23 @@ public class SceneLoader : Singleton<SceneLoader>
     private const string SCENE_BOOTSTRAP = "Bootstrap";
     private const string SCENE_MAIN_MENU = "MainMenu";
     private const string SCENE_GAMEPLAY = "Gameplay";
+    private const string SCENE_LEVEL_ONE_TUTORIAL = "Level_01_Tutorial";
     private const string SCENE_LEVEL_SELECT = "LevelSelect";
     private const string SCENE_GAME_OVER = "GameOver";
+    private const string SCENE_ALMANAC = "Almanac";
 
     [Header("Fade Stub (placeholder for SALIN-44 TransitionManager)")]
     [SerializeField] private CanvasGroup _fadeCanvasGroup;
     [SerializeField] private float _fadeDuration = 0.25f;
 
+    [Header("Loading Screen")]
+    [SerializeField] private float _loadingFadeInDuration = 0.15f;
+    [SerializeField] private float _loadingFadeOutDuration = 0.15f;
+
     private bool _isLoading;
     private string _loadingSceneName;
+    private CanvasGroup _loadingCanvasGroup;
+    private Image _progressBarFill;
 
     protected override void Awake()
     {
@@ -27,7 +38,16 @@ public class SceneLoader : Singleton<SceneLoader>
         if (Instance != this) return;
 
         _fadeCanvasGroup ??= CreateFadeCanvas();
+        _loadingCanvasGroup ??= CreateLoadingCanvas();
     }
+
+    /// <summary>
+    /// SALIN-141. True while a scene load is in flight, i.e. while <see cref="LoadScene"/>
+    /// declines new requests. Callers that do destructive work before asking for a load —
+    /// aborting the level attempt, for one — read this first so they never start a
+    /// sequence the load guard will refuse to finish.
+    /// </summary>
+    public bool IsLoading => _isLoading;
 
     // Unified internal entry point. Convenience wrappers below all funnel here
     // so the in-progress guard lives in exactly one place.
@@ -42,12 +62,129 @@ public class SceneLoader : Singleton<SceneLoader>
         StartCoroutine(LoadRoutine(sceneName));
     }
 
-    public void LoadMainMenu() => LoadScene(SCENE_MAIN_MENU);
-    public void LoadGameplay() => LoadScene(SCENE_GAMEPLAY);
-    public void LoadLevelSelect() => LoadScene(SCENE_LEVEL_SELECT);
-    public void LoadGameOver() => LoadScene(SCENE_GAME_OVER);
+    public void LoadMainMenu()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        SandboxMode.Deactivate();
+#endif
+        CleanupGameplayRun();
+        LoadScene(SCENE_MAIN_MENU);
+    }
+
+    public void LoadGameplay()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        SandboxMode.Deactivate();
+#endif
+        CleanupGameplayRun();
+        LoadScene(SCENE_GAMEPLAY);
+    }
+
+    /// <summary>
+    /// Loads the authored Level 1 tutorial scene through the same cleanup and loading path as the
+    /// shared Gameplay scene. The Editor QA session uses this to exercise the dedicated tutorial
+    /// scene without changing the player's selected-level or unlock data.
+    /// </summary>
+    public void LoadLevelOneTutorial()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        SandboxMode.Deactivate();
+#endif
+        CleanupGameplayRun();
+        LoadScene(SCENE_LEVEL_ONE_TUTORIAL);
+    }
+
+    public void LoadSandboxGameplay()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        if (!SandboxMode.TryActivate())
+        {
+            DebugLogger.LogWarning("SceneLoader: Sandbox gameplay is not available in this build.");
+            return;
+        }
+
+        GameManager.Instance?.DiscardPausedRunSnapshot();
+        CleanupGameplayRun();
+        LoadScene(SCENE_GAMEPLAY);
+#else
+        DebugLogger.LogWarning("SceneLoader: Sandbox gameplay is not available in this build.");
+#endif
+    }
+
+    public void LoadLevelSelect()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        SandboxMode.Deactivate();
+#endif
+        CleanupGameplayRun();
+        LoadScene(SCENE_LEVEL_SELECT);
+    }
+
+    /// <summary>
+    /// SALIN-141. Reloads the active level as a genuinely fresh attempt. Ordering is
+    /// load-bearing: the snapshot is discarded and the attempt aborted BEFORE the load
+    /// starts, so subscribers tear down while the gameplay objects still exist and
+    /// ProgressManager.OnSceneLoaded runs after the abort, not before it.
+    /// </summary>
+    public void RestartCurrentLevel()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        SandboxMode.Deactivate();
+#endif
+        // Without this, WaveManager.TryRestorePausedRun would resurrect the previous
+        // attempt's enemies and hearts into the restarted level.
+        GameManager.Instance?.DiscardPausedRunSnapshot();
+        GameManager.Instance?.AbortCurrentLevelAttempt();
+        CleanupGameplayRun();
+        LoadScene(SceneManager.GetActiveScene().name);
+    }
+
+    /// <summary>
+    /// SALIN-141. Leaves the current level for the level-select screen. The attempt is
+    /// aborted first so no incomplete word, memory, completion, or unlock is committed.
+    /// The paused-run snapshot is left alone here — leaving is resumable, restarting is not.
+    /// </summary>
+    public void LeaveToLevelSelect()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        SandboxMode.Deactivate();
+#endif
+        GameManager.Instance?.AbortCurrentLevelAttempt();
+        CleanupGameplayRun();
+        LoadScene(SCENE_LEVEL_SELECT);
+    }
+
+    public void LoadAlmanac()
+    {
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        SandboxMode.Deactivate();
+#endif
+        CleanupGameplayRun();
+        LoadScene(SCENE_ALMANAC);
+    }
+
+[System.Obsolete("GameOver scene replaced by DefeatScreenUI overlay in Gameplay scene (SALIN-58).")]
+    public void LoadGameOver()
+    {
+        DebugLogger.LogWarning("SceneLoader.LoadGameOver: This scene is deprecated. DefeatScreenUI overlay handles defeat.");
+#if UNITY_EDITOR || SALINLAHI_SANDBOX
+        if (SandboxMode.IsActive)
+        {
+            DebugLogger.Log("SceneLoader: Ignored GameOver scene load while sandbox mode is active.");
+            return;
+        }
+#endif
+
+        CleanupGameplayRun();
+        LoadScene(SCENE_GAME_OVER);
+    }
 
     public void ReloadCurrentScene() => LoadScene(SceneManager.GetActiveScene().name);
+
+    private void CleanupGameplayRun()
+    {
+        EnemyPool.Instance?.ReturnAllCheckedOut();
+    }
 
     private IEnumerator LoadRoutine(string sceneName)
     {
@@ -63,10 +200,16 @@ public class SceneLoader : Singleton<SceneLoader>
             // Fade in (to black). Stub — replaced by TransitionManager in SALIN-44.
             yield return Fade(0f, 1f);
 
+            // Show loading screen over the black.
+            if (_progressBarFill != null)
+                _progressBarFill.fillAmount = 0f;
+            yield return FadeLoadingScreen(0f, 1f, _loadingFadeInDuration);
+
             AsyncOperation op = SceneManager.LoadSceneAsync(sceneName);
             if (op == null)
             {
                 DebugLogger.LogError($"SceneLoader: Scene '{sceneName}' not found in Build Profiles. Add it via File → Build Profiles.");
+                yield return FadeLoadingScreen(1f, 0f, _loadingFadeOutDuration);
                 yield return Fade(1f, 0f);
                 yield break;
             }
@@ -77,13 +220,23 @@ public class SceneLoader : Singleton<SceneLoader>
             {
                 // Progress stops at 0.9 (90%) until scene activation.
                 float progress = Mathf.Clamp01(op.progress / 0.9f);
+                if (_progressBarFill != null)
+                    _progressBarFill.fillAmount = progress;
                 DebugLogger.Log($"Loading {sceneName}: {progress * 100f:F0}%");
                 yield return null;
             }
 
+            // Snap to full before hiding.
+            if (_progressBarFill != null)
+                _progressBarFill.fillAmount = 1f;
+
             DebugLogger.Log($"Loading {sceneName}: Complete");
 
-            // Fade out (from black).
+            // Brief hold at 100% so player sees completion.
+            yield return new WaitForSecondsRealtime(0.15f);
+
+            // Hide loading screen, then fade from black.
+            yield return FadeLoadingScreen(1f, 0f, _loadingFadeOutDuration);
             yield return Fade(1f, 0f);
         }
         finally
@@ -94,6 +247,8 @@ public class SceneLoader : Singleton<SceneLoader>
             // ReSharper disable once Unity.NoNullPropagation — != null intentional (Unity overrides ==)
             if (_fadeCanvasGroup != null)
                 _fadeCanvasGroup.alpha = 0f;
+            if (_loadingCanvasGroup != null)
+                _loadingCanvasGroup.alpha = 0f;
 
             _isLoading = false;
             _loadingSceneName = null;
@@ -116,6 +271,81 @@ public class SceneLoader : Singleton<SceneLoader>
         _fadeCanvasGroup.alpha = to;
     }
 
+    private IEnumerator FadeLoadingScreen(float from, float to, float duration)
+    {
+        if (_loadingCanvasGroup == null) yield break;
+
+        _loadingCanvasGroup.alpha = from;
+        float t = 0f;
+        while (t < duration)
+        {
+            t += Time.unscaledDeltaTime;
+            _loadingCanvasGroup.alpha = Mathf.Lerp(from, to, t / duration);
+            yield return null;
+        }
+        _loadingCanvasGroup.alpha = to;
+    }
+
+    private CanvasGroup CreateLoadingCanvas()
+    {
+        var go = new GameObject("SceneLoaderLoadingCanvas");
+        go.transform.SetParent(transform, worldPositionStays: false);
+
+        var canvas = go.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 998; // Below fade canvas (999), above gameplay UI.
+
+        go.AddComponent<CanvasScaler>();
+
+        // Background — full-screen black behind the progress bar.
+        var bgGo = new GameObject("Background");
+        bgGo.transform.SetParent(go.transform, worldPositionStays: false);
+        var bgRect = bgGo.AddComponent<RectTransform>();
+        bgRect.anchorMin = Vector2.zero;
+        bgRect.anchorMax = Vector2.one;
+        bgRect.offsetMin = Vector2.zero;
+        bgRect.offsetMax = Vector2.zero;
+        var bgImage = bgGo.AddComponent<Image>();
+        bgImage.color = Color.black;
+        bgImage.raycastTarget = false;
+
+        // Progress bar track (dark gray, centered horizontally, near bottom).
+        var trackGo = new GameObject("ProgressBarTrack");
+        trackGo.transform.SetParent(go.transform, worldPositionStays: false);
+        var trackRect = trackGo.AddComponent<RectTransform>();
+        trackRect.anchorMin = new Vector2(0.15f, 0.12f);
+        trackRect.anchorMax = new Vector2(0.85f, 0.14f);
+        trackRect.offsetMin = Vector2.zero;
+        trackRect.offsetMax = Vector2.zero;
+        var trackImage = trackGo.AddComponent<Image>();
+        trackImage.color = new Color(0.2f, 0.2f, 0.2f, 1f);
+        trackImage.raycastTarget = false;
+
+        // Progress bar fill (white, stretches left-to-right).
+        var fillGo = new GameObject("ProgressBarFill");
+        fillGo.transform.SetParent(trackGo.transform, worldPositionStays: false);
+        var fillRect = fillGo.AddComponent<RectTransform>();
+        fillRect.anchorMin = Vector2.zero;
+        fillRect.anchorMax = Vector2.one;
+        fillRect.offsetMin = Vector2.zero;
+        fillRect.offsetMax = Vector2.zero;
+        var fillImage = fillGo.AddComponent<Image>();
+        fillImage.color = Color.white;
+        fillImage.raycastTarget = false;
+        fillImage.type = Image.Type.Filled;
+        fillImage.fillMethod = Image.FillMethod.Horizontal;
+        fillImage.fillOrigin = (int)Image.OriginHorizontal.Left;
+        fillImage.fillAmount = 0f;
+
+        _progressBarFill = fillImage;
+
+        var group = go.AddComponent<CanvasGroup>();
+        group.alpha = 0f;
+        group.interactable = false;
+        group.blocksRaycasts = false;
+        return group;
+    }
+
     // Builds a full-screen black overlay CanvasGroup at runtime so any scene
     // entered directly in the Editor still has a working fade target.
     private CanvasGroup CreateFadeCanvas()
@@ -125,7 +355,7 @@ public class SceneLoader : Singleton<SceneLoader>
 
         var canvas = go.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 999; // Render above all gameplay UI.
+        canvas.sortingOrder = RenderOrder.LoadingCanvas; // Render above all gameplay UI.
 
         go.AddComponent<CanvasScaler>();
         // GraphicRaycaster intentionally omitted — the stub must not eat input.
