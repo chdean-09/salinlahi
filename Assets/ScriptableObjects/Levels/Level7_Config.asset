@@ -23,6 +23,7 @@ MonoBehaviour:
     latinSpelling: SAMA
     displayLabel: SAMA
     meaning: to join
+    hintText: 
     decomposition:
     - symbol: {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
       spokenValueId: value.sa
@@ -37,6 +38,7 @@ MonoBehaviour:
     latinSpelling: KASAMA
     displayLabel: KASAMA
     meaning: companion
+    hintText: 
     decomposition:
     - symbol: {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
       spokenValueId: value.ka
@@ -276,6 +278,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
     - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
     - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
+    guaranteedCharacters: []
     enemyTypes:
     - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
     - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
@@ -291,6 +294,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
     - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
     - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
+    guaranteedCharacters: []
     enemyTypes:
     - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
     - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
@@ -306,6 +310,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
     - {fileID: 11400000, guid: 3eddd010ef714112a4475e586d845197, type: 2}
     - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
+    guaranteedCharacters: []
     enemyTypes:
     - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
     - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}
@@ -323,6 +328,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
     - {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
     - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
+    guaranteedCharacters: []
     enemyTypes:
     - {fileID: 11400000, guid: 8ab693152397c460a845b4eff1f69d4a, type: 2}
     - {fileID: 11400000, guid: 5a6afd3b58ca143c38c17dc9a000e428, type: 2}

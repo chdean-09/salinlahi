@@ -31,6 +31,60 @@ namespace Salinlahi.Tests.Editor.UI
         private readonly List<Object> _created = new();
         private GameObject _screenObject;
 
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(3)]
+        public void DemoPreview_EveryEraHasFiveOpenableAuthoredMemories(int eraNumber)
+        {
+            EraConfigSO era = AssetDatabase.LoadAssetAtPath<EraConfigSO>(
+                $"Assets/ScriptableObjects/Themes/Era_{eraNumber:00}.asset");
+            var savedIds = new List<string>();
+            IReadOnlyList<MemoryArchiveEntry> entries = MemoryArchiveModel.BuildForEra(
+                era, savedIds, previewAllMemories: true);
+            Assert.AreEqual(5, entries.Count);
+            foreach (MemoryArchiveEntry entry in entries)
+            {
+                Assert.IsTrue(entry.IsUnlocked, entry.LevelStableId);
+                Assert.IsTrue(entry.HasAuthoredContent, entry.LevelStableId);
+            }
+            EraCompletionScreenUI screen = NewScreen();
+            Assert.IsTrue(screen.Present(era, entries, eraNumber < 3, null, null));
+            Assert.AreEqual(5, CountChildrenStartingWith(screen, "MemoryTile_"));
+            Assert.AreEqual(0, CountChildrenStartingWith(screen, "LockedTile_"));
+            Assert.IsEmpty(savedIds);
+        }
+
+        [TestCase(1, 5, true)]
+        [TestCase(2, 10, true)]
+        [TestCase(3, 15, false)]
+        public void EraFinalLevels_ShareReadableParchmentCompletion(int eraNumber, int levelNumber, bool hasNextEra)
+        {
+            EraConfigSO era = AssetDatabase.LoadAssetAtPath<EraConfigSO>(
+                $"Assets/ScriptableObjects/Themes/Era_{eraNumber:00}.asset");
+            LevelConfigSO level = AssetDatabase.LoadAssetAtPath<LevelConfigSO>(
+                $"Assets/ScriptableObjects/Levels/Level{levelNumber}_Config.asset");
+            Assert.IsTrue(EraBoundary.IsEraFinalLevel(era, level));
+            EraCompletionScreenUI screen = NewScreen();
+            Assert.IsTrue(screen.Present(era, MemoryArchiveModel.BuildForEra(era, null), hasNextEra, null, null));
+            Transform paper = screen.transform.Find("SafeArea/EraCompletionScroll");
+            Assert.IsNotNull(paper);
+            Assert.IsNotNull(paper.GetComponent<Image>().sprite);
+            Assert.AreEqual(5, screen.TileCount);
+            Assert.AreEqual(hasNextEra, EnterNextEraButton(screen).gameObject.activeSelf);
+            foreach (TMP_Text label in paper.GetComponentsInChildren<TMP_Text>(true))
+                Assert.AreEqual(ScrollPanelArt.InkColor, label.color, label.name);
+            Button close = CloseButton(screen);
+            Assert.IsNotNull(close.GetComponent<Image>().sprite);
+            Assert.AreEqual(Image.Type.Sliced, close.GetComponent<Image>().type);
+            if (hasNextEra)
+            {
+                RectTransform nextRect = EnterNextEraButton(screen).GetComponent<RectTransform>();
+                RectTransform closeRect = close.GetComponent<RectTransform>();
+                Assert.Greater(nextRect.anchorMin.y, closeRect.anchorMax.y,
+                    "The next-era and close actions need a visible gap.");
+            }
+        }
+
         [TearDown]
         public void TearDown()
         {

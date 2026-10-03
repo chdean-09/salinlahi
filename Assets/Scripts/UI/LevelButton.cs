@@ -29,10 +29,8 @@ public class LevelButton : MonoBehaviour
     [SerializeField] private Color _unlockedColor = Color.white;
     [SerializeField] private Color _lockedColor   = new Color(0.55f, 0.55f, 0.55f, 1f);
 
-    // SALIN-136: breathing emphasis applied to the journey's next meaningful level. Uses
-    // only already-wired components (the button transform), so no scene edits are needed.
-    private static readonly Vector3 HighlightScale = new(1.08f, 1.08f, 1f);
-    private const float HighlightPulseDuration = 1.1f;
+    // SALIN-136: the journey's next meaningful level keeps its authored size — the
+    // highlight flag applies no scale change, so no scene edits are needed.
 
     /// <summary>
     /// SALIN-137: name of the completed-state child authored on
@@ -55,7 +53,6 @@ public class LevelButton : MonoBehaviour
     private Vector3 _baseScale = Vector3.one;
     private bool _baseScaleCaptured;
     private bool _isHighlighted;
-    private float _highlightPulseElapsed;
     private bool _completionBadgeLookupDone;
     private Action<LevelConfigSO> _lockedPressHandler;
 
@@ -122,9 +119,8 @@ public class LevelButton : MonoBehaviour
     }
 
     /// <summary>
-    /// SALIN-136: marks this button as the journey's next meaningful level. The current
-    /// button breathes smoothly from its authored scale to 1.08x and back, making the
-    /// meaning of the emphasis visible instead of leaving it at an ambiguous fixed scale.
+    /// SALIN-136: marks this button as the journey's next meaningful level. The
+    /// button stays at its authored scale — the flag carries no resize.
     /// Safe to call repeatedly (buttons are reused across eras) — the base scale is
     /// captured once and restored when the highlight moves elsewhere.
     /// </summary>
@@ -137,29 +133,17 @@ public class LevelButton : MonoBehaviour
         }
 
         _isHighlighted = highlighted;
-        _highlightPulseElapsed = 0f;
         transform.localScale = _baseScale;
     }
 
-    private void Update()
+    private void OnEnable()
     {
-        if (!_isHighlighted || !_baseScaleCaptured)
-            return;
-
-        _highlightPulseElapsed = Mathf.Repeat(
-            _highlightPulseElapsed + Time.unscaledDeltaTime,
-            HighlightPulseDuration);
-
-        float cycle = _highlightPulseElapsed / HighlightPulseDuration;
-        float wave = 0.5f - 0.5f * Mathf.Cos(cycle * Mathf.PI * 2f);
-        float easedWave = Mathf.SmoothStep(0f, 1f, wave);
-        Vector3 pulseScale = Vector3.LerpUnclamped(Vector3.one, HighlightScale, easedWave);
-        transform.localScale = Vector3.Scale(_baseScale, pulseScale);
+        if (_isHighlighted && _baseScaleCaptured)
+            transform.localScale = _baseScale;
     }
 
     private void OnDisable()
     {
-        _highlightPulseElapsed = 0f;
         if (_baseScaleCaptured)
             transform.localScale = _baseScale;
     }

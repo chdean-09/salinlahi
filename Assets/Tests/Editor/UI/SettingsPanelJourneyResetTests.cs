@@ -41,51 +41,48 @@ namespace Salinlahi.Tests.Editor.UI
         }
 
         [Test]
-        public void OnEnable_WithoutEnableJourneyReset_DoesNotBuildResetButton()
+        public void OnEnable_DoesNotBuildResetButton()
         {
             InvokeLifecycle(_panel, "OnEnable");
 
             Assert.That(_panelObject.transform.Find(RuntimeButtonName), Is.Null,
-                "The pause-menu instance never calls EnableJourneyReset, so no button may appear.");
+                "Settings contain audio controls only.");
         }
 
         [Test]
-        public void OnEnable_WithJourneyResetEnabledButNoSaveManager_DoesNotBuildResetButton()
+        public void OnEnable_WithNoSaveManager_DoesNotBuildResetButton()
         {
             // Explicit == engages Unity's fake-null semantics; fails loudly on a polluted run.
             Assert.That(SaveManager.Instance == null, Is.True, "precondition");
-            _panel.EnableJourneyReset();
             InvokeLifecycle(_panel, "OnEnable");
 
             Assert.That(_panelObject.transform.Find(RuntimeButtonName), Is.Null);
         }
 
         [Test]
-        public void OnEnable_WithJourneyResetEnabledButNoProgressManager_DoesNotBuildResetButton()
+        public void OnEnable_WithNoProgressManager_DoesNotBuildResetButton()
         {
             CreateReadySaveManager();
             CreateSceneLoader();
 
-            _panel.EnableJourneyReset();
             InvokeLifecycle(_panel, "OnEnable");
 
             Assert.That(_panelObject.transform.Find(RuntimeButtonName), Is.Null);
         }
 
         [Test]
-        public void OnEnable_WithJourneyResetEnabledButNoSceneLoader_DoesNotBuildResetButton()
+        public void OnEnable_WithNoSceneLoader_DoesNotBuildResetButton()
         {
             CreateReadySaveManager();
             CreateProgressManager();
 
-            _panel.EnableJourneyReset();
             InvokeLifecycle(_panel, "OnEnable");
 
             Assert.That(_panelObject.transform.Find(RuntimeButtonName), Is.Null);
         }
 
         [Test]
-        public void OnEnable_WithJourneyResetEnabledAndRevisedReady_BuildsActiveResetButton()
+        public void OnEnable_WithRevisedReadySave_DoesNotOfferJourneyReset()
         {
             SaveManager saveManager = CreateReadySaveManager();
             CreateProgressManager();
@@ -93,12 +90,11 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.That(SaveManager.Instance, Is.SameAs(saveManager), "precondition");
             Assert.That(saveManager.Mode, Is.EqualTo(SaveManagerMode.RevisedReady), "precondition");
 
-            _panel.EnableJourneyReset();
             InvokeLifecycle(_panel, "OnEnable");
 
             Transform button = _panelObject.transform.Find(RuntimeButtonName);
-            Assert.That(button, Is.Not.Null);
-            Assert.That(button.gameObject.activeSelf, Is.True);
+            Assert.That(button, Is.Null,
+                "Settings must never expose the destructive journey reset action.");
         }
 
         private SaveManager CreateReadySaveManager()

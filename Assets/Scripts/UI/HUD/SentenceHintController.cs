@@ -5,8 +5,8 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// The sentence-hint affordance on the combat HUD: a small dark chip below the
-/// pause button — the same flat translucent square the pause button wears,
+/// The sentence-hint affordance on the combat HUD: a small parchment chip below the
+/// pause button — the same textured background the pause button wears,
 /// carrying the almanac "?" glyph — that opens a parchment scroll of the
 /// level's sentence hints (the blanked restoration context plus each focus
 /// word's meaning and descriptor line with every answer withheld, assembled by
@@ -43,13 +43,8 @@ public sealed class SentenceHintController : MonoBehaviour
 
     // The almanac's "?" glyph — a Resources copy of Assets/Art/UI/Almanac/
     // Questionmark.png so the runtime-built chip can resolve it. The glyph is
-    // white line art on transparency, so it stays legible on the dark chip.
+    // white line art on transparency, tinted to match the pause mark.
     private const string IconResourcePath = "Art/UI/Almanac/Questionmark";
-
-    // The authored pause button's background: a flat translucent black square
-    // with no sprite (Gameplay.unity PauseButton Image). The chip wears the same
-    // fill so the two controls read as one HUD family.
-    private static readonly Color PauseButtonFill = new Color(0f, 0f, 0f, 0.45f);
 
     // Icon inset in canvas units: leaves the "?" breathing room inside the
     // square, the same visual margin the pause button's "||" label keeps.
@@ -274,11 +269,7 @@ public sealed class SentenceHintController : MonoBehaviour
         chipRect.sizeDelta = _chipSize;
         chipRect.anchoredPosition = ChipPosition(parent);
 
-        // No scroll skin: just the pause button's flat translucent square, so
-        // the chip reads as the pause button's sibling instead of a miniature
-        // parchment that looked off against the flat HUD.
         Image background = _chipRoot.GetComponent<Image>();
-        background.color = PauseButtonFill;
 
         Button chipButton = _chipRoot.GetComponent<Button>();
         chipButton.transition = Selectable.Transition.ColorTint;
@@ -292,6 +283,7 @@ public sealed class SentenceHintController : MonoBehaviour
             iconObject.transform.SetParent(_chipRoot.transform, false);
             Image iconImage = iconObject.AddComponent<Image>();
             iconImage.sprite = icon;
+            iconImage.color = ScrollPanelArt.InkColor;
             iconImage.preserveAspect = true;
             iconImage.raycastTarget = false;
             RectTransform iconRect = iconImage.rectTransform;
@@ -302,8 +294,7 @@ public sealed class SentenceHintController : MonoBehaviour
         }
         else
         {
-            // Missing art fallback: a white "?" label, the same convention the
-            // pause button's white "||" text uses.
+            // Missing icon fallback: keep a readable "?" on the control.
             GameObject labelObject = new GameObject(
                 "[Runtime] SentenceHintChipLabel", typeof(RectTransform));
             labelObject.transform.SetParent(_chipRoot.transform, false);
@@ -320,6 +311,7 @@ public sealed class SentenceHintController : MonoBehaviour
             labelRect.offsetMin = labelRect.offsetMax = Vector2.zero;
         }
 
+        ScrollPanelArt.ApplyButtonSkin(chipButton);
         chipButton.onClick.AddListener(Open);
     }
 
@@ -515,6 +507,8 @@ public sealed class SentenceHintController : MonoBehaviour
             ScrollPanelArt.InkifyRecursive(panelRect.transform);
             ScrollPanelArt.Inkify(closeLabel);
         }
+
+        ScrollPanelArt.ApplyButtonSkin(close);
 
         _overlayRoot.SetActive(false);
     }

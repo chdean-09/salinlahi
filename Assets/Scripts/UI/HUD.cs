@@ -18,6 +18,7 @@ public class HUD : MonoBehaviour
     private void OnEnable()
     {
         ConfigureResponsiveLayout();
+        ScrollPanelArt.ApplyButtonSkin(_pauseButton);
 
         if (_pauseButton != null)
             _pauseButton.onClick.AddListener(OnPausePressed);

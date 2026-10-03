@@ -49,6 +49,12 @@ public class PauseMenuUI : MonoBehaviour
 
     private void Awake()
     {
+        ScrollPanelArt.StylePrimaryButton(_resumeButton);
+        ScrollPanelArt.StyleSecondaryButton(_restartButton);
+        ScrollPanelArt.StyleSecondaryButton(_settingsButton);
+        ScrollPanelArt.StyleSecondaryButton(_quitButton);
+        ScrollPanelArt.StylePrimaryButton(_confirmationConfirmButton);
+        ScrollPanelArt.StyleSecondaryButton(_confirmationCancelButton);
         if (_panel != null) _panel.SetActive(false);
         if (_confirmationPanel != null) _confirmationPanel.SetActive(false);
     }
@@ -459,6 +465,7 @@ public class PauseMenuUI : MonoBehaviour
         labelRect.pivot = new Vector2(0.5f, 0.5f);
         labelRect.offsetMin = Vector2.zero;
         labelRect.offsetMax = Vector2.zero;
+        ScrollPanelArt.StylePrimaryButton(button);
         return button;
     }
 
@@ -484,6 +491,8 @@ public class PauseMenuUI : MonoBehaviour
 
         SetButtonAnchors(confirm, Rect.MinMaxRect(0.20f, 0.31f, 0.80f, 0.43f));
         SetButtonAnchors(cancel, Rect.MinMaxRect(0.20f, 0.17f, 0.80f, 0.29f));
+        ScrollPanelArt.StylePrimaryButton(confirm);
+        ScrollPanelArt.StyleSecondaryButton(cancel);
     }
 
     private static void SetButtonAnchors(Button button, Rect area)

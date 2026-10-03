@@ -23,6 +23,7 @@ MonoBehaviour:
     latinSpelling: GANA
     displayLabel: GANA
     meaning: drive
+    hintText: 
     decomposition:
     - symbol: {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
       spokenValueId: value.ga
@@ -37,6 +38,7 @@ MonoBehaviour:
     latinSpelling: KAYA
     displayLabel: KAYA
     meaning: capability
+    hintText: 
     decomposition:
     - symbol: {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
       spokenValueId: value.ka
@@ -296,6 +298,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
     - {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
     - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+    guaranteedCharacters: []
     enemyTypes:
     - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
     - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
@@ -316,6 +319,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
     - {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
     - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+    guaranteedCharacters: []
     enemyTypes:
     - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
     - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
@@ -336,6 +340,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
     - {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
     - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+    guaranteedCharacters: []
     enemyTypes:
     - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
     - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
@@ -356,6 +361,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
     - {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
     - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+    guaranteedCharacters: []
     enemyTypes:
     - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
     - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}
@@ -376,6 +382,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 91bf94a5a4b34927b242ebab827a1cf6, type: 2}
     - {fileID: 11400000, guid: 107b2c5df22448a2919e959f77a5a0cd, type: 2}
     - {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
+    guaranteedCharacters: []
     enemyTypes:
     - {fileID: 11400000, guid: ddfaff2baf3074161a71c82400f08edb, type: 2}
     - {fileID: 11400000, guid: 29c3755aa45ae44d996870ebbfb1f24b, type: 2}

@@ -348,6 +348,16 @@ public sealed class MemoryCardUI : MonoBehaviour
             scaler.referenceResolution = new Vector2(1080f, 1920f);
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
             scaler.matchWidthOrHeight = 0.5f;
+
+            // The scaler ran Handle() in its OnEnable, inside the constructor above, while it was
+            // still ConstantPixelSize, and would not apply the settings just set until its next
+            // Update. Render sizes the glyph row this frame, so it measured a canvas one device
+            // pixel per unit wide (1284 on a 1284x2778 phone, not ~979): every glyph came out
+            // 1.31x too big once the scale landed, and Level 14's eight symbols ran off both
+            // edges of the scroll. Re-enabling runs Handle() now, so the row is fitted to the
+            // canvas it will actually be drawn on.
+            scaler.enabled = false;
+            scaler.enabled = true;
             transform.SetParent(canvas.transform, false);
         }
         canvas.sortingOrder = Mathf.Max(canvas.sortingOrder, 320);
@@ -460,7 +470,7 @@ public sealed class MemoryCardUI : MonoBehaviour
             glyphRow.pivot = new Vector2(0.5f, 0.5f);
 
         ScrollPanelArt.PlaceButton(flip, Rect.MinMaxRect(0.18f, 0.185f, 0.485f, 0.30f));
-        ScrollPanelArt.PlaceButton(close, Rect.MinMaxRect(0.515f, 0.185f, 0.82f, 0.30f));
+        ScrollPanelArt.PlaceButton(close, Rect.MinMaxRect(0.515f, 0.185f, 0.82f, 0.30f), primary: false);
     }
 
     /// <summary>A full-width band of the card's paper between two normalized heights.</summary>
