@@ -9,7 +9,7 @@ public class CharacterDropdown : MonoBehaviour
     [SerializeField] private GameObject _panel;
     [SerializeField] private GameObject _backdrop;
     [SerializeField] private Button _backdropButton;
-    [SerializeField] private string _placeholderText = "Select \u25BC";
+    [SerializeField] private string _placeholderText = "Piliin \u25BC";
 
     private void Awake()
     {

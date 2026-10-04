@@ -14,19 +14,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::OnboardingSequenceSO
   beatOrder: 00000000010000000400000005000000
   protagonistIntro:
-    fallbackText: The ancestors have called me back.
+    fallbackText: Tinatawag ako pabalik ng mga ninuno.
     dialogue: {fileID: 0}
   protagonistWalkSeconds: 1.75
   baseIntro:
-    fallbackText: 'This is the base.
+    fallbackText: 'Ito ang base.
 
-      Keep enemies away from it.'
+      Ilayo rito ang mga kalaban.'
     dialogue: {fileID: 0}
   baseSpotlightPadding: 0.5
   soloTeachStep: {fileID: 11400000, guid: 7a8d4f1c9e2b4a6d8f0c1e3b5a7d9f2c, type: 2}
   basicTeachSteps: []
   soloTeachPreVideo:
-    fallbackText: Draw its syllable to defeat it.
+    fallbackText: Iguhit ang pantig nito para talunin ito.
     dialogue: {fileID: 0}
   soloTeachVideo:
     videoClip: {fileID: 0}
@@ -34,7 +34,7 @@ MonoBehaviour:
     gifFrames: []
     gifFramesPerSecond: 0
     animationClip: {fileID: 0}
-    tapToProceedText: Tap anywhere to continue
+    tapToProceedText: I-tap kahit saan para magpatuloy
   basicTeachVideos: []
   heartLossDemoEnemyData: {fileID: 11400000, guid: c5f91a4c7515047cabd59ea63b9bfef6, type: 2}
   heartLossDemoCharacter: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
@@ -44,14 +44,14 @@ MonoBehaviour:
     gifFrames: []
     gifFramesPerSecond: 0
     animationClip: {fileID: 0}
-    tapToProceedText: Tap anywhere to continue
+    tapToProceedText: I-tap kahit saan para magpatuloy
   heartLossDialogue:
-    fallbackText: 'This is only a demonstration: if an enemy reaches the base, one heart is lost.
+    fallbackText: 'Pakitang-halimbawa lamang ito: kapag nakarating sa base ang isang kalaban, mababawasan ng isang puso.
 
-      We will restore it before combat begins.'
+      Ibabalik natin ito bago magsimula ang labanan.'
     dialogue: {fileID: 0}
   release:
-    fallbackText: 'The demonstration is over. Your hearts are restored. You are ready. Defend the
+    fallbackText: 'Tapos na ang pagpapakitang-halimbawa. Naibalik na ang mga puso mo. Handa ka na. Ipagtanggol ang
 
       base.'
     dialogue: {fileID: 0}

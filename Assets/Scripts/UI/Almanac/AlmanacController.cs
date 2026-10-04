@@ -110,7 +110,7 @@ public class AlmanacController : MonoBehaviour
             _enemyRegistry.entries,
             entry => ResolveRevealed(
                 IsEntryDiscovered(entry) && IsSpanishEra(entry.enemyData), _revealAllForDebug));
-        _enemiesCounter.text = FormatCounter("Discovered", discovered, _enemyRegistry.entries.Count);
+        _enemiesCounter.text = FormatCounter("Natuklasan", discovered, _enemyRegistry.entries.Count);
     }
 
     private void OnHome()

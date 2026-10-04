@@ -29,13 +29,13 @@ MonoBehaviour:
   - {x: 50, y: 10}
   guideSprite: {fileID: -5378085687522739872, guid: 390e5ce5ec3cdd741a3772288f739c1c, type: 3}
   tolerancePixels: 15
-  promptText: Now draw O.
+  promptText: Iguhit naman ang O.
   successText: 
-  idleHint: Draw the glowing symbol.
-  strongHint: Start at the dot, then follow the arrow.
-  assistText: Watch this once.
-  wrongCharacterFeedback: Draw the shown syllable.
-  directionMismatchFeedback: Follow the arrow direction.
-  tooShortFeedback: Draw the full shape.
-  recognitionFailedFeedback: Try that shape again.
+  idleHint: Iguhit ang kumikinang na simbolo.
+  strongHint: Magsimula sa tuldok, saka sundan ang palaso.
+  assistText: Panoorin ito nang isang beses.
+  wrongCharacterFeedback: Iguhit ang ipinakitang pantig.
+  directionMismatchFeedback: Sundan ang direksiyon ng palaso.
+  tooShortFeedback: Iguhit ang buong hugis.
+  recognitionFailedFeedback: Subukan muli ang hugis na iyan.
   assistAnimationPrefab: {fileID: 0}

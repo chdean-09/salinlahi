@@ -227,7 +227,7 @@ public class SymbolLearningCardController : MonoBehaviour
     {
         int safeTotal = Mathf.Max(1, total);
         int position = Mathf.Clamp(zeroBasedIndex + 1, 1, safeTotal);
-        return $"Symbol {position} of {safeTotal}";
+        return $"Simbolo {position} sa {safeTotal}";
     }
 
     private void HandlePronunciationRequested(BaybayinCharacterSO character)
@@ -318,7 +318,7 @@ public class SymbolLearningCardController : MonoBehaviour
         GameObject replayLabelObject = new GameObject("[Runtime] SymbolLearningReplayLabel", typeof(RectTransform));
         replayLabelObject.transform.SetParent(replayObject.transform, false);
         TextMeshProUGUI replayLabel = replayLabelObject.AddComponent<TextMeshProUGUI>();
-        replayLabel.text = "Listen";
+        replayLabel.text = "Makinig";
         replayLabel.fontSize = UITextScale.Body;
         replayLabel.alignment = TextAlignmentOptions.Center;
         replayLabel.raycastTarget = false;
@@ -335,7 +335,7 @@ public class SymbolLearningCardController : MonoBehaviour
         GameObject continueLabelObject = new GameObject("[Runtime] SymbolLearningContinueLabel", typeof(RectTransform));
         continueLabelObject.transform.SetParent(continueObject.transform, false);
         TextMeshProUGUI continueLabel = continueLabelObject.AddComponent<TextMeshProUGUI>();
-        continueLabel.text = "Continue";
+        continueLabel.text = "Magpatuloy";
         continueLabel.fontSize = UITextScale.Body;
         continueLabel.alignment = TextAlignmentOptions.Center;
         continueLabel.raycastTarget = false;

@@ -33,26 +33,26 @@ public sealed class Level1TutorialStepSO : ScriptableObject
     public string successText;
 
     [TextArea(1, 2)]
-    public string idleHint = "Draw the glowing symbol.";
+    public string idleHint = "Iguhit ang kumikinang na simbolo.";
 
     [TextArea(1, 2)]
-    public string strongHint = "Start at the dot, then follow the arrow.";
+    public string strongHint = "Magsimula sa tuldok, saka sundan ang palaso.";
 
     [TextArea(1, 2)]
-    public string assistText = "Watch this once.";
+    public string assistText = "Panoorin ito nang isang beses.";
 
     [Header("Feedback Lines")]
     [TextArea(1, 2)]
-    public string wrongCharacterFeedback = "Draw the shown syllable.";
+    public string wrongCharacterFeedback = "Iguhit ang ipinakitang pantig.";
 
     [TextArea(1, 2)]
-    public string directionMismatchFeedback = "Follow the arrow direction.";
+    public string directionMismatchFeedback = "Sundan ang direksiyon ng palaso.";
 
     [TextArea(1, 2)]
-    public string tooShortFeedback = "Draw the full shape.";
+    public string tooShortFeedback = "Iguhit ang buong hugis.";
 
     [TextArea(1, 2)]
-    public string recognitionFailedFeedback = "Try that shape again.";
+    public string recognitionFailedFeedback = "Subukan muli ang hugis na iyan.";
 
     [Header("Optional")]
     [Tooltip("Optional reference to an assist animation prefab or clip for this step.")]

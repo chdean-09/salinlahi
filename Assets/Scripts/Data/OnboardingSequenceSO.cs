@@ -67,7 +67,7 @@ public sealed class OnboardingSequenceSO : ScriptableObject
     [Header("Beat 1 — Protagonist Intro")]
     public OnboardingBeatCopy protagonistIntro = new OnboardingBeatCopy
     {
-        fallbackText = "The ancestors have called me back.",
+        fallbackText = "Tinatawag ako pabalik ng mga ninuno.",
     };
     [Tooltip("Seconds for the protagonist walk-in animation. Falls back to ProtagonistManager's default if 0.")]
     public float protagonistWalkSeconds = 1.75f;
@@ -75,7 +75,7 @@ public sealed class OnboardingSequenceSO : ScriptableObject
     [Header("Beat 2 — Base Intro")]
     public OnboardingBeatCopy baseIntro = new OnboardingBeatCopy
     {
-        fallbackText = "This is our base. If enemies reach it, we lose strength.",
+        fallbackText = "Ito ang base natin. Kapag naabot ito ng mga kalaban, hihina tayo.",
     };
     [Tooltip("Padding in world units around the base bounds when computing the spotlight rect.")]
     public float baseSpotlightPadding = 0.5f;
@@ -87,28 +87,28 @@ public sealed class OnboardingSequenceSO : ScriptableObject
     public BaybayinCharacterSO heartLossDemoCharacter;
     public OnboardingVideoTemplate heartLossVideo = new OnboardingVideoTemplate
     {
-        tapToProceedText = "Tap anywhere to continue",
+        tapToProceedText = "I-tap kahit saan para magpatuloy",
     };
     public OnboardingBeatCopy heartLossDialogue = new OnboardingBeatCopy
     {
-        fallbackText = "When an enemy reaches the base, we lose a heart. Lose them all, and the base falls.",
+        fallbackText = "Kapag nakarating sa base ang kalaban, mababawasan tayo ng isang puso. Kapag naubos ang lahat ng puso, babagsak ang base.",
     };
 
     [Header("Beat 6 — Release")]
     public OnboardingBeatCopy release = new OnboardingBeatCopy
     {
-        fallbackText = "You are ready, anak. Defend our home.",
+        fallbackText = "Handa ka na, anak. Ipagtanggol mo ang tahanan natin.",
     };
 
     [Header("Beat 7 — Mass-Clear Teach (Level 2)")]
     [Tooltip("SALIN-241. Level 2 is the first level with multiKillChainEnabled on, so it is where the AOE mass-clear is introduced. Explanatory only — the beat never gates on a successful draw (D-004 forbids a pre-combat practice gate).")]
     public OnboardingBeatCopy massClearTeach = new OnboardingBeatCopy
     {
-        fallbackText = "Three or more enemies can share one mark. Draw it once to clear them all.",
+        fallbackText = "Maaaring magkapareho ng marka ang tatlo o higit pang kalaban. Iguhit ito nang isang beses para matalo silang lahat.",
     };
     public OnboardingVideoTemplate massClearTeachVideo = new OnboardingVideoTemplate
     {
-        tapToProceedText = "Tap anywhere to continue",
+        tapToProceedText = "I-tap kahit saan para magpatuloy",
     };
 
     [Header("Timing")]

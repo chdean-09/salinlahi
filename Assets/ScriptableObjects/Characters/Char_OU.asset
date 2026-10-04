@@ -27,9 +27,10 @@ MonoBehaviour:
     displayValue: u
     pronunciationClip: {fileID: 0}
   firstIntroductionLevelId: level.ugnayan.04
-  description: "O is carved in wood, stone, and tools used by early communities.
-    Juan learns it represents how Filipinos once wrote their own life.\n\r\n\u201CO
-    holds the shape of who you are."
+  description: "Inukit ang O sa kahoy, bato, at mga kagamitang ginamit ng mga
+    sinaunang pamayanan. Natututuhan ni Juan na ipinapakita nito kung paano nagsulat
+    ang mga Pilipino tungkol sa sarili nilang buhay.\n\r\n\u201CHugis ng
+    pagkatao mo ang O.\u201D"
   displaySprite: {fileID: 8544560402322239208, guid: 86136cc8d6bbba249b05d453f42fdd73, type: 3}
   almanacSprite: {fileID: 21300000, guid: 3062a7588b57c374292c27f23d2bba94, type: 3}
   badgeSprite: {fileID: -5378085687522739872, guid: 390e5ce5ec3cdd741a3772288f739c1c, type: 3}
