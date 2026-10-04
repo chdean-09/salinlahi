@@ -15,11 +15,11 @@ MonoBehaviour:
   enemyID: walang-awa
   displayName: Walang-Awa
   discoverySubtitle: 
-  description: Walang-Awa forged its armor from memories Paglimot stripped from different
-    generations. Every plate bears a stolen character, and breaking one only reveals
-    another beneath it.
-  abilityLine: Each broken armor layer reveals a different remembered character beneath
-    it.
+  description: Hinulma ng Walang-Awa ang baluti nito mula sa mga alaalang inalis ng
+    Paglimot sa iba't ibang henerasyon. May ninakaw na titik sa bawat piraso ng
+    baluti, at may panibago pang lilitaw kapag nabasag ang isa.
+  abilityLine: Ipinapakita ng bawat nabasag na patong ng baluti ang ibang naaalalang
+    titik sa ilalim nito.
   moveSpeed: 0.95
   maxHealth: 2
   walkFrames:
@@ -119,8 +119,8 @@ MonoBehaviour:
   splitCount: 2
   splitOffsetX: 0.9
   spriteScale: 1
-  corruptedMeaning: Different generations of memory are locked in layers.
-  trueMeaning: Every layer can carry a distinct learned character.
-  restoredLesson: Reassess the glyph after each armor layer breaks.
+  corruptedMeaning: Nakakulong sa magkakapatong na patong ang mga alaala ng iba't ibang henerasyon.
+  trueMeaning: Maaaring may natatanging natutuhang titik sa bawat patong.
+  restoredLesson: Suriing muli ang titik sa tuwing mababasag ang isang patong ng baluti.
   learningAbility: 19
   suppressDiscovery: 0

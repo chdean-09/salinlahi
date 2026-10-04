@@ -15,32 +15,31 @@ MonoBehaviour:
   cutsceneId: cutscene.ugnayan.01.opening
   panels:
   - image: {fileID: 21300000, guid: 7b2aa1a062ccbb74b979704d62285cdc, type: 3}
-    text: 'Juan enters the fishing village at dusk. The houses are lit, the nets
-      are hung, and food has spilled into the road.
+    text: 'Pagdating ni Juan sa nayon ng mga mangingisda, dapithapon na. May ilaw sa
+      mga bahay, nakasabit ang mga lambat, at may pagkaing natapon sa daan.
 
-      Everything says people
-      were here only moments ago.
+      Para bang kagagaling lang doon ng mga tao.
 
-      But the village is silent, and no one comes
-      when he calls.'
+      Pero tahimik ang nayon, at walang sumasagot sa tawag niya.'
     transitionIn: 0
     transitionDuration: 0
     typewriterSpeed: 0
   - image: {fileID: 21300000, guid: d22d77eb664fd4c4fb9d2c5cda671e46, type: 3}
-    text: "Above the empty village, the Living Scroll opens in a wash of gold.\nThe faces of four
-      neighbors whose lives were once bound together appear over its pages.\nTheir
-      names are still there, but the ties between them are beginning to fade."
+    text: "Sa ibabaw ng walang-taong nayon, bumukas ang Living Scroll at nagliwanag
+      na parang balot ng ginto.\nLumitaw sa mga pahina ang mga mukha ng apat na
+      kapitbahay na dating magkakaugnay ang buhay.\nNandoon pa ang kanilang mga
+      pangalan, pero unti-unti nang kumukupas ang ugnayan nila."
     transitionIn: 0
     transitionDuration: 0
     typewriterSpeed: 0
   - image: {fileID: 21300000, guid: 21c92f67d08b73d4684d22765a57a6d4, type: 3}
-    text: 'Juan finds the village caught inside a vast net of darkened characters.
+    text: 'Nakita ni Juan na nabitag ang nayon sa isang napakalaking lambat ng maiitim
+      na titik.
 
-      Every
-      knot holds a word the people once shared: trust, care, work, home.
+      Bawat buhol ay may salitang dating pinagsasaluhan ng mga tao: tiwala,
+      malasakit, trabaho, tahanan.
 
-      To
-      free them, he must restore the language that binds one person to another.'
+      Para palayain sila, kailangan niyang ibalik ang wikang nag-uugnay sa mga tao.'
     transitionIn: 0
     transitionDuration: 0
     typewriterSpeed: 0

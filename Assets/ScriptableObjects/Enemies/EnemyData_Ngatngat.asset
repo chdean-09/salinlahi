@@ -15,8 +15,10 @@ MonoBehaviour:
   enemyID: ngatngat
   displayName: Ngatngat
   discoverySubtitle: 
-  description: Ngatngat is a swarm raised by Paglimot from the edges of neglected manuscripts. It eats context one syllable at a time until only the marks themselves remain.
-  abilityLine: It eats away the written clue one syllable at a time.
+  description: Ang Ngatngat ay kuyog na nilikha ng Paglimot mula sa mga gilid ng
+    napabayaang manuskrito. Paisang pantig nitong kinakain ang kahulugan hanggang
+    mga marka na lang ang matira.
+  abilityLine: Paisang pantig nitong binubura ang nakasulat na pahiwatig.
   moveSpeed: 1.6
   maxHealth: 1
   walkFrames:
@@ -70,7 +72,7 @@ MonoBehaviour:
   scrambleRadius: 3
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
-  corruptedMeaning: Context is eaten away one syllable at a time.
-  trueMeaning: Recall can carry a word after its clue fades.
-  restoredLesson: Decide when you know enough to draw without the clue.
+  corruptedMeaning: Unti-unting nawawala ang konteksto, isang pantig sa bawat pagkakataon.
+  trueMeaning: Makabubuo pa rin ng salita mula sa alaala kahit kumupas na ang pahiwatig.
+  restoredLesson: Magpasya kung kailan sapat na ang alam mo para gumuhit nang walang pahiwatig.
   learningAbility: 11

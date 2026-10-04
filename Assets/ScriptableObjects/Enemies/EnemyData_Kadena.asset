@@ -15,8 +15,13 @@ MonoBehaviour:
   enemyID: kadena
   displayName: Kadena
   discoverySubtitle: 
-  description: Kadena gathers characters Paglimot has torn from their words and locks them into forced order. Its chains insist that memory has only one path, but the links themselves still reveal the sequence they stole.
-  abilityLine: It binds one other enemy until the first correct hit breaks its chain. It cannot chain again during that spawn.
+  description: Tinipon ng Kadena ang mga titik na inihiwalay ng Paglimot sa mga
+    salita at ikinadena sa sapilitang pagkakasunod-sunod. Ipinipilit ng mga kadena
+    nito na iisa lang ang landas ng alaala, pero ipinapakita pa rin ng mga kawing
+    ang pagkakasunod-sunod na ninakaw ng mga ito.
+  abilityLine: Iginagapos nito ang isa pang kalaban hanggang maputol ang kadena sa
+    unang tamang tama. Hindi na ito makapag-aalis ng isa pang kadena habang naroon
+    ito.
   moveSpeed: 1.05
   maxHealth: 1
   walkFrames:
@@ -80,7 +85,7 @@ MonoBehaviour:
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
   chainsNearestEnemy: 1
-  corruptedMeaning: Forced order breaks the connection between marks.
-  trueMeaning: Syllables form meaningful sequences.
-  restoredLesson: Remember the short chain in its shown order.
+  corruptedMeaning: Sinisira ng sapilitang pagkakasunod-sunod ang ugnayan ng mga marka.
+  trueMeaning: Bumubuo ng makabuluhang pagkakasunod-sunod ang mga pantig.
+  restoredLesson: Tandaan ang maikling kadena ayon sa pagkakasunod-sunod ng pagpapakita nito.
   learningAbility: 9

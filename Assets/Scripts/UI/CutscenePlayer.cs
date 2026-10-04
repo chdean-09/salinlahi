@@ -28,7 +28,7 @@ public class CutscenePlayer : MonoBehaviour
     [SerializeField] private float _slideDistance = 400f;
 
     [Header("Continue Prompt")]
-    [SerializeField] private string _continuePromptMessage = "Tap anywhere to continue";
+    [SerializeField] private string _continuePromptMessage = "I-tap kahit saan para magpatuloy";
     [SerializeField] private float _continuePromptTopPadding = 52f;
     [SerializeField] private float _continuePromptPulseSeconds = 1.35f;
     [SerializeField] private float _continuePromptMinAlpha = 0.72f;

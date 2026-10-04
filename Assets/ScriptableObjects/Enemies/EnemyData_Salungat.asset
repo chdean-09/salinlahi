@@ -15,8 +15,12 @@ MonoBehaviour:
   enemyID: salungat
   displayName: Salungat
   discoverySubtitle: 
-  description: Salungat speaks with two heads because Paglimot filled one with memory and the other with contradiction. It carries a character that does not belong to it, trusting haste to turn a familiar mark into a harmful choice.
-  abilityLine: Its badge briefly glitches between readable pauses. Drawing this decoy still harms the Living Scroll.
+  description: Dalawang ulo ang nagsasalita para sa Salungat dahil nilagyan ng
+    Paglimot ng alaala ang isa at ng pagsalungat ang kabila. May dala itong titik
+    na hindi naman para rito, at umaasa itong magmadali ang iba at mapagkamalan
+    ang pamilyar na marka.
+  abilityLine: Panandaliang nagkakagulo ang marka nito at nagiging mahirap basahin.
+    Napipinsala pa rin ang Living Scroll kapag iginuhit ang huwad na titik nito.
   moveSpeed: 1.5
   maxHealth: 1
   walkFrames:
@@ -70,7 +74,7 @@ MonoBehaviour:
   scrambleRadius: 3
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
-  corruptedMeaning: A false carrier turns automatic recognition against the player.
-  trueMeaning: Reading the glyph prevents a confident wrong choice.
-  restoredLesson: Check whether the carrier belongs before drawing.
+  corruptedMeaning: Nagagamit laban sa manlalaro ang awtomatikong pagkilala kapag huwad ang dala nitong titik.
+  trueMeaning: Maiiwasan ang maling sagot kung babasahin muna ang titik.
+  restoredLesson: Tiyaking bagay sa kalaban ang dala nitong titik bago gumuhit.
   learningAbility: 13

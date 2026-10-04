@@ -15,8 +15,11 @@ MonoBehaviour:
   enemyID: hati
   displayName: Hati
   discoverySubtitle: 
-  description: Hati was born where Paglimot turned one shared memory into opposing versions. When struck, it divides and gives each half a different fragment of what the people once knew.
-  abilityLine: It divides into two smaller enemies carrying different remembered characters.
+  description: Isinilang ang Hati nang gawing magkasalungat ng Paglimot ang iisang
+    pinagsasaluhang alaala. Kapag tinamaan, nahahati ito at binibigyan ang bawat
+    kalahati ng magkaibang piraso ng dating alam ng mga tao.
+  abilityLine: Nahahati ito sa dalawang mas maliliit na kalaban na may magkaibang
+    naaalalang titik.
   moveSpeed: 1.4
   maxHealth: 1
   walkFrames:
@@ -74,7 +77,7 @@ MonoBehaviour:
   splitSpawnData: {fileID: 11400000, guid: 1320e9b202c8b71ac93b6983e2d0b414, type: 2}
   splitCount: 2
   splitOffsetX: 0.9
-  corruptedMeaning: Division turns one memory into two arguments.
-  trueMeaning: Reviewing distinct characters keeps shared language whole.
-  restoredLesson: Reclassify each new carrier after a split.
+  corruptedMeaning: Hinahati ng pagkakawatak ang iisang alaala at nagiging dalawang pagtatalo.
+  trueMeaning: Napapanatiling buo ang wikang pinagsasaluhan sa muling pag-aaral ng magkakaibang titik.
+  restoredLesson: Tukuyin muli ang bawat bagong kalaban matapos silang mahati.
   learningAbility: 8

@@ -15,8 +15,11 @@ MonoBehaviour:
   enemyID: uhaw
   displayName: Uhaw
   discoverySubtitle: 
-  description: Uhaw is an empty vessel shaped from soil where old writing has dried away. Paglimot gives it an endless thirst for freshly restored characters, hoping each success will vanish as soon as it appears.
-  abilityLine: It absorbs the last restored character and carries that memory inside itself.
+  description: Ang Uhaw ay hungkag na sisidlang hinubog mula sa lupang pinagtuyuan
+    ng sinaunang sulat. Binibigyan ito ng Paglimot ng walang-katapusang uhaw sa mga
+    bagong naibalik na titik, sa pag-asang maglalaho agad ang bawat tagumpay.
+  abilityLine: Nilalamon nito ang huling naibalik na titik at dinadala ang alaala
+    nito sa loob.
   moveSpeed: 1.25
   maxHealth: 1
   walkFrames:
@@ -70,7 +73,7 @@ MonoBehaviour:
   scrambleRadius: 3
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
-  corruptedMeaning: Freshly restored knowledge can be stolen again.
-  trueMeaning: Immediate recall strengthens a newly learned character.
-  restoredLesson: Recover the absorbed mark without losing the completed slot.
+  corruptedMeaning: Maaari pa ring nakawin ang bagong kaalamang naibalik.
+  trueMeaning: Napapatibay ang bagong natutuhang titik kapag agad itong inalala.
+  restoredLesson: Bawiin ang nilamon na marka nang hindi nawawala ang natapos nang puwesto.
   learningAbility: 16

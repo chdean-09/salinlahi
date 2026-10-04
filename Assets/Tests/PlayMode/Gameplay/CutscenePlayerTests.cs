@@ -261,7 +261,7 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             // The reveal completes; only then does the prompt appear.
             yield return WaitUntilRealtime(
                 () => prompt.gameObject.activeSelf, timeoutSeconds: 10f);
-            Assert.AreEqual("Tap anywhere to continue", prompt.text);
+            Assert.AreEqual("I-tap kahit saan para magpatuloy", prompt.text);
             Assert.Greater(promptGroup.alpha, 0.5f);
             Assert.IsFalse(GetPrivateField<bool>(_player, "_isTypewriting"),
                 "The prompt must not appear until the typewriter has finished.");
