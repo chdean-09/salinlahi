@@ -81,20 +81,20 @@ public class MainMenuUI : MonoBehaviour
         string label;
         if (GameManager.Instance != null && GameManager.Instance.TryGetPausedRunLevelId(out _))
         {
-            label = "Continue";
+            label = "Magpatuloy";
         }
         else
         {
             switch (ProgressManager.Instance.GetJourneyEntryPoint(out _))
             {
                 case JourneyEntryKind.NewJourney:
-                    label = "Start Journey";
+                    label = "Simulan ang Paglalakbay";
                     break;
                 case JourneyEntryKind.ContinueLevel:
-                    label = "Continue";
+                    label = "Magpatuloy";
                     break;
                 case JourneyEntryKind.CompletedJourney:
-                    label = "Review Journey";
+                    label = "Balikan ang Paglalakbay";
                     break;
                 default:
                     return;

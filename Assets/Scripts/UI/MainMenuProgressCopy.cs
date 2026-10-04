@@ -15,11 +15,11 @@
 /// </summary>
 public static class MainMenuProgressCopy
 {
-    public const string ExitConfirmTitle = "Exit Salinlahi?";
+    public const string ExitConfirmTitle = "Lumabas sa Salinlahi?";
 
-    public const string ExitConfirmBody = "Are you sure you want to close the game?";
+    public const string ExitConfirmBody = "Sigurado ka bang gusto mong isara ang laro?";
 
-    public const string ExitConfirmButtonLabel = "Exit";
+    public const string ExitConfirmButtonLabel = "Lumabas";
 
-    public const string ExitCancelButtonLabel = "Cancel";
+    public const string ExitCancelButtonLabel = "Kanselahin";
 }

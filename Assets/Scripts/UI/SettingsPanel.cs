@@ -121,9 +121,9 @@ public class SettingsPanel : MonoBehaviour
 
     private void UpdateVolumeLabels()
     {
-        UpdateLabel(_masterLabel, "Master", _masterSlider);
-        UpdateLabel(_bgmLabel, "Music", _bgmSlider);
-        UpdateLabel(_sfxLabel, "Sound effects", _sfxSlider);
+        UpdateLabel(_masterLabel, "Kabuuang Lakas", _masterSlider);
+        UpdateLabel(_bgmLabel, "Musika", _bgmSlider);
+        UpdateLabel(_sfxLabel, "Mga Tunog ng Epekto", _sfxSlider);
     }
 
     private void UpdateLabel(TMP_Text label, string prefix, Slider slider)
@@ -138,7 +138,7 @@ public class SettingsPanel : MonoBehaviour
         TMP_Text valueLabel = _settingsScrollRect != null
             ? _settingsScrollRect.Find(slider.name + "Value")?.GetComponent<TMP_Text>() : null;
         if (valueLabel != null)
-            valueLabel.text = slider.value <= slider.minValue ? "Muted" : $"{percent}%";
+            valueLabel.text = slider.value <= slider.minValue ? "Naka-mute" : $"{percent}%";
     }
 
     private void SetSlidersInteractable(bool isInteractable)
@@ -379,7 +379,7 @@ public class SettingsPanel : MonoBehaviour
         TMP_Text closeLabel = _closeButton.GetComponentInChildren<TMP_Text>(true);
         if (closeLabel != null)
         {
-            closeLabel.text = "Back";
+            closeLabel.text = "Bumalik";
             TutorialFontProvider.ApplyTo(closeLabel);
             closeLabel.enableAutoSizing = true;
             closeLabel.fontSizeMin = UITextScale.Body;
@@ -582,7 +582,7 @@ public class SettingsPanel : MonoBehaviour
         labelRect.offsetMin = Vector2.zero;
         labelRect.offsetMax = Vector2.zero;
         TextMeshProUGUI label = labelObj.GetComponent<TextMeshProUGUI>();
-        label.text = "Back";
+        label.text = "Bumalik";
         label.fontSize = CloseButtonMinFontSize;
         label.alignment = TextAlignmentOptions.Center;
         label.color = Color.white;
@@ -643,17 +643,17 @@ public class SettingsPanel : MonoBehaviour
         TMP_Text title = transform.Find("Title")?.GetComponent<TMP_Text>();
         title ??= _settingsScrollRect.Find("Title")?.GetComponent<TMP_Text>();
         title ??= _settingsCardRect.Find("Title")?.GetComponent<TMP_Text>();
-        title ??= EnsureCardText("Title", "Settings");
+        title ??= EnsureCardText("Title", "Mga Setting");
         title.rectTransform.SetParent(_settingsScrollRect, false);
         StyleCardText(title, Rect.MinMaxRect(0.16f, 0.81f, 0.84f, 0.87f), UITextScale.Display);
         title.alignment = TextAlignmentOptions.Center;
         title.fontStyle = FontStyles.Bold;
 
-        LayoutVolumeRow(_masterLabel, _masterSlider, 0.68f, "All game audio");
-        LayoutVolumeRow(_bgmLabel, _bgmSlider, 0.48f, "Background music");
-        LayoutVolumeRow(_sfxLabel, _sfxSlider, 0.28f, "Effects and syllable pronunciations");
+        LayoutVolumeRow(_masterLabel, _masterSlider, 0.68f, "Lahat ng tunog ng laro");
+        LayoutVolumeRow(_bgmLabel, _bgmSlider, 0.48f, "Musika sa laro");
+        LayoutVolumeRow(_sfxLabel, _sfxSlider, 0.28f, "Mga epekto at pagbigkas ng mga pantig");
         TMP_Text status = EnsureCardText("AudioStatus", !Application.isPlaying || AudioManager.Instance != null
-            ? "Changes save automatically" : "Sound controls unavailable");
+            ? "Awtomatikong nase-save ang mga pagbabago" : "Hindi magagamit ang mga kontrol sa tunog");
         StyleCardText(status, Rect.MinMaxRect(0.16f, 0.12f, 0.84f, 0.16f), UITextScale.Body);
         status.alignment = TextAlignmentOptions.Center;
         DisableNonInteractiveRaycastTargets();

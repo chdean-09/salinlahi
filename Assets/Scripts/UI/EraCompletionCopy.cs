@@ -56,16 +56,16 @@ public static class EraCompletionCopy
     /// authored Filipino; the chrome around them is English, which is the split
     /// CampaignLevelLabel.cs:32-34 already settled.
     /// </summary>
-    public const string EraCompleteHeadingFormat = "{0} Complete";
+    public const string EraCompleteHeadingFormat = "Tapos na ang {0}";
 
     /// <summary>Spec BTN-NEXT-ERA, verbatim (docs/audit/AUDIT.md:155).</summary>
-    public const string EnterNextEraLabel = "Enter Next Era";
+    public const string EnterNextEraLabel = "Pumasok sa Susunod na Panahon";
 
     /// <summary>Shown instead of Enter Next Era on the final era. Matches MemoryCardCopy.</summary>
-    public const string CloseLabel = "Close";
+    public const string CloseLabel = "Isara";
 
     /// <summary>Header above the era's memory tiles. Register follows MemoryCardCopy.WordsHeading.</summary>
-    public const string MemoriesHeading = "Memories Restored";
+    public const string MemoriesHeading = "Mga Naibalik na Alaala";
 
     public static string EraCompleteHeading(string eraName) =>
         string.IsNullOrEmpty(eraName) ? string.Empty : string.Format(EraCompleteHeadingFormat, eraName);

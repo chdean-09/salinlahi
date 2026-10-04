@@ -133,7 +133,7 @@ public static class SentenceHintContent
         bool wordMode = objective.displayMode == RestorationDisplayMode.GuidedWords
             || objective.displayMode == RestorationDisplayMode.ClueOnlyWords;
 
-        var context = new Entry { Label = "Sentence context" };
+        var context = new Entry { Label = "Konteksto ng pangungusap" };
         var continuous = new StringBuilder();
         for (int i = 0; i < objective.units.Count; i++)
         {

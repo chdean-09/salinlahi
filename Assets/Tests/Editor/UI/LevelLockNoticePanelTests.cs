@@ -73,14 +73,14 @@ namespace Salinlahi.Tests.Editor.UI
         [Test]
         public void PresentPrerequisite_SameEra_ShowsTheEraLocalNumberNotTheGlobalOne_SALIN258()
         {
-            _panel.PresentPrerequisite("Ugnayan Level 2", crossesEra: false, requiredEraName: "Ugnayan");
+            _panel.PresentPrerequisite("Ugnayan Antas 2", crossesEra: false, requiredEraName: "Ugnayan");
 
             Assert.IsTrue(_panel.IsShowing, "AC2: the explanation is visible on Level Select.");
-            StringAssert.Contains("Ugnayan Level 2", _panel.VisibleMessage);
+            StringAssert.Contains("Ugnayan Antas 2", _panel.VisibleMessage);
             StringAssert.DoesNotContain("7", _panel.VisibleMessage,
                 "Global level 7 is Ugnayan Level 2; the global id must never be shown.");
             Assert.AreEqual(
-                LevelLockNoticeCopy.Prerequisite("Ugnayan Level 2", false, "Ugnayan"),
+                LevelLockNoticeCopy.Prerequisite("Ugnayan Antas 2", false, "Ugnayan"),
                 _panel.VisibleMessage,
                 "All copy must come from the single LevelLockNoticeCopy source.");
         }
@@ -97,7 +97,7 @@ namespace Salinlahi.Tests.Editor.UI
 
             Assert.IsTrue(_panel.IsShowing);
             Assert.AreEqual(
-                "Locked. Finish Ugat Level 5 to open this era.",
+                "Naka-lock. Tapusin ang Ugat Level 5 para mabuksan ang panahong ito.",
                 _panel.VisibleMessage,
                 "AC-2, frozen I56 verbatim: the lock notice for Era 2 Level 1 says "
                 + "'Finish Ugat Level 5'.");
@@ -113,7 +113,7 @@ namespace Salinlahi.Tests.Editor.UI
         {
             _panel.PresentPrerequisite("Ugnayan Level 5", crossesEra: true, requiredEraName: "Ugnayan");
 
-            Assert.AreEqual("Locked. Finish Ugnayan Level 5 to open this era.", _panel.VisibleMessage);
+            Assert.AreEqual("Naka-lock. Tapusin ang Ugnayan Level 5 para mabuksan ang panahong ito.", _panel.VisibleMessage);
             StringAssert.DoesNotContain("10", _panel.VisibleMessage);
             StringAssert.DoesNotContain("11", _panel.VisibleMessage);
         }
@@ -190,12 +190,12 @@ namespace Salinlahi.Tests.Editor.UI
             // SALIN-258: run on Ugnayan Level 2 (= global 7) rather than Ugat Level 4, so the
             // assertion distinguishes era-local from global instead of passing on a digit that
             // happens to be both.
-            string message = LevelLockNoticeCopy.MissingObjective(objectiveId, "Ugnayan Level 2");
+            string message = LevelLockNoticeCopy.MissingObjective(objectiveId, "Ugnayan Antas 2");
 
             Assert.IsNotEmpty(message, objectiveId);
-            StringAssert.Contains("Ugnayan Level 2", message);
+            StringAssert.Contains("Ugnayan Antas 2", message);
             StringAssert.DoesNotContain("7", message);
-            StringAssert.StartsWith("Locked.", message);
+            StringAssert.StartsWith("Naka-lock.", message);
         }
 
         /// <summary>
@@ -217,7 +217,7 @@ namespace Salinlahi.Tests.Editor.UI
 
             var seen = new System.Collections.Generic.HashSet<string>();
             foreach (string id in ids)
-                Assert.IsTrue(seen.Add(LevelLockNoticeCopy.MissingObjective(id, "Ugnayan Level 2")),
+                Assert.IsTrue(seen.Add(LevelLockNoticeCopy.MissingObjective(id, "Ugnayan Antas 2")),
                     $"{id} repeats another objective's sentence.");
 
             Assert.AreEqual(ids.Length, seen.Count);
@@ -253,7 +253,7 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.AreEqual(
                 LevelLockNoticeCopy.MissingObjective(LevelObjectives.ContextPassed, "Ugat Level 5"),
                 _panel.VisibleMessage);
-            StringAssert.Contains("challenge", _panel.VisibleMessage);
+            StringAssert.Contains("hamon", _panel.VisibleMessage);
         }
 
         private void SetPrivateField(string fieldName, object value) =>

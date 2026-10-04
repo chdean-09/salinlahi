@@ -31,5 +31,5 @@ public static class InstantWinCopy
     /// player's tap. Verbatim CutscenePlayer's _continuePromptMessage — every
     /// text surface in the game shares this affordance, so the wording stays identical.
     /// </summary>
-    public const string ContinuePromptLabel = "Tap anywhere to continue";
+    public const string ContinuePromptLabel = "I-tap kahit saan para magpatuloy";
 }

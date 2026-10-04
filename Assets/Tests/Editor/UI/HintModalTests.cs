@@ -138,7 +138,7 @@ public class HintModalTests
             "The exhausted card must not allow another purchase.");
         Assert.AreEqual(1, session.EmergencyHintsUsed);
 
-        Button close = modal.transform.Find("Card/Actions/Cancel").GetComponent<Button>();
+        Button close = modal.transform.Find("Card/Actions/" + HintModalCopy.CancelLabel).GetComponent<Button>();
         close.onClick.Invoke();
 
         Assert.IsFalse(modal.IsOpen);
@@ -190,7 +190,7 @@ public class HintModalTests
 
         modal.Open(session, "IBA", "different", () => session.RequestHint());
 
-        Assert.AreEqual("Hints left: 1", modal.CostText);
+        Assert.AreEqual("Natitirang pahiwatig: 1", modal.CostText);
         var remaining = modal.transform.Find("Card/Cost").GetComponent<TMPro.TextMeshProUGUI>();
         Assert.AreEqual(TMPro.TextAlignmentOptions.Center, remaining.alignment);
         AssertNothingSpent(session);
@@ -202,7 +202,7 @@ public class HintModalTests
     [Test]
     public void ResultsPenaltyReadout_KeepsTheExistingScoreCost()
     {
-        Assert.AreEqual("Hint cost -10", LevelResultsCopy.HintPenalty(10));
+        Assert.AreEqual("Gastos sa Pahiwatig -10", LevelResultsCopy.HintPenalty(10));
         StringAssert.DoesNotContain("star", LevelResultsCopy.HintPenaltyLabel.ToLowerInvariant());
         StringAssert.Contains(
             "10", HintModalCopy.CostLine(HintModalCopy.ScorePointsFromFraction(0.10f)),

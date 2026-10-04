@@ -162,9 +162,9 @@ namespace Salinlahi.Tests.Editor.UI
             _sfxSlider.value = 0f;
             InvokePrivateMethod(_panel, "OnEnable");
             Transform card = _root.transform.Find("SettingsCard/SettingsScroll");
-            Assert.That(card.Find("SFXSliderValue").GetComponent<TMP_Text>().text, Is.EqualTo("Muted"));
+            Assert.That(card.Find("SFXSliderValue").GetComponent<TMP_Text>().text, Is.EqualTo("Naka-mute"));
             Assert.That(card.Find("SFXSliderHint").GetComponent<TMP_Text>().text,
-                Does.Contain("syllable pronunciations"));
+                Does.Contain("pagbigkas ng mga pantig"));
             foreach (Slider slider in new[] { _masterSlider, _bgmSlider, _sfxSlider })
             {
                 RectTransform rect = slider.GetComponent<RectTransform>();
@@ -251,7 +251,7 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.That(content.Find("SFXSliderHint").GetComponent<TMP_Text>().fontSizeMin,
                 Is.GreaterThanOrEqualTo(UITextScale.Body));
             Assert.That(content.Find("AudioStatus").GetComponent<TMP_Text>().text,
-                Is.EqualTo("Changes save automatically"), "Edit-mode preview has no audio manager.");
+                Is.EqualTo("Awtomatikong nase-save ang mga pagbabago"), "Edit-mode preview has no audio manager.");
         }
 
         [TestCase(360f, 640f)]

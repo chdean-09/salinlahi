@@ -38,8 +38,8 @@ public sealed class SentenceHintController : MonoBehaviour
     [Tooltip("Fallback chip glyph, used only when the hint icon art fails to "
              + "load — the same single-mark convention the pause button's \"||\" label uses.")]
     [SerializeField] private string _chipLabel = "?";
-    [SerializeField] private string _panelTitle = "Sentence Hints";
-    [SerializeField] private string _closeLabel = "Close";
+    [SerializeField] private string _panelTitle = "Mga Pahiwatig sa Pangungusap";
+    [SerializeField] private string _closeLabel = "Isara";
 
     // The almanac's "?" glyph — a Resources copy of Assets/Art/UI/Almanac/
     // Questionmark.png so the runtime-built chip can resolve it. The glyph is

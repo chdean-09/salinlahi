@@ -95,12 +95,12 @@ public sealed class LevelReadyScreenController : MonoBehaviour
             ? string.Empty
             : config.chapterName.Trim();
         string levelName = string.IsNullOrWhiteSpace(config.levelName)
-            ? $"Level {config.levelNumber}"
+            ? $"Antas {config.levelNumber}"
             : config.levelName.Trim();
 
         return string.IsNullOrEmpty(chapter)
-            ? $"Level {config.levelNumber}: {levelName}"
-            : $"{chapter} · Level {config.levelNumber}: {levelName}";
+            ? $"Antas {config.levelNumber}: {levelName}"
+            : $"{chapter} · Antas {config.levelNumber}: {levelName}";
     }
 
     /// <summary>
@@ -119,13 +119,13 @@ public sealed class LevelReadyScreenController : MonoBehaviour
             switch (objective.displayMode)
             {
                 case RestorationDisplayMode.GuidedWords:
-                    return "Restore the guided words, then defend the shrine.";
+                    return "Ibalik ang mga salitang may gabay, saka ipagtanggol ang dambana.";
                 case RestorationDisplayMode.ClueOnlyWords:
-                    return "Use each clue to restore the hidden words.";
+                    return "Gamitin ang bawat pahiwatig para ibalik ang mga nakatagong salita.";
                 case RestorationDisplayMode.MarkedContext:
-                    return "Restore the marked syllables in the sentence.";
+                    return "Ibalik ang mga minarkahang pantig sa pangungusap.";
                 case RestorationDisplayMode.HiddenContext:
-                    return "Find and restore the missing syllables.";
+                    return "Hanapin at ibalik ang mga nawawalang pantig.";
             }
         }
 
@@ -133,10 +133,10 @@ public sealed class LevelReadyScreenController : MonoBehaviour
             && config.focusWords != null
             && config.focusWords.Count > 0)
         {
-            return "Restore the focus words, then defend the shrine.";
+            return "Ibalik ang mahahalagang salita, saka ipagtanggol ang dambana.";
         }
 
-        return "Learn the symbols, then defend the shrine.";
+        return "Pag-aralan ang mga simbolo, saka ipagtanggol ang dambana.";
     }
 
     private void EnsurePanel()
@@ -218,7 +218,7 @@ public sealed class LevelReadyScreenController : MonoBehaviour
         labelRect.anchorMax = Vector2.one;
         labelRect.offsetMin = labelRect.offsetMax = Vector2.zero;
         TextMeshProUGUI label = labelObject.AddComponent<TextMeshProUGUI>();
-        label.text = "Start";
+        label.text = "Simulan";
         label.fontSize = UITextScale.Body;
         label.alignment = TextAlignmentOptions.Center;
         label.raycastTarget = false;
@@ -244,7 +244,7 @@ public sealed class LevelReadyScreenController : MonoBehaviour
         backLabelRect.anchorMax = Vector2.one;
         backLabelRect.offsetMin = backLabelRect.offsetMax = Vector2.zero;
         TextMeshProUGUI backLabel = backLabelObject.AddComponent<TextMeshProUGUI>();
-        backLabel.text = "Back";
+        backLabel.text = "Bumalik";
         backLabel.fontSize = UITextScale.Body;
         backLabel.alignment = TextAlignmentOptions.Center;
         backLabel.raycastTarget = false;

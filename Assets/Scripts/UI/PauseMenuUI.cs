@@ -28,9 +28,9 @@ public class PauseMenuUI : MonoBehaviour
     private enum PendingAction { None, Restart, Leave }
 
     private const string RestartPrompt =
-        "Restart this level?\nYour progress in this attempt will be lost.";
+        "Ulitin ang antas na ito?\nMawawala ang progreso mo sa pagtatangkang ito.";
     private const string LeavePrompt =
-        "Leave this level?\nYour progress in this attempt will not be saved.";
+        "Umalis sa antas na ito?\nHindi mase-save ang progreso mo sa pagtatangkang ito.";
 
     private PendingAction _pendingAction = PendingAction.None;
 
@@ -410,8 +410,8 @@ public class PauseMenuUI : MonoBehaviour
         bool onParchment = ScrollPanelArt.ApplyFull(cardImage);
 
         _confirmationPromptLabel = CreateOverlayText(card.transform, "PromptLabel", string.Empty);
-        _confirmationConfirmButton = CreateOverlayButton(card.transform, "ConfirmButton", "Confirm");
-        _confirmationCancelButton = CreateOverlayButton(card.transform, "CancelButton", "Cancel");
+        _confirmationConfirmButton = CreateOverlayButton(card.transform, "ConfirmButton", "Kumpirmahin");
+        _confirmationCancelButton = CreateOverlayButton(card.transform, "CancelButton", "Kanselahin");
         ApplyParchmentConfirmationLayout(
             cardRect,
             _confirmationPromptLabel,

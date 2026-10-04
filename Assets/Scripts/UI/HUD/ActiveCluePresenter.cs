@@ -208,7 +208,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     [SerializeField, Min(1f)] private float _railProgressFontSize = 46f;
 
     [Tooltip("Words-completed count. {0} is the words finished, {1} the words in the passage.")]
-    [SerializeField] private string _railProgressFormat = "{0}/{1} words completed";
+    [SerializeField] private string _railProgressFormat = "{0}/{1} salitang nakumpleto";
 
     [SerializeField] private Color _railProgressTrackColor = new Color(0f, 0f, 0f, 0.45f);
     [SerializeField] private Color _railProgressFillColor = new Color(1f, 0.84f, 0.29f, 1f);
@@ -323,7 +323,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private const float PronunciationDebounceSeconds = 0.5f;
 
     /// <summary>Prefix on the at-accept cue, matching the victory summary's "Restored:" surface.</summary>
-    private const string WordRestoredPrefix = "Restored: ";
+    private const string WordRestoredPrefix = "Naibalik: ";
 
     private ClueChannels _resolvedChannels = ClueChannels.Glyph;
     private Enemy _currentClue;

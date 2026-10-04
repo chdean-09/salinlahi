@@ -99,11 +99,11 @@ public sealed class LevelContentMissingPanel : MonoBehaviour
     // reassurance reads as data loss.
     private void Render(LevelPhase phase)
     {
-        _titleText.text = "This level is not ready yet";
+        _titleText.text = "Hindi pa handa ang antas na ito";
         _bodyText.text =
-            "Salinlahi is still missing some of the content this level needs, so it cannot be "
-            + "finished yet. Nothing you have already unlocked has been affected. Return to the "
-            + "Main Menu and try another level.";
+            "May kulang pa sa nilalamang kailangan ng Salinlahi para sa antas na ito, kaya hindi pa "
+            + "ito matatapos. Walang nabago sa mga na-unlock mo na. Bumalik sa Pangunahing Menu at "
+            + "subukan ang ibang antas.";
         DebugLogger.Log($"LevelContentMissingPanel: presented for {phase}.");
     }
 
@@ -165,7 +165,7 @@ public sealed class LevelContentMissingPanel : MonoBehaviour
 
         _titleText = CreateText(card.transform, "TitleText", string.Empty, 45f, 120f, UITextScale.Title);
         _bodyText = CreateText(card.transform, "BodyText", string.Empty, 185f, 260f, UITextScale.Body);
-        _mainMenuButton = CreateButton(card.transform, "MainMenuButton", "Main Menu", 25f);
+        _mainMenuButton = CreateButton(card.transform, "MainMenuButton", "Pangunahing Menu", 25f);
 
         if (onParchment)
             ScrollPanelArt.InkifyRecursive(card.transform);

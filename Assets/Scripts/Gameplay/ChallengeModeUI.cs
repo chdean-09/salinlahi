@@ -49,7 +49,7 @@ public class ChallengeModeUI : MonoBehaviour
             _hintModal.Cancel();
         if (unit != null)
         {
-            _progressText.text = $"Challenge {session.CurrentUnitIndex + 1}  |  Errors {session.Errors}  |  Hearts {session.HeartsRemaining}";
+            _progressText.text = $"Hamon {session.CurrentUnitIndex + 1}  |  Mga Mali {session.Errors}  |  Puso {session.HeartsRemaining}";
             _promptText.text = BuildPrompt(unit, session);
             if (_renderedUnitId != unit.unitId || session.LastEvent == ChallengeSessionEvent.Entered)
             {
@@ -275,7 +275,7 @@ public class ChallengeModeUI : MonoBehaviour
                 if (token != null)
                     memoryTokens.Add(token.displayText);
             }
-            return $"{unit.prompt}\nRemember: {string.Join("  ", memoryTokens)}";
+            return $"{unit.prompt}\nTandaan: {string.Join("  ", memoryTokens)}";
         }
         int slotIndex = 0;
         return System.Text.RegularExpressions.Regex.Replace(unit.prompt ?? string.Empty, @"_{2,}", match =>
@@ -313,8 +313,8 @@ public class ChallengeModeUI : MonoBehaviour
         if (unit == null)
             return string.Empty;
         if (session.IsMemoryRevealActive)
-            return $"Remember {session.MemoryRevealRemaining:0.0}";
-        return unit.timerSeconds > 0f ? $"Time {session.RemainingTime:0.0}" : string.Empty;
+            return $"Tandaan {session.MemoryRevealRemaining:0.0}";
+        return unit.timerSeconds > 0f ? $"Oras {session.RemainingTime:0.0}" : string.Empty;
     }
 
     private string BuildStatusText(ChallengeSession session)
@@ -323,22 +323,22 @@ public class ChallengeModeUI : MonoBehaviour
         string feedback = session.LastEvent switch
         {
             ChallengeSessionEvent.Entered => string.Empty,
-            ChallengeSessionEvent.PlacementAccepted => "Correct! Next word.",
-            ChallengeSessionEvent.TraceAccepted => "Correct! Continue tracing.",
-            ChallengeSessionEvent.SupportiveRetry => "Try again. Correct progress is safe.",
-            ChallengeSessionEvent.RetryOpened => "Try again with the current clues.",
-            ChallengeSessionEvent.HintShown => "Hint shown.",
-            ChallengeSessionEvent.HintApplied => "Hint shown. The next clue is available.",
-            ChallengeSessionEvent.TimedOut => "Time expired.",
-            ChallengeSessionEvent.PenaltyApplied => "Heart spent. Returning to checkpoint.",
-            ChallengeSessionEvent.CheckpointReset => "Checkpoint restored with full clues.",
-            ChallengeSessionEvent.CheckpointReopened => "Checkpoint restored. Try again.",
-            ChallengeSessionEvent.MemoryRevealStarted => "Remember the sequence.",
-            ChallengeSessionEvent.MemoryRecallStarted => "Recall phase started.",
-            ChallengeSessionEvent.UnitSucceeded => "Correct! Restored.",
-            ChallengeSessionEvent.Completed => "Correct! Challenge complete.",
-            ChallengeSessionEvent.Exited => "Challenge exited.",
-            ChallengeSessionEvent.Failed => "Challenge failed.",
+            ChallengeSessionEvent.PlacementAccepted => "Tama! Susunod na salita.",
+            ChallengeSessionEvent.TraceAccepted => "Tama! Ipagpatuloy ang pagguhit.",
+            ChallengeSessionEvent.SupportiveRetry => "Subukan muli. Ligtas ang tamang progreso mo.",
+            ChallengeSessionEvent.RetryOpened => "Subukan muli gamit ang mga kasalukuyang pahiwatig.",
+            ChallengeSessionEvent.HintShown => "Ipinakita ang pahiwatig.",
+            ChallengeSessionEvent.HintApplied => "Ipinakita ang pahiwatig. Makikita na ang susunod na pahiwatig.",
+            ChallengeSessionEvent.TimedOut => "Naubos na ang oras.",
+            ChallengeSessionEvent.PenaltyApplied => "Nabawasan ka ng isang puso. Babalik sa checkpoint.",
+            ChallengeSessionEvent.CheckpointReset => "Naibalik ang checkpoint at kumpleto ang mga pahiwatig.",
+            ChallengeSessionEvent.CheckpointReopened => "Naibalik ang checkpoint. Subukan muli.",
+            ChallengeSessionEvent.MemoryRevealStarted => "Tandaan ang pagkakasunod-sunod.",
+            ChallengeSessionEvent.MemoryRecallStarted => "Nagsimula na ang yugto ng pag-alala.",
+            ChallengeSessionEvent.UnitSucceeded => "Tama! Naibalik na.",
+            ChallengeSessionEvent.Completed => "Tama! Tapos na ang hamon.",
+            ChallengeSessionEvent.Exited => "Lumabas na sa hamon.",
+            ChallengeSessionEvent.Failed => "Nabigo sa hamon.",
             _ => _feedbackText
         };
         _feedbackText = feedback;

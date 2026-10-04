@@ -40,7 +40,7 @@
 public static class CampaignLevelLabel
 {
     /// <summary>{0} = era display name, {1} = 1-based order within that era.</summary>
-    public const string EraLevelFormat = "{0} Level {1}";
+    public const string EraLevelFormat = "{0} Antas {1}";
 
     /// <summary>
     /// Legacy/degraded form, used only when the era is unknown. The legacy progress path
@@ -49,7 +49,7 @@ public static class CampaignLevelLabel
     /// notice off screen. A plain number is worse copy than an era-relative one but it is
     /// still true, so the copy degrades rather than disappearing.
     /// </summary>
-    public const string FallbackLevelFormat = "Level {0}";
+    public const string FallbackLevelFormat = "Antas {0}";
 
     /// <summary>
     /// The player-facing label for a level, or <see cref="string.Empty"/> when there is

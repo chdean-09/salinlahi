@@ -33,7 +33,7 @@ namespace Salinlahi.Tests.Editor
                 Assert.AreEqual(1, credits.Split(new[] { name }, System.StringSplitOptions.None).Length - 1);
             Assert.AreEqual(1, _screen.GetComponentsInChildren<Button>().Length);
             Assert.AreEqual(Navigation.Mode.None, _screen.GetComponentInChildren<Button>().navigation.mode);
-            Assert.AreEqual("Main Menu", _screen.GetComponentInChildren<Button>().GetComponentInChildren<TMP_Text>().text);
+            Assert.AreEqual("Pangunahing Menu", _screen.GetComponentInChildren<Button>().GetComponentInChildren<TMP_Text>().text);
             RectTransform paper = _screen.transform.Find("EndingBackdrop/SafeArea/EndingScroll").GetComponent<RectTransform>();
             Assert.AreEqual(new Vector2(0.04f, 0.17f), paper.anchorMin);
             Assert.AreEqual(new Vector2(0.96f, 0.83f), paper.anchorMax);
@@ -81,7 +81,7 @@ namespace Salinlahi.Tests.Editor
             LogAssert.Expect(LogType.Error, "[Salinlahi] CampaignEndingScreenUI: SceneLoader not available.");
             _screen.ReturnToMainMenu();
             Assert.IsTrue(_screen.GetComponentInChildren<Button>().interactable);
-            StringAssert.Contains("Please try again", _screen.transform.Find("EndingBackdrop/SafeArea/EndingScroll/Status").GetComponent<TMP_Text>().text);
+            StringAssert.Contains("Pakisubukan muli", _screen.transform.Find("EndingBackdrop/SafeArea/EndingScroll/Status").GetComponent<TMP_Text>().text);
             _screen.AdvanceCredits(0.1f);
             Assert.Greater(Credits.anchoredPosition.y, 0f);
         }
@@ -118,7 +118,7 @@ namespace Salinlahi.Tests.Editor
 
                 Assert.IsNull(GetField(flow, "_campaignEndingScreen"), "Credits must wait for the player's action.");
                 Assert.AreEqual(levelNumber == 15, GetField(flow, "_eraCompletionScreen") == null);
-                Assert.AreEqual(levelNumber == 15 ? "Era Complete" : "Enter Next Era",
+                Assert.AreEqual(levelNumber == 15 ? "Era Complete" : "Pumasok sa Susunod na Panahon",
                     labelHost.GetComponent<TMP_Text>().text);
                 if (levelNumber == 15)
                 {

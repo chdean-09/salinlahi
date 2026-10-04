@@ -59,37 +59,37 @@
 public static class MemoryCardCopy
 {
     /// <summary>Spec BTN-ARCHIVE, verbatim. Also the main-menu button label.</summary>
-    public const string ArchiveTitle = "Memory Archive";
+    public const string ArchiveTitle = "Talaan ng mga Alaala";
 
     /// <summary>Spec BTN-CLAIM, verbatim.</summary>
-    public const string ClaimLabel = "Claim Memory";
+    public const string ClaimLabel = "Kunin ang Alaala";
 
     /// <summary>Spec UF-29, verbatim.</summary>
-    public const string FlipLabel = "Flip Card";
+    public const string FlipLabel = "Baligtarin ang Kard";
 
     /// <summary>Returns the card to its front face. Title Case matches the shipped register.</summary>
-    public const string BackLabel = "Back";
+    public const string BackLabel = "Bumalik";
 
-    public const string CloseLabel = "Close";
+    public const string CloseLabel = "Isara";
 
     /// <summary>Shown under a silhouette slot instead of the level title.</summary>
-    public const string LockedLabel = "Locked";
+    public const string LockedLabel = "Naka-lock";
 
     /// <summary>
     /// SALIN-258. {0} is the ERA-RELATIVE LABEL ("Ugnayan Level 2"), not a number — the word
     /// "Level" moved into the label, which is why it is no longer in this format string.
     /// See the boundary note on this class.
     /// </summary>
-    public const string EarnInLevelFormat = "Earn in {0}";
+    public const string EarnInLevelFormat = "Makukuha sa {0}";
 
     /// <summary>{0} = this memory's position in its era, {1} = memories in the era.</summary>
     public const string CollectibleNumberFormat = "{0}/{1}";
 
     /// <summary>Header above the words on the card front.</summary>
-    public const string WordsHeading = "Words Restored";
+    public const string WordsHeading = "Mga Salitang Naibalik";
 
     /// <summary>Header above the lore on the card back.</summary>
-    public const string LoreHeading = "The Memory";
+    public const string LoreHeading = "Ang Alaala";
 
     /// <summary>
     /// Shown when the archive has nothing unlocked yet. Register follows
@@ -97,11 +97,11 @@ public static class MemoryCardCopy
     /// anything was lost, because nothing was -- no level has granted a memory yet.
     /// </summary>
     public const string EmptyArchiveBody =
-        "No memories have been restored yet. Finish a level to earn its memory, and it will "
-        + "appear here.";
+        "Wala ka pang naibabalik na alaala. Tapusin ang isang antas para makuha ang alaala nito "
+        + "at makita ito rito.";
 
     /// <summary>Shown on the claim overlay above the Claim Memory control.</summary>
-    public const string ClaimPromptBody = "You restored a memory.";
+    public const string ClaimPromptBody = "Naibalik mo ang isang alaala.";
 
     /// <param name="levelLabel">
     /// SALIN-258: an era-relative label from <see cref="CampaignLevelLabel"/>, never a global

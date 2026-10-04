@@ -9,16 +9,16 @@ namespace Salinlahi.Tests.Editor.UI
     /// EVERY MEANINGFUL CASE HERE USES LEVELS 6-15. In Ugat — the only era a demo player ever
     /// reaches under D-015 — the era-local number EQUALS the global number for all five levels,
     /// so an Ugat-only fixture passes identically against the old global-numbering code and the
-    /// new era-relative code. It would prove nothing. Global 7 = "Ugnayan Level 2" is the
+    /// new era-relative code. It would prove nothing. Global 7 = "Ugnayan Antas 2" is the
     /// smallest case where the two numbers actually diverge, and it is used deliberately
     /// throughout.
     /// </summary>
     [TestFixture]
     public sealed class CampaignLevelLabelTests
     {
-        [TestCase("Ugat", 1, "Ugat Level 1")]
-        [TestCase("Ugnayan", 2, "Ugnayan Level 2")]
-        [TestCase("Pamana", 5, "Pamana Level 5")]
+        [TestCase("Ugat", 1, "Ugat Antas 1")]
+        [TestCase("Ugnayan", 2, "Ugnayan Antas 2")]
+        [TestCase("Pamana", 5, "Pamana Antas 5")]
         public void Format_WithAKnownEra_RendersTheEraRelativeLabel(
             string eraName, int eraLocalOrder, string expected)
         {
@@ -32,7 +32,7 @@ namespace Salinlahi.Tests.Editor.UI
             // The legacy progress path genuinely cannot name an era. Degrading is the
             // documented contract (LevelLockNoticePanel's Prerequisite remarks); a blank
             // label there would take the whole notice off screen.
-            Assert.AreEqual("Level 3", CampaignLevelLabel.Format(eraName, 3));
+            Assert.AreEqual("Antas 3", CampaignLevelLabel.Format(eraName, 3));
         }
 
         [TestCase(0)]
@@ -53,7 +53,7 @@ namespace Salinlahi.Tests.Editor.UI
             // Global level 7 is Ugnayan's second level.
             string label = CampaignLevelLabel.Format("Ugnayan", 2, globalLevelNumber: 7);
 
-            Assert.AreEqual("Ugnayan Level 2", label);
+            Assert.AreEqual("Ugnayan Antas 2", label);
             StringAssert.DoesNotContain("7", label,
                 "A global 1-15 id must never reach a player-facing label.");
         }
@@ -61,7 +61,7 @@ namespace Salinlahi.Tests.Editor.UI
         [Test]
         public void Format_Resilient_PrefersTheEraRelativeFormWheneverTheEraIsKnown()
         {
-            Assert.AreEqual("Pamana Level 3", CampaignLevelLabel.Format("Pamana", 3, 13));
+            Assert.AreEqual("Pamana Antas 3", CampaignLevelLabel.Format("Pamana", 3, 13));
         }
 
         [TestCase(null, 2)]
@@ -71,7 +71,7 @@ namespace Salinlahi.Tests.Editor.UI
         {
             // Both halves must be present to use the era form: an era name with no order, or
             // an order with no era name, is an incomplete lookup and must not be half-rendered.
-            Assert.AreEqual("Level 7", CampaignLevelLabel.Format(eraName, eraLocalOrder, 7));
+            Assert.AreEqual("Antas 7", CampaignLevelLabel.Format(eraName, eraLocalOrder, 7));
         }
 
         [Test]
@@ -92,7 +92,7 @@ namespace Salinlahi.Tests.Editor.UI
         [Test]
         public void LeakGuard_NoPlayerFacingLevelCopyRendersTheGlobalNumber_SALIN258()
         {
-            // Ugnayan Level 2 == global Level 7. "7" appearing anywhere below is the defect.
+            // Ugnayan Antas 2 == global Level 7. "7" appearing anywhere below is the defect.
             const string eraName = "Ugnayan";
             const int eraLocalOrder = 2;
             const int globalLevelNumber = 7;
@@ -113,7 +113,7 @@ namespace Salinlahi.Tests.Editor.UI
             foreach (string copy in playerFacingCopy)
             {
                 Assert.IsNotEmpty(copy);
-                StringAssert.Contains("Ugnayan Level 2", copy,
+                StringAssert.Contains("Ugnayan Antas 2", copy,
                     "Every level-naming surface must use the era-relative label: " + copy);
                 StringAssert.DoesNotContain(
                     globalLevelNumber.ToString(), copy,

@@ -39,13 +39,13 @@ using System.Collections.Generic;
 public static class LevelResultsCopy
 {
     /// <summary>Label before the earned star count. Unchanged from LevelFlowController.cs:734.</summary>
-    public const string StarsLabel = "Stars ";
+    public const string StarsLabel = "Mga Bituin ";
 
     /// <summary>Denominator shared by the summary line and the star-count readout. Unchanged.</summary>
     public const string StarsTotalSuffix = "/3";
 
     /// <summary>Label before the 0-100 score. Unchanged from LevelFlowController.cs:736.</summary>
-    public const string ScoreLabel = "Score ";
+    public const string ScoreLabel = "Puntos ";
 
     /// <summary>
     /// Label before the remaining-hearts count. NEW in SALIN-234 (AC-4).
@@ -53,8 +53,8 @@ public static class LevelResultsCopy
     /// "Hearts remaining: {n}/{max}" — and the {n}/{max} shape mirrors "Stars n/3" on the
     /// same screen.
     /// </summary>
-    public const string HeartsLabel = "Hearts ";
-    public const string HeartsLeftLabel = "Hearts left";
+    public const string HeartsLabel = "Puso ";
+    public const string HeartsLeftLabel = "Natitirang Puso";
 
     /// <summary>Separator between a count and its maximum, as in "2/3".</summary>
     public const string OutOfSeparator = "/";
@@ -63,7 +63,7 @@ public static class LevelResultsCopy
     /// Label before the hint count. NEW in SALIN-234 (AC-5). The wording is taken verbatim
     /// from the acceptance criterion's worked example ("Hints 1"), not invented.
     /// </summary>
-    public const string HintsLabel = "Hints ";
+    public const string HintsLabel = "Mga Pahiwatig ";
 
     /// <summary>
     /// Label before the hint score penalty. NEW in SALIN-231 (AC-3).
@@ -79,23 +79,23 @@ public static class LevelResultsCopy
     /// "cost" rather than "penalty" matches the modal's pre-use disclosure
     /// (HintModalCopy.CostLine), so the player sees one noun on both screens.
     /// </summary>
-    public const string HintPenaltyLabel = "Hint cost ";
+    public const string HintPenaltyLabel = "Gastos sa Pahiwatig ";
 
     /// <summary>Label before the restored focus words. Unchanged from LevelFlowController.cs:747.</summary>
-    public const string RestoredLabel = "Restored: ";
+    public const string RestoredLabel = "Naibalik: ";
 
     /// <summary>Separator between restored focus words. Unchanged from LevelFlowController.cs:750.</summary>
     public const string RestoredSeparator = ", ";
 
     /// <summary>Label before the newly unlocked symbol count. Unchanged from LevelFlowController.cs:756.</summary>
-    public const string NewSymbolsLabel = "New symbols: ";
+    public const string NewSymbolsLabel = "Mga Bagong Simbolo: ";
 
     /// <summary>
     /// Replay-Level button label (AC-8, BTN-REPLAY). NEW in SALIN-234, taken verbatim from
     /// the ticket summary. Title Case matches the shipped button register
     /// ("Start Journey", MainMenuUI.cs:67).
     /// </summary>
-    public const string ReplayLevelLabel = "Replay Level";
+    public const string ReplayLevelLabel = "Ulitin ang Antas";
 
     /// <summary>Gap between two readouts on the same line. Unchanged from LevelFlowController.cs:736.</summary>
     public const string InlineSeparator = "   ";
