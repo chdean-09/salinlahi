@@ -570,7 +570,7 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
             return;
 
         TutorialFontProvider.ApplyTo(label);
-        label.text = "Naiintindihan ko";
+        label.text = "Sige";
         label.fontSize = DismissButtonFontSize;
         label.enableAutoSizing = false;
         label.alignment = TextAlignmentOptions.Center;

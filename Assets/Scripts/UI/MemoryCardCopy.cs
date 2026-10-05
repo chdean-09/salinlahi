@@ -64,11 +64,11 @@ public static class MemoryCardCopy
     /// <summary>Spec BTN-CLAIM, verbatim.</summary>
     public const string ClaimLabel = "Kunin ang Alaala";
 
-    /// <summary>Spec UF-29, verbatim.</summary>
-    public const string FlipLabel = "Baligtarin ang Kard";
+    /// <summary>Compact flip-card action label.</summary>
+    public const string FlipLabel = "Ibaliktad";
 
     /// <summary>Returns the card to its front face. Title Case matches the shipped register.</summary>
-    public const string BackLabel = "Bumalik";
+    public const string BackLabel = "Balik";
 
     public const string CloseLabel = "Isara";
 

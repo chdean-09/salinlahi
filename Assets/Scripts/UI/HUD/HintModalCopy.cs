@@ -28,14 +28,14 @@ using UnityEngine;
 /// </summary>
 public static class HintModalCopy
 {
-    /// <summary>Modal title. Grounded in UF-25's own "Use This Hint" phrasing.</summary>
-    public const string Title = "Gumamit ng pahiwatig?";
+    /// <summary>Short modal title, retaining the question form.</summary>
+    public const string Title = "Gumamit ng hint?";
 
-    /// <summary>Confirm control. Verbatim from UF-25 (docs/audit/AUDIT.md:106).</summary>
-    public const string ConfirmLabel = "Gamitin ang pahiwatig na ito";
+    /// <summary>Compact confirmation control label.</summary>
+    public const string ConfirmLabel = "Ipakita";
 
-    /// <summary>Cancel control. Verbatim from UF-25. Cancel is a no-op by AC-2.</summary>
-    public const string CancelLabel = "Kanselahin";
+    /// <summary>Cancel control. Cancel is a no-op by AC-2.</summary>
+    public const string CancelLabel = "Kansela";
 
     /// <summary>
     /// The one hint type the authored data can actually serve: the focus word's approved
@@ -48,10 +48,10 @@ public static class HintModalCopy
     public const string ExhaustedButtonLabel = "Wala nang Pahiwatig";
 
     /// <summary>Default hint control label while a hint is still available.</summary>
-    public const string AvailableButtonLabel = "Pahiwatig";
+    public const string AvailableButtonLabel = "Hint";
 
     /// <summary>Legacy retry label retained for callers; the exhausted panel offers Close only.</summary>
-    public const string RetryLabel = "Subukan Muli";
+    public const string RetryLabel = "Ulitin";
 
     /// <summary>Dismiss control on a panel that has nothing to confirm.</summary>
     public const string CloseLabel = "Isara";
