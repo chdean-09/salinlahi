@@ -2,6 +2,13 @@
 
 **Run date:** 2026-10-05 (Unity Editor UTC test timestamps: 2026-10-04)
 
+## UI shortening follow-up — 2026-10-05
+
+- Approved compact labels were applied to runtime copy and serialized controls; matching existing test assertions and the translation inventory/glossary were updated. See `translation_shortening_review.md` for the 31 reviewed candidates and retained layout recommendations.
+- **PASS:** focused text-occurrence review and `git diff --check`. Scene/prefab diffs change text values only; drawing-practice arrow escaping is preserved. No image, `.meta`, layout, or project-setting changes were made in this follow-up.
+- **NOT RUN / NOT VERIFIED:** compilation, build, Unity tests, and live fit after shortening. The installed Editor launch timed out and Unity remained closed; Unity MCP was unavailable. The successful builds and test results below belong to the earlier localization pass and do not validate these follow-up changes.
+- Nine PNG translations remain **DEFERRED**. Earlier discovery-test failures and the Play Mode AI Relay failure below remain unresolved.
+
 ## Environment and compilation
 
 - Unity bridge verified against project `salinlahi`, Unity `6000.3.9f1`.
