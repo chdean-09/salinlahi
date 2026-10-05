@@ -18,5 +18,5 @@ public static class DefeatScreenCopy
     public const string TipLine2 = "Iguhit ang kumikinang na mga simbolo para pigilan sila.";
 
     /// <summary>Primary action — re-enter the level.</summary>
-    public const string RetryLabel = "Subukan Muli ang Labanan";
+    public const string RetryLabel = "Labanan Muli";
 }

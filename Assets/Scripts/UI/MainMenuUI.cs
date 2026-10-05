@@ -88,13 +88,13 @@ public class MainMenuUI : MonoBehaviour
             switch (ProgressManager.Instance.GetJourneyEntryPoint(out _))
             {
                 case JourneyEntryKind.NewJourney:
-                    label = "Simulan ang Paglalakbay";
+                    label = "Simulan";
                     break;
                 case JourneyEntryKind.ContinueLevel:
                     label = "Magpatuloy";
                     break;
                 case JourneyEntryKind.CompletedJourney:
-                    label = "Balikan ang Paglalakbay";
+                    label = "Balikan";
                     break;
                 default:
                     return;

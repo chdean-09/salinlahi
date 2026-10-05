@@ -162,7 +162,7 @@ namespace Salinlahi.Tests.Editor.UI
             _sfxSlider.value = 0f;
             InvokePrivateMethod(_panel, "OnEnable");
             Transform card = _root.transform.Find("SettingsCard/SettingsScroll");
-            Assert.That(card.Find("SFXSliderValue").GetComponent<TMP_Text>().text, Is.EqualTo("Naka-mute"));
+            Assert.That(card.Find("SFXSliderValue").GetComponent<TMP_Text>().text, Is.EqualTo("Mute"));
             Assert.That(card.Find("SFXSliderHint").GetComponent<TMP_Text>().text,
                 Does.Contain("pagbigkas ng mga pantig"));
             foreach (Slider slider in new[] { _masterSlider, _bgmSlider, _sfxSlider })

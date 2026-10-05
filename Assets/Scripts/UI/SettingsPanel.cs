@@ -121,9 +121,9 @@ public class SettingsPanel : MonoBehaviour
 
     private void UpdateVolumeLabels()
     {
-        UpdateLabel(_masterLabel, "Kabuuang Lakas", _masterSlider);
+        UpdateLabel(_masterLabel, "Lahat", _masterSlider);
         UpdateLabel(_bgmLabel, "Musika", _bgmSlider);
-        UpdateLabel(_sfxLabel, "Mga Tunog ng Epekto", _sfxSlider);
+        UpdateLabel(_sfxLabel, "Epekto", _sfxSlider);
     }
 
     private void UpdateLabel(TMP_Text label, string prefix, Slider slider)
@@ -138,7 +138,7 @@ public class SettingsPanel : MonoBehaviour
         TMP_Text valueLabel = _settingsScrollRect != null
             ? _settingsScrollRect.Find(slider.name + "Value")?.GetComponent<TMP_Text>() : null;
         if (valueLabel != null)
-            valueLabel.text = slider.value <= slider.minValue ? "Naka-mute" : $"{percent}%";
+            valueLabel.text = slider.value <= slider.minValue ? "Mute" : $"{percent}%";
     }
 
     private void SetSlidersInteractable(bool isInteractable)
@@ -379,7 +379,7 @@ public class SettingsPanel : MonoBehaviour
         TMP_Text closeLabel = _closeButton.GetComponentInChildren<TMP_Text>(true);
         if (closeLabel != null)
         {
-            closeLabel.text = "Bumalik";
+            closeLabel.text = "Balik";
             TutorialFontProvider.ApplyTo(closeLabel);
             closeLabel.enableAutoSizing = true;
             closeLabel.fontSizeMin = UITextScale.Body;
@@ -582,7 +582,7 @@ public class SettingsPanel : MonoBehaviour
         labelRect.offsetMin = Vector2.zero;
         labelRect.offsetMax = Vector2.zero;
         TextMeshProUGUI label = labelObj.GetComponent<TextMeshProUGUI>();
-        label.text = "Bumalik";
+        label.text = "Balik";
         label.fontSize = CloseButtonMinFontSize;
         label.alignment = TextAlignmentOptions.Center;
         label.color = Color.white;

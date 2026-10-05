@@ -21,5 +21,5 @@ public static class MainMenuProgressCopy
 
     public const string ExitConfirmButtonLabel = "Lumabas";
 
-    public const string ExitCancelButtonLabel = "Kanselahin";
+    public const string ExitCancelButtonLabel = "Kansela";
 }

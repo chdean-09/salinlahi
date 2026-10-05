@@ -165,7 +165,7 @@ public sealed class LevelContentMissingPanel : MonoBehaviour
 
         _titleText = CreateText(card.transform, "TitleText", string.Empty, 45f, 120f, UITextScale.Title);
         _bodyText = CreateText(card.transform, "BodyText", string.Empty, 185f, 260f, UITextScale.Body);
-        _mainMenuButton = CreateButton(card.transform, "MainMenuButton", "Pangunahing Menu", 25f);
+        _mainMenuButton = CreateButton(card.transform, "MainMenuButton", "Menu", 25f);
 
         if (onParchment)
             ScrollPanelArt.InkifyRecursive(card.transform);

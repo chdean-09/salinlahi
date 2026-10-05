@@ -45,7 +45,7 @@ public static class CampaignSaveNoticeCopy
     public const string ContinueLabel = "Magpatuloy";
 
     /// <summary>Confirm-button label when the notice is blocking and the action retries init.</summary>
-    public const string RetryLabel = "Subukan Muli";
+    public const string RetryLabel = "Ulitin";
 
     /// <summary>Title for <see cref="CampaignSaveNoticeKind.Migration"/>. Unchanged since SALIN-171.</summary>
     public const string MigrationTitle = "Na-update na ang Paglalakbay Mo";

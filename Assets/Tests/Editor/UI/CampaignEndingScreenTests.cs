@@ -33,7 +33,7 @@ namespace Salinlahi.Tests.Editor
                 Assert.AreEqual(1, credits.Split(new[] { name }, System.StringSplitOptions.None).Length - 1);
             Assert.AreEqual(1, _screen.GetComponentsInChildren<Button>().Length);
             Assert.AreEqual(Navigation.Mode.None, _screen.GetComponentInChildren<Button>().navigation.mode);
-            Assert.AreEqual("Pangunahing Menu", _screen.GetComponentInChildren<Button>().GetComponentInChildren<TMP_Text>().text);
+            Assert.AreEqual("Menu", _screen.GetComponentInChildren<Button>().GetComponentInChildren<TMP_Text>().text);
             RectTransform paper = _screen.transform.Find("EndingBackdrop/SafeArea/EndingScroll").GetComponent<RectTransform>();
             Assert.AreEqual(new Vector2(0.04f, 0.17f), paper.anchorMin);
             Assert.AreEqual(new Vector2(0.96f, 0.83f), paper.anchorMax);

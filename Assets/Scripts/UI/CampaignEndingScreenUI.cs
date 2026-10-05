@@ -166,7 +166,7 @@ public sealed class CampaignEndingScreenUI : MonoBehaviour
 
         _status = NewText(paper, "Status", string.Empty, UITextScale.Secondary);
         ScrollPanelArt.SetAnchors(_status.rectTransform, Rect.MinMaxRect(0.17f, 0.25f, 0.83f, 0.30f));
-        _returnButton = NewButton(paper, "ReturnButton", "Pangunahing Menu",
+        _returnButton = NewButton(paper, "ReturnButton", "Menu",
             Rect.MinMaxRect(0.17f, 0.16f, 0.83f, 0.25f), true);
         _returnButton.onClick.AddListener(ReturnToMainMenu);
     }

@@ -19,8 +19,8 @@ public static class ResetJourneyFlow
         "mga na-unlock na alaala at tauhan. " +
         "Mananatili ang mga setting ng tunog at kasaysayan ng mga update sa paglalakbay mo. " +
         "Hindi na ito maibabalik.";
-    public const string ConfirmButtonLabel = "I-reset ang Paglalakbay";
-    public const string CancelButtonLabel = "Kanselahin";
+    public const string ConfirmButtonLabel = "I-reset";
+    public const string CancelButtonLabel = "Kansela";
 
     public const string SuccessTitle = "Na-reset na ang Paglalakbay";
     public const string SuccessBody = "Na-reset na ang Paglalakbay mo. Magsisimula muli ang pakikipagsapalaran mo.";
@@ -30,7 +30,7 @@ public static class ResetJourneyFlow
     public const string FailureBody =
         "Hindi nakumpleto ang pag-reset. Hindi nabago ang progreso mo. " +
         "Tingnan ang storage ng device at subukan muli.";
-    public const string RetryButtonLabel = "Subukan Muli";
+    public const string RetryButtonLabel = "Ulitin";
     public const string CloseButtonLabel = "Isara";
 
     public static bool CanOfferReset(SaveManagerMode mode)

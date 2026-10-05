@@ -244,7 +244,7 @@ public sealed class LevelReadyScreenController : MonoBehaviour
         backLabelRect.anchorMax = Vector2.one;
         backLabelRect.offsetMin = backLabelRect.offsetMax = Vector2.zero;
         TextMeshProUGUI backLabel = backLabelObject.AddComponent<TextMeshProUGUI>();
-        backLabel.text = "Bumalik";
+        backLabel.text = "Balik";
         backLabel.fontSize = UITextScale.Body;
         backLabel.alignment = TextAlignmentOptions.Center;
         backLabel.raycastTarget = false;

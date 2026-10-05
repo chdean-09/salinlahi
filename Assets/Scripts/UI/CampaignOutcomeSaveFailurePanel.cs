@@ -172,8 +172,8 @@ public sealed class CampaignOutcomeSaveFailurePanel : MonoBehaviour
 
         _titleText = CreateText(card.transform, "TitleText", "Hinihintay na ma-save ang progreso mo", 45f, 120f, UITextScale.Title);
         _bodyText = CreateText(card.transform, "BodyText", string.Empty, 185f, 280f, UITextScale.Body);
-        _retryButton = CreateButton(card.transform, "RetryButton", "Subukan Muli", 145f);
-        _mainMenuButton = CreateButton(card.transform, "MainMenuButton", "Pangunahing Menu", 25f);
+        _retryButton = CreateButton(card.transform, "RetryButton", "Ulitin", 145f);
+        _mainMenuButton = CreateButton(card.transform, "MainMenuButton", "Menu", 25f);
 
         if (onParchment)
             ScrollPanelArt.InkifyRecursive(card.transform);

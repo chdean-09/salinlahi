@@ -33,7 +33,7 @@ using UnityEngine.UI;
 public static class LevelLockNoticeCopy
 {
     /// <summary>Dismiss-button label.</summary>
-    public const string DismissLabel = "Sige";
+    public const string DismissLabel = "OK";
 
     /// <summary>
     /// SALIN-220 AC6. One sentence per completion objective, for the case where the

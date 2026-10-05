@@ -411,7 +411,7 @@ public class PauseMenuUI : MonoBehaviour
 
         _confirmationPromptLabel = CreateOverlayText(card.transform, "PromptLabel", string.Empty);
         _confirmationConfirmButton = CreateOverlayButton(card.transform, "ConfirmButton", "Kumpirmahin");
-        _confirmationCancelButton = CreateOverlayButton(card.transform, "CancelButton", "Kanselahin");
+        _confirmationCancelButton = CreateOverlayButton(card.transform, "CancelButton", "Kansela");
         ApplyParchmentConfirmationLayout(
             cardRect,
             _confirmationPromptLabel,
