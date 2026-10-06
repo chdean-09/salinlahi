@@ -8,7 +8,7 @@ using TMPro;
 namespace Salinlahi.Tests.Editor.UI
 {
     /// <summary>
-    /// The hint chip is a compact icon control matching the authored 80x80
+    /// The hint chip is a compact icon control matching the runtime 100x100
     /// pause button it parks under — the same parchment background —
     /// carrying the almanac "?" glyph when the icon art resolves.
     /// </summary>
@@ -62,7 +62,7 @@ namespace Salinlahi.Tests.Editor.UI
                 .GetComponent<RectTransform>();
             pause.SetParent(hud.transform, false);
             pause.pivot = Vector2.one;
-            pause.sizeDelta = new Vector2(80f, 80f);
+            pause.sizeDelta = new Vector2(100f, 100f);
             pause.anchoredPosition = new Vector2(-20f, -20f);
 
             SentenceHintController controller =
@@ -83,9 +83,9 @@ namespace Salinlahi.Tests.Editor.UI
                 "The chip parks on the HUD layer.");
 
             RectTransform chipRect = (RectTransform)chip.transform;
-            Assert.AreEqual(new Vector2(80f, 80f), chipRect.sizeDelta,
-                "The chip matches the authored 80x80 pause button it parks under.");
-            Assert.AreEqual(new Vector2(-20f, -112f), chipRect.anchoredPosition,
+            Assert.AreEqual(new Vector2(100f, 100f), chipRect.sizeDelta,
+                "The chip matches the runtime 100x100 pause button it parks under.");
+            Assert.AreEqual(new Vector2(-20f, -132f), chipRect.anchoredPosition,
                 "The chip sits flush under the pause button's right edge.");
             Assert.IsNotNull(chip.GetComponent<Button>(),
                 "The chip stays a clickable button.");
@@ -98,14 +98,58 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.Greater(chipBackground.sprite.border.x, 0f,
                 "The background frame must preserve its corners.");
 
-            Image icon = chip.transform.Find("[Runtime] SentenceHintChipIcon")?
-                .GetComponent<Image>();
-            Assert.IsNotNull(icon, "The chip carries the hint icon when the art resolves.");
-            Assert.IsNotNull(icon.sprite,
-                "Resources/Art/UI/Almanac/Questionmark should resolve to a sprite.");
-            Assert.IsFalse(icon.raycastTarget,
-                "The icon must not swallow the chip button's taps.");
+            TextMeshProUGUI icon = chip.GetComponentInChildren<TextMeshProUGUI>();
+            Assert.IsNotNull(icon);
+            Assert.AreEqual("?", icon.text);
+            Assert.AreEqual(FontStyles.Normal, icon.fontStyle);
+            Assert.AreEqual(FontWeight.Regular, icon.fontWeight);
+            Assert.IsFalse(icon.raycastTarget);
             Assert.AreEqual(ScrollPanelArt.InkColor, icon.color);
+
+            pause.anchoredPosition = new Vector2(-30f, -40f);
+            typeof(SentenceHintController)
+                .GetMethod("EnsureChip", BindingFlags.NonPublic | BindingFlags.Instance)
+                .Invoke(controller, null);
+            Assert.AreEqual(new Vector2(-30f, -152f), chipRect.anchoredPosition,
+                "An existing chip follows the current pause bounds with the same 12-unit gap.");
+            Assert.AreEqual(new Vector2(100f, 100f), chipRect.rect.size);
+        }
+
+        [Test]
+        public void Hud_RepeatedActivationKeepsLargerPauseBoundsAndGlyphWithoutCompounding()
+        {
+            GameObject root = Track(new GameObject("HudSizingTest", typeof(RectTransform)));
+            root.SetActive(false);
+            Button pause = new GameObject("PauseButton", typeof(RectTransform), typeof(Image), typeof(Button))
+                .GetComponent<Button>();
+            pause.transform.SetParent(root.transform, false);
+            RectTransform rect = pause.GetComponent<RectTransform>();
+            rect.anchorMin = rect.anchorMax = rect.pivot = Vector2.one;
+            rect.sizeDelta = new Vector2(80f, 80f);
+            rect.anchoredPosition = new Vector2(-20f, -20f);
+            TextMeshProUGUI glyph = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI))
+                .GetComponent<TextMeshProUGUI>();
+            glyph.transform.SetParent(pause.transform, false);
+            glyph.text = "||";
+            glyph.fontSize = 36f;
+            HUD hud = root.AddComponent<HUD>();
+            typeof(HUD).GetField("_pauseButton", BindingFlags.NonPublic | BindingFlags.Instance)
+                .SetValue(hud, pause);
+
+            for (int activation = 0; activation < 3; activation++)
+            {
+                root.SetActive(true);
+                typeof(HUD).GetMethod("OnEnable", BindingFlags.NonPublic | BindingFlags.Instance)
+                    .Invoke(hud, null);
+                Assert.AreEqual(new Vector2(100f, 100f), rect.rect.size);
+                Assert.AreEqual(new Vector2(-20f, -20f), rect.anchoredPosition);
+                Assert.AreEqual(45f, glyph.fontSize);
+                Assert.IsFalse(glyph.raycastTarget);
+                Assert.IsTrue(pause.GetComponent<Image>().raycastTarget);
+                typeof(HUD).GetMethod("OnDisable", BindingFlags.NonPublic | BindingFlags.Instance)
+                    .Invoke(hud, null);
+                root.SetActive(false);
+            }
         }
 
         [Test]

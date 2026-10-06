@@ -1,4 +1,5 @@
 using TMPro;
+using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -269,6 +270,28 @@ public static class ScrollPanelArt
             label.fontSizeMin = UITextScale.Body;
             label.fontSizeMax = UITextScale.Title;
             label.textWrappingMode = TextWrappingModes.Normal;
+            if (label.richText && !(label.textPreprocessor is ActionLabelPreprocessor))
+                label.textPreprocessor = new ActionLabelPreprocessor(label.textPreprocessor);
+        }
+    }
+
+    // Keep words intact without changing the label's source text. Wrapping remains
+    // available between words, and existing rich-text tags pass through unchanged.
+    private sealed class ActionLabelPreprocessor : ITextPreprocessor
+    {
+        private static readonly Regex Word = new Regex(@"(?:<[^>]*>|[^\s<])+", RegexOptions.Compiled);
+        private readonly ITextPreprocessor _previous;
+
+        public ActionLabelPreprocessor(ITextPreprocessor previous)
+        {
+            _previous = previous;
+        }
+
+        public string PreprocessText(string text)
+        {
+            string display = _previous != null ? _previous.PreprocessText(text) : text;
+            return string.IsNullOrEmpty(display) ? display
+                : Word.Replace(display, match => "<nobr>" + match.Value + "</nobr>");
         }
     }
 

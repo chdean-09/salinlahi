@@ -1,8 +1,11 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class HUD : MonoBehaviour
 {
+    public const float ControlSize = 100f;
+    private const float PauseGlyphSize = 45f;
     [Header("Pause")]
     [SerializeField] private Button _pauseButton;
 
@@ -19,6 +22,7 @@ public class HUD : MonoBehaviour
     {
         ConfigureResponsiveLayout();
         ScrollPanelArt.ApplyButtonSkin(_pauseButton);
+        ConfigurePauseControl();
 
         if (_pauseButton != null)
             _pauseButton.onClick.AddListener(OnPausePressed);
@@ -33,6 +37,22 @@ public class HUD : MonoBehaviour
     private void OnPausePressed()
     {
         GameManager.Instance.PauseGame();
+    }
+
+    private void ConfigurePauseControl()
+    {
+        if (_pauseButton == null)
+            return;
+
+        RectTransform rect = _pauseButton.GetComponent<RectTransform>();
+        rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, ControlSize);
+        rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, ControlSize);
+        foreach (TMP_Text glyph in _pauseButton.GetComponentsInChildren<TMP_Text>(true))
+        {
+            glyph.enableAutoSizing = false;
+            glyph.fontSize = PauseGlyphSize;
+            glyph.raycastTarget = false;
+        }
     }
 
     private void ConfigureResponsiveLayout()

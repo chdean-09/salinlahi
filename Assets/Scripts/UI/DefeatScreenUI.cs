@@ -168,26 +168,29 @@ public class DefeatScreenUI : MonoBehaviour
     }
 
     /// <summary>
-    /// One-line subheading under the DEFEAT banner, filling the dead band between
+    /// Wrapped subheading under the DEFEAT banner, filling the dead band between
     /// banner and content — the defeat counterpart of victory's "Level Complete!".
     /// </summary>
     private void EnsureSubtitle()
     {
         GameObject subtitleObject = FindOrCreateChild(_panel.transform, RuntimeSubtitleName);
         RectTransform rect = subtitleObject.GetComponent<RectTransform>();
-        rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.anchorMin = new Vector2(0.1f, 0.5f);
+        rect.anchorMax = new Vector2(0.9f, 0.5f);
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.anchoredPosition = new Vector2(0f, 300f);
-        rect.sizeDelta = new Vector2(800f, 176f);
+        rect.sizeDelta = new Vector2(0f, 176f);
 
         TextMeshProUGUI text = subtitleObject.GetComponent<TextMeshProUGUI>();
         if (text == null)
             text = subtitleObject.AddComponent<TextMeshProUGUI>();
         text.text = DefeatScreenCopy.Subtitle;
-        text.fontSize = UITextScale.Title;
+        text.enableAutoSizing = false;
+        text.fontSize = UITextScale.Body;
         text.fontStyle = FontStyles.Bold;
         text.color = new Color(0.93f, 0.89f, 0.78f, 1f);
         text.alignment = TextAlignmentOptions.Center;
+        text.textWrappingMode = TextWrappingModes.Normal;
         text.raycastTarget = false;
         TutorialFontProvider.ApplyTo(text);
     }

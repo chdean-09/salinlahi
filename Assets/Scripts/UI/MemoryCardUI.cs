@@ -467,15 +467,15 @@ public sealed class MemoryCardUI : MonoBehaviour
 
         ScrollPanelArt.PlaceText(number, Band(0.72f, 0.785f), UITextScale.AutoSizeFloor, UITextScale.Secondary);
         ScrollPanelArt.PlaceText(title, Band(0.615f, 0.71f), UITextScale.Body, UITextScale.Title);
-        ScrollPanelArt.PlaceText(words, Band(0.455f, 0.60f), UITextScale.Body, UITextScale.Body);
-        ScrollPanelArt.PlaceText(lore, Band(0.33f, 0.785f), UITextScale.Body, UITextScale.Body);
+        ScrollPanelArt.PlaceText(words, Band(0.51f, 0.60f), UITextScale.Body, UITextScale.Body);
+        ScrollPanelArt.PlaceText(lore, Band(0.39f, 0.785f), UITextScale.Body, UITextScale.Body);
 
-        ScrollPanelArt.SetAnchors(glyphRow, Band(0.33f, 0.42f));
+        ScrollPanelArt.SetAnchors(glyphRow, Band(0.39f, 0.475f));
         if (glyphRow != null)
             glyphRow.pivot = new Vector2(0.5f, 0.5f);
 
-        ScrollPanelArt.PlaceButton(flip, Rect.MinMaxRect(0.18f, 0.185f, 0.485f, 0.30f));
-        ScrollPanelArt.PlaceButton(close, Rect.MinMaxRect(0.515f, 0.185f, 0.82f, 0.30f), primary: false);
+        ScrollPanelArt.PlaceButton(flip, Band(0.285f, 0.375f));
+        ScrollPanelArt.PlaceButton(close, Band(0.18f, 0.27f), primary: false);
     }
 
     /// <summary>A full-width band of the card's paper between two normalized heights.</summary>
