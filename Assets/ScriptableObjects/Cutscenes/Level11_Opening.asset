@@ -15,36 +15,35 @@ MonoBehaviour:
   cutsceneId: cutscene.pamana.01.opening
   panels:
   - image: {fileID: 21300000, guid: 002e5a494b91d2f4b917277ce65f614b, type: 3}
-    text: 'Beyond the village, Juan discovers a chamber built to preserve what came
-      before.
+    text: 'Sa kabila ng nayon, natuklasan ni Juan ang isang silid na itinayo para
+      ingatan ang nakaraan.
 
-      One wall remembers the family gathered around its fire. The
-      other remembers the community they built together.
+      Naaalala ng isang dingding ang pamilyang nagtitipon sa tabi ng apoy. Naaalala
+      naman ng kabila ang pamayanang binuo nila nang sama-sama.
 
-      Between them, an
-      empty path waits for whoever will carry their story forward.'
+      Sa pagitan ng mga ito, naghihintay ang isang bakanteng landas sa susunod na
+      magpapatuloy ng kanilang kuwento.'
     transitionIn: 0
     transitionDuration: 0
     typewriterSpeed: 0
   - image: {fileID: 21300000, guid: b02db859d4d66e441aeabfe5c1596121, type: 3}
-    text: 'When Juan opens the ancient Scroll, its characters rise and turn like
-      a living current.
+    text: 'Pagbukas ni Juan sa sinaunang Scroll, umangat at umikot ang mga titik nito
+      na parang agos na buhay.
 
-      The words do not ask to be kept behind glass.
+      Ayaw ng mga salitang ikulong sa likod ng salamin.
 
-      They
-      are searching for another voice, another hand, and another generation.'
+      Naghahanap ang mga ito ng bagong tinig, bagong kamay, at bagong henerasyon.'
     transitionIn: 0
     transitionDuration: 0
     typewriterSpeed: 0
   - image: {fileID: 21300000, guid: 6f2b7b70b9df13b4a8acbaeb0705113b, type: 3}
-    text: 'Juan understands at last: an inheritance survives only when it is carried
-      forward.
+    text: 'Sa wakas, naunawaan ni Juan: mananatili lang ang pamana kung ipapasa ito
+      sa susunod.
 
-      He takes the Scroll in both hands, no longer only searching
-      for what was lost.
+      Hinawakan niya ang Scroll sa magkabilang kamay. Hindi na lang niya hinahanap
+      ang mga nawala;
 
-      He will remember it, live it, and pass it on.'
+      aalalahanin niya ang mga ito, isasabuhay, at ipapasa.'
     transitionIn: 0
     transitionDuration: 0
     typewriterSpeed: 0

@@ -15,13 +15,13 @@ public sealed class CampaignEndingScreenUI : MonoBehaviour
     // One credit per person, alphabetical; Ian's display name is owner-approved.
     private const string Credits =
         "<b>SALINLAHI</b>\n\n" +
-        "<size=75%>Created by</size>\n\n" +
+        "<size=75%>Ginawa nina</size>\n\n" +
         "Chad Andrada\n\n" +
         "Ian Clyde\n\n" +
         "Jeff Andre Millan\n\n" +
         "Jon Wayne Cabusbusan\n\n\n" +
-        "<size=85%><b>Thank you for playing.</b></size>\n\n" +
-        "<size=75%>Revisit any level and keep\npracticing Baybayin.</size>";
+        "<size=85%><b>Salamat sa paglalaro!</b></size>\n\n" +
+        "<size=75%>Balikan ang kahit anong antas at\nmagpatuloy sa pag-aaral ng Baybayin.</size>";
 
     private const float ScrollUnitsPerSecond = 24f;
     private const float EntranceDuration = 0.25f;
@@ -109,13 +109,13 @@ public sealed class CampaignEndingScreenUI : MonoBehaviour
             return;
         if (SceneLoader.Instance == null)
         {
-            _status.text = "Unable to open Main Menu. Please try again.";
+            _status.text = "Hindi mabuksan ang Pangunahing Menu. Pakisubukan muli.";
             DebugLogger.LogError("CampaignEndingScreenUI: SceneLoader not available.");
             return;
         }
 
         _returning = true;
-        _status.text = "Opening Main Menu...";
+        _status.text = "Binubuksan ang Pangunahing Menu...";
         _returnButton.interactable = false;
         AudioManager.Instance?.PlayMenuButtonClick();
         AudioManager.Instance?.StopCreditsBgm();
@@ -141,20 +141,19 @@ public sealed class CampaignEndingScreenUI : MonoBehaviour
         ScrollPanelArt.SetAnchors(safeArea, Rect.MinMaxRect(0f, 0f, 1f, 1f));
         safeArea.gameObject.AddComponent<SafeAreaHandler>();
         RectTransform paper = ScrollPanelArt.CreateScrollPanel(safeArea, "EndingScroll");
-        // Same compact parchment bounds as the Settings screen.
-        ScrollPanelArt.SetAnchors(paper, Rect.MinMaxRect(0.04f, 0.17f, 0.96f, 0.83f));
+        ScrollPanelArt.SetAnchors(paper, ScrollPanelArt.ScrollArea);
         // Readable parchment fallback even if artwork cannot load.
         paper.GetComponent<Image>().color = new Color32(239, 219, 182, 255);
         ScrollPanelArt.ApplyFull(paper.GetComponent<Image>());
 
-        TMP_Text heading = NewText(paper, "Heading", "Journey Complete", UITextScale.Display);
+        TMP_Text heading = NewText(paper, "Heading", "Tapos na ang Paglalakbay", UITextScale.Display);
         heading.fontStyle = FontStyles.Bold;
-        ScrollPanelArt.PlaceText(heading, Rect.MinMaxRect(0.16f, 0.74f, 0.84f, 0.82f), UITextScale.Title, UITextScale.Display);
-        TMP_Text summary = NewText(paper, "Summary", "Ugat · Ugnayan · Pamana\nAll 15 levels completed", UITextScale.Body);
-        ScrollPanelArt.SetAnchors(summary.rectTransform, Rect.MinMaxRect(0.16f, 0.66f, 0.84f, 0.74f));
+        ScrollPanelArt.PlaceText(heading, Rect.MinMaxRect(0.16f, 0.70f, 0.84f, 0.82f), UITextScale.Title, UITextScale.Display);
+        TMP_Text summary = NewText(paper, "Summary", "Ugat · Ugnayan · Pamana\nNatapos ang lahat ng 15 antas", UITextScale.Body);
+        ScrollPanelArt.SetAnchors(summary.rectTransform, Rect.MinMaxRect(0.16f, 0.51f, 0.84f, 0.69f));
 
         RectTransform viewport = NewRect(paper, "CreditsViewport");
-        ScrollPanelArt.SetAnchors(viewport, Rect.MinMaxRect(0.17f, 0.30f, 0.83f, 0.64f));
+        ScrollPanelArt.SetAnchors(viewport, Rect.MinMaxRect(0.17f, 0.30f, 0.83f, 0.49f));
         Image hitArea = viewport.gameObject.AddComponent<Image>();
         hitArea.color = Color.clear;
         hitArea.raycastTarget = false;
@@ -166,7 +165,7 @@ public sealed class CampaignEndingScreenUI : MonoBehaviour
 
         _status = NewText(paper, "Status", string.Empty, UITextScale.Secondary);
         ScrollPanelArt.SetAnchors(_status.rectTransform, Rect.MinMaxRect(0.17f, 0.25f, 0.83f, 0.30f));
-        _returnButton = NewButton(paper, "ReturnButton", "Main Menu",
+        _returnButton = NewButton(paper, "ReturnButton", "Menu",
             Rect.MinMaxRect(0.17f, 0.16f, 0.83f, 0.25f), true);
         _returnButton.onClick.AddListener(ReturnToMainMenu);
     }

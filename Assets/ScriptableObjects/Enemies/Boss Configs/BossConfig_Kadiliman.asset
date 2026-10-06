@@ -15,10 +15,10 @@ MonoBehaviour:
   bossName: Paglimot
   bossID: PAGLIMOT
   bossSprite: {fileID: 0}
-  description: Paglimot is the force of cultural forgetting that gathers the corruptions
-    of every era. Juan must hold fast to all eighteen Baybayin characters, restore
-    the final memory, and complete MALAYA so the inheritance can pass to the next
-    salinlahi.
+  description: Ang Paglimot ang puwersang nagpapalimot sa kultura at nagtitipon ng
+    mga katiwalian mula sa bawat panahon. Kailangang panghawakan ni Juan ang lahat
+    ng labingwalong titik ng Baybayin, ibalik ang huling alaala, at buuin ang MALAYA
+    para maipasa ang pamana sa susunod na salinlahi.
   bossEnemyData: {fileID: 11400000, guid: 052b00742308dce4499cfb4cf6b8c33e, type: 2}
   phases:
   - displayName: Ugat

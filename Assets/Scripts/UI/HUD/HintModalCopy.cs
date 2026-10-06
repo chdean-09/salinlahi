@@ -28,49 +28,47 @@ using UnityEngine;
 /// </summary>
 public static class HintModalCopy
 {
-    /// <summary>Modal title. Grounded in UF-25's own "Use This Hint" phrasing.</summary>
-    public const string Title = "Use a Hint?";
+    /// <summary>Short modal title, retaining the question form.</summary>
+    public const string Title = "Gumamit ng gabay?";
 
-    /// <summary>Confirm control. Verbatim from UF-25 (docs/audit/AUDIT.md:106).</summary>
-    public const string ConfirmLabel = "Use This Hint";
+    /// <summary>Compact confirmation control label.</summary>
+    public const string ConfirmLabel = "Ipakita";
 
-    /// <summary>Cancel control. Verbatim from UF-25. Cancel is a no-op by AC-2.</summary>
-    public const string CancelLabel = "Cancel";
+    /// <summary>Cancel control. Cancel is a no-op by AC-2.</summary>
+    public const string CancelLabel = "Kansela";
 
     /// <summary>
-    /// The one hint type the authored data can actually serve: the focus word's approved
-    /// plain-language meaning (FocusWordDefinition.meaning). "explain" is the Global
-    /// "Hints" verb (docs/audit/AUDIT.md:169).
+    /// The authored Filipino synonyms, without the answer itself.
     /// </summary>
-    public const string MeaningOptionLabel = "Show the meaning";
+    public const string HintOptionLabel = "Ipakita ang kasingkahulugan";
 
     /// <summary>Hint control label once the budget is spent. Verbatim from BTN-HINT.</summary>
-    public const string ExhaustedButtonLabel = "No Hints Left";
+    public const string ExhaustedButtonLabel = "Wala nang Pahiwatig";
 
     /// <summary>Default hint control label while a hint is still available.</summary>
-    public const string AvailableButtonLabel = "Hint";
+    public const string AvailableButtonLabel = "Gabay";
 
     /// <summary>Legacy retry label retained for callers; the exhausted panel offers Close only.</summary>
-    public const string RetryLabel = "Retry";
+    public const string RetryLabel = "Ulitin";
 
     /// <summary>Dismiss control on a panel that has nothing to confirm.</summary>
-    public const string CloseLabel = "Close";
+    public const string CloseLabel = "Isara";
 
     /// <summary>
     /// Shown when the level meters hints (tier 5). The unit is points of the 0-100
     /// metric.score; the noun is taken from LevelResultsCopy.ScoreLabel.
     /// </summary>
-    public static string CostLine(int scorePoints) => "Costs " + scorePoints + " score.";
+    public static string CostLine(int scorePoints) => "May halagang " + scorePoints + " puntos.";
 
     /// <summary>
     /// Shown on tiers 1-4, where ChallengeTierPolicy.ForTier leaves the budget disabled and
     /// hints are unlimited and free. Stating that is honest; suppressing the modal there
     /// would make Levels 1-4 behave differently from Level 5 for no reason the player can see.
     /// </summary>
-    public const string FreeLine = "No cost on this level.";
+    public const string FreeLine = "Walang bayad sa antas na ito.";
 
     /// <summary>Remaining-budget disclosure, shown only when the budget is metered.</summary>
-    public static string RemainingLine(int remaining) => "Hints left: " + remaining;
+    public static string RemainingLine(int remaining) => "Natitirang pahiwatig: " + remaining;
 
     /// <summary>
     /// Exhausted panel body. Checkpoint resets preserve the spent level-attempt hint budget.
@@ -82,25 +80,17 @@ public static class HintModalCopy
     /// does not cover. Held and escalated rather than invented.
     /// </summary>
     public const string ExhaustedBody =
-        "You have used this level's hint.";
-
-    /// <summary>
-    /// The revealed meaning, after the player confirms. Keeps the word beside its meaning
-    /// the way FocusWordPreviewController.cs:72-73 and MemoryCardUI already render the pair.
-    /// </summary>
-    public static string MeaningReveal(string displayLabel, string meaning) =>
-        string.IsNullOrEmpty(displayLabel) ? meaning : displayLabel + ": " + meaning;
+        "Nagamit mo na ang pahiwatig para sa antas na ito.";
 
     /// <summary>Shown when the unit has no focus word to explain, so nothing was charged.</summary>
-    public const string NoHintAvailableBody = "No hint is available for this step.";
+    public const string NoHintAvailableBody = "Walang pahiwatig para sa hakbang na ito.";
 
     /// <summary>Prefix for the persistent in-encounter hint line. Kept from the shipped
     /// ChallengeModeUI status register, which already read "Hint: ...".</summary>
-    public const string HintStatusPrefix = "Hint: ";
+    public const string HintStatusPrefix = "Pahiwatig: ";
 
-    /// <summary>"Hint: IBA — different". The in-encounter record of a purchased hint.</summary>
-    public static string HintStatusLine(string displayLabel, string meaning) =>
-        HintStatusPrefix + MeaningReveal(displayLabel, meaning);
+    /// <summary>The same synonyms persist after the modal closes.</summary>
+    public static string HintStatusLine(string hintText) => HintStatusPrefix + hintText;
 
     /// <summary>"Costs 10 score." from the policy's 0.10 fraction.</summary>
     public static int ScorePointsFromFraction(float costFraction) =>

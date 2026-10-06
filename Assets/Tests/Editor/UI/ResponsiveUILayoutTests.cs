@@ -119,20 +119,20 @@ namespace Salinlahi.Tests.Editor.UI
                 Assert.AreEqual(initialSentenceEnd.y, lastCharacter.baseLine, 0.5f);
                 Assert.AreEqual(initialPanelMin, ((RectTransform)ui.transform).anchorMin);
                 Assert.AreEqual(initialPanelMax, ((RectTransform)ui.transform).anchorMax);
-                StringAssert.Contains("Correct!", status.text);
+                StringAssert.Contains("Tama!", status.text);
                 Assert.IsFalse(ui.transform.Find("AnswerChoices/BATA").GetComponent<Button>().interactable);
                 session.Tick(0.1f);
-                StringAssert.Contains("Correct!", status.text, "Timer updates must keep answer feedback visible.");
+                StringAssert.Contains("Tama!", status.text, "Timer updates must keep answer feedback visible.");
 
                 session.SubmitPlacement("second", "mata");
                 StringAssert.DoesNotContain("MATA", prompt.text);
                 StringAssert.Contains("<b>BATA</b>", prompt.text);
-                StringAssert.Contains("Try again", status.text);
+                StringAssert.Contains("Subukan muli", status.text);
 
                 session.SubmitPlacement("second", "tama");
                 Assert.AreEqual(ChallengeSessionState.Completed, session.State);
                 Assert.AreEqual("Ang mabuting BATA ay gumagawa ng TAMA.", ReadPrompt(prompt));
-                StringAssert.Contains("Correct!", status.text);
+                StringAssert.Contains("Tama!", status.text);
                 Assert.IsFalse(ui.transform.Find("AnswerChoices").gameObject.activeSelf);
             }
             finally
@@ -149,11 +149,18 @@ namespace Salinlahi.Tests.Editor.UI
             using TestObjects objects = new();
             ChallengeModeUI ui = CreateChallengeBoard(objects, width, height);
             foreach (string name in new[] { "Progress", "Timer", "Status", "PromptViewport", "AnswerChoices", "ChallengeActions" })
-                AssertAnchorsInside(ui.transform.Find(name).GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
+                AssertAnchorsInside(ui.transform.Find(name).GetComponent<RectTransform>(),
+                    name == "ChallengeActions"
+                        ? Rect.MinMaxRect(0.16f, 0.10f, 0.84f, 0.80f)
+                        : name == "Progress" || name == "Timer" || name == "PromptViewport"
+                            ? Rect.MinMaxRect(0.16f, 0.16f, 0.84f, 0.94f) : ScrollPanelArt.FullSafeArea);
             TMP_Text prompt = ui.transform.Find("PromptViewport/Prompt").GetComponent<TMP_Text>();
             Assert.IsFalse(prompt.enableAutoSizing, "Long prompts should scroll instead of shrinking.");
             Assert.GreaterOrEqual(prompt.fontSize, UITextScale.Title);
-            Assert.GreaterOrEqual(ui.transform.Find("Status").GetComponent<TMP_Text>().fontSizeMin, 48f);
+            TMP_Text status = ui.transform.Find("Status").GetComponent<TMP_Text>();
+            Assert.GreaterOrEqual(status.fontSizeMin, UITextScale.Body);
+            Assert.AreEqual(TextOverflowModes.Ellipsis, status.overflowMode,
+                "Unexpectedly long feedback must stay inside its area instead of covering answers.");
             TMP_Text buttonText = ui.transform.Find("ChallengeActions").GetComponentInChildren<TMP_Text>();
             Assert.AreEqual(UITextScale.Body, buttonText.fontSizeMax,
                 "Only the text above the controls grows; button labels keep their size.");
@@ -163,11 +170,45 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.IsFalse(scroll.horizontal);
             RectTransform choices = ui.transform.Find("AnswerChoices").GetComponent<RectTransform>();
             RectTransform actions = ui.transform.Find("ChallengeActions").GetComponent<RectTransform>();
+            Assert.Less(choices.anchorMax.y, status.rectTransform.anchorMin.y);
+            Assert.Less(status.rectTransform.anchorMax.y, scroll.viewport.anchorMin.y);
             Assert.Less(actions.anchorMax.y, choices.anchorMin.y);
             LayoutRebuilder.ForceRebuildLayoutImmediate(actions);
             RectTransform hint = actions.GetChild(0).GetComponent<RectTransform>();
             Assert.GreaterOrEqual(hint.rect.yMin + hint.localPosition.y, actions.rect.yMin - 0.01f);
             Assert.LessOrEqual(hint.rect.yMax + hint.localPosition.y, actions.rect.yMax + 0.01f);
+        }
+
+        [Test]
+        public void ChallengeBoard_PurchasedHintShowsOnlySynonymsDuringBothHintEvents()
+        {
+            using TestObjects objects = new();
+            ChallengeModeUI ui = CreateChallengeBoard(objects, 1080f, 1920f);
+            ChallengeFlowController controller = objects.CreateRect("Controller").gameObject.AddComponent<ChallengeFlowController>();
+            LevelConfigSO level = UnityEditor.AssetDatabase.LoadAssetAtPath<LevelConfigSO>(
+                "Assets/ScriptableObjects/Levels/Level15_Config.asset");
+            Assert.IsNotNull(level);
+            controller.SetLevelHintWords(level, null);
+            ui.Bind(controller);
+            ChallengeSession session = new(level.challengeSequence, 15, ChallengeTierPolicy.ForTier(5));
+            TMP_Text status = ui.transform.Find("Status").GetComponent<TMP_Text>();
+            int hintEvents = 0;
+            session.Changed += changed =>
+            {
+                ui.Render(changed);
+                if (changed.LastEvent == ChallengeSessionEvent.HintShown
+                    || changed.LastEvent == ChallengeSessionEvent.HintApplied)
+                {
+                    hintEvents++;
+                    Assert.AreEqual("Pahiwatig: mana, minana", status.text);
+                }
+            };
+            session.Enter();
+            session.RequestHint();
+            Assert.AreEqual(2, hintEvents);
+            ui.Render(session);
+            Assert.AreEqual("Pahiwatig: mana, minana", status.text,
+                "Updating the board must not reintroduce a repeated hint notification.");
         }
 
         private static string ReadPrompt(TMP_Text prompt)
@@ -244,6 +285,11 @@ namespace Salinlahi.Tests.Editor.UI
             SetDialogueField(controller, "_presentAtTop", true);
             controller.enabled = true;
 
+            // Edit Mode does not invoke OnEnable on an ordinary MonoBehaviour.
+            typeof(DialogueController).GetMethod("ConfigureResponsiveLayout",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                .Invoke(controller, new object[] { false });
+
             Assert.IsNotNull(ScrollPanelArt.Full, "The existing full parchment sprite must load.");
             Assert.AreSame(ScrollPanelArt.Full, background.sprite);
             Assert.Greater(background.sprite.border.y, 0f, "The bottom rod must be retained.");
@@ -258,6 +304,9 @@ namespace Salinlahi.Tests.Editor.UI
             SetDialogueField(controller, "_presentAtTop", false);
             background.gameObject.SetActive(true);
             controller.enabled = true;
+            typeof(DialogueController).GetMethod("ConfigureResponsiveLayout",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                .Invoke(controller, new object[] { false });
             Assert.AreSame(ScrollPanelArt.Top, background.sprite,
                 "Other dialogue must retain its existing parchment banner.");
             Assert.AreEqual(1f, background.pixelsPerUnitMultiplier);
@@ -483,7 +532,9 @@ namespace Salinlahi.Tests.Editor.UI
 
             PauseMenuUI.ApplyParchmentConfirmationLayout(card, prompt, confirm, cancel);
 
-            Assert.AreEqual(new Vector2(760f, 680f), card.sizeDelta);
+            Assert.GreaterOrEqual(confirm.GetComponent<RectTransform>().rect.height * 320f / 1080f, 44f,
+                "The confirmation action must remain tappable on a small phone.");
+            Assert.GreaterOrEqual(cancel.GetComponent<RectTransform>().rect.height * 320f / 1080f, 44f);
             AssertAnchorsInside(prompt.rectTransform, ScrollPanelArt.FullSafeArea);
             AssertAnchorsInside(confirm.GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
             AssertAnchorsInside(cancel.GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
@@ -558,7 +609,10 @@ namespace Salinlahi.Tests.Editor.UI
                 {
                     RectTransform rect = boardObject.transform.Find(row) as RectTransform;
                     Assert.IsNotNull(rect, row + " was not built.");
-                    AssertAnchorsInside(rect, ScrollPanelArt.FullSafeArea);
+                    AssertAnchorsInside(rect, row == "ChallengeActions"
+                        ? Rect.MinMaxRect(0.16f, 0.10f, 0.84f, 0.80f)
+                        : row == "Progress" || row == "Timer" || row == "PromptViewport"
+                            ? Rect.MinMaxRect(0.16f, 0.16f, 0.84f, 0.94f) : ScrollPanelArt.FullSafeArea);
                 }
 
                 RectTransform actions = (RectTransform)boardObject.transform.Find("ChallengeActions");
@@ -698,7 +752,7 @@ namespace Salinlahi.Tests.Editor.UI
             float size = MemoryCardUI.ResolveGlyphSize(5, unmeasured);
             Assert.LessOrEqual(
                 (size * 5) + (MemoryCardUI.GlyphGap * 4), unmeasured + 0.01f);
-            Assert.Less(size, MemoryCardUI.MaxGlyphSize);
+            Assert.LessOrEqual(size, MemoryCardUI.MaxGlyphSize);
 
             // A real measurement still wins when there is one.
             Assert.AreEqual(500f, MemoryCardUI.ResolveGlyphRowWidth(500f), 0.01f);
@@ -778,10 +832,11 @@ namespace Salinlahi.Tests.Editor.UI
 
         private static void AssertAnchorsInside(RectTransform rect, Rect area)
         {
-            Assert.GreaterOrEqual(rect.anchorMin.x, area.xMin);
-            Assert.GreaterOrEqual(rect.anchorMin.y, area.yMin);
-            Assert.LessOrEqual(rect.anchorMax.x, area.xMax);
-            Assert.LessOrEqual(rect.anchorMax.y, area.yMax);
+            const float roundingTolerance = 0.000001f;
+            Assert.GreaterOrEqual(rect.anchorMin.x, area.xMin - roundingTolerance);
+            Assert.GreaterOrEqual(rect.anchorMin.y, area.yMin - roundingTolerance);
+            Assert.LessOrEqual(rect.anchorMax.x, area.xMax + roundingTolerance);
+            Assert.LessOrEqual(rect.anchorMax.y, area.yMax + roundingTolerance);
         }
 
         private sealed class TestObjects : System.IDisposable

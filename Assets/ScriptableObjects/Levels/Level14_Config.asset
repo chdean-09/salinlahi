@@ -24,6 +24,7 @@ MonoBehaviour:
     displayLabel: ALAALA
     meaning: memory
     hintText: 
+    hintSynonyms: gunita
     decomposition:
     - symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
       spokenValueId: value.a
@@ -43,6 +44,7 @@ MonoBehaviour:
     displayLabel: MAHALAGA
     meaning: precious
     hintText: 
+    hintSynonyms: makabuluhan
     decomposition:
     - symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
       spokenValueId: value.ma

@@ -13,25 +13,25 @@ public enum ResetJourneyOutcome
 /// </summary>
 public static class ResetJourneyFlow
 {
-    public const string ConfirmTitle = "Reset your journey?";
+    public const string ConfirmTitle = "I-reset ang Paglalakbay mo?";
     public const string ConfirmBody =
-        "This will clear: level progress and stars, restored words and symbols, " +
-        "unlocked memories and character unlocks. " +
-        "This will keep: your audio settings and your journey's update history. " +
-        "This cannot be undone.";
-    public const string ConfirmButtonLabel = "Reset Journey";
-    public const string CancelButtonLabel = "Cancel";
+        "Mabubura ang progreso at mga bituin sa mga antas, mga naibalik na salita at simbolo, " +
+        "mga na-unlock na alaala at tauhan. " +
+        "Mananatili ang mga setting ng tunog at kasaysayan ng mga update sa paglalakbay mo. " +
+        "Hindi na ito maibabalik.";
+    public const string ConfirmButtonLabel = "I-reset";
+    public const string CancelButtonLabel = "Kansela";
 
-    public const string SuccessTitle = "Journey reset";
-    public const string SuccessBody = "Your journey has been reset. Your adventure starts fresh.";
-    public const string ContinueButtonLabel = "Continue";
+    public const string SuccessTitle = "Na-reset na ang Paglalakbay";
+    public const string SuccessBody = "Na-reset na ang Paglalakbay mo. Magsisimula muli ang pakikipagsapalaran mo.";
+    public const string ContinueButtonLabel = "Magpatuloy";
 
-    public const string FailureTitle = "Reset could not be completed";
+    public const string FailureTitle = "Hindi nakumpleto ang pag-reset";
     public const string FailureBody =
-        "The reset could not be completed. Your progress was not changed. " +
-        "Check device storage and try again.";
-    public const string RetryButtonLabel = "Retry";
-    public const string CloseButtonLabel = "Close";
+        "Hindi nakumpleto ang pag-reset. Hindi nabago ang progreso mo. " +
+        "Tingnan ang storage ng device at subukan muli.";
+    public const string RetryButtonLabel = "Ulitin";
+    public const string CloseButtonLabel = "Isara";
 
     public static bool CanOfferReset(SaveManagerMode mode)
     {

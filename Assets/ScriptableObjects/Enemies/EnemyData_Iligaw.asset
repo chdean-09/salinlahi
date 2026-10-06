@@ -15,8 +15,10 @@ MonoBehaviour:
   enemyID: iligaw
   displayName: Iligaw
   discoverySubtitle: 
-  description: Iligaw is a reflection torn from the Living Scroll and taught to lie. Paglimot gives it a second face so that a familiar character appears almost right, yet leads memory in the wrong direction.
-  abilityLine: It makes a false copy carrying a misleading character.
+  description: Ang Iligaw ay repleksiyong pinunit mula sa Buhay na Kasulatan at tinuruan
+    magsinungaling. Binigyan ito ng Paglimot ng pangalawang mukha para magmukhang
+    halos tama ang pamilyar na titik, pero iligaw ang alaala.
+  abilityLine: Gumagawa ito ng huwad na kopyang may mapanlinlang na titik.
   moveSpeed: 1.5
   maxHealth: 1
   walkFrames:
@@ -90,8 +92,8 @@ MonoBehaviour:
   splitCount: 2
   splitOffsetX: 0.9
   spriteScale: 1
-  corruptedMeaning: A near copy can make a true glyph look doubtful.
-  trueMeaning: Small marks distinguish related characters.
-  restoredLesson: Compare glyphs before committing a drawing.
+  corruptedMeaning: Dahil magkamukha ang kopya, maaaring pagdudahan ang tunay na titik.
+  trueMeaning: Nagtatangi sa magkakaugnay na titik ang maliliit na marka.
+  restoredLesson: Paghambingin ang mga titik bago iguhit ang isa.
   learningAbility: 2
   suppressDiscovery: 0

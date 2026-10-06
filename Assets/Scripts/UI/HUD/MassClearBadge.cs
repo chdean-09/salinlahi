@@ -34,7 +34,7 @@ public class MassClearBadge : MonoBehaviour
         if (_badgeRoot == null || _label == null) return;
         if (defeatedCount <= 0) return;
 
-        _label.text = $"MASS CLEAR x{defeatedCount}";
+        _label.text = $"UBOS LAHAT x{defeatedCount}";
 
         if (_currentRoutine != null)
             StopCoroutine(_currentRoutine);

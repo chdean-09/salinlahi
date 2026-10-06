@@ -61,15 +61,15 @@ public static class LevelLockNoticeCopy
         switch (objectiveId)
         {
             case LevelObjectives.StoryViewed:
-                return $"Locked. Watch the story in {requiredLevelLabel} to open this one.";
+                return $"Naka-lock. Panoorin ang kuwento sa {requiredLevelLabel} para mabuksan ito.";
             case LevelObjectives.SymbolsPracticed:
-                return $"Locked. Practice every symbol in {requiredLevelLabel} to open this one.";
+                return $"Naka-lock. Sanayin ang lahat ng simbolo sa {requiredLevelLabel} para mabuksan ito.";
             case LevelObjectives.WordsRestored:
-                return $"Locked. Restore every word in {requiredLevelLabel} to open this one.";
+                return $"Naka-lock. Ibalik ang lahat ng salita sa {requiredLevelLabel} para mabuksan ito.";
             case LevelObjectives.ContextPassed:
-                return $"Locked. Finish the challenge in {requiredLevelLabel} to open this one.";
+                return $"Naka-lock. Tapusin ang hamon sa {requiredLevelLabel} para mabuksan ito.";
             case LevelObjectives.FinalSyllableRestored:
-                return $"Locked. Restore the final syllable in {requiredLevelLabel} to open this one.";
+                return $"Naka-lock. Ibalik ang huling pantig sa {requiredLevelLabel} para mabuksan ito.";
             default:
                 return Prerequisite(requiredLevelLabel, crossesEra: false, requiredEraName: null);
         }
@@ -102,9 +102,9 @@ public static class LevelLockNoticeCopy
         // the level into the one sanctioned form, so repeating the era would read "Finish Ugat
         // by completing Ugat Level 5".
         if (crossesEra && !string.IsNullOrEmpty(requiredEraName))
-            return $"Locked. Finish {requiredLevelLabel} to open this era.";
+            return $"Naka-lock. Tapusin ang {requiredLevelLabel} para mabuksan ang panahong ito.";
 
-        return $"Locked. Complete {requiredLevelLabel} first.";
+        return $"Naka-lock. Kumpletuhin muna ang {requiredLevelLabel}.";
     }
 }
 
@@ -329,6 +329,9 @@ public sealed class LevelLockNoticePanel : MonoBehaviour
         TutorialFontProvider.ApplyLegibilityEffects(label);
         label.text = LevelLockNoticeCopy.DismissLabel;
         Stretch(labelObject.GetComponent<RectTransform>());
+        ScrollPanelArt.SetAnchors(cardRect, ScrollPanelArt.ScrollArea);
+        ScrollPanelArt.SetAnchors(bodyObject.GetComponent<RectTransform>(), Rect.MinMaxRect(0.17f, 0.35f, 0.83f, 0.79f));
+        ScrollPanelArt.SetAnchors(buttonRect, Rect.MinMaxRect(0.20f, 0.17f, 0.80f, 0.30f));
 
         _overlayRoot = root;
         _bodyText = body;

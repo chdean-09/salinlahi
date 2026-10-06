@@ -85,6 +85,42 @@ namespace Salinlahi.Tests.Editor.UI
             }
         }
 
+        [TestCase(320f, 568f, 1)]
+        [TestCase(320f, 568f, 2)]
+        [TestCase(320f, 568f, 3)]
+        [TestCase(360f, 800f, 1)]
+        [TestCase(360f, 800f, 2)]
+        [TestCase(360f, 800f, 3)]
+        [TestCase(430f, 932f, 1)]
+        [TestCase(430f, 932f, 2)]
+        [TestCase(430f, 932f, 3)]
+        public void PhoneCompletion_UsesAvailablePaperForAllFiveMemories(float width, float height, int eraNumber)
+        {
+            EraConfigSO era = AssetDatabase.LoadAssetAtPath<EraConfigSO>(
+                $"Assets/ScriptableObjects/Themes/Era_{eraNumber:00}.asset");
+            EraCompletionScreenUI screen = NewScreen();
+            Assert.IsTrue(screen.Present(era, MemoryArchiveModel.BuildForEra(era, null, true), eraNumber < 3, null, null));
+            Canvas canvas = screen.GetComponentInParent<Canvas>();
+            CanvasScaler scaler = canvas.GetComponent<CanvasScaler>();
+            if (scaler != null) scaler.enabled = false;
+            canvas.renderMode = RenderMode.WorldSpace;
+            float scale = Mathf.Sqrt(width / 1080f * height / 1920f);
+            canvas.GetComponent<RectTransform>().sizeDelta = new Vector2(width / scale, height / scale);
+            ScrollRect scroll = screen.GetComponentInChildren<ScrollRect>();
+            Canvas.ForceUpdateCanvases();
+            LayoutRebuilder.ForceRebuildLayoutImmediate(scroll.content);
+            Assert.LessOrEqual(scroll.content.rect.height, scroll.viewport.rect.height + 1f,
+                "All five normal memory tiles should fit without a three-row viewport.");
+            foreach (TMP_Text label in scroll.content.GetComponentsInChildren<TMP_Text>())
+            {
+                label.ForceMeshUpdate();
+                Assert.AreEqual(UITextScale.Body, label.fontSize);
+                Assert.IsFalse(label.isTextOverflowing, label.text);
+            }
+            foreach (Button button in screen.GetComponentsInChildren<Button>())
+                Assert.GreaterOrEqual(button.GetComponent<RectTransform>().rect.height * scale, 44f, button.name);
+        }
+
         [TearDown]
         public void TearDown()
         {

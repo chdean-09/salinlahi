@@ -2,6 +2,7 @@ using System.Collections;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine.UI;
 
 namespace Salinlahi.Tests.PlayMode.UI
 {
@@ -56,6 +57,27 @@ namespace Salinlahi.Tests.PlayMode.UI
             Transform overlay = _controller.transform.Find("DialogueOverlay");
             Assert.IsNotNull(overlay, "The runtime dialogue overlay was not built.");
             return overlay as RectTransform;
+        }
+
+        [UnityTest]
+        public IEnumerator FullStoryLine_FitsWithoutScrollingAndKeepsHeadingInsidePaper()
+        {
+            _dialogue.lines[0].text = "Sa dulo ng Ugat, hinarap ni Juan ang Paglimot, ang anino na kumain sa mga alaala ng kanyang pamilya.";
+            _controller.Play(_dialogue);
+            yield return new WaitForSecondsRealtime(0.5f);
+            _controller.SendMessage("SkipTypewriter");
+            Canvas.ForceUpdateCanvases();
+            RectTransform panel = PanelRect();
+            Assert.IsNull(panel.GetComponentInChildren<ScrollRect>());
+            TMPro.TMP_Text body = panel.Find("BodyText").GetComponent<TMPro.TMP_Text>();
+            TMPro.TMP_Text speaker = panel.Find("SpeakerText").GetComponent<TMPro.TMP_Text>();
+            body.ForceMeshUpdate();
+            Assert.IsFalse(body.isTextOverflowing);
+            Assert.GreaterOrEqual(body.fontSize, UITextScale.Body);
+            Assert.GreaterOrEqual(body.rectTransform.rect.height, body.preferredHeight);
+            float headingTop = panel.InverseTransformPoint(speaker.rectTransform.TransformPoint(speaker.rectTransform.rect.max)).y;
+            Assert.Less(headingTop, panel.rect.yMax - 60f, "Heading stays below the wooden rod.");
+            Assert.IsTrue(_controller.IsPresenting);
         }
 
         [UnityTest]

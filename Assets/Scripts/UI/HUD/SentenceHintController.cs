@@ -9,7 +9,7 @@ using UnityEngine.UI;
 /// pause button — the same textured background the pause button wears,
 /// carrying the almanac "?" glyph — that opens a parchment scroll of the
 /// level's sentence hints (the blanked restoration context plus each focus
-/// word's meaning and descriptor line with every answer withheld, assembled by
+/// word's letter blanks and descriptor line with every answer withheld, assembled by
 /// <see cref="SentenceHintContent"/>). Levels 6-15 carry no authored objective
 /// subtext above the restoration rail, so this scroll is how the player asks for
 /// the sentence context levels 1-5 print by default.
@@ -38,8 +38,8 @@ public sealed class SentenceHintController : MonoBehaviour
     [Tooltip("Fallback chip glyph, used only when the hint icon art fails to "
              + "load — the same single-mark convention the pause button's \"||\" label uses.")]
     [SerializeField] private string _chipLabel = "?";
-    [SerializeField] private string _panelTitle = "Sentence Hints";
-    [SerializeField] private string _closeLabel = "Close";
+    [SerializeField] private string _panelTitle = "Hint sa Pangungusap";
+    [SerializeField] private string _closeLabel = "Isara";
 
     // The almanac's "?" glyph — a Resources copy of Assets/Art/UI/Almanac/
     // Questionmark.png so the runtime-built chip can resolve it. The glyph is
@@ -379,6 +379,17 @@ public sealed class SentenceHintController : MonoBehaviour
             return;
 
         Canvas canvas = ScrollPanelArt.ResolveModalCanvas(this);
+        // The runtime controller lives under the level manager, outside the HUD.
+        // Prefer its HUD host so an unrelated high-order panel cannot supply a
+        // narrow coordinate space. Nested canvases must use their full root rect.
+        if (GetComponentInParent<Canvas>() == null)
+        {
+            Canvas hudCanvas = ResolveHudParent().GetComponentInParent<Canvas>();
+            if (hudCanvas != null && hudCanvas.isActiveAndEnabled)
+                canvas = hudCanvas;
+        }
+        if (canvas != null)
+            canvas = canvas.rootCanvas;
         if (canvas == null)
         {
             // Same fallback the ready screen builds: a standalone overlay canvas keeps
@@ -476,6 +487,7 @@ public sealed class SentenceHintController : MonoBehaviour
         ContentSizeFitter fitter = bodyObject.AddComponent<ContentSizeFitter>();
         fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         _hintScroll.content = bodyRect;
+        ScrollPanelArt.EnsureVerticalScrollbar(_hintScroll);
 
         GameObject closeObject = new GameObject(
             "[Runtime] SentenceHintClose", typeof(RectTransform), typeof(Image));
@@ -497,7 +509,7 @@ public sealed class SentenceHintController : MonoBehaviour
         RectTransform closeRect = close.GetComponent<RectTransform>();
         closeRect.anchorMin = closeRect.anchorMax = new Vector2(0.5f, 0.18f);
         closeRect.pivot = new Vector2(0.5f, 0.5f);
-        closeRect.sizeDelta = new Vector2(320f, 104f);
+        closeRect.sizeDelta = new Vector2(320f, 152f);
         ScrollPanelArt.SizeButtonLabel(close);
         closeLabel.enableAutoSizing = false;
         closeLabel.fontSize = HintReadingSize;
@@ -522,7 +534,7 @@ public sealed class SentenceHintController : MonoBehaviour
         _hintScroll.verticalNormalizedPosition = 1f;
     }
 
-    /// <summary>Composes the scroll body: bold meaning headings over their sentences.</summary>
+    /// <summary>Composes the scroll body: bold answer blanks over their clues.</summary>
     private static string ComposeBody(List<SentenceHintContent.Entry> entries)
     {
         if (entries == null || entries.Count == 0)

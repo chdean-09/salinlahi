@@ -66,7 +66,7 @@ namespace Salinlahi.Tests.Editor.UI
             EnemyDiscoveryCopy copy = EnemyDiscoveryCopyProvider.Resolve(data);
 
             Assert.AreEqual("High Ranking Friar", copy.Title);
-            Assert.AreEqual("A new enemy has appeared.", copy.Description);
+            Assert.AreEqual("May bagong kalaban!", copy.Description);
             Object.DestroyImmediate(data);
         }
 
@@ -78,8 +78,8 @@ namespace Salinlahi.Tests.Editor.UI
             EnemyDiscoveryCopy copy = EnemyDiscoveryCopyProvider.Resolve(data);
 
             Assert.AreEqual("Unknown Variant", copy.Title);
-            Assert.AreEqual("A new enemy has appeared.", copy.Description);
-            Assert.AreEqual("Observe its movement and draw the matching Baybayin character.", copy.Power);
+            Assert.AreEqual("May bagong kalaban!", copy.Description);
+            Assert.AreEqual("Panoorin ang galaw nito at iguhit ang katugmang titik ng Baybayin.", copy.Power);
             Object.DestroyImmediate(data);
         }
 
@@ -91,7 +91,7 @@ namespace Salinlahi.Tests.Editor.UI
             EnemyDiscoveryCopy copy = EnemyDiscoveryCopyProvider.Resolve(data);
 
             Assert.AreEqual("Elinquisidor", copy.Title);
-            Assert.AreEqual("A new enemy has appeared.", copy.Description);
+            Assert.AreEqual("May bagong kalaban!", copy.Description);
             Object.DestroyImmediate(data);
         }
 
@@ -100,8 +100,8 @@ namespace Salinlahi.Tests.Editor.UI
         {
             EnemyDiscoveryCopy copy = EnemyDiscoveryCopyProvider.Resolve(null);
 
-            Assert.AreEqual("Unknown", copy.Title);
-            Assert.AreEqual("A new enemy has appeared.", copy.Description);
+            Assert.AreEqual("Hindi kilala", copy.Title);
+            Assert.AreEqual("May bagong kalaban!", copy.Description);
         }
 
         private static EnemyDataSO CreateEnemyData(string enemyID)

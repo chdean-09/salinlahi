@@ -110,8 +110,11 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.IsNotNull(canvas, "setup: the card builds its own canvas when it has none.");
 
             // CanvasScaler.HandleScaleWithScreenSize for match 0.5, in log space.
-            float logWidth = Mathf.Log(Screen.width / 1080f, 2f);
-            float logHeight = Mathf.Log(Screen.height / 1920f, 2f);
+            // Screen can report the focused Editor window during Edit Mode tests.
+            // The canvas is rendered into the Game View's display dimensions.
+            Vector2 displaySize = canvas.renderingDisplaySize;
+            float logWidth = Mathf.Log(displaySize.x / 1080f, 2f);
+            float logHeight = Mathf.Log(displaySize.y / 1920f, 2f);
             float expected = Mathf.Pow(2f, Mathf.Lerp(logWidth, logHeight, 0.5f));
 
             Assert.AreEqual(expected, canvas.scaleFactor, 0.001f,

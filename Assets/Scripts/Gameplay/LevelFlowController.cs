@@ -2174,7 +2174,7 @@ public class LevelFlowController : MonoBehaviour
                         ShowCampaignEndingScreen();
                 }
                 : null,
-            nextEra != null ? EraCompletionCopy.EnterNextEraLabel : "Era Complete");
+            nextEra != null ? EraCompletionCopy.EnterNextEraLabel : EraCompletionCopy.CompleteJourneyLabel);
 
         // Null on the legacy path; VictoryScreenUI falls back to ProgressManager.GetStars there.
         _victoryScreen.PresentResults(LastResults, isEraFinalLevel);

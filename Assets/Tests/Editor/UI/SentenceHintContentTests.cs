@@ -70,7 +70,7 @@ namespace Salinlahi.Tests.Editor.UI
 
             List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(level);
             Assert.AreEqual(1, entries.Count);
-            Assert.AreEqual("father", entries[0].Label);
+            Assert.AreEqual("_ _ _", entries[0].Label);
             Assert.AreEqual(new[] { "ang haligi ng tahanan" }, entries[0].Lines);
         }
 
@@ -96,8 +96,13 @@ namespace Salinlahi.Tests.Editor.UI
             int wordHints = 0;
             foreach (SentenceHintContent.Entry entry in entries)
             {
-                if (entry.Label == "Sentence context")
+                if (entry.Label == "Konteksto ng pangungusap")
                     continue;
+                FocusWordDefinition focus = level.focusWords[wordHints];
+                string spelling = string.IsNullOrWhiteSpace(focus.latinSpelling)
+                    ? focus.displayLabel : focus.latinSpelling;
+                Assert.AreEqual(spelling.Trim().Length, entry.Label.Replace(" ", string.Empty).Length);
+                StringAssert.IsMatch(@"^_( _)*$", entry.Label);
                 wordHints++;
                 Assert.AreEqual(1, entry.Lines.Count);
                 StringAssert.DoesNotMatch(@"^_+\s*[\u2014:-]", entry.Lines[0]);
@@ -114,7 +119,7 @@ namespace Salinlahi.Tests.Editor.UI
         }
 
         [Test]
-        public void Build_KeepsMeaningAndDescriptorOnly()
+        public void Build_KeepsAnswerBlanksAndDescriptorOnly()
         {
             LevelConfigSO level = CreateLevel(
                 FocusWord("level.ugnayan.01.focus.01", "AWA", "compassion",
@@ -135,11 +140,11 @@ namespace Salinlahi.Tests.Editor.UI
             // Only the descriptor survives per word: usage/instruction lines and
             // challenge prompts are excluded so the scroll stays scannable.
             Assert.AreEqual(2, entries.Count);
-            Assert.AreEqual("compassion", entries[0].Label);
+            Assert.AreEqual("_ _ _", entries[0].Label);
             Assert.AreEqual(
                 new[] { "malasakit na nadarama para sa kapwa." },
                 entries[0].Lines);
-            Assert.AreEqual("action", entries[1].Label);
+            Assert.AreEqual("_ _ _ _", entries[1].Label);
             Assert.AreEqual(
                 new[] { "ang malasakit na isinasakatuparan." },
                 entries[1].Lines);
@@ -160,7 +165,7 @@ namespace Salinlahi.Tests.Editor.UI
             List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(level);
 
             Assert.AreEqual(1, entries.Count);
-            Assert.AreEqual("mother", entries[0].Label);
+            Assert.AreEqual("_ _ _", entries[0].Label);
             Assert.AreEqual(
                 new[] { "ang nagluwal at nag-aruga." },
                 entries[0].Lines);
@@ -222,7 +227,7 @@ namespace Salinlahi.Tests.Editor.UI
             // The second descriptor cleans to the same line, so it is dropped and
             // the empty entry never appears.
             Assert.AreEqual(1, entries.Count);
-            Assert.AreEqual("compassion", entries[0].Label);
+            Assert.AreEqual("_ _ _", entries[0].Label);
         }
 
         [Test]
@@ -243,7 +248,7 @@ namespace Salinlahi.Tests.Editor.UI
             List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(level);
 
             Assert.AreEqual(1, entries.Count);
-            Assert.AreEqual("Sentence context", entries[0].Label);
+            Assert.AreEqual("Konteksto ng pangungusap", entries[0].Label);
             Assert.AreEqual(new[] { "__ __: ilaw ng tahanan" }, entries[0].Lines);
         }
 
@@ -286,11 +291,11 @@ namespace Salinlahi.Tests.Editor.UI
             List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(level);
 
             Assert.AreEqual(1, entries.Count);
-            Assert.AreEqual("compassion", entries[0].Label);
+            Assert.AreEqual("_ _ _", entries[0].Label);
         }
 
         [Test]
-        public void Build_WithoutMeaning_LeavesLabelUnlabeled()
+        public void Build_WithoutMeaning_UsesAnswerLength()
         {
             LevelConfigSO level = CreateLevel(
                 FocusWord("level.x.focus.01", null, null, "hint line"));
@@ -298,8 +303,87 @@ namespace Salinlahi.Tests.Editor.UI
 
             List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(level);
 
-            // The word itself is the answer, so it is never used as the heading.
+            Assert.AreEqual("_ _ _ _ _ _", entries[0].Label);
+        }
+
+        [TestCase("INA", "_ _ _")]
+        [TestCase("BATA", "_ _ _ _")]
+        [TestCase("MAHALAGA", "_ _ _ _ _ _ _ _")]
+        [TestCase(" INA ", "_ _ _")]
+        public void Build_UsesLatinAnswerLengthInsteadOfMeaningOrDisplayLabel(string spelling, string expected)
+        {
+            FocusWordDefinition word = FocusWord("word", "Different label", "mother");
+            word.latinSpelling = spelling;
+            word.hintText = "ilaw ng tahanan";
+
+            List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(CreateLevel(word));
+
+            Assert.AreEqual(expected, entries[0].Label);
+            Assert.AreEqual(new[] { "ilaw ng tahanan" }, entries[0].Lines);
+        }
+
+        [TestCase(null)]
+        [TestCase("")]
+        [TestCase(" ")]
+        public void Build_WithoutLatinSpelling_UsesDisplayAnswerLength(string spelling)
+        {
+            FocusWordDefinition word = FocusWord("word", "INA", "mother");
+            word.latinSpelling = spelling;
+            word.hintText = "ilaw ng tahanan";
+
+            Assert.AreEqual("_ _ _", SentenceHintContent.Build(CreateLevel(word))[0].Label);
+        }
+
+        [Test]
+        public void Build_WithoutAnswerSpelling_LeavesClueUnlabeled()
+        {
+            FocusWordDefinition word = FocusWord("word", null, "mother");
+            word.hintText = "ilaw ng tahanan";
+
+            List<SentenceHintContent.Entry> entries = SentenceHintContent.Build(CreateLevel(word));
+
             Assert.AreEqual(string.Empty, entries[0].Label);
+            Assert.AreEqual(new[] { "ilaw ng tahanan" }, entries[0].Lines);
+        }
+
+        [TestCase("KASAMA", "companion", "kapiling, kaagapay")]
+        [TestCase("INA", "mother", "nanay")]
+        public void ChallengeHint_UsesFilipinoSynonymsWithoutAnswerOrEnglishMeaning(
+            string answer, string meaning, string synonyms)
+        {
+            FocusWordDefinition word = FocusWord("word", answer, meaning);
+            word.latinSpelling = answer;
+            word.hintSynonyms = synonyms;
+
+            string hint = SentenceHintContent.BuildChallengeHint(word);
+
+            Assert.AreEqual(synonyms, hint);
+            StringAssert.DoesNotContain(answer, hint);
+            StringAssert.DoesNotContain(meaning, hint);
+        }
+
+        [Test]
+        public void ChallengeHint_DoesNotUseTheSentenceDescriptor()
+        {
+            FocusWordDefinition word = FocusWord("word", "KASAMA", "companion", "Bakasin ang KA at SA at MA.");
+            word.hintText = "taong kapiling; hindi iniiwan ang kasama sa hirap";
+            word.hintSynonyms = "kapiling, kaagapay";
+
+            Assert.AreEqual("kapiling, kaagapay",
+                SentenceHintContent.BuildChallengeHint(word));
+        }
+
+        [Test]
+        public void ChallengeHint_MissingSynonymsDoesNotFallBackToSentenceOrMeaning()
+        {
+            Assert.AreEqual(string.Empty, SentenceHintContent.BuildChallengeHint(null));
+            FocusWordDefinition word = FocusWord("word", "KASAMA", "companion",
+                "KASAMA: taong kapiling sa gawain at paglalakbay.");
+            word.hintText = "taong kapiling sa gawain";
+            Assert.AreEqual(string.Empty,
+                SentenceHintContent.BuildChallengeHint(word));
+            word.hintSynonyms = "KASAMA";
+            Assert.AreEqual(string.Empty, SentenceHintContent.BuildChallengeHint(word));
         }
 
         private LevelConfigSO CreateLevel(params FocusWordDefinition[] words)

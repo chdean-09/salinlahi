@@ -128,11 +128,11 @@ public sealed class CampaignOutcomeSaveFailurePanel : MonoBehaviour
     {
         bool pending = result.Status == CampaignOutcomeCommitStatus.PendingRetry;
         _titleText.text = pending
-            ? "Your progress is waiting to be saved"
-            : "This completion could not be preserved";
+            ? "Hinihintay na ma-save ang progreso mo"
+            : "Hindi naingatan ang pagkumpleto na ito";
         _bodyText.text = pending
-            ? "Salinlahi could not save this level completion. Try again now, or return to the Main Menu. Your completion will remain pending and will be retried the next time the game starts."
-            : "Salinlahi could not create a valid pending completion. You can try again now, but if you return to the Main Menu you may need to replay this level.";
+            ? "Hindi na-save ng Salinlahi ang pagkumpleto mo sa antas na ito. Subukan muli ngayon o bumalik sa Pangunahing Menu. Mananatiling nakabinbin ang pagkumpleto mo at susubukan itong i-save muli sa susunod na buksan ang laro."
+            : "Hindi nakagawa ang Salinlahi ng wastong nakabinbing pagkumpleto. Maaari kang sumubok muli ngayon, pero kung babalik ka sa Pangunahing Menu, maaaring kailanganin mong ulitin ang antas na ito.";
     }
 
     private void SetButtonsInteractable(bool interactable)
@@ -149,10 +149,12 @@ public sealed class CampaignOutcomeSaveFailurePanel : MonoBehaviour
             return;
 
         _overlayRoot = gameObject;
-        Image overlayImage = GetComponent<Image>() ?? gameObject.AddComponent<Image>();
+        Image overlayImage = GetComponent<Image>();
+        if (overlayImage == null) overlayImage = gameObject.AddComponent<Image>();
         overlayImage.color = new Color(0f, 0f, 0f, 190f / 255f);
         overlayImage.raycastTarget = true;
-        CanvasGroup canvasGroup = GetComponent<CanvasGroup>() ?? gameObject.AddComponent<CanvasGroup>();
+        CanvasGroup canvasGroup = GetComponent<CanvasGroup>();
+        if (canvasGroup == null) canvasGroup = gameObject.AddComponent<CanvasGroup>();
         canvasGroup.alpha = 1f;
         canvasGroup.interactable = true;
         canvasGroup.blocksRaycasts = true;
@@ -170,10 +172,16 @@ public sealed class CampaignOutcomeSaveFailurePanel : MonoBehaviour
         cardImage.raycastTarget = true;
         bool onParchment = ScrollPanelArt.ApplyFull(cardImage);
 
-        _titleText = CreateText(card.transform, "TitleText", "Your progress is waiting to be saved", 45f, 120f, UITextScale.Title);
+        _titleText = CreateText(card.transform, "TitleText", "Hinihintay na ma-save ang progreso mo", 45f, 120f, UITextScale.Title);
         _bodyText = CreateText(card.transform, "BodyText", string.Empty, 185f, 280f, UITextScale.Body);
-        _retryButton = CreateButton(card.transform, "RetryButton", "Retry", 145f);
-        _mainMenuButton = CreateButton(card.transform, "MainMenuButton", "Main Menu", 25f);
+        _retryButton = CreateButton(card.transform, "RetryButton", "Ulitin", 145f);
+        _mainMenuButton = CreateButton(card.transform, "MainMenuButton", "Menu", 25f);
+        ScrollPanelArt.SetAnchors(cardRect, ScrollPanelArt.ScrollArea);
+        ScrollPanelArt.PlaceText(_titleText, Rect.MinMaxRect(0.16f, 0.68f, 0.84f, 0.80f), UITextScale.Body, UITextScale.Title);
+        ScrollPanelArt.SetAnchors(_bodyText.rectTransform, Rect.MinMaxRect(0.17f, 0.44f, 0.83f, 0.66f));
+        ScrollPanelArt.MakeReadingScroll(_bodyText);
+        ScrollPanelArt.PlaceButton(_retryButton, Rect.MinMaxRect(0.20f, 0.30f, 0.80f, 0.41f));
+        ScrollPanelArt.PlaceButton(_mainMenuButton, Rect.MinMaxRect(0.20f, 0.17f, 0.80f, 0.28f), primary: false);
 
         if (onParchment)
             ScrollPanelArt.InkifyRecursive(card.transform);

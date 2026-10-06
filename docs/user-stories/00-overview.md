@@ -56,7 +56,7 @@ As a player, I want to …, so that ….
 | File | Covers |
 |---|---|
 | [`01-app-entry-and-main-menu.md`](01-app-entry-and-main-menu.md) | Boot, main menu, Continue / New Journey, Settings, Credits, Exit, save recovery notices |
-| [`02-journey-map-and-level-entry.md`](02-journey-map-and-level-entry.md) | Era map (Level Select), level locks, level preview, the Living Scroll hub |
+| [`02-journey-map-and-level-entry.md`](02-journey-map-and-level-entry.md) | Era map (Level Select), level locks, level preview, the Buhay na Kasulatan hub |
 | [`03-story-and-dialogue.md`](03-story-and-dialogue.md) | Prologue, intro/outro dialogue, cutscenes, era completion, ending, language policy |
 | [`04-level-flow.md`](04-level-flow.md) | LF-CONTRACT-v2 nine phases, flow segments, mission objective, Ready screen, content refusal |
 | [`05-baybayin-learning.md`](05-baybayin-learning.md) | Focus words, symbol lesson cards, spoken values, mastery states, free practice / Dojo / Codex |
@@ -76,7 +76,7 @@ As a player, I want to …, so that ….
 
 ## The game, in one page (the baseline every story assumes)
 
-**Premise.** Juan defends the Living Scroll from **Paglimot** (Forgetting). Every Baybayin symbol has a *corrupted enemy* embodying the opposite of that symbol's lesson. Juan defeats an enemy by **tracing the correct symbol** on the touchscreen. Restoring a symbol restores the word it belongs to, and restoring words restores the memory of an era.
+**Premise.** Juan defends the Buhay na Kasulatan from **Paglimot** (Forgetting). Every Baybayin symbol has a *corrupted enemy* embodying the opposite of that symbol's lesson. Juan defeats an enemy by **tracing the correct symbol** on the touchscreen. Restoring a symbol restores the word it belongs to, and restoring words restores the memory of an era.
 
 **Structure.** 3 eras × 5 levels = 15 levels. Levels are presented to the player as **"Era N · Level 1–5"**, never as 1–15 (ruling 2026-09-11, SALIN-258).
 

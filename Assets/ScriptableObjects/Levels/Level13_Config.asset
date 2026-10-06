@@ -24,6 +24,7 @@ MonoBehaviour:
     displayLabel: SANGA
     meaning: branch
     hintText: 
+    hintSynonyms: sangay
     decomposition:
     - symbol: {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
       spokenValueId: value.sa
@@ -39,6 +40,7 @@ MonoBehaviour:
     displayLabel: HARAYA
     meaning: imagination
     hintText: 
+    hintSynonyms: guniguni, imahinasyon
     decomposition:
     - symbol: {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
       spokenValueId: value.ha

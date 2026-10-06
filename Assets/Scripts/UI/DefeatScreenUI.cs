@@ -138,6 +138,7 @@ public class DefeatScreenUI : MonoBehaviour
             return;
 
         SetButtonLabel(_retryButton, DefeatScreenCopy.RetryLabel);
+        SetButtonLabel(_levelSelectButton, LevelResultsCopy.LevelSelectLabel);
 
         if (_explanationText == null)
         {
@@ -177,7 +178,7 @@ public class DefeatScreenUI : MonoBehaviour
         rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.anchoredPosition = new Vector2(0f, 300f);
-        rect.sizeDelta = new Vector2(800f, 90f);
+        rect.sizeDelta = new Vector2(800f, 176f);
 
         TextMeshProUGUI text = subtitleObject.GetComponent<TextMeshProUGUI>();
         if (text == null)
@@ -257,7 +258,7 @@ public class DefeatScreenUI : MonoBehaviour
         captionRect.anchorMin = captionRect.anchorMax = new Vector2(0.5f, 0.5f);
         captionRect.pivot = new Vector2(0.5f, 0.5f);
         captionRect.anchoredPosition = new Vector2(0f, 90f);
-        captionRect.sizeDelta = new Vector2(560f, 56f);
+        captionRect.sizeDelta = new Vector2(560f, 96f);
 
         TextMeshProUGUI caption = captionObject.GetComponent<TextMeshProUGUI>();
         if (caption == null)
@@ -282,8 +283,8 @@ public class DefeatScreenUI : MonoBehaviour
         RectTransform rect = tipPanel.GetComponent<RectTransform>();
         rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
         rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = new Vector2(0f, -110f);
-        rect.sizeDelta = new Vector2(620f, 170f);
+        rect.anchoredPosition = new Vector2(0f, -170f);
+        rect.sizeDelta = new Vector2(820f, 208f);
 
         Image frame = tipPanel.GetComponent<Image>();
         if (frame == null)
@@ -331,8 +332,8 @@ public class DefeatScreenUI : MonoBehaviour
     {
         ScrollPanelArt.StylePrimaryButton(_retryButton);
         ScrollPanelArt.StyleSecondaryButton(_levelSelectButton);
-        PositionButton(_retryButton, new Vector2(0f, -430f), new Vector2(420f, 140f));
-        PositionButton(_levelSelectButton, new Vector2(0f, -610f), new Vector2(420f, 140f));
+        PositionButton(_retryButton, new Vector2(0f, -430f), new Vector2(620f, 176f));
+        PositionButton(_levelSelectButton, new Vector2(0f, -645f), new Vector2(620f, 176f));
     }
 
     private static void PositionButton(Button button, Vector2 position, Vector2 size)

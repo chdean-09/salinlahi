@@ -15,8 +15,11 @@ MonoBehaviour:
   enemyID: yapos-ng-dilim
   displayName: Yapos ng Dilim
   discoverySubtitle: 
-  description: Yapos ng Dilim is the embrace Paglimot uses to keep a word from reaching completion. Within its arms it traps the last sequence that would turn scattered syllables into a living word.
-  abilityLine: It seals the final word behind an ordered chain of remembered characters.
+  description: Ang Yapos ng Dilim ang yakap na ginagamit ng Paglimot para hindi
+    mabuo ang isang salita. Ikinukulong nito sa mga bisig ang huling pagkakasunod-sunod
+    na magdurugtong sa magkakahiwalay na pantig upang maging buhay na salita.
+  abilityLine: Itinatago nito ang huling salita sa likod ng magkakasunod na naaalalang
+    titik.
   moveSpeed: 1.1
   maxHealth: 3
   walkFrames:
@@ -93,7 +96,7 @@ MonoBehaviour:
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
   spriteScale: 1.15
-  corruptedMeaning: A final word can be trapped behind darkness.
-  trueMeaning: Completion is a sequence, not repeated force.
-  restoredLesson: Restore the final sequence in order.
+  corruptedMeaning: Maaaring makulong sa kadiliman ang huling salita.
+  trueMeaning: Nakukumpleto ito sa tamang pagkakasunod-sunod, hindi sa paulit-ulit na puwersa.
+  restoredLesson: Ibalik ang huling pagkakasunod-sunod ayon sa tamang ayos.
   learningAbility: 15

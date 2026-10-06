@@ -9,19 +9,19 @@ public sealed class Level1TutorialSequenceSO : ScriptableObject
 
     [Header("Fixed Dialogue Lines")]
     [Tooltip("Shown at S01_BaseIntro, before player taps through.")]
-    public string baseIntroText = "This is the base.";
+    public string baseIntroText = "Ito ang base.";
 
     [Tooltip("Shown after baseIntroText, before protagonist walks in.")]
-    public string baseDefenseText = "Keep enemies away from it.";
+    public string baseDefenseText = "Ilayo rito ang mga kalaban.";
 
     [Tooltip("Shown when first enemy appears and freezes.")]
-    public string drawPurposeText = "Draw its syllable to defeat it.";
+    public string drawPurposeText = "Iguhit ang pantig nito para talunin ito.";
 
     [Tooltip("Shown once if the base takes damage during the Level 1 tutorial.")]
-    public string baseDamageText = "The base took damage. Draw before enemies reach it.";
+    public string baseDamageText = "Napinsala ang base. Gumuhit bago ito maabot ng mga kalaban.";
 
     [Tooltip("Shown after HA is defeated, before releasing to normal waves.")]
-    public string finalReleaseText = "You are ready. Defend the base.";
+    public string finalReleaseText = "Handa ka na. Ipagtanggol ang base.";
 
     [Header("Timing")]
     [Tooltip("Seconds to display each fixed message.")]

@@ -7,14 +7,14 @@ public static class TutorialFontProvider
     private const string FontAssetPath = "Fonts/TutorialFont";
     private static TMP_FontAsset _cachedFontAsset;
 
-    // Readability treatment shared by every player-facing text. For TMP texts this is
-    // the SDF shader's underlay: a hard-edged offset silhouette rendered inside the
-    // glyph shader, which on the pixel-style VT323 font reads as a deliberate retro
-    // drop shadow. uGUI Shadow/Outline stamp offset copies of the glyph and visibly
-    // ghost/thicken thin pixel glyphs, so they are not used here.
+    // A small SDF shadow separates light HUD text from scenery. Parchment inking
+    // removes it so dark reading text retains open counters and clean strokes.
     private static readonly Color LegibilityUnderlayColor = new Color(0f, 0f, 0f, 0.85f);
-    private const float LegibilityUnderlayOffsetX = 0.55f;
-    private const float LegibilityUnderlayOffsetY = -0.55f;
+    private const float LegibilityUnderlayOffsetX = 0.25f;
+    private const float LegibilityUnderlayOffsetY = -0.25f;
+    // Keep VT323's pixel shapes while reducing the synthetic bold expansion that
+    // closes small counters on phone screens. The authored font asset stays intact.
+    private const float LegibilityBoldWeight = 0.2f;
     // Expanding the shadow also expands its atlas sampling footprint. With this
     // font's nine-pixel atlas padding, dilation bleeds adjacent glyphs into thin
     // horizontal lines above/below the text. An offset silhouette needs no dilation.
@@ -71,6 +71,7 @@ public static class TutorialFontProvider
             if (mat == null)
                 return;
 
+            mat.SetFloat(Shader.PropertyToID("_WeightBold"), LegibilityBoldWeight);
             mat.EnableKeyword("UNDERLAY_ON");
             mat.SetColor(Shader.PropertyToID("_UnderlayColor"), LegibilityUnderlayColor);
             mat.SetFloat(Shader.PropertyToID("_UnderlayOffsetX"), LegibilityUnderlayOffsetX);
@@ -100,8 +101,8 @@ public static class TutorialFontProvider
 
     /// <summary>
     /// Removes the legibility treatment — called by parchment inking paths, where
-    /// dark ink on light paper needs no dark separation and the underlay would
-    /// only thicken the glyphs.
+    /// dark ink on light paper needs no outline or shadow. An inherited outline
+    /// closes the counters in VT323, even when the text is not explicitly bold.
     /// </summary>
     public static void ClearLegibilityEffects(Graphic graphic)
     {
@@ -113,6 +114,10 @@ public static class TutorialFontProvider
             if (Application.isPlaying && tmp.fontMaterial != null)
             {
                 tmp.fontMaterial.DisableKeyword("UNDERLAY_ON");
+                tmp.fontMaterial.DisableKeyword("OUTLINE_ON");
+                tmp.fontMaterial.SetFloat(Shader.PropertyToID("_OutlineWidth"), 0f);
+                tmp.fontMaterial.SetFloat(Shader.PropertyToID("_FaceDilate"), 0f);
+                tmp.fontMaterial.SetFloat(Shader.PropertyToID("_WeightBold"), LegibilityBoldWeight);
                 tmp.UpdateMeshPadding();
             }
             return;

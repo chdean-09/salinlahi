@@ -85,7 +85,7 @@ namespace Salinlahi.Tests.PlayMode.UI
             // builder; it would agree with the builder even if the builder emitted a global id.
             // VisibleMessage is what is actually on the runtime-built surface.
             Assert.AreEqual(
-                "Locked. Complete Ugnayan Level 2 first.",
+                "Naka-lock. Kumpletuhin muna ang Ugnayan Level 2.",
                 panel.VisibleMessage,
                 "The era-relative label must survive onto the runtime-built surface.");
             StringAssert.DoesNotContain("7", panel.VisibleMessage,

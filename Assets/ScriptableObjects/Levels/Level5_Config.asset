@@ -24,6 +24,7 @@ MonoBehaviour:
     displayLabel: IBA
     meaning: different
     hintText: 
+    hintSynonyms: naiiba, kakaiba
     decomposition:
     - symbol: {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
       spokenValueId: value.i
@@ -39,6 +40,7 @@ MonoBehaviour:
     displayLabel: MANA
     meaning: inheritance
     hintText: 
+    hintSynonyms: pamana
     decomposition:
     - symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
       spokenValueId: value.ma

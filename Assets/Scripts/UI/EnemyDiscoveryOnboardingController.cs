@@ -570,7 +570,7 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
             return;
 
         TutorialFontProvider.ApplyTo(label);
-        label.text = "Got it";
+        label.text = "Sige";
         label.fontSize = DismissButtonFontSize;
         label.enableAutoSizing = false;
         label.alignment = TextAlignmentOptions.Center;
@@ -610,13 +610,13 @@ public sealed class EnemyDiscoveryOnboardingController : MonoBehaviour
         string title = hideTitle ? string.Empty : copy.Title;
         string curriculum = string.Empty;
         if (!string.IsNullOrWhiteSpace(copy.CorruptedMeaning))
-            curriculum += $"\n<size=34>What it corrupts: {copy.CorruptedMeaning}</size>";
+            curriculum += $"\n<size=34>Sinisira nito: {copy.CorruptedMeaning}</size>";
         if (!string.IsNullOrWhiteSpace(copy.TrueMeaning))
-            curriculum += $"\n<size=34>What it protects: {copy.TrueMeaning}</size>";
+            curriculum += $"\n<size=34>Pinoprotektahan nito: {copy.TrueMeaning}</size>";
         if (!string.IsNullOrWhiteSpace(copy.RestoredLesson))
-            curriculum += $"\n<size=34>Restored lesson: {copy.RestoredLesson}</size>";
+            curriculum += $"\n<size=34>Aral na naibalik: {copy.RestoredLesson}</size>";
 
-        return $"<size=56><b>{title}</b></size>\n<size=42>{copy.Description}</size>\n<size=42>Power: {copy.Power}</size>{curriculum}";
+        return $"<size=56><b>{title}</b></size>\n<size=42>{copy.Description}</size>\n<size=42>Kakayahan: {copy.Power}</size>{curriculum}";
     }
 
     private void StartTypewriter()

@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 
 /// <summary>
 /// Resolves the sentence hints a level offers during defense: the blanked
-/// restoration context, then one clue under each focus word's meaning.
+/// restoration context, then one clue under each focus word's letter blanks.
 /// A hint points the player at the answer's context — it never names the word —
 /// so spelling recipes are stripped and every focus-word mention is blanked
 /// before display. Instruction lines and challenge prompts are excluded on
@@ -16,10 +16,10 @@ using System.Text.RegularExpressions;
 /// </summary>
 public static class SentenceHintContent
 {
-    /// <summary>One block in the hint scroll: an optional meaning heading plus its sentences.</summary>
+    /// <summary>One block in the hint scroll: answer blanks or a context heading plus its sentences.</summary>
     public sealed class Entry
     {
-        /// <summary>Plain-language meaning hint, or the sentence-context heading.</summary>
+        /// <summary>One blank per answer letter, or the sentence-context heading.</summary>
         public string Label = string.Empty;
         public readonly List<string> Lines = new List<string>();
     }
@@ -73,10 +73,9 @@ public static class SentenceHintContent
 
                 var entry = new Entry
                 {
-                    // The meaning hints at the word without naming it; the word
-                    // itself (displayLabel/latinSpelling) is the answer and never
-                    // heads a hint block.
-                    Label = CleanHintLine(focus.meaning, answers),
+                    // Show the required answer's length without revealing its
+                    // spelling or substituting the translated meaning's length.
+                    Label = BuildWordBlanks(focus),
                 };
 
                 AddLine(entry, focus.hintText, seen, answers);
@@ -116,6 +115,35 @@ public static class SentenceHintContent
         return entries;
     }
 
+    /// <summary>Returns the authored Filipino synonyms without revealing the answer.
+    /// Missing synonyms never fall back to a sentence, answer or English meaning.</summary>
+    public static string BuildChallengeHint(FocusWordDefinition focus)
+    {
+        if (focus == null)
+            return string.Empty;
+
+        return CleanHintLine(focus.hintSynonyms, BuildAnswerPattern(new[] { focus }));
+    }
+
+    private static string BuildWordBlanks(FocusWordDefinition focus)
+    {
+        string spelling = string.IsNullOrWhiteSpace(focus.latinSpelling)
+            ? focus.displayLabel
+            : focus.latinSpelling;
+        if (string.IsNullOrWhiteSpace(spelling))
+            return string.Empty;
+
+        spelling = spelling.Trim();
+        var builder = new StringBuilder();
+        for (int i = 0; i < spelling.Length; i++)
+        {
+            if (i > 0)
+                builder.Append(' ');
+            builder.Append('_');
+        }
+        return builder.ToString();
+    }
+
     /// <summary>Adds a labeled context block: the level's restoration text
     /// with every target blanked. Word-mode objectives keep their clue beside the
     /// blanks ("__ __ — ilaw ng tahanan"); context-mode units concatenate into the
@@ -133,7 +161,7 @@ public static class SentenceHintContent
         bool wordMode = objective.displayMode == RestorationDisplayMode.GuidedWords
             || objective.displayMode == RestorationDisplayMode.ClueOnlyWords;
 
-        var context = new Entry { Label = "Sentence context" };
+        var context = new Entry { Label = "Konteksto ng pangungusap" };
         var continuous = new StringBuilder();
         for (int i = 0; i < objective.units.Count; i++)
         {
@@ -275,7 +303,7 @@ public static class SentenceHintContent
 
         cleaned = cleaned.Trim().Replace('<', '‹').Replace('>', '›');
 
-        // The meaning heading identifies the clue. A blanked word followed by a
+        // The answer blanks identify the clue. A blanked word followed by a
         // dash adds noise and makes otherwise identical objective clues look different.
         cleaned = Regex.Replace(cleaned, @"^_+\s*[\u2014:-]\s*", string.Empty);
 

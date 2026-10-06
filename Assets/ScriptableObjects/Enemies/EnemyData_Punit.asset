@@ -15,8 +15,11 @@ MonoBehaviour:
   enemyID: punit
   displayName: Punit
   discoverySubtitle: 
-  description: Punit stitches itself from pages Paglimot tore out of stories and family records. It separates the lines around a missing character until their connection is forgotten.
-  abilityLine: It tears the current sentence apart around its missing character.
+  description: Tinatahi ng Punit ang sarili mula sa mga pahinang pinunit ng Paglimot
+    mula sa mga kuwento at tala ng pamilya. Pinaghihiwalay nito ang mga linyang
+    nakapaligid sa nawawalang titik hanggang makalimutan ang ugnayan ng mga ito.
+  abilityLine: Pinupunit nito ang kasalukuyang pangungusap sa palibot ng nawawalang
+    titik.
   moveSpeed: 1.7
   maxHealth: 1
   walkFrames:
@@ -70,7 +73,7 @@ MonoBehaviour:
   scrambleRadius: 3
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
-  corruptedMeaning: Separated lines make related syllables feel unrelated.
-  trueMeaning: Meaning survives a visible break in context.
-  restoredLesson: Reconnect the fragments before choosing a glyph.
+  corruptedMeaning: Dahil magkakahiwalay ang mga linya, parang hindi magkakaugnay ang mga pantig.
+  trueMeaning: Nananatili ang kahulugan kahit may nakikitang putol sa konteksto.
+  restoredLesson: Pag-ugnayin muli ang mga piraso bago pumili ng titik.
   learningAbility: 12

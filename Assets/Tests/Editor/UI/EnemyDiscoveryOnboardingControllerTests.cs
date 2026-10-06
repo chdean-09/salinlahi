@@ -579,7 +579,7 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.NotNull(controller);
             Assert.NotNull(label);
             Assert.NotNull(image);
-            Assert.AreEqual("Got it", label.text);
+            Assert.AreEqual("Sige", label.text);
             Assert.AreEqual(new Color(0.7019608f, 0.5019608f, 0.07450981f, 1f), label.color);
             Assert.AreEqual(Color.white, image.color);
             Assert.NotNull(label.GetComponent<Shadow>());

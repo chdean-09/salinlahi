@@ -365,7 +365,7 @@ public sealed class TutorialIntroPlayer : MonoBehaviour
     private void ConfigureLabel(string text)
     {
         if (_tapToProceedLabel == null) return;
-        _tapToProceedLabel.text = string.IsNullOrEmpty(text) ? "Tap anywhere to continue" : text;
+        _tapToProceedLabel.text = string.IsNullOrEmpty(text) ? "I-tap kahit saan para magpatuloy" : text;
     }
 
     private void ShowSurfaces(PlaybackMode mode)

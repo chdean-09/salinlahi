@@ -17,12 +17,12 @@ public readonly struct EnemyDiscoveryCopy
         string trueMeaning,
         string restoredLesson)
     {
-        Title = string.IsNullOrWhiteSpace(title) ? "Unknown" : title.Trim();
+        Title = string.IsNullOrWhiteSpace(title) ? "Hindi kilala" : title.Trim();
         Description = string.IsNullOrWhiteSpace(description)
-            ? "A new enemy has appeared."
+            ? "May bagong kalaban!"
             : description.Trim();
         Power = string.IsNullOrWhiteSpace(power)
-            ? "Observe its movement and draw the matching Baybayin character."
+            ? "Panoorin ang galaw nito at iguhit ang katugmang titik ng Baybayin."
             : power.Trim();
         CorruptedMeaning = string.IsNullOrWhiteSpace(corruptedMeaning)
             ? string.Empty
@@ -93,7 +93,7 @@ public static class EnemyDiscoveryCopyProvider
     private static string TitleCaseID(string normalizedID)
     {
         return string.IsNullOrWhiteSpace(normalizedID)
-            ? "Unknown"
+            ? "Hindi kilala"
             : CultureInfo.InvariantCulture.TextInfo.ToTitleCase(normalizedID.Replace('_', ' ').Replace('-', ' '));
     }
 }

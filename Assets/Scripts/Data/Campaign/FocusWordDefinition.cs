@@ -46,6 +46,9 @@ public sealed class FocusWordDefinition
     [Tooltip("Optional sentence-hint clue. Use when the tutorial dialogue is instruction rather than a definition.")]
     public string hintText;
 
+    [Tooltip("Filipino synonyms revealed by the challenge Gabay. Do not include the answer itself.")]
+    public string hintSynonyms;
+
     public List<SymbolValueReference> decomposition = new();
     public ContentMediaReferences media = new();
 }

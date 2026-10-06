@@ -24,6 +24,7 @@ MonoBehaviour:
     displayLabel: GANA
     meaning: drive
     hintText: 
+    hintSynonyms: sigla
     decomposition:
     - symbol: {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
       spokenValueId: value.ga
@@ -39,6 +40,7 @@ MonoBehaviour:
     displayLabel: KAYA
     meaning: capability
     hintText: 
+    hintSynonyms: kakayahan
     decomposition:
     - symbol: {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
       spokenValueId: value.ka

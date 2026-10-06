@@ -42,13 +42,13 @@ public static class CampaignSaveNoticeCopy
     /// Matches the shipped register: MainMenuUI uses "Continue" for the Play button
     /// (MainMenuUI.cs:58) and LevelLockNoticeCopy.DismissLabel is "OK".
     /// </remarks>
-    public const string ContinueLabel = "Continue";
+    public const string ContinueLabel = "Magpatuloy";
 
     /// <summary>Confirm-button label when the notice is blocking and the action retries init.</summary>
-    public const string RetryLabel = "Retry";
+    public const string RetryLabel = "Ulitin";
 
     /// <summary>Title for <see cref="CampaignSaveNoticeKind.Migration"/>. Unchanged since SALIN-171.</summary>
-    public const string MigrationTitle = "Your Journey Has Been Updated";
+    public const string MigrationTitle = "Na-update na ang Paglalakbay Mo";
 
     /// <summary>
     /// Title for <see cref="CampaignSaveNoticeKind.Recovery"/>.
@@ -60,15 +60,15 @@ public static class CampaignSaveNoticeCopy
     /// is not read back at all. The receipt the same branch writes is literally a reset:
     /// reasonCode "safe-reset" (CampaignSaveService.cs:157).
     /// </summary>
-    public const string SafeResetTitle = "Your Journey Was Reset";
+    public const string SafeResetTitle = "Na-reset na ang Paglalakbay Mo";
 
     /// <summary>Title for <see cref="CampaignSaveNoticeKind.Blocking"/> and the default arm.</summary>
-    public const string BlockedTitle = "Journey Data Cannot Be Opened";
+    public const string BlockedTitle = "Hindi Mabuksan ang Data ng Paglalakbay";
 
     /// <summary>Body for <see cref="CampaignSaveNoticeKind.Migration"/>. Unchanged since SALIN-171.</summary>
     public const string MigrationBody =
-        "Your previous journey progress was archived safely. Audio preferences were preserved. " +
-        "The revised journey begins at Ugat Level 1.";
+        "Ligtas na na-archive ang dati mong progreso sa paglalakbay. Napanatili ang mga setting ng tunog. " +
+        "Magsisimula ang binagong paglalakbay sa Antas 1 ng Ugat.";
 
     /// <summary>
     /// Body for <see cref="CampaignSaveNoticeKind.Recovery"/>.
@@ -83,22 +83,22 @@ public static class CampaignSaveNoticeCopy
     /// the superseded arm as well as the corrupt one. See the KNOWN LIMIT note on this class.
     /// </summary>
     public const string SafeResetBody =
-        "Your previous journey could not be carried over, so a clean journey was created at " +
-        "Ugat Level 1. The earlier files were kept for diagnostics.";
+        "Hindi nailipat ang dati mong progreso sa paglalakbay, kaya gumawa ng bagong paglalakbay na magsisimula sa " +
+        "Antas 1 ng Ugat. Iningatan ang mga naunang file para masuri kung may problema.";
 
     /// <summary>Body when the save was written by a newer build. Unchanged since SALIN-171.</summary>
     public const string UnsupportedSchemaBody =
-        "This journey was created by a newer version of Salinlahi. Update the game to continue. " +
-        "Progress was not changed.";
+        "Ginawa ang paglalakbay na ito gamit ang mas bagong bersyon ng Salinlahi. I-update ang laro para makapagpatuloy. " +
+        "Hindi nabago ang progreso.";
 
     /// <summary>Body when the save files could not be read at all. Unchanged since SALIN-171.</summary>
     public const string BlockedIoBody =
-        "Journey files could not be read. Check device storage and try again. " +
-        "Progress was not changed.";
+        "Hindi mabasa ang mga file ng paglalakbay. Tingnan ang storage ng device at subukan muli. " +
+        "Hindi nabago ang progreso.";
 
     /// <summary>Body for a blocking notice with no more specific reason. Unchanged since SALIN-171.</summary>
     public const string BlockedDefaultBody =
-        "The revised journey content is incomplete or incompatible. Progress was not changed.";
+        "Hindi kumpleto o hindi tugma ang nilalaman ng binagong paglalakbay. Hindi nabago ang progreso.";
 
     /// <summary>Reason codes <see cref="Body"/> recognises on the blocking arm.</summary>
     /// <remarks>

@@ -17,10 +17,10 @@ public static class DrawFeedbackVocabulary
     /// <summary>
     /// A target syllable whose occurrence is still gated by a level beat.
     /// </summary>
-    public const string LaterNeeded = "That syllable is needed later.";
+    public const string LaterNeeded = "Kakailanganin pa ang pantig na iyan.";
 
     /// <summary>A duplicate of a slot already restored.</summary>
-    public const string AlreadyFilled = "That one is already restored.";
+    public const string AlreadyFilled = "Naibalik na iyan.";
 
     /// <summary>
     /// A carrier of the drawn syllable fell, but it was one of Iligaw's copies, so nothing was
@@ -46,13 +46,13 @@ public static class DrawFeedbackVocabulary
     /// "check for the dot". Naming what fell and what is still walking describes the board; naming
     /// what to draw next would prescribe the answer, and the derivation is the lesson.
     /// </remarks>
-    public const string FalseCopyShattered = "That one was a copy. It fell, and the real one still walks.";
+    public const string FalseCopyShattered = "Kopya lang iyon. Bumagsak ito, pero buhay pa ang tunay.";
 
     /// <summary>A recognized symbol has a carrier, but an ability prevents damage.</summary>
-    public const string BlockedCarrier = "That symbol is blocked by an enemy ability.";
+    public const string BlockedCarrier = "Hinaharang ng kakayahan ng kalaban ang simbolong iyan.";
 
     /// <summary>Wording for a drawing refused on accuracy. Names the shape, never the score.</summary>
-    public const string SloppyRetry = "Draw it again and follow the shape.";
+    public const string SloppyRetry = "Iguhit muli ito at sundan ang hugis.";
 
     /// <summary>The prompt for one text relation, or empty when that relation says nothing.</summary>
     /// <remarks>

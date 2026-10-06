@@ -15,8 +15,11 @@ MonoBehaviour:
   enemyID: daan-lihis
   displayName: Daan-Lihis
   discoverySubtitle: 
-  description: Daan-Lihis coils across paths Paglimot has bent away from memory. At every fork it places a familiar-looking sign on the wrong road and trusts Juan to follow without reading.
-  abilityLine: It creates two character-marked paths, but only one belongs to the current word.
+  description: Gumagapang ang Daan-Lihis sa mga landas na inilayo ng Paglimot sa
+    alaala. Sa bawat sangandaan, naglalagay ito ng mukhang pamilyar na karatula sa
+    maling daan, umaasang susunod si Juan nang hindi nagbabasa.
+  abilityLine: Gumagawa ito ng dalawang landas na may marka ng titik, pero isa lang
+    ang bahagi ng kasalukuyang salita.
   moveSpeed: 1.5
   maxHealth: 1
   walkFrames:
@@ -70,7 +73,7 @@ MonoBehaviour:
   scrambleRadius: 3
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
-  corruptedMeaning: A familiar sign can point memory down the wrong path.
-  trueMeaning: Character identity stays stable even when position changes.
-  restoredLesson: Read the glyph and context, not its location.
+  corruptedMeaning: Maaaring ituro ng pamilyar na tanda ang alaala sa maling landas.
+  trueMeaning: Hindi nagbabago ang pagkakakilanlan ng titik kahit magbago ang puwesto nito.
+  restoredLesson: Basahin ang titik at unawain ang konteksto, hindi ang puwesto nito.
   learningAbility: 17

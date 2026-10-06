@@ -95,12 +95,12 @@ public sealed class LevelReadyScreenController : MonoBehaviour
             ? string.Empty
             : config.chapterName.Trim();
         string levelName = string.IsNullOrWhiteSpace(config.levelName)
-            ? $"Level {config.levelNumber}"
+            ? $"Antas {config.levelNumber}"
             : config.levelName.Trim();
 
         return string.IsNullOrEmpty(chapter)
-            ? $"Level {config.levelNumber}: {levelName}"
-            : $"{chapter} · Level {config.levelNumber}: {levelName}";
+            ? $"Antas {config.levelNumber}: {levelName}"
+            : $"{chapter} · Antas {config.levelNumber}: {levelName}";
     }
 
     /// <summary>
@@ -119,13 +119,13 @@ public sealed class LevelReadyScreenController : MonoBehaviour
             switch (objective.displayMode)
             {
                 case RestorationDisplayMode.GuidedWords:
-                    return "Restore the guided words, then defend the shrine.";
+                    return "Ibalik ang mga salitang may gabay, saka ipagtanggol ang dambana.";
                 case RestorationDisplayMode.ClueOnlyWords:
-                    return "Use each clue to restore the hidden words.";
+                    return "Gamitin ang bawat pahiwatig para ibalik ang mga nakatagong salita.";
                 case RestorationDisplayMode.MarkedContext:
-                    return "Restore the marked syllables in the sentence.";
+                    return "Ibalik ang mga minarkahang pantig sa pangungusap.";
                 case RestorationDisplayMode.HiddenContext:
-                    return "Find and restore the missing syllables.";
+                    return "Hanapin at ibalik ang mga nawawalang pantig.";
             }
         }
 
@@ -133,10 +133,10 @@ public sealed class LevelReadyScreenController : MonoBehaviour
             && config.focusWords != null
             && config.focusWords.Count > 0)
         {
-            return "Restore the focus words, then defend the shrine.";
+            return "Ibalik ang mahahalagang salita, saka ipagtanggol ang dambana.";
         }
 
-        return "Learn the symbols, then defend the shrine.";
+        return "Pag-aralan ang mga simbolo, saka ipagtanggol ang dambana.";
     }
 
     private void EnsurePanel()
@@ -206,7 +206,7 @@ public sealed class LevelReadyScreenController : MonoBehaviour
         buttonRect.anchorMin = new Vector2(0.66f, 0.18f);
         buttonRect.anchorMax = new Vector2(0.66f, 0.18f);
         buttonRect.pivot = new Vector2(0.5f, 0.5f);
-        buttonRect.sizeDelta = new Vector2(300f, 88f);
+        buttonRect.sizeDelta = new Vector2(300f, 144f);
         buttonObject.GetComponent<Image>().color = new Color(0.85f, 0.72f, 0.35f, 1f);
         _startButton = buttonObject.GetComponent<Button>();
         _startButton.onClick.AddListener(StartLevel);
@@ -218,7 +218,7 @@ public sealed class LevelReadyScreenController : MonoBehaviour
         labelRect.anchorMax = Vector2.one;
         labelRect.offsetMin = labelRect.offsetMax = Vector2.zero;
         TextMeshProUGUI label = labelObject.AddComponent<TextMeshProUGUI>();
-        label.text = "Start";
+        label.text = "Simulan";
         label.fontSize = UITextScale.Body;
         label.alignment = TextAlignmentOptions.Center;
         label.raycastTarget = false;
@@ -232,7 +232,7 @@ public sealed class LevelReadyScreenController : MonoBehaviour
         backRect.anchorMin = new Vector2(0.34f, 0.18f);
         backRect.anchorMax = new Vector2(0.34f, 0.18f);
         backRect.pivot = new Vector2(0.5f, 0.5f);
-        backRect.sizeDelta = new Vector2(260f, 88f);
+        backRect.sizeDelta = new Vector2(260f, 144f);
         backObject.GetComponent<Image>().color = new Color(0.18f, 0.24f, 0.34f, 1f);
         _backButton = backObject.GetComponent<Button>();
         _backButton.onClick.AddListener(Back);
@@ -244,7 +244,7 @@ public sealed class LevelReadyScreenController : MonoBehaviour
         backLabelRect.anchorMax = Vector2.one;
         backLabelRect.offsetMin = backLabelRect.offsetMax = Vector2.zero;
         TextMeshProUGUI backLabel = backLabelObject.AddComponent<TextMeshProUGUI>();
-        backLabel.text = "Back";
+        backLabel.text = "Balik";
         backLabel.fontSize = UITextScale.Body;
         backLabel.alignment = TextAlignmentOptions.Center;
         backLabel.raycastTarget = false;
@@ -281,7 +281,7 @@ public sealed class LevelReadyScreenController : MonoBehaviour
         text.overflowMode = TextOverflowModes.Overflow;
         text.raycastTarget = false;
         text.enableAutoSizing = true;
-        text.fontSizeMin = Mathf.Max(UITextScale.AutoSizeFloor, fontSize * 0.55f);
+        text.fontSizeMin = Mathf.Min(fontSize, UITextScale.Body);
         text.fontSizeMax = fontSize;
         TutorialFontProvider.ApplyTo(text);
         return text;

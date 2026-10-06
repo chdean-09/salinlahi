@@ -15,8 +15,11 @@ MonoBehaviour:
   enemyID: ragasa
   displayName: Ragasa
   discoverySubtitle: 
-  description: Ragasa is a flood of broken words unleashed when Paglimot overwhelms memory faster than meaning can settle. It hides the mark it carries and leaves only the unfinished word in its wake.
-  abilityLine: It hides its character and leaves an unfinished word as the only clue.
+  description: Ang Ragasa ay rumaragasang agos ng mga sirang salita na pinakawalan
+    nang daigin ng Paglimot ang alaala bago pa maintindihan ang kahulugan. Itinatago
+    nito ang dalang marka at nag-iiwan ng di-tapos na salita.
+  abilityLine: Itinatago nito ang titik at iniiwan ang di-tapos na salita bilang
+    nag-iisang pahiwatig.
   moveSpeed: 1.5
   maxHealth: 1
   walkFrames:
@@ -74,7 +77,7 @@ MonoBehaviour:
   glyphCoverInitialRevealSeconds: 2
   glyphCoverHiddenSeconds: 1.4
   glyphCoverRevealSeconds: 1.25
-  corruptedMeaning: Speed can overwhelm meaning before a word is complete.
-  trueMeaning: An unfinished word still points to its missing character.
-  restoredLesson: Infer the missing character while choosing when to act.
+  corruptedMeaning: Maaaring hindi maunawaan ang kahulugan kapag minadali bago mabuo ang salita.
+  trueMeaning: Itinuturo pa rin ng di-tapos na salita kung aling titik ang nawawala.
+  restoredLesson: Alamin ang nawawalang titik at piliin kung kailan kikilos.
   learningAbility: 18

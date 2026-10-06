@@ -199,7 +199,7 @@ public sealed class Level1TutorialGuideUI : MonoBehaviour
         TextMeshProUGUI label = CreateText(buttonObject.transform, "Label", new Vector2(0.5f, 0.5f), UITextScale.Caption, TextAlignmentOptions.Center);
         RectTransform labelRect = label.GetComponent<RectTransform>();
         labelRect.sizeDelta = rect.sizeDelta;
-        label.text = "Skip";
+        label.text = "Laktawan";
 
         buttonObject.SetActive(false);
         return buttonObject.GetComponent<Button>();

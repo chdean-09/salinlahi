@@ -176,6 +176,11 @@ public sealed class MemoryCardUI : MonoBehaviour
         _titleText.text = entry.Title;
         _wordsText.text = BuildWordsBlock(entry);
         _loreText.text = MemoryCardCopy.LoreHeading + "\n\n" + entry.Lore;
+        if (Application.isPlaying)
+        {
+            ScrollPanelArt.MakeReadingScroll(_wordsText);
+            ScrollPanelArt.MakeReadingScroll(_loreText);
+        }
         BuildGlyphs(entry);
     }
 
@@ -462,8 +467,8 @@ public sealed class MemoryCardUI : MonoBehaviour
 
         ScrollPanelArt.PlaceText(number, Band(0.72f, 0.785f), UITextScale.AutoSizeFloor, UITextScale.Secondary);
         ScrollPanelArt.PlaceText(title, Band(0.615f, 0.71f), UITextScale.Body, UITextScale.Title);
-        ScrollPanelArt.PlaceText(words, Band(0.455f, 0.60f), UITextScale.Caption, UITextScale.Title);
-        ScrollPanelArt.PlaceText(lore, Band(0.33f, 0.785f), UITextScale.Caption, UITextScale.Title);
+        ScrollPanelArt.PlaceText(words, Band(0.455f, 0.60f), UITextScale.Body, UITextScale.Body);
+        ScrollPanelArt.PlaceText(lore, Band(0.33f, 0.785f), UITextScale.Body, UITextScale.Body);
 
         ScrollPanelArt.SetAnchors(glyphRow, Band(0.33f, 0.42f));
         if (glyphRow != null)

@@ -473,7 +473,7 @@ Combo powers and Focus Mode are cut; see T63. Kept for id stability only.
 - **Size:** M · **Demo:** required · **Blocked by:** T41
 - **Status (re-verified 2026-09-11 @ cb41a966):** STILL-VALID. No `Cutscene_Ending` asset; `MainMenuUI.cs:45-47,159-163` still gates Endless on story completion.
 
-### T44 (SALIN-255) — Living Scroll hub (kept by ruling 2026-09-11)
+### T44 (SALIN-255) — Buhay na Kasulatan hub (kept by ruling 2026-09-11)
 - **Spec IDs:** UF-08, UF-06 ("Era Map" as a sub-destination).
 - **Files:** new `Assets/_Scenes/Hub.unity` + `UI/Hub/*`; `Core/SceneLoader.cs`; `UI/MainMenuUI.cs`.
 - **Acceptance:** Continue opens a hub with three chambers; Ugnayan and Pamana show "Complete Ugat Level 5" while locked; tapping Ugat opens the era map.

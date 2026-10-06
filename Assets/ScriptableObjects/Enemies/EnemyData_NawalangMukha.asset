@@ -15,8 +15,12 @@ MonoBehaviour:
   enemyID: nawalang-mukha
   displayName: Nawalang Mukha
   discoverySubtitle: 
-  description: Nawalang Mukha once collected the names Paglimot stripped from people, homes, and memories. With every stolen name its own face vanished, until only the Baybayin marks remained to reveal what stood before Juan.
-  abilityLine: It steals written names and leaves only the Baybayin characters behind.
+  description: Dati, tinipon ng Nawalang Mukha ang mga pangalang inalis ng Paglimot
+    sa mga tao, tahanan, at alaala. Sa bawat pangalang ninakaw, unti-unting naglaho
+    ang sarili nitong mukha, hanggang mga marka na lang ng Baybayin ang natira para
+    ipakita kay Juan kung ano ang nasa harap niya.
+  abilityLine: Inaalis nito ang mga nakasulat na pangalan at iniiwan ang mga titik
+    ng Baybayin.
   moveSpeed: 1.45
   maxHealth: 1
   walkFrames:
@@ -91,7 +95,7 @@ MonoBehaviour:
   splitOffsetX: 0.9
   spriteScale: 1
   suppressDiscovery: 0
-  corruptedMeaning: Names are shortcuts that can be stolen.
-  trueMeaning: Baybayin itself can identify a character.
-  restoredLesson: Read the glyph when Romanized labels disappear.
+  corruptedMeaning: Maaaring nakawin ang mga pangalan na nagsisilbing madaling palatandaan.
+  trueMeaning: Makikilala ang titik sa mismong Baybayin.
+  restoredLesson: Basahin ang titik kapag nawala ang mga pangalang nakasulat sa alpabetong Romano.
   learningAbility: 4

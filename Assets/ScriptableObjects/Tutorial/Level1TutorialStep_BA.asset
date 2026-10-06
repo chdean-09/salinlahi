@@ -24,13 +24,13 @@ MonoBehaviour:
   - {x: 40, y: 92}
   guideSprite: {fileID: -7019089095972263220, guid: ceb87f9375157e64690dafe395aab3b8, type: 3}
   tolerancePixels: 15
-  promptText: Draw BA. Start at the dot.
-  successText: Great job. Drawing protects the base.
-  idleHint: Draw the glowing symbol.
-  strongHint: Start at the dot, then follow the arrow.
-  assistText: Watch this once.
-  wrongCharacterFeedback: Draw the shown syllable.
-  directionMismatchFeedback: Follow the arrow direction.
-  tooShortFeedback: Draw the full shape.
-  recognitionFailedFeedback: Try that shape again.
+  promptText: Iguhit ang BA. Magsimula sa tuldok.
+  successText: Magaling! Pinoprotektahan ng pagguhit ang base.
+  idleHint: Iguhit ang kumikinang na simbolo.
+  strongHint: Magsimula sa tuldok, saka sundan ang palaso.
+  assistText: Panoorin ito nang isang beses.
+  wrongCharacterFeedback: Iguhit ang ipinakitang pantig.
+  directionMismatchFeedback: Sundan ang direksiyon ng palaso.
+  tooShortFeedback: Iguhit ang buong hugis.
+  recognitionFailedFeedback: Subukan muli ang hugis na iyan.
   assistAnimationPrefab: {fileID: 0}
