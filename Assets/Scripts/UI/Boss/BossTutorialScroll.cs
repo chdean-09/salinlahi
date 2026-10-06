@@ -95,6 +95,22 @@ public class BossTutorialScroll : MonoBehaviour
 
         _paging = new BossTutorialPaging(_pages.Length);
         gameObject.SetActive(true);
+        if (_art != null)
+        {
+            ScrollPanelArt.SetAnchors(_art.rectTransform, Rect.MinMaxRect(0.17f, 0.56f, 0.83f, 0.80f));
+            _art.preserveAspect = true;
+            _artBaseAnchoredPos = _art.rectTransform.anchoredPosition;
+        }
+        ScrollPanelArt.PlaceText(_title, Rect.MinMaxRect(0.15f, 0.44f, 0.85f, 0.55f), UITextScale.Body, UITextScale.Title);
+        // Reserve the bold glyph overhang that TMP's advance-based sizing omits.
+        if (_title != null) _title.margin = new Vector4(8f, 0f, 8f, 0f);
+        ScrollPanelArt.PlaceText(_pageIndicator, Rect.MinMaxRect(0.40f, 0.16f, 0.60f, 0.21f), UITextScale.Caption, UITextScale.Secondary);
+        if (_body != null)
+        {
+            ScrollRect reading = _body.GetComponentInParent<ScrollRect>();
+            if (reading != null)
+                ScrollPanelArt.SetAnchors(reading.GetComponent<RectTransform>(), Rect.MinMaxRect(0.17f, 0.23f, 0.83f, 0.42f));
+        }
         RenderCurrent();
         if (_anim != null) StopCoroutine(_anim);
         _anim = StartCoroutine(Animate(0f, 1f, _startScale, 1f, deactivateAtEnd: false));
@@ -173,14 +189,18 @@ public class BossTutorialScroll : MonoBehaviour
         }
 
         if (_title != null) _title.text = page.title ?? string.Empty;
+        ScrollPanelArt.Inkify(_title);
         if (_body != null)
         {
             bool hasText = !string.IsNullOrWhiteSpace(page.body);
             _body.text = hasText ? page.body : string.Empty;
             _body.gameObject.SetActive(hasText);
+            ScrollPanelArt.Inkify(_body);
+            if (hasText) ScrollPanelArt.MakeReadingScroll(_body);
         }
         if (_pageIndicator != null)
             _pageIndicator.text = $"{_paging.Index + 1} / {_pages.Length}";
+        ScrollPanelArt.Inkify(_pageIndicator);
 
         ApplyArrowState(_leftArrow, _paging.CanGoLeft);
         ApplyArrowState(_rightArrow, _paging.CanGoRight);

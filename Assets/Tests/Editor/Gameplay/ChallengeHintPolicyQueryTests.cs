@@ -252,7 +252,7 @@ public class ChallengeHintContentTests
     }
 
     [Test]
-    public void AllShippedHintEnabledSlots_HaveAnAuthoredMeaning()
+    public void AllShippedHintEnabledSlots_HaveAuthoredSynonyms()
     {
         List<LevelConfigSO> levels = EnemyDebutLookup.FlattenInCampaignOrder(_campaign);
         Assert.AreEqual(15, levels.Count);
@@ -268,7 +268,12 @@ public class ChallengeHintContentTests
                 {
                     FocusWordDefinition word = _controller.ResolveHintWord(unit, slot.expectedOccurrenceId);
                     Assert.IsNotNull(word, $"{level.name}/{unit.unitId}/{slot.slotId}");
-                    Assert.IsFalse(string.IsNullOrWhiteSpace(word.meaning));
+                    string hint = _controller.ResolveHintText(unit, slot.expectedOccurrenceId);
+                    Assert.IsFalse(string.IsNullOrWhiteSpace(hint));
+                    Assert.AreEqual(word.hintSynonyms, hint);
+                    StringAssert.DoesNotContain("______", hint);
+                    StringAssert.DoesNotMatch(@"\b" + System.Text.RegularExpressions.Regex.Escape(word.latinSpelling)
+                        + @"\b", hint.ToUpperInvariant());
                 }
             }
         }

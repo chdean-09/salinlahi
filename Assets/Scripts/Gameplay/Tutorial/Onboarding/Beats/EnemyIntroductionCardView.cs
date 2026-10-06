@@ -66,7 +66,7 @@ public sealed class EnemyIntroductionCardView : MonoBehaviour
     [SerializeField] private TMP_Text _continuePromptText;
 
     [Tooltip("Copy for the hold prompt.")]
-    [SerializeField] private string _continuePromptMessage = "Tap to continue";
+    [SerializeField] private string _continuePromptMessage = "I-tap para magpatuloy";
 
     [Header("Card Fit")]
     [Tooltip("Gap between the ability line's last row and the continue prompt, in canvas units.")]

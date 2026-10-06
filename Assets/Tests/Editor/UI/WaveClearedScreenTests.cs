@@ -52,21 +52,15 @@ namespace Salinlahi.Tests.Editor.UI
         }
 
         /// <summary>
-        /// AC-4. Pins the ticket's literal label. The wording is disputed — it names
-        /// ContextChallenge as "the Memory" and carries pre-D-003 restoration vocabulary
-        /// (see the WaveClearedCopy banner) — and that dispute is product's to settle.
-        /// Until it does, a silent reword here would quietly drop a stated acceptance
-        /// criterion, so the literal is pinned rather than trusted.
+        /// Pins the approved display label so the screen and copy class stay in sync.
         /// </summary>
         [Test]
         public void ContinueLabel_IsTheTicketsLiteralLabel()
         {
             Assert.AreEqual(
-                "Restore the Memory",
+                "Ibalik ang Alaala",
                 WaveClearedCopy.ContinueLabel,
-                "AC-4 names this label verbatim. If product has approved new wording, change "
-                + "this pin deliberately and record the approval — do not adjust it to match "
-                + "an incidental edit.");
+                "The approved Filipino label is rendered verbatim.");
         }
 
         /// <summary>

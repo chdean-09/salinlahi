@@ -21,9 +21,9 @@ MonoBehaviour:
     displayValue: wa
     pronunciationClip: {fileID: 8300000, guid: ed18e5f4249d4ec594c0f7520bf879da, type: 3}
   firstIntroductionLevelId: level.ugnayan.01
-  description: "WA is found inside church walls where Baybayin was painted over.
-    Juan uncovers traces of writing that survived in silence.\n\r\n\u201CWA is what
-    stays even when covered.\u201D"
+  description: "Makikita ang WA sa mga dingding ng simbahan na pinatungan ng pintura.
+    Natutuklasan ni Juan ang mga bakas ng sulat na tahimik na nakaligtas.\n\r\n\u201CAng
+    WA ang nananatili kahit natatakpan.\u201D"
   displaySprite: {fileID: -3493063987729265783, guid: 14ccf3bb7b032d4489c4232ae5010853, type: 3}
   almanacSprite: {fileID: 21300000, guid: de8ae0f418874d74184d60d5e8fa9803, type: 3}
   badgeSprite: {fileID: 1820221823815775938, guid: ca1f080825aef994095f093a562c0b28, type: 3}

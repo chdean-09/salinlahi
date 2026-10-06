@@ -24,6 +24,7 @@ MonoBehaviour:
     displayLabel: BATA
     meaning: child
     hintText: ang musmos na sumisibol, ang simula ng bawat alaala.
+    hintSynonyms: musmos
     decomposition:
     - symbol: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
       spokenValueId: value.ba
@@ -39,6 +40,7 @@ MonoBehaviour:
     displayLabel: TAMA
     meaning: correct
     hintText: 
+    hintSynonyms: wasto
     decomposition:
     - symbol: {fileID: 11400000, guid: d9bce7e0a0eb45bebd06e2e707b65905, type: 2}
       spokenValueId: value.ta

@@ -49,8 +49,7 @@ public sealed class HintModal : MonoBehaviour
 
     private Action _onConfirm;
     private Action _onRetry;
-    private string _pendingLabel;
-    private string _pendingMeaning;
+    private string _pendingHint;
 
     public Mode CurrentMode { get; private set; } = Mode.Closed;
     public bool IsOpen => CurrentMode != Mode.Closed;
@@ -86,15 +85,13 @@ public sealed class HintModal : MonoBehaviour
     /// </summary>
     /// <param name="session">Source of the effective policy. Never re-read a level asset's
     /// serialized emergencyHintEnabled — see ChallengeSession's SALIN-231 block.</param>
-    /// <param name="displayLabel">Focus word label, e.g. "IBA". May be empty.</param>
-    /// <param name="meaning">FocusWordDefinition.meaning, e.g. "different". Empty when the
-    /// unit has no focus word, which disables confirm rather than charging for nothing.</param>
+    /// <param name="hintText">Filipino synonyms with the answer withheld. Empty when
+    /// no synonyms are available, which disables confirm without spending a hint.</param>
     /// <param name="onConfirm">Invoked ONLY from Confirm(). Cancel never touches it.</param>
     /// <param name="onRetry">Legacy callback for Retry(); no modal button invokes it.</param>
     public void Open(
         ChallengeSession session,
-        string displayLabel,
-        string meaning,
+        string hintText,
         Action onConfirm,
         Action onRetry = null)
     {
@@ -104,8 +101,7 @@ public sealed class HintModal : MonoBehaviour
         BuildIfNeeded();
         _onConfirm = onConfirm;
         _onRetry = onRetry;
-        _pendingLabel = displayLabel;
-        _pendingMeaning = meaning;
+        _pendingHint = hintText;
 
         if (session.IsHintExhausted)
         {
@@ -117,9 +113,9 @@ public sealed class HintModal : MonoBehaviour
         gameObject.SetActive(true);
         _titleText.text = HintModalCopy.Title;
 
-        bool hasMeaning = !string.IsNullOrEmpty(meaning);
-        _bodyText.text = hasMeaning
-            ? HintModalCopy.MeaningOptionLabel
+        bool hasHint = !string.IsNullOrWhiteSpace(hintText);
+        _bodyText.text = hasHint
+            ? HintModalCopy.HintOptionLabel
             : HintModalCopy.NoHintAvailableBody;
 
         // Show the remaining metered budget on its own centered line.
@@ -130,7 +126,7 @@ public sealed class HintModal : MonoBehaviour
         _confirmButton.gameObject.SetActive(true);
         _confirmLabel.text = HintModalCopy.ConfirmLabel;
         // The guard and the disclosure are one expression by construction.
-        _confirmButton.interactable = session.CanRequestHint && hasMeaning;
+        _confirmButton.interactable = session.CanRequestHint && hasHint;
         _cancelLabel.text = HintModalCopy.CancelLabel;
     }
 
@@ -147,7 +143,7 @@ public sealed class HintModal : MonoBehaviour
 
     /// <summary>
     /// AC-1 / AC-5. Spends exactly one hint through the supplied callback, then shows the
-    /// single clue it bought. The meaning explains the word; it never fills a slot, so it
+    /// synonyms it bought. The hint withholds the word; it never fills a slot, so it
     /// cannot finish a required word on the player's behalf.
     /// </summary>
     public void Confirm()
@@ -160,8 +156,8 @@ public sealed class HintModal : MonoBehaviour
         confirm?.Invoke();
 
         CurrentMode = Mode.Revealed;
-        _titleText.text = HintModalCopy.MeaningOptionLabel;
-        _bodyText.text = HintModalCopy.MeaningReveal(_pendingLabel, _pendingMeaning);
+        _titleText.text = HintModalCopy.HintOptionLabel;
+        _bodyText.text = _pendingHint;
         _costText.text = string.Empty;
         _confirmButton.gameObject.SetActive(false);
         _cancelLabel.text = HintModalCopy.CloseLabel;
@@ -253,6 +249,7 @@ public sealed class HintModal : MonoBehaviour
         // Everything inside FullSafeArea — the paper, not the rods.
         _titleText = CreateLabel("Title", UITextScale.Title, new Vector2(0.16f, 0.66f), new Vector2(0.84f, 0.80f));
         _bodyText = CreateLabel("Body", UITextScale.Body, new Vector2(0.16f, 0.40f), new Vector2(0.84f, 0.64f));
+        ScrollPanelArt.MakeReadingScroll(_bodyText);
         _costText = CreateLabel("Cost", UITextScale.Caption, new Vector2(0.16f, 0.30f), new Vector2(0.84f, 0.40f));
 
         var actions = new GameObject("Actions", typeof(RectTransform), typeof(HorizontalLayoutGroup));
@@ -295,7 +292,7 @@ public sealed class HintModal : MonoBehaviour
         text.color = Color.white;
         text.alignment = TextAlignmentOptions.Center;
         text.enableAutoSizing = true;
-        text.fontSizeMin = Mathf.Max(UITextScale.AutoSizeFloor, size * 0.55f);
+        text.fontSizeMin = Mathf.Min(size, UITextScale.Body);
         text.fontSizeMax = size;
         text.raycastTarget = false;
         TutorialFontProvider.ApplyTo(text);
@@ -318,7 +315,7 @@ public sealed class HintModal : MonoBehaviour
 
         LayoutElement layout = go.AddComponent<LayoutElement>();
         layout.preferredWidth = 250f;
-        layout.preferredHeight = 64f;
+        layout.preferredHeight = 144f;
 
         var textObject = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
         textObject.transform.SetParent(go.transform, false);
@@ -332,12 +329,11 @@ public sealed class HintModal : MonoBehaviour
         labelText.alignment = TextAlignmentOptions.Center;
         labelText.color = labelColor;
         labelText.raycastTarget = false;
-        // "Use This Hint" is wider than the button at Body size: shrink into the floor
-        // rather than wrap a second line that would clip the 64px button.
+        // Keep a reading-size label; multiword actions may wrap inside the taller band.
         labelText.enableAutoSizing = true;
-        labelText.fontSizeMin = UITextScale.AutoSizeFloor;
+        labelText.fontSizeMin = UITextScale.Body;
         labelText.fontSizeMax = UITextScale.Body;
-        labelText.textWrappingMode = TextWrappingModes.NoWrap;
+        labelText.textWrappingMode = TextWrappingModes.Normal;
         TutorialFontProvider.ApplyTo(labelText);
         if (labelColor == ScrollPanelArt.InkColor)
             ScrollPanelArt.Inkify(labelText);

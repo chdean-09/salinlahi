@@ -53,14 +53,14 @@ public static class WaveClearedCopy
     /// shipped heading/button register — "Replay Level" (LevelResultsCopy.cs:81),
     /// "Start Journey" (MainMenuUI.cs:67).
     /// </summary>
-    public const string BannerLabel = "Wave Cleared";
+    public const string BannerLabel = "Naubos na ang mga Kalaban";
 
     /// <summary>
     /// Continue-button label (AC-4). VERBATIM from the live ticket description and
     /// docs/audit/BACKLOG.md:298, :301. Not reworded — see the class banner's concern 1
     /// and WaveClearedScreenTests.ContinueLabel_IsTheTicketsLiteralLabel, which pins it.
     /// </summary>
-    public const string ContinueLabel = "Restore the Memory";
+    public const string ContinueLabel = "Ibalik ang Alaala";
 
     /// <summary>
     /// "Hearts 2/3" (AC-2). Deliberately delegates to <see cref="LevelResultsCopy.Hearts"/>

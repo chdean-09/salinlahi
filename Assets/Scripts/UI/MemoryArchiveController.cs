@@ -124,6 +124,10 @@ public sealed class MemoryArchiveController : MonoBehaviour
         RenderRows();
         _emptyStateText.gameObject.SetActive(UnlockedCount == 0);
         _emptyStateText.text = MemoryCardCopy.EmptyArchiveBody;
+        RectTransform viewport = _contentRoot.parent != null
+            ? _contentRoot.parent.GetComponent<RectTransform>() : null;
+        if (viewport != null)
+            viewport.offsetMax = new Vector2(-60f, IsEmptyStateVisible ? -488f : -184f);
 
         _overlayRoot.SetActive(true);
         _closeButton.interactable = true;
@@ -220,7 +224,7 @@ public sealed class MemoryArchiveController : MonoBehaviour
                 "LockedRow_" + entry.LevelNumber,
                 LockedRowLabel(entry),
                 UITextScale.Secondary,
-                new Color32(122, 110, 92, 255));
+                new Color32(196, 180, 156, 255));
             return;
         }
 
@@ -228,7 +232,8 @@ public sealed class MemoryArchiveController : MonoBehaviour
             "MemoryRow_" + entry.LevelNumber,
             typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
         rowObject.transform.SetParent(_contentRoot, false);
-        rowObject.GetComponent<LayoutElement>().minHeight = 76f;
+        rowObject.GetComponent<LayoutElement>().minHeight = 152f;
+        ConfigureRowLayout(rowObject);
 
         Image rowImage = rowObject.GetComponent<Image>();
         rowImage.color = new Color32(70, 52, 38, 255);
@@ -275,6 +280,7 @@ public sealed class MemoryArchiveController : MonoBehaviour
         GameObject rowObject = new GameObject(name, typeof(RectTransform), typeof(LayoutElement));
         rowObject.transform.SetParent(_contentRoot, false);
         rowObject.GetComponent<LayoutElement>().minHeight = fontSize + 26f;
+        ConfigureRowLayout(rowObject);
 
         TMP_Text label = CreateText(rowObject.transform, "Label", text, fontSize);
         label.color = color;
@@ -284,6 +290,15 @@ public sealed class MemoryArchiveController : MonoBehaviour
         labelRect.offsetMin = new Vector2(24f, 0f);
         labelRect.offsetMax = new Vector2(-24f, 0f);
         return label;
+    }
+
+    private static void ConfigureRowLayout(GameObject row)
+    {
+        VerticalLayoutGroup layout = row.AddComponent<VerticalLayoutGroup>();
+        layout.padding = new RectOffset(24, 24, 12, 12);
+        layout.childControlWidth = layout.childControlHeight = true;
+        layout.childForceExpandWidth = true;
+        layout.childForceExpandHeight = false;
     }
 
     private static void DestroyChild(GameObject child)
@@ -339,7 +354,7 @@ public sealed class MemoryArchiveController : MonoBehaviour
         titleRect.anchorMin = new Vector2(0f, 1f);
         titleRect.anchorMax = new Vector2(1f, 1f);
         titleRect.pivot = new Vector2(0.5f, 1f);
-        titleRect.offsetMin = new Vector2(60f, -110f);
+        titleRect.offsetMin = new Vector2(60f, -160f);
         titleRect.offsetMax = new Vector2(-60f, -40f);
         _titleText.color = new Color32(240, 226, 198, 255);
 
@@ -348,8 +363,8 @@ public sealed class MemoryArchiveController : MonoBehaviour
         emptyRect.anchorMin = new Vector2(0f, 1f);
         emptyRect.anchorMax = new Vector2(1f, 1f);
         emptyRect.pivot = new Vector2(0.5f, 1f);
-        emptyRect.offsetMin = new Vector2(80f, -196f);
-        emptyRect.offsetMax = new Vector2(-80f, -118f);
+        emptyRect.offsetMin = new Vector2(80f, -472f);
+        emptyRect.offsetMax = new Vector2(-80f, -168f);
         _emptyStateText.color = new Color32(196, 180, 156, 255);
 
         GameObject viewport = new GameObject(
@@ -358,8 +373,8 @@ public sealed class MemoryArchiveController : MonoBehaviour
         RectTransform viewportRect = viewport.GetComponent<RectTransform>();
         viewportRect.anchorMin = new Vector2(0f, 0f);
         viewportRect.anchorMax = new Vector2(1f, 1f);
-        viewportRect.offsetMin = new Vector2(60f, 120f);
-        viewportRect.offsetMax = new Vector2(-60f, -206f);
+        viewportRect.offsetMin = new Vector2(60f, 208f);
+        viewportRect.offsetMax = new Vector2(-60f, -184f);
         Image viewportImage = viewport.GetComponent<Image>();
         viewportImage.color = new Color(0f, 0f, 0f, 0.01f);
         viewport.GetComponent<Mask>().showMaskGraphic = false;
@@ -390,6 +405,7 @@ public sealed class MemoryArchiveController : MonoBehaviour
         scrollRect.content = contentRect;
         scrollRect.horizontal = false;
         scrollRect.vertical = true;
+        ScrollPanelArt.EnsureVerticalScrollbar(scrollRect);
 
         _contentRoot = content.transform;
 
@@ -421,7 +437,7 @@ public sealed class MemoryArchiveController : MonoBehaviour
         rect.anchorMax = new Vector2(0.5f, 0f);
         rect.pivot = new Vector2(0.5f, 0f);
         rect.anchoredPosition = new Vector2(x, y);
-        rect.sizeDelta = new Vector2(420f, 84f);
+        rect.sizeDelta = new Vector2(420f, 152f);
 
         Image image = buttonObject.GetComponent<Image>();
         image.color = new Color32(209, 168, 82, 255);

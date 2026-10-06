@@ -194,6 +194,7 @@ public sealed class ResetJourneyConfirmationPanel : MonoBehaviour
         cardRect.anchorMax = new Vector2(0.92f, 0.74f);
         cardRect.offsetMin = Vector2.zero;
         cardRect.offsetMax = Vector2.zero;
+        ScrollPanelArt.SetAnchors(cardRect, ScrollPanelArt.ScrollArea);
         Image cardImage = card.GetComponent<Image>();
         cardImage.color = CardColor;
         cardImage.raycastTarget = false;
@@ -201,19 +202,20 @@ public sealed class ResetJourneyConfirmationPanel : MonoBehaviour
 
         if (_titleText == null)
             _titleText = BuildText("Title", cardRect,
-                new Vector2(0.06f, 0.76f), new Vector2(0.94f, 0.95f),
-                40f, TextAlignmentOptions.Center);
+                new Vector2(0.16f, 0.64f), new Vector2(0.84f, 0.84f),
+                UITextScale.Title, TextAlignmentOptions.Center);
         if (_bodyText == null)
             _bodyText = BuildText("Body", cardRect,
-                new Vector2(0.08f, 0.28f), new Vector2(0.92f, 0.74f),
-                30f, TextAlignmentOptions.TopLeft);
+                new Vector2(0.17f, 0.43f), new Vector2(0.83f, 0.61f),
+                UITextScale.Body, TextAlignmentOptions.TopLeft);
+        ScrollPanelArt.MakeReadingScroll(_bodyText);
         if (_cancelButton == null)
             _cancelButton = BuildButton("CancelButton", cardRect,
-                new Vector2(0.08f, 0.06f), new Vector2(0.48f, 0.22f),
+                new Vector2(0.20f, 0.17f), new Vector2(0.80f, 0.28f),
                 NeutralButtonColor, out _cancelLabel);
         if (_confirmButton == null)
             _confirmButton = BuildButton("ConfirmButton", cardRect,
-                new Vector2(0.52f, 0.06f), new Vector2(0.92f, 0.22f),
+                new Vector2(0.20f, 0.30f), new Vector2(0.80f, 0.41f),
                 DestructiveButtonColor, out _confirmLabel);
 
         if (onParchment)

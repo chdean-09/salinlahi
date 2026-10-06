@@ -1,6 +1,6 @@
 # 02 — Journey map and level entry
 
-Prefix **`MAP`**. Covers the era map (Level Select), level locks and their reasons, the level preview, and the Living Scroll hub.
+Prefix **`MAP`**. Covers the era map (Level Select), level locks and their reasons, the level preview, and the Buhay na Kasulatan hub.
 
 ---
 
@@ -54,7 +54,7 @@ As a player, I want to tap and hear the words I will restore, so that I know wha
 
 ### MAP-14 — Reach the era map through a single hub
 As a player, I want one place that represents the whole journey, so that the three eras feel like parts of one scroll.
-- AC: Continue (or a hub entry) opens a Living Scroll hub with three chambers, one per era.
+- AC: Continue (or a hub entry) opens a Buhay na Kasulatan hub with three chambers, one per era.
 - AC: Locked chambers show their prerequisite, e.g. "Complete Ugat Level 5".
 - AC: Tapping an unlocked chamber opens that era's map.
 - System: Hub · `Hub.unity` (not present)

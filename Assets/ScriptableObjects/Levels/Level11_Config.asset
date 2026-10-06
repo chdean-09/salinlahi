@@ -24,6 +24,7 @@ MonoBehaviour:
     displayLabel: DALA
     meaning: to carry
     hintText: 
+    hintSynonyms: bitbit
     decomposition:
     - symbol: {fileID: 11400000, guid: 117f4d54439c640abaac6d80f841ee03, type: 2}
       spokenValueId: value.da
@@ -39,6 +40,7 @@ MonoBehaviour:
     displayLabel: DAMA
     meaning: to feel
     hintText: 
+    hintSynonyms: ramdam
     decomposition:
     - symbol: {fileID: 11400000, guid: 117f4d54439c640abaac6d80f841ee03, type: 2}
       spokenValueId: value.da

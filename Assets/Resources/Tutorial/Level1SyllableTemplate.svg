@@ -14,36 +14,36 @@
       .dir { fill: none; stroke: #168a4a; stroke-width: 5; stroke-linecap: round; marker-end: url(#arrow); }
       .start { fill: #168a4a; stroke: #ffffff; stroke-width: 5; }
       .label { font-family: Arial, sans-serif; font-size: 38px; font-weight: 700; fill: #202020; text-anchor: middle; }
-      .small { font-family: Arial, sans-serif; font-size: 21px; fill: #404040; text-anchor: middle; }
+      .small { font-family: Arial, sans-serif; font-size: 19px; fill: #404040; text-anchor: middle; }
     </style>
   </defs>
   <rect class="bg" x="0" y="0" width="1024" height="1024"/>
   <rect class="safe" x="64" y="64" width="896" height="896"/>
-  <text class="small" x="512" y="45">1024 x 1024 source - 64 px safe margin</text>
+  <text class="small" x="512" y="45">Larawang 1024 x 1024 - 64 px na palugit</text>
   <rect class="zone" x="96" y="104" width="384" height="368"/>
   <rect class="zone" x="544" y="104" width="384" height="368"/>
   <rect class="zone" x="96" y="552" width="384" height="368"/>
   <rect class="zone" x="544" y="552" width="384" height="368"/>
   <text class="label" x="288" y="155">BA</text>
-  <text class="small" x="288" y="435">Start at dot. Loop clockwise.</text>
+  <text class="small" x="288" y="418"><tspan x="288">Magsimula sa tuldok.</tspan><tspan x="288" dy="21">Gumuhit paikot pakanan.</tspan></text>
   <path class="ghost" d="M250 290 C230 238 281 208 319 239 C350 268 340 328 293 330 C259 332 237 316 250 290"/>
   <path class="guide" d="M250 290 C230 238 281 208 319 239 C350 268 340 328 293 330 C259 332 237 316 250 290"/>
   <circle class="start" cx="250" cy="290" r="13"/>
   <path class="dir" d="M238 262 C245 225 285 210 317 236"/>
   <text class="label" x="736" y="155">SA</text>
-  <text class="small" x="736" y="435">Down stroke, then curve right.</text>
+  <text class="small" x="736" y="418"><tspan x="736">Gumuhit pababa, saka</tspan><tspan x="736" dy="21">kumurba pakanan.</tspan></text>
   <path class="ghost" d="M674 220 L730 220 L730 332 C770 240 840 217 849 273 C858 328 793 333 760 318"/>
   <path class="guide" d="M674 220 L730 220 L730 332 C770 240 840 217 849 273 C858 328 793 333 760 318"/>
   <circle class="start" cx="674" cy="220" r="13"/>
   <path class="dir" d="M674 220 L730 220 L730 292"/>
   <text class="label" x="288" y="603">LA</text>
-  <text class="small" x="288" y="883">Wave first, then center curl.</text>
+  <text class="small" x="288" y="866"><tspan x="288">Iguhit muna ang alon,</tspan><tspan x="288" dy="21">saka ang paikot na kurba sa gitna.</tspan></text>
   <path class="ghost" d="M210 708 C252 738 286 712 319 702 C350 691 384 699 401 711 M302 713 C280 736 284 752 309 760 C334 768 335 790 306 799 C283 806 286 829 315 839"/>
   <path class="guide" d="M210 708 C252 738 286 712 319 702 C350 691 384 699 401 711 M302 713 C280 736 284 752 309 760 C334 768 335 790 306 799 C283 806 286 829 315 839"/>
   <circle class="start" cx="210" cy="708" r="13"/>
   <path class="dir" d="M210 708 C252 738 286 712 319 702"/>
   <text class="label" x="736" y="603">HA</text>
-  <text class="small" x="736" y="883">HA guide plus upper vowel mark.</text>
+  <text class="small" x="736" y="866"><tspan x="736">Gabay sa HA at marka</tspan><tspan x="736" dy="21">ng patinig sa itaas.</tspan></text>
   <path class="ghost" d="M662 732 C705 762 754 716 808 742"/>
   <path class="guide" d="M662 732 C705 762 754 716 808 742"/>
   <circle class="guide" cx="736" cy="681" r="10"/>

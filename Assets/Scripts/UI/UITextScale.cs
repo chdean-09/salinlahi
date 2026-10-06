@@ -4,8 +4,8 @@ using UnityEngine;
 /// <summary>
 /// Named font-size floors for player-facing text, in 1080x1920 reference-resolution
 /// units (the CanvasScaler reference every screen shares). On a phone-class display
-/// 40 units lands around 14-18px rendered, which is why Body is the floor for reading
-/// text: anything smaller is what made menu and story copy hard to read on mobile.
+/// 68 units lands at about 20px on a 320px-wide portrait phone. Reading copy must keep
+/// that floor; longer content needs room or scrolling rather than smaller letters.
 ///
 /// These are floors, not a mandated scale — hero prompts and banner numbers go above
 /// them freely; nothing player-facing goes below. Editor tooling
@@ -15,22 +15,22 @@ using UnityEngine;
 public static class UITextScale
 {
     /// <summary>Absolute minimum for player-facing text: hints, timers, small labels.</summary>
-    public const float Caption = 30f;
+    public const float Caption = 54f;
 
     /// <summary>Supporting labels: slider readouts, locked rows, secondary lines.</summary>
-    public const float Secondary = 34f;
+    public const float Secondary = 60f;
 
     /// <summary>Reading text and the floor for standard button labels.</summary>
-    public const float Body = 40f;
+    public const float Body = 68f;
 
     /// <summary>Panel titles and headings.</summary>
-    public const float Title = 52f;
+    public const float Title = 80f;
 
     /// <summary>Hero numerals and prompts.</summary>
-    public const float Display = 72f;
+    public const float Display = 96f;
 
     /// <summary>Lowest fontSizeMin allowed when a text auto-sizes to fit its rect.</summary>
-    public const float AutoSizeFloor = 28f;
+    public const float AutoSizeFloor = Caption;
 
     /// <summary>Never returns below <paramref name="floor"/>.</summary>
     public static float RaiseToFloor(float size, float floor)

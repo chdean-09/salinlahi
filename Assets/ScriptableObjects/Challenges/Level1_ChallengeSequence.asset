@@ -13,12 +13,12 @@ MonoBehaviour:
   m_Name: Level1_ChallengeSequence
   m_EditorClassIdentifier: Assembly-CSharp::ChallengeSequenceSO
   sequenceId: level-1-revised-challenges
-  displayName: Ugat symbol and word restoration
+  displayName: Simbolo ng Ugat at pagbabalik ng mga salita
   units:
   - unitId: guided-ei
     mode: 0
     cluePolicy: 0
-    prompt: Draw E/I. Follow the guide.
+    prompt: Iguhit ang E/I. Sundan ang gabay.
     tokens:
     - tokenId: EI
       displayText: E/I
@@ -36,7 +36,7 @@ MonoBehaviour:
   - unitId: guided-na
     mode: 0
     cluePolicy: 0
-    prompt: Draw NA. Follow the guide.
+    prompt: Iguhit ang NA. Sundan ang gabay.
     tokens:
     - tokenId: NA
       displayText: NA
@@ -54,7 +54,7 @@ MonoBehaviour:
   - unitId: guided-a
     mode: 0
     cluePolicy: 0
-    prompt: Draw A. Follow the guide.
+    prompt: Iguhit ang A. Sundan ang gabay.
     tokens:
     - tokenId: A
       displayText: A
@@ -72,7 +72,7 @@ MonoBehaviour:
   - unitId: guided-ma
     mode: 0
     cluePolicy: 0
-    prompt: Draw MA. Follow the guide.
+    prompt: Iguhit ang MA. Sundan ang gabay.
     tokens:
     - tokenId: MA
       displayText: MA
@@ -90,7 +90,7 @@ MonoBehaviour:
   - unitId: restore-sentence
     mode: 2
     cluePolicy: 1
-    prompt: Restore the family words: choose INA, then AMA.
+    prompt: Ibalik ang mga salita ng pamilya: piliin muna ang INA, saka ang AMA.
     tokens:
     - tokenId: word-1
       displayText: INA

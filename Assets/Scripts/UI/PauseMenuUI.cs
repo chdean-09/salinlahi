@@ -28,9 +28,9 @@ public class PauseMenuUI : MonoBehaviour
     private enum PendingAction { None, Restart, Leave }
 
     private const string RestartPrompt =
-        "Restart this level?\nYour progress in this attempt will be lost.";
+        "Ulitin ang antas na ito?\nMawawala ang progreso mo sa pagtatangkang ito.";
     private const string LeavePrompt =
-        "Leave this level?\nYour progress in this attempt will not be saved.";
+        "Umalis sa antas na ito?\nHindi mase-save ang progreso mo sa pagtatangkang ito.";
 
     private PendingAction _pendingAction = PendingAction.None;
 
@@ -410,8 +410,8 @@ public class PauseMenuUI : MonoBehaviour
         bool onParchment = ScrollPanelArt.ApplyFull(cardImage);
 
         _confirmationPromptLabel = CreateOverlayText(card.transform, "PromptLabel", string.Empty);
-        _confirmationConfirmButton = CreateOverlayButton(card.transform, "ConfirmButton", "Confirm");
-        _confirmationCancelButton = CreateOverlayButton(card.transform, "CancelButton", "Cancel");
+        _confirmationConfirmButton = CreateOverlayButton(card.transform, "ConfirmButton", "Kumpirmahin");
+        _confirmationCancelButton = CreateOverlayButton(card.transform, "CancelButton", "Kansela");
         ApplyParchmentConfirmationLayout(
             cardRect,
             _confirmationPromptLabel,
@@ -478,15 +478,15 @@ public class PauseMenuUI : MonoBehaviour
         if (card == null)
             return;
 
-        card.sizeDelta = new Vector2(760f, 680f);
+        card.sizeDelta = new Vector2(760f, 1280f);
         if (prompt != null)
         {
             ScrollPanelArt.SetAnchors(
                 prompt.rectTransform,
                 Rect.MinMaxRect(0.16f, 0.48f, 0.84f, 0.76f));
             prompt.enableAutoSizing = true;
-            prompt.fontSizeMin = UITextScale.Caption;
-            prompt.fontSizeMax = 44f;
+            prompt.fontSizeMin = UITextScale.Body;
+            prompt.fontSizeMax = UITextScale.Title;
         }
 
         SetButtonAnchors(confirm, Rect.MinMaxRect(0.20f, 0.31f, 0.80f, 0.43f));

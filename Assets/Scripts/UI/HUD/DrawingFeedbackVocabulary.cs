@@ -9,7 +9,7 @@
 /// </summary>
 public static class DrawingFeedbackVocabulary
 {
-    public const string Accepted = "Nice, that's the one.";
+    public const string Accepted = "Ayos, iyan nga!";
 
     /// <summary>
     /// Shown in the verdict slot instead of a character name when the stroke did not clear
@@ -18,10 +18,10 @@ public static class DrawingFeedbackVocabulary
     /// the player as a confident "GA". In a game whose whole purpose is fixing glyph-to-syllable
     /// pairs in memory, naming a character the recognizer rejected teaches the wrong pair.
     /// </summary>
-    public const string UnrecognizedVerdict = "Not recognized";
-    public const string RejectedFirstAttempt = "Not quite. Give that stroke another try.";
-    public const string RejectedAgain = "Almost. Take your time with the shape.";
-    public const string HelpOffered = "Want to see how this one is drawn?";
+    public const string UnrecognizedVerdict = "Hindi nakilala";
+    public const string RejectedFirstAttempt = "Hindi pa tama. Subukan ulit ang guhit na iyon.";
+    public const string RejectedAgain = "Malapit na. Dahan-dahan lang sa pagguhit ng hugis.";
+    public const string HelpOffered = "Gusto mo bang makita kung paano iguhit ito?";
 
     /// <summary>
     /// Wording for a rejected drawing. <paramref name="consecutiveRejects"/> counts the

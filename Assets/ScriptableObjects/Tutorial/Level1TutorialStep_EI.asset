@@ -20,13 +20,13 @@ MonoBehaviour:
   templatePoints: []
   guideSprite: {fileID: 21300000, guid: 4ba2ec8d9436746ddbcc50fcc4aa0978, type: 3}
   tolerancePixels: 15
-  promptText: Draw E/I. Follow the guide.
-  successText: Great job. Drawing protects the base.
-  idleHint: Draw the glowing symbol.
-  strongHint: Follow the shape from top to bottom.
-  assistText: Watch this once.
+  promptText: Iguhit ang E/I. Sundan ang gabay.
+  successText: Magaling! Pinoprotektahan ng pagguhit ang base.
+  idleHint: Iguhit ang kumikinang na simbolo.
+  strongHint: Sundan ang hugis mula itaas pababa.
+  assistText: Panoorin ito nang isang beses.
   wrongCharacterFeedback:
-  directionMismatchFeedback: Follow the guide.
-  tooShortFeedback: Draw the full shape.
-  recognitionFailedFeedback: Try that shape again.
+  directionMismatchFeedback: Sundan ang gabay.
+  tooShortFeedback: Iguhit ang buong hugis.
+  recognitionFailedFeedback: Subukan muli ang hugis na iyan.
   assistAnimationPrefab: {fileID: 0}

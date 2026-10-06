@@ -15,10 +15,12 @@ MonoBehaviour:
   enemyID: takip
   displayName: Takip
   discoverySubtitle: 
-  description: Takip keeps one hand over its eye because Paglimot taught it that
-    unseen knowledge will soon become forgotten knowledge. It reveals a character
-    only long enough to tempt memory, then covers it before certainty can settle.
-  abilityLine: It covers its own character and reveals it only for short moments.
+  description: Nakatakip ang isang kamay ng Takip sa mata nito dahil itinuro rito
+    ng Paglimot na malilimutan din ang kaalamang hindi nakikita. Saglit lang nitong
+    ipinapakita ang isang titik para subukin ang alaala, saka muling tinatakpan bago
+    makatiyak ang sinuman.
+  abilityLine: Tinatakpan nito ang sarili nitong titik at saglit lang itong
+    ipinapakita.
   moveSpeed: 1.3
   maxHealth: 1
   walkFrames:
@@ -123,8 +125,8 @@ MonoBehaviour:
   splitCount: 2
   splitOffsetX: 0.9
   spriteScale: 1
-  corruptedMeaning: Hidden marks fade from short-term memory.
-  trueMeaning: A briefly seen form can be recalled accurately.
-  restoredLesson: Draw from memory or wait for a fair reveal.
+  corruptedMeaning: Unti-unting nawawala sa panandaliang alaala ang mga nakatagong marka.
+  trueMeaning: Tumpak na maaalala ang hugis kahit saglit lang itong nakita.
+  restoredLesson: Iguhit ito mula sa alaala o hintaying ipakita itong muli.
   learningAbility: 6
   suppressDiscovery: 0

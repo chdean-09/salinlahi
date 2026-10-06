@@ -15,7 +15,7 @@ public class CutscenePlayer : MonoBehaviour
     [SerializeField] private Image _exitTransitionImage;
     [SerializeField] private TMP_Text _bodyText;
     [SerializeField] private TMP_FontAsset _bodyFont;
-    // Acts as the auto-size ceiling for the narration band, not a fixed size.
+    // Preserve authored size metadata; narration uses the shared mobile reading floor.
     [SerializeField] private float _bodyFontSize = 100f;
     [SerializeField] private Button _tapCatcher;
     [SerializeField] private Button _skipButton;
@@ -28,7 +28,7 @@ public class CutscenePlayer : MonoBehaviour
     [SerializeField] private float _slideDistance = 400f;
 
     [Header("Continue Prompt")]
-    [SerializeField] private string _continuePromptMessage = "Tap anywhere to continue";
+    [SerializeField] private string _continuePromptMessage = "I-tap kahit saan para magpatuloy";
     [SerializeField] private float _continuePromptTopPadding = 52f;
     [SerializeField] private float _continuePromptPulseSeconds = 1.35f;
     [SerializeField] private float _continuePromptMinAlpha = 0.72f;
@@ -87,28 +87,24 @@ public class CutscenePlayer : MonoBehaviour
 
         if (_bodyText != null)
         {
-            _bodyText.fontSize = _bodyFontSize;
-            // Narration should read at dialogue-card scale: auto-size up to the
-            // serialized ceiling inside a taller band. One layout for the full
-            // string, so the reveal never reflows.
-            _bodyText.enableAutoSizing = true;
-            _bodyText.fontSizeMin = UITextScale.AutoSizeFloor;
+            _bodyText.fontSize = UITextScale.Body;
+            // Expand the caption for the full authored panel at its reading size.
+            _bodyText.enableAutoSizing = false;
+            _bodyText.fontSizeMin = UITextScale.Body;
             _bodyText.fontSizeMax = _bodyFontSize;
-            // Match the continue-prompt's synthetic bold so the two texts read
-            // as one typeface instead of a thin/heavy mix.
-            _bodyText.fontStyle = FontStyles.Bold;
+            _bodyText.fontStyle = FontStyles.Normal;
             ConfigureBodyTextBand();
         }
 
         if (_bodyText != null && _bodyText.fontMaterial != null)
-            ApplyCutsceneTextOutline(_bodyText, 0.45f, 0.15f);
+            ApplyCutsceneTextOutline(_bodyText);
         TutorialFontProvider.ApplyLegibilityEffects(_bodyText);
 
         if (_bodyFont != null && _continuePromptText != null)
             _continuePromptText.font = _bodyFont;
 
         if (_continuePromptText != null && _continuePromptText.fontMaterial != null)
-            ApplyCutsceneTextOutline(_continuePromptText, 0.35f, 0.15f);
+            ApplyCutsceneTextOutline(_continuePromptText);
     }
 
     private void OnDisable()
@@ -171,9 +167,7 @@ public class CutscenePlayer : MonoBehaviour
         return go.AddComponent<Image>();
     }
 
-    // The serialized band (6%→26% of screen) is too short for large narration —
-    // a 200-character panel auto-sizes down to ~50 to fit. Stretching it across
-    // the 30% scrim lets the same text render near the ceiling instead.
+    // Keep the full narration inside a caption band sized from its actual copy.
     private void ConfigureBodyTextBand()
     {
         RectTransform rect = (RectTransform)_bodyText.transform;
@@ -181,6 +175,15 @@ public class CutscenePlayer : MonoBehaviour
         rect.anchorMax = new Vector2(0.92f, 0.30f);
         rect.offsetMin = Vector2.zero;
         rect.offsetMax = Vector2.zero;
+        _bodyText.textWrappingMode = TextWrappingModes.Normal;
+        if (rect.parent is RectTransform parent && parent.rect.height > 0f && rect.rect.width > 0f)
+        {
+            float preferred = _bodyText.GetPreferredValues(_bodyText.text, rect.rect.width, Mathf.Infinity).y + 24f;
+            float top = Mathf.Clamp(0.04f + preferred / parent.rect.height, 0.20f, 0.84f);
+            rect.anchorMax = new Vector2(0.92f, top);
+            if (_bottomGradientOverlay != null)
+                _bottomGradientOverlay.rectTransform.anchorMax = new Vector2(1f, Mathf.Max(_bottomGradientHeightPercent, top + 0.08f));
+        }
     }
 
     private void ConfigureExitTransitionImage()
@@ -288,7 +291,7 @@ public class CutscenePlayer : MonoBehaviour
         if (_bodyFont != null)
             _continuePromptText.font = _bodyFont;
         if (_continuePromptText.fontMaterial != null)
-            ApplyCutsceneTextOutline(_continuePromptText, 0.42f, 0.15f);
+            ApplyCutsceneTextOutline(_continuePromptText);
         ApplyContinuePromptGraphicEffects(_continuePromptText);
 
         if (_continuePromptCanvasGroup == null)
@@ -339,17 +342,17 @@ public class CutscenePlayer : MonoBehaviour
         promptRect.anchorMax = new Vector2(0.96f, 1f);
         promptRect.pivot = new Vector2(0.5f, 1f);
         promptRect.anchoredPosition = new Vector2(0f, -Mathf.Max(16f, topPadding));
-        promptRect.sizeDelta = new Vector2(0f, 118f);
+        promptRect.sizeDelta = new Vector2(0f, 176f);
 
         promptText.alignment = TextAlignmentOptions.Center;
-        promptText.fontSize = 58f;
+        promptText.fontSize = UITextScale.Body;
         promptText.enableAutoSizing = true;
-        promptText.fontSizeMin = 36f;
-        promptText.fontSizeMax = 58f;
+        promptText.fontSizeMin = UITextScale.Body;
+        promptText.fontSizeMax = UITextScale.Body;
         promptText.fontStyle = FontStyles.Bold;
         promptText.color = new Color(1f, 1f, 1f, 0.98f);
         promptText.raycastTarget = false;
-        promptText.textWrappingMode = TextWrappingModes.NoWrap;
+        promptText.textWrappingMode = TextWrappingModes.Normal;
     }
 
     public void Play(CutsceneSO cutscene, bool playExitTransition = false)
@@ -520,6 +523,8 @@ public class CutscenePlayer : MonoBehaviour
             return;
 
         _bodyText.text = fullText;
+        Canvas.ForceUpdateCanvases();
+        ConfigureBodyTextBand();
         UITextReveal.Begin(_bodyText);
     }
 
@@ -791,15 +796,15 @@ public class CutscenePlayer : MonoBehaviour
             _skipButtonRoot.SetActive(false);
     }
 
-    private static void ApplyCutsceneTextOutline(TMP_Text text, float outlineWidth, float faceDilate)
+    private static void ApplyCutsceneTextOutline(TMP_Text text)
     {
         if (text == null || text.fontMaterial == null)
             return;
 
         text.fontMaterial.EnableKeyword("OUTLINE_ON");
-        text.fontMaterial.SetFloat(Shader.PropertyToID("_OutlineWidth"), outlineWidth);
+        text.fontMaterial.SetFloat(Shader.PropertyToID("_OutlineWidth"), 0.08f);
         text.fontMaterial.SetColor(Shader.PropertyToID("_OutlineColor"), Color.black);
-        text.fontMaterial.SetFloat(Shader.PropertyToID("_FaceDilate"), faceDilate);
+        text.fontMaterial.SetFloat(Shader.PropertyToID("_FaceDilate"), 0f);
     }
 
     private static void ApplyContinuePromptGraphicEffects(TMP_Text text)

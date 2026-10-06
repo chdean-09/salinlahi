@@ -15,11 +15,12 @@ MonoBehaviour:
   enemyID: bakod
   displayName: Bakod
   discoverySubtitle: 
-  description: Bakod is a wall built from broken tablets and forgotten boundaries.
-    Paglimot places it between related words and their missing parts, teaching people
-    to see separation where meaning once connected them.
-  abilityLine: It shields up to two enemies behind it, while leaving the currently
-    needed character open.
+  description: Ang Bakod ay pader na binuo mula sa mga sirang sulatang bato at nalimutang
+    hangganan. Inilalagay ito ng Paglimot sa pagitan ng magkakaugnay na salita at
+    mga nawawalang bahagi ng mga ito, para ituro sa mga tao na maghiwalay ang dating
+    pinag-ugnay ng kahulugan.
+  abilityLine: Pinoprotektahan nito ang hanggang dalawang kalaban sa likod nito,
+    pero hindi ang titik na kailangan sa kasalukuyan.
   moveSpeed: 0.85
   maxHealth: 1
   walkFrames:
@@ -162,8 +163,8 @@ MonoBehaviour:
   splitCount: 2
   splitOffsetX: 0.9
   spriteScale: 1
-  corruptedMeaning: Separation replaces connection between related syllables.
-  trueMeaning: Context connects syllables into meaningful words.
-  restoredLesson: Use the current word to decide which character matters.
+  corruptedMeaning: Pumapalit ang pagkakahiwalay sa ugnayan ng magkakaugnay na pantig.
+  trueMeaning: Pinagdudugtong ng konteksto ang mga pantig upang makabuo ng mga salitang may kahulugan.
+  restoredLesson: Gamitin ang kasalukuyang salita para malaman kung aling titik ang kailangan.
   learningAbility: 5
   suppressDiscovery: 0

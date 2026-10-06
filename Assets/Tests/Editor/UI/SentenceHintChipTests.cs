@@ -29,6 +29,32 @@ namespace Salinlahi.Tests.Editor.UI
         }
 
         [Test]
+        public void EnsureOverlay_UsesFullHudCanvasInsteadOfAHighOrderPanelCanvas()
+        {
+            GameObject hudCanvas = Track(new GameObject("Hint HUD canvas", typeof(RectTransform), typeof(Canvas)));
+            hudCanvas.GetComponent<Canvas>().renderMode = RenderMode.WorldSpace;
+            hudCanvas.GetComponent<RectTransform>().sizeDelta = new Vector2(1080f, 1920f);
+            GameObject hud = new GameObject("HUDLayer", typeof(RectTransform));
+            hud.transform.SetParent(hudCanvas.transform, false);
+            GameObject narrow = new GameObject("Narrow overlay canvas", typeof(RectTransform), typeof(Canvas));
+            narrow.transform.SetParent(hudCanvas.transform, false);
+            narrow.GetComponent<RectTransform>().sizeDelta = new Vector2(320f, 1920f);
+            narrow.GetComponent<Canvas>().overrideSorting = true;
+            narrow.GetComponent<Canvas>().sortingOrder = 9000;
+            SentenceHintController controller = Track(new GameObject("[Test] HintController"))
+                .AddComponent<SentenceHintController>();
+            typeof(SentenceHintController).GetField("_bodyText", BindingFlags.Instance | BindingFlags.NonPublic)
+                .SetValue(controller, "Ang unang guro sa tahanan. Ang minana mula sa nauna.");
+            typeof(SentenceHintController).GetMethod("EnsureOverlay", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(controller, null);
+            GameObject overlay = (GameObject)typeof(SentenceHintController)
+                .GetField("_overlayRoot", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(controller);
+            Assert.AreSame(hudCanvas.transform, overlay.transform.parent,
+                "A HUD hint must not inherit a small high-order panel's coordinate space.");
+            Assert.AreEqual(1080f, overlay.GetComponent<RectTransform>().rect.width, 1f);
+        }
+
+        [Test]
         public void EnsureChip_ParksASquareIconChip_UnderThePauseButton()
         {
             GameObject hud = Track(new GameObject("HUDLayer", typeof(RectTransform)));
@@ -139,6 +165,61 @@ namespace Salinlahi.Tests.Editor.UI
         }
 
         [Test]
+        public void Scrollbar_PreservesExistingAuthoredBarAndViewportPolicy()
+        {
+            ScrollRect scroll = CreateScrollableContent(600f);
+            Scrollbar authored = Track(new GameObject("AuthoredScrollbar", typeof(RectTransform), typeof(Scrollbar)))
+                .GetComponent<Scrollbar>();
+            authored.transform.SetParent(scroll.transform, false);
+            scroll.verticalScrollbar = authored;
+            scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHideAndExpandViewport;
+            Vector2 inset = scroll.content.offsetMax;
+
+            ScrollPanelArt.EnsureVerticalScrollbar(scroll);
+
+            Assert.AreSame(authored, scroll.verticalScrollbar);
+            Assert.AreEqual(ScrollRect.ScrollbarVisibility.AutoHideAndExpandViewport,
+                scroll.verticalScrollbarVisibility);
+            Assert.AreEqual(inset, scroll.content.offsetMax);
+        }
+
+        [Test]
+        public void Scrollbar_DoesNotEnableScrollingOnANonScrollableSurface()
+        {
+            ScrollRect scroll = CreateScrollableContent(600f);
+            scroll.vertical = false;
+
+            ScrollPanelArt.EnsureVerticalScrollbar(scroll);
+
+            Assert.IsNull(scroll.verticalScrollbar);
+            Assert.IsFalse(scroll.vertical);
+        }
+
+        private ScrollRect CreateScrollableContent(float contentHeight)
+        {
+            GameObject canvas = Track(new GameObject("ScrollbarTestCanvas", typeof(RectTransform), typeof(Canvas)));
+            canvas.GetComponent<Canvas>().renderMode = RenderMode.WorldSpace;
+            GameObject viewport = new GameObject("Viewport", typeof(RectTransform), typeof(ScrollRect));
+            viewport.transform.SetParent(canvas.transform, false);
+            RectTransform viewportRect = viewport.GetComponent<RectTransform>();
+            viewportRect.sizeDelta = new Vector2(200f, 200f);
+            GameObject content = new GameObject("Content", typeof(RectTransform));
+            content.transform.SetParent(viewport.transform, false);
+            RectTransform contentRect = content.GetComponent<RectTransform>();
+            contentRect.anchorMin = new Vector2(0f, 1f);
+            contentRect.anchorMax = Vector2.one;
+            contentRect.pivot = new Vector2(0.5f, 1f);
+            contentRect.sizeDelta = new Vector2(0f, contentHeight);
+            ScrollRect scroll = viewport.GetComponent<ScrollRect>();
+            scroll.viewport = viewportRect;
+            scroll.content = contentRect;
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            return scroll;
+        }
+
+        [Test]
         public void EnsureOverlay_KeepsBothHintsInAMaskedReadingAreaAboveClose()
         {
             GameObject canvasObject = Track(new GameObject("HintTestCanvas", typeof(RectTransform), typeof(Canvas)));
@@ -150,7 +231,7 @@ namespace Salinlahi.Tests.Editor.UI
             host.transform.SetParent(canvasObject.transform, false);
             SentenceHintController controller = host.AddComponent<SentenceHintController>();
             typeof(SentenceHintController).GetField("_bodyText", BindingFlags.NonPublic | BindingFlags.Instance)
-                .SetValue(controller, "<b>mother</b>\nilaw ng tahanan\n\n<b>father</b>\nang haligi ng tahanan");
+                .SetValue(controller, "<b>_ _ _</b>\nilaw ng tahanan\n\n<b>_ _ _</b>\nang haligi ng tahanan");
             typeof(SentenceHintController).GetMethod("EnsureOverlay", BindingFlags.NonPublic | BindingFlags.Instance)
                 .Invoke(controller, null);
             GameObject overlay = (GameObject)typeof(SentenceHintController)
@@ -169,8 +250,8 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.IsFalse(body.enableAutoSizing);
             Assert.GreaterOrEqual(body.fontSize, 64f,
                 "The hint reading size must remain larger than the general UI body floor.");
-            StringAssert.Contains("mother", body.text);
-            StringAssert.Contains("father", body.text);
+            StringAssert.Contains("<b>_ _ _</b>\nilaw ng tahanan", body.text);
+            StringAssert.Contains("<b>_ _ _</b>\nang haligi ng tahanan", body.text);
             Assert.IsNotNull(scroll.content.GetComponent<ContentSizeFitter>());
             Transform close = scroll.viewport.parent.Find("[Runtime] SentenceHintClose");
             Assert.IsNotNull(close);

@@ -15,10 +15,11 @@ MonoBehaviour:
   enemyID: abo-ng-simula
   displayName: Abo ng Simula
   discoverySubtitle: 
-  description: Abo ng Simula was formed from the ashes of names burned and beginnings
-    forgotten. Paglimot sends it to cover the first mark of every word, because a
-    people who forget where a word begins may soon forget where they came from.
-  abilityLine: It covers the first symbol of a word with ash.
+  description: Nabuo ang Abo ng Simula mula sa abo ng mga pangalang sinunog at mga
+    simulang nakalimutan. Inuutusan ito ng Paglimot na takpan ang unang marka ng
+    bawat salita, dahil maaaring makalimot din sa pinagmulan ang mga taong
+    nakakalimot kung saan nagsisimula ang salita.
+  abilityLine: Tinatakpan nito ng abo ang unang simbolo ng salita.
   moveSpeed: 1.6
   maxHealth: 1
   walkFrames:
@@ -112,8 +113,8 @@ MonoBehaviour:
   splitCount: 2
   splitOffsetX: 0.9
   spriteScale: 1
-  corruptedMeaning: Forgetting where a word begins.
-  trueMeaning: A word's first mark anchors its meaning and memory.
-  restoredLesson: Recall the clean beginning before drawing the missing symbol.
+  corruptedMeaning: Ang pagkalimot sa simula ng salita.
+  trueMeaning: Ang unang marka ng salita ang gabay sa kahulugan at alaala nito.
+  restoredLesson: Alalahanin ang malinaw na simula bago iguhit ang nawawalang simbolo.
   learningAbility: 1
   suppressDiscovery: 0

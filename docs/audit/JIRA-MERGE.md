@@ -135,7 +135,7 @@ Totals: **4 DUPLICATE · 51 OVERLAPS · 9 GENUINELY NEW · 3 dropped by ruling.*
 | T41 | Build the Paglimot three-phase boss for Level 15 (waves per phase, paragraph line per phase) | SALIN-207 (To Do: bring Kadiliman up to its designed encounter), SALIN-184 (IP), SALIN-158 (IP) | DUPLICATE | Do not import. Update SALIN-207 with the ruled design (waves per era per phase, paragraph line per phase, YA into MALAYA, phase-only restart) when writes are allowed. |
 | T42 | Era Completion scene and Next Era Unlock | SALIN-147/152 ('era ending is shown'), SALIN-137 (Done, next-era unlock) | OVERLAPS | Import; relates SALIN-147. |
 | T43 | Ending cinematic and post-game hub; decide Endless Mode | SALIN-158 (IP: completed-journey state, review/replay/Credits, Endless clause) | OVERLAPS | Import; relates SALIN-158. Endless is cut by T63, which satisfies 158's 'no enabled control' clause. |
-| T44 | Living Scroll hub | none | GENUINELY NEW | Import. |
+| T44 | Buhay na Kasulatan hub | none | GENUINELY NEW | Import. |
 | T45 | Main menu completeness: progress display, Exit, archive entry | SALIN-136 (Done, routing), SALIN-142 (Done, reset) | OVERLAPS | Import; relates SALIN-136. |
 | T46 | Record the remaining pronunciation clips | SALIN-208 (To Do) | DUPLICATE | Do not import; SALIN-208 already lists every missing clip including RA. |
 | T47 | Glyph badge, almanac, and level-number art for remaining symbols and levels | SALIN-176 (IP, asset parent), SALIN-206 (IP, Ugat art slice) | OVERLAPS | Import; relates SALIN-176. |

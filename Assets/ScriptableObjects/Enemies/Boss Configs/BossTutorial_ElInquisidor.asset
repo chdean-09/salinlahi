@@ -14,15 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Salinlahi.Runtime::BossTutorialSO
   pages:
   - title: El Inquisidor
-    body: A corrupted high-ranking friar who ordered the burning of Baybayin manuscripts
-      during the Spanish era. He wants to erase the script and the memory of the
-      people.
+    body: Isang tiwaling mataas na pinuno ng mga prayle na nag-utos na sunugin ang
+      mga manuskrito ng Baybayin noong panahon ng mga Espanyol. Gusto niyang burahin
+      ang Baybayin at ang alaala ng mga tao.
     frames:
     - {fileID: 95172164111334305, guid: f6ede119ad3b6824b9652c0513057a7c, type: 3}
     animationFps: 0
     effect: 0
-  - title: Summoning
-    body: It paces and summons enemies in waves. Clear them to wear the boss down.
+  - title: Pagpapatawag
+    body: Palakad-lakad ito at nagpapatawag ng mga kalaban nang sunod-sunod. Talunin
+      ang mga ito para pahinain ang boss.
     frames:
     - {fileID: -5875916747654802628, guid: f5e3baeb6ac82454599eb01b299d517e, type: 3}
     - {fileID: -6719877106280894156, guid: f5e3baeb6ac82454599eb01b299d517e, type: 3}
@@ -30,16 +31,16 @@ MonoBehaviour:
     - {fileID: -3263074623129762138, guid: f5e3baeb6ac82454599eb01b299d517e, type: 3}
     animationFps: 1.8
     effect: 0
-  - title: Vulnerability
-    body: When exhausted, the boss collapses. Draw the shown characters before the
-      timer runs out to damage the boss!
+  - title: Madaling Matamaan
+    body: Kapag pagod na ito, babagsak ang boss. Iguhit ang mga ipinakitang titik
+      bago maubos ang oras para mapinsala ito!
     frames:
     - {fileID: -2325852028376257296, guid: 4a477721e5dc6db48beb514d094a8ccc, type: 3}
     animationFps: 0
     effect: 0
-  - title: Teleportation
-    body: Once low on health, the boss grows desperate. It starts teleporting to
-      summon minions from anywhere on the field.
+  - title: Pagteleport
+    body: Kapag kaunti na lang ang buhay nito, magwawala ang boss. Magsisimula itong
+      mag-teleport para magpatawag ng mga kampon mula saanman sa lugar ng labanan.
     frames:
     - {fileID: 95172164111334305, guid: f6ede119ad3b6824b9652c0513057a7c, type: 3}
     - {fileID: -5963209368729282853, guid: f6ede119ad3b6824b9652c0513057a7c, type: 3}

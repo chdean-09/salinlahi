@@ -15,8 +15,11 @@ MonoBehaviour:
   enemyID: labo
   displayName: Labo
   discoverySubtitle: 
-  description: Labo is the fog Paglimot spreads over memories that were once clear. It does not change the character; it simply removes it from sight and waits for certainty to fade.
-  abilityLine: It disappears with its character, but remains vulnerable to what Juan remembers.
+  description: Ang Labo ang hamog na ikinakalat ng Paglimot sa mga alaalang dating
+    malinaw. Hindi nito binabago ang titik; itinatago lang nito iyon at hinihintay
+    na mawala ang katiyakan.
+  abilityLine: Nawawala ito kasama ng titik nito, pero maaari pa rin itong tamaan
+    gamit ang naaalala ni Juan.
   moveSpeed: 1.35
   maxHealth: 1
   walkFrames:
@@ -70,7 +73,7 @@ MonoBehaviour:
   scrambleRadius: 3
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
-  corruptedMeaning: Fog makes a known character disappear from sight.
-  trueMeaning: A remembered form remains usable without a prompt.
-  restoredLesson: Hold the glyph in memory and draw it when hidden.
+  corruptedMeaning: Itinatago ng hamog ang kilalang titik.
+  trueMeaning: Magagamit pa rin ang naaalalang hugis kahit walang ipinapakitang pahiwatig.
+  restoredLesson: Tandaan ang titik at iguhit ito kapag nakatago.
   learningAbility: 10

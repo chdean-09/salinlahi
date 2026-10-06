@@ -15,8 +15,12 @@ MonoBehaviour:
   enemyID: gapos
   displayName: Gapos
   discoverySubtitle: 
-  description: Gapos grows from roots Paglimot wrapped around words that once belonged together. While on screen, it binds one enemy at a time and leaves enemies bound by another Gapos alone.
-  abilityLine: While visible, it locks one enemy not bound by another Gapos. Defeat Gapos to release it; the next symbol in the current word stays open.
+  description: Tumubo ang Gapos mula sa mga ugat na ipinulupot ng Paglimot sa mga
+    salitang dating magkaugnay. Habang nasa screen ito, tig-isang kalaban ang
+    iginagapos nito at hindi nito ginagalaw ang mga iginapos na ng ibang Gapos.
+  abilityLine: Habang nakikita ito, iginagapos nito ang isang kalabang hindi pa
+    iginagapos ng ibang Gapos. Talunin ang Gapos para mapalaya ang kalaban; hindi
+    nito hinaharang ang susunod na simbolo sa kasalukuyang salita.
   moveSpeed: 1
   maxHealth: 1
   walkFrames:
@@ -79,7 +83,7 @@ MonoBehaviour:
   scrambleRadius: 3
   scrambleMinGlitchInterval: 0.18
   scrambleMaxGlitchInterval: 0.36
-  corruptedMeaning: Bound memories are mistaken for interchangeable ones.
-  trueMeaning: Meaning tells which character belongs together.
-  restoredLesson: Choose the bound carrier that fits the active word.
+  corruptedMeaning: Napagkakamalang puwedeng pagpalitin ang magkakaugnay na alaala.
+  trueMeaning: Ipinapakita ng kahulugan kung aling mga titik ang magkakaugnay.
+  restoredLesson: Piliin ang nakagapos na kalabang tumutugma sa kasalukuyang salita.
   learningAbility: 7

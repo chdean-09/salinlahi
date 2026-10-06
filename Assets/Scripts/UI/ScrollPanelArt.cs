@@ -21,7 +21,7 @@ public static class ScrollPanelArt
     /// <summary>The scroll's normalized rect inside its overlay — shared by every
     /// modal parchment surface so the ready screen, focus-word preview and symbol
     /// cards all present the same scroll in the same place.</summary>
-    public static readonly Rect ScrollArea = Rect.MinMaxRect(0.08f, 0.24f, 0.92f, 0.76f);
+    public static readonly Rect ScrollArea = Rect.MinMaxRect(0.04f, 0.14f, 0.96f, 0.86f);
 
     /// <summary>Full-screen dim behind the scroll (matches the ready screen). 0.93 keeps
     /// a hint of scene presence while making whatever text sits underneath illegible —
@@ -123,6 +123,108 @@ public static class ScrollPanelArt
         text.textWrappingMode = TextWrappingModes.Normal;
     }
 
+    /// <summary>
+    /// Keeps reference prose at a reading size inside its authored band.
+    /// Call after seating the text so the viewport follows layout changes.
+    /// </summary>
+    public static ScrollRect MakeReadingScroll(TMP_Text text)
+    {
+        if (text == null || text.rectTransform.parent == null)
+            return null;
+
+        RectTransform content = text.rectTransform;
+        ScrollRect scroll = content.parent.GetComponent<ScrollRect>();
+        if (scroll == null)
+        {
+            ScrollRect authored = content.GetComponentInParent<ScrollRect>(true);
+            if (authored != null && authored.content != null
+                && (authored.content == content || content.IsChildOf(authored.content)))
+            {
+                // Authored almanac/boss panels already have a masked, fitted scroll.
+                // Nesting a second viewport inside its layout group collapses the body.
+                ConfigureReadingCopy(text);
+                // Authored bars can overlay a full-width viewport. Keep the prose
+                // clear of that track without replacing its visibility policy.
+                if (authored.verticalScrollbar != null)
+                {
+                    float lane = authored.verticalScrollbar.GetComponent<RectTransform>().rect.width + 12f;
+                    Vector4 margin = text.margin;
+                    margin.z = Mathf.Max(margin.z, lane);
+                    text.margin = margin;
+                }
+                if (authored.content != content && authored.content.GetComponent<LayoutGroup>() == null)
+                {
+                    VerticalLayoutGroup layout = authored.content.gameObject.AddComponent<VerticalLayoutGroup>();
+                    layout.childControlWidth = true;
+                    layout.childControlHeight = true;
+                    layout.childForceExpandWidth = true;
+                    layout.childForceExpandHeight = false;
+                }
+                ContentSizeFitter fitter = authored.content.GetComponent<ContentSizeFitter>();
+                if (fitter == null) fitter = authored.content.gameObject.AddComponent<ContentSizeFitter>();
+                fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+                SetAnchors(authored.viewport, Rect.MinMaxRect(0f, 0f, 1f, 1f));
+                EnsureVerticalScrollbar(authored);
+                LayoutRebuilder.ForceRebuildLayoutImmediate(authored.content);
+                authored.StopMovement();
+                authored.verticalNormalizedPosition = 1f;
+                return authored;
+            }
+        }
+        bool creatingViewport = scroll == null;
+        if (scroll == null)
+        {
+            GameObject host = new GameObject("ReadingViewport", typeof(RectTransform), typeof(Image), typeof(RectMask2D), typeof(ScrollRect));
+            host.transform.SetParent(content.parent, false);
+            Image background = host.GetComponent<Image>();
+            background.color = Color.clear;
+            scroll = host.GetComponent<ScrollRect>();
+            scroll.viewport = host.GetComponent<RectTransform>();
+            scroll.content = content;
+            scroll.horizontal = false;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            content.SetParent(host.transform, false);
+            ContentSizeFitter fitter = text.GetComponent<ContentSizeFitter>();
+            if (fitter == null) fitter = text.gameObject.AddComponent<ContentSizeFitter>();
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        }
+
+        RectTransform viewport = scroll.viewport;
+        // A reused scroll still has top-stretched content. Only copy the band
+        // when first creating it or when its caller explicitly reseats the text.
+        if (creatingViewport || content.anchorMin != new Vector2(0f, 1f) || content.anchorMax != Vector2.one)
+        {
+            viewport.anchorMin = content.anchorMin;
+            viewport.anchorMax = content.anchorMax;
+            viewport.offsetMin = content.offsetMin;
+            viewport.offsetMax = content.offsetMax;
+        }
+        content.anchorMin = new Vector2(0f, 1f);
+        content.anchorMax = Vector2.one;
+        content.pivot = new Vector2(0.5f, 1f);
+        content.sizeDelta = Vector2.zero;
+        content.anchoredPosition = Vector2.zero;
+        ConfigureReadingCopy(text);
+        EnsureVerticalScrollbar(scroll);
+        // A new line reseats the content, so restore the scrollbar lane as well.
+        if (scroll.verticalScrollbar != null)
+        {
+            RectTransform track = scroll.verticalScrollbar.GetComponent<RectTransform>();
+            content.offsetMax = new Vector2(-track.rect.width - 12f, 0f);
+        }
+        scroll.StopMovement();
+        scroll.verticalNormalizedPosition = 1f;
+        return scroll;
+    }
+
+    private static void ConfigureReadingCopy(TMP_Text text)
+    {
+        text.fontSize = Mathf.Max(text.fontSize, UITextScale.Body);
+        text.enableAutoSizing = false;
+        text.textWrappingMode = TextWrappingModes.Normal;
+        text.overflowMode = TextOverflowModes.Overflow;
+    }
+
     /// <summary>Seats a button inside the parchment. Companion to <see cref="PlaceText"/>.</summary>
     public static void PlaceButton(Button button, Rect area, bool primary = true)
     {
@@ -160,9 +262,13 @@ public static class ScrollPanelArt
             labelRect.anchorMax = Vector2.one;
             labelRect.offsetMin = new Vector2(12f, 6f);
             labelRect.offsetMax = new Vector2(-12f, -6f);
+            // TMP measures advances for auto-sizing; bold glyph ink can extend
+            // slightly beyond those advances. Keep that ink inside the label.
+            label.margin = new Vector4(4f, 0f, 4f, 0f);
             label.enableAutoSizing = true;
             label.fontSizeMin = UITextScale.Body;
             label.fontSizeMax = UITextScale.Title;
+            label.textWrappingMode = TextWrappingModes.Normal;
         }
     }
 
@@ -330,6 +436,51 @@ public static class ScrollPanelArt
         image.color = FlatPanelColor;
         image.raycastTarget = true;
         return rect;
+    }
+
+    /// <summary>Adds a vertical scrollbar that remains visible whenever content
+    /// overflows. AutoHide responds to overflow, not inactivity. Existing authored
+    /// scrollbars retain their wiring and viewport expansion settings.</summary>
+    public static void EnsureVerticalScrollbar(ScrollRect scroll)
+    {
+        if (scroll == null || !scroll.vertical || scroll.viewport == null
+            || scroll.content == null || scroll.verticalScrollbar != null)
+            return;
+
+        const float width = 28f;
+        const float gap = 12f;
+
+        // Reserve a lane inside the mask, beside rather than over the content.
+        Vector2 contentInset = scroll.content.offsetMax;
+        contentInset.x -= width + gap;
+        scroll.content.offsetMax = contentInset;
+
+        GameObject track = new GameObject(
+            "[Runtime] VerticalScrollbar", typeof(RectTransform), typeof(Image), typeof(Scrollbar));
+        track.transform.SetParent(scroll.viewport, false);
+        RectTransform trackRect = track.GetComponent<RectTransform>();
+        trackRect.anchorMin = new Vector2(1f, 0f);
+        trackRect.anchorMax = Vector2.one;
+        trackRect.pivot = new Vector2(1f, 0.5f);
+        trackRect.sizeDelta = new Vector2(width, 0f);
+        trackRect.anchoredPosition = Vector2.zero;
+        track.GetComponent<Image>().color = new Color(InkColor.r, InkColor.g, InkColor.b, 0.25f);
+
+        GameObject handle = new GameObject("Handle", typeof(RectTransform), typeof(Image));
+        handle.transform.SetParent(track.transform, false);
+        RectTransform handleRect = handle.GetComponent<RectTransform>();
+        handleRect.anchorMin = Vector2.zero;
+        handleRect.anchorMax = Vector2.one;
+        handleRect.offsetMin = handleRect.offsetMax = Vector2.zero;
+        Image handleImage = handle.GetComponent<Image>();
+        handleImage.color = new Color(0.85f, 0.72f, 0.35f, 1f);
+
+        Scrollbar scrollbar = track.GetComponent<Scrollbar>();
+        scrollbar.direction = Scrollbar.Direction.BottomToTop;
+        scrollbar.handleRect = handleRect;
+        scrollbar.targetGraphic = handleImage;
+        scroll.verticalScrollbar = scrollbar;
+        scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
     }
 
     private static bool Apply(Image image, Sprite sprite)

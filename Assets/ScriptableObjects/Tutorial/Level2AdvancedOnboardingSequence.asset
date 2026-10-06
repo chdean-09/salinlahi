@@ -31,7 +31,7 @@ MonoBehaviour:
     gifFrames: []
     gifFramesPerSecond: 0
     animationClip: {fileID: 0}
-    tapToProceedText: Tap anywhere to continue
+    tapToProceedText: I-tap kahit saan para magpatuloy
   soloTeachPostSuccess:
     fallbackText:
     dialogue: {fileID: 0}
@@ -43,16 +43,16 @@ MonoBehaviour:
     gifFrames: []
     gifFramesPerSecond: 0
     animationClip: {fileID: 0}
-    tapToProceedText: Tap anywhere to continue
+    tapToProceedText: I-tap kahit saan para magpatuloy
   heartLossDialogue:
     fallbackText:
     dialogue: {fileID: 0}
   release:
-    fallbackText: You are ready. Defend the base.
+    fallbackText: Handa ka na. Ipagtanggol ang base.
     dialogue: {fileID: 0}
   massClearTeach:
-    fallbackText: Three or more enemies can share one mark. Draw it once to clear
-      them all.
+    fallbackText: Maaaring magkapareho ng marka ang tatlo o higit pang kalaban.
+      Iguhit ito nang isang beses para matalo silang lahat.
     dialogue: {fileID: 0}
   massClearTeachVideo:
     videoClip: {fileID: 0}
@@ -60,6 +60,6 @@ MonoBehaviour:
     gifFrames: []
     gifFramesPerSecond: 0
     animationClip: {fileID: 0}
-    tapToProceedText: Tap anywhere to continue
+    tapToProceedText: I-tap kahit saan para magpatuloy
   fallbackMessageSeconds: 1.75
   failuresBeforeAssist: 3

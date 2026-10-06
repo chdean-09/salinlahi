@@ -6,7 +6,7 @@
 
 ## Product
 
-A Baybayin-learning game for a capstone defense and evaluation build. Players restore stolen Filipino memories by drawing Baybayin syllables to defend the Living Scroll, then restoring words and sentences. Three eras (Ugat 1-5, Ugnayan 6-10, Pamana 11-15), 18 symbols, one boss (Paglimot, Level 15).
+A Baybayin-learning game for a capstone defense and evaluation build. Players restore stolen Filipino memories by drawing Baybayin syllables to defend the Buhay na Kasulatan, then restoring words and sentences. Three eras (Ugat 1-5, Ugnayan 6-10, Pamana 11-15), 18 symbols, one boss (Paglimot, Level 15).
 
 ## Users
 

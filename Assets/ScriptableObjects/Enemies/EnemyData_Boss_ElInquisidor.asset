@@ -15,13 +15,13 @@ MonoBehaviour:
   enemyID: elinquisidor
   displayName: El Inquisidor
   discoverySubtitle: 
-  description: 'A corrupted high-ranking friar who ordered the burning of Baybayin
-    manuscripts during the Spanish era. He wants to erase the script and the memory
-    of the people.
+  description: 'Isang tiwaling mataas na pinuno ng mga prayle na nag-utos na sunugin
+    ang mga manuskrito ng Baybayin noong panahon ng mga Espanyol. Gusto niyang burahin
+    ang Baybayin at ang alaala ng mga tao.
 
 
 
-    Power: Summons Spanish Era enemies.'
+    Kakayahan: Nagpapatawag ng mga kalaban mula sa panahon ng mga Espanyol.'
   moveSpeed: 0
   maxHealth: 1
   walkFrames:

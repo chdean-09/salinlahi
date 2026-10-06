@@ -24,6 +24,7 @@ MonoBehaviour:
     displayLabel: INA
     meaning: mother
     hintText: 
+    hintSynonyms: nanay
     decomposition:
     - symbol: {fileID: 11400000, guid: d292afcc22b84c0fbdfd9b9f60f8b13b, type: 2}
       spokenValueId: value.i
@@ -39,6 +40,7 @@ MonoBehaviour:
     displayLabel: AMA
     meaning: father
     hintText: 
+    hintSynonyms: tatay
     decomposition:
     - symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
       spokenValueId: value.a

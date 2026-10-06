@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -72,6 +73,40 @@ namespace Salinlahi.Tests.Editor.Boss
             Assert.IsTrue(routine.MoveNext(), "Coroutine should yield once after applying static setup.");
             Assert.AreEqual(Vector2.zero, rt.anchoredPosition, "First tick must not randomize position before the first render.");
             Assert.AreEqual(Vector3.one * 0.5f, rt.localScale);
+        }
+
+        [TestCase(320f, 568f)]
+        [TestCase(360f, 800f)]
+        [TestCase(430f, 932f)]
+        public void Show_LongBoldHeadingsKeepTheirInkInsideThePaper(float width, float height)
+        {
+            GameObject canvas = new("Boss heading test", typeof(RectTransform), typeof(Canvas));
+            _objectsToDestroy.Add(canvas);
+            canvas.GetComponent<Canvas>().renderMode = RenderMode.WorldSpace;
+            float scale = Mathf.Sqrt(width / 1080f * height / 1920f);
+            canvas.GetComponent<RectTransform>().sizeDelta = new Vector2(width / scale, height / scale);
+            GameObject host = new("Boss scroll", typeof(RectTransform));
+            host.transform.SetParent(canvas.transform, false);
+            ScrollPanelArt.SetAnchors(host.GetComponent<RectTransform>(), Rect.MinMaxRect(0.02f, 0.05f, 0.98f, 0.95f));
+            BossTutorialScroll scroll = host.AddComponent<BossTutorialScroll>();
+            TMP_Text title = new GameObject("Title", typeof(RectTransform), typeof(TextMeshProUGUI)).GetComponent<TMP_Text>();
+            title.transform.SetParent(host.transform, false);
+            title.font = TMP_Settings.defaultFontAsset;
+            Assert.IsNotNull(title.font);
+            TMP_FontAsset authoredFont = title.font;
+            title.fontStyle = FontStyles.Bold | FontStyles.UpperCase;
+            SetPrivateField(scroll, "_title", title);
+            foreach (string heading in new[] { "Pagpapatawag", "Pagteleport" })
+            {
+                scroll.Show(new[] { new BossTutorialPage { title = heading } });
+                Canvas.ForceUpdateCanvases();
+                title.ForceMeshUpdate();
+                Assert.AreSame(authoredFont, title.font);
+                Assert.GreaterOrEqual(title.fontSize, UITextScale.Body);
+                Assert.IsFalse(title.isTextOverflowing, heading);
+                Assert.AreEqual(1, title.textInfo.lineCount, heading + " must remain intact.");
+                Assert.LessOrEqual(title.textBounds.size.x, title.rectTransform.rect.width, heading);
+            }
         }
 
         private BossTutorialScroll CreateScroll(out Image art)

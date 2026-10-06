@@ -24,6 +24,7 @@ MonoBehaviour:
     displayLabel: SAMA
     meaning: to join
     hintText: 
+    hintSynonyms: pakikiisa
     decomposition:
     - symbol: {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
       spokenValueId: value.sa
@@ -39,6 +40,7 @@ MonoBehaviour:
     displayLabel: KASAMA
     meaning: companion
     hintText: 
+    hintSynonyms: kapiling, kaagapay
     decomposition:
     - symbol: {fileID: 11400000, guid: 5282f069be30f7144936181b274c784f, type: 2}
       spokenValueId: value.ka

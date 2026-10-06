@@ -503,7 +503,7 @@ public class VictoryScreenUI : MonoBehaviour
         // Text-only frame now — the hearts row moved up to the old star position.
         // Slimmer box centred between the hearts caption and Next Level.
         rect.anchoredPosition = new Vector2(0f, -110f);
-        rect.sizeDelta = new Vector2(620f, 170f);
+        rect.sizeDelta = new Vector2(820f, 240f);
 
         Image frame = panel.GetComponent<Image>();
         if (frame == null)
@@ -602,7 +602,7 @@ public class VictoryScreenUI : MonoBehaviour
         rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.anchoredPosition = new Vector2(0f, 90f);
-        rect.sizeDelta = new Vector2(560f, 56f);
+        rect.sizeDelta = new Vector2(560f, 96f);
 
         TextMeshProUGUI text = captionObject.GetComponent<TextMeshProUGUI>();
         if (text == null)
@@ -663,9 +663,11 @@ public class VictoryScreenUI : MonoBehaviour
     /// </summary>
     private void PositionButtons()
     {
-        PositionButton(_nextLevelButton, new Vector2(0f, -430f), new Vector2(446f, 150f));
-        PositionButton(_levelSelectButton, new Vector2(-185f, -645f), new Vector2(330f, 130f));
-        PositionButton(_replayButton, new Vector2(185f, -645f), new Vector2(330f, 130f));
+        TMP_Text levelSelectLabel = _levelSelectButton != null ? _levelSelectButton.GetComponentInChildren<TMP_Text>(true) : null;
+        if (levelSelectLabel != null) levelSelectLabel.text = LevelResultsCopy.LevelSelectLabel;
+        PositionButton(_nextLevelButton, new Vector2(0f, -430f), new Vector2(700f, 176f));
+        PositionButton(_levelSelectButton, new Vector2(-230f, -645f), new Vector2(420f, 176f));
+        PositionButton(_replayButton, new Vector2(230f, -645f), new Vector2(420f, 176f));
     }
 
     private static void PositionButton(Button button, Vector2 position, Vector2 size)

@@ -15,8 +15,8 @@ MonoBehaviour:
   enemyID: hati-minion
   displayName: Hati
   discoverySubtitle: 
-  description: A masked creature that splits into two smaller enemies. It divides
-    villagers and creates arguments between them.
+  description: Isang nakamaskarang nilalang na nahahati sa dalawang mas maliliit na
+    kalaban. Pinaghihiwalay nito ang mga taga-nayon at pinag-aaway sila.
   moveSpeed: 1.4
   maxHealth: 1
   walkFrames:
@@ -73,7 +73,7 @@ MonoBehaviour:
   splitsOnDefeat: 0
   spriteScale: 0.6
   suppressDiscovery: 1
-  corruptedMeaning: Hati's divided memory becomes two fragments that no longer agree.
-  trueMeaning: Meaning can be rebuilt by reading each fragment as part of a whole.
-  restoredLesson: When the split pieces carry different glyphs, reclassify each one instead of repeating the first answer.
+  corruptedMeaning: Nagiging dalawang hindi magkatugmang piraso ang hinating alaala ni Hati.
+  trueMeaning: Muling mabubuo ang kahulugan kung babasahin ang bawat piraso bilang bahagi ng kabuuan.
+  restoredLesson: Kapag magkaiba ang mga titik sa magkakahiwalay na piraso, tukuyin muli ang bawat isa sa halip na ulitin ang unang sagot.
   learningAbility: 8

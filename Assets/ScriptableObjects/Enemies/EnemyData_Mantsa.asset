@@ -15,11 +15,11 @@ MonoBehaviour:
   enemyID: mantsa
   displayName: Mantsa
   discoverySubtitle: 
-  description: Mantsa crawled from ink spilled across forgotten family records. It
-    covers the small marks that distinguish one Baybayin character from another,
-    while the original remains beneath the stain.
-  abilityLine: It stains part of a correct character until its true form is hard
-    to see.
+  description: Gumapang ang Mantsa mula sa tinta na tumapon sa mga nakalimutang tala
+    ng pamilya. Tinatakpan nito ang maliliit na tandang nagtatangi sa bawat titik
+    ng Baybayin, habang nananatili sa ilalim ng mantsa ang orihinal.
+  abilityLine: Dinudungisan nito ang bahagi ng tamang titik hanggang mahirap nang
+    makita ang tunay na hugis nito.
   moveSpeed: 1.15
   maxHealth: 1
   walkFrames:
@@ -123,8 +123,8 @@ MonoBehaviour:
   splitCount: 2
   splitOffsetX: 0.9
   spriteScale: 1
-  corruptedMeaning: Ink hides the details that distinguish a correct form.
-  trueMeaning: Stable strokes carry identity even when partly obscured.
-  restoredLesson: Complete the true shape instead of learning the stain.
+  corruptedMeaning: Itinatago ng tinta ang mga detalyeng nagpapakilala sa tamang hugis.
+  trueMeaning: Nakikilala pa rin ang titik sa mga guhit nito kahit bahagyang natatakpan.
+  restoredLesson: Iguhit ang tunay na hugis nang buo sa halip na kabisaduhin ang mantsa.
   learningAbility: 3
   suppressDiscovery: 0

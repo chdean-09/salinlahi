@@ -29,13 +29,14 @@ public class SettingsPanel : MonoBehaviour
     private static readonly Color HandleColor = new(0.95f, 0.83f, 0.52f, 1f);
     private static readonly Color LabelColor = new(1f, 1f, 1f, 1f);
     private static readonly Color CardColor = new(0.07f, 0.1f, 0.17f, 1f);
-    private static readonly Vector2 CloseButtonMinSize = new(300f, 120f);
+    private static readonly Vector2 CloseButtonMinSize = new(420f, 152f);
     private const float CloseButtonMinFontSize = UITextScale.Title;
 
     private static Sprite s_runtimeWhiteSprite;
     private GameObject _modalBackdrop;
     private RectTransform _settingsCardRect;
     private RectTransform _settingsScrollRect;
+    private RectTransform _volumeContent;
     private bool _onParchment;
     private readonly System.Collections.Generic.List<GameObject> _hiddenSiblingObjects = new();
     private readonly System.Collections.Generic.List<Graphic> _disabledSiblingRaycastGraphics = new();
@@ -121,9 +122,9 @@ public class SettingsPanel : MonoBehaviour
 
     private void UpdateVolumeLabels()
     {
-        UpdateLabel(_masterLabel, "Master", _masterSlider);
-        UpdateLabel(_bgmLabel, "Music", _bgmSlider);
-        UpdateLabel(_sfxLabel, "Sound effects", _sfxSlider);
+        UpdateLabel(_masterLabel, "Lahat", _masterSlider);
+        UpdateLabel(_bgmLabel, "Musika", _bgmSlider);
+        UpdateLabel(_sfxLabel, "Epekto", _sfxSlider);
     }
 
     private void UpdateLabel(TMP_Text label, string prefix, Slider slider)
@@ -135,10 +136,10 @@ public class SettingsPanel : MonoBehaviour
         label.fontSize = UITextScale.Title;
         int percent = Mathf.RoundToInt(slider.value * 100f);
         label.text = prefix;
-        TMP_Text valueLabel = _settingsScrollRect != null
-            ? _settingsScrollRect.Find(slider.name + "Value")?.GetComponent<TMP_Text>() : null;
+        TMP_Text valueLabel = _volumeContent != null
+            ? _volumeContent.Find(slider.name + "Value")?.GetComponent<TMP_Text>() : null;
         if (valueLabel != null)
-            valueLabel.text = slider.value <= slider.minValue ? "Muted" : $"{percent}%";
+            valueLabel.text = slider.value <= slider.minValue ? "Mute" : $"{percent}%";
     }
 
     private void SetSlidersInteractable(bool isInteractable)
@@ -379,8 +380,9 @@ public class SettingsPanel : MonoBehaviour
         TMP_Text closeLabel = _closeButton.GetComponentInChildren<TMP_Text>(true);
         if (closeLabel != null)
         {
-            closeLabel.text = "Back";
+            closeLabel.text = "Balik";
             TutorialFontProvider.ApplyTo(closeLabel);
+            TutorialFontProvider.ClearLegibilityEffects(closeLabel);
             closeLabel.enableAutoSizing = true;
             closeLabel.fontSizeMin = UITextScale.Body;
             closeLabel.fontSizeMax = CloseButtonMinFontSize;
@@ -582,7 +584,7 @@ public class SettingsPanel : MonoBehaviour
         labelRect.offsetMin = Vector2.zero;
         labelRect.offsetMax = Vector2.zero;
         TextMeshProUGUI label = labelObj.GetComponent<TextMeshProUGUI>();
-        label.text = "Back";
+        label.text = "Balik";
         label.fontSize = CloseButtonMinFontSize;
         label.alignment = TextAlignmentOptions.Center;
         label.color = Color.white;
@@ -638,25 +640,50 @@ public class SettingsPanel : MonoBehaviour
         scrollImage.color = CardColor;
         scrollImage.raycastTarget = false;
         _onParchment = ScrollPanelArt.ApplyFull(scrollImage);
-        ScrollPanelArt.SetAnchors(_settingsScrollRect, Rect.MinMaxRect(0.04f, 0.17f, 0.96f, 0.83f));
+        ScrollPanelArt.SetAnchors(_settingsScrollRect, ScrollPanelArt.ScrollArea);
 
         TMP_Text title = transform.Find("Title")?.GetComponent<TMP_Text>();
         title ??= _settingsScrollRect.Find("Title")?.GetComponent<TMP_Text>();
         title ??= _settingsCardRect.Find("Title")?.GetComponent<TMP_Text>();
-        title ??= EnsureCardText("Title", "Settings");
+        title ??= EnsureCardText("Title", "Mga Setting");
         title.rectTransform.SetParent(_settingsScrollRect, false);
         StyleCardText(title, Rect.MinMaxRect(0.16f, 0.81f, 0.84f, 0.87f), UITextScale.Display);
         title.alignment = TextAlignmentOptions.Center;
         title.fontStyle = FontStyles.Bold;
 
-        LayoutVolumeRow(_masterLabel, _masterSlider, 0.68f, "All game audio");
-        LayoutVolumeRow(_bgmLabel, _bgmSlider, 0.48f, "Background music");
-        LayoutVolumeRow(_sfxLabel, _sfxSlider, 0.28f, "Effects and syllable pronunciations");
+        EnsureVolumeViewport();
+        LayoutVolumeRow(_masterLabel, _masterSlider, 0.85f, "Lahat ng tunog ng laro");
+        LayoutVolumeRow(_bgmLabel, _bgmSlider, 0.52f, "Musika sa laro");
+        LayoutVolumeRow(_sfxLabel, _sfxSlider, 0.19f, "Epekto at pagbigkas");
         TMP_Text status = EnsureCardText("AudioStatus", !Application.isPlaying || AudioManager.Instance != null
-            ? "Changes save automatically" : "Sound controls unavailable");
-        StyleCardText(status, Rect.MinMaxRect(0.16f, 0.12f, 0.84f, 0.16f), UITextScale.Body);
+            ? "Awtomatikong nase-save ang mga pagbabago" : "Hindi magagamit ang mga kontrol sa tunog");
+        StyleCardText(status, Rect.MinMaxRect(0.16f, 0.16f, 0.84f, 0.25f), UITextScale.Secondary);
         status.alignment = TextAlignmentOptions.Center;
         DisableNonInteractiveRaycastTargets();
+    }
+
+    private void EnsureVolumeViewport()
+    {
+        if (_volumeContent != null)
+            return;
+        GameObject host = new("VolumeViewport", typeof(RectTransform), typeof(Image), typeof(RectMask2D), typeof(ScrollRect));
+        host.transform.SetParent(_settingsScrollRect, false);
+        RectTransform viewport = host.GetComponent<RectTransform>();
+        ScrollPanelArt.SetAnchors(viewport, Rect.MinMaxRect(0.16f, 0.28f, 0.84f, 0.79f));
+        host.GetComponent<Image>().color = Color.clear;
+        GameObject content = new("VolumeContent", typeof(RectTransform));
+        content.transform.SetParent(viewport, false);
+        _volumeContent = content.GetComponent<RectTransform>();
+        _volumeContent.anchorMin = new Vector2(0f, 1f);
+        _volumeContent.anchorMax = Vector2.one;
+        _volumeContent.pivot = new Vector2(0.5f, 1f);
+        _volumeContent.sizeDelta = new Vector2(0f, 1440f);
+        ScrollRect scroll = host.GetComponent<ScrollRect>();
+        scroll.viewport = viewport;
+        scroll.content = _volumeContent;
+        scroll.horizontal = false;
+        scroll.movementType = ScrollRect.MovementType.Clamped;
+        ScrollPanelArt.EnsureVerticalScrollbar(scroll);
     }
 
     private void LayoutVolumeRow(TMP_Text label, Slider slider, float rowY, string description)
@@ -664,26 +691,31 @@ public class SettingsPanel : MonoBehaviour
         if (label == null || slider == null || _settingsCardRect == null)
             return;
 
-        label.rectTransform.SetParent(_settingsScrollRect, false);
-        StyleCardText(label, Rect.MinMaxRect(0.16f, rowY + 0.045f, 0.68f, rowY + 0.095f), UITextScale.Title);
+        label.rectTransform.SetParent(_volumeContent, false);
+        StyleCardText(label, Rect.MinMaxRect(0f, rowY + 0.045f, 0.70f, rowY + 0.105f), UITextScale.Title);
         TMP_Text value = EnsureCardText(slider.name + "Value", "");
-        StyleCardText(value, Rect.MinMaxRect(0.68f, rowY + 0.045f, 0.84f, rowY + 0.095f), UITextScale.Title);
+        value.rectTransform.SetParent(_volumeContent, false);
+        StyleCardText(value, Rect.MinMaxRect(0.70f, rowY + 0.045f, 1f, rowY + 0.105f), UITextScale.Title);
         value.alignment = TextAlignmentOptions.MidlineRight;
         TMP_Text hint = EnsureCardText(slider.name + "Hint", description);
-        StyleCardText(hint, Rect.MinMaxRect(0.16f, rowY, 0.84f, rowY + 0.045f), UITextScale.Body);
+        hint.rectTransform.SetParent(_volumeContent, false);
+        StyleCardText(hint, Rect.MinMaxRect(0f, rowY - 0.055f, 1f, rowY + 0.045f), UITextScale.Body);
+        hint.alignment = TextAlignmentOptions.TopLeft;
+        hint.textWrappingMode = TextWrappingModes.Normal;
 
         RectTransform sliderRect = slider.GetComponent<RectTransform>();
-        sliderRect.SetParent(_settingsScrollRect, false);
-        sliderRect.anchorMin = new Vector2(0.16f, rowY - 0.055f);
-        sliderRect.anchorMax = new Vector2(0.84f, rowY - 0.055f);
+        sliderRect.SetParent(_volumeContent, false);
+        sliderRect.anchorMin = new Vector2(0f, rowY - 0.12f);
+        sliderRect.anchorMax = new Vector2(1f, rowY - 0.12f);
         sliderRect.pivot = new Vector2(0.5f, 0.5f);
-        sliderRect.sizeDelta = new Vector2(0f, 128f);
+        sliderRect.sizeDelta = new Vector2(0f, 152f);
         sliderRect.anchoredPosition = Vector2.zero;
     }
 
     private TMP_Text EnsureCardText(string name, string text)
     {
-        TMP_Text label = _settingsScrollRect.Find(name)?.GetComponent<TMP_Text>();
+        TMP_Text label = _volumeContent == null ? null : _volumeContent.Find(name)?.GetComponent<TMP_Text>();
+        label ??= _settingsScrollRect.Find(name)?.GetComponent<TMP_Text>();
         label ??= _settingsCardRect.Find(name)?.GetComponent<TMP_Text>();
         if (label == null)
         {
