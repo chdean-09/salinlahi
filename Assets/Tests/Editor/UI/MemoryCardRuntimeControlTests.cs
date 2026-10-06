@@ -140,6 +140,36 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.IsTrue(flip.targetGraphic.raycastTarget);
         }
 
+        [Test]
+        public void Present_StackedActionsRemainVisibleAndWiredOnBothFaces()
+        {
+            MemoryCardUI card = PresentAuthoredCard();
+            var serialized = new SerializedObject(card);
+            var flip = Reference(serialized, "_flipButton") as Button;
+            var close = Reference(serialized, "_closeButton") as Button;
+            var front = Reference(serialized, "_frontRoot") as GameObject;
+            var back = Reference(serialized, "_backRoot") as GameObject;
+            RectTransform flipRect = (RectTransform)flip.transform;
+            RectTransform closeRect = (RectTransform)close.transform;
+            Assert.Less(closeRect.anchorMax.y, flipRect.anchorMin.y);
+            Assert.AreEqual(flipRect.anchorMin.x, closeRect.anchorMin.x);
+            Assert.AreEqual(flipRect.anchorMax.x, closeRect.anchorMax.x);
+
+            flip.onClick.Invoke();
+            Assert.IsFalse(front.activeSelf);
+            Assert.IsTrue(back.activeSelf);
+            Assert.IsTrue(flip.gameObject.activeInHierarchy);
+            Assert.IsTrue(close.gameObject.activeInHierarchy);
+            Assert.AreEqual(MemoryCardCopy.BackLabel, flip.GetComponentInChildren<TMP_Text>().text);
+
+            flip.onClick.Invoke();
+            Assert.IsTrue(front.activeSelf);
+            Assert.IsFalse(back.activeSelf);
+            Assert.AreEqual(MemoryCardCopy.FlipLabel, flip.GetComponentInChildren<TMP_Text>().text);
+            close.onClick.Invoke();
+            Assert.IsFalse(card.IsPresented);
+        }
+
         /// <summary>
         /// NOTE on falsifying this guard: uGUI silently repairs a missing RectTransform on an
         /// object that carries a Graphic, so removing only the transform from a control with

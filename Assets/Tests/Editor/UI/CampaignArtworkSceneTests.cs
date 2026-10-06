@@ -22,6 +22,24 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.AreSame(ImportedSprite(spriteName), era.bannerSprite);
         }
 
+        [TestCase("ui_era_one_banner")]
+        [TestCase("ui_era_two_banner")]
+        [TestCase("ui_era_three_banner")]
+        public void EraBanner_ImportsTheCompleteArtworkWithoutDownscaling(string spriteName)
+        {
+            string path = ArtPath + spriteName + ".png";
+            var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+            Assert.IsNotNull(importer);
+            importer.GetSourceTextureWidthAndHeight(out int width, out int height);
+            Sprite sprite = ImportedSprite(spriteName);
+            Assert.AreEqual(new Rect(0f, 0f, width, height), sprite.rect,
+                "The supplied glow and border must not be cropped by the previous sprite rectangle.");
+            Assert.AreEqual(width, sprite.texture.width);
+            Assert.AreEqual(height, sprite.texture.height);
+            Assert.IsTrue(importer.alphaIsTransparency);
+            Assert.AreEqual(FilterMode.Point, importer.filterMode);
+        }
+
         [TestCase("_prevEraButton", "ui_era_arrow_left", false)]
         [TestCase("_nextEraButton", "ui_era_arrow_right", true)]
         public void LevelSelect_UsesSuppliedArrowAndInitialBoundaryState(

@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// <summary>
 /// The sentence-hint affordance on the combat HUD: a small parchment chip below the
 /// pause button — the same textured background the pause button wears,
-/// carrying the almanac "?" glyph — that opens a parchment scroll of the
+/// carrying a regular-weight "?" glyph — that opens a parchment scroll of the
 /// level's sentence hints (the blanked restoration context plus each focus
 /// word's letter blanks and descriptor line with every answer withheld, assembled by
 /// <see cref="SentenceHintContent"/>). Levels 6-15 carry no authored objective
@@ -22,33 +22,23 @@ using UnityEngine.UI;
 public sealed class SentenceHintController : MonoBehaviour
 {
     [Header("Hint Chip")]
-    [Tooltip("Chip size in canvas units. Square, matching the authored 80x80 "
+    [Tooltip("Chip size in canvas units. Square, matching the runtime 100x100 "
              + "pause button it parks under.")]
-    [SerializeField] private Vector2 _chipSize = new Vector2(80f, 80f);
+    [SerializeField] private Vector2 _chipSize = new Vector2(HUD.ControlSize, HUD.ControlSize);
 
     [Tooltip("Gap between the pause button's bottom edge and the chip's top edge.")]
     [SerializeField, Min(0f)] private float _chipGapBelowPause = 12f;
 
     [Tooltip("Fallback top-right offset used when the pause button cannot be found: "
-             + "(-20, -112) sits the chip under the authored 80x80 pause button at "
+             + "(-20, -132) sits the chip under the runtime 100x100 pause button at "
              + "(-20, -20).")]
-    [SerializeField] private Vector2 _chipFallbackPosition = new Vector2(-20f, -112f);
+    [SerializeField] private Vector2 _chipFallbackPosition = new Vector2(-20f, -132f);
 
     [Header("Copy")]
-    [Tooltip("Fallback chip glyph, used only when the hint icon art fails to "
-             + "load — the same single-mark convention the pause button's \"||\" label uses.")]
+    [Tooltip("Chip glyph, using the same single-mark convention as the pause button's label.")]
     [SerializeField] private string _chipLabel = "?";
     [SerializeField] private string _panelTitle = "Hint sa Pangungusap";
     [SerializeField] private string _closeLabel = "Isara";
-
-    // The almanac's "?" glyph — a Resources copy of Assets/Art/UI/Almanac/
-    // Questionmark.png so the runtime-built chip can resolve it. The glyph is
-    // white line art on transparency, tinted to match the pause mark.
-    private const string IconResourcePath = "Art/UI/Almanac/Questionmark";
-
-    // Icon inset in canvas units: leaves the "?" breathing room inside the
-    // square, the same visual margin the pause button's "||" label keeps.
-    private const float IconPadding = 20f;
 
     // VT323's lowercase glyphs occupy only part of the nominal font size.
     // Use a larger reading size on this reference scroll; long clues scroll
@@ -255,7 +245,10 @@ public sealed class SentenceHintController : MonoBehaviour
     private void EnsureChip()
     {
         if (_chipRoot != null)
+        {
+            ((RectTransform)_chipRoot.transform).anchoredPosition = ChipPosition(_chipRoot.transform.parent);
             return;
+        }
 
         Transform parent = ResolveHudParent();
         _chipRoot = new GameObject(
@@ -275,32 +268,15 @@ public sealed class SentenceHintController : MonoBehaviour
         chipButton.transition = Selectable.Transition.ColorTint;
         chipButton.targetGraphic = background;
 
-        Sprite icon = LoadIconSprite();
-        if (icon != null)
         {
-            GameObject iconObject = new GameObject(
-                "[Runtime] SentenceHintChipIcon", typeof(RectTransform));
-            iconObject.transform.SetParent(_chipRoot.transform, false);
-            Image iconImage = iconObject.AddComponent<Image>();
-            iconImage.sprite = icon;
-            iconImage.color = ScrollPanelArt.InkColor;
-            iconImage.preserveAspect = true;
-            iconImage.raycastTarget = false;
-            RectTransform iconRect = iconImage.rectTransform;
-            iconRect.anchorMin = Vector2.zero;
-            iconRect.anchorMax = Vector2.one;
-            iconRect.offsetMin = new Vector2(IconPadding, IconPadding);
-            iconRect.offsetMax = new Vector2(-IconPadding, -IconPadding);
-        }
-        else
-        {
-            // Missing icon fallback: keep a readable "?" on the control.
             GameObject labelObject = new GameObject(
                 "[Runtime] SentenceHintChipLabel", typeof(RectTransform));
             labelObject.transform.SetParent(_chipRoot.transform, false);
             TextMeshProUGUI label = labelObject.AddComponent<TextMeshProUGUI>();
             label.text = _chipLabel;
-            label.fontSize = UITextScale.Body;
+            label.fontSize = UITextScale.Body * 1.25f;
+            label.fontStyle = FontStyles.Normal;
+            label.fontWeight = FontWeight.Regular;
             label.color = Color.white;
             label.alignment = TextAlignmentOptions.Center;
             label.raycastTarget = false;
@@ -315,19 +291,6 @@ public sealed class SentenceHintController : MonoBehaviour
         chipButton.onClick.AddListener(Open);
     }
 
-    /// <summary>
-    /// Loads the almanac "?" sprite, falling back to the first sub-sprite for
-    /// the Multiple-mode import. Null-safe: missing art leaves the text label.
-    /// </summary>
-    private static Sprite LoadIconSprite()
-    {
-        Sprite single = Resources.Load<Sprite>(IconResourcePath);
-        if (single != null)
-            return single;
-        Sprite[] all = Resources.LoadAll<Sprite>(IconResourcePath);
-        return all != null && all.Length > 0 ? all[0] : null;
-    }
-
     private Vector2 ChipPosition(Transform parent)
     {
         RectTransform pause = FindDescendant(parent as RectTransform, "PauseButton");
@@ -337,8 +300,8 @@ public sealed class SentenceHintController : MonoBehaviour
         // The pause button is pivot (1,1): its right edge is anchoredPosition.x and its
         // bottom edge is anchoredPosition.y - height. The chip pivots top-right too, so
         // it parks flush under the button's right edge.
-        float rightEdge = pause.anchoredPosition.x + pause.sizeDelta.x * (1f - pause.pivot.x);
-        float bottomEdge = pause.anchoredPosition.y - pause.sizeDelta.y * pause.pivot.y;
+        float rightEdge = pause.anchoredPosition.x + pause.rect.width * (1f - pause.pivot.x);
+        float bottomEdge = pause.anchoredPosition.y - pause.rect.height * pause.pivot.y;
         return new Vector2(rightEdge, bottomEdge - _chipGapBelowPause);
     }
 

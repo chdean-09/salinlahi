@@ -713,10 +713,90 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.LessOrEqual(
                 flip.GetComponent<RectTransform>().anchorMax.y, glyphRow.anchorMin.y);
 
-            // The two buttons sit side by side without overlapping.
-            Assert.LessOrEqual(
-                flip.GetComponent<RectTransform>().anchorMax.x,
+            // Actions span the paper and stack below the glyphs, keeping words intact.
+            Assert.AreEqual(flip.GetComponent<RectTransform>().anchorMin.x,
                 close.GetComponent<RectTransform>().anchorMin.x);
+            Assert.AreEqual(flip.GetComponent<RectTransform>().anchorMax.x,
+                close.GetComponent<RectTransform>().anchorMax.x);
+            Assert.LessOrEqual(
+                close.GetComponent<RectTransform>().anchorMax.y,
+                flip.GetComponent<RectTransform>().anchorMin.y);
+        }
+
+        [TestCase(430f, 932f)]
+        [TestCase(320f, 568f)]
+        [TestCase(393f, 852f)]
+        public void MemoryCard_ActionLabels_RenderOnOneLineInsideStackedButtons(float width, float height)
+        {
+            using TestObjects objects = new();
+            RectTransform viewport = objects.CreateRect("Viewport");
+            viewport.gameObject.AddComponent<Canvas>().renderMode = RenderMode.WorldSpace;
+            viewport.sizeDelta = new Vector2(1080f, height * 1080f / width);
+            RectTransform card = objects.CreateRect("Card");
+            card.SetParent(viewport, false);
+            Button flip = objects.CreateButton("Flip", card);
+            Button close = objects.CreateButton("Close", card);
+            TMP_Text flipLabel = objects.CreateText("Label", (RectTransform)flip.transform);
+            TMP_Text closeLabel = objects.CreateText("Label", (RectTransform)close.transform);
+            flipLabel.text = MemoryCardCopy.FlipLabel;
+            closeLabel.text = MemoryCardCopy.CloseLabel;
+            MemoryCardUI.ApplyParchmentLayout(card, null, null, null, null, null, null, null, flip, close);
+            Canvas.ForceUpdateCanvases();
+            foreach (TMP_Text label in new[] { flipLabel, closeLabel })
+            {
+                label.ForceMeshUpdate();
+                Assert.AreEqual(1, label.textInfo.lineCount, label.text);
+                AssertRenderedLabelInside(label);
+                Assert.GreaterOrEqual(label.fontSize, UITextScale.Body);
+            }
+        }
+
+        [Test]
+        public void ScrollPanelArt_ActionLabels_WrapBetweenWordsAndPreserveRichTextAndSource()
+        {
+            using TestObjects objects = new();
+            RectTransform viewport = objects.CreateRect("Viewport");
+            viewport.gameObject.AddComponent<Canvas>().renderMode = RenderMode.WorldSpace;
+            viewport.sizeDelta = new Vector2(1080f, 1920f);
+            Button button = objects.CreateButton("Button", viewport);
+            ((RectTransform)button.transform).sizeDelta = new Vector2(330f, 300f);
+            TMP_Text label = objects.CreateText("Label", (RectTransform)button.transform);
+            const string source = "<b>Mga Salita</b>";
+            label.text = source;
+            ScrollPanelArt.StylePrimaryButton(button);
+            ITextPreprocessor preprocessor = label.textPreprocessor;
+            ScrollPanelArt.SizeButtonLabel(button);
+            Assert.AreSame(preprocessor, label.textPreprocessor, "Restyling must not nest preprocessors.");
+            Canvas.ForceUpdateCanvases();
+            label.ForceMeshUpdate();
+            Assert.AreEqual(source, label.text, "Display preprocessing must preserve authored copy.");
+            Assert.AreEqual(2, label.textInfo.lineCount, "Multiword actions must still wrap at spaces.");
+            int wordLine = -1;
+            for (int i = 0; i < label.textInfo.characterCount; i++)
+            {
+                TMP_CharacterInfo character = label.textInfo.characterInfo[i];
+                if (char.IsWhiteSpace(character.character)) { wordLine = -1; continue; }
+                if (wordLine < 0) wordLine = character.lineNumber;
+                Assert.AreEqual(wordLine, character.lineNumber, "A word was split between lines.");
+                Assert.IsTrue((character.style & FontStyles.Bold) != 0, "Rich-text formatting must survive.");
+            }
+            AssertRenderedLabelInside(label);
+        }
+
+        private static void AssertRenderedLabelInside(TMP_Text label)
+        {
+            Assert.Greater(label.textInfo.characterCount, 0, "The test must inspect actual rendered glyphs.");
+            Assert.IsFalse(label.isTextOverflowing, label.text);
+            Rect bounds = label.rectTransform.rect;
+            for (int i = 0; i < label.textInfo.characterCount; i++)
+            {
+                TMP_CharacterInfo character = label.textInfo.characterInfo[i];
+                if (!character.isVisible) continue;
+                Assert.GreaterOrEqual(character.bottomLeft.x, bounds.xMin - 0.5f, label.text);
+                Assert.LessOrEqual(character.topRight.x, bounds.xMax + 0.5f, label.text);
+                Assert.GreaterOrEqual(character.bottomLeft.y, bounds.yMin - 0.5f, label.text);
+                Assert.LessOrEqual(character.topRight.y, bounds.yMax + 0.5f, label.text);
+            }
         }
 
         [Test]
