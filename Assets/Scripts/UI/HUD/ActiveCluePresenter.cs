@@ -316,12 +316,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     [Tooltip("Scale of a captured glyph while it is held over Uhaw.")]
     [SerializeField, Range(0.1f, 1f)] private float _uhawCapturedGlyphScale = 0.48f;
 
-    /// <summary>
-    /// Suppresses a clue announcement that lands on top of one CombatResolver just made.
-    /// AudioManager uses PlayOneShot, so pronunciation clips overlap rather than interrupt.
-    /// </summary>
-    private const float PronunciationDebounceSeconds = 0.5f;
-
     /// <summary>Prefix on the at-accept cue, matching the victory summary's "Restored:" surface.</summary>
     private const string WordRestoredPrefix = "Naibalik: ";
 
@@ -329,8 +323,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
     private Enemy _currentClue;
     private LevelConfigSO _level;
     private ActiveClueDirector _subscribedDirector;
-    private Button _replayAudioButtonComponent;
-    private float _lastPronunciationTime = float.NegativeInfinity;
     private GameObject _activeClueMark;
     private Sprite _runtimeMarkSprite;
     private Coroutine _clueCrumbleRoutine;
@@ -822,8 +814,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         _ngatngatDamageStage = 0;
         _activeUhaw = null;
         SubscribeToDirector();
-        BindReplayAudioButton();
-        EventBus.OnPronunciationRequested += HandlePronunciationRequested;
+        HideReplayAudioButton();
         EventBus.OnEnemySpawned += HandleEnemySpawned;
         EventBus.OnCutsceneStarted += HandleCutsceneTransitioned;
         EventBus.OnCutsceneComplete += HandleCutsceneTransitioned;
@@ -861,7 +852,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         // while the rail still exists to be put back.
         FinishAllSlotFlights();
 
-        EventBus.OnPronunciationRequested -= HandlePronunciationRequested;
         EventBus.OnEnemySpawned -= HandleEnemySpawned;
         EventBus.OnCutsceneStarted -= HandleCutsceneTransitioned;
         EventBus.OnCutsceneComplete -= HandleCutsceneTransitioned;
@@ -873,10 +863,6 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             _subscribedDirector.OnActiveClueResolved -= HandleActiveClueResolved;
         }
         _subscribedDirector = null;
-
-        if (_replayAudioButtonComponent != null)
-            _replayAudioButtonComponent.onClick.RemoveListener(ReplayAudio);
-        _replayAudioButtonComponent = null;
 
         DestroyRestorationRail();
     }
@@ -920,7 +906,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         // mental model has to be "fill this", not "kill those".
         if (Application.isPlaying && level != null && level.activeClueRestorationEnabled)
             EnsureRestorationRail();
-        BindReplayAudioButton();
+        HideReplayAudioButton();
 
         if (_subscribedDirector != null)
             HandleActiveClueChanged(null, _subscribedDirector.CurrentClue);
@@ -971,26 +957,11 @@ public sealed class ActiveCluePresenter : MonoBehaviour
         return canvas != null ? canvas.transform : null;
     }
 
-    private void BindReplayAudioButton()
+    private void HideReplayAudioButton()
     {
-        Button nextButton = _replayAudioButton != null
-            ? _replayAudioButton.GetComponent<Button>()
-            : null;
-        if (_replayAudioButtonComponent == nextButton)
-            return;
-
-        if (_replayAudioButtonComponent != null)
-            _replayAudioButtonComponent.onClick.RemoveListener(ReplayAudio);
-
-        _replayAudioButtonComponent = nextButton;
-        if (_replayAudioButtonComponent != null)
-            _replayAudioButtonComponent.onClick.AddListener(ReplayAudio);
-    }
-
-    private void ReplayAudio()
-    {
-        if (_currentClue != null && _currentClue.Character != null)
-            EventBus.RaisePronunciationRequested(_currentClue.Character);
+        // Retain the serialized reference so authored HUDs can hide the retired control.
+        if (_replayAudioButton != null)
+            _replayAudioButton.SetActive(false);
     }
 
     private void HandleActiveClueChanged(Enemy previous, Enemy current)
@@ -1272,32 +1243,7 @@ public sealed class ActiveCluePresenter : MonoBehaviour
             _clueImage.gameObject.SetActive(showImage);
         }
 
-        if (_replayAudioButton != null)
-        {
-            _replayAudioButton.SetActive(
-                clue != null
-                && (_resolvedChannels & ClueChannels.SpokenAudio) != ClueChannels.None);
-        }
-
-        // Announce the new clue only if nothing else just did. When a hit resolves,
-        // CombatResolver announces the character the player drew and the mark then moves,
-        // which would stack a second overlapping clip -- AudioManager uses PlayOneShot.
-        if (clue != null
-            && (_resolvedChannels & ClueChannels.SpokenAudio) != ClueChannels.None
-            && clue.Character != null
-            && Time.unscaledTime - _lastPronunciationTime > PronunciationDebounceSeconds)
-        {
-            EventBus.RaisePronunciationRequested(clue.Character);
-        }
-    }
-
-    /// <summary>
-    /// Stamps every pronunciation on the bus, whoever raised it, so the presenter can tell
-    /// when its own announcement would collide with one already playing.
-    /// </summary>
-    private void HandlePronunciationRequested(BaybayinCharacterSO character)
-    {
-        _lastPronunciationTime = Time.unscaledTime;
+        HideReplayAudioButton();
     }
 
     /// <summary>
