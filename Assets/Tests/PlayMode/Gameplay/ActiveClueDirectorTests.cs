@@ -229,11 +229,28 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
             _objectsToDestroy.Add(resolverGo);
             yield return null;
 
-            EventBus.RaiseCharacterRecognized("ba");
-            yield return new WaitForSeconds(0.2f);
+            BaybayinCharacterSO pronounced = null;
+            int pronunciationCount = 0;
+            void OnPronunciation(BaybayinCharacterSO value)
+            {
+                pronounced = value;
+                pronunciationCount++;
+            }
+            EventBus.OnPronunciationRequested += OnPronunciation;
+            try
+            {
+                EventBus.RaiseCharacterRecognized("ba");
+                yield return new WaitForSeconds(0.2f);
 
-            Assert.That(marked.CurrentHealth, Is.LessThan(data.maxHealth),
-                "A correct trace must automatically target the active clue.");
+                Assert.That(marked.CurrentHealth, Is.LessThan(data.maxHealth),
+                    "A correct trace must automatically target the active clue.");
+                Assert.That(pronounced, Is.EqualTo(character), "Defeat must retain the BA pronunciation.");
+                Assert.That(pronunciationCount, Is.EqualTo(1));
+            }
+            finally
+            {
+                EventBus.OnPronunciationRequested -= OnPronunciation;
+            }
         }
 
         [UnityTest]
@@ -386,6 +403,50 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
                 "A required sound clue must have a readable visual equivalent.");
             Assert.IsFalse(presenter.AnswerWasVisible,
                 "An incomplete-word fallback is still a retrieval attempt.");
+        }
+
+        [TestCase(ClueChannels.SpokenAudio)]
+        [TestCase(ClueChannels.SpokenAudio | ClueChannels.LatinText)]
+        public void Presenter_NewActiveClues_DoNotRequestPronunciation(ClueChannels channels)
+        {
+            LevelConfigSO level = ScriptableObject.CreateInstance<LevelConfigSO>();
+            level.activeClueCombatEnabled = true;
+            level.clueChannels = channels;
+            level.audioVisualFallback = ClueChannels.IncompleteWord;
+            _objectsToDestroy.Add(level);
+
+            ActiveClueDirector director = CreateDirector(clueCombatActive: true);
+            GameObject go = new GameObject("ActiveCluePresenter_SilentClue_Test");
+            _objectsToDestroy.Add(go);
+            ActiveCluePresenter presenter = go.AddComponent<ActiveCluePresenter>();
+            GameObject replay = new GameObject("ReplayAudioButton_Test", typeof(RectTransform), typeof(Button));
+            replay.transform.SetParent(go.transform, false);
+            GlyphBadgePlayModeTestHelpers.SetPrivateField(presenter, "_replayAudioButton", replay);
+            presenter.ApplyLevel(level);
+
+            int requests = 0;
+            void OnPronunciation(BaybayinCharacterSO character) => requests++;
+            EventBus.OnPronunciationRequested += OnPronunciation;
+            try
+            {
+                Enemy first = CreateEnemyAt(CreateEnemyData(), y: 5f);
+                director.Reevaluate();
+                Assert.That(director.CurrentClue, Is.EqualTo(first));
+                Assert.That(requests, Is.Zero, "An appearing enemy must not announce its syllable.");
+
+                Enemy next = CreateEnemyAt(CreateEnemyData(), y: 1f);
+                Object.DestroyImmediate(first.gameObject);
+                director.Reevaluate();
+                Assert.That(director.CurrentClue, Is.EqualTo(next));
+                presenter.ApplyLevel(level);
+                Assert.That(requests, Is.Zero, "Changing or refreshing the clue must remain silent.");
+                Assert.IsFalse(replay.activeSelf, "The retired clue-audio replay control must stay hidden.");
+                Assert.IsTrue(ClueChannelResolver.HasReadableVisual(presenter.ResolvedChannels));
+            }
+            finally
+            {
+                EventBus.OnPronunciationRequested -= OnPronunciation;
+            }
         }
 
         // Spec section 4: "Armor | Multi-hit enemy stays eligible until IsDying; mark holds".
