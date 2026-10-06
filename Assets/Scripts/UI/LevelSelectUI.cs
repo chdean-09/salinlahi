@@ -50,6 +50,7 @@ public class LevelSelectUI : MonoBehaviour
 
     private int _currentEraIndex = 0;
     private List<EraConfigSO> _resolvedEras;
+    private Sprite _bakedEraBackground;
 
     // ---------------------------------------------------------------
     // Lifecycle
@@ -117,6 +118,8 @@ public class LevelSelectUI : MonoBehaviour
 
         if (_backButton != null)
             _backButton.onClick.RemoveAllListeners();
+
+        ReleaseBakedEraBackground();
     }
 
     // ---------------------------------------------------------------
@@ -151,8 +154,7 @@ public class LevelSelectUI : MonoBehaviour
         _currentEraIndex = Mathf.Clamp(eraIndex, 0, eras.Count - 1);
         EraConfigSO era  = eras[_currentEraIndex];
 
-        if (_eraBackgroundImage != null && era.backgroundSprite != null)
-            _eraBackgroundImage.sprite = era.backgroundSprite;
+        ShowEraBackground(era);
 
         if (_eraBannerImage != null)
         {
@@ -236,6 +238,80 @@ public class LevelSelectUI : MonoBehaviour
     }
 
     /// <summary>
+    /// Reuses the stage art already shown in Gameplay for this era. The stage baker omits
+    /// the gameplay base-zone fence and protagonist, leaving the ground, scatter, and
+    /// scenery margins as a clean Level Select backdrop.
+    /// </summary>
+    private void ShowEraBackground(EraConfigSO era)
+    {
+        if (_eraBackgroundImage == null)
+            return;
+
+        StageBackgroundSO stageBackground = null;
+        if (era.levels != null)
+        {
+            foreach (LevelConfigSO level in era.levels)
+            {
+                if (level != null && level.eraTheme != null && level.eraTheme.stageBackground != null)
+                {
+                    stageBackground = level.eraTheme.stageBackground;
+                    break;
+                }
+            }
+        }
+
+        Sprite previousBakedBackground = _bakedEraBackground;
+        if (stageBackground != null && stageBackground.IsComplete)
+        {
+            RectTransform rectTransform = _eraBackgroundImage.rectTransform;
+            Canvas rootCanvas = _eraBackgroundImage.canvas != null
+                ? _eraBackgroundImage.canvas.rootCanvas
+                : null;
+            float scaleFactor = rootCanvas != null ? rootCanvas.scaleFactor : 1f;
+            float ppu = StageBackgroundBaker.PixelsPerUnit;
+            Rect displaySize = new Rect(
+                0f,
+                0f,
+                rectTransform.rect.width * scaleFactor / ppu,
+                rectTransform.rect.height * scaleFactor / ppu);
+            string seed = string.IsNullOrEmpty(era.stableId) ? era.eraName : era.stableId;
+            Sprite bakedBackground = StageBackgroundBaker.Bake(
+                stageBackground,
+                displaySize,
+                StageBackgroundBaker.StableHash(seed));
+
+            if (bakedBackground != null)
+            {
+                _bakedEraBackground = bakedBackground;
+                _eraBackgroundImage.sprite = _bakedEraBackground;
+                DestroyBakedEraBackground(previousBakedBackground);
+                return;
+            }
+        }
+
+        _bakedEraBackground = null;
+        _eraBackgroundImage.sprite = era.backgroundSprite;
+        DestroyBakedEraBackground(previousBakedBackground);
+    }
+
+    private void ReleaseBakedEraBackground()
+    {
+        DestroyBakedEraBackground(_bakedEraBackground);
+        _bakedEraBackground = null;
+    }
+
+    private static void DestroyBakedEraBackground(Sprite background)
+    {
+        if (background == null)
+            return;
+
+        Texture2D texture = background.texture;
+        UnityEngine.Object.Destroy(background);
+        if (texture != null)
+            UnityEngine.Object.Destroy(texture);
+    }
+
+    /// <summary>
     /// SALIN-137 AC3: resolves which eras this screen can show.
     ///
     /// The LevelSelect scene assigns <c>Era_01</c>, <c>Era_02</c>, and <c>Era_03</c>.
@@ -248,7 +324,7 @@ public class LevelSelectUI : MonoBehaviour
     /// <see cref="LevelButton.Setup"/> clears a missing sprite defensively instead of
     /// leaving the previous era's numbered scroll behind.
     ///
-    /// OWED ART: dedicated Era 2 and Era 3 banners and backgrounds.
+    /// OWED ART: dedicated Era 2 and Era 3 banners.
     /// </summary>
     private List<EraConfigSO> ResolveEras()
     {
