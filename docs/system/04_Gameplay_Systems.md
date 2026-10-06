@@ -632,7 +632,7 @@ visual equivalent in the same value, which is what keeps a level playable with s
 |---|---|---|
 | `None` | 0 | — |
 | `Glyph` | 1 << 0 | the Baybayin character itself |
-| `SpokenAudio` | 1 << 1 | spoken syllable value |
+| `SpokenAudio` | 1 << 1 | legacy authored flag; active-clue pronunciation is retired |
 | `LatinText` | 1 << 2 | Latin transliteration |
 | `ContextImage` | 1 << 3 | context artwork |
 | `IncompleteWord` | 1 << 4 | the focus word with the target omitted |
@@ -640,11 +640,12 @@ visual equivalent in the same value, which is what keeps a level playable with s
 `ActiveClueSelector` (pure static) chooses the clue for an enemy from the level's permitted channels;
 `ActiveClueDirector` (MonoBehaviour) drives presentation and subscribes to `OnDrawingFailed`.
 
-**Accessibility consequence, and a live gap.** Because channels compose, a level that permits only
-`SpokenAudio` is unplayable for a player who cannot hear it — the composed-equivalent rule exists to
-prevent exactly that. `Level1AssetReadinessTests.ClueChannels_StayReadableWithoutPronunciationAudio`
-asserts the fallback holds. Note this is currently load-bearing rather than belt-and-braces:
-**21 of 30 `pronunciationClip` fields are unassigned**, so the audio channel frequently has nothing to
-play and the visual equivalent is what the player actually gets. See doc 09 §CS-05.
+**Observed — 2026-10-06 appearance-audio removal.** `ActiveCluePresenter` no longer requests
+pronunciation when an enemy appears, the active clue changes, or the HUD refreshes. Its clue-audio
+replay control stays hidden. Existing `SpokenAudio` asset values retain their numeric identity, and
+`ClueChannelResolver` still adds the configured visual fallback for audio-only levels.
+`CombatResolver` retains pronunciation on successful combat resolution; learning cards and the dojo
+retain their own playback. `ActiveClueDirectorTests` covers silent clue presentation and retained
+defeat pronunciation. See doc 09 §CS-05 for the defeat-audio acceptance criterion.
 
 [EVIDENCE: Assets/Scripts/Data/Campaign/ClueChannels.cs; Assets/Scripts/Gameplay/Combat/ActiveClueSelector.cs; ActiveClueDirector.cs]
