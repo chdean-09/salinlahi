@@ -74,9 +74,13 @@ namespace Salinlahi.Tests.PlayMode.UI
                 + "focus-word dialogue instead. Actual copy: " + controller.RenderedText);
         }
 
-        [TestCase(false)]
-        [TestCase(true)]
-        public void Preview_WithGlyphArtwork_ShowsGlyphsAboveOriginalSyllableTextAndContinues(bool guidedObjective)
+        [TestCase(false, RestorationDisplayMode.GuidedWords)]
+        [TestCase(true, RestorationDisplayMode.GuidedWords)]
+        [TestCase(true, RestorationDisplayMode.ClueOnlyWords)]
+        [TestCase(true, RestorationDisplayMode.MarkedContext)]
+        [TestCase(true, RestorationDisplayMode.HiddenContext)]
+        public void Preview_WithGlyphArtwork_ShowsGlyphsAboveOriginalSyllableTextAndContinues(
+            bool authoredObjective, RestorationDisplayMode displayMode)
         {
             Texture2D texture = new Texture2D(2, 2);
             Sprite glyph = Sprite.Create(texture, new Rect(0f, 0f, 2f, 2f), Vector2.one * 0.5f);
@@ -105,11 +109,11 @@ namespace Salinlahi.Tests.PlayMode.UI
                 meaning = "mother",
                 decomposition = new List<SymbolValueReference> { iValue, naValue },
             });
-            if (guidedObjective)
+            if (authoredObjective)
             {
                 level.restorationObjective = new RestorationObjectiveDefinition
                 {
-                    displayMode = RestorationDisplayMode.GuidedWords,
+                    displayMode = displayMode,
                     units = new List<RestorationObjectiveUnit>
                     {
                         new RestorationObjectiveUnit
@@ -141,14 +145,17 @@ namespace Salinlahi.Tests.PlayMode.UI
             Assert.IsTrue(present.MoveNext());
             Assert.IsTrue(controller.IsPresenting);
             Assert.AreEqual("INA\ni · na", controller.RenderedText);
+            GameObject panel = (GameObject)typeof(FocusWordPreviewController)
+                .GetField("_panelRoot", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                .GetValue(controller);
             TMP_Text preview = null;
-            foreach (TMP_Text text in host.GetComponentsInChildren<TMP_Text>())
+            foreach (TMP_Text text in panel.GetComponentsInChildren<TMP_Text>())
                 if (text.text == controller.RenderedText)
                     preview = text;
             Assert.IsNotNull(preview);
             Assert.AreEqual(controller.RenderedText, preview.text);
             var glyphImages = new List<Image>();
-            foreach (Image image in host.GetComponentsInChildren<Image>())
+            foreach (Image image in panel.GetComponentsInChildren<Image>())
                 if (image.sprite == glyph)
                     glyphImages.Add(image);
             Assert.AreEqual(2, glyphImages.Count, "Each syllable must retain its complementary Baybayin glyph.");
@@ -159,14 +166,14 @@ namespace Salinlahi.Tests.PlayMode.UI
                     "The glyph row must sit above the word and syllable caption.");
             }
 
-            host.GetComponentInChildren<Button>().onClick.Invoke();
+            panel.GetComponentInChildren<Button>().onClick.Invoke();
             Assert.IsFalse(present.MoveNext());
             Assert.IsFalse(controller.IsPresenting);
-            Assert.IsNull(host.GetComponentInChildren<TMP_Text>(), "Continue must hide the intro.");
+            Assert.IsFalse(panel.activeInHierarchy, "Continue must hide the intro.");
         }
 
         [UnityTest]
-        public IEnumerator Preview_UsesMarkedSentenceObjectiveInsteadOfLegacyFocusWords()
+        public IEnumerator Preview_WithoutFocusWords_UsesMarkedSentenceObjective()
         {
             BaybayinCharacterSO ma = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
             ma.characterID = "MA";
@@ -211,6 +218,7 @@ namespace Salinlahi.Tests.PlayMode.UI
             };
             _objectsToDestroy.Add(level);
 
+            level.focusWords.Clear();
             var go = new GameObject("FocusWordPreviewController_ObjectiveTest");
             var controller = go.AddComponent<FocusWordPreviewController>();
             _objectsToDestroy.Add(go);
@@ -225,7 +233,7 @@ namespace Salinlahi.Tests.PlayMode.UI
         }
 
         [UnityTest]
-        public IEnumerator Preview_HidesHiddenContextTargetsUntilRestored()
+        public IEnumerator Preview_WithoutFocusWords_HidesHiddenContextTargetsUntilRestored()
         {
             BaybayinCharacterSO i = ScriptableObject.CreateInstance<BaybayinCharacterSO>();
             i.characterID = "I";
@@ -266,6 +274,7 @@ namespace Salinlahi.Tests.PlayMode.UI
             };
             _objectsToDestroy.Add(level);
 
+            level.focusWords.Clear();
             GameObject go = new GameObject("FocusWordPreviewController_HiddenObjectiveTest");
             FocusWordPreviewController controller = go.AddComponent<FocusWordPreviewController>();
             _objectsToDestroy.Add(go);

@@ -41,9 +41,7 @@ public class FocusWordPreviewController : MonoBehaviour
         if (!hasAuthoredObjective && !hasLegacyFocusWords)
             yield break;
 
-        bool useObjectiveText = hasAuthoredObjective
-            && (config.restorationObjective.displayMode != RestorationDisplayMode.GuidedWords
-                || !hasLegacyFocusWords);
+        bool useObjectiveText = hasAuthoredObjective && !hasLegacyFocusWords;
         RenderedText = useObjectiveText
             ? RestorationObjectiveTextFormatter.Render(config.restorationObjective)
             : BuildPreviewText(config);
@@ -330,7 +328,8 @@ public class FocusWordPreviewController : MonoBehaviour
         var entries = new List<WordEntry>();
         RestorationObjectiveDefinition objective = config.restorationObjective;
         if (objective?.HasTargets == true
-            && objective.displayMode != RestorationDisplayMode.GuidedWords)
+            && objective.displayMode != RestorationDisplayMode.GuidedWords
+            && (config.focusWords == null || config.focusWords.Count == 0))
             return entries;
 
         if (objective?.HasTargets == true
