@@ -150,10 +150,10 @@ public sealed class CampaignEndingScreenUI : MonoBehaviour
         heading.fontStyle = FontStyles.Bold;
         ScrollPanelArt.PlaceText(heading, Rect.MinMaxRect(0.16f, 0.70f, 0.84f, 0.82f), UITextScale.Title, UITextScale.Display);
         TMP_Text summary = NewText(paper, "Summary", "Ugat · Ugnayan · Pamana\nNatapos ang lahat ng 15 antas", UITextScale.Body);
-        ScrollPanelArt.SetAnchors(summary.rectTransform, Rect.MinMaxRect(0.16f, 0.54f, 0.84f, 0.69f));
+        ScrollPanelArt.SetAnchors(summary.rectTransform, Rect.MinMaxRect(0.16f, 0.51f, 0.84f, 0.69f));
 
         RectTransform viewport = NewRect(paper, "CreditsViewport");
-        ScrollPanelArt.SetAnchors(viewport, Rect.MinMaxRect(0.17f, 0.30f, 0.83f, 0.52f));
+        ScrollPanelArt.SetAnchors(viewport, Rect.MinMaxRect(0.17f, 0.30f, 0.83f, 0.49f));
         Image hitArea = viewport.gameObject.AddComponent<Image>();
         hitArea.color = Color.clear;
         hitArea.raycastTarget = false;

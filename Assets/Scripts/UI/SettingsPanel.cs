@@ -654,7 +654,7 @@ public class SettingsPanel : MonoBehaviour
         EnsureVolumeViewport();
         LayoutVolumeRow(_masterLabel, _masterSlider, 0.85f, "Lahat ng tunog ng laro");
         LayoutVolumeRow(_bgmLabel, _bgmSlider, 0.52f, "Musika sa laro");
-        LayoutVolumeRow(_sfxLabel, _sfxSlider, 0.19f, "Mga epekto at pagbigkas ng mga pantig");
+        LayoutVolumeRow(_sfxLabel, _sfxSlider, 0.19f, "Epekto at pagbigkas");
         TMP_Text status = EnsureCardText("AudioStatus", !Application.isPlaying || AudioManager.Instance != null
             ? "Awtomatikong nase-save ang mga pagbabago" : "Hindi magagamit ang mga kontrol sa tunog");
         StyleCardText(status, Rect.MinMaxRect(0.16f, 0.16f, 0.84f, 0.25f), UITextScale.Secondary);

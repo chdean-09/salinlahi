@@ -60,6 +60,7 @@ public class ChallengeModeUI : MonoBehaviour
         }
         _timerText.text = BuildTimerText(unit, session);
         _statusText.text = BuildStatusText(session);
+        FitPromptToFeedback();
         RebuildChoices(unit, session);
         SetActionInteractivity(session);
     }
@@ -69,6 +70,18 @@ public class ChallengeModeUI : MonoBehaviour
         BuildIfNeeded();
         _statusText.text = message ?? string.Empty;
         _feedbackText = _statusText.text;
+        FitPromptToFeedback();
+    }
+
+    private void FitPromptToFeedback()
+    {
+        // Reclaim empty timer and feedback bands for reading; keep visible
+        // timer/feedback copy separate from the prompt and answer tiles.
+        RectTransform viewport = _promptScroll.viewport;
+        viewport.anchorMin = new Vector2(viewport.anchorMin.x,
+            string.IsNullOrEmpty(_statusText.text) ? 0.44f : 0.55f);
+        viewport.anchorMax = new Vector2(viewport.anchorMax.x,
+            string.IsNullOrEmpty(_timerText.text) ? 0.835f : 0.80f);
     }
 
     private void BuildIfNeeded()
@@ -105,15 +118,15 @@ public class ChallengeModeUI : MonoBehaviour
         panelImage.raycastTarget = false;
         bool onParchment = ScrollPanelArt.ApplyFull(panelImage);
 
-        _progressText = CreateLabel("Progress", UITextScale.Caption, new Vector2(0.18f, 0.70f), new Vector2(0.68f, 0.80f));
+        _progressText = CreateLabel("Progress", UITextScale.Caption, new Vector2(0.18f, 0.855f), new Vector2(0.82f, 0.935f));
         _progressText.textWrappingMode = TextWrappingModes.Normal;
-        _timerText = CreateLabel("Timer", UITextScale.Caption, new Vector2(0.70f, 0.70f), new Vector2(0.82f, 0.80f));
+        _timerText = CreateLabel("Timer", UITextScale.Caption, new Vector2(0.18f, 0.805f), new Vector2(0.82f, 0.845f));
         _timerText.textWrappingMode = TextWrappingModes.Normal;
         GameObject viewport = new GameObject("PromptViewport", typeof(RectTransform), typeof(Image), typeof(RectMask2D), typeof(ScrollRect));
         viewport.transform.SetParent(transform, false);
         RectTransform viewportRect = viewport.GetComponent<RectTransform>();
-        viewportRect.anchorMin = new Vector2(0.18f, 0.58f);
-        viewportRect.anchorMax = new Vector2(0.82f, 0.69f);
+        viewportRect.anchorMin = new Vector2(0.16f, 0.55f);
+        viewportRect.anchorMax = new Vector2(0.84f, 0.80f);
         viewportRect.offsetMin = viewportRect.offsetMax = Vector2.zero;
         viewport.GetComponent<Image>().color = Color.clear;
         _promptText = CreateLabel("Prompt", UITextScale.Title, Vector2.zero, Vector2.one);
@@ -125,6 +138,7 @@ public class ChallengeModeUI : MonoBehaviour
         promptRect.sizeDelta = Vector2.zero;
         promptRect.anchoredPosition = Vector2.zero;
         _promptText.alignment = TextAlignmentOptions.TopLeft;
+        _promptText.margin = new Vector4(4f, 0f, 4f, 0f);
         _promptText.enableAutoSizing = false;
         _promptText.textWrappingMode = TextWrappingModes.Normal;
         _promptText.lineSpacing = 8f;
@@ -136,34 +150,30 @@ public class ChallengeModeUI : MonoBehaviour
         _promptScroll.horizontal = false;
         _promptScroll.movementType = ScrollRect.MovementType.Clamped;
         ScrollPanelArt.EnsureVerticalScrollbar(_promptScroll);
-        _statusText = CreateLabel("Status", UITextScale.Body, new Vector2(0.18f, 0.50f), new Vector2(0.82f, 0.57f));
+        _statusText = CreateLabel("Status", UITextScale.Body, new Vector2(0.16f, 0.44f), new Vector2(0.84f, 0.54f));
         _statusText.textWrappingMode = TextWrappingModes.Normal;
         _statusText.overflowMode = TextOverflowModes.Ellipsis;
 
-        GameObject choices = new GameObject("AnswerChoices", typeof(RectTransform), typeof(GridLayoutGroup));
+        GameObject choices = new GameObject("AnswerChoices", typeof(RectTransform));
         choices.transform.SetParent(transform, false);
         _choicesRoot = choices.GetComponent<RectTransform>();
-        _choicesRoot.anchorMin = new Vector2(0.18f, 0.30f);
-        _choicesRoot.anchorMax = new Vector2(0.82f, 0.49f);
+        _choicesRoot.anchorMin = new Vector2(0.18f, 0.23f);
+        _choicesRoot.anchorMax = new Vector2(0.82f, 0.43f);
         _choicesRoot.offsetMin = _choicesRoot.offsetMax = Vector2.zero;
-        GridLayoutGroup choicesLayout = choices.GetComponent<GridLayoutGroup>();
-        choicesLayout.spacing = new Vector2(12f, 12f);
-        choicesLayout.padding = new RectOffset(8, 8, 4, 4);
-        choicesLayout.childAlignment = TextAnchor.MiddleCenter;
-        choicesLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-        choicesLayout.constraintCount = 2;
 
         GameObject actions = new GameObject("ChallengeActions", typeof(RectTransform), typeof(HorizontalLayoutGroup));
         actions.transform.SetParent(transform, false);
         _actionsRoot = actions.GetComponent<RectTransform>();
-        _actionsRoot.anchorMin = new Vector2(0.18f, 0.16f);
-        _actionsRoot.anchorMax = new Vector2(0.82f, 0.29f);
+        _actionsRoot.anchorMin = new Vector2(0.18f, 0.10f);
+        _actionsRoot.anchorMax = new Vector2(0.82f, 0.19f);
         _actionsRoot.offsetMin = _actionsRoot.offsetMax = Vector2.zero;
         HorizontalLayoutGroup actionsLayout = actions.GetComponent<HorizontalLayoutGroup>();
         actionsLayout.spacing = 12f;
         actionsLayout.childAlignment = TextAnchor.MiddleCenter;
+        actionsLayout.childControlWidth = true;
+        actionsLayout.childControlHeight = true;
         actionsLayout.childForceExpandWidth = false;
-        actionsLayout.childForceExpandHeight = true;
+        actionsLayout.childForceExpandHeight = false;
 
         // SALIN-231. The Hint button no longer spends the hint: it opens a modal that
         // discloses the cost first and offers confirm/cancel. Its label also carries the
@@ -230,11 +240,29 @@ public class ChallengeModeUI : MonoBehaviour
     {
         if (_choicesRoot == null)
             return;
-        GridLayoutGroup layout = _choicesRoot.GetComponent<GridLayoutGroup>();
         int rows = Mathf.Max(1, Mathf.CeilToInt(_choiceButtons.Count / 2f));
-        layout.cellSize = new Vector2(
-            Mathf.Max(0f, (_choicesRoot.rect.width - layout.padding.horizontal - layout.spacing.x) / 2f),
-            Mathf.Min(176f, Mathf.Max(0f, (_choicesRoot.rect.height - layout.padding.vertical - layout.spacing.y * (rows - 1)) / rows)));
+        const float spacing = 12f;
+        Vector2 cellSize = new Vector2(
+            Mathf.Max(0f, (_choicesRoot.rect.width - 16f - spacing) / 2f),
+            Mathf.Min(176f, Mathf.Max(0f, (_choicesRoot.rect.height - 8f - spacing * (rows - 1)) / rows)));
+        float gridHeight = rows * cellSize.y + (rows - 1) * spacing;
+        int index = 0;
+        // Lay out each row independently: GridLayoutGroup leaves an odd final
+        // answer in the left column. Keep sibling order and center that row.
+        for (int child = 0; child < _choicesRoot.childCount; child++)
+        {
+            RectTransform choice = _choicesRoot.GetChild(child) as RectTransform;
+            if (choice == null || !choice.gameObject.activeSelf)
+                continue;
+            int row = index / 2;
+            int columns = Mathf.Min(2, _choiceButtons.Count - row * 2);
+            choice.anchorMin = choice.anchorMax = choice.pivot = new Vector2(0.5f, 0.5f);
+            choice.sizeDelta = cellSize;
+            choice.anchoredPosition = new Vector2(
+                (index % 2 - (columns - 1) * 0.5f) * (cellSize.x + spacing),
+                (gridHeight - cellSize.y) * 0.5f - row * (cellSize.y + spacing));
+            index++;
+        }
     }
 
     private void ClearChoiceButtons()
@@ -427,7 +455,7 @@ public class ChallengeModeUI : MonoBehaviour
         Button button = CreateButton(label, _actionsRoot, action, SlateButtonFill, Color.white);
         LayoutElement layout = button.gameObject.AddComponent<LayoutElement>();
         layout.preferredWidth = 280f;
-        layout.preferredHeight = 60f;
+        layout.preferredHeight = 152f;
         _actionButtons.Add(button);
         return button;
     }

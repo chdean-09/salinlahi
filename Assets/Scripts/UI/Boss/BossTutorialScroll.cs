@@ -101,7 +101,9 @@ public class BossTutorialScroll : MonoBehaviour
             _art.preserveAspect = true;
             _artBaseAnchoredPos = _art.rectTransform.anchoredPosition;
         }
-        ScrollPanelArt.PlaceText(_title, Rect.MinMaxRect(0.17f, 0.44f, 0.83f, 0.55f), UITextScale.Body, UITextScale.Title);
+        ScrollPanelArt.PlaceText(_title, Rect.MinMaxRect(0.15f, 0.44f, 0.85f, 0.55f), UITextScale.Body, UITextScale.Title);
+        // Reserve the bold glyph overhang that TMP's advance-based sizing omits.
+        if (_title != null) _title.margin = new Vector4(8f, 0f, 8f, 0f);
         ScrollPanelArt.PlaceText(_pageIndicator, Rect.MinMaxRect(0.40f, 0.16f, 0.60f, 0.21f), UITextScale.Caption, UITextScale.Secondary);
         if (_body != null)
         {

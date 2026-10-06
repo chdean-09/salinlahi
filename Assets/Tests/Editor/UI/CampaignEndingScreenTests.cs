@@ -35,8 +35,8 @@ namespace Salinlahi.Tests.Editor
             Assert.AreEqual(Navigation.Mode.None, _screen.GetComponentInChildren<Button>().navigation.mode);
             Assert.AreEqual("Menu", _screen.GetComponentInChildren<Button>().GetComponentInChildren<TMP_Text>().text);
             RectTransform paper = _screen.transform.Find("EndingBackdrop/SafeArea/EndingScroll").GetComponent<RectTransform>();
-            Assert.AreEqual(new Vector2(0.04f, 0.17f), paper.anchorMin);
-            Assert.AreEqual(new Vector2(0.96f, 0.83f), paper.anchorMax);
+            Assert.AreEqual(ScrollPanelArt.ScrollArea.min, paper.anchorMin);
+            Assert.AreEqual(ScrollPanelArt.ScrollArea.max, paper.anchorMax);
             Assert.IsNotNull(paper.GetComponent<Image>().sprite);
             Assert.IsNotNull(_screen.GetComponentInChildren<SafeAreaHandler>());
             Assert.IsNull(_screen.GetComponentInChildren<ScrollRect>());
@@ -118,7 +118,7 @@ namespace Salinlahi.Tests.Editor
 
                 Assert.IsNull(GetField(flow, "_campaignEndingScreen"), "Credits must wait for the player's action.");
                 Assert.AreEqual(levelNumber == 15, GetField(flow, "_eraCompletionScreen") == null);
-                Assert.AreEqual(levelNumber == 15 ? "Era Complete" : "Pumasok sa Susunod na Panahon",
+                Assert.AreEqual(levelNumber == 15 ? "Magpatuloy" : "Susunod na Panahon",
                     labelHost.GetComponent<TMP_Text>().text);
                 if (levelNumber == 15)
                 {

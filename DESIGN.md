@@ -16,7 +16,7 @@ Warm parchment-and-ink storybook: a Buhay na Kasulatan aesthetic drawn from Phil
 ## Typography
 
 - Preserve the existing VT323 font family in `TutorialFont`, applied via `TutorialFontProvider.ApplyTo`. Mobile readability polish adjusts size, weight, spacing, wrapping and layout without replacing the font family or its asset references.
-- Fixed scale (`UITextScale`): AutoSizeFloor/Caption 54, Secondary 60, Body 68, Title 80, Display 96. Body is approximately 20px at 320px portrait width. Long reading copy scrolls instead of shrinking below Body.
+- Fixed scale (`UITextScale`): AutoSizeFloor/Caption 54, Secondary 60, Body 68, Title 80, Display 96. Body is approximately 20px at 320px portrait width. Long reference copy scrolls instead of shrinking below Body; story panels grow to show the full line.
 - Parchment ink clears inherited outline, dilation and shadow. Runtime synthetic bold weight is 0.2; existing font families and bold emphasis remain intact.
 - Ink text on parchment via `ScrollPanelArt.Inkify`/`InkifyRecursive`; button labels stay contrasting.
 - No all-caps sentences; short uppercase only for the standing instruction line (existing).

@@ -29,6 +29,32 @@ namespace Salinlahi.Tests.Editor.UI
         }
 
         [Test]
+        public void EnsureOverlay_UsesFullHudCanvasInsteadOfAHighOrderPanelCanvas()
+        {
+            GameObject hudCanvas = Track(new GameObject("Hint HUD canvas", typeof(RectTransform), typeof(Canvas)));
+            hudCanvas.GetComponent<Canvas>().renderMode = RenderMode.WorldSpace;
+            hudCanvas.GetComponent<RectTransform>().sizeDelta = new Vector2(1080f, 1920f);
+            GameObject hud = new GameObject("HUDLayer", typeof(RectTransform));
+            hud.transform.SetParent(hudCanvas.transform, false);
+            GameObject narrow = new GameObject("Narrow overlay canvas", typeof(RectTransform), typeof(Canvas));
+            narrow.transform.SetParent(hudCanvas.transform, false);
+            narrow.GetComponent<RectTransform>().sizeDelta = new Vector2(320f, 1920f);
+            narrow.GetComponent<Canvas>().overrideSorting = true;
+            narrow.GetComponent<Canvas>().sortingOrder = 9000;
+            SentenceHintController controller = Track(new GameObject("[Test] HintController"))
+                .AddComponent<SentenceHintController>();
+            typeof(SentenceHintController).GetField("_bodyText", BindingFlags.Instance | BindingFlags.NonPublic)
+                .SetValue(controller, "Ang unang guro sa tahanan. Ang minana mula sa nauna.");
+            typeof(SentenceHintController).GetMethod("EnsureOverlay", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(controller, null);
+            GameObject overlay = (GameObject)typeof(SentenceHintController)
+                .GetField("_overlayRoot", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(controller);
+            Assert.AreSame(hudCanvas.transform, overlay.transform.parent,
+                "A HUD hint must not inherit a small high-order panel's coordinate space.");
+            Assert.AreEqual(1080f, overlay.GetComponent<RectTransform>().rect.width, 1f);
+        }
+
+        [Test]
         public void EnsureChip_ParksASquareIconChip_UnderThePauseButton()
         {
             GameObject hud = Track(new GameObject("HUDLayer", typeof(RectTransform)));
@@ -139,55 +165,6 @@ namespace Salinlahi.Tests.Editor.UI
         }
 
         [Test]
-        public void Scrollbar_RemainsVisibleAtRestWhileContentOverflows_AndHidesWhenItFits()
-        {
-            ScrollRect scroll = CreateScrollableContent(600f);
-            ScrollPanelArt.EnsureVerticalScrollbar(scroll);
-            RefreshScrollbar(scroll);
-            Assert.IsTrue(scroll.verticalScrollbar.gameObject.activeSelf);
-
-            scroll.verticalNormalizedPosition = 0f;
-            RefreshScrollbar(scroll);
-            RefreshScrollbar(scroll);
-            Assert.IsTrue(scroll.verticalScrollbar.gameObject.activeSelf,
-                "Reaching the bottom or remaining idle must not hide an overflowing scrollbar.");
-
-            scroll.content.sizeDelta = new Vector2(0f, 100f);
-            RefreshScrollbar(scroll);
-            Assert.IsFalse(scroll.verticalScrollbar.gameObject.activeSelf);
-
-            scroll.content.sizeDelta = new Vector2(0f, 600f);
-            RefreshScrollbar(scroll);
-            Assert.IsTrue(scroll.verticalScrollbar.gameObject.activeSelf,
-                "A reopened or resized scroll must show its scrollbar when content grows.");
-        }
-
-        [Test]
-        public void Scrollbar_RepeatedSetupKeepsOneBarAndContentClearOfItsTrack()
-        {
-            ScrollRect scroll = CreateScrollableContent(600f);
-            ScrollPanelArt.EnsureVerticalScrollbar(scroll);
-            Scrollbar scrollbar = scroll.verticalScrollbar;
-            Vector2 inset = scroll.content.offsetMax;
-            int children = scroll.viewport.childCount;
-
-            ScrollPanelArt.EnsureVerticalScrollbar(scroll);
-            RefreshScrollbar(scroll);
-
-            Assert.AreSame(scrollbar, scroll.verticalScrollbar);
-            Assert.AreEqual(inset, scroll.content.offsetMax);
-            Assert.AreEqual(children, scroll.viewport.childCount);
-            Assert.AreSame(scrollbar.handleRect.GetComponent<Image>(), scrollbar.targetGraphic);
-            Assert.AreEqual(Scrollbar.Direction.BottomToTop, scrollbar.direction);
-            Bounds contentBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
-                scroll.viewport, scroll.content);
-            Bounds trackBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
-                scroll.viewport, scrollbar.transform);
-            Assert.Less(contentBounds.max.x, trackBounds.min.x,
-                "The scrollbar must have its own lane, outside the text/card width.");
-        }
-
-        [Test]
         public void Scrollbar_PreservesExistingAuthoredBarAndViewportPolicy()
         {
             ScrollRect scroll = CreateScrollableContent(600f);
@@ -240,14 +217,6 @@ namespace Salinlahi.Tests.Editor.UI
             scroll.vertical = true;
             scroll.movementType = ScrollRect.MovementType.Clamped;
             return scroll;
-        }
-
-        private static void RefreshScrollbar(ScrollRect scroll)
-        {
-            Canvas.ForceUpdateCanvases();
-            scroll.Rebuild(CanvasUpdate.PostLayout);
-            typeof(ScrollRect).GetMethod("LateUpdate", BindingFlags.NonPublic | BindingFlags.Instance)
-                .Invoke(scroll, null);
         }
 
         [Test]

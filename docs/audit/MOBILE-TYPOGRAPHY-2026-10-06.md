@@ -1,43 +1,55 @@
-# Mobile typography audit — in progress
+# Mobile typography and scroll audit
 
-Date: 2026-10-06 (Asia/Manila). Requested scope: Levels 1–15 and their story, learning, hint, challenge and scroll surfaces. **Not complete.**
+Date: 2026-10-06 (Asia/Manila). Scope: authored presentation scenarios for Levels 1–15 at 320×568, 360×800 and 430×932. The presentation audit and final recaptures are complete; broader suite/device limitations are listed below.
 
-## Observed findings and corrections
+## Observed corrections
 
-- **Font identity preserved:** The user clarified that readability polish must retain the original font style. The Liberation Sans replacement was reverted by restoring `Assets/Resources/Fonts/TutorialFont.asset` from the exact pre-task backup, including its VT323 metrics, atlas and material. Matching file hashes verified the restoration; the existing `.meta` was untouched. The temporary font-replacement utility was removed. The sans-serif screenshots below are superseded experiment evidence, not the current design.
-- **P1 — crowded story strokes:** `CutscenePlayer` combined bold, 0.35–0.45 outline widths, 0.15 face dilation and a dark offset underlay. Narration now uses regular weight, a 0.08 outline and no face dilation. The shared underlay offset is reduced. Rendered cutscene verification remains pending.
-- **P1 — tiny autosized copy:** `UITextScale` previously allowed 28-unit text and 40-unit body copy. The new scale uses Caption 44, Secondary 48, Body 54, Title 64 and Display 80. Body corresponds to approximately 16px on a 320px-wide 1080-reference canvas.
-- **P1 — dialogue overflow after increasing size:** A fresh Level 5 capture at 320×568 exposed overflow after the reading floor increased. Dialogue and challenge-hint prose now use a masked reading viewport instead of shrinking. Dragging cancels the click eligibility so scrolling cannot also advance dialogue. This last correction has **not** been visually verified yet.
-- Modal parchment has more room; Ready buttons have taller targets; hint labels retain their reading size. These need the complete viewport matrix before approval.
+- **Original font identity preserved.** The main TutorialFont family remains VT323; existing authored Liberation Sans panels retain their font. Readability changes adjust size, synthetic weight, effects, wrapping and layout. The earlier font-replacement experiment is superseded.
+- **Heavy strokes:** parchment ink clears inherited outline, dilation and underlay. Runtime synthetic bold weight is 0.2. Cutscene narration uses regular weight, a thin 0.08 outline, no face dilation and a reduced shadow.
+- **Reading size:** UITextScale uses Caption 54, Secondary 60, Body 68, Title 80 and Display 96. Body is about 20px on the 320×568 reference viewport. Long reference prose retains its reading size.
+- **Buttons:** use “Ulitin,” “Mga Antas,” “Susunod na Panahon,” “Kunin” and final “Magpatuloy.” Taller boxes, wrapping and a small ink inset keep glyphs inside their assets. Results for levels 5, 10 and 15 are included.
+- **Story:** DialogueController sizes the parchment from the complete line before typewriter reveal. The speaker sits below the top wooden rod. Dialogue and CutscenePlayer narration show the full line without an inner scrollbar.
+- **Defeat:** the asset box contains “Iguhit ang mga simbolo.” and “Pigilan ang mga kalaban.” No reading viewport or scrollbar is added.
+- **References:** masked, fitted reading content keeps a separate lane for runtime scrollbars. Existing authored almanac/boss bars receive prose clearance without replacing their visibility policy. Repeated setup preserves one scroll and its reading position.
+- **Challenge:** answer tiles retain full words including ALAALA, MAHALAGA, HALAGA and DALA. Prompt copy has an ink inset, and long prompts/hints remain scrollable at the reading size.
+- **Taller-phone findings:** reset confirmation/failure titles received more height above their body; settings pronunciation help became “Epekto at pagbigkas”; the ending summary received more height above credits; long boss headings received more width and ink clearance.
 
-## Screenshot evidence
+Relevant runtime sources are under Assets/Scripts/UI/, including ScrollPanelArt.cs, TutorialFontProvider.cs, DialogueController.cs, DefeatScreenUI.cs, VictoryScreenUI.cs, EraCompletionScreenUI.cs, CampaignEndingScreenUI.cs, SettingsPanel.cs, ResetJourneyConfirmationPanel.cs, MemoryCardUI.cs, MemoryArchiveController.cs and Boss/BossTutorialScroll.cs. Challenge presentation is Assets/Scripts/Gameplay/ChallengeModeUI.cs.
 
-Local evidence is in `Temp/MobileReadability/`:
+## Capture coverage
 
-[Open the screenshot gallery with embedded images](/D:/projects/capstone/salinlahi/Temp/MobileReadability/gallery.md), or [open the HTML gallery with all 15 level selectors](/D:/projects/capstone/salinlahi/Temp/MobileReadability/gallery.html). These currently contain only the four Level 5 captures below. Missing levels are explicitly marked pending.
+The catalog contains 442 scenarios, each captured at all three sizes: 1,326 full-screen images and 249 scroll-bottom images. After each correction, affected scenarios were captured again; the last pass recaptured 121 scenarios per size. The gallery provides all 15 level pages and links to full-size PNGs, plus an HTML selector by level, viewport and scenario.
 
-| Capture | What it verifies |
-| --- | --- |
-| `before-level05-dialogue.png` | Original font in the real QA gameplay scene, captured at 1284×2778 |
-| `pass1-level05-dialogue-320.png` | Superseded font-replacement experiment at 320×568; replacement has been reverted |
-| `pass1-level05-dialogue2-320.png` | Superseded experiment showing a second authored Level 5 dialogue line |
-| `pass2-level05-dialogue-320.png` | Superseded experiment: larger reading floor exposed overflow, prompting the reading-viewport correction |
+| Level | Scenarios per size |
+| --- | ---: |
+| 1 | 91 |
+| 2 | 25 |
+| 3 | 20 |
+| 4 | 20 |
+| 5 | 33 |
+| 6 | 30 |
+| 7 | 26 |
+| 8 | 23 |
+| 9 | 23 |
+| 10 | 25 |
+| 11 | 30 |
+| 12 | 26 |
+| 13 | 23 |
+| 14 | 17 |
+| 15 | 30 |
 
-The pending gallery uses actual `LevelConfigSO` content and the existing UI controllers. It isolates presentation in the existing QA profile; it is not a complete gameplay walkthrough or a physical phone test.
+Coverage includes authored dialogue and cutscene lines, focus previews, taught symbol cards, unlock copy, challenges and hints, memory front/back/claim, victories, era summaries and ending/credits. Shared fixtures cover defeat variants, pause, settings, reset states, archive states, save/content errors, locked content, wave notices, all 18 almanac entries and all four available boss-library pages.
 
-## Verification status
+**Observed content limits:** memory rewards are authored only for levels 1–5. The boss-library pages are available content, but their campaign tutorial assignment is absent. Challenge fixtures exercise authored sequences without enabling the disabled production feature flag. No missing content or campaign wiring was invented.
 
-- **PASS after font restoration:** the font asset matches the pre-task backup byte-for-byte, and its original VT323 family and `.meta` GUID remain intact. A fresh .NET build of the Editor test project and its runtime/editor dependencies finished with zero errors and 16 warnings. A temporary validation target excluded the removed font-experiment source from Unity's stale generated Editor project; generated projects were not edited. This checks source compilation only; Unity tests did not execute.
-- **PASS:** .NET source builds of runtime/editor code and the existing Editor test project. An additional temporary MSBuild target also compiled `ReadingScrollRect.cs` and `MobileTypographyTests.cs`, which Unity had not imported yet. There were zero compiler errors, with warnings reported in the saved build output. This is **not** Unity Editor compilation or test execution.
-- **PASS:** focused whitespace/diff check before the final pending visual pass.
-- **Observed:** Unity rendered the first two experimental passes. Their replacement font is now reverted; fresh screenshots using the original VT323 font and current layout corrections remain pending.
-- **BLOCKED:** Unity refresh/compilation of the latest reading-viewport changes, Unity Edit/Play Mode tests, and further screenshots. Desktop control returned `GetCursorPos failed: Access is denied (0x80070005)` after screenshots showed only the desktop background. An unlock/access-restoration request is pending.
-- **NOT VERIFIED:** post-scroll dialogue, all cutscene panels, all hint states, all level/challenge variants, large-phone layouts, notched-phone safe areas and physical-device readability. No full audit health score is assigned without those observations.
+## Verification
 
-## Remaining work
+- **PASS:** Unity 6000.3.9f1 compilation and focused Edit Mode run: 115 passed, 0 failed. Evidence: checks-font-scroll-editmode.xml.
+- **PASS:** focused Play Mode run: 25 passed, 0 failed. Covers cutscene presentation, font rendering, dialogue slide/reveal and runtime scrollbar behavior. Evidence: checks-font-scroll-playmode.xml.
+- **FAIL:** broader UI plus ending Edit Mode run: 426 passed, 21 failed, 447 total. Failures concern eight onboarding visibility assertions and thirteen localization/copy expectations in LevelReadyAndNameLoss, CampaignOutcomeSaveFailurePanel, MemoryArchive, EraCompletion and ResetJourneyFlow tests. These failures remain unresolved; a pre-task baseline was not established. Evidence: checks-all-ui-editmode.xml and broader-ui-failures.json.
+- **PASS:** final capture audit: 1,326/1,326 expected images, correct viewport dimensions and metadata, 249 bottom captures, zero reported text-overflow, horizontal-spill or unexpected story-scroll issues. Visual review covered every small-screen catalog scenario and scroll-bottom image, plus representative families at medium and large sizes and fresh captures of corrected panels. Evidence: capture-audit.json and review contact sheets.
+- **PASS:** TutorialFont.asset matches the saved resume baseline byte-for-byte after cleanup; its original VT323 family, source-font GUID and .meta GUID are preserved. Temporary local QA drivers were removed through Unity's AssetDatabase, followed by successful Editor compilation.
+- **PASS:** final focused diff/whitespace review. No scene, prefab, package, deployment or input configuration was changed in this resumed pass; the pre-existing font modification and unrelated work were preserved.
+- **NOT RUN:** physical Android phones, notch/device simulator coverage, a complete gameplay walkthrough of all 15 levels, full Unity suites and an Android build. Presentation fixtures do not establish those results.
 
-1. Restore desktop access, refresh Unity, inspect compilation and run the typography, responsive-layout, hint and font-rendering tests.
-2. Capture and inspect each authored reading surface for Levels 1–15 at 320×568, 360×800 and 430×932; include a notched device in Simulator.
-3. Check overflow, button wrapping, bold strokes, contrast and scroll-to-bottom behavior; iterate with new captures after each correction.
-4. Exercise real dialogue clicks/drags and the level flow, then remove the temporary local probe and test-runner sources.
-5. Review only this task's changes against the saved pre-task file copies. Preserve the substantial unrelated working-tree changes.
+Evidence is stored in the persistent local mobile-readability artifact directory linked in the task handoff, outside Unity's disposable Temp folder. Key files are gallery.md, gallery.html, level-01.md through level-15.md, catalog-full.txt, capture-audit.json, full PNGs and visual-review contact sheets. Earlier partial or experimental captures are superseded.

@@ -149,7 +149,11 @@ namespace Salinlahi.Tests.Editor.UI
             using TestObjects objects = new();
             ChallengeModeUI ui = CreateChallengeBoard(objects, width, height);
             foreach (string name in new[] { "Progress", "Timer", "Status", "PromptViewport", "AnswerChoices", "ChallengeActions" })
-                AssertAnchorsInside(ui.transform.Find(name).GetComponent<RectTransform>(), ScrollPanelArt.FullSafeArea);
+                AssertAnchorsInside(ui.transform.Find(name).GetComponent<RectTransform>(),
+                    name == "ChallengeActions"
+                        ? Rect.MinMaxRect(0.16f, 0.10f, 0.84f, 0.80f)
+                        : name == "Progress" || name == "Timer" || name == "PromptViewport"
+                            ? Rect.MinMaxRect(0.16f, 0.16f, 0.84f, 0.94f) : ScrollPanelArt.FullSafeArea);
             TMP_Text prompt = ui.transform.Find("PromptViewport/Prompt").GetComponent<TMP_Text>();
             Assert.IsFalse(prompt.enableAutoSizing, "Long prompts should scroll instead of shrinking.");
             Assert.GreaterOrEqual(prompt.fontSize, UITextScale.Title);
@@ -605,7 +609,10 @@ namespace Salinlahi.Tests.Editor.UI
                 {
                     RectTransform rect = boardObject.transform.Find(row) as RectTransform;
                     Assert.IsNotNull(rect, row + " was not built.");
-                    AssertAnchorsInside(rect, ScrollPanelArt.FullSafeArea);
+                    AssertAnchorsInside(rect, row == "ChallengeActions"
+                        ? Rect.MinMaxRect(0.16f, 0.10f, 0.84f, 0.80f)
+                        : row == "Progress" || row == "Timer" || row == "PromptViewport"
+                            ? Rect.MinMaxRect(0.16f, 0.16f, 0.84f, 0.94f) : ScrollPanelArt.FullSafeArea);
                 }
 
                 RectTransform actions = (RectTransform)boardObject.transform.Find("ChallengeActions");

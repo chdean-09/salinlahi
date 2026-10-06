@@ -143,6 +143,15 @@ public static class ScrollPanelArt
                 // Authored almanac/boss panels already have a masked, fitted scroll.
                 // Nesting a second viewport inside its layout group collapses the body.
                 ConfigureReadingCopy(text);
+                // Authored bars can overlay a full-width viewport. Keep the prose
+                // clear of that track without replacing its visibility policy.
+                if (authored.verticalScrollbar != null)
+                {
+                    float lane = authored.verticalScrollbar.GetComponent<RectTransform>().rect.width + 12f;
+                    Vector4 margin = text.margin;
+                    margin.z = Mathf.Max(margin.z, lane);
+                    text.margin = margin;
+                }
                 if (authored.content != content && authored.content.GetComponent<LayoutGroup>() == null)
                 {
                     VerticalLayoutGroup layout = authored.content.gameObject.AddComponent<VerticalLayoutGroup>();
@@ -253,6 +262,9 @@ public static class ScrollPanelArt
             labelRect.anchorMax = Vector2.one;
             labelRect.offsetMin = new Vector2(12f, 6f);
             labelRect.offsetMax = new Vector2(-12f, -6f);
+            // TMP measures advances for auto-sizing; bold glyph ink can extend
+            // slightly beyond those advances. Keep that ink inside the label.
+            label.margin = new Vector4(4f, 0f, 4f, 0f);
             label.enableAutoSizing = true;
             label.fontSizeMin = UITextScale.Body;
             label.fontSizeMax = UITextScale.Title;

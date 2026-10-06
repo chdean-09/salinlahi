@@ -205,9 +205,11 @@ public sealed class EraCompletionScreenUI : MonoBehaviour
         _enterNextEraButton.interactable = hasNextEra;
         _closeButton.interactable = true;
         ScrollPanelArt.PlaceButton(_closeButton,
-            hasNextEra ? Rect.MinMaxRect(0.17f, 0.17f, 0.83f, 0.265f)
-                : Rect.MinMaxRect(0.17f, 0.285f, 0.83f, 0.385f),
+            Rect.MinMaxRect(0.17f, 0.08f, 0.83f, 0.175f),
             primary: !hasNextEra);
+        ScrollRect memories = _contentRoot.GetComponentInParent<ScrollRect>();
+        if (memories != null)
+            memories.viewport.anchorMin = new Vector2(0.17f, hasNextEra ? 0.30f : 0.19f);
 
         _overlayRoot.SetActive(true);
         return true;
@@ -339,7 +341,7 @@ public sealed class EraCompletionScreenUI : MonoBehaviour
 
     private static void ConfigureTileLayout(GameObject tile)
     {
-        tile.GetComponent<LayoutElement>().minHeight = 168f;
+        tile.GetComponent<LayoutElement>().minHeight = 152f;
         VerticalLayoutGroup layout = tile.GetComponent<VerticalLayoutGroup>();
         layout.padding = new RectOffset(24, 24, 12, 12);
         layout.childControlWidth = layout.childControlHeight = true;
@@ -443,21 +445,21 @@ public sealed class EraCompletionScreenUI : MonoBehaviour
 
         _headingText = CreateText(paper, "EraCompleteHeadingText", string.Empty, UITextScale.Display);
         _headingText.fontStyle = FontStyles.Bold;
-        ScrollPanelArt.PlaceText(_headingText, Rect.MinMaxRect(0.16f, 0.71f, 0.84f, 0.81f), UITextScale.Title, UITextScale.Display);
+        ScrollPanelArt.PlaceText(_headingText, Rect.MinMaxRect(0.16f, 0.84f, 0.84f, 0.94f), UITextScale.Title, UITextScale.Display);
 
         // Keep the un-authored ending line hidden without reserving a blank band.
         _endingLineText = CreateText(paper, "EraEndingLineText", string.Empty, UITextScale.Body);
         _endingLineText.gameObject.SetActive(false);
 
         _memoriesHeadingText = CreateText(paper, "MemoriesHeadingText", EraCompletionCopy.MemoriesHeading, UITextScale.Body);
-        ScrollPanelArt.PlaceText(_memoriesHeadingText, Rect.MinMaxRect(0.17f, 0.655f, 0.83f, 0.70f), UITextScale.Secondary, UITextScale.Body);
+        ScrollPanelArt.PlaceText(_memoriesHeadingText, Rect.MinMaxRect(0.17f, 0.795f, 0.83f, 0.835f), UITextScale.Secondary, UITextScale.Body);
 
         GameObject viewport = new GameObject(
             "Viewport", typeof(RectTransform), typeof(Image), typeof(RectMask2D), typeof(ScrollRect));
         viewport.transform.SetParent(paper, false);
         viewport.GetComponent<Image>().color = Color.clear;
         RectTransform viewportRect = viewport.GetComponent<RectTransform>();
-        ScrollPanelArt.SetAnchors(viewportRect, Rect.MinMaxRect(0.17f, 0.41f, 0.83f, 0.635f));
+        ScrollPanelArt.SetAnchors(viewportRect, Rect.MinMaxRect(0.17f, 0.30f, 0.83f, 0.78f));
 
         GameObject content = new GameObject(
             "Content", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
@@ -486,8 +488,8 @@ public sealed class EraCompletionScreenUI : MonoBehaviour
 
         _enterNextEraButton = CreateButton(paper, "EnterNextEraButton", EraCompletionCopy.EnterNextEraLabel, 0f, 0f);
         _closeButton = CreateButton(paper, "CloseButton", EraCompletionCopy.CloseLabel, 0f, 0f);
-        ScrollPanelArt.PlaceButton(_enterNextEraButton, Rect.MinMaxRect(0.17f, 0.285f, 0.83f, 0.385f));
-        ScrollPanelArt.PlaceButton(_closeButton, Rect.MinMaxRect(0.17f, 0.17f, 0.83f, 0.265f), primary: false);
+        ScrollPanelArt.PlaceButton(_enterNextEraButton, Rect.MinMaxRect(0.17f, 0.19f, 0.83f, 0.285f));
+        ScrollPanelArt.PlaceButton(_closeButton, Rect.MinMaxRect(0.17f, 0.08f, 0.83f, 0.175f), primary: false);
         if (onParchment)
             ScrollPanelArt.InkifyRecursive(paper);
         else

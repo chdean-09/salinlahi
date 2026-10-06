@@ -164,7 +164,7 @@ namespace Salinlahi.Tests.Editor.UI
             Transform card = _root.transform.Find("SettingsCard/SettingsScroll");
             Assert.That(card.Find("VolumeViewport/VolumeContent/SFXSliderValue").GetComponent<TMP_Text>().text, Is.EqualTo("Mute"));
             Assert.That(card.Find("VolumeViewport/VolumeContent/SFXSliderHint").GetComponent<TMP_Text>().text,
-                Does.Contain("pagbigkas ng mga pantig"));
+                Does.Contain("pagbigkas"));
             foreach (Slider slider in new[] { _masterSlider, _bgmSlider, _sfxSlider })
             {
                 RectTransform rect = slider.GetComponent<RectTransform>();
@@ -254,6 +254,8 @@ namespace Salinlahi.Tests.Editor.UI
                 Is.EqualTo("Awtomatikong nase-save ang mga pagbabago"), "Edit-mode preview has no audio manager.");
         }
 
+        [TestCase(320f, 568f)]
+        [TestCase(360f, 800f)]
         [TestCase(360f, 640f)]
         [TestCase(390f, 844f)]
         [TestCase(430f, 932f)]
@@ -278,6 +280,12 @@ namespace Salinlahi.Tests.Editor.UI
                 scroll.Find("VolumeViewport/VolumeContent/SFXLabel").GetComponent<RectTransform>().GetWorldCorners(label);
                 Assert.That(thumb[0].y, Is.GreaterThan(label[1].y), "Music thumb must clear the Sound effects label.");
                 ScrollRect reading = scroll.Find("VolumeViewport").GetComponent<ScrollRect>();
+                Canvas.ForceUpdateCanvases();
+                foreach (TMP_Text hint in reading.content.GetComponentsInChildren<TMP_Text>())
+                {
+                    hint.ForceMeshUpdate();
+                    Assert.IsFalse(hint.isTextOverflowing, hint.text);
+                }
                 reading.verticalNormalizedPosition = 0f;
                 _sfxSlider.handleRect.GetWorldCorners(thumb);
                 scroll.Find("AudioStatus").GetComponent<RectTransform>().GetWorldCorners(label);

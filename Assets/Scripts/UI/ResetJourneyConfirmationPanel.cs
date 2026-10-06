@@ -202,11 +202,11 @@ public sealed class ResetJourneyConfirmationPanel : MonoBehaviour
 
         if (_titleText == null)
             _titleText = BuildText("Title", cardRect,
-                new Vector2(0.16f, 0.66f), new Vector2(0.84f, 0.80f),
+                new Vector2(0.16f, 0.64f), new Vector2(0.84f, 0.84f),
                 UITextScale.Title, TextAlignmentOptions.Center);
         if (_bodyText == null)
             _bodyText = BuildText("Body", cardRect,
-                new Vector2(0.17f, 0.44f), new Vector2(0.83f, 0.64f),
+                new Vector2(0.17f, 0.43f), new Vector2(0.83f, 0.61f),
                 UITextScale.Body, TextAlignmentOptions.TopLeft);
         ScrollPanelArt.MakeReadingScroll(_bodyText);
         if (_cancelButton == null)

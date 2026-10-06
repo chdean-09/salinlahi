@@ -379,6 +379,17 @@ public sealed class SentenceHintController : MonoBehaviour
             return;
 
         Canvas canvas = ScrollPanelArt.ResolveModalCanvas(this);
+        // The runtime controller lives under the level manager, outside the HUD.
+        // Prefer its HUD host so an unrelated high-order panel cannot supply a
+        // narrow coordinate space. Nested canvases must use their full root rect.
+        if (GetComponentInParent<Canvas>() == null)
+        {
+            Canvas hudCanvas = ResolveHudParent().GetComponentInParent<Canvas>();
+            if (hudCanvas != null && hudCanvas.isActiveAndEnabled)
+                canvas = hudCanvas;
+        }
+        if (canvas != null)
+            canvas = canvas.rootCanvas;
         if (canvas == null)
         {
             // Same fallback the ready screen builds: a standalone overlay canvas keeps
@@ -498,7 +509,7 @@ public sealed class SentenceHintController : MonoBehaviour
         RectTransform closeRect = close.GetComponent<RectTransform>();
         closeRect.anchorMin = closeRect.anchorMax = new Vector2(0.5f, 0.18f);
         closeRect.pivot = new Vector2(0.5f, 0.5f);
-        closeRect.sizeDelta = new Vector2(320f, 104f);
+        closeRect.sizeDelta = new Vector2(320f, 152f);
         ScrollPanelArt.SizeButtonLabel(close);
         closeLabel.enableAutoSizing = false;
         closeLabel.fontSize = HintReadingSize;
