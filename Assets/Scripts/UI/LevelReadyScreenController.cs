@@ -206,7 +206,7 @@ public sealed class LevelReadyScreenController : MonoBehaviour
         buttonRect.anchorMin = new Vector2(0.66f, 0.18f);
         buttonRect.anchorMax = new Vector2(0.66f, 0.18f);
         buttonRect.pivot = new Vector2(0.5f, 0.5f);
-        buttonRect.sizeDelta = new Vector2(300f, 88f);
+        buttonRect.sizeDelta = new Vector2(300f, 144f);
         buttonObject.GetComponent<Image>().color = new Color(0.85f, 0.72f, 0.35f, 1f);
         _startButton = buttonObject.GetComponent<Button>();
         _startButton.onClick.AddListener(StartLevel);
@@ -232,7 +232,7 @@ public sealed class LevelReadyScreenController : MonoBehaviour
         backRect.anchorMin = new Vector2(0.34f, 0.18f);
         backRect.anchorMax = new Vector2(0.34f, 0.18f);
         backRect.pivot = new Vector2(0.5f, 0.5f);
-        backRect.sizeDelta = new Vector2(260f, 88f);
+        backRect.sizeDelta = new Vector2(260f, 144f);
         backObject.GetComponent<Image>().color = new Color(0.18f, 0.24f, 0.34f, 1f);
         _backButton = backObject.GetComponent<Button>();
         _backButton.onClick.AddListener(Back);
@@ -281,7 +281,7 @@ public sealed class LevelReadyScreenController : MonoBehaviour
         text.overflowMode = TextOverflowModes.Overflow;
         text.raycastTarget = false;
         text.enableAutoSizing = true;
-        text.fontSizeMin = Mathf.Max(UITextScale.AutoSizeFloor, fontSize * 0.55f);
+        text.fontSizeMin = Mathf.Min(fontSize, UITextScale.Body);
         text.fontSizeMax = fontSize;
         TutorialFontProvider.ApplyTo(text);
         return text;

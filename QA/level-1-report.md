@@ -160,3 +160,25 @@ Events recorded by the Editor QA session. Timestamps are UTC ISO-8601 and second
 2026-09-28T15:01:13.9027800Z	3533.901	wave-start	index=0
 2026-09-28T15:01:16.9134290Z	3536.912	spawn	type=Abo ng Simula; glyph=A; world=(1.60,5.85); frame=1167544
 ```
+
+## QA Runtime Event Trace — 2026-10-06 09:07:36 +08:00
+
+Events recorded by the Editor QA session. Timestamps are UTC ISO-8601 and seconds since Play Mode started.
+
+```text
+2026-10-06T01:06:56.8231673Z	0.001	session	begin level=1 asset=Assets/ScriptableObjects/Levels/Level1_Config.asset
+2026-10-06T01:06:59.2087710Z	2.386	qa-entry	level=1; normal selection accepted=True
+2026-10-06T01:07:00.3069631Z	3.485	base-hp	hearts=3
+2026-10-06T01:07:00.3491442Z	3.528	cutscene	started
+```
+
+## QA Runtime Event Trace — 2026-10-06 09:14:00 +08:00
+
+Events recorded by the Editor QA session. Timestamps are UTC ISO-8601 and seconds since Play Mode started.
+
+```text
+2026-10-06T01:13:34.0813621Z	0.001	session	begin level=1 asset=Assets/ScriptableObjects/Levels/Level1_Config.asset
+2026-10-06T01:13:36.4372391Z	2.356	qa-entry	level=1; normal selection accepted=True
+2026-10-06T01:13:37.5357953Z	3.455	base-hp	hearts=3
+2026-10-06T01:13:37.5771515Z	3.496	cutscene	started
+```

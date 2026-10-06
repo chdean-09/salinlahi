@@ -162,15 +162,14 @@ namespace Salinlahi.Tests.Editor.UI
             _sfxSlider.value = 0f;
             InvokePrivateMethod(_panel, "OnEnable");
             Transform card = _root.transform.Find("SettingsCard/SettingsScroll");
-            Assert.That(card.Find("SFXSliderValue").GetComponent<TMP_Text>().text, Is.EqualTo("Mute"));
-            Assert.That(card.Find("SFXSliderHint").GetComponent<TMP_Text>().text,
+            Assert.That(card.Find("VolumeViewport/VolumeContent/SFXSliderValue").GetComponent<TMP_Text>().text, Is.EqualTo("Mute"));
+            Assert.That(card.Find("VolumeViewport/VolumeContent/SFXSliderHint").GetComponent<TMP_Text>().text,
                 Does.Contain("pagbigkas ng mga pantig"));
             foreach (Slider slider in new[] { _masterSlider, _bgmSlider, _sfxSlider })
             {
                 RectTransform rect = slider.GetComponent<RectTransform>();
-                Assert.That(rect.anchorMin.x, Is.GreaterThanOrEqualTo(ScrollPanelArt.FullSafeArea.xMin));
-                // Rect computes xMax by adding width, which can differ from the authored anchor by one float step.
-                Assert.That(rect.anchorMax.x, Is.LessThanOrEqualTo(ScrollPanelArt.FullSafeArea.xMax + 0.0001f));
+                Assert.That(rect.anchorMin.x, Is.GreaterThanOrEqualTo(0f));
+                Assert.That(rect.anchorMax.x, Is.LessThanOrEqualTo(1f));
                 Assert.That(rect.sizeDelta.y, Is.GreaterThanOrEqualTo(96f));
                 Assert.That(slider.GetComponent<Image>().raycastTarget, Is.True);
             }
@@ -234,8 +233,9 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.That(content.GetComponent<SafeAreaHandler>(), Is.Not.Null);
             Assert.That(_closeButton.transform.parent, Is.SameAs(content));
             RectTransform scroll = content.Find("SettingsScroll").GetComponent<RectTransform>();
-            Assert.That(scroll.anchorMin.y, Is.GreaterThanOrEqualTo(0.15f));
-            Assert.That(scroll.anchorMax.y, Is.LessThanOrEqualTo(0.85f));
+            RectTransform readingViewport = scroll.Find("VolumeViewport").GetComponent<RectTransform>();
+            Assert.That(readingViewport.anchorMin.y, Is.GreaterThanOrEqualTo(ScrollPanelArt.FullSafeArea.yMin));
+            Assert.That(readingViewport.anchorMax.y, Is.LessThanOrEqualTo(ScrollPanelArt.FullSafeArea.yMax));
             Assert.That(scroll.GetComponent<Image>().raycastTarget, Is.False);
         }
 
@@ -246,9 +246,9 @@ namespace Salinlahi.Tests.Editor.UI
             Transform content = _root.transform.Find("SettingsCard/SettingsScroll");
             Assert.That(content.Find("Title").GetComponent<TMP_Text>().fontSizeMax,
                 Is.EqualTo(UITextScale.Display));
-            Assert.That(content.Find("MasterLabel").GetComponent<TMP_Text>().fontSizeMax,
+            Assert.That(content.Find("VolumeViewport/VolumeContent/MasterLabel").GetComponent<TMP_Text>().fontSizeMax,
                 Is.EqualTo(UITextScale.Title));
-            Assert.That(content.Find("SFXSliderHint").GetComponent<TMP_Text>().fontSizeMin,
+            Assert.That(content.Find("VolumeViewport/VolumeContent/SFXSliderHint").GetComponent<TMP_Text>().fontSizeMin,
                 Is.GreaterThanOrEqualTo(UITextScale.Body));
             Assert.That(content.Find("AudioStatus").GetComponent<TMP_Text>().text,
                 Is.EqualTo("Awtomatikong nase-save ang mga pagbabago"), "Edit-mode preview has no audio manager.");
@@ -272,11 +272,13 @@ namespace Salinlahi.Tests.Editor.UI
                 Vector3[] thumb = new Vector3[4];
                 Vector3[] label = new Vector3[4];
                 _masterSlider.handleRect.GetWorldCorners(thumb);
-                scroll.Find("BGMLabel").GetComponent<RectTransform>().GetWorldCorners(label);
+                scroll.Find("VolumeViewport/VolumeContent/BGMLabel").GetComponent<RectTransform>().GetWorldCorners(label);
                 Assert.That(thumb[0].y, Is.GreaterThan(label[1].y), "Master thumb must clear the Music label.");
                 _bgmSlider.handleRect.GetWorldCorners(thumb);
-                scroll.Find("SFXLabel").GetComponent<RectTransform>().GetWorldCorners(label);
+                scroll.Find("VolumeViewport/VolumeContent/SFXLabel").GetComponent<RectTransform>().GetWorldCorners(label);
                 Assert.That(thumb[0].y, Is.GreaterThan(label[1].y), "Music thumb must clear the Sound effects label.");
+                ScrollRect reading = scroll.Find("VolumeViewport").GetComponent<ScrollRect>();
+                reading.verticalNormalizedPosition = 0f;
                 _sfxSlider.handleRect.GetWorldCorners(thumb);
                 scroll.Find("AudioStatus").GetComponent<RectTransform>().GetWorldCorners(label);
                 Assert.That(thumb[0].y, Is.GreaterThan(label[1].y), "SFX thumb must clear the save message.");

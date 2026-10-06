@@ -124,6 +124,28 @@ namespace Salinlahi.Tests.PlayMode.Gameplay
         // ─── Tests ────────────────────────────────────────────────────────────
 
         [UnityTest]
+        public IEnumerator LongNarration_FitsInFullWithoutScrollingOrShrinking()
+        {
+            TMP_Text body = GetPrivateField<TMP_Text>(_player, "_bodyText");
+            body.font = TutorialFontProvider.FontAsset;
+            body.raycastTarget = false;
+            _cutscene.defaultTypewriterSpeed = 0f;
+            _cutscene.panels = new[] { new CutscenePanel { text = "Umuwi si Juan sa bahay na tila buhay pa.\nMainit ang apoy, umuusok ang palayok, at kalahati pa lang ang pagkakabuo sa banig na may karayom sa tabi.\nPero walang tao roon, at hindi niya maalala ang mga mukha nila.", transitionDuration = 0.01f } };
+            _player.Play(_cutscene);
+            yield return new WaitForSecondsRealtime(0.15f);
+            Canvas.ForceUpdateCanvases();
+            ScrollRect scroll = body.GetComponentInParent<ScrollRect>();
+            Assert.IsNull(scroll);
+            Assert.IsFalse(body.enableAutoSizing);
+            Assert.GreaterOrEqual(body.fontSize, UITextScale.Body);
+            body.ForceMeshUpdate();
+            Assert.IsFalse(body.isTextOverflowing);
+            Assert.GreaterOrEqual(body.rectTransform.rect.height, body.preferredHeight);
+            Assert.IsTrue(_player.IsPlaying);
+            Assert.IsFalse(_completeFired);
+        }
+
+        [UnityTest]
         public IEnumerator Play_FiresStartedEvent_AndSetsIsPlaying()
         {
             _cutscene.panels = new CutscenePanel[] { new CutscenePanel { text = "Hello" } };

@@ -139,6 +139,118 @@ namespace Salinlahi.Tests.Editor.UI
         }
 
         [Test]
+        public void Scrollbar_RemainsVisibleAtRestWhileContentOverflows_AndHidesWhenItFits()
+        {
+            ScrollRect scroll = CreateScrollableContent(600f);
+            ScrollPanelArt.EnsureVerticalScrollbar(scroll);
+            RefreshScrollbar(scroll);
+            Assert.IsTrue(scroll.verticalScrollbar.gameObject.activeSelf);
+
+            scroll.verticalNormalizedPosition = 0f;
+            RefreshScrollbar(scroll);
+            RefreshScrollbar(scroll);
+            Assert.IsTrue(scroll.verticalScrollbar.gameObject.activeSelf,
+                "Reaching the bottom or remaining idle must not hide an overflowing scrollbar.");
+
+            scroll.content.sizeDelta = new Vector2(0f, 100f);
+            RefreshScrollbar(scroll);
+            Assert.IsFalse(scroll.verticalScrollbar.gameObject.activeSelf);
+
+            scroll.content.sizeDelta = new Vector2(0f, 600f);
+            RefreshScrollbar(scroll);
+            Assert.IsTrue(scroll.verticalScrollbar.gameObject.activeSelf,
+                "A reopened or resized scroll must show its scrollbar when content grows.");
+        }
+
+        [Test]
+        public void Scrollbar_RepeatedSetupKeepsOneBarAndContentClearOfItsTrack()
+        {
+            ScrollRect scroll = CreateScrollableContent(600f);
+            ScrollPanelArt.EnsureVerticalScrollbar(scroll);
+            Scrollbar scrollbar = scroll.verticalScrollbar;
+            Vector2 inset = scroll.content.offsetMax;
+            int children = scroll.viewport.childCount;
+
+            ScrollPanelArt.EnsureVerticalScrollbar(scroll);
+            RefreshScrollbar(scroll);
+
+            Assert.AreSame(scrollbar, scroll.verticalScrollbar);
+            Assert.AreEqual(inset, scroll.content.offsetMax);
+            Assert.AreEqual(children, scroll.viewport.childCount);
+            Assert.AreSame(scrollbar.handleRect.GetComponent<Image>(), scrollbar.targetGraphic);
+            Assert.AreEqual(Scrollbar.Direction.BottomToTop, scrollbar.direction);
+            Bounds contentBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
+                scroll.viewport, scroll.content);
+            Bounds trackBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
+                scroll.viewport, scrollbar.transform);
+            Assert.Less(contentBounds.max.x, trackBounds.min.x,
+                "The scrollbar must have its own lane, outside the text/card width.");
+        }
+
+        [Test]
+        public void Scrollbar_PreservesExistingAuthoredBarAndViewportPolicy()
+        {
+            ScrollRect scroll = CreateScrollableContent(600f);
+            Scrollbar authored = Track(new GameObject("AuthoredScrollbar", typeof(RectTransform), typeof(Scrollbar)))
+                .GetComponent<Scrollbar>();
+            authored.transform.SetParent(scroll.transform, false);
+            scroll.verticalScrollbar = authored;
+            scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHideAndExpandViewport;
+            Vector2 inset = scroll.content.offsetMax;
+
+            ScrollPanelArt.EnsureVerticalScrollbar(scroll);
+
+            Assert.AreSame(authored, scroll.verticalScrollbar);
+            Assert.AreEqual(ScrollRect.ScrollbarVisibility.AutoHideAndExpandViewport,
+                scroll.verticalScrollbarVisibility);
+            Assert.AreEqual(inset, scroll.content.offsetMax);
+        }
+
+        [Test]
+        public void Scrollbar_DoesNotEnableScrollingOnANonScrollableSurface()
+        {
+            ScrollRect scroll = CreateScrollableContent(600f);
+            scroll.vertical = false;
+
+            ScrollPanelArt.EnsureVerticalScrollbar(scroll);
+
+            Assert.IsNull(scroll.verticalScrollbar);
+            Assert.IsFalse(scroll.vertical);
+        }
+
+        private ScrollRect CreateScrollableContent(float contentHeight)
+        {
+            GameObject canvas = Track(new GameObject("ScrollbarTestCanvas", typeof(RectTransform), typeof(Canvas)));
+            canvas.GetComponent<Canvas>().renderMode = RenderMode.WorldSpace;
+            GameObject viewport = new GameObject("Viewport", typeof(RectTransform), typeof(ScrollRect));
+            viewport.transform.SetParent(canvas.transform, false);
+            RectTransform viewportRect = viewport.GetComponent<RectTransform>();
+            viewportRect.sizeDelta = new Vector2(200f, 200f);
+            GameObject content = new GameObject("Content", typeof(RectTransform));
+            content.transform.SetParent(viewport.transform, false);
+            RectTransform contentRect = content.GetComponent<RectTransform>();
+            contentRect.anchorMin = new Vector2(0f, 1f);
+            contentRect.anchorMax = Vector2.one;
+            contentRect.pivot = new Vector2(0.5f, 1f);
+            contentRect.sizeDelta = new Vector2(0f, contentHeight);
+            ScrollRect scroll = viewport.GetComponent<ScrollRect>();
+            scroll.viewport = viewportRect;
+            scroll.content = contentRect;
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            return scroll;
+        }
+
+        private static void RefreshScrollbar(ScrollRect scroll)
+        {
+            Canvas.ForceUpdateCanvases();
+            scroll.Rebuild(CanvasUpdate.PostLayout);
+            typeof(ScrollRect).GetMethod("LateUpdate", BindingFlags.NonPublic | BindingFlags.Instance)
+                .Invoke(scroll, null);
+        }
+
+        [Test]
         public void EnsureOverlay_KeepsBothHintsInAMaskedReadingAreaAboveClose()
         {
             GameObject canvasObject = Track(new GameObject("HintTestCanvas", typeof(RectTransform), typeof(Canvas)));
@@ -150,7 +262,7 @@ namespace Salinlahi.Tests.Editor.UI
             host.transform.SetParent(canvasObject.transform, false);
             SentenceHintController controller = host.AddComponent<SentenceHintController>();
             typeof(SentenceHintController).GetField("_bodyText", BindingFlags.NonPublic | BindingFlags.Instance)
-                .SetValue(controller, "<b>mother</b>\nilaw ng tahanan\n\n<b>father</b>\nang haligi ng tahanan");
+                .SetValue(controller, "<b>_ _ _</b>\nilaw ng tahanan\n\n<b>_ _ _</b>\nang haligi ng tahanan");
             typeof(SentenceHintController).GetMethod("EnsureOverlay", BindingFlags.NonPublic | BindingFlags.Instance)
                 .Invoke(controller, null);
             GameObject overlay = (GameObject)typeof(SentenceHintController)
@@ -169,8 +281,8 @@ namespace Salinlahi.Tests.Editor.UI
             Assert.IsFalse(body.enableAutoSizing);
             Assert.GreaterOrEqual(body.fontSize, 64f,
                 "The hint reading size must remain larger than the general UI body floor.");
-            StringAssert.Contains("mother", body.text);
-            StringAssert.Contains("father", body.text);
+            StringAssert.Contains("<b>_ _ _</b>\nilaw ng tahanan", body.text);
+            StringAssert.Contains("<b>_ _ _</b>\nang haligi ng tahanan", body.text);
             Assert.IsNotNull(scroll.content.GetComponent<ContentSizeFitter>());
             Transform close = scroll.viewport.parent.Find("[Runtime] SentenceHintClose");
             Assert.IsNotNull(close);

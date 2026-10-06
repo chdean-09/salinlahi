@@ -41,7 +41,7 @@ public class HintModalTests
         ChallengeSession session = CreateTierFiveSession();
         HintModal modal = CreateModal();
 
-        modal.Open(session, "IBA", "different", () => session.RequestHint());
+        modal.Open(session, "naiiba, kakaiba", () => session.RequestHint());
 
         Assert.IsTrue(modal.IsOpen);
         Assert.AreEqual(HintModal.Mode.Confirm, modal.CurrentMode);
@@ -57,7 +57,7 @@ public class HintModalTests
     {
         ChallengeSession session = CreateTierFiveSession();
         HintModal modal = CreateModal();
-        modal.Open(session, "IBA", "different", () => session.RequestHint());
+        modal.Open(session, "naiiba, kakaiba", () => session.RequestHint());
 
         modal.Cancel();
 
@@ -76,7 +76,7 @@ public class HintModalTests
     {
         ChallengeSession session = CreateTierFiveSession();
         HintModal modal = CreateModal();
-        modal.Open(session, "IBA", "different", () => session.RequestHint());
+        modal.Open(session, "naiiba, kakaiba", () => session.RequestHint());
 
         Button backdrop = modal.transform.Find("DimOverlay")?.GetComponent<Button>();
         Assert.IsNotNull(backdrop, "The dim overlay must carry the tap-outside dismiss control.");
@@ -93,7 +93,7 @@ public class HintModalTests
     {
         ChallengeSession session = CreateTierFiveSession();
         HintModal modal = CreateModal();
-        modal.Open(session, "IBA", "different", () => session.RequestHint());
+        modal.Open(session, "naiiba, kakaiba", () => session.RequestHint());
 
         modal.Confirm();
 
@@ -102,10 +102,11 @@ public class HintModalTests
         Assert.AreEqual(0.10f, session.EmergencyHintScorePenalty, 0.0001f,
             "The penalty Results renders comes from exactly this.");
         Assert.AreEqual(HintModal.Mode.Revealed, modal.CurrentMode);
-        StringAssert.Contains("different", modal.BodyText,
-            "Confirming buys the meaning, which is the one hint type the authored data serves.");
+        Assert.AreEqual("naiiba, kakaiba", modal.BodyText);
+        StringAssert.DoesNotContain("IBA:", modal.BodyText);
+        StringAssert.DoesNotContain("different", modal.BodyText);
         StringAssert.DoesNotContain("w1", modal.BodyText,
-            "AC-5: a hint explains the word. It must not hand over the answer token, which is "
+            "AC-5: a hint gives synonyms. It must not hand over the answer token, which is "
             + "what the old free hint did (ChallengeModeUI returned \"Hint: {displayText}\").");
     }
 
@@ -118,7 +119,7 @@ public class HintModalTests
 
         HintModal modal = CreateModal();
         bool retried = false;
-        modal.Open(session, "IBA", "different", () => session.RequestHint(), () => retried = true);
+        modal.Open(session, "naiiba, kakaiba", () => session.RequestHint(), () => retried = true);
 
         Assert.AreEqual(HintModal.Mode.Exhausted, modal.CurrentMode);
         Assert.IsFalse(modal.ConfirmIsVisible, "Retry must be hidden when no hints remain.");
@@ -154,7 +155,7 @@ public class HintModalTests
         session.RequestHint();
         bool retried = false;
         HintModal modal = CreateModal();
-        modal.Open(session, "IBA", "different", () => session.RequestHint(), () => retried = true);
+        modal.Open(session, "naiiba, kakaiba", () => session.RequestHint(), () => retried = true);
 
         modal.Retry();
 
@@ -168,11 +169,11 @@ public class HintModalTests
         ChallengeSession exhausted = CreateTierFiveSession();
         exhausted.RequestHint();
         HintModal modal = CreateModal();
-        modal.Open(exhausted, "IBA", "different", () => exhausted.RequestHint());
+        modal.Open(exhausted, "naiiba, kakaiba", () => exhausted.RequestHint());
         modal.Cancel();
 
         ChallengeSession available = CreateTierFiveSession();
-        modal.Open(available, "IBA", "different", () => available.RequestHint());
+        modal.Open(available, "naiiba, kakaiba", () => available.RequestHint());
 
         Assert.AreEqual(HintModal.Mode.Confirm, modal.CurrentMode);
         Assert.IsTrue(modal.ConfirmIsVisible);
@@ -188,7 +189,7 @@ public class HintModalTests
         ChallengeSession session = CreateTierFiveSession();
         HintModal modal = CreateModal();
 
-        modal.Open(session, "IBA", "different", () => session.RequestHint());
+        modal.Open(session, "naiiba, kakaiba", () => session.RequestHint());
 
         Assert.AreEqual("Natitirang pahiwatig: 1", modal.CostText);
         var remaining = modal.transform.Find("Card/Cost").GetComponent<TMPro.TextMeshProUGUI>();
@@ -210,11 +211,11 @@ public class HintModalTests
     }
 
     [Test]
-    public void MissingMeaning_CannotSpendAHint()
+    public void MissingSynonyms_CannotSpendAHint()
     {
         ChallengeSession session = CreateTierFiveSession();
         HintModal modal = CreateModal();
-        modal.Open(session, string.Empty, string.Empty, () => session.RequestHint());
+        modal.Open(session, string.Empty, () => session.RequestHint());
 
         Assert.IsFalse(modal.ConfirmIsInteractable);
         Assert.AreEqual(HintModalCopy.NoHintAvailableBody, modal.BodyText);

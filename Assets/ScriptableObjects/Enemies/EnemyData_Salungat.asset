@@ -20,7 +20,7 @@ MonoBehaviour:
     na hindi naman para rito, at umaasa itong magmadali ang iba at mapagkamalan
     ang pamilyar na marka.
   abilityLine: Panandaliang nagkakagulo ang marka nito at nagiging mahirap basahin.
-    Napipinsala pa rin ang Living Scroll kapag iginuhit ang huwad na titik nito.
+    Napipinsala pa rin ang Buhay na Kasulatan kapag iginuhit ang huwad na titik nito.
   moveSpeed: 1.5
   maxHealth: 1
   walkFrames:

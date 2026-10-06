@@ -270,9 +270,8 @@ public class ChallengeFlowController : MonoBehaviour
     // -------------------------------------------------------------------------
     // SALIN-231. Focus-word handoff, so the hint modal can explain the word.
     //
-    // The ONE hint type the authored data can actually serve is the text meaning:
-    // FocusWordDefinition.meaning is authored on every level (Level 5 -> IBA
-    // "different", MANA "inheritance"). The other three types in the ticket title
+    // The hint uses authored Filipino synonyms without the answer itself.
+    // The other three types in the ticket title
     // are DATA-BLOCKED and are deliberately not built — targetCharacter is
     // {fileID: 0} on all 45 tokens across all 10 authored challenge sequences, so
     // "replayed audio" and "first symbol" have no BaybayinCharacterSO to read, and
@@ -316,9 +315,13 @@ public class ChallengeFlowController : MonoBehaviour
     }
 
     /// <summary>
-    /// Resolve the meaning for a specific answer occurrence, independent of mastery evidence.
-    /// Partial-word exercises retain their authored whole-word meaning.
+    /// Resolve the Filipino synonyms for a specific answer occurrence.
     /// </summary>
+    public string ResolveHintText(ChallengeUnitDefinition unit, string occurrenceId) =>
+        SentenceHintContent.BuildChallengeHint(ResolveHintWord(unit, occurrenceId));
+
+    /// <summary>Resolve the word behind an answer occurrence, independent of mastery
+    /// evidence. Partial-word exercises retain their authored whole-word context.</summary>
     public FocusWordDefinition ResolveHintWord(ChallengeUnitDefinition unit, string occurrenceId)
     {
         if (unit?.tokens == null || string.IsNullOrEmpty(occurrenceId) || _hintWords == null)

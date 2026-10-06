@@ -238,6 +238,7 @@ public sealed class ExitConfirmationPanel : MonoBehaviour
         cardRect.anchorMax = new Vector2(0.92f, 0.68f);
         cardRect.offsetMin = Vector2.zero;
         cardRect.offsetMax = Vector2.zero;
+        ScrollPanelArt.SetAnchors(cardRect, ScrollPanelArt.ScrollArea);
         Image cardImage = card.GetComponent<Image>();
         cardImage.color = ScrollPanelArt.FlatPanelColor;
         cardImage.raycastTarget = false;

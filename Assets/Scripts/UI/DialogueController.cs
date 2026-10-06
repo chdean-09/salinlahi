@@ -5,15 +5,14 @@ using UnityEngine.UI;
 
 public class DialogueController : MonoBehaviour
 {
-    // The story scroll fills 30% of the screen, normally at the bottom. This is not only a look: the rod
-    // below is a fixed-pixel slice border, so a short panel is what pushes the copy onto it.
+    // Start at 30% of the screen and grow for the full story line. The paper stays
+    // at the bottom; reading does not require an inner scroll gesture.
     private const float DialoguePanelHeight = 0.30f;
     private static readonly Rect BaseIntroductionArea = Rect.MinMaxRect(0.14f, 0.435f, 0.86f, 0.645f);
 
-    // Fixed sizes rather than auto-fit: at half height every authored line fits, and the
-    // speaker name is the title, so it outranks the body.
+    // Keep narration at a fixed reading size; grow its panel rather than shrinking copy.
     private const float SpeakerFontSize = 72f;
-    private const float BodyFontSize = 52f;
+    private const float BodyFontSize = UITextScale.Body;
 
     private const float SlideUpSeconds = 0.35f;
     private const float SlideDownSeconds = 0.30f;
@@ -510,6 +509,7 @@ public class DialogueController : MonoBehaviour
             }
         }
 
+        if (_bodyText != null) _bodyText.text = line.text ?? string.Empty;
         ConfigureResponsiveLayout(hasPortrait);
 
         if (_typewriterRoutine != null)
@@ -544,11 +544,56 @@ public class DialogueController : MonoBehaviour
             panel.offsetMin = new Vector2(12f, 0f);
             panel.offsetMax = new Vector2(-12f, 0f);
         }
+        FitFullNarration(panel);
         if (_onParchment)
         {
             ScrollPanelArt.Inkify(_speakerText);
             ScrollPanelArt.Inkify(_bodyText);
         }
+    }
+
+    private void FitFullNarration(RectTransform panel)
+    {
+        if (panel == null || _bodyText == null || panel.parent is not RectTransform parent)
+            return;
+
+        Canvas.ForceUpdateCanvases();
+        if (parent.rect.height <= 0f || _bodyText.rectTransform.rect.width <= 0f)
+            return;
+
+        const float topInset = 108f;
+        const float gap = 16f;
+        float bottomInset = _presentAtTop ? 108f : 36f;
+        if (!_presentAtTop && Screen.height > 0)
+            bottomInset += Screen.safeArea.yMin * parent.rect.height / Screen.height;
+        float speakerHeight = _speakerText == null ? 0f
+            : Mathf.Max(SpeakerFontSize, _speakerText.GetPreferredValues(_speakerText.text, _speakerText.rectTransform.rect.width, Mathf.Infinity).y) + 8f;
+        _bodyText.enableAutoSizing = false;
+        _bodyText.fontSize = BodyFontSize;
+        _bodyText.textWrappingMode = TextWrappingModes.Normal;
+        float bodyHeight = _bodyText.GetPreferredValues(_bodyText.text, _bodyText.rectTransform.rect.width, Mathf.Infinity).y + 16f;
+        float minimumHeight = parent.rect.height * (_presentAtTop ? BaseIntroductionArea.height : DialoguePanelHeight);
+        float height = Mathf.Max(minimumHeight, topInset + speakerHeight + gap + bodyHeight + bottomInset);
+        float top = _presentAtTop ? BaseIntroductionArea.yMax : 0.95f;
+        height = Mathf.Min(height, parent.rect.height * top);
+        if (_presentAtTop)
+            panel.anchorMin = new Vector2(panel.anchorMin.x, top - height / parent.rect.height);
+        else
+            panel.anchorMax = new Vector2(panel.anchorMax.x, height / parent.rect.height);
+
+        if (_speakerText != null)
+        {
+            RectTransform speaker = _speakerText.rectTransform;
+            speaker.anchorMin = new Vector2(speaker.anchorMin.x, 1f);
+            speaker.anchorMax = new Vector2(speaker.anchorMax.x, 1f);
+            speaker.offsetMin = new Vector2(0f, -topInset - speakerHeight);
+            speaker.offsetMax = new Vector2(0f, -topInset);
+        }
+        RectTransform body = _bodyText.rectTransform;
+        body.anchorMin = new Vector2(body.anchorMin.x, 0f);
+        body.anchorMax = new Vector2(body.anchorMax.x, 1f);
+        body.offsetMin = new Vector2(0f, bottomInset);
+        body.offsetMax = new Vector2(0f, -topInset - speakerHeight - gap);
     }
 
     // The base introduction uses both rods; other dialogue keeps the scroll-top banner.
@@ -615,7 +660,7 @@ public class DialogueController : MonoBehaviour
         float textMaxX = ScrollPanelArt.TopSafeArea.xMax;
         ConfigureDialogueText(
             speakerText,
-            new Vector2(textMinX, 0.60f),
+            new Vector2(textMinX, 0.56f),
             new Vector2(textMaxX, 0.70f),
             SpeakerFontSize,
             TextAlignmentOptions.Center);
@@ -625,21 +670,19 @@ public class DialogueController : MonoBehaviour
         ConfigureDialogueText(
             bodyText,
             new Vector2(textMinX, 0.16f),
-            new Vector2(textMaxX, 0.58f),
+            new Vector2(textMaxX, 0.54f),
             BodyFontSize,
             TextAlignmentOptions.Top);
 
         if (presentAtTop)
         {
-            ConfigureDialogueText(speakerText, new Vector2(textMinX, 0.68f),
+            ConfigureDialogueText(speakerText, new Vector2(textMinX, 0.60f),
                 new Vector2(textMaxX, 0.78f), SpeakerFontSize, TextAlignmentOptions.Center);
-            ConfigureDialogueText(bodyText, new Vector2(textMinX, 0.30f),
-                new Vector2(textMaxX, 0.66f), BodyFontSize, TextAlignmentOptions.Center);
+            ConfigureDialogueText(bodyText, new Vector2(textMinX, 0.20f),
+                new Vector2(textMaxX, 0.58f), BodyFontSize, TextAlignmentOptions.Center);
         }
 
-        // At 30% panel height the fixed sizes overflow their bands (speaker ~58px
-        // band vs ~86px line, body ~4 lines vs 6 needed). Auto-fit so long lines
-        // shrink instead of clipping off the parchment.
+        // Keep the readable floor; the paper grows to show the complete narration.
         if (speakerText != null)
         {
             speakerText.enableAutoSizing = true;
@@ -649,7 +692,7 @@ public class DialogueController : MonoBehaviour
         if (bodyText != null)
         {
             bodyText.enableAutoSizing = true;
-            bodyText.fontSizeMin = UITextScale.AutoSizeFloor;
+            bodyText.fontSizeMin = UITextScale.Body;
             bodyText.fontSizeMax = BodyFontSize;
         }
 

@@ -62,7 +62,7 @@ public static class MemoryCardCopy
     public const string ArchiveTitle = "Talaan ng mga Alaala";
 
     /// <summary>Spec BTN-CLAIM, verbatim.</summary>
-    public const string ClaimLabel = "Kunin ang Alaala";
+    public const string ClaimLabel = "Kunin";
 
     /// <summary>Compact flip-card action label.</summary>
     public const string FlipLabel = "Ibaliktad";

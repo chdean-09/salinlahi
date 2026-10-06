@@ -44,5 +44,42 @@ namespace Salinlahi.Tests.PlayMode.UI
                     Object.DestroyImmediate(material);
             }
         }
+
+        [TestCase(FontStyles.Normal)]
+        [TestCase(FontStyles.Bold)]
+        public void ParchmentInk_RemovesInheritedStrokeExpansionWithoutReplacingFont(FontStyles style)
+        {
+            GameObject host = new GameObject("Parchment font test", typeof(RectTransform));
+            Material material = null;
+            try
+            {
+                TMP_Text text = host.AddComponent<TextMeshProUGUI>();
+                TutorialFontProvider.ApplyTo(text);
+                TMP_FontAsset authoredFont = text.font;
+                text.fontStyle = style;
+                text.text = "Simbolo 1 sa 4 · e/i · Makinig · Magpatuloy";
+                material = text.fontMaterial;
+                material.EnableKeyword("OUTLINE_ON");
+                material.SetFloat("_OutlineWidth", 0.2f);
+                material.SetFloat("_FaceDilate", 0.15f);
+                material.SetFloat("_WeightBold", 0.75f);
+
+                ScrollPanelArt.Inkify(text);
+
+                Assert.AreSame(authoredFont, text.font);
+                Assert.AreEqual(style, text.fontStyle);
+                Assert.AreEqual(ScrollPanelArt.InkColor, text.color);
+                Assert.IsFalse(material.IsKeywordEnabled("OUTLINE_ON"));
+                Assert.IsFalse(material.IsKeywordEnabled("UNDERLAY_ON"));
+                Assert.AreEqual(0f, material.GetFloat("_OutlineWidth"));
+                Assert.AreEqual(0f, material.GetFloat("_FaceDilate"));
+                Assert.LessOrEqual(material.GetFloat("_WeightBold"), 0.2f);
+            }
+            finally
+            {
+                Object.DestroyImmediate(host);
+                if (material != null) Object.DestroyImmediate(material);
+            }
+        }
     }
 }

@@ -24,6 +24,7 @@ MonoBehaviour:
     displayLabel: BATA
     meaning: child
     hintText: 
+    hintSynonyms: musmos
     decomposition:
     - symbol: {fileID: 11400000, guid: 61dc4f749f3971c4082cf07fd6717f46, type: 2}
       spokenValueId: value.ba
@@ -39,6 +40,7 @@ MonoBehaviour:
     displayLabel: MATA
     meaning: eye
     hintText: 
+    hintSynonyms: paningin
     decomposition:
     - symbol: {fileID: 11400000, guid: 5121fd225b1ab47069915c56ad3c2417, type: 2}
       spokenValueId: value.ma

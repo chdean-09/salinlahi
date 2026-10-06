@@ -29,7 +29,7 @@ using UnityEngine;
 public static class HintModalCopy
 {
     /// <summary>Short modal title, retaining the question form.</summary>
-    public const string Title = "Gumamit ng hint?";
+    public const string Title = "Gumamit ng gabay?";
 
     /// <summary>Compact confirmation control label.</summary>
     public const string ConfirmLabel = "Ipakita";
@@ -38,17 +38,15 @@ public static class HintModalCopy
     public const string CancelLabel = "Kansela";
 
     /// <summary>
-    /// The one hint type the authored data can actually serve: the focus word's approved
-    /// plain-language meaning (FocusWordDefinition.meaning). "explain" is the Global
-    /// "Hints" verb (docs/audit/AUDIT.md:169).
+    /// The authored Filipino synonyms, without the answer itself.
     /// </summary>
-    public const string MeaningOptionLabel = "Ipakita ang kahulugan";
+    public const string HintOptionLabel = "Ipakita ang kasingkahulugan";
 
     /// <summary>Hint control label once the budget is spent. Verbatim from BTN-HINT.</summary>
     public const string ExhaustedButtonLabel = "Wala nang Pahiwatig";
 
     /// <summary>Default hint control label while a hint is still available.</summary>
-    public const string AvailableButtonLabel = "Hint";
+    public const string AvailableButtonLabel = "Gabay";
 
     /// <summary>Legacy retry label retained for callers; the exhausted panel offers Close only.</summary>
     public const string RetryLabel = "Ulitin";
@@ -84,13 +82,6 @@ public static class HintModalCopy
     public const string ExhaustedBody =
         "Nagamit mo na ang pahiwatig para sa antas na ito.";
 
-    /// <summary>
-    /// The revealed meaning, after the player confirms. Keeps the word beside its meaning
-    /// the way FocusWordPreviewController.cs:72-73 and MemoryCardUI already render the pair.
-    /// </summary>
-    public static string MeaningReveal(string displayLabel, string meaning) =>
-        string.IsNullOrEmpty(displayLabel) ? meaning : displayLabel + ": " + meaning;
-
     /// <summary>Shown when the unit has no focus word to explain, so nothing was charged.</summary>
     public const string NoHintAvailableBody = "Walang pahiwatig para sa hakbang na ito.";
 
@@ -98,9 +89,8 @@ public static class HintModalCopy
     /// ChallengeModeUI status register, which already read "Hint: ...".</summary>
     public const string HintStatusPrefix = "Pahiwatig: ";
 
-    /// <summary>"Hint: IBA — different". The in-encounter record of a purchased hint.</summary>
-    public static string HintStatusLine(string displayLabel, string meaning) =>
-        HintStatusPrefix + MeaningReveal(displayLabel, meaning);
+    /// <summary>The same synonyms persist after the modal closes.</summary>
+    public static string HintStatusLine(string hintText) => HintStatusPrefix + hintText;
 
     /// <summary>"Costs 10 score." from the policy's 0.10 fraction.</summary>
     public static int ScorePointsFromFraction(float costFraction) =>

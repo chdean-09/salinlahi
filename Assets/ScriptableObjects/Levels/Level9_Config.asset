@@ -24,6 +24,7 @@ MonoBehaviour:
     displayLabel: OO
     meaning: yes
     hintText: 
+    hintSynonyms: sige, sang-ayon
     decomposition:
     - symbol: {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
       spokenValueId: value.o
@@ -39,6 +40,7 @@ MonoBehaviour:
     displayLabel: UNA
     meaning: first
     hintText: 
+    hintSynonyms: nauna, nangunguna
     decomposition:
     - symbol: {fileID: 11400000, guid: 8d87451a7c8343f28951697d86164516, type: 2}
       spokenValueId: value.u

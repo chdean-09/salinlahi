@@ -329,6 +329,9 @@ public sealed class LevelLockNoticePanel : MonoBehaviour
         TutorialFontProvider.ApplyLegibilityEffects(label);
         label.text = LevelLockNoticeCopy.DismissLabel;
         Stretch(labelObject.GetComponent<RectTransform>());
+        ScrollPanelArt.SetAnchors(cardRect, ScrollPanelArt.ScrollArea);
+        ScrollPanelArt.SetAnchors(bodyObject.GetComponent<RectTransform>(), Rect.MinMaxRect(0.17f, 0.35f, 0.83f, 0.79f));
+        ScrollPanelArt.SetAnchors(buttonRect, Rect.MinMaxRect(0.20f, 0.17f, 0.80f, 0.30f));
 
         _overlayRoot = root;
         _bodyText = body;

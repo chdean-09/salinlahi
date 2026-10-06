@@ -24,6 +24,7 @@ MonoBehaviour:
     displayLabel: HANGA
     meaning: admiration
     hintText: 
+    hintSynonyms: paghanga
     decomposition:
     - symbol: {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
       spokenValueId: value.ha
@@ -39,6 +40,7 @@ MonoBehaviour:
     displayLabel: HALAGA
     meaning: worth
     hintText: 
+    hintSynonyms: saysay, kabuluhan
     decomposition:
     - symbol: {fileID: 11400000, guid: fcc61f9079e3b464090d59fa662f7932, type: 2}
       spokenValueId: value.ha

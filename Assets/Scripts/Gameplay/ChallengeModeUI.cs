@@ -94,8 +94,8 @@ public class ChallengeModeUI : MonoBehaviour
             canvas.gameObject.AddComponent<GraphicRaycaster>();
 
         RectTransform panel = gameObject.GetComponent<RectTransform>();
-        panel.anchorMin = new Vector2(0.06f, 0.18f);
-        panel.anchorMax = new Vector2(0.94f, 0.82f);
+        panel.anchorMin = new Vector2(0.06f, 0.05f);
+        panel.anchorMax = new Vector2(0.94f, 0.95f);
         panel.offsetMin = panel.offsetMax = Vector2.zero;
 
         Image panelImage = GetComponent<Image>();
@@ -105,15 +105,15 @@ public class ChallengeModeUI : MonoBehaviour
         panelImage.raycastTarget = false;
         bool onParchment = ScrollPanelArt.ApplyFull(panelImage);
 
-        _progressText = CreateLabel("Progress", UITextScale.Body, new Vector2(0.18f, 0.72f), new Vector2(0.82f, 0.80f));
+        _progressText = CreateLabel("Progress", UITextScale.Caption, new Vector2(0.18f, 0.70f), new Vector2(0.68f, 0.80f));
         _progressText.textWrappingMode = TextWrappingModes.Normal;
-        _timerText = CreateLabel("Timer", UITextScale.Body, new Vector2(0.18f, 0.67f), new Vector2(0.82f, 0.71f));
-        _timerText.textWrappingMode = TextWrappingModes.NoWrap;
+        _timerText = CreateLabel("Timer", UITextScale.Caption, new Vector2(0.70f, 0.70f), new Vector2(0.82f, 0.80f));
+        _timerText.textWrappingMode = TextWrappingModes.Normal;
         GameObject viewport = new GameObject("PromptViewport", typeof(RectTransform), typeof(Image), typeof(RectMask2D), typeof(ScrollRect));
         viewport.transform.SetParent(transform, false);
         RectTransform viewportRect = viewport.GetComponent<RectTransform>();
-        viewportRect.anchorMin = new Vector2(0.18f, 0.44f);
-        viewportRect.anchorMax = new Vector2(0.82f, 0.66f);
+        viewportRect.anchorMin = new Vector2(0.18f, 0.58f);
+        viewportRect.anchorMax = new Vector2(0.82f, 0.69f);
         viewportRect.offsetMin = viewportRect.offsetMax = Vector2.zero;
         viewport.GetComponent<Image>().color = Color.clear;
         _promptText = CreateLabel("Prompt", UITextScale.Title, Vector2.zero, Vector2.one);
@@ -135,26 +135,29 @@ public class ChallengeModeUI : MonoBehaviour
         _promptScroll.content = promptRect;
         _promptScroll.horizontal = false;
         _promptScroll.movementType = ScrollRect.MovementType.Clamped;
-        _statusText = CreateLabel("Status", 48f, new Vector2(0.18f, 0.34f), new Vector2(0.82f, 0.43f));
+        ScrollPanelArt.EnsureVerticalScrollbar(_promptScroll);
+        _statusText = CreateLabel("Status", UITextScale.Body, new Vector2(0.18f, 0.50f), new Vector2(0.82f, 0.57f));
+        _statusText.textWrappingMode = TextWrappingModes.Normal;
+        _statusText.overflowMode = TextOverflowModes.Ellipsis;
 
-        GameObject choices = new GameObject("AnswerChoices", typeof(RectTransform), typeof(HorizontalLayoutGroup));
+        GameObject choices = new GameObject("AnswerChoices", typeof(RectTransform), typeof(GridLayoutGroup));
         choices.transform.SetParent(transform, false);
         _choicesRoot = choices.GetComponent<RectTransform>();
-        _choicesRoot.anchorMin = new Vector2(0.18f, 0.25f);
-        _choicesRoot.anchorMax = new Vector2(0.82f, 0.33f);
+        _choicesRoot.anchorMin = new Vector2(0.18f, 0.30f);
+        _choicesRoot.anchorMax = new Vector2(0.82f, 0.49f);
         _choicesRoot.offsetMin = _choicesRoot.offsetMax = Vector2.zero;
-        HorizontalLayoutGroup choicesLayout = choices.GetComponent<HorizontalLayoutGroup>();
-        choicesLayout.spacing = 12f;
+        GridLayoutGroup choicesLayout = choices.GetComponent<GridLayoutGroup>();
+        choicesLayout.spacing = new Vector2(12f, 12f);
         choicesLayout.padding = new RectOffset(8, 8, 4, 4);
         choicesLayout.childAlignment = TextAnchor.MiddleCenter;
-        choicesLayout.childForceExpandWidth = true;
-        choicesLayout.childForceExpandHeight = true;
+        choicesLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        choicesLayout.constraintCount = 2;
 
         GameObject actions = new GameObject("ChallengeActions", typeof(RectTransform), typeof(HorizontalLayoutGroup));
         actions.transform.SetParent(transform, false);
         _actionsRoot = actions.GetComponent<RectTransform>();
         _actionsRoot.anchorMin = new Vector2(0.18f, 0.16f);
-        _actionsRoot.anchorMax = new Vector2(0.82f, 0.23f);
+        _actionsRoot.anchorMax = new Vector2(0.82f, 0.29f);
         _actionsRoot.offsetMin = _actionsRoot.offsetMax = Vector2.zero;
         HorizontalLayoutGroup actionsLayout = actions.GetComponent<HorizontalLayoutGroup>();
         actionsLayout.spacing = 12f;
@@ -218,6 +221,20 @@ public class ChallengeModeUI : MonoBehaviour
             colors.disabledColor = alreadyPlaced ? new Color(0.45f, 0.68f, 0.42f) : Color.gray;
             choice.Value.colors = colors;
         }
+        ConfigureChoiceGrid();
+    }
+
+    private void OnRectTransformDimensionsChange() => ConfigureChoiceGrid();
+
+    private void ConfigureChoiceGrid()
+    {
+        if (_choicesRoot == null)
+            return;
+        GridLayoutGroup layout = _choicesRoot.GetComponent<GridLayoutGroup>();
+        int rows = Mathf.Max(1, Mathf.CeilToInt(_choiceButtons.Count / 2f));
+        layout.cellSize = new Vector2(
+            Mathf.Max(0f, (_choicesRoot.rect.width - layout.padding.horizontal - layout.spacing.x) / 2f),
+            Mathf.Min(176f, Mathf.Max(0f, (_choicesRoot.rect.height - layout.padding.vertical - layout.spacing.y * (rows - 1)) / rows)));
     }
 
     private void ClearChoiceButtons()
@@ -226,6 +243,7 @@ public class ChallengeModeUI : MonoBehaviour
         {
             if (button != null)
             {
+                button.gameObject.SetActive(false);
                 if (Application.isPlaying)
                     Destroy(button.gameObject);
                 else
@@ -327,8 +345,8 @@ public class ChallengeModeUI : MonoBehaviour
             ChallengeSessionEvent.TraceAccepted => "Tama! Ipagpatuloy ang pagguhit.",
             ChallengeSessionEvent.SupportiveRetry => "Subukan muli. Ligtas ang tamang progreso mo.",
             ChallengeSessionEvent.RetryOpened => "Subukan muli gamit ang mga kasalukuyang pahiwatig.",
-            ChallengeSessionEvent.HintShown => "Ipinakita ang pahiwatig.",
-            ChallengeSessionEvent.HintApplied => "Ipinakita ang pahiwatig. Makikita na ang susunod na pahiwatig.",
+            ChallengeSessionEvent.HintShown => string.Empty,
+            ChallengeSessionEvent.HintApplied => string.Empty,
             ChallengeSessionEvent.TimedOut => "Naubos na ang oras.",
             ChallengeSessionEvent.PenaltyApplied => "Nabawasan ka ng isang puso. Babalik sa checkpoint.",
             ChallengeSessionEvent.CheckpointReset => "Naibalik ang checkpoint at kumpleto ang mga pahiwatig.",
@@ -354,8 +372,8 @@ public class ChallengeModeUI : MonoBehaviour
     /// — the whole correct answer for the slot, free. Gating that behind a modal would have
     /// been cosmetic: the answer was still handed over, and Global "Hints"
     /// (docs/audit/AUDIT.md:169) forbids a hint that finishes a required word. It now shows
-    /// the focus word's MEANING, which explains the word without placing anything, so the
-    /// player still has to assemble it.
+    /// Filipino synonyms with the answer withheld, so the player still has to
+    /// assemble it.
     ///
     /// The line persists after the modal closes rather than living only inside the card:
     /// a hint is information, not decaying scaffolding (D-014), so its visual form stays.
@@ -365,12 +383,12 @@ public class ChallengeModeUI : MonoBehaviour
         if (string.IsNullOrEmpty(session.HintOccurrenceId) || session.CurrentUnitDefinition == null)
             return string.Empty;
 
-        FocusWordDefinition focus = _controller == null
-            ? null
-            : _controller.ResolveHintWord(session.CurrentUnitDefinition, session.HintOccurrenceId);
+        string hint = _controller == null
+            ? string.Empty
+            : _controller.ResolveHintText(session.CurrentUnitDefinition, session.HintOccurrenceId);
 
-        return focus != null && !string.IsNullOrEmpty(focus.meaning)
-            ? HintModalCopy.HintStatusLine(focus.displayLabel, focus.meaning)
+        return !string.IsNullOrWhiteSpace(hint)
+            ? HintModalCopy.HintStatusLine(hint)
             : HintModalCopy.NoHintAvailableBody;
     }
 
@@ -435,14 +453,13 @@ public class ChallengeModeUI : MonoBehaviour
             : unit?.tokens != null && session.CurrentSlotIndex < unit.tokens.Length
                 ? unit.tokens[session.CurrentSlotIndex]?.occurrenceId
                 : null;
-        FocusWordDefinition focus = _controller.ResolveHintWord(unit, occurrenceId);
+        string hint = _controller.ResolveHintText(unit, occurrenceId);
         _hintModalSession = session;
         _hintModalUnit = unit;
         _hintModalSlotIndex = session.CurrentSlotIndex;
         _hintModal.Open(
             session,
-            focus == null ? string.Empty : focus.displayLabel,
-            focus == null ? string.Empty : focus.meaning,
+            hint,
             () => _controller?.RequestHint());
     }
 
@@ -499,11 +516,10 @@ public class ChallengeModeUI : MonoBehaviour
         text.fontSize = UITextScale.Body;
         text.alignment = TextAlignmentOptions.Center;
         text.raycastTarget = false;
-        // Fit longer utility labels without dropping below supporting-label size.
-        text.enableAutoSizing = true;
-        text.fontSizeMin = UITextScale.Secondary;
+        text.enableAutoSizing = false;
+        text.fontSizeMin = UITextScale.Body;
         text.fontSizeMax = UITextScale.Body;
-        text.textWrappingMode = TextWrappingModes.NoWrap;
+        text.textWrappingMode = TextWrappingModes.Normal;
         TutorialFontProvider.ApplyTo(text);
         if (labelColor == ScrollPanelArt.InkColor)
             ScrollPanelArt.Inkify(text);

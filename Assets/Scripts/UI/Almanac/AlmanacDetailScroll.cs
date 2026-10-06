@@ -68,11 +68,37 @@ public class AlmanacDetailScroll : MonoBehaviour
             _art.enabled = art != null;
         }
         if (_title != null) _title.text = title ?? string.Empty;
+        bool hasGlyph = _glyph != null && glyph != null;
+        TMP_Text unlockHeader = _panel != null ? _panel.Find("UnlockedHeader")?.GetComponent<TMP_Text>() : null;
+        if (unlockHeader != null)
+        {
+            ScrollPanelArt.PlaceText(unlockHeader, Rect.MinMaxRect(0.17f, 0.71f, 0.83f, 0.85f), UITextScale.Body, UITextScale.Title);
+            ScrollPanelArt.Inkify(unlockHeader);
+        }
+        if (_art != null)
+        {
+            ScrollPanelArt.SetAnchors(_art.rectTransform, Rect.MinMaxRect(0.17f, hasGlyph ? 0.59f : 0.57f, 0.83f, unlockHeader != null ? 0.70f : 0.81f));
+            _art.preserveAspect = true;
+        }
+        if (_glyph != null)
+            ScrollPanelArt.SetAnchors(_glyph.rectTransform, Rect.MinMaxRect(0.39f, 0.49f, 0.61f, 0.58f));
+        ScrollPanelArt.PlaceText(_glyphLabel, Rect.MinMaxRect(0.17f, 0.43f, 0.83f, 0.49f), UITextScale.Secondary, UITextScale.Body);
+        ScrollPanelArt.PlaceText(_title, Rect.MinMaxRect(0.17f, hasGlyph ? 0.32f : 0.45f, 0.83f, hasGlyph ? 0.43f : 0.56f), UITextScale.Body, UITextScale.Title);
+        ScrollPanelArt.Inkify(_title);
+        ScrollPanelArt.Inkify(_glyphLabel);
         if (_description != null)
         {
             bool hasText = !string.IsNullOrWhiteSpace(description);
             _description.text = hasText ? description : string.Empty;
             _description.gameObject.SetActive(hasText);
+            ScrollPanelArt.Inkify(_description);
+            if (hasText)
+            {
+                ScrollRect reading = _description.GetComponentInParent<ScrollRect>(true);
+                if (reading != null)
+                    ScrollPanelArt.SetAnchors(reading.GetComponent<RectTransform>(), Rect.MinMaxRect(0.17f, 0.17f, 0.83f, hasGlyph ? 0.31f : 0.43f));
+                ScrollPanelArt.MakeReadingScroll(_description);
+            }
         }
 
         gameObject.SetActive(true);

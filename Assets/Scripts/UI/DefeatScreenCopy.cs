@@ -13,9 +13,9 @@ public static class DefeatScreenCopy
     /// <summary>Caption under the hearts row when hearts somehow remain.</summary>
     public const string HeartsLeftLabel = "Natitirang puso";
 
-    /// <summary>Framed tip: restates the loss mechanic and names the counterplay.</summary>
-    public const string TipLine1 = "Nababawasan ang puso kapag nakakarating sa base ang mga kalaban.";
-    public const string TipLine2 = "Iguhit ang kumikinang na mga simbolo para pigilan sila.";
+    /// <summary>Brief counterplay guidance that fits the frame without scrolling.</summary>
+    public const string TipLine1 = "Iguhit ang mga simbolo.";
+    public const string TipLine2 = "Pigilan ang mga kalaban.";
 
     /// <summary>Primary action — re-enter the level.</summary>
     public const string RetryLabel = "Labanan Muli";

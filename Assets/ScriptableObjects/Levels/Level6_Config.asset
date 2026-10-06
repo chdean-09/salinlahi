@@ -24,6 +24,7 @@ MonoBehaviour:
     displayLabel: AWA
     meaning: compassion
     hintText: 
+    hintSynonyms: habag
     decomposition:
     - symbol: {fileID: 11400000, guid: c2947f4f6a8e4db5a67d5c4d4586af79, type: 2}
       spokenValueId: value.a
@@ -39,6 +40,7 @@ MonoBehaviour:
     displayLabel: GAWA
     meaning: action
     hintText: 
+    hintSynonyms: kilos
     decomposition:
     - symbol: {fileID: 11400000, guid: 77d1ebc07538c244898493cc67a926c5, type: 2}
       spokenValueId: value.ga

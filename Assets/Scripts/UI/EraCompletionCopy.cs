@@ -58,8 +58,9 @@ public static class EraCompletionCopy
     /// </summary>
     public const string EraCompleteHeadingFormat = "Tapos na ang {0}";
 
-    /// <summary>Spec BTN-NEXT-ERA, verbatim (docs/audit/AUDIT.md:155).</summary>
-    public const string EnterNextEraLabel = "Pumasok sa Susunod na Panahon";
+    /// <summary>Compact action for advancing to the next era on a phone screen.</summary>
+    public const string EnterNextEraLabel = "Susunod na Panahon";
+    public const string CompleteJourneyLabel = "Magpatuloy";
 
     /// <summary>Shown instead of Enter Next Era on the final era. Matches MemoryCardCopy.</summary>
     public const string CloseLabel = "Isara";

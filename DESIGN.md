@@ -2,7 +2,7 @@
 
 ## Theme
 
-Warm parchment-and-ink storybook: a Living Scroll aesthetic drawn from Philippine manuscripts. The battlefield sits behind a full-rect HUD; all reference surfaces are modal parchment scrolls over a dark dim.
+Warm parchment-and-ink storybook: a Buhay na Kasulatan aesthetic drawn from Philippine manuscripts. The battlefield sits behind a full-rect HUD; all reference surfaces are modal parchment scrolls over a dark dim.
 
 ## Color
 
@@ -15,14 +15,16 @@ Warm parchment-and-ink storybook: a Living Scroll aesthetic drawn from Philippin
 
 ## Typography
 
-- One family: the project's tutorial font via `TutorialFontProvider.ApplyTo`.
-- Fixed scale (`UITextScale`): AutoSizeFloor 28, Caption 30, Secondary 34, Body 40, Title 52, Display 72. Never go below 28.
+- Preserve the existing VT323 font family in `TutorialFont`, applied via `TutorialFontProvider.ApplyTo`. Mobile readability polish adjusts size, weight, spacing, wrapping and layout without replacing the font family or its asset references.
+- Fixed scale (`UITextScale`): AutoSizeFloor/Caption 54, Secondary 60, Body 68, Title 80, Display 96. Body is approximately 20px at 320px portrait width. Long reading copy scrolls instead of shrinking below Body.
+- Parchment ink clears inherited outline, dilation and shadow. Runtime synthetic bold weight is 0.2; existing font families and bold emphasis remain intact.
 - Ink text on parchment via `ScrollPanelArt.Inkify`/`InkifyRecursive`; button labels stay contrasting.
 - No all-caps sentences; short uppercase only for the standing instruction line (existing).
 
 ## Components
 
-- **Modal scroll** (shared): `ScrollPanelArt.CreateDimOverlay` → `CreateScrollPanel` (normalized `ScrollArea` 0.08–0.92 × 0.24–0.76) → `ApplyFull` → ink text in `FullSafeArea` → gold action button bottom band via `PlaceButton`. Used by `LevelReadyScreenController`, `FocusWordPreviewController`, `SymbolLearningCardController`, `HintModal`.
+- **Modal scroll** (shared): `ScrollPanelArt.CreateDimOverlay` → `CreateScrollPanel` (normalized `ScrollArea` 0.04–0.96 × 0.14–0.86) → `ApplyFull` → ink text in `FullSafeArea` → gold action button bottom band via `PlaceButton`. Used by `LevelReadyScreenController`, `FocusWordPreviewController`, `SymbolLearningCardController`, `HintModal`.
+- **Reading viewport**: `ScrollPanelArt.MakeReadingScroll` preserves a reference or hint prose band, masks overflow and adds a scrollbar. Dialogue and cutscene narration grow to show the full text without an inner scrollbar. Dialogue keeps tap-to-continue and seats its heading below the wooden rod.
 - **HUD chip**: small scroll-top banner (`ApplyTop`) with inked label; sits inside `HUDLayer` safe area.
 - **Restoration rail**: bottom-center slot boxes (124×124, 16px intra-word gap, 80px word gap) with Latin word labels beneath.
 

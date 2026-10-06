@@ -9,9 +9,9 @@ using UnityEngine.UI;
 /// SALIN-138: the Focus Words phase surface — presents both restoration goals
 /// (word and readable decomposition) after the story intro and before
 /// any drawing is possible. Drawing input stays suppressed for the whole preview;
-/// the Defense executor releases it exactly once as it opens. Glyph badge
-/// art attaches when SALIN-199's assets land; until then the decomposition reads
-/// as Latin syllables, the manifest-approved fallback.
+/// the Defense executor releases it exactly once as it opens. The word preview
+/// pairs Baybayin glyphs with the original Latin syllable breakdown; sentence objectives retain their
+/// authored visibility rules.
 /// </summary>
 public class FocusWordPreviewController : MonoBehaviour
 {
@@ -41,7 +41,10 @@ public class FocusWordPreviewController : MonoBehaviour
         if (!hasAuthoredObjective && !hasLegacyFocusWords)
             yield break;
 
-        RenderedText = hasAuthoredObjective
+        bool useObjectiveText = hasAuthoredObjective
+            && (config.restorationObjective.displayMode != RestorationDisplayMode.GuidedWords
+                || !hasLegacyFocusWords);
+        RenderedText = useObjectiveText
             ? RestorationObjectiveTextFormatter.Render(config.restorationObjective)
             : BuildPreviewText(config);
         EnsurePanel();
@@ -327,7 +330,12 @@ public class FocusWordPreviewController : MonoBehaviour
         var entries = new List<WordEntry>();
         RestorationObjectiveDefinition objective = config.restorationObjective;
         if (objective?.HasTargets == true
+            && objective.displayMode != RestorationDisplayMode.GuidedWords)
+            return entries;
+
+        if (objective?.HasTargets == true
             && objective.displayMode == RestorationDisplayMode.GuidedWords
+            && (config.focusWords == null || config.focusWords.Count == 0)
             && objective.units != null)
         {
             foreach (RestorationObjectiveUnit unit in objective.units)

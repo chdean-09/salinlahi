@@ -478,15 +478,15 @@ public class PauseMenuUI : MonoBehaviour
         if (card == null)
             return;
 
-        card.sizeDelta = new Vector2(760f, 680f);
+        card.sizeDelta = new Vector2(760f, 1280f);
         if (prompt != null)
         {
             ScrollPanelArt.SetAnchors(
                 prompt.rectTransform,
                 Rect.MinMaxRect(0.16f, 0.48f, 0.84f, 0.76f));
             prompt.enableAutoSizing = true;
-            prompt.fontSizeMin = UITextScale.Caption;
-            prompt.fontSizeMax = 44f;
+            prompt.fontSizeMin = UITextScale.Body;
+            prompt.fontSizeMax = UITextScale.Title;
         }
 
         SetButtonAnchors(confirm, Rect.MinMaxRect(0.20f, 0.31f, 0.80f, 0.43f));

@@ -3220,7 +3220,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: IGUHIT ANG KUMIKINANG NA SIMBOLO PARA MAGTANGGOL
+  m_text: IGUHIT ANG MGA SIMBOLO
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: b3a97f8bae7014bd4b31bc84b88a29b9, type: 2}
   m_sharedMaterial: {fileID: 3582228115317829731, guid: b3a97f8bae7014bd4b31bc84b88a29b9, type: 2}
@@ -8645,7 +8645,6 @@ GameObject:
   - component: {fileID: 928643450}
   - component: {fileID: 928643452}
   - component: {fileID: 928643451}
-  - component: {fileID: 928643453}
   m_Layer: 0
   m_Name: DefeatImage
   m_TagString: Untagged
@@ -8669,8 +8668,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 494}
-  m_SizeDelta: {x: 793.0737, y: 245.5297}
+  m_AnchoredPosition: {x: 0, y: 540}
+  m_SizeDelta: {x: 920, y: 360}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &928643451
 MonoBehaviour:
@@ -8685,14 +8684,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.9103774, g: 0.15888661, b: 0.24080393, a: 1}
-  m_RaycastTarget: 1
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 261651683024494868, guid: d7d1b213bab10ed479e4c32f565a86d1, type: 3}
+  m_Sprite: {fileID: 1152557357, guid: a27f0d9cb6f7d67498777b2457eab22e, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -8710,21 +8709,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 928643449}
   m_CullTransparentMesh: 1
---- !u!114 &928643453
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 928643449}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e19747de3f5aca642ab2be37e372fb86, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Outline
-  m_EffectColor: {r: 0, g: 0, b: 0, a: 0.5}
-  m_EffectDistance: {x: 2, y: -3}
-  m_UseGraphicAlpha: 1
 --- !u!1 &944220756
 GameObject:
   m_ObjectHideFlags: 0
@@ -14776,11 +14760,11 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 832396611}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 1}
-  m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: 0, y: -600}
-  m_SizeDelta: {x: 750, y: 150}
-  m_Pivot: {x: 0.5, y: 1}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 300}
+  m_SizeDelta: {x: 800, y: 90}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1691786921
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14803,8 +14787,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: Tapos na ang Antas!
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: b3a97f8bae7014bd4b31bc84b88a29b9, type: 2}
+  m_sharedMaterial: {fileID: 3582228115317829731, guid: b3a97f8bae7014bd4b31bc84b88a29b9, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -17238,7 +17222,6 @@ GameObject:
   - component: {fileID: 1962977187}
   - component: {fileID: 1962977189}
   - component: {fileID: 1962977188}
-  - component: {fileID: 1962977190}
   m_Layer: 0
   m_Name: VictoryImage
   m_TagString: Untagged
@@ -17262,8 +17245,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -0.000022128, y: 581.81}
-  m_SizeDelta: {x: 793.0737, y: 245.5297}
+  m_AnchoredPosition: {x: 0, y: 540}
+  m_SizeDelta: {x: 920, y: 360}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1962977188
 MonoBehaviour:
@@ -17279,13 +17262,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 5467526348185935425, guid: 925442c64fd19f4439f148557a76c447, type: 3}
+  m_Sprite: {fileID: -1720318643, guid: 1261ae9d0923ffa439812ffda199d7ab, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -17303,21 +17286,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1962977186}
   m_CullTransparentMesh: 1
---- !u!114 &1962977190
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1962977186}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e19747de3f5aca642ab2be37e372fb86, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Outline
-  m_EffectColor: {r: 0, g: 0, b: 0, a: 0.5}
-  m_EffectDistance: {x: 5, y: -5}
-  m_UseGraphicAlpha: 1
 --- !u!1 &1989393529
 GameObject:
   m_ObjectHideFlags: 0

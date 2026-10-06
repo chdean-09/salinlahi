@@ -48,6 +48,8 @@ public class AlmanacController : MonoBehaviour
         }
 
         BuildEnemiesIfNeeded();
+        ScrollPanelArt.EnsureVerticalScrollbar(
+            _enemiesGrid == null ? null : _enemiesGrid.GetComponentInParent<ScrollRect>(true));
         DebugLogger.Log("AlmanacController: Initialized");
     }
 

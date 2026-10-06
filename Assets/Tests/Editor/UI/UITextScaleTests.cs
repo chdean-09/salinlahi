@@ -23,7 +23,8 @@ namespace Salinlahi.Tests.Editor.UI
         public void RaiseToFloor_NeverReturnsBelowFloor()
         {
             Assert.AreEqual(UITextScale.Body, UITextScale.RaiseToFloor(12f, UITextScale.Body));
-            Assert.AreEqual(60f, UITextScale.RaiseToFloor(60f, UITextScale.Body),
+            float aboveFloor = UITextScale.Body + 12f;
+            Assert.AreEqual(aboveFloor, UITextScale.RaiseToFloor(aboveFloor, UITextScale.Body),
                 "Sizes already above the floor pass through unchanged.");
         }
 
@@ -55,13 +56,14 @@ namespace Salinlahi.Tests.Editor.UI
         public void ApplyFloor_LeavesCompliantTextUntouched()
         {
             using var scope = new TextScope(enableAutoSizing: true, size: 48f);
-            scope.Text.fontSizeMin = 30f;
-            scope.Text.fontSizeMax = 56f;
+            scope.Text.fontSizeMin = UITextScale.Caption;
+            float aboveFloor = UITextScale.Body + 12f;
+            scope.Text.fontSizeMax = aboveFloor;
 
             UITextScale.ApplyFloor(scope.Text, UITextScale.Body);
 
-            Assert.AreEqual(30f, scope.Text.fontSizeMin);
-            Assert.AreEqual(56f, scope.Text.fontSizeMax);
+            Assert.AreEqual(UITextScale.Caption, scope.Text.fontSizeMin);
+            Assert.AreEqual(aboveFloor, scope.Text.fontSizeMax);
             Assert.AreEqual(48f, scope.Text.fontSize);
         }
 

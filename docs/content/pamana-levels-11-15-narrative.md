@@ -276,7 +276,7 @@ TO BE WRITTEN — Level 15 unlocks.
 
 ### Intro — `Dialogue_Pamana05_Intro`
 
-TO BE WRITTEN — the last level; the Living Scroll is nearly whole.
+TO BE WRITTEN — the last level; the Buhay na Kasulatan is nearly whole.
 
 ### PA instruction — **required before assessment**
 

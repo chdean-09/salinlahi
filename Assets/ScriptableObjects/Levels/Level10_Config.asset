@@ -24,6 +24,7 @@ MonoBehaviour:
     displayLabel: SANA
     meaning: hope
     hintText: 
+    hintSynonyms: nawa
     decomposition:
     - symbol: {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
       spokenValueId: value.sa
@@ -39,6 +40,7 @@ MonoBehaviour:
     displayLabel: SAYA
     meaning: joy
     hintText: 
+    hintSynonyms: tuwa, galak
     decomposition:
     - symbol: {fileID: 11400000, guid: 7b925db78f844688b404225f531a7fbe, type: 2}
       spokenValueId: value.sa

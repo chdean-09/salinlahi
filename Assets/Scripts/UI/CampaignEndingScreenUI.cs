@@ -141,20 +141,19 @@ public sealed class CampaignEndingScreenUI : MonoBehaviour
         ScrollPanelArt.SetAnchors(safeArea, Rect.MinMaxRect(0f, 0f, 1f, 1f));
         safeArea.gameObject.AddComponent<SafeAreaHandler>();
         RectTransform paper = ScrollPanelArt.CreateScrollPanel(safeArea, "EndingScroll");
-        // Same compact parchment bounds as the Settings screen.
-        ScrollPanelArt.SetAnchors(paper, Rect.MinMaxRect(0.04f, 0.17f, 0.96f, 0.83f));
+        ScrollPanelArt.SetAnchors(paper, ScrollPanelArt.ScrollArea);
         // Readable parchment fallback even if artwork cannot load.
         paper.GetComponent<Image>().color = new Color32(239, 219, 182, 255);
         ScrollPanelArt.ApplyFull(paper.GetComponent<Image>());
 
         TMP_Text heading = NewText(paper, "Heading", "Tapos na ang Paglalakbay", UITextScale.Display);
         heading.fontStyle = FontStyles.Bold;
-        ScrollPanelArt.PlaceText(heading, Rect.MinMaxRect(0.16f, 0.74f, 0.84f, 0.82f), UITextScale.Title, UITextScale.Display);
+        ScrollPanelArt.PlaceText(heading, Rect.MinMaxRect(0.16f, 0.70f, 0.84f, 0.82f), UITextScale.Title, UITextScale.Display);
         TMP_Text summary = NewText(paper, "Summary", "Ugat · Ugnayan · Pamana\nNatapos ang lahat ng 15 antas", UITextScale.Body);
-        ScrollPanelArt.SetAnchors(summary.rectTransform, Rect.MinMaxRect(0.16f, 0.66f, 0.84f, 0.74f));
+        ScrollPanelArt.SetAnchors(summary.rectTransform, Rect.MinMaxRect(0.16f, 0.54f, 0.84f, 0.69f));
 
         RectTransform viewport = NewRect(paper, "CreditsViewport");
-        ScrollPanelArt.SetAnchors(viewport, Rect.MinMaxRect(0.17f, 0.30f, 0.83f, 0.64f));
+        ScrollPanelArt.SetAnchors(viewport, Rect.MinMaxRect(0.17f, 0.30f, 0.83f, 0.52f));
         Image hitArea = viewport.gameObject.AddComponent<Image>();
         hitArea.color = Color.clear;
         hitArea.raycastTarget = false;

@@ -9,7 +9,7 @@ using UnityEngine.UI;
 /// pause button — the same textured background the pause button wears,
 /// carrying the almanac "?" glyph — that opens a parchment scroll of the
 /// level's sentence hints (the blanked restoration context plus each focus
-/// word's meaning and descriptor line with every answer withheld, assembled by
+/// word's letter blanks and descriptor line with every answer withheld, assembled by
 /// <see cref="SentenceHintContent"/>). Levels 6-15 carry no authored objective
 /// subtext above the restoration rail, so this scroll is how the player asks for
 /// the sentence context levels 1-5 print by default.
@@ -476,6 +476,7 @@ public sealed class SentenceHintController : MonoBehaviour
         ContentSizeFitter fitter = bodyObject.AddComponent<ContentSizeFitter>();
         fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         _hintScroll.content = bodyRect;
+        ScrollPanelArt.EnsureVerticalScrollbar(_hintScroll);
 
         GameObject closeObject = new GameObject(
             "[Runtime] SentenceHintClose", typeof(RectTransform), typeof(Image));
@@ -522,7 +523,7 @@ public sealed class SentenceHintController : MonoBehaviour
         _hintScroll.verticalNormalizedPosition = 1f;
     }
 
-    /// <summary>Composes the scroll body: bold meaning headings over their sentences.</summary>
+    /// <summary>Composes the scroll body: bold answer blanks over their clues.</summary>
     private static string ComposeBody(List<SentenceHintContent.Entry> entries)
     {
         if (entries == null || entries.Count == 0)

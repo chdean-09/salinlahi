@@ -210,9 +210,9 @@ public sealed class WaveClearedScreenUI : MonoBehaviour
         if (card == null)
             return;
 
-        card.sizeDelta = new Vector2(720f, 620f);
+        card.sizeDelta = new Vector2(840f, 1240f);
 
-        ScrollPanelArt.PlaceText(banner, Rect.MinMaxRect(0.17f, 0.60f, 0.83f, 0.77f), UITextScale.Body, 56f);
+        ScrollPanelArt.PlaceText(banner, Rect.MinMaxRect(0.17f, 0.60f, 0.83f, 0.77f), UITextScale.Body, UITextScale.Title);
         ScrollPanelArt.PlaceText(hearts, Rect.MinMaxRect(0.17f, 0.44f, 0.83f, 0.56f), UITextScale.Caption, UITextScale.Body);
         ScrollPanelArt.PlaceButton(continueButton, Rect.MinMaxRect(0.22f, 0.20f, 0.78f, 0.33f));
     }

@@ -91,11 +91,10 @@ public static class LevelResultsCopy
     public const string NewSymbolsLabel = "Mga Bagong Simbolo: ";
 
     /// <summary>
-    /// Replay-Level button label (AC-8, BTN-REPLAY). NEW in SALIN-234, taken verbatim from
-    /// the ticket summary. Title Case matches the shipped button register
-    /// ("Start Journey", MainMenuUI.cs:67).
+    /// Compact replay action; the results screen already identifies the completed level.
     /// </summary>
-    public const string ReplayLevelLabel = "Ulitin ang Antas";
+    public const string ReplayLevelLabel = "Ulitin";
+    public const string LevelSelectLabel = "Mga Antas";
 
     /// <summary>Gap between two readouts on the same line. Unchanged from LevelFlowController.cs:736.</summary>
     public const string InlineSeparator = "   ";
